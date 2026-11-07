@@ -6,7 +6,8 @@ import {t} from '../i18n/index.js';
 import {offered} from './key-sources.js';
 const number = value => formatNumber(Number(value || 0));
 const examples = item => item.examples?.length ? t('helperRest.coverageExamples', {examples: item.examples.join('; ')}) : '';
-const counted = (key, value) => t(`helperRest.${key}`, {count: value || 0});
+// Keep the numeric plural selector separate from the locale-formatted display value.
+const counted = (key, value, variables = {}) => t(`helperRest.${key}`, {...variables, count: value || 0, shown: number(value)});
 
 export function coverageCard(verdict, dismissedAt = '') {
   if (!verdict || !verdict.narrow || !Array.isArray(verdict.suggestions) || !verdict.suggestions.length) return null;
@@ -37,7 +38,7 @@ export function filtersCard(verdict, dismissedAt = '') {
     chips: [...words.map(item => ({exclude: item.fragment, count: item.count || 0, label: `− "${item.fragment.replace(/\\b/g, '')}" · ${number(item.count)}`,
       title: counted('excludedJobs', item.count) + examples(item)})),
     ...languages.map(item => ({language: item.language, count: item.count || 0, label: t('helperRest.requiresLanguage', {language: item.language, count: number(item.count)}),
-      title: t('helperRest.languageHidden', {count: item.count || 0, language: item.language}) + examples(item)}))],
+      title: counted('languageHidden', item.count, {language: item.language}) + examples(item)}))],
     at: verdict.at || '',
   };
 }

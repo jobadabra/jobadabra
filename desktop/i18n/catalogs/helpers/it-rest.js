@@ -253,36 +253,36 @@ export const messages = {
     "other": "{count} ricerche, dalla più recente"
   },
   "boardsRead": {
-    "one": "{count} sito di lavoro letto",
-    "other": "{count} siti di lavoro letti"
+    "one": "{shown} sito di lavoro letto",
+    "other": "{shown} siti di lavoro letti"
   },
   "problems": {
     "one": "{count} problema",
     "other": "{count} problemi"
   },
   "openPostings": {
-    "one": "{count} offerta aperta",
-    "other": "{count} offerte aperte"
+    "one": "{shown} offerta aperta",
+    "other": "{shown} offerte aperte"
   },
   "openRoles": {
-    "one": "{count} ruolo aperto",
-    "other": "{count} ruoli aperti"
+    "one": "{shown} ruolo aperto",
+    "other": "{shown} ruoli aperti"
   },
   "excludedJobs": {
-    "one": "{count} offerta con questo termine escluso nel titolo",
-    "other": "{count} offerte con questo termine escluso nel titolo"
+    "one": "{shown} offerta con questo termine escluso nel titolo",
+    "other": "{shown} offerte con questo termine escluso nel titolo"
   },
   "languageHidden": {
-    "one": "{count} offerta nascosta perché richiede {language}",
-    "other": "{count} offerte nascoste perché richiedono {language}"
+    "one": "{shown} offerta nascosta perché richiede {language}",
+    "other": "{shown} offerte nascoste perché richiedono {language}"
   },
   "peerInterviews": {
-    "one": "{count} colloquio",
-    "other": "{count} colloqui"
+    "one": "{shown} colloquio",
+    "other": "{shown} colloqui"
   },
   "openJobs": {
-    "one": "{count} offerta aperta",
-    "other": "{count} offerte aperte"
+    "one": "{shown} offerta aperta",
+    "other": "{shown} offerte aperte"
   },
   "matchingRoles": {
     "one": "{count} ruolo adatto",

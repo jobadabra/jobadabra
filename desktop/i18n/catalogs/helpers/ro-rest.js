@@ -257,9 +257,9 @@ export const messages = {
     "few": "{count} căutări, cele mai recente primele"
   },
   "boardsRead": {
-    "one": "{count} site citit",
-    "other": "{count} de site-uri citite",
-    "few": "{count} site-uri citite"
+    "one": "{shown} site citit",
+    "other": "{shown} de site-uri citite",
+    "few": "{shown} site-uri citite"
   },
   "problems": {
     "one": "{count} problemă",
@@ -267,34 +267,34 @@ export const messages = {
     "few": "{count} probleme"
   },
   "openPostings": {
-    "one": "{count} ofertă deschisă",
-    "other": "{count} de oferte deschise",
-    "few": "{count} oferte deschise"
+    "one": "{shown} ofertă deschisă",
+    "other": "{shown} de oferte deschise",
+    "few": "{shown} oferte deschise"
   },
   "openRoles": {
-    "one": "{count} rol deschis",
-    "other": "{count} de roluri deschise",
-    "few": "{count} roluri deschise"
+    "one": "{shown} rol deschis",
+    "other": "{shown} de roluri deschise",
+    "few": "{shown} roluri deschise"
   },
   "excludedJobs": {
-    "one": "{count} ofertă cu acest cuvânt exclus în titlu",
-    "other": "{count} de oferte cu acest cuvânt exclus în titlu",
-    "few": "{count} oferte cu acest cuvânt exclus în titlu"
+    "one": "{shown} ofertă cu acest cuvânt exclus în titlu",
+    "other": "{shown} de oferte cu acest cuvânt exclus în titlu",
+    "few": "{shown} oferte cu acest cuvânt exclus în titlu"
   },
   "languageHidden": {
-    "one": "{count} ofertă ascunsă deoarece cere {language}",
-    "other": "{count} de oferte ascunse deoarece cer {language}",
-    "few": "{count} oferte ascunse deoarece cer {language}"
+    "one": "{shown} ofertă ascunsă deoarece cere {language}",
+    "other": "{shown} de oferte ascunse deoarece cer {language}",
+    "few": "{shown} oferte ascunse deoarece cer {language}"
   },
   "peerInterviews": {
-    "one": "{count} interviu",
-    "other": "{count} de interviuri",
-    "few": "{count} interviuri"
+    "one": "{shown} interviu",
+    "other": "{shown} de interviuri",
+    "few": "{shown} interviuri"
   },
   "openJobs": {
-    "one": "{count} ofertă deschisă",
-    "other": "{count} de oferte deschise",
-    "few": "{count} oferte deschise"
+    "one": "{shown} ofertă deschisă",
+    "other": "{shown} de oferte deschise",
+    "few": "{shown} oferte deschise"
   },
   "matchingRoles": {
     "one": "{count} rol potrivit",

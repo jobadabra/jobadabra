@@ -77,7 +77,7 @@ export function report(row) {
     const chips = some([[t('helperRest.sitesRefused'), boards.refused_reads, 'warn'], [t('helperRest.askedSlowDown'), boards.refused_slow_down, 'warn'], [t('helperRest.showedBotCheck'), boards.refused_captcha, 'warn'],
       [t('helperState.stopped'), boards.refused_stopped, 'warn'], [t('helperRest.afterScripts'), boards.headless_reads, 'info'], [t('helperRest.leftOpenManually'), boards.left_to_open, boards.left_to_open ? 'bad' : 'good']])
       .map(([label, value, tone]) => ({label, detail: n(value), tone}));
-    cards.push({id: 'boards', kind: 'boards', category: t('helperRest.jobBoardsUpper'), title: boards.read === undefined ? t('helperRest.jobBoards') : t('helperRest.boardsRead', {count: boards.read}),
+    cards.push({id: 'boards', kind: 'boards', category: t('helperRest.jobBoardsUpper'), title: boards.read === undefined ? t('helperRest.jobBoards') : t('helperRest.boardsRead', {count: boards.read, shown: n(boards.read)}),
       rows: (boards.list || []).map(item => ({name: item.name, jobs: n(item.jobs), relevant: n(item.relevant)})), chips});
   }
   const ai = Object.entries(d.ai || {}).filter(([stage]) => STAGES[stage]);

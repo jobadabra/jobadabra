@@ -253,36 +253,36 @@ export const messages = {
     "other": "{count} searches, newest first"
   },
   "boardsRead": {
-    "one": "{count} board read",
-    "other": "{count} boards read"
+    "one": "{shown} board read",
+    "other": "{shown} boards read"
   },
   "problems": {
     "one": "{count} problem",
     "other": "{count} problems"
   },
   "openPostings": {
-    "one": "{count} open posting",
-    "other": "{count} open postings"
+    "one": "{shown} open posting",
+    "other": "{shown} open postings"
   },
   "openRoles": {
-    "one": "{count} open role",
-    "other": "{count} open roles"
+    "one": "{shown} open role",
+    "other": "{shown} open roles"
   },
   "excludedJobs": {
-    "one": "{count} job with this excluded word in the title",
-    "other": "{count} jobs with this excluded word in the title"
+    "one": "{shown} job with this excluded word in the title",
+    "other": "{shown} jobs with this excluded word in the title"
   },
   "languageHidden": {
-    "one": "{count} job hidden because they require {language}",
-    "other": "{count} jobs hidden because they require {language}"
+    "one": "{shown} job hidden because they require {language}",
+    "other": "{shown} jobs hidden because they require {language}"
   },
   "peerInterviews": {
-    "one": "{count} interview",
-    "other": "{count} interviews"
+    "one": "{shown} interview",
+    "other": "{shown} interviews"
   },
   "openJobs": {
-    "one": "{count} open job",
-    "other": "{count} open jobs"
+    "one": "{shown} open job",
+    "other": "{shown} open jobs"
   },
   "matchingRoles": {
     "one": "{count} matching role",

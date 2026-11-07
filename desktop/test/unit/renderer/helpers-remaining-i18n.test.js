@@ -200,3 +200,28 @@ test('find counts use localized position wording while their numeric data remain
   try { setLocale('de'); assert.equal(countText(result, 'x'), '1 von 2'); assert.deepEqual(result, {active: 1, total: 2}); }
   finally { setLocale('en'); }
 });
+
+
+test('coverage and board plural counts retain locale grouping and raw plural selection in every locale', async () => {
+  const {filtersCard, placesCard, employersCard, ideasCard} = await import('../../../renderer/coverage-card.js');
+  try {
+    for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+      setLocale(locale);
+      for (const count of [1, 2, 5, 1234, 1001]) {
+        const shown = new Intl.NumberFormat(locale).format(count);
+        const data = {narrow: true, suggestions: [{term: 'Original role', count}], excluded: [{fragment: 'Original', count}], languages: [{language: 'Original language', count}],
+          places: {options: [{place: 'Original place', count}]}, for_you: [{company: 'Original company', interview: count, applied: 7, why: 'Original why'}]};
+        const card = coverageCard(data), filters = filtersCard(data), employers = employersCard(data);
+        const labels = [card.chips[0].title, filters.chips[0].title, filters.chips[1].title, placesCard(data).chips[0].title,
+          employers.chips[0].label, employers.chips[0].title, ideasCard([{word: 'Original word', role: 'Original role', count, why: 'Original why'}]).chips[0].title,
+          report({details: {boards: {read: count}}}).cards.find(item => item.id === 'boards').title];
+        for (const value of labels) assert.ok(value.includes(shown), `${locale}/${count}: ${value}`);
+        assert.equal(card.chips[0].count, count); assert.equal(data.suggestions[0].term, 'Original role');
+        if (locale === 'ru') {
+          const ending = count === 1 || count === 1001 ? 'открытая вакансия' : count === 2 || count === 1234 ? 'открытые вакансии' : 'открытых вакансий';
+          assert.ok(card.chips[0].title.includes(`${shown} ${ending}`), card.chips[0].title);
+        }
+      }
+    }
+  } finally {setLocale('en');}
+});

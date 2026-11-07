@@ -253,36 +253,36 @@ export const messages = {
     "other": "{count} recherches, plus récentes en premier"
   },
   "boardsRead": {
-    "one": "{count} site d’emploi lu",
-    "other": "{count} sites d’emploi lus"
+    "one": "{shown} site d’emploi lu",
+    "other": "{shown} sites d’emploi lus"
   },
   "problems": {
     "one": "{count} problème",
     "other": "{count} problèmes"
   },
   "openPostings": {
-    "one": "{count} offre ouverte",
-    "other": "{count} offres ouvertes"
+    "one": "{shown} offre ouverte",
+    "other": "{shown} offres ouvertes"
   },
   "openRoles": {
-    "one": "{count} poste ouvert",
-    "other": "{count} postes ouverts"
+    "one": "{shown} poste ouvert",
+    "other": "{shown} postes ouverts"
   },
   "excludedJobs": {
-    "one": "{count} offre avec ce mot exclu dans le titre",
-    "other": "{count} offres avec ce mot exclu dans le titre"
+    "one": "{shown} offre avec ce mot exclu dans le titre",
+    "other": "{shown} offres avec ce mot exclu dans le titre"
   },
   "languageHidden": {
-    "one": "{count} offre masquée car elle exige {language}",
-    "other": "{count} offres masquées car elles exigent {language}"
+    "one": "{shown} offre masquée car elle exige {language}",
+    "other": "{shown} offres masquées car elles exigent {language}"
   },
   "peerInterviews": {
-    "one": "{count} entretien",
-    "other": "{count} entretiens"
+    "one": "{shown} entretien",
+    "other": "{shown} entretiens"
   },
   "openJobs": {
-    "one": "{count} offre ouverte",
-    "other": "{count} offres ouvertes"
+    "one": "{shown} offre ouverte",
+    "other": "{shown} offres ouvertes"
   },
   "matchingRoles": {
     "one": "{count} poste adapté",
