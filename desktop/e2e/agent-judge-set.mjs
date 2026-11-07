@@ -16,7 +16,7 @@ const before = scoreRows(await askSet({ask, notes, expectations, variant: 'befor
 const afterRows = await askSet({ask, notes, expectations, variant: 'after'});
 const after = scoreRows(afterRows);
 const table = tableMarkdown(before, after);
-// Why (7 Nov 2026, pz, owner via mac-50: "Don't gate filing on the judge alone: it dropped 5 of 7 real ones on 5 Nov. Say what you'd change there, with the numbers"): the tour set again under the production rule (a disagree holds a note only when it names an id of its knowledge), next to the judge alone.
+// Why (7 Nov 2026, pz, owner via mac-50: "Don't gate filing on the judge alone: it dropped 5 of 7 real ones on 5 Nov. Say what you'd change there, with the numbers"; exam run 42407753226): the tour set again under the production rule, a disagree holds a note only through a rule the note itself cited or a closed verdict (a bare "names a rule id" held real note #9 in 3 of 3 runs), next to the judge alone.
 const tourHeld = afterRows.map(row => {
   const note = notes.find(each => each.n === row.n);
   return {n: row.n, label: row.label, disagreed: row.verdicts.filter(v => v === 'disagrees').length, holdingRuns: row.verdicts.filter((v, i) => v === 'disagrees' && holdingIds(note, row.reasons[i], knowledgeOf(note, expectations)).length > 0).length};
