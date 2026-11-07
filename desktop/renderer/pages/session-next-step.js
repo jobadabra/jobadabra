@@ -137,6 +137,11 @@ function renderLost(item) {
   $('ss-question').replaceChildren(el('p', 'rich-p', t('pagesSessionHelp.tabLost')));
   $('ss-actions').replaceChildren(reopenButton(item));
 }
+/** The stopped card's line in the person's language, from the note the journey stored (lib/application-journey.js stopNote).
+ * Why (#3410, owner approved the preview 7 Nov 2026): only an explicit Stop press says "by you"; a legacy or other recorded note is shown as stored. */
+const STOP_HELP = {'Stopped by you. Press Reopen form to fill it again.': 'stoppedByYou', 'Chrome stopped the extension. Press Reopen form to fill it again.': 'stoppedByChrome', 'The extension stopped. Press Reopen form to fill it again.': 'stoppedNeutral'};
+const stopHelp = note => !note || STOP_HELP[note] ? t(`pagesSessionHelp.${STOP_HELP[note] || 'stoppedNeutral'}`) : note;
+
 export function renderNextStep(item) {
   // A hidden-browser session (spec 2026-10-27-background-apply-execution, step B) has no Chrome tab of the person's: its card is the live page.
   if (item.background && !isSubmitted(item)) {
@@ -197,7 +202,7 @@ export function renderNextStep(item) {
       : t('pagesSessionHelp.noFormHelp')),
       // The next press, in the AI's own words (e.g. 'Solve the check, then press "Créer un compte"'): what is left for you on this page.
       ...(['account', 'incomplete'].includes(item.stuck) && item.accountNeeds ? [el('p', 'rich-p', el('b', '', t('pagesAuditThird.a189')), item.accountNeeds)] : [])]
-    : stopped ? [el('p', 'rich-p', t('pagesSessionHelp.stoppedHelp'))]
+    : stopped ? [el('p', 'rich-p', stopHelp(item.note))]
     : gone && asking ? [el('p', 'rich-p', t('pagesSessionHelp.closedQuestion'))]
     : gone ? [el('p', 'rich-p', item.kind === 'form' ? t('pagesSessionHelp.closedFormHelp') : t('pagesSessionHelp.closedFilledHelp'))]
     : open ? [el('p', 'rich-p', t('pagesSessionHelp.completeRemaining')) ]

@@ -77,3 +77,23 @@ test('invariant 7: a page the ladder could not read (other) is reported like ema
   assert.equal(journeyStep({...posting, ...first.set}).needs, 'Jobadabra could not tell how to apply: open the page');
   assert.ok(STUCK.includes('other'));
 });
+
+test('browser and unattributed extension stops never say the person pressed Stop (#3410)', () => {
+  for (const source of ['browser', 'unknown']) {
+    const session = form({stage: 'form'});
+    Object.assign(session, journey(session, {type: 'stop', source}).set);
+    assert.equal(session.stuck, 'stopped', 'all stop safety behavior remains in force');
+    assert.doesNotMatch(session.note, /by you|you stopped/i);
+    assert.doesNotMatch(journeyStep(session).needs, /by you|you stopped/i);
+    assert.match(journeyStep(session).needs, /Reopen form/);
+  }
+  const session = form();
+  Object.assign(session, journey(session, {type: 'stop', source: 'user'}).set);
+  assert.match(journeyStep(session).needs, /Stopped by you/);
+});
+
+test('a legacy stopped session with no recorded explanation cannot claim a user Stop', () => {
+  const step = journeyStep(form({stuck: 'stopped', stage: 'form'}));
+  assert.doesNotMatch(step.needs, /by you|you stopped/i);
+  assert.match(step.needs, /Reopen form/);
+});

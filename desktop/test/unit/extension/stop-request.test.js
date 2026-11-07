@@ -69,3 +69,18 @@ test('the person\'s start on a tab takes that tab\'s session out of "Stopped"; o
   terminals.noteStuck('b2', 'no-form');
   assert.equal(terminals.get('b2').stuck, 'stopped', 'control: a page report never lifts Stop (invariant 8)');
 });
+
+
+test('fresh sessions preserve browser stop provenance and retain all stop protections (#3410)', () => {
+  terminals._reset();
+  for (const id of ['fresh-a', 'fresh-b']) terminals.startForm({id, url: `https://jobs.example.test/${id}`, company: 'Fictional'});
+  assert.equal(stopLiveForms(terminals, 'browser'), 2);
+  for (const id of ['fresh-a', 'fresh-b']) {
+    const session = terminals.get(id);
+    assert.equal(session.stuck, 'stopped');
+    assert.match(session.note, /Chrome stopped/);
+    assert.doesNotMatch(journeyStep(session).needs, /by you|you stopped/i);
+    terminals.noteStuck(id, 'incomplete');
+    assert.equal(terminals.get(id).stuck, 'stopped', 'page reports cannot undo the stop');
+  }
+});

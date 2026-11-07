@@ -93,6 +93,7 @@ test('Chrome\'s own "Cancel" on the debugging bar stops everything; a closed tab
   assert.equal(stop.isStopped(), false);
   detachListener({tabId: 5}, 'canceled_by_user');
   assert.equal(stop.isStopped(), true);
+  assert.equal(store.stopped.source, 'browser', 'Chrome cancellation keeps browser provenance');
 });
 
 test('only the person starts it again: Apply in the app (a mark on a tab the app opens), the panel\'s Fill, the popup\'s Apply on this page', async () => {
@@ -108,6 +109,7 @@ test('the app\'s Stop reaches the extension in the answer to any report, once pe
   reset();
   assert.equal(await stop.stopFromApp({stop: 'req-1'}), true);
   assert.equal(stop.isStopped(), true);
+  assert.equal(store.stopped.source, 'user', 'the app button carries affirmative user provenance');
   stop.restart('the person pressed Fill');
   assert.equal(await stop.stopFromApp({stop: 'req-1'}), false, 'the same request again is not a new Stop');
   assert.equal(stop.isStopped(), false);
@@ -246,4 +248,14 @@ test('the panel hears a failed Stop as ok:false, so its Stop button comes back, 
   assert.equal(answer.ok, false);
   assert.deepEqual(Object.keys(answer).sort(), ['ok', 'tabs'], 'the page is given only whether the Stop held and on how many tabs');
   assert.deepEqual(reached.filter(url => new URL(url).hostname === '127.0.0.1'), [], 'a unit test aimed at the app on this Mac (127.0.0.1:47111, the owner\'s live app)');
+});
+
+
+test('an unclassified stop never guesses user intent from its reason text (#3410)', async () => {
+  reset();
+  const origins = [];
+  stop.onStopped((_reason, _tabs, source) => origins.push(source));
+  await stop.stopAll('the person pressed Stop');
+  assert.equal(store.stopped.source, 'unknown');
+  assert.equal(origins.at(-1), 'unknown');
 });
