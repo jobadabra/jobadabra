@@ -65,3 +65,22 @@ test('survey presentation translates known choices without changing saved schema
     assert.equal(readLine(saved).option, 'Woman');
   } finally { setLocale('en'); }
 });
+
+test('lead guidance and search summaries translate around unchanged confirmed values', async () => {
+  const lead = await import('../../../renderer/lead-confirm.js');
+  const find = await import('../../../renderer/find-card-model.js');
+  try {
+    setLocale('de');
+    assert.equal(lead.saveLabel([{}]), '1 Angabe bestätigen');
+    assert.equal(lead.channelHint({state: 'ok', guess: 'Original channel'}, 'Original channel'), 'In der Nachricht genannt: Original channel.');
+    const payload = lead.confirmed({new: true, fields: {agree: {}}}, {values: {kind: 'Applied', channel: 'Email', started: '2026-11-01', agree: 'yes'}, first: 'yes'});
+    assert.equal(payload.kind, 'Applied');
+    assert.equal(payload.channel, 'Email');
+    assert.equal(payload.agreed, true);
+    assert.equal(find.addedWords(2), '2 Stellen zur Liste hinzugefügt');
+    assert.equal(find.runCounts(['Run counts: looked=8 matches=3 scored=2 good=1']).looked, 8);
+    setLocale('ru');
+    assert.equal(lead.saveLabel([{}, {}, {}]), 'Подтвердить 3 детали');
+    assert.match(find.partialWords({log: ['Employers: read 3 of 10 sites in the time']}, 2), /^Частично:/);
+  } finally { setLocale('en'); }
+});

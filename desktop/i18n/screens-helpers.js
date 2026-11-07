@@ -59,3 +59,13 @@ import {messages as esRest} from './catalogs/helpers/es-rest.js';
 import {messages as roRest} from './catalogs/helpers/ro-rest.js';
 import {messages as ruRest} from './catalogs/helpers/ru-rest.js';
 for (const [locale, messages] of Object.entries({en: enRest, de: deRest, fr: frRest, it: itRest, es: esRest, ro: roRest, ru: ruRest})) registerMessages(locale, 'helperRest', messages);
+
+// Confirmation and guidance catalogs.
+import {messages as enGuide} from './catalogs/helpers/en-guide.js';
+import {messages as deGuide} from './catalogs/helpers/de-guide.js';
+import {messages as frGuide} from './catalogs/helpers/fr-guide.js';
+import {messages as itGuide} from './catalogs/helpers/it-guide.js';
+import {messages as esGuide} from './catalogs/helpers/es-guide.js';
+import {messages as roGuide} from './catalogs/helpers/ro-guide.js';
+import {messages as ruGuide} from './catalogs/helpers/ru-guide.js';
+for (const [locale, messages] of Object.entries({en: enGuide, de: deGuide, fr: frGuide, it: itGuide, es: esGuide, ro: roGuide, ru: ruGuide})) registerMessages(locale, 'helperGuide', messages);

@@ -1,4 +1,7 @@
-import {stageLabel} from './jobs-board-rules.js';
+import '../i18n/screens-helpers.js';
+import {t, getLocale} from '../i18n/index.js';
+import {date} from '../i18n/format.js';
+import {stageText} from './jobs-board-rules.js';
 import {aiName} from './ai-name.js';
 import {where} from './store-name.js';
 // Log job activity, step 2 (the confirmation): nothing reaches Notion until you've confirmed what Claude couldn't
@@ -6,12 +9,12 @@ import {where} from './store-name.js';
 // (inferred: pre-filled, marked, needs a confirm) or "ask" (not shown: empty, with a question). No window needed
 // (test/unit/main/lead-confirm.test.js); pages/jobs.js draws it.
 export const CHANNELS = ['LinkedIn', 'Email', 'Phone', 'Other'];
-export const CHANNEL_LABEL = {LinkedIn: 'LinkedIn', Email: 'Email', Phone: 'Phone / call', Other: 'Other'};
+export const CHANNEL_LABEL = {LinkedIn: 'LinkedIn', Email: t('helperGuide.emailTitle'), Phone: t('helperGuide.phoneCall'), Other: t('helperGuide.other')};
 // "Update on this job" (src/ai/inbox.py UPDATE): the default for a job already tracked when the message has nothing of
 // its own kind (the same recruiter's chat again): its gaps, its description and who wrote last are saved.
-export const KIND_LABEL = {'Update on this job': 'Update on this job (already tracked)', 'Recruiter outreach': 'First contact (a recruiter or employer pitches a role)',
-  Applied: 'I applied', 'Confirmation received': 'Application received (automatic)', 'Reply received': 'A reply (no fixed time)',
-  'Interview scheduled': 'A call or interview booked', Rejected: 'Rejected', Offer: 'Offer', 'Feedback received': 'Feedback'};
+export const KIND_LABEL = {'Update on this job': t('helperGuide.updateTracked'), 'Recruiter outreach': t('helperGuide.firstPitch'),
+  Applied: t('helperGuide.iApplied'), 'Confirmation received': t('helperGuide.applicationReceived'), 'Reply received': t('helperGuide.replyNoTime'),
+  'Interview scheduled': t('helperGuide.callBooked'), Rejected: stageText('Rejected'), Offer: stageText('Offer'), 'Feedback received': t('helperGuide.feedback')};
 // Applications "Source" when this contact is where the job started (src/ai/opportunity.py CHANNEL_SOURCE).
 const SOURCE = {LinkedIn: 'LinkedIn', Email: 'Gmail', Phone: 'Phone'};
 const ORDER = ['kind', 'channel', 'started', 'origin', 'agree', 'interview', 'last', 'company', 'agency'];
@@ -72,7 +75,7 @@ export function pending(proposal = {}, state, today = '') {
 
 // The Save button's words: what's left, or the save itself.
 export function saveLabel(left) {
-  return left.length ? `Confirm ${left.length} detail${left.length === 1 ? '' : 's'}` : `Save to ${where()}`;
+  return left.length ? t('helperGuide.confirmDetails', {count: left.length}) : t('helperGuide.saveTo', {where: where()});
 }
 
 // "Which year was this ("Sep 21")?" → the date for a year picked (month_day "09-21").
@@ -80,43 +83,43 @@ export function withYear(field, year) { return `${year}-${field.month_day}`; }
 
 export function channelHint(field = {}, chosen) {
   const guess = field.guess;
-  if (field.state === 'ok') return chosen === guess ? `Shown in the message: ${guess}.` : `The message showed ${guess}; saved as ${CHANNEL_LABEL[chosen] || chosen}.`;
-  if (!guess || guess === 'Other') return chosen === 'Other' ? 'Say where, e.g. WhatsApp (optional).' : "Couldn't tell from the message: pick one.";
-  if (chosen === guess) return `Looks like ${guess} — change it if not.`;
-  return `${aiName()} guessed ${guess}; saved as ${CHANNEL_LABEL[chosen] || chosen}.`;
+  if (field.state === 'ok') return chosen === guess ? t('helperGuide.shownMessage', {guess}) : t('helperGuide.messageSaved', {guess, chosen: CHANNEL_LABEL[chosen] || chosen});
+  if (!guess || guess === 'Other') return chosen === 'Other' ? t('helperGuide.sayWhere') : "Couldn't tell from the message: pick one.";
+  if (chosen === guess) return t('helperGuide.looksLike', {guess});
+  return t('helperGuide.aiGuessed', {ai: aiName(), guess, chosen: CHANNEL_LABEL[chosen] || chosen});
 }
 
 export function startedHint(isNew) {
-  return isNew ? 'The date of the first message in this conversation.'
+  return isNew ? t('helperGuide.firstMessageDate')
     : "Earlier than this job's first contact? Then this conversation becomes where it started (its Source).";
 }
 
 // Who wrote last (src/ai/inbox.py fields() 'last'): what saving it does for Focus, and what they wrote.
 export function lastHint(field = {}, value = '') {
   const said = field.snippet ? ` "${field.snippet.length > 60 ? `${field.snippet.slice(0, 59)}…` : field.snippet}"` : '';
-  const what = field.from === 'you' ? `You wrote last${said}: Focus reminds you to follow up after 24 hours without an answer.`
-    : `They wrote last${said}: Focus shows it as waiting for your answer.`;
-  if (field.state === 'ask' && !value) return `Couldn't read the day${field.as_written ? ` ("${field.as_written}")` : ''}. Leave it empty if you don't know: then nothing is saved about it.`;
+  const what = field.from === 'you' ? t('helperGuide.youLast', {said})
+    : t('helperGuide.theyLast', {said});
+  if (field.state === 'ask' && !value) return t('helperGuide.unknownDay', {written: field.as_written ? ` ("${field.as_written}")` : ''});
   return what;
 }
 
 // "Did you agree to talk to the recruiter?" (src/ai/inbox.py fields() 'agree'): there only for a new job or a Recruiter
 // lead, pre-filled when the conversation shows your yes, asked when your reply leaves it unclear.
 export function agreeHint(field = {}, value = '', isNew = false) {
-  if (field.state === 'ok' && value === 'yes') return 'Confirmed from the conversation: the job moves to Screening.';
-  if (value === 'yes') return 'The job moves to Screening.';
-  if (value === 'no') return isNew ? 'Saved as a Recruiter lead.' : 'It stays a Recruiter lead.';
+  if (field.state === 'ok' && value === 'yes') return t('helperGuide.agreedConfirmed');
+  if (value === 'yes') return t('helperGuide.movesScreening');
+  if (value === 'no') return isNew ? t('helperGuide.savedRecruiter') : t('helperGuide.staysRecruiter');
   return "Your reply doesn't say it clearly. Yes moves the job to Screening.";
 }
 
 // Under "Who reached out first?": why it is asked, and what each answer means.
-const shortDay = value => { const [y, m, d] = day(value).split('-').map(Number); return y ? `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}` : ''; };
+const shortDay = value => { const [y, m, d] = day(value).split('-').map(Number); return y && getLocale() !== 'en' ? date(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T12:00:00`, {day: 'numeric', month: 'short'}) : y ? `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}` : ''; };
 export function originHint(field = {}, state = {}) {
-  const channel = CHANNEL_LABEL[state.values?.channel] || 'this channel';
-  const first = `Your conversation on ${channel} (${shortDay(state.values?.started)}) came before this job's first contact (${shortDay(field.first_known)}).`;
-  if (state.values?.origin === 'inbound') return `${first} Counted as inbound.`;
-  if (state.values?.origin === 'outbound') return `${first} Stays in your application funnel.`;
-  return `${first} If they wrote first, it counts as inbound.`;
+  const channel = CHANNEL_LABEL[state.values?.channel] || t('helperGuide.thisChannel');
+  const first = t('helperGuide.conversationEarlier', {channel, started: shortDay(state.values?.started), known: shortDay(field.first_known)});
+  if (state.values?.origin === 'inbound') return first + t('helperGuide.countInbound');
+  if (state.values?.origin === 'outbound') return first + t('helperGuide.staysFunnel');
+  return first + t('helperGuide.ifTheyFirst');
 }
 
 // The outcomes a save always applies to a tracked job's Stage (src/ai/mail.py _stage_for: a terminal kind moves any job
@@ -132,7 +135,7 @@ export function changes(proposal = {}, state = {}) {
   if (proposal.new || !Object.keys(now).length) return out;
   const earlier = !!v.started && !!proposal.first_known && day(v.started) < day(proposal.first_known);
   if (earlier && originShown(proposal, state) && v.origin === 'inbound' && now.Origin === 'Outbound') {
-    out.push({name: 'Origin', from: 'Outbound', to: 'Inbound', note: 'Leaves your application funnel and joins the inbound funnel.'});
+    out.push({name: 'Origin', from: 'Outbound', to: 'Inbound', note: t('helperGuide.leavesFunnel')});
   }
   const source = SOURCE[v.channel], was = now.Source;
   const wasChannel = Object.keys(SOURCE).find(channel => SOURCE[channel] === was);
@@ -144,9 +147,9 @@ export function changes(proposal = {}, state = {}) {
 }
 
 export function firstHint(channel, first, other = '') {
-  if (first === 'no') return 'Its Source stays how you added it; this is logged as a later contact.';
+  if (first === 'no') return t('helperGuide.sourceStays');
   const source = SOURCE[channel];
-  return source ? `The job's Source will be ${source}.` : `The job's Source will be how you added it${other ? ` (${other} noted)` : ''}.`;
+  return source ? t('helperGuide.sourceWill', {source}) : t('helperGuide.sourceOriginal', {other: other ? t('helperGuide.otherNoted', {other}) : ''});
 }
 
 // Step 1's "Link to job": automatic ('' , Claude finds it) while "Find the job automatically" is ticked, else the job
@@ -156,15 +159,15 @@ export const targetOf = (auto, value = '') => (auto ? '' : String(value || ''));
 // "Which job is this?" choices: the likely ones first (same recruiter or company), a new job, then your other jobs.
 // candidates: [{url, label, stage}] from the engine; tracked: the Jobs list ({url, company, via, title, stage}).
 export function jobChoices(candidates = [], tracked = []) {
-  const text = job => `${job.label}${job.stage ? ` (${stageLabel(job.stage)})` : ''}`;
+  const text = job => `${job.label}${job.stage ? ` (${stageText(job.stage)})` : ''}`;
   const likely = candidates.map(job => ({value: job.url, text: text(job)}));
   const seen = new Set(candidates.map(job => job.url));
   const others = tracked.filter(job => job.stage && !['Dismissed', 'Closed'].includes(job.stage) && !seen.has(job.url))
     .map(job => ({value: job.url, text: text({label: `${job.company || job.via || '—'} · ${job.title}`, stage: job.stage})}))
     .sort((a, b) => a.text.localeCompare(b.text));
-  return [...(likely.length ? [{group: 'Possible matches', options: likely}] : []),
-    {options: [{value: 'new', text: 'A new job (not in my list yet)'}]},
-    ...(others.length ? [{group: likely.length ? 'Your other applications' : 'Your applications', options: others}] : [])];
+  return [...(likely.length ? [{group: t('helperGuide.possibleMatches'), options: likely}] : []),
+    {options: [{value: 'new', text: t('helperGuide.newUnlistedJob')}]},
+    ...(others.length ? [{group: likely.length ? t('helperGuide.otherApplications') : t('helperGuide.yourApplications'), options: others}] : [])];
 }
 
 export function searchJobChoices(groups, query = '') {
@@ -188,9 +191,9 @@ export function carry(state = {}, next = {}) {
 
 // The bold line and the muted line under it: what was read and what saving will do.
 export function found(proposal = {}) {
-  const meta = proposal.new ? `New job: added to ${where()} when you save`
-    : `Already tracked${proposal.stage ? ` (${stageLabel(proposal.stage)})` : ''}: updated when you save`;
-  return {title: proposal.label || 'The job', meta};
+  const meta = proposal.new ? t('helperGuide.newJobSave', {where: where()})
+    : t('helperGuide.trackedSave', {stage: proposal.stage ? ` (${stageText(proposal.stage)})` : ''});
+  return {title: proposal.label || t('helperGuide.theJob'), meta};
 }
 
 // What goes to the engine (src/daily.py --kind, --channel, --started, --interview-at, --company, --agency,
