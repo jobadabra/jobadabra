@@ -18,7 +18,7 @@ export function init() {
       const count = result?.count || 0;
       if (count) jobsChanged();   // their jobs went back to Kit ready: the Jobs list reads them again
       toastMessage(result?.ok === false ? t('pagesSessionStates.notAllCancelled') : t('pagesSessionStates.allCancelled'), result?.ok === false ? result.error
-        : `${count} application${count === 1 ? '' : 's'} cancelled. Nothing was submitted; the jobs are back in Jobs.`, {view: 'sessions'}, result?.ok === false ? 'bad' : 'good');
+        : t('pagesDynamicSessionReports.m335', {"count": count}), {view: 'sessions'}, result?.ok === false ? 'bad' : 'good');
       await refreshSessions();
     } finally { button.disabled = false; }
   });

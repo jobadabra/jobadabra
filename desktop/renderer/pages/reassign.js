@@ -58,7 +58,7 @@ export async function moveEmail(eventId, target, item = null) {
 
 // Focus → Other job…: the question's email, to the job you pick. `onSaved(job)` hears the job saved ("Company — Title", or ''
 // for "not about a job"): Recent activity's Gmail card turns that email to "Answered" at once.
-const jobOf = (choice, item) => (choice === 'none' ? '' : choice === 'new' ? `${item.company || t('pagesExtraLabels.newJob')} — new job`   // as the answered list records it
+const jobOf = (choice, item) => (choice === 'none' ? '' : choice === 'new' ? t('pagesDynamicProfileReady.m316', {"value1": item.company || t('pagesExtraLabels.newJob')})   // as the answered list records it
   : ($('reassign-target').selectedOptions[0]?.textContent || '').replace(/\s*\([^)]*\)$/, '').replace(' · ', ' — '));
 export function whichJob(item, onSaved = null) {
   targets('', item.suggested_url);
@@ -79,7 +79,7 @@ export async function init() {
     event.preventDefault();
     if (!pending) return;
     $('reassign-save').disabled = true;
-    message('reassign-message', `Saving to ${storeName()}…`, 'waiting');
+    message('reassign-message', t('pagesDynamicProfileReady.m317', {"storeName": storeName()}), 'waiting');
     const ok = await pending();
     $('reassign-save').disabled = false;
     if (ok) $('reassign-dialog').close(); else message('reassign-message', t('pagesReadyReports.notSavedRetry'), 'error');

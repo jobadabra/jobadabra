@@ -17,7 +17,7 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
   if (makeRow) return entries.map(entry => {
     const undo = Object.assign(el('button', 'secondary small-btn with-icon', ''), {type: 'button'});
     undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
-    undo.setAttribute('aria-label', `Undo: put back ${entry.title} ${entry.value}`);
+    undo.setAttribute('aria-label', t('pagesDynamicSessionReports.m378', {"title": entry.title, "value": entry.value}));
     undo.addEventListener('click', press(entry, undo));
     return makeRow({words: `${entry.title}: ${entry.value}`, detail: 'Set aside when you picked the other value. Kept, not deleted.', button: undo, id: entry.id});
   });
@@ -25,7 +25,7 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
     const row = el('div', 'chip-row');
     row.dataset.setAside = entry.id;
     const undo = Object.assign(el('button', 'link', t('pagesCommon.undo')), {type: 'button'});
-    undo.setAttribute('aria-label', `Undo: put back ${entry.title} ${entry.value}`);
+    undo.setAttribute('aria-label', t('pagesDynamicSessionReports.m379', {"title": entry.title, "value": entry.value}));
     undo.addEventListener('click', press(entry, undo));
     row.append(el('span', 'muted small', `${entry.title}: ${entry.value}`), undo);
     return row;

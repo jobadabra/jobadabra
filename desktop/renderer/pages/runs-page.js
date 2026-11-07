@@ -59,7 +59,7 @@ export function syncRunButtons(busy, runningKind = null) {
     if (now) {
       if (!node.disabled) { node.disabled = true; node.dataset.runBusy = '1'; }
       if (node.dataset.title0 === undefined) node.dataset.title0 = node.title || '';
-      node.title = `${(TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.thisTask'))} is running: follow it in the banner above`;
+      node.title = t('pagesDynamicSessionReports.m328', {"value1": TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.thisTask')});
     } else if (node.dataset.runBusy) {
       node.disabled = false; delete node.dataset.runBusy;
     }
@@ -86,11 +86,11 @@ export function renderActionsPage(data) {
   // The menu says so too, on every screen: a spinner on Actions while a task runs (not a count: the other badges mean "waiting for you").
   const dot = $('nav-actions-running');
   dot.hidden = !running;
-  dot.title = running ? `${TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || t('pagesFocusReports.aTask')} is running` : '';
+  dot.title = running ? t('pagesDynamicSessionReports.m329', {"value1": TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || t('pagesFocusReports.aTask')}) : '';
   dot.setAttribute('aria-label', dot.title);
   if (running) {
     const kind = kindOf(running);
-    $('run-banner-title').textContent = `${TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask')} is running`;
+    $('run-banner-title').textContent = t('pagesDynamicSessionReports.m330', {"value1": TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask')});
     $('run-banner-step').textContent = `Started ${displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
     // Waiting on the person (Find jobs using your browser: the one-time Allow in Chrome): the one action, as a primary button, not text only (owner, 7 Oct 2026).
     const waitsOnYou = /^⏳ Waiting for you in Chrome/.test(String(running.step ?? ''));

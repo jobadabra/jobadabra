@@ -64,7 +64,7 @@ export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange 
       }, {
         loading: () => body.replaceChildren(loadingCard(t('pagesStrategy.readingStore'))),
         paint: (answer, kept) => settle(answer.results, kept),
-        fail: failed => body.replaceChildren(el('p', 'message error', `Couldn't read it: ${plainError(failed.error)}`)),
+        fail: failed => body.replaceChildren(el('p', 'message error', t('pagesDynamicProfileReady.m283', {"plainError": plainError(failed.error)}))),
       });
     },
     redraw: () => redraw(),

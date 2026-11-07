@@ -27,7 +27,7 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
   box.id = 'preferences-review-card';
   const head = el('div', 'qa-section-head pref-head'), words = el('div', 'pref-words');
   words.append(el('h4', '', t('pagesJobs.reviewPreferences')), el('span', 'muted small', state.busy ? t('pagesCommon.readingProfile')
-    : state.error ? `Couldn't read it: ${plainError(state.error)}` : t('pagesProfileMore.plainAnswers')));
+    : state.error ? t('pagesDynamicProfileReady.m294', {"plainError": plainError(state.error)}) : t('pagesProfileMore.plainAnswers')));
   head.append(words);
   box.append(head);
   if (!rows.length) return state.busy || state.error ? box : null;
@@ -44,7 +44,7 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
     line.dataset.field = row.key;
     const yes = Object.assign(el('button', 'primary small', t('pagesProfileMore.accept')), {type: 'button', ariaLabel: `Accept ${field.label}`});
     yes.addEventListener('click', () => { accept(row); redraw(); });
-    const no = Object.assign(el('button', 'secondary small', t('pagesProfileMore.keepMine')), {type: 'button', ariaLabel: `Keep my ${field.label}`});
+    const no = Object.assign(el('button', 'secondary small', t('pagesProfileMore.keepMine')), {type: 'button', ariaLabel: t('pagesDynamicProfileReady.m295', {"label": field.label})});
     no.addEventListener('click', () => { skipped.add(`${state.key}:${row.key}`); remember(skipped); redraw(); });
     const was = el('div', 'pref-review-was muted');
     was.append(el('b', '', t('pagesProfileMore.now')), row.old || t('pagesCommon.notSet'));

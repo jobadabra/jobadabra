@@ -18,7 +18,7 @@ export async function removeSession(item) {
   if (sessionJob(item).stage === 'Applying') {
     const result = await window.pilot.sessionFinish(item.id);
     if (result?.cancelled) return;
-    if (!result?.ok) { toastMessage(t('pagesSessionStates.notRemoved'), result?.error || `${storeName()} could not be updated. Try again.`, sessionPlace(item), 'bad'); return; }
+    if (!result?.ok) { toastMessage(t('pagesSessionStates.notRemoved'), result?.error || t('pagesDynamicSessionReports.m334', {"storeName": storeName()}), sessionPlace(item), 'bad'); return; }
     jobsChanged(sessionJob(item), result.submitted ? {stage: 'Applied', status: 'applied'} : {stage: 'Kit ready', status: 'saved'});
   } else await window.pilot.sessionRemove(item.id);
   if (shared.openSessionId === item.id) shared.openSessionId = null;

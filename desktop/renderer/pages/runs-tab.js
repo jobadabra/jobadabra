@@ -71,13 +71,13 @@ export function drawFilters() {
 }
 const pick = (key, value) => () => { listFilter[key] = value; renderActivity(lastActivity); };
 const menuOf = (key, options) => options.map(([value, label]) => ({label: `${listFilter[key] === value ? '✓ ' : ''}${label}`, run: pick(key, value)}));
-const taskMenu = () => [{label: `${listFilter.kind ? '' : '✓ '}Any task`, run: pick('kind', '')}, '-',
+const taskMenu = () => [{label: t('pagesDynamicSessionReports.m331', {"value1": listFilter.kind ? '' : '✓ '}), run: pick('kind', '')}, '-',
   ...kindCounts(lastActivity?.runs || [], kindOf).map(({kind, count}) => ({label: `${listFilter.kind === kind ? '✓ ' : ''}${KIND[kind]?.name || kind} · ${count}`, run: pick('kind', kind)}))];
 
 // The drawer's quiet line when several tasks wait: "3 tasks queued · View queue →" (the queue itself is in Runs, never in the drawer).
 export function drawQueueNote(queue = []) {
   $('activity-queue').hidden = queue.length < 2;
-  $('activity-queue-text').textContent = `${queue.length} tasks queued`;
+  $('activity-queue-text').textContent = t('pagesDynamicSessionReports.m332', {"length": queue.length});
 }
 
 // A row picked in a narrow window shows its run alone, with Back to runs; the focus follows.

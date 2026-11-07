@@ -118,12 +118,12 @@ function question(q) {
     && !(mine?.kind === 'unclear' && String(control.value).trim() === String(q.value ?? '').trim());
   box.append(label, ...casesLine(written, mine), control);
   body.append(box);
-  if (mine?.kind === 'which') body.append(el('p', 'muted small', `${q.hint}. The other is set aside, never deleted: Undo in Your details.`));
+  if (mine?.kind === 'which') body.append(el('p', 'muted small', t('pagesDynamicProfileReady.m305', {"hint": q.hint})));
   if (q.coveredBy) {
     const source = el('details', 'plain qr-source');
     const view = Object.assign(el('button', 'link small', t('pagesProfileMore.viewSource')), {type: 'button', id: 'qr-source-go'});
     view.addEventListener('click', () => manageAnswers(q.coveredBy));
-    source.append(el('summary', '', t('pagesProfileMore.source')), el('p', 'muted small', `From your saved answer “${q.coveredBy}”.`), view);
+    source.append(el('summary', '', t('pagesProfileMore.source')), el('p', 'muted small', t('pagesDynamicProfileReady.m306', {"coveredBy": q.coveredBy})), view);
     body.append(source);
   }
   if (q.hint && mine?.kind !== 'which') body.append(el('p', 'muted small', q.hint));
@@ -198,7 +198,7 @@ async function answer(q, value) {
   if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
   drafts.delete(q.key);
   keepDrafts();
-  state.saved = value ? `✓ Saved to ${result.homeName || t('pagesCommon.learned')}` : '✓ Done';
+  state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
   draw();

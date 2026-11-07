@@ -22,7 +22,7 @@ export function coverageLine(reload) {
     await reload();
   });
   const words = el('div', 'setting-body');
-  words.append(el('b', '', `Custom search coverage active · ${now.places.join(', ')}`), el('span', 'muted small', t('pagesStrategy.placesInstead')));
+  words.append(el('b', '', t('pagesDynamicProfileReady.m264', {"value1": now.places.join(', ')})), el('span', 'muted small', t('pagesStrategy.placesInstead')));
   line.append(words, reset);
   return line;
 }

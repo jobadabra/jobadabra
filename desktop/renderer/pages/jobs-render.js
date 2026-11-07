@@ -47,7 +47,7 @@ export function renderStuck() {
   // Not before the sessions are known: with none loaded yet every Applying job would look abandoned for a moment.
   const count = sessionsLoaded ? shared.allJobs.filter(stuck).length : 0;
   show($('jobs-stuck'), count > 0);
-  $('jobs-stuck-text').textContent = `${count} job${count === 1 ? ' is' : 's are'} still marked Applying but ${count === 1 ? 'has' : 'have'} no open session. Did you submit ${count === 1 ? 'it' : 'them'}?`;
+  $('jobs-stuck-text').textContent = t('pagesDynamicJobs.m231', {"count": count});
 }
 
 // Work in progress on a job (redrafting its kit, tailoring its CV), shown on its row while the menu is closed.
@@ -291,7 +291,7 @@ export function renderJobs() {
           const result = await onEveryCopy(job, url => window.pilot.markOutcome({url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}));
           if (!result.ok) { toastMessage(t('pagesCommon.notSaved'), result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad'); return; }
           jobsChanged(job, choice.outcome !== 'reply' ? {stage: result.stage} : {});   // a reply is an event only: the stage stays where it is
-          toastMessage(t('pagesJobs.saved'), `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`, jobPlace(job), 'good');
+          toastMessage(t('pagesJobs.saved'), t('pagesDynamicJobs.m233', {"value1": choice.label.replace(/^(Heard back|No answer): /, ''), "storeName": storeName()}), jobPlace(job), 'good');
           renderJobs();
         }});
       }
@@ -300,7 +300,7 @@ export function renderJobs() {
     menu.push('-');
     if (job.status !== 'saved') menu.push({icon: 'bookmark', label: t('pagesCommon.save'), run: setStatus('saved'), title: t('pagesJobsHelp.keepList')});
     if (job.stage === 'Applying') {  // the session is over or was closed: say what happened, instead of staying Applying
-      menu.push({icon: 'tick', label: t('pagesSession.iSubmitted'), run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
+      menu.push({icon: 'tick', label: t('pagesSession.iSubmitted'), run: setStatus('applied'), title: t('pagesDynamicJobs.m234', {"storeName": storeName()})});
       menu.push({icon: 'undo', label: t('pagesJobs.notSubmitted'), title: t('pagesJobsHelp.markNotSubmitted'), run: async () => {
         const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
         if (!result.ok) { toastMessage(t('pagesJobs.statusNotChanged'), result.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
@@ -311,15 +311,15 @@ export function renderJobs() {
     if (job.stage === 'Applied') menu.push({icon: 'undo', label: t('pagesJobsHelp.wasNotSubmitted'), title: t('pagesJobsHelp.removeApplied'),
       run: async () => {
         // Only a bare Applied: a stage past it (a confirmation, an interview) is the employer's own evidence.
-        if (!confirm(`Mark this as not submitted? It goes back to Applying and the Applied date and event are removed from ${storeName()}.\n\n`
+        if (!confirm(t('pagesDynamicJobs.m235', {"storeName": storeName()})
           + t('pagesJobsHelp.falseApplied'))) return;
         const result = await onEveryCopy(job, url => window.pilot.notSubmitted(url));
         if (!result.ok) { toastMessage(t('pagesJobs.notChanged'), result.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Applying', status: 'applied'});
-        toastMessage(t('pagesJobs.backApplying'), `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`, jobPlace(job), 'good');
+        toastMessage(t('pagesJobs.backApplying'), t('pagesDynamicJobs.m236', {"value1": result.events ? t('pagesDynamicJobs.eventsRemoved', {count: result.events, store: byStore('Notion ', '')}) : ''}), jobPlace(job), 'good');
         renderJobs();
       }});
-    if (reopenable(job.stage)) menu.push({icon: 'undo', label: t('pagesJobs.reopen'), run: setStatus('applied'), title: `Back to Applied: waiting for a reply again (recorded in ${storeName()})`});
+    if (reopenable(job.stage)) menu.push({icon: 'undo', label: t('pagesJobs.reopen'), run: setStatus('applied'), title: t('pagesDynamicJobs.m237', {"storeName": storeName()})});
     if (job.status !== 'dismissed') menu.push({icon: 'close', label: t('pagesCommon.dismiss'), run: setStatus('dismissed'), title: t('pagesJobsHelp.notInterested'), danger: true});
     // A dismissed job can go for good (owner, 7 Oct 2026): its Notion pages to the trash (30 days there), and no search brings it back.
     else menu.push({icon: 'trash', label: t('pagesCommon.delete'), danger: true, title: byStore(t('pagesJobsFinal.deleteNotion'), t('pagesJobsFinal.deleteForever')),
@@ -368,7 +368,7 @@ export function renderJobs() {
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
   const notLoaded = Math.max(0, (jobsState.lastJobsData?.total ?? 0) - shared.allJobs.length);
   $('jobs-count').textContent = (statLabel ? `${rows.length} of ${plural(shared.allJobs.length)}` : plural(rows.length)) +
-    (notLoaded ? ` · ${notLoaded} more with lower fit` : '');
+    (notLoaded ? t('pagesDynamicJobs.m238', {"notLoaded": notLoaded}) : '');
   show($('jobs-more'), notLoaded > 0);
   $('jobs-more').textContent = `Show ${Math.min(notLoaded, MORE)} more`;
   show($('jobs-filter'), !!statLabel);

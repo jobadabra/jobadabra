@@ -27,15 +27,15 @@ export function waitingOf(jobs) {
 // from the step the container reported (site src/ready-line.js STEPS). null for a form that has its result, or when its night is not running.
 // pending: the app just sent it (a row's Fill again) and the site has not shown it yet.
 const STEP = {opening: [t('pagesExtraLabels.openingJob'), 15], form: [t('pagesExtraLabels.pageOpenFill'), 30], filling: [t('pagesExtraLabels.fillingForm'), 55],
-  answering: [n => `Answering ${n} question${n === 1 ? '' : 's'} with AI`, 70], reading: [t('pagesExtraLabels.readingFilled'), 90]};
+  answering: [n => t('pagesDynamicProfileReady.m313', {"n": n, count: n}), 70], reading: [t('pagesExtraLabels.readingFilled'), 90]};
 // why: the site's fixed word for a night whose forms wait for another reason than taking turns (site src/ready-why.js, 19 Oct 2026: "Waiting its turn" said nothing for 2 h).
 const clock = at => displayDate(new Date(at), {hour: '2-digit', minute: '2-digit', hour12: false});
 const WHY = {
-  later: why => ({line: `Set for ${clock(why.at)}. Fill now starts it at once`}),
+  later: why => ({line: t('pagesDynamicProfileReady.m314', {"clock": clock(why.at)})}),
   soon: () => ({line: t('pagesReadyReports.sentFive')}),
   'no-queue': () => ({badge: 'stuck', tone: 'warn', line: t('pagesReadyReports.queueNotSetup')}),
   starting: why => ({line: t('pagesCommon.serverStarting'), since: Date.parse(why.at) || 0, percent: 2}),
-  silent: why => ({badge: 'stuck', tone: 'warn', line: `Started at ${clock(why.at)} but no form has reported: the server may have failed to start. Stop all, then Fill now`}),
+  silent: why => ({badge: 'stuck', tone: 'warn', line: t('pagesDynamicProfileReady.m315', {"clock": clock(why.at)})}),
   capped: () => ({badge: 'stuck', tone: 'warn', line: t('pagesReadyReports.costCap')}),
 };
 export function liveOf(job, nightState, pending = false, why = null) {

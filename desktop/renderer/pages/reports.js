@@ -72,7 +72,7 @@ function feedbackChoice(item) {
     button.setAttribute('aria-pressed', String(item.feedback === value));
     button.addEventListener('click', async () => {
       const done = await window.pilot.insightFeedback(item.id, value).catch(error => ({ok: false, error: error.message}));
-      if (!done.ok) { $('reports-state').textContent = plainError(`Feedback not saved: ${done.error || 'try again'}`); return; }
+      if (!done.ok) { $('reports-state').textContent = plainError(t('pagesDynamicSessionReports.m324', {"value1": done.error || 'try again'})); return; }
       const row = state.insights.find(each => each.id === item.id);
       if (row) row.fields = {...row.fields, feedback: value};
       $('reports-state').textContent = t('pagesFocusReports.feedbackSaved');
@@ -102,7 +102,7 @@ function insightsTab() {
 async function funnelTab() {
   const read = await window.pilot.focus().catch(error => ({ok: false, error: error.message}));   // Focus's own read (shared with its page)
   const focus = read?.focus || {}, funnel = focus.funnel;
-  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : t('pagesReadyReports.noApplications'));
+  if (!funnel?.steps?.length) return empty(read?.error ? t('pagesDynamicSessionReports.m325', {"plainError": plainError(read.error)}) : t('pagesReadyReports.noApplications'));
   const table = el('table', 'data-table');
   const head = el('tr');
   for (const name of [t('pagesFieldsStatus.step'), t('pagesExtraLabels.reached'), t('pagesExtraLabels.fromPrevious'), t('pagesExtraLabels.ofApplied'), t('pagesExtraLabels.stillOpen')]) head.append(el('th', '', name));
@@ -142,7 +142,7 @@ async function draw() {
   if (state.tab === 'searches') { await searchesTab(box); return; }
   if (state.tab === 'fills') { const parts = await fillsTab(box); if (parts) box.replaceChildren(...parts); return; }
   if (state.tab === 'funnel') { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60')); box.replaceChildren(...await funnelTab()); return; }
-  if (state.error) { box.replaceChildren(...empty(`Could not read your insights: ${plainError(state.error)}. Open Reports again to retry.`)); return; }
+  if (state.error) { box.replaceChildren(...empty(t('pagesDynamicSessionReports.m326', {"plainError": plainError(state.error)}))); return; }
   if (!state.insights) { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60'), el('span', 'skeleton w-40')); return; }
   box.replaceChildren(...(state.tab === 'insights' ? insightsTab() : weeklyTab()));
 }

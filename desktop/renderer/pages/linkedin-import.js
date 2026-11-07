@@ -48,7 +48,7 @@ const setFoot = (...buttons) => footOf().replaceChildren(...buttons);
 // ---------- step 1: what is read ----------
 function intro() {
   const held = view.connected;
-  setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? `Connected until ${displayDate(new Date(view.expiresAt))}. Update reads your profile again, with no new sign-in.`
+  setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? t('pagesDynamicProfileReady.m257', {"when": displayDate(new Date(view.expiresAt))})
     : t('pagesLinkedinServices.importHelp'));
   const read = el('ul', 'li-list');
   for (const text of [t('pagesFinalLabels.linkedinReads'), t('pagesFinalLabels.linkedinContact')]) read.append(el('li', '', text));
@@ -138,7 +138,7 @@ function sheet(answer) {
     body.append(group);
   }
   const already = [have.skills ? plural(have.skills, 'skill') : '', have.languages ? plural(have.languages, 'language') : '', have.education ? plural(have.education, 'school') : ''].filter(Boolean);
-  if (already.length) body.append(el('p', 'small muted', `You already have: ${already.join(', ')}.`));
+  if (already.length) body.append(el('p', 'small muted', t('pagesDynamicProfileReady.m258', {"value1": already.join(', ')})));
   if (Object.values(answer.status || {}).includes('pending')) body.append(el('p', 'small muted', t('pagesLinkedinServices.preparingList')));
   if (!body.querySelector('.li-group')) body.append(el('p', 'muted', t('pagesLinkedinServices.alreadyHave')));
   body.append(el('p', 'message', ''));
@@ -152,10 +152,10 @@ async function apply(event) {
   event.target.disabled = true;
   const answer = await window.pilot.linkedinImportApply(ids).catch(error => ({ok: false, error: error.message}));
   if (!answer.ok) { event.target.disabled = false; const note = bodyOf().querySelector('.message'); note.textContent = plainError(answer.error); note.className = 'message bad'; return; }
-  setHead(t('pagesLinkedinServices.addedLinkedin'), answer.mainless ? t('pagesLinkedinServices.makingLinkedin') : `${plural(answer.added, 'row')} added. Your CV file is untouched.`);
+  setHead(t('pagesLinkedinServices.addedLinkedin'), answer.mainless ? t('pagesLinkedinServices.makingLinkedin') : t('pagesDynamicProfileReady.m259', {"plural": plural(answer.added, 'row')}));
   const parts = [answer.positions ? plural(answer.positions, 'position') : '', answer.details ? plural(answer.details, 'detail line') : ''].filter(Boolean);
   if (answer.mainless) return buildMainCv(answer);
-  bodyOf().replaceChildren(el('p', '', parts.length ? `Added to your Experience${answer.details ? ' and Your details' : ''}: ${parts.join(', ')}. Tailoring and form filling use it from now on.` : t('pagesLinkedinServices.addedExperience')));
+  bodyOf().replaceChildren(el('p', '', parts.length ? t('pagesDynamicProfileReady.m260', {"value1": answer.details ? t('pagesDynamicProfileReady.andDetails') : '', "value2": parts.join(', ')}) : t('pagesLinkedinServices.addedExperience')));
   setFoot(button(t('pagesCommon.done'), 'primary', () => { dialog.close(); onDone(); }));
 }
 
@@ -165,7 +165,7 @@ async function apply(event) {
  * while the CV was drawn: the CV is saved either way, but nothing is drawn into a dialog that is not the one that asked.
  */
 async function buildMainCv(answer) {
-  const details = answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : '';
+  const details = answer.details ? t('pagesDynamicProfileReady.m261', {"plural": plural(answer.details, 'detail line')}) : '';
   const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button(t('pagesCommon.done'), 'primary', () => { dialog.close(); onDone(); })); };
   if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Start the LinkedIn import again to choose positions.');
   const mine = runId, shown = dialog;
@@ -173,9 +173,9 @@ async function buildMainCv(answer) {
   setFoot();
   const made = await makeMainCv(answer.cv, {save: cv => window.pilot.buildCvSave(cv), saved: name => afterCvBuilt(name)});
   if (!dialog || dialog !== shown || mine !== runId) return;
-  if (made.kind === 'failed') return done(`Your CV could not be made: ${plainError(made.error)} Nothing is lost: start the LinkedIn import again to try once more.`, 'message bad');
+  if (made.kind === 'failed') return done(t('pagesDynamicProfileReady.m262', {"plainError": plainError(made.error)}), 'message bad');
   setHead(t('pagesProfile.cvReady'), t('pagesLinkedinServices.builtLinkedin'));
-  return done(`${made.name} is now your CV. Its wording is yours to change in Settings → Profile → CV.`);
+  return done(t('pagesDynamicProfileReady.m263', {"name": made.name}));
 }
 
 /** Open the dialog (from Profile or ⌘K). `done` runs after something was added or the connection changed, so the page redraws. */

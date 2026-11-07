@@ -60,7 +60,7 @@ export function renderDraft() {
   show($('draft-loading'), false); show($('draft-error'), false); show($('draft-view'));
   $('draft-title').textContent = t('pagesStrategy.reviewStrategy');
   show($('draft-subtitle'));
-  const spent = costText(shared.draft.usd, usd => `✦ AI draft · ${dollars(usd)}`);   // only on the user's own API key (ai-cost.js)
+  const spent = costText(shared.draft.usd, usd => t('pagesDynamicStrategy.m387', {"dollars": dollars(usd)}));   // only on the user's own API key (ai-cost.js)
   $('draft-cost').textContent = spent;
   show($('draft-cost'), !!spent);
   $('draft-summary').textContent = shared.draft.summary;
@@ -102,7 +102,7 @@ async function saveDraft(parts = null) {
   const result = await window.pilot.saveStrategy(shared.draft, parts);
   if (!result.ok) {
     $('save-title').textContent = byStore(t('pagesStrategy.notSavedNotion'), t('pagesStrategy.notSaved'));
-    message('save-message', osText(`${result.error} Your strategy is kept on this computer: try again.`), 'error');
+    message('save-message', osText(t('pagesDynamicStrategy.m388', {"error": result.error})), 'error');
     show($('save-close')); show($('save-retry'));
     return;
   }
@@ -124,7 +124,7 @@ async function openRebuildReview() {
   $('replace-go').disabled = true;
   $('replace-dialog').showModal();
   const current = shared.draft;
-  $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => `This draft cost ${dollars(usd)} (already spent). `);
+  $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => t('pagesDynamicStrategy.m389', {"dollars": dollars(usd)}));
   const result = await window.pilot.rebuildImpact(current);
   if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', plainError(result.error))); return; }
   if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', t('pagesStrategy.draftNoChange'))); return; }

@@ -103,7 +103,7 @@ function draw(model) {
     if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
     const head = model.partial
-      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
+      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, t('pagesDynamicJobs.m223', {"value1": limitWords(model.partial).replace(/^./, c => c.toUpperCase())}), {done: true})
       : findHead(t('pagesControlStatus.searchDone'), model, 'The best matches are first. Find jobs again any time.', {done: true});
     if (model.runId) head.append(wand(button(t('pagesJobs.fullReport'), () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
     card.replaceChildren(head, again(t('pagesCommon.findAgain')));

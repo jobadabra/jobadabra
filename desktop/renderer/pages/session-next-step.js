@@ -167,7 +167,7 @@ export function renderNextStep(item) {
   const brief = item.brief || '';
   const ask = asksYou(item) && /\?$/.test(brief) ? brief : '';
   $('ss-next-title').textContent = submitted ? t('pagesSession.submitted')
-    : stuck ? (item.stuck === 'account' ? (item.accountStep === 'sign_in' ? `Sign in${item.accountHost ? ` to ${item.accountHost.replace(/^www\./, '')}` : ''}` : t('pagesSession.siteAccount')) : item.stuck === 'incomplete' ? t('pagesSession.nothingFilled') : item.stuck === 'email' ? t('pagesSession.sendByEmail') : item.stuck === 'told' ? t('pagesSession.pageInstructions') : item.stuck === 'other' ? t('pagesSession.cannotTell') : item.stuck === 'site_broken' ? t('pagesSession.siteNoAnswer') : t('pagesSession.cannotReach'))
+    : stuck ? (item.stuck === 'account' ? (item.accountStep === 'sign_in' ? t('pagesDynamicSessionReports.m364', {"value1": item.accountHost ? t('pagesDynamicSessionReports.toHost', {host: item.accountHost.replace(/^www\./, '')}) : ''}) : t('pagesSession.siteAccount')) : item.stuck === 'incomplete' ? t('pagesSession.nothingFilled') : item.stuck === 'email' ? t('pagesSession.sendByEmail') : item.stuck === 'told' ? t('pagesSession.pageInstructions') : item.stuck === 'other' ? t('pagesSession.cannotTell') : item.stuck === 'site_broken' ? t('pagesSession.siteNoAnswer') : t('pagesSession.cannotReach'))
     : stopped ? t('pagesSession.extensionStopped')
     : gone ? t('pagesSession.formClosed')
     : review ? t('pagesSession.reviewFilled')
@@ -177,22 +177,22 @@ export function renderNextStep(item) {
   // Its state, after the title: finished (when), waiting (since when) or working (for how long).
   const since = item.needsYouSince || item.endedAt || item.startedAt;
   const state = $('ss-next-state');
-  state.textContent = submitted ? `· ended at ${hhmmOf(since)}`
+  state.textContent = submitted ? t('pagesDynamicSessionReports.m365', {"hhmmOf": hhmmOf(since)})
     : stuck ? (item.stuck === 'account' ? accountProgress(reviewStates.get(item.id)) : INFORM_STUCK.includes(item.stuck) ? '' : '· nothing filled yet')
-    : review ? (item.kind === 'form' || item.inChrome ? `· form opened at ${hhmmOf(since)}` : ai(`· {AI} finished at ${hhmmOf(since)}`)) : asking ? (isLive(item) ? `· waiting since ${hhmmOf(since)}` : ai('· {AI} closed with the app'))
-    : running ? '· working' : `· ended at ${hhmmOf(since)}`;
+    : review ? (item.kind === 'form' || item.inChrome ? t('pagesDynamicSessionReports.m366', {"hhmmOf": hhmmOf(since)}) : ai(t('pagesDynamicSessionReports.m367', {"hhmmOf": hhmmOf(since)}))) : asking ? (isLive(item) ? t('pagesDynamicSessionReports.m368', {"hhmmOf": hhmmOf(since)}) : ai('· {AI} closed with the app'))
+    : running ? '· working' : t('pagesDynamicSessionReports.m369', {"hhmmOf": hhmmOf(since)});
   const stage = sessionStage(item, review);
   $('ss-stage').replaceChildren(...(stage ? [pill(stage.text, stage.tone, {dot: true})] : []));
   if (running) ticking(state, '· working for ', item.startedAt); else { delete state.dataset.since; delete state.dataset.prefix; }
   // What to read: one line when the form is ready (Claude's words one click away), else Claude's own text.
   const said = intro.filter(line => line.replace(/\*/g, '') !== ask && !isDevTalk(line));
-  $('ss-question').replaceChildren(...(submitted ? [el('p', 'rich-p', `Marked Applied in ${storeName()}. The confirmation page in Chrome is what decided it.`)]
+  $('ss-question').replaceChildren(...(submitted ? [el('p', 'rich-p', t('pagesDynamicSessionReports.m370', {"storeName": storeName()}))]
     : stuck ? [el('p', 'rich-p', item.stuck === 'account'
       ? t('pagesSessionHelp.accountHelp')
       : item.stuck === 'other' ? t('pagesSessionHelp.unknownApply')
-      : item.stuck === 'site_broken' ? `${item.accountNeeds || t('pagesSessionHelp.siteDidNotAnswer')}. Open it in Chrome to check, or try again later. Jobadabra never acts on it for you.`
-      : item.stuck === 'told' ? `The page says: "${item.accountNeeds || ''}". Open it in Chrome to read it. Jobadabra never acts on it for you.`
-      : item.stuck === 'email' ? `This job is applied to by email, not through a form. Send your CV and cover letter to ${item.accountNeeds || t('pagesSessionHelp.addressOnPage')}. Jobadabra never sends it for you.`
+      : item.stuck === 'site_broken' ? t('pagesDynamicSessionReports.m371', {"value1": item.accountNeeds || t('pagesSessionHelp.siteDidNotAnswer')})
+      : item.stuck === 'told' ? t('pagesDynamicSessionReports.m372', {"value1": item.accountNeeds || ''})
+      : item.stuck === 'email' ? t('pagesDynamicSessionReports.m373', {"value1": item.accountNeeds || t('pagesSessionHelp.addressOnPage')})
       : item.stuck === 'incomplete' ? t('pagesSessionHelp.nothingFilledHelp')
       : t('pagesSessionHelp.noFormHelp')),
       // The next press, in the AI's own words (e.g. 'Solve the check, then press "Créer un compte"'): what is left for you on this page.
@@ -264,7 +264,7 @@ export function renderNextStep(item) {
         return;
       }
       if (result?.outdated) {
-        toastMessage(t('pagesSession.reloadExtension'), `Chrome runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
+        toastMessage(t('pagesSession.reloadExtension'), t('pagesDynamicSessionReports.m374', {"extension": result.extension, "latest": result.latest}) +
           t('pagesSessionHelp.reloadExtensionHelp'), {card: 'extension'}, 'warn');
         return;
       }

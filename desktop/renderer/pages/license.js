@@ -36,7 +36,7 @@ export function showLicense(state) {
   // Same count as the sidebar chip: applications USED, filling, red for the last 5.
   const shown = chip(state);
   $('license-used-label').textContent = licensed ? t('pagesPlans.applicationsSent') : t('pagesPlans.applicationsUsed');
-  $('license-used').textContent = licensed ? `${state.used} · no limit` : `${shown.used} of ${state.limit}`;
+  $('license-used').textContent = licensed ? t('pagesDynamicProfileReady.m253', {"used": state.used}) : `${shown.used} of ${state.limit}`;
   // A Pro's second number is its AI credit (owner, 27 Oct 2026): on our AI the credit left, a bar like the sidebar's; on its own AI a full bar, unlimited, and why.
   const pro = state.license?.kind === 'pro', ourAi = pro && !!state.pro?.ourAi;
   const noCredit = state.pro?.hasCredit === false || !state.pro?.creditPercent;
@@ -56,14 +56,14 @@ export function showLicense(state) {
     $('license-days-bar').dataset.tone = (state.daysLeft ?? 60) <= 5 ? 'bad' : 'info';
   }
   $('license-note').textContent = pro ? (!ourAi ? t('pagesPlans.ownAiNotCounted') : noCredit ? t('pagesPlans.noCredit') : t('pagesPlans.noEnd'))
-    : licensed ? (state.license.until ? `Valid until ${state.license.until}.` : t('pagesPlans.noEnd'))
-    : ended ? `New applications and searches are paused. ${byStore(t('pagesPlans.trackingNotion'), t('pagesPlans.trackingLocal'))}`
+    : licensed ? (state.license.until ? t('pagesDynamicProfileReady.m254', {"until": state.license.until}) : t('pagesPlans.noEnd'))
+    : ended ? t('pagesDynamicProfileReady.m255', {"byStore": byStore(t('pagesPlans.trackingNotion'), t('pagesPlans.trackingLocal'))})
       : '';   // the rule is the page's subtitle; the one line about Pro is below
   showProCard(state);   // the Pro card with the waitlist button, while Pro is off (pages/plan-waitlist.js)
   $('license-note').hidden = !$('license-note').textContent;
   $('setting-license-key').hidden = !licensed || state.license?.kind === 'pro';   // only an install that already holds a key; a Pro account has none
   $('license-holder').textContent = licensed ? `${state.license.name} · ${KIND[state.license.kind]} key${state.license.until ? ` · until ${state.license.until}` : ''}` : '';
-  if (state.keyProblem) message('license-message', `Saved key: ${state.keyProblem}`, 'error');
+  if (state.keyProblem) message('license-message', t('pagesDynamicProfileReady.m256', {"keyProblem": state.keyProblem}), 'error');
 }
 
 export async function init() {

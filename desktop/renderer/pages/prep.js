@@ -20,7 +20,7 @@ let timer = null;
 
 function reset(item) {
   current = item;
-  $('prep-title').textContent = `Prepare for ${item.company || item.via || t('pagesExtraLabels.theInterview')}`;
+  $('prep-title').textContent = t('pagesDynamicProfileReady.m296', {"value1": item.company || item.via || t('pagesExtraLabels.theInterview')});
   $('prep-context').textContent = [item.job, item.badge].filter(Boolean).join(' · ');
   $('prep-text').value = '';
   $('prep-url').value = '';
@@ -69,7 +69,7 @@ async function build() {
     $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : t('pagesProfileMore.openPrep');
     show($('prep-open'), !!(current.notion_url || jobUrl));
     $('prep-go').textContent = t('pagesProfileMore.prepareAgain');
-    toastMessage(t('pagesProfileMore.prepReady'), `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore(t('pagesProfileMore.notionPage'), 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
+    toastMessage(t('pagesProfileMore.prepReady'), t('pagesDynamicProfileReady.m297', {"value1": current.company || current.via || '', "job": current.job, "byStore": byStore(t('pagesProfileMore.notionPage'), t('pagesDynamicProfileReady.page'))}), {view: 'jobs', job: jobUrl || ''}, 'good');
     loadFocus();
   }
 }

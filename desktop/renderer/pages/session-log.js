@@ -140,14 +140,14 @@ export function renderSessionPage() {
   const livePill = pill(`${logLabel} · ${sessionDuration(item)}`, logTone, {dot: true});
   if (item.status === 'running') ticking(livePill, `${logLabel} · `, item.startedAt);
   $('ss-live-state').replaceChildren(livePill);
-  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? t('pagesSessionStates.filledReview') : item.note || t('pagesCommon.starting')}`;
+  $('ss-log-last').textContent = `> ${isSubmitted(item) ? t('pagesDynamicSessionReports.m344', {"storeName": storeName()}) : review ? t('pagesSessionStates.filledReview') : item.note || t('pagesCommon.starting')}`;
   // A session that isn't running (closed with the app, or ended) takes no typing: say so, with Resume one click away.
   const offline = !isLive(item);
   show($('ss-offline'), offline);
   show($('ss-replies'), !offline);
   $('ss-offline-resume').hidden = !item.resumable || isSubmitted(item) || !resumeOffered();
   $('ss-offline').querySelector('span').textContent = isSubmitted(item)
-    ? `Submitted. This application is marked Applied in ${storeName()}.`
+    ? t('pagesDynamicSessionReports.m345', {"storeName": storeName()})
     : item.resumable
     ? (resumeOffered() ? ai('{AI} isn\'t running. This is its conversation; resume it to answer or ask for more.') : t('pagesSessionStates.conversationReference'))
     : t('pagesSessionStates.endedNew');

@@ -93,7 +93,7 @@ export function listChips(name, placeholder) {
   } else box.append(...entries.map(pillOf));
   if (!entries.length && !editing) box.append(el('span', 'muted small', t('pagesCommon.none')));
   if (editing) {
-    const input = Object.assign(document.createElement('input'), {className: 'add', placeholder: `${placeholder}, then Enter`, value: typed[name] || ''});
+    const input = Object.assign(document.createElement('input'), {className: 'add', placeholder: t('pagesDynamicStrategy.m419', {"placeholder": placeholder}), value: typed[name] || ''});
     input.dataset.list = name;
     input.addEventListener('input', () => { typed[name] = input.value; changed(); });
     // A match word can be added as the whole word only (stored \bword\b by lib/strategy-edit.js cleanEdits), never by typing quotes.
@@ -152,7 +152,7 @@ function levelChoice() {
 // The digest's minimum fit score (Search settings "Minimum fit score for the digest"; the engine's default is 50).
 function minScoreInput() {
   const now = strategyState.lastStrategy?.digest_min_score ?? 50, shown = drafts().targetEdits.minScore?.set ?? now;
-  if (!isOpen('search')) return el('span', '', `${shown} / 100: lower scores stay in your list, out of the digest`);
+  if (!isOpen('search')) return el('span', '', t('pagesDynamicStrategy.m421', {"shown": shown}));
   const input = Object.assign(document.createElement('input'), {type: 'number', min: 0, max: 100, step: 1, className: 'add', value: shown});
   input.setAttribute('aria-label', t('pagesStrategyMore.minimumScore'));
   input.addEventListener('change', () => {
@@ -268,14 +268,14 @@ const VIEWS = {
     const hidden = (strategyState.shownVerdict?.languages || []).filter(item => listed.has(String(item.language).toLowerCase())).reduce((sum, item) => sum + (item.count || 0), 0);
     if (hidden) {
       const warn = el('p', 'tone-warn exclusion-warn', icon('alert'));
-      warn.append(`Hides ${displayNumber(hidden)} job${hidden === 1 ? '' : 's'} that match your roles and places (see Suggestions).`);
+      warn.append(t('pagesDynamicStrategy.m422', {"displayNumber": displayNumber(hidden), count: hidden}));
       block.append(warn);
     }
     const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', t('pagesCommon.none'))];
     const rules = el('div', 'setting-body');
     rules.append(...group(t('pagesFinalLabels.hideMatching'), hide), ...group(t('pagesFinalLabels.rankLower'), lower));
     return [readRows([{icon: 'globe', label: t('pagesStrategyMore.languageExclusions'), value: block},
-      {icon: 'sliders', label: labelWith(t('pagesFinalLabels.otherRules'), `${hide.length} hide jobs, ${lower.length} rank${lower.length === 1 ? 's' : ''} lower`), value: rules}], {lined: true})];
+      {icon: 'sliders', label: labelWith(t('pagesFinalLabels.otherRules'), t('pagesDynamicStrategy.m423', {"length": hide.length, "length2": lower.length, count: lower.length})), value: rules}], {lined: true})];
   },
 };
 const reloadTargets = async () => { await loadStrategy(); renderTargets(); };
@@ -308,7 +308,7 @@ export function renderStrategy(data) {
   const level = value => (value >= 70 ? 'good' : value >= 50 ? 'warn' : 'bad');
   // Averages of what the matches scored, not the weights of the score (owner, 7 Oct 2026: "How matches are scored" read as weights).
   $('strategy-score-note').textContent = !data.scored ? t('pagesStrategyMore.noScores')
-    : `Across your ${data.scored} scored match${data.scored === 1 ? '' : 'es'} · Averages, not scoring weights.`;
+    : t('pagesDynamicStrategy.m424', {"scored": data.scored, count: data.scored});
   drawImprove();
   $('strategy-scores').replaceChildren(...data.components.map(part => {
     const line = el('div', 'score-bar');

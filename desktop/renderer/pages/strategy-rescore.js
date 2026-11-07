@@ -33,7 +33,7 @@ export function drawOutdated(outdated, reload, {fresh = true} = {}) {
   if (busy) words.append(el('span', 'muted small', rescoringLead));
   else {
     const why = el('details', 'plain notice-why');
-    why.append(el('summary', 'small', t('pagesStrategy.why')), el('span', 'muted small', `${reasonsText(outdated)}. Each job is counted once. Updating is optional.`));
+    why.append(el('summary', 'small', t('pagesStrategy.why')), el('span', 'muted small', t('pagesDynamicStrategy.m386', {"reasonsText": reasonsText(outdated)})));
     words.append(why);
   }
   const go = el('button', 'secondary item-action', busy ? t('pagesStrategy.rescoring') : t('pagesStrategy.rescoreJobs'));

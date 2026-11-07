@@ -111,7 +111,7 @@ export function tabStatus(item) {
 export function updateNeedsCount() {
   const open = [...document.querySelectorAll('#ss-needs .ss-need:not(.is-done)')];
   const check = open.filter(li => li.classList.contains('is-confirm')).length, form = open.length - check;
-  const detail = [form && `${form} in the form`, check && `${check} to check`].filter(Boolean).join(' · ');
+  const detail = [form && t('pagesDynamicSessionReports.m347', {"form": form}), check && t('pagesDynamicSessionReports.m348', {"check": check})].filter(Boolean).join(' · ');
   $('ss-needs-count').replaceChildren(open.length
     ? pill(`${open.length} action${open.length === 1 ? '' : 's'} remaining`, 'neutral', {title: detail})
     : pill(t('pagesSession.allHandled'), 'good', {dot: true}));
@@ -125,7 +125,7 @@ export function updateNeedsCount() {
   $('ss-needs-card').classList.toggle('is-all-done', !open.length);
   const history = $('ss-needs-history');
   history.hidden = !done;
-  history.replaceChildren(icon('check'), el('span', '', `${done} completed action${done === 1 ? '' : 's'}`));
+  history.replaceChildren(icon('check'), el('span', '', t('pagesDynamicSessionReports.m349', {"done": done, count: done})));
   history.title = $('ss-needs-card').classList.contains('show-history') ? t('pagesSession.hideHandled') : t('pagesSession.showHandled');
   const head = $('ss-needs-card').querySelector('.ss-fact-head .icon');
   if (head && head.dataset.state !== String(!open.length)) { const glyph = icon(open.length ? 'alert' : 'check'); glyph.dataset.state = String(!open.length); head.replaceWith(glyph); }
@@ -196,7 +196,7 @@ export function emptyFields(item, needs) {
   const listed = needs.flatMap(need => [agreeLabel(need), need.question, need.text]).filter(Boolean);
   const left = (state?.pending || state?.missing || []).filter(label => label && !listed.some(text => sameQuestion(text, label)));
   const unnamed = (state?.left || 0) - (state?.pending || state?.missing || []).length;
-  if (unnamed > 0) left.push(`${unnamed} more field${unnamed === 1 ? '' : 's'}`);
+  if (unnamed > 0) left.push(t('pagesDynamicSessionReports.m350', {"unnamed": unnamed, count: unnamed}));
   return left;
 }
 // Text we drafted from the person's facts and they have not read yet: its own words, in place of a reason it was left (extension/panel-written.js).
@@ -207,7 +207,7 @@ export function emptyRow(label, item) {
   li.dataset.empty = label;
   const more = /^\d+ more fields?$/.test(label), name = label.replace(/^\s*\*\s*|\s*\*\s*$/g, '');
   body.append(titleLine(name), el('span', 'ss-need-desc small', more
-    ? `Still empty in the form (the ring on the form lists ${label.startsWith('1 ') ? 'it' : 'them'}).`
+    ? t('pagesDynamicSessionReports.stillEmpty')
     : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || t('pagesSession.sectionEmpty')));   // why the fill left it (reason-words.js)
   actions.append(more ? smallButton(t('pagesSession.openForm'), 'secondary is-review', event => openForm(item, event.currentTarget))
     : smallButton(t('pagesSession.openInForm'), 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
@@ -219,7 +219,7 @@ export function emptyRow(label, item) {
 export async function explainExtension(row) {
   const seen = await window.pilot.extensionSeen().catch(() => null);
   if (!seen?.note) return;
-  row.append(el('div', 'small ss-check-more', `Likely cause: ${seen.note}`));
+  row.append(el('div', 'small ss-check-more', t('pagesDynamicSessionReports.m352', {"note": seen.note})));
 }
 // While Chrome is being brought to the form: the button says so at once, then what's taking time.
 export async function opening(button, work) {
@@ -265,14 +265,14 @@ export async function reopenClosedTab(item, button) {
 export async function showInForm(item, label, button) {
   const result = await opening(button, () => window.pilot.reviewFocus(item.id, label, item.url, sessionCompany(item)));
   if (result?.taken) {
-    if (result.found === false) toastMessage(t('pagesSession.notField'), `"${label}" is not a label on the open form.`, sessionPlace(item), 'warn');
+    if (result.found === false) toastMessage(t('pagesSession.notField'), t('pagesDynamicSessionReports.m353', {"label": label}), sessionPlace(item), 'warn');
     return;
   }
-  if (result?.outdated) toastMessage(t('pagesSession.reloadExtension'), `Chrome still runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
+  if (result?.outdated) toastMessage(t('pagesSession.reloadExtension'), t('pagesDynamicSessionReports.m354', {"extension": result.extension, "latest": result.latest}) +
     t('pagesSessionHelp.reloadKeepAnswers'), {card: 'extension'}, 'warn');
   else if (result?.went === 'none') await reopenClosedTab(item, button);
-  else if (result?.went !== 'tab') toastMessage(t('pagesSession.openedJob'), `Find "${label}" in its form.`, NO_PLACE.outside, 'info');
-  else toastMessage(t('pagesSession.scrollYourself'), `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`, NO_PLACE.outside, 'warn');
+  else if (result?.went !== 'tab') toastMessage(t('pagesSession.openedJob'), t('pagesDynamicSessionReports.m355', {"label": label}), NO_PLACE.outside, 'info');
+  else toastMessage(t('pagesSession.scrollYourself'), t('pagesDynamicSessionReports.m356', {"label": label}), NO_PLACE.outside, 'warn');
 }
 export function needRow(need, item) {
   const key = `${item.id}|${need.text}`, li = el('li', `ss-need is-${need.kind}`);
@@ -318,7 +318,7 @@ export function needRow(need, item) {
       let input = null;
       {   // say what it should be instead, in your own words
         input = el('input', 'ss-ask-input');
-        input.placeholder = `Something else for ${name}…`;
+        input.placeholder = t('pagesDynamicSessionReports.m360', {"name": name});
         const send = () => { if (input.value.trim()) answer(input.value.trim()); };
         const sendButton = smallButton(t('pagesSession.send'), 'secondary is-answer', send, offline(item));
         submitOnEnter(input, sendButton);
@@ -392,7 +392,7 @@ export function askRow(need, item) {
     updateNeedsCount();
     if (value === saved && !forgotten.has(need.question)) { savedAnswers.set(need.question, value); keep(); body.append(savedLine(need.question)); return; }
     const result = await window.pilot.rememberAnswer(need.question, value);
-    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', plainError(result?.error || `Couldn't keep it in ${storeName()}`))); return; }
+    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', plainError(result?.error || t('pagesDynamicSessionReports.m362', {"storeName": storeName()})))); return; }
     savedAnswers.set(need.question, value); forgotten.delete(need.question); keep();
     body.append(savedLine(need.question));
   }, offline(item));

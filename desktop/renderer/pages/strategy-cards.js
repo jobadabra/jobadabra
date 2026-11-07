@@ -104,7 +104,7 @@ export function strategyBar(deps) {
     bar.register({id: `strategy-${key}`, tab: 'strategy-yours', label: card.title, count: () => cardCount(key),
       validate() {
         const tooLong = Object.values(edits()).flatMap(edit => edit.add || []).find(word => word.length > 80);
-        return tooLong ? {ok: false, error: `"${tooLong.slice(0, 30)}…" is too long for one entry (80 characters at most)`} : {ok: true};
+        return tooLong ? {ok: false, error: t('pagesDynamicStrategy.m384', {"value1": tooLong.slice(0, 30)})} : {ok: true};
       },
       async save() {
         const lists = edits();

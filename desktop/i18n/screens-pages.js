@@ -39,6 +39,10 @@ import {messages as dynamicSetup} from './catalogs/pages/dynamic-setup.js';
 import {messages as dynamicCvData} from './catalogs/pages/dynamic-cv-data.js';
 import {messages as dynamicExperience} from './catalogs/pages/dynamic-experience.js';
 import {messages as dynamicFocusInterviews} from './catalogs/pages/dynamic-focus-interviews.js';
+import {messages as dynamicJobs} from './catalogs/pages/dynamic-jobs.js';
+import {messages as dynamicProfileReady} from './catalogs/pages/dynamic-profile-ready.js';
+import {messages as dynamicSessionReports} from './catalogs/pages/dynamic-session-reports.js';
+import {messages as dynamicStrategy} from './catalogs/pages/dynamic-strategy.js';
 import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
@@ -81,3 +85,7 @@ for (const [locale, messages] of Object.entries(dynamicCvData)) registerMessages
 for (const [locale, messages] of Object.entries(dynamicExperience)) registerMessages(locale, 'pagesDynamicExperience', messages);
 for (const [locale, messages] of Object.entries(dynamicFocusInterviews)) registerMessages(locale, 'pagesDynamicFocusInterviews', messages);
 for (const [locale, messages] of Object.entries(stages)) registerMessages(locale, 'pagesStages', messages);
+for (const [locale, messages] of Object.entries(dynamicJobs)) registerMessages(locale, 'pagesDynamicJobs', messages);
+for (const [locale, messages] of Object.entries(dynamicProfileReady)) registerMessages(locale, 'pagesDynamicProfileReady', messages);
+for (const [locale, messages] of Object.entries(dynamicSessionReports)) registerMessages(locale, 'pagesDynamicSessionReports', messages);
+for (const [locale, messages] of Object.entries(dynamicStrategy)) registerMessages(locale, 'pagesDynamicStrategy', messages);

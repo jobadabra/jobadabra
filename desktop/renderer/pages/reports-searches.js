@@ -123,7 +123,7 @@ function detailView(row) {
 
 function draw() {
   if (!host) return;
-  if (!state.runs) { host.replaceChildren(el('p', 'muted', `Loading your searches from ${storeName()}…`)); return; }
+  if (!state.runs) { host.replaceChildren(el('p', 'muted', t('pagesDynamicSessionReports.m322', {"storeName": storeName()}))); return; }
   const row = state.open && (state.full || state.runs.find(run => run.id === state.open));
   host.replaceChildren(row ? detailView(row) : listView());
 }
@@ -146,7 +146,7 @@ export async function renderSearches(container, openId = null) {
   if (answer?.error) {
     const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderSearches(container));
-    host.replaceChildren(el('p', 'message error', `Could not read your searches from ${storeName()}: ${plainError(answer.error)}`),
+    host.replaceChildren(el('p', 'message error', t('pagesDynamicSessionReports.m323', {"storeName": storeName(), "plainError": plainError(answer.error)})),
       el('p', 'muted small', byStore(t('pagesReadyReports.searchesNotion'), t('pagesReadyReports.searchesLocal'))), retry);
     return;
   }

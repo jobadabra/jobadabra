@@ -43,7 +43,7 @@ export function typoHints(name, {fix, keep}) {
   return typos.map(typo => {
     const line = el('span', 'muted small');
     const button = (label, run) => { const b = el('button', 'link', label); b.type = 'button'; b.addEventListener('click', () => { b.disabled = true; run(b); }); return b; };
-    line.append(`"${typo.entry}": did you mean "${typo.suggestion}"? `, button(t('pagesStrategy.fix'), b => fix(typo.entry, typo.suggestion, b)), ' · ', button(t('pagesStrategy.keep'), () => keep(typo.entry)));
+    line.append(t('pagesDynamicStrategy.m385', {"entry": typo.entry, "suggestion": typo.suggestion}), button(t('pagesStrategy.fix'), b => fix(typo.entry, typo.suggestion, b)), ' · ', button(t('pagesStrategy.keep'), () => keep(typo.entry)));
     return line;
   });
 }

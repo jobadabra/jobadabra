@@ -19,7 +19,7 @@ const ALL_SERVICES = [
     why: t('pagesDetails.gmailWhy')},
   {id: 'extension', name: t('pagesDetails.extensionName'), icon: 'puzzle', what: t('pagesDetails.formFilling'), required: true,
     why: t('pagesDetails.extensionWhy')},
-  {id: 'linkedin-jobs', name: t('pagesLinkedinServices.linkedinJobs'), icon: 'linkedin', what: `Search LinkedIn on every Find jobs, in the background. ${LINE}`, required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
+  {id: 'linkedin-jobs', name: t('pagesLinkedinServices.linkedinJobs'), icon: 'linkedin', what: t('pagesDynamicSessionReports.m333', {"LINE": LINE}), required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
   {id: 'telegram', name: 'Telegram', icon: 'send', what: t('pagesDetails.digests'), required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
     why: t('pagesLinkedinServices.notificationWhy')},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: t('pagesDetails.moreResults'), connect: t('pagesDetails.addKey')},

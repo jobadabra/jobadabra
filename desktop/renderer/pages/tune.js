@@ -64,7 +64,7 @@ async function apply() {
   countTicked();
   if (!result?.ok) { message('tune-message', result?.error || t('pagesMisc.nothingChanged'), 'bad'); return; }
   $('tune-dialog').close();
-  toastMessage(`Strategy tuned: ${result.changed.length} change${result.changed.length === 1 ? '' : 's'}. The next search uses ${result.changed.length === 1 ? 'it' : 'them'}.`, '', {view: 'strategy'}, 'good');
+  toastMessage(t('pagesDynamicStrategy.m428', {"length": result.changed.length, count: result.changed.length}), '', {view: 'strategy'}, 'good');
 }
 
 export function init() {

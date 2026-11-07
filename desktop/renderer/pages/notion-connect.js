@@ -18,7 +18,7 @@ export const tracking = () => notionConnected() || shared.state?.store?.tracking
 export const gatedOut = name => !!LOCKED_VIEWS[name] && !tracking();
 export const reasonText = reason => {
   const words = shared.state?.notionReasons?.[reason];
-  return words ? `Connect Notion ${words}.` : '';
+  return words ? t('pagesDynamicProfileReady.m279', {"words": words}) : '';
 };
 
 
@@ -33,8 +33,8 @@ function progressLine({found, total, building, waitingPage, template, moving}) {
   if (moving) return t('pagesExtraLabels.movingStrategy');
   if (building) return 'Connected ✓ Building your Jobadabra workspace in Notion (databases, columns, pages)… about a minute.';
   if (waitingPage) return 'Waiting for Notion to share an empty page for your new Jobadabra workspace with the app…';
-  return template ? `Connected ✓ Notion is copying the Jobadabra template into your workspace: ${found} of ${total} ready. About a minute; the app keeps checking.`
-    : `Notion is still sharing your workspace with the connection: ${found} of ${total} found. This can take a minute; the app keeps checking.`;
+  return template ? t('pagesDynamicProfileReady.m280', {"found": found, "total": total})
+    : t('pagesDynamicProfileReady.m281', {"found": found, "total": total});
 }
 
 // The prompt's words for its mode (rules connectMode): "Connect and move" with the move said up front, "Move to Notion" when connected already.
@@ -117,7 +117,7 @@ async function connect() {
   const where = result.startedOnNotion ? ' Your jobs and applications live in Notion from now on.'
     : moveAfterConnect(result) ? ' Your data is still on this Mac: Settings → Data & backup → Move my data to Notion.' : '';
   message('notion-connect-message', result.kept
-    ? `Connected ✓ Your Notion already had a Profile, so it was kept. This Mac's version is saved in ${result.kept}.${where}`
+    ? t('pagesDynamicProfileReady.m282', {"kept": result.kept, "where": where})
     : `Connected ✓${where}`, 'ok');
   setTimeout(() => { $('notion-connect-dialog').close(); box.then?.(); }, result.kept || where ? 4000 : 900);
 }

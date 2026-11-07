@@ -24,7 +24,7 @@ export function switchRow(row, where, note = '', press = () => {}) {
   const wrap = el('div', 'mail-row');
   wrap.dataset.mailRow = row.id;
   const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.on});
-  box.setAttribute('aria-label', `E-mail me: ${row.name}`);
+  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {"name": row.name}));
   box.addEventListener('change', () => press(row.id, box.checked));
   const track = el('span', 'switch');
   track.append(box, el('span'));

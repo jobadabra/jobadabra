@@ -9,7 +9,7 @@ import {install} from '../../tiny-dom.js';
 const root = new URL('../../../', import.meta.url);
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 // These small phrases have the same correct spelling in English and the named language.
-const sameSpelling = new Set(['status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
+const sameSpelling = new Set(['dynamic-profile-ready.js/fr/page','status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
 const parameters = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
 test('page catalogs provide seven real translations with matching interpolation', async () => {
@@ -23,12 +23,13 @@ test('page catalogs provide seven real translations with matching interpolation'
       assert.deepEqual(Object.keys(messages[locale]).sort(), keys, `${file}: ${locale} keys`);
       for (const key of keys) {
         const value = messages[locale][key];
-        const forms = typeof value === 'string' ? [value] : Object.values(value);
+        const forms = typeof value === 'string' ? [['other', value]] : Object.entries(value);
         const english = typeof messages.en[key] === 'string' ? messages.en[key] : messages.en[key].other;
         assert.ok(forms.length);
-        for (const form of forms) {
+        for (const [category, form] of forms) {
+          const expected = typeof messages.en[key] === 'string' ? english : messages.en[key][category] || english;
           assert.equal(typeof form, 'string');
-          assert.deepEqual(parameters(form), parameters(english), `${locale}.${key}`);
+          assert.deepEqual(parameters(form), parameters(expected), `${locale}.${key}`);
           if (locale !== 'en' && !sameSpelling.has(`${file}/${locale}/${key}`)) assert.notEqual(form, english, `${locale}.${key}: real translation`);
         }
         if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {

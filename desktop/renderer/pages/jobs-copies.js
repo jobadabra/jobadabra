@@ -11,7 +11,7 @@ export async function onEveryCopy(job, run) {
   let own;
   for (const [done, url] of urls.entries()) {
     const result = await Promise.resolve(run(url)).catch(error => ({ok: false, error: error.message})) || {ok: false};
-    if (!result.ok) return done ? {...result, error: `Changed on ${done} of ${urls.length} links, then: ${result.error || t('pagesControlStatus.somethingWrong')}`} : result;
+    if (!result.ok) return done ? {...result, error: t('pagesDynamicJobs.m219', {"done": done, "length": urls.length, "value3": result.error || t('pagesControlStatus.somethingWrong')})} : result;
     own ??= result;   // the first answer is the row's own: its stage is what the row shows
   }
   return own;
@@ -38,4 +38,4 @@ export function countPostings(urls, jobs, key) {
 }
 
 /** The "Also on jobup.ch" tag texts of a merged row (the other sites that list the same posting), none for a row that is not merged. */
-export const alsoOnTags = job => (job.also_on || []).map(site => ({text: `Also on ${site}`, title: `The same posting is also listed on ${site}`}));
+export const alsoOnTags = job => (job.also_on || []).map(site => ({text: t('pagesDynamicJobs.m220', {"site": site}), title: t('pagesDynamicJobs.m221', {"site": site})}));

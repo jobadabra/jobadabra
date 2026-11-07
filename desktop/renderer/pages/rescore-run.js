@@ -49,7 +49,7 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
     const searching = startSearch({reason: 'rescore', count: result.queued});   // resolves when the search ends
     // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
     if (refusal(await Promise.race([searching, new Promise(resolve => setTimeout(resolve, 1500))]))) return;
-    toast({title: t('pagesFocusReports.rescoring'), body: `${jobs(result.queued)} get a new score${result.queued > 60 ? ' (60 now, press Re-score again for the rest)' : ''}. ` +
+    toast({title: t('pagesFocusReports.rescoring'), body: t('pagesDynamicSessionReports.m327', {"jobs": jobs(result.queued), "value2": result.queued > 60 ? t('pagesDynamicSessionReports.rescoreRest') : ''}) +
       'It shows in Recent activity as "Re-scoring".', target: null, tone: 'info'});
     await searching;
   } finally {

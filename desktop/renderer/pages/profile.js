@@ -71,7 +71,7 @@ export function profileTab(name, {byDefault = false} = {}) {
 }
 // What we learned's ⋯ (one "View source" link per page, in a menu: owner, 18 Oct 2026, fix 10); the button shows only where the store has pages.
 function answersMenu() {
-  openMenu($('answers-review'), [{label: `View source in ${storeName()}`, icon: 'external', run: () => openInNotion('NOTION_ANSWERS_PAGE_ID')}]);
+  openMenu($('answers-review'), [{label: t('pagesDynamicProfileReady.m298', {"storeName": storeName()}), icon: 'external', run: () => openInNotion('NOTION_ANSWERS_PAGE_ID')}]);
 }
 // Professional links: shown as tiles; Edit shows the fields (saved by the Profile page's one save bar).
 // The links card's read view (pages/details-read.js linksView; GitHub only while its box shows).
@@ -89,7 +89,7 @@ function renderNotionLinks() {
   show(box, links.length > 0);
   for (const [env, label, glyph] of links) {
     const link = Object.assign(document.createElement('button'), {className: 'notion-link', textContent: label,
-      title: osText(`${shared.state.notionTitles?.[env] || label}: opens in Notion (⌘-click: in a Jobadabra window)`)});
+      title: osText(t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label}))});
     link.prepend(icon(glyph));
     link.addEventListener('click', event => window.pilot.openNotion(shared.state.notion[env], event.metaKey || event.ctrlKey));
     box.append(link);
@@ -122,7 +122,7 @@ export async function loadSettings() {
   for (const [id, name, empty] of [['set-anthropic', 'ANTHROPIC_API_KEY', 'sk-ant-…'], ['set-openai', 'OPENAI_API_KEY', 'sk-…'], ['set-notion', 'NOTION_TOKEN', 'ntn_…'],
     ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', t('pagesExtraLabels.serpapiKey')], ['set-brave', 'BRAVE_SEARCH_API_KEY', t('pagesExtraLabels.braveKey')], ['set-adzuna-id', 'ADZUNA_APP_ID', t('pagesExtraLabels.adzunaId')],
     ['set-adzuna-key', 'ADZUNA_APP_KEY', t('pagesExtraLabels.adzunaKey')], ['set-jooble', 'JOOBLE_API_KEY', t('pagesExtraLabels.joobleKey')]]) {
-    if ($(id)) $(id).placeholder = hints[name] ? `${hints[name]} · saved (paste a new one to replace it)` : empty;
+    if ($(id)) $(id).placeholder = hints[name] ? t('pagesDynamicProfileReady.m300', {"name": hints[name]}) : empty;
   }
   renderNotionLinks();
   showEngineSettings();
@@ -152,7 +152,7 @@ export async function loadSettings() {
     : t('pagesCommon.noSearch');
   if (shared.state.settings.telegramBot && shared.state.secrets.TELEGRAM_BOT_TOKEN) {
     const line = document.querySelector('[data-secret="TELEGRAM_BOT_TOKEN"]');
-    line.textContent = `✓ Connected to @${shared.state.settings.telegramBot}`;
+    line.textContent = t('pagesDynamicProfileReady.m301', {"telegramBot": shared.state.settings.telegramBot});
   }
   renderOverview().catch(() => {});
 }
@@ -216,10 +216,10 @@ export async function init() {
   renderNotionLinks();
   $('strategy-redo').addEventListener('click', () => { shared.rebuildAsked = true; show($('app'), false); show($('wizard')); goStep('cv'); });
   // An error from the AI service is said in words, never shown as the API's JSON (#94: "400 {"type":"error",…}" sat in the CV card).
-  const cvError = (raw, verb) => { const said = humanError(raw); return said === String(raw || '').trim() ? said : `Couldn't ${verb} your CV: ${said}.`; };
+  const cvError = (raw, verb) => { const said = humanError(raw); return said === String(raw || '').trim() ? said : t('pagesDynamicProfileReady.m302', {"verb": t(verb === 'show' ? 'pagesDynamicProfileReady.showVerb' : 'pagesDynamicProfileReady.readVerb'), "said": said}); };
   $('cv-view').addEventListener('click', async () => {
     const result = await window.pilot.viewBaseCv();
-    $('cv-message').textContent = !result.ok ? cvError(result.error, 'show') : result.overflow?.length ? `Page ${result.overflow.join(', ')} is too full: its end is cut off.` : '';
+    $('cv-message').textContent = !result.ok ? cvError(result.error, 'show') : result.overflow?.length ? t('pagesDynamicProfileReady.m303', {"value1": result.overflow.join(', ')}) : '';
   });
   readCvPdf = async () => {
     if ((await window.pilot.cvStatus()).base && !confirm(t('pagesSetup.replaceCvData'))) return;
@@ -251,7 +251,7 @@ export async function init() {
     $('set-telegram-save').disabled = false;
     if (!result.ok) { message('telegram-message', result.error, 'error'); return; }
     $('set-telegram').value = '';
-    message('telegram-message', `Connected to @${result.username} ✓ Matches arrive there after each search.`, 'ok');
+    message('telegram-message', t('pagesDynamicProfileReady.m304', {"username": result.username}), 'ok');
     loadSettings();
   });
   registerDetails({repaintContact: () => showContact({redraw: true})});   // Contact and the fact sections save through the Profile page's one bar (details-drafts.js)

@@ -31,9 +31,9 @@ export function showSendBar(item) {
   show(bar, resumeOffered() && waiting.length > 0 && shared.openSessionId === item?.id);   // a reply to Claude: hidden while Claude's takeover is off (owner, 15 Oct 2026)
   if (!waiting.length) return;
   const open = document.querySelectorAll('#ss-needs > .ss-need:not(.is-done)').length;
-  $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? ` · ${open} still open` : ''}`;
+  $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? t('pagesDynamicProfileReady.m274', {"open": open}) : ''}`;
   const button = $('ss-needs-send-btn');
-  button.textContent = waiting.length === 1 ? t('pagesStrategy.sendAnswer') : `Send all ${waiting.length} answers`;
+  button.textContent = waiting.length === 1 ? t('pagesStrategy.sendAnswer') : t('pagesDynamicProfileReady.m275', {"length": waiting.length});
   button.disabled = !!offline(item);
   button.onclick = () => { say(batchMessage(waiting)); batch.delete(item.id); show(bar, false); };
 }

@@ -74,7 +74,7 @@ function draw() {
     else body.append(...skeleton());
   } else body.append(...BODIES[state.tab]({job, page, parts: pageParts(page), close: closeJobPanel, pick, reload: () => load(job)}, draw));
   panel.replaceChildren(head, tabs, body, footer(job, page));
-  panel.setAttribute('aria-label', `${job.title}, job details`);
+  panel.setAttribute('aria-label', t('pagesDynamicJobs.m214', {"title": job.title}));
 }
 
 function go(step) {

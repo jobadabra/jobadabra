@@ -69,7 +69,7 @@ export function showProCard(state = {}) {
   const body = $('pro-waitlist-body');
   body.replaceChildren(el('p', 'panel-lead', el('span', 'ui-pill tone-good', BADGE)), el('ul', 'plan-list', ''));
   body.lastChild.append(...PRO_FEATURES.map(text => el('li', '', text)));
-  if (joined) { body.append(el('p', 'plan-joined', `You're on the waitlist (${joined})`)); body.lastChild.id = 'pro-waitlist-joined'; body.append(promoLink(reloadPlan)); return; }
+  if (joined) { body.append(el('p', 'plan-joined', t('pagesDynamicProfileReady.m286', {"joined": joined}))); body.lastChild.id = 'pro-waitlist-joined'; body.append(promoLink(reloadPlan)); return; }
   const button = el('button', 'primary', PRO_CHECKOUT ? t('pagesPlans.upgrade') : t('pagesPlans.joinWaitlist'));
   button.id = 'pro-waitlist-open';
   button.addEventListener('click', () => PRO_CHECKOUT ? window.pilot.planCheckout('pro') : openWaitlist());

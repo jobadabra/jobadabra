@@ -1,5 +1,6 @@
 // Counted page nouns use native plural forms; numbers are supplied already formatted.
 const rows = {
+  "form": ["form~forms", "Formular~Formulare", "formulaire~formulaires", "modulo~moduli", "formulario~formularios", "formular~formulare~de formulare", "форма~формы~форм~формы"],
   "job": ["job~jobs", "Stelle~Stellen", "offre~offres", "offerta~offerte", "empleo~empleos", "job~joburi~de joburi", "вакансия~вакансии~вакансий~вакансии"],
   "site": ["site~sites", "Website~Websites", "site~sites", "sito~siti", "sitio~sitios", "site~site-uri~de site-uri", "сайт~сайта~сайтов~сайта"],
   "report": ["report~reports", "Bericht~Berichte", "rapport~rapports", "rapporto~rapporti", "informe~informes", "raport~rapoarte~de rapoarte", "отчёт~отчёта~отчётов~отчёта"],

@@ -25,11 +25,11 @@ export function paint(card, state, names, act) {
   const summary = el('div', 'ready-summary');
   if (night) {
     const ready = jobs.filter(readyToSubmit).length, needs = jobs.filter(job => ['partial', 'wall'].includes(job.state)).length;
-    if (night.night) summary.append(el('span', 'muted', `Night of ${night.night}`));
+    if (night.night) summary.append(el('span', 'muted', t('pagesDynamicProfileReady.m308', {"night": night.night})));
     summary.append(pill(`${jobs.length} form${jobs.length === 1 ? '' : 's'}`, 'neutral'));
     if (ready) summary.append(pill(`${ready} ready`, 'good'));
     if (needs) summary.append(pill(`${needs} need${needs === 1 ? 's' : ''} you`, 'warn'));
-    const spent = costText(night.costUsd, usd => `${dollars(usd)} of AI and servers`);
+    const spent = costText(night.costUsd, usd => t('pagesDynamicProfileReady.m309', {"dollars": dollars(usd)}));
     if (spent) summary.append(pill(spent, 'neutral'));
     if (night.aiStopped) summary.append(Object.assign(pill(t('pagesProfileMore.aiStopped'), 'warn'), {title: t('pagesProfileMore.aiNightStopped')}));
   } else summary.append(pill(t('pagesReadyReports.nothingSent'), 'neutral'));
@@ -66,7 +66,7 @@ export function paint(card, state, names, act) {
   const next = el('div', 'ready-summary');
   next.append(el('span', 'muted', t('pagesReadyReports.tonight')));
   const count = pill(`${tonight.length} ready`, tonight.length ? 'good' : 'warn');
-  count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : t('pagesReadyReports.nothingReady');
+  count.title = tonight.length ? t('pagesDynamicProfileReady.m310', {"minFit": state.settings.minFit, "perNight": state.settings.perNight}) : t('pagesReadyReports.nothingReady');
   next.append(count);
   if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${displayDate(new Date(state.sent.at), {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
     {title: t('pagesReadyReports.resentAuto')}));

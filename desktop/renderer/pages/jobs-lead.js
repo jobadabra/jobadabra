@@ -32,7 +32,7 @@ function renderShots() {
   $('lead-shot-add').disabled = $('lead-shot-paste').disabled = leadShots.length >= MAX_SHOTS;
 }
 function setLeadShot(shot) {
-  if (leadShots.length >= MAX_SHOTS) { leadResult('info', `Up to ${MAX_SHOTS} screenshots`, 'Remove one to add another.'); return; }
+  if (leadShots.length >= MAX_SHOTS) { leadResult('info', t('pagesDynamicJobs.m225', {"MAX_SHOTS": MAX_SHOTS}), 'Remove one to add another.'); return; }
   leadShots.push(shot);
   renderShots();
 }
@@ -143,7 +143,7 @@ async function working(first, task) {
 async function pickJob(target) {
   if (!target || !leadProposal) return;
   const text = $('lead-text').value.trim();
-  const next = await working(`Reading your jobs in ${storeName()}`, () => window.pilot.proposeLead(text, [], target, leadProposal));
+  const next = await working(t('pagesDynamicJobs.m226', {"storeName": storeName()}), () => window.pilot.proposeLead(text, [], target, leadProposal));
   if (!next.ok) { leadResult('warn', t('pagesControlStatus.useJobFailed'), String(next.text || '').replace(/^\S+\s/, '')); return; }
   showConfirm(next, confirmStep.carry(leadState, next));
 }
@@ -190,7 +190,7 @@ function renderConfirm() {
   $('lead-channel-hint').textContent = confirmStep.channelHint(fields.channel, v.channel);
   if ($('lead-started').value !== (v.started || '')) $('lead-started').value = v.started || '';  // a year picked fills the date
   $('lead-years').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', (v.started || '').startsWith(b.textContent)));
-  const said = fields.interview?.as_written ? `The message says "${fields.interview.as_written}". ` : '';
+  const said = fields.interview?.as_written ? t('pagesDynamicJobs.m227', {"as_written": fields.interview.as_written}) : '';
   $('lead-interview-hint').textContent = said + (v.kind === 'Interview scheduled' ? t('pagesJobsHelp.bookedTime')
     : t('pagesJobsHelp.noFixedTime'));
   if (fields.last) $('lead-last-hint').textContent = confirmStep.lastHint(fields.last, v.last);
@@ -354,7 +354,7 @@ export function wireLead() {
       return;
     }
     const answers = confirmStep.confirmed(leadProposal, leadState);
-    const result = await working(`Saving to ${storeName()}`, () => window.pilot.addLead(text, leadShots,
+    const result = await working(t('pagesDynamicJobs.m229', {"storeName": storeName()}), () => window.pilot.addLead(text, leadShots,
       leadProposal.target ?? leadTarget(), leadProposal, answers));
     const said = result.text.replace(/^\S+\s/, '');
     if (!result.ok) { leadResult('warn', t('pagesControlStatus.logFailed'), said); return; }

@@ -264,7 +264,7 @@ function renderBackup(backup) {
 export function showRunMode() {
   const repo = shared.state.settings.cloud?.repo;
   document.querySelectorAll('[data-run-mode]').forEach(button => button.classList.toggle('is-active', (button.dataset.runMode === 'cloud') === !!repo));
-  $('run-mode-text').textContent = repo ? `Runs in your GitHub repository ${repo}, even with your Mac off.`
+  $('run-mode-text').textContent = repo ? t('pagesDynamicSessionReports.m380', {"repo": repo})
     : t('pagesSetup.scheduledLocal');
   $('run-mode-more').textContent = repo ? t('pagesSetup.manageAlways') : t('pagesSetup.learnAlways');
   $('tz-note').textContent = t('pagesSetup.timeZone', {zone: Intl.DateTimeFormat().resolvedOptions().timeZone});

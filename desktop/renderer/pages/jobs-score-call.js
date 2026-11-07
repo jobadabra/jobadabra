@@ -2,6 +2,8 @@
 // now (rescore-entry.js, drawn by pages/focus-suggestions.js); this callout (#jobs-unscored) is only "N jobs are not scored yet", and a re-score has its own card (#rescore-card,
 // drawn while <body data-rescoring> shows it). The count and the running state are pages/rescore-run.js's, the words rescore-words.js's: the same as Strategy's notice.
 // Guarded by test/unit/renderer/rescore-call.test.js and desktop/integration/app/screen-jobs-rescore.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {$, show} from './core.js';
 import {rescoringLead, rescoringTitle} from '../rescore-words.js';
@@ -10,7 +12,7 @@ import {rescoring} from './rescore-run.js';
 /** Draw the not-scored callout and the re-score card from the state. unscored: how many open jobs have no score yet; searching: the Find jobs card is on "Finding jobs…". */
 export function paintScoreCall(unscored, searching) {
   const call = $('jobs-unscored'), running = rescoring();
-  $('jobs-unscored-text').textContent = `${unscored} jobs are not scored yet. The AI scores new jobs during each check; if this stays, open Recent activity to see why (Claude Code not answering, a usage limit), or Settings → Connections → AI.`;
+  $('jobs-unscored-text').textContent = t('pagesDynamicJobs.m239', {"unscored": unscored});
   show(call, unscored >= 5 && !searching && !running);   // while a search runs they are being scored: the card on top says so
   const card = $('rescore-card');
   if (running) {

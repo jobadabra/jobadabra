@@ -1,14 +1,17 @@
 // "Report this form" in the app window: the switch in Settings and the line about what this install has sent (and may delete). The report itself is made and sent from the extension's panel (owner, 19 Oct 2026):
 // its popup shows what goes and sends; lib/report-handlers.js holds the record meanwhile. Guard: test/unit/extension/report-panel.test.js.
+import '../../i18n/screens-pages.js';
+import {counted} from './page-counts.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word) => counted(word, n);
 
 // The line in Settings about what this install has sent (and may delete).
 async function sent() {
   const {count} = await window.pilot.reportFormSent().catch(() => ({count: 0}));
   $('report-sent-row').hidden = !count;
-  $('report-sent-count').textContent = `${plural(count, 'report')} you sent ${count === 1 ? 'is' : 'are'} kept on our server for up to 30 days.`;
+  $('report-sent-count').textContent = t('pagesDynamicProfileReady.m318', {"plural": plural(count, 'report'), count: count});
 }
 
 export async function init() {

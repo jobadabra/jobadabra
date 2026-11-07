@@ -71,7 +71,7 @@ export function wireApplyDialog({startedApplying}) {
         message('apply-message', outcome.error, 'error');
         offerBrowser($('apply-browser'), result.code === 'BACKGROUND_BROWSER_MISSING');   // the download, right where it was asked for
       } catch (error) {   // the call itself failed (e.g. the app updated while open): say so, the button comes back below
-        message('apply-message', `Could not start applying: ${error.message}`, 'error');
+        message('apply-message', t('pagesDynamicJobs.m215', {"message": error.message}), 'error');
       } finally {
         go.disabled = false;
         go.classList.remove('busy');

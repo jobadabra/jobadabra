@@ -95,7 +95,7 @@ export async function init() {
   // Few new jobs twice in a row (lib/few-jobs.js): a dot on Strategy until it is opened.
   window.pilot.onFewJobs?.(() => show($('strategy-dot'), true));
   document.querySelector('.nav[data-view=strategy]')?.addEventListener('click', () => show($('strategy-dot'), false));
-  window.pilot.onVisitRead?.(answer => toastMessage(answer.fits === undefined ? `Read ${answer.jobs} jobs from ${answer.name}` : `Read ${answer.jobs} jobs from ${answer.name}, ${answer.fits} matching your search`,
+  window.pilot.onVisitRead?.(answer => toastMessage(answer.fits === undefined ? t('pagesDynamicStrategy.m426', {"jobs": answer.jobs, "name": answer.name}) : t('pagesDynamicStrategy.m427', {"jobs": answer.jobs, "name": answer.name, "fits": answer.fits}),
     answer.fits ? t('pagesMisc.nextScore') : t('pagesMisc.readingNoMatch'), {view: 'jobs'}, 'good'));
   for (const tab of document.querySelectorAll('.strategy-tabs [data-tab]')) tab.addEventListener('click', () => showTab(tab.dataset.tab));
   // One bar for every Strategy draft, "Save strategy changes" (owner, 18 Oct 2026, decision 4); leaving with a draft asks (Keep editing / Discard all / Save).

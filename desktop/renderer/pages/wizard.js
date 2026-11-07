@@ -93,7 +93,7 @@ export function goStep(name) {
     message('ai-message', t('pagesSetup.keySaved'), 'ok');
     // The saved key, masked (dots and its last 4 characters), as in Settings.
     window.pilot.secretHints().then(hints => {
-      if (hints.ANTHROPIC_API_KEY) $('anthropic-key').placeholder = `${hints.ANTHROPIC_API_KEY} · saved (paste a new one to replace it)`;
+      if (hints.ANTHROPIC_API_KEY) $('anthropic-key').placeholder = t('pagesDynamicStrategy.m429', {"ANTHROPIC_API_KEY": hints.ANTHROPIC_API_KEY});
     });
   }
   if (name === 'ai') {

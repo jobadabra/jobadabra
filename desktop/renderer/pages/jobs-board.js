@@ -2,6 +2,7 @@
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
 // dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
 import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
 import {t} from '../../i18n/index.js';
 import {el, moreButton, pill} from '../components.js';
 import {boardColumns, columnOf, dropFor, nextStepOf, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
@@ -27,7 +28,7 @@ export async function moveJob(job, stage) {
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
   jobsChanged(job, {stage: landed});
-  if (landed === before) toastMessage(t('pagesJobs.kept'), `${job.title || t('pagesJobs.thisJob')} stays at ${stageLabel(before)}: ${stageLabel(stage)} never replaces an application stage.`, jobPlace(job), 'info');
+  if (landed === before) toastMessage(t('pagesJobs.kept'), t('pagesDynamicJobs.m216', {"value1": job.title || t('pagesJobs.thisJob'), "stageLabel": stageName(stageLabel(before)), "stageLabel3": stageName(stageLabel(stage))}), jobPlace(job), 'info');
   else toastMessage(t('pagesJobs.moved'), `${job.title || t('pagesJobs.thisJob')}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
@@ -66,7 +67,7 @@ export function renderBoard(jobs) {
       box.addEventListener('dragover', event => { if (dragged && columnOf(dragged) !== column.stage) { event.preventDefault(); box.classList.add('is-over'); } });
       box.addEventListener('dragleave', () => box.classList.remove('is-over'));
       box.addEventListener('drop', event => { event.preventDefault(); box.classList.remove('is-over'); if (dragged) moveJob(dragged, column.stage); });
-    } else box.title = `${stageLabel(column.stage)} is set by Jobadabra, not by moving a card`;
+    } else box.title = t('pagesDynamicJobs.m218', {"stageLabel": stageName(stageLabel(column.stage))});
     return box;
   }));
   if (!jobs.length) board.prepend(el('p', 'empty board-empty', t('pagesJobsHelp.noBoard')));

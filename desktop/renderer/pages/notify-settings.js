@@ -50,7 +50,7 @@ export function bindNotify({savedToast, updateRepo}) {
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
       window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
-      if (result.ok) { savedToast(t('pagesCommon.saved'), `Tell me by: ${by.join(', ') || 'nothing'}`, 'notifications'); updateRepo(); }
+      if (result.ok) { savedToast(t('pagesCommon.saved'), t('pagesDynamicProfileReady.m278', {"value1": by.join(', ') || 'nothing'}), 'notifications'); updateRepo(); }
     } finally { busy = false; }
     await showNotify(error);
   };

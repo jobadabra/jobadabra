@@ -27,7 +27,7 @@ function sectionBlock(section, evidence, open) {
   const list = el('div', 'portrait-statements');
   for (const statement of section.statements) {
     const one = el('div', 'portrait-statement'), sources = el('div', 'portrait-sources');
-    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: `Open ${PROFILE_TABS[evidence[id].tab] || t('pagesExtraLabels.theSource')} to correct it`, onClick: () => open(evidence[id].tab)})));
+    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: t('pagesDynamicProfileReady.m292', {"value1": PROFILE_TABS[evidence[id].tab] || t('pagesExtraLabels.theSource')}), onClick: () => open(evidence[id].tab)})));
     one.append(el('p', 'portrait-text', statement.text), sources);
     list.append(one);
   }
@@ -52,7 +52,7 @@ const viewSwitch = (view, onView) => {
 /** The plain view: the portrait as a recommendation letter, raw coherent text on the sheet, no label, chip or control (owner, 28 Oct 2026). */
 const letterSheet = status => {
   const sheet = el('article', 'portrait-sheet portrait-letter');
-  sheet.append(...status.letter.map(paragraph => el('p', 'portrait-letter-text', paragraph)), el('p', 'portrait-letter-end', `Written by Jobadabra, ${status.updated}`));
+  sheet.append(...status.letter.map(paragraph => el('p', 'portrait-letter-text', paragraph)), el('p', 'portrait-letter-end', t('pagesDynamicProfileReady.m293', {"updated": status.updated})));
   return sheet;
 };
 

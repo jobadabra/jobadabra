@@ -24,7 +24,7 @@ export function signinPart(onDone) {
   const chooseDevice = list => {
     devices.replaceChildren(el('p', 'muted small', t('pagesPlans.threeComputers')));
     list.forEach((device, index) => {
-      const button = el('button', 'secondary', `Computer ${index + 1}, last used ${String(device.lastSeen || device.added || '').slice(0, 10) || 'unknown'}`);
+      const button = el('button', 'secondary', t('pagesDynamicProfileReady.m284', {"value1": index + 1, "value2": String(device.lastSeen || device.added || '').slice(0, 10) || 'unknown'}));
       button.addEventListener('click', () => verify(device.id));
       devices.append(button);
     });
@@ -32,7 +32,7 @@ export function signinPart(onDone) {
   send.addEventListener('click', async () => {
     message('plan-message', t('pagesPlans.sendingCode'));
     const answer = await window.pilot.planSignin('start', {email: email.value});
-    message('plan-message', answer.ok ? `If that address has Pro, a code is on its way (valid ${answer.minutes || 10} minutes).` : signinWords(answer), answer.ok ? 'ok' : 'error');
+    message('plan-message', answer.ok ? t('pagesDynamicProfileReady.m285', {"value1": answer.minutes || 10}) : signinWords(answer), answer.ok ? 'ok' : 'error');
     if (answer.ok) code.hidden = check.hidden = false;
   });
   check.addEventListener('click', () => verify());

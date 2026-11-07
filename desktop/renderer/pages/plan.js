@@ -52,7 +52,7 @@ function render(view) {
     body.append(el('p', 'panel-lead', view.label), bar, el('p', 'muted panel-lead', view.note));
   } else body.append(el('p', 'panel-lead', view.label), el('p', 'muted panel-lead', view.note));
   if (view.upgrade) {
-    const upgrade = el('button', 'primary', `Get Pro + AI for ${view.upgrade.price} more`);
+    const upgrade = el('button', 'primary', t('pagesDynamicProfileReady.m288', {"price": view.upgrade.price}));
     upgrade.title = t('pagesPlans.payDifference');
     upgrade.addEventListener('click', () => buy('upgrade'));
     body.append(el('div', 'inline', ''));
@@ -61,7 +61,7 @@ function render(view) {
   const row = el('div', 'inline', '');
   for (const top of view.topups) {
     const button = el('button', 'secondary', `Add ${top.price}`);
-    button.title = `${top.price} adds ${top.adds || t('pagesPlans.aiCredit')} (VAT included in the price)`;
+    button.title = t('pagesDynamicProfileReady.m289', {"price": top.price, "value2": top.adds || t('pagesPlans.aiCredit')});
     button.addEventListener('click', () => buy(top.kind));
     row.append(button);
   }
@@ -87,7 +87,7 @@ function warn(plan) {
   if (JSON.stringify(said) === JSON.stringify(shared.state?.settings?.planWarned || [])) return;
   window.pilot.saveSettings({planWarned: said}).catch(() => {});
   if (shared.state?.settings) shared.state.settings.planWarned = said;
-  if (say !== null) toastMessage(say === 0 ? t('pagesPlans.creditUsed') : `AI credit at ${say}%`, NOTES[say], {card: 'license'}, say === 0 ? 'bad' : 'warn');
+  if (say !== null) toastMessage(say === 0 ? t('pagesPlans.creditUsed') : t('pagesDynamicProfileReady.m290', {"say": say}), NOTES[say], {card: 'license'}, say === 0 ? 'bad' : 'warn');
 }
 
 // onChange: what shows the license state again (the counter and the plan line follow the site's answer).
