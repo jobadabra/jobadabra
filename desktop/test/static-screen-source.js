@@ -2,61 +2,69 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {createRequire} from 'node:module';
+import {callArgs, topLevel} from './toast-scan.js';
 import '../i18n/screens-pages.js';
 import {getLocale, setLocale, t} from '../i18n/index.js';
 
-const {parse} = createRequire(new URL('../package.json', import.meta.url))('acorn');
 const renderer = fileURLToPath(new URL('../renderer/', import.meta.url));
 const screen = fileURLToPath(new URL('../renderer/index.html', import.meta.url));
 
-// Preserve expressions in translated source so existing structural guards still inspect their actual inputs.
+// Preserve expressions in translated source so structural guards inspect their actual inputs.
 const quoteEnglish = text => text.includes("'") ? JSON.stringify(text) : `'${text.replaceAll('\\', '\\\\').replaceAll('\n', '\\n')}'`;
 const templateText = text => text.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('${', '\\${');
+function bindingValues(argument) {
+  if (!argument) return new Map();
+  if (!argument.startsWith('{') || !argument.endsWith('}')) return null;
+  const values = new Map();
+  for (const property of topLevel(argument.slice(1, -1))) {
+    const explicit = property.match(/^(?:['"](\w+)['"]|(\w+))\s*:\s*([\s\S]+)$/);
+    if (explicit) values.set(explicit[1] || explicit[2], explicit[3]);
+    else if (/^\w+$/.test(property)) values.set(property, property);
+    else return null;   // computed names and spreads are executable source, never guessed by the adapter
+  }
+  return values;
+}
+function translationCall(source, match) {
+  const from = match.index + 2;
+  try {
+    const args = callArgs(source, from), parts = topLevel(args);
+    if (parts.length > 2) return null;
+    return {start: match.index, end: from + args.length + 1, key: match[2], values: bindingValues(parts[1])};
+  } catch { return null; }   // unsupported source remains unchanged so its existing guards still see it
+}
 function translationCalls(source) {
-  const calls = [];
-  const walk = node => {
-    if (!node || typeof node !== 'object') return;
-    if (node.type === 'CallExpression' && node.callee.name === 't' && /^pages[A-Z][\w]*\.[\w]+$/.test(node.arguments[0]?.value || '')) calls.push(node);
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) value.forEach(walk);
-      else if (value && typeof value === 'object') walk(value);
-    }
-  };
-  walk(parse(source, {ecmaVersion: 'latest', sourceType: 'module'}));
-  return calls;
+  return [...source.matchAll(/\bt\((['"])(pages[A-Z][\w]*\.[\w]+)\1/g)]
+    .map(match => translationCall(source, match)).filter(Boolean);
+}
+function translatedBinding(source, call) {
+  const english = t(call.key);
+  if (english === call.key || !call.values) return source.slice(call.start, call.end);
+  let used = false;
+  const pieces = english.split(/(\{\w+\})/g).map(piece => {
+    const expression = call.values.get(piece.slice(1, -1));
+    if (!/^\{\w+\}$/.test(piece) || !expression) return templateText(piece);
+    used = true;
+    return '${' + englishPageSource(expression) + '}';
+  });
+  return used ? '`' + pieces.join('') + '`' : quoteEnglish(english);
 }
 function englishBindings(source, calls) {
-  const span = (start, end) => {
-    const inside = calls.filter(call => call.start >= start && call.end <= end)
-      .filter(call => !calls.some(parent => parent !== call && parent.start >= start && parent.end <= end && parent.start <= call.start && parent.end >= call.end));
-    let text = '', at = start;
-    for (const call of inside.sort((a, b) => a.start - b.start)) { text += source.slice(at, call.start) + translated(call); at = call.end; }
-    return text + source.slice(at, end);
-  };
-  const translated = call => {
-    const [key, vars] = call.arguments, english = t(key.value);
-    if (english === key.value || (vars && (vars.type !== 'ObjectExpression' || vars.properties.some(prop => prop.type !== 'Property' || prop.computed)))) return source.slice(call.start, call.end);
-    const values = new Map((vars?.properties || []).map(prop => [prop.key.name || prop.key.value, prop.value]));
-    let used = false;
-    const pieces = english.split(/(\{\w+\})/g).map(piece => {
-      const value = values.get(piece.slice(1, -1));
-      if (!/^\{\w+\}$/.test(piece) || !value) return templateText(piece);
-      used = true;
-      return '${' + span(value.start, value.end) + '}';
-    });
-    return used ? '`' + pieces.join('') + '`' : quoteEnglish(english);
-  };
-  return span(0, source.length);
+  const outer = calls.filter(call => !calls.some(parent => parent !== call && parent.start <= call.start && parent.end >= call.end));
+  let text = '', at = 0;
+  for (const call of outer.sort((a, b) => a.start - b.start)) {
+    text += source.slice(at, call.start) + translatedBinding(source, call);
+    at = call.end;
+  }
+  return text + source.slice(at);
 }
 
-// Resolve only explicit page bindings; unknown keys and unsupported argument shapes remain executable source text.
+// Resolve explicit bundled page bindings; unknown keys and unsupported shapes remain source text.
 function englishPageSource(source) {
   if (!/\bt\(/.test(source)) return source;
   const locale = getLocale();
   setLocale('en');
   try { return englishBindings(source, translationCalls(source)); }
-  finally { setLocale(locale); }   // these reads are synchronous and must not alter the caller's display locale
+  finally { setLocale(locale); }   // synchronous reads must not alter the caller's display locale
 }
 
 /** Read guarded renderer source, resolving explicit page bindings and static HTML annotations to their real English copy. */

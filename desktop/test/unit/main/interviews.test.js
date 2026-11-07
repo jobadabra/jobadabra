@@ -39,7 +39,7 @@ test('a recording is written chunk by chunk, transcribed with progress, saved to
   assert.throws(() => interviews.appendRecording(storage, id, new Uint8Array([4])), /Not recording/);
   const draft = interviews.get(storage, id);
   assert.deepEqual([draft.status, draft.seconds, draft.stereo], ['new', 61, true]);
-  assert.deepEqual([...readScreenSource(storage.path(`interviews/${id}/recording.webm`))], [1, 2, 3]);
+  assert.deepEqual([...fs.readFileSync(storage.path(`interviews/${id}/recording.webm`))], [1, 2, 3]);
 
   const calls = [], steps = [];
   const run = async (_storage, args, onLine) => {
