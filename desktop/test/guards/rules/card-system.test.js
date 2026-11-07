@@ -2,13 +2,14 @@
 // card draws its own Save / Cancel / Discard beside the page's one save bar (renderer/save-bar.js). Every renderer file and the Profile + Strategy markup are
 // scanned, so a new card fails here. KNOWN_LEFT are the cards the redesign sessions are moving onto the page bar: it may only shrink (an entry that no longer
 // matches fails too, so it is taken off when its card moves). NOT_A_CARD lists the dialogs and rows that keep their own buttons, each with why.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 
 const root = new URL('../../../renderer/', import.meta.url);
 const files = dir => fs.readdirSync(new URL(dir, root), {withFileTypes: true}).flatMap(entry => entry.isDirectory() ? (entry.name === 'vendor' ? [] : files(`${dir}${entry.name}/`)) : /\.js$/.test(entry.name) ? [`${dir}${entry.name}`] : []);
-const source = file => fs.readFileSync(new URL(file, root), 'utf8');
+const source = file => readScreenSource(new URL(file, root), 'utf8');
 
 // A button whose words are a card's own save step, drawn in code.
 const OWN_SAVE = /(?:el\('button',\s*'[^']*',\s*'(?:Save|Save changes|Cancel|Discard|Discard changes)'|button\('(?:Save|Save changes|Cancel|Discard|Discard changes)'|textContent = 'Save changes')/;

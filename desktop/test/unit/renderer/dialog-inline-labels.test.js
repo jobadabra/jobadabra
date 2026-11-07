@@ -1,9 +1,9 @@
 // Guard dialog row labels against inheriting the vertical margins meant for stacked fields.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 
-const source = file => readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const source = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const css = ['components.css', 'style.css', 'card-shell.css'].map(source).join('\n');
 const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   .flatMap(([, selectors, body]) => selectors.split(',').map(selector => ({selector: selector.trim(), body})));

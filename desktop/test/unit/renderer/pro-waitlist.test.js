@@ -1,13 +1,13 @@
 // The Pro waitlist on Settings → Plan (17 Oct 2026): Free is marked "Your plan", the Pro card has the button, the dialog posts to the site (a fake here, never the live one),
 // the joined state replaces the button, the ⌘K entry exists, and the one payment switch is off.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {joinProWaitlist} from '../../../lib/pro-waitlist.js';
 import {PRO_CHECKOUT, showsProWaitlist} from '../../../renderer/plan-line.js';
 import {INCLUDED} from '../../../renderer/plan-view.js';
 
-const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
 const storage = () => { let s = {}; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }}; };
 
 test('the dialog posts the address to the waitlist as source "app" and the install remembers it', async () => {

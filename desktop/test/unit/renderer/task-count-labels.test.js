@@ -1,10 +1,10 @@
 // Every number box on an Actions card says what it counts beside it (owner, 7 Oct 2026: "the 2 in the input field: what does it count?").
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
 test('every .task-count input sits in a .task-count-field with a visible .task-count-unit', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const inputs = html.match(/<input[^>]*class="task-count"[^>]*>/g) || [];
   assert.ok(inputs.length >= 2, 'the Actions page has its count boxes');
   for (const input of inputs) {

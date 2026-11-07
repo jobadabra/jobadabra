@@ -1,6 +1,7 @@
 // What the window says the AI is called follows the engine the user chose (owner, 9 Oct 2026: "handle all the Claude hard-coded in the UI"):
 // renderer/ai-name.js and lib/ai/names.js give one name and model per engine, and a ratchet fails on a NEW hard-coded generic "Claude" in the
 // window or the main process. What stays "Claude" is Claude-only: Apply/Read with Claude sessions, Claude Code's own texts, the Claude plan.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -63,7 +64,7 @@ const ALLOWED_EXT = {'extension/panel-claude.js': 6, 'extension/flow.js': 2, 'ex
 test('no new hard-coded generic "Claude" in the extension (the panel, popup and progress lines say "AI")', () => {
   const dir = path.join(root, '..', 'extension'), found = {};
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {
-    for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+    for (const line of readScreenSource(path.join(dir, f), 'utf8').split('\n')) {
       if (/^\s*(\/\/|\*)/.test(line)) continue;
       for (const m of line.replace(/\/\/ .*$/, '').matchAll(/(['"`])((?:(?!\1).)*\bClaude\b(?:(?!\1).)*)\1/g)) if (!SPECIFIC.test(m[2])) found[`extension/${f}`] = (found[`extension/${f}`] || 0) + 1;
     }
@@ -89,7 +90,7 @@ test('no new hard-coded generic "Claude" in what the window shows or the main pr
   const files = ['renderer', 'lib'].flatMap(dir => fs.readdirSync(path.join(root, dir), {recursive: true}).map(f => path.join(dir, f).split(path.sep).join('/')))
     .filter(f => /\.(js|html)$/.test(f) && !f.includes('gallery'));
   for (const file of files) {
-    for (const line of fs.readFileSync(path.join(root, file), 'utf8').split('\n')) {
+    for (const line of readScreenSource(path.join(root, file), 'utf8').split('\n')) {
       if (/^\s*(\/\/|\*|<!--)/.test(line)) continue;
       const code = line.replace(/\/\/ .*$/, '').replace(/<span data-ai[^>]*>[^<]*<\/span>/g, '');   // a data-ai span is filled with the chosen name
       for (const m of code.matchAll(/(['"`])((?:(?!\1).)*\bClaude\b(?:(?!\1).)*)\1|>([^<]*\bClaude\b[^<]*)</g)) {
@@ -108,7 +109,7 @@ test('Claude-only features exist only with a Claude engine, in every main-proces
   assert.equal(appNames.claudeFamily(store('cli')), true);
   assert.equal(appNames.claudeFamily(store('')), true, 'nothing chosen: Claude, as before');
   // Every place the main process decides about Claude asks the family too (a new gate without it fails here).
-  const source = file => fs.readFileSync(path.join(root, file), 'utf8');
+  const source = file => readScreenSource(path.join(root, file), 'utf8');
   const main = source('main.js'), server = source('lib/ext-server-handlers.js');
   assert.match(server, /claudeHelp: takeoverOffered\(storage\), claudeTakeover: SHOW_RESUME_CLAUDE, claudeAlways: SHOW_RESUME_CLAUDE && !!storage\.settings\(\)\.claudeAuto, claudeAuto: claudeAutoStart\(storage\)/);   // lib/claude-ready.js asks the family itself
   assert.match(main, /const startClaude = async \(url, details = null\) => !claudeFamily\(storage\)/);

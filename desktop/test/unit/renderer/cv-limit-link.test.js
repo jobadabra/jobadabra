@@ -1,6 +1,6 @@
 // The CV card offers a way out when the CV read fails on the Anthropic spending limit.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {isSpendingLimit} from '../../../renderer/run-warnings.js';
 
@@ -11,8 +11,8 @@ test('isSpendingLimit recognises the limit message', () => {
 });
 
 test('the profile page shows a billing link and holds the retry on a spending limit', () => {
-  const page = readFileSync(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
-  const html = readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.match(html, /id="cv-limit-link"/);
   assert.match(page, /isSpendingLimit/);
   assert.match(page, /cv-limit-link/);

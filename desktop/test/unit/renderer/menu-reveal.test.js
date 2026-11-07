@@ -1,11 +1,11 @@
 // The slimmer menu: Interviews after the first application, Reports after the first weekly report, a dot once, and every screen still in ⌘K.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {PROGRESSIVE, load, looks, nextState, save, stillLocked} from '../../../renderer/menu-reveal.js';
 import {STOPS, captureRun, cardSpot, markSeen, nextPresent, seen, stopsFor} from '../../../renderer/menu-tour.js';
 
-const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 const empty = {revealed: [], opened: []};
 const none = {applied: false, weeklyReport: false, employers: false};
 

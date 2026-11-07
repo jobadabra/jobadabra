@@ -1,5 +1,6 @@
 // One Edit button for every card, at the right of the card's title line (owner, 18 Oct 2026: "I don't like the Edit button position"), quiet since the UI redesign
 // the same day (D1: "a compact pencil + Edit button ... with a neutral outline"): drawn by components.js cardEdit or, in static markup, with the same classes. A test fails when a card draws its own Edit outside it; a row's own action is listed with its reason.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -9,7 +10,7 @@ install();
 const {cardEdit} = await import('../../../renderer/components.js');
 const root = new URL('../../../renderer/', import.meta.url);
 const files = dir => fs.readdirSync(new URL(dir, root), {withFileTypes: true}).flatMap(entry => entry.isDirectory() ? (entry.name === 'vendor' ? [] : files(`${dir}${entry.name}/`)) : /\.js$/.test(entry.name) ? [`${dir}${entry.name}`] : []);
-const source = file => fs.readFileSync(new URL(file, root), 'utf8');
+const source = file => readScreenSource(new URL(file, root), 'utf8');
 
 // Row actions that are not a card's Edit, each with why.
 const ROW_ACTIONS = {

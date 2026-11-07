@@ -1,9 +1,9 @@
 // Jobs → Board and saved views, the wiring: the IPC a drop uses, the demo guard, the hook in renderJobs, the ⌘K entries and the markup.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = path => fs.readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(`../../../${path}`, import.meta.url), 'utf8');
 
 test('a drop goes through the app\'s own stage paths (setStatus, setStage → the ledger event), demo-guarded', () => {
   const board = read('renderer/pages/jobs-board.js');

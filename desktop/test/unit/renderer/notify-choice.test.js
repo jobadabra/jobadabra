@@ -1,5 +1,6 @@
 // Email vs Telegram vs both (owner, 26 Oct 2026: "a way for the user to choose his notification channel"): the Always on repo follows a Telegram-off choice, the window says why a switch
 // does nothing (no address, no bot, our sender off, unsubscribed), and no screen presents Telegram as the only or a required channel. Guards renderer/notify-words.js, lib/github.js.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import {state} from '../../../lib/notify-channel.js';
 import {createStorage} from '../../../lib/storage.js';
 import {channelLine, emailCard, notes, telegramRequired} from '../../../renderer/notify-words.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 function repoStorage(settings = {}) {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-notify-')), {encrypt: s => s, decrypt: s => s});
   storage.setSecret('ANTHROPIC_API_KEY', 'sk-ant-test');

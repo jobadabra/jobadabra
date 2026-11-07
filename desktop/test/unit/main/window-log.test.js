@@ -1,4 +1,5 @@
 // The main window and an update leave a trace in logs/app.log: a blank window after an update (3 Oct 2026) had none.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -68,8 +69,8 @@ test('the Mac swap writes each step into the app log and puts the new app in pla
   fs.mkdirSync(newApp, {recursive: true}); fs.writeFileSync(path.join(newApp, 'v'), 'new');
   const script = macSwapScript(999999, oldApp, newApp, logFile).replace(/\nopen .*$/, '');   // no real `open` in a test
   execFileSync('/bin/sh', ['-c', script]);
-  assert.equal(fs.readFileSync(path.join(oldApp, 'v'), 'utf8'), 'new');
-  const log = fs.readFileSync(logFile, 'utf8');
+  assert.equal(readScreenSource(path.join(oldApp, 'v'), 'utf8'), 'new');
+  const log = readScreenSource(logFile, 'utf8');
   assert.match(log, /\[update\] swap: waiting for the app \(pid 999999\) to quit\n.*\[update\] swap: the app quit; putting the new version in place/);
   assert.doesNotMatch(log, /FAILED/);
 });

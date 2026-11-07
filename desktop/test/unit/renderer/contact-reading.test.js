@@ -1,14 +1,14 @@
 // Your details never shows empty boxes for "not read yet" (owner, 18 Oct 2026): the marked boxes are a skeleton until the read answers; the kept copy fills them at once.
 // A class test: every editable contact field of the page sits in a marked box or in the links form that stays hidden until Edit.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
 install();
 const {reading} = await import('../../../renderer/contact-reading.js');
 const {el} = await import('../../../renderer/components.js');
-const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 
 test('before the read answers, the marked boxes are hidden behind a skeleton; after, the boxes are back and the skeleton gone', () => {
   const root = el('div'), grid = el('div'), tiles = el('div');
@@ -57,11 +57,11 @@ test('the cover letter shows a skeleton in place of its empty box until the read
   assert.equal(root.children.filter(child => /contact-reading/.test(child.className)).length, 1);
   reading(false, root, 'letter');
   assert.equal(box.hidden, false);
-  assert.match(fs.readFileSync(new URL('../../../renderer/pages/base-letter.js', import.meta.url), 'utf8'), /swr\('cover-letter'[\s\S]*loading: \(\) => \{ reading\(true, document, 'letter'\)/);
+  assert.match(readScreenSource(new URL('../../../renderer/pages/base-letter.js', import.meta.url), 'utf8'), /swr\('cover-letter'[\s\S]*loading: \(\) => \{ reading\(true, document, 'letter'\)/);
 });
 
 test('the contact read keeps its answer, so a second open fills the boxes before the read returns', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
   const show = source.slice(source.indexOf('export function showContact'));
   assert.match(show, /swr\('contact'/);
   assert.match(show, /loading: \(\) => reading\(true\)/);

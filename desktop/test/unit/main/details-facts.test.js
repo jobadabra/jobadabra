@@ -1,5 +1,6 @@
 // Your details' fact sections reach the screen (owner, 17 Oct 2026): each section has its panel (⌘K lists it), the screen saves them with Contact through
 // the one bar, the handlers read, save and resolve through lib/profile-sections.js and lib/profile-move.js, and the move runs once, never twice.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,7 +13,7 @@ import * as store from '../../../lib/store/index.js';
 import {openShown} from '../../../lib/question-lists.js';
 import {keyOf} from '../../../renderer/question-filter.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 
 test('every section has its own panel on Your details, and the screen draws exactly those', async () => {
   const html = read('renderer/index.html');

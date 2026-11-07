@@ -1,6 +1,7 @@
 // A checkbox with words beside it uses a shared part (.check-row, label.radio, .switch, .switch-row). A one-off label
 // loses to `.panel-dialog label { display: block }` and `input { width: 100% }`: Tune my strategy drew each checkbox
 // full width, centred above its words (6 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const OWN_CSS = [];   // session-needs' Remember tick (ss-ask-save) went on 27 O
 const shared = classes => classes.split(/\s+/).some(name => SHARED.includes(name));
 
 test('every checkbox label in a dialog of index.html uses a shared row', () => {
-  const html = fs.readFileSync(path.join(renderer, 'index.html'), 'utf8');
+  const html = readScreenSource(path.join(renderer, 'index.html'), 'utf8');
   const dialogs = html.match(/<dialog[\s\S]*?<\/dialog>/g) || [];
   const labels = dialogs.flatMap(dialog => [...dialog.matchAll(/<label([^>]*)>\s*<input[^>]*type="checkbox"/g)].map(m => /class="([^"]*)"/.exec(m[1])?.[1] || ''));
   assert.ok(labels.length > 0, 'found no checkbox labels in dialogs: the pattern is stale');
@@ -23,10 +24,10 @@ test('every checkbox label in a dialog of index.html uses a shared row', () => {
 
 test('every label the renderer builds around a checkbox uses a shared row', () => {
   const files = ['pages', '.'].flatMap(dir => fs.readdirSync(path.join(renderer, dir)).filter(f => f.endsWith('.js')).map(f => path.join(renderer, dir, f)));
-  const builders = files.filter(file => fs.readFileSync(file, 'utf8').includes("type = 'checkbox'"));
+  const builders = files.filter(file => readScreenSource(file, 'utf8').includes("type = 'checkbox'"));
   assert.ok(builders.length >= 3, `expected the checkbox builders (tune, cv-change, claude-offer), found ${builders.length}`);
   for (const file of builders) {
-    const labels = [...fs.readFileSync(file, 'utf8').matchAll(/el\('label',\s*'([^']*)'/g)].map(m => m[1]);
+    const labels = [...readScreenSource(file, 'utf8').matchAll(/el\('label',\s*'([^']*)'/g)].map(m => m[1]);
     assert.ok(labels.length > 0, `${path.basename(file)} builds a checkbox but no label`);
     for (const classes of labels) assert.ok(shared(classes) || OWN_CSS.some(name => classes.split(/\s+/).includes(name)), `${path.basename(file)}: label '${classes}' is a one-off; use .check-row`);
   }

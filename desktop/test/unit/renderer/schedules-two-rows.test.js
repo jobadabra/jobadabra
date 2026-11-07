@@ -1,11 +1,11 @@
 // Settings → Schedules shows what a person cares about: Find jobs and Check Gmail & Calendar. The employer run and Insights are not rows (owner, 5 Nov 2026: the product sends insights).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {cadence, crons} from '../../../lib/cadence.js';
 import {hostedRuns, nextWord, scheduleWith, searchNextAt, whereRuns} from '../../../renderer/schedule-line.js';
 
-const read = name => readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 
 test('Schedules has two rows, Find jobs and Gmail, and no employer or Insights row', () => {
   const html = read('index.html');
@@ -35,7 +35,7 @@ test('an older install pinned to daily keeps its employer run after the row is g
 });
 
 test('what people act on does not name the employer search: the few-jobs button, the Find jobs words, the progress step and its chip (owner, 5 Nov 2026)', async () => {
-  const few = read('pages/activity-few-jobs.js'), html = read('index.html'), steps = readFileSync(new URL('../../../lib/search-steps.js', import.meta.url), 'utf8');
+  const few = read('pages/activity-few-jobs.js'), html = read('index.html'), steps = readScreenSource(new URL('../../../lib/search-steps.js', import.meta.url), 'utf8');
   assert.match(few, /'secondary item-action', 'Search wider'/);
   assert.doesNotMatch(few + html + steps, /Find more employers|finds more employers|finding more employers|Growing your sources/);
   const {stepChips} = await import('../../../renderer/find-card-model.js');

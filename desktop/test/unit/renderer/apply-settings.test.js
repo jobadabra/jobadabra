@@ -1,13 +1,13 @@
 // Settings → Apply (owner, 26 Oct 2026, hybrid fill step 2): the model (modes, answers, Full automation checks with defaults), the tab's markup with every
 // applying setting in one place, and its ⌘K entries. The gate and the first-Apply dialog's wiring: test/guards/safety/apply-choice-gate.test.js.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {AUTO_DEFAULTS, MODES, applyChosen, applyOf, applyPatch, modeBuilt} from '../../../renderer/apply-settings-model.js';
 
 const here = path.resolve(import.meta.dirname, '../../..');
-const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
+const html = readScreenSource(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
 test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
@@ -42,7 +42,7 @@ test('three modes; only a built one can be the saved mode, the others are Coming
   assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check', 'fill', 'auto'], 'Full automation is built (switch, 29 Oct 2026); it runs only once confirmed');
   assert.equal(applyPatch({}, {mode: 'fill'}).apply.mode, 'fill', 'Background automation is built (spec 2026-10-27, step B)');
   assert.equal(applyPatch({}, {mode: 'auto'}).apply.mode, 'auto', 'the window saves the pick; save() asks the confirmation first');
-  const settings = fs.readFileSync(path.join(here, 'renderer/pages/apply-settings.js'), 'utf8');
+  const settings = readScreenSource(path.join(here, 'renderer/pages/apply-settings.js'), 'utf8');
   assert.match(settings, /disabled: [^,]*!modeBuilt\(mode\.id\)/, 'every surface draws an unbuilt mode disabled (modeCards)');
   assert.match(settings, /\['Coming soon', 'neutral'\]/);
   assert.doesNotMatch(settings + html, /MODE_TODAY|apply-mode-today|todayLine/, 'no "until then" line: an unbuilt mode cannot be picked');
@@ -59,7 +59,7 @@ test('every applying setting is on the Apply tab, and nowhere else', () => {
 
 test('⌘K lists the Apply page and each of its cards (read from the page by nav.js)', () => {
   assert.match(html, /<button data-settings-go="apply"><i data-icon="send"><\/i>Apply<\/button>/);
-  const nav = fs.readFileSync(path.join(here, 'renderer/pages/nav.js'), 'utf8');
+  const nav = readScreenSource(path.join(here, 'renderer/pages/nav.js'), 'utf8');
   assert.match(nav, /querySelectorAll\('\[data-settings-go\]'\)/);
   assert.match(nav, /querySelectorAll\('\[data-settings-page\] \.setting\[id\]'\)/);
   for (const id of ['setting-apply-mode', 'setting-apply-answers', 'setting-apply-auto']) {

@@ -1,8 +1,8 @@
 // Profile → Cover letter → Base letter (owner's mockup 07, 18 Oct 2026; pages/base-letter.js): a neutral "Not created" (never a green dot for nothing),
 // the empty state with Draft with AI / Write my own until a choice or a letter, the editor after; who pays said before and after a draft from the
 // engine settings (no estimate, no hardcoded price or duration); the forms switch only once the letter is approved.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 import {setCostEngine, setCostsShown} from '../../../renderer/ai-cost.js';
@@ -51,13 +51,13 @@ test('who pays: said before from the engine, after from the run; an unknown cost
 });
 
 test('the empty state is the shared one (page-parts.js emptyState) with two choices and who pays; no own Save; no hardcoded price or duration', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const panel = html.slice(html.indexOf('id="setting-letter"'), html.indexOf('id="setting-answers'));
   assert.match(panel, /<div id="letter-empty" hidden><\/div>/, 'drawn by emptyState, not markup');
   assert.equal((panel.match(/data-letter-usage/g) || []).length, 1, 'the editor\'s line; the empty state carries it as its note');
   assert.doesNotMatch(panel, /id="letter-save"/, 'typed changes go on Profile\'s one save bar');
   assert.match(panel, /Documents tab/);
-  const source = fs.readFileSync(new URL('../../../renderer/pages/base-letter.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/base-letter.js', import.meta.url), 'utf8');
   assert.match(source, /emptyState\(\{[\s\S]*label: 'Draft with AI'[\s\S]*label: 'Write my own'[\s\S]*note: usageLine\(\)/);
   assert.match(source, /ai\.id = 'letter-start-ai';[\s\S]*own\.id = 'letter-own';/, 'the ids ⌘K and the tests find');
   assert.match(source, /profileBar\(\)\.register\(\{id: 'base-letter', tab: 'letter'/);

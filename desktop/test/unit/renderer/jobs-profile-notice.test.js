@@ -1,9 +1,9 @@
 // Jobs' "Your Profile is empty" notice (#2759) comes from the jobs read, never from Strategy's: strategyData runs the whole strategy pipeline (queued behind crawls) and can write the search level.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 
 test('Jobs never calls strategyData and draws the notice from the jobs payload', () => {
   for (const file of ['pages/jobs.js', 'profile-empty.js']) assert.doesNotMatch(read(file), /strategyData/, `${file} must not run the strategy read`);

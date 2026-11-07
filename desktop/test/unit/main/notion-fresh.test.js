@@ -1,5 +1,6 @@
 // Notion and starting over (Settings → Danger zone) or exporting (Settings → Your data): a reset never calls Notion; a workspace
 // an older reset renamed "(archived …)" is never connected to again; an export carries no Notion copy.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -54,7 +55,7 @@ function workspace({oldTitle = 'Jobadabra', rows = 2} = {}) {
 // A reset only clears this Mac (owner, 16 Oct 2026: "a reset for sure shouldn't touch the current Notion"). Connecting Notion afterwards is the normal first-time flow.
 test('a reset never reaches Notion: no archive call, no checkbox, no remembered page', async () => {
   assert.equal(notion.archiveWorkspace, undefined, 'nothing renames a Notion page any more');
-  const here = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const here = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   assert.ok(!/import .*['"]\.\/notion\.js['"]/.test(here('../../../lib/system-handlers.js')), 'the reset handlers do not import the Notion client');
   assert.ok(!/freshNotion|archived/.test(here('../../../lib/system-handlers.js')));
   assert.ok(!/reset-notion|fresh Notion/i.test(here('../../../renderer/index.html') + here('../../../renderer/pages/data.js')), 'no "fresh Notion workspace" option');

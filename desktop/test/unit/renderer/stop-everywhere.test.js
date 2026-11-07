@@ -1,16 +1,16 @@
 // Stop is on every surface the person might reach for when the extension goes wrong (owner, 13 Oct 2026: "a way to stop, in case the extension goes wrong"): the sessions page, ⌘K, the
 // extension's toolbar popup and its page button (extension-stop.test.js), Chrome's own Cancel on the debugging bar, and the card of a stopped application (Reopen form starts it again).
 // A surface dropped in a later change fails here by name.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {journey, journeyStep, STOPPED} from '../../../lib/application-journey.js';
 import {sessionState} from '../../../renderer/session-state.js';
 import {sessionSteps} from '../../../renderer/session-steps-list.js';
 import {validateSessionCall} from '../../../lib/session-contracts.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
-const ext = file => fs.readFileSync(new URL(`../../../../extension/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const ext = file => readScreenSource(new URL(`../../../../extension/${file}`, import.meta.url), 'utf8');
 
 test('the app\'s surfaces: the sessions page button, the ⌘K entry, the IPC, the preload and the demo stub', () => {
   assert.match(read('renderer/index.html'), /id="ss-stop"[^>]*>Stop the extension</);

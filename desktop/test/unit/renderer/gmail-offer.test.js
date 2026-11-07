@@ -1,6 +1,7 @@
 // Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the dialog after the first Submit (twice at most), the dialog on a page that
 // asks for a mailed code (any mode, once per run, the job waits), the always-present Suggestions card, and nothing once connected. A fake connection only: never the owner's Google account or Keychain.
 process.env.JOBADABRA_E2E = '1';   // Keychain reads come from an isolated, empty file: no real sign-in is ever seen (lib/keychain.js)
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -102,11 +103,11 @@ test('the Suggestions card: always there while Gmail is not connected (no Not no
 
 test('the doors: the dialog, the card and ⌘K all end in the Settings button, and the setup wizard offers nothing', () => {
   const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-  const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+  const read = file => readScreenSource(path.join(root, file), 'utf8');
   assert.match(read('pages/gmail-offer.js'), /\$\('google-connect'\)\.click\(\)/, 'one sign-in flow');
   assert.match(read('pages/focus-suggestions.js'), /connect_gmail: \(\) => connectGmail\(\)/);
   assert.match(read('pages/nav.js'), /addGmailCommand\(add\)/, '⌘K');
-  assert.match(fs.readFileSync(path.join(root, '..', 'lib', 'ext-server-handlers.js'), 'utf8'), /mode === 'full' && codeOffer\(/, 'the code offer only where a connected Gmail types the code');
+  assert.match(readScreenSource(path.join(root, '..', 'lib', 'ext-server-handlers.js'), 'utf8'), /mode === 'full' && codeOffer\(/, 'the code offer only where a connected Gmail types the code');
   assert.match(read('index.html'), /id="gmail-offer-dialog"/);
   for (const day of ['pages/wizard.js', 'onboarding.js']) assert.doesNotMatch(read(day), /gmail|google/i, `${day}: nothing is asked on day one`);
 });

@@ -1,10 +1,10 @@
 // A short window in the icon rail gives the page list the room (owner, 25 Oct 2026: "the sidebar menu collapsed is broken": at 528 css px the list had 117 px,
 // two pages, the third sliced). What steps aside must stay reachable: feedback in ⌘K (it is a .nav), the theme in Settings → Appearance; collapse only where it cannot act.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const css = read('menu.css'), html = read('index.html');
 const block = query => (css.match(new RegExp(`@media \\(${query.replace(/[()]/g, '\\$&')}\\)\\s*\\{([\\s\\S]*?)\\n\\}`)) || [])[1] || '';
 

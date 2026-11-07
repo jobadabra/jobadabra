@@ -1,7 +1,7 @@
 // The Pro plan in the app (lib/plan.js, lib/app-allowance.js, renderer/plan-view.js, license chip): the site's answer kept 14 days, Pro lifts the limit, the credit is a percent,
 // credit gone means no free fallback, and with the plan off nothing about Pro shows.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {GRACE_DAYS, OFF, createPlan} from '../../../lib/plan.js';
 import {setSiteOff} from '../../../lib/recipes.js';
@@ -125,7 +125,7 @@ test('the sidebar counter for Pro is the credit bar, red from 10%; the plan line
 });
 
 test('every place that shows the plan is wired: the panel, the palette entries (only when on), the IPC pair, the card hidden by default', () => {
-  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   assert.match(read('../../../renderer/index.html'), /id="setting-plan" hidden>/);
   const nav = read('../../../renderer/pages/nav.js');
   assert.match(nav, /\['test', 'live'\]\.includes\(shared\.plan\?\.mode\)/);
@@ -135,7 +135,7 @@ test('every place that shows the plan is wired: the panel, the palette entries (
 
 // The class rule (owner, 24 Oct 2026: "€10 credit", still $5 to us): every place that names a credit amount reads it from the site's offers; none carries its own number or a dollar.
 test('a credit amount in the window comes from the offers (€10 included, a top-up adds what it costs), never from a literal in the code', () => {
-  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
   const proAi = OFFERS.find(o => o.id === 'pro-ai');
   assert.equal(creditWords(proAi), '€10 of AI credit (about 70 applications)'); assert.equal(creditWords(OFFERS[0]), '', 'Pro has none');
   const free = planView({mode: 'test', plan: 'free', offers: OFFERS});

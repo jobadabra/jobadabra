@@ -1,7 +1,7 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): it applies to jobs. The same three cards as Settings → Apply, only a built mode
 // can be picked (the others say Coming soon), a pick saves through Settings → Apply's one writer, and the button says "Apply to N jobs".
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../../../renderer/apply-dialog-model.js';
@@ -10,7 +10,7 @@ import {registerApplyHandlers} from '../../../lib/apply-handlers.js';
 import {guard} from '../../../lib/apply-choice-gate.js';
 
 const desktop = path.resolve(import.meta.dirname, '../../..');
-const read = file => fs.readFileSync(path.join(desktop, file), 'utf8');
+const read = file => readScreenSource(path.join(desktop, file), 'utf8');
 
 function register(mode, {chosen = true} = {}) {
   const handles = new Map(), starts = [];

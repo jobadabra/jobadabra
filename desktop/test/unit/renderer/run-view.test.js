@@ -1,12 +1,12 @@
 // One run view (owner, 25 Oct 2026): the drawer shows one run, Actions → Runs shows every run, and both show the same run panel. Which run shows
 // (renderer/run-pick.js), the list's filters (renderer/run-filters.js), every entry point, and the one panel shared by both places (no second design).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {defaultRun, findRun, pickRun, queueWords} from '../../../renderer/run-pick.js';
 import {filterBy, statusOf} from '../../../renderer/run-filters.js';
 
-const read = file => readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const KINDS = [...read('pages/activity-basics.js').matchAll(/(\w+): \{icon: '[^']+', line: '[\w-]+', name: ("[^"]+"|'[^']+')\}/g)].map(match => match[1]);
 const at = minutes => new Date(Date.UTC(2026, 9, 25, 12, minutes)).toISOString();
 

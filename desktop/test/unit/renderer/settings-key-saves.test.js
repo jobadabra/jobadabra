@@ -1,10 +1,10 @@
 // Every key panel in Settings can be saved and shows its "saved" hint (#319: the Brave panel's Save button had no handler, and its hint was never sent).
 // Guards: renderer/index.html (the panels), renderer/pages/connections.js (the Save handlers), lib/apply-handlers.js (secretHints).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 
-const read = path => fs.readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(`../../../${path}`, import.meta.url), 'utf8');
 const html = read('renderer/index.html'), connections = read('renderer/pages/connections.js'), handlers = read('lib/apply-handlers.js');
 const OWN_HANDLER = new Set(['notion', 'telegram']);   // saved by their own flows (connections.js notion, profile.js telegram)
 
@@ -17,6 +17,6 @@ test('every key panel Save button has a handler', () => {
 test('every secret a panel shows has a hint', () => {
   const names = [...new Set([...html.matchAll(/data-secret="([A-Z_]+)"/g)].map(match => match[1]))];
   assert.match(handlers, /ipcMain\.handle\('secretHints', \(\) => ownSecretHints\(storage\)\)/, 'the handler answers with the person\'s own keys (lib/secrets.js)');
-  const hints = fs.readFileSync(new URL('../../../lib/secrets.js', import.meta.url), 'utf8').match(/export function ownSecretHints\(storage, names = \[[^\]]*\]/)[0];
+  const hints = readScreenSource(new URL('../../../lib/secrets.js', import.meta.url), 'utf8').match(/export function ownSecretHints\(storage, names = \[[^\]]*\]/)[0];
   for (const name of names) assert.ok(hints.includes(`'${name}'`), `${name} is in secretHints`);
 });

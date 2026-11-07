@@ -1,13 +1,13 @@
 // Your details read first (owner's review, 18 Oct 2026, item 5; pages/details-read.js): every Your details card that holds fields shows a compact read view, a
 // quiet Edit opens its editor in place, Done leaves an editor with no change, a CV proposal opens its card's editor, and the voluntary surveys start closed
 // and marked Optional. The markup check loops over every Your details card, so a new card with fields fails until it gets the shell.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
 const body = install();
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const html = read('index.html');
 const {CONTACT_LINES, contactView, linksView, initDetailsRead, closeDetailsEditors} = await import('../../../renderer/pages/details-read.js');
 const {el} = await import('../../../renderer/components.js');

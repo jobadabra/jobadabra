@@ -1,7 +1,7 @@
 // "What happened" (renderer/session-steps-list.js; owner, 9 Oct 2026): a session's steps in plain words instead of a terminal. Each state a session card shows
 // gets its steps: started, stuck at an account page or with no form, the form read and filled with suggestions, the person's turn, submitted.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {sessionSteps} from '../../../renderer/session-steps-list.js';
 
@@ -21,11 +21,11 @@ test('a session\'s steps, for every state its card shows', () => {
 });
 
 test('the terminal is only for a Claude conversation with the takeover on (resumeOffered); elsewhere the steps, and the terminal one click away', () => {
-  const page = fs.readFileSync(new URL('../../../renderer/pages/session-steps.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/session-steps.js', import.meta.url), 'utf8');
   assert.match(page, /export const terminalShown = item => \(resumeOffered\(\) && \(item\.kind \|\| 'claude'\) === 'claude'\) \|\| logAsked\.has\(item\.id\);/);
-  const log = fs.readFileSync(new URL('../../../renderer/pages/session-log.js', import.meta.url), 'utf8');
+  const log = readScreenSource(new URL('../../../renderer/pages/session-log.js', import.meta.url), 'utf8');
   assert.match(log, /show\(\$\('ss-log'\), terminalShown\(item\)\);/);
-  assert.match(fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /<ul class="activity-phases" id="ss-steps"><\/ul>/);   // Recent activity's step list, reused
+  assert.match(readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /<ul class="activity-phases" id="ss-steps"><\/ul>/);   // Recent activity's step list, reused
 });
 
 test('an email posting says where to send it once, not twice', () => {

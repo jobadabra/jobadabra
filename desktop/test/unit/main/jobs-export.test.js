@@ -1,5 +1,6 @@
 // Export job list (Pro): the columns, a CSV safe from formulas, JSON, and the gate in the main process (free refused, a paid account or an owner key allowed).
 // Guards lib/jobs-export.js, lib/jobs-export-handlers.js and the window's button / ⌘K entry (source checks).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -64,15 +65,15 @@ test('the licence gate: free is refused with no dialog and no file; a Pro accoun
   assert.equal(free.answer.pro, true); assert.equal(free.asked, 0); assert.equal(fs.existsSync(file), false);
   const key = await run({licensed: true, license: {kind: 'founder'}});
   assert.equal(key.answer.ok, true); assert.equal(key.answer.count, 2);
-  assert.ok(fs.readFileSync(file, 'utf8').startsWith('\uFEFFRole'));
+  assert.ok(readScreenSource(file, 'utf8').startsWith('\uFEFFRole'));
   const view = await run({licensed: true}, {urls: ['https://x.test/1']});
   assert.equal(view.answer.count, 1);
 });
 
 test('the window: a button on the Jobs toolbar and a ⌘K entry, both through the one IPC', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
-  const nav = fs.readFileSync(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8');
-  const preload = fs.readFileSync(new URL('../../../preload.cjs', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const nav = readScreenSource(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8');
+  const preload = readScreenSource(new URL('../../../preload.cjs', import.meta.url), 'utf8');
   assert.ok(html.includes('id="jobs-export"'));
   assert.ok(nav.includes('Export job list'));
   assert.ok(preload.includes("exportJobs: call('exportJobs')"));

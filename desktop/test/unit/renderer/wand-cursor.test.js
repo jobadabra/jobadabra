@@ -1,12 +1,12 @@
 // The wand cursor only where the AI does the work: every AI action carries the marker, the cursor rule has a hotspot and a pointer fallback, the wizard cards use it.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const html = read('index.html');
 
 // The registry: each AI action, found by the text that identifies its button in index.html or its builder in a script.

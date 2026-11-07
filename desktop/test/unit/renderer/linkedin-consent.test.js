@@ -1,7 +1,7 @@
 // LinkedIn jobs, PR 1/3: the four doors (Settings row, ask on Find jobs, Suggestions entry, ⌘K) open ONE consent, and the words the owner approved on 31 Oct 2026 are in it.
 // Pure parts: renderer/linkedin-words.js; the doors are checked by what each source file imports (one loop).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {CONSENT, KEY, LINE, askOnPress, linkedinEntries} from '../../../renderer/linkedin-words.js';
 import {LOOK} from '../../../renderer/suggestions.js';
@@ -55,17 +55,17 @@ test('every door opens the one consent: Settings row, ask on Find jobs, Suggesti
   // nav.js (⌘K) takes the command from the same module: linkedinCommand() opens the consent (kept out of nav.js's long function: clean-code complexity)
   const doors = {'renderer/pages/settings.js': 'openLinkedinConsent', 'renderer/pages/jobs.js': 'askLinkedinOnPress', 'renderer/pages/focus-suggestions.js': 'openLinkedinConsent', 'renderer/pages/nav.js': 'linkedinCommand'};
   for (const [file, name] of Object.entries(doors)) {
-    const source = fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+    const source = readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
     assert.match(source, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '[./]*(pages/)?linkedin-consent\\.js'`), `${file} imports ${name} from the one consent module`);
   }
 });
 
 test('the consent dialog exists once in the page and uses the shared dialog look', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.equal(html.match(/id="linkedin-dialog"/g)?.length, 1);
   assert.match(html, /<dialog id="linkedin-dialog" class="save-dialog panel-dialog">/);
   assert.match(html, /<button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden><\/button>/, 'the Chrome shortcut button is hidden until the page shows it');
-  const page = fs.readFileSync(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
   assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
 });

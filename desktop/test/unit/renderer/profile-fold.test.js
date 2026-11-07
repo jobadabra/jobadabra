@@ -1,13 +1,13 @@
 // Every Profile tab's cards fold, and one bar opens or folds the cards of the tab you are on and never another tab's (owner, 18 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
 install();
 const {TABS, countTab, foldTab} = await import('../../../renderer/profile-fold.js');
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const html = read('index.html');
 // The panels of each tab, from the markup: id, tab, and whether a title bar (panel-top or summary-head) follows.
 const panels = [...html.matchAll(/<div class="setting panel[^"]*" id="([^"]+)" data-profile-panel="(\w+)"[^>]*>\s*<div class="(panel-top|summary-head)/g)].map(([, id, tab, bar]) => ({id, tab, bar}));

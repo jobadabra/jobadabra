@@ -1,11 +1,11 @@
 // Every checkbox in the app's page has an accessible name, so a screen reader and the extension's control list can say what it turns on.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const html = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer/index.html'), 'utf8');
+const html = readScreenSource(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer/index.html'), 'utf8');
 
 /** The checkboxes of index.html that have no aria-label, no `<label for>` and no text inside an enclosing label (#3239). */
 function unnamedCheckboxes() {

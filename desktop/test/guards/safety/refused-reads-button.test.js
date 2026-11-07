@@ -1,6 +1,7 @@
 // Browser reads of refused sites start only from the person's press of "Find jobs using your browser" (owner, 26 Oct 2026: "shouldn't start automatically
 // in the backgruond. It should be suggested to the user as an action button"; "I don't think we should have a switch at all"). A finished Find jobs run
 // offers the button; every other path that used to start reads (a run, the extension's timer, app start, opening a job) reads nothing.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,7 +13,7 @@ import {startRefusedReads, ALARM, NOW_ALARM} from '../../../../extension/refused
 import {browserOffer, paletteEntry} from '../../../renderer/pages/browser-offer-rows.js';
 
 const root = new URL('../../../../', import.meta.url);
-const read = file => fs.readFileSync(new URL(file, root), 'utf8');
+const read = file => readScreenSource(new URL(file, root), 'utf8');
 const storageWith = settings => { const kept = {...settings}; return {settings: () => kept, saveSettings: patch => Object.assign(kept, patch), kept}; };
 const SITES = [{url: 'https://jobs.coop.ch', name: 'Coop', kind: 'employer'}, {url: 'https://www.monsterboard.nl/v?q=a', name: 'Monsterboard', kind: 'board'}];
 function engine() {

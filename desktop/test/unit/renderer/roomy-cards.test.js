@@ -1,7 +1,7 @@
 // Roomy cards (owner, 18 Oct 2026, mockup 03 approved: "Look at the cards with chips how roomier they are"): the shared parts keep their shape, and every
 // Strategy card sits in the .roomy-cards container with its header from card-shell.js cardHead, so a new card gets the look without its own CSS.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -9,7 +9,7 @@ install();
 const {document} = globalThis;
 const {cardHead, factColumns, readRows} = await import('../../../renderer/card-shell.js');
 const {summaryTiles} = await import('../../../renderer/page-parts.js');
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const classes = node => String(node.className).split(/\s+/);
 const text = node => node.textContent;
 

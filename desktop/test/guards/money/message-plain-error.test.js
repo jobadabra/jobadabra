@@ -1,11 +1,12 @@
 // A message slot never shows an AI provider's raw error, and "Fill from my CV" answers where the person can see it (issue #409).
 // 12 Oct 2026: the press wrote 'Couldn't read your CV: 400 {"type":"error",…}' into the save bar, which stays hidden when nothing changed.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {plainError} from '../../../renderer/run-warnings.js';
 
-const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(file, import.meta.url), 'utf8');
 
 test('a provider dump inside a sentence becomes words; the sentence before it is kept', () => {
   const credit = '400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."},"request_id":"req_1"}';
@@ -78,7 +79,7 @@ test('no page puts a handler error or an exception message on screen without pla
   const builds = /\.catch\(\s*\(?\w+\)?\s*=>\s*\(\{/;
   const found = [];
   for (const name of files) {
-    fs.readFileSync(new URL(name, root), 'utf8').split('\n').forEach((line, at) => {
+    readScreenSource(new URL(name, root), 'utf8').split('\n').forEach((line, at) => {
       if (raw.test(line) && !said.test(line) && !builds.test(line)) found.push(`${name}:${at + 1}: ${line.trim().slice(0, 110)}`);
     });
   }

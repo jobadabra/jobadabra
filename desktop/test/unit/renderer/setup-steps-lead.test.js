@@ -1,13 +1,13 @@
 // Setup steps: the lead under a title is one short line (facts as chips, detail in a fold), a single/small input is a centered card, the done banner is one quiet line.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CV_FILES} from '../../../renderer/cv-files.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const html = read('index.html');
 const steps = [...html.matchAll(/<div class="step" data-step="(\w+)">([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)];
 
@@ -36,5 +36,5 @@ test('the done banner is one quiet line, not the old green alert box, and names 
 test('the CV card names the accepted kinds from the one shared constant, which the main-side picker reads too', () => {
   assert.ok(CV_FILES.label && CV_FILES.extensions.length);
   assert.match(read('pages/activity-panel.js'), /CV_FILES\.label/);
-  assert.match(fs.readFileSync(path.join(root, '..', 'lib', 'setup-handlers.js'), 'utf8'), /CV_FILES\.extensions/);
+  assert.match(readScreenSource(path.join(root, '..', 'lib', 'setup-handlers.js'), 'utf8'), /CV_FILES\.extensions/);
 });
