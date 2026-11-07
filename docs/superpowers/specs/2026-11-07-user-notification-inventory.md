@@ -16,7 +16,7 @@ Two additional authored producer seams sit outside the template registry: the mu
 | ai/mail.py and mail/calendar helpers | Mail/calendar check and matching wrappers | Employer content, AI classifications, saved kinds/stages and raw subjects |
 | ai/insights.py, ai/insights_text.py, ai/rejection.py, scout.py | Insight/weekly/rejection/employer-search framing | Generated narrative, evidence, decisions and employer data |
 | trial.py, ai/budget.py and install-user doctor alerts | Typed credit/health/recovery framing | Entitlement/budget decisions and CLI/operator diagnostics |
-| notify.py and installed daily/mail failure steps | User-account app-stopped alert and mail batching connector | Workflow flags, row IDs, schedules, channel selection, limits and canonical logs |
+| notify.py and installed daily/mail/scout failure steps | User-account app-stopped alert and mail batching connector | Workflow flags, row IDs, schedules, channel selection, limits and canonical logs |
 
 Python delivery accepts an explicit producer projection. MESSAGES, canonical str/JSON forms and activity markers remain unchanged; unprojected operational sends stay English. No repeated store/AI reads are needed for another presentation.
 
