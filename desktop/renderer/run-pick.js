@@ -1,5 +1,6 @@
 // Which run the one run panel shows (drawer and Actions → Runs; owner, 25 Oct 2026): the run picked stays picked while it goes queued → running → done,
 // and a generic "Details" opens the running task, else the next queued one, else the latest finished run. Pure; guarded by test/unit/renderer/run-view.test.js.
+import {t} from '../i18n/index.js';
 export const idOf = run => (run?.id == null ? '' : String(run.id));
 
 // The run a generic "Details" opens (never a switch of a panel already open: the caller keeps its id).
@@ -31,6 +32,6 @@ export function pickRun(data, selected) {
 export function queueWords(run, {running = null, queued = []} = {}, nameOf = kind => kind) {
   if (!run?.waiting) return {waiting: '', place: ''};
   const before = run.place > 1 ? queued[run.place - 2] : running;
-  return {waiting: before ? `Waiting for ${nameOf(before.kind)} to finish` : 'Waiting to start',
-    place: queued.length > 1 ? `${run.place} of ${queued.length} in the queue` : ''};
+  return {waiting: before ? t('helperState.waitingTaskFinish', {task: nameOf(before.kind)}) : t('helperState.waitingStart'),
+    place: queued.length > 1 ? t('helperState.queuePosition', {index: run.place, total: queued.length}) : ''};
 }

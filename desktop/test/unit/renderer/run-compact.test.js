@@ -2,6 +2,7 @@
 // show such a detailed card report"): every kind, queued or finished, is the same one-line banner (renderer/run-compact.js, pages/run-banner.js), and the
 // Actions page never draws a run's detailed card. The detailed version is the run panel (test/unit/renderer/run-view.test.js).
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {compactRun, NEXT, NO_NEXT} from '../../../renderer/run-compact.js';
@@ -54,7 +55,7 @@ test('a finished run with nothing saved says No result, never Completed · done 
   assert.equal(model.next, null, 'Read again and the log are in its run panel (View details)');
   assert.deepEqual(compactRun({kind: 'search', ok: true, new: 0}, {name: 'Find jobs'}).pill, ['Completed', 'good'], 'a count of 0 is a result');
   // One rule for every place a run is drawn: the pill (runPill) and the row's line (activity-basics.js outcome) say it, so the drawer header, Recent runs and Runs agree.
-  assert.match(read('run-status.js'), /return unsavedRun\(run\) \? \['No result', 'neutral'\] : \['Completed', 'good'\];/);
+  assert.match(read('run-status.js'), /return unsavedRun\(run\) \? \[t\('helperState\.noResult'\), 'neutral'\] : \[t\('helpers\.completed'\), 'good'\];/);
   assert.match(read('pages/activity-basics.js'), /if \(unsavedRun\(run\)\) return 'its result was not saved';/);
   assert.match(read('pages/activity-result-bottom.js'), /unsavedRun\(run\);\n\s+if \(unsaved\) renderNoResult\(/, 'its run panel offers Read again and the log');
 });

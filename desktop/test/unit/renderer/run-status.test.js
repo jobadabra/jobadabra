@@ -1,5 +1,6 @@
 // One word for how a run ended, the same on the Actions page and in Recent activity (2 Oct 2026, found by the activity e2e suite: the panel said "Completed with
 // warnings" and "Failed" while the Actions page said plain "Completed" for a run with warnings).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {barState, doneTitle, failedOutcome, failureHead, phaseStatus, runStatus, runWarned} from '../../../renderer/run-status.js';
@@ -87,4 +88,18 @@ test('a failed run never reads like a success: it says it had problems first, an
   assert.equal(failedOutcome({ok: true, result: '1 new job'}), null, 'a run that worked is unchanged');
   assert.equal(failedOutcome({ok: true, warned: true, result: '1 new job'}), null, 'a warned run too: its pill says it');
   assert.equal(failedOutcome({ok: false, live: true, result: 'x'}), null, 'still running');
+});
+
+test('localized run statuses retain tones and warning decisions', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {runPill} = await import('../../../renderer/run-status.js');
+  try {
+    setLocale('de');
+    assert.deepEqual(runStatus({live: true}, false), ['Läuft', 'info', {dot: true}]);
+    assert.deepEqual(runPill({ok: true, warned: true, result: 'Original provider result'}, {long: true}), ['Mit Warnungen abgeschlossen', 'warn']);
+    assert.match(doneTitle('Original task', {ok: false}), /Original task/);
+    const failed = failureHead({ok: false, problem: 'Original provider error'}, 'Original task');
+    assert.equal(failed.problem, 'Original provider error');
+    assert.equal(failed.summary, 'Original provider error.');
+  } finally { setLocale('en'); }
 });

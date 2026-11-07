@@ -2,6 +2,7 @@
 // consistent across runs"; "It should not contradict, confuse or overwhelm"): the top, the step rows and the kind's own bottom are one frame, the top's tone is
 // the pill's, its number and next step are the app's own words, and nothing is said twice.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {cleanTop, CLEAN_TOP, liveTop, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../../../renderer/run-result-card.js';
@@ -117,4 +118,12 @@ test('every kind loads the same way: one running top with its step in words and 
   assert.match(top, /show\(\$\('activity-warnings'\), problem \|\| !!clean \|\| !!live\);/);
   assert.match(html, /id="activity-warnings-progress" hidden><div class="progress-head"><span id="activity-warnings-count"><\/span><\/div><div class="bar"><span><\/span><\/div>/);
   assert.match(css, /\.bar\.is-sliding span \{ position: absolute; width: 35%; animation: bar-slide/, 'the sliding bar is the shared one (the Jobs card\'s too)');
+});
+
+test('localized no-result labels do not turn an unsaved run into a success card', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    assert.equal(cleanTop({ok: true, kind: 'mail'}, {kind: 'mail', asks: 2}), null);
+  } finally { setLocale('en'); }
 });
