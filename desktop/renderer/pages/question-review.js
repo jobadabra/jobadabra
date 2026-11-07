@@ -198,6 +198,7 @@ async function answer(q, value) {
   if (!result?.ok) { state.error = result?.error || t('pagesAuditThird.a151'); draw(); return; }
   drafts.delete(q.key);
   keepDrafts();
+  document.dispatchEvent(new Event('question-answered'));   // the answer may have gone to a Your details line: that page reads its lines again (details-facts.js)
   state.saved = value ? t('pagesDynamicProfileReady.m307', {"value1": result.homeName || t('pagesCommon.learned')}) : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }

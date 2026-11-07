@@ -11,7 +11,7 @@ import {asksQuestion} from './label-shape.js';
 import {looksLikeFieldId} from '../renderer/question-filter.js';
 import {noteFields} from './question-formats.js';
 import {formatOfField, splitMark, withMark} from '../renderer/question-kind.js';
-import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
+import {HOME_NAMES, factHomeOf, homeOf, writeHome} from './answer-home.js';
 import * as verdicts from './question-verdicts.js';
 
 export const NO_ANSWER = 'no answer in the kit, Profile or your details';
@@ -162,8 +162,8 @@ export async function answer(storage, questionKey, value, fetcher, mark = null, 
   const block = open ? null : (await page.blocks()).find(b => b.id === questionKey);
   if (!open && (!block || !block.text.includes('❓'))) return {ok: false, error: 'Already answered'};
   const question = open ? unmarked(splitMark(open.cells[0]).text.replace(/❓/g, '')) : parseLine(block).question;
-  const home = value ? (chosen || await homeOf(question, value, ai)) : '';   // chosen: a place the caller decided (lib/question-answer.js), no AI call
-  if (home && await writeHome(storage, home, question, value, fetcher)) {
+  const home = value ? (chosen || await homeOf(question, value, ai, mark)) : '';   // chosen: a place the caller decided (lib/question-answer.js), no AI call
+  if (home && await writeHome(storage, home, question, value, fetcher, undefined, factHomeOf(question, mark) ? mark.kind : '')) {   // a fact's own control keeps its kind mark on the line (Notice period [duration])
     await page.remove(open ? {id: open.row.id, text: open.cells[0]} : block);
     return {ok: true, home, homeName: HOME_NAMES[home]};
   }

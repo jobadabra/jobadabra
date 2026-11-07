@@ -37,3 +37,19 @@ test('no place and no AI: the answer stays on the answers page as today, nothing
   assert.match(await store.openStore(storage).page('answers').text(), /How did you hear about us\?: LinkedIn/);
   assert.deepEqual((await sections.read(storage)).availability || [], []);
 });
+
+// #3515 (pb, 7 Nov 2026; AI persona run 42397491150): "Notice period" answered in What we learned with no AI never reached Availability & compensation, whose subtitle promises it.
+test('no place and no AI: a question that is the very label of a Your details fact is saved on that fact\'s line', async () => {
+  const storage = await fresh();
+  const done = await answerKey(storage, await keyOf(storage, 'Notice period'), '1 month', {mark: {kind: 'duration', options: []}});
+  assert.equal(done.ok, true);
+  assert.deepEqual((await sections.read(storage)).availability, [{label: 'Notice period', value: '1 month', kind: 'duration'}], 'Availability & compensation holds the answer');
+  assert.doesNotMatch(await store.openStore(storage).page('answers').text(), /Notice period/, 'the open question left the answers page');
+});
+
+test('the same question answered in a text box with no AI stays on the answers page: a sentence may be prose, which never moves', async () => {
+  const storage = await fresh();
+  assert.deepEqual(await answerKey(storage, await keyOf(storage, 'Notice period'), 'One month, I can start after accepting an offer.', {mark: {kind: 'text', options: []}}), {ok: true});
+  assert.deepEqual((await sections.read(storage)).availability || [], []);
+  assert.match(await store.openStore(storage).page('answers').text(), /Notice period: One month/);
+});
