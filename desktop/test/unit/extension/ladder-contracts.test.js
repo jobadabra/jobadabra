@@ -154,8 +154,6 @@ const DIGEST_REPLIES = {
   'press on an email': dig('form', 'press', [2]),
   'press with two numbers': dig('form', 'press', [4, 5]),
   'press with an outcome that is not form or link': dig('expired', 'press', [4]),
-  'open on a button': dig('link', 'open', [4]),
-  'open on a link without a host': dig('link', 'open', [7]),
   'an email outcome without an email candidate': dig('email', 'tell_person', [6]),
   'a phone outcome on a sentence': dig('phone', 'tell_person', [6]),
   'an outcome without any candidate': dig('email', 'tell_person', []),
@@ -186,7 +184,7 @@ function assertDigest(got, label) {
   for (const item of got.chosen) assert.deepEqual(item, KIND_OF.get(item.n), `${label}: a chosen candidate is exactly the page's own`);
   assert.ok(got.confidence >= 0 && got.confidence <= 1, `${label}: confidence ${got.confidence}`);
   if (got.verb === 'press') assert.ok(got.numbers.length === 1 && ['button', 'link'].includes(got.chosen[0].kind) && ['form', 'link'].includes(got.outcome), `${label}: press only a button or link`);
-  if (got.verb === 'open') assert.ok(got.numbers.length === 1 && got.chosen[0].kind === 'link' && got.chosen[0].host, `${label}: open only a link with a host`);
+  if (got.verb === 'open') assert.ok(got.numbers.length === 1 && ['button', 'link'].includes(got.chosen[0].kind), `${label}: open only a button or link (the same press as press, #3425)`);
   if (got.verb === 'tell_person') assert.ok(got.numbers.length >= 1, `${label}: tell_person quotes something`);
   if (got.verb === 'none') assert.deepEqual(got.numbers, [], `${label}: none names nothing`);
   if (['email', 'phone'].includes(got.outcome) && !got.dropped) assert.ok(got.chosen.some(item => item.kind === got.outcome), `${label}: ${got.outcome} stands on a candidate of that kind`);
