@@ -51,6 +51,15 @@ jobs:
           # Why (4 Nov 2026, #3095): '' is falsy in a GitHub expression, so "&& '' ||" always gave the title and a bot's PR went red on the session tag. The PR's author, not the actor: a person may edit a bot's PR.
           PR_TITLE: ${{ github.event.pull_request.user.type != 'Bot' && github.event.pull_request.title || '' }}   # the "[xx] " session tag (a bot's PR has none)
         run: printf '%s' "$BODY" | python3 tools/pr-body-check.py
+      # Why (7 Nov 2026, owner: "we overwrite one another and we never get it right"): a PR that changes or removes a past fix of the press's ledger
+      # (tests/unit/press/ledger.py) carries the owner's words for it, `Ledger-change: L<nn> "<words>"`; adding a fix needs nothing.
+      - name: Fix ledger kept
+        if: ${{ !cancelled() }}
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          git fetch -q origin main
+          printf '%s' "$BODY" | python3 tools/press-ledger-check.py --base origin/main
       # The open PR is the claim on the applying flow's files (tools/flow-fresh.mjs): red when main changed, since this PR's base, a flow file it also changes.
       # tools/ship.sh rebases and pushes again by itself on this failure (it finds this step's name: keep it in tools/ship-pr.sh).
       - name: Core flow files up to date with main

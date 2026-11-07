@@ -92,7 +92,7 @@ The gi coordinator holds read-order PRs until PR 4 merges; a fix that cannot wai
 
 ## Progress
 - [x] Sketch + owner's yes (7 Nov 2026: "Yes, build it (Recommended)"; order "Ledger, yardstick, then moves (Recommended)"; "Yes, record the 18 (Recommended)"; a drop below the band "Waits for your yes (Recommended)")
-- [ ] 1/6 The fix ledger on today's code, all green, with its append-only guard
+- [x] 1/6 The fix ledger on today's code, all green, with its append-only guard (proof: tests/unit/press/test_ledger.py)
 - [ ] 2/6 Yardstick: exhaustive recordings of the 18, per-item AI replay, PR vs main job, noise band
 - [ ] 3/6 Budget table: every clock number to `budget.json` (Python and app), values unchanged, guard
 - [ ] 4/6 Press module: `clock.py` + `stages.py`, stages take the clock, pure moves one stage group at a time
