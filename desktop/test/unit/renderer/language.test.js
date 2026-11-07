@@ -26,8 +26,9 @@ test('a successful write precedes reload and a failed write never reloads', asyn
   assert.equal(failed.ok, false); assert.equal(failed.reason, 'save'); assert.deepEqual(calls, ['de', 'reload']);
 });
 
-test('a language dropdown is placed on Welcome and in Overview without a new step or card', async () => {
+test('Welcome has a full-row flagged language card below its hero, without an extra wizard step', async () => {
   const body = install({realNodeLists: true});
+  const {document} = globalThis;
   const wizard = document.createElement('section'); wizard.id = 'wizard';
   const steps = document.createElement('ol'); steps.id = 'step-list';
   const welcomeItem = document.createElement('li'); welcomeItem.dataset.step = 'welcome'; steps.append(welcomeItem);
@@ -41,9 +42,14 @@ test('a language dropdown is placed on Welcome and in Overview without a new ste
   assert.equal(steps.children[0].dataset.step, 'welcome');
   assert.equal(stepBody.children.length, 1);
   assert.equal(document.getElementById('wizard-language'), null);
-  assert.ok(magic.contains(document.getElementById('wizard-language-choice')));
+  const languageCard = document.getElementById('welcome-language');
+  assert.equal(languageCard.parentNode, magic.parentNode);
+  assert.equal(welcome.children[welcome.children.indexOf(magic) + 1], languageCard);
+  assert.ok(languageCard.contains(document.getElementById('wizard-language-choice')));
   assert.equal(document.getElementById('wizard-language-choice').value, 'en');
   assert.equal(document.getElementById('wizard-language-choice').options.length, 8);
+  assert.ok(document.getElementById('wizard-language-choice').options.find(option => option.value === 'de').textContent.includes('🇩🇪'));
+  assert.ok(document.getElementById('wizard-language-choice').options.find(option => option.value === 'ru').textContent.includes('🇷🇺'));
   assert.ok(overview.contains(document.getElementById('settings-language')));
   assert.equal(document.getElementById('wizard-language-continue'), null);
   init({choice: 'en', locale: 'en'}, {});

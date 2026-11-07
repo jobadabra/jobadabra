@@ -7,6 +7,7 @@ import {translate} from '../../../renderer/i18n-dom.js';
 
 test('only marked text and attributes change, including the root itself', () => {
   const body = install({realNodeLists: true});
+  const {document} = globalThis;
   registerMessages('de', 'dom', {label: 'Sprache', hint: 'Sprache wählen'}); setLocale('de');
   const button = document.createElement('button'), icon = document.createElement('i'), text = document.createElement('span');
   text.setAttribute('data-i18n', 'dom.label'); text.dataset.i18n = 'dom.label'; text.textContent = 'Language';

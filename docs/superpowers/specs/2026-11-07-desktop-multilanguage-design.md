@@ -1,6 +1,6 @@
 # Desktop multi-language
 
-Status: approved by the owner on 7 November 2026. Latest UX clarification: start in English; optional dropdown on Welcome; no additional wizard step or card; later switch in Settings → Overview. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. This phase covers the desktop app only.
+Status: approved by the owner on 7 November 2026. Latest UX clarification: start in English; flagged dropdown in a full-row card directly below the Welcome card; no additional wizard step; later switch in Settings → Overview. Source: https://trello.com/c/FYPQEB0i and the owner's 7 November request. This phase covers the desktop app only.
 
 ## Intent
 
@@ -24,7 +24,7 @@ The worker's design review identified packaging inclusion, HTML ownership, early
 
 ## Goals and completion criteria
 
-1. All seven languages are available through an optional dropdown on the existing Welcome screen and in Settings → Overview, identified by their native names. No extra wizard step or card is added.
+1. All seven languages are available through a flagged dropdown in a full-row card directly below the existing Welcome card and in Settings → Overview, identified by their native names. No extra wizard step is added.
 2. A fresh install starts in English. The person can switch using the Welcome dropdown; an optional System default choice resolves the operating system’s supported preference with English fallback. A saved explicit choice wins. Regional tags such as de-CH resolve to a supported base language.
 3. The choice survives app restarts. Language switching respects the existing unsaved-change protection; it must not silently discard a Profile or Strategy draft.
 4. App-owned desktop chrome is translated: setup, navigation, every page and drawer, ordinary dialogs, command palette, labels, statuses, empty/loading/error messages, placeholders, tooltips, accessibility names, and app-authored native menu/dialog/notification text.
@@ -65,7 +65,7 @@ Use `desktop/i18n/` for a dependency-free module and catalog namespaces usable b
 
 Add a small renderer bootstrap module: resolve and set the display locale, then dynamically import app.js. This happens before importing page modules, so their module-level messages cannot capture an uninitialized default. Reload after a successful language change rather than maintaining a second runtime repaint lifecycle. Save a validated display preference using the existing local display-settings path. A narrow IPC handler exposes locale information and validates selection against the seven supported languages; no profile or Notion migration is needed.
 
-Add an existing-style select menu to Settings → Overview and a compact dropdown near the top of the existing Welcome screen. Keep the four existing wizard steps and the current Start action. The dropdown sits above the Welcome button overlay so it remains clickable. Include System default and the seven native language names. Expose the action through the existing command palette. Set the document's `lang` attribute.
+Add an existing-style select menu to Settings → Overview and a full-row language card directly below the existing Welcome card, with flags and native language names in its dropdown. Keep the four existing wizard steps and the current Start action. The language card is a sibling of the Welcome card, outside its full-card Start button overlay. Include System default and the seven native language names. Expose the action through the existing command palette. Set the document's `lang` attribute.
 
 A switch checks the existing save-bar anyUnsaved() registry first. When edits exist, keep both the saved and active language unchanged, restore the selector, and ask the person to save or discard their edits using the existing save bar. Do not auto-discard drafts. With no drafts, persist the validated choice; only on success update native locale and reload the renderer. Explain beside the selector that changing language reloads the view. A failed write retains the prior selection. The existing beforeunload guard stays in place. Running background jobs stay in the main process and are not restarted by a renderer reload.
 
