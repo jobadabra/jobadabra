@@ -8,8 +8,7 @@ import {probeWindow} from './window-probe.js';
 for (const locale of ['de', 'ru']) test(`${locale} pages render localized session counts and accessible labels`, needsElectron, () => {
   const seen = probeWindow({settings: {displayLanguage: locale}, script: async kit => {
     await kit.until(() => document.getElementById('nav-sessions-text').textContent.includes('2'), 'the demo sessions to load');
-    const pages = {};
-    for (const name of ['jobs', 'focus', 'actions', 'strategy', 'employers', 'settings']) {
+    const open = async name => {
       document.querySelector(`.nav[data-view="${name}"]:not([data-settings])`).click();
       await kit.until(() => document.querySelector(`.view[data-view="${name}"]:not([hidden])`), `the ${name} page`);
       if (name === 'strategy') {
@@ -18,21 +17,30 @@ for (const locale of ['de', 'ru']) test(`${locale} pages render localized sessio
         await kit.until(() => document.getElementById('strategy-tune')?.textContent.includes('2'), 'the tuning summary');
       }
       if (name === 'employers') await kit.until(() => document.getElementById('emp-rows').textContent.includes('Bluefin'), 'the employer rows');
+    };
+    const only = (name, wanted, read) => (name === wanted ? read() : '');
+    const edges = name => {
       const headings = name === 'jobs' ? [...document.querySelectorAll('#jobs-head > span')] : [];
+      if (!headings.length) return {fitEdge: 0, roleEdge: 0};
       const range = document.createRange();
-      if (headings.length) range.selectNodeContents(headings[0]);
-      pages[name] = {
-        heading: document.querySelector(`.view[data-view="${name}"] h1`).textContent,
-        session: document.getElementById('nav-sessions-text').textContent,
-        accessible: document.getElementById('nav-applying-badge').title,
-        suggestions: name === 'strategy' ? document.getElementById('strategy-improve').textContent : '',
-        tune: name === 'strategy' ? document.getElementById('strategy-tune').textContent : '',
-        employers: name === 'employers' ? document.querySelector('.view[data-view="employers"]').innerText : '',
-        focus: name === 'focus' ? document.querySelector('.view[data-view="focus"]').innerText : '',
-        focusTitles: name === 'focus' ? [...document.querySelectorAll('.view[data-view="focus"] [title]')].map(node => node.title).join('\n') : '',
-        fitEdge: headings.length ? range.getBoundingClientRect().right : 0,
-        roleEdge: headings.length ? headings[1].getBoundingClientRect().left : 0,
-      };
+      range.selectNodeContents(headings[0]);
+      return {fitEdge: range.getBoundingClientRect().right, roleEdge: headings[1].getBoundingClientRect().left};
+    };
+    const snapshot = name => ({
+      heading: document.querySelector(`.view[data-view="${name}"] h1`).textContent,
+      session: document.getElementById('nav-sessions-text').textContent,
+      accessible: document.getElementById('nav-applying-badge').title,
+      suggestions: only(name, 'strategy', () => document.getElementById('strategy-improve').textContent),
+      tune: only(name, 'strategy', () => document.getElementById('strategy-tune').textContent),
+      employers: only(name, 'employers', () => document.querySelector('.view[data-view="employers"]').innerText),
+      focus: only(name, 'focus', () => document.querySelector('.view[data-view="focus"]').innerText),
+      focusTitles: only(name, 'focus', () => [...document.querySelectorAll('.view[data-view="focus"] [title]')].map(node => node.title).join('\n')),
+      ...edges(name),
+    });
+    const pages = {};
+    for (const name of ['jobs', 'focus', 'actions', 'strategy', 'employers', 'settings']) {
+      await open(name);
+      pages[name] = snapshot(name);
     }
     document.querySelector('[data-settings-go="notifications"]').click();
     await kit.until(() => document.querySelectorAll('#mail-rows .switch-row').length >= 4, 'the notification rows');
