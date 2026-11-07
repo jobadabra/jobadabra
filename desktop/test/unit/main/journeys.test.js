@@ -49,6 +49,18 @@ function journeyOf(id = 'f1') {
   return {flow, card, id};
 }
 
+test('scenario: Apply keeps the captured ineligible opt-in from drafting through a hidden-browser queue item', async () => {
+  let settings = {apply: {allowIneligible: true}};
+  const storage = {settings: () => settings};
+  const job = {code: 'fixture-job', url: 'https://jobs.example.test/ineligible', status: 'saved', stage: 'Kit ready', fit: 90, ineligible: 'needs a work permit'};
+  const queued = [];
+  const result = await apply.start(storage, {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
+    async () => { job.kit = true; settings = {apply: {allowIneligible: false}}; return {ok: true}; }, undefined,
+    {enqueue: async (jobs, mode, eligibility) => { queued.push({jobs, mode, eligibility}); return {ok: true}; }});
+  assert.equal(result.ok, true);
+  assert.deepEqual(queued.map(item => [item.mode, item.eligibility.allowIneligible, item.jobs[0].url]), [['fill', true, job.url]]);
+});
+
 test('scenario: posting -> sign-in page -> a "no form" from the posting tab left behind: the card stays at the account step (10 Oct 2026)', () => {
   const {flow, card} = journeyOf();
   flow.reported({id: 'f1', url: SIGNIN, total: 1, left: 1, account: true});

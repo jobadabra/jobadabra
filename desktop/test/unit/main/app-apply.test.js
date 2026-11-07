@@ -112,17 +112,18 @@ test('a background batch keeps mixed eligibility and preparation failures beside
   ]);
 });
 
-test('the opt-in reaches missing-kit drafting and the post-draft batch reread', async () => {
+test('the opt-in stays consistent through missing-kit drafting, reread and background enqueue', async () => {
   const storage = tempStorage();
   storage.saveSettings({apply: {allowIneligible: true}});
   const job = {code: 'not-eligible', url: 'https://jobs.example.test/ineligible', status: 'saved', stage: 'Kit ready', fit: 90, ineligible: 'needs a work permit'};
-  const queued = [], prepared = [];
+  const queued = [], prepared = [], policies = [];
   const result = await apply.start(storage, {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
-    async code => { prepared.push(code); job.kit = true; return {ok: true}; }, undefined,
-    {enqueue: async chosen => { queued.push(...chosen); return {ok: true}; }});
+    async code => { prepared.push(code); job.kit = true; storage.saveSettings({apply: {allowIneligible: false}}); return {ok: true}; }, undefined,
+    {enqueue: async (chosen, mode, policy) => { queued.push(...chosen); policies.push([mode, policy]); return {ok: true}; }});
   assert.equal(result.ok, true);
   assert.deepEqual(prepared, ['not-eligible']);
   assert.deepEqual(queued.map(item => item.url), [job.url]);
+  assert.deepEqual(policies, [['fill', {allowIneligible: true}]], 'enqueue uses the same normalized setting captured before drafting');
 });
 
 test('missing kits are picked saved first, then by fit, open jobs only', () => {
@@ -218,6 +219,8 @@ test('the next jobs with a kit come from apply_batch --next, links only', async 
   let args;
   await apply.nextWithKits({settings: () => ({apply: {allowIneligible: true}})}, 2, async (_, seen) => { args = seen; return {code: 0, stdout: ''}; });
   assert.deepEqual(args, ['src.ai.apply_batch', '--next', '2', '--details', '--allow-ineligible']);
+  await apply.nextWithKits({settings: () => ({apply: {allowIneligible: true}})}, 2, async (_, seen) => { args = seen; return {code: 0, stdout: ''}; }, {allowIneligible: false});
+  assert.deepEqual(args, ['src.ai.apply_batch', '--next', '2', '--details'], 'a batch uses its captured setting even if Settings changes before its next read');
 });
 
 test('the kit check asks Notion through apply_batch --has-kit and says how to draft one when there is none', async () => {

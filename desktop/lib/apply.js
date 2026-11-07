@@ -23,6 +23,7 @@ import {expectTab} from './tab-expect.js';
 import * as review from './review.js';
 import {openFormTab} from './form-tab.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
+import {applyOf} from '../renderer/apply-settings-model.js';
 
 export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.js
 
@@ -240,8 +241,8 @@ export async function hasKit(storage, url, run = pipeline.run) {
 
 // The N best jobs with a kit that aren't started yet (Kit ready, or Saved with a kit), from Notion.
 // The best n jobs with a kit: their URLs, with the title and company of each (details) for its session card.
-export async function nextWithKits(storage, n, run = pipeline.run) {
-  const allowIneligible = storage.settings?.().apply?.allowIneligible === true;
+export async function nextWithKits(storage, n, run = pipeline.run, eligibility = applyOf(storage.settings?.())) {
+  const allowIneligible = eligibility.allowIneligible === true;
   // Why (2026-11-07, owner): the Claude batch uses the same saved opt-in as the JS pickers; Python receives it explicitly.
   const {code, stdout} = await run(storage, ['src.ai.apply_batch', '--next', String(n), '--details', ...(allowIneligible ? ['--allow-ineligible'] : [])]);
   // One JSON line per job (--details); a plain link line (an older pipeline) is read as a job without details.
@@ -290,7 +291,7 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 export async function start(storage, {n, mode, applyMode}, open = openBrowser, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
   // Why (2026-11-07, owner): one batch uses one saved eligibility choice across selection, drafting, and the reread after drafting.
-  const eligibility = {allowIneligible: storage.settings?.().apply?.allowIneligible === true};
+  const eligibility = {allowIneligible: applyOf(storage.settings()).allowIneligible};
   if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report, eligibility});
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n, eligibility);
@@ -303,9 +304,9 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n, eligibility); }
   }
   if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs, eligibility)), ...(outcomes.length ? {outcomes} : {})};
-  // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue outcomes join kit-preparation results for the dialog.
+  // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue carries this batch’s captured eligibility choice and its outcomes join kit-preparation results for the dialog.
   if (mode === 'background') {
-    const result = enqueue ? await enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
+    const result = enqueue ? await enqueue(chosen, applyMode, eligibility) : {ok: false, error: 'Background applying is not available in this version.'};
     const queued = result.outcomes || [], queuedUrls = new Set(queued.map(item => item.url));
     const combined = [...queued, ...outcomes.filter(item => !queuedUrls.has(item.url))];
     return combined.length ? {...result, outcomes: combined} : result;
@@ -336,15 +337,15 @@ function openBatchInChrome(chosen, drafted, {open, focus}) {
 async function startAgents(storage, n, {list, launch, next, prepare, report, eligibility}) {
   const ready = claudeReady(storage);
   if (!ready.ok) return ready;
-  let urls = await next(storage, n);
+  let urls = await next(storage, n, undefined, eligibility);
   let drafted = 0, why = '';
   if (urls.length < n && prepare) {
     const result = await draftMissing((await list(storage)).jobs, n - urls.length, prepare, report, eligibility);
     drafted = result.done;
     why = result.why;
-    if (drafted) urls = await next(storage, n);
+    if (drafted) urls = await next(storage, n, undefined, eligibility);
   }
-  if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs)};
+  if (!urls.length) return {ok: false, error: why || nothingStarted((await list(storage)).jobs, eligibility)};
   const here = launch === session.launch && await inApp(storage);
   (here ? session.launchInApp(storage, urls, {claude: claudeBinary(), open: openForm, details: urls.details || {}}) : launch(storage, urls, {claude: claudeBinary(), open: openForm})).catch(() => {});
   n = urls.length;
