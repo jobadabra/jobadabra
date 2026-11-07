@@ -31,16 +31,8 @@ Plan: `docs/superpowers/plans/<topic>.md` (or the spec holding the PR list)
 | ▶️ This PR | 11: <its name> |
 | ⏳ Left | 12–N: <the next 2-3 names>, … |
 
-**Design system (measured on <sha>)**
-<desktop window changes: from desktop/, `npm run design-check -- --screens <the screens you changed>` on the committed change prints this block (spacing, primary buttons, ghost buttons, cards, clipping, contrast at 640 and 1100 px, light and dark); paste it here. A ❌ is a violation main's render does not have: fix it. A PR that draws nothing says "No visible change: <why>" below and needs none>
-| Rule | <screen> 640 | <screen> 1100 |
-|---|---|---|
-| Spacing scale | ✅ | ✅ |
-| 1 primary / card | ✅ | ✅ |
-| No ghost button | ✅ | ✅ |
-| No card in card | ✅ | ✅ |
-| Nothing clipped | ✅ | ✅ |
-| Contrast AA (L/D) | ✅ | ✅ |
+**Design system (measured on <sha>)** ✅ all 6 rules pass on <N> screens
+<desktop window changes: from desktop/, `npm run design-check -- --screens <the screens you changed>` on the committed change prints this block (spacing, primary buttons, ghost buttons, cards, clipping, contrast at 640 and 1100 px, light and dark); paste it here as printed. All passing is this one line (plus a `vs main: ghost 40 → 31 ▼9` line when a rule's count moved); a failure is `⛔ N new problems` and a table of only the failing cells (rule, screen, count, what): a problem main's render does not have, fix it. A PR that draws nothing says "No visible change: <why>" below and needs none>
 
 <When a screen changed: every image in this table, one row per change; or: No screenshots: <why> (never for a site page: a change to web/public or admin html/css/js needs images of the changed section, live page vs your branch, or the line `No visible change: <why>` when it draws nothing; never shoot a page the change does not touch). A PR in the private site repo (jobadabra-web) hosts its images there: `node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=jobadabra/jobadabra-web`. Shoot a site page with `tools/site-run.sh node tools/page-shot.mjs --path /admin/<page> --width 1440,390 --seed <name> --clip '<the changed card or section>' --out <dir>` there (real Worker, demo data, refuses an unstyled page); the printed `github.com/<repo>/raw/<tag>/<file>` URLs render in a private repo, raw.githubusercontent.com ones do not.
 Caption = what changed and where to look (a few words); crop to the changed card and frame the change: `npm run shot -- <page> --select '<card>' --mark '<changed control>'` (same options for before and after). A new screen: "—" before, the reason in the caption.>

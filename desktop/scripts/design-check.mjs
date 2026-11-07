@@ -1,15 +1,15 @@
-// Measures the design system on the screens a PR changes and prints the PR's "Design system" table (owner, 7 Nov 2026, "Measured check (Recommended)"):
+// Measures the design system on the screens a PR changes and prints the PR's "Design system" report (one verdict line; a table only of what fails) (owner, 7 Nov 2026, "Measured check (Recommended)"):
 //   npm run design-check -- [--screens jobs,settings] [--widths 640,1100] [--base origin/main] [--parallel 4]
 // For each screen, width and theme it renders the HEAD and the merge-base of --base with shot.mjs (demo data), runs the rules of design-evaluator.mjs in the window and
-// marks ❌ only what the base render does not have (design-table.mjs). Exit 1 when a cell is ❌. Paste the table into the PR body; the commit it names must be the PR head.
-// Screens default to all eight (shared CSS reaches every one); name the screens the change touches to be faster. Committed work only: the table names the commit.
+// counts only what the base render does not have as new (design-table.mjs). Exit 1 on a new problem. Paste the block into the PR body; the commit it names must be the PR head.
+// Screens default to all eight (shared CSS reaches every one); name the screens the change touches to be faster. Committed work only: the report names the commit.
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {designEval} from './design-evaluator.mjs';
-import {renderTable} from './design-table.mjs';
+import {renderReport} from './design-table.mjs';
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repo = path.resolve(desktop, '..');
@@ -20,7 +20,7 @@ const screens = option('screens', 'focus,jobs,session,actions,strategy,interview
 const widths = option('widths', '640,1100').split(',').map(Number);   // Why (7 Nov 2026, owner: "Yes, 640 (Recommended)"): 640 is the app's real minimum window (lib/main-window.js MIN_WIDTH), 380 drew a 475 px window no person can have
 const parallel = Number(option('parallel', 4));
 
-if (git('status', '--porcelain', '--', 'desktop', 'extension', 'src')) { console.error('design-check: commit your changes first; the table names the commit it was measured on'); process.exit(2); }
+if (git('status', '--porcelain', '--', 'desktop', 'extension', 'src')) { console.error('design-check: commit your changes first; the report names the commit it was measured on'); process.exit(2); }
 const sha = git('rev-parse', '--short', 'HEAD');
 const baseCommit = git('merge-base', option('base', 'origin/main'), 'HEAD');
 
@@ -58,7 +58,6 @@ try { await Promise.all(Array.from({length: Math.min(parallel, jobs.length)}, wo
 catch (error) { console.error(`design-check: ${error.message}`); process.exit(2); }
 
 const order = run => jobs.findIndex(job => job.screen === run.screen && job.width === run.width && job.theme === run.theme);
-const {table, failed, baseline} = renderTable(runs.sort((a, b) => order(a) - order(b)), sha);
-console.log(table);
-console.log(`\nOn the base (${baseCommit.slice(0, 8)}), already there and allowed: ${Object.entries(baseline).map(([rule, {hits, distinct}]) => `${rule} ${hits} (${distinct})`).join(' · ')}`);
-if (failed) { console.error('design-check: ❌ new violation(s) against the base render; fix them, or say in the PR why the screen must break the rule'); process.exit(1); }
+const {report, failed} = renderReport(runs.sort((a, b) => order(a) - order(b)), sha);
+console.log(report);
+if (failed) { console.error('design-check: ⛔ new problem(s) against the base render; fix them, or say in the PR why the screen must break the rule'); process.exit(1); }
