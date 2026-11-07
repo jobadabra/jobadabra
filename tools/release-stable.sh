@@ -102,7 +102,7 @@ if [ "$was_beta" = true ]; then
     MESSAGE="⚠️ $tag is stable, but the run that tells the feedback reporters did not start. By hand: gh workflow run feedback-released.yml -R $repo --ref main -f tag=$tag" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'feedback-not-told', level: 'problem'}))" || echo "(alert not sent)" >&2
   fi
 fi
-# Both store publishes start on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
+# The Chrome Web Store publish starts on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
 # (SKIP_E2E, E2E_NO_START, ...) only skip the end-to-end gate, and only DRY_RUN stops before this point. A start that fails never undoes the promotion, but it is no longer one echoed line
 # in a green run. Why (31 Oct 2026, owner: "We should have this always, even if we go on the hot path"): the job ends red (exit 4 below), with an annotation and one Telegram alert.
 failed=(); by_hand=()
@@ -125,7 +125,7 @@ start_store() {   # <store name> <workflow file> <what it does>
   fi
 }
 start_store "Chrome Web Store" extension-store-publish.yml "publishing its extension (Extension · Chrome Web Store publish; the store reviews it, then Chrome updates every copy)"
-start_store "Microsoft Store" msix-store.yml "building and submitting its Windows package (Build · Windows Store package; Microsoft certifies it, then the Store updates every copy)"
+# The Microsoft Store is NOT started here: since 7 Nov 2026 it gets one stable a week (msix-store-weekly.yml, started by the Worker on Mondays; owner: "To release less often on Microsoft store").
 python3 "$here/sync_release_labels.py" || echo "(release labels not refreshed: run tools/sync_release_labels.py)"   # the list says STABLE / BETA / Build; best effort, never fails a promotion
 if [ "${#failed[@]}" -gt 0 ]; then
   names=$(printf '%s, ' "${failed[@]}"); names=${names%, }

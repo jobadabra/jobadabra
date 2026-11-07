@@ -15,9 +15,8 @@ class StorePublishOnStable(unittest.TestCase):
         script = (ROOT / 'tools' / 'release-stable.sh').read_text()
         promote = script.index('--prerelease=false --latest')
         self.assertLess(script.index('DRY_RUN'), promote, 'a dry run ends before it')
-        for flow in ('extension-store-publish.yml', 'msix-store.yml'):
-            with self.subTest(flow=flow):
-                self.assertGreater(script.index(f' {flow} "'), promote, 'started (start_store) after the release is stable')
+        self.assertGreater(script.index(' extension-store-publish.yml "'), promote, 'started (start_store) after the release is stable')
+        self.assertNotIn(' msix-store.yml "', script, 'the Microsoft Store is the weekly run (msix-store-weekly.yml), never a promotion (owner, 7 Nov 2026)')
 
     def test_a_store_publish_that_did_not_start_alerts_as_a_failure_not_as_the_stable_announcement(self):
         # Gitar on #3298: under 'stable-promoted' without a level, an owner who switched announcements off or set problems-only never heard it.
@@ -33,7 +32,7 @@ class StorePublishOnStable(unittest.TestCase):
         script = (ROOT / 'tools' / 'release-stable.sh').read_text()
         after = '\n'.join(line for line in script[script.index('--prerelease=false --latest'):].splitlines() if not line.lstrip().startswith('#'))   # code, not the comment that names the switches
         self.assertRegex(after, r'start_store "Chrome Web Store" extension-store-publish\.yml')
-        self.assertRegex(after, r'start_store "Microsoft Store" msix-store\.yml')
+        self.assertNotRegex(after, r'start_store "Microsoft Store"')
         self.assertNotRegex(after, r'SKIP_E2E|E2E_NO_START|E2E_ALREADY_GREEN|FRESH_E2E|DRY_RUN', 'a switch after the promotion could skip a store')
 
     def test_the_hot_path_promotes_through_release_stable_and_keeps_its_exit_status(self):
@@ -164,13 +163,14 @@ class MicrosoftStoreOnStable(unittest.TestCase):
 class StorePublishFailureReachesTheOwner(unittest.TestCase):
     """Owner, 2 Nov 2026: "I didn't get a telegram notification about that failure" … "so it was silent to me". Run 41463002482 (0.8.86, Chrome Web Store) failed after it
     started; only a refused start alerted. The class: every store workflow a promotion starts sends one message with its run when it fails."""
-    STORES = {'extension-store-publish.yml': ('Chrome Web Store', {'publish'}), 'msix-store.yml': ('Microsoft Store', {'msix', 'submit'})}
+    STORES = {'extension-store-publish.yml': ('Chrome Web Store', {'publish'})}
+    WEEKLY = {'msix-store.yml': ('Microsoft Store', {'msix', 'submit'})}   # started by msix-store-weekly.yml since 7 Nov 2026, not by release-stable.sh
 
     def test_every_store_workflow_tells_the_owner_when_its_publish_fails(self):
         script = (ROOT / 'tools' / 'release-stable.sh').read_text()
         started = set(re.findall(r'start_store "[^"]+" ([\w-]+\.yml)', script))
         self.assertEqual(started, set(self.STORES), 'positive control: the stores release-stable.sh starts are the ones checked here')
-        for name, (store, jobs) in self.STORES.items():
+        for name, (store, jobs) in {**self.STORES, **self.WEEKLY}.items():
             flow = (WORKFLOWS / name).read_text()
             with self.subTest(workflow=name):
                 alert = flow[flow.index('\n  alert:'):]
@@ -186,7 +186,7 @@ class StorePublishFailureReachesTheOwner(unittest.TestCase):
 
 class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
     """Owner, 5 Nov 2026: "when Microsoft accepts a new release version, I'd like to get a message on telegram". Certification takes hours to days and no job waits that long: the submit job
-    leaves a tag, and an hourly check (started by the Worker) tells the owner and sends the newest stable on. Behaviour: desktop/test/tooling/release/msix-store-watch.test.js."""
+    leaves a tag, and an hourly check (started by the Worker) tells the owner (it no longer sends the newest stable on: the weekly run does, 7 Nov 2026). Behaviour: desktop/test/tooling/release/msix-store-watch.test.js."""
     SUBMIT = (WORKFLOWS / 'msix-store.yml').read_text()
     WATCH = (WORKFLOWS / 'msix-store-watch.yml').read_text()
 
@@ -199,7 +199,8 @@ class MicrosoftStoreAcceptanceReachesTheOwner(unittest.TestCase):
 
     def test_the_watch_reads_partner_center_only_when_a_version_waits_and_never_submits(self):
         self.assertIn('needs.pending.outputs.version', self.WATCH.split('\n  check:')[1].split('steps:')[0], 'the Windows job runs only for a pending version')
-        self.assertNotIn('msstore publish', self.WATCH, 'the watch never submits; a newer stable is started as msix-store.yml')
+        self.assertNotIn('msstore publish', self.WATCH, 'the watch never submits')
+        self.assertNotIn('actions: write', self.WATCH, 'nor starts a submission: the weekly run is the one that does (owner, 7 Nov 2026)')
         self.assertRegex(self.WATCH.split('\n  check:')[1], r'runs-on: windows-', 'msstore keeps its secret in the OS keyring')
         tell = self.WATCH[self.WATCH.index('\n  tell:'):]
         self.assertIn('!inputs.look_only', tell.split('steps:')[0], 'the read-only look never messages, claims or starts anything')
@@ -273,3 +274,22 @@ class PromotionByHandRunsInGitHub(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MicrosoftStoreGetsOneVersionAWeek(unittest.TestCase):
+    """Owner, 7 Nov 2026: "To release less often on Microsoft store" · "Weekly, a fixed day". The Worker starts msix-store-weekly.yml on Mondays; it picks the tag
+    (desktop/test/tooling/release/msix-store-weekly.test.js) and starts msix-store.yml, the one submit path. Neither a promotion nor the watcher starts a submission."""
+    def test_the_weekly_run_starts_msix_store_and_the_worker_starts_the_weekly_run(self):
+        weekly = (WORKFLOWS / 'msix-store-weekly.yml').read_text()
+        self.assertIn('node tools/msix-store-weekly.mjs', weekly)
+        self.assertIn('actions: write', weekly, 'it starts msix-store.yml')
+        self.assertIn("actions/workflows/msix-store.yml/dispatches", (ROOT / 'tools' / 'msix-store-weekly.mjs').read_text())
+        self.assertIn("workflow: 'msix-store-weekly.yml'", (ROOT / 'app-core' / 'src' / 'scheduler.js').read_text(), 'GitHub cron barely fires; the Worker starts it')
+        self.assertNotIn('schedule:', weekly, 'one start path, the Worker')
+
+    def test_nothing_else_starts_a_store_submission(self):
+        for path in (*WORKFLOWS.glob('*.yml'), ROOT / 'tools' / 'release-stable.sh', ROOT / 'tools' / 'msix-store-watch.mjs'):
+            if path.name in ('msix-store.yml', 'msix-store-weekly.yml'):
+                continue
+            code = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith(('#', '//')) and 'by hand' not in line.lower() and 'Once ' not in line)   # code, not the hand-start hints told to the owner
+            self.assertNotRegex(code, r'workflow run msix-store\.yml|workflows/msix-store\.yml/dispatches|start_store "Microsoft', f'{path.name} starts a Store submission')

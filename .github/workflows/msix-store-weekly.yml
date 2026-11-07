@@ -1,0 +1,63 @@
+name: Release · Weekly Microsoft Store submission
+run-name: 'Microsoft Store · weekly submission'
+
+# One Microsoft Store submission a week, on Monday: the newest stable that has been out a day with no red run on its commit (tools/msix-store-weekly.mjs), started as msix-store.yml, the one submit path.
+# Why (7 Nov 2026, owner: "To release less often on Microsoft store" · "And guide our users if they want more frequent updates, to download the exe"; chosen: "Weekly, a fixed day"): Microsoft took 5 days over
+# 0.8.86 while ~15 stables were skipped behind it. Started by the Worker (app-core/src/scheduler.js, Mondays 07:00 UTC) because GitHub's own cron barely fires; by hand: gh workflow run msix-store-weekly.yml --ref main
+# (dry_run prints the pick and starts nothing). A week with nothing to send ends green and says why.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the pick and start nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msix-store-weekly
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    name: Pick this week's stable and start its Store submission
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write   # start msix-store.yml for the pick
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/msix-store-weekly.mjs
+            tools/msix-store-watch.mjs
+            desktop/e2e
+      - name: The pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: node tools/msix-store-weekly.mjs
+
+  # A pick that fails to start tells the owner, like the other store workflows (desktop/e2e/ci-alert.mjs); a week with nothing to send is green and silent.
+  alert:
+    name: Tell the owner the weekly Store submission failed
+    needs: weekly
+    if: ${{ failure() && !inputs.dry_run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: desktop/e2e
+      - name: One message to the CI alerts chat
+        env:
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        run: |
+          message="⚠️ This week's Microsoft Store submission did not start."$'\n'"Run: $RUN"$'\n'"By hand: gh workflow run msix-store-weekly.yml -R $GITHUB_REPOSITORY --ref main"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'msstore-status'}))"

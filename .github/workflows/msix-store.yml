@@ -3,7 +3,7 @@ name: Build · Windows Store package (MSIX)
 # Builds the unsigned .msix the Microsoft Store takes, and on a stable release submits it (owner, 26 Oct 2026: "Automate", stable only).
 # Why (owner, 25 Oct 2026: "Let's start this", Microsoft Store listing for Jobadabra): the Store re-signs the package with Microsoft's own
 # certificate, so installs from it never show SmartScreen; since #2134 the Store copy updates only from the Store, so each stable must reach it.
-# Started by tools/release-stable.sh with the tag once the release is stable; by hand: gh workflow run msix-store.yml --ref main -f tag=desktop-vX.Y.Z,
+# Started once a week by msix-store-weekly.yml with the tag it picked (Mondays; since 7 Nov 2026 not on every stable, tools/release-stable.sh no longer starts it); by hand: gh workflow run msix-store.yml --ref main -f tag=desktop-vX.Y.Z,
 # or -f version=X.Y.Z for a package only (the owner uploads it in Partner Center). The identity values are the owner's Partner Center product identity
 # (public, not secrets). The spike (msix-spike.yml, run 40140735592) proved this package type installs and starts; the logos are in desktop/build/appx/.
 # Submitting needs the owner's Entra app (Partner Center → User management → Microsoft Entra applications, Manager role): secrets MS_STORE_TENANT_ID,
@@ -135,7 +135,7 @@ jobs:
           status=$(msstore submission status 9NW1JJ7Z90MP 2>&1 || true)
           echo "$status" | tail -5
           if echo "$status" | grep -qE 'CommitStarted|PreProcessing|Certification|Release|PendingPublication|Publishing' && ! echo "$status" | grep -qE 'Failed'; then
-            echo "::notice::A submission is still in Microsoft's review: ${{ needs.msix.outputs.version }} goes with the next stable release."
+            echo "::notice::A submission is still in Microsoft's review: ${{ needs.msix.outputs.version }} waits: the weekly run sends the next one."
             echo "busy=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.connected.outputs.ready == 'true' && steps.inflight.outputs.busy != 'true'

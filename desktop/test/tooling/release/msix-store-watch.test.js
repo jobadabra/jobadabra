@@ -1,5 +1,5 @@
 // Guard: release — without it a Store version Microsoft accepted is announced twice or never, or a refused version is submitted again by itself (tools/msix-store-watch.mjs; owner, 5 Nov 2026).
-// Owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram", then "Auto-send newest". GitHub tags, the stable list, msstore's text and Telegram are fakes.
+// Owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram", (5 Nov 2026). Since 7 Nov 2026 (owner: "Weekly, a fixed day") the watcher only reports; the weekly run submits. GitHub tags, msstore's text and Telegram are fakes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {broken, compareVersions, decide, github, recovered, messageOf, reasonOf, tell} from '../../../../tools/msix-store-watch.mjs';
@@ -23,55 +23,46 @@ test('a refusal carries Microsoft\'s reason in words, and says so plainly when t
   assert.match(reasonOf('no json here', 'CertificationFailed'), /gave no reason.*CertificationFailed.*Partner Center/);
 });
 
-// A fake repo: its tags, its stable releases, the dispatches made, and Telegram (`down` = it refuses).
-function world({submitted = ['0.8.86'], announced = [], followed = [], autosent = [], stables = ['0.8.86', '0.9.6', '0.9.4'], down = false, dispatchFails = false} = {}) {
-  const tags = new Set([...submitted.map(v => `msstore-submitted-${v}`), ...announced.map(v => `msstore-announced-${v}`), ...followed.map(v => `msstore-followed-${v}`), ...autosent.map(v => `msstore-autosent-${v}`)]);
+// A fake repo: its tags, the workflows it was asked to start (must stay none), and Telegram (`down` = it refuses).
+function world({submitted = ['0.8.86'], announced = [], followed = [], down = false} = {}) {
+  const tags = new Set([...submitted.map(v => `msstore-submitted-${v}`), ...announced.map(v => `msstore-announced-${v}`), ...followed.map(v => `msstore-followed-${v}`)]);
   const dispatched = [], messages = [];
   const gh = {
-    fails: {dispatch: dispatchFails},
     tags: async prefix => [...tags].filter(t => t.startsWith(prefix)).map(t => t.slice(prefix.length)),
     claim: async name => { if (tags.has(name)) return false; tags.add(name); return true; },
     release: async name => { tags.delete(name); },
-    stables: async () => [...stables].sort(compareVersions).pop() || '',
-    dispatch: async tag => { if (gh.fails.dispatch) throw new Error('GitHub 500'); dispatched.push(tag); },
+    dispatch: async tag => { dispatched.push(tag); },   // the watcher must never call it: the weekly run is the one submit
   };
   const sender = async text => { if (down) return 'ci-alert: not sent (Telegram 502)'; messages.push(text); return 'ci-alert: sent'; };
   return {gh, sender, tags, dispatched, messages, env: (verdict, version = '0.8.86') => ({VERSION: version, VERDICT: verdict, REASON: 'bad capability', GITHUB_REPOSITORY: 'jobadabra/jobadabra', GITHUB_RUN_ID: '9'})};
 }
 
-test('accepted: one "live" message, then the newest stable is started once; a second hour changes nothing', async () => {
+test('accepted: one "live" message and nothing is submitted; a second hour changes nothing', async () => {
   const w = world();
   await tell(w.env('live'), w);
-  assert.equal(w.messages.length, 2);
+  assert.equal(w.messages.length, 1);
   assert.match(w.messages[0], /0\.8\.86 is live in the Microsoft Store/);
-  assert.match(w.messages[1], /Sending Jobadabra 0\.9\.6/);
-  assert.deepEqual(w.dispatched, ['desktop-v0.9.6']);
+  assert.deepEqual(w.dispatched, [], 'the newest stable waits for the weekly run (7 Nov 2026), it is not sent on at once');
   await tell(w.env('live'), w);   // the next hourly run: 0.8.86 is announced, nothing is pending
-  assert.equal(w.messages.length, 2, 'exactly once');
-  assert.deepEqual(w.dispatched, ['desktop-v0.9.6'], 'the same version is never sent twice');
+  assert.equal(w.messages.length, 1, 'exactly once');
+  assert.ok(w.tags.has('msstore-followed-0.8.86'));
 });
 
-test('refused: the owner hears the reason; the refused version is not sent again, a newer stable is', async () => {
-  const same = world({stables: ['0.8.86', '0.8.80']});
-  await tell(same.env('failed'), same);
-  assert.equal(same.messages.length, 1);
-  assert.match(same.messages[0], /did not accept Jobadabra 0\.8\.86.*bad capability.*not sent again by itself/s);
-  assert.deepEqual(same.dispatched, [], 'a refusal of X never re-sends X');
-  const newer = world();
-  await tell(newer.env('failed'), newer);
-  assert.deepEqual(newer.dispatched, ['desktop-v0.9.6'], 'a newer stable than the refused one goes out');
-});
-
-test('a version already submitted or already sent on by the watcher is not started again', async () => {
-  const w = world({submitted: ['0.8.86', '0.9.6']});
-  await tell(w.env('live', '0.9.6'), w);   // 0.9.6 is the version the status was read for; nothing newer exists
+test('refused: the owner hears the reason and nothing is started', async () => {
+  const w = world();
+  await tell(w.env('failed'), w);
+  assert.equal(w.messages.length, 1);
+  assert.match(w.messages[0], /did not accept Jobadabra 0\.8\.86.*bad capability.*not sent again by itself/s);
   assert.deepEqual(w.dispatched, []);
-  assert.match(w.messages[0], /0\.8\.86 left Microsoft's review before I could read its verdict/, 'the older pending version is not announced with a verdict it did not get');
+});
+
+test('an older pending version is told it left review, not given a verdict it never got', async () => {
+  const w = world({submitted: ['0.8.86', '0.9.6']});
+  await tell(w.env('live', '0.9.6'), w);   // 0.9.6 is the version the status was read for
+  assert.deepEqual(w.dispatched, []);
+  assert.match(w.messages[0], /0\.8\.86 left Microsoft's review before I could read its verdict/);
   assert.match(w.messages[1], /0\.9\.6 is live/);
   assert.ok(w.tags.has('msstore-followed-0.8.86') && w.tags.has('msstore-followed-0.9.6'));
-  const claimed = world({autosent: ['0.9.6']});
-  await tell(claimed.env('live'), claimed);
-  assert.deepEqual(claimed.dispatched, [], 'the claim tag holds a restart off');
 });
 
 test('a Telegram refusal is seen, not swallowed: the claim is released so the next hour tries again, and nothing is sent on before the owner knows', async () => {
@@ -79,9 +70,6 @@ test('a Telegram refusal is seen, not swallowed: the claim is released so the ne
   await assert.rejects(tell(w.env('live'), w), /did not reach Telegram/);
   assert.ok(!w.tags.has('msstore-announced-0.8.86'), 'claim released');
   assert.deepEqual(w.dispatched, []);
-  const dispatchDown = world({dispatchFails: true});
-  await assert.rejects(tell(dispatchDown.env('live'), dispatchDown), /could not start the Store submit of 0\.9\.6/);
-  assert.ok(!dispatchDown.tags.has('msstore-autosent-0.9.6'), 'the submit claim is released too');
 });
 
 test('still in review or nothing pending: no message and no submit', async () => {
@@ -91,18 +79,6 @@ test('still in review or nothing pending: no message and no submit', async () =>
   await tell(none.env('live'), none);
   assert.deepEqual([none.messages, none.dispatched], [[], []]);
   assert.match(messageOf('failed', {version: '0.8.86', reason: 'x', repo: 'o/r', run: 'u'}), /gh workflow run msix-store\.yml -R o\/r --ref main -f tag=desktop-v0\.8\.86/);
-});
-
-test('a failed dispatch is retried next hour without repeating the message', async () => {
-  const w = world({dispatchFails: true});
-  await assert.rejects(tell(w.env('live'), w), /stays pending/);
-  assert.equal(w.messages.length, 1, 'the verdict went out once');
-  assert.ok(!w.tags.has('msstore-followed-0.8.86'), 'still pending, so the next hourly run comes back to it');
-  w.gh.fails.dispatch = false;
-  await tell(w.env('live'), w);
-  assert.equal(w.messages.length, 2, 'only the "sending 0.9.6" note was added, not a second verdict');
-  assert.deepEqual(w.dispatched, ['desktop-v0.9.6']);
-  assert.ok(w.tags.has('msstore-followed-0.8.86'));
 });
 
 test('the verdict is for the version the status was read for: a version that is not pending, or a newer one submitted since, is not announced as it', async () => {

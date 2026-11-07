@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {AGENT_SLOT, CRONS, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
+import {AGENT_SLOT, CRONS, STORE_WEEKLY, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -120,4 +120,15 @@ test('failed verdict sweep ticks fail the cron without paging and still allow st
     assert.deepEqual(told, [], 'a sustained sweep failure must not page Telegram 144 times a day');
     assert.deepEqual(reported, [], 'the ten-minute sweep must not churn the watchdog issue');
   }
+});
+
+test('the Microsoft Store submission starts once a week, Monday 07:00 UTC, on the ten-minute trigger (7 Nov 2026, owner: weekly, a fixed day)', () => {
+  const started = [];
+  for (let minutes = 0; minutes < 14 * 24 * 60; minutes += 10) {
+    const now = new Date(Date.UTC(2026, 10, 2) + minutes * 60000);   // Monday 2 Nov, two weeks
+    if (jobsFor('*/10 * * * *', now).some(job => job.workflow === 'msix-store-weekly.yml')) started.push(now.toISOString());
+  }
+  assert.deepEqual(started, ['2026-11-02T07:00:00.000Z', '2026-11-09T07:00:00.000Z']);
+  assert.equal(STORE_WEEKLY.day, 1);
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-09T07:00:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'msix-store-weekly.yml'], 'alone on its tick');
 });
