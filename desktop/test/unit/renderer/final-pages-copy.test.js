@@ -44,7 +44,13 @@ test('preference empty/overflow display and raw rules use locale grammar indepen
   for (const locale of locales) {
     setLocale(locale);
     assert.equal(summaryOf(rows), 'Raw one · Raw two · 1 more');
-    assert.ok(finalText('more', {count: 21}).includes('21'));
+    const display = {empty: finalText('noneSet'), more: count => finalText('more', {count})};
+    assert.equal(summaryOf([], 2, display), finalText('noneSet'));
+    assert.equal(summaryOf(rows, 2, display), `Raw one · Raw two · ${finalText('more', {count: 1})}`);
+    if (locale === 'de') {
+      assert.equal(summaryOf(rows, 2, display), 'Raw one · Raw two · 1 weitere');
+      assert.equal(summaryOf([], 2, display), 'Keine festgelegt');
+    }
   }
 });
 

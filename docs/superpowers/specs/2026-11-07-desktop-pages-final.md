@@ -1,6 +1,6 @@
 # Remaining desktop page translation gaps
 
-Owner authorization: supervisor assignment f06702f3, accepted final renderer audit. Scope is the confirmed gaps in `/tmp/jobadabra-ml/final-desktop-pages-audit.md`, with own PR and exact-head READY. Preview approval for #3507 does not authorize this PR.
+Scope is the confirmed gaps in the [pinned renderer coverage audit](2026-11-07-desktop-pages-coverage-audit.md), with own PR and exact-head READY. The owner authorized this bounded follow-up and approved its six previews; see the [external owner approval record](https://github.com/jobadabra/jobadabra/pull/3553#issuecomment-6711981774) and [published preview evidence](https://github.com/jobadabra/jobadabra/tree/pr-assets-ml-desktop-pages-final).
 
 ## Design and ownership
 
@@ -20,5 +20,5 @@ Tier 1: named logic/consumer tests plus focused fictional demo views. Failing-fi
 - [x] Add failing focused tests for the confirmed display leaks and invariants. (proof: desktop/test/unit/renderer/final-pages-copy.test.js)
 - [x] Implement keyed readers and seven catalogs across the bounded page families. (proof: desktop/renderer/final-pages-copy.js)
 - [x] Pass named tests, catalog/placeholder/plural and required changed-source checks. (proof: desktop/test/unit/renderer/final-pages-copy.test.js)
-- [x] Render/open light and dark before-after previews and obtain owner approval. (proof: none: external owner approval via Coordinator27 message ebfc4f18 and explicit owner instruction; six opened comparisons published as PR evidence)
+- [x] Render/open light and dark before-after previews and obtain owner approval. (proof: none: external owner decision recorded at https://github.com/jobadabra/jobadabra/pull/3553#issuecomment-6711981774 with published preview links)
 - [ ] Ship own PR, address CI/review feedback and report exact-head READY.
