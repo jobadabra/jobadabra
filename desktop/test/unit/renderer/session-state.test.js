@@ -2,7 +2,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHECK_MS, SESSION_STATE, cancelAllButton, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
+import {CHECK_MS, SESSION_STATE, dockBucket, cancelAllButton, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
 
 test('a filled form waiting for you is "ready for review"; a message ending on your question is not', () => {
   const report = 'The N26 form is filled and open in Chrome. Nothing was submitted.\n\n**Left for you:**\n' +
@@ -95,8 +95,8 @@ test('the dock counts and orders sessions like the list: closed forms are not ac
   const form = (id, status = 'done') => ({id, kind: 'form', status, live: false, endedAt: '2026-10-02T03:00:00Z', note: 'Form open in Chrome'});
   const items = [form('openai-1'), form('openai-2'), form('amazon'), {id: 'ue', kind: 'claude', status: 'input', live: true, question: 'Which visa?'}];
   const gone = item => ['openai-1', 'openai-2'].includes(item.id);
-  assert.deepEqual(dockCounts(items, gone), {active: 1, waiting: 1});          // the open Amazon form; the question
-  assert.deepEqual(dockCounts(items), {active: 3, waiting: 1});                // without the tab report: all three forms look open
+  assert.deepEqual(dockCounts(items, gone), {active: 1, needs: 1, waiting: 2});   // the open Amazon form; the question; the two closed-tab forms wait
+  assert.deepEqual(dockCounts(items), {active: 3, needs: 1, waiting: 0});         // without the tab report: all three forms look open
   const shown = [...items].sort((a, b) => dockOrder(a, gone) - dockOrder(b, gone)).map(item => item.id);
   assert.deepEqual(shown, ['ue', 'amazon', 'openai-1', 'openai-2']);
 });
@@ -434,4 +434,35 @@ test('the Cancel all button: hidden with nothing open; says how many are closing
   assert.equal(cancelAllButton([{id: 1}]).textContent, 'Cancel all applications');
   assert.deepEqual(cancelAllButton([{id: 1, cancelling: true}]), {hidden: false, textContent: 'Cancelling 1 application…', closing: 1});
   assert.equal(cancelAllButton([{id: 1, cancelling: true}, {id: 2, cancelling: true}, {id: 3}]).textContent, 'Cancelling 2 applications…');
+});
+
+// #3377 (owner 7 Nov 2026, "Pills add up"): the tester saw "1 active" beside 3 sessions. Every session still going is in exactly one pill, so the pills add up to the list.
+test('the dock pills add up to the sessions that are going: needs you, waiting and active, whichever way the session runs', () => {
+  const hidden = (state, status = 'running') => ({id: state, kind: 'form', status, startedAt: '2026-11-07T00:00:00Z', background: {state}});
+  const sum = counts => counts.active + counts.needs + counts.waiting;
+  const cases = [
+    ['a Chrome form open + two questions', [{id: 'f', kind: 'form', status: 'done', inChrome: true}, {id: 'q1', kind: 'claude', status: 'input', live: true}, {id: 'q2', kind: 'claude', status: 'input', live: true}], {active: 1, needs: 2, waiting: 0}],
+    ['hidden: filling + Ready for review (status done) + queued', [hidden('filling'), hidden('ready_for_review', 'done'), hidden('queued')], {active: 1, needs: 1, waiting: 1}],
+    ['hidden: three hand-overs (a plain note, status not input)', [hidden('needs_user_handoff'), hidden('manual_submit_required'), hidden('needs_user_handoff', 'done')], {active: 0, needs: 3, waiting: 0}],
+    ['a hidden job waiting to submit and one submitting', [hidden('waiting_to_submit'), hidden('submitting')], {active: 2, needs: 0, waiting: 0}],
+  ];
+  for (const [name, items, want] of cases) {
+    const got = dockCounts(items);
+    assert.deepEqual(got, want, name);
+    assert.equal(sum(got), items.length, `${name}: the pills add up to the sessions`);
+  }
+  // Review (#3377): sessions that are not hidden-browser ones but read amber or blue in the list must be in a pill too.
+  const mixed = [
+    ['a Claude session at Ready for review', {id: 'c1', kind: 'claude', status: 'done', live: true, question: 'The form is filled. Ready for your review.'}, 'needs'],
+    ['a Chrome form stuck on something only the person can do', {id: 'c2', kind: 'form', status: 'done', inChrome: true, stuck: 'incomplete'}, 'needs'],
+    ['a refused sign-in', {id: 'c3', kind: 'form', status: 'done', inChrome: true, accountState: 'refused'}, 'needs'],
+    ['an account made, waiting for its mail', {id: 'c4', kind: 'form', status: 'done', inChrome: true, accountState: 'confirm'}, 'active'],
+    ['Claude creating an account', {id: 'c5', kind: 'claude', status: 'running', stage: 'account', live: true}, 'active'],
+    ['a hidden job whose receipt is confirmed', {id: 'c6', kind: 'form', status: 'done', endedAt: '2026-11-07T01:00:00Z', background: {state: 'receipt_confirmed'}}, null],
+  ];
+  for (const [name, item, bucket] of mixed) assert.equal(dockBucket(item), bucket, name);
+  const closedTab = {id: 'g', kind: 'form', status: 'done', live: false, endedAt: '2026-11-07T01:00:00Z', note: 'Form open in Chrome'};
+  assert.deepEqual(dockCounts([closedTab], item => item === closedTab), {active: 0, needs: 0, waiting: 1}, 'a closed-tab form waits, it is not lost');
+  const finished = [{id: 's', kind: 'form', status: 'done', outcome: 'submitted', live: false, endedAt: '2026-11-07T01:00:00Z'}, {id: 'e', kind: 'claude', status: 'ended', endedAt: '2026-11-07T01:00:00Z'}];
+  assert.deepEqual(dockCounts(finished), {active: 0, needs: 0, waiting: 0}, 'a submitted or ended session is in no pill');
 });

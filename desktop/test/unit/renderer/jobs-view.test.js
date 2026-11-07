@@ -1,7 +1,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {interviewJob, notionPageUrl, ago, applicationStats, avatar, inProcess, band, byStat, isStuck, matchLabel, placeAndMode, sorted, stats, statusPill, tags, unscoredWhy, workMode} from '../../../renderer/jobs-view.js';
+import {newOfTotal, jobCounts, interviewJob, notionPageUrl, ago, applicationStats, avatar, inProcess, band, byStat, isStuck, matchLabel, placeAndMode, sorted, stats, statusPill, tags, unscoredWhy, workMode} from '../../../renderer/jobs-view.js';
 
 test('place and mode on one line say the mode once', () => {
   assert.equal(placeAndMode('Remote (Europe)', 'Remote'), 'Remote (Europe)');
@@ -267,4 +267,23 @@ test('In conversation starts folded as one line; a saved open choice unfolds it'
   const talking = [{stage: 'Screening', source: 'Job Pilotto app'}, {stage: 'Recruiter lead', source: 'Gmail'}];
   assert.deepEqual(talkingBar(talking, false), {title: '2 in conversation', detail: '', toggle: 'Show'});
   assert.deepEqual(talkingBar(talking, true), {title: 'In conversation', detail: '2 active · 1 inbound · 1 outbound', toggle: 'Hide'});
+});
+
+// #3377 (owner 7 Nov 2026, "Words say it"): the header's Total matches counts saved and dismissed matches, the New matches list holds the unreviewed ones; the list bar names both sets.
+test('the list bar says "N new of M matches" only on the plain New matches list, when the two counts differ', () => {
+  const mk = (status, i) => ({url: `u${i}`, status, stage: status === 'applied' ? 'Applied' : 'Kit ready', fit: 80, first_seen_at: '2026-01-01', company: `C${i}`});
+  const twelve = Array.from({length: 12}, (_, i) => mk('unreviewed', i));
+  const view = (jobs, over = {}) => ({filter: 'open', statFilter: null, text: '', shown: 12, data: {jobs, total: jobs.length}, ...over});
+  assert.deepEqual(newOfTotal(view([...twelve, mk('saved', 90)])), {new: 12, total: 13}, 'one saved match: the header says 13, the list holds 12');
+  assert.equal(jobCounts({jobs: [...twelve, mk('saved', 90)], total: 13}).total, 13, 'the header number is the same definition');
+  assert.deepEqual(newOfTotal(view([...twelve, mk('dismissed', 91)])), {new: 12, total: 13}, 'a set-aside match counts in the header too');
+  assert.equal(newOfTotal(view(twelve)), null, 'nothing else to explain: the plain count stays');
+  assert.equal(newOfTotal(view([...twelve, mk('applied', 92)])), null, 'an applied job is not a match: 12 and 12');
+  const withSaved = [...twelve, mk('saved', 90)];
+  assert.equal(newOfTotal(view(withSaved, {filter: 'all', shown: 13})), null, 'another filter keeps its own count');
+  assert.equal(newOfTotal(view(withSaved, {statFilter: 'high'})), null, 'a counter clicked above the list keeps its own count');
+  assert.equal(newOfTotal(view(withSaved, {text: 'pilot'})), null, 'search words narrow the list: no split');
+  assert.equal(newOfTotal(view(withSaved, {data: null})), null, 'a list not loaded yet says nothing');
+  assert.equal(newOfTotal(view(withSaved, {shown: 14})), null, 'never "14 new of 13"');
+  assert.equal(newOfTotal(view(withSaved, {data: {jobs: withSaved, total: 1335}})), null, 'a cut list (200 of 1,335 loaded): the rows left out may be new too, so no split');
 });
