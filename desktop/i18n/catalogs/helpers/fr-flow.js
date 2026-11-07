@@ -347,6 +347,29 @@ export const messages = {
   "applicationNeedsYou": "Cette candidature vous attend. Vérifiez la page en direct et envoyez vous-même.",
   "usePageSubmit": "Utilisez le bouton d’envoi de la page",
   "readingPage": "Lecture de la page…",
+  "findJobs": "Rechercher des offres",
+  "run": "Lancer",
+  "connect": "Connecter",
+  "apply": "Postuler",
+  "onboardingSearch": "Premières offres en moins d’une minute ; puis tous les sites, plus largement si nécessaire",
+  "onboardingTracking": "Là où vos candidatures sont suivies",
+  "onboardingTailor": "Adapter CV et lettre aux meilleures offres",
+  "onboardingTailorHint": "Un CV et une lettre rédigés pour chacune des meilleures offres",
+  "onboardingFirstApply": "Postuler à votre première offre",
+  "onboardingExtension": "L’extension remplit le formulaire ; vous cliquez sur Envoyer",
+  "searchWider": "Votre recherche n’a pas encore été élargie. Relancez-la pour trouver plus d’offres.",
+  "searchFewSites": "Sites employeurs consultés : {count}. Relancez la recherche pour trouver plus d’offres.",
+  "freePlan": "Offre gratuite",
+  "proPlan": "Offre Pro",
+  "freePeriodOver": "Période gratuite terminée",
+  "aiCreditPercent": "Crédit IA {percent} %",
+  "proOurCreditTip": "Pro ({promise}) : candidatures illimitées. La barre indique le crédit de notre IA ; rechargez, ajoutez un code promo ou utilisez votre clé IA (illimitée).",
+  "proCreditTip": "Pro ({promise}) : candidatures illimitées. La barre indique le crédit IA restant ; votre clé IA est illimitée et l’économise.",
+  "trackingNotionWorks": "Le suivi, Notion et l’export restent disponibles.",
+  "trackingWorks": "Le suivi et l’export restent disponibles.",
+  "applicationsUsed": "{used} candidatures sur {limit} utilisées",
+  "freeEndedTip": "Offre gratuite : {used} candidatures sur {limit} utilisées et jours gratuits écoulés. Nouvelles candidatures et recherches en pause. {tracking} Une clé de licence lève la limite. Pro est un {promise}.",
+  "freeActiveTip": "Offre gratuite : {used} candidatures sur {limit} utilisées · {days}. Gratuit jusqu’à {limit} candidatures et 60 jours écoulés, selon la durée la plus longue ; puis Pro, un {promise} (bientôt). (Votre objectif quotidien Focus est distinct.)",
   "interviewsCount": {
     "one": "{count} entretien",
     "other": "{count} entretiens"
@@ -370,5 +393,9 @@ export const messages = {
   "requiredLeft": {
     "one": "{count} champ obligatoire restant",
     "other": "{count} champs obligatoires restants"
+  },
+  "licenseDays": {
+    "one": "{count} jour restant",
+    "other": "{count} jours restants"
   }
 };

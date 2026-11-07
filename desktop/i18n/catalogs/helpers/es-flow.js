@@ -347,6 +347,29 @@ export const messages = {
   "applicationNeedsYou": "Esta candidatura te necesita. Revisa la página en directo y envía tú mismo.",
   "usePageSubmit": "Usa Enviar en la página",
   "readingPage": "Leyendo la página…",
+  "findJobs": "Buscar empleo",
+  "run": "Ejecutar",
+  "connect": "Conectar",
+  "apply": "Postular",
+  "onboardingSearch": "Primeras ofertas en menos de un minuto; después todos los sitios, ampliando cuando haga falta",
+  "onboardingTracking": "Donde se siguen tus candidaturas",
+  "onboardingTailor": "Adaptar CV y carta a las mejores ofertas",
+  "onboardingTailorHint": "Un CV y una carta para cada una de tus mejores ofertas",
+  "onboardingFirstApply": "Postular a tu primera oferta",
+  "onboardingExtension": "La extensión rellena el formulario; tú pulsas Enviar",
+  "searchWider": "Tu búsqueda aún no se ha ampliado. Repite Buscar empleo para encontrar más ofertas.",
+  "searchFewSites": "Sitios de empresas consultados: {count}. Repite la búsqueda para encontrar más ofertas.",
+  "freePlan": "Plan gratuito",
+  "proPlan": "Plan Pro",
+  "freePeriodOver": "Periodo gratuito terminado",
+  "aiCreditPercent": "Crédito IA {percent}%",
+  "proOurCreditTip": "Pro ({promise}): candidaturas ilimitadas. La barra muestra el crédito de nuestra IA; recarga, añade un código o usa tu clave IA (ilimitada).",
+  "proCreditTip": "Pro ({promise}): candidaturas ilimitadas. La barra muestra el crédito IA restante; tu clave IA es ilimitada y lo ahorra.",
+  "trackingNotionWorks": "El seguimiento, Notion y la exportación siguen funcionando.",
+  "trackingWorks": "El seguimiento y la exportación siguen funcionando.",
+  "applicationsUsed": "{used} de {limit} candidaturas usadas",
+  "freeEndedTip": "Plan gratuito: {used} de {limit} candidaturas usadas y días gratuitos terminados. Nuevas candidaturas y búsquedas pausadas. {tracking} Una clave elimina el límite. Pro es un {promise}.",
+  "freeActiveTip": "Plan gratuito: {used} de {limit} candidaturas usadas · {days}. Gratis hasta alcanzar {limit} candidaturas y 60 días, lo que tarde más; después Pro, un {promise} (próximamente). (Tu meta diaria de Enfoque es independiente.)",
   "interviewsCount": {
     "one": "{count} entrevista",
     "other": "{count} entrevistas"
@@ -370,5 +393,9 @@ export const messages = {
   "requiredLeft": {
     "one": "Falta {count} campo obligatorio",
     "other": "Faltan {count} campos obligatorios"
+  },
+  "licenseDays": {
+    "one": "Queda {count} día",
+    "other": "Quedan {count} días"
   }
 };

@@ -348,6 +348,32 @@ export const messages = {
   "applicationNeedsYou": "This application needs you. Review the live page and submit it yourself.",
   "usePageSubmit": "Use the page's own Submit",
   "readingPage": "Reading the page…",
+  "findJobs": "Find jobs",
+  "run": "Run",
+  "connect": "Connect",
+  "apply": "Apply",
+  "onboardingSearch": "Your first matches in under a minute; then every job site, wider when it needs to",
+  "onboardingTracking": "Where your applications are tracked",
+  "onboardingTailor": "Tailor CV + cover letter for top matches",
+  "onboardingTailorHint": "A CV and a cover letter written for each of your best matches",
+  "onboardingFirstApply": "Apply to your first job",
+  "onboardingExtension": "The extension fills the form; you press Submit",
+  "searchWider": "Your search hasn’t gone wider yet. Find jobs again searches wider, so your next search finds more jobs.",
+  "searchFewSites": {
+    "one": "Only {count} employer site searched. Find jobs again searches wider, so your next search finds more jobs.",
+    "other": "Only {count} employer sites searched. Find jobs again searches wider, so your next search finds more jobs."
+  },
+  "freePlan": "Free plan",
+  "proPlan": "Pro plan",
+  "freePeriodOver": "Free period over",
+  "aiCreditPercent": "AI credit {percent}%",
+  "proOurCreditTip": "Pro ({promise}): no application limit. The bar is the AI credit left for our AI; top up, add a promo code, or use your own AI key (unlimited).",
+  "proCreditTip": "Pro ({promise}): no application limit. The bar is the AI credit left; your own AI key is unlimited and saves it.",
+  "trackingNotionWorks": "Tracking, Notion and export keep working.",
+  "trackingWorks": "Tracking and export keep working.",
+  "applicationsUsed": "{used} of {limit} applications used",
+  "freeEndedTip": "Free plan: {used} of {limit} applications used and the free days are over. New applications and searches are paused. {tracking} A license key lifts the limit. Pro is a {promise}.",
+  "freeActiveTip": "Free plan: {used} of {limit} applications used · {days}. Free until you reach {limit} applications and 60 days have passed, whichever comes later; then Pro, a {promise} (coming soon). (Your daily goal on Focus is separate.)",
   "interviewsCount": {
     "one": "{count} interview",
     "other": "{count} interviews"
@@ -371,5 +397,9 @@ export const messages = {
   "requiredLeft": {
     "one": "{count} required field left",
     "other": "{count} required fields left"
+  },
+  "licenseDays": {
+    "one": "{count} day left",
+    "other": "{count} days left"
   }
 };

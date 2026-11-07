@@ -347,6 +347,29 @@ export const messages = {
   "applicationNeedsYou": "Diese Bewerbung braucht Sie. Prüfen Sie die Live-Seite und senden Sie selbst ab.",
   "usePageSubmit": "Auf der Seite selbst absenden",
   "readingPage": "Seite wird gelesen…",
+  "findJobs": "Stellen suchen",
+  "run": "Starten",
+  "connect": "Verbinden",
+  "apply": "Bewerben",
+  "onboardingSearch": "Erste Treffer in unter einer Minute; danach alle Stellenportale, bei Bedarf breiter",
+  "onboardingTracking": "Wo Ihre Bewerbungen erfasst werden",
+  "onboardingTailor": "Lebenslauf und Anschreiben für beste Treffer anpassen",
+  "onboardingTailorHint": "Ein Lebenslauf und Anschreiben für jeden Ihrer besten Treffer",
+  "onboardingFirstApply": "Auf Ihre erste Stelle bewerben",
+  "onboardingExtension": "Die Erweiterung füllt aus; Sie drücken Absenden",
+  "searchWider": "Ihre Suche wurde noch nicht erweitert. Erneute Stellensuche sucht breiter und findet mehr Stellen.",
+  "searchFewSites": "Durchsuchte Arbeitgeberseiten: {count}. Erneute Stellensuche sucht breiter und findet mehr Stellen.",
+  "freePlan": "Kostenloser Plan",
+  "proPlan": "Pro-Plan",
+  "freePeriodOver": "Kostenloser Zeitraum vorbei",
+  "aiCreditPercent": "KI-Guthaben {percent}%",
+  "proOurCreditTip": "Pro ({promise}): keine Bewerbungsgrenze. Der Balken zeigt das Guthaben für unsere KI; aufladen, einen Promo-Code hinzufügen oder eigenen KI-Schlüssel nutzen (unbegrenzt).",
+  "proCreditTip": "Pro ({promise}): keine Bewerbungsgrenze. Der Balken zeigt das KI-Restguthaben; Ihr eigener KI-Schlüssel ist unbegrenzt und schont es.",
+  "trackingNotionWorks": "Verfolgung, Notion und Export funktionieren weiter.",
+  "trackingWorks": "Verfolgung und Export funktionieren weiter.",
+  "applicationsUsed": "{used} von {limit} Bewerbungen genutzt",
+  "freeEndedTip": "Kostenloser Plan: {used} von {limit} Bewerbungen genutzt und kostenlose Tage vorbei. Neue Bewerbungen und Suchen sind pausiert. {tracking} Ein Lizenzschlüssel hebt die Grenze auf. Pro ist ein {promise}.",
+  "freeActiveTip": "Kostenloser Plan: {used} von {limit} Bewerbungen genutzt · {days}. Kostenlos bis {limit} Bewerbungen und 60 Tage erreicht sind, je nachdem, was später eintritt; dann Pro, ein {promise} (bald). (Ihr Tagesziel unter Fokus ist separat.)",
   "interviewsCount": {
     "one": "{count} Vorstellungsgespräch",
     "other": "{count} Vorstellungsgespräche"
@@ -370,5 +393,9 @@ export const messages = {
   "requiredLeft": {
     "one": "{count} Pflichtfeld offen",
     "other": "{count} Pflichtfelder offen"
+  },
+  "licenseDays": {
+    "one": "{count} Tag übrig",
+    "other": "{count} Tage übrig"
   }
 };

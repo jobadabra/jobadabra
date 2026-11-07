@@ -348,6 +348,29 @@ export const messages = {
   "applicationNeedsYou": "Această candidatură are nevoie de tine. Verifică pagina live și trimite personal.",
   "usePageSubmit": "Folosește Trimite din pagină",
   "readingPage": "Se citește pagina…",
+  "findJobs": "Caută locuri de muncă",
+  "run": "Rulează",
+  "connect": "Conectează",
+  "apply": "Candidează",
+  "onboardingSearch": "Primele oferte în mai puțin de un minut; apoi toate site-urile, mai larg când e nevoie",
+  "onboardingTracking": "Unde sunt urmărite candidaturile",
+  "onboardingTailor": "Adaptează CV-ul și scrisoarea pentru cele mai bune oferte",
+  "onboardingTailorHint": "Un CV și o scrisoare pentru fiecare dintre cele mai bune oferte",
+  "onboardingFirstApply": "Candidează la prima ofertă",
+  "onboardingExtension": "Extensia completează formularul; tu apeși Trimite",
+  "searchWider": "Căutarea nu s-a extins încă. Caută din nou pentru a găsi mai multe oferte.",
+  "searchFewSites": "Site-uri de angajatori căutate: {count}. Caută din nou pentru a găsi mai multe oferte.",
+  "freePlan": "Plan gratuit",
+  "proPlan": "Plan Pro",
+  "freePeriodOver": "Perioada gratuită s-a încheiat",
+  "aiCreditPercent": "Credit IA {percent}%",
+  "proOurCreditTip": "Pro ({promise}): candidaturi nelimitate. Bara arată creditul pentru IA noastră; reîncarcă, adaugă un cod promo sau folosește cheia IA proprie (nelimitat).",
+  "proCreditTip": "Pro ({promise}): candidaturi nelimitate. Bara arată creditul IA rămas; cheia proprie este nelimitată și îl economisește.",
+  "trackingNotionWorks": "Urmărirea, Notion și exportul funcționează în continuare.",
+  "trackingWorks": "Urmărirea și exportul funcționează în continuare.",
+  "applicationsUsed": "{used} din {limit} de candidaturi folosite",
+  "freeEndedTip": "Plan gratuit: {used} din {limit} de candidaturi folosite și zilele gratuite s-au încheiat. Candidaturile și căutările noi sunt în pauză. {tracking} O cheie de licență elimină limita. Pro este o {promise}.",
+  "freeActiveTip": "Plan gratuit: {used} din {limit} de candidaturi folosite · {days}. Gratuit până la {limit} candidaturi și 60 de zile, oricare vine mai târziu; apoi Pro, o {promise} (în curând). (Obiectivul zilnic Focus este separat.)",
   "interviewsCount": {
     "one": "{count} interviu",
     "few": "{count} interviuri",
@@ -376,5 +399,10 @@ export const messages = {
     "one": "{count} câmp obligatoriu rămas",
     "few": "{count} câmpuri obligatorii rămase",
     "other": "{count} de câmpuri obligatorii rămase"
+  },
+  "licenseDays": {
+    "one": "{count} zi rămasă",
+    "few": "{count} zile rămase",
+    "other": "{count} de zile rămase"
   }
 };

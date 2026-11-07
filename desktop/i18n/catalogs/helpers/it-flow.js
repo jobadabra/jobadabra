@@ -347,6 +347,29 @@ export const messages = {
   "applicationNeedsYou": "Questa candidatura richiede te. Controlla la pagina dal vivo e invia tu stesso.",
   "usePageSubmit": "Usa Invia nella pagina",
   "readingPage": "Lettura della pagina…",
+  "findJobs": "Cerca lavoro",
+  "run": "Esegui",
+  "connect": "Collega",
+  "apply": "Candidati",
+  "onboardingSearch": "Prime offerte in meno di un minuto; poi tutti i siti, ampliando quando serve",
+  "onboardingTracking": "Dove si tracciano le candidature",
+  "onboardingTailor": "Adatta CV e lettera alle offerte migliori",
+  "onboardingTailorHint": "Un CV e una lettera per ciascuna delle offerte migliori",
+  "onboardingFirstApply": "Candidati alla prima offerta",
+  "onboardingExtension": "L’estensione compila il modulo; tu premi Invia",
+  "searchWider": "La ricerca non si è ancora ampliata. Ripeti Cerca lavoro per trovare più offerte.",
+  "searchFewSites": "Siti di datori di lavoro cercati: {count}. Ripeti la ricerca per trovare più offerte.",
+  "freePlan": "Piano gratuito",
+  "proPlan": "Piano Pro",
+  "freePeriodOver": "Periodo gratuito terminato",
+  "aiCreditPercent": "Credito IA {percent}%",
+  "proOurCreditTip": "Pro ({promise}): candidature illimitate. La barra mostra il credito per la nostra IA; ricarica, aggiungi un codice promo o usa la tua chiave IA (illimitata).",
+  "proCreditTip": "Pro ({promise}): candidature illimitate. La barra mostra il credito IA rimasto; la tua chiave IA è illimitata e lo risparmia.",
+  "trackingNotionWorks": "Tracciamento, Notion ed esportazione continuano a funzionare.",
+  "trackingWorks": "Tracciamento ed esportazione continuano a funzionare.",
+  "applicationsUsed": "{used} candidature su {limit} usate",
+  "freeEndedTip": "Piano gratuito: {used} candidature su {limit} usate e giorni gratuiti terminati. Nuove candidature e ricerche in pausa. {tracking} Una chiave di licenza rimuove il limite. Pro è un {promise}.",
+  "freeActiveTip": "Piano gratuito: {used} candidature su {limit} usate · {days}. Gratis fino a {limit} candidature e 60 giorni trascorsi, il più lungo dei due; poi Pro, un {promise} (in arrivo). (L’obiettivo giornaliero Focus è separato.)",
   "interviewsCount": {
     "one": "{count} colloquio",
     "other": "{count} colloqui"
@@ -370,5 +393,9 @@ export const messages = {
   "requiredLeft": {
     "one": "{count} campo obbligatorio rimasto",
     "other": "{count} campi obbligatori rimasti"
+  },
+  "licenseDays": {
+    "one": "{count} giorno rimasto",
+    "other": "{count} giorni rimasti"
   }
 };
