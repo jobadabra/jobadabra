@@ -14,7 +14,7 @@ const removed = removedWords(diff);
 if (!diff.trim()) process.exit(0);
 const read = file => { try { return fs.readFileSync(path.join(top, file), 'utf8'); } catch { return ''; } };
 const tracked = pattern => git('ls-files', '--', ...pattern).split('\n').filter(Boolean);
-const present = [...tracked(['desktop/renderer', 'desktop/lib', 'src'])].map(read).join('\n');
+const present = [...tracked(['desktop/renderer', 'desktop/lib', 'desktop/i18n', 'src'])].map(read).join('\n');
 const suites = [...tracked(['desktop/e2e/suites', 'desktop/e2e/lib'])].filter(file => /\.mjs$/.test(file) && !/stale-expectations/.test(file)).map(file => ({file, text: read(file)}));
 const windowCode = tracked(['desktop/renderer']).map(read).join('\n');
 const found = [...staleExpectations({removed, present, suites}), ...staleSelectors({diff, present: windowCode, suites})];
