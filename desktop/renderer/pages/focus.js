@@ -4,7 +4,7 @@ import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
-import {el, moreButton, pill} from '../components.js';
+import {el, moreButton, onePrimary, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {EMPTY_FUNNEL_HINT, funnelIsEmpty, funnelSteps, inboundSteps} from '../funnel-view.js';
 import {shared} from './shared.js';
@@ -324,6 +324,7 @@ function renderFocus(data) {
   focusShown = true;
   $('focus-count-note').replaceChildren(pill(t('pagesShortJobs.m141', {"length": items.length, count: items.length}), 'neutral'));
   $('focus-list').replaceChildren(...items.map(focusCard));
+  onePrimary($('focus-list'));
   show($('focus-empty'), !items.length && !historyShown);
   renderFocusSuggestions({entries: data.suggestions, hidden: data.suggestions_hidden, items: all, card: focusCard});
   const pct = Math.min(100, Math.round(100 * today.applied / Math.max(today.target, 1)));

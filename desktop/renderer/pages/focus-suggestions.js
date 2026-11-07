@@ -4,7 +4,7 @@
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-import {el, moreButton, pill} from '../components.js';
+import {el, moreButton, onePrimary, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, barView, bySeverity, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
 import {rescoreEntries} from '../rescore-entry.js';
@@ -221,6 +221,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   show($('focus-suggestions'), rows.length > 0);
   const shown = showAll ? rows : rows.slice(0, SHOWN);
   $('focus-suggestions-list').replaceChildren(...shown.map(row => (row.entry ? entryRow(row.entry) : card(row.item))));
+  onePrimary($('focus-suggestions-list'));
   $('focus-suggestions-count').textContent = countWords(shown.length, rows.length);
   const all = $('focus-suggestions-all');
   all.textContent = showAll ? t('pagesProfile.showFewer') : t('pagesDynamicFocusInterviews.m172', {"length": rows.length});
@@ -259,6 +260,7 @@ export function renderJobsSuggestions() {
   drawBullets($('jobs-suggestions-bullets'), view.bullets);
   if (view.rows) {
     $('jobs-suggestions-list').replaceChildren(...entries.map(entryRow));
+    onePrimary($('jobs-suggestions-list'));
     keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries), bullets: view.bullets});
   }
   // Why (#2382): Focus is read only when its view opens (nav.js), so the bar asks once; if it cannot be read (gated store, failure) the kept bar goes.

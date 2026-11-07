@@ -7,7 +7,7 @@ Sorted (dv, 7 Nov 2026): clipped is the checker's, not the screens': all 132 are
 ## Progress
 - [x] 1/5 Checker: text a clip or a scroller holds is not "lost"; `main` scrolling sideways is one hit (`design-evaluator.mjs` `reached`); the narrow width is 640 (proof: desktop/scripts/design-check.mjs @4917d27d)
 - [x] 2/5 Job logo initials reach AA in light (one token, `--logo-ink-l`) (proof: desktop/renderer/tokens.css)
-- [ ] 3/5 One primary button per card: only the first row's main action is primary (Focus, suggestions)
+- [x] 3/5 One primary button per card: only the first row's main action is primary (Focus, suggestions) (proof: desktop/renderer/components.js)
 - [ ] 4/5 No ghost/link buttons: History, Hide, Show more, full report, Technical log, Review setup, table company links
 - [ ] 5/5 Strategy cards' gap on the scale (`.review .card` 10px → 12px)
 - [x] Owner's decision, 7 Nov 2026 "Yes, 640 (Recommended)": the check's narrow width 380 → 640 (the real minimum window), in this PR (proof: desktop/scripts/design-check.mjs)

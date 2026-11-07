@@ -15,6 +15,14 @@ export const el = (tag, className, content) => {
   return node;
 };
 
+/**
+ * One primary button per card: a list of rows (Focus "Up next", the suggestion lists) keeps the first row's main action primary and draws every later primary as secondary.
+ * Call it after the rows are drawn. Why (7 Nov 2026, dv; owner: "It should check design system compliance. Spacing/magins,colors,buttons, cards..."): the design check counted 12 cards with 3-4 primaries.
+ */
+export function onePrimary(root) {
+  root.querySelectorAll('button.primary').forEach((button, i) => { if (i) button.classList.replace('primary', 'secondary'); });
+}
+
 // Pill: a short status. Tones: neutral, info, good, warn, bad, signal, teal. dot: a coloured dot before it.
 export const TONES = ['neutral', 'info', 'good', 'warn', 'bad', 'signal', 'teal', 'violet'];
 export function pill(text, tone = 'neutral', {dot = false, title = ''} = {}) {

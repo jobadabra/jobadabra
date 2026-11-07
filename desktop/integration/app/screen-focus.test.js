@@ -38,6 +38,7 @@ before(() => {
       out.folded = document.querySelector('#focus-suggestions-count').textContent.trim();
       kit.showAll();
       out.suggested = kit.suggested(); out.drawers = kit.drawers(); out.kinds = kit.rowsIn('#focus-suggestions-list').map(row => row.kind);
+      out.primaries = ['#focus-list', '#focus-suggestions-list'].map(list => document.querySelectorAll(`${list} button.primary`).length);
       out.note = document.querySelector('#focus-count-note').textContent.trim();
       out.summary = document.querySelector('#focus-summary').textContent.trim();
       out.numbers = kit.numbers();
@@ -130,6 +131,9 @@ test('"Up next" lists what can\'t wait and Suggestions the rest, in the right or
   assert.ok(![...first.result.upNext, ...first.result.suggested].some(item => /waiting/.test(item.headline)), '"1 application waiting" has no button: it should have left Focus');
   assert.equal(first.result.note, '2 actions');
   assert.equal(first.result.summary, 'Reply to recruiters first, then prepare for your interview.');
+  // Why (7 Nov 2026, dv; owner: "Yes, ship it (Recommended)" on the 3/5 picture): a card carries one primary button, the first row's main action; the design check counted 4 and 3.
+  assert.equal(first.result.primaries[0], 1, `Up next keeps exactly one primary button (the first row's), Focus draws ${first.result.primaries[0]}`);
+  assert.ok(first.result.primaries[1] <= 1, `Suggestions carry at most one primary button, Focus draws ${first.result.primaries[1]}`);
 });
 
 test('every number on Focus matches the store (today, target, 14-day chart, funnel, inbound funnel)', live, () => {
