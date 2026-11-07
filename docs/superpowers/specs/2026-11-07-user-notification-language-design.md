@@ -26,6 +26,8 @@ Canonical diagnostics, activity markers and stored message identities must not b
 Coordinator owns language selection/transport/persistence, audience enforcement and shared integration. Existing visible Sol-low panes handle bounded producer/template families in isolated worktrees; they own their tests, PR review, conflicts and exact-head readiness. Private service changes land first, then public callers. Each PR remains independently reviewable and owner-merged.
 
 ## Verification
+The [verification record](2026-11-07-user-notification-language-verification.md) records delivery boundaries, named checks, render review and dynamic-content limits.
+
 Use fake transports/accounts only. Test all seven languages, missing/invalid preference, regional/system resolution, counts (including Russian/Romanian), HTML/text parity, escaping, raw-value preservation and delivery payload/recipient invariants. Add explicit negative tests proving owner/admin/CI subjects/bodies stay English even if a user locale is present elsewhere. Render representative fictional HTML emails and capture Telegram examples before claiming completion. No local full suites or live sends.
 
 ## PRs
@@ -44,13 +46,13 @@ The service PRs land before the public bridge starts sending new metadata. Templ
 - [x] Record complete producer/template/audience inventory and exclusions. (proof: docs/superpowers/specs/2026-11-07-user-notification-inventory.md)
 - [x] Confirm preference and fallback contract with owner. (proof: none: owner explicitly approved this design on 7 Nov 2026)
 ### 2. Shared language delivery
-- [ ] Service accepts/stores/resolves end-user preference with English-default operational rendering.
-- [ ] Desktop and scheduled engine propagate resolved preference without changing consent or recipients.
+- [x] Service accepts/stores/resolves end-user preference with English-default operational rendering. (proof: none: private service PR #482 merged at 335d9ef5325704c8a5b41aec5d2997d15663228b; 49 named fake-account/formatter checks passed)
+- [x] Desktop and scheduled engine propagate resolved preference without changing consent or recipients. (proof: desktop/test/unit/main/notification-bridge.test.js @e689bf1e85e405f92e0eaf79c21728a54b293f45)
 ### 3. End-user content
-- [ ] All twelve email templates and shared frame/footer localize.
+- [x] All twelve email templates and shared frame/footer localize. (proof: none: private email PR #483 merged at a0c35c7; all twelve templates across seven languages, HTML/text parity, operational-English negative checks and raw-content preservation passed)
 - [ ] Python notification templates localize with canonical diagnostics preserved.
 - [x] Desktop notification and bot help/reply templates localize. (proof: app-core/src/bot-copy.js @22adc19fdab6a9c7af1edbbf510d3ec463584896)
 ### 4. Verification and handoff
 - [ ] Seven-language content/plural/escape tests and operational-English negative cases pass.
-- [ ] Fictional email/Telegram render inventory reviewed; remaining dynamic-content fallbacks disclosed.
+- [x] Fictional email/Telegram render inventory reviewed; remaining dynamic-content fallbacks disclosed. (proof: docs/superpowers/specs/2026-11-07-user-notification-language-verification.md)
 - [ ] All scoped PRs exact-head READY and progress report updated.
