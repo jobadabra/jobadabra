@@ -146,6 +146,7 @@ on:
       - 'desktop/i18n/catalogs/native/pickers.js'
       - 'desktop/i18n/catalogs/native/quit.js'
       - 'desktop/i18n/catalogs/native/system.js'
+      - 'desktop/i18n/catalogs/windows-platform.js'
       - 'desktop/i18n/index.js'
       - 'desktop/i18n/native.js'
       - 'desktop/i18n/platform.js'
