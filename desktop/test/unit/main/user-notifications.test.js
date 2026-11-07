@@ -114,14 +114,20 @@ test('the install user test localizes only outbound subject/body with exact rout
   }
 });
 
+// Run the real batching callback with an injected clock and transport recorders.
+async function waitingBatch(locale, count) {
+  const settings = {displayLanguage: locale}, sent = []; let flush;
+  const sender = createWaitingMessage({settings: () => settings, saveSettings: patch => Object.assign(settings, patch)}, {
+    now: () => Date.parse('2026-11-07T12:00:00Z'), setTimer: work => {flush = work; return {};}, channels: () => ['email'],
+    sendEmail: async value => {sent.push(value); return true;}, sendTelegram: () => {throw new Error('channel not selected');}, log() {}});
+  for (let index = 0; index < count; index++) sender.add({id: `fictional-${index}`, title: 'Original title', note: 'Original note'});
+  if (flush) await flush();
+  return {settings, sent};
+}
+
 test('actual waiting batches retain count plural categories and grouping across every language', async () => {
   for (const locale of locales) for (const count of [0, 1, 2, 5, 21, 1234]) {
-    const settings = {displayLanguage: locale}, sent = []; let flush;
-    const sender = createWaitingMessage({settings: () => settings, saveSettings: patch => Object.assign(settings, patch)}, {
-      now: () => Date.parse('2026-11-07T12:00:00Z'), setTimer: work => {flush = work; return {};}, channels: () => ['email'],
-      sendEmail: async value => {sent.push(value); return true;}, sendTelegram: () => {throw new Error('channel not selected');}, log() {}});
-    for (let index = 0; index < count; index++) sender.add({id: `fictional-${index}`, title: 'Original title', note: 'Original note'});
-    if (flush) await flush();
+    const {settings, sent} = await waitingBatch(locale, count);
     assert.equal(sent.length, count ? 1 : 0);
     if (!count) {assert.equal(settings.waitingMessageAt, undefined); continue;}
     assert.ok(sent[0].subject.includes(new Intl.NumberFormat(locale).format(count)), `${locale}/${count}: ${sent[0].subject}`);
