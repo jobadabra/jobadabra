@@ -1,0 +1,46 @@
+// Bundled es copy for extension-facing desktop notices; external values stay interpolation parameters.
+export const messages = {
+  "fillStartedTitle": "Rellenando la solicitud…",
+  "fillStartedBody": "{job}. Revisa cada campo antes de enviar la solicitud.",
+  "fillDoneTitle": "Formulario rellenado ✓",
+  "fillLeftTitle": "Formulario rellenado: quedan algunos datos por completar",
+  "appliedTitle": "Marcado como solicitud enviada ✓",
+  "savedBody": "{job}. Guardado {where}.",
+  "appliedMessage": "Marcado como solicitud enviada {where}.",
+  "whereNotion": "en tu Notion",
+  "whereApp": "en Jobadabra",
+  "rememberedTitle": "Recordado para futuros formularios",
+  "secondEmployer": "otro empleador",
+  "aForm": "un formulario",
+  "thisJob": "esta oferta",
+  "learnedTitle": "Información aprendida de este formulario",
+  "salaryTitle": "Expectativa salarial añadida",
+  "salaryBody": "A partir de tu mínimo de Estrategia, para tus ubicaciones. Revísala en Perfil → Lo que hemos aprendido.",
+  "questionTitle": "Nueva pregunta para responder una vez",
+  "application": "Solicitud",
+  "waitingTitle": "Jobadabra te espera en Chrome",
+  "waitingBody": "Pulsa una vez « Permitir en los sitios que abre la aplicación »: después los sitios se leerán automáticamente.",
+  "fillDoneBody": {
+    "one": "{job}: {count} campo rellenado{remaining}. Revisa y después envía.",
+    "other": "{job}: {count} campos rellenados{remaining}. Revisa y después envía."
+  },
+  "fillRemaining": {
+    "one": ", {count} pendientes (indicados en la página)",
+    "other": ", {count} pendientes (indicados en la página)"
+  },
+  "rememberedBody": {
+    "one": "{count} respuesta anterior, solicitada otra vez por {company}: guardada como respuesta estándar. Deshazlo en el panel de la oferta.",
+    "other": "{count} respuestas anteriores, solicitadas otra vez por {company}: guardadas como respuestas estándar. Deshazlo en el panel de la oferta."
+  },
+  "learnedBody": {
+    "one": "{count} respuesta de {company} guardada para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido.",
+    "other": "{count} respuestas de {company} guardadas para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido."
+  },
+  "questionBody": {
+    "one": "{count} pregunta de {company} no tenía respuesta estándar. Responde en Jobadabra → Ofertas.",
+    "other": "{count} preguntas de {company} no tenían respuesta estándar. Responde en Jobadabra → Ofertas."
+  },
+  "extensionChanged": "La extensión ha cambiado: recárgala (chrome://extensions → ↻ en Jobadabra); una copia de desarrollo no se recarga sola.",
+  "versionStore": "Chrome usa la extensión Jobadabra {version} de Chrome Web Store; esta aplicación incluye {latest}. Chrome la actualiza automáticamente cuando la nueva versión está disponible en la tienda, normalmente en un día.",
+  "versionFolder": "Chrome usa la extensión Jobadabra {version}, anterior a {latest} incluida en esta aplicación: recárgala una vez (chrome://extensions → ↻ en Jobadabra); después se actualizará automáticamente."
+};

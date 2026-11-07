@@ -2,6 +2,7 @@
 // password, the form's review, the stuck report, the learned answers and fill misses, the visit routes, the tabs and the session reports. main.js
 // passes in the services they share. A FLOW FILE (docs/flows/applying.md). Guards: the server, review, credentials and visits tests in desktop/test and
 // the matrix (npm run flows).
+import {t} from '../i18n/server-notices.js';
 import {availableLetter} from './letter-availability.js';
 import {createAsks, runMomentOf} from './asks.js';
 import {takeCrashMark} from './crash-monitors.js';
@@ -183,7 +184,7 @@ export function registerExtServerHandlers(ctx) {
   visits.onWaiting(() => {   // once a run: a notification that brings Chrome forward on click
     if (Date.now() - waitingSaid < 10 * 60000) return;
     waitingSaid = Date.now();
-    notify('Jobadabra is waiting for you in Chrome', 'Press "Allow on the sites the app opens" once: then it reads the sites by itself.', () => visits.focusBrowser(), 'warn');
+    notify(t('serverNotice.waitingTitle'), t('serverNotice.waitingBody'), () => visits.focusBrowser(), 'warn');
   });   // the extension waits on the person: said, not "reading"   // a tab the Actions task opened has been read
   server.setVisitHandler(async page => {
     const answer = await visits.read(storage, page);

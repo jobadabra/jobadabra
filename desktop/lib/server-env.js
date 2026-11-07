@@ -26,6 +26,7 @@ import {client as engineClient, keptAnswerClient} from './ai/index.js';
 import * as learnings from './learnings.js';
 import {nightAnswers} from './ready-handoff.js';
 import * as gmailOffer from './gmail-offer.js';
+import {t} from '../i18n/server-notices.js';
 import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
 import {NAMES} from './ai/names.js';
 import {cvFactsText} from '../shared/app-core/cv-facts.js';
@@ -148,9 +149,9 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
       if (runs) await runs.receiptRun(job.url, new Date().toISOString()).then(stamped => { if (!stamped.ok) appLog('extension', `no fill row to stamp as submitted: ${job.url}`); }, error => appLog('extension', `run row not stamped as submitted: ${error.message}`));
       appliedHook({how: 'extension'});
       try { gmailOffer.afterApply({storage, tell: tellWindow, employer: job.company}); } catch (error) { appLog('extension', `Gmail offer not made: ${error.message}`); }   // Why (2 Nov 2026, owner): the first Submit is the moment to offer Gmail; an offer that fails never undoes Applied
-      const where = notionGate.notionInUse(storage) ? 'in your Notion' : 'in Jobadabra';   // about Notion
-      notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');
-      return {ok: true, message: `Marked Applied ${where}.`};
+      const where = notionGate.notionInUse(storage) ? t('serverNotice.whereNotion') : t('serverNotice.whereApp');   // about Notion
+      notify(t('serverNotice.appliedTitle'), t('serverNotice.savedBody',{job:jobName(job),where}), {view: 'jobs', job: job.code || job.url}, 'good');
+      return {ok: true, message: t('serverNotice.appliedMessage',{where})};
     },
     localJob: async url => { const job = await find(url); return job ? summary(job) : null; },
     // The extension's own decisions (worker /extension/log), cleaned at that boundary: written here so a decision made
@@ -183,7 +184,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
       const added = await questions.collect(storage, run, job?.company || '', undefined, async labels => verdicts.judge(storage, labels, {facts: await factsOf(storage), answered: await verdicts.answeredOf(storage, await questions.standardAnswers(storage)),
         company: job?.company || '', url: run.url, host: hostOf(run.url), ai: claudeAi(storage)}),
         labels => verdicts.record(storage, labels, {url: run.url, company: job?.company || ''}),
-        labels => notify('Remembered for future forms', `${labels.length} answer${labels.length > 1 ? 's' : ''} you gave before, asked again by ${job?.company || 'a second employer'}: kept as standard answers. Undo in the job's drawer.`, {view: 'jobs'}, 'good')).catch(error => {
+        labels => notify(t('serverNotice.rememberedTitle'), t('serverNotice.rememberedBody',{count:labels.length,company:job?.company || t('serverNotice.secondEmployer')}), {view: 'jobs'}, 'good')).catch(error => {
         console.error('Open questions:', error.message);
         return 0;
       });
@@ -194,9 +195,9 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
       const seeded = await seedSalary().catch(error => { console.error('Salary seed:', error.message); return 0; });
       const taught = learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0;   // the seed is Strategy's, never this employer's (Gitar on #2335)
       if (added || taught || seeded) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
-      if (taught) notify('Learned from this form', `${taught} answer${taught > 1 ? 's' : ''} from ${job?.company || 'a form'} kept for the next forms. Check them in Profile → What we learned.`, {view: 'settings', section: 'profile'}, 'good');
-      if (seeded) notify('Salary expectation added', 'From your Strategy minimum, for your places. Check it in Profile → What we learned.', {view: 'settings', section: 'profile'}, 'good');
-      if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');
+      if (taught) notify(t('serverNotice.learnedTitle'), t('serverNotice.learnedBody',{count:taught,company:job?.company || t('serverNotice.aForm')}), {view: 'settings', section: 'profile'}, 'good');
+      if (seeded) notify(t('serverNotice.salaryTitle'), t('serverNotice.salaryBody'), {view: 'settings', section: 'profile'}, 'good');
+      if (added) notify(t('serverNotice.questionTitle'), t('serverNotice.questionBody',{count:added,company:job?.company || t('serverNotice.aForm')}), {view: 'jobs'}, 'warn');
       reports.send(storage, run, undefined, sharedLogger, {latest: latestExtension()}).then(report => {  // each field also shows in the app reports (/telemetry)
         // A fill that failed while Chrome ran an older copy than this app ships is explained first, as its own
         // report: otherwise the fields read as "the extension can't fill these", and the cause stays invisible
@@ -239,7 +240,7 @@ export const EXTENSION_CHANGED = 'extension changed: reload it (chrome://extensi
 export function extensionChangedNote({boot, version, at}, state, {latest, newest}) {
   const next = state && state.boot === boot ? state : {boot, at, told: false};
   if (next.told || !version || version !== latest || !(newest() > next.at)) return {state: next, note: ''};
-  return {state: {...next, told: true}, note: EXTENSION_CHANGED};
+  return {state: {...next, told: true}, note: t('serverNotice.extensionChanged')};
 }
 
 // The sentence a stale copy deserves, or '' when the two agree (or either is unknown). One wording for the two
@@ -250,10 +251,8 @@ let checkedInId = '';   // the ID of the copy that last checked in (server.js, /
 export const noteExtensionId = id => { if (id) checkedInId = id; };
 export function staleExtension(version, latest, id = checkedInId) {
   if (!version || !latest || version === latest) return '';
-  if (id === STORE_EXTENSION_ID) return `Chrome runs Jobadabra extension ${version} from the Chrome Web Store; this app ships ${latest}. `
-    + 'Chrome updates it by itself once the store has the new version, usually within a day.';
-  return `Chrome runs Jobadabra extension ${version}, older than this app's ${latest}: reload it once `
-    + '(chrome://extensions → ↻ on Jobadabra); from then on it updates itself.';
+  if (id === STORE_EXTENSION_ID) return t('serverNotice.versionStore',{version,latest});
+  return t('serverNotice.versionFolder',{version,latest});
 }
 // Apply with Claude → extension hand-off (extension/hook.js). The launcher (tools/apply-batch-claude.sh) asks
 // for a ticket per job (POST /claude/ticket, from this computer, with a header web pages can't send without a
