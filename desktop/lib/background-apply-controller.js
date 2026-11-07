@@ -255,11 +255,11 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
    * "Submission attempted" for ever. Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
    * Why (30 Oct 2026, owner: "A quit is a Stop"): a job before its press was continued after a restart, and Full automation pressed on the wait the quit cut off (#2598).
-   * `updated`: this start is the first of a new version, so the quit was the update's restart: the card says so (`app_updated`), not "closed".
+   * After `markUpdatedStart()` (the first start of a new version) the quit was the update's restart: the card says so (`app_updated`), not "closed".
    * Returns the session ids it handed over.
    */
-  async function sweepInterrupted(startedBefore = started, {updated = false} = {}) {
-    return handOverAll(entry => heldBefore(entry, startedBefore), {quit: true, ...(updated ? {updated} : {})});
+  async function sweepInterrupted(startedBefore = started) {
+    return handOverAll(entry => heldBefore(entry, startedBefore), {quit: true});
   }
   /**
    * While the app runs: a press with no receipt `afterMs` after it was sent is handed to the person too, because a reply that never arrives (the extension closed, the tab gone) has no other reader.

@@ -39,7 +39,8 @@ test('a job held while the app updated is handed over with the update\'s words, 
       throw new Error(entity);
     }, now: () => NOW, realNow: () => NOW, uuid: () => 'attempt'}), terminals: w.terminals, config: () => ({mode: 'fill', chosenAt: 'c1'}), started: NOW, stop: () => false,
     browser: {ready: () => true, start: async () => ({owner: 'o1'}), closeSession: async () => true}, reader: {busy: () => false, take: () => null, takeEnded: () => []}, port: 1, token: () => 'fictional', notify: (...args) => notes.push(args), log: () => {}});
-    assert.deepEqual(await controller.sweepInterrupted(undefined, {updated}), ['old'], reason);
+    if (updated) controller.markUpdatedStart();
+    assert.deepEqual(await controller.sweepInterrupted(), ['old'], reason);
     assert.equal(w.records.get('old').background.reason, reason);
     assert.match(notes[0][1], words, reason);
     assert.equal(await controller.releaseEnded(url), true, `${reason}: the finished run starts afresh when applied to again`);
