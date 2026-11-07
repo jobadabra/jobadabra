@@ -31,8 +31,11 @@ export async function notionStatus(token, id) {
 }
 
 async function main() {
+  // The Admin key lets the twin's Send feedback file a bug bundle (desktop/lib/tester-mode.js, JOBADABRA_TESTER=desktop-tester); it goes only to the twin's app process, never to a file. No key: tester mode stays off.
+  const testerKey = process.env.JP_ADMIN_KEY || (() => { try { return keychain('jobadabra.site.api_key'); } catch { return ''; } })();   // Why: a missing Keychain item turns tester mode off, it never stops the twin
+  say(testerKey ? 'tester mode: on (Send feedback files a bug bundle, never a note to the maker)' : 'tester mode: off (no Admin key in the Keychain: jobadabra.site.api_key)');
   const replayAt = process.argv.indexOf('--replay');
-  const replay = replayAt > 0 ? await fetchBundle(process.argv[replayAt + 1], {key: process.env.JP_ADMIN_KEY || keychain('jobadabra.site.api_key')}) : null;   // fetched first: a wrong id stops before anything is synced or started
+  const replay = replayAt > 0 ? await fetchBundle(process.argv[replayAt + 1], {key: testerKey}) : null;   // fetched first: a wrong id stops before anything is synced or started
   if (!fs.existsSync(path.join(LIVE, 'ids.env'))) throw new Error(`no ${path.join(LIVE, 'ids.env')}: create the mirror first (tools/notion_copy.py create, docs/live-test.md)`);
   const mirror = idsOf(path.join(LIVE, 'ids.env')), real = JSON.parse(fs.readFileSync(path.join(REAL, 'settings.json'), 'utf8')).notionIds || {};
   const token = keychain(MIRROR_TOKEN);
@@ -86,7 +89,7 @@ async function main() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('JOBADABRA_')));
   // The app is started by a function: a refresh that touches its main process restarts it alone (same ports, same folder, same environment), the browser stays.
   const startApp = () => spawn(path.join(DESKTOP, 'node_modules', '.bin', 'electron'), [DESKTOP, `--remote-debugging-port=${cdp}`], {cwd: DESKTOP, stdio: ['ignore', 'inherit', 'inherit'], detached: true,   // its own process group: lib/twin-refresh.mjs killGroup
-    env: withoutWrappers({...env, JOBADABRA_TWIN: '1', JOBADABRA_USER_DATA: HOME, JOBADABRA_TWIN_NOTION_TOKEN: token, JOBADABRA_PORT: String(port), JOBADABRA_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
+    env: withoutWrappers({...env, JOBADABRA_TWIN: '1', ...(testerKey ? {JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TESTER_KEY: testerKey} : {}), JOBADABRA_USER_DATA: HOME, JOBADABRA_TWIN_NOTION_TOKEN: token, JOBADABRA_PORT: String(port), JOBADABRA_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
       PATH: `${shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: shim.spool})});
   let app = startApp(), restarting = false;
   // A fresh browser profile at each start, with only the site sign-ins carried over (cookies, local storage) and saved back at stop.
