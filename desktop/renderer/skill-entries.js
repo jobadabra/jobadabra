@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Insight #6 of Profile → CV (spec docs/superpowers/specs/2026-10-28-insights-with-actions-design.md, PR 2): skills your target jobs ask for that only the Experience
 // bank has. Counts, no AI call: the skills the AI already read from each posting (job.skills) against the bank's extra skills (experienceGet `extraSkills`).
 // Free of the DOM so the tests can check it. Guarded by test/unit/renderer/skill-entries.test.js.
@@ -32,9 +34,9 @@ export function skillEntries({jobs, extraSkills, mainSkills, added} = {}) {
   const total = targetJobs(jobs).length;
   const names = found.map(item => item.skill);
   return [{kind: 'skills', key: `skills:${names.map(name => name.toLowerCase()).sort().join('+')}`, home: 'jobs', topic: 'applying', source: 'Your CV',
-    title: `${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} only in your Experience bank`,
-    short: `${names.length} CV skill${names.length === 1 ? '' : 's'} to use`,
-    detail: found.map(item => `${item.skill}: ${item.jobs} of ${total} target jobs`).join(' · '),
+    title: t('helperRest.bankOnly', {count: names.length, names: names.join(', ')}),
+    short: t('helperRest.cvSkills', {count: names.length}),
+    detail: found.map(item => t('helperRest.skillTarget', {skill: item.skill, jobs: item.jobs, total})).join(' · '),
     evidence: [], skills: names, blocking: false, answers: ['Not now'],
-    actions: [{label: 'Use in my CVs', do: 'use_bank_skills', skills: names}]}];
+    actions: [{label: t('helperRest.useCvSkills'), do: 'use_bank_skills', skills: names}]}];
 }

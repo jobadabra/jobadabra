@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The Jobs drawers as rows of Focus → Suggestions and the Jobs bar: Cover letter, Fill your details and What we learned, from the count Jobs already reads
 // (pages/jobs-questions.js questionsNow), free of the DOM so the tests can check them. Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1c).
 // Guarded by test/unit/renderer/question-entries.test.js.
@@ -7,7 +9,7 @@ import {KEY as DESKTOP_AI_KEY, words as desktopAiWords} from './desktop-ai-words
 
 // Every actions[].do these rows write, each run by pages/focus-suggestions.js RUN (listed in suggestions.js DOES).
 export const QUESTION_DOES = ['open_letter', 'open_details', 'open_learned', 'retry_questions', 'copy_desktop_ai'];
-const COUNT = {details: n => `${n} missing`, learned: n => `${n} to check`};   // pages/jobs-questions.js countText: one wording on the card, the tab and here
+const COUNT = {details: n => t('helperRest.missingCount', {count: n}), learned: n => t('helperRest.toCheck', {count: n})};   // pages/jobs-questions.js countText: one wording on the card, the tab and here
 
 // A row of the pool's shape (src/suggestions.py _entry) built in the window; `short` is its words in the folded bar's line. Counts, not guesses: ⋯ holds Not now only (spec).
 const row = (kind, fields) => ({kind, home: 'jobs', topic: 'applying', source: 'Applying', evidence: [], answers: ['Not now'], blocking: false, ...fields});
@@ -20,21 +22,21 @@ const row = (kind, fields) => ({kind, home: 'jobs', topic: 'applying', source: '
 export function questionEntries({details = [], learned = [], letter = null, error = '', fromDetails = 0, desktopAi = null} = {}) {
   if (error && !details.length && !learned.length && !letter) {
     if (questionsProblem(error).hide) return [];   // the store not connected yet (trying only): no error row, as the card
-    return [row('questions-error', {key: 'questions:error', title: 'Couldn\'t load your details', short: 'Couldn\'t load your details', detail: questionsProblem(error).text,
-      actions: [{label: 'Retry', do: 'retry_questions'}], answers: []})];
+    return [row('questions-error', {key: 'questions:error', title: t('helperRest.loadDetailsFailed'), short: t('helperRest.loadDetailsFailed'), detail: questionsProblem(error).text,
+      actions: [{label: t('helpers.retry'), do: 'retry_questions'}], answers: []})];
   }
   const found = [];
   if (letter) {
-    found.push(row('letter', {key: 'letter:setup', title: 'Cover letter missing', short: 'Cover letter missing', detail: letter.hint || '', source: 'Cover letter', blocking: true,
-      actions: [{label: letter.setup?.action || 'Set up cover letter', do: 'open_letter'}]}));
+    found.push(row('letter', {key: 'letter:setup', title: t('helperRest.letterMissing'), short: t('helperRest.letterMissing'), detail: letter.hint || '', source: t('helpers.coverLetter'), blocking: true,
+      actions: [{label: letter.setup?.action || t('helperRest.setupLetter'), do: 'open_letter'}]}));
   }
   if (details.length) {
-    found.push(row('details', {key: 'details:open', title: 'Fill your details', short: `${details.length} details missing`, detail: [COUNT.details(details.length), fromDetails > 0 ? fromDetailsLine(fromDetails) : ''].filter(Boolean).join(' · '),
-      actions: [{label: 'Fill your details', do: 'open_details'}]}));
+    found.push(row('details', {key: 'details:open', title: t('helperRest.fillDetails'), short: t('helperRest.detailsMissing', {count: details.length}), detail: [COUNT.details(details.length), fromDetails > 0 ? fromDetailsLine(fromDetails) : ''].filter(Boolean).join(' · '),
+      actions: [{label: t('helperRest.fillDetails'), do: 'open_details'}]}));
   }
   if (learned.length) {
-    found.push(row('learned', {key: 'learned:open', title: 'What we learned', short: COUNT.learned(learned.length), detail: COUNT.learned(learned.length),
-      actions: [{label: 'Check what we learned', do: 'open_learned'}]}));
+    found.push(row('learned', {key: 'learned:open', title: t('helperRest.learned'), short: COUNT.learned(learned.length), detail: COUNT.learned(learned.length),
+      actions: [{label: t('helperRest.checkLearned'), do: 'open_learned'}]}));
   }
   // The Claude or ChatGPT desktop app is here and What we learned has open questions: offer to let it answer them (owner, 2 Nov 2026; words: desktop-ai-words.js). Not now hides it 14 days like the others.
   if (desktopAi?.family && learned.length) {
@@ -57,6 +59,6 @@ export const withQuestions = (entries, rows, held = new Set()) => [...rows.filte
 /** The folded Jobs bar's line, the blocking one first: "Cover letter missing · 4 details missing · 6 to check · 3 search suggestions". '' when nothing shows. */
 export function foldedLine(rows, searchCount) {
   const parts = rows.map(item => item.short);
-  if (searchCount > 0) parts.push(`${searchCount} search suggestion${searchCount === 1 ? '' : 's'}`);
+  if (searchCount > 0) parts.push(t('helperRest.searchSuggestions', {count: searchCount}));
   return parts.join(' · ');
 }

@@ -154,3 +154,13 @@ test('native multi-select changes preserve all canonical picks without assigning
   fire(node, 'change');
   assert.deepEqual(seen, ['Second choice, Fifth choice']);
 });
+
+test('an explicit display label never changes a choice value or its callback payload', () => {
+  const seen = [];
+  const node = answerControl({control: 'single', options: ['Canonical one', 'Canonical two', 'Canonical three', 'Canonical four']}, 'Canonical two', value => seen.push(value), {optionLabel: value => `Shown ${value}`});
+  assert.equal(node.children[2].textContent, 'Shown Canonical two');
+  assert.equal(node.children[2].value, 'Canonical two');
+  node.value = 'Canonical four';
+  node.listeners.change.forEach(fn => fn({}));
+  assert.deepEqual(seen, ['Canonical four']);
+});

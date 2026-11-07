@@ -51,3 +51,17 @@ test('localized coverage sites group by employer identity rather than their tran
     assert.equal(sitesByName(chips)[0].name, 'Original Employer');
   } finally { setLocale('en'); }
 });
+
+test('survey presentation translates known choices without changing saved schema or unknown answers', async () => {
+  const {surveyText} = await import('../../../renderer/survey-display.js');
+  const {lineOf, readLine} = await import('../../../renderer/survey-model.js');
+  try {
+    setLocale('de');
+    assert.equal(surveyText('Age bracket'), 'Altersgruppe');
+    assert.equal(surveyText('Woman'), 'Frau');
+    assert.equal(surveyText('My own answer'), 'My own answer');
+    const saved = lineOf('gender', 'Woman', 'Original note');
+    assert.match(saved, /^Gender identity: Woman/);
+    assert.equal(readLine(saved).option, 'Woman');
+  } finally { setLocale('en'); }
+});
