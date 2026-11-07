@@ -1,0 +1,28 @@
+// Remaining app-owned native dialog and notification messages; raw values stay outside these templates.
+export default {
+  "moveMessage": "Move Jobadabra to Applications?",
+  "moveDetail": "It is running from the disk image or Downloads. From Applications it can update itself and keeps its access to your saved keys.\n\nIt moves itself and opens again.",
+  "moveAction": "Move to Applications",
+  "notNow": "Not now",
+  "replaceMessage": "Replace the Jobadabra in Applications?",
+  "replaceDetail": "Your data is kept: it lives outside the app.",
+  "replaceAction": "Replace",
+  "cancel": "Cancel",
+  "moveFailed": "Jobadabra couldn't move itself",
+  "moveFailedDetail": "{error}\n\nDrag it from the disk image onto the Applications folder, then open it from there.",
+  "twiceMessage": "Jobadabra is installed twice",
+  "twiceIntro": "You have the Microsoft Store version and the one from the website on this PC. Your data may be kept separately in each copy, and each has its own Start menu entry and its own updates.",
+  "twiceStore": "The one you have open is the Store copy. In the list, remove the other \"Jobadabra\": the one that is not from the Microsoft Store.",
+  "twiceExe": "The one you have open came from the website. Keep the Microsoft Store one: it updates itself, with no Windows warning. In the list, remove the \"Jobadabra\" that is not from the Microsoft Store (this one).",
+  "twiceRisk": "Nothing is removed unless you do it in Windows. Removing the Microsoft Store copy can also remove data kept only in it.",
+  "installedApps": "Open Installed apps",
+  "keepBoth": "Keep both",
+  "allow": "Allow",
+  "consentMessage": "Let Claude work without asking before each step?",
+  "consentDetail": "Apply with Claude opens a Claude Code window per job that browses, signs up on the employer's site and fills the form without asking you to approve each action, so it can work on its own. It never clicks Submit: you review and submit yourself. Any other command it decides to run also runs without asking, so watch its window while it works.\n\nIt uses your own Claude account and plan. You can turn this off in Settings.",
+  "stuckTitle": "Stuck",
+  "stuckBody": "The extension cannot finish this page. Claude can: open the session to choose.",
+  "focusTitle": "Focus: what to do next",
+  "inputTitle": "Needs your input · {title}",
+  "inputBody": "Claude needs your input"
+};

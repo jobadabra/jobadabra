@@ -1,0 +1,28 @@
+// Remaining app-owned native dialog and notification messages; raw values stay outside these templates.
+export default {
+  "moveMessage": "Muți Jobadabra în Aplicații?",
+  "moveDetail": "Aplicația rulează din imaginea de disc sau din Descărcări. Din Aplicații se poate actualiza singură și își păstrează accesul la cheile salvate.\n\nSe mută și se deschide din nou.",
+  "moveAction": "Mută în Aplicații",
+  "notNow": "Nu acum",
+  "replaceMessage": "Înlocuiești Jobadabra din Aplicații?",
+  "replaceDetail": "Datele tale sunt păstrate: se află în afara aplicației.",
+  "replaceAction": "Înlocuiește",
+  "cancel": "Anulează",
+  "moveFailed": "Jobadabra nu s-a putut muta",
+  "moveFailedDetail": "{error}\n\nTrage aplicația din imaginea de disc în dosarul Aplicații, apoi deschide-o de acolo.",
+  "twiceMessage": "Jobadabra este instalat de două ori",
+  "twiceIntro": "Pe acest PC ai versiunea din Microsoft Store și pe cea de pe site. Datele tale pot fi păstrate separat în fiecare copie. Fiecare are propria intrare în meniul Start și propriile actualizări.",
+  "twiceStore": "Copia deschisă este cea din Store. În listă, elimină celălalt „Jobadabra”: cel care nu provine din Microsoft Store.",
+  "twiceExe": "Copia deschisă provine de pe site. Păstrează copia din Microsoft Store: se actualizează singură, fără avertismente Windows. În listă, elimină „Jobadabra” care nu provine din Microsoft Store (această copie).",
+  "twiceRisk": "Nu se elimină nimic decât dacă o faci tu în Windows. Eliminarea copiei din Microsoft Store poate șterge și datele păstrate doar în ea.",
+  "installedApps": "Deschide Aplicații instalate",
+  "keepBoth": "Păstrează ambele",
+  "allow": "Permite",
+  "consentMessage": "Îi permiți lui Claude să lucreze fără să întrebe înainte de fiecare pas?",
+  "consentDetail": "„Aplică folosind Claude” deschide o fereastră Claude Code pentru fiecare post, care navighează, se înregistrează pe site-ul angajatorului și completează formularul fără să-ți ceară aprobarea pentru fiecare acțiune, ca să poată lucra independent. Nu apasă niciodată Submit (Trimite): tu verifici și trimiți personal. Orice altă comandă pe care decide să o execute rulează tot fără să întrebe, așa că urmărește-i fereastra în timp ce lucrează.\n\nFolosește contul și abonamentul tău Claude. Poți dezactiva această funcție din Setări.",
+  "stuckTitle": "Blocat",
+  "stuckBody": "Extensia nu poate termina această pagină. Claude poate: deschide sesiunea pentru a alege.",
+  "focusTitle": "Priorități: ce să faci în continuare",
+  "inputTitle": "Este nevoie de răspunsul tău · {title}",
+  "inputBody": "Claude are nevoie de răspunsul tău"
+};

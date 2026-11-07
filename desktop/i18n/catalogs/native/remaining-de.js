@@ -1,0 +1,28 @@
+// Remaining app-owned native dialog and notification messages; raw values stay outside these templates.
+export default {
+  "moveMessage": "Jobadabra nach Programme verschieben?",
+  "moveDetail": "Die App läuft vom Disk-Image oder aus Downloads. In Programme kann sie sich selbst aktualisieren und behält den Zugriff auf deine gespeicherten Schlüssel.\n\nSie verschiebt sich selbst und öffnet sich erneut.",
+  "moveAction": "Nach Programme verschieben",
+  "notNow": "Nicht jetzt",
+  "replaceMessage": "Jobadabra in Programme ersetzen?",
+  "replaceDetail": "Deine Daten bleiben erhalten: Sie liegen außerhalb der App.",
+  "replaceAction": "Ersetzen",
+  "cancel": "Abbrechen",
+  "moveFailed": "Jobadabra konnte sich nicht verschieben",
+  "moveFailedDetail": "{error}\n\nZiehe die App vom Disk-Image in den Ordner Programme und öffne sie dort.",
+  "twiceMessage": "Jobadabra ist zweimal installiert",
+  "twiceIntro": "Auf diesem PC sind die Version aus dem Microsoft Store und die von der Website installiert. Deine Daten können in jeder Kopie getrennt gespeichert sein. Jede hat einen eigenen Startmenüeintrag und eigene Updates.",
+  "twiceStore": "Geöffnet ist die Store-Kopie. Entferne in der Liste das andere „Jobadabra“: das nicht aus dem Microsoft Store stammt.",
+  "twiceExe": "Geöffnet ist die Kopie von der Website. Behalte die aus dem Microsoft Store: Sie aktualisiert sich selbst, ohne Windows-Warnung. Entferne in der Liste das „Jobadabra“, das nicht aus dem Microsoft Store stammt (diese Kopie).",
+  "twiceRisk": "Nichts wird entfernt, solange du es nicht in Windows entfernst. Wenn du die Kopie aus dem Microsoft Store entfernst, können auch Daten verloren gehen, die nur darin gespeichert sind.",
+  "installedApps": "Installierte Apps öffnen",
+  "keepBoth": "Beide behalten",
+  "allow": "Erlauben",
+  "consentMessage": "Darf Claude ohne Nachfrage vor jedem Schritt arbeiten?",
+  "consentDetail": "„Mit Claude bewerben“ öffnet für jede Stelle ein Claude-Code-Fenster, das Webseiten besucht, sich auf der Website des Arbeitgebers registriert und das Formular ausfüllt, ohne dich um Zustimmung zu jeder Aktion zu bitten. So kann es selbstständig arbeiten. Es klickt niemals auf Submit (Absenden): Du prüfst alles und sendest selbst ab. Auch jeder andere Befehl, den es ausführen möchte, läuft ohne Nachfrage. Beobachte deshalb sein Fenster während der Arbeit.\n\nEs nutzt dein eigenes Claude-Konto und deinen Tarif. Du kannst dies in den Einstellungen ausschalten.",
+  "stuckTitle": "Festgefahren",
+  "stuckBody": "Die Erweiterung kann diese Seite nicht fertig bearbeiten. Claude kann es: Öffne die Sitzung, um zu wählen.",
+  "focusTitle": "Fokus: Was als Nächstes zu tun ist",
+  "inputTitle": "Deine Eingabe ist nötig · {title}",
+  "inputBody": "Claude benötigt deine Eingabe"
+};

@@ -1,0 +1,28 @@
+// Remaining app-owned native dialog and notification messages; raw values stay outside these templates.
+export default {
+  "moveMessage": "Spostare Jobadabra in Applicazioni?",
+  "moveDetail": "L’app è in esecuzione dall’immagine disco o da Download. In Applicazioni può aggiornarsi e mantiene l’accesso alle chiavi salvate.\n\nSi sposta e si riapre.",
+  "moveAction": "Sposta in Applicazioni",
+  "notNow": "Non ora",
+  "replaceMessage": "Sostituire Jobadabra in Applicazioni?",
+  "replaceDetail": "I tuoi dati vengono conservati: si trovano fuori dall’app.",
+  "replaceAction": "Sostituisci",
+  "cancel": "Annulla",
+  "moveFailed": "Jobadabra non è riuscito a spostarsi",
+  "moveFailedDetail": "{error}\n\nTrascina l’app dall’immagine disco nella cartella Applicazioni, poi aprila da lì.",
+  "twiceMessage": "Jobadabra è installato due volte",
+  "twiceIntro": "Su questo PC hai la versione del Microsoft Store e quella del sito web. I dati potrebbero essere conservati separatamente in ogni copia. Ciascuna ha una propria voce nel menu Start e aggiornamenti propri.",
+  "twiceStore": "La copia aperta è quella dello Store. Nell’elenco rimuovi l’altro «Jobadabra»: quello che non proviene dal Microsoft Store.",
+  "twiceExe": "La copia aperta proviene dal sito web. Tieni quella del Microsoft Store: si aggiorna da sola, senza avvisi di Windows. Nell’elenco rimuovi il «Jobadabra» che non proviene dal Microsoft Store (questa copia).",
+  "twiceRisk": "Non viene rimosso nulla finché non lo fai in Windows. Rimuovere la copia del Microsoft Store può anche eliminare i dati conservati solo al suo interno.",
+  "installedApps": "Apri App installate",
+  "keepBoth": "Tieni entrambe",
+  "allow": "Consenti",
+  "consentMessage": "Consentire a Claude di lavorare senza chiedere prima di ogni passaggio?",
+  "consentDetail": "«Candidati con Claude» apre una finestra di Claude Code per ogni offerta, che naviga, si registra sul sito del datore di lavoro e compila il modulo senza chiederti di approvare ogni azione, per lavorare autonomamente. Non fa mai clic su Submit (Invia): controlli e invii tu. Anche qualsiasi altro comando che decide di eseguire viene eseguito senza chiedere: osserva la sua finestra mentre lavora.\n\nUsa il tuo account e piano Claude. Puoi disattivarlo nelle Impostazioni.",
+  "stuckTitle": "Bloccato",
+  "stuckBody": "L’estensione non riesce a completare questa pagina. Claude può farlo: apri la sessione per scegliere.",
+  "focusTitle": "Focus: cosa fare adesso",
+  "inputTitle": "Serve il tuo intervento · {title}",
+  "inputBody": "Claude ha bisogno del tuo intervento"
+};
