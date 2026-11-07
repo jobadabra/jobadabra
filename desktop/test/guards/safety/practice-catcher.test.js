@@ -58,15 +58,20 @@ test('a Submit is caught once whether the script, the form\'s own POST, or both 
     assert.equal(fs.readFileSync(ledger, 'utf8').trim().split('\n').length, 2);
     assert.deepEqual(server.caught()[1].fields.map(([name]) => name), ['a', 'pw']);
     assert.equal(fs.readFileSync(ledger, 'utf8').includes('hunter2'), false, 'a value the script did not report is never written');
+    // a multipart POST nobody reported: field names only, never a file's name or text inside a value
+    const part = (name, extra, value) => `--B\r\nContent-Disposition: form-data; name="${name}"${extra}\r\n\r\n${value}\r\n`;
+    await askAt(server.port, 'jobs.example.com', '/files', {method: 'POST', body: `${part('cv', '; filename="CV.pdf"', 'x')}${part('note', '', 'name="fake"')}--B--\r\n`, type: 'multipart/form-data; boundary=B'});
+    assert.deepEqual(server.caught().at(-1).fields.map(([name]) => name), ['cv', 'note']);
+    assert.equal(server.caught().length, 3, 'the multipart POST is one entry');
     // the other order: the page's POST arrives first, the script's report with the same token completes that entry
     await askAt(server.port, 'jobs.example.com', '/late', {method: 'POST', body: 'e=1&__practice_id=bbb2', type: 'application/x-www-form-urlencoded'});
     await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'bbb2', page: 'https://jobs.example.com/y/apply', how: 'submit', fields: [['e', '1']]})});
-    assert.equal(server.caught().length, 3);
-    assert.deepEqual([server.caught()[2].path, server.caught()[2].how, server.caught()[2].fields], ['/y/apply', 'submit', [['e', '1']]]);
+    assert.equal(server.caught().length, 4);
+    assert.deepEqual([server.caught()[3].path, server.caught()[3].how, server.caught()[3].fields], ['/y/apply', 'submit', [['e', '1']]]);
     assert.deepEqual(server.caught()[1].fields.map(([name]) => name), ['a', 'pw'], 'the earlier POST with no report is not taken by another form\'s report');
     // another form's report right after a report-less POST is its own entry (no host + time match)
     await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 'ccc3', page: 'https://jobs.example.com/z/apply', how: 'submit', fields: [['z', '9']]})});
-    assert.equal(server.caught().length, 4);
+    assert.equal(server.caught().length, 5);
   } finally { await server.close(); }
 });
 

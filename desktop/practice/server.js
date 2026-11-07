@@ -45,7 +45,7 @@ export async function startPractice({cases, ledgerFile = ''}) {
   const save = () => { if (ledgerFile) fs.writeFileSync(ledgerFile, caught.map(entry => JSON.stringify(entry)).join('\n') + '\n'); };
   const record = entry => { caught.push(entry); save(); return entry; };
   const ID = /__practice_id(?:"\r\n\r\n|=)([a-z0-9]+)/;   // the token the script puts in the form (urlencoded or multipart)
-  const namesOf = (body, type) => (/multipart/i.test(type) ? [...body.matchAll(/name="([^"]+)"/g)].map(match => match[1]) : [...new URLSearchParams(body).keys()]).filter(name => name !== '__practice_id');
+  const namesOf = (body, type) => (/multipart/i.test(type) ? [...body.matchAll(/^Content-Disposition: form-data; name="([^"]+)"/gim)].map(match => match[1]) : [...new URLSearchParams(body).keys()]).filter(name => name !== '__practice_id');
   const pathOf = page => { try { return new URL(page).pathname; } catch { return ''; } };
   const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-practice-cert-'));
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=jp-practice', '-keyout', path.join(certDir, 'key.pem'), '-out', path.join(certDir, 'cert.pem')], {stdio: 'ignore'});
