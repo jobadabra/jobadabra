@@ -1,3 +1,4 @@
+/* global document, window */
 // The hands of the AI user agent on the real app window: what the explorer loop (lib/explore.mjs) calls to read the page and to press, type, go. Playwright page in, `act` out.
 // Job: report health
 // Why (3 Nov 2026, AI user agents 6/12): the manual explorer suite waits a fixed time after a press; the agent waits for the app to settle (lib/app.mjs settle: no loader visible for up to its own 20 s, then a short pause), so a slow runner
