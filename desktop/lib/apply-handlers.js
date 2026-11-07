@@ -194,7 +194,7 @@ export function registerApplyHandlers(ctx) {
     if (DEMO) return {ok: true, password: 'Maple-Rocket-42'};
     if (process.platform === 'darwin' && !sitePassword.read()) return {ok: false, error: 'No shared password: every account made by Jobadabra has its own. Show it in Credentials.'};
     if (action === 'show' && sitePassword.read()) return {ok: true, password: sitePassword.read()};
-    const {code} = await pipeline.run(storage, ['src.ai.passwords', 'shared']);
+    const code = await sitePassword.runFor(action, args => pipeline.run(storage, args).then(done => done.code));
     appLog('apply', `job-site password ${action === 'show' ? 'shown' : 'copied'}`, {ok: code === 0});
     if (code !== 0) return {ok: false, error: 'The password could not be made or read.'};
     return {ok: true, copied: true, password: action === 'show' ? sitePassword.read() : null};

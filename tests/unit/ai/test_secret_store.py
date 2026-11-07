@@ -118,6 +118,17 @@ class SecretStoreTest(unittest.TestCase):
         self.assertNotIn(own, str(printed.call_args_list))
         self.assertEqual(passwords.note('a b@c', 'https://x'), 'job=https://x')   # a value with a space is left out
 
+    def test_shared_with_no_copy_makes_the_password_on_a_host_with_no_clipboard_helper(self):
+        """#3532 (AI persona run 42401302994): Settings -> Show failed the first time ("could not be made or read") and worked the second: the run stored the password, then
+        its clipboard step raised on a host with no helper. Show asks for --no-copy; Copy (no flag) still needs the clipboard."""
+        store = FakeKeyring()
+        with mock.patch.object(sys, 'platform', 'linux'), mock.patch.object(secret_store, '_keyring', return_value=store), mock.patch('builtins.print'):
+            with self.assertRaises(SystemExit, msg='positive control: without the flag this host cannot copy'):
+                passwords.main(['shared'])
+            store.items.clear()
+            self.assertEqual(passwords.main(['shared', '--no-copy']), 0)
+        self.assertIn(('jobadabra.sites.password', 'jobadabra'), store.items)
+
     def test_no_store_elsewhere_reads_nothing(self):
         with mock.patch.object(sys, 'platform', 'linux'):
             self.assertIsNone(secret_store.get('anything'))

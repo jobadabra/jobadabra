@@ -16,6 +16,7 @@ A site's rule (--length, --no-symbols) is followed. Settings → Credentials sho
                                              kept with it for Settings → Credentials
   python3 -m src.ai.passwords copy <host>    copy the stored one
   python3 -m src.ai.passwords shared         make the job-site password if there is none, and copy it
+      [--no-copy]                            (Settings -> Show) make it, leave the clipboard alone
   python3 -m src.ai.passwords clear          empty the clipboard
 """
 import argparse
@@ -114,12 +115,16 @@ def main(argv=None):
     parser.add_argument('--no-symbols', action='store_true')
     parser.add_argument('--email', default='')
     parser.add_argument('--job', default='')
-    parser.add_argument('--no-copy', action='store_true', help='store only: the app asks for it, the extension fills it')
+    parser.add_argument('--no-copy', action='store_true', help='store only, clipboard untouched: the app asks for it, the extension fills it, Settings -> Show reads it from the store')
     args = parser.parse_args(argv)
     if args.action == 'clear':
         copy('')
         return 0
     if args.action == 'shared':   # never printed: the app's run log keeps what a command prints
+        if args.no_copy:   # Settings -> Show: make it if there is none and leave the clipboard alone (the app reads it from the store); a host with no clipboard helper must not fail a Show (#3532)
+            shared_password()
+            print(f'{SHARED}: kept')
+            return 0
         copy(shared_password())
         print(f'{SHARED}: on the clipboard')
         return 0

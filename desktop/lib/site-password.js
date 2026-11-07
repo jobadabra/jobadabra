@@ -9,3 +9,24 @@ export const SERVICE = 'jobadabra.sites.password';
 export function read(platform = process.platform, exec = execFileSync) {
   return keychain.read(SERVICE, {account: 'jobadabra', exec, platform});
 }
+
+/**
+ * The engine run behind Settings' Show and Copy: Copy puts the password on the clipboard, Show only makes it when there is none and reads it from the store.
+ * Why (7 Nov 2026, #3532, AI persona run 42401302994): Show used to run the Copy command, so a host with no clipboard helper stored the password, then failed ("The password could not be made or read."), and the second press worked; and a Show must never leave a secret on the clipboard.
+ * @param {'show'|'copy'} action
+ * @returns {string[]} the arguments of `python -m`
+ */
+export const runArgs = action => ['src.ai.passwords', 'shared', ...(action === 'show' ? ['--no-copy'] : [])];
+
+/**
+ * Runs the engine for Show or Copy and returns its exit code. Why (7 Nov 2026, #3532): Show makes the password without the clipboard; only a host the app cannot read the store on
+ * (Windows: `read()` is null) falls back to the copying run, so "Copied: paste it to read it." stays true there.
+ * @param {'show'|'copy'} action
+ * @param {(args: string[]) => Promise<number>} runEngine  the engine call, → its exit code
+ * @param {() => (string|null)} [readNow]  the store read after the run
+ */
+export async function runFor(action, runEngine, readNow = read) {
+  let code = await runEngine(runArgs(action));
+  if (action === 'show' && code === 0 && !readNow()) code = await runEngine(runArgs('copy'));
+  return code;
+}
