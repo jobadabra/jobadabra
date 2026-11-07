@@ -17,7 +17,7 @@ import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette, withLanguage} from '../lib/agent-moves.mjs';
-import {moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
+import {laneOf, laneSeed, moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
 import {runRecord, shotFiles} from '../lib/agent-run-record.mjs';
@@ -57,7 +57,7 @@ export async function run(ctx) {
   await ensureSetUp(ctx);
   const memoryDir = process.env.AGENT_MEMORY_DIR || '';   // a checkout of the agent-memory branch (the workflow clones it); empty = a first night, nothing remembered
   const out = path.join(ctx.ARTIFACTS, 'agent-memory-out');
-  const seed = Number(process.env.AGENT_SEED) || todaySeed();
+  const lane = laneOf(process.env.AGENT_LANE), batchSeed = Number(process.env.AGENT_SEED) || todaySeed(), seed = laneSeed(batchSeed, lane);   // Why (7 Nov 2026, pz): a lane plans from the batch seed's own slice of the pool and acts under its own seed (lib/agent-plan.mjs lanePool)
   const today = new Date().toISOString().slice(0, 10), commitNow = (process.env.GITHUB_SHA || '').slice(0, 7);
 
   let session = null;
@@ -83,7 +83,7 @@ export async function run(ctx) {
     // Why (7 Nov 2026, pz, owner: "3–4 goals per run"): the plan is sized from the run's token meter before it is drawn (lib/agent-steps.mjs goalCountFor), so every planned goal is funded at the engine's step price (a heavier page than the default can still leave a later goal short); 43 of 122 goals in 31 runs were never started.
     const budget = runBudget();
     const {stepTokens, goalMax} = planSizing(budget.usable(), process.env);   // Why (7 Nov 2026, pz): see lib/agent-steps.mjs planSizing
-    const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending, max: goalMax});
+    const fresh = planId ? namedPlan(planId, seed) : planSession({seed: batchSeed, lane, moves, coverage, changed: changed.areas, pending, max: goalMax});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
     const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);

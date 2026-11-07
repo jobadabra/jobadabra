@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {LANGUAGE_LABEL, OTHER_LANGUAGES, OWN_MOVES, languageGoal, movesFromPalette, poolLabel, poolOf, withLanguage} from '../../lib/agent-moves.mjs';
 import {CV_SHAPES, makePersona} from '../../lib/agent-persona.mjs';
-import {LANGUAGE_EVERY, MIN_NEW, WINDOW, languageDue, languageOf, newShare, pairsOf, pendingGoals, planSession, recordSession} from '../../lib/agent-plan.mjs';
+import {LANGUAGE_EVERY, MAX_LANES, MIN_NEW, WINDOW, laneOf, laneSeed, languageDue, languageOf, lanePool, newShare, pairsOf, pendingGoals, planSession, recordSession} from '../../lib/agent-plan.mjs';
 
 const GROUPS = ['Go to', 'Actions', 'Profile', 'Strategy', 'Jobs', 'Focus', 'Settings'];
 const MOVES = GROUPS.flatMap(group => Array.from({length: 4}, (_, i) => ({group, label: `${group} move ${i + 1}`})));   // 28 moves in 7 areas
@@ -172,4 +172,32 @@ test('the night\'s pool is the palette plus the language move, and a language go
   for (let seed = 1; seed <= 20; seed++) assert.ok(planSession({seed, moves: night, count: 2}).goals.some(goal => goal.label.startsWith('Read the app in ')), `seed ${seed}`);
   const worked = {summary: {goals: [{n: 1, group: 'App', label: languageGoal('it'), verdict: 'worked'}]}, completed: [1]};
   assert.deepEqual(pendingGoals(worked, [{group: 'App', label: LANGUAGE_LABEL}]), [], 'not queued again');
+});
+
+// Owner, 7 Nov 2026, via mac-50: "several AI persona at the same time, each one on different paths/goals".
+const POOL = withLanguage(MOVES.concat(Array.from({length: 8}, (_, i) => ({group: 'Extra', label: `Extra move ${i + 1}`}))));   // 37 moves: room for 9 lanes of 4
+
+test('lanes of one seed never share a goal, whatever the order the palette lists the moves in', () => {
+  for (const seed of [1, 7, 20261107]) {
+    const lanes = [1, 2, 3, 4].map(lane => planSession({seed, moves: lane % 2 ? POOL : [...POOL].reverse(), lane}));
+    const keys = lanes.flatMap(plan => plan.goals.map(goal => goal.pair.split(' → ').pop()));
+    assert.equal(new Set(keys).size, keys.length, `seed ${seed}: a goal in two lanes: ${keys.join(' | ')}`);
+    for (const plan of lanes) assert.ok(plan.goals.length >= 3 && plan.goals.length <= 4, `${plan.goals.length} goals`);
+  }
+});
+
+test('a lane is replayable from its seed and lane, has its own seed and person, and the night is unchanged', () => {
+  const a = planSession({seed: 7, moves: POOL, lane: 2});
+  assert.deepEqual(planSession({seed: 7, moves: POOL, lane: 2}), a);
+  assert.equal(a.seed, laneSeed(7, 2));
+  assert.notEqual(a.persona.name + a.persona.cv, planSession({seed: 7, moves: POOL, lane: 3}).persona.name + planSession({seed: 7, moves: POOL, lane: 3}).persona.cv);
+  assert.deepEqual(planSession({seed: 7, moves: POOL, lane: 0}), planSession({seed: 7, moves: POOL}), 'lane 0 is a night');
+});
+
+test('a lane with no moves left in the pool fails loudly, and the lane input takes only 1 to MAX_LANES', () => {
+  assert.throws(() => lanePool(MOVES, 7, 8), /lane 8: the pool holds 28 moves, enough for 7 lanes/);
+  assert.throws(() => planSession({seed: 7, moves: MOVES, lane: 8}), /lane 8/);
+  assert.deepEqual(['', '1', '8', undefined].map(laneOf), [0, 1, 8, 0]);
+  for (const bad of ['0', '9', '1.5', 'two', '-1']) assert.throws(() => laneOf(bad), /AGENT_LANE must be/, bad);
+  assert.equal(MAX_LANES, 8);
 });

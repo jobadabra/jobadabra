@@ -50,6 +50,31 @@ export const languageDue = coverage => !coverage.slice(-(LANGUAGE_EVERY - 1)).so
 /** The night's language: the seed picks one of the six other languages, replayable from the seed. */
 export const languageOf = seed => { const codes = Object.keys(OTHER_LANGUAGES); return codes[Math.floor(rng(Number(seed) + 11)() * codes.length)]; };
 
+/** The most lanes a batch can start (each takes MAX_GOALS moves of the pool; lanePool says when the pool is too small for one). */
+export const MAX_LANES = 8;
+
+/** The lane a dispatch asked for: '' = 0 (a night), else a whole number 1..MAX_LANES; anything else throws before the app is seeded. */
+export function laneOf(raw = '') {
+  if (raw === '' || raw === undefined) return 0;
+  const lane = Number(raw);
+  if (!Number.isInteger(lane) || lane < 1 || lane > MAX_LANES) throw new Error(`AGENT_LANE must be empty or a whole number from 1 to ${MAX_LANES}, got "${raw}"`);
+  return lane;
+}
+
+/** A lane's own seed (the batch seed + its number): its order, person, data shape and language differ from the other lanes'; lane 0 is a night and keeps the seed. */
+export const laneSeed = (seed, lane = 0) => Number(seed) + lane;
+
+/**
+ * Lane n's slice of the move pool: the moves sorted and shuffled by the batch seed ALONE (every lane of the batch does the same), then cut in slices of MAX_GOALS, lane n taking the n-th. Two lanes with
+ * one seed therefore never share a goal, and the batch needs no list of its lanes. Throws when the pool has fewer than MIN_GOALS moves left for this lane, so a lane too high never runs a thin plan.
+ * Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time, each one on different paths/goals"): lanes drawn from one pool by their own seeds would overlap by chance.
+ */
+export function lanePool(moves, seed, lane) {
+  const from = (lane - 1) * MAX_GOALS, slice = shuffle([...moves].sort((a, b) => moveKey(a).localeCompare(moveKey(b))), rng(seed)).slice(from, from + MAX_GOALS);
+  if (slice.length < MIN_GOALS) throw new Error(`lane ${lane}: the pool holds ${moves.length} moves, enough for ${Math.floor(moves.length / MAX_GOALS)} lanes of ${MAX_GOALS} goals`);
+  return slice;
+}
+
 /** One goal order: `must` moves are in it (shuffled with the rest, not first), pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */
 function draw(moves, changed, count, next, pending = [], must = []) {
   const forced = shuffle(moves.filter(move => changed.includes(move.group)), next);
@@ -64,11 +89,12 @@ function draw(moves, changed, count, next, pending = [], must = []) {
 
 /**
  * The day's plan. `max`: the most goals the run can pay for (lib/agent-steps.mjs goalCountFor), a hard ceiling: pending goals take its slots first, then one goal per changed area; a changed area with no slot is returned in `deferred` for the next night's queue, never planned beyond the budget (default 10, the old ceiling).
- * `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
+ * `lane`: 0 for a night, n for lane n of a parallel batch (the goals come from that lane's own slice of the pool, `lanePool`; `seed` is the batch's). `moves`: [{group, label}] read from the open ⌘K palette; `coverage`: past sessions' {pairs}; `changed`: ⌘K groups whose code changed since the last session.
  * Draws up to TRIES orders from the seed and keeps the one with the most new pairs (the first to reach MIN_NEW wins), so it is replayable and honest: `newShare` is reported even when the
  * vocabulary or history makes MIN_NEW unreachable. Returns {seed, persona, goals: [{n, group, label, pair}], newShare, changedAreas, deferred: [{group, label}]}.
  */
-export function planSession({seed, moves, coverage = [], changed = [], pending = [], count, max = 10, minNew = MIN_NEW}) {
+export function planSession({seed: base, moves: all, lane = 0, coverage = [], changed = [], pending = [], count, max = 10, minNew = MIN_NEW}) {
+  const moves = lane ? lanePool(all, base, lane) : all, seed = laneSeed(base, lane);
   // Why (7 Nov 2026, pz): a seeded 3 to 4 goals (MIN_GOALS..MAX_GOALS, was 6-10) and never more than `max`; 31 runs left 43 of 122 goals unstarted because the plan outgrew what the 250k cap pays for.
   const next = rng(seed), targetCount = Math.min(count ?? MIN_GOALS + Math.floor(next() * (MAX_GOALS - MIN_GOALS + 1)), moves.length, max);
   const current = new Map(moves.map(move => [moveKey(move), move]));

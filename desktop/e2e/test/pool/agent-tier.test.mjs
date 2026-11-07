@@ -10,7 +10,7 @@ const small = {system: 's', messages: [{role: 'user', content: 'hello'}]};
 const sized = tokens => ({system: 's', messages: [{role: 'user', content: 'y'.repeat((tokens - 100) * 4)}]});
 
 test('a night acts on the mid tier, a replay or a run with no kind on small, and what a dispatch asked for wins', () => {
-  assert.deepEqual([actorTierOf({kind: 'night'}), actorTierOf({kind: 'replay'}), actorTierOf({requested: 'mid', kind: 'night'}), actorTierOf({requested: 'large', kind: 'replay'}), actorTierOf()], ['mid', 'small', 'mid', 'large', 'small']);
+  assert.deepEqual([actorTierOf({kind: 'night'}), actorTierOf({kind: 'replay'}), actorTierOf({requested: 'mid', kind: 'night'}), actorTierOf({requested: 'large', kind: 'replay'}), actorTierOf(), actorTierOf({kind: 'lane'})], ['mid', 'small', 'mid', 'large', 'small', 'mid']);   // a lane files like a night, so it acts on mid (pz, 7 Nov 2026)
 });
 
 // Guard: money. One run never spends more than 250,000 tokens (owner, 5 Nov 2026: "we can start with 250k tokens then. Assuming the initial context/harness would be max 20k"): every call of the run (actor, reader, judge, input plus output) counts, and a call whose worst case would pass the cap is refused before it is made.
