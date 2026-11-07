@@ -46,7 +46,7 @@ One press is 180 s (`desktop/lib/search-steps.js SEARCH_BUDGET_S`) over up to fo
 | 12 | Employer finder (scout) | `src/scout.py` | – | 180 − 5 (`STOP_MARGIN_S`) |
 Two facts the table shows (gi's inventory, `press-inventory.md`, 7 Nov 2026, checked against the code):
 - **Titles get ~4 s of their own.** The read cut is at 67.5 s and the titles' stop at 71.25 s (135 s search); after that only the floors run (300 local titles, 3 scores). gi measured the title step stopping at ~71 s with 75–116 titles unjudged for p7, p11, p15, p16, p18.
-- **A repeat press reads employer sites for ~4 s (measured, 7 Nov 2026; the code read said ~20 s).** On a press that is not the first, the boards step runs first; in run [42411469318](https://github.com/jobadabra/jobadabra/actions/runs/42411469318) (p7, `presses=2`, one sample, 2 of its calls refused by the broker) it held the search until 60 s (a site still open at the boards' time), employer sites started at 64 s and the read cut is 67.5 s from the press; places got no time ("90 location(s) wait" at 66 s). p7 has 7 employer sites in its places, so it lost none; a persona with more would. The night check runs first presses only (`--presses 1 --fresh`); the yardstick replays both.
+- **A repeat press reads employer sites for ~4 s (measured, 7 Nov 2026; the code read said ~20 s).** On a press that is not the first, the boards step runs first; in run [42411469318](https://github.com/jobadabra/jobadabra/actions/runs/42411469318) (p7, `presses=2`, one sample; 10 of the run's 71 broker calls were refused, which may have slowed the boards step: a second sample follows) it held the search until 60 s (a site still open at the boards' time), employer sites started at 64 s and the read cut is 67.5 s from the press; places got no time ("90 location(s) wait" at 66 s). p7 has 7 employer sites in its places, so it lost none; a persona with more would. The night check runs first presses only (`--presses 1 --fresh`); the yardstick replays both.
 
 Knobs that hold seconds or counts of the clock today: `time_budget` (PLANNED, RESERVE ×3, FACTS, TAIL, SCORING, FLOOR, LOCAL_TITLES, FEED, SHARE ×7, PACE ×7), `read_budget` (READ_SECONDS, READ_FLOOR, READ_GRACE), `boards.SHARE_S`, `boards_first.WEB_WAIT`, `eures` (SECONDS, LAST_PAGE, MOST, KEEP), `first_jobs` (SLICE, FIRST_JOBS, MAX_FIRST, SLICE_BOARDS), `title_triage` (BATCH, MAX_NEW), `search-steps.js` (SEARCH_BUDGET_S, SCOUT_SHARE_S, STOP_MARGIN_S, STEP_MIN_S). About 45 numbers in 9 files, two languages.
 
@@ -92,7 +92,7 @@ The gi coordinator holds read-order PRs until PR 5/6 (the ranker) merges; a fix 
 
 ## Progress
 - [x] Sketch + owner's yes (7 Nov 2026: "Yes, build it (Recommended)"; order "Ledger, yardstick, then moves (Recommended)"; "Yes, record the 18 (Recommended)"; a drop below the band "Waits for your yes (Recommended)") (proof: none: the owner's answers in the ps session, 7 Nov 2026)
-- [x] 1/6 The fix ledger on today's code, all green, with its append-only guard, merged #3561 (proof: tests/unit/press/test_ledger.py)
+- [x] 1/6 The fix ledger on today's code, all green, with its append-only guard, merged #3561 (proof: tests/unit/press/test_ledger.py @93f7086)
 - [ ] 2/6 Yardstick: exhaustive recordings of the 18, per-item AI replay, PR vs main job, noise band (in flight: #3565; the repeat press measured once, above)
 - [ ] 3/6 Budget table: every clock number to `budget.json` (Python and app), values unchanged, guard
 - [ ] 4/6 Press module: `clock.py` + `stages.py`, stages take the clock, pure moves one stage group at a time
