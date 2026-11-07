@@ -103,6 +103,7 @@ export function appliedKeyboard(pages) {
   return rows.length ? { inline_keyboard: rows } : null;
 }
 
+/** Add translated outcome labels to the supplied keyboard while preserving callback IDs, original rows and English defaults. */
 export function withOutcomeRows(markup, n, page, context = {}) {
   const rows = (markup?.inline_keyboard || []).filter((row) => !isOutcomeRow(row));
   const button = (k) => ({ text: botText(context, OUTCOME_LABELS[k]), callback_data: `out:${k}:${page}:${n}` });
@@ -255,6 +256,7 @@ const ACTIONS = { a: ['applied', '✅', 'actionApplied'],   // {where}: " in Not
 
 const isActionRow = (row) => row.some((b) => /^(act:|close)/.test(b.callback_data || ''));
 
+/** Add the authored job action menu for an explicit user context; command IDs and existing keyboard rows remain unchanged. */
 export function withActionRow(markup, code, n, context = {}) {
   const rows = (markup?.inline_keyboard || []).filter((row) => !isActionRow(row));
   const actionRow = [

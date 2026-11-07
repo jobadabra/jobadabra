@@ -13,6 +13,7 @@ export function escapeHtml(value) {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Render supplied GitHub runs as Telegram-safe HTML; optional user context localizes wrappers and empty lists keep a clear message. */
 export function formatRuns(runs, context = {}) {
   if (!runs.length) return botText(context, 'noWorkflowRuns');
   const icon = (run) => run.status !== 'completed' ? '⏳' : run.conclusion === 'success' ? '✅' : '❌';
@@ -39,6 +40,7 @@ export function runItem(page) {
 const linked = (link, html) => (link ? `<a href="${escapeHtml(link)}">${html}</a>` : html);
 
 // /status: the latest runs (⏱️ Search runs, or the store's), wherever they ran (the Mac, GitHub, a button here), with the one running.
+/** Render plain store run items without reads or writes; supplied summaries stay escaped raw content and missing context retains English. */
 export function formatRunItems(runs, context = {}) {
   if (!runs.length) return botText(context, 'noRuns');
   const ICON = { Running: '⏳', Failed: '❌', Warnings: '⚠️' };
@@ -51,9 +53,11 @@ export function formatRunItems(runs, context = {}) {
   });
   return [`🛠 <b>${botText(context, 'recentRuns')}</b>\n${botText(context, 'latest', {count: lines.length})}`, lines.join('\n\n')].join('\n\n');
 }
+/** Project supplied Notion pages to the same run presentation; no query is made and context remains explicit. */
 export const formatNotionRuns = (pages, context = {}) => formatRunItems(pages.map(runItem), context);
 
 // `databaseUrl`: the Applications database in Notion, or '' with the data on this Mac.
+/** Render supplied applications with optional localized wrappers; canonical data is never mutated and an empty list explains how to add one. */
 export function formatAppliedItems(items, databaseUrl, context = {}) {
   if (!items.length) return databaseUrl ? botText(context, 'noApplicationsNotion', {link: `<a href="${databaseUrl}">Notion</a>`}) : botText(context, 'noApplicationsApp');
   const lines = items.map((item, index) => {
@@ -66,11 +70,14 @@ export function formatAppliedItems(items, databaseUrl, context = {}) {
   });
   return [`📋 <b>${botText(context, 'applications')}</b>\n${botText(context, 'tracked', {count: items.length})}${databaseUrl ? ` · <a href="${databaseUrl}">${botText(context, 'openNotion')}</a>` : ''}`, lines.join('\n\n')].join('\n\n');
 }
+/** Convert supplied Notion application pages for display, retaining raw data and the optional explicit language context. */
 export const formatApplied = (pages, databaseUrl, context = {}) => formatAppliedItems(pages.map(appItem), databaseUrl, context);
 
+/** Render supplied saved jobs with escaped personal content, explicit optional context and a helpful empty-state message. */
 export function formatSavedItems(items, databaseUrl, context = {}) {
   if (!items.length) return botText(context, 'noSaved');
   const lines = items.map((item, i) => `${i + 1}. ${linked(item.url, `<b>${escapeHtml(item.title || botText(context, 'untitled'))}</b>`)}\n${escapeHtml(item.company)}`);
   return [`⭐ <b>${botText(context, 'savedJobs')}</b>\n${botText(context, 'savedCount', {count: items.length})}${databaseUrl ? ` · <a href="${databaseUrl}">${botText(context, 'openNotion')}</a>` : ''}`, lines.join('\n\n')].join('\n\n');
 }
+/** Convert supplied Notion saved-job pages into the shared pure listing; preserve legacy English when no context is supplied. */
 export const formatSaved = (pages, databaseUrl, context = {}) => formatSavedItems(pages.map(appItem), databaseUrl, context);
