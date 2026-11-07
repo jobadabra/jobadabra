@@ -105,7 +105,7 @@ class PrDesktopPicks(unittest.TestCase):
         self.assertEqual(self.picker.select(['docs/rules/change-loop.md'])['desktop'], [])   # a doc no test reads still runs nothing
 
     def test_a_change_to_what_runs_the_tests_runs_everything(self):
-        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', 'tools/affected_readers.py', '.github/workflows/tests-desktop.yml', '.github/workflows/tests-desktop-windows.yml', 'desktop/package.json', 'eslint.config.mjs'):
+        for changed in ('desktop/test/no-live-site.mjs', 'desktop/test/reporter-by-file.mjs', 'tools/check.py', 'tools/affected_readers.py', 'tools/affected_reach.py', '.github/workflows/tests-desktop.yml', '.github/workflows/tests-desktop-windows.yml', 'desktop/package.json', 'eslint.config.mjs'):
             self.assertEqual(self.picker.select([changed])['desktop'], 'all', changed)
 
     def test_a_picked_run_keeps_lint_and_the_no_live_site_import(self):
@@ -165,13 +165,22 @@ class PrDesktopPicks(unittest.TestCase):
 
     def test_the_windows_plan_counts_what_a_change_reaches(self):
         # The workflow skips its install on 0: a doc no test reads is 0, a tools/fixer file is not, a lock file is all (a package.json is all only when its dependencies changed: the tests below).
-        import contextlib, io, os
-        def plan(changed):
+        import contextlib, io, os, types
+        real_run = subprocess.run
+        def own_main(argv, **kwargs):   # Why (7 Nov 2026, ts 8/8): tools/check.py starts the picker CLI as a new process, a cold one (3.6 s: it parses the whole tree again); its own main() runs here, on the graphs this class already built
+            if not str(argv[1]).endswith('tools/affected-tests.py'):
+                return real_run(argv, **kwargs)
+            printed = io.StringIO()
+            with contextlib.redirect_stdout(printed):
+                self.picker.main(argv[2:])
+            return types.SimpleNamespace(stdout=printed.getvalue(), returncode=0)
+        def plan(changed, as_a_process=False):
             out = io.StringIO()
-            with mock.patch.dict(os.environ, {'JOBADABRA_AFFECTED_FILES': changed}), contextlib.redirect_stdout(out):
+            runner = types.SimpleNamespace(**{**vars(subprocess), 'run': real_run if as_a_process else own_main})
+            with mock.patch.dict(os.environ, {'JOBADABRA_AFFECTED_FILES': changed}), mock.patch.object(self.check, 'subprocess', runner), contextlib.redirect_stdout(out):
                 self.check.main(['--plan', '--area', 'desktop', '--app-only', '--affected-from', 'HEAD^1'])
             return out.getvalue().strip()
-        self.assertEqual(plan('docs/rules/change-loop.md'), '0')
+        self.assertEqual(plan('docs/rules/change-loop.md', as_a_process=True), '0')   # the one plan that goes through the real process boundary
         self.assertGreater(int(plan('tools/fixer/loop.mjs')), 0)   # not 0: the fixer's tests reach it (it was "over 100" only while every guard ran for every change; 34 on 7 Nov 2026)
         self.assertEqual(plan('desktop/package-lock.json'), 'all')   # the lock file: 'all' whatever this checkout holds (a package.json's verdict reads git; its tests are below; Gitar on ts 4/5)
 

@@ -38,8 +38,8 @@ AREAS = ('python', 'desktop', 'worker', 'e2e', 'integration')
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
 PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
-# Why (4 Nov 2026, PR time 2/2; Windows workflow added 5 Nov 2026, owner "Yes: reached tests, every PR"): what runs the desktop tests themselves, on Linux and on Windows, and the picker's own two files (tools/affected-tests.py, tools/affected_readers.py since 7 Nov 2026, ts 3/3); a change here can break any test without reaching it.
-DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/affected_readers\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop(-windows)?\.yml)$')   # -windows: 5 Nov 2026, the Windows job runs the picked tests too
+# Why (4 Nov 2026, PR time 2/2; Windows workflow added 5 Nov 2026, owner "Yes: reached tests, every PR"): what runs the desktop tests themselves, on Linux and on Windows, and the picker's own three files (tools/affected-tests.py, tools/affected_readers.py since 7 Nov 2026, ts 3/3; tools/affected_reach.py since 7 Nov 2026, ts 8/8); a change here can break any test without reaching it.
+DESKTOP_RUNNER = re.compile(r'^(desktop/test/no-live-site\.mjs|desktop/test/reporter-by-file\.mjs|desktop/scripts/stage\.mjs|tools/check\.(py|sh)|tools/affected-tests\.py|tools/affected_readers\.py|tools/affected_reach\.py|tools/data-readers\.mjs|desktop/e2e/lib/data-reads\.mjs|\.github/workflows/tests-desktop(-windows)?\.yml)$')   # -windows: 5 Nov 2026, the Windows job runs the picked tests too
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python and worker whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
@@ -80,6 +80,7 @@ def read(p):
         return ''
 
 
+@functools.lru_cache(maxsize=None)   # a path's repo-relative name never changes (95k calls in the picks test, 7 s)
 def rel(p):
     return p.relative_to(ROOT).as_posix()
 
@@ -93,6 +94,8 @@ def _load(name, file):
 
 
 readers = _load('affected_readers', 'tools/affected_readers.py')
+reach_tools = _load('affected_reach', 'tools/affected_reach.py')   # the import closure and its per-graph memo (a pure move, 500-line rule)
+closure, by_graph, reach_of = reach_tools.closure, reach_tools.by_graph, reach_tools.reach_of
 
 
 @functools.lru_cache(maxsize=None)
@@ -178,20 +181,6 @@ def is_tree_reader(f):
     return bool(parts) and ('scripts' in parts or 'tools' in parts or 'test' in parts or 'e2e' in parts)
 
 
-def closure(start, edges):
-    seen, stack = set(), [start]
-    while stack:
-        p = stack.pop()
-        if p in seen:
-            continue
-        seen.add(p)
-        deps = edges.get(p, set())
-        if deps is None:
-            return None
-        stack.extend(deps)
-    return seen
-
-
 # --- JavaScript import graph ---------------------------------------------------------------------------------------------------------
 def resolve_js(base, spec):
     target = (base.parent / spec).resolve()
@@ -240,6 +229,9 @@ def e2e_reach():
         return None
 
 
+_DATA_READS = {}   # changed file -> the code files that read it ([] for a code file or a file nothing names)
+
+
 def data_readers(changed):
     """{changed data file: [code files that read it at run time]} from desktop/e2e/lib/data-reads.mjs, through tools/data-readers.mjs; {} without node or the helper;
     None when the helper fails: the caller then runs everything, as for any change it cannot map.
@@ -247,11 +239,17 @@ def data_readers(changed):
     helper, node = ROOT / 'tools/data-readers.mjs', shutil.which('node')
     if not node or not helper.is_file():
         return {}
-    out = subprocess.run([node, str(helper), *changed], cwd=ROOT, capture_output=True, text=True, check=False)
-    try:
-        return json.loads(out.stdout) if out.returncode == 0 else None
-    except ValueError:
-        return None
+    todo = [f for f in dict.fromkeys(changed) if f not in _DATA_READS]   # Why (ts 8/8): the helper answers each file on its own, so one asked before is not asked again (a node process per select() call: 11 s in the picks test)
+    if todo:
+        out = subprocess.run([node, str(helper), *todo], cwd=ROOT, capture_output=True, text=True, check=False)
+        try:
+            found = json.loads(out.stdout) if out.returncode == 0 else None
+        except ValueError:
+            found = None
+        if found is None:
+            return None
+        _DATA_READS.update({f: found.get(f, []) for f in todo})
+    return {f: _DATA_READS[f] for f in changed if _DATA_READS[f]}
 
 
 def reaches_changed(paths, changed):
@@ -288,7 +286,8 @@ def script_reach(script):
 
 def touches_app(changed):
     """Does a change belong to the running app: a file its entry imports, or one in the folders it loads by path?"""
-    app = {rel(g) for g in closure((ROOT / APP_ENTRY).resolve(), js_graph()) or () if g.is_relative_to(ROOT)}
+    graph = js_graph()
+    app = by_graph('app', APP_ENTRY, graph, lambda: {rel(g) for g in closure((ROOT / APP_ENTRY).resolve(), graph) or () if g.is_relative_to(ROOT)})
     return any(f in app or f.startswith(APP_FOLDERS) for f in changed)
 
 
@@ -301,6 +300,25 @@ def driven_reach(reach):
             files |= got
             launches = launches or app
     return files, launches
+
+
+@functools.lru_cache(maxsize=None)
+def scans_tree(f):
+    """Does this file's text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)? A file's text does not change during a run."""
+    return bool(SCANNER_RE.search(read(f)))
+
+
+def static_facts(area, t, graph):
+    """What one test file is, whatever changed: (text, repo-relative name, import reach, scans the tree, text plus its tree-reading helpers (desktop), files reached through spawned scripts, starts the app).
+    Why (7 Nov 2026, ts 8/8, owner: "is 4 minutes expected?"): select() rebuilt this for ~345 desktop tests on every call (2.2 s a call, 77 calls in tests/guards/rules/test_pr_desktop_picks.py = 167 s); a call now only compares it with the changed files."""
+    def make():
+        text, reach = read(t), reach_of(t.resolve(), graph)
+        # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
+        via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
+        scanner = bool(SCANNER_RE.search(text)) or any(scans_tree(f) for f in via)
+        body = '\n'.join([text, *(text_of(f) for f in via)]) if area == 'desktop' else ''
+        return (text, rel(t), reach, scanner, body, *(driven_reach(reach) if area != 'e2e' else (set(), False)))
+    return by_graph(area, t, graph, make)
 
 
 def pick_node_area(area, folder, relevant, graph, engine_changed, words=()):
@@ -318,22 +336,16 @@ def pick_node_area(area, folder, relevant, graph, engine_changed, words=()):
     scan_ok = any(f.startswith(E2E_SCAN_FOR) for f in relevant) if area == 'e2e' else area != 'integration'   # an integration test is never a whole-tree guard: only reach and mention pick it
     app_changed = area != 'e2e' and touches_app(relevant)   # e2e: its own reach parser decides
     tooling_changed = any(f.startswith(tooling_roots()) for f in relevant)
-    picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
+    picked = []
     for t in tests:
-        text = read(t)
-        reach = closure(t.resolve(), graph)
-        # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
-        via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
-        scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
+        text, name, reach, scanner, body, driven, launches = static_facts(area, t, graph)
         if area == 'desktop':   # two kinds of reader (ts 3/3): a tree walker is picked for any change (one of our own tooling tests only for a tooling change), a folder reader when a changed file sits under a folder its text (or a helper's) names
-            body = '\n'.join([text, *(text_of(f) for f in via)])
-            scanner = readers.desktop_reader(rel(t), text, body, relevant, tooling_changed)
-        driven, launches = driven_reach(reach) if area != 'e2e' else (set(), False)
-        if (area == 'desktop' and '/guards/' in rel(t) and SAFETY_GUARD_RE.search(text[:1500])) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, [*relevant, *words], {}) or (scanner and scan_ok) \
-                or reaches_changed(reached.get(rel(t), ()), relevant) \
+            scanner = readers.desktop_reader(name, text, body, relevant, tooling_changed)
+        if (area == 'desktop' and '/guards/' in name and SAFETY_GUARD_RE.search(text[:1500])) or (reach & changed_js) or (driven & changed_js) or (launches and app_changed) or mentions(text, [*relevant, *words], {}) or (scanner and scan_ok) \
+                or reaches_changed(reached.get(name, ()), relevant) \
                 or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
-                or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine
-            picked.append(rel(t)[len(PREFIX.get(area, area + '/')):])
+                or (area == 'integration' and engine_changed and '/integration/store/' in name):   # the store layer runs the real Python engine
+            picked.append(name[len(PREFIX.get(area, area + '/')):])
     return picked
 
 
@@ -349,12 +361,12 @@ def pick_python(py_changed, result, why):
     names = {f: py_module_name(ROOT / f) for f in py_changed if f.endswith('.py')}
     picked = []
     for t in python_tests():
-        reach = closure(t, edges)
-        if reach is None or reach & changed_paths or mentions(read(t), py_changed, names):
+        reach = reach_of(t, edges)
+        if reach is None or reach & changed_paths or mentions(text_of(t), py_changed, names):
             picked.append(py_module_name(t))
     result['python'] = picked
     orphans = [f for f in names if f.startswith('src/') and not any(
-        (ROOT / f) in (closure(t, edges) or {ROOT / f}) for t in python_tests())]
+        (ROOT / f) in (reach_of(t, edges) or {ROOT / f}) for t in python_tests())]
     if orphans and not picked:   # an engine file no test reaches: nothing could fail, so run the lot rather than nothing
         result['python'] = 'all'; why['python'] = f'no test reaches {orphans[0]}'
 
