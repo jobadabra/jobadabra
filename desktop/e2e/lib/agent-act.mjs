@@ -7,8 +7,8 @@ import {goView} from './go-view.mjs';
 import {observePage} from './explore.mjs';
 import {VIEWS} from './uicheck.mjs';
 
-/** The pages `go` may open: the Finder's views plus Profile, which the menu draws as a button of the settings view (`data-settings="profile"`), so no view name of the Finder's list reaches it. */
-export const AGENT_VIEWS = [...VIEWS, 'profile'];
+/** The pages `go` may open: the Finder's views plus Reports and Employers (menu pages the Finder does not walk; "Reports: Weekly report" was refused as a page that does not exist in 3 runs, pz 3/5) plus Profile, which the menu draws as a button of the settings view (`data-settings="profile"`), so no view name of the Finder's list reaches it. */
+export const AGENT_VIEWS = [...VIEWS, 'reports', 'employers', 'profile'];
 const PROFILE_NAV = '.nav[data-settings="profile"]';
 
 /**

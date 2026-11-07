@@ -19,6 +19,7 @@ import {localEnv, latestExtension, developmentCopy, extensionChangedNote, newest
 import {extensionBuild} from './build-state.js';
 import {packagedBuild} from './build-handlers.js';
 import {pageKey, sessionOfJob, markReportedConfirmations} from './server-pages.js';
+import {t} from '../i18n/server-notices.js';
 import {formIssue, jobName, notify, tabsHandler, accountPressedHandler, pageHandler, stuckHandler, takeOverHandler,
   claudeAutoHandler, accountFactHandler, stopAsked, stopHeard, stoppedHandler, startedHandler} from './server-hooks.js';
 
@@ -127,10 +128,11 @@ function dispatchEvent(event, job) {
 function notifyFill(event, job) {
   // A click opens this application's session (the newest one open on this job), not just the list.
   const target = {view: 'sessions', ...(sessionOfJob(event.url) ? {session: sessionOfJob(event.url)} : {})};
-  if (event.type === 'fill-started') notify('Filling the application…', `${jobName(job)}. Check every field before you submit.`, target, 'info');
+  const name = job ? jobName(job) : t('serverNotice.thisJob');
+  if (event.type === 'fill-started') notify(t('serverNotice.fillStartedTitle'), t('serverNotice.fillStartedBody',{job:name}), target, 'info');
   if (event.type === 'fill-done') {
-    notify(event.left ? 'Form filled: a few things left for you' : 'Form filled ✓',
-      `${jobName(job)}: ${event.filled} field(s) filled${event.left ? `, ${event.left} left (listed on the page)` : ''}. Review, then submit.`, target, event.left ? 'warn' : 'good');
+    notify(event.left ? t('serverNotice.fillLeftTitle') : t('serverNotice.fillDoneTitle'),
+      t('serverNotice.fillDoneBody',{job:name,count:event.filled,remaining:event.left ? t('serverNotice.fillRemaining',{count:event.left}) : ''}), target, event.left ? 'warn' : 'good');
   }
 }
 

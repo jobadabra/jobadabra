@@ -44,12 +44,15 @@ test('connect opens the site with a state, waits, and takes the key only for tha
   assert.equal(receive({state: 'y'.repeat(43), access_token: TOKEN}), false, 'nothing waits: a key that arrives anyway is dropped (a victim\'s browser on an attacker\'s link)');
 });
 
-test('cancelled, no answer in 5 minutes, or the browser would not open: a plain error', async () => {
+test('cancelled, no answer in 5 minutes, or the browser would not open: a plain error', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
   const waiting = connect(() => {}, {site: 'https://x'});
   await new Promise(r => setImmediate(r));
   cancel();
   assert.equal((await waiting).error, 'Cancelled.');
-  assert.match((await connect(() => {}, {site: 'https://x', timeout: 5})).error, /EU, EEA and Switzerland[^]*data file/);
+  const timedOut = connect(() => {}, {site: 'https://x', timeout: 5});
+  t.mock.timers.tick(5);
+  assert.match((await timedOut).error, /EU, EEA and Switzerland[^]*data file/);
   assert.match((await connect(() => { throw new Error('no browser'); }, {site: 'https://x'})).error, /could not be opened/);
 });
 
@@ -64,7 +67,8 @@ test('the key goes to the Keychain only; settings hold when it ends, never the v
   assert.equal(kc.items.size, 0, 'expiry deletes the item');
   assert.equal(s.settings().linkedinImport, null);
   assert.equal(readToken(s, {keychain: kc, now: NOW}), null);
-  assert.match(saveToken(s, {token: TOKEN}, {keychain: {write: () => false}}).error, /Keychain would not keep/);
+  const credentialStore = process.platform === 'win32' ? 'Windows Credential Manager' : 'Keychain';
+  assert.equal(saveToken(s, {token: TOKEN}, {keychain: {write: () => false}}).error, `The ${credentialStore} would not keep the LinkedIn key, so nothing was imported.`);
 });
 
 test('fetchDomain follows LinkedIn\'s next pages of this endpoint, with the version header and the key', async () => {

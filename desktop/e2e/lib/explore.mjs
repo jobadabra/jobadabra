@@ -46,7 +46,7 @@ export function observePage() {
   const folded = el => { for (let fold = el.closest('details'); fold; fold = fold.parentElement?.closest('details')) { if (!fold.open && !(el.closest('summary') && fold.querySelector(':scope > summary') === el.closest('summary'))) return true; } return false; };
   const controls = [];
   for (const el of document.querySelectorAll('button, a[href], [role="button"], [role="tab"], input, textarea, select, summary')) {
-    if (controls.length >= 120 || !visible(el) || folded(el) || el.closest('nav, .sidebar')) continue;
+    if (controls.length >= 120 || !visible(el) || folded(el) || (el.closest('nav, .sidebar') && !el.closest('.settings-nav'))) continue;   // Why (7 Nov 2026, pz): the app's menu is `go`'s; the Settings section list (Appearance, Advanced, Data & backup…) is a <nav> too and the only way to those pages, so a person's goal there was unreachable (10 of 26 goals that could not be finished, 31 runs)
     const kind = /^(INPUT|TEXTAREA)$/.test(el.tagName) ? 'field' : el.tagName === 'SELECT' ? 'select' : el.tagName === 'A' ? 'link' : 'button';
     // Why (5 Nov 2026, AI user agents, replay 41938139127: a checkbox inside its <label> was reported as "(no label)" and filed as a bug, wrongly): a control's name is its accessible name, the way a person and a screen reader get it: aria-label, then aria-labelledby, then the <label> that wraps it or points at it, then its own text, placeholder, name.
     const namedBy = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');

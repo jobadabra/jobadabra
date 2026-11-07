@@ -82,8 +82,9 @@
     // Build one remaining-field button with its original draft-review child and click targets.
     function remainingRow(field) {
       const row = Object.assign(document.createElement('button'), {className: 'item'});
+      const label = window.__jobadabraPanelForm.isSyntheticCaptcha(field) ? t('panel.syntheticCaptcha', 'Confirm you are not a robot') : field.label;   // words-ok: bundled display projection, never page classification
       row.append(Object.assign(document.createElement('i'), {textContent: knockout(field) ? '⛔' : AGREE.test(field.label) || field.category === 'legal' ? '⚖️' : field.draft ? '✍️' : '○'}),
-        Object.assign(document.createElement('span'), {textContent: field.label.slice(0, 120) || t("panel.requiredField", 'A required field')}),
+        Object.assign(document.createElement('span'), {textContent: label.slice(0, 120) || t("panel.requiredField", 'A required field')}),
         ...(field.draft ? [Object.assign(document.createElement('span'), {className: 'tag warn', textContent: field.draft === 'outline' ? t("panel.outlineComplete", 'Outline: complete it') : t("panel.drafted", 'Drafted for you: review')}),   // typed by us, never counted as done until read (owner, 16 Oct 2026)
           Object.assign(document.createElement('span'), {className: 'tag', textContent: t("panel.reviewAnswer", 'Review my answer'), onclick: event => { event.stopPropagation(); flash(field.el); written.review(field); }})] : []),
         Object.assign(document.createElement('span'), {className: 'go', textContent: '›'}));
