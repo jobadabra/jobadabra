@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The setup goals as label/value rows (Target level, Work mode, Minimum salary, Languages you work in): the setup review and the Strategy page
 // draw them alike (owner, 7 Oct 2026). A click on a value or its pencil edits it in place (Enter or click away saves, Esc cancels); a long value
 // is clamped to two lines, with the whole text on hover and while editing. onSave(key, text) null: read-only. fixed: {key: open()} for a tile whose
@@ -10,9 +12,10 @@ import {formatFor, picksOf} from './question-kind.js';
 import {savedAs} from './question-control-values.js';
 import {GOAL_KINDS} from './goal-kinds.js';
 
-export const GOAL_TILES = [['seniority', 'user', 'Target level'], ['work_mode', 'building', 'Work mode'], ['minimum_salary', 'chart', 'Minimum salary'],
-  ['languages', 'globe', 'Languages you work in']];
+export const GOAL_TILES = [['seniority', 'user', t('helperRest.targetLevel')], ['work_mode', 'building', t('helperRest.workMode')], ['minimum_salary', 'chart', t('helperRest.minimumSalary')],
+  ['languages', 'globe', t('helperRest.workLanguages')]];
 
+/** Draw goal controls with localized labels and unchanged saved goal values. */
 export function goalTiles(goals, onSave, {tiles = GOAL_TILES, fixed = {}} = {}) {
   return tiles.flatMap(([key, glyph, label]) => {
     const term = el('dt', '', icon(glyph));
@@ -22,11 +25,11 @@ export function goalTiles(goals, onSave, {tiles = GOAL_TILES, fixed = {}} = {}) 
     // "(estimate)" and "(level unknown)" said in words under the value, with the one action each needs (owner mockup, 7 Oct 2026: red marks).
     const {text: current, note} = goalNote(key, (goals || {})[key] || '');
     const value = el('span', 'goal-value', current || '—');
-    value.title = current || 'Not set';
+    value.title = current || t('helpers.notSet');
     box.append(value);
     if (fixed[key]) {
       const line = el('p', 'goal-note goal-elsewhere');
-      const edit = el('button', 'link', 'Edit in Your details');
+      const edit = el('button', 'link', t('helperRest.editYourDetails'));
       edit.type = 'button';
       edit.addEventListener('click', fixed[key]);
       line.append(edit);
@@ -36,20 +39,20 @@ export function goalTiles(goals, onSave, {tiles = GOAL_TILES, fixed = {}} = {}) 
     if (!onSave) return [term, box];
     let noteLine = null;   // added after the pencil: the value and its pencil stay on one line
     if (note) {
-      const line = el('p', 'goal-note', note === 'levels' ? 'Levels not set · ' : 'Estimated · ');
-      const act = el('button', 'link', note === 'levels' ? 'Add levels' : 'Confirm');
+      const line = el('p', 'goal-note', note === 'levels' ? t('helperRest.levelsUnset') : t('helperRest.estimatedLead'));
+      const act = el('button', 'link', note === 'levels' ? t('helperRest.addLevels') : t('helperRest.confirm'));
       act.type = 'button';
-      act.title = note === 'levels' ? 'Write each level, e.g. "French (C1)"' : 'Keep this amount as your minimum';
+      act.title = note === 'levels' ? t('helperRest.writeLevels') : t('helperRest.keepMinimum');
       act.addEventListener('click', () => (note === 'levels' ? value.click() : onSave(key, current, value)));
       line.append(act);
       noteLine = line;
     }
     value.classList.add('editable');
-    value.title = `${current || 'Not set'}\n(click to correct)`;
+    value.title = t('helperRest.clickCorrect', {value: current || t('helpers.notSet')});
     // A visible edit button, so it's clear the value can be corrected (clicking the value works too).
     const edit = el('button', 'icon-button goal-edit', icon('edit'));
     edit.type = 'button';
-    edit.title = `Correct ${label.toLowerCase()}`;
+    edit.title = t('helperRest.correctValue', {label: label.toLowerCase()});
     edit.setAttribute('aria-label', edit.title);
     edit.addEventListener('click', () => value.click());
     box.append(edit);
@@ -63,7 +66,7 @@ export function goalTiles(goals, onSave, {tiles = GOAL_TILES, fixed = {}} = {}) 
       const editor = el('div', 'goal-editor');
       const shownValue = kinded.read ? kinded.read(current) : current;   // the saved words as the control's picks (the level's names)
       const control = answerControl(format, shownValue, next => { draft = next; }, {ariaLabel: label, chips: kinded.chips});
-      const save = Object.assign(el('button', 'primary', 'Save'), {type: 'button'}), cancel = Object.assign(el('button', 'secondary', 'Cancel'), {type: 'button'});
+      const save = Object.assign(el('button', 'primary', t('helpers.save')), {type: 'button'}), cancel = Object.assign(el('button', 'secondary', t('helpers.cancel')), {type: 'button'});
       const actions = el('div', 'inline');
       actions.append(save, cancel);
       const unread = kinded.read ? shownValue !== current : !current.split(/\s*,\s*/).every(part => picksOf(part, format.options).length);

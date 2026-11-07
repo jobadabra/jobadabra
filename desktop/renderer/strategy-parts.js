@@ -59,7 +59,7 @@ export function byOpenings(options) {
 export function sitesByName(chips) {
   const byName = new Map();
   for (const chip of chips || []) {
-    const name = chip.label.replace(/^Open /, '');
+    const name = chip.name || chip.label.replace(/^Open /, '');
     if (!byName.has(name)) byName.set(name, {name, pages: []});
     byName.get(name).pages.push(chip);
   }

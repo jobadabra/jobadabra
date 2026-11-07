@@ -41,3 +41,13 @@ test('coverage and outcome labels translate while action payloads keep canonical
     assert.deepEqual(outcomeChoices('Applied').map(item => item.outcome), ['reply', 'screening', 'offer', 'rejected', 'no_response']);
   } finally { setLocale('en'); }
 });
+
+test('localized coverage sites group by employer identity rather than their translated Open label', async () => {
+  const {visitCard} = await import('../../../renderer/coverage-card.js');
+  const {sitesByName} = await import('../../../renderer/strategy-parts.js');
+  try {
+    setLocale('de');
+    const chips = visitCard({visits: [{url: 'https://example.test', name: 'Original Employer', why: 'Original explanation'}]}).chips;
+    assert.equal(sitesByName(chips)[0].name, 'Original Employer');
+  } finally { setLocale('en'); }
+});

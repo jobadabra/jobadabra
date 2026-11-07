@@ -64,7 +64,7 @@ export function visitCard(verdict, dismissedAt = '') {
   return {
     title: t('helperRest.coverageOnlyYou'),
     text: t('helperRest.coverageOnlyYouLead'),
-    chips: list.map(item => ({url: item.url, label: t('helperRest.openSite', {name: item.name}), note: item.note || '',
+    chips: list.map(item => ({url: item.url, name: item.name, label: t('helperRest.openSite', {name: item.name}), note: item.note || '',
       title: `${item.kind === 'portal' ? `${item.name}: ${item.why}` : `${item.name} ${item.why}`}${item.last_read ? t('helperRest.lastRead', {day: item.last_read.slice(0, 10)}) : ''}${item.note ? `. ${item.note}` : ''}`})),
     at: verdict.at || '',
   };
