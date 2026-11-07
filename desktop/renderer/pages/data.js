@@ -3,7 +3,7 @@ import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {counted as countedLabel} from './page-counts.js';
-import {$, message, osText, show} from './core.js';
+import {$, message, show} from './core.js';
 import {openInNotion, openNotionConnect} from './notion-connect.js';
 import {shared} from './shared.js';
 import {MOVE_WORDS, movedText} from '../store-move-text.js';
@@ -24,7 +24,7 @@ function savedLine(id, words, file) {
   const line = $(id);
   line.className = 'message ok';
   const link = document.createElement('button');
-  link.className = 'arrow-link'; link.textContent = osText(t('pagesFieldsStatus.showFinder'));   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
+  link.className = 'arrow-link'; link.textContent = (t('pagesFieldsStatus.showFinder'));   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
   link.addEventListener('click', () => window.pilot.showFile(file));
   line.replaceChildren(`${words} ${file.split(/[\\/]/).pop()} `, link);
 }

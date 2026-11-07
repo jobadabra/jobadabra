@@ -1,6 +1,7 @@
 // The application kit and tailored CVs' IPC (moved out of main.js, 8 Oct 2026): drafting a job's kit (questions, answers, cover letter) onto
 // its Notion row, tailoring a CV for a job or for the top matches. It hands back prepareKitFor and tailorCv for the groups that use them
 // (apply, the CV handlers). main.js passes in the services they share. Guards: the kit, tailor and apply tests in desktop/test.
+import {osText} from '../i18n/platform.js';
 import * as apply from './apply.js';
 import * as atUpload from './cv-import-at-upload.js';
 import * as claudeCode from './claude-code.js';
@@ -129,7 +130,7 @@ export function registerKitHandlers(ctx) {
         appLog('cv', kept ? 'tailored CV kept on the job' : 'tailored CV not on a job yet', {code});
       } catch (error) { appLog('cv', 'tailored CV not kept on the job', {code, error: error.message}); }
       if (!quiet) notify('Tailored CV + cover letter ready ✓', `${name}: ${result.changes.length} changes${applied.warnings.length ? `, ${applied.warnings.length} to check` : ''}${letter.ok ? ', cover letter made' : `. The cover letter was not made: ${String(letter.error || '').slice(0, 80)}`}.`
-        + (!notionStore ? '' : inNotion ? ' Saved in Notion too.' : ' On this Mac only: save the job (☆) to keep it in Notion.'), {view: 'jobs', job: code}, 'good');   // about Notion
+        + (!notionStore ? '' : inNotion ? ' Saved in Notion too.' : osText(' On this Mac only: save the job (☆) to keep it in Notion.', process.platform)), {view: 'jobs', job: code}, 'good');   // about Notion
       if (show) openTailoredCv(code);   // from the form's panel the window stays behind: the person is on the form, the notification says it is ready
       return {ok: true, usd: Math.round(cost * 100) / 100, letter: letter.ok};
     } catch (error) {

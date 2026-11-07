@@ -3,6 +3,7 @@
 // Owner, 5-6 Nov 2026: "each users sets his own emails" and "Only the person": the choice is final, and no Admin stop overrides it. The Mac never sends mail itself: it posts to our API (notify-channel.js).
 // Invariants: a row the person never chose shows (and acts) as the suggested default of their mode; a row they chose is never reset by a mode change; a failed save leaves the switch where it was and says so.
 // Guard: test/unit/main/mail-choices.test.js.
+import {osText} from '../i18n/platform.js';
 import {call, channelsOf, installKey} from './notify-channel.js';
 import {rowLine} from '../renderer/email-consent-words.js';
 import * as hosted from './hosted-search.js';
@@ -15,8 +16,8 @@ export const ROWS = ['app-matches', 'app-needs-you', 'app-applied', 'app-weekly'
 /** The two mails from Jobadabra itself ("News from Jobadabra" card): the site keeps each as its own list, never as part of an app row, and sends its `name`/`when` words. Owner, 6 Nov 2026: "I like the 2 switches". */
 export const NEWS = ['releases', 'tips'];
 const WHERE = {
-  mac: 'From your Mac: only while your Mac is awake and the app is open. If it isn\'t, no e-mail is sent.',
-  always: 'From Always on: on schedule, even with your Mac off.',
+  mac: osText('From your Mac: only while your Mac is awake and the app is open. If it isn\'t, no e-mail is sent.', process.platform),
+  always: osText('From Always on: on schedule, even with your Mac off.', process.platform),
 };
 const WORDS = {not_saved: 'Could not save it just now. The switch is back where it was; try again in a minute.', app_only: 'Only this app can change it.', no_address: 'Add your e-mail address first.', need_address: 'Add your e-mail address in Settings → Notifications first, then turn it on.', unauthorized: 'This install could not be recognised by the website. Try again in a minute.'};
 

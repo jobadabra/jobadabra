@@ -128,6 +128,6 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 
 ### 3. Extension follow-up
 
-- [ ] Audit extension UI surfaces and desktop locale transport.
+- [x] Audit extension UI surfaces and desktop locale transport (proof: desktop/test/unit/extension/extension-locale-transport.test.js).
 - [ ] Translate extension UI in seven languages and add inherited Language setting in options.
-- [ ] Verify inheritance, explicit override, offline fallback and previews; supervise extension PR.
+- [x] Verify inheritance, explicit override, offline fallback and previews; supervise extension PR (proof: desktop/test/unit/extension/extension-i18n.test.js @397c32c5c294847a48b63ed4b30afccc927e7f6e on main).

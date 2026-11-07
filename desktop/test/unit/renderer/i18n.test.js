@@ -68,6 +68,7 @@ test('Windows wording changes trusted catalog templates before inserting persona
     assert.equal(t('platformTest.message', {company}), `On this PC press Ctrl+K for ${company}`);
     assert.equal(t('platformTest.count', {count: 2, company}), `2 files in File Explorer for ${company}`);
     assert.equal(t('missing.this Mac'), 'missing.this Mac');
+    assert.equal(t('platformTest.message', {company}, 'darwin'), `On this Mac press ⌘K for ${company}`, 'explicit platform helpers keep their contract on every host');
   } finally {
     if (previous === undefined) delete globalThis.window;
     else globalThis.window = previous;

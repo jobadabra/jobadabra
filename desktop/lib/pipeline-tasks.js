@@ -2,6 +2,7 @@
 // Each runs its engine commands through run() and is queued, shown and recorded by tracked() (pipeline-queue.js).
 // Guarded by: test/unit/renderer/mail-report.test.js, test/unit/main/run-join.test.js, test/unit/main/run-note.test.js, test/unit/renderer/run-cards.test.js, test/unit/main/run-kinds.test.js, test/unit/main/stop-task.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
+import {osText} from '../i18n/platform.js';
 import {engineOf, familyOfEngine} from './ai/names.js';
 import {deliveryProblem, mailProblem as mailProblemFrom} from './run-result.js';
 
@@ -113,7 +114,7 @@ function searchOnce(storage, onLine, mode, trigger = 'you', {employers = false, 
 
 export function scoreVisits(storage, onLine, trigger = 'you') {
   return tracked(storage, 'today', trigger, onLine, async tee => {
-    tee('Scoring the jobs read in Chrome, on this Mac…');
+    tee(osText('Scoring the jobs read in Chrome, on this Mac…', process.platform));
     const {code, result} = await run(storage, visitsArgs(storage), tee, triggerEnv(trigger));
     return {ok: code === 0, result};
   }, null, () => ({}), {first: true});

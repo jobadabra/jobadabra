@@ -36,12 +36,11 @@ function message(locale, key, variables) {
   return Object.hasOwn(value, form) ? value[form] : value.other;
 }
 
-/** Look up an explicit app-owned message and interpolate once as plain text, never HTML. */
-export function t(key, variables = {}) {
+/** Format trusted app copy once as plain text; an explicit platform overrides the host for platform-aware views. */
+export function t(key, variables = {}, platform = globalThis.window?.pilot?.platform ?? globalThis.process?.platform) {
   const template = message(active, key, variables) ?? message('en', key, variables);
   if (typeof template !== 'string') return String(key);
   // Adapt only the trusted template: interpolation values remain byte-for-byte personal content.
-  const platform = globalThis.window?.pilot?.platform ?? globalThis.process?.platform;
   return osText(template, platform).replace(/\{([a-zA-Z][\w]*)\}/g, (placeholder, name) => Object.hasOwn(variables, name) ? String(variables[name]) : placeholder);
 }
 

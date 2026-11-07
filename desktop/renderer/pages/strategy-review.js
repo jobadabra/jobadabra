@@ -7,7 +7,7 @@ import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
 import {shared} from './shared.js';
 import {buildDraft, currentAnswers} from './activity.js';
-import {$, message, osText, show} from './core.js';
+import {$, message, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView} from './nav.js';
 import {hideCards, showCards} from './setup-strategy.js';
@@ -102,7 +102,7 @@ async function saveDraft(parts = null) {
   const result = await window.pilot.saveStrategy(shared.draft, parts);
   if (!result.ok) {
     $('save-title').textContent = byStore(t('pagesStrategy.notSavedNotion'), t('pagesStrategy.notSaved'));
-    message('save-message', osText(t('pagesDynamicStrategy.m388', {"error": result.error})), 'error');
+    message('save-message', (t('pagesDynamicStrategy.m388', {"error": result.error})), 'error');
     show($('save-close')); show($('save-retry'));
     return;
   }

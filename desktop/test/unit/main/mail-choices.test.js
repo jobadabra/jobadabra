@@ -33,12 +33,12 @@ test('a read shows each row as the person chose it, else as their mode suggests,
   assert.equal(asked[0].key, KEY);
   assert.equal(view.mode, 'mac');
   assert.deepEqual(view.rows.map(row => [row.id, row.on]), [['app-matches', true], ['app-needs-you', false]], 'Mac only: matches in the digest, "needs you" off (the app shows it), "stopped" not shown');
-  assert.match(view.where, /^From your Mac: only while your Mac is awake and the app is open/);
+  assert.ok(view.where.startsWith(`From your ${process.platform === 'win32' ? 'PC' : 'Mac'}: only while your ${process.platform === 'win32' ? 'PC' : 'Mac'} is awake and the app is open`));
   const always = storage({settings: {...ON, cloud: {repo: 'me/jobadabra'}}});
   const other = await read(always, site([{ok: true, rows: ROWS}]));
   assert.equal(other.mode, 'always');
   assert.deepEqual(other.rows.map(row => [row.id, row.on]), [['app-matches', true], ['app-needs-you', true], ['app-stopped', true]]);
-  assert.match(other.where, /^From Always on: on schedule, even with your Mac off/);
+  assert.ok(other.where.startsWith(`From Always on: on schedule, even with your ${process.platform === 'win32' ? 'PC' : 'Mac'} off`));
 });
 
 test('a row the person chose stays as chosen when the mode changes; one they never chose follows the new mode', async () => {

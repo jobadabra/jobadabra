@@ -6,7 +6,7 @@ import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {shared} from './shared.js';
-import {$, osText, show} from './core.js';
+import {$, show} from './core.js';
 import {byStore} from '../store-words.js';
 import {jobOfApplication} from '../jobs-view.js';
 
@@ -58,7 +58,7 @@ export function renderDrafts(drafts, env) {
     if (draft.pageUrl) menu.push({label: t('pagesInterviews.transcriptNotion'), run: () => window.pilot.openExternal(draft.pageUrl)});
     // Saved with the data on this Mac (no page to open): the saved transcript and its review in the app (interview-review-view.js).
     else if (draft.pageId && env.openReview) menu.push({label: t('pagesInterviews.transcriptReview'), run: () => env.openReview(draft.pageId)});
-    menu.push({label: osText(t('pagesFieldsStatus.showFinder')), run: () => iv.recordings(), title: t('pagesInterviews.recordingsLocal')});
+    menu.push({label: (t('pagesFieldsStatus.showFinder')), run: () => iv.recordings(), title: t('pagesInterviews.recordingsLocal')});
     if (!busy) {
       menu.push('-', {label: draft.pageId ? byStore(t('pagesInterviews.deleteBoth'), t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
         if (!confirm(draft.pageId ? t('pagesShortJobs.m150', {"title": draft.title, "byStore": byStore(t('pagesAuditSecond.a92'), '')}) : t('pagesDynamicFocusInterviews.m195', {"title": draft.title}))) return;

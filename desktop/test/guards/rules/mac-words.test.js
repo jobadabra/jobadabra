@@ -10,23 +10,30 @@ import {osText} from '../../../renderer/os.js';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));   // not .pathname: on Windows that is /D:/… (CI red, 9 Oct 2026)
 const walk = dir => readdirSync(join(root, dir), {withFileTypes: true}).flatMap(entry => entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]);
+// Exact non-display values stay stable: stored schemas, migration IDs and diagnostic context.
+const NON_DISPLAY = {
+  'lib/feedback-handlers.js': ['store: onNotion(storage)'],
+  'lib/ready-auto.js': ["check('the Mac sleeps')", "check('the Mac shuts down')"],
+  'lib/migrate.js': ["name: 'strategy from this Mac'", "name: 'employers from this Mac'", "name: 'runs from this Mac'"],
+  'lib/run-history.js': ['Run: {title:', "block('paragraph', 'Run on this Mac before"],
+  'lib/server-contact.js': ["keptSource = () => 'kept copy on this Mac'"],
+};
 const KEPT = [
   'Mac schedule', 'Mac (you)',                  // the Trigger value written to the Notion Runs database: data, not display (a schema change of its own)
   'can only be asked of a Mac',                 // the Windows branch says why this PC does it by hand
 ];
 
-test('after the Windows swap no line of the renderer or lib still says Mac', () => {
-  const left = ['renderer', 'lib'].flatMap(walk).filter(file => /\.(js|html)$/.test(file) && !file.replace(/\\/g, '/').endsWith('renderer/os.js'))   // \ on Windows (CI red, 9 Oct 2026)
+test('Mac device wording requires an explicit platform boundary, never an assumed DOM swap', () => {
+  const left = ['renderer', 'lib'].flatMap(walk).filter(file => /\.js$/.test(file) && !file.replace(/\\/g, '/').endsWith('renderer/os.js'))   // \ on Windows (CI red, 9 Oct 2026)
     .flatMap(file => readFileSync(join(root, file), 'utf8').split('\n').map((line, i) => [file, i + 1, line.trim()])
-      .filter(([, , line]) => !/^(\/\/|\*|<!--)/.test(line) && !line.includes('data-mac-only') && !KEPT.some(text => line.includes(text))
-        && /\bMac\b/.test(osText(line.replace(/\bplatform\b.*|darwin.*/, ''), 'win32')) && !/(['"])mac\1|\.mac\b|mac:|process\.platform|navigator\.platform/.test(line))
+      .filter(([, , line]) => !/^(\/\/|\/\*|\*|<!--)/.test(line) && !line.includes('data-mac-only') && !KEPT.some(text => line.includes(text)) && !(NON_DISPLAY[file.replace(/\\/g, '/')] || []).some(text => line.includes(text))
+        && /\bMac\b/.test(line.replace(/\s+\/\/.*$/, '').replace(/\bplatform\b.*|darwin.*/, '')) && !/osText\(|data-i18n|appLog\(|\blog\(/.test(line) && !/(['"])mac\1|\.mac\b|process\.platform|navigator\.platform/.test(line))
       .map(([f, n, line]) => `${f}:${n}: ${line.slice(0, 90)}`));
   assert.deepEqual(left, []);
 });
 
-// Owner, 2 Nov 2026 (Windows screenshot "Show in Finder"): the test above assumes every word the app shows passes through renderer/os.js. Two kinds of surface do
-// not: a native dialog/notification/menu (main process) and a window built without the preload (the CV review page). They swap their own words, and this
-// class test finds the ones that did not.
+// Native dialogs and preload-free windows use explicit trusted platform boundaries too (owner, 2 Nov 2026, Windows "Show in Finder").
+// They must never rely on a renderer DOM observer; this class guard checks their fixed labels separately.
 const mainCode = () => [...walk('lib'), 'main.js'].filter(file => /\.js$/.test(file)).map(file => [file.replace(/\\/g, '/'), readFileSync(join(root, file), 'utf8')]);
 const NATIVE = /dialog\.show|new Notification|setToolTip|Menu\.build|Tray\(/;
 
@@ -59,4 +66,11 @@ test('every window the main process opens is accounted for on Windows', () => {
 test('every native notification the app builds swaps its words for Windows', () => {
   const found = mainCode().flatMap(([file, source]) => source.split('\n').filter(line => /new Notification\(/.test(line) && !/^\s*(\/\/|\*)/.test(line)).map(line => [file, /osText\(/.test(line)]));
   assert.deepEqual(found, [['lib/app-notify.js', true], ['lib/app-reminders.js', false]], 'a new Notification: swap its fixed words with osText(…, process.platform), or list why it needs none');
+});
+
+// Privacy: page messages already interpolate through t(); wrapping their result rewrites personal values.
+test('page renderers never apply platform substitutions to finished messages', () => {
+  const found = walk('renderer/pages').flatMap(file => readFileSync(join(root, file), 'utf8').split('\n')
+    .flatMap((line, index) => /\bosText\(/.test(line) ? [`${file}:${index + 1}`] : []));
+  assert.deepEqual(found, [], 'adapt only the trusted template inside t(), before personal values are inserted');
 });

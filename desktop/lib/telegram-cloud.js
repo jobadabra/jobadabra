@@ -3,6 +3,7 @@
 // and commands by starting runs in their private GitHub repo (Always on). The app
 // deploys it with a Cloudflare API token the user creates, points their bot's webhook at it, and stops its own
 // long polling (a bot has one listener: a webhook or getUpdates, never both). Turning it off reverses that.
+import {osText} from '../i18n/platform.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,7 +36,7 @@ async function cloudflare(token, method, route, body, fetcher = globalThis.fetch
 export function missing(storage) {
   const settings = storage.settings();
   if (!storage.secret('TELEGRAM_BOT_TOKEN') || !settings.telegramChatId) return 'Connect your Telegram bot first (Settings → Connections).';
-  if (!settings.cloud?.repo || !storage.secret('GITHUB_TOKEN')) return 'Turn on Always on first: the buttons start runs there, even when your Mac is off.';
+  if (!settings.cloud?.repo || !storage.secret('GITHUB_TOKEN')) return osText('Turn on Always on first: the buttons start runs there, even when your Mac is off.', process.platform);
   return '';
 }
 

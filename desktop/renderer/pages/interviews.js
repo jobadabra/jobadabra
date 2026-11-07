@@ -16,7 +16,7 @@ import {showReview} from '../interview-review-view.js';
 import {showJobsIn} from './jobs.js';
 import {openView} from './nav.js';
 import {shared} from './shared.js';
-import {$, aiReady, message, osText, show} from './core.js';
+import {$, aiReady, message, show} from './core.js';
 import {showPermission, startRecording, isRecording, stopRecording, onLevel, openPrivacySettings} from './interview-recorder.js';
 import {agoText, endPractice, showMoments, skeletonRows, startPractice} from './interview-practice.js';
 import {PASTE, jobForPage, jobList, jobOptions, jobUrlOf, renderDrafts as renderDraftList, renderSpeakers as renderSpeakerFields} from './interview-lists.js';
@@ -373,11 +373,11 @@ function renderSaved() {
       {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: t('pagesDynamicFocusInterviews.m210', {"storeName": storeName()})},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
-      {label: t('pagesCommon.delete'), danger: true, title: osText(byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal'))), run: async () => {
-        if (!confirm(osText(byStore(t('pagesDynamicFocusInterviews.m211', {"title": row.title}),
+      {label: t('pagesCommon.delete'), danger: true, title: (byStore(t('pagesControlStatus.deleteInterviewNotion'), t('pagesControlStatus.deleteInterviewLocal'))), run: async () => {
+        if (!confirm((byStore(t('pagesDynamicFocusInterviews.m211', {"title": row.title}),
           t('pagesDynamicFocusInterviews.m212', {"title": row.title}))))) return;
         const done = await iv.remove(row.id);
-        message('iv-message', done.ok ? osText(byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
+        message('iv-message', done.ok ? (byStore(t('pagesDynamicFocusInterviews.m213', {"title": row.title, "value2": done.removed ? t('pagesDynamicFocusInterviews.recordingRemoved') : ''}),
           t('pagesShortJobs.m163', {"title": row.title, "value2": done.removed ? t('pagesAuditSecond.a94') : ''})))
           : done.error, done.ok ? 'ok' : 'error');
         readAgain();

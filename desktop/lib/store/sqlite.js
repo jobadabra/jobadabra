@@ -2,6 +2,7 @@
 // the same files the engine's sqlite adapter reads (lib/pipeline-env.js passes their paths). Tracked records (applications, runs…) live
 // in the engine's data/tracker.sqlite and are reached through engine commands, never opened here. Spec:
 // docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/unit/main/store-contract.test.js.
+import {osText} from '../../i18n/platform.js';
 import * as engine from './engine.js';
 import * as md from './markdown-page.js';
 import {fromRecord} from '../run-rows.js';
@@ -9,7 +10,7 @@ import {TEXT_FILES} from './text-files.js';
 
 export const NAME = 'sqlite';
 export const CAPS = new Set();
-export const LABEL = 'This Mac';   // what the window calls this store
+export const LABEL = osText('This Mac', process.platform);   // what the window calls this store
 export const FILES = TEXT_FILES;
 // Recent activity reads two weeks back (the list shows the latest 25).
 const RUN_DAYS = 14;
