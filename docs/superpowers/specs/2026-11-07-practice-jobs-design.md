@@ -77,7 +77,7 @@ Owner, 7 Nov 2026: "Person's own AI (Recommended)". The person's own AI setup an
 4. Docs: `docs/practice-jobs.md`, the map line, the paragraph for the skill (sent to the coordinator).
 
 ## Progress
-- [x] Spec + sketch approved by the owner (7 Nov 2026: own AI, about 12 jobs, result on each job's card)
+- [x] Spec + sketch approved by the owner (7 Nov 2026: own AI, about 12 jobs, result on each job's card) (proof: none: the owner's answers, relayed by the coordinator)
 - [ ] 1/4 server + catcher + shim (this PR)
 - [ ] 2/4 dev launch + isolation + canary + release guard
 - [ ] 3/4 UI: banner, list, "What would have been sent"
