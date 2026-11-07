@@ -214,3 +214,18 @@ test('CV readiness translates its display without changing the read state', asyn
     assert.equal(cvStateText({base: false}, true), '· nicht gelesen');
   } finally { setLocale('en'); }
 });
+
+test('Gmail and hosted offers preserve interpolated addresses, employers and activation states', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('it'); const {offerWords,KEY}=await import('./renderer/gmail-offer-words.js'); const {model,when,turnedOnLine}=await import('./renderer/hosted-words.js'); console.log(JSON.stringify({gmail:offerWords({employer:'Example & Co'}),code:offerWords({why:'code',host:'www.example.test'}),key:KEY,hosted:model({on:true,email:'fictional@example.test'}),tomorrow:when(new Date(2026,10,8,7).toISOString(),new Date(2026,10,7,12)),confirmed:turnedOnLine('fictional@example.test',false)}));"], {cwd: root, encoding: 'utf8'});
+  const value = JSON.parse(output);
+  assert.equal(value.gmail.yes, 'Collega Gmail');
+  assert.match(value.gmail.lead, /Example & Co/);
+  assert.match(value.code.lead, /^example.test ha inviato/);
+  assert.equal(value.key, 'gmail:connect');
+  assert.equal(value.hosted.state, 'on');
+  assert.deepEqual(value.hosted.pill, ['Attivo', 'good']);
+  assert.match(value.hosted.line, /fictional@example.test/);
+  assert.equal(value.tomorrow, 'domani ~7:00');
+  assert.match(value.confirmed, /Premi il link/);
+});
