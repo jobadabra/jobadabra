@@ -114,8 +114,15 @@ function suggestionRow(zone, value, saved) {
 let last = {aside: [], tidied: null}, queueAsked = false;
 document.addEventListener?.('questions-read', () => drawWhich(last.aside, last.tidied));
 // Why (7 Nov 2026, #3515, AI persona run 42397491150): an answer saved from a drawer lands on a Your details line, but the sections were read once when Profile opened, so Availability & compensation kept
-// showing the lines from before the answer. A saved answer reads them again (the local lines, no AI; unsaved edits stay: paintFacts).
-document.addEventListener?.('question-answered', () => { showFacts().catch(() => {}); });
+// showing the lines from before the answer. A saved answer paints the saved lines again: the local read only ('detailsFactsNow', no AI, no move), and only when this page has drawn its sections (the drawer also opens from Jobs and ⌘K); unsaved edits stay (paintFacts).
+export async function refreshFacts() {
+  if (!box('availability')?.children.length) return;
+  const result = await window.pilot.detailsFactsNow().catch(() => null);
+  if (result?.ok === false || !result?.sections) return;
+  keep('details-facts', result);
+  paintFacts(result);
+}
+document.addEventListener?.('question-answered', () => { refreshFacts(); });
 function drawWhich(aside = [], tidied = null) {
   last = {aside, tidied};
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().then(() => drawWhich(last.aside, last.tidied)).catch(() => {}); }

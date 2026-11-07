@@ -43,7 +43,7 @@ test('no place and no AI: a question that is the very label of a Your details fa
   const storage = await fresh();
   const done = await answerKey(storage, await keyOf(storage, 'Notice period'), '1 month', {mark: {kind: 'duration', options: []}});
   assert.equal(done.ok, true);
-  assert.deepEqual((await sections.read(storage)).availability, [{label: 'Notice period', value: '1 month'}], 'Availability & compensation holds the answer');
+  assert.deepEqual((await sections.read(storage)).availability, [{label: 'Notice period', value: '1 month', kind: 'duration'}], 'Availability & compensation holds the answer');
   assert.doesNotMatch(await store.openStore(storage).page('answers').text(), /Notice period/, 'the open question left the answers page');
 });
 
