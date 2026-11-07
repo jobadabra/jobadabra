@@ -1,10 +1,10 @@
 // The menu as an icon rail: automatic in a narrow window, or collapsed with the button (renderer/sidebar-rail.js).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {NARROW, railed, toggleShown} from '../../../renderer/sidebar-rail.js';
 
-const read = name => readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 
 test('a narrow window is always a rail; a wide one follows the choice; the button only shows where there is room', () => {
   assert.equal(NARROW, 1180);

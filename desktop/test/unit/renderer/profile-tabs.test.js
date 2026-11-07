@@ -1,10 +1,10 @@
 // Settings → Profile's tabs (index.html + pages/profile.js): Application answers (the standard answers + Form knowledge,
 // merged 16 Oct 2026) and Strategy's Job preferences are drawn from their texts' outlines on every store; no textarea; every Notion button is Notion-only.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const html = read('../../../renderer/index.html'), profile = read('../../../renderer/pages/profile.js');
 const page = html.slice(html.indexOf('data-settings-page="profile"'), html.indexOf('data-settings-page="automation"'));
 

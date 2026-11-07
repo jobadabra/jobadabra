@@ -1,9 +1,9 @@
 // A secondary button in a toolbar row is one flex row, so icon, label and pill share a centre line, through one shared rule, never one rule per button id (owner, 30 Oct 2026: Export's icon sat high while the triage button's did not).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 
 test('the toolbar has one rule that puts the icon, label and pill of every direct secondary button on one centre line', () => {
   assert.match(read('style.css'), /\.toolbar > button\.secondary \{[^}]*display: inline-flex; align-items: center/);

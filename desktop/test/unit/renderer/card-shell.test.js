@@ -1,7 +1,7 @@
 // The card shell (renderer/card-shell.js; owner, 18 Oct 2026, UI redesign): read rows with "Not set" and notes under values, chips on one line, aligned editor
 // rows, and the editing state that hides Edit (CSS) and opens a folded card.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -40,9 +40,9 @@ test('editing: the card is marked, a folded <details> card opens, and the CSS hi
   assert.equal(card.open, true);
   setEditing(card, false);
   assert.equal(isEditing(card), false);
-  const css = fs.readFileSync(new URL('../../../renderer/card-shell.css', import.meta.url), 'utf8');
+  const css = readScreenSource(new URL('../../../renderer/card-shell.css', import.meta.url), 'utf8');
   for (const rule of ['.is-editing .card-edit { display: none; }', '.is-editing .card-editor { display: block; }', '.is-editing .card-read { display: none; }']) assert.ok(css.includes(rule), rule);
-  for (const page of ['index.html', 'gallery.html']) assert.match(fs.readFileSync(new URL(`../../../renderer/${page}`, import.meta.url), 'utf8'), /href="card-shell\.css"/, page);
+  for (const page of ['index.html', 'gallery.html']) assert.match(readScreenSource(new URL(`../../../renderer/${page}`, import.meta.url), 'utf8'), /href="card-shell\.css"/, page);
 });
 
 test('Done: leaves an unchanged editor; hidden while the card holds changes (then the page bar decides)', () => {

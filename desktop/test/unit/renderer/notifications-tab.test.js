@@ -1,11 +1,11 @@
 // Notifications is its own Settings tab, right after Automation (owner, 3 Nov 2026: "Notifications should be a separate tab in Settings. Not inside Automations").
 // Guards: the tab's button and page in renderer/index.html, the section name a pop-up may open (renderer/targets.js), and every text that names the place.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {clean, plan, SECTIONS} from '../../../renderer/targets.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const html = read('renderer/index.html');
 const pageOf = name => html.split('<div class="settings-page" data-settings-page="').find(part => part.startsWith(`${name}"`)) || '';   // from its opening tag to the next page's
 const CONTROLS = ['notify-email', 'notify-address', 'notify-cadence', 'notify-app', 'notify-telegram', 'notify-telegram-connect', 'notify-message'];

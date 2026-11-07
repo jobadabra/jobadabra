@@ -1,7 +1,7 @@
 // Consent boxes are ticked for the person by default (owner, 17 Oct 2026); only the explicit AI agreement reading, never an unread control or a statement of fact.
 // Guards extension/page/fill-checks.js tickConsents, the flow.js switch and the /extension/me field that carries Settings -> Consent boxes.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {fakeFillPage} from '../../fake-fill-page.js';
 import {consentOn} from '../../../renderer/pages/consent-setting.js';
@@ -31,10 +31,10 @@ test('the switch is on unless the person turned it off, in the app and in the ex
   assert.equal(consentOn({}), true);
   assert.equal(consentOn({acceptConsents: false}), false);
   const flow = ['../../../../extension/flow.js', '../../../../extension/fill-tab-inputs.js', '../../../../extension/fill-tab-finish.js']
-    .map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
+    .map(file => readScreenSource(new URL(file, import.meta.url), 'utf8')).join('\n');
   assert.equal(flow.match(/\(me\?\.acceptConsents \?\? config\.acceptConsents\) !== false/g).length, 3);
-  assert.match(fs.readFileSync(new URL('../../../lib/server-contact.js', import.meta.url), 'utf8'), /acceptConsents: storage\.settings\(\)\.acceptConsents !== false/);
-  assert.match(fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="consent-tick"/);
+  assert.match(readScreenSource(new URL('../../../lib/server-contact.js', import.meta.url), 'utf8'), /acceptConsents: storage\.settings\(\)\.acceptConsents !== false/);
+  assert.match(readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="consent-tick"/);
 });
 
 

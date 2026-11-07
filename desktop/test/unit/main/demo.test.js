@@ -1,5 +1,6 @@
 // "Look around first" (lib/demo.js): the demo folder, the restart arguments in and out, what demo mode refuses,
 // and that the packaged app carries demo/.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,7 +14,7 @@ const here = path.resolve(import.meta.dirname, '../../..');
 const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jp-demo-test-'));
 
 test('the packaged app includes demo/ (the look-around and the demo mode read it)', () => {
-  const files = JSON.parse(fs.readFileSync(path.join(here, 'package.json'), 'utf8')).build.files;
+  const files = JSON.parse(readScreenSource(path.join(here, 'package.json'), 'utf8')).build.files;
   assert.ok(files.includes('demo/**'));
   for (const name of ['settings.json', 'secrets.json', 'jobs.json', 'focus.json']) assert.ok(fs.existsSync(path.join(here, 'demo', name)), name);
 });
@@ -30,7 +31,7 @@ test('prepare: a fresh copy of demo/ in the temp folder, jobs.json left in the a
   const copied = fs.readdirSync(folder).sort();
   const expected = fs.readdirSync(path.join(here, 'demo')).filter(name => name !== 'jobs.json').sort();
   assert.deepEqual(copied, expected);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(folder, 'settings.json'), 'utf8')).setupDone, true);
+  assert.equal(JSON.parse(readScreenSource(path.join(folder, 'settings.json'), 'utf8')).setupDone, true);
   fs.rmSync(tmp, {recursive: true, force: true});
 });
 
@@ -95,7 +96,7 @@ test('the look-around report: a setup event the funnel does not count as a step'
 });
 
 test('the wizard offers the demo on Welcome (Notion is no longer a step), and the demo banner is there', () => {
-  const html = fs.readFileSync(path.join(here, 'renderer', 'index.html'), 'utf8');
+  const html = readScreenSource(path.join(here, 'renderer', 'index.html'), 'utf8');
   const step = name => html.slice(html.indexOf(`<div class="step" data-step="${name}">`), html.indexOf('<div class="step"', html.indexOf(`<div class="step" data-step="${name}">`) + 10));
   assert.match(step('welcome'), /data-look-around="welcome"[^>]*>Look around first \(demo data\)</);
   assert.ok(!html.includes('data-step="notion"'));
@@ -105,12 +106,12 @@ test('the wizard offers the demo on Welcome (Notion is no longer a step), and th
 });
 
 test('the demo Focus shows a follow-up card: your message unanswered, its chat and Done', () => {
-  const {items} = JSON.parse(fs.readFileSync(path.join(here, 'demo', 'focus.json'), 'utf8'));
+  const {items} = JSON.parse(readScreenSource(path.join(here, 'demo', 'focus.json'), 'utf8'));
   const item = items.find(one => one.kind === 'follow_up');
   assert.ok(item, 'a follow_up item');
   assert.equal(item.headline, `Follow up with ${item.company}`);
   assert.match(item.detail, /^You wrote \w{3} \d{1,2} \w{3} \(\d+ days ago\), no reply yet\.$/);
   assert.ok(item.link && item.link_label && item.done && item.page_id);
-  const focusPage = fs.readFileSync(path.join(here, 'renderer', 'pages', 'focus.js'), 'utf8');
+  const focusPage = readScreenSource(path.join(here, 'renderer', 'pages', 'focus.js'), 'utf8');
   assert.match(focusPage, /item\.kind === 'follow_up' \? 'followed_up' : 'replied'/, 'Done logs your follow-up, which re-arms it');
 });

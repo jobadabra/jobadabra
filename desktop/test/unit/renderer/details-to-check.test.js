@@ -2,8 +2,8 @@
 // Your details → "To check" (owner, 28 Oct 2026: "this should be at the top in this tab… slightly better UI"): the card is the first part of the tab, its count and the one
 // primary Review sit in the header, and what the app concluded for the person and each set-aside value are divided rows with a solid Undo (renderer/pages/details-to-check.js).
 // Every state of the card is drawn: review only, review + notice, notice only, set-aside only, nothing (hidden).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -12,7 +12,7 @@ const every = setInterval;
 globalThis.setInterval = (...args) => every(...args).unref();   // the import chain starts clocks; they must not keep the test process alive
 window.pilot = {state: async () => ({settings: {}})};   // renderer/pages/shared.js reads it on import
 const {drawToCheck} = await import('../../../renderer/pages/details-to-check.js');
-const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 
 const make = (tag, set = {}) => Object.assign(document.createElement(tag), set);
 function page() {

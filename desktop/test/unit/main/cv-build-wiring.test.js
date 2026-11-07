@@ -1,13 +1,13 @@
 // "Build a CV with the AI" is wired end to end: every id the page script reads exists in the window, the three entry points exist (setup, Profile, ⌘K),
 // and each IPC the window calls is registered in the main process, preloaded and blocked in demo mode (it writes the CV and calls the AI).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const script = read('renderer/pages/cv-build.js'), html = read('renderer/index.html');
 
 test('every id the page script uses is in the window', () => {

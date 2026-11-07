@@ -1,6 +1,6 @@
 // Apply with no Chrome extension: every way to open a Chrome form is stopped with {needsExtension} and the window explains the install.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {check} from '../../../lib/extension-gate.js';
@@ -44,8 +44,8 @@ test('the class: Apply, batch Apply and Start again each answer the gate and ope
 });
 
 test('the window: preload raises the event and the dialog and its wiring exist', () => {
-  assert.match(fs.readFileSync(path.join(here, 'preload.cjs'), 'utf8'), /needsExtension[\s\S]{0,200}pilot-needs-extension/);
-  const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
+  assert.match(readScreenSource(path.join(here, 'preload.cjs'), 'utf8'), /needsExtension[\s\S]{0,200}pilot-needs-extension/);
+  const html = readScreenSource(path.join(here, 'renderer/index.html'), 'utf8');
   for (const id of ['extension-needed-dialog', 'extension-needed-title', 'extension-needed-go', 'extension-needed-later']) assert.ok(html.includes(`id="${id}"`), id);
-  assert.match(fs.readFileSync(path.join(here, 'renderer/app.js'), 'utf8'), /extensionNeeded\(\)/);
+  assert.match(readScreenSource(path.join(here, 'renderer/app.js'), 'utf8'), /extensionNeeded\(\)/);
 });

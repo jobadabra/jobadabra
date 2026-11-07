@@ -1,5 +1,6 @@
 // The tester's steps (Windows, 0.9.2, issue #3055): 8 CV versions already added, press "Add another CV version", choose a PDF.
 // The window must be told why nothing was added. Plays the real handler (lib/experience-handlers.js) over a real store.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,7 +35,7 @@ test('adding a 9th CV version answers with the limit in words, and says nothing 
 });
 
 test('the answer to "Add another CV version" sits under its buttons, above the lists that grow with each version', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const panel = html.slice(html.indexOf('id="setting-experience-sources"'), html.indexOf('id="setting-experience-profile"'));
   const at = id => panel.indexOf(`id="${id}"`);
   assert.ok(at('exp-add') > 0 && at('exp-message') > 0, 'the panel has the button and the message');

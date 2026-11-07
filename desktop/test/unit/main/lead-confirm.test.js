@@ -1,4 +1,5 @@
 // Log job activity's confirmation step: nothing is saved until what Claude couldn't see is confirmed.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as lead from '../../../renderer/lead-confirm.js';
@@ -126,8 +127,7 @@ test('the answer reaches the engine as --agreed', async () => {
 });
 
 test('the first form has no "I agreed" checkbox; the question lives in the confirmation step', async () => {
-  const fs = await import('node:fs');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const compose = html.slice(html.indexOf('<div id="lead-compose">'), html.indexOf('<div id="lead-confirm"'));
   assert.doesNotMatch(compose, /lead-talking|agreed/i);
   const confirm = html.slice(html.indexOf('<div id="lead-confirm"'), html.indexOf('id="lead-message"'));
@@ -143,8 +143,7 @@ test('demo mode: the unclear case shows the question; the default and an existin
 
 // Which job: found automatically by default; the dropdown only when you untick it; asked after the reading when unclear.
 test('the first form finds the job automatically by default; unticking shows the job list and uses your pick', async () => {
-  const fs = await import('node:fs');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const compose = html.slice(html.indexOf('<div id="lead-compose">'), html.indexOf('<div id="lead-confirm"'));
   assert.match(compose, /<input type="checkbox" id="lead-auto" checked>\s*<span><span>Find the job automatically \(an existing one, or a new one\)</);
   assert.match(compose, /<div id="lead-target-box" hidden>[\s\S]*<select id="lead-target">/);
@@ -152,7 +151,7 @@ test('the first form finds the job automatically by default; unticking shows the
   assert.equal(lead.targetOf(false, 'https://x.test/1'), 'https://x.test/1');
   assert.equal(lead.targetOf(false, 'new'), 'new');
   assert.equal(lead.targetOf(false, ''), '');  // none chosen yet: the dialog asks you to choose
-  const js = fs.readFileSync(new URL('../../../renderer/pages/jobs-lead.js', import.meta.url), 'utf8');
+  const js = readScreenSource(new URL('../../../renderer/pages/jobs-lead.js', import.meta.url), 'utf8');
   const openFor = js.slice(js.indexOf('export function openLogFor'), js.indexOf('\n}\n', js.indexOf('export function openLogFor')));
   assert.match(openFor, /setAuto\(false, true\)[\s\S]*\$\('lead-target'\)\.value = url/);  // Focus → Add details: that job, and no "find it automatically"
 });

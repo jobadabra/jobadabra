@@ -1,5 +1,6 @@
 // An import whose Profile lives in a Notion workspace it brings no key for says, after the restart, to connect that same workspace (7 Oct 2026: a new
 // workspace was connected after an import; the Profile was the blank template and every job scored 2-5).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,14 +25,14 @@ test('a Notion key came with it, or the Profile is on this Mac, or no Notion at 
   assert.equal(notionLeftBehind(folder({'settings.json': JSON.stringify({setupDone: true})})), false);
 });
 test('the restart says it with a click to Connections', () => {
-  const data = fs.readFileSync(new URL('../../../renderer/pages/data.js', import.meta.url), 'utf8');
+  const data = readScreenSource(new URL('../../../renderer/pages/data.js', import.meta.url), 'utf8');
   assert.match(data, /done\.notionElsewhere\) toastMessage\(\{title: 'Connect the same Notion workspace'[\s\S]+?target: \{view: 'settings', section: 'connections'\}/);
 });
 
 test('the Notion dialog warns while the import note is there, and connecting clears it', () => {
-  const dialog = fs.readFileSync(new URL('../../../renderer/pages/notion-connect.js', import.meta.url), 'utf8');
+  const dialog = readScreenSource(new URL('../../../renderer/pages/notion-connect.js', import.meta.url), 'utf8');
   assert.match(dialog, /show\(\$\('notion-connect-import'\), !!shared\.state\?\.settings\?\.importedNotion\)/);
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.match(html, /<div class="alert tone-warn" id="notion-connect-import" hidden>[\s\S]+?Pick the workspace your backup used/);
   const main = mainSource();
   assert.match(main, /if \(resetDone\?\.notionElsewhere\) storage\.saveSettings\(\{importedNotion:/);

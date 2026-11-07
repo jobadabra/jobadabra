@@ -1,8 +1,8 @@
 // The words of every readiness state (renderer/ai-plan-guide.js): both families, both systems, with and without the in-app buttons. Each state has a title and at most one primary button, the
 // install states carry the numbered official steps, and no raw text (a path, an exit code, a stack, "Looked in", winget) is ever drawn.
 // Why (2 Nov 2026, owner): "We should never show a raw error."
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {STATES} from '../../../lib/plan-readiness.js';
 import {FAMILY, STATE_TONE, guide} from '../../../renderer/ai-plan-guide.js';
@@ -57,7 +57,7 @@ test('the file picker names the file by system and family', () => {
 
 test('the outdated "Always on still uses your API key" sentence is gone from every text the chooser and the engine notice say', () => {
   for (const file of ['../../../lib/claude-code.js', '../../../renderer/ai-engine-view.js', '../../../renderer/index.html', '../../../renderer/ai-plan-guide.js', '../../../lib/ai/codex-cli.js']) {
-    const text = fs.readFileSync(new URL(file, import.meta.url), 'utf8');
+    const text = readScreenSource(new URL(file, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /Always on\) still use|Always on \(GitHub\)|requires an API key, regardless|Scheduled runs in your GitHub repository|Scheduled runs \(Always on\) still use/, file);
   }
 });
@@ -70,7 +70,7 @@ test('the chooser: while a check runs only "Checking…" shows; only the person\
   assert.deepEqual(statusLines({usable: true, lines: []}, true), [{tone: 'good', text: 'Ready to use'}]);
   assert.equal(ownKeys({secrets: {ANTHROPIC_API_KEY: true}, ownSecrets: {ANTHROPIC_API_KEY: false}}).ANTHROPIC_API_KEY, false, 'Free AI\'s token is not a key');
   assert.equal(ownKeys({secrets: {ANTHROPIC_API_KEY: true}}).ANTHROPIC_API_KEY, true, 'a state without ownSecrets (older window) reads secrets');
-  const fs = await import('node:fs'), page = fs.readFileSync(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
   assert.match(page, /if \(aboutCli && copied\)/, 'the copied note belongs to the CLI card');
   assert.match(page, /async function pick\(id\) \{\n    problem = ''; copied = false;/);
 });

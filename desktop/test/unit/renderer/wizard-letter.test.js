@@ -1,11 +1,12 @@
 // The Settings letter editor loads without spending; drafting and approval still require explicit choices.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 install();
 const {document, window} = globalThis;
-const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 for (const id of new Set([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]))) document.body.append(Object.assign(document.createElement('div'), {id}));
 document.getElementById('letter-draft').append(document.createElement('span'));
 const calls = [];
@@ -53,7 +54,7 @@ test('fake AI prefills the Settings textbox; only the person’s approval makes 
   const {createStorage} = await import('../../../lib/storage.js');
   const letters = await import('../../../lib/cover-letter.js');
   const {letterQuestion} = await import('../../../lib/letter-availability.js');
-  const pages = JSON.parse(fs.readFileSync(new URL('../../../demo/job-pages.json', import.meta.url), 'utf8'));
+  const pages = JSON.parse(readScreenSource(new URL('../../../demo/job-pages.json', import.meta.url), 'utf8'));
   const section = Object.values(pages).flatMap(page => Object.values(page.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
   const text = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'wizard-letter-fake-')), {encrypt: v => v, decrypt: v => v});

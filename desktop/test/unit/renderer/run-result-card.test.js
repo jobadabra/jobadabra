@@ -1,14 +1,14 @@
 // One result card per run in its run panel (owner, 25 Oct 2026: "Instead of having 3 cards representing the status/result, there should be one single card…
 // consistent across runs"; "It should not contradict, confuse or overwhelm"): the top, the step rows and the kind's own bottom are one frame, the top's tone is
 // the pill's, its number and next step are the app's own words, and nothing is said twice.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {cleanTop, CLEAN_TOP, liveTop, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../../../renderer/run-result-card.js';
 import {runPill} from '../../../renderer/run-status.js';
 import {addedWords} from '../../../renderer/find-card-model.js';
 
-const read = file => readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const KINDS = [...read('pages/activity-basics.js').matchAll(/(\w+): \{icon: '[^']+', line: '[\w-]+', name: ("[^"]+"|'[^']+')\}/g)].map(match => match[1]);
 const ENDS = {
   completed: {ok: true, result: 'what it did'},

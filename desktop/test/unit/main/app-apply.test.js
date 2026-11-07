@@ -1,5 +1,6 @@
 // Apply from the app: choosing jobs and kits, Chrome and Claude sessions, tickets, the extension's base CV.
 // Split from app.test.js (8 Oct 2026) without changing any test.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -227,11 +228,10 @@ test('Claude in Chrome: found in any Chrome profile, false when Chrome or the ex
 });
 
 test('Application sessions start collapsed: the pills say what needs you, and the head expands them', async () => {
-  const fs = await import('node:fs');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const toggle = /id="sd-toggle"[^>]*aria-expanded="(\w+)"/.exec(html);
   assert.equal(toggle?.[1], 'false');  // what the window paints before any session exists (1 Oct 2026: the dock covered a third of the screen by default)
-  const shared = fs.readFileSync(new URL('../../../renderer/pages/shared.js', import.meta.url), 'utf8');
+  const shared = readScreenSource(new URL('../../../renderer/pages/shared.js', import.meta.url), 'utf8');
   assert.match(shared, /dockOpen:\s*false/);  // and the state renderDock reads, so a reload doesn't open it again
 });
 

@@ -1,12 +1,12 @@
 // The compact run on Actions (owner, 25 Oct 2026: "the compact version should be always something like this" — the running banner; "in Actions, we shouldn't
 // show such a detailed card report"): every kind, queued or finished, is the same one-line banner (renderer/run-compact.js, pages/run-banner.js), and the
 // Actions page never draws a run's detailed card. The detailed version is the run panel (test/unit/renderer/run-view.test.js).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {compactRun, NEXT, NO_NEXT} from '../../../renderer/run-compact.js';
 
-const read = file => readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const KINDS = [...read('pages/activity-basics.js').matchAll(/(\w+): \{icon: '[^']+', line: '[\w-]+', name: ("[^"]+"|'[^']+')\}/g)].map(match => match[1]);
 const ENDS = {
   completed: {ok: true, result: 'what it did'},

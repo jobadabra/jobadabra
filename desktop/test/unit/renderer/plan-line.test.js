@@ -1,10 +1,10 @@
 // The one line about Pro on Settings → Plan while Pro is off (owner, 16 Oct 2026): honest, quiet, and replaced in one place when the plan goes on.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {endedLine, planLine} from '../../../renderer/plan-line.js';
 
-const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+const read = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
 
 test('the line says what the trial is and what comes after, and nothing else', () => {
   assert.equal(planLine({limit: 20}), 'Then Pro from €9: one-time payment, no subscription (coming soon).');

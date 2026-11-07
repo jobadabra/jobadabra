@@ -1,7 +1,7 @@
 // The shared page blocks (renderer/page-parts.js, renderer/shared-counts.js; owner, 18 Oct 2026, UI redesign): review list, empty state, summary tiles,
 // reference row, one count for every place it shows, and the page header (title + lead, tabs right under it, at most one primary button).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -9,7 +9,7 @@ install();
 const {reviewList, emptyState, summaryTiles, referenceRow} = await import('../../../renderer/page-parts.js');
 const {defineCount, paintCount, countWords} = await import('../../../renderer/shared-counts.js');
 const {el} = await import('../../../renderer/components.js');
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const texts = (node, selector) => node.querySelectorAll(selector).map(each => each.textContent);
 
 test('review list: pending first, done folded as "Reviewed · N", one orange button for the whole list (the first pending next step)', () => {

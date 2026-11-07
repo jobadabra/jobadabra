@@ -1,12 +1,13 @@
 // "Apply with Claude" is gone from every screen while SHOW_RESUME_CLAUDE is off (owner, 24 Oct 2026: "we don't have anymore Apply with X functionality").
 // The class: every renderer line that draws it asks resumeOffered(), no visible text names it, and the Settings checklist follows that flag.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const walk = dir => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]));
 const NAMED = /Apply with Claude/;
 
@@ -52,10 +53,10 @@ test('class: every main-process path that starts Apply with Claude refuses while
 test('extension UI: no panel or popup string offers Apply with Claude', () => {
   const extension = path.resolve(root, '..', 'extension');
   for (const name of fs.readdirSync(extension).filter(n => /\.(js|html)$/.test(n))) {
-    fs.readFileSync(path.join(extension, name), 'utf8').split('\n').forEach((line, index) => {
+    readScreenSource(path.join(extension, name), 'utf8').split('\n').forEach((line, index) => {
       if (/^\s*(\/\/|\/\*|\*)/.test(line)) return;
       assert.doesNotMatch(line.replace(/\s\/\/.*$/, ''), NAMED, `${name}:${index + 1}`);   // a trailing comment is not a string
     });
   }
-  assert.match(fs.readFileSync(path.join(extension, 'panel-claude.js'), 'utf8'), /takeover/);   // its one offer is built only when the app's reply says the takeover is on
+  assert.match(readScreenSource(path.join(extension, 'panel-claude.js'), 'utf8'), /takeover/);   // its one offer is built only when the app's reply says the takeover is on
 });

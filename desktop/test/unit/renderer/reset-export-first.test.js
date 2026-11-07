@@ -1,9 +1,9 @@
 // The reset card exports first and keeps no backup folder (owner, 16 Oct 2026): the card, the handler and the e2e step agree.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const here = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+const here = rel => readScreenSource(new URL(rel, import.meta.url), 'utf8');
 
 test('the reset card is two steps: save a copy, then reset; Reset waits for step 1 to be done or skipped', () => {
   const html = here('../../../renderer/index.html'), page = here('../../../renderer/pages/data.js');

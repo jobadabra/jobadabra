@@ -2,12 +2,12 @@
 // "saving settings must not silently start a paid re-score", "while running, show progress and prevent duplicate starts", "show the cost only if
 // it's calculated", 17 Oct): the words, the one start (its dialog's own button, never twice), no other path that re-scores, and the IPC to the engine.
 // tests/unit/ai/test_strategy_outdated.py checks the engine counts each job once.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {callButton, dialogLead, noticeTitle, pressLabel, reasonsText} from '../../../renderer/rescore-words.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const screen = read('renderer/pages/strategy-rescore.js');
 const run = read('renderer/pages/rescore-run.js');   // the running state and the one start, shared with Jobs (2 Nov 2026)
 

@@ -1,6 +1,6 @@
 // The Actions page's cards (renderer/index.html): each one is wired to something that exists, and Tune's words and guard hold.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -11,7 +11,7 @@ import {applyLabel, basisParts, proposalCounts, proposalTitle} from '../../../re
 import {activitySource} from '../../activity-source.js';
 
 const renderer = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const html = fs.readFileSync(path.join(renderer, 'index.html'), 'utf8');
+const html = readScreenSource(path.join(renderer, 'index.html'), 'utf8');
 const activity = activitySource();
 const main = mainSource();
 

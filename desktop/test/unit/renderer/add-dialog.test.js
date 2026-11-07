@@ -1,10 +1,10 @@
 // Jobs "+ Add": one toolbar button opens a dialog of three choices, each pressing the opener of a flow that already exists; ⌘K keeps one entry per flow plus "Add".
 // Checked in the source (the window needs Electron; the rendered dialog is checked with npm run shot).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const html = read('../../../renderer/index.html'), nav = read('../../../renderer/pages/nav.js'), add = read('../../../renderer/pages/jobs-add.js');
 const FLOWS = {'import-open': 'Add job', 'applied-open': 'Add application', 'lead-open': 'Add message or update'};
 

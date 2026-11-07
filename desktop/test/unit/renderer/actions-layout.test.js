@@ -1,6 +1,6 @@
 // The Actions page by importance: one large card, two medium, the smaller tasks under a collapsed More; every task still reachable and still held off while one runs; the schedule lines.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -8,7 +8,7 @@ import {scheduleLine} from '../../../renderer/schedule-line.js';
 import {activitySource} from '../../activity-source.js';
 
 const renderer = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const read = name => fs.readFileSync(path.join(renderer, name), 'utf8');
+const read = name => readScreenSource(path.join(renderer, name), 'utf8');
 const html = read('index.html');
 const grid = html.slice(html.indexOf('<div class="task-grid">'), html.indexOf('<section class="card runs-card">'));
 const zone = (open, close) => grid.slice(grid.indexOf(open), grid.indexOf(close));

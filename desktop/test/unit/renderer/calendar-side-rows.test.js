@@ -1,9 +1,9 @@
 // Calendar: chips use the same solid stage colours as the legend; side rows are date | company, job, stage; counts and empty states.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 
-const read = name => fs.readFileSync(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
+const read = name => readScreenSource(new URL(`../../../renderer/${name}`, import.meta.url), 'utf8');
 
 test('chips and legend dots share the solid stage colours', () => {
   const css = read('style.css');

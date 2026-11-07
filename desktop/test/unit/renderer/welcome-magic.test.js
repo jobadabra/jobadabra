@@ -1,13 +1,13 @@
 // The setup Welcome step's magic card and the shared magic effect: every state renders, the card is one real button, effects stop with reduced motion, privacy lives in Settings.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {shouldRun, burst} from '../../../renderer/magic.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const html = read('index.html');
 const start = html.indexOf('<div class="step" data-step="welcome">');
 const welcome = html.slice(start, html.indexOf('<div class="step" data-step="ai">', start));

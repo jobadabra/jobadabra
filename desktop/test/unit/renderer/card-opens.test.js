@@ -1,13 +1,13 @@
 // The class "compact card with one main action": its empty area presses that action, an inner control does only its own thing (owner, 19 Oct 2026).
 // Loops over every listed card; a new compact card with one primary button that is not listed here (and not marked) fails the scan.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
 const body = install();
 const {cardOpens} = await import('../../../renderer/components.js');
-const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 
 // card id → its main action's id. Left out on purpose: the Actions task cards (Run starts a paid or long task: a stray click must not start it)
 // and cards with two equal actions.
@@ -64,7 +64,7 @@ test('every compact card with one primary button in index.html is listed (or mar
 });
 
 test('the drawer header opens the What we learned tab, never a Saved answers box (owner, 28 Oct 2026)', () => {
-  const src = fs.readFileSync(new URL('../../../renderer/pages/question-review.js', import.meta.url), 'utf8');
+  const src = readScreenSource(new URL('../../../renderer/pages/question-review.js', import.meta.url), 'utf8');
   assert.match(src, /review-learned-tab/);
   assert.doesNotMatch(src, /'Saved answers'/);
   assert.doesNotMatch(src, /button\('Manage saved answers'/);

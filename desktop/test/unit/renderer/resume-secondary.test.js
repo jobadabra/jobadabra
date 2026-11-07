@@ -1,10 +1,10 @@
 // "Resume Claude" is never the main (orange) action (owner, 9 Oct 2026, three session screens: Question for you, Ended, Form closed): every place that builds it
 // makes it secondary, and a session row with no other main action promotes the way to its form. Source checks (the session page needs a window); the rendered look: npm run shot.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(file, import.meta.url), 'utf8');
 
 test('Resume Claude is secondary everywhere it is built, and the way to the form becomes the main action when nothing else is', () => {
   const sessions = read('../../../renderer/pages/session-next-step.js');

@@ -1,10 +1,10 @@
 // The card for the owner's answer to a feedback (renderer/pages/feedback-reply.js): what it says for a fix and for a "not now", and that the markup and the bridge are wired.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {cardText} from '../../../renderer/feedback-reply-text.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const fixed = {ref: 'a1b2c3d4e5f60718', on: '2026-10-28', excerpt: 'The CV upload hangs', kind: 'fixed', message: 'Fixed in 0.9.12. Thank you.', arrival: 'It arrives in 0.9.12.'};
 
 test('a fix says what was written, the owner\'s line and when it arrives', () => {

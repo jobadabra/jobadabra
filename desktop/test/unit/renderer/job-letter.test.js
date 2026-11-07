@@ -1,3 +1,4 @@
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -99,5 +100,5 @@ test('every name of the tailor action says cover letter', () => {
     'renderer/onboarding.js': /Tailor CV \+ cover letter for top matches/, 'renderer/index.html': /<b>Tailor CV \+ cover letter for top matches<\/b>/,
     'renderer/pages/jobs-render.js': /'Tailor CV \+ cover letter'/, 'renderer/pages/nav.js': /tailor: 'tailor cv cover letter/,
   };
-  for (const [file, pattern] of Object.entries(places)) assert.match(fs.readFileSync(path.join(here, '../../..', file), 'utf8'), pattern, file);
+  for (const [file, pattern] of Object.entries(places)) assert.match(readScreenSource(path.join(here, '../../..', file), 'utf8'), pattern, file);
 });

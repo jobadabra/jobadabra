@@ -1,12 +1,12 @@
 // Setup steps: every switch in a step uses the standard .switch, and a finished setup shows no "Start" on Welcome.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const html = readScreenSource(path.join(root, 'index.html'), 'utf8');
 const steps = [...html.matchAll(/<div class="step" data-step="(\w+)">([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)];
 
 // Why (5 Nov 2026, #3282): .switch-row may be used here: it is the shared flex row now (components.css), no longer the Settings-only grid this test banned on 21 Oct 2026.
@@ -21,7 +21,7 @@ test('every checkbox inside a setup step sits in the standard .switch', () => {
 });
 
 test('a done setup: Welcome swaps Start for the done wording, and its banner is not shown on Welcome', () => {
-  const wizard = fs.readFileSync(path.join(root, 'pages', 'wizard.js'), 'utf8');
+  const wizard = readScreenSource(path.join(root, 'pages', 'wizard.js'), 'utf8');
   assert.match(wizard, /show\(\$\('review-mode'\), done && name !== 'welcome'\)/);
   const welcome = steps.find(([, name]) => name === 'welcome')[2];
   assert.match(welcome, /data-when="first"[^>]*>Start</);
