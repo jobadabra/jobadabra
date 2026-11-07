@@ -26,8 +26,6 @@ export default {
   "noAdded": "Diesmal wurden keine Stellen hinzugefügt.",
   "fallback": "Erledigt.",
   "limitTitle": "{name} am Zeitlimit beendet{where}",
-  "partial": "Teilweise: am 3-Minuten-Limit beendet",
-  "sites": ", {done} von {total} Websites durchsucht",
   "error": "⚠️ Jobadabra: Fehler beim Ausfüllen{host}{version}: {message}",
   "host": " auf {host}",
   "version": " (Erweiterung {version})",

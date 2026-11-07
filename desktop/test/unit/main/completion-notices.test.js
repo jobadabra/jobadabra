@@ -6,7 +6,7 @@ import {createAppNotify} from '../../../lib/app-notify.js';
 import {createWatcher} from '../../../lib/real-errors.js';
 import {assertCatalogs} from '../../../../app-core/test/catalog-parity.js';
 import {completionText} from '../../../i18n/completion-notices.js';
-import {setLocale} from '../../../i18n/index.js';
+import {getLocale, setLocale} from '../../../i18n/index.js';
 afterEach(() => setLocale('en'));
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 const done = ['Find jobs done', 'Stellen suchen abgeschlossen', 'Recherche d’offres : opération terminée', 'Ricerca di offerte: operazione completata', 'Búsqueda de empleo: tarea completada', 'Căutarea locurilor de muncă: operațiune încheiată', 'Поиск вакансий: завершено'];
@@ -76,7 +76,7 @@ test('counts and warning/partial verdicts use explicit presentation without inve
     const warned = notice({...run, warned: true}, locale);
     assert.equal(warned.title, completionText(locale, 'warned', {name: completionText(locale, 'kind_search'), where: ''}));
     const partial = notice({...run, endedByTime: true}, locale);
-    assert.ok(partial.body.startsWith(completionText(locale, 'partial'))); assert.doesNotMatch(partial.body, /undefined|NaN/);
+    assert.equal(partial.title, completionText(locale, 'limitTitle', {name: completionText(locale, 'kind_search'), where: ''})); assert.doesNotMatch(partial.body, /undefined|NaN/);
     assert.ok(!partial.body.includes(completionText(locale, 'noAdded')));
     const scored = notice({...run, rescore: true, scored: count}, locale);
     assert.equal(scored.body, completionText(locale, 'scores', {count}));
@@ -96,5 +96,15 @@ test('actual not-checked announceRuns short-circuit uses saved language without 
     assert.equal(output.length, 1); assert.equal(output[0][1].title, titles[index]);
     assert.deepEqual(output[0][1].target, {run: 42}); assert.equal(JSON.stringify(rows), wire);
     assert.equal(output[0][1].body, completionText(locale, off ? 'gmailDisconnected' : 'gmailWhy'));
+  }
+});
+
+test('the actual partial-search notice reuses the same wording as the existing result card without ambient-locale dependence', async () => {
+  const {partialWords} = await import('../../../renderer/find-card-model.js');
+  const run = {id: 'raw-run', kind: 'search', ok: true, endedByTime: true, new: 2,
+    log: ['Employers: read 2 of 14 sites in the time']};
+  for (const locale of locales) {
+    setLocale(locale); const expected = partialWords(run, run.new) + '.' + completionText(locale, 'look');
+    setLocale('es'); assert.equal(notice(run, locale).body, expected); assert.equal(getLocale(), 'es');
   }
 });

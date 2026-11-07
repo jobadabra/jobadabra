@@ -26,8 +26,6 @@ export default {
   "noAdded": "В этот раз вакансии не добавлены.",
   "fallback": "Готово.",
   "limitTitle": "{name}: достигнут лимит времени{where}",
-  "partial": "Частичный результат: достигнут лимит в 3 минуты",
-  "sites": ", проверено сайтов: {done} из {total}",
   "error": "⚠️ Jobadabra: Ошибка заполнения{host}{version}: {message}",
   "host": " на {host}",
   "version": " (расширение {version})",

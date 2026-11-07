@@ -6,8 +6,8 @@ import {call} from './notion.js';   // Notion-only: copyLocal() writes this Mac'
 import {openStore} from './store/index.js';
 import {jobFrom} from './job-line.js';
 import {partialSearch, runWarned} from '../renderer/run-status.js';   // pure (no DOM): the Actions page and this pop-up must call a run "with warnings" by the same rule
-import {completionText, completionWords} from '../i18n/completion-notices.js';
-import {partialSites, partialWords} from '../renderer/find-card-model.js';
+import {completionGuide, completionWords} from '../i18n/completion-notices.js';
+import {partialWords} from '../renderer/find-card-model.js';
 import {KIND, fromRow, result} from './run-rows.js';
 
 export {fromRow, jobFrom, result};
@@ -210,11 +210,8 @@ function searchNotice(run, {where, verdict, look}, locale) {
     body: (fresh ? text('added', {count: fresh}, `${fresh} job${fresh === 1 ? '' : 's'} added to your list.`) : text('noAdded', {}, 'No jobs added this time.')) + look};   // one number, the run's own record (owner, 24 Oct 2026)
 }
 function partialNoticeBody(run, locale) {
-  if (locale === undefined) return `${partialWords(run, run.new)}. Open Jobadabra to see what it said.`;
-  const text = (key, variables) => completionText(locale, key, variables), sites = partialSites(run.log);
-  const number = value => new Intl.NumberFormat(locale).format(value);
-  return text('partial') + (sites.total ? text('sites', {done: number(sites.done), total: number(sites.total)}) : '')
-    + (run.new ? ` · ${text('added', {count: run.new}).replace(/\.$/, '')}` : '') + '.' + text('look');
+  return partialWords(run, run.new, locale === undefined ? undefined : completionGuide(locale)) + '.'
+    + completionWords(locale, 'look', {}, ' Open Jobadabra to see what it said.');
 }
 function noticeText(run, locale) {
   if (!NAMES[run.kind] && run.kind) return null;

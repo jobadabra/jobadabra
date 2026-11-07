@@ -26,8 +26,6 @@ export default {
   "noAdded": "De data aceasta nu s-au adăugat locuri de muncă.",
   "fallback": "Gata.",
   "limitTitle": "{name}: limita de timp a fost atinsă{where}",
-  "partial": "Parțial: încheiată la limita de 3 minute",
-  "sites": ", {done} din {total} de site-uri verificate",
   "error": "⚠️ Jobadabra: eroare la completare{host}{version}: {message}",
   "host": " pe {host}",
   "version": " (extensie {version})",

@@ -26,8 +26,6 @@ export default {
   "noAdded": "Questa volta non sono state aggiunte offerte.",
   "fallback": "Completato.",
   "limitTitle": "{name}: limite di tempo raggiunto{where}",
-  "partial": "Parziale: terminata al limite di 3 minuti",
-  "sites": ", {done} siti su {total} consultati",
   "error": "⚠️ Jobadabra: errore di compilazione{host}{version}: {message}",
   "host": " su {host}",
   "version": " (estensione {version})",

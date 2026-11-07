@@ -26,8 +26,6 @@ export default {
   "noAdded": "No jobs added this time.",
   "fallback": "Done.",
   "limitTitle": "{name} ended at the time limit{where}",
-  "partial": "Partial: ended at the 3-minute limit",
-  "sites": ", {done} of {total} sites searched",
   "error": "⚠️ Jobadabra fill error{host}{version}: {message}",
   "host": " on {host}",
   "version": " (extension {version})",
