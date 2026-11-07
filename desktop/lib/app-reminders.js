@@ -44,11 +44,11 @@ export function createAppReminders(ctx) {
   async function resumeQueue(jobs) {
     await closeQuietRows();
     if (!jobs.length) return;
-    // Why (7 Nov 2026): deduplicate canonical names first so translations cannot change the resume question’s single/multiple shape.
+    // Why (7 Nov 2026): deduplicate canonical names first so translations cannot change the resume question’s single/multiple shape; prefer a known display kind when an unknown fallback shares that name.
     const canonical = new Map();
     for (const job of jobs) {
       const name = pipeline.taskName(job.kind);
-      if (!canonical.has(name)) canonical.set(name, job.kind);
+      if (!canonical.has(name) || taskLabel(job.kind, () => null) !== null) canonical.set(name, job.kind);
     }
     const names = [...canonical].map(([name, kind]) => taskLabel(kind, () => name));
     const parent = getWindow() && !getWindow().isDestroyed() ? getWindow() : null;

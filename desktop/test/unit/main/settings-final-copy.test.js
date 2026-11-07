@@ -91,7 +91,9 @@ test('Settings labels translate known display values and preserve unknown values
     assert.notEqual(channelNames([]), 'nothing', locale);
     assert.notEqual(storeLabel({name: 'sqlite', caps: [], label: 'This Mac'}), 'This Mac', locale);
     assert.equal(storeLabel({caps: ['links'], label: 'Notion'}), 'Notion');
-    assert.notEqual(logDay('today', () => ''), 'today', locale);
+    const {t} = await import('../../../i18n/index.js');
+    await import('../../../i18n/screens-pages.js');
+    assert.equal(logDay('today', () => ''), t('pagesCommon.today').toLocaleLowerCase(locale), 'inline day word agrees with the existing capitalized picker label');
     assert.deepEqual(channels, ['email', 'app', 'telegram']);
   }
 });
@@ -148,7 +150,9 @@ test('resume-name deduplication stays canonical before display so translations c
     log() {}, notify() {}, targets: {clean: value => value}, toWindow() {}});
   // Existing taskName falls back to Find jobs for an unknown kind: the original Set therefore had one name.
   await reminders.resumeQueue([{kind: 'search'}, {kind: 'unknown-fixture'}]);
+  await reminders.resumeQueue([{kind: 'unknown-fixture'}, {kind: 'search'}]);
   assert.equal(questions[0].detail, t('native.resumeOne'));
+  assert.deepEqual(questions[1], questions[0], 'unknown-first order retains the same translated single-task question');
 });
 
 test('unknown update progress and raw diagnostics cannot become a catalog key or be translated by English matching', async () => {
@@ -161,5 +165,14 @@ test('unknown update progress and raw diagnostics cannot become a catalog key or
     assert.equal(updateStepText(raw), raw);
     assert.equal(displayText(new Error(raw), raw), raw);
     if (locale !== 'en') assert.notEqual(updateStepText('Downloading…', 'updateDownloading'), 'Downloading…');
+  }
+});
+
+test('localized detail progress preserves the established English counted output', async () => {
+  const {detailsProgress} = await import('../../../lib/wizard-progress-copy.js');
+  const {detailsNote} = await import('../../../lib/details-at-setup.js');
+  setLocale('en');
+  for (const done of [{saved: ['a', 'b'], left: ['c']}, {saved: ['a'], left: []}, {}]) {
+    assert.equal(detailsProgress(done), detailsNote(done));
   }
 });

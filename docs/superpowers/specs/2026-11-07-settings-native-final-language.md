@@ -1,6 +1,6 @@
 # Finish audited Settings, wizard, native and update display copy
 
-The owner authorized this bounded follow-on after the final coverage audit on 7 November 2026. It covers en, de, fr, it, es, ro and ru. Evidence: `/tmp/jobadabra-ml/final-desktop-settings-native-audit.md` at origin/main e3fbc289.
+The owner authorized this bounded follow-on after the final coverage audit on 7 November 2026. It covers en, de, fr, it, es, ro and ru. The audit snapshot was origin/main e3fbc289. Durable source/callback evidence is in [the coverage audit](2026-11-07-settings-native-final-coverage-audit.md) and `desktop/test/unit/main/settings-final-copy.test.js`.
 
 ## Scope and contracts
 
@@ -22,7 +22,7 @@ Tier 1: named affected unit/callback tests (at most about twelve files), fiction
 - [x] Pass named tests, catalog parity, lint and relevant source/Why gates. (proof: desktop/test/unit/main/settings-final-copy.test.js)
 ### 2. Open previews and obtain owner approval
 
-- [x] Prepare and open fictional before/after light/dark previews; obtain owner publication approval. (proof: none: owner chose “Yes; fix the 2 names next” via Coordinator27 on 7 November 2026; separate field-name follow-up)
+- [x] Prepare and open fictional before/after light/dark previews; obtain owner publication approval. (proof: none: owner chose “Yes; fix the 2 names next” via Coordinator27 on 7 November 2026; separate field-name follow-up; [approval record](https://github.com/jobadabra/jobadabra/pull/3558#issuecomment-6712386126))
 ### 3. Ship and supervise the PR
 
 - [ ] Ship own PR, resolve CI/review, report exact-head READY and retain merge watch.
