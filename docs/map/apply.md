@@ -19,6 +19,7 @@ updated: 2026-11-03
 - One mechanism across Apply modes (standard, background, Full automation): extend the step every mode passes, test each mode touched.
 
 ## Key files
+- Extension display languages: `extension/i18n.js` owns preference/cache; `i18n-format.js` shares trusted text formatting, and `panel-i18n.js` redraws only app-owned panel nodes. [Approved localization design](../superpowers/specs/2026-11-07-extension-localization.md).
 - `extension/`: content scripts, the panel, `fill-flow.js` (the decision flow), `ladder/core.js`, `page/` (controls, skeleton), `tab-identity.js`, `apply-state.js`.
 - `desktop/lib/`: `application-journey.js`, `apply*.js`, `background-apply-*.js` (the app side of applying).
 - `desktop/e2e/recorded/`, `ladder-fixtures/`, `flows.mjs`: recorded pages, rung fixtures, the flow registry.

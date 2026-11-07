@@ -1,6 +1,7 @@
 // The background worker: tabs the app opens to fill (#jobpilotto-fill), the next page in that tab, a tab that tab
 // opens, Apply with Claude's hand-off, the ring's messages to the app, and the connection check. The result of a
 // fill shows in a panel on the page and in the icon badge.
+import {displayText,displayStepText} from './display-cache.js';
 import {NO_APP, api, fillTab, settings} from './flow.js';
 import {plainWhy} from './ai-reply.js';
 import {oneFillPerTab, retireFill} from './one-fill.js';
@@ -29,7 +30,6 @@ import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './si
 import {createReadyHandoff} from './ready-handoff.js';
 import {startRefusedReads} from './refused-read.js'; import {startLinkedinSession} from './linkedin-session.js';
 import {startEarlyDim} from './early-dim.js'; import {sayApply, forgetApply} from './apply-state.js';
-
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
 // while a fill is still running, so every injection asks the tab what it shows first (tab-pages.js).
 async function onPage(tabId, url) {
@@ -223,10 +223,9 @@ async function progress(tabId, text, url = '', verdict = 'done') {
 // The step a fill is on, per tab: a panel that appears after the step was announced (the fill started before the page
 // had one) asks for it, shows it itself, and the floating box goes (2 Oct 2026: both were on screen for the whole wait).
 const stepNow = new Map();
-
 // The floating step box: drawn, updated, or (with no text) removed. Only for pages whose panel can't show the step.
 function stepBox(tabId, message) {
-  return chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', args: [message], func: message => {
+  return chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', args: [displayStepText(message)], func: message => {
     let box = document.getElementById('jobadabra-progress');
     // The panel (review.js) shows the step itself: never a second copy of it in the corner.
     if (!message || document.getElementById('jobadabra-review-host')) { box?.remove(); return; }
@@ -246,13 +245,14 @@ function stepBox(tabId, message) {
 
 // "Didn't fill: <reason>" with a Fill anyway button on the page itself.
 async function ineligibleNote(tabId, reason, partly = false) {   // partly: your details were filled before the verdict came (flow.js, owner 11 Oct 2026)
-  if (await tellPanel(tabId, partly ? `Jobadabra filled only your details on this form: ${reason || 'not eligible'}` : `Jobadabra didn't fill this form: ${reason || 'not eligible'}`, true)) return;   // the panel's note line, with its Fill anyway
-  await chrome.scripting.executeScript({target: {tabId}, args: [String(reason || 'not eligible'), !!partly], func: (text, partly) => {   // an app reply without a note must not crash the note (10 Oct 2026, the Aldi replay)
+  const words = displayText(partly ? 'notice.partly' : 'notice.ineligible',{reason:reason || displayText('notice.notEligible')});
+  if (await tellPanel(tabId, words, true)) return;   // the same note, with the existing Fill anyway action
+  await chrome.scripting.executeScript({target: {tabId}, args:[words,displayText('panel.anyway'),displayText('common.close')], func:(text,anywayLabel,closeLabel) => {
     document.getElementById('jobadabra-note')?.remove();
     const box = Object.assign(document.createElement('div'), {id: 'jobadabra-note'});
     box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:340px;background:#132439;color:#fff;' +
       'border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
-    const message = Object.assign(document.createElement('div'), {textContent: partly ? `Jobadabra filled only your details on this form: ${text}` : `Jobadabra didn't fill this form: ${text}`});
+    const message = Object.assign(document.createElement('div'), {textContent: text});
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:8px;margin-top:10px';
     const button = (label, primary) => {
@@ -261,7 +261,7 @@ async function ineligibleNote(tabId, reason, partly = false) {   // partly: your
         `color:${primary ? '#14110c' : '#fff'};font:600 12px system-ui,sans-serif;cursor:pointer`;
       return b;
     };
-    const anyway = button('Fill anyway', true), close = button('Close', false);
+    const anyway = button(anywayLabel, true), close = button(closeLabel, false);
     anyway.onclick = () => { box.remove(); chrome.runtime.sendMessage({type: 'fillAnyway'}); };
     close.onclick = () => box.remove();
     row.append(anyway, close);
@@ -368,13 +368,13 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     if (result?.held) return holdFill(tab, page, result, {decide, progress: (id, text, at) => progress(id, text, at, endsRun ? 'done' : ''), note});   // a dialog covers the form and nothing closes it: nothing was typed (dialog-after-fill.js)
     reportControls(config, tab, result?.operated, result?.trace, result?.card, result?.unknownUploads, result?.starred);
     // The kit's eligibility verdict, as a reminder (applying anyway was the user's choice).
-    if (kit.kit?.eligible === false) await note(tab.id, `⛔ Reminder from your application: ${kit.kit.eligibility_note}`, page);
+    if (kit.kit?.eligible === false) await note(tab.id, displayText('notice.reminder',{reason:kit.kit.eligibility_note}), page);
     // Claude could not answer the form's own questions (not answering, a limit, no key): the fill went on without them and the panel said
     // "Ready to submit" with the free-text questions empty (a friend's Ashby form, 2 Oct 2026). Say so on the page, in the log, and to the app.
     if (result?.aiError) {
       const why = String(result.aiError).slice(0, 160);
       decide('fill', 'Claude did not answer the questions', {error: why});
-      await note(tab.id, `✈️ The AI couldn't answer the questions this form asks (${why}). Answer them yourself, or press Fill again.`, page);
+      await note(tab.id, displayText('notice.aiFailed',{reason:why}), page);
       api(config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'ai-failed', url, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })(), why})}).catch(() => {});
     }
     await closeFillDialogs(tab, {close: closePopupOrLayer, look: layerOnTop, decide});   // dialog-after-fill.js
@@ -391,7 +391,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     await progress(tab.id, '', page, endsRun ? 'done' : '');
     decide('fill', `failed: ${error.message}`, {url: page});
     // An automatic fill (the page was not asked for by you, just reached in an armed tab) fails quietly: logged, never a popup.
-    if (!quiet) await note(tab.id, `✈️ Jobadabra couldn't fill this page: ${plainWhy(error)}. If the form is behind an "Apply" button, open that form from the Jobadabra app.`, page);
+    if (!quiet) await note(tab.id, displayText('notice.fillFailed',{reason:plainWhy(error)}), page);
     chrome.action.setBadgeText({tabId: tab.id, text: '!'}).catch(() => {});  // the tab may already be closed
     return {error: plainWhy(error)};
   }

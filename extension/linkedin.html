@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jobadabra: LinkedIn jobs</title>
+<title data-i18n="linkedin.pageTitle">Jobadabra: LinkedIn jobs</title>
 <style>
   [hidden] { display: none !important; }
   body { margin: 0; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #182537; background: #f4f6fa; display: grid; place-items: center; min-height: 100vh; }
@@ -17,15 +17,15 @@
 </head>
 <body>
 <main>
-  <h1>Search LinkedIn on every Find jobs?</h1>
-  <p>The Jobadabra app can read your LinkedIn job searches every time you press Find jobs, in the background with no window, using your LinkedIn sign-in from this Chrome.</p>
+  <h1 data-i18n="linkedin.title">Search LinkedIn on every Find jobs?</h1>
+  <p data-i18n="linkedin.explains">The Jobadabra app can read your LinkedIn job searches every time you press Find jobs, in the background with no window, using your LinkedIn sign-in from this Chrome.</p>
   <ul>
-    <li>Chrome will ask for two permissions, once: LinkedIn pages and cookies.</li>
-    <li>Only two LinkedIn cookies are read (<code>li_at</code>, <code>JSESSIONID</code>) and sent only to the Jobadabra app on this Mac (127.0.0.1). The app keeps them in your Keychain.</li>
-    <li>Turn it off in Jobadabra → Settings → Connections → LinkedIn: the sign-in is deleted and Chrome's permissions are given back.</li>
+    <li data-i18n="linkedin.permissions">Chrome will ask for two permissions, once: LinkedIn pages and cookies.</li>
+    <li data-i18n="linkedin.cookies">Only two LinkedIn cookies are read (li_at, JSESSIONID) and sent only to the Jobadabra app on this Mac (127.0.0.1). The app keeps them in your Keychain.</li>
+    <li data-i18n="linkedin.off">Turn it off in Jobadabra → Settings → Connections → LinkedIn: the sign-in is deleted and Chrome's permissions are given back.</li>
   </ul>
-  <p class="warn" id="warning">LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.</p>
-  <button id="allow">Allow and turn on LinkedIn jobs</button>
+  <p class="warn" id="warning" data-i18n="linkedin.warning">LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.</p>
+  <button id="allow" data-i18n="linkedin.button">Allow and turn on LinkedIn jobs</button>
   <p id="said" role="status"></p>
 </main>
 <script type="module" src="linkedin.js"></script>

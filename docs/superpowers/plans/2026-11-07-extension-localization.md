@@ -20,8 +20,8 @@ No stacked PR before parent merges. Work on disjoint remaining inventory while w
 - [x] Implement locale transport/cache, seven catalogs and explicit UI keys. (proof: desktop/test/unit/extension/extension-i18n.test.js).
 - [x] Verify fallback, overrides, later desktop changes, locale formatting and untouched external text. (proof: desktop/test/unit/extension/extension-i18n.test.js).
 - [x] Send fictional options/popup preview to coordinator (proof: docs/previews/ml-extension/options-ru.png).
-- [ ] Commit and ship milestone 1; fix required checks/review through exact-head READY.
-- [ ] Milestone 2: audit and translate remaining app-owned panels after milestone 1.
+- [x] Commit and ship milestone 1; owner merged PR #3426 (proof: extension/i18n.js @317c337).
+- [x] Milestone 2: audit and translate remaining app-owned panels after milestone 1 (proof: extension/panel-i18n.js).
 
 ## Checks
 Run `node --test desktop/test/unit/extension/extension-i18n.test.js`, `extension-localized-ui.test.js`, `server-routes.test.js`, `extension-contract.test.js` individually. Run `python3 -m unittest tests.tooling.ci.test_workflow_paths`. Inspect selected-locale options/popup with mocked Chrome APIs, blocked network and fictional read progress. Verify English default compatibility and native names/flags, all seven key/parameter parity, Russian/Romanian plurals. Use existing review polling for later desktop changes; opening popup/options refreshes too. Offline cache survives network errors; an answered older desktop missing locale resolves English.

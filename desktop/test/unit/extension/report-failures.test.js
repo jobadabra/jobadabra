@@ -89,7 +89,7 @@ test('the app not answering the switch question is "app" at the press, not "turn
 // The panel's sentences: run the popup's own file on a stand-in window to read them.
 function panelWords() {
   const window = {}, document = {createElement: () => ({}), };
-  vm.runInNewContext(read('extension/panel-report.js'), {window, document});
+  vm.runInNewContext(['i18n-format.js','panel-i18n.js','panel-report.js'].map(file => read('extension/'+file)).join('\n'), {window, document});
   return window.__jobadabraReport;
 }
 test('every kind a failed Report can have has its own true sentence; only "app" asks if the app is open', () => {

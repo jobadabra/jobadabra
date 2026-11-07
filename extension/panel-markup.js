@@ -145,31 +145,31 @@
   </style>
   <div class="jp">
     <div class="card" hidden>
-      <div class="head"><span class="mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="16" height="16"><path d="M52 96 L36 150 Q100 198 164 150 L148 96 Z" fill="#15171c"/><ellipse cx="100" cy="84" rx="94" ry="19" fill="#15171c"/><ellipse cx="100" cy="82" rx="56" ry="6.5" fill="#f5c542"/><path d="M100 4 Q107 33 133 38 Q107 43 103 66 Q102 76 100 84 Q98 76 97 66 Q93 43 67 38 Q93 33 100 4" fill="#15171c"/><path d="M110 90 L110 124 Q110 154 87 150 Q75 148 77 138" fill="none" stroke="#f5c542" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Jobadabra</b><button class="min" title="Minimise" aria-label="Minimise">–</button><button class="x" title="Close" aria-label="Close">×</button></div>
+      <div class="head"><span class="mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="16" height="16"><path d="M52 96 L36 150 Q100 198 164 150 L148 96 Z" fill="#15171c"/><ellipse cx="100" cy="84" rx="94" ry="19" fill="#15171c"/><ellipse cx="100" cy="82" rx="56" ry="6.5" fill="#f5c542"/><path d="M100 4 Q107 33 133 38 Q107 43 103 66 Q102 76 100 84 Q98 76 97 66 Q93 43 67 38 Q93 33 100 4" fill="#15171c"/><path d="M110 90 L110 124 Q110 154 87 150 Q75 148 77 138" fill="none" stroke="#f5c542" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Jobadabra</b><button class="min" title="Minimise" data-jp-title="panel.minimise" aria-label="Minimise" data-jp-aria-label="panel.minimise">–</button><button class="x" title="Close" data-jp-title="common.close" aria-label="Close" data-jp-aria-label="common.close">×</button></div>
       <div class="body">
         <div class="job" hidden><div class="job-title"></div><div class="job-meta"></div></div>
         <div class="claude" hidden><i>🤖</i><span></span></div>
         <div class="progress"><div class="progress-line"><b></b><span></span></div><div class="bar"><i></i></div></div>
-        <div class="stopped" hidden><span class="pause"><i></i><i></i></span><div><b>Stopped by you</b><span class="s-text"></span></div></div>
-        <div class="verify" hidden><span class="shield"></span><div class="v-body"><b class="v-title"></b><span class="v-text">Finish it on the page, then press Check again.</span></div><button class="primary v-show" type="button">Show on form</button><button class="link v-again" type="button">Check again</button></div>
-        <div class="letter-setup verify letter-notice" hidden><svg class="letter-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg><div class="letter-copy"><b class="letter-title"></b><span class="letter-reason"></span><button class="secondary letter-action" type="button">Go to Profile → Cover letter</button></div></div>
-        <div class="live"><h4>Done so far</h4><ol class="steps"></ol></div>
-        <div class="fill-box"><button class="primary fill"><i class="spin"></i><span class="label">Fill this form</span></button><button class="stop-btn" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again">Stop</button><p class="step-hint">Counts update as new fields appear.</p></div>
-        <div class="note trace-note" hidden><span>Chrome shows a debugging bar while Jobadabra keeps a trace of this fill, so you can report a problem.</span><button class="got-it" type="button">Got it</button></div>
-        <div class="note" hidden><span></span><button class="anyway" hidden>Fill anyway</button></div>
-        <div class="left" hidden><h4>Left for you</h4><p class="knock" hidden></p><div class="list"></div></div>
-        <div class="mine" hidden><h4>You answered</h4><div class="mine-list"></div></div>
-        <button class="secondary recheck" type="button" hidden>Check form again</button>
+        <div class="stopped" hidden><span class="pause"><i></i><i></i></span><div><b data-jp-i18n="panel.stopped">Stopped by you</b><span class="s-text"></span></div></div>
+        <div class="verify" hidden><span class="shield"></span><div class="v-body"><b class="v-title"></b><span class="v-text" data-jp-i18n="panel.finishPage">Finish it on the page, then press Check again.</span></div><button class="primary v-show" type="button" data-jp-i18n="panel.showForm">Show on form</button><button class="link v-again" type="button" data-jp-i18n="panel.checkAgain">Check again</button></div>
+        <div class="letter-setup verify letter-notice" hidden><svg class="letter-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg><div class="letter-copy"><b class="letter-title"></b><span class="letter-reason"></span><button class="secondary letter-action" type="button" data-jp-i18n="panel.goLetter">Go to Profile → Cover letter</button></div></div>
+        <div class="live"><h4 data-jp-i18n="panel.doneSoFar">Done so far</h4><ol class="steps"></ol></div>
+        <div class="fill-box"><button class="primary fill"><i class="spin"></i><span class="label" data-jp-i18n="panel.fill">Fill this form</span></button><button class="stop-btn" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again" data-jp-title="panel.stopTitle" data-jp-i18n="panel.stop">Stop</button><p class="step-hint" data-jp-i18n="panel.countsHint">Counts update as new fields appear.</p></div>
+        <div class="note trace-note" hidden><span data-jp-i18n="panel.trace">Chrome shows a debugging bar while Jobadabra keeps a trace of this fill, so you can report a problem.</span><button class="got-it" type="button" data-jp-i18n="panel.gotIt">Got it</button></div>
+        <div class="note" hidden><span></span><button class="anyway" hidden data-jp-i18n="panel.anyway">Fill anyway</button></div>
+        <div class="left" hidden><h4 data-jp-i18n="panel.leftForYou">Left for you</h4><p class="knock" hidden></p><div class="list"></div></div>
+        <div class="mine" hidden><h4 data-jp-i18n="panel.youAnswered">You answered</h4><div class="mine-list"></div></div>
+        <button class="secondary recheck" type="button" hidden data-jp-i18n="panel.recheck">Check form again</button>
         <div class="actions">
           <div class="claude-offer" hidden></div>
-          <button class="link go-there" hidden>Go there</button>
-          <button class="link open-app" hidden>Open in Jobadabra</button>
+          <button class="link go-there" hidden data-jp-i18n="panel.goThere">Go there</button>
+          <button class="link open-app" hidden data-jp-i18n="panel.openApp">Open in Jobadabra</button>
         </div>
       </div>
       <div class="tip" hidden><b class="tip-chip"></b><span class="tip-text"></span></div>
-      <div class="foot"><span class="state">Checking the connection…</span><button class="report-btn" type="button" title="Send this form to be fixed: you read exactly what would be sent first" aria-label="Report this form"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 14V2.5M3.5 3h8l-1.6 2.7L11.5 8.5h-8"/></svg>Report</button></div>
+      <div class="foot"><span class="state" data-jp-i18n="panel.checking">Checking the connection…</span><button class="report-btn" type="button" title="Send this form to be fixed: you read exactly what would be sent first" data-jp-title="panel.reportTitle" aria-label="Report this form" data-jp-aria-label="panel.reportAria"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 14V2.5M3.5 3h8l-1.6 2.7L11.5 8.5h-8"/></svg><span data-jp-i18n="panel.report">Report</span></button></div>
     </div>
     <button class="pill" title="Jobadabra"><span class="ring"><span></span></span><div><b></b><small></small></div></button>
-    <button class="pill-stop" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again">Stop</button>
+    <button class="pill-stop" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again" data-jp-title="panel.stopTitle" data-jp-i18n="panel.stop">Stop</button>
   </div>`;
 })();

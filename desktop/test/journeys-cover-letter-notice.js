@@ -8,7 +8,7 @@ import path from 'node:path';
 import * as review from '../lib/review.js';
 import {createStorage} from '../lib/storage.js';
 
-const source = fs.readFileSync(new URL('../../extension/letter-notice.js', import.meta.url), 'utf8');
+const source = ['i18n-format.js','panel-i18n.js','letter-notice.js'].map(file => fs.readFileSync(new URL('../../extension/'+file, import.meta.url), 'utf8')).join('\n');
 const window = {};
 vm.runInNewContext(source, {window});
 const notice = window.__jobadabraCoverLetterNotice;

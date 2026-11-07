@@ -5,7 +5,9 @@
 // asks the app (panelTakeOver), which starts Claude's session; Claude never presses Submit. Guards: desktop/test/unit/extension/panel-claude.test.js (the choices as a pure function),
 // the real-extension check (desktop/integration/extension/real-extension.test.mjs).
 (() => {
+  const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   if (window.__jobadabraClaude) return;
+  const countdownText = count => t('claude.countdown','Claude takes over in {count} s',{count});
   const COUNT = 5;   // seconds the person sees before "always" starts Claude
 
   // The view for the facts (info: on = Claude ready, stuck, auto = countdown allowed [always + "Do it for me"], consent) and what the person pressed.
@@ -41,6 +43,7 @@
     if (!root.querySelector('style[data-claude-offer]')) root.append(Object.assign(document.createElement('style'), {textContent: STYLE}));
     root.querySelector('style:last-of-type').setAttribute('data-claude-offer', '');
     box = root.querySelector('.claude-offer');
+    window.__jobadabraPanelI18n.onChange(() => { if (shown && shown !== 'countdown') draw(shown); });
   }
   const el = (tag, props = {}, ...kids) => { const node = Object.assign(document.createElement(tag), props); node.append(...kids); return node; };
   const button = (text, action, className = 'secondary') => el('button', {className, textContent: text, onclick: () => act(action)});
@@ -65,25 +68,25 @@
     if (view !== 'countdown' && timer) { clearInterval(timer); timer = null; }
     if (view === 'hidden') { box.replaceChildren(); return; }
     if (view === 'report') {
-      box.replaceChildren(el('p', {}, stopped ? 'Stopped by you.' : 'The extension is stuck on this page.'));   // one Report on the panel: the footer's (review.js); a second button here was two doors to the same card (owner, 19 Oct 2026)
+      box.replaceChildren(el('p', {}, stopped ? t("claude.stopped", 'Stopped by you.') : t("claude.stuck", 'The extension is stuck on this page.')));   // one Report on the panel: the footer's (review.js); a second button here was two doors to the same card (owner, 19 Oct 2026)
     } else if (view === 'needs') {
-      box.replaceChildren(el('p', {}, 'The extension is stuck on this page.'), el('div', {className: 'co-row'}, button('Tell me what\'s needed', 'needs')));
+      box.replaceChildren(el('p', {}, t("claude.stuck", 'The extension is stuck on this page.')), el('div', {className: 'co-row'}, button(t("claude.needs", 'Tell me what\'s needed'), 'needs')));
     } else if (view === 'offer') {
       const check = el('input', {type: 'checkbox', checked: !!last.always, onchange: () => { last.always = check.checked; send({type: 'panelClaudeAuto', on: check.checked}).catch(() => {}); }});
-      box.replaceChildren(el('p', {}, 'Stuck on this page? Claude works in this tab and stops before Submit.'),
-        el('div', {className: 'co-row'}, button('Let Claude finish this page', 'press', 'primary'), button('I\'ll do it myself', 'myself')),
-        el('label', {className: 'co-always'}, check, 'Always let Claude finish when I\'m stuck'));
+      box.replaceChildren(el('p', {}, t("claude.offer", 'Stuck on this page? Claude works in this tab and stops before Submit.')),
+        el('div', {className: 'co-row'}, button(t("claude.finish", 'Let Claude finish this page'), 'press', 'primary'), button(t("claude.myself", 'I\'ll do it myself'), 'myself')),
+        el('label', {className: 'co-always'}, check, t("claude.always", 'Always let Claude finish when I\'m stuck')));
     } else if (view === 'consent') {
-      box.replaceChildren(el('p', {}, 'Claude will click and type in this tab without asking each step. It never presses Submit.'),
-        el('div', {className: 'co-row'}, button('Continue', 'continue', 'primary'), button('Cancel', 'myself')));
+      box.replaceChildren(el('p', {}, t("claude.consent", 'Claude will click and type in this tab without asking each step. It never presses Submit.')),
+        el('div', {className: 'co-row'}, button(t("common.continue", 'Continue'), 'continue', 'primary'), button(t("common.cancel", 'Cancel'), 'myself')));
     } else if (view === 'countdown') {
-      const count = el('b', {textContent: String(COUNT)});
-      box.replaceChildren(el('p', {className: 'co-count'}, 'Claude takes over in ', count, ' s'), el('div', {className: 'co-row'}, button('Cancel', 'cancel')),
-        el('p', {className: 'co-muted'}, 'It works in this tab and stops before Submit.'));
+      const count = el('b', {textContent:countdownText(COUNT)});
+      box.replaceChildren(el('p', {className: 'co-count'}, count), el('div', {className: 'co-row'}, button(t("common.cancel", 'Cancel'), 'cancel')),
+        el('p', {className: 'co-muted'}, t("claude.stops", 'It works in this tab and stops before Submit.')));
       let left = COUNT;
-      timer = setInterval(() => { left -= 1; count.textContent = String(Math.max(left, 0)); if (left <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
+      timer = setInterval(() => { left -= 1; count.textContent = countdownText(Math.max(left,0)); if (left <= 0) { clearInterval(timer); timer = null; act('done'); } }, 1000);
     } else if (view === 'sent') {
-      box.replaceChildren(el('p', {}, 'Claude is starting in Jobadabra. It works in this tab and stops before Submit.'));
+      box.replaceChildren(el('p', {}, t("claude.starting", 'Claude is starting in Jobadabra. It works in this tab and stops before Submit.')));
     }
   }
 
