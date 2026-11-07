@@ -38,7 +38,7 @@ def problem(base, text):
         return f'the Design system table has a ❌ (a violation main does not have): {bad[0].split("|")[1].strip()}; fix the screen, or take the screen out of the PR'
     if subprocess.run(['git', 'cat-file', '-e', f'{sha}^{{commit}}'], capture_output=True).returncode:
         return f'the Design system table was measured on {sha}, a commit this checkout does not have: {HOWTO}'
-    if patch_id(git('merge-base', base, sha), sha) != patch_id(base, 'HEAD'):
+    if patch_id(git('merge-base', base, sha), sha) != patch_id(git('merge-base', base, 'HEAD'), 'HEAD'):   # each from its own fork point: a base that moved on is not this change
         return f'the Design system table was measured on {sha}, but desktop/renderer has changed since: {HOWTO}'
     return None
 
