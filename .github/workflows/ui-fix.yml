@@ -220,6 +220,7 @@ jobs:
           git checkout -b "$branch"
           echo "$changed" | xargs git add --
           tools/bot-commit.sh "$title" "the UI fix is proven by its unit test and the suites, not by a page"
+          tools/bot-onto-main.sh   # one commit on main as it is now, or the App is refused for workflow files main changed since this run started (7 Nov 2026)
           git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $title" --why="the UI loop found issue #$number in two runs, or a person confirmed it" \
             --unblocks="issue #$number, once the owner merges" --label="Issue #$number" --before='the bug is open' --after='fixed by this change' \

@@ -105,6 +105,7 @@ jobs:
           git checkout -b "$branch"
           echo "$changed" | xargs git add --
           tools/bot-commit.sh "$title" "the Finder and its unit tests, no page the app fills"
+          tools/bot-onto-main.sh   # one commit on main as it is now, or the App is refused for workflow files main changed since this run started (7 Nov 2026)
           git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           tools/bot-pr-body.sh HEAD~1 --verdict="🟢 $title" --why="the Finder's weekly self-review (finder-review.yml) read the week's verdict reasons and misses" \
             --unblocks='a Finder that finds more real bugs and fewer false ones, once the owner merges' --label='Finder' --before='the Finder as it was' --after='the Finder with this change' \
