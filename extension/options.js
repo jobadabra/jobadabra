@@ -1,9 +1,27 @@
 // Settings: only the connection to the Jobadabra app — filled in by itself when this page opens, or by Connect.
 // The user's contact details and CV live in the app, which the extension asks for each time it fills a form (flow.js).
 import {plainWhy} from './ai-reply.js';
-import {pair} from './flow.js';
+import {pair, api} from './flow.js';
+import {displayLanguage, localize, locales, languageNames} from './i18n.js';
 
 const $ = id => document.getElementById(id);
+const i18n = await displayLanguage();
+const t = (key, values) => i18n.t(key, values);
+const language = $('displayLanguage');
+const follow = document.createElement('option');
+follow.value = 'desktop';
+language.append(follow);
+for (const locale of locales) {
+  const option = document.createElement('option');
+  option.value = locale; option.textContent = languageNames[locale]; language.append(option);
+}
+let connectionState = 'checking', connectionDetail = ['looking'];
+function renderLanguage() {
+  localize(document, i18n); follow.textContent = t('follow'); language.value = i18n.choice();
+  pairWords(connectionState, ...connectionDetail);
+}
+i18n.subscribe(renderLanguage);
+language.addEventListener('change', () => i18n.preference(language.value));
 const APP_URL = 'http://127.0.0.1';
 const usesApp = url => !url || url.startsWith(APP_URL);   // the same rule as flow.js: not our own Worker
 const stored = await chrome.storage.local.get(['workerUrl', 'token', 'checkEligibility', 'testMode', 'clickDropdowns', 'acceptConsents']);
@@ -38,35 +56,43 @@ $('token').value = stored.token || '';
 // The pair button is the escape hatch (a reinstalled app, another Mac, a new workspace), not a step: the extension
 // pairs itself whenever the app turns its token down. So it only looks like a call to action when there is one — with
 // the app answering it is a small Reconnect beside the answer.
-function pairWords(state, detail = '') {
+function pairWords(state, key = '', values = {}) {
+  connectionState = state; connectionDetail = [key, values];
   const button = $('pair');
   // Only "the app couldn't be reached" is a call to action; the rest are quiet, so the page never asks for a click
   // that has nothing to do.
   button.className = state === 'disconnected' ? '' : 'secondary small';
   button.disabled = state === 'checking';
-  button.textContent = state === 'connected' ? 'Reconnect' : state === 'checking' ? 'Connecting…' : 'Connect to the Jobadabra app';
-  $('pair-status').textContent = detail;
+  button.textContent = t(state === 'connected' ? 'reconnect' : state === 'checking' ? 'connecting' : 'connect');
+  $('pair-status').textContent = key ? t(key, values) + (state === 'connected' ? ' ✓' : '') : '';
   $('pair-status').className = state === 'connected' ? 'on' : '';
 }
 async function connectToApp() {
-  pairWords('checking', 'Looking for the Jobadabra app on this Mac…');
+  pairWords('checking', 'looking');
   try {
     const {workerUrl, token} = await pair();
     $('workerUrl').value = workerUrl;
     $('token').value = token;
-    pairWords('connected', 'Connected to the Jobadabra app ✓');
+    pairWords('connected', 'connected');
+    await api({workerUrl, token}, '/extension/review', {method:'POST', body:'{}'}).catch(() => {});
   } catch (error) {
-    pairWords('disconnected', `Couldn't reach the Jobadabra app (${plainWhy(error)}). Open the app, then try again.`);
+    pairWords('disconnected', 'connectError', {error:plainWhy(error)});
   }
 }
 $('pair').addEventListener('click', connectToApp);
 // Opening the page refreshes the connection — and heals a token the app rotated (reinstall, reset, another Notion
 // workspace), because pair() saves what it finds. A URL of your own is left alone.
 if (usesApp(stored.workerUrl) || !stored.token) connectToApp();
-else pairWords('worker', 'Using your own Worker URL. Connect fills in the app on this Mac instead.');
+else pairWords('worker', 'worker');
+renderLanguage();
+// Existing review polling refreshes managed tabs; options also refreshes when the person returns from desktop Settings.
+window.addEventListener('focus', async () => {
+  const config = await chrome.storage.local.get(['workerUrl', 'token']);
+  if (usesApp(config.workerUrl) && config.token) await api(config, '/extension/review', {method:'POST', body:'{}'}).catch(() => {});
+});
 
 $('save').addEventListener('click', async () => {
   await chrome.storage.local.set({workerUrl: $('workerUrl').value.trim(), token: $('token').value.trim()});
-  $('saved').textContent = 'Saved ✓';
+  $('saved').textContent = t('saved');
   setTimeout(() => { $('saved').textContent = ''; }, 2000);
 });

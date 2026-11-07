@@ -1,4 +1,5 @@
 // Ordered local HTTP routes for launcher, engine and extension requests; tab/event state stays in server.js.
+import {getLocale} from '../i18n/index.js';
 import * as pageRender from './page-render.js';
 import {extensionToken, issueTicket, checkTicket} from './server-env.js';
 import {me} from './server-contact.js';
@@ -14,7 +15,7 @@ import {POST_CORS, tokenRequest, jsonPayload, jsonHeaders, jsonBody} from './ser
 async function handlePair(req, res, body, {storage, ownOrigin, PORT}) {
   const ours = !!ownOrigin(req.headers.origin);
   res.writeHead(ours ? 200 : 403, {'Content-Type': 'application/json', ...(ours ? {'Access-Control-Allow-Origin': req.headers.origin} : {})});
-  jsonBody(res, ours ? {url: `http://127.0.0.1:${PORT}`, token: extensionToken(storage)} : {error: 'Only the Jobadabra extension can pair'});
+  jsonBody(res, ours ? {url: `http://127.0.0.1:${PORT}`, token: extensionToken(storage), displayLocale: getLocale()} : {error: 'Only the Jobadabra extension can pair'});
 }
 
 // Render an engine request only with its local run key.
@@ -177,7 +178,7 @@ async function handleReview(req, res, body, {storage}) {
   if (!request) return;
   const {ok, payload} = request;
   jsonHeaders(res, ok ? 200 : 401, POST_CORS);
-  jsonBody(res, ok ? {...reviewHandler(payload), ...(stopAsked() ? {stop: stopAsked()} : {})} : {error: 'Wrong token'});
+  jsonBody(res, ok ? {...reviewHandler(payload), displayLocale: getLocale(), ...(stopAsked() ? {stop: stopAsked()} : {})} : {error: 'Wrong token'});
 }
 
 // -> the requested judgment promise, retaining the original first-match order.

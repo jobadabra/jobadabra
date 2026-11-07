@@ -1,9 +1,19 @@
 // The toolbar popup: whether the extension can reach the Jobadabra app and, on a tab the app opened and manages, what fits that tab (Apply on this page,
 // Allow, Read on a board it opened for you, Stop). On any other tab it only says where things happen: no control at all (popup-controls.js, owner 16 Oct 2026).
+import {displayLanguage, localize} from './i18n.js';
 import {api, settings} from './flow.js';
 import {popupMode} from './tab-pages.js';
 import {POPUP_CONTROLS, judgedUrl, popupControls} from './popup-controls.js';
 
+const i18n = await displayLanguage();
+const t = (key, values) => i18n.t(key, values);
+const messages = new Map();
+const text = (id, key, values = {}) => { messages.set(id, {key, values}); document.getElementById(id).textContent = t(key, values); };
+const externalText = (id, value) => { messages.delete(id); document.getElementById(id).textContent = value; };
+const renderLanguage = () => { localize(document, i18n); for (const [id, {key, values}] of messages) document.getElementById(id).textContent = t(key, values); renderProgress?.(); };
+let renderProgress = null;
+i18n.subscribe(renderLanguage);
+renderLanguage();
 const $ = id => document.getElementById(id);
 $('settings').addEventListener('click', event => { event.preventDefault(); chrome.runtime.openOptionsPage(); });
 const show = (ids) => { for (const id of POPUP_CONTROLS) $(id).hidden = !ids.includes(id); };   // the one place a control appears
@@ -13,7 +23,7 @@ $('stop').addEventListener('click', () => {
   $('stop').disabled = true;
   chrome.runtime.sendMessage({type: 'stop', reason: 'the Stop button in the toolbar popup'}, answer => {
     $('stop-note').className = 'stopped';
-    $('stop-note').textContent = answer?.ok ? 'Stopped. Nothing runs until you press Apply in the app.' : 'Could not reach the extension: turn it off in chrome://extensions.';
+    text('stop-note', answer?.ok ? 'stopped' : 'stopError');
   });
 });
 
@@ -21,20 +31,20 @@ async function connection(config, app) {
   try {
     await api(config, '/extension/review', {method: 'POST', body: '{}'});  // a harmless call: matches no page, changes nothing
     $('status').classList.add('on');
-    $('status').textContent = app ? 'Connected to the Jobadabra app' : 'Connected to your Worker';
+    text('status', app ? 'connected' : 'connectedWorker');
   } catch (error) {
     if (error.status && error.status !== 401) {  // it answered (your Worker has no review route): reachable
       $('status').classList.add('on');
-      $('status').textContent = app ? 'Connected to the Jobadabra app' : 'Connected to your Worker';
+      text('status', app ? 'connected' : 'connectedWorker');
     } else {
-      $('status').textContent = app ? 'The Jobadabra app isn\'t open: the panel still shows what\'s left' : 'Your Worker isn\'t reachable';
+      text('status', app ? 'appOffline' : 'workerOffline');
     }
   }
 }
 
 const allowButton = (done) => $('visit-allow').addEventListener('click', async () => {
   const ok = await chrome.permissions.request({origins: ['https://*/*']}).catch(() => false);
-  $('visit-progress').textContent = ok ? done : 'Not allowed: the extension can\'t work on this site.';
+  text('visit-progress', ok ? done : 'notAllowed');
 });
 
 (async () => {
@@ -49,19 +59,19 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
   if (mode === 'fill') {
     // Not allowed on this site yet: the panel can't start, so the popup says so and offers the Allow (site-allow.js), never "the panel fills the form".
     if (!(await chrome.permissions.contains({origins: [`${new URL(tab.url).origin}/*`]}).catch(() => true))) {
-      $('intro').textContent = 'The Jobadabra app opened this page to apply, but the extension isn\'t allowed on this site yet. Allow it, once, on the sites the app opens for you:';
+      text('intro', 'fillPermission');
       $('visit').hidden = false;
       show(popupControls(mode, {allowed: false}));
-      allowButton('Allowed: the form is being filled.');
+      allowButton('allowedFill');
       return checked;
     }
-    $('intro').textContent = 'The Jobadabra app opened this page to apply: the panel on the page fills the form and tells you what is left.';
+    text('intro', 'fillIntro');
     // Always there on a tab the app opened (owner, 9 Oct 2026: after a refresh nothing started and there was no way to start it): run the fill again, here.
     show(popupControls(mode));
     $('apply-here').addEventListener('click', () => {
       $('apply-here').disabled = true;
-      $('apply-progress').textContent = 'Starting…';
-      chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}, answer => { $('apply-progress').textContent = answer?.ok ? 'Started: the panel on the page shows the steps.' : (answer?.why || 'Could not start here.'); $('apply-here').disabled = false; });
+      text('apply-progress', 'starting');
+      chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}, answer => { if (answer?.ok) text('apply-progress', 'started'); else if (answer?.why) externalText('apply-progress', answer.why); else text('apply-progress', 'startError'); $('apply-here').disabled = false; });
     });
     return checked;
   }
@@ -73,27 +83,31 @@ const allowButton = (done) => $('visit-allow').addEventListener('click', async (
   show(popupControls(mode, {allowed}));
   // Waiting for the one-time permission (Chrome asks; withdraw it any time in Chrome's settings).
   if (!allowed) {
-    $('visit-text').textContent = 'The Jobadabra app opened this site to read its jobs. Allow the extension, once, to read the sites the app opens for you:';
-    allowButton('Allowed: reading starts on the tabs the app opened.');
+    text('visit-text', 'readPermission');
+    allowButton('allowedRead');
   } else if (mode === 'board') {
     // "Read this board": the app opened it and waits; the person signs in here if the board asks, then presses Read (their own visit, in their own Chrome).
-    $('visit-text').textContent = `The Jobadabra app opened ${host} for you to read. Sign in in this tab if it asks, then press Read.`;
+    text('visit-text', 'boardIntro', {host});
     for (const [id, filter] of [['read-filter', true], ['read-as-is', false]]) $(id).addEventListener('click', () => {
       $('read-filter').disabled = $('read-as-is').disabled = true;
-      $('visit-progress').textContent = filter ? 'AI is choosing the filters for your search…' : 'Reading…';
+      text('visit-progress', filter ? 'filtering' : 'readingShort');
       chrome.runtime.sendMessage({type: 'visitRead', tabId: tab.id, filter}, state => {
         $('read-filter').disabled = $('read-as-is').disabled = false;
-        if (!state?.ok) $('visit-progress').textContent = `Not read: ${state?.error || 'the app did not answer'}.`;
+        if (!state?.ok) text('visit-progress', 'notRead', {error:state?.error || t('noAnswer')});
       });
     });
   } else {
-    $('visit-text').textContent = 'The Jobadabra app opened this page and the extension is reading it by itself.';
+    text('visit-text', 'autoReading');
   }
   const progress = state => {
     if (!state) return;
-    $('visit-progress').textContent = state.stopped
-      ? `${state.filters?.length ? `Filters: ${state.filters.join(', ')}. ` : ''}${state.note ? `${state.note}. ` : ''}${state.jobs} jobs read from ${state.name || host} on ${state.pages} page${state.pages === 1 ? '' : 's'}: stopped, ${state.stopped}.`
-      : `Reading ${state.name || host}: page ${state.pages}, ${state.jobs} jobs so far…`;
+    renderProgress = () => {
+      const values = {name:state.name || host, pages:i18n.number(state.pages), jobs:t('jobs', {count:state.jobs})};
+      externalText('visit-progress', state.stopped
+        ? (state.filters?.length ? t('filters', {filters:state.filters.join(', ')}) : '') + (state.note ? `${state.note}. ` : '') + t('readStopped', {...values, pages:t('pages', {count:state.pages}), reason:state.stopped})
+        : t('reading', values));
+    };
+    renderProgress();
   };
   progress((await chrome.storage.session.get(`visit:${tab.id}`))[`visit:${tab.id}`]);
   chrome.storage.onChanged.addListener((changes, area) => { if (area === 'session' && changes[`visit:${tab.id}`]) progress(changes[`visit:${tab.id}`].newValue); });

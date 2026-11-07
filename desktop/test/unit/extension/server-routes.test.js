@@ -1,4 +1,5 @@
 // Characterize the local HTTP route order, access checks, replies and callback effects without live services.
+import {setLocale} from '../../../i18n/index.js';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import http from 'node:http';
@@ -125,7 +126,7 @@ test('every local route preserves its access, malformed-body, method and preflig
     ['/extension/visit-extra', {extra:true}, {ok:false,error:'Wrong token'}],
     ['/extension/site-password', {password:'fake'}, {error:'Wrong token'}],
     ['/extension/account-code', {code:'fake'}, {error:'Wrong token'}],
-    ['/extension/review', {review:true}, {error:'Wrong token'}], ['/extension/event', {ok:true}, {ok:false}],
+    ['/extension/review', {review:true, displayLocale:'en'}, {error:'Wrong token'}], ['/extension/event', {ok:true}, {ok:false}],
     ...Object.entries({'page-kind':'decidePageKind', 'pick-choice':'pickChoice', 'dismiss-popup':'pickPopup',
       'pick-upload':'pickUploadSlot', 'account-judge':'decideAccountJudge', escalate:'decideEscalation', confirmation:'judgeConfirmation'})
       .map(([route,by]) => [`/extension/${route}`, {by,payload:{}}, {ok:false,...(route === 'confirmation' ? {confirmation:false} : {kind:''}),error:'Wrong token'}]),
@@ -165,8 +166,16 @@ test('every local route preserves its access, malformed-body, method and preflig
 
   await t.test('pair only checks Origin, even for malformed bodies and wrong methods', async () => {
     for (const auth of [token,'wrong',null]) reply(await request('/extension/pair',{auth,body:'{',method:'DELETE'}),200,
-      {url:`http://127.0.0.1:${server.PORT}`,token},{...jsonHeaders,'access-control-allow-origin':origin});
+      {url:`http://127.0.0.1:${server.PORT}`,token,displayLocale:'en'},{...jsonHeaders,'access-control-allow-origin':origin});
     for (const from of [foreign,null]) reply(await request('/extension/pair',{from}),403,{error:'Only the Jobadabra extension can pair'},jsonHeaders);
+  });
+  await t.test('authenticated review follows later desktop language switches', async () => {
+    for (const locale of ['ro', 'ru', 'de']) {
+      setLocale(locale);
+      assert.equal(JSON.parse((await request('/extension/review')).body).displayLocale, locale);
+      assert.equal((await request('/extension/review', {auth:'wrong'})).status, 401);
+    }
+    setLocale('en');
   });
   const launcher = {'x-jobadabra':'launcher'};
   await t.test('render has its own key, method and no-Origin checks; errors retain the catch reply', async () => {

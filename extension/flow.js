@@ -1,5 +1,6 @@
 // One fill run on a tab: read the form, get answers (AI and/or the drafted kit), fill, report.
 // Shared by the popup (the tab you're on) and the background worker (tabs the app opens to fill).
+import {cacheDesktopLocale} from './i18n.js';
 import {createBackgroundSession} from './background-session.mjs';
 import {prepareFillPage, resolveFillContact, resolveFillAnswers, recordFillForm, rememberedFillChoices, fillKnownFields} from './fill-tab-inputs.js';
 import {noteFirstFill, chooseFillMenus, fillLaterAnswers, snapshotFill, retryFill, settleFill, reportFill} from './fill-tab-finish.js';
@@ -133,7 +134,8 @@ const usesApp = config => !config.workerUrl || config.workerUrl.startsWith(APP);
 export async function pair() {
   const response = await fetch(`${APP}/extension/pair`);
   if (!response.ok) throw new Error(`the app answered ${response.status}`);
-  const {url, token} = await response.json();
+  const {url, token, displayLocale} = await response.json();
+  await cacheDesktopLocale(chrome.storage.local, displayLocale).catch(() => {});
   await chrome.storage.local.set({workerUrl: url, token});
   return {workerUrl: url, token};
 }
@@ -158,6 +160,7 @@ async function apiCall(config, path, init, retry, trace) {
     if (fresh && fresh.token !== config.token) return apiCall(Object.assign(config, fresh), path, init, false, trace);
   }
   const data = await trace('json', () => response.json()).catch(() => ({}));
+  if (response.ok && usesApp(config) && path === '/extension/review') await cacheDesktopLocale(chrome.storage.local, data.displayLocale).catch(() => {});
   if (!response.ok) throw Object.assign(new Error(response.status === 401 ? NOT_CONNECTED : data.error || `HTTP ${response.status}`), {status: response.status, data});
   return data;
 }
