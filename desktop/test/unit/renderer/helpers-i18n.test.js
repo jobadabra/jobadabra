@@ -108,3 +108,21 @@ test('AI install guidance translates copy while preserving executable commands a
     assert.match(result.steps[0], /^Abre PowerShell/);
   } finally { setLocale('en'); }
 });
+
+test('helper state catalogs have complete keys and matching interpolation in every plural branch', async () => {
+  const stateCatalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}-state.js`, root));
+  const {messages: english} = await stateCatalog('en');
+  const branches = value => typeof value === 'string' ? [value] : Object.values(value);
+  for (const locale of locales) {
+    const {messages} = await stateCatalog(locale);
+    assert.deepEqual(Object.keys(messages).sort(), Object.keys(english).sort(), locale);
+    for (const [key, value] of Object.entries(messages)) {
+      const expected = parameters(branches(english[key])[0]);
+      for (const branch of branches(value)) {
+        assert.ok(branch.trim(), `${locale}.${key}`);
+        assert.deepEqual(parameters(branch), expected, `${locale}.${key}`);
+      }
+      if (typeof value === 'object') assert.equal(typeof value.other, 'string', `${locale}.${key}.other`);
+    }
+  }
+});

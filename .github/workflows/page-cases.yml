@@ -140,6 +140,8 @@ on:
       - 'desktop/package-lock.json'
       - '.github/workflows/page-cases.yml'
       - '.github/actions/playwright-browser/**'
+      - 'desktop/i18n/catalogs/common.js'
+      - 'desktop/i18n/index.js'
   workflow_dispatch:
     inputs:
       window:

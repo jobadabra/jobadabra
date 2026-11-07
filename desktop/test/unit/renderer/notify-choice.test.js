@@ -1,6 +1,7 @@
 // Email vs Telegram vs both (owner, 26 Oct 2026: "a way for the user to choose his notification channel"): the Always on repo follows a Telegram-off choice, the window says why a switch
 // does nothing (no address, no bot, our sender off, unsubscribed), and no screen presents Telegram as the only or a required channel. Guards renderer/notify-words.js, lib/github.js.
 import {readScreenSource} from '../../static-screen-source.js';
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

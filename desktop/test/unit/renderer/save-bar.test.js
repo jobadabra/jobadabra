@@ -190,3 +190,24 @@ test('a card whose count() AND discard() throw keeps the bar up with the error (
   assert.equal(bar.node.hidden, false, 'the bar stays up');
   assert.match(note(), /Couldn't discard: Experience · Education: discard broke/);
 });
+
+test('Romanian and Russian save bars pluralize drafts and keep their save/discard behavior', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('ro');
+    assert.equal(countText(1), '1 modificare nesalvată');
+    assert.equal(countText(2), '2 modificări nesalvate');
+    assert.equal(countText(20), '20 de modificări nesalvate');
+    setLocale('ru');
+    assert.equal(countText(1), '1 несохранённое изменение');
+    assert.equal(countText(2), '2 несохранённых изменения');
+    assert.equal(countText(5), '5 несохранённых изменений');
+    const {bar, card, title, note} = setup();
+    card('contact', 'details', 'Contact').edit('email', 'alex@example.test');
+    assert.match(title(), /^1 несохранённое изменение/);
+    assert.deepEqual(bar.node.querySelectorAll('button').map(node => node.textContent), ['Отменить всё', 'Сохранить все изменения']);
+    assert.equal((await bar.saveAll()).ok, true);
+    assert.equal(title(), '');
+    assert.equal(note(), 'Сохранено ✓');
+  } finally { setLocale('en'); }
+});

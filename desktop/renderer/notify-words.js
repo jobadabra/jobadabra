@@ -1,21 +1,22 @@
 // What the window says about "Tell me by" (Settings → Notifications, the Actions header, Connections): why a switch does nothing (no address, no bot, our sender
 // switched off, the person unsubscribed), and whether Telegram is still required. Pure (no DOM), so test/unit/renderer/notify-choice.test.js runs it in Node.
 
-import {SETTINGS_LINE} from './email-consent-words.js';
+import {t} from '../i18n/index.js';
+import {date} from '../i18n/format.js';
 const NAMES = {email: 'Email', telegram: 'Telegram'};
 
 // The notes under the Email and Telegram switches and the card's message line. `error` is the last save's refusal: it stays until the next save (it was wiped by the refresh).
 export function notes(state, error = '') {
-  const email = !state.email ? `${SETTINGS_LINE} Add your address below, then switch it on.`
-    : state.sending === false ? `To ${state.email}. Email is not switched on on our side yet: your choice is kept and mail starts when it is.`
-      : state.serviceOff ? `You stopped these emails with the link in one of them. Turn them on again with "Email settings" at the bottom of any of our emails.`
-        : state.confirmed ? `To ${state.email} (confirmed).`
-          : state.unconfirmedStopped ? `To ${state.email}. Mail stopped: the address was not confirmed in 14 days. Press the confirm link in your first email to start it again.`
-            : `To ${state.email}. Confirm it with the link in your first email.`;
-  const telegram = state.telegram ? 'Your own bot: digests and reminders, with buttons.' : 'Your own bot. Connect it first:';
+  const email = !state.email ? t('helperState.notifyAdd')
+    : state.sending === false ? t('helperState.notifySendingOff', {email: state.email})
+      : state.serviceOff ? t('helperState.notifyUnsubscribed')
+        : state.confirmed ? t('helperState.notifyConfirmed', {email: state.email})
+          : state.unconfirmedStopped ? t('helperState.notifyStopped', {email: state.email})
+            : t('helperState.notifyConfirm', {email: state.email});
+  const telegram = state.telegram ? t('helperState.botDigests') : t('helperState.botConnect');
   const lostBot = (state.chosen || []).includes('telegram') && !state.telegram;   // chosen, then the bot was lost: said, never dropped in silence
-  const message = error || (lostBot ? 'Telegram is chosen but not connected, so nothing goes there. Connect it, or turn it off.' : '')
-    || (state.reached ? '' : 'Offline: your address is saved when the website is reachable.');
+  const message = error || (lostBot ? t('helperState.botLost') : '')
+    || (state.reached ? '' : t('helperState.notifyOffline'));
   return {email, telegram, message};
 }
 
@@ -25,10 +26,10 @@ export const telegramRequired = (by = [], chosen = null) => (Array.isArray(chose
 // The Actions header: Telegram's delivery state when it is the only channel (a refused message is worth saying), else the chosen channels.
 export function channelLine({by = [], chosen: picked = null, connected = false, blocked = false}) {
   const chosen = by.filter(name => NAMES[name]);
-  if (chosen.includes('telegram') && blocked) return {text: 'Telegram not delivering', dot: 'is-warn'};
-  if (Array.isArray(picked) && picked.includes('telegram') && !connected) return {text: 'Telegram not connected', dot: 'is-warn'};
-  if (!chosen.length) return {text: connected ? 'Telegram connected, not chosen' : 'Tell me by: app notifications only', dot: ''};
-  return {text: `Tell me by: ${chosen.map(name => NAMES[name]).join(', ')}`, dot: 'is-on'};
+  if (chosen.includes('telegram') && blocked) return {text: t('helperState.telegramNotDelivering'), dot: 'is-warn'};
+  if (Array.isArray(picked) && picked.includes('telegram') && !connected) return {text: t('helperState.telegramNotConnected'), dot: 'is-warn'};
+  if (!chosen.length) return {text: connected ? t('helperState.telegramNotChosen') : t('helperState.appOnly'), dot: ''};
+  return {text: t('helperState.channelLine', {channels: chosen.map(name => name === 'email' ? t('helpers.email') : NAMES[name]).join(', ')}), dot: 'is-on'};
 }
 
 // The Email card in Settings → Overview "Your setup" (owner, 26 Oct 2026: next to AI, Gmail and the extension, with its state). Shown when e-mail is chosen,
@@ -36,12 +37,12 @@ export function channelLine({by = [], chosen: picked = null, connected = false, 
 export function emailCard(state) {
   const by = state.by || [], chosen = state.chosen || [];
   const shown = by.includes('email') || chosen.includes('email') || !by.includes('telegram');
-  if (!state.email) return {shown, on: false, text: 'Not set up'};
-  if (!state.reached) return {shown, on: true, text: `Saved · ${state.email}`};
-  if (state.sending === false) return {shown, on: false, text: 'Sending is off on our side'};
-  if (state.serviceOff) return {shown, on: false, text: 'You unsubscribed'};
-  if (!state.confirmed && state.unconfirmedStopped) return {shown, on: false, text: 'Mail stopped: confirm your email'};
-  return state.confirmed ? {shown, on: true, text: `Confirmed · ${state.email}`} : {shown, on: false, text: 'Waiting for the confirm link'};
+  if (!state.email) return {shown, on: false, text: t('helperState.notSetUp')};
+  if (!state.reached) return {shown, on: true, text: t('helperState.savedEmail', {email: state.email})};
+  if (state.sending === false) return {shown, on: false, text: t('helperState.senderOff')};
+  if (state.serviceOff) return {shown, on: false, text: t('helperState.youUnsubscribed')};
+  if (!state.confirmed && state.unconfirmedStopped) return {shown, on: false, text: t('helperState.mailConfirm')};
+  return state.confirmed ? {shown, on: true, text: t('helperState.confirmedEmail', {email: state.email})} : {shown, on: false, text: t('helperState.waitingLink')};
 }
 
 /**
@@ -62,22 +63,20 @@ export function workingChannel(state) {
  */
 export function offerCard(state) {
   if (!state?.reached || workingChannel(state)) return null;   // `reached`: the website answered; offline we know nothing about the confirmation and draw nothing on a guess
-  const lost = state.automation ? ' Full automation keeps running, but nothing can tell you when an application needs you.' : '';   // 2/2: the card says it too (owner, 2 Nov 2026: stays on and says so)
-  if (!state.email) return {state: 'none', title: 'Get a message when something needs you', detail: `An application that waits for you, a good match, a reply: by e-mail or Telegram.${lost}`, resend: false};
-  if (state.serviceOff) return {state: 'unsubscribed', title: 'Your e-mails are stopped', detail: `You stopped them with the link in one of our e-mails. Turn them on again with "Email settings" at the bottom of any of them.${lost}`, resend: false};
-  if (state.unconfirmedStopped) return {state: 'stopped', title: 'Mail stopped: confirm your e-mail', detail: `The address ${state.email} was not confirmed in 14 days. Press the link in the e-mail we send now to start it again.${lost}`, resend: true};
-  return {state: 'pending', title: 'Check your inbox', detail: `Press the link in our e-mail to ${state.email}. Nothing is sent until you press it.${lost}`, resend: true};
+  const lost = state.automation ? t('helperState.automationLost') : '';   // 2/2: the card says it too (owner, 2 Nov 2026: stays on and says so)
+  if (!state.email) return {state: 'none', title: t('helperState.getMessage'), detail: t('helperState.offerDetails', {lost}), resend: false};
+  if (state.serviceOff) return {state: 'unsubscribed', title: t('helperState.emailsStopped'), detail: t('helperState.offerUnsubscribed', {lost}), resend: false};
+  if (state.unconfirmedStopped) return {state: 'stopped', title: t('helperState.mailConfirmHyphen'), detail: t('helperState.offerStopped', {email: state.email, lost}), resend: true};
+  return {state: 'pending', title: t('helperState.checkInbox'), detail: t('helperState.offerPending', {email: state.email, lost}), resend: true};
 }
 
 // Why a person with no working channel can not be reached: the card's state word (the same four as offerCard).
 const stateOf = state => (!state.email ? 'none' : state.serviceOff ? 'unsubscribed' : state.unconfirmedStopped ? 'stopped' : 'pending');
-const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
-const jobLine = ({title = '', company = ''}) => [title, company].filter(Boolean).join(' at ');
-const clock = iso => new Date(iso).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+const jobLine = ({title = '', company = ''}) => title && company ? t('helperState.jobAt', {title, company}) : title || company;
+const clock = iso => date(iso, {hour: 'numeric', minute: '2-digit'});
 // What the pop-up's control is, from the card's state: the e-mail field (no address), send the link again (waiting or stopped), or the way to Notifications (the person unsubscribed).
 const ASK = {none: 'email', pending: 'resend', stopped: 'resend', unsubscribed: 'notifications'};
-const GO = {email: 'Send me the link', resend: 'Send the link again', notifications: 'Open Notifications'};
-const WAYS = 'by e-mail or Telegram';
+const GO = {email: 'helperState.sendLink', resend: 'helperState.sendLinkAgain', notifications: 'helperState.openNotifications'};
 
 /**
  * The pop-ups (lib/notify-moments.js moments, renderer/notify-detect.js claims) as words: {title, body, go, later, ask}. `ask` is the control: 'email' (a field for the address), 'resend' or 'notifications' (from
@@ -86,20 +85,20 @@ const WAYS = 'by e-mail or Telegram';
  */
 export function momentWords(moment, state = null) {
   const ask = ASK[stateOf(state || {})];
-  const base = {later: 'Not now', ask, go: GO[ask]};
+  const base = {later: t('helperState.notNow'), ask, go: t(GO[ask])};
   const {moment: name, days = 0, email = ''} = moment;
-  if (name === 'stopped') return {...base, title: 'Mail stopped: confirm your e-mail', body: `${email} was not confirmed in 14 days, so we stopped mailing it. Send the link again to start.`};
-  if (name === 'day10') return {...base, title: 'Your e-mail is still not confirmed', body: `${email} has waited ${days} days. On day 14 we stop mailing it. Press the link, or send it again.`};
-  if (name === 'day3') return {...base, title: 'Press the link in our e-mail', body: `We sent a link to ${email} ${days} days ago. Nothing is sent to you until you press it.`};
+  if (name === 'stopped') return {...base, title: t('helperState.mailConfirmHyphen'), body: t('helperState.momentStopped', {email})};
+  if (name === 'day10') return {...base, title: t('helperState.stillUnconfirmed'), body: t('helperState.momentDay10', {email, days})};
+  if (name === 'day3') return {...base, title: t('helperState.pressLink'), body: t('helperState.momentDay3', {email, days})};
   if (name === 'waited') {
     const one = moment.count === 1;
-    return {...base, title: one ? `An application waited ${plural(moment.hours, 'hour')} for you` : `${plural(moment.count, 'application')} waited up to ${plural(moment.hours, 'hour')} for you`,
-      body: `${one ? jobLine(moment) || 'An application' : `${jobLine(moment) || 'One of them'} and ${moment.count - 1} more`} needed you while nobody could tell you. Get a message ${WAYS} the next time.`};
+    return {...base, title: one ? t('helperState.waitedOne', {hours: t('helperState.hours', {count: moment.hours})}) : t('helperState.waitedMany', {count: moment.count, hours: t('helperState.hours', {count: moment.hours})}),
+      body: t('helperState.waitedBody', {jobs: one ? jobLine(moment) || t('helperState.oneApplication') : t('helperState.andMore', {job: jobLine(moment) || t('helperState.oneOfThem'), count: moment.count - 1})})};
   }
-  if (name === 'match') return {...base, title: `A ${moment.fit}% match arrived`, body: `Your check at ${clock(moment.endedAt)} found ${jobLine(moment) || 'a job'} while you were away. Get the matches of each check ${WAYS}.`};
-  if (name === 'reply') return {...base, title: `Gmail found ${plural(moment.count, 'application update')}`, body: `Your Gmail check found ${plural(moment.count, 'update')} while you were away. An interview invite reaches you at once by message; other updates come in your daily digest.`};
-  if (name === 'recruiter') return {...base, title: 'A recruiter is waiting for your answer', body: `${moment.company ? `${moment.company} is` : 'Someone is'} waiting. Get a reminder by message: on Telegram at once, by e-mail in your digest.`};
-  return {...base, title: 'Nothing can reach you now', body: 'Full automation is on and keeps running. But when an application needs you, we have no way to tell you. Add an e-mail address or connect Telegram.'};   // lost
+  if (name === 'match') return {...base, title: t('helperState.matchArrived', {fit: moment.fit}), body: t('helperState.matchWhileAway', {time: clock(moment.endedAt), job: jobLine(moment) || t('helperState.oneJob')})};
+  if (name === 'reply') return {...base, title: t('helperState.updatesTitle', {count: moment.count}), body: t('helperState.updatesBody', {updates: t('helperState.updates', {count: moment.count})})};
+  if (name === 'recruiter') return {...base, title: t('helperState.recruiterWaiting'), body: t('helperState.recruiterBody', {who: moment.company ? t('helperState.companyIs', {company: moment.company}) : t('helperState.someone')})};
+  return {...base, title: t('helperState.nothingReach'), body: t('helperState.nothingReachBody')};   // lost
 }
 
 /**

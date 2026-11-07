@@ -1,5 +1,6 @@
 // The words of the four moment pop-ups and channel-lost (spec docs/superpowers/specs/2026-11-02-notify-moments-design.md, 2/2). Every claim is a delivery fact of today: matches = one e-mail per
 // run or the Telegram digest; interview invites at once; other Gmail results in the daily digest; a recruiter reminder on Telegram at once, by e-mail in the digest; never the word "reply" for Gmail.
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {momentWords, offerCard} from '../../../renderer/notify-words.js';
@@ -50,4 +51,16 @@ test('the control follows the state: no address -> the e-mail field; waiting or 
   assert.deepEqual([ask(pending).ask, ask(pending).go], ['resend', 'Send the link again']);
   assert.deepEqual([ask(unsubscribed).ask, ask(unsubscribed).go], ['notifications', 'Open Notifications']);
   assert.equal(momentWords({moment: 'day3', days: 3, email: 'me@example.com'}, pending).ask, 'resend');
+});
+
+test('Russian and Romanian update counts use local plural categories without changing the prompt action', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  try {
+    setLocale('ru');
+    const russian = momentWords({moment: 'reply', count: 5}, none);
+    assert.equal(russian.title, 'Gmail нашёл 5 новостей по заявкам');
+    assert.equal(russian.ask, 'email');
+    setLocale('ro');
+    assert.equal(momentWords({moment: 'reply', count: 20}, none).title, 'Gmail a găsit 20 de actualizări de candidaturi');
+  } finally { setLocale('en'); }
 });

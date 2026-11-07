@@ -4,14 +4,15 @@
 // saved; a save that fails part-way keeps the failed drafts and names them, never a blanket "Saved". Leaving the page or closing the window with drafts asks
 // first (leave() for nav.js guardLeave; beforeunload + lib/unsaved-guard.js for the window). Actions with their own button (read the CV again, an AI review)
 // are not drafts and never go through here. Cards register a source; the card shell is card-shell.js. Guarded by test/unit/renderer/save-bar.test.js.
+import {t} from '../i18n/index.js';
 import {el} from './components.js';
 
 // "Your details", "Your details and Experience", "CV, Your details and Experience".
 export function scopeText(labels) {
   const list = [...new Set(labels.filter(Boolean))];
-  return list.length < 2 ? list[0] || '' : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+  return list.length < 2 ? list[0] || '' : t('helperState.andList', {first: list.slice(0, -1).join(', '), last: list.at(-1)});
 }
-export const countText = n => `${n} unsaved change${n === 1 ? '' : 's'}`;
+export const countText = n => t('helperState.unsaved', {count: n});
 
 const bars = new Set();
 export const anyUnsaved = () => [...bars].some(bar => bar.count() > 0);
@@ -24,19 +25,19 @@ function hookUnload() {   // the window's close or reload: held while a bar has 
 
 // host: where the bar sits (the end of the page; it sticks to the bottom, above Application sessions). tabs: {key: label} of the page's tabs; tabButton(key):
 // the tab's button (gets .has-drafts); openTab(key): shows a tab (a failed field's tab opens). words: the muted line ("The extension uses them from the next form").
-export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = () => {}, words = '', savedWords = 'Saved ✓', area = 'this page', saveLabel = 'Save all changes'}) {
+export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = () => {}, words = '', savedWords = t('helpers.saved'), area = t('helperState.thisPage'), saveLabel = t('helperState.saveAll')}) {
   const sources = [];
   let busy = false, holding = null, brokenShown = false;
   const node = el('div', 'save-bar page-save-bar');
   node.setAttribute('role', 'region');
-  node.setAttribute('aria-label', 'Unsaved changes');
+  node.setAttribute('aria-label', t('helperState.unsavedLabel'));
   node.hidden = true;
   const title = el('b', 'save-bar-title', '');
   const lead = el('div', 'save-bar-words');
   lead.append(title, el('span', 'muted small', words));
   const note = el('span', 'message');
   note.setAttribute('role', 'status');
-  const discard = Object.assign(el('button', 'secondary', 'Discard all'), {type: 'button'});
+  const discard = Object.assign(el('button', 'secondary', t('helperState.discardAll')), {type: 'button'});
   const save = Object.assign(el('button', 'primary', saveLabel), {type: 'button'});
   const actions = el('div', 'save-bar-actions');
   actions.append(note, discard, save);
@@ -61,14 +62,14 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   function follow() {
     const open = pending(), n = count(), keys = tabsWith(open);
     for (const key of Object.keys(tabs)) tabButton(key)?.classList.toggle('has-drafts', keys.includes(key));
-    // Why (#3225, 5 Nov 2026, AI persona tour): the title was rewritten only `if (n)`, so for the 2.5 s "Saved ✓" hold it still read "1 unsaved change in …". The title follows the count: empty at 0.
-    title.textContent = n ? `${countText(n)}${keys.length ? ` in ${scopeText(keys.map(key => tabs[key]))}` : ''}` : '';
+    // Why (#3225, 5 Nov 2026, AI persona tour): the title was rewritten only `if (n)`, so for the 2.5 s "Saved ✓" hold it still read "1 unsaved change in …". The localized title follows the count: empty at 0 (7 Nov 2026, localization).
+    title.textContent = n ? keys.length ? t('helperState.scopeCount', {changes: countText(n), scope: scopeText(keys.map(key => tabs[key]))}) : countText(n) : '';
     node.hidden = !n && !holding;
     save.disabled = discard.disabled = busy || !n;
     if (!broken.size) { if (brokenShown) say(''); return; }
     if (note.textContent && !brokenShown) return;   // a save's own failure line stays; this one only fills a free note
     const [source, error] = [...broken][0];
-    say(`${where(source)}: couldn't read its changes (${error?.message || error}). Discard all drops them; the other cards are unaffected.`, 'error');
+    say(t('helperState.brokenChanges', {where: where(source), error: error?.message || error}), 'error');
     brokenShown = true;
   }
 
@@ -76,7 +77,7 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   async function saveAll() {
     if (busy || !count()) return {ok: true, failed: []};
     clearTimeout(holding); holding = null;
-    busy = true; follow(); say('Saving…');
+    busy = true; follow(); say(t('helperState.saving'));
     const open = pending();
     const invalid = [];
     for (const source of open) {
@@ -93,8 +94,8 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
     }
     busy = false;
     if (failed.length) {
-      const lines = failed.map(({source, result}) => `${where(source, result.field)}: ${result.error || 'couldn\'t save it'}`);
-      say(`${invalid.length ? 'Nothing saved. ' : ''}${lines.join(' · ')}${saved ? ` (${saved === 1 ? 'the other change was' : 'the other changes were'} saved)` : ''}`, 'error');
+      const lines = failed.map(({source, result}) => `${where(source, result.field)}: ${result.error || t('helperState.cannotSave')}`);
+      say(`${invalid.length ? t('helperState.nothingSaved') : ''}${lines.join(' · ')}${saved ? t(saved === 1 ? 'helperState.otherOneSaved' : 'helperState.otherManySaved') : ''}`, 'error');
       const first = failed[0];
       if (first.source.tab) openTab(first.source.tab);
       first.source.reveal?.(first.result.field);
@@ -109,7 +110,7 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   function discardAll({ask = true} = {}) {
     const open = pending(), keys = tabsWith(open);
     if (!open.length) return true;
-    if (ask && keys.length > 1 && !globalThis.confirm?.(`Discard your unsaved changes in ${scopeText(keys.map(key => tabs[key]))}?`)) return false;
+    if (ask && keys.length > 1 && !globalThis.confirm?.(t('helperState.discardQuestion', {scope: scopeText(keys.map(key => tabs[key]))}))) return false;
     const failed = [];
     for (const source of open) {
       try {
@@ -117,7 +118,7 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
         if (broken.has(source)) dropped.add(source);   // the person asked for it gone and its discard ran; a new edit of it (changed()) counts again
       } catch (error) { failed.push(`${where(source)}: ${error?.message || error}`); }   // a failed discard keeps the card counted, so the bar and this line stay visible
     }
-    say(failed.length ? `Couldn't discard: ${failed.join(' · ')}` : '', failed.length ? 'error' : '');
+    say(failed.length ? t('helperState.cannotDiscard', {errors: failed.join(' · ')}) : '', failed.length ? 'error' : '');
     follow();
     return true;
   }
@@ -131,14 +132,14 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
       const form = el('form');
       form.method = 'dialog';
       const foot = el('div', 'dialog-foot');
-      for (const [cls, value, label] of [['ghost', 'keep', 'Keep editing'], ['secondary', 'discard', 'Discard all'], ['primary', 'save', saveLabel]]) {
+      for (const [cls, value, label] of [['ghost', 'keep', t('helperState.keepEditing')], ['secondary', 'discard', t('helperState.discardAll')], ['primary', 'save', saveLabel]]) {
         foot.append(Object.assign(el('button', cls, label), {value}));
       }
-      form.append(el('h2', '', 'Save your changes?'), el('p', 'dialog-lead', ''), foot);
+      form.append(el('h2', '', t('helperState.saveQuestion')), el('p', 'dialog-lead', ''), foot);
       dialog.append(form);
       document.body.append(dialog);
     }
-    dialog.querySelector('.dialog-lead').textContent = `${title.textContent} on ${area}. Leave without them, or save them first.`;
+    dialog.querySelector('.dialog-lead').textContent = t('helperState.leaveDrafts', {changes: title.textContent, area});
     dialog.returnValue = '';
     dialog.onclose = async () => {
       if (dialog.returnValue === 'discard' && discardAll({ask: false})) proceed();
