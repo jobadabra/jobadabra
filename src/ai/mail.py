@@ -136,6 +136,18 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
     return f'Mail: {count} new email(s) classified, {len(lines)} update(s), {len(notes)} reminder(s) (${usd:.3f})'
 
 
+def skipped_line(error):
+    """The one sentence of a check that is skipped, not failed (no connection, the user's Claude Code stopped, the API spend limit), or None for an error that is a real failure."""
+    if failure_cause(error) == 'offline':   # said once, the check ends ok and the next one tries again (src/offline.py)
+        return 'Mail check skipped: no connection; it tries again at the next check'
+    if cost.cli_limit(error):  # the user's Claude Code: its plan's usage window, or it is signed out
+        return f'Mail check skipped: {error}'
+    if cost.limit_reached(error):
+        return (f'Mail check skipped: the Anthropic API spend limit is reached ({error}). '
+                'Raise it in the Anthropic console, or it resumes when the limit resets.')
+    return None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--days', type=int, default=2, help='how far back to search Gmail')
@@ -199,12 +211,9 @@ def main(argv=None):
             if sender:
                 sender(escape(message))
             return 0
-        if cost.cli_limit(error):  # the user's Claude Code: its plan's usage window, or it is signed out
-            print(f'Mail check skipped: {error}')
-            return 0
-        if cost.limit_reached(error):
-            print(f'Mail check skipped: the Anthropic API spend limit is reached ({error}). '
-                  'Raise it in the Anthropic console, or it resumes when the limit resets.')
+        line = skipped_line(error)
+        if line:
+            print(line)
             return 0
         raise
     return 0

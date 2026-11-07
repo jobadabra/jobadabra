@@ -6,6 +6,7 @@ export const MAIL_SKIPPED = {
   plan: 'not checked: your Claude usage window is exhausted; it runs again later',
   claude: 'not checked: Claude Code is not ready (Settings → Connections → AI)',
   google: 'not checked: the Google sign-in expired (Settings → Connections)',
+  offline: 'not checked: no internet connection; it runs again later',
 };
 
 // null when the file is missing or not this contract. A command that crashed before Python started has no file.
@@ -36,6 +37,7 @@ export const MAIL_SKIPPED_OPENAI = {
   plan: 'not checked: your ChatGPT plan\'s Codex limit is reached; it runs again later',
   claude: 'not checked: Codex is not ready (Settings → Connections → AI)',
   google: MAIL_SKIPPED.google,
+  offline: MAIL_SKIPPED.offline,
 };
 
 export function mailProblem(stdout, result, family = 'claude') {
@@ -51,5 +53,6 @@ export function mailProblem(stdout, result, family = 'claude') {
   if (/^Mail check skipped: OpenAI: your API account has no credit left/m.test(stdout || '')) return MAIL_SKIPPED_OPENAI.spend;
   if (/^Mail check skipped: OpenAI refused the API key/m.test(stdout || '')) return MAIL_SKIPPED_OPENAI.claude;
   if (/The Google sign-in for Gmail and Calendar has expired/.test(stdout || '')) return MAIL_SKIPPED.google;
+  if (/^Mail check skipped: no connection/m.test(stdout || '')) return MAIL_SKIPPED.offline;   // src/ai/mail.py: Wi-Fi off, no DNS (src/offline.py)
   return null;
 }

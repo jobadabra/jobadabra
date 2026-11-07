@@ -9,6 +9,7 @@ NOT_CHECKED = {
     'plan': 'not checked: your Claude usage window is exhausted; it runs again later',
     'claude': 'not checked: Claude Code is not ready (Settings → Connections → AI)',
     'google': 'not checked: the Google sign-in expired (Settings → Connections)',
+    'offline': 'not checked: no internet connection; it runs again later',
 }
 # The same reasons when the chosen engine is OpenAI's (the OpenAI API key or Codex): desktop/lib/run-result.js MAIL_SKIPPED_OPENAI.
 NOT_CHECKED_OPENAI = {
@@ -16,6 +17,7 @@ NOT_CHECKED_OPENAI = {
     'plan': "not checked: your ChatGPT plan's Codex limit is reached; it runs again later",
     'claude': 'not checked: Codex is not ready (Settings → Connections → AI)',
     'google': NOT_CHECKED['google'],
+    'offline': NOT_CHECKED['offline'],
 }
 
 
@@ -26,7 +28,10 @@ def not_checked(cause, env=None):
 
 
 def failure_cause(error):
-    """'google', 'plan', 'claude', 'spend' or '' (an unknown failure)."""
+    """'offline', 'google', 'plan', 'claude', 'spend' or '' (an unknown failure)."""
+    from .. import offline
+    if offline.is_offline(error):   # no DNS or network: not our failure (src/offline.py)
+        return 'offline'
     if 'invalid_grant' in str(error):
         return 'google'
     if cost.cli_limit(error):   # an engine's own limit (AiLimit): its plan, its key or credit, or it cannot run; told apart by the engine's own texts

@@ -57,6 +57,19 @@ test('a non-zero exit with no error line is labelled by its exit code, never by 
   assert.equal(runFailure({code: 1, timedOut: false, tail: ['Boom: ValueError: x', 'Enriched 5 of 5 job(s); 0 failed']}).error, 'Boom: ValueError: x', 'a real error line still wins');
 });
 
+// Sentry JOB-PILOTTO-APP-4Z, 4Y (4-5 Nov 2026, Windows): a job that died because this computer had no connection ("getaddrinfo failed", "[WinError 10051]") was reported as a failed run.
+// No connection is the person's network, not our bug: not reported, for any job. Anything else with the same exception class is still a failure.
+test('a run that died with no connection is not a failed run', () => {
+  for (const line of ['urllib.error.URLError: <urlopen error [Errno 11001] getaddrinfo failed>', 'urllib.error.URLError: <urlopen error [WinError 10051] A socket operation was attempted to an unreachable network>',
+    'urllib.error.URLError: <urlopen error [Errno -2] Name or service not known>', 'urllib.error.URLError: <urlopen error [Errno 101] Network is unreachable>', 'urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided, or not known>', 'urllib.error.URLError: <urlopen error [Errno 100] Network is down>']) {
+    assert.equal(runFailure({code: 1, timedOut: false, tail: ['  File "request.py", line 1360, in do_open', '    raise URLError(err)', line]}), null, line);
+  }
+  assert.ok(runFailure({code: 1, timedOut: false, tail: ['urllib.error.URLError: <urlopen error [Errno 111] Connection refused>']}), 'a refused server is not "no connection"');
+  assert.ok(runFailure({code: 1, timedOut: false, tail: ['Error: Notion rejected title "No route to host engineer"']}), 'words inside a title are no network error');
+  assert.ok(runFailure({code: 1, timedOut: false, tail: ['Error: Notion rejected title "getaddrinfo failed"']}), 'getaddrinfo failed inside a title is no network error either');
+  assert.ok(runFailure({code: 1, timedOut: 'no output for 16 min', tail: ['getaddrinfo failed']}), 'the watchdog is never excused by a tail');
+});
+
 test('every captured kind gets a non-empty message, even from empty fields', async () => {
   const sentry = await import('../../../lib/sentry.js');
   for (const kind of sentry.CAPTURED) {
