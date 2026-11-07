@@ -10,7 +10,7 @@ import {icon} from '../icons.js';
 import {betaText, testText, updateText} from '../update-text.js';
 import {shared} from './shared.js';
 import {$, aiReady, show} from './core.js';
-import {aiService, extensionFrom, justStarted} from '../service-status.js';
+import {aiService, aiSource, extensionFrom, justStarted} from '../service-status.js';
 import {openView, remembered} from './nav.js';
 import {profileBar} from './profile-save-bar.js';
 import {detailsChanged} from './details-drafts.js';
@@ -88,7 +88,7 @@ function statusFrom({extension, google}) {
   const on = {ai: ai.on, notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     aggregators: !!((shared.state.secrets.ADZUNA_APP_ID && shared.state.secrets.ADZUNA_APP_KEY) || shared.state.secrets.JOOBLE_API_KEY), cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
     telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on};
-  const detail = {ai: aiReady() && ({cli: t('pagesFinalLabels.claudePlan'), codex: t('pagesFinalLabels.codexPlan'), openai: t('pagesFinalLabels.openaiApiKey')}[shared.state.settings.aiEngine] || t('pagesFinalLabels.anthropicApiKey')), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
+  const detail = {ai: aiReady() && {cli: t('pagesFinalLabels.claudePlan'), codex: t('pagesFinalLabels.codexPlan'), openai: t('pagesFinalLabels.openaiApiKey'), api: t('pagesFinalLabels.anthropicApiKey'), free: t('helperMore.free')}[aiSource(shared.state)], google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
   const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': t('pagesCommon.off'), ai: ai.words};
