@@ -1,5 +1,6 @@
 // Display-only readers localize owned page chrome while preserving canonical values and unknown raw content.
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {test, afterEach} from 'node:test';
 import {setLocale} from '../../../i18n/index.js';
 import {partTitle, preferenceField, preferenceSide, preferenceOption, reportHeading, reviewHeading, finalText} from '../../../renderer/final-pages-copy.js';
@@ -99,4 +100,10 @@ test('actual interview picker suffix and review dialog headings localize without
     assert.equal(reviewParts(record).groups[0].title, 'Strengths', 'canonical parser headings stay unchanged');
     assert.equal(JSON.stringify({job,record}), wire);
   }
+});
+
+// Path labels override command labels in shownLabel, so every fixed group must be localized at construction.
+test('palette paths never bypass translated fixed group names', () => {
+  const source = readFileSync(new URL('../../../renderer/pages/nav.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /pathOf\(['"](?:Profile|Settings|Jobs|Reports|Actions|Strategy|Interviews)['"]/);
 });

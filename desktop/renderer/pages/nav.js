@@ -295,7 +295,7 @@ export function paletteCommands() {
   const onClosedPanel = section => section.classList.contains('conn-panel') && !section.dataset.parked && hiddenAt(section) === section && !hiddenAt(section.parentElement);
   const reachable = (node, section) => shown(node) || ((onClosedTab(section) || onClosedPanel(section)) && hiddenAt(node) === section);
   document.querySelectorAll('[data-profile-tab]').forEach(tab => add('Settings', finalText('openProfile', {label: labelOf(tab)}), '', 'settings profile tab',
-    () => { openView('settings'); settingsPage('profile'); profileTab(tab.dataset.profileTab); }, {path: pathOf('Profile', labelOf(tab))}));
+    () => { openView('settings'); settingsPage('profile'); profileTab(tab.dataset.profileTab); }, {path: pathOf(paletteGroup('Profile'), labelOf(tab))}));
   // The Profile ⋯ menu's two actions (pages/profile-menu.js; UI redesign fix 10, 18 Oct 2026).
   add('Settings', finalText('nav59'), finalText('nav60'), 'profile details contact cv fill empty phone address',
     () => { openView('settings'); settingsPage('profile'); fillFromCv(profileTab); });
