@@ -14,4 +14,5 @@ export function profileMenuItems(openTab) {
   if (shared.state?.notion?.NOTION_PROFILE_PAGE_ID) items.push({label: t('pagesDetails.viewSource'), run: () => openInNotion('NOTION_PROFILE_PAGE_ID')});   // about Notion
   return items;
 }
+/** Mount the Profile menu in an optional slot; actions use the supplied tab opener. */
 export function mountProfileMenu(slot, openTab) { slot?.replaceChildren(moreButton(() => profileMenuItems(openTab), t('pagesDetails.profileMore'))); }

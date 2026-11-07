@@ -31,6 +31,7 @@ import {runCommand} from './actions.js';
 
 // ---------- runs ----------
 export const clockTime = iso => displayDate(new Date(iso), {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+/** Format two valid run timestamps as a localized minute/second duration. */
 export const duration = (a, b) => { const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000); return s >= 60 ? t('pagesShortActivity.m4', {"value1": Math.floor(s / 60), "value2": s % 60}) : `${s} s`; };
 // The line under "Jobs": what's happening now, or when the last search ran.
 export async function showSearchStatus() {
@@ -182,6 +183,7 @@ export function phaseIndex(lines) {
   lines.forEach(line => PHASES.forEach((phase, i) => { if (phase.match.test(line)) index = i; }));
   return index;
 }
+/** Format a run timestamp with the active locale for compact activity times. */
 export const hhmm = ms => displayDate(new Date(ms), {hour: '2-digit', minute: '2-digit'});
 /**
  * When the next scheduled check is, in words, for any place that says it (the footer, Upcoming checks, Status): "due now" once the time has passed, else
@@ -195,6 +197,7 @@ export function nextWords(at, now = Date.now()) {
   const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? t('pagesExtraCommon.tomorrow') : displayDate(date, {weekday: 'short'});
   return `${day} ${hhmm(at)}`;
 }
+/** Format a page-owned noun count with native plural categories; noun identifiers stay unchanged. */
 export const plural = (n, word) => countedLabel(word, n);
 export const capital = text => String(text || '').replace(/^./, c => c.toUpperCase());
 // One line on what a finished run did.

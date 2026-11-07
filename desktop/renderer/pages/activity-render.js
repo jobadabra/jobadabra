@@ -203,7 +203,7 @@ export function renderActivity(fresh) {
   // No time: "Off" only when Settings → Automation says so; else the app just doesn't know it yet (it was started
   // before an update: a restart fixes it), so it names where it runs.
   const unknown = cloud ? t('pagesExtraCommon.onGithub') : t('pagesExtraCommon.onMac');
-  // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js).
+  // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js). Display copy now uses localized keys; the decision is unchanged.
   const items = [[t('pagesCommon.findJobs'), 'search', nextSearchAt, plan.search ? unknown : t('pagesExtraCommon.whenAsk')], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : t('pagesCommon.off')]];
   const soonest = Math.min(...items.map(([, , at]) => at || Infinity));
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it

@@ -33,6 +33,7 @@ const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };
 const handled = remembered(new Map(), keptRows.handled);  // `${session}|${text}` → what was done
 const KEEP = /^(?:keep|leave|ok|fine|no change|looks right|as is|nothing)/i;
+/** Explain when a session must resume before sending; live sessions need no warning. */
 export const offline = item => (item.live === false ? t('pagesFinalLabels.resumeToSend') : '');
 // The answers you already saved (Notion → Application Answers, the same page the Profile shows), for the rows that
 // offer a choice: read once, on the side, the first time a row wants them. Offline or without Notion the row still

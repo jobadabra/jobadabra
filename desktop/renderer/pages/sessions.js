@@ -38,6 +38,7 @@ export function sessionFor(url) {
   return sessionList.filter(item => pageKey(item.url) === key).pop() || null;
 }
 export const sessionJob = item => shared.allJobs.find(job => pageKey(job.url) === pageKey(item.url)) || {};
+/** Read the session or job title, with a localized fallback when neither is recorded. */
 export const sessionTitle = item => item.title || sessionJob(item).title || t('pagesProfile.application');
 export const sessionCompany = item => item.company || sessionJob(item).company || new URL(item.url || 'https://job').hostname.replace(/^www\./, '');
 // A submitted application is finished work: it lives on Jobs, not on this screen. A Read with Claude session is not an application at all
