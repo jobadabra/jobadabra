@@ -50,7 +50,7 @@ export function createLagMeter(now = Date.now) {
 }
 
 /**
- * What the live stage shows for the view's state (renderer/live-view-state.js). {kind: picture|off|closed|waiting, title, text, action: t('helperFlow.watchLive')|''}.
+ * What the live stage shows for the view's state (renderer/live-view-state.js). {kind: picture|off|closed|waiting, title, text, action: 'Watch live'|''}.
  * `kind`: hidden|opening|showing|closed; `note`: why the last ask failed or why the page is closed; `input`: the card takes clicks and keys.
  * Why (2026-10-28, owner screenshot: a broken image icon with its alt text where the live page should be): the image exists before any picture does, so the stage decides what to draw.
  * Why (5 Nov 2026, owner: the preview "should not show by default, only on request", and "Try again" for ever; spec 2026-11-05-applying-redesign, decision 4): nothing streams until

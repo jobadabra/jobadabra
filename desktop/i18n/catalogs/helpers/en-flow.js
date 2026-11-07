@@ -323,6 +323,31 @@ export const messages = {
   "livePictureOnRequest": "{lead} The picture shows only when you ask, so your Mac stays fast.",
   "watchLive": "Watch live",
   "command": "Command",
+  "liveBrowserHidden": "· in Jobadabra's browser, hidden",
+  "liveBrowserUnheard": "Jobadabra can't hear its browser",
+  "liveHiddenBrowser": "Jobadabra's hidden browser",
+  "waitingTurn": "Waiting for its turn",
+  "waitingTen": "Jobadabra fills up to 10 applications at once. This one starts as soon as one of them is done.",
+  "submittingIn": "Submitting in {left}",
+  "submittingNow": "Submitting now…",
+  "everyCheckPassed": "· every check passed",
+  "submitTimerNote": "Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.",
+  "fillingApplication": "Filling the application",
+  "watchWhileFilling": "You can watch. Clicks and typing wait until the fill stops.",
+  "botNeedsYou": "A bot check needs you",
+  "filledThenAsked": "· filled at {time}, then the page asked",
+  "pageAsked": "· the page asked",
+  "solveBotYourself": "Solve the check in the page below. Jobadabra never solves bot checks.",
+  "afterBotSubmit": "After the check, use the page's own Submit",
+  "requiredFilled": "· every required field is filled",
+  "submitIsYou": "Pressing Submit is you submitting. Jobadabra then reads the confirmation page.",
+  "reviewFilled": "Review the filled application",
+  "filledBrowser": "· filled at {time} in Jobadabra's browser",
+  "inBrowser": "· in Jobadabra's browser",
+  "livePageEdit": "This is the live page: click and type in it, or use \"Fill it in\" below.",
+  "applicationNeedsYou": "This application needs you. Review the live page and submit it yourself.",
+  "usePageSubmit": "Use the page's own Submit",
+  "readingPage": "Reading the page…",
   "interviewsCount": {
     "one": "{count} interview",
     "other": "{count} interviews"
@@ -342,5 +367,9 @@ export const messages = {
   "applyCount": {
     "one": "Apply to {count} job",
     "other": "Apply to {count} jobs"
+  },
+  "requiredLeft": {
+    "one": "{count} required field left",
+    "other": "{count} required fields left"
   }
 };

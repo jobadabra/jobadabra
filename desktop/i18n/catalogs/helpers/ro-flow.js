@@ -323,6 +323,31 @@ export const messages = {
   "livePictureOnRequest": "{lead} Imaginea apare doar la cerere, ca Mac-ul să rămână rapid.",
   "watchLive": "Vezi în direct",
   "command": "Comandă",
+  "liveBrowserHidden": "· în browserul Jobadabra, ascuns",
+  "liveBrowserUnheard": "Jobadabra nu aude browserul său",
+  "liveHiddenBrowser": "browserul ascuns al Jobadabra",
+  "waitingTurn": "Își așteaptă rândul",
+  "waitingTen": "Jobadabra completează până la 10 candidaturi simultan. Aceasta începe când una se termină.",
+  "submittingIn": "Se trimite în {left}",
+  "submittingNow": "Se trimite acum…",
+  "everyCheckPassed": "· toate verificările trecute",
+  "submitTimerNote": "Nimic nu se trimite până expiră temporizatorul. Oprește păstrează formularul completat aici pentru verificare și trimitere personală.",
+  "fillingApplication": "Se completează candidatura",
+  "watchWhileFilling": "Poți privi. Apăsările și scrierea așteaptă până se oprește completarea.",
+  "botNeedsYou": "O verificare anti-bot are nevoie de tine",
+  "filledThenAsked": "· completat la {time}, apoi pagina a cerut",
+  "pageAsked": "· pagina a cerut",
+  "solveBotYourself": "Rezolvă verificarea în pagina de mai jos. Jobadabra nu rezolvă niciodată verificări anti-bot.",
+  "afterBotSubmit": "După verificare, folosește Trimite din pagină",
+  "requiredFilled": "· toate câmpurile obligatorii completate",
+  "submitIsYou": "Apăsând Trimite, trimiți personal. Jobadabra citește apoi confirmarea.",
+  "reviewFilled": "Verifică candidatura completată",
+  "filledBrowser": "· completat la {time} în browserul Jobadabra",
+  "inBrowser": "· în browserul Jobadabra",
+  "livePageEdit": "Aceasta este pagina live: apasă și scrie sau folosește Completează mai jos.",
+  "applicationNeedsYou": "Această candidatură are nevoie de tine. Verifică pagina live și trimite personal.",
+  "usePageSubmit": "Folosește Trimite din pagină",
+  "readingPage": "Se citește pagina…",
   "interviewsCount": {
     "one": "{count} interviu",
     "few": "{count} interviuri",
@@ -346,5 +371,10 @@ export const messages = {
     "one": "Candidează la {count} ofertă",
     "few": "Candidează la {count} oferte",
     "other": "Candidează la {count} de oferte"
+  },
+  "requiredLeft": {
+    "one": "{count} câmp obligatoriu rămas",
+    "few": "{count} câmpuri obligatorii rămase",
+    "other": "{count} de câmpuri obligatorii rămase"
   }
 };

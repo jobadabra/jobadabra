@@ -1,11 +1,13 @@
 // The live card's pure parts (renderer/pages/session-live.js draws them): what a hidden-browser session's Applying card says in each of its four
 // states, and how a press or a key on the page's picture becomes the page's own. No DOM here. Guard: test/unit/renderer/session-live.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
+import {date} from '../i18n/format.js';
 import {backgroundStatus} from './background-status.js';
 import {linkOffLine} from './session-state.js';
 const FILLING = new Set(['preflight', 'filling']);
 const HANDOFF = new Set(['needs_user_handoff', 'manual_submit_required']);
-const clock = ms => (ms ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '');
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const clock = ms => (ms ? date(ms, {hour: '2-digit', minute: '2-digit'}) : '');
 
 /** "9:41" for the time left until `dueAt` (a started second counts); '' when there is no due time or it has passed. */
 export function countdownLabel(dueAt, now) {
@@ -16,9 +18,9 @@ export function countdownLabel(dueAt, now) {
 
 /** The card of a job that has not started: waiting for its turn, or (connection closed) waiting on the connection. Pure. */
 function waitingCard(background, linkOff) {
-  const base = {kind: 'waiting', live: false, meta: '· in Jobadabra\'s browser, hidden', frame: '', input: false, filling: '', submit: null, marks: false};
-  if (linkOff) return {...base, title: 'Jobadabra can\'t hear its browser', pill: backgroundStatus({background}, {linkOff}), tone: 'warn', note: linkOffLine(linkOff, 'Jobadabra\'s hidden browser')};
-  return {...base, title: 'Waiting for its turn', pill: backgroundStatus({background}), tone: 'neutral', note: 'Jobadabra fills up to 10 applications at once. This one starts as soon as one of them is done.'};
+  const base = {kind: 'waiting', live: false, meta: t('helperFlow.liveBrowserHidden'), frame: '', input: false, filling: '', submit: null, marks: false};
+  if (linkOff) return {...base, title: t('helperFlow.liveBrowserUnheard'), pill: backgroundStatus({background}, {linkOff}), tone: 'warn', note: linkOffLine(linkOff, t('helperFlow.liveHiddenBrowser'))};
+  return {...base, title: t('helperFlow.waitingTurn'), pill: backgroundStatus({background}), tone: 'neutral', note: t('helperFlow.waitingTen')};
 }
 
 /**
@@ -34,25 +36,25 @@ export function liveCard(background = {}, facts = null, {note = '', at = clock, 
   // Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule): Full automation waits before it presses Submit; the person sees the clock and can Stop. Stop keeps the filled form for them (a hand-off), it never discards it.
   if (background.state === 'waiting_to_submit') {
     const left = countdownLabel(background.dueAt, now() + (background.waitClockOffset || 0));
-    return {kind: 'countdown', live: true, title: left ? `Submitting in ${left}` : 'Submitting now…', meta: '· every check passed', pill: backgroundStatus({background}), tone: 'info', frame: '', stop: true,
-      note: 'Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.', input: false, filling: '', submit: null, marks: false};
+    return {kind: 'countdown', live: true, title: left ? t('helperFlow.submittingIn', {left}) : t('helperFlow.submittingNow'), meta: t('helperFlow.everyCheckPassed'), pill: backgroundStatus({background}), tone: 'info', frame: '', stop: true,
+      note: t('helperFlow.submitTimerNote'), input: false, filling: '', submit: null, marks: false};
   }
   if (FILLING.has(background.state)) {
-    return {kind: 'filling', live: true, title: 'Filling the application', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}, {fields: facts?.fields ? {done: facts.filled, of: facts.fields} : null}),
-      tone: 'info', frame: '', note: 'You can watch. Clicks and typing wait until the fill stops.', input: false, filling: facts?.active || '', submit: null, marks: false};
+    return {kind: 'filling', live: true, title: t('helperFlow.fillingApplication'), meta: t('helperFlow.liveBrowserHidden'), pill: backgroundStatus({background}, {fields: facts?.fields ? {done: facts.filled, of: facts.fields} : null}),
+      tone: 'info', frame: '', note: t('helperFlow.watchWhileFilling'), input: false, filling: facts?.active || '', submit: null, marks: false};
   }
   if (HANDOFF.has(background.state) && /^captcha_/.test(background.reason || '')) {   // words-ok: our own hand-off reason id, not page knowledge
-    return {kind: 'check', live: true, title: 'A bot check needs you', meta: filled ? `· filled at ${filled}, then the page asked` : '· the page asked', pill: backgroundStatus({background}), tone: 'warn', frame: 'warn',
-      note: 'Solve the check in the page below. Jobadabra never solves bot checks.', input: true, filling: '', submit: {on: false, hint: 'After the check, use the page\'s own Submit'}, marks: true};
+    return {kind: 'check', live: true, title: t('helperFlow.botNeedsYou'), meta: filled ? t('helperFlow.filledThenAsked', {time: filled}) : t('helperFlow.pageAsked'), pill: backgroundStatus({background}), tone: 'warn', frame: 'warn',
+      note: t('helperFlow.solveBotYourself'), input: true, filling: '', submit: {on: false, hint: t('helperFlow.afterBotSubmit')}, marks: true};
   }
   if (background.state === 'ready_for_review' && left === 0) {
-    return {kind: 'ready', live: true, title: 'Ready to submit', meta: '· every required field is filled', pill: backgroundStatus({background}, {ready: true}), tone: 'good', frame: 'good',
-      note: 'Pressing Submit is you submitting. Jobadabra then reads the confirmation page.', input: true, filling: '', submit: {on: true, hint: ''}, marks: false};
+    return {kind: 'ready', live: true, title: t('helperState.readySubmit'), meta: t('helperFlow.requiredFilled'), pill: backgroundStatus({background}, {ready: true}), tone: 'good', frame: 'good',
+      note: t('helperFlow.submitIsYou'), input: true, filling: '', submit: {on: true, hint: ''}, marks: false};
   }
   const judged = background.state === 'ready_for_review';
-  return {kind: 'review', live: true, title: 'Review the filled application', meta: filled ? `· filled at ${filled} in Jobadabra's browser` : '· in Jobadabra\'s browser', pill: backgroundStatus({background}) || ['Needs you', 'warn'],
-    tone: 'warn', frame: '', note: judged ? 'This is the live page: click and type in it, or use "Fill it in" below.' : note || 'This application needs you. Review the live page and submit it yourself.',
-    input: true, filling: '', marks: true, submit: {on: false, hint: !judged ? 'Use the page\'s own Submit' : left === null ? 'Reading the page…' : `${plural(left, 'required field')} left`}};
+  return {kind: 'review', live: true, title: t('helperFlow.reviewFilled'), meta: filled ? t('helperFlow.filledBrowser', {time: filled}) : t('helperFlow.inBrowser'), pill: backgroundStatus({background}) || [t('helperState.needsYou'), 'warn'],
+    tone: 'warn', frame: '', note: judged ? t('helperFlow.livePageEdit') : note || t('helperFlow.applicationNeedsYou'),
+    input: true, filling: '', marks: true, submit: {on: false, hint: !judged ? t('helperFlow.usePageSubmit') : left === null ? t('helperFlow.readingPage') : t('helperFlow.requiredLeft', {count: left})}};
 }
 
 /** Pure: a press at (x, y) on a picture drawn at `box` ({left, top, width, height}) -> the page's own CSS pixels, for a viewport of w × h. */

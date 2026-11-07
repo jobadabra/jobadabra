@@ -322,6 +322,31 @@ export const messages = {
   "livePictureOnRequest": "{lead} L’immagine appare solo su richiesta, così il Mac resta veloce.",
   "watchLive": "Guarda dal vivo",
   "command": "Comando",
+  "liveBrowserHidden": "· nel browser di Jobadabra, nascosto",
+  "liveBrowserUnheard": "Jobadabra non riceve il suo browser",
+  "liveHiddenBrowser": "il browser nascosto di Jobadabra",
+  "waitingTurn": "In attesa del turno",
+  "waitingTen": "Jobadabra compila fino a 10 candidature insieme. Questa parte appena una termina.",
+  "submittingIn": "Invio tra {left}",
+  "submittingNow": "Invio in corso…",
+  "everyCheckPassed": "· tutti i controlli superati",
+  "submitTimerNote": "Nulla viene inviato prima della fine del timer. Interrompi mantiene qui il modulo compilato per controllarlo e inviarlo tu stesso.",
+  "fillingApplication": "Compilazione della candidatura",
+  "watchWhileFilling": "Puoi guardare. Clic e digitazione attendono la fine della compilazione.",
+  "botNeedsYou": "Serve il tuo intervento per un controllo anti-bot",
+  "filledThenAsked": "· compilato alle {time}, poi la pagina ha chiesto",
+  "pageAsked": "· la pagina ha chiesto",
+  "solveBotYourself": "Risolvi il controllo nella pagina sotto. Jobadabra non risolve mai i controlli anti-bot.",
+  "afterBotSubmit": "Dopo il controllo, usa Invia nella pagina",
+  "requiredFilled": "· tutti i campi obbligatori compilati",
+  "submitIsYou": "Premendo Invia, sei tu a inviare. Jobadabra legge poi la conferma.",
+  "reviewFilled": "Controlla la candidatura compilata",
+  "filledBrowser": "· compilato alle {time} nel browser di Jobadabra",
+  "inBrowser": "· nel browser di Jobadabra",
+  "livePageEdit": "Questa è la pagina dal vivo: clicca e scrivi o usa Compila sotto.",
+  "applicationNeedsYou": "Questa candidatura richiede te. Controlla la pagina dal vivo e invia tu stesso.",
+  "usePageSubmit": "Usa Invia nella pagina",
+  "readingPage": "Lettura della pagina…",
   "interviewsCount": {
     "one": "{count} colloquio",
     "other": "{count} colloqui"
@@ -341,5 +366,9 @@ export const messages = {
   "applyCount": {
     "one": "Candidati a {count} offerta",
     "other": "Candidati a {count} offerte"
+  },
+  "requiredLeft": {
+    "one": "{count} campo obbligatorio rimasto",
+    "other": "{count} campi obbligatori rimasti"
   }
 };

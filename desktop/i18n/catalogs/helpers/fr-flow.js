@@ -322,6 +322,31 @@ export const messages = {
   "livePictureOnRequest": "{lead} L’image ne s’affiche qu’à votre demande pour préserver la rapidité du Mac.",
   "watchLive": "Voir en direct",
   "command": "Commande",
+  "liveBrowserHidden": "· dans le navigateur Jobadabra, masqué",
+  "liveBrowserUnheard": "Jobadabra ne reçoit plus son navigateur",
+  "liveHiddenBrowser": "le navigateur masqué de Jobadabra",
+  "waitingTurn": "En attente de son tour",
+  "waitingTen": "Jobadabra remplit jusqu’à 10 candidatures à la fois. Celle-ci commence dès qu’une se termine.",
+  "submittingIn": "Envoi dans {left}",
+  "submittingNow": "Envoi en cours…",
+  "everyCheckPassed": "· toutes les vérifications réussies",
+  "submitTimerNote": "Rien n’est envoyé avant la fin du compte à rebours. Arrêter garde le formulaire rempli ici pour votre vérification et envoi.",
+  "fillingApplication": "Remplissage de la candidature",
+  "watchWhileFilling": "Vous pouvez regarder. Clics et saisie attendent la fin du remplissage.",
+  "botNeedsYou": "Une vérification anti-robot vous attend",
+  "filledThenAsked": "· rempli à {time}, puis la page a demandé",
+  "pageAsked": "· la page a demandé",
+  "solveBotYourself": "Résolvez la vérification ci-dessous. Jobadabra ne résout jamais les contrôles anti-robot.",
+  "afterBotSubmit": "Après la vérification, utilisez le bouton d’envoi de la page",
+  "requiredFilled": "· tous les champs obligatoires remplis",
+  "submitIsYou": "En cliquant sur Envoyer, vous envoyez vous-même. Jobadabra lit ensuite la confirmation.",
+  "reviewFilled": "Vérifier la candidature remplie",
+  "filledBrowser": "· rempli à {time} dans le navigateur Jobadabra",
+  "inBrowser": "· dans le navigateur Jobadabra",
+  "livePageEdit": "Ceci est la page en direct : cliquez et saisissez, ou utilisez Remplir ci-dessous.",
+  "applicationNeedsYou": "Cette candidature vous attend. Vérifiez la page en direct et envoyez vous-même.",
+  "usePageSubmit": "Utilisez le bouton d’envoi de la page",
+  "readingPage": "Lecture de la page…",
   "interviewsCount": {
     "one": "{count} entretien",
     "other": "{count} entretiens"
@@ -341,5 +366,9 @@ export const messages = {
   "applyCount": {
     "one": "Postuler à {count} offre",
     "other": "Postuler à {count} offres"
+  },
+  "requiredLeft": {
+    "one": "{count} champ obligatoire restant",
+    "other": "{count} champs obligatoires restants"
   }
 };

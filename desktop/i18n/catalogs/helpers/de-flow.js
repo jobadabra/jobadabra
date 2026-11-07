@@ -322,6 +322,31 @@ export const messages = {
   "livePictureOnRequest": "{lead} Das Bild erscheint nur auf Wunsch, damit Ihr Mac schnell bleibt.",
   "watchLive": "Live ansehen",
   "command": "Befehl",
+  "liveBrowserHidden": "· in Jobadabras Browser, verborgen",
+  "liveBrowserUnheard": "Jobadabra hört seinen Browser nicht",
+  "liveHiddenBrowser": "Jobadabras verborgener Browser",
+  "waitingTurn": "Wartet, bis es an der Reihe ist",
+  "waitingTen": "Jobadabra füllt bis zu 10 Bewerbungen gleichzeitig aus. Diese startet, sobald eine fertig ist.",
+  "submittingIn": "Absenden in {left}",
+  "submittingNow": "Wird jetzt gesendet…",
+  "everyCheckPassed": "· alle Prüfungen bestanden",
+  "submitTimerNote": "Vor Ablauf des Timers wird nichts gesendet. Stoppen behält das ausgefüllte Formular hier zum Prüfen und eigenen Absenden.",
+  "fillingApplication": "Bewerbung wird ausgefüllt",
+  "watchWhileFilling": "Sie können zusehen. Klicken und Tippen ist möglich, sobald das Ausfüllen stoppt.",
+  "botNeedsYou": "Eine Bot-Prüfung braucht Sie",
+  "filledThenAsked": "· um {time} ausgefüllt, dann fragte die Seite",
+  "pageAsked": "· die Seite hat gefragt",
+  "solveBotYourself": "Lösen Sie die Prüfung auf der Seite unten. Jobadabra löst niemals Bot-Prüfungen.",
+  "afterBotSubmit": "Nach der Prüfung auf der Seite selbst absenden",
+  "requiredFilled": "· alle Pflichtfelder ausgefüllt",
+  "submitIsYou": "Mit Absenden senden Sie selbst ab. Danach liest Jobadabra die Bestätigungsseite.",
+  "reviewFilled": "Ausgefüllte Bewerbung prüfen",
+  "filledBrowser": "· um {time} in Jobadabras Browser ausgefüllt",
+  "inBrowser": "· in Jobadabras Browser",
+  "livePageEdit": "Dies ist die Live-Seite: Klicken und tippen Sie darin oder nutzen Sie unten Ausfüllen.",
+  "applicationNeedsYou": "Diese Bewerbung braucht Sie. Prüfen Sie die Live-Seite und senden Sie selbst ab.",
+  "usePageSubmit": "Auf der Seite selbst absenden",
+  "readingPage": "Seite wird gelesen…",
   "interviewsCount": {
     "one": "{count} Vorstellungsgespräch",
     "other": "{count} Vorstellungsgespräche"
@@ -341,5 +366,9 @@ export const messages = {
   "applyCount": {
     "one": "Auf {count} Stelle bewerben",
     "other": "Auf {count} Stellen bewerben"
+  },
+  "requiredLeft": {
+    "one": "{count} Pflichtfeld offen",
+    "other": "{count} Pflichtfelder offen"
   }
 };
