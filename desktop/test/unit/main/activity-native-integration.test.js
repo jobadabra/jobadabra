@@ -107,3 +107,27 @@ test('actual quit callback localizes its title while retaining the wait decision
     assert.deepEqual(notices, [[activityText('quitTitle'), decisions[0].detail, NO_PLACE.app, 'info']]);
   }
 });
+
+test('actual learned save emits a localized notice without AI, network or real profile data', async () => {
+  const {save} = await import('../../../lib/learned.js');
+  const {createStorage} = await import('../../../lib/storage.js');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'activity-learned-'));
+  const previousFetch = globalThis.fetch;
+  const forbidden = () => assert.fail('fictional local learning must not call a network or AI');
+  globalThis.fetch = forbidden;
+  try {
+    for (const locale of SUPPORTED_LOCALES) {
+      setLocale(locale);
+      const storage = createStorage(path.join(dir, locale), {encrypt: value => value, decrypt: value => value});
+      storage.saveSettings({store: 'sqlite', telemetry: false});
+      const notices = [], raw = '1 Fictional {value} Lane';
+      const result = await save(storage, {items: [{label: 'Street', value: raw}]}, {
+        notify: (...args) => notices.push(args), client: {messages: {create: forbidden}}, fetcher: forbidden});
+      assert.deepEqual(result, {ok: true, count: 1});
+      assert.deepEqual(notices, [[activityText('remembered', {count: 1}), activityText('learnedBody'), {view: 'settings', section: 'profile'}, 'good']]);
+      assert.ok(storage.readText('profile.md').includes(raw));
+      if (locale !== 'en') assert.notEqual(notices[0][0], 'Remembered 1 answer');
+    }
+  } finally {globalThis.fetch = previousFetch; fs.rmSync(dir, {recursive: true, force: true});}
+});
