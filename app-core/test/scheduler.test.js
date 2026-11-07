@@ -132,5 +132,5 @@ test('the Microsoft Store submission starts once a week, Monday 07:00 UTC, on th
   }
   assert.deepEqual(started, ['2026-11-02T07:00:00.000Z', '2026-11-09T07:00:00.000Z']);
   assert.equal(STORE_WEEKLY.day, 1);
-  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-09T07:00:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'msix-store-weekly.yml'], 'alone on its tick');
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-11-09T07:00:00Z')).map(job => job.workflow), ['pr-verdict.yml', 'pr-labels.yml', 'msix-store-weekly.yml'], 'alone on its tick but for the two PR sweeps');
 });
