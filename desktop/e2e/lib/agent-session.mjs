@@ -18,7 +18,7 @@ export function summarizeSession({session, persona, seed, goals, results = [], n
     const result = byGoal.get(goal.n);
     if (!result) return {...goal, verdict: 'not-started', summary: 'the session ended before this goal', steps: 0};
     if (!GOAL_VERDICTS.includes(result.verdict)) return {...goal, verdict: 'doubts', summary: `the agent's verdict "${result.verdict}" is not one of ours: ${String(result.summary || '').slice(0, 120)}`, steps: result.steps || 0};
-    return {...goal, verdict: result.verdict, summary: String(result.summary || '').slice(0, 240), steps: result.steps || 0};
+    return {...goal, verdict: result.verdict, summary: String(result.summary || '').slice(0, 240), steps: result.steps || 0, ...(result.failover ? {failover: result.failover} : {})};   // Why (7 Nov 2026, pz 2/5): the broker failed on this goal and Claude took over; kept apart from the summary (cut at 240, and read into field notes)
   });
   const ranked = rankNotes(notes, cap);
   const counts = Object.fromEntries([...GOAL_VERDICTS, 'not-started'].map(verdict => [verdict, rows.filter(row => row.verdict === verdict).length]));

@@ -19,3 +19,29 @@ export const brokerAsk = (tier = 'small', {only = '', ask: call = askBroker} = {
   if (!answer.ok) { if (answer.status === 'capped' && !only) noteBrokerCapped(answer.detail); throw new Error(`${answer.status} ${answer.detail}`); }
   return {text: answer.message.content[0].text, usage: answer.message.usage, ms: answer.ms, tier: answer.tier, engine: answer.engine, tokens: answer.tokens, session: answer.session};
 };
+
+/** Whether a refusal says the broker or Codex failed (a 5xx such as "502 broker: codex-failed … killed after 100 s", or "unreachable no answer from the broker"), the only kind another engine can answer. A budget refusal (`capped`), a lost login or any 4xx is not: those are decisions, never asked again elsewhere. */
+export const isBrokerFailure = error => /^(unreachable|5\d\d)\b/.test(String(error?.message ?? error));
+
+/**
+ * The acting call with one more engine behind it. `primary` and `fallback` are asks (brokerAsk); a failure of `primary` (isBrokerFailure) is asked again at once on `fallback`, without the Codex conversation fields (the body carries the whole prompt),
+ * and every later call goes to `fallback` too: a Codex that stalled once stalls again, 100 s at a time. A failure of `fallback` is the caller's, as before. -> an ask with `.failover()`: the first failure's reason, or '' while the primary answers.
+ * Why (7 Nov 2026, pz, owner: "retry on Claude when Codex fails"; 31 runs: 12 goals lost to "502 broker: codex-failed … killed after 100 s" or "unreachable"): the loop ended the goal and the whole night on the first refusal, so the goals after it were never started.
+ */
+export function withFailover(primary, fallback) {
+  let reason = '';
+  const ask = async args => {
+    if (reason) return fallback(stripConversation(args));
+    try { return await primary(args); } catch (error) {
+      if (!isBrokerFailure(error)) throw error;
+      reason = String(error.message).slice(0, 160);
+      return fallback(stripConversation(args));
+    }
+  };
+  ask.failover = () => reason;
+  return ask;
+}
+const stripConversation = ({session, delta, endSession, ...args}) => args;   // a Claude call keeps no Codex conversation (brokerAsk drops these for `only` anyway; the loop's own calls must not depend on that)
+
+/** The actor's ask for a night: on one engine alone (`engine` set) the plain call; otherwise Codex first with Claude behind it (withFailover). */
+export const actorAskOf = (tier, engine) => (engine ? brokerAsk(tier, {only: engine}) : withFailover(brokerAsk(tier), brokerAsk(tier, {only: 'claude'})));
