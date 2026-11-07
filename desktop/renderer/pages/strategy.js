@@ -1,4 +1,6 @@
 // Strategy page: the search strategy and its coverage. Entry: loadStrategy and init; the cards are main-goals.js, strategy-targets.js and strategy-suggestions.js, their drafts and one save bar strategy-cards.js, shared state strategy-state.js. Guarded by: advice-events, save-progress, activity-selection-kept, strategy-cards tests.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {openInNotion} from './notion-connect.js';
 import {el, openMenu, tile} from '../components.js';
@@ -41,7 +43,7 @@ export async function loadStrategy() {
   message('strategy-load', '');
   $('strategy-view-loading')?.remove();
   renderStrategy(data);
-  $('strategy-synced').textContent = `Synced ${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+  $('strategy-synced').textContent = `Synced ${displayDate(new Date(), {hour: '2-digit', minute: '2-digit'})}`;
 }
 // First load: every card in its final shape, greyed (the same rows, icons and chips), and a pill in the header.
 function strategySkeleton() {
@@ -82,7 +84,7 @@ function strategySkeleton() {
   insight.hidden = false;
   insight.classList.add('is-loading');
   $('strategy-insight-text').replaceChildren(bone('w-80'), bone('w-60'));
-  const pill = el('span', 'loading-pill', 'Loading strategy…');
+  const pill = el('span', 'loading-pill', t('pagesSetup.loadingStrategy'));
   pill.id = 'strategy-view-loading';
   $('strategy-synced').replaceChildren(pill);
 }
@@ -102,7 +104,7 @@ export async function init() {
   $('profile-empty-rebuild').addEventListener('click', () => $('strategy-redo').click());   // the same Rebuild from CV as the Profile page
   // ⋯ → the one Notion link (owner, 18 Oct 2026, review fix 10): the search settings page, else the Profile (Job preferences live there).
   const sourceKey = () => (shared.state.notion?.NOTION_SEARCH_SETTINGS_PAGE ? 'NOTION_SEARCH_SETTINGS_PAGE' : 'NOTION_PROFILE_PAGE_ID');
-  $('strategy-more').addEventListener('click', () => openMenu($('strategy-more'), [{label: 'View source in Notion', icon: 'link', run: event => openInNotion(sourceKey(), event)}]));   // about Notion
+  $('strategy-more').addEventListener('click', () => openMenu($('strategy-more'), [{label: t('pagesDetails.viewSource'), icon: 'link', run: event => openInNotion(sourceKey(), event)}]));   // about Notion
   $('strategy-jobs').addEventListener('click', () => openView('jobs'));
 }
 

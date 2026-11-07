@@ -2,6 +2,7 @@
 // is stored (lib/preferences-parse.js), each field shows what you have now → what it proposes, with Accept / Keep mine and Accept all. Accepting only
 // drafts the change into the tab's one save bar (the phrases the clean values lose are kept in ONE collapsed "Original wording" note under Other preferences); nothing is written until Save.
 // "Keep mine" is remembered per text in this window. Guarded by test/preferences-review-render.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el} from '../components.js';
@@ -25,7 +26,7 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
   const box = el('section', 'answer-item qa-section pref-section pref-review');
   box.id = 'preferences-review-card';
   const head = el('div', 'qa-section-head pref-head'), words = el('div', 'pref-words');
-  words.append(el('h4', '', 'Review your preferences'), el('span', 'muted small', state.busy ? t('pagesCommon.readingProfile')
+  words.append(el('h4', '', t('pagesJobs.reviewPreferences')), el('span', 'muted small', state.busy ? t('pagesCommon.readingProfile')
     : state.error ? `Couldn't read it: ${plainError(state.error)}` : 'Some of your answers read better as plain values. Nothing changes until you accept and save.'));
   head.append(words);
   box.append(head);

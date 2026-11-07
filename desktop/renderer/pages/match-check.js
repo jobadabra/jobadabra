@@ -1,4 +1,5 @@
 // CV match dialog (lib/match-check.js): this job's posting against the CV, on request. Opened from the Jobs ⋯ menu and from the session card.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {costText, dollars} from '../ai-cost.js';

@@ -1,5 +1,6 @@
 // Settings → Profile → Experience: the sources of what tailoring knows about the person (the main CV, other CV versions) and, per job,
 // the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/unit/main/experience-page.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, pill, tile} from '../components.js';
@@ -15,7 +16,7 @@ export function sourceRow(source) {
   const row = el('li');
   const words = el('div', 'item-words');
   const name = el('b', '', source.name);
-  name.append(' ', source.reference ? pill('Reference', 'info') : source.stale ? pill('Needs matching', 'warn', {title: 'Your main CV changed since this version was compared with it'}) : pill(source.added ? `+${plural(source.added, 'detail')}` : 'Nothing new', source.added ? 'good' : 'neutral'));
+  name.append(' ', source.reference ? pill('Reference', 'info') : source.stale ? pill('Needs matching', 'warn', {title: 'Your main CV changed since this version was compared with it'}) : pill(source.added ? `+${plural(source.added, 'detail')}` : t('pagesProfile.nothingNew'), source.added ? 'good' : 'neutral'));
   words.append(name);
   const meta = source.reference ? `${plural(source.roles, 'job role')}: tailored CVs keep its jobs, titles and dates` : `${plural(source.roles, 'job role')} · added ${runWhen(source.addedAt)}`;
   words.append(el('span', 'muted', meta));
@@ -82,7 +83,7 @@ export function versionsBlock(rows, count) {
   box.open = versionsOpen;
   box.addEventListener('toggle', () => { versionsOpen = box.open; });
   const head = el('summary');
-  head.append(el('b', '', 'Other versions'), ' ', pill(String(count), 'neutral'));
+  head.append(el('b', '', t('pagesProfile.otherVersions')), ' ', pill(String(count), 'neutral'));
   const list = el('ul', 'item-rows');
   list.append(...rows);
   box.append(head, list);
@@ -127,7 +128,7 @@ export function showExperience(view) {
   for (const [i, source] of view.sources.entries()) {
     const row = rows[i];
     if (source.stale) {
-      const again = Object.assign(el('button', 'secondary item-action', 'Match again'), {type: 'button'});
+      const again = Object.assign(el('button', 'secondary item-action', t('pagesProfile.matchAgain')), {type: 'button'});
       again.addEventListener('click', () => run(again, () => window.pilot.experienceRematch()));
       row.append(again);
     }
@@ -164,7 +165,7 @@ export function addedBlock(items, remove) {
   for (const item of items) {
     const row = el('li'), words = el('div', 'item-words');
     const name = el('b', '', item.text);
-    name.append(' ', pill(KIND[item.kind] || 'Added', 'info'));
+    name.append(' ', pill(KIND[item.kind] || t('pagesProfile.added'), 'info'));
     words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
     const button = Object.assign(el('button', 'secondary item-action', t('pagesCommon.remove')), {type: 'button'});
     button.addEventListener('click', () => {
@@ -174,7 +175,7 @@ export function addedBlock(items, remove) {
     row.append(tile('user', 'signal'), words, button);
     list.append(row);
   }
-  return [el('h4', '', 'Added by you'), list];
+  return [el('h4', '', t('pagesProfile.addedByYou')), list];
 }
 
 // The words for one live step from the app (experienceStep): which file of how many, and what it is doing now.
@@ -189,7 +190,7 @@ export function stepText({what, name, index, total}) {
 async function run(button, action) {
   button.classList.add('busy'); document.querySelectorAll('#setting-experience-sources button').forEach(b => { b.disabled = true; });
   $('exp-changes').replaceChildren();
-  message('exp-message', 'Waiting for your file…', 'waiting');
+  message('exp-message', t('pagesProfile.waitingFile'), 'waiting');
   const answer = await action().catch(error => ({ok: false, error: error.message}));
   button.classList.remove('busy'); document.querySelectorAll('#setting-experience-sources button').forEach(b => { b.disabled = false; });
   if (answer.ok) { message('exp-message', 'Done ✓ Tailored CVs can use it from now on.', 'ok'); showExperience(answer); showChanges(answer); }
@@ -207,18 +208,18 @@ export function showLinkedin(status) {
     return node;
   };
   if (!status) {
-    line.replaceChildren(button('Connect with LinkedIn', 'secondary', async node => {
+    line.replaceChildren(button(t('pagesProfile.connectLinkedin'), 'secondary', async node => {
       node.classList.add('busy'); node.disabled = true;
       message('exp-message', 'Waiting for LinkedIn… approve in your browser, then come back here.');
       const answer = await window.pilot.linkedinConnect().catch(error => ({ok: false, error: error.message}));
       node.classList.remove('busy'); node.disabled = false;
-      if (answer.ok) { message('exp-message', 'Connected ✓', 'ok'); showLinkedin(answer); }
+      if (answer.ok) { message('exp-message', t('pagesProfile.connected'), 'ok'); showLinkedin(answer); }
       else message('exp-message', answer.error || t('pagesCommon.didNotWork'), 'error');
     }, 'link'), el('span', 'muted small', 'Your name and email only: LinkedIn shares positions and skills only with registered companies, so add your data export for those.'));
     return;
   }
-  line.replaceChildren(pill('LinkedIn connected', 'good'), el('span', '', ` ${status.name || ''}${status.email ? ` · ${status.email}` : ''}`),
-    button('Use my name and email', 'secondary', async node => {
+  line.replaceChildren(pill(t('pagesProfile.linkedinConnected'), 'good'), el('span', '', ` ${status.name || ''}${status.email ? ` · ${status.email}` : ''}`),
+    button(t('pagesProfile.useNameEmail'), 'secondary', async node => {
       node.disabled = true;
       const contact = await window.pilot.contact().catch(() => ({}));
       const filled = [];
@@ -227,9 +228,9 @@ export function showLinkedin(status) {
         if (saved?.ok) filled.push(key.replace('_', ' '));
       }
       node.disabled = false;
-      message('exp-message', filled.length ? `Filled in your details: ${filled.join(', ')}. Check them under Your details.` : 'Your details already have them.', filled.length ? 'ok' : '');
+      message('exp-message', filled.length ? `Filled in your details: ${filled.join(', ')}. Check them under Your details.` : t('pagesProfile.detailsHave'), filled.length ? 'ok' : '');
     }),
-    button('Disconnect', 'link', async node => { node.disabled = true; await window.pilot.linkedinDisconnect(); showLinkedin(null); }));
+    button(t('pagesProfile.disconnect'), 'link', async node => { node.disabled = true; await window.pilot.linkedinDisconnect(); showLinkedin(null); }));
 }
 
 export async function loadExperience() {

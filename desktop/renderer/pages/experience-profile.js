@@ -4,6 +4,7 @@
 // cards, never here. Your details: the voluntary survey answers. Read from the Profile's outline and saved block by block on every store (IPC
 // textOutline / textEdit); the model is renderer/experience-profile-model.js. Cards are the Application answers' folds (.answer-item.qa-fold).
 // Guarded by test/unit/renderer/experience-profile.test.js and test/unit/renderer/experience-cards.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {cardEdit, el, loadingCard, pill} from '../components.js';
 import {chipLine, doneButton, setEditing} from '../card-shell.js';
@@ -85,7 +86,7 @@ function draw(tab) {
 // The card's Edit/Add: the shared header button (components.js cardEdit), at the right of the title line.
 const editButton = (tab, each) => {
   const empty = isEmpty(each.part);
-  return cardEdit(empty ? 'Add' : 'Edit', each.title.toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
+  return cardEdit(empty ? t('pagesCommon.add') : t('pagesStatus.edit'), each.title.toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
 };
 
 function card(tab, each) {
@@ -108,7 +109,7 @@ function card(tab, each) {
 // The CV gaps card's header (mockups 09 + 06): folded beside Education it says what waits and "Review →"; open (the full-width list) only its lead stays.
 function gapsTeaser(toReview) {
   const words = el('div', 'gaps-teaser');
-  words.append(el('b', '', toReview ? `${toReview} suggestion${toReview === 1 ? '' : 's'} to review` : 'Nothing to review'),
+  words.append(el('b', '', toReview ? `${toReview} suggestion${toReview === 1 ? '' : 's'} to review` : t('pagesProfile.nothingReview')),
     el('span', 'muted small gaps-lead', GAPS_LEAD));
   return [el('span', 'link small gaps-review', 'Review →'), words];
 }

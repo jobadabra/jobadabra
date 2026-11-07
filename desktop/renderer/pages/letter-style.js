@@ -3,6 +3,7 @@
 // cover-letter/style.json (lib/letter-style.js, read and saved through letterStyle / letterStyleSave), no longer in the answers page. Read: one column per
 // rule with its own label (no icon guessed from words); Edit: one input per rule and "Add a style rule", a draft on Profile's one save bar
 // (pages/profile-save-bar.js). Guarded by test/unit/renderer/letter-style.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {doneButton, factColumns, setEditing} from '../card-shell.js';

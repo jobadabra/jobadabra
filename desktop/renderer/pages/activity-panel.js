@@ -1,5 +1,7 @@
 // Recent activity: the header filter, the open/close of the panel and the run announcements.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {claimOverlay, registerOverlay, releaseOverlay} from '../overlay-slot.js';
 import {humanError} from '../run-warnings.js';
@@ -18,7 +20,7 @@ import {mountInDrawer, pinDefault, runsTabShown, showRunsTab} from './runs-tab.j
 import {runTone} from '../toast-tone.js';
 // The bar's action: hide the open panel, watch what's running, or see the details.
 export function barLabel() {
-  $('activity-open').textContent = !$('activity-panel').hidden ? 'Hide activity ⌄' : lastActivity?.running ? 'View progress ↑' : 'Details ▴';
+  $('activity-open').textContent = !$('activity-panel').hidden ? t('pagesStatus.hideActivity') : lastActivity?.running ? t('pagesStatus.viewProgress') : t('pagesStatus.detailsUp');
 }
 // fromHistory: ⌘← / ⌘→ opened or closed it (pages/nav.js); anything else is a step of its own there.
 // The panel, and the run it shows, kept for a reload (⌘R) beside the page (pages/nav.js remembered; owner, 8 Oct 2026: "preserve the Recent
@@ -66,11 +68,11 @@ export function announceRuns({running, runs}) {
 export function refreshCv() {
   const {cvName, cvAddedAt} = shared.state.settings, kinds = CV_FILES.label;
   show($('cv-file'), !!cvName);
-  $('cv-name').textContent = cvName || 'No CV chosen yet';
-  $('cv-meta').textContent = cvName && cvAddedAt ? `Added ${new Date(cvAddedAt).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}` : '';
+  $('cv-name').textContent = cvName || t('pagesStatus.noCv');
+  $('cv-meta').textContent = cvName && cvAddedAt ? `Added ${displayDate(new Date(cvAddedAt), {day: 'numeric', month: 'short'})}` : '';
   $('cv-choose').classList.toggle('primary', !cvName);   // chosen: Replace is quiet, Continue is the one primary
   $('cv-choose').classList.toggle('secondary', !!cvName);
-  $('cv-choose-label').textContent = cvName ? 'Replace CV…' : `Choose your CV (${kinds})…`;
+  $('cv-choose-label').textContent = cvName ? t('pagesStatus.replaceCv') : `Choose your CV (${kinds})…`;
   $('cv-kinds').textContent = `· ${kinds}`;
   $('cv-next').disabled = !shared.state.hasCv;
   if (cvName) showCvEmail(undefined, toastMessage); else show($('cv-email'), false);   // the CV's address and the e-mail line (pages/cv-email-consent.js)
@@ -96,7 +98,7 @@ export async function buildDraft() {
   const answers = currentAnswers();
   // Progress while Claude writes: the part it's on, how much has arrived, and the time so far.
   const started = Date.now();
-  $('draft-part').textContent = 'Reading your CV'; $('draft-percent').textContent = ''; $('draft-bar').style.width = '2%';
+  $('draft-part').textContent = t('pagesStatus.readingCv'); $('draft-percent').textContent = ''; $('draft-bar').style.width = '2%';
   const clock = setInterval(() => {
     const seconds = Math.round((Date.now() - started) / 1000);
     $('draft-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} so far. Usually 1 to 2 minutes; you can leave this window open and wait.`;

@@ -5,6 +5,7 @@
 // opening one closes the other, and a job opened from a run says "Back to Recent activity". Opening it never resizes the list.
 // Parts: job-drawer/ (header, tabs, parts, one file per tab). Pure words: renderer/job-page-view.js. Guards: test/unit/renderer/job-drawer.test.js,
 // test/unit/renderer/job-panel.test.js, test/unit/renderer/job-page-view.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {pageParts, tabKey, TABS} from '../job-page-view.js';
@@ -32,8 +33,8 @@ function neighbour(step) {
 
 function footer(job, page) {
   const bar = el('footer', 'jd-foot');
-  bar.append(button('Open posting ↗', () => window.pilot.openExternal(job.url)));
-  if (page?.links && job.notion_url) bar.append(button('Open in Notion ↗', event => window.pilot.openNotion(job.notion_url, event.metaKey)));
+  bar.append(button(t('pagesJobs.openPosting'), () => window.pilot.openExternal(job.url)));
+  if (page?.links && job.notion_url) bar.append(button(t('pagesJobs.openNotion'), event => window.pilot.openNotion(job.notion_url, event.metaKey)));
   return bar;
 }
 
@@ -63,13 +64,13 @@ function draw() {
   const body = el('div', 'jd-body');
   const failed = page?.error || state.restError;
   if (page?.error) {
-    body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: plainError(page.error),
+    body.append(stateCard({icon: 'alert', tone: 'bad', title: t('pagesJobs.readFailed'), text: plainError(page.error),
       actions: [button(t('pagesCommon.retry'), () => load(job))]}));   // Retry only after a failure
   } else if (state.tab === 'overview' && (state.stage !== 'none' || job.fit != null)) {
     // The Overview reads the list row's own facts first (matchView), so it is drawn at once; the store's answer only adds to it.
     body.append(...BODIES.overview({job, page: page || {}, parts: pageParts(page || {}), close: closeJobPanel, pick, reload: () => load(job)}, draw));
   } else if (state.stage !== 'full') {
-    if (failed) body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: state.restError, actions: [button(t('pagesCommon.retry'), () => load(job))]}));
+    if (failed) body.append(stateCard({icon: 'alert', tone: 'bad', title: t('pagesJobs.readFailed'), text: state.restError, actions: [button(t('pagesCommon.retry'), () => load(job))]}));
     else body.append(...skeleton());
   } else body.append(...BODIES[state.tab]({job, page, parts: pageParts(page), close: closeJobPanel, pick, reload: () => load(job)}, draw));
   panel.replaceChildren(head, tabs, body, footer(job, page));
@@ -114,7 +115,7 @@ async function load(job) {
 // the same job keeps the tab it was on.
 export async function openJobPanel(job, tab = '') {
   const displaced = claimOverlay('job');
-  if (displaced) state.back = {name: displaced, label: displaced === 'activity' ? 'Recent activity' : displaced};
+  if (displaced) state.back = {name: displaced, label: displaced === 'activity' ? t('pagesJobs.recentActivity') : displaced};
   else if (!state.url) state.back = null;
   state.job = job;
   state.url = job.url;

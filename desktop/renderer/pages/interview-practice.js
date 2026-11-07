@@ -1,6 +1,7 @@
 // Interviews page, small parts: the supporting-moments dialog, the practice session, the loading skeleton rows and
 // the "3 min ago" text. Moved out of interviews.js, which passes in the insight view and the row opener.
 // Guarded by test/unit/renderer/interview-insight.test.js, test/unit/renderer/interview-library.test.js and test/unit/renderer/review-again.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import * as practice from '../practice-session.js';
 import {el} from '../components.js';
@@ -66,17 +67,17 @@ function drawPractice() {
   const step = practice.current(session);
   if (!step) {
     const {done, skipped, total} = practice.summary(session);
-    body.replaceChildren(el('h3', '', done === total ? 'All done' : `${done} of ${total} practised`),
+    body.replaceChildren(el('h3', '', done === total ? t('pagesJobs.allDone') : `${done} of ${total} practised`),
       el('p', 'muted', skipped ? `${skipped} skipped: they stay in Practice next.` : 'Ticked in Practice next. Do it again before the next interview.'));
     foot.replaceChildren(button(t('pagesCommon.close'), 'primary', () => $('practice-dialog').close()));
     return;
   }
-  const time = el('div', `iv-practice-clock${session.remaining === 0 ? ' is-over' : ''}`, session.remaining === 0 ? "Time's up" : practice.clock(session.remaining));
+  const time = el('div', `iv-practice-clock${session.remaining === 0 ? ' is-over' : ''}`, session.remaining === 0 ? t('pagesJobs.timeUp') : practice.clock(session.remaining));
   body.replaceChildren(el('p', 'muted small', `Step ${session.index + 1} of ${session.steps.length}`), el('h3', '', step.title),
     ...(step.detail ? [el('p', 'muted', step.detail)] : []), el('p', '', 'Say your answer out loud, as you would in the interview. Then mark it done.'), time);
-  const go = button(session.running ? 'Pause' : session.remaining === practice.STEP_SECONDS ? 'Start the clock' : 'Resume', 'secondary', () => { session = practice.toggle(session); drawPractice(); });
+  const go = button(session.running ? t('pagesSession.pause') : session.remaining === practice.STEP_SECONDS ? t('pagesJobs.startClock') : t('pagesJobs.resume'), 'secondary', () => { session = practice.toggle(session); drawPractice(); });
   foot.replaceChildren(go, button(t('pagesCommon.skip'), 'ghost', () => { session = practice.finishStep(session, 'skipped'); drawPractice(); }),
-    button('Done, next', 'primary', () => {
+    button(t('pagesJobs.doneNext'), 'primary', () => {
       const text = step.text;
       session = practice.finishStep(session, 'done');
       onTick({text}, true);

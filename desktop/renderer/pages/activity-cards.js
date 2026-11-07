@@ -1,5 +1,6 @@
 // Recent activity: the insight, interview-review, kits and weekly cards.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {cardHead, el, numberStrip, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -81,7 +82,7 @@ export function renderInterviewCard(review, target = $('activity-card')) {
   }
   if (review.next || review.stage) {
     const words = el('div', 'insight-next-words');
-    words.append(el('b', '', review.next ? t('pagesCommon.next') : 'Stage'), el('p', '', review.next || review.stage));
+    words.append(el('b', '', review.next ? t('pagesCommon.next') : t('pagesStatus.stage')), el('p', '', review.next || review.stage));
     if (review.next && review.stage) words.append(el('p', 'insight-subtitle', review.stage));
     const next = el('section', 'insight-next');
     next.append(el('span', 'insight-next-icon', icon('target')), words);
@@ -98,7 +99,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
   // Some failed: the heading says how many of how many; the jobs that failed get a row each, as their log lines name them.
   const {done = kits.jobs.length, total = kits.jobs.length, failed = []} = kits.outcome || {};
   const noun = cvs ? 'CV' : 'application';
-  const head = cardHead(cvs ? 'Tailored CVs + cover letters' : 'Applications', total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
+  const head = cardHead(cvs ? 'Tailored CVs + cover letters' : t('pagesCommon.applications'), total > done ? `${done} of ${plural(total, noun)} ready` : `${plural(kits.jobs.length, noun)} ready`,
     {subtitles: [total > done ? `${plural(total - done, noun)} could not be ${cvs ? 'tailored' : 'drafted'}${failed.length ? '.' : ': the run did not record which.'}`
       : kits.subtitle]});   // partial: the line above says it, with the counts
   // One row per job (the shared .item-rows): its title (the posting opens from it) and company, then the one action, aligned.
@@ -114,7 +115,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
     words.append(name, ...(job.company ? [el('span', 'muted', job.company)] : []));
     row.append(words);
     if (cvs) {   // the tailored CV itself, as the Jobs list's 📄 Tailored CV opens it
-      const view = el('button', 'secondary item-action', 'View CV');
+      const view = el('button', 'secondary item-action', t('pagesStatus.viewCv'));
       view.type = 'button';
       view.title = 'Your CV tailored to this job, with the changes highlighted';
       view.append(icon('external'));
@@ -127,7 +128,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
     const row = el('li', 'is-failed');
     const words = el('div', 'item-words');
     words.append(el('b', '', job.title), el('span', 'muted', job.company));
-    const tag = pill(cvs ? 'Not tailored' : 'Not drafted', 'warn');
+    const tag = pill(cvs ? t('pagesStatus.notTailored') : t('pagesStatus.notDrafted'), 'warn');
     if (job.reason) tag.title = job.reason;
     row.append(words, tag);
     list.append(row);
@@ -151,7 +152,7 @@ export function weeklyCard(weekly) {
   box.append(cardHead('Search analysis · last 7 days', weekly.headline, {subtitles: [weekly.finding && `💡 ${weekly.finding}`, weekly.summary]}));
   if (weekly.focus) {
     const words = el('div', 'insight-next-words');
-    words.append(el('b', '', 'Focus next'), el('p', '', weekly.focus));
+    words.append(el('b', '', t('pagesStatus.focusNext')), el('p', '', weekly.focus));
     const focus = el('section', 'insight-next');
     focus.append(el('span', 'insight-next-icon', icon('target')), words);
     box.append(focus);

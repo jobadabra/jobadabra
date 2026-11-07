@@ -1,6 +1,7 @@
 // Employers → Add from a page (also ⌘K): a dialog where the person pastes a page's text or one address (an AI talent agent's matches, a newsletter,
 // a VC portfolio); the scout pulls the company names out and checks them first (lib/employers-handlers.js fromPage → src/scout_paste.py).
 // Built by script (index.html may only shrink). Guarded by test/unit/renderer/employers-paste.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';

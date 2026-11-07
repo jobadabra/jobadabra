@@ -1,5 +1,7 @@
 // Focus page: what can't wait (Up next: offers, calls to book, replies, interview prep, follow-ups), what can (Suggestions:
 // pages/focus-suggestions.js), history, and the daily target.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill} from '../components.js';
@@ -167,7 +169,7 @@ function focusCard(item) {
   body.append(top, meta);
   body.title = item.detail || '';
   const actions = el('div', 'focus-actions');
-  if (item.kind === 'feedback') actions.append(focusButton('Ask for feedback', 'primary', () => openFeedback(item, 'request')));
+  if (item.kind === 'feedback') actions.append(focusButton(t('pagesProfile.askFeedback'), 'primary', () => openFeedback(item, 'request')));
   if (item.kind === 'feedback_wait') actions.append(focusButton('Add feedback', 'primary', () => openFeedback(item, 'receive')));
   if (item.kind === 'feedback_review') actions.append(focusButton('Read feedback', 'primary', () => openFeedback(item, 'review')));
   if (item.link && !item.kind.startsWith('feedback')) actions.append(focusButton(item.link_label || t('pagesCommon.open'), 'primary', event => openLink(item.link, event)));
@@ -188,7 +190,7 @@ function focusCard(item) {
   if (item.kind === 'apply') actions.append(focusButton(t('pagesCommon.apply'), 'primary', () => { openView('jobs'); $('apply-open')?.click(); }));   // the same door as Get started's Apply
   if (item.kind === 'review') actions.append(focusButton('Interviews', 'primary', () => openView('interviews')));
   if (item.kind === 'happened' && item.page_id) {  // its time passed, nothing recorded: yes (notes) or no (moved/cancelled)
-    const no = focusButton('No', 'secondary', () => openHappened(item, 'no'));
+    const no = focusButton(t('pagesStatus.no'), 'secondary', () => openHappened(item, 'no'));
     no.title = 'It was cancelled or moved';  // a short label: the row keeps room for the company's name
     actions.append(focusButton('Yes, it happened', 'primary', () => openHappened(item, 'yes')), no);
   }
@@ -212,7 +214,7 @@ function focusCard(item) {
   if (item.done && item.page_id) actions.append(focusButton(t('pagesCommon.done'), 'secondary', () => finishItem(item,
     () => window.pilot.focusDone(item.page_id, item.kind === 'follow_up' ? 'followed_up' : 'replied'))));
   const more = [];
-  if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: 'Add employer feedback', run: () => openFeedback(item, 'receive')});
+  if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: t('pagesProfile.addFeedback'), run: () => openFeedback(item, 'receive')});
   if (item.kind === 'feedback') more.push({label: 'Skip this request', run: async () => {
     dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it
     const result = await saveFeedbackAction(item, 'skip');
@@ -248,7 +250,7 @@ function showHistory(on) {
 const dayOf = iso => {
   const day = new Date(iso), today = new Date();
   const diff = Math.round((new Date(today.toDateString()) - new Date(day.toDateString())) / 86400000);
-  return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : day.toLocaleDateString([], {weekday: 'short', day: 'numeric', month: 'short'});
+  return diff === 0 ? t('pagesCommon.today') : diff === 1 ? 'Yesterday' : displayDate(day, {weekday: 'short', day: 'numeric', month: 'short'});
 };
 async function loadHistory() {
   const list = $('focus-history');
@@ -267,7 +269,7 @@ async function loadHistory() {
     words.append(el('b', '', item.title));
     if (item.note) words.append(el('span', 'muted small', item.note));
     const side = el('div', 'focus-history-side');
-    if (/T\d/.test(item.at)) side.append(el('span', 'muted small', new Date(item.at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})));
+    if (/T\d/.test(item.at)) side.append(el('span', 'muted small', displayDate(new Date(item.at), {hour: '2-digit', minute: '2-digit'})));
     if (item.url) {
       const open = el('button', 'link small', 'Notion ↗');
       open.addEventListener('click', event => window.pilot.openNotion(item.url, event.metaKey));

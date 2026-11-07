@@ -1,6 +1,8 @@
 // Interviews page, the job list helpers (names, the picker's options, the pasted link), the unsaved-recordings list and
 // the speaker-name fields. Moved out of interviews.js, which passes in the open draft and what to do with it.
 // Guarded by test/unit/main/interviews.test.js, test/unit/renderer/interview-library.test.js and test/unit/renderer/review-again.test.js.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {shared} from './shared.js';
@@ -33,13 +35,13 @@ export function renderDrafts(drafts, env) {
   $('iv-unsaved').textContent = `${drafts.length} unsaved`;
   // Status: words for the meta line, and a pill.
   const STATUS = {new: 'Not transcribed', recording: 'Recording…', transcribing: 'Transcribing…', stopped: 'Stopped: transcribe again',
-    failed: 'Failed', ready: 'Transcript ready'};
-  const PILL = {ready: ['good', 'Ready'], transcribing: ['signal', 'Transcribing'], recording: ['signal', 'Recording'], failed: ['bad', 'Failed']};
+    failed: t('pagesCommon.failed'), ready: 'Transcript ready'};
+  const PILL = {ready: ['good', t('pagesCommon.ready')], transcribing: ['signal', 'Transcribing'], recording: ['signal', 'Recording'], failed: ['bad', t('pagesCommon.failed')]};
   $('iv-drafts').replaceChildren(...drafts.map(draft => {
     const busy = draft.status === 'recording' || draft.status === 'transcribing';
     const row = el('div', `iv-draft${draft.id === env.openId() ? ' open' : ''}`);
     const text = el('div', 'iv-draft-text');
-    const when = new Date(draft.createdAt).toLocaleString([], {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+    const when = displayDate(new Date(draft.createdAt), {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
     const meta = el('div', 'muted small');
     const parts = [when, draft.seconds ? `${Math.max(1, Math.round(draft.seconds / 60))} min` : '', STATUS[draft.status] || draft.status,
       draft.pageUrl ? 'Transcript in Notion' : 'Stored on this Mac'].filter(Boolean);   // about Notion
@@ -49,7 +51,7 @@ export function renderDrafts(drafts, env) {
     const state = pill(label, tone, {dot: true});
     // The next step for this draft: transcribe it, or review the transcript and save it.
     const needsTranscript = draft.kind === 'audio' && ['new', 'stopped', 'failed'].includes(draft.status);
-    const main = Object.assign(el('button', 'primary iv-main', draft.status === 'ready' ? 'Review & save' : needsTranscript ? 'Transcribe' : t('pagesCommon.open')),
+    const main = Object.assign(el('button', 'primary iv-main', draft.status === t('pagesDetails.readyLower') ? t('pagesJobs.reviewSave') : needsTranscript ? t('pagesJobs.transcribe') : t('pagesCommon.open')),
       {disabled: busy && draft.id !== env.openId()});
     main.addEventListener('click', () => env.openDraft(draft.id));
     const menu = [{label: t('pagesCommon.open'), run: () => env.openDraft(draft.id)}];
@@ -58,7 +60,7 @@ export function renderDrafts(drafts, env) {
     else if (draft.pageId && env.openReview) menu.push({label: 'Transcript and review', run: () => env.openReview(draft.pageId)});
     menu.push({label: osText('Show in Finder'), run: () => iv.recordings(), title: 'The recordings kept on this Mac'});
     if (!busy) {
-      menu.push('-', {label: draft.pageId ? byStore('Delete here and in Notion', t('pagesCommon.delete')) : 'Delete recording', danger: true, run: async () => {
+      menu.push('-', {label: draft.pageId ? byStore('Delete here and in Notion', t('pagesCommon.delete')) : t('pagesJobs.deleteRecording'), danger: true, run: async () => {
         if (!confirm(draft.pageId ? `Delete "${draft.title}"${byStore(' on this Mac and in Notion', '')}?` : `Delete "${draft.title}" and its recording?`)) return;
         await iv.discard(draft.id);
         if (env.openId() === draft.id) env.closeEditor();

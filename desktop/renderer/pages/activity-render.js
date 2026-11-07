@@ -1,5 +1,6 @@
 // Recent activity: renderActivity, the Recent activity panel redraw, its panel height and its list state.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
@@ -77,7 +78,7 @@ export function prepareActions() {
 // "Remove" on a queued row (and its ⌘K twin, nav.js): the task never starts; Recent activity is drawn again either way.
 export async function unqueue(run) {
   const result = await window.pilot.unqueueTask(run.id).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) toastMessage('Could not remove it', result.error || t('pagesCommon.tryAgain'), {activity: true}, 'bad');
+  if (!result.ok) toastMessage(t('pagesStatus.removeFailed'), result.error || t('pagesCommon.tryAgain'), {activity: true}, 'bad');
   refreshActivity();
 }
 function removeLink(run) {
@@ -122,7 +123,7 @@ export function renderActivity(fresh) {
     $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString())].filter(Boolean).join(' · ');
   } else if (lastSearch || lastMail) {
     barLabel();
-    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? t('pagesCommon.lastRefresh') : 'Last refresh had problems') : 'No jobs check yet';
+    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? t('pagesCommon.lastRefresh') : t('pagesStatus.lastProblems')) : t('pagesStatus.noJobsCheck');
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : ' · click to see why') : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
@@ -191,7 +192,7 @@ export function renderActivity(fresh) {
     ...group.runs.map(run => { const item = document.createElement('li'); item.append(recentRow(run)); return item; })]));
   if (keepFocus) $('activity-recent').querySelector('.recent-row.current')?.focus({preventScroll: true});
   if (!recent.length) $('activity-recent').append(Object.assign(document.createElement('li'), {className: 'muted',
-    textContent: runs.length && anyFilter(listFilter) ? 'No runs match these filters.' : 'Nothing has run yet.'}));
+    textContent: runs.length && anyFilter(listFilter) ? t('pagesStatus.noMatchingRuns') : t('pagesStatus.nothingRun')}));
   // "View more": the runs the filter keeps that the list hasn't shown yet (they scroll in below).
   show($('activity-all'), kept.length > shownRuns);
 
@@ -203,14 +204,14 @@ export function renderActivity(fresh) {
   // before an update: a restart fixes it), so it names where it runs.
   const unknown = cloud ? 'On GitHub' : 'On this Mac';
   // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js).
-  const items = [['Find jobs', 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : 'Off']];
+  const items = [[t('pagesCommon.findJobs'), 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : t('pagesCommon.off')]];
   const soonest = Math.min(...items.map(([, , at]) => at || Infinity));
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it
   $('activity-schedule').replaceChildren(...items.map(([name, kind, at, none]) => {
     const item = el('span', `ap-item${at && at === soonest ? ' is-next' : ''}${at ? '' : ' is-off'}`);
     item.append(el('span', 'muted', name), ' ', el('b', '', at ? capital(nextWords(at)) : none));
     // A pill after the time, not a "Next:" before the name: that read as "Next Jobs" from a distance.
-    if (kind === 'mail' && gmailOff) item.append(' ', pill('Connection required', 'warn'));   // the time stays; it won't check until connected
+    if (kind === 'mail' && gmailOff) item.append(' ', pill(t('pagesStatus.connectionRequired'), 'warn'));   // the time stays; it won't check until connected
     else if (at && at === soonest) item.append(' ', el('span', 'ap-next', t('pagesCommon.next')));
     return item;
   }));
@@ -218,7 +219,7 @@ export function renderActivity(fresh) {
   const selected = shown || (running ? null : last);
   // A not-connected run's box already offers Connect Gmail: the header doesn't say it twice.
   show($('check-mail'), !!selected && kindOf(selected) === 'mail' && !(gmailOff && (selected.off || GOOGLE_SIGNIN.test(selected.problem || ''))));
-  $('check-mail').textContent = gmailOff ? t('pagesCommon.connectGmail') : 'Check Gmail now';
+  $('check-mail').textContent = gmailOff ? t('pagesCommon.connectGmail') : t('pagesStatus.checkGmail');
   $('check-mail').dataset.connect = gmailOff ? '1' : '';
 
   // The selected run (or the live / latest one): what it did, its phases, and its full log. A run read from
@@ -232,7 +233,7 @@ export function renderActivity(fresh) {
   if (needsPage(picked) && !runDetails.has(picked.pageId)) {
     const pageId = picked.pageId, hasLog = !!picked.log;
     readingPages.add(pageId);   // the card's skeleton bars show while the page is read, also for a local run that has its own log: the read waits its turn behind the app's other Notion calls (25 s+ right after a start) and the pane was empty meanwhile
-    runDetails.set(pageId, hasLog ? {} : {log: [byStore('Reading from Notion…', 'Reading…')]});
+    runDetails.set(pageId, hasLog ? {} : {log: [byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))]});
     // A run that just finished may not have its log on its page yet (it's written a moment after the status):
     // an empty answer is read again a few times before it's kept.
     const read = (tries = 0) => (readTrace.push(`${pageId} read #${tries} asked`), window.pilot.runDetail(pageId)).then(detail => {
@@ -266,7 +267,7 @@ export function renderActivity(fresh) {
   // took, what it cost and where it ran (the mockup's "Nothing new · Finished 18:06 · 62 s · GitHub").
   const status = !run ? null : runPill({...run, kind: kindOf(run)}, {long: true});
   $('activity-icon').replaceChildren(...(kind ? [icon(kind.line)] : []));
-  $('activity-selected').textContent = run ? kind.name : 'Nothing has run yet';
+  $('activity-selected').textContent = run ? kind.name : t('pagesStatus.nothingRunShort');
   $('activity-status').replaceChildren(...(status ? [pill(...status)] : []));
   showStop($('activity-stop'), run?.live ? run : null);   // a task this Mac runs can be stopped from its detail too
   // What it found, without repeating the task's name ("Gmail check: 4 new emails…" → "4 new emails…").
@@ -310,7 +311,7 @@ export function renderActivity(fresh) {
   show($('activity-github'), !!run?.url && (!page || !!run?.live));
   $('activity-github').dataset.url = run?.url || '';
   $('activity-more').replaceChildren(...(run?.url && page && !run?.live
-    ? [moreButton([{label: 'View GitHub run ↗', run: () => window.pilot.openExternal(run.url)}], 'More links')] : []));
+    ? [moreButton([{label: 'View GitHub run ↗', run: () => window.pilot.openExternal(run.url)}], t('pagesStatus.moreLinks'))] : []));
   const result = run && !run.live ? runResults.get(run.id) || '' : '';
   $('activity-result').textContent = result;
   show($('activity-result'), !!result);
@@ -387,7 +388,7 @@ export function renderActivity(fresh) {
   }
   if (noLog) $('activity-log').open = false;
   $('activity-log').classList.toggle('is-empty', noLog);   // the same row, "No log available", nothing to open
-  $('log-title').textContent = noLog ? 'No log available' : t('pagesCommon.technicalLog');
+  $('log-title').textContent = noLog ? t('pagesStatus.noLog') : t('pagesCommon.technicalLog');
   // In plain words (renderer/human-log.js): the raw lines stay in logs/engine.log; the progress bar and warnings above read the raw ones
   const readable = readableLog(lines);
   $('log-count').textContent = readable.length ? `· ${plural(readable.length, 'line')}` : '';

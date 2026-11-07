@@ -1,4 +1,6 @@
 // Settings page: the overview of every service (AI, Notion, Gmail, Telegram, Always on, extras) and each one's sub-page.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {showMode} from '../assistant-mode.js';
 import {showClaudeAuto} from '../claude-auto.js';
@@ -89,7 +91,7 @@ function statusFrom({extension, google}) {
   const detail = {ai: aiReady() && ({cli: 'Claude Code · your plan', codex: 'Codex · your plan', openai: 'OpenAI API key'}[shared.state.settings.aiEngine] || 'Anthropic API key'), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
-  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': 'Off', ai: ai.words};
+  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': t('pagesCommon.off'), ai: ai.words};
   const checking = {google: !google, extension: extension.checking};
   return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
@@ -114,7 +116,7 @@ export function stateLine(on, detail = '', checking = false, words = '') {
     return line;
   }
   const line = el('span', `service-state${on ? ' is-on' : ''}`);
-  const text = on ? `Connected${detail ? ` · ${detail}` : ''}` : (words || 'Not connected');
+  const text = on ? `${t('pagesSetup.connected')}${detail ? ` · ${detail}` : ''}` : (words || t('pagesCommon.notConnected'));
   line.append(icon(on ? 'check-circle' : 'info'), el('span', 'service-state-text', text));  // long details end in "…"
   line.title = text;
   return line;
@@ -130,8 +132,8 @@ export async function connectExtension({auto = false} = {}) {
   try {
     const result = await window.pilot.extensionOptions().catch(() => null);
     const {toastMessage} = await import('./startup.js');  // dynamic: startup.js imports this file
-    if (result?.opened) toastMessage('Connecting the Chrome extension', auto ? 'Its settings page opened and connects by itself. You can close that tab.' : 'Its settings page is open and connects by itself. You can close that tab.', {card: 'extension'}, 'info');
-    else if (!auto) { toastMessage('Couldn\'t open the extension', 'Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.', {card: 'extension'}, 'bad'); openSetting('extension'); }
+    if (result?.opened) toastMessage(t('pagesSetup.connectingExtension'), auto ? t('pagesSetup.extensionOpened') : t('pagesSetup.extensionOpen'), {card: 'extension'}, 'info');
+    else if (!auto) { toastMessage(t('pagesSetup.extensionFailed'), t('pagesSetup.openExtension'), {card: 'extension'}, 'bad'); openSetting('extension'); }
     for (const wait of [3000, 8000]) setTimeout(() => import('./connections.js').then(page => page.showExtensionStatus()), wait);
   } finally { connecting = false; }
 }
@@ -151,9 +153,9 @@ function showAlert(prefix, missing, status) {
   show($(`${prefix}-alert`), !!missing);
   if (!missing) return;
   const connect = connectsNow(missing, status);
-  $(`${prefix}-alert-title`).textContent = prefix === 'ov' ? `Finish connecting ${missing.name}` : `${missing.name} is not connected`;
+  $(`${prefix}-alert-title`).textContent = prefix === 'ov' ? t('pagesSetup.finishConnecting', {service: missing.name}) : t('pagesSetup.notConnected', {service: missing.name});
   $(`${prefix}-alert-text`).textContent = missing.why;
-  $(`${prefix}-alert-go`).textContent = prefix === 'ov' || connect ? `Connect ${missing.name}` : `Set up ${missing.name}`;
+  $(`${prefix}-alert-go`).textContent = prefix === 'ov' || connect ? t('pagesSetup.connectService', {service: missing.name}) : t('pagesSetup.setupService', {service: missing.name});
   $(`${prefix}-alert-go`).onclick = () => (connect ? connectExtension() : openSetting(missing.id));
 }
 function renderConnections(status) {
@@ -192,8 +194,8 @@ export async function renderOverview() {
 // Under the Connections title: what's being checked right now, then when it was.
 function checkingLine(busy) {
   const line = $('conn-status');
-  if (busy) line.replaceChildren(el('span', 'spinner small'), 'Checking Gmail and the Chrome extension…');
-  else line.replaceChildren(icon('check'), 'Checked just now');
+  if (busy) line.replaceChildren(el('span', 'spinner small'), t('pagesSetup.checkingConnections'));
+  else line.replaceChildren(icon('check'), t('pagesSetup.checkedNow'));
   line.classList.toggle('is-done', !busy);
 }
 // A fresher answer from a detail card (Gmail and Calendar, Chrome extension): the Overview and Connections cards follow
@@ -224,7 +226,7 @@ function renderServices(status) {
   renderBeta();
   showAlert('ov', missing, status);
   $('ov-services').replaceChildren(...SERVICES.filter(isRequired).map(service => {
-    const card = Object.assign(document.createElement('button'), {type: 'button', className: 'service-card', title: `Open ${service.name}`});
+    const card = Object.assign(document.createElement('button'), {type: 'button', className: 'service-card', title: t('pagesSetup.openService', {service: service.name})});
     const text = el('span', 'service-text');
     text.append(el('b', '', service.name), stateLine(on[service.id], detail[service.id], checking[service.id], words[service.id]));
     card.append(tile(service.icon, on[service.id] ? 'good' : 'warn'), text);
@@ -238,34 +240,34 @@ function renderKnown() {
   $('ov-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   const chosen = kind => document.querySelector(`[data-schedule="${kind}"]`)?.selectedOptions[0]?.textContent || '';
   $('ov-search').textContent = chosen('search') || '—';
-  $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? `On — GitHub ${shared.state.settings.cloud.repo}` : 'Off — runs while the app is open';
+  $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? `On — GitHub ${shared.state.settings.cloud.repo}` : t('pagesSetup.offOpen');
   if (!$('ov-contact').firstChild) $('ov-contact').replaceChildren(stateLine(false, '', true));
   if (!$('ov-backup').textContent) $('ov-backup').replaceChildren(stateLine(false, '', true));
 }
 function renderContact(contact) {
   if (!contact) {
     const line = el('span', 'service-state');
-    line.append(icon('info'), el('span', 'service-state-text', byStore('Couldn\'t read Notion just now', 'Couldn\'t read your contact details just now')));
+    line.append(icon('info'), el('span', 'service-state-text', byStore(t('pagesSetup.notionReadFailed'), t('pagesSetup.contactReadFailed'))));
     $('ov-contact').replaceChildren(line);
     return;
   }
   const needed = {first_name: 'first name', last_name: 'last name', email: 'email', phone: 'phone'};
   const gaps = Object.keys(needed).filter(key => !contact[key]).map(key => needed[key]);
   const line = el('span', `service-state${gaps.length ? '' : ' is-on'}`);
-  line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? `Missing: ${gaps.join(', ')}` : t('pagesCommon.complete')));
+  line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? t('pagesSetup.missing', {details: gaps.join(', ')}) : t('pagesCommon.complete')));
   $('ov-contact').replaceChildren(line);
 }
 function renderBackup(backup) {
-  $('ov-backup').textContent = backup?.at ? new Date(backup.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : t('pagesCommon.noneYet');
+  $('ov-backup').textContent = backup?.at ? displayDate(new Date(backup.at), {dateStyle: 'medium', timeStyle: 'short'}) : t('pagesCommon.noneYet');
 }
 // Automation: run mode (this Mac while open, or Always on in GitHub); both segments lead to the Always on card.
 export function showRunMode() {
   const repo = shared.state.settings.cloud?.repo;
   document.querySelectorAll('[data-run-mode]').forEach(button => button.classList.toggle('is-active', (button.dataset.runMode === 'cloud') === !!repo));
   $('run-mode-text').textContent = repo ? `Runs in your GitHub repository ${repo}, even with your Mac off.`
-    : 'Scheduled tasks run on this Mac while Jobadabra is open.';
-  $('run-mode-more').textContent = repo ? 'Manage Always on' : 'Learn about Always on';
-  $('tz-note').textContent = `Times shown in ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`;
+    : t('pagesSetup.scheduledLocal');
+  $('run-mode-more').textContent = repo ? t('pagesSetup.manageAlways') : t('pagesSetup.learnAlways');
+  $('tz-note').textContent = t('pagesSetup.timeZone', {zone: Intl.DateTimeFormat().resolvedOptions().timeZone});
 }
 function renderDiagnostics({on, detail, checking}) {
   const version = document.querySelector('[data-version]')?.textContent?.trim();
@@ -304,7 +306,7 @@ export async function init() {
   $('diag-update-check').addEventListener('click', async () => {
     const button = $('diag-update-check');
     button.disabled = true;
-    $('diag-update-text').replaceChildren(el('span', 'spinner'), ' Checking…');
+    $('diag-update-text').replaceChildren(el('span', 'spinner'), t('pagesSetup.checkingSpace'));
     const result = await window.pilot.updateCheck().catch(error => ({ok: false, text: error.message}));
     button.disabled = false;
     if (result?.ok === false) { $('diag-update-text').textContent = result.text; return; }
@@ -344,7 +346,7 @@ export async function init() {
     $(`${where}-show`).addEventListener('click', async () => {
       const result = await window.pilot.sitePassword('show');
       if (result?.password) $(where).textContent = result.password;
-      $(said).textContent = plainError(result?.ok ? (result.password ? '' : 'Copied: paste it to read it.') : result?.error || '');
+      $(said).textContent = plainError(result?.ok ? (result.password ? '' : t('pagesSetup.pasteToRead')) : result?.error || '');
     });
     $(`${where}-copy`).addEventListener('click', async () => {
       const result = await window.pilot.sitePassword('copy');
@@ -362,7 +364,7 @@ export async function init() {
 }
 
 // Settings → Credentials: one row per site Claude made an account on, with the companies it serves (lib/site-accounts.js withCompanies). Passwords hidden until Show; Copy never shows them; Delete asks once.
-const when = iso => (iso ? new Date(iso).toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'}) : '');
+const when = iso => (iso ? displayDate(new Date(iso), {day: 'numeric', month: 'short', year: 'numeric'}) : '');
 async function openCredentials() {
   const result = await window.pilot.credentials();
   const rows = result?.rows || [];
@@ -372,7 +374,7 @@ async function openCredentials() {
     const who = el('span');
     const details = [row.email || 'email not recorded', when(row.accountAt || row.created), ({confirmed: 'Account ready', pending: 'Waiting for the confirmation'})[row.state] || '', row.job ? (() => { try { return new URL(row.job).hostname.replace(/^www\./, ''); } catch { return ''; } })() : '']
       .filter(Boolean).join(' · ');
-    who.append(el('b', '', row.host), ...(row.test ? [el('small', 'cred-companies', 'Test account: only tests sign in with it, never an application')] : []), ...(row.unassigned ? [el('small', 'cred-companies', 'Not assigned to a profile yet: no application uses it until you press Assign')] : []), ...(row.companies?.length ? [el('small', 'cred-companies', `For ${row.companies.join(', ')}`)] : []), el('small', '', details));
+    who.append(el('b', '', row.host), ...(row.test ? [el('small', 'cred-companies', t('pagesSetup.testAccount'))] : []), ...(row.unassigned ? [el('small', 'cred-companies', t('pagesSetup.unassigned'))] : []), ...(row.companies?.length ? [el('small', 'cred-companies', t('pagesSetup.forCompanies', {companies: row.companies.join(', ')}))] : []), el('small', '', details));
     const secret = el('b', '', '••••••••');
     const shown = el('span', '');
     shown.append(secret);
@@ -390,20 +392,20 @@ async function openCredentials() {
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'copy');
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       await navigator.clipboard.writeText(answer.password);
-      $('credentials-message').textContent = `Copied the password for ${row.host}.`;
+      $('credentials-message').textContent = t('pagesSetup.passwordCopied', {host: row.host});
     });
     // Delete asks once in place (it cannot be undone): the password goes from this Mac's Keychain; the account on the site stays.
     const remove = el('button', 'danger-outline small-button', t('pagesCommon.delete'));
     remove.addEventListener('click', () => {
       const sure = el('button', 'danger-outline small-button', t('pagesCommon.deleteForever')), keep = el('button', 'secondary small-button', t('pagesCommon.cancel'));
-      $('credentials-message').textContent = `Delete the saved password for ${row.host}? The account on the site stays; only this Mac forgets its password.`;
+      $('credentials-message').textContent = t('pagesSetup.passwordDelete', {host: row.host});
       keep.addEventListener('click', () => { actions.replaceChildren(reveal, copy, remove); $('credentials-message').textContent = ''; });
       sure.addEventListener('click', async () => {
         sure.disabled = keep.disabled = true;
         const answer = await window.pilot.credentialDelete(row.key || row.host);
-        if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || 'It could not be deleted.'); actions.replaceChildren(reveal, copy, remove); return; }
+        if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || t('pagesSetup.deleteFailed')); actions.replaceChildren(reveal, copy, remove); return; }
         await openCredentials();
-        $('credentials-message').textContent = `Deleted the saved password for ${row.host}.`;
+        $('credentials-message').textContent = t('pagesSetup.passwordDeleted', {host: row.host});
       });
       actions.replaceChildren(keep, sure);
     });
@@ -413,7 +415,7 @@ async function openCredentials() {
       const answer = await window.pilot.credentialAssign(row.key);
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       await openCredentials();
-      $('credentials-message').textContent = `${row.host} now belongs to this profile.`;
+      $('credentials-message').textContent = t('pagesSetup.profileAssigned', {host: row.host});
     });
     actions.append(...(row.unassigned ? [assign] : []), reveal, copy, remove);
     line.append(who, shown, actions);

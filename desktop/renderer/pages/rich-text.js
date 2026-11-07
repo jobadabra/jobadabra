@@ -1,4 +1,6 @@
 // Claude's messages as readable text.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {withoutMark} from '../no-mark.js';
 
@@ -6,7 +8,7 @@ import {withoutMark} from '../no-mark.js';
 // signed in (⌘-click: the app's own Notion window), anything else in the browser.
 function messageLink(words, url) {
   const notion = /(^|\.)notion\.(so|site|com)$/i.test((() => { try { return new URL(url).hostname; } catch { return ''; } })());
-  const text = words || (notion ? 'Open in Notion' : url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40));
+  const text = words || (notion ? t('pagesCommon.openNotion') : url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40));
   const link = Object.assign(el('a', 'link', `${text} ↗`), {href: '#', title: url});
   link.addEventListener('click', event => {
     event.preventDefault();

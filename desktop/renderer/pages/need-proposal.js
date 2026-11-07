@@ -4,6 +4,7 @@
 // else, for a contact detail you have not given, from your CV (lib/contact-from-cv.js). "Use" fills it in the form through the
 // extension and keeps it for future forms (a contact detail in Your details, any other answer in your Answers). Guarded by
 // test/unit/renderer/need-proposal.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {renderSessionPage} from './session-log.js';
@@ -67,7 +68,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   li.append(badge(), body);
   if (tried && now - tried.at >= TAKES_MS) {   // still empty in the form after Use
     note.textContent = 'The form didn\'t take it: the answer is copied, paste or pick it there';
-    actions.append(smallButton('Open in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
+    actions.append(smallButton(t('pagesSession.openInForm'), 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
     return li;
   }
   if (tried) {
@@ -78,7 +79,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   }
   const use = smallButton('Use', 'secondary is-answer', async () => {
     const value = input.value.trim();
-    if (!value) { note.textContent = 'Write an answer first'; input.focus(); return; }
+    if (!value) { note.textContent = t('pagesSession.writeFirst'); input.focus(); return; }
     use.disabled = input.disabled = true;
     const filled = await window.pilot.sessionFillField(item.id, label, value).catch(error => ({ok: false, error: error.message}));
     if (!filled?.ok) { use.disabled = input.disabled = false; note.textContent = plainError(filled?.error || 'Couldn\'t reach the form'); return; }

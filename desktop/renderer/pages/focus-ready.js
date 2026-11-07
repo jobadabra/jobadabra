@@ -1,5 +1,6 @@
 // The Ready to send line on Focus (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md), only on the owner's install: "3 forms ready for you to submit" above Up next, with a button to the card on Actions.
 // A strip of its own (focus.js is near its size limit); it reads the same readyState as the card and shows nothing when no form is waiting. Guard: test/unit/ready-fill/ready-site.test.js (waitingOf).
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {$} from './core.js';

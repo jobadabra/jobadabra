@@ -1,6 +1,8 @@
 // Your details' drafts on the Profile page's one save bar (pages/profile-save-bar.js; owner, 18 Oct 2026, UI redesign D2): Contact with its links (one saved
 // record, lib/contact.js) and the fact sections (Work eligibility, Availability & compensation, Languages: one save, lib/profile-sections.js). Each counts the
 // fields that differ from what was last read or saved, so the bar says how many and a refresh never draws over them. Guarded by test/unit/renderer/details-drafts.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {profileBar} from './profile-save-bar.js';
 import {factsNow, showFacts} from './details-facts.js';
 import {clearProposals} from './contact-proposals.js';
@@ -28,7 +30,7 @@ export function detailsChanged() { contact?.changed(); facts?.changed(); tell('d
 
 export function registerDetails({repaintContact}) {
   const bar = profileBar();
-  contact = bar.register({id: 'details-contact', tab: 'details', label: 'Contact',
+  contact = bar.register({id: 'details-contact', tab: 'details', label: t('pagesProfile.contact'),
     count: () => countContact(savedContact, contactNow()),
     async save() {
       const now = contactNow();
@@ -40,7 +42,7 @@ export function registerDetails({repaintContact}) {
     discard() { clearProposals(); savedContact = {}; repaintContact(); tell('details-settled'); },
     reveal: () => document.getElementById('setting-contact')?.scrollIntoView({block: 'start'}),
   });
-  facts = bar.register({id: 'details-facts', tab: 'details', label: 'Eligibility, availability and languages',
+  facts = bar.register({id: 'details-facts', tab: 'details', label: t('pagesProfile.eligibility'),
     count: () => countFacts(savedFacts, factsNow()),
     async save() { const result = await window.pilot.saveDetailsFacts(factsNow()); if (result.ok) { factsRead(); tell('details-settled'); } return result; },
     discard() { savedFacts = {}; showFacts({redraw: true}).then(() => tell('details-settled')); },

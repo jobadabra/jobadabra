@@ -5,6 +5,7 @@
 // pages/outline-tab.js, on Strategy's one save bar. Work mode, seniority and the minimum salary are Main goals' (above); permit, languages and the salary
 // expectation are Your details'. On Strategy (owner, 18 Oct 2026, mockup 03) the card reads as label/value rows per side with a quiet Edit; Edit opens the
 // controls and "Review your preferences" (strategy-cards.js: one editor at a time). Guarded by test/unit/renderer/job-preferences.test.js and test/unit/renderer/profile-tabs-render.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
@@ -83,13 +84,13 @@ function workload(bind) {
 
 function control(view, field, item, anchor) {
   const bind = binding(view, field, item, anchor);
-  const hint = item?.hint ? `e.g. ${shown(item.hint)}` : field.placeholder || 'Not set';
+  const hint = item?.hint ? `e.g. ${shown(item.hint)}` : field.placeholder || t('pagesCommon.notSet');
   if (field.widget === 'chips') return labelled(field.label, chips(view, field, bind));
   if (field.widget === 'modes') return labelled(field.label, modes(view, bind));
   if (field.widget === 'workload') { const box = workload(bind); box.classList.add('span-all'); return box; }
   if (field.widget === 'select') {
     const now = bind.text();
-    const options = [['', 'Not set'], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, option])];
+    const options = [['', t('pagesCommon.notSet')], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, option])];
     return labelled(field.label, select(options, now, value => bind.set(value), field.label));
   }
   return labelled(field.label, input(bind.text(), value => bind.set(value), {placeholder: hint, ariaLabel: field.label}));
@@ -101,7 +102,7 @@ const itemField = (view, item) => lineInput(view, TEXT, item, typed);
 // The Original wording note: collapsed, the sentences kept from what you typed before the review.
 function noteBox(view, note) {
   const box = el('details', 'span-all pref-note');
-  box.append(el('summary', '', 'Original wording'));
+  box.append(el('summary', '', t('pagesJobs.originalWording')));
   box.append(itemField(view, {...note, label: ''}));
   return box;
 }
@@ -131,7 +132,7 @@ function side(view, key, {fields, other, ends, note}, anchor) {
   more.open = folded[key];
   more.addEventListener('toggle', () => { folded[key] = more.open; });
   const line = el('summary', 'pref-more-head');
-  line.append(el('b', '', key === 'must' ? 'Other deal-breakers' : 'Other preferences'), el('span', 'muted small pref-summary', summaryOf(rules)));
+  line.append(el('b', '', key === 'must' ? t('pagesJobs.otherDealBreakers') : t('pagesJobs.otherPreferences')), el('span', 'muted small pref-summary', summaryOf(rules)));
   const list = el('div', 'form-grid cols-2 pref-body');
   for (const item of rules) list.append(itemField(view, item));
   if (key === 'rank' && note) list.append(noteBox(view, note));   // the review's one Original wording note
@@ -200,11 +201,11 @@ function readSide(read, key) {
   const rows = FIELDS.filter(field => field.side === key && (field.key !== 'workload' || showWorkload(countries, review.parse?.countries)))
     .map(field => ({icon: ROW_ICONS[field.key] || 'check', label: field.label, value: readValue(field, read.fields[field.key]), any: !readText(field, read.fields[field.key])}));
   const rules = read.other.filter(item => item.side === key).map(item => ({...item, value: typed.get(item.id) ?? item.value}));
-  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? 'Deal-breakers' : 'Other preferences', value: summaryOf(rules)});
+  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? t('pagesJobs.dealBreakers') : t('pagesJobs.otherPreferences'), value: summaryOf(rules)});
   // Fields with no limit fold into one quiet row ("Must-haves: any home base, workload"), so the card reads its set values (mockup 03: three rows).
   // No heading per side (owner, 18 Oct 2026: "Either we're fully inline, either we're fully on the new line"): the row labels say which side.
   const open = rows.filter(row => row.any);
-  if (open.length > 1) rows.splice(rows.indexOf(open[0]), 0, {icon: group.icon, label: key === 'must' ? 'Must-haves' : 'Preferences',
+  if (open.length > 1) rows.splice(rows.indexOf(open[0]), 0, {icon: group.icon, label: key === 'must' ? t('pagesJobs.mustHaves') : t('pagesJobs.preferences'),
     value: el('span', 'muted', `Any ${open.map(row => row.label.toLowerCase()).join(', ')}`)});
   for (const row of open.length > 1 ? open : []) rows.splice(rows.indexOf(row), 1);
   const box = el('section', 'pref-read');
@@ -214,7 +215,7 @@ function readSide(read, key) {
 }
 // "Review your preferences" (also in ⌘K): in the editor, since what it proposes are edits.
 function reviewButton() {
-  const button = Object.assign(el('button', 'secondary small-btn', 'Review your preferences'), {type: 'button', id: 'preferences-review'});
+  const button = Object.assign(el('button', 'secondary small-btn', t('pagesJobs.reviewPreferences')), {type: 'button', id: 'preferences-review'});
   button.addEventListener('click', reviewPreferences);
   const row = el('div', 'pref-review-row');
   row.append(el('span', 'muted small', 'The AI reads your preferences and proposes clean values; nothing changes until you accept.'), button);

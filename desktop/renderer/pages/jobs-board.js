@@ -1,6 +1,7 @@
 // Jobs → Board: the applications in columns by Stage (the 🎯 Pipeline page's board in Notion), a card per job like the "In conversation"
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
 // dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, moreButton, pill} from '../components.js';
 import {boardColumns, columnOf, dropFor, nextStepOf, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
@@ -19,15 +20,15 @@ let dragged = null;   // the job being dragged (dataTransfer is unreadable durin
 export async function moveJob(job, stage) {
   const move = dropFor(job, stage);
   if (move.none) return;
-  if (move.refused) { toastMessage('Not moved', move.refused, jobPlace(job), 'warn'); return; }
+  if (move.refused) { toastMessage(t('pagesJobs.notMoved'), move.refused, jobPlace(job), 'warn'); return; }
   const before = job.stage;
   const result = await window.pilot[move.call](job.url, move.arg).catch(error => ({ok: false, error: error.message}));
-  if (!result?.ok) { toastMessage('Not moved', result?.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad'); return; }
+  if (!result?.ok) { toastMessage(t('pagesJobs.notMoved'), result?.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad'); return; }
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
   jobsChanged(job, {stage: landed});
-  if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${stageLabel(before)}: ${stageLabel(stage)} never replaces an application stage.`, jobPlace(job), 'info');
-  else toastMessage('Moved', `${job.title || 'This job'}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
+  if (landed === before) toastMessage(t('pagesJobs.kept'), `${job.title || t('pagesJobs.thisJob')} stays at ${stageLabel(before)}: ${stageLabel(stage)} never replaces an application stage.`, jobPlace(job), 'info');
+  else toastMessage(t('pagesJobs.moved'), `${job.title || t('pagesJobs.thisJob')}: ${stageLabel(landed)}.`, jobPlace(job), 'good');
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 
@@ -35,13 +36,13 @@ function card(job) {
   const item = Object.assign(el('li', 'focus-item board-card'), {tabIndex: 0, draggable: true, title: 'Drag to another stage, or click to open'});
   Object.assign(item.dataset, {code: job.code || '', url: job.url || ''});   // a pop-up's click finds it (pages/open-target.js focusJob)
   const body = el('div', 'focus-body'), parts = rowModel(job);
-  body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
+  body.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (nextStepOf(job)) body.append(el('div', 'muted small', `Next: ${nextStepOf(job)}`));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
     .map(stage => ({label: stageLabel(stage), run: () => moveJob(job, stage)}));
-  item.append(body, moreButton([{label: 'Move to', disabled: true}, ...moves], 'Move to another stage'));
+  item.append(body, moreButton([{label: t('pagesJobs.moveTo'), disabled: true}, ...moves], t('pagesJobs.moveStage')));
   item.addEventListener('dragstart', event => { dragged = job; event.dataTransfer.setData('text/plain', job.url || ''); item.classList.add('is-dragging'); });
   item.addEventListener('dragend', () => { dragged = null; item.classList.remove('is-dragging'); });
   const open = event => { if (!event.target.closest('button, .ui-menu')) openFromBoard(() => openJobPanel(job)); };

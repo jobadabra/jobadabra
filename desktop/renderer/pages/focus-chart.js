@@ -1,5 +1,6 @@
 // Focus, Today's progress: applications per day over the last 14 days (moved from pages/focus.js, 26 Oct 2026). In the page's first paint as last
 // drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js.
+import {date as displayDate} from '../../i18n/format.js';
 import {el} from '../components.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
@@ -14,12 +15,12 @@ export function progressChart(days, target) {
   const bars = days.map((day, i) => {
     const date = new Date(`${day.day}T12:00:00`);
     const column = el('div', `focus-chart-col${i === days.length - 1 ? ' is-today' : ''}${day.applied >= target ? ' is-met' : ''}`);
-    column.title = `${date.toLocaleDateString([], {weekday: 'short', day: 'numeric', month: 'short'})}: ${day.applied} application${day.applied === 1 ? '' : 's'}`;
+    column.title = `${displayDate(date, {weekday: 'short', day: 'numeric', month: 'short'})}: ${day.applied} application${day.applied === 1 ? '' : 's'}`;
     const bar = el('span', 'focus-chart-bar');
     bar.style.height = `${Math.round(100 * day.applied / top)}%`;
     const slot = el('div', 'focus-chart-slot');
     slot.append(bar);
-    column.append(slot, el('span', 'focus-chart-day', date.toLocaleDateString([], {weekday: 'narrow'})));
+    column.append(slot, el('span', 'focus-chart-day', displayDate(date, {weekday: 'narrow'})));
     return column;
   });
   const goal = el('div', 'focus-chart-goal');

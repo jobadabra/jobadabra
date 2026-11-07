@@ -1,6 +1,7 @@
 // Settings → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address and how often the digest comes. Product news is its own card (mail-switches.js), never a tick here.
 // Its own Settings tab after Automation (owner, 3 Nov 2026: "Notifications should be a separate tab in Settings. Not inside Automations"); saves at once like Automation. The choice and the address live in lib/notify-channel.js; the engine and the Always on repo follow it. The words (why a switch does nothing) are
 // renderer/notify-words.js; guard test/unit/renderer/notify-choice.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {shared} from './shared.js';

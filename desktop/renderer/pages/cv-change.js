@@ -1,4 +1,6 @@
 // A replaced CV and what follows it.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
@@ -28,7 +30,7 @@ function setVerdict(tone, title, text) {
 function setPill(id, text, tone) { $(id).replaceChildren(pill(text, tone)); }
 export async function showCvChanged() {
   const change = await window.pilot.cvChange();
-  $('cv-changed-text').textContent = `Your CV changed${change.at ? ` on ${new Date(change.at).toLocaleDateString()}` : ''}: review what it changes.`;
+  $('cv-changed-text').textContent = `Your CV changed${change.at ? ` on ${displayDate(new Date(change.at))}` : ''}: review what it changes.`;
   showOnTab($('cv-changed'), !!change.at);
   show($('strategy-cv-changed'), !!change.at);
 }
@@ -46,8 +48,8 @@ export async function openCvChange() {
   $('cv-dialog-sub').textContent = change.previous === change.name ? 'New upload · same file name as the previous CV' : `New upload${change.previous ? ` · replaces ${change.previous}` : ''}`;
   show($('cv-verdict'), false);
   show($('cv-profile-text'), true);
-  $('cv-profile-status').textContent = 'Not compared yet';
-  $('cv-compare').textContent = 'Compare with my Profile';
+  $('cv-profile-status').textContent = t('pagesProfile.notCompared');
+  $('cv-compare').textContent = t('pagesProfile.compareProfile');
   show($('cv-cost'), true);
   setPill('cv-profile-pill', 'Not compared', 'neutral');
   $('cv-suggestions').replaceChildren();
@@ -56,7 +58,7 @@ export async function openCvChange() {
   message('cv-review-message', '');
   $('cv-compare').disabled = !change.comparable;
   if (!change.comparable) {
-    $('cv-profile-text').textContent = `The previous CV is not on this computer, so there is nothing to compare. ${byStore('Edit the Profile in Notion if needed.', 'Edit your Profile if needed.')}`;
+    $('cv-profile-text').textContent = `The previous CV is not on this computer, so there is nothing to compare. ${byStore(t('pagesProfile.editNotion'), t('pagesProfile.editProfile'))}`;
     show($('cv-profile-status').parentElement, false);
     setPill('cv-profile-pill', 'Edit in Notion', 'neutral');
   }
@@ -69,13 +71,13 @@ export async function openCvChange() {
     const shown = showAll ? kits : kits.slice(0, KITS_SHOWN);
     $('cv-kits').replaceChildren(...shown.map(job => {
       const row = el('div', 'cv-kit');
-      const redraft = el('button', 'ghost with-icon', 'Redraft');
+      const redraft = el('button', 'ghost with-icon', t('pagesProfile.redraft'));
       redraft.prepend(icon('refresh'));
       redraft.addEventListener('click', async () => {
         redraft.disabled = true;
-        redraft.textContent = 'Redrafting…';
+        redraft.textContent = t('pagesProfile.redrafting');
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-        redraft.textContent = result.ok ? '✓ Redrafted' : t('pagesCommon.retry');
+        redraft.textContent = result.ok ? t('pagesProfile.redrafted') : t('pagesCommon.retry');
         sayRefused('Redraft did not start', result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;
       });
@@ -86,7 +88,7 @@ export async function openCvChange() {
     }));
     const more = $('cv-kits-more');
     show(more, kits.length > KITS_SHOWN);
-    more.textContent = showAll ? 'Show fewer' : `Show all ${kits.length} applications`;
+    more.textContent = showAll ? t('pagesProfile.showFewer') : `Show all ${kits.length} applications`;
   };
   $('cv-kits-more').onclick = () => { showAll = !showAll; draw(); };
   $('cv-kits-count').textContent = String(kits.length);
@@ -110,7 +112,7 @@ export async function init() {
     cvSuggestions = result.suggestions;
     message('cv-review-message', '');
     $('cv-profile-status').textContent = `Comparison complete${costText(result.usd, usd => ` · Actual cost ${dollars(usd)}`)}`;
-    $('cv-compare').textContent = 'Compare again';
+    $('cv-compare').textContent = t('pagesProfile.compareAgain');
     show($('cv-impact'), cvSuggestions.length > 0);   // what applying costs matters only when there is something to apply
     if (cvSuggestions.length) {
       setVerdict('info', `${cvSuggestions.length} Profile edit${cvSuggestions.length === 1 ? '' : 's'} suggested`, `${result.summary}\nPick the ones you want below; nothing is written until you apply.`);
@@ -119,7 +121,7 @@ export async function init() {
       setVerdict('good', 'No Profile edits needed', 'Your new CV matches the previous one in substance.\nRoles, dates, titles, skills, achievements and contact details are unchanged.');
       setPill('cv-profile-pill', 'Unchanged', 'neutral');
     }
-    const label = {update: ['Update', 'info'], add: ['Add', 'good'], remove: ['Remove', 'bad']};
+    const label = {update: [t('pagesCommon.update'), 'info'], add: [t('pagesCommon.add'), 'good'], remove: [t('pagesCommon.remove'), 'bad']};
     $('cv-suggestions').replaceChildren(...cvSuggestions.map(s => {
       const row = el('label', 'radio cv-suggestion inline-label');
       const box = el('input');
@@ -140,7 +142,7 @@ export async function init() {
   $('cv-apply').addEventListener('click', async () => {
     const picked = new Set([...$('cv-suggestions').querySelectorAll('input:checked')].map(box => Number(box.dataset.id)));
     const accepted = cvSuggestions.filter(s => picked.has(s.id));
-    if (!accepted.length) return message('cv-review-message', 'Nothing selected.', 'waiting');
+    if (!accepted.length) return message('cv-review-message', t('pagesProfile.nothingSelected'), 'waiting');
     $('cv-apply').disabled = true;
     const result = await window.pilot.cvApply(accepted);
     $('cv-apply').disabled = false;
@@ -152,7 +154,7 @@ export async function init() {
   $('cv-base-read').addEventListener('click', async () => {
     const button = $('cv-base-read');
     button.disabled = true;
-    button.textContent = 'Reading your CV… (about 30 s)';
+    button.textContent = t('pagesProfile.readingCv');
     const result = await window.pilot.importCv();
     button.textContent = result.ok ? `✓ Done${costText(result.usd, usd => ` (${dollars(usd)})`)}` : t('pagesCommon.retry');
     button.disabled = !!result.ok;

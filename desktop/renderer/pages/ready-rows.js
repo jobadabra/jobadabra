@@ -1,4 +1,6 @@
 // The Ready to send card's words for a form's result, apart from the page (no DOM, so a test can import it): what the site counted -> the text and tone of the row. Guard: test/unit/ready-fill/ready-site.test.js.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 const WORDS = {prepared: ['complete', 'good'], partial: ['needs you', 'warn'], wall: ['a wall', 'warn'], 'no-form': ['no form found', 'neutral'], closed: ['job closed', 'neutral'], failed: ['could not fill', 'bad'], queued: ['waiting', 'info'],
   filling: ['filling', 'info'], stopped: ['stopped', 'neutral']};
@@ -27,7 +29,7 @@ export function waitingOf(jobs) {
 const STEP = {opening: ["Opening the job's page", 15], form: ['Page open: starting the fill', 30], filling: ['Filling the form', 55],
   answering: [n => `Answering ${n} question${n === 1 ? '' : 's'} with AI`, 70], reading: ['Reading what was filled', 90]};
 // why: the site's fixed word for a night whose forms wait for another reason than taking turns (site src/ready-why.js, 19 Oct 2026: "Waiting its turn" said nothing for 2 h).
-const clock = at => new Date(at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false});
+const clock = at => displayDate(new Date(at), {hour: '2-digit', minute: '2-digit', hour12: false});
 const WHY = {
   later: why => ({line: `Set for ${clock(why.at)}. Fill now starts it at once`}),
   soon: () => ({line: 'Sent: the server starts it within 5 minutes'}),

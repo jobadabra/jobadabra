@@ -1,14 +1,16 @@
 // Settings → Logs: the app's logs on this Mac, for the user (and whoever helps them) to see what happened. One day at a
 // time, 100 lines a page, a search capped at 100 hits (lib/log-view.js reads the files; the window never holds a whole
 // log). Live: while the page is on screen, today's newest lines are read again every few seconds.
+import '../../i18n/screens-pages.js';
+import {getLocale, t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 
 const LIVE_MS = 3000, PAGE = 100;
-const DAY_LABEL = new Intl.DateTimeFormat([], {weekday: 'short', day: 'numeric', month: 'short'});
+const DAY_LABEL = new Intl.DateTimeFormat(getLocale(), {weekday: 'short', day: 'numeric', month: 'short'});
 let log = 'app', day = 'today', shown = PAGE, query = '', timer = null, searchTimer = null, reading = 0;
 
 const onScreen = () => !$('setting-logs').closest('[hidden]') && document.visibilityState === 'visible';
-const dayLabel = d => (d === 'today' ? 'Today' : DAY_LABEL.format(new Date(`${d}T12:00:00`)));
+const dayLabel = d => (d === 'today' ? t('pagesCommon.today') : DAY_LABEL.format(new Date(`${d}T12:00:00`)));
 const size = bytes => (bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`);
 
 async function loadDays() {

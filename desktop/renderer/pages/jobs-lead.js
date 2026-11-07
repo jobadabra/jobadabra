@@ -1,4 +1,5 @@
 // Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill, tile} from '../components.js';
@@ -50,7 +51,7 @@ function leadStep2(on) {
   $('lead-confirm').hidden = !on;
   $('lead-back').hidden = !on;
   $('lead-cancel').hidden = on;
-  if (!on) { leadProposal = leadState = null; $('lead-go').textContent = 'Log activity'; }
+  if (!on) { leadProposal = leadState = null; $('lead-go').textContent = t('pagesJobs.logActivity'); }
 }
 function showConfirm(proposal, state = null) {
   leadProposal = proposal;
@@ -106,7 +107,7 @@ function showJobChoices() {
       button.addEventListener('click', () => { closeJobChoices(); pickJob(option.value); });
       buttons.push(button);
       return button;
-    })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: 'No matching jobs'})]));
+    })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: t('pagesJobs.noMatching')})]));
   leadJobActive = -1;
   list.hidden = false;
   $('lead-job').setAttribute('aria-expanded', 'true');
@@ -155,7 +156,7 @@ function renderConfirm() {
   const asked = fields.job?.state === 'ask';
   $('lead-found').hidden = asked;
   const change = Object.assign(document.createElement('button'), {type: 'button', className: 'link',
-    textContent: leadState.picking ? 'Keep this job' : 'Change'});
+    textContent: leadState.picking ? t('pagesJobs.keepJob') : t('pagesStatus.change')});
   change.addEventListener('click', () => { leadState = {...leadState, picking: !leadState.picking}; $('lead-job').value = ''; closeJobChoices(); renderConfirm(); });
   $('lead-found-flag').replaceChildren(...(asked ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true}), change]));
   $('lead-job-hint').textContent = asked ? 'Several of your jobs are from this recruiter or company: pick one, or a new job. The details follow your pick.'
@@ -165,7 +166,7 @@ function renderConfirm() {
     if (name === 'job') {
       box.hidden = !choosing;
       box.classList.toggle('is-ask', choosing);
-      box.querySelector('.lead-flag').replaceChildren(pill('Needs an answer', 'warn'));
+      box.querySelector('.lead-flag').replaceChildren(pill(t('pagesJobs.needsAnswer'), 'warn'));
       return;
     }
     if (choosing) { box.hidden = true; return; }
@@ -178,10 +179,10 @@ function renderConfirm() {
     const flag = box.querySelector('.lead-flag');
     if (!waiting) flag.replaceChildren(...(field.state === 'ok' || !leadState.confirmed.includes(name) ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true})]));
     else if (waiting.why === 'check') {
-      const ok = Object.assign(document.createElement('button'), {type: 'button', className: 'link', textContent: 'Looks right'});
+      const ok = Object.assign(document.createElement('button'), {type: 'button', className: 'link', textContent: t('pagesJobs.looksRight')});
       ok.addEventListener('click', () => leadSet(name));
-      flag.replaceChildren(pill('Please check', 'warn'), ok);
-    } else flag.replaceChildren(pill(waiting.why === 'future' ? 'In the future' : 'Needs an answer', 'warn'));
+      flag.replaceChildren(pill(t('pagesJobs.pleaseCheck'), 'warn'), ok);
+    } else flag.replaceChildren(pill(waiting.why === 'future' ? t('pagesJobs.future') : t('pagesJobs.needsAnswer'), 'warn'));
   });
   $('lead-pair-box').hidden = choosing || (!fields.company && !fields.agency);
   $('lead-channel').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.channel === v.channel));
@@ -190,7 +191,7 @@ function renderConfirm() {
   if ($('lead-started').value !== (v.started || '')) $('lead-started').value = v.started || '';  // a year picked fills the date
   $('lead-years').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', (v.started || '').startsWith(b.textContent)));
   const said = fields.interview?.as_written ? `The message says "${fields.interview.as_written}". ` : '';
-  $('lead-interview-hint').textContent = said + (v.kind === 'Interview scheduled' ? 'A booked call needs its date and time.'
+  $('lead-interview-hint').textContent = said + (v.kind === t('pagesJobs.interviewScheduled') ? 'A booked call needs its date and time.'
     : 'Leave empty if no time is fixed yet.');
   if (fields.last) $('lead-last-hint').textContent = confirmStep.lastHint(fields.last, v.last);
   if (fields.origin) {
@@ -358,7 +359,7 @@ export function wireLead() {
     const said = result.text.replace(/^\S+\s/, '');
     if (!result.ok) { leadResult('warn', "Couldn't log it", said); return; }
     leadStep2(false);
-    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? 'Nothing new' : result.job ? jobHeadline(result.job) : 'Logged', said);
+    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? t('pagesProfile.nothingNew') : result.job ? jobHeadline(result.job) : 'Logged', said);
     if (/^ℹ️/.test(result.text)) return;
     // The job it created or updated, one click away (its Notion page, or the Jobs list filtered to it).
     if (result.job) $('lead-result-text').after(jobActions(result.job, {openNotion: window.pilot.openNotion,

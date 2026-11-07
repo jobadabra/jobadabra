@@ -4,6 +4,7 @@
 // Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
 // Pure parts: renderer/reports-view.js. Guards: test/unit/renderer/reports-view.test.js, test/unit/main/reports-handlers.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, pill} from '../components.js';

@@ -1,5 +1,6 @@
 // Recent activity: the Gmail check card: its rows, questions, folds and interview panels.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {emailNoun, questionWhy} from '../question-words.js';
@@ -86,7 +87,7 @@ function mailCardRow({company, role = '', lines = [], tag = null, summary = '', 
   if (panel) card.append(panel);
   // "Email details" closes every card, the same everywhere; a card the run kept without its email (an update from this Mac's
   // log, a calendar event, a reminder) says so instead of leaving the fold out.
-  card.append(fold(`details:${subjectKey(details || company)}:${subjectKey(role)}`, 'Email details',
+  card.append(fold(`details:${subjectKey(details || company)}:${subjectKey(role)}`, t('pagesStatus.emailDetails'),
     el('p', 'mail-fold-text', details ? `Subject: ${details}` : noDetails || 'This run kept no email for it.'), 'mail-fold mail-email-details'));
   return card;
 }
@@ -111,7 +112,7 @@ function mailSections(box, report, pending = [], answered = null) {
     cards.push(made.card);
   }
   if (meeting && !meetingShown) {   // the day-before reminder: the interview was recorded by an earlier check
-    cards.push(mailCardRow({company: meeting.company, role: meeting.title, lines: ['Already on record'], tag: pill('Reminder', 'neutral'), panel: meetingPanel(),
+    cards.push(mailCardRow({company: meeting.company, role: meeting.title, lines: ['Already on record'], tag: pill(t('pagesStatus.reminder'), 'neutral'), panel: meetingPanel(),
       noDetails: 'A reminder from your calendar: no new email. The interview was recorded by an earlier check.'}));
   }
   if (!cards.length && !(found > 0)) return 0;
@@ -126,9 +127,9 @@ function emailCard(result, pending, answered, meetingPanel) {
   const {email, outcome, assessment: review, update} = result;
   const asked = email && NEEDS_YOU.has(email.action) ? questionState(email, pending, answered) : null;
   const kind = outcome?.kind || (update && !update.question ? update.summary : '');
-  const tag = asked ? (asked.answered ? pill('Answered', 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'))
+  const tag = asked ? (asked.answered ? pill(t('pagesStatus.answered'), 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'))
     : kind ? outcomePill(kind) : meetingPanel ? outcomePill('Interview scheduled')
-    : email?.action === 'recorded' ? pill('Updated', 'good') : pill('No change', 'neutral');
+    : email?.action === 'recorded' ? pill(t('pagesStatus.updated'), 'good') : pill(t('pagesStatus.noChange'), 'neutral');
   // The engine's sentence, unless the interview panel says the same (its date, event and source).
   const said = meetingPanel ? '' : outcome ? [outcome.summary, ...outcome.details.filter(line => !/^Source:/i.test(line))].filter(Boolean).join(' · ')
     : update?.when || '';
@@ -142,7 +143,7 @@ function emailCard(result, pending, answered, meetingPanel) {
     ? () => interviewPanel({interview: {when: update?.when || (outcome?.summary || '').replace(/\s*·\s*/, ' '), company: result.company, title: result.role,
       where: (outcome?.details || []).map(line => /^Event:\s*(.+)$/i.exec(line)?.[1]).find(Boolean) || '', summary: '', people: []}, topics: [], nextSteps: [], consent: '', url: ''}) : null;
   const card = mailCardRow({
-    company: result.company || email?.subject, role: asked && !asked.answered ? `${KIND_NOUN[asking] || 'Email'} · Role unidentified` : result.role,
+    company: result.company || email?.subject, role: asked && !asked.answered ? `${KIND_NOUN[asking] || t('pagesCommon.email')} · Role unidentified` : result.role,
     lines: [[email?.sender, email?.time].filter(Boolean).join(' · ')],
     tag, summary: interviewHere ? '' : said, changes: update && !update.question ? update.changes : changeOf(email?.changes),
     panel: review ? assessmentPanel(review) : meetingPanel ? meetingPanel() : interviewHere ? interviewHere()
@@ -156,7 +157,7 @@ const KIND_NOUN = {Interview: 'Interview invitation', 'Interview scheduled': 'In
   'Reply received': 'Reply', 'Application received': 'Application confirmation', Offer: 'Offer'};
 function questionKind(result, asked, noun) {
   const said = result.update?.question ? result.update.summary : asked.open?.event_kind || '';
-  return said || (noun === 'invitation' ? 'Interview' : '');
+  return said || (noun === 'invitation' ? t('pagesCommon.interview') : '');
 }
 // "Invitation …: Igor Mardari and Blockdaemon DM @ Fri 2 Oct 2026 21:30–22:15 (CEST)" -> "Fri 2 Oct 2026 21:30".
 const whenOf = subject => { const m = /@\s*((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+\d{1,2}\s+\w+(?:\s+\d{4})?)\s+(\d{1,2}:\d{2})/.exec(subject || ''); return m ? `${m[1]} ${m[2]}` : ''; };
@@ -178,7 +179,7 @@ function placedCard(result, asked, kind) {
     panel.append(interviewPanel({interview: meeting, topics: [], nextSteps: [], consent: '', url: ''}), note);
   }
   return mailCardRow({company, role: created ? 'New job · role to add in Focus' : title.join(' — '), lines: [[email.sender, email.time].filter(Boolean).join(' · ')],
-    tag: kind ? outcomePill(interview ? 'Interview scheduled' : kind) : pill('Answered', 'good'), panel, details: email.subject});
+    tag: kind ? outcomePill(interview ? 'Interview scheduled' : kind) : pill(t('pagesStatus.answered'), 'good'), panel, details: email.subject});
 }
 // An update no email claims: its job, what it moved, or the which-job question it raised.
 function updateCard(update, pending, answered, meetingPanel) {
@@ -190,7 +191,7 @@ function updateCard(update, pending, answered, meetingPanel) {
     if (state.answered && state.job && open) {   // placed: the card of what it is, for that job, as for an email
       return {card: placedCard({email: {subject: open.subject, sender: '', time: ''}, company: open.company}, state, update.summary), waiting: 0};
     }
-    const card = mailCardRow({company: open?.company || company, role: `${KIND_NOUN[update.summary] || 'Email'} · Role unidentified`, tag: state.answered ? pill('Answered', 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'),
+    const card = mailCardRow({company: open?.company || company, role: `${KIND_NOUN[update.summary] || t('pagesCommon.email')} · Role unidentified`, tag: state.answered ? pill(t('pagesStatus.answered'), 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'),
       panel: questionPanel(state, subjectKey(update.job), open?.subject || '', {noun: 'email', company: ''}), details: open?.subject || ''});
     return {card, waiting: state.answered ? 0 : 1};
   }
@@ -216,17 +217,17 @@ function assessmentPanel(review) {
   const label = el('button', 'mail-ai-label');
   label.type = 'button';
   const facts = el('dl', 'mail-assessment-facts');
-  facts.append(el('dt', '', 'Role focus'), el('dd', '', review.focus || review.summary), el('dt', '', 'Your background'), el('dd', '', review.background || '—'));
+  facts.append(el('dt', '', t('pagesStatus.roleFocus')), el('dd', '', review.focus || review.summary), el('dt', '', t('pagesStatus.background')), el('dd', '', review.background || '—'));
   const show = () => {
     const open = openFolds.has(key);
-    label.replaceChildren(icon('sparkle'), el('b', '', 'AI assessment'), icon('chevron', 'icon mail-ai-chevron'));
+    label.replaceChildren(icon('sparkle'), el('b', '', t('pagesStatus.aiAssessment')), icon('chevron', 'icon mail-ai-chevron'));
     label.classList.toggle('is-open', open);
     label.setAttribute('aria-expanded', String(open));
     facts.hidden = !open;
   };
   label.addEventListener('click', () => { if (openFolds.has(key)) openFolds.delete(key); else openFolds.add(key); show(); });
   show();
-  words.append(facts, el('p', 'mail-ai-note', 'AI interpretation; the employer did not confirm this reason.'));
+  words.append(facts, el('p', 'mail-ai-note', t('pagesStatus.aiUnconfirmed')));
   panel.append(label, words);
   return panel;
 }
@@ -274,7 +275,7 @@ function interviewPanel(report) {
     if (report.nextSteps.length) {
       const right = el('section', '');
       const heading = el('div', 'mail-block-head');
-      heading.append(el('h4', '', 'Recruiter follow-up'), pill('Pending with recruiter', 'neutral'));
+      heading.append(el('h4', '', t('pagesStatus.recruiterFollowup')), pill(t('pagesStatus.pendingRecruiter'), 'neutral'));
       right.append(heading, ...report.nextSteps.map(text => el('p', '', text)));
       columns.append(right);
     }
@@ -295,9 +296,9 @@ function jobPrep(company, title) {
   const found = (shared.allJobs || []).find(one => jobKey(one.company || one.via) === jobKey(company) && jobKey(one.title).startsWith(jobKey(title).slice(0, 40)));
   if (!found?.page_id) return null;
   const id = found.page_id;
-  if (kitBuilding.has(id)) return {label: 'Building…', busy: true, run: () => {}};
+  if (kitBuilding.has(id)) return {label: t('pagesStatus.building'), busy: true, run: () => {}};
   // A ready kit opens where it is: its Notion page, else the job's page here on its Prep tab (never offered as a new build, $0.04).
-  if (kitReady.has(id)) return {label: 'Open prep kit', run: event => (found.notion_url ? window.pilot.openNotion(found.notion_url, event?.metaKey) : (openView('jobs'), openJobPanel(found, 'prep')))};
+  if (kitReady.has(id)) return {label: t('pagesStatus.openPrep'), run: event => (found.notion_url ? window.pilot.openNotion(found.notion_url, event?.metaKey) : (openView('jobs'), openJobPanel(found, 'prep')))};
   return {label: t('pagesCommon.prepareInterview'), title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
     openPrep({page_id: id, company: found.company || found.via, job: found.title, notion_url: found.notion_url, url: found.url, badge: ''});
     kitBuilding.add(id);
@@ -332,7 +333,7 @@ function jobLink(job, tagName = 'p') {
   const found = (shared.allJobs || []).find(one => jobKey(one.company || one.via) === jobKey(company) && jobKey(one.title).startsWith(jobKey(title.join(' — ')).slice(0, 40)));
   if (!found || (!found.notion_url && !found.url)) return el(tagName, 'mail-ask-answer', job);
   const link = Object.assign(el('a', 'link mail-ask-answer', `${job} ↗`), {href: '#'});
-  link.title = found.notion_url ? 'Open the job in Notion' : found.page_id ? 'Open the job\'s page' : 'Open the posting';
+  link.title = found.notion_url ? t('pagesStatus.openJobNotion') : found.page_id ? t('pagesStatus.openJobPage') : t('pagesStatus.openThePosting');
   link.addEventListener('click', event => { event.preventDefault(); if (found.notion_url) window.pilot.openNotion(found.notion_url, event.metaKey); else if (found.page_id) { openView('jobs'); openJobPanel(found); } else window.pilot.openExternal(found.url); });
   return link;
 }
@@ -368,7 +369,7 @@ const isNewJob = job => /\s—\s*new job$/i.test(job || '');
 function resolution(state, company = '') {
   const line = el('p', 'mail-mapped-line');
   line.append(icon('check-circle'));
-  if (state.unknown) line.append('Answered earlier', el('span', 'muted', 'which job it went to was not recorded'));
+  if (state.unknown) line.append(t('pagesStatus.alreadyAnswered'), el('span', 'muted', 'which job it went to was not recorded'));
   else if (!state.job) line.append('Marked as not job-related');
   else if (isNewJob(state.job)) line.append(`Created a job for ${company || state.job.split(/\s+—\s+/)[0]} and linked this email`, el('span', 'muted', 'Add its role in Focus'));
   else line.append('Linked to ', jobLink(state.job, 'span'));

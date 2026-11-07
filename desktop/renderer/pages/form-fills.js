@@ -3,6 +3,7 @@
 // detail in place: the field-by-field table (answer source, result, note, low confidence), Left for you, learnings, step timings or the
 // session's timeline and numbers. Drawn inside the Reports card, so tables are .data-table (no box in a box); shared components only.
 // Logic without a window: renderer/form-fills-view.js. Guarded by test/unit/renderer/form-fills-view.test.js, test/unit/main/form-fills-handlers.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {cardHead, el, numberStrip, pill} from '../components.js';
@@ -75,7 +76,7 @@ function detailView(run) {
   const head = cardHead(`${s.agent}${s.at ? ` · ${runWhen(s.at)}` : ''}`, `${s.title}${s.company ? ` · ${s.company}` : ''}`,
     {badges: [pill(s.outcome, s.tone, {dot: true})], subtitles: [[run.fields?.billed_to, run.fields?.reason].filter(Boolean).join(' · ')]});
   if (run.url) {
-    const open = Object.assign(el('button', 'link small', 'Open the form'), {type: 'button', title: run.url});
+    const open = Object.assign(el('button', 'link small', t('pagesSession.openForm')), {type: 'button', title: run.url});
     open.addEventListener('click', () => window.pilot.openExternal(run.url));
     const line = el('div', ''); line.append(open);
     head.append(line);
@@ -87,7 +88,7 @@ function detailView(run) {
   if (figures.length) box.append(numbers(figures));
   const fields = fieldRows(run);
   if (fields.length) {
-    box.append(section('Field by field', table(['Field', 'Required', 'Answer from', 'Result', 'Note'], fields.map(row => {
+    box.append(section('Field by field', table(['Field', 'Required', 'Answer from', 'Result', t('pagesCommon.note')], fields.map(row => {
       const note = el('span', 'muted', row.note);
       return tr(el('b', '', row.label), el('span', '', row.required), el('span', '', row.source),
         pill(row.result === 'filled' ? 'Filled' : 'Left', row.result === 'filled' ? 'good' : 'warn'),

@@ -1,5 +1,6 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
 // owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/unit/renderer/setup-strategy.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
@@ -132,7 +133,7 @@ async function openRebuildReview() {
     const picked = result.groups.filter(group => boxes[group.id].checked);
     $('replace-go').disabled = !picked.length;
     const uses = picked.some(group => group.cost === 'Uses AI');
-    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'your scored jobs are marked as old scores until you re-score them' : 'no AI re-scoring'}.` : 'Nothing selected.';
+    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'your scored jobs are marked as old scores until you re-score them' : 'no AI re-scoring'}.` : t('pagesProfile.nothingSelected');
   };
   $('rebuild-groups').replaceChildren(...result.groups.map(group => {
     const box = el('label', 'review-group inline-label');

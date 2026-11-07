@@ -2,6 +2,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import '../../../i18n/screens-pages.js';
+import {setLocale, t} from '../../../i18n/index.js';
+import {install} from '../../tiny-dom.js';
 
 const root = new URL('../../../', import.meta.url);
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
@@ -17,9 +20,18 @@ test('page catalogs provide seven real translations with matching interpolation'
     for (const locale of locales) {
       assert.deepEqual(Object.keys(messages[locale]).sort(), keys, `${file}: ${locale} keys`);
       for (const key of keys) {
-        assert.equal(typeof messages[locale][key], 'string');
-        assert.deepEqual(parameters(messages[locale][key]), parameters(messages.en[key]), `${locale}.${key}`);
-        if (locale !== 'en') assert.notEqual(messages[locale][key], messages.en[key], `${locale}.${key}: real translation`);
+        const value = messages[locale][key];
+        const forms = typeof value === 'string' ? [value] : Object.values(value);
+        const english = typeof messages.en[key] === 'string' ? messages.en[key] : messages.en[key].other;
+        assert.ok(forms.length);
+        for (const form of forms) {
+          assert.equal(typeof form, 'string');
+          assert.deepEqual(parameters(form), parameters(english), `${locale}.${key}`);
+          if (locale !== 'en' && !['no', 'question'].includes(key)) assert.notEqual(form, english, `${locale}.${key}: real translation`);
+        }
+        if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
+          assert.ok(value[category] || value.other, `${locale}.${key}.${category}`);
+        }
       }
     }
   }
@@ -33,4 +45,42 @@ test('page display copy uses explicit keys while workflow identifiers remain unc
   const actions = fs.readFileSync(new URL('renderer/pages/session-actions.js', root), 'utf8');
   assert.match(actions, /stage: 'Applied', status: 'applied'/);
   assert.match(actions, /result\?\.error \|\| t\('pagesCommon\.tryAgain'\)/);
+});
+
+
+test('board and sending counts use Russian and Romanian categories, preserving English', () => {
+  try {
+    setLocale('ru');
+    assert.equal(t('pagesCounts.board', {count: 1}), '1 отклик на доске');
+    assert.equal(t('pagesCounts.board', {count: 2}), '2 отклика на доске');
+    assert.equal(t('pagesCounts.board', {count: 5}), '5 откликов на доске');
+    setLocale('ro');
+    assert.equal(t('pagesCounts.sent', {count: 1}), '1 job trimis');
+    assert.equal(t('pagesCounts.sent', {count: 2}), '2 joburi trimise');
+    assert.equal(t('pagesCounts.sent', {count: 20}), '20 de joburi trimise');
+    setLocale('en');
+    assert.equal(t('pagesCounts.board', {count: 1}), '1 application on the board');
+    assert.equal(t('pagesCounts.board', {count: 2}), '2 applications on the board');
+  } finally { setLocale('en'); }
+});
+
+test('the fill picker translates its branches while job names stay plain text', async () => {
+  install();
+  const {pickFill} = await import('../../../renderer/pages/ready-pick.js');
+  for (const locale of locales) {
+    const body = install();
+    try {
+      setLocale(locale);
+      const name = '<img src=x onerror=alert(1)> Employer';
+      const answer = pickFill({picked: [{name, code: 'JOB-X', needsKit: true}], chips: [1]}, {start: 1});
+      const dialog = body.querySelector('#ready-pick');
+      assert.ok(dialog.textContent.includes(t('pagesDetails.fillCount')), locale);
+      assert.ok(dialog.textContent.includes(t('pagesDetails.needsKit')), locale);
+      assert.ok(dialog.textContent.includes(t('pagesCommon.nothingSubmitted')), locale);
+      assert.equal(dialog.querySelector('li').textContent.startsWith(name), true, locale);
+      assert.equal(dialog.querySelector('img'), null, 'applicant/job text must never become markup');
+      dialog.querySelector('#ready-pick-no').click();
+      assert.equal(await answer, null, 'Cancel preserves the no-submit behavior');
+    } finally { setLocale('en'); }
+  }
 });

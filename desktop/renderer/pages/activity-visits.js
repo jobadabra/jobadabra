@@ -1,5 +1,6 @@
 // Recent activity: the site-reading (visits) card and the busy-button memory (presses) its buttons share.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {cardHead, el} from '../components.js';
 import {wand} from '../magic.js';
@@ -75,7 +76,7 @@ export function claudeReadButton(site, words) {
   claude.addEventListener('click', async () => {
     const started = await pressWhile(key, t('pagesCommon.startingClaude'), () => window.pilot.visitWithClaude(site.url, site.name)).catch(error => ({ok: false, error: error.message}));
     if (started?.ok) { setPress(key, {done: true, text: t('pagesCommon.claudeReading')}); return; }
-    setPress(key, {text: t('pagesCommon.readClaude'), error: plainError(started?.error || 'Claude could not start.')});
+    setPress(key, {text: t('pagesCommon.readClaude'), error: plainError(started?.error || t('pagesCommon.claudeFailed'))});
     const shown = pressedButton(key)?.closest('li')?.querySelector(WORDS);
     shown?.querySelector('.visit-claude-error')?.remove();
     shown?.append(el('span', 'muted visit-claude-error', pressError(key)));
@@ -90,7 +91,7 @@ const sameCompany = (a, b) => { const x = String(a || '').toLowerCase().trim(), 
 export function viewJobsButton(site, text, since) {
   const fresh = Number(/(\d+) new/.exec(text || '')?.[1] || 0);
   if (fresh < 2) return null;
-  const button = el('button', 'link item-action', 'View jobs');
+  const button = el('button', 'link item-action', t('pagesStatus.viewJobs'));
   button.type = 'button';
   button.title = `Opens Jobs, only what this run added from ${site.name}`;
   button.addEventListener('click', () => {
@@ -147,7 +148,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     presses.set(key, {...presses.get(key), idle});
     all.addEventListener('click', async () => {
       const started = await pressWhile(key, t('pagesCommon.startingClaude'), () => window.pilot.visitsWithClaude(stopped.map(site => ({url: site.url, name: site.name})))).catch(error => ({ok: false, error: error.message}));
-      if (!started?.ok) { setPress(key, {text: idle, error: plainError(started?.error || 'Claude could not start.')}); toastMessage('Claude did not start', started?.error || '', {activity: true}, 'bad'); return; }
+      if (!started?.ok) { setPress(key, {text: idle, error: plainError(started?.error || t('pagesCommon.claudeFailed'))}); toastMessage(t('pagesStatus.claudeNotStarted'), started?.error || '', {activity: true}, 'bad'); return; }
       setPress(key, {done: true, text: `Claude is reading ${stopped.length} sites in Chrome`});
       claudeGroups.set(stopped[0].url, stopped.map(site => site.url));
       for (const site of stopped) setPress(`claude:${site.url}`, {done: true, text: t('pagesCommon.claudeReading')});

@@ -3,6 +3,8 @@
 // unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the Fill your details drawer (owner,
 // 28 Oct 2026, superseding 18 Oct "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
 // test/unit/main/details-facts.test.js and test/unit/main/details-review.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {$} from './core.js';
@@ -20,9 +22,9 @@ const readBox = key => document.querySelector(`[data-facts-read="${key}"]`);   /
 function skeletons(on) {
   for (const key of KEYS) {
     const read = readBox(key);
-    if (on) box(key)?.replaceChildren(loadingCard('Reading your details…', [60, 80]));
+    if (on) box(key)?.replaceChildren(loadingCard(t('pagesProfile.readingDetails'), [60, 80]));
     if (!read) continue;
-    if (on) { read.dataset.loading = '1'; read.replaceChildren(loadingCard('Reading your details…', [60, 80])); } else delete read.dataset.loading;
+    if (on) { read.dataset.loading = '1'; read.replaceChildren(loadingCard(t('pagesProfile.readingDetails'), [60, 80])); } else delete read.dataset.loading;
   }
 }
 
@@ -32,7 +34,7 @@ function draw(sections, formats = {}) {
     if (!into) continue;
     const row = line => factRow(key, line, formats, () => detailsChanged());
     if (key === 'eligibility') { drawEligibility(into, sections[key] || [], row); continue; }
-    const add = el('button', 'link span-all', '+ Add a line');
+    const add = el('button', 'link span-all', t('pagesProfile.addLine'));
     add.type = 'button';
     add.addEventListener('click', () => { into.insertBefore(row({}), add); detailsChanged(); });
     into.replaceChildren(...(sections[key] || []).map(row), add);
@@ -101,7 +103,7 @@ function suggestionRow(zone, value, saved) {
   const line = eligibilityRow(value ? {label: zone.label, value, kind: 'per_country'} : saved || {label: zone.label, value: '', kind: 'per_country'});   // no suggestion: a saved, still asked row stays as it was
   if (!value) return line;
   line.dataset.suggested = '1';
-  const note = el('span', 'muted small', 'Suggested from your nationality');
+  const note = el('span', 'muted small', t('pagesProfile.nationalitySuggestion'));
   line.append(note);
   // Only a pick on a status is the person's answer, not a click on the label or the note.
   for (const type of ['click', 'change']) line.addEventListener(type, event => { if (!event?.target?.closest?.('.segmented button, select')) return; delete line.dataset.suggested; note.remove(); });

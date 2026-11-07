@@ -1,5 +1,6 @@
 // Build a CV with the AI: the dialog behind "Build one with AI" (setup's CV step) and "Build with AI" (Settings → Profile → CV), plus its ⌘K entry.
 // A short form -> the AI's draft (lib/cv-build.js) -> the person edits the words -> it becomes the main CV and its PDF. Facts stay as typed.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {shared} from './shared.js';
 import {$, message, show} from './core.js';
@@ -22,8 +23,8 @@ function showStep(step) {   // 'form' | 'draft' | 'saved'
   show($('cvb-form'), step === 'form'); show($('cvb-draft'), step !== 'form');
   show($('cvb-back'), step === 'draft'); show($('cvb-download'), step === 'saved'); show($('cvb-cancel'), step !== 'saved');
   $('cvb-go').hidden = false;
-  $('cvb-go').textContent = step === 'form' ? 'Write my CV' : step === 'draft' ? 'Use this CV' : t('pagesCommon.done');
-  $('cvb-title').textContent = step === 'form' ? 'Build your CV' : step === 'draft' ? 'Your draft' : 'Your CV is ready';
+  $('cvb-go').textContent = step === 'form' ? t('pagesProfile.writeCv') : step === 'draft' ? t('pagesProfile.useCv') : t('pagesCommon.done');
+  $('cvb-title').textContent = step === 'form' ? t('pagesProfile.buildCv') : step === 'draft' ? t('pagesProfile.yourDraft') : t('pagesProfile.cvReady');
   $('cvb-lead').textContent = step === 'form' ? 'Answer what you can. The AI writes the wording; your employers, titles and dates stay exactly as you type them.'
     : step === 'draft' ? 'Change any words you like. Employers, titles and dates come from your answers.' : 'It is now your CV, saved on this Mac. Save the PDF to keep a copy.';
   message('cvb-message', '', '');
@@ -76,12 +77,12 @@ export function init() {
     button.disabled = true;
     try {
       if (!draft || !$('cvb-form').hidden) {
-        message('cvb-message', 'Writing your CV…', 'waiting');
+        message('cvb-message', t('pagesProfile.writingCv'), 'waiting');
         const result = await window.pilot.buildCvDraft(answers());
         if (!result.ok) return message('cvb-message', result.error, 'error');
         draft = result.cv; renderDraft(draft); showStep('draft');
       } else {
-        message('cvb-message', 'Saving your CV…', 'waiting');
+        message('cvb-message', t('pagesProfile.savingCv'), 'waiting');
         const result = await window.pilot.buildCvSave(edited());
         if (!result.ok) return message('cvb-message', result.error, 'error');
         await cvSaved(result.name);

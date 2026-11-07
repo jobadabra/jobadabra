@@ -1,5 +1,6 @@
 // Recent activity: the bar at the bottom of every screen and its panel. This file keeps init() (the start-up wiring) and re-exports the rest of the panel,
 // which lives in activity-*.js (basics, visits, results, render, run-card, mail, cards, panel, few-jobs). Guarded by the tests that read activity-*.js (test/activity-source.js).
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {toggleOnBar} from '../components.js';
 import {shared} from './shared.js';

@@ -1,4 +1,7 @@
 // Status card and the Actions page.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {channelLine} from '../notify-words.js';
@@ -20,7 +23,7 @@ export async function showStatusCard() {
   const lastSearch = runs.find(run => kindOf(run) === 'search'), lastMail = runs.find(run => kindOf(run) === 'mail');
   const rows = [
     running && ['▶️', 'Running now', `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
-    ['🔎', 'Last refresh', lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : 'none yet'],
+    ['🔎', t('pagesCommon.lastRefresh'), lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : 'none yet'],
     ['⏭', 'Next refresh', nextSearchAt ? nextWords(nextSearchAt) : 'only when you ask'],
     ['📧', 'Last Gmail check', lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : 'none yet'],
     ['⏭', 'Next Gmail check', nextMailAt ? nextWords(nextMailAt) : 'off'],
@@ -41,7 +44,7 @@ export async function showStatusCard() {
 
 // Actions page: the live banner (what runs now), Recent runs, and Telegram's state. Fed by the activity data.
 const TASK_ICON = {search: 'search', mail: 'mail', insight: 'chart', weekly: 'file', today: 'send', scout: 'building', kits: 'file-text', tailor: 'scissors'};
-const TASK_TITLE = {search: 'Find jobs', mail: 'Gmail & Calendar check', insight: 'Insight', weekly: 'Analyze my job search', kits: 'Prepare top matches', tailor: 'Tailor CV + cover letter for top matches',
+const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: 'Gmail & Calendar check', insight: 'Insight', weekly: 'Analyze my job search', kits: 'Prepare top matches', tailor: 'Tailor CV + cover letter for top matches',
   today: "Today's matches", scout: 'More employers'};
 // A task's name as the Actions banners say it (running, queued and finished: one word for one task).
 export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || 'A task';
@@ -88,7 +91,7 @@ export function renderActionsPage(data) {
   if (running) {
     const kind = kindOf(running);
     $('run-banner-title').textContent = `${TASK_TITLE[kind] || KIND[kind]?.name || 'A task'} is running`;
-    $('run-banner-step').textContent = `Started ${new Date(running.startedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
+    $('run-banner-step').textContent = `Started ${displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
     // Waiting on the person (Find jobs using your browser: the one-time Allow in Chrome): the one action, as a primary button, not text only (owner, 7 Oct 2026).
     const waitsOnYou = /^⏳ Waiting for you in Chrome/.test(String(running.step ?? ''));
     $('run-banner-act').hidden = !waitsOnYou;

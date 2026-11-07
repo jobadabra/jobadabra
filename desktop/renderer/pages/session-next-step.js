@@ -1,3 +1,5 @@
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {silentChromeButtons} from './silent-chrome.js';
 // The next-step card of an application session (the decision card: its state, Claude's question, the form's needs, what happened, the actions), moved out of sessions.js
@@ -29,7 +31,7 @@ import {NO_PLACE, sessionPlace} from '../targets.js';
 // Sessions whose form page has just failed to answer the app: only those are offered the "Reload the tab" repair
 // (it reloads a form page, so it must not sit in the row by default). Cleared when the page answers again.
 const panelDead = new Set();
-const hhmmOf = iso => new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+const hhmmOf = iso => displayDate(new Date(iso), {hour: '2-digit', minute: '2-digit'});
 function sessionButton(text, kind, run, glyph) {
   const button = el('button', `${kind}${glyph ? ' with-icon' : ''}`);
   if (glyph) button.append(icon(glyph));
@@ -57,20 +59,20 @@ function foldRow(short, more) {
 let fullFor = null, reportFor = null;  // the session whose Claude's message the banner shows (folded again for another one)
 // "I submitted it": you sent the application and the app missed it (the Jobs row and Notion move to Applied). On every
 // unsubmitted state of a session, so a missed submit can always be put right by hand.
-const submittedButton = item => sessionButton('I submitted it', 'secondary', async event => {
+const submittedButton = item => sessionButton(t('pagesSession.iSubmitted'), 'secondary', async event => {
   const button = event.currentTarget;
   button.disabled = true;
   const result = await window.pilot.setStatus(item.url, 'applied').catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { button.disabled = false; toastMessage('Not marked Applied', result.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); return; }
+  if (!result.ok) { button.disabled = false; toastMessage(t('pagesSession.notMarked'), result.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); return; }
   jobsChanged(sessionJob(item), {stage: 'Applied', status: 'applied'});   // its Jobs row too, not only this button
-  button.textContent = '✓ Marked Applied';
+  button.textContent = t('pagesSession.marked');
 }, 'check');
 // Where to answer: the button opens the reply box in the log below (a quick reply there sends one tap of text).
 const answerHint = () => el('p', 'rich-p muted small', 'Press Answer, then type your reply in the log below, or use a quick reply there.');
 // While the app checks Chrome for the session's tab: a loading card (the existing .skeleton lines), nothing from the last state.
 function renderChecking() {
   $('ss-decision').className = 'ss-next tone-neutral';
-  $('ss-next-title').textContent = 'Checking Chrome for this application\u2026';
+  $('ss-next-title').textContent = t('pagesSession.checkingChrome');
   $('ss-next-state').textContent = '';
   $('ss-stage').replaceChildren();
   $('ss-form-state').replaceChildren();
@@ -84,7 +86,7 @@ const START_MS = 30 * 1000;   // as lib/chrome-launch-once.js: how long one pres
 // The app only just started: Chrome has had no time to report, so a neutral wait with the same way back, no warning.
 function renderWaiting() {
   renderChecking();
-  $('ss-next-title').textContent = 'Waiting for Chrome\u2026';
+  $('ss-next-title').textContent = t('pagesSession.waitingChrome');
   $('ss-question').replaceChildren(el('p', 'rich-p', 'The app just started. This card updates by itself once Chrome\'s Jobadabra extension reports.'));
   $('ss-actions').replaceChildren();   // nothing to press while it waits
 }
@@ -100,20 +102,20 @@ function renderSilent(item) {
   $('ss-decision').className = 'ss-next tone-warn';
   const off = shared.formsOpen?.linkOff;
   if (off) {   // Why (29 Oct 2026, owner): the app's own socket is not open, so Chrome can't report; "Open Chrome" would fix nothing (renderer/session-state.js chromeSilent)
-    $('ss-next-title').textContent = 'Jobadabra can\'t hear Chrome';
+    $('ss-next-title').textContent = t('pagesSession.cannotHear');
     $('ss-question').replaceChildren(el('p', 'rich-p', linkOffLine(off)));
     $('ss-actions').replaceChildren();
     return;
   }
-  $('ss-next-title').textContent = 'Chrome isn\'t reporting';
+  $('ss-next-title').textContent = t('pagesSession.notReporting');
   const starting = Date.now() - shared.chromeStartedAt < START_MS;
   const retried = shared.chromeStartedAt && !starting;   // pressed before, and Chrome still has not reported
   $('ss-question').replaceChildren(el('p', 'rich-p', retried ? 'Chrome didn\'t report within 30 seconds. Check that Chrome is open with the Jobadabra extension on, or try Open Chrome again.'
     : 'Jobadabra can\'t see this application\'s tab: Chrome is closed, or its Jobadabra extension isn\'t running. Open Chrome and this card updates by itself.'));
-  const connect = sessionButton(starting ? 'Starting Chrome\u2026' : 'Open Chrome', 'secondary', async event => {
+  const connect = sessionButton(starting ? t('pagesSession.startingChrome') : t('pagesSession.openChrome'), 'secondary', async event => {
     const result = await opening(event.currentTarget, () => window.pilot.extensionOptions());
     window.pilot.uiLog('sessions: Chrome not reporting, Open Chrome pressed', {opened: !!result?.opened, starting: !!result?.starting});
-    if (!result?.opened) { toastMessage('Chrome didn\'t open', 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.', NO_PLACE.outside, 'bad'); return; }
+    if (!result?.opened) { toastMessage(t('pagesSession.chromeFailed'), 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.', NO_PLACE.outside, 'bad'); return; }
     shared.chromeStartedAt = result.since || Date.now();
     renderNextStep(item);
     setTimeout(() => { if (silentChrome(item)) renderNextStep(item); }, START_MS + 100);   // offered again, with the reason
@@ -126,12 +128,12 @@ function renderSilent(item) {
 // The first look is over and no tab is known for the session: it says so and offers the one way forward, the same reopen every closed-tab button uses.
 // The reopen of a session's form: the one button both the lost-tab card and the silent card (Chrome not reporting) draw.
 function reopenButton(item) {
-  return sessionButton('Open it again', 'primary', event => reopenClosedTab(item, event.currentTarget), 'link');
+  return sessionButton(t('pagesSession.openAgain'), 'primary', event => reopenClosedTab(item, event.currentTarget), 'link');
 }
 function renderLost(item) {
   renderChecking();
   $('ss-decision').className = 'ss-next tone-warn';
-  $('ss-next-title').textContent = 'Tab not found';
+  $('ss-next-title').textContent = t('pagesSession.tabMissing');
   $('ss-question').replaceChildren(el('p', 'rich-p', 'Jobadabra can\'t find this application\'s tab in Chrome. It may still be open under another address. Open it again and the extension fills it for you; if the tab shows up by itself, this card updates.'));
   $('ss-actions').replaceChildren(reopenButton(item));
 }
@@ -164,14 +166,14 @@ export function renderNextStep(item) {
   $('ss-decision').className = `ss-next tone-${tone}`;
   const brief = item.brief || '';
   const ask = asksYou(item) && /\?$/.test(brief) ? brief : '';
-  $('ss-next-title').textContent = submitted ? 'Submitted'
-    : stuck ? (item.stuck === 'account' ? (item.accountStep === 'sign_in' ? `Sign in${item.accountHost ? ` to ${item.accountHost.replace(/^www\./, '')}` : ''}` : 'This site needs an account') : item.stuck === 'incomplete' ? 'The extension filled nothing here' : item.stuck === 'email' ? 'Send your application by email' : item.stuck === 'told' ? 'The page tells you what to do' : item.stuck === 'other' ? 'Jobadabra could not tell how to apply' : item.stuck === 'site_broken' ? 'The site is not answering' : 'The extension can\'t reach this form')
-    : stopped ? 'You stopped the extension'
-    : gone ? 'The form tab was closed'
-    : review ? 'Review the filled application'
-    : asking ? ask || (item.stage === 'account' ? 'Account step needs your input' : 'Application needs your input')
-    : open ? 'Complete the application in Chrome'
-    : running ? ai('{AI} is filling the application') : item.status === 'failed' ? 'The session stopped' : 'The session ended';
+  $('ss-next-title').textContent = submitted ? t('pagesSession.submitted')
+    : stuck ? (item.stuck === 'account' ? (item.accountStep === 'sign_in' ? `Sign in${item.accountHost ? ` to ${item.accountHost.replace(/^www\./, '')}` : ''}` : t('pagesSession.siteAccount')) : item.stuck === 'incomplete' ? t('pagesSession.nothingFilled') : item.stuck === 'email' ? t('pagesSession.sendByEmail') : item.stuck === 'told' ? t('pagesSession.pageInstructions') : item.stuck === 'other' ? t('pagesSession.cannotTell') : item.stuck === 'site_broken' ? t('pagesSession.siteNoAnswer') : t('pagesSession.cannotReach'))
+    : stopped ? t('pagesSession.extensionStopped')
+    : gone ? t('pagesSession.formClosed')
+    : review ? t('pagesSession.reviewFilled')
+    : asking ? ask || (item.stage === 'account' ? t('pagesSession.accountInput') : t('pagesSession.applicationInput'))
+    : open ? t('pagesSession.completeChrome')
+    : running ? ai('{AI} is filling the application') : item.status === 'failed' ? t('pagesSession.sessionStopped') : t('pagesSession.sessionEnded');
   // Its state, after the title: finished (when), waiting (since when) or working (for how long).
   const since = item.needsYouSince || item.endedAt || item.startedAt;
   const state = $('ss-next-state');
@@ -228,14 +230,14 @@ export function renderNextStep(item) {
     if (offer.notes.length) $('ss-question').append(...offer.notes);
   }
   // Claude is the safety net, never the main action (owner, 9 Oct 2026: "remove Resume Claude from being orange"): always secondary; the way to the form is promoted below.
-  const resume = () => sessionButton('Resume Claude', 'secondary', () => resumeSession(item), 'refresh');
+  const resume = () => sessionButton(t('pagesSession.resumeClaude'), 'secondary', () => resumeSession(item), 'refresh');
   const pushResume = () => { if (resumeOffered()) actions.push(resume()); };   // off for now: see resumeOffered in claude-help.js
   if (gone || stopped) {
     // Nothing to bring forward: the tab is gone. The app opens the job with the fill mark, the way "Fill in Chrome" does.
-    actions.push(sessionButton('Reopen form', 'primary', event => reopenClosedTab(item, event.currentTarget), 'link'));
+    actions.push(sessionButton(t('pagesSession.reopenForm'), 'primary', event => reopenClosedTab(item, event.currentTarget), 'link'));
   }
   if (review) {
-    if (!gone) actions.push(sessionButton('Open filled form', 'primary', async event => {
+    if (!gone) actions.push(sessionButton(t('pagesSession.openFilled'), 'primary', async event => {
       const result = await opening(event.currentTarget, () => window.pilot.showBrowser(item.url, sessionCompany(item), item.id));
       // The page's panel answered: nothing to repair. When it didn't, the repair appears right here, and the row is
       // redrawn so it is there before the next click.
@@ -246,23 +248,23 @@ export function renderNextStep(item) {
       if (result?.went === 'none') { await reopenClosedTab(item, event.currentTarget); return; }   // no tab to bring forward: open the form again
       panelDead.add(item.id);
       renderSessionPage();
-      toastMessage('Form tab not found', osText('The form\'s page didn\'t answer, so the extension isn\'t attached to it. '
+      toastMessage(t('pagesSession.formTabMissing'), osText('The form\'s page didn\'t answer, so the extension isn\'t attached to it. '
         + 'Press Reload the tab — or ⌘R in that tab — then try again.'), sessionPlace(item), 'bad');
     }, 'link'));
     // A form page whose panel died (the extension was uninstalled and installed again) can't answer the app: reload
     // that tab, which is what puts the extension back onto it — then the focus handshake works again. Offered only
     // after a page has just failed to answer (panelDead), never as an everyday action: a reload loses whatever was
     // typed in the form since the last save (1 Oct 2026).
-    if (panelDead.has(item.id) && !gone) actions.push(sessionButton('Reload the tab', 'secondary', async event => {
+    if (panelDead.has(item.id) && !gone) actions.push(sessionButton(t('pagesSession.reloadTab'), 'secondary', async event => {
       const result = await opening(event.currentTarget, () => window.pilot.reviewReload(item.id, item.url, sessionCompany(item)));
       if (result?.result === 'reloaded' || result?.result === 'reloaded-chrome') {
         panelDead.delete(item.id);
         renderSessionPage();
-        if (result.went !== 'tab') toastMessage('Reloaded, but no answer yet', 'The tab is fresh; give the extension a few seconds, then press Open filled form again.', NO_PLACE.outside, 'warn');
+        if (result.went !== 'tab') toastMessage(t('pagesSession.reloadedWaiting'), 'The tab is fresh; give the extension a few seconds, then press Open filled form again.', NO_PLACE.outside, 'warn');
         return;
       }
       if (result?.outdated) {
-        toastMessage('Reload the Chrome extension once', `Chrome runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
+        toastMessage(t('pagesSession.reloadExtension'), `Chrome runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
           'In Chrome open chrome://extensions and click ↻ on Jobadabra, then press again — it updates itself from then on.', {card: 'extension'}, 'warn');
         return;
       }
@@ -275,13 +277,13 @@ export function renderNextStep(item) {
         // Chrome's scripting is macOS-only. Saying "Chrome isn't running" on Windows would be untrue, and the
         // generic advice names ⌘R, which isn't a key there.
         manual: 'Reloading a Chrome tab can only be asked of a Mac: press Ctrl+R in the form\'s tab.'}[result?.result];
-      toastMessage('Couldn\'t reload the form tab', why || osText('Press ⌘R in the form\'s tab instead.'), sessionPlace(item), 'bad');
+      toastMessage(t('pagesSession.reloadFailed'), why || osText('Press ⌘R in the form\'s tab instead.'), sessionPlace(item), 'bad');
     }, 'refresh'));
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
     if (live) actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));
     else if (item.resumable) pushResume();
     const never = el('span', 'ss-never muted small');
-    never.append(icon('info'), el('span', '', 'Jobadabra never clicks Submit.'));
+    never.append(icon('info'), el('span', '', t('pagesSession.neverSubmit')));
     actions.push(never);
   } else if (asking && !live) {
     if (item.resumable) pushResume();
@@ -290,13 +292,13 @@ export function renderNextStep(item) {
       await openForm(item, event.currentTarget);
     }, 'link'));
     actions.push(submittedButton(item));
-    actions.push(sessionButton('Remove from the list', 'secondary', () => removeSession(item)));
+    actions.push(sessionButton(t('pagesSession.removeList'), 'secondary', () => removeSession(item)));
   } else if (asking) {
     // Continue only means something after a pause (Esc). When Claude asked for something, "Continue." gives it nothing
     // new and it asks again (a 4-hour loop on 1 Oct 2026): the main action is to answer it.
     if (/^Paused/i.test(item.note || '')) {
       actions.push(sessionButton(t('pagesCommon.continue'), 'primary', () => say('Continue.')));
-      actions.push(sessionButton('Answer in your own words', 'link', () => openLog(true), 'chat'));
+      actions.push(sessionButton(t('pagesSession.ownWords'), 'link', () => openLog(true), 'chat'));
     } else {
       actions.push(sessionButton(t('pagesCommon.answer'), 'primary', () => openLog(true), 'chat'));
     }
@@ -310,9 +312,9 @@ export function renderNextStep(item) {
     if (item.url) actions.push(sessionButton(t('pagesCommon.openChrome'), 'primary', async event => {
       await openForm(item, event.currentTarget);
     }, 'link'));
-    actions.push(sessionButton('Pause', 'secondary', pauseSession));
+    actions.push(sessionButton(t('pagesSession.pause'), 'secondary', pauseSession));
     actions.push(submittedButton(item));
-    actions.push(sessionButton('Watch the log', 'link', () => openLog(true), 'eye'));
+    actions.push(sessionButton(t('pagesSession.watchLog'), 'link', () => openLog(true), 'eye'));
   } else if (item.resumable && !submitted) {
     pushResume();
     actions.push(submittedButton(item));
@@ -341,8 +343,8 @@ function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) 
   const needs = [...mine.needs, ...sorted.needs], filled = sorted.filled;
   const empty = gone ? [] : emptyFields(item, needs);   // a closed tab has no empty fields to open
   show($('ss-needs-card'), needs.length + empty.length > 0 && !gone);   // a closed tab's rows are stale: Reopen form asks what to keep
-  $('ss-needs-title').textContent = 'Needs your attention';
-  $('ss-needs-sub').textContent = review ? 'Check these items before submitting.' : asking ? ai('What {AI} needs from you to carry on.') : 'Complete these items in Chrome.';
+  $('ss-needs-title').textContent = t('pagesSession.needsAttention');
+  $('ss-needs-sub').textContent = review ? t('pagesSession.checkBeforeSubmit') : asking ? ai('What {AI} needs from you to carry on.') : t('pagesSession.completeItems');
   $('ss-needs').replaceChildren(...needs.map(need => (need.kind === 'ask' ? askRow(need, item) : needRow(need, item))), ...empty.map(label => emptyRow(label, item)));
   watchAgreements(item, needs.filter(need => need.kind === 'agree' || need.kind === 'ask'));
   applyFormStates(item);
@@ -382,7 +384,7 @@ function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) 
     const capital = audit.charAt(0).toUpperCase() + audit.slice(1);
     const summary = firstLine(capital, 160), rest = capital.slice(summary.length).trim();
     const fixes = (audit.match(/\b(?:corrected|removed|fixed|by hand)\b/gi) || []).length;
-    $('ss-audit-pill').replaceChildren(...(fixes ? [pill(`${fixes} correction${fixes === 1 ? '' : 's'}`, 'warn', {dot: true})] : [pill('Checked', 'good', {dot: true})]));
+    $('ss-audit-pill').replaceChildren(...(fixes ? [pill(`${fixes} correction${fixes === 1 ? '' : 's'}`, 'warn', {dot: true})] : [pill(t('pagesSession.checked'), 'good', {dot: true})]));
     $('ss-audit-summary').replaceChildren(...richText(summary).flatMap(node => [...node.childNodes]));
     $('ss-audit-detail').replaceChildren(...richText(rest));
     show($('ss-audit-more'), !!rest);

@@ -1,14 +1,16 @@
 // Strategy → "Which locations are right?" (owner, 17 Oct 2026: "Resolve genuine conflicts individually, showing both existing values. Don't preselect a winner."):
 // one row per kind where the search settings and the Profile said different places: the two sides as equal boxes (Use Strategy's / Use Profile's), then
 // one quiet "Choose…" menu (Other places…, Search with Strategy's, score with Profile's). Nothing is picked for the person. Guarded by test/unit/renderer/locations-which.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {chip, el, openMenu} from '../components.js';
 import {$, message} from './core.js';
 import {shared} from './shared.js';
 import {setAsideRows} from './set-aside.js';
 import {titleCase} from '../fragment-words.js';
 
-export const KIND_NAMES = {preferred: 'Preferred locations', acceptable: 'Acceptable locations', relocation: 'Relocation'};
-const MODE_WORDS = {no: 'No relocation', yes: 'Yes', unspecified: 'Not specified'};
+export const KIND_NAMES = {preferred: t('pagesCommon.preferredPlaces'), acceptable: t('pagesCommon.acceptablePlaces'), relocation: t('pagesCommon.relocation')};
+const MODE_WORDS = {no: 'No relocation', yes: t('pagesCommon.yes'), unspecified: 'Not specified'};
 const SHOWN = 10;   // a long crawl list (70 places abroad) shows its first places and "+N more"
 // A side as the person reads it: its places in title case, or for relocation what it said when it named none.
 export const sideText = (places, mode) => {
@@ -65,7 +67,7 @@ function row(conflict) {
   };
   const options = el('div', 'which-options');
   options.append(option('strategy', 'Strategy', conflict.strategy, '', conflict.onlyStrategy, 'violet', go('strategy')),
-    option('profile', 'Profile', conflict.profile, conflict.profileMode, conflict.onlyProfile, 'teal', go('profile')));
+    option('profile', t('pagesCommon.profile'), conflict.profile, conflict.profileMode, conflict.onlyProfile, 'teal', go('profile')));
   // The other ways out: one quiet "Choose…" menu beside the two boxes, never a line of links under them (owner: no lone line under a list).
   const typed = Object.assign(el('input', 'add'), {placeholder: 'Places, separated by commas', hidden: true});
   typed.setAttribute('aria-label', `${KIND_NAMES[conflict.kind] || conflict.kind}: places`);

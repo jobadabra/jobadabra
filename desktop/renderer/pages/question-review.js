@@ -6,6 +6,7 @@
 // details" walks the Your details items, "What we learned" the reusable questions with Later · Confirm / Save change); each is one list of
 // pages/jobs-questions.js questionsNow, so its count is the card's and the tab's. Set-aside questions are listed apart in What we learned's navigator.
 // Opened from Jobs' cards, the Profile tabs and ⌘K (nav.js). Guarded by test/unit/renderer/question-drawers.test.js, test/unit/renderer/question-review.test.js, test/unit/renderer/question-kinds-screens.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -29,7 +30,7 @@ const DRAFTS = 'questionDrafts';
 export const DRAWERS = {
   details: {title: 'Fill your details', lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
     done: 'Your details are complete', doneText: 'A detail shows here when a form asks for one you have not given.'},
-  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: 'Later', save: t('pagesCommon.save'), confirm: 'Confirm', change: 'Save change',
+  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: t('pagesStatus.later'), save: t('pagesCommon.save'), confirm: t('pagesStatus.confirm'), change: 'Save change',
     done: 'Nothing to check', doneText: 'A question shows here when a form asks something your answers do not cover.'},
 };
 const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
@@ -197,7 +198,7 @@ async function answer(q, value) {
   if (!result?.ok) { state.error = result?.error || 'It did not save; try again.'; draw(); return; }
   drafts.delete(q.key);
   keepDrafts();
-  state.saved = value ? `✓ Saved to ${result.homeName || 'What we learned'}` : '✓ Done';
+  state.saved = value ? `✓ Saved to ${result.homeName || t('pagesCommon.learned')}` : '✓ Done';
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
   draw();
@@ -311,6 +312,6 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape' && st
 /** The source pill of a Your details item: a contact detail says how many forms ask it, any other kind why it is in the queue. */
 const sourceWords = mine => (mine.kind === 'contact' ? askWords(mine) : mine.source);
 /** The line over the answer box: a suggested answer, or what the item asks (a contact detail by its rating, see question-nav.js askWords). */
-const kindWords = (suggested, mine) => (suggested ? 'Suggested from saved answer' : askWords(mine || {}, 'Missing answer'));
+const kindWords = (suggested, mine) => (suggested ? 'Suggested from saved answer' : askWords(mine || {}, t('pagesCommon.missingAnswer')));
 /** The label over the answer control: a pick between existing values, or a written answer. */
-const answerLabel = mine => (['which', 'where'].includes(mine?.kind) ? 'Your pick' : 'Your answer');
+const answerLabel = mine => (['which', 'where'].includes(mine?.kind) ? 'Your pick' : t('pagesCommon.yourAnswer'));

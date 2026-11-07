@@ -1,6 +1,7 @@
 // Send feedback (sidebar and Help → Send Feedback…): a note to the owner (lib/app-feedback.js → the website → the owner's Telegram). The user's own words; a contact only if they type one.
 // Opening it first asks the main process for the window's picture (taken BEFORE this dialog draws over the app), the redacted logs and this screen's data (renderer/feedback-data.js);
 // "See what's sent" shows the exact held text of every part that is ticked, plus what is always sent.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
@@ -30,7 +31,7 @@ function drawPreview() {
   const id = prepared.identity, contact = $('app-feedback-contact').value.trim();
   const sections = [['Always sent', [`app version: ${id?.version || '-'}`, `system: ${id?.platform || '-'}`, `install id: ${id?.install || '-'}`, `contact: ${contact || 'none'}`, 'your feedback text'].join('\n')]];
   if ($('app-feedback-include-page').checked && prepared.page) sections.push(["This screen's data", prepared.page.text]);
-  if ($('app-feedback-include-profile').checked) sections.push(['Profile snapshot', prepared.profile ? prepared.profile.text : 'Reading your Profile…']);
+  if ($('app-feedback-include-profile').checked) sections.push(['Profile snapshot', prepared.profile ? prepared.profile.text : t('pagesCommon.readingProfile')]);
   if ($('app-feedback-include-logs').checked && prepared.logs) sections.push(['Logs', prepared.logs.text]);
   $('app-feedback-logs').textContent = sections.map(([title, text]) => `===== ${title} =====\n${text}`).join('\n\n');
 }
@@ -100,7 +101,7 @@ export async function init() {
     event.preventDefault();
     const button = $('app-feedback-send');
     button.disabled = true;
-    $('app-feedback-message').textContent = 'Sending…';
+    $('app-feedback-message').textContent = t('pagesStatus.sendingEllipsis');
     if (prepared.tester) {   // an AI tester files one bug bundle (lib/tester-bundle.js), never a note to the maker
       const filed = await window.pilot.sendTesterBug(readTester()).catch(error => ({ok: false, error: error.message}));
       button.disabled = false;
@@ -116,7 +117,7 @@ export async function init() {
     const result = await window.pilot.sendFeedback($('app-feedback-text').value, $('app-feedback-contact').value, include)
       .catch(error => ({ok: false, error: error.message}));
     button.disabled = false;
-    if (!result?.ok) { $('app-feedback-message').textContent = plainError(result?.error || 'Couldn\'t send it.'); return; }
+    if (!result?.ok) { $('app-feedback-message').textContent = plainError(result?.error || t('pagesStatus.notSent')); return; }
     $('app-feedback-text').value = '';
     drawCount();
     prepared = {...EMPTY};

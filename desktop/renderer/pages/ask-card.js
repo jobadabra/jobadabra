@@ -1,5 +1,6 @@
 // The invitation to tell us what went wrong, as a card at the top of the app (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md). The main process decides when (lib/asks.js);
 // this page draws what it holds. "Tell us" opens the Send feedback dialog; "Not now" is quiet for 14 days. Looks like the run banner (run-banner.css). Guarded by test/unit/renderer/ask-card.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, tile} from '../components.js';
 import {$} from './core.js';

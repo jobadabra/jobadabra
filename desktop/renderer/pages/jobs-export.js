@@ -1,6 +1,8 @@
 // Jobs page, "Export" (Pro): saves the jobs on screen, or all of them, as a spreadsheet file. The lock here is only a hint: the main process checks the licence
 // (lib/jobs-export-handlers.js). A free person always sees the button with a Pro label: with paying off it opens the Upgrade dialog, with paying on Settings → Plan (renderer/pro-gate.js).
 // Guarded by: test/unit/main/jobs-export.test.js, test/guards/money/pro-gate.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, openMenu} from '../components.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
@@ -17,7 +19,7 @@ export async function exportJobs(options) {
   const answer = await window.pilot.exportJobs(options);
   if (answer?.pro) openProGate();
   else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file, NO_PLACE.outside, 'good');
-  else if (answer?.error) toastMessage('Could not save the job list', answer.error, {view: 'jobs'}, 'bad');
+  else if (answer?.error) toastMessage(t('pagesJobs.saveListFailed'), answer.error, {view: 'jobs'}, 'bad');
 }
 
 export function renderExport() {

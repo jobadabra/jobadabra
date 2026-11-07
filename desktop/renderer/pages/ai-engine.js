@@ -3,6 +3,7 @@
 // Claude Code or Codex), the CLI's status block with Verify,
 // the in-family plan-limit fallback and the note.
 // The user picks; in the wizard nothing is pre-selected, in Settings the choice is remembered and switching is instant.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {refreshClaudeHelp} from '../claude-help.js';
 import {choiceCards, el, pill} from '../components.js';
@@ -131,7 +132,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   // The technical rest, folded: version and path, how it is billed, and the plan-limit fallback.
   const moreAbout = cli => {
     const details = el('details', 'engine-details plain');
-    details.append(el('summary', 'small', 'More about this'));
+    details.append(el('summary', 'small', t('pagesStatus.moreAbout')));
     for (const line of cli.lines.filter(each => each.tone === 'good')) details.append(el('p', 'muted small', line.text));
     if (cli.path) details.append(el('code', 'engine-path', cli.path));
     details.append(el('p', 'muted small engine-note', family === 'openai' ? TEXT.codexNote : TEXT.note));

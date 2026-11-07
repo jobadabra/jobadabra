@@ -1,5 +1,6 @@
 // Ready to send's "Watch the fill" popup (owner, 18 Oct 2026: "not inline, but rather in a popup"): the night's video of one form in the app's dialog parts
 // (the board dialog's head, icon and close button), named for its form; closing it (the button or Escape) removes it and lets the video's memory go. Guard: test/unit/renderer/ready-card.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';

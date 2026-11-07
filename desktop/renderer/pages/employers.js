@@ -2,6 +2,7 @@
 // (lib/employers-handlers.js), as a library table like Interviews: search, kind / feed status / active filters, an Active switch per row
 // (the next search reads or skips its feed), and the row's detail (notes, integration, research links) under it on click.
 // Logic without a window: renderer/employers-view.js. Guarded by test/unit/renderer/employers-view.test.js, test/unit/main/employers-handlers.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';

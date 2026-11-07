@@ -3,6 +3,7 @@
 // Guards: test/unit/main/extension-store-setup.test.js, test/unit/renderer/palette-every-action.test.js, test/unit/renderer/extension-card-first-paint.test.js.
 // The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
 // for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$, message, osPick, osText, show} from './core.js';
 import {extensionFrom, extensionState, justStarted} from '../service-status.js';
@@ -41,7 +42,7 @@ function drawCard(state) {
   $('ext-line').textContent = inBrowser(EXT_LINE[state.state] || EXT_LINE.absent, browserApp);
   show($('ext-connect'), state.state === 'idle');
   foldFollows($('ext-setup'), state.state, state.state !== 'connected');
-  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: 'Install the extension'};
+  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: t('pagesDetails.installExtension')};
   $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || 'Troubleshoot the connection';
 }
 

@@ -1,6 +1,7 @@
 // Profile → Your portrait (spec 2026-10-28-your-portrait-design.md, owner 28 Oct 2026): a read-only text the app writes about you. No control edits it; each statement's
 // evidence chip opens the source tab where that source can be corrected, and the next run follows. Drawn from lib/portrait.js status(): not_yet (what it needs, with
 // progress), current, outdated (the text stays, "Updating soon"). Guarded by test/unit/renderer/portrait-tab.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill, tag} from '../components.js';
 import {emptyState} from '../page-parts.js';
@@ -78,7 +79,7 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const showLetter = view === 'letter' && status.letter?.length > 0;
   const line = el('header', 'portrait-masthead'), cited = new Set(status.sections.flatMap(section => section.statements.flatMap(each => each.evidence)));
   const title = el('div', 'portrait-title');
-  title.append(el('h2', '', 'Your portrait'), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
+  title.append(el('h2', '', t('pagesDetails.yourPortrait')), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
   line.append(title);
   if (status.state === 'outdated') line.append(note ? pill('Not updated', 'bad', {title: note}) : pill('Updating soon', 'info'));   // a note says why it is not (the AI key was refused)
   if (status.letter?.length) line.append(viewSwitch(showLetter ? 'letter' : 'structured', onView));

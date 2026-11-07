@@ -1,5 +1,6 @@
 // Recent activity: the run card (a run's message as counts and items), its skeleton and the job box.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {fitTooltip} from '../jobs-view.js';
@@ -137,12 +138,12 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     more = el('div', 'run-card-foot');
     const rest = card.items.length - 5;
     if (rest > 0) {
-      const toggle = el('button', 'link', all ? 'Show less' : `+${rest} more`);
+      const toggle = el('button', 'link', all ? t('pagesStatus.showLess') : `+${rest} more`);
       toggle.addEventListener('click', () => { expandedCard = all ? '' : card.items.map(item => item.company).join('|'); renderRunCard(card, run, target); });
       more.append(toggle);
     }
     // The whole list in the app, on every store (pages/employers.js); a Notion user also gets the database as an extra.
-    const list = Object.assign(el('button', 'arrow-link', 'All employers'), {type: 'button'});
+    const list = Object.assign(el('button', 'arrow-link', t('pagesStatus.allEmployers')), {type: 'button'});
     list.addEventListener('click', () => { openActivity(false); openView('employers'); });
     more.append(list);
     const employers = shared.state?.notion?.NOTION_EMPLOYERS_DB;

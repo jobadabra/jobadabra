@@ -2,6 +2,8 @@
 // the one number, why, and its fix or next step.
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
 // desktop/test/unit/renderer/run-status.test.js and the e2e activity suites.
+import {number as displayNumber} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {groupWarnings, limitedJobs, newDetails} from '../run-warnings.js';
 import {aiLimitHead, failureHead, stoppedHead, deliveryHead, notConnectedHead, waitedHead} from '../run-status.js';
@@ -47,7 +49,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   $('activity-warnings-fix').dataset.go = '';
   show($('activity-warnings-progress'), !!going);
   if (going) {
-    $('activity-warnings-count').textContent = going.count ? `${going.count.done.toLocaleString('en-US')} of ${going.count.total.toLocaleString('en-US')} · ${going.count.percent}%` : '';
+    $('activity-warnings-count').textContent = going.count ? `${displayNumber(going.count.done)} of ${displayNumber(going.count.total)} · ${going.count.percent}%` : '';
     const bar = $('activity-warnings-progress').querySelector('.bar');
     bar.classList.toggle('is-sliding', !going.count);
     bar.firstElementChild.style.width = going.count ? `${going.count.percent}%` : '';
@@ -78,7 +80,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   if (problem) {
     // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
     $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
-      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || t('pagesCommon.run')} completed with warnings`;
+      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? t('pagesStatus.runningWarnings') : `${WARN_NOUN[kindOf(run)] || t('pagesCommon.run')} completed with warnings`;
     const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
     $('activity-warnings-summary').textContent = summary;
     show($('activity-warnings-hint'), !!head?.hint);

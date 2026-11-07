@@ -1,5 +1,6 @@
 // Interview prep kit (Focus → Prepare): built from the job's description, your Profile and your past interviews,
 // on the job's Notion page (src/ai/prep.py). When the role is unknown it asks for the description first.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {loadFocus, markPrep} from './focus.js';

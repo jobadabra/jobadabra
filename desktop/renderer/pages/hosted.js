@@ -1,5 +1,6 @@
 // Always on "on our servers": the Settings card, its status, and the actions to turn it on, export or delete the held data.
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/unit/main/hosted-search.test.js, test/unit/renderer/hosted-words.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';

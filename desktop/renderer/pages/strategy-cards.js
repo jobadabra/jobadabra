@@ -4,6 +4,7 @@
 // nothing saves per card: Strategy's one page bar (save-bar.js pageSaveBar, "Save strategy changes") saves or discards every card's draft, and never a
 // Profile draft. Goals follow the same Edit → Save. The cards: Main goals (main-goals.js), Locations and the Advanced ones (strategy-targets.js), Job
 // preferences (job-preferences.js, through outline-tab.js's {bar}). Guarded by test/unit/renderer/strategy-cards.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {cardEdit, pill} from '../components.js';
 import {cardHead, doneButton, setEditing} from '../card-shell.js';
@@ -50,7 +51,7 @@ export function cardHeader(key, glyph, tone, title = CARDS[key].title, lead = ''
   if (isOpen(key)) {
     action = doneButton(card, () => (inDraft() ? 0 : cardCount(key)));   // while drafting (setup) Done applies the card's edits to the draft
     action.addEventListener('click', closeCard);
-  } else action = cardEdit('Edit', title.toLowerCase(), () => openCard(key));
+  } else action = cardEdit(t('pagesStatus.edit'), title.toLowerCase(), () => openCard(key));
   return cardHead({glyph, tone, title, lead, badge, action});
 }
 
@@ -89,7 +90,7 @@ let bar = null, reloading = null;
 export function strategyBar(deps) {
   if (bar) return bar;
   redraw = deps.redraw;
-  bar = pageSaveBar({host: $('strategy-bar-host'), tabs: {'strategy-yours': 'Your strategy'}, tabButton: key => document.querySelector(`.strategy-tabs [data-tab="${key}"]`),
+  bar = pageSaveBar({host: $('strategy-bar-host'), tabs: {'strategy-yours': t('pagesCommon.yourStrategy')}, tabButton: key => document.querySelector(`.strategy-tabs [data-tab="${key}"]`),
     openTab: showTab, area: 'Strategy', saveLabel: 'Save strategy changes', words: 'Applies to future searches.', savedWords: 'Saved ✓ Refresh your jobs to search with it.'});
   const reloadSoon = () => { clearTimeout(reloading); reloading = setTimeout(deps.reload, 50); };
   for (const [key, card] of Object.entries(CARDS)) {

@@ -1,4 +1,6 @@
 // Interviews page: record a call, then list, relink and review its transcript, notes and recording (saved in Notion).
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import * as pendingReviews from '../review-pending.js';
@@ -76,7 +78,7 @@ async function openDraft(id) {
   show($('iv-transcribe'), draft.kind === 'audio' && ['new', 'stopped', 'failed'].includes(draft.status));
   show($('iv-progress'), busy);
   show($('iv-ready'), draft.status === 'ready');
-  if (draft.status === 'failed') message('iv-message', draft.error || 'Transcription failed', 'error');
+  if (draft.status === 'failed') message('iv-message', draft.error || t('pagesJobs.transcribeFailed'), 'error');
   if (draft.status === 'ready') {
     $('iv-text').value = await iv.transcript(id);
     jobOptions($('iv-job'), draft.jobUrl || draft.suggestedJobUrl, ai('Let {AI} find the job when reviewing'));
@@ -285,7 +287,7 @@ function renderSaved() {
     tr.dataset.id = row.id;
     const cell = (...children) => { const td = document.createElement('td'); td.append(...children); tr.append(td); return td; };
     const job = row.application?.[0] ? jobForPage(row.application[0]) : null;
-    cell(row.date ? new Date(`${row.date}T12:00:00`).toLocaleDateString([], {day: 'numeric', month: 'short', year: 'numeric'}) : '').className = 'iv-date';
+    cell(row.date ? displayDate(new Date(`${row.date}T12:00:00`), {day: 'numeric', month: 'short', year: 'numeric'}) : '').className = 'iv-date';
 
     // Job: company badge, the company and the role it's linked to (or why none is).
     const jobCell = el('div', 'lib-who');
@@ -307,7 +309,7 @@ function renderSaved() {
       open.addEventListener('click', event => window.pilot.openNotion(cellJob.notion, event.metaKey));
       jobLines.append(open);
     } else {
-      const link = Object.assign(el('button', 'link small', 'Link a job'), {type: 'button', title: `Choose the job this interview belongs to (updates ${storeName()})`});
+      const link = Object.assign(el('button', 'link small', t('pagesJobs.linkJob')), {type: 'button', title: `Choose the job this interview belongs to (updates ${storeName()})`});
       jobLines.append(el('span', 'muted', cellJob.name), el('div', '', ''));
       jobLines.lastChild.append(link);
       link.addEventListener('click', () => openPicker());
@@ -351,24 +353,24 @@ function renderSaved() {
     const place = job || row.place || {};
     cell(placeAndMode(place.location, place.work_mode) || '–').className = 'iv-where';
     cell(row.overall ? pill(OUTCOME[row.overall] || row.overall, OUTCOME_TONE[row.overall] || 'neutral', {dot: true})
-      : pill(reviewing.has(row.id) ? 'Reviewing…' : 'Not reviewed', reviewing.has(row.id) ? 'signal' : 'neutral', {dot: true}));
+      : pill(reviewing.has(row.id) ? t('pagesJobs.reviewing') : t('pagesJobs.notReviewed'), reviewing.has(row.id) ? 'signal' : 'neutral', {dot: true}));
 
     // Actions: open the review (or get one), then the rest in ⋯.
     const actions = el('div', 'row-actions');
     let main;
     if (row.overall) {
-      main = el('button', 'secondary iv-main', 'Open review');
+      main = el('button', 'secondary iv-main', t('pagesJobs.openReview'));
       main.title = byStore('The review and transcript, in Notion', 'The review and transcript');
       main.addEventListener('click', event => (row.url ? window.pilot.openNotion(row.url, event.metaKey) : openReview(row.id)));
     } else {
-      main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? 'Reviewing…' : t('pagesCommon.review')), {disabled: reviewing.has(row.id),
+      main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? t('pagesJobs.reviewing') : t('pagesCommon.review')), {disabled: reviewing.has(row.id),
         title: ai(byStore('{AI:big} reviews it question by question; the review is added to the Notion page', '{AI:big} reviews it question by question; the review is saved with it'))});
       main.addEventListener('click', () => reviewRow(row.id));
     }
     const menu = [
       ...(row.url ? [{label: '↗ Open interview in Notion', run: event => window.pilot.openNotion(row.url, event.metaKey)}] : []),
       ...(cellJob.notion ? [{label: '↗ Open job in Notion', run: event => window.pilot.openNotion(cellJob.notion, event.metaKey)}] : []),
-      {label: cellJob.kind === 'none' ? 'Link a job…' : 'Change job…', run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
+      {label: cellJob.kind === 'none' ? t('pagesJobs.linkJobEllipsis') : t('pagesJobs.changeJob'), run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
       {label: t('pagesCommon.delete'), danger: true, title: osText(byStore("Moves the row to Notion's trash (restorable for 30 days) and deletes its recording on this Mac", 'Deletes the interview and its recording on this Mac')), run: async () => {
@@ -389,7 +391,7 @@ function renderSaved() {
   restoreMenu();
 }
 
-async function reviewRow(pageId, why = 'Review') {
+async function reviewRow(pageId, why = t('pagesCommon.review')) {
   if (!aiReady()) { message('iv-message', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get reviews.', 'error'); return; }
   if (reviewing.has(pageId)) return;  // already asked for: a second press must not spend a second review (1 Oct 2026)
   reviewing.add(pageId);
@@ -440,12 +442,12 @@ export async function init() {
     message('iv-message', '');
     show($('iv-transcribe'), false);
     show($('iv-progress'));
-    $('iv-progress-text').textContent = 'Starting';
+    $('iv-progress-text').textContent = t('pagesJobs.starting');
     $('iv-progress-bar').style.width = '2%';
     const meta = await iv.transcribe(id, {speakers: Number($('iv-count').value)});
     show($('iv-setup'), false);
     if (ivOpen === id) openDraft(id);
-    if (meta.status !== 'ready') message('iv-message', meta.error || 'Transcription failed', 'error');
+    if (meta.status !== 'ready') message('iv-message', meta.error || t('pagesJobs.transcribeFailed'), 'error');
   });
   window.pilot.onInterviewProgress(step => drawInterviewProgress(step, ivOpen));   // the logic is renderer/pages/interviews-setup.js, driven by integration/app/screen-interviews.test.js
 

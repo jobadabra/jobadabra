@@ -4,6 +4,8 @@
 // Why (2 Nov 2026, owner: "I go to Profile, I don't modify anything and when I want to leave it asks me if I want to save or discard the changes"): only the person's own edit
 // or press makes a draft; opening Profile filled the boxes itself, so leaving asked. Also the nudge after Apply when the details forms usually ask for are missing.
 // Guarded by test/unit/renderer/contact-from-cv.test.js and integration/app/profile-no-draft-on-open.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {message} from './core.js';
 import {contactSavedAs, detailsChanged} from './details-drafts.js';
@@ -50,10 +52,10 @@ function askToFill(list) {
   const rows = el('ul', 'tune-list');
   for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : ' (check it)'}`));
   const foot = el('div', 'dialog-foot');
-  for (const [cls, value, label] of [['secondary', 'no', 'Not now'], ['primary', 'fill', 'Fill them in']]) foot.append(Object.assign(el('button', cls, label), {value}));
+  for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', 'Fill them in']]) foot.append(Object.assign(el('button', cls, label), {value}));
   const form = el('form');
   form.method = 'dialog';
-  form.append(el('h2', '', 'Fill these from your CV?'), el('p', 'dialog-lead', 'Your CV only hints at these, so nothing is filled yet. They fill in now, marked "From your CV", and nothing is saved until you press Save all changes.'), rows, foot);
+  form.append(el('h2', '', t('pagesProfile.fillThese')), el('p', 'dialog-lead', 'Your CV only hints at these, so nothing is filled yet. They fill in now, marked "From your CV", and nothing is saved until you press Save all changes.'), rows, foot);
   dialog.replaceChildren(form);
   dialog.returnValue = '';
   dialog.onclose = () => { if (dialog.returnValue === 'fill') showProposals(list); };
@@ -85,7 +87,7 @@ export function showProposals(proposals = []) {
     if (!input || input.value.trim() || hiddenByForm(input)) continue;
     input.value = value;
     input.dataset.proposed = 'cv';
-    const mark = pill(sure ? 'From your CV' : 'From your CV · check it', sure ? 'info' : 'warn');
+    const mark = pill(sure ? t('pagesProfile.fromCv') : t('pagesProfile.fromCvCheck'), sure ? 'info' : 'warn');
     mark.classList.add(MARK);
     (input.nextElementSibling?.dataset?.contactControl ? input.nextElementSibling : input).after(mark);   // under the typed control when there is one
     input.addEventListener('input', () => { delete input.dataset.proposed; mark.remove(); syncBadge(); }, {once: true});
@@ -109,7 +111,7 @@ function sayApplied(applied = []) {
     contactSavedAs(field, value);
     done.push(`${nameOf(field)}: ${value}`);
   }
-  if (done.length) toastMessage({title: 'Filled in from your CV', body: `${done.join(' · ')}. Check them in Your details.`, target: {view: 'settings', section: 'profile'}, tone: 'good'});
+  if (done.length) toastMessage({title: t('pagesProfile.filledCv'), body: `${done.join(' · ')}. Check them in Your details.`, target: {view: 'settings', section: 'profile'}, tone: 'good'});
 }
 // On opening Profile: what the CV states plainly is saved and said; the rest is only offered, never put in the boxes (no draft without the person's own yes).
 function offerProposals(proposals = [], applied = []) {
@@ -123,7 +125,7 @@ function offerProposals(proposals = [], applied = []) {
 // again: "Fill from my CV" (the Profile page's ⋯ menu), which reads the CV anew and says what it found in the Contact card's own line, also when it
 // found nothing or failed (#409: a press that said nothing at all).
 export async function loadProposals({again = false} = {}) {
-  if (again) message('contact-panel-message', 'Reading your CV for missing details… (about 15 s)');
+  if (again) message('contact-panel-message', t('pagesProfile.readingMissing'));
   const result = await window.pilot.contactProposals({again, settle: !again}).catch(error => ({proposals: [], error: error.message}));
   const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {

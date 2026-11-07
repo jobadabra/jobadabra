@@ -1,4 +1,5 @@
 // Setup wizard: the first-run steps, sidebar-derived labels and saving each step's answers.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {shared} from './shared.js';
 import {refreshCv} from './activity.js';
@@ -24,19 +25,19 @@ function aiStep() {
   const keyTyped = !!$({openai: 'openai-key'}[picked] || 'anthropic-key').value.trim();
   $('ai-save').disabled = !canContinue({picked, hasKey: !!shared.state.secrets.ANTHROPIC_API_KEY, hasOpenAiKey: !!shared.state.secrets.OPENAI_API_KEY,
     keyTyped, status: chooser?.status()});
-  $('ai-save').textContent = picked === 'free' ? 'Use Free AI' : ['api', 'openai'].includes(picked) && keyTyped ? 'Check and save' : t('pagesCommon.continue');
+  $('ai-save').textContent = picked === 'free' ? t('pagesSetup.useFree') : ['api', 'openai'].includes(picked) && keyTyped ? t('pagesSetup.checkSave') : t('pagesCommon.continue');
 }
 
 // The Free card (lib/ai-free.js): this install's own token, no key or account.
 async function useFree() {
   $('ai-save').disabled = true;
-  message('ai-free-message', 'Setting up Free AI…');
+  message('ai-free-message', t('pagesSetup.settingFree'));
   const result = await window.pilot.startFreeAi();
   $('ai-save').disabled = false;
   if (!result.ok) { message('ai-free-message', result.error, 'error'); return; }
   shared.state.secrets = {...shared.state.secrets, ANTHROPIC_API_KEY: true};
   shared.state.settings = {...shared.state.settings, aiFree: true, aiEngine: 'api'};
-  message('ai-free-message', '✓ Free AI is on. Add your own key any time in Settings → Connections → AI.', 'ok');
+  message('ai-free-message', t('pagesSetup.freeOn'), 'ok');
   setTimeout(() => goStep('cv'), 900);
 }
 
@@ -44,9 +45,9 @@ async function useFree() {
 async function saveOpenAiKey() {
   const key = $('openai-key').value.trim();
   if (!key && shared.state.secrets.OPENAI_API_KEY) { shared.state.settings = await window.pilot.setAiEngine('openai'); goStep('cv'); return; }
-  if (!key.startsWith('sk-')) { message('ai-openai-message', 'OpenAI keys start with sk-. Copy the whole key.', 'error'); return; }
+  if (!key.startsWith('sk-')) { message('ai-openai-message', t('pagesSetup.openaiKey'), 'error'); return; }
   $('ai-save').disabled = true;
-  message('ai-openai-message', 'Checking the key…');
+  message('ai-openai-message', t('pagesSetup.checkingKey'));
   const result = await window.pilot.checkOpenAI(key);
   $('ai-save').disabled = false;
   if (!result.ok) { message('ai-openai-message', result.error, 'error'); return; }
@@ -89,7 +90,7 @@ export function goStep(name) {
   const index = STEPS.indexOf(name);
   window.pilot.saveSettings({wizardStep: name});  // reopening the app continues here
   if (name === 'ai' && ownKeys(shared.state).ANTHROPIC_API_KEY && !$('anthropic-key').value) {
-    message('ai-message', '✓ Your key is saved. Continue, or paste a new key to replace it.', 'ok');
+    message('ai-message', t('pagesSetup.keySaved'), 'ok');
     // The saved key, masked (dots and its last 4 characters), as in Settings.
     window.pilot.secretHints().then(hints => {
       if (hints.ANTHROPIC_API_KEY) $('anthropic-key').placeholder = `${hints.ANTHROPIC_API_KEY} · saved (paste a new one to replace it)`;
@@ -110,7 +111,7 @@ export function goStep(name) {
   const done = !!shared.state.settings.setupDone;   // setup done before: this is a review, not a redo
   show($('review-mode'), done && name !== 'welcome');   // Welcome says it itself, in its own words
   document.querySelectorAll('.step[data-step="welcome"] [data-when]').forEach(node => show(node, node.dataset.when === (done ? 'done' : 'first')));
-  $('draft-save').textContent = shared.state.settings.setupDone ? 'Replace my strategy…' : 'Save strategy & continue';
+  $('draft-save').textContent = shared.state.settings.setupDone ? t('pagesSetup.replaceStrategy') : t('pagesSetup.saveStrategy');
   if (name === 'cv') refreshCv();
 }
 
@@ -155,9 +156,9 @@ export async function init() {
       goStep('cv');
       return;
     }
-    if (!key.startsWith('sk-ant-')) { message('ai-message', 'Anthropic keys start with sk-ant-. Copy the whole key.', 'error'); return; }
+    if (!key.startsWith('sk-ant-')) { message('ai-message', t('pagesSetup.anthropicKey'), 'error'); return; }
     $('ai-save').disabled = true;
-    message('ai-message', 'Checking the key…');
+    message('ai-message', t('pagesSetup.checkingKey'));
     const result = await window.pilot.checkAnthropic(key);
     $('ai-save').disabled = false;
     if (!result.ok) { message('ai-message', result.error, 'error'); return; }

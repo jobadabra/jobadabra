@@ -2,6 +2,7 @@
 // today's insight, a rejection lesson, Your week, Analyze now, Tune) come first, then the Focus items that moved here, with their own buttons.
 // Each entry's buttons run in one press (RUN); ⋯ holds Not now (14 days) and Not true, kept in the active store (lib/suggestion-answers.js).
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -222,7 +223,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   $('focus-suggestions-list').replaceChildren(...shown.map(row => (row.entry ? entryRow(row.entry) : card(row.item))));
   $('focus-suggestions-count').textContent = countWords(shown.length, rows.length);
   const all = $('focus-suggestions-all');
-  all.textContent = showAll ? 'Show fewer' : `Show all ${rows.length}`;
+  all.textContent = showAll ? t('pagesProfile.showFewer') : `Show all ${rows.length}`;
   show(all, rows.length > SHOWN);
   renderJobsSuggestions();
   window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row, and its rows answered here

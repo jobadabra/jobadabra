@@ -1,4 +1,6 @@
 // Session page: opening a session and its log.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el, moreButton, pill} from '../components.js';
@@ -115,7 +117,7 @@ export function renderSessionPage() {
     const line = el('span', 'muted small ss-job-tab');
     const link = Object.assign(el('a', 'link', address), {href: '#', title: tab.url});
     link.addEventListener('click', event => { event.preventDefault(); window.pilot.openExternal(tab.url); });
-    const opened = tab.tabAt ? new Date(tab.tabAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+    const opened = tab.tabAt ? displayDate(new Date(tab.tabAt), {hour: '2-digit', minute: '2-digit'}) : '';
     // Unknown while Chrome is checked or silent: its last address, never "open for" a tab nobody can see (owner, 8 Oct 2026).
     const unknown = checkingTab(item) || waitingChrome(item) || silentChrome(item) || tabLost(item);
     line.append(formGone(item) ? 'Chrome tab (closed): ' : unknown ? 'Chrome tab (last seen): ' : 'Chrome tab: ', link);
@@ -129,7 +131,7 @@ export function renderSessionPage() {
   $('ss-job').replaceChildren(head);
   renderNextStep(item);
   const review = sessionReview(item, formReady(item));
-  const [logLabel, logTone] = isSubmitted(item) ? [label, tone] : item.status === 'running' ? ['Working', 'info']
+  const [logLabel, logTone] = isSubmitted(item) ? [label, tone] : item.status === 'running' ? [t('pagesCommon.working'), 'info']
     // Claude stopped on a list for you ("Needs you: tick the robot box, reply ok") in a live window: it waits, it has not completed (8 Oct 2026).
     : review && isLive(item) && readSessionMessage(item.question || '').needs.length ? ['Waiting for you', 'warn']
     : review ? ['Completed', 'good']
@@ -208,7 +210,7 @@ export async function attachTerminal(id) {
 // One font for every session, the page's size. A running Claude redraws for the log's width; a finished session is
 // a recording wrapped at the width it had, so it may leave room on the right (bigger text to fill it looked out of
 // place next to the page, 29 Sep 2026).
-const hhmm = iso => (iso ? new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '');
+const hhmm = iso => (iso ? displayDate(new Date(iso), {hour: '2-digit', minute: '2-digit'}) : '');
 function renderTranscript(talk) {
   const box = $('ss-transcript');
   box.replaceChildren(...talk.map(entry => {

@@ -1,4 +1,5 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';

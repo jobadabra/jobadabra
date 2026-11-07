@@ -1,5 +1,6 @@
 // Recent activity: the few-jobs help boxes beside the run card (coverage actions, Explain with AI).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el} from '../components.js';
@@ -103,7 +104,7 @@ export function withFewJobsHelp(runId) {
     const parts = [];
     // One plain action in place of the employer numbers and schedule (owner, 24 Oct 2026); those live in Reports.
     if (groups?.employers) {
-      const further = el('button', 'secondary item-action', 'Search wider');
+      const further = el('button', 'secondary item-action', t('pagesStatus.searchWider'));
       further.type = 'button';
       further.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
       adviceEvent('shown', 'employer', 'few-jobs');
@@ -132,9 +133,9 @@ export function withFewJobsHelp(runId) {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
         if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', '✓ Reading in Chrome'); return; }
         onScreen('read-sites').title = result?.text || read.title;
-        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || 'Try again.'}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
+        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || t('pagesCommon.tryAgain')}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
-      items.push(row('external', 'Browse sites manually', [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
+      items.push(row('external', t('pagesCommon.browseManually'), [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
     }
     broaden.append(items.length ? rows(items) : el('p', 'muted small', 'Nothing obvious to change yet.'), why, answer);
     parts.push(broaden);

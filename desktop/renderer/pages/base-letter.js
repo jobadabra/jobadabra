@@ -2,6 +2,7 @@
 // and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date and Open PDF).
 // Approved usable base letters automatically fill the gap when a job has no usable tailored letter. Who pays is said before and after a draft.
 // A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/unit/renderer/base-letter.test.js and test/unit/renderer/contact-reading.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {pill} from '../components.js';
 import {emptyState} from '../page-parts.js';

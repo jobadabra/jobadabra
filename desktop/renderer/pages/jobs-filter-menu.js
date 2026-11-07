@@ -1,5 +1,6 @@
 // Jobs page, the Show menu: one multi-select holding every filter (jobs-filters.js), with each one's count. A change asks for a render through
 // the "jobs-rerender" event. Guarded by: test/unit/renderer/jobs-filters.test.js, test/unit/renderer/jobs-board-page.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {multiSelect} from '../multi-select.js';
 import {$} from './core.js';

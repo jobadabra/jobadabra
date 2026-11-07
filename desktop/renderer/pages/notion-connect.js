@@ -1,5 +1,6 @@
 // Connecting Notion from anywhere in the window (Notion later: the app only tries until it is connected): the dialog with the
 // advantages, the locked pages, and the listener for any action that answers {needsNotion, reason} (see preload.cjs).
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {el, notionBenefits, notionGate} from '../components.js';
@@ -104,7 +105,7 @@ async function connect() {
   message('notion-connect-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
   const result = await waitSignIn(() => window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message})));
   if (!result.ok) {
-    message('notion-connect-message', result.error || 'Not connected.', 'error');
+    message('notion-connect-message', result.error || t('pagesProfile.notConnected'), 'error');
     show($('notion-connect-token'));
     return;
   }
@@ -129,7 +130,7 @@ export async function openInNotion(key, event, reason = 'profile') {
   // The words change only where they are plain text (a <span>, or a button with no icon): an icon inside must survive.
   const label = button && (button.querySelector('span') || (button.children.length ? null : button));
   const was = label?.textContent;
-  if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); if (label) label.textContent = 'Opening…'; }
+  if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); if (label) label.textContent = t('pagesSession.opening'); }
   try { return await window.pilot.openNotion(shared.state.notion[key], !!event?.metaKey); }
   finally { if (button) { button.disabled = false; button.removeAttribute('aria-busy'); if (label) label.textContent = was; } }
 }

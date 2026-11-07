@@ -1,5 +1,6 @@
 // The services Settings lists (Overview's "Your setup", Connections, the alert and the dot): each one's name, icon, words and whether it is required.
 // Moved out of pages/settings.js (26 Oct 2026, pure move, the file was past 450 lines). Guards: test/unit/renderer/notify-choice.test.js (Telegram's required rule), the settings tests.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {shared} from './shared.js';
 import {offered} from '../key-sources.js';
@@ -10,20 +11,20 @@ import {LINE} from '../linkedin-words.js';
 // dot on Connections. required: counted for the alert and the dot (Google Jobs and Always on are optional extras;
 // Always on's card opens its setup on the Automation page).
 const ALL_SERVICES = [
-  {id: 'ai', name: 'AI', icon: 'bot', what: 'Claude or OpenAI: an API key, Claude Code or Codex', required: true,
-    why: 'Reading jobs, fit scores and applications need AI: choose Claude Code, Codex or an API key.'},
-  {id: 'notion', name: 'Notion', icon: 'layers', what: 'Job search workspace', required: false,   // about Notion
-    why: 'Where your applications and interviews are kept. Needed for Always on, Telegram and Gmail.'},
-  {id: 'google', name: 'Gmail & Calendar', icon: 'mail', what: 'Read-only access', required: true,
-    why: 'Replies, interviews and recruiter emails are tracked from Gmail.'},
-  {id: 'extension', name: 'Chrome extension', icon: 'puzzle', what: 'Application form filling', required: true,
-    why: 'It fills application forms with your details and CV.'},
+  {id: 'ai', name: 'AI', icon: 'bot', what: t('pagesDetails.aiChoices'), required: true,
+    why: t('pagesDetails.aiWhy')},
+  {id: 'notion', name: 'Notion', icon: 'layers', what: t('pagesDetails.workspace'), required: false,   // about Notion
+    why: t('pagesDetails.notionWhy')},
+  {id: 'google', name: 'Gmail & Calendar', icon: 'mail', what: t('pagesDetails.readOnly'), required: true,
+    why: t('pagesDetails.gmailWhy')},
+  {id: 'extension', name: t('pagesDetails.extensionName'), icon: 'puzzle', what: t('pagesDetails.formFilling'), required: true,
+    why: t('pagesDetails.extensionWhy')},
   {id: 'linkedin-jobs', name: 'LinkedIn jobs', icon: 'linkedin', what: `Search LinkedIn on every Find jobs, in the background. ${LINE}`, required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
-  {id: 'telegram', name: 'Telegram', icon: 'send', what: 'Digests and reminders', required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
+  {id: 'telegram', name: 'Telegram', icon: 'send', what: t('pagesDetails.digests'), required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
     why: 'Digests and reminders need a bot connection, or email: Settings → Notifications.'},
-  {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: 'Additional job results', connect: 'Add key'},
-  {id: 'brave', name: 'Web search (Brave)', icon: 'search', what: 'Finds employers\' own job sites', connect: 'Add key'},
-  {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: 'More job results (free keys)', connect: 'Add keys'},
+  {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: t('pagesDetails.moreResults'), connect: t('pagesDetails.addKey')},
+  {id: 'brave', name: 'Web search (Brave)', icon: 'search', what: 'Finds employers\' own job sites', connect: t('pagesDetails.addKey')},
+  {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: 'More job results (free keys)', connect: t('pagesDetails.addKeys')},
   {id: 'cloud', name: 'GitHub · Always on', icon: 'cloud', what: 'Runs your searches and checks while your Mac is off', connect: t('pagesCommon.setup')},
   {id: 'tg-cloud', name: 'Cloudflare · Telegram buttons', icon: 'zap', what: 'Your bot answers buttons with the Mac off', connect: t('pagesCommon.setup'),
     shown: () => !!shared.state.settings.cloud?.repo},  // it starts runs in the GitHub repository, so only with Always on

@@ -1,4 +1,5 @@
 // The sidebar's progressive pages: Interviews, Reports and Employers appear when they have something, a "More" row lists the others with when they unlock, and a one-time tour points at the menu. Rules in renderer/menu-reveal.js and menu-tour.js; guarded by test/unit/renderer/menu-reveal.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
@@ -77,7 +78,7 @@ function tour() {
     at = nextPresent(stops, at + 1, present);
     if (at >= stops.length) return end();
     const stop = stops[at], target = document.querySelector(stop.target), rect = target.getBoundingClientRect();
-    title.textContent = stop.title; text.textContent = stop.text; count.textContent = `${at + 1} of ${stops.length}`;
+    title.textContent = stop.title; text.textContent = stop.text; count.textContent = t('pagesCounts.menuStep', {current: at + 1, total: stops.length});
     next.textContent = at === stops.length - 1 ? t('pagesCommon.done') : t('pagesCommon.next');
     const sidebar = target.closest('.sidebar') || document.querySelector('.sidebar');
     const spot = cardSpot({rect, sidebarRight: sidebar.getBoundingClientRect().right, cardWidth: card.offsetWidth, cardHeight: card.offsetHeight, viewport: {width: window.innerWidth, height: window.innerHeight}, above: !!stop.above});

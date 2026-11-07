@@ -1,4 +1,6 @@
 // Settings → connections: Apply with Claude, how often, Always on (the extension's card: extension-setup.js).
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {aiFamily} from '../ai-name.js';
 import {alwaysOnNeeds, requirementRows} from '../always-on-needs.js';
@@ -45,12 +47,12 @@ export function showScheduleState(next = shared.nextRuns || {}) {
   try { google = JSON.parse(localStorage.getItem('serviceChecks') || 'null')?.google?.connected ?? null; } catch {}
   const when = at => nextWord(at);
   const state = {
-    search: value('search') === '0' ? ['Off'] : ['On', [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
-    mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
+    search: value('search') === '0' ? [t('pagesCommon.off')] : [t('pagesCommon.on'), [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
+    mail: value('mail') === '0' ? [t('pagesCommon.off')] : google === false ? ['Connect Google', '', '', 'warn'] : [t('pagesCommon.on'), [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
   };
   document.querySelectorAll('[data-schedule-state]').forEach(node => {
-    const [label, where, at, tone] = state[node.dataset.scheduleState] || ['Off'];
-    node.className = `task-state${tone === 'warn' ? ' is-warn' : label === 'On' ? ' is-on' : ''}`;
+    const [label, where, at, tone] = state[node.dataset.scheduleState] || [t('pagesCommon.off')];
+    node.className = `task-state${tone === 'warn' ? ' is-warn' : label === t('pagesCommon.on') ? ' is-on' : ''}`;
     const detail = [where, at].filter(Boolean).join(' · ');
     node.replaceChildren(label, ...(detail ? [Object.assign(document.createElement('small'), {textContent: detail})] : []));
   });
@@ -153,7 +155,7 @@ function showCloudPill() {
 // "Connected to …", or, when the setup found a repository from an earlier setup, which one and since when.
 function connectedTo(result) {
   if (!result.existing) return `Connected to ${result.repo}`;
-  const since = new Date(result.existing.createdAt).toLocaleDateString([], {day: 'numeric', month: 'short', year: 'numeric'});
+  const since = displayDate(new Date(result.existing.createdAt), {day: 'numeric', month: 'short', year: 'numeric'});
   return `Using your existing private repository ${result.repo} (created ${since})`;
 }
 
@@ -308,7 +310,7 @@ export async function init() {
       box.className = 'message';
       const code = Object.assign(document.createElement('b'), {className: 'device-code', textContent: step.code});
       const copy = Object.assign(document.createElement('button'), {className: 'link', textContent: t('pagesCommon.copy')});
-      copy.addEventListener('click', () => { navigator.clipboard.writeText(step.code); copy.textContent = 'Copied ✓'; });
+      copy.addEventListener('click', () => { navigator.clipboard.writeText(step.code); copy.textContent = t('pagesProfile.copied'); });
       box.replaceChildren('In the browser tab that opened, enter this code and approve Jobadabra:', document.createElement('br'),
         code, ' ', copy, document.createElement('br'), Object.assign(document.createElement('span'), {className: 'muted small', textContent: step.url}));
     }
@@ -353,7 +355,7 @@ export async function init() {
     $('google-warning-dialog').close();
     message('google-message', 'Finish the sign-in in your browser: on Google\'s warning page press Advanced, then Go to Jobadabra (unsafe). Closed that page? Press Cancel sign-in here.');
     const result = await waitGoogle(() => window.pilot.googleConnect({only: googleOnly}));
-    message('google-message', result.ok ? 'Connected ✓' : result.error, result.ok ? 'ok' : result.cancelled ? '' : 'error');
+    message('google-message', result.ok ? t('pagesProfile.connected') : result.error, result.ok ? 'ok' : result.cancelled ? '' : 'error');
     showGoogle();
   });
   $('set-notion-oauth').addEventListener('click', async () => {
@@ -361,7 +363,7 @@ export async function init() {
     if (!notionConnected()) { openNotionConnect({reason: 'none', where: 'settings', from: 'settings', then: () => loadSettings()}); return; }
     message('set-notion-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
     const result = await waitNotion(() => window.pilot.notionOAuth({from: 'settings-reconnect'}));
-    message('set-notion-message', result.ok ? 'Reconnected ✓' : result.error || 'Not connected.', result.ok ? 'ok' : 'error');
+    message('set-notion-message', result.ok ? t('pagesProfile.reconnected') : result.error || t('pagesProfile.notConnected'), result.ok ? 'ok' : 'error');
     if (result.ok) { shared.state = await window.pilot.state(); loadSettings(); }
   });
   $('set-notion-save').addEventListener('click', async () => {

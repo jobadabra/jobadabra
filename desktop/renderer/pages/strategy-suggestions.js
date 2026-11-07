@@ -1,5 +1,7 @@
 // Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm, and Tune my strategy's row from Focus's pool
 // (pages/focus-suggestions.js). Guarded by: test/unit/renderer/advice-events.test.js, test/unit/renderer/coverage-card.test.js, test/unit/renderer/filters-card.test.js, test/unit/renderer/suggestions.test.js.
+import {number as displayNumber} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
@@ -40,7 +42,7 @@ const ORDER = ['tune', 'places', 'ideas', 'coverage', 'filters', 'sources', 'vis
 const SUGGESTIONS = 'strategy-suggestions';
 defineCount(SUGGESTIONS, () => ORDER.filter(kind => rows[kind]).length);
 const plain = label => label.replace(/^[+−] /, '');
-const number = value => Number(value || 0).toLocaleString('en-US');
+const number = value => displayNumber(Number(value || 0));
 
 // Review from elsewhere (Recent activity's "Review location"): Strategy opens with that row's options showing. Kept until the row is drawn.
 let pendingReview = '';
@@ -128,7 +130,7 @@ function emphasize(text) {
 }
 // One card per kind: tile, bold title (and how many options), a line with its numbers, its action; Review opens the options under a tinted head.
 // option: {label, why, meta?, tech?, button, accent?, run(button)}; body: drawn instead of the option cards (the sites, by company).
-function suggestionRow({kind, id, glyph, title, summary, text, options = [], hidden = [], hiddenLabel = '', review = 'Review', menu, brief, note = '', body = null, count = null}) {
+function suggestionRow({kind, id, glyph, title, summary, text, options = [], hidden = [], hiddenLabel = '', review = t('pagesCommon.review'), menu, brief, note = '', body = null, count = null}) {
   briefs[id] = {glyph, ...brief};
   const tone = TONE[id] || 'neutral';
   const row = el('section', `suggestion-card tone-${tone}`);
@@ -146,7 +148,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
     detail.hidden = !open;
     row.classList.toggle('is-open', open);
     toggle.setAttribute('aria-expanded', String(open));
-    toggle.textContent = open ? 'Collapse' : closedLabel;
+    toggle.textContent = open ? t('pagesJobs.collapse') : closedLabel;
     if (open) openRows.add(id); else openRows.delete(id);
   };
   toggle.addEventListener('click', () => setOpen(detail.hidden));
@@ -270,7 +272,7 @@ const paintCoverage = verdict => {
     options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
       run: press({kind: 'role', value: chip.term})})),
     brief: {title: verdict.local ? 'Catch titles in other languages' : t('pagesCommon.addRoleWords'), text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
-    menu: answerItems('coverage', keys.coverage, 'Add role words')});
+    menu: answerItems('coverage', keys.coverage, t('pagesCommon.addRoleWords'))});
   const places = unanswered(placesCard(verdict), keys.places);
   const topPlace = places?.chips[0];
   rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: 'Broaden locations',
@@ -288,7 +290,7 @@ const paintCoverage = verdict => {
     options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
       run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
     brief: {title: t('pagesCommon.loosen'), text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
-    menu: answerItems('filters', keys.filters, 'Loosen your filters')});
+    menu: answerItems('filters', keys.filters, t('pagesCommon.loosen'))});
   // Unused job sources: an option opens its panel in Settings → Connections (a key to add there); nothing is turned on from here.
   const sources = unanswered(sourcesCard(verdict), keys.sources);
   rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: t('pagesCommon.setup'),
@@ -333,7 +335,7 @@ const paintCoverage = verdict => {
     rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: t('pagesCommon.browseManually'), count: sites.length,
       summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
       brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: 'Use the Chrome extension', cta: 'View sites'},
-      menu: answerItems('visit', keys.visits, 'Browse sites manually')});
+      menu: answerItems('visit', keys.visits, t('pagesCommon.browseManually'))});
   } else rows.visits = null;
   // Employers where people like you got interviews (shared pool): an option shows that employer's jobs in the Jobs list.
   const forYou = unanswered(employersCard(verdict), keys.foryou);

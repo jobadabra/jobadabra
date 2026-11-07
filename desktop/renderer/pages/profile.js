@@ -1,4 +1,5 @@
 // Settings → Application profile.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {mountContactControls} from '../contact-controls.js';
 import {showMode} from '../assistant-mode.js';
@@ -76,9 +77,9 @@ function answersMenu() {
 // The links card's read view (pages/details-read.js linksView; GitHub only while its box shows).
 const showLinks = () => $('links-view')?.replaceChildren(linksView());
 // Sidebar: the Notion pages, most used first. Click opens them in the app's Notion window; ⌘-click in the browser.
-const NOTION_LINKS = [['NOTION_MATCHES_DB', 'Job matches', 'target'], ['NOTION_APPLICATIONS_DB', 'Applications', 'layers'],
+const NOTION_LINKS = [['NOTION_MATCHES_DB', 'Job matches', 'target'], ['NOTION_APPLICATIONS_DB', t('pagesCommon.applications'), 'layers'],
   ['NOTION_EVENTS_DB', 'Replies & events', 'mail'], ['NOTION_INTERVIEWS_DB', 'Interviews', 'mic'], ['NOTION_INSIGHTS_DB', 'Insights', 'chart'],
-  ['NOTION_PIPELINE_PAGE', 'Pipeline', 'columns'], ['NOTION_PROFILE_PAGE_ID', 'Profile', 'user'], ['NOTION_ANSWERS_PAGE_ID', 'Standard answers', 'file'],
+  ['NOTION_PIPELINE_PAGE', 'Pipeline', 'columns'], ['NOTION_PROFILE_PAGE_ID', t('pagesCommon.profile'), 'user'], ['NOTION_ANSWERS_PAGE_ID', 'Standard answers', 'file'],
   ['NOTION_SEARCH_SETTINGS_PAGE', 'Search settings', 'settings'], ['NOTION_KNOWLEDGE_PAGE', 'Form knowledge', 'bookmark'],
   ['NOTION_EMPLOYERS_DB', 'Employers', 'building'], ['NOTION_CRON_RUNS_DB', 'Search runs', 'search'], ['NOTION_AGENT_RUNS_DB', 'Form fills', 'bot']];
 function renderNotionLinks() {
@@ -110,8 +111,8 @@ export async function loadCvSetting() {
   $('cv-view').hidden = !status.base;
   // ⋯ the rarer CV actions: read the PDF again (or for the first time), and the folder with the CV's files.
   $('cv-more').replaceChildren(moreButton(() => [
-    {label: status.base ? 'Read my CV PDF again' : 'Read my CV PDF', icon: 'refresh', disabled: cvReadBlocked, run: readCvPdf},
-    {label: 'Show CV folder', icon: 'folder', run: () => window.pilot.showCvFolder()}], 'More CV actions'));
+    {label: status.base ? t('pagesSetup.readCvAgain') : t('pagesSetup.readCv'), icon: 'refresh', disabled: cvReadBlocked, run: readCvPdf},
+    {label: t('pagesSetup.cvFolder'), icon: 'folder', run: () => window.pilot.showCvFolder()}], t('pagesSetup.cvActions')));
 }
 
 export async function loadSettings() {
@@ -147,7 +148,7 @@ export async function loadSettings() {
   $('auto-search').checked = shared.state.settings.autoSearch !== false;
   $('open-login').checked = !!shared.state.settings.openAtLogin;
   $('last-search').textContent = shared.state.settings.lastSearchAt
-    ? `${runWhen(shared.state.settings.lastSearchAt)}${shared.state.settings.lastSearchOk === false ? ' (with problems)' : ''}`
+    ? `${runWhen(shared.state.settings.lastSearchAt)}${shared.state.settings.lastSearchOk === false ? t('pagesSetup.withProblems') : ''}`
     : t('pagesCommon.noSearch');
   if (shared.state.settings.telegramBot && shared.state.secrets.TELEGRAM_BOT_TOKEN) {
     const line = document.querySelector('[data-secret="TELEGRAM_BOT_TOKEN"]');
@@ -194,7 +195,7 @@ export function showContact({redraw = false} = {}) {
       showFacts();   // Work eligibility, Availability & compensation, Languages (details-facts.js)
       loadExperienceProfile('details');   // the voluntary survey answers (pages/experience-profile.js)
     },
-    fail: result => { reading(false); message('contact-panel-message', `${byStore('Couldn\'t read them from Notion', 'Couldn\'t read them from your Profile')}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
+    fail: result => { reading(false); message('contact-panel-message', `${byStore(t('pagesSetup.readFromNotionFailed'), t('pagesSetup.readProfileFailed'))}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
   });
   $('contact-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   return read;
@@ -221,8 +222,8 @@ export async function init() {
     $('cv-message').textContent = !result.ok ? cvError(result.error, 'show') : result.overflow?.length ? `Page ${result.overflow.join(', ')} is too full: its end is cut off.` : '';
   });
   readCvPdf = async () => {
-    if ((await window.pilot.cvStatus()).base && !confirm('Replace your CV data (and any hand edits) with a fresh read of your CV PDF?')) return;
-    $('cv-message').textContent = 'Reading your CV… (about 30 s)';
+    if ((await window.pilot.cvStatus()).base && !confirm(t('pagesSetup.replaceCvData'))) return;
+    $('cv-message').textContent = t('pagesProfile.readingCv');
     const result = await window.pilot.importCv();
     cvReadBlocked = !result.ok && isSpendingLimit(humanError(result.error));
     show($('cv-limit-link'), cvReadBlocked);
@@ -243,9 +244,9 @@ export async function init() {
   $('cvc-ai-run').addEventListener('click', () => cvCheckAction($('cvc-ai-run'), 'Reviewing… (about 30 s)', () => window.pilot.cvCheckAi(), checkOptions));
   $('set-telegram-save').addEventListener('click', async () => {
     const value = $('set-telegram').value.trim();
-    if (!/^\d+:[\w-]{30,}$/.test(value)) { message('telegram-message', 'That doesn\'t look like a bot token (numbers, a colon, then letters).', 'error'); return; }
+    if (!/^\d+:[\w-]{30,}$/.test(value)) { message('telegram-message', t('pagesSetup.botToken'), 'error'); return; }
     $('set-telegram-save').disabled = true;
-    message('telegram-message', 'Checking the token…');
+    message('telegram-message', t('pagesSetup.checkingToken'));
     const result = await window.pilot.telegramConnect(value);
     $('set-telegram-save').disabled = false;
     if (!result.ok) { message('telegram-message', result.error, 'error'); return; }

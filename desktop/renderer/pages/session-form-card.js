@@ -1,6 +1,7 @@
 // Session page, "Form completion" card and "Before you submit" box (knockout questions, which CV goes in).
 // Moved out of session-needs.js, which calls showFormCard from showFormState. Guarded by test/unit/main/form-tab-closed.test.js
 // and test/unit/renderer/need-proposal.test.js (npm test in desktop/).
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {accountCardOf, isSubmitted} from '../session-state.js';
@@ -98,7 +99,7 @@ export function showFormCard(item, state) {
   const account = accountCardOf(item, state);
   $('ss-form-title').textContent = account ? account.title : 'Form completion';
   const done = state.total - state.left;
-  $('ss-form-pill').replaceChildren(account ? pill(account.pill.text, account.pill.tone, {dot: true, title: 'The account step: what the page asks of you before the application form'}) : isSubmitted(item) ? pill('Submitted', 'good', {dot: true})
+  $('ss-form-pill').replaceChildren(account ? pill(account.pill.text, account.pill.tone, {dot: true, title: 'The account step: what the page asks of you before the application form'}) : isSubmitted(item) ? pill(t('pagesSession.submitted'), 'good', {dot: true})
     : state.ready ? pill('Ready to submit', 'good', {dot: true})
     : state.needs && !state.left ? pill(`Needs you: ${state.needs === '1' ? 'see what the form asks' : state.needs}`, 'warn', {title: 'Every counted field is filled, but the page still asks for something only you can give'})   // the AI's veto (a consent link, a picklist the count cannot see)
     : pill(`${state.left} remaining`, 'warn', {title: `${state.total - state.left} of ${state.total} required fields filled (the ring on the form lists the rest)`}));

@@ -12,7 +12,7 @@ test('every choice has a button, "separate" only in the Choose… menu, and noth
   for (const choice of CHOICES) assert.match(screen, new RegExp(`go\\('${choice}'`), choice);
   // Owner, 18 Oct 2026: no winner: the two sides are equal boxes, each with its own Use button in its colour; the other ways out are one quiet menu.
   assert.match(screen, /option\('strategy', 'Strategy',[^\n]*'violet', go\('strategy'\)\)/);
-  assert.match(screen, /option\('profile', 'Profile',[^\n]*'teal', go\('profile'\)\)/);
+  assert.match(screen, /option\('profile', t\('pagesCommon\.profile'\),[^\n]*'teal', go\('profile'\)\)/);
   assert.match(screen, /button\(`Use \$\{label\}'s`, 'secondary which-use', use\)/);
   assert.match(screen, /openMenu\(event\.currentTarget, \[[\s\S]*Other places…[\s\S]*go\('separate'\)/);
   assert.doesNotMatch(screen, /autofocus|is-active|primary/);   // no button looks like the recommended one

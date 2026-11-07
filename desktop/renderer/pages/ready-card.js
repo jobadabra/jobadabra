@@ -1,5 +1,7 @@
 // The Ready to send card on Actions (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md), always shown (owner, 18 Oct 2026); it works only when the site says this install is the owner's, else it says why with its buttons off: send tonight's finished jobs to be filled overnight,
 // start the night now (the test), and in the morning one row per form (complete, what is left, a wall) with Done and the night's video of its fill (a popup). You press Submit; nothing here does. Built from the task-card parts the Tailor card uses (.task-card, .task-body, pill). Guard: test/unit/renderer/ready-card.test.js.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -66,7 +68,7 @@ export function paint(card, state, names, act) {
   const count = pill(`${tonight.length} ready`, tonight.length ? 'good' : 'warn');
   count.title = tonight.length ? `Your finished jobs with fit ≥ ${state.settings.minFit}, up to ${state.settings.perNight} a night` : 'No job has its application, CV and cover letter ready yet: Fill now makes them for your best matches.';
   next.append(count);
-  if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${new Date(state.sent.at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
+  if (state.sent) next.append(Object.assign(pill(`Sent ${state.sent.count} · ${displayDate(new Date(state.sent.at), {hour: '2-digit', minute: '2-digit', hour12: false})}`, 'info'),
     {title: 'Sent again by itself when this list changes and before your Mac goes off.'}));
   if (!tonight.length) next.append(el('span', 'muted', 'Fill now makes the application, CV and letter for your best matches first.'));
   body.append(next);
@@ -88,7 +90,7 @@ export function build() {
 // Not working right now (no owner key, no token today, the site refused or is down): the card stays, says why, and its two buttons are off.
 export function blocked(card, why, retry) {
   const body = card.querySelector('.ready-body'), again = el('button', 'secondary', t('pagesCommon.tryAgainShort'));
-  const checked = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  const checked = displayDate(new Date(), {hour: '2-digit', minute: '2-digit', second: '2-digit'});
   // Try again answers visibly (owner, 18 Oct 2026: "no feedback. No reaction"): Checking… while it asks, then the reason with the time it was checked.
   again.addEventListener('click', () => { again.disabled = true; again.textContent = t('pagesCommon.checking'); retry(); });
   body.textContent = '';
@@ -168,7 +170,7 @@ export async function initReadyCard() {
     button.setAttribute('aria-label', name);
     return button;
   };
-  const open = code => { const button = iconButton('external', 'Open in my browser', 'the real page in your own Chrome, filled as the night left it', 'browser', 'Open in Chrome');
+  const open = code => { const button = iconButton('external', 'Open in my browser', 'the real page in your own Chrome, filled as the night left it', 'browser', t('pagesCommon.openChrome'));
     button.addEventListener('click', async () => { button.disabled = true; say('Opening the filled form in your browser…');
       const result = await window.pilot.readyOpen(code).catch(error => ({ok: false, error: errorLine(error)}));
       if (result.cancelled) { button.disabled = false; return; }   // Not now in the first-Apply dialog (pages/apply-choice.js)
@@ -181,9 +183,9 @@ export async function initReadyCard() {
     again: code => { const button = iconButton('refresh', 'Fill again', 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
     stop: code => { const button = el('button', 'secondary ready-stop', t('pagesCommon.stop')); button.type = 'button'; button.title = 'Stop filling this form: it goes back to how it was'; button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
     stopAll: () => { const button = el('button', 'secondary ready-stop-all', 'Stop all'); button.type = 'button'; button.title = 'Stop every form the night is filling or about to fill'; button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
-    done: code => { const button = iconButton('check', 'Done', 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
+    done: code => { const button = iconButton('check', t('pagesCommon.done'), 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
   // What just happened, as a badge and its line (owner, 18 Oct 2026: the status lines "should be shown as badges").
-  const LABEL = {info: 'Working', good: 'Done', warn: 'Note', bad: 'Problem'};
+  const LABEL = {info: t('pagesCommon.working'), good: t('pagesCommon.done'), warn: t('pagesCommon.note'), bad: 'Problem'};
   const say = (text, tone = 'info') => {
     note.textContent = '';
     if (!text) return;

@@ -1,5 +1,6 @@
 // App updates: when a newer stable release exists (lib/updater.js), the menu's foot offers it; one click downloads
 // it, swaps the app and restarts (the quit dialog still asks if a job is running).
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 import {toastMessage} from './startup.js';

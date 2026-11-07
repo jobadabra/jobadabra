@@ -1,5 +1,6 @@
 // The Email card in Settings → Overview "Your setup": its state (confirmed, waiting for the link, unsubscribed, our sender off) from notifyState, a click opens
 // Notifications. Drawn after the other service cards, since its state comes from the website. Words: renderer/notify-words.js emailCard; guard test/unit/renderer/notify-choice.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, tile} from '../components.js';
 import {icon} from '../icons.js';

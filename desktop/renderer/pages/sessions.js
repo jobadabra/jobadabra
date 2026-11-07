@@ -1,4 +1,5 @@
 // Application sessions: the dock, the list, the next step.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {badgeLabel} from '../badge-label.js';
 import {el, pill} from '../components.js';
@@ -37,7 +38,7 @@ export function sessionFor(url) {
   return sessionList.filter(item => pageKey(item.url) === key).pop() || null;
 }
 export const sessionJob = item => shared.allJobs.find(job => pageKey(job.url) === pageKey(item.url)) || {};
-export const sessionTitle = item => item.title || sessionJob(item).title || 'Application';
+export const sessionTitle = item => item.title || sessionJob(item).title || t('pagesProfile.application');
 export const sessionCompany = item => item.company || sessionJob(item).company || new URL(item.url || 'https://job').hostname.replace(/^www\./, '');
 // A submitted application is finished work: it lives on Jobs, not on this screen. A Read with Claude session is not an application at all
 // (owner, 7 Oct 2026: "this is only for applying to jobs"): its result is in Recent activity. This list feeds the page, the badge, the dock and

@@ -3,6 +3,7 @@
 // changes per text, saved through the page's one save bar (save-bar.js; owner, 18 Oct 2026: one bar per page, no bar of its own since D's swap);
 // a tab only draws and calls change(name, change).
 // A change to the same block replaces the earlier one. Guarded by test/unit/renderer/profile-tabs-render.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, loadingCard} from '../components.js';

@@ -1,5 +1,6 @@
 // "Have a promo code?" (owner, 25 Oct 2026): a small link on the Free Plan card and the ⌘K entry open one dialog with one field. The site checks the code (lib/plan.js redeem); the app holds no
 // code and compares nothing. Shown only while the site's plan is on and the install is Free. Words: renderer/plan-view.js redeemWords. Guard: test/guards/money/plan-promo.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {redeemWords} from '../plan-view.js';

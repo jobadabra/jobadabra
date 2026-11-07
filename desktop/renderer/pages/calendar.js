@@ -1,5 +1,8 @@
 // Calendar page: screenings and interviews on a month grid, with the agenda beside it (renderer/calendar.js). From the job
 // list (Next interview) and the saved recordings (Notion 🎤 Interviews); clicking a meeting opens its job in Notion.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import * as cal from '../calendar.js';
@@ -12,7 +15,7 @@ import {byStore, storeName} from '../store-words.js';
 import {gatedOut} from './notion-connect.js';
 
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const KINDS = {screening: ['Screening', 'teal'], interview: ['Interview', 'info']};
+const KINDS = {screening: ['Screening', 'teal'], interview: [t('pagesCommon.interview'), 'info']};
 let month = null;        // {year, month} shown
 let pastShown = 20;      // how many past meetings the Recent list shows (Load more adds 20)
 let calJobs = [];        // the jobs the meetings come from (the Calendar's own small read; the full list only while it is the one at hand)
@@ -26,10 +29,10 @@ const gone = new Map();   // meeting id → until (ms)
 const visible = list => list.filter(m => !(gone.get(m.id) > Date.now()));
 const jobsLoaded = () => Array.isArray(shared.allJobs) && shared.allJobs.length > 0;
 
-const monthName = ({year, month: m}) => new Date(Date.UTC(year, m, 1)).toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'});
-const timeOf = m => (m.timed ? new Date(m.at).toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', timeZone: ZONE}) : '');
-const dayLabel = m => new Date(`${m.day}T12:00:00Z`).toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'});
-const name = m => m.company || m.title || 'Interview';
+const monthName = ({year, month: m}) => displayDate(new Date(Date.UTC(year, m, 1)), {month: 'long', year: 'numeric', timeZone: 'UTC'});
+const timeOf = m => (m.timed ? displayDate(new Date(m.at), {hour: '2-digit', minute: '2-digit', timeZone: ZONE}) : '');
+const dayLabel = m => displayDate(new Date(`${m.day}T12:00:00Z`), {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'});
+const name = m => m.company || m.title || t('pagesCommon.interview');
 
 // A meeting's job: its Notion page when the store has one (as before), else the job's page in the app (Jobs → the side panel), so a click
 // is never dead on a store without pages (9 Oct 2026, found on SQLite).
@@ -92,7 +95,7 @@ function emptyUpcoming() {
 const skeletons = () => [0, 1, 2].map(() => { const box = el('div', 'cal-row'); box.append(el('span', 'skeleton w-40'), el('span', 'skeleton w-80')); return box; });
 
 function status() {
-  const text = phase === 'loading' ? byStore('Reading from Notion…', 'Reading…')
+  const text = phase === 'loading' ? byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))
     : phase === 'updating' ? byStore('Updating from Notion…', 'Updating…')
     : phase === 'failed' ? `Couldn't refresh from ${storeName()}${savedAt ? ` · showing the copy saved ${savedAt}` : ''}. ${failure}`.trim() : '';
   const node = $('cal-status');

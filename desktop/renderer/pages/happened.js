@@ -1,6 +1,8 @@
 // Focus → "Did the interview happen?" (src/focus.py 'happened': its time passed and nothing was recorded).
 // Yes: your notes become a 🎤 Interviews row, the job moves on, and a few lines get Claude's review (on this Mac, or on
 // GitHub when Always on). No: moved to a new date (Next interview) or cancelled (an event; the stage stays).
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {aiName} from '../ai-name.js';
 import {$, aiReady, message, show} from './core.js';
@@ -16,7 +18,7 @@ export function openHappened(item, answer) {
   current = {item, answer};
   const at = item.at ? new Date(item.at) : null;
   $('happened-title').textContent = answer === 'yes' ? 'How did it go?' : "The interview didn't happen";
-  $('happened-context').textContent = `${who(item)} · ${item.job || t('pagesCommon.interview')}${at ? ` · ${at.toLocaleString([], {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}` : ''}`;
+  $('happened-context').textContent = `${who(item)} · ${item.job || t('pagesCommon.interview')}${at ? ` · ${displayDate(at, {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}` : ''}`;
   show($('happened-yes'), answer === 'yes');
   show($('happened-no'), answer !== 'yes');
   $('happened-notes').value = '';

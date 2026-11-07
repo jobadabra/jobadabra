@@ -3,6 +3,7 @@
 // The engine's refusal reaches here as the one restart line (lib/pipeline-commands.js jobs, renderer/errors.js). One owner of the state: <body data-jobs-outdated>,
 // which style.css turns into "the list is hidden" whoever shows it and in whatever order (Gitar on #3015: a hide call that has to run last is a trap).
 // Guarded by test/unit/renderer/jobs-outdated-card.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {OUTDATED_LINE_FINISH, relaunch} from '../errors.js';
 

@@ -4,6 +4,7 @@
 // AI, problems, scoring and the technical log (folded). Built from page-parts summaryTiles, components (tile, pill, chip, numberStrip, liveDot) and the
 // insight card; only the layout of the report's card grid and its bars is new (reports-searches.css). Logic: renderer/searches-view.js.
 // Guarded by test/unit/renderer/searches-view.test.js.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {pairRows} from '../card-grid.js';
@@ -15,7 +16,7 @@ import {listLine, listRow, metaOf, report} from '../searches-view.js';
 
 const state = {runs: null, open: null, full: null};
 let host = null;
-const label = text => (text === 'OK' ? 'Done' : text);
+const label = text => (text === 'OK' ? t('pagesCommon.done') : text);
 const kicker = (category, title, tone) => { const head = el('div', 'rs-card-head'); head.append(el('span', 'insight-category', category), ...(tone ? [pill(title, tone, {dot: true})] : [el('h3', 'rs-card-title', title)])); return head; };
 // A status chip is a pill in its tone (the chip component colours only 'bad'); a plain value stays a chip.
 const badge = item => (item.tone ? pill(item.detail ? `${item.label} · ${item.detail}` : item.label, item.tone, {dot: true}) : chip(item.label, {detail: item.detail || ''}));
@@ -84,7 +85,7 @@ function listView() {
   const employers = state.runs.reduce((sum, run) => sum + (Number(run.details?.employers?.employers_checked) || 0), 0);
   const problems = state.runs.filter(run => run.details?.problems?.length || run.status === 'Failed' || run.status === 'Warnings').length;
   box.append(summaryTiles([{icon: 'search', tone: 'signal', label: 'Searches', value: String(rows.length)}, {icon: 'plus', tone: 'good', label: 'Jobs added', value: String(added)},
-    {icon: 'building', tone: 'violet', label: 'Employers checked', value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: 'With problems', value: String(problems)}]));
+    {icon: 'building', tone: 'violet', label: t('pagesJobs.employersChecked'), value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: 'With problems', value: String(problems)}]));
   const items = el('div', 'rs-runs');
   for (const run of rows) {
     const card = el('section', `card rs-run is-${run.tone}`), words = el('div', 'rs-run-words'), head = el('div', 'rs-run-head');

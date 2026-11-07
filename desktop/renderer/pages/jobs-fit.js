@@ -1,11 +1,13 @@
 // Jobs page, match analysis: the panel a score ring opens (parts as bars, risk, strengths and gaps). Guarded by: npm run shot -- jobs (no unit test reads it).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {band} from '../jobs-view.js';
 
 // Match analysis (the panel a score ring opens): the score's four parts as bars, risk on its own line (lower is
 // better), then what speaks for the job and what against. Notion Job Matches keeps all of it.
-const PARTS = [['role_fit', 'Role fit'], ['location', 'Location'], ['compensation', 'Pay fit'], ['growth', 'Growth']];
+const PARTS = [['role_fit', 'Role fit'], ['location', t('pagesCommon.location')], ['compensation', 'Pay fit'], ['growth', 'Growth']];
 // The parts the AI may leave out (src/ai/score.py UNKNOWN_OK): shown as N/A, never dropped.
 const UNKNOWN_OK = ['compensation', 'growth'];
 const FIT_LISTS = [['good', 'Why it fits', 'strengths'], ['warn', 'What to check', 'gaps']];
@@ -30,15 +32,15 @@ export function fitDetail(job, close = null, full = null) {
   const {parts = {}, strengths = '', gaps = ''} = job.fit_detail || {};
   const box = el('div', 'fit-detail');
   const head = el('div', 'fit-head');
-  head.append(el('b', 'fit-title', 'Match analysis'));
+  head.append(el('b', 'fit-title', t('pagesJobs.matchAnalysis')));
   // The second way to close it, next to the ring (Collapse: the standard wording for one).
   if (full) {
-    const open = Object.assign(el('button', 'link', 'Open full details'), {type: 'button'});
+    const open = Object.assign(el('button', 'link', t('pagesJobs.openDetails')), {type: 'button'});
     open.addEventListener('click', full);
     head.append(open);
   }
   if (close) {
-    const collapse = Object.assign(el('button', 'fit-collapse', 'Collapse'), {type: 'button'});
+    const collapse = Object.assign(el('button', 'fit-collapse', t('pagesJobs.collapse')), {type: 'button'});
     collapse.append(icon('chevron'));
     collapse.addEventListener('click', close);
     head.append(collapse);
@@ -67,7 +69,7 @@ export function fitDetail(job, close = null, full = null) {
   }
   if (parts.risk != null) {
     const risk = el('p', `fit-risk ${band(100 - parts.risk)}`);
-    risk.append(icon('alert'), el('b', 'fit-risk-label', 'Risk'), el('b', '', String(parts.risk)),
+    risk.append(icon('alert'), el('b', 'fit-risk-label', t('pagesJobs.risk')), el('b', '', String(parts.risk)),
       el('span', 'muted', '/ 100 · Lower is better'));
     box.append(risk);
   }

@@ -1,5 +1,6 @@
 // Why setup stopped: asked once when quitting mid-setup ("Leaving setup?"), or any time from "Stuck? Tell us" in the
 // wizard. The reason goes to the setup funnel (lib/setup-funnel.js); typed words also reach the owner.
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
@@ -14,7 +15,7 @@ function open(asked) {
   $('why-lead').textContent = quit ? 'One tap helps make setup easier for the next person. Optional.'
     : 'Tell us what\'s blocking you: it goes straight to the maker, and helps the next person too.';
   $('why-skip').textContent = quit ? 'Just quit' : t('pagesCommon.cancel');
-  $('why-send').textContent = quit ? 'Send & quit' : 'Send';
+  $('why-send').textContent = quit ? 'Send & quit' : t('pagesSession.send');
   document.querySelectorAll('input[name=why]').forEach(input => { input.checked = false; });
   $('why-text').value = '';
   $('why-dialog').showModal();

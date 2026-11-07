@@ -1,6 +1,8 @@
 // "Import from LinkedIn" (Settings → Profile → CV, ⌘K, and the setup's CV step as its third way in): the dialog that says what is read, waits for the person's consent on LinkedIn's
 // own page, then shows "What came in" as rows to tick. Data and rules: lib/linkedin-import*.js (IPC linkedinImport*); spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md.
 // Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/unit/renderer/linkedin-import-page.test.js.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -8,9 +10,9 @@ import {plainError} from '../run-warnings.js';
 import {makeMainCv} from './linkedin-import-cv.js';
 import {$} from './core.js';
 
-const SECTIONS = [['positions', 'Positions'], ['education', 'Education'], ['skills', 'Skills'], ['languages', 'Languages'], ['details', 'Your details']];
-const DOMAIN_WORDS = {PROFILE: 'Profile', POSITIONS: 'Positions', EDUCATION: 'Education', SKILLS: 'Skills', LANGUAGES: 'Languages'};
-const DETAIL_WORDS = {first_name: 'First name', last_name: 'Last name', location: 'Location', street: 'Street', postal_code: 'Postal code', website: 'Website'};
+const SECTIONS = [['positions', t('pagesStatus.positions')], ['education', t('pagesStatus.education')], ['skills', t('pagesStatus.skills')], ['languages', t('pagesStatus.languages')], ['details', t('pagesDetails.yourDetails')]];
+const DOMAIN_WORDS = {PROFILE: t('pagesCommon.profile'), POSITIONS: t('pagesStatus.positions'), EDUCATION: t('pagesStatus.education'), SKILLS: t('pagesStatus.skills'), LANGUAGES: t('pagesStatus.languages')};
+const DETAIL_WORDS = {first_name: t('pagesStatus.firstName'), last_name: t('pagesStatus.lastName'), location: t('pagesCommon.location'), street: t('pagesStatus.street'), postal_code: t('pagesStatus.postalCode'), website: 'Website'};
 const CHIPS = {new: ['new', 'info'], 'new-bullets': ['new bullets', 'info'], differs: ['differs', 'warn']};
 const EU_NOTE = 'For LinkedIn members in the EU, EEA and Switzerland. Elsewhere, use your LinkedIn data file.';
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -45,7 +47,7 @@ const setFoot = (...buttons) => footOf().replaceChildren(...buttons);
 // ---------- step 1: what is read ----------
 function intro() {
   const held = view.connected;
-  setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? `Connected until ${new Date(view.expiresAt).toLocaleDateString()}. Update reads your profile again, with no new sign-in.`
+  setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? `Connected until ${displayDate(new Date(view.expiresAt))}. Update reads your profile again, with no new sign-in.`
     : 'Bring your positions, education, skills and languages from your own LinkedIn profile. You sign in on LinkedIn\'s own page and choose what comes in.');
   const read = el('ul', 'li-list');
   for (const text of ['Positions, education, skills and languages', 'Your name, location, postal code, street and website']) read.append(el('li', '', text));
@@ -58,7 +60,7 @@ function intro() {
     await window.pilot.experienceAddLinkedin?.().catch(() => null);
     onDone();
   })];
-  if (held) actions.push(button('Disconnect', 'secondary', async () => { await window.pilot.linkedinImportDisconnect(); view = {connected: false}; onDone(); intro(); }));
+  if (held) actions.push(button(t('pagesProfile.disconnect'), 'secondary', async () => { await window.pilot.linkedinImportDisconnect(); view = {connected: false}; onDone(); intro(); }));
   actions.push(button(held ? t('pagesCommon.updateLinkedin') : 'Continue on LinkedIn', 'primary', () => run(held)));
   setFoot(...actions);
 }
@@ -171,7 +173,7 @@ async function buildMainCv(answer) {
   const made = await makeMainCv(answer.cv, {save: cv => window.pilot.buildCvSave(cv), saved: name => afterCvBuilt(name)});
   if (!dialog || dialog !== shown || mine !== runId) return;
   if (made.kind === 'failed') return done(`Your CV could not be made: ${plainError(made.error)} Nothing is lost: start the LinkedIn import again to try once more.`, 'message bad');
-  setHead('Your CV is ready', 'Built from your LinkedIn profile.');
+  setHead(t('pagesProfile.cvReady'), 'Built from your LinkedIn profile.');
   return done(`${made.name} is now your CV. Its wording is yours to change in Settings → Profile → CV.`);
 }
 

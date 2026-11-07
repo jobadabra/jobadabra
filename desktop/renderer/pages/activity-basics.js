@@ -1,5 +1,7 @@
 // Recent activity: run names, phases, outcomes, the Gmail connection and the card chooser (cardFor).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
@@ -27,7 +29,7 @@ import {WORDS} from '../run-result-card.js';
 import {runCommand} from './actions.js';
 
 // ---------- runs ----------
-export const clockTime = iso => new Date(iso).toLocaleString([], {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+export const clockTime = iso => displayDate(new Date(iso), {weekday: 'short', hour: '2-digit', minute: '2-digit'});
 export const duration = (a, b) => { const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000); return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; };
 // The line under "Jobs": what's happening now, or when the last search ran.
 export async function showSearchStatus() {
@@ -135,11 +137,11 @@ export function runProgress({done, total, percent}, noun = '') {
 // once it is done, Allow while it waits on you, Open again for a tab you closed, the extension when it did not answer.
 function siteAction(site) {
   if (site.state === 'waiting') return ['Go to Chrome and allow', () => window.pilot.focusBrowser()];
-  if (site.state === 'reading' || site.state === 'opening') return ['Open in Chrome', () => window.pilot.visitShowTab(site.url)];
+  if (site.state === 'reading' || site.state === 'opening') return [t('pagesCommon.openChrome'), () => window.pilot.visitShowTab(site.url)];
   if (site.state === 'closed') return ['Open again', () => window.pilot.visitAgain(site.url)];
   if (site.state === 'stopped' && /no answer from the extension|did not answer/.test(site.words)) return ['Check the extension', () => openSetting('extension')];
   if (site.state === 'next') return null;   // not opened yet: no tab to show
-  return ['Open in Chrome', () => window.pilot.openVisit(site.url)];   // done or stopped: the site itself
+  return [t('pagesCommon.openChrome'), () => window.pilot.openVisit(site.url)];   // done or stopped: the site itself
 }
 // live: the run is going. A finished run keeps its rows and marks (owner, 7 Oct 2026: "keep the ticks and crosses after the task completes"),
 // without the links that act on a running tab; a site the run left mid-way reads as stopped there, not as still going.
@@ -156,7 +158,7 @@ export function siteRow(site, live = true, since = '') {
   // A finished run's stopped site: Read with Claude beside Open in Chrome (= Open it myself), as the result card's row had them.
   const finishedMiss = !live && ['stopped', 'closed'].includes(site.state);
   if (finishedMiss && site.url && resumeOffered() && !/no answer from the extension|did not answer/.test(site.words)) li.append(claudeReadButton(site, words));   // only with Claude help on (claude-help.js)
-  const action = site.url && (finishedMiss && site.state === 'closed' ? ['Open in Chrome', () => window.pilot.openVisit(site.url)] : siteAction(site));
+  const action = site.url && (finishedMiss && site.state === 'closed' ? [t('pagesCommon.openChrome'), () => window.pilot.openVisit(site.url)] : siteAction(site));
   if (action && (live || ['done', 'stopped', 'closed'].includes(site.state))) {
     const key = `site:${site.url}:${action[0]}`;
     const button = keepPress(key, Object.assign(el('button', 'secondary item-action', action[0]), {type: 'button', title: site.url}));
@@ -179,7 +181,7 @@ export function phaseIndex(lines) {
   lines.forEach(line => PHASES.forEach((phase, i) => { if (phase.match.test(line)) index = i; }));
   return index;
 }
-export const hhmm = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+export const hhmm = ms => displayDate(new Date(ms), {hour: '2-digit', minute: '2-digit'});
 /**
  * When the next scheduled check is, in words, for any place that says it (the footer, Upcoming checks, Status): "due now" once the time has passed, else
  * "Today 14:00", "Tomorrow 01:53" or "Wed 01:53". Why (fx, 3 Nov 2026, a Windows tester): the footer printed "Next refresh 01:53 AM" at 02:00 and read as a refresh that never ran;
@@ -189,7 +191,7 @@ export const hhmm = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', 
 export function nextWords(at, now = Date.now()) {
   if (at <= now) return 'due now';
   const date = new Date(at), today = new Date(now), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const day = date.toDateString() === today.toDateString() ? 'Today' : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : date.toLocaleDateString([], {weekday: 'short'});
+  const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : displayDate(date, {weekday: 'short'});
   return `${day} ${hhmm(at)}`;
 }
 export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
