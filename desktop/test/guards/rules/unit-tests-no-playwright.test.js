@@ -9,16 +9,29 @@ import {testFiles} from '../../test-files.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-// -> the files that name playwright, reachable from `file` by relative imports (static `from '...'` and import('...') with a literal).
-function reaches(file, seen = new Set(), hits = []) {
-  if (seen.has(file) || !fs.existsSync(file) || !/\.(m?js)$/.test(file)) return hits;
-  seen.add(file);
+// Why (7 Nov 2026, ts 7/7, owner: "windows unit tests are still very slow"): every test file re-read its whole import closure (134k reads, 834 MB, 15.7 s on a Windows runner); a file's imports are now read once and the closures are walked in memory. Same hits, same text.
+const parsed = new Map();   // file -> {deps: resolved relative imports, hits: "<file> -> <playwright spec>"}
+function parse(file) {
+  if (parsed.has(file)) return parsed.get(file);
+  const entry = {deps: [], hits: []};
+  parsed.set(file, entry);
+  if (!fs.existsSync(file) || !/\.(m?js)$/.test(file)) return entry;
   const text = fs.readFileSync(file, 'utf8');
   for (const found of text.matchAll(/(?:from\s+|import\s*\(\s*)'([^']+)'/g)) {
     const spec = found[1];
-    if (spec.startsWith('.')) reaches(path.resolve(path.dirname(file), spec), seen, hits);
-    else if (/^playwright/.test(spec)) hits.push(`${path.relative(here, file)} -> ${spec}`);
+    if (spec.startsWith('.')) entry.deps.push(path.resolve(path.dirname(file), spec));
+    else if (/^playwright/.test(spec)) entry.hits.push(`${path.relative(here, file)} -> ${spec}`);
   }
+  return entry;
+}
+
+// -> the files that name playwright, reachable from `file` by relative imports (static `from '...'` and import('...') with a literal).
+function reaches(file, seen = new Set(), hits = []) {
+  if (seen.has(file)) return hits;
+  seen.add(file);
+  const entry = parse(file);
+  hits.push(...entry.hits);
+  for (const dep of entry.deps) reaches(dep, seen, hits);
   return hits;
 }
 
