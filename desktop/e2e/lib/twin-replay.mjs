@@ -24,15 +24,28 @@ export async function fetchBundle(id, {key, fetcher = globalThis.fetch, site = S
   return {report: await read('report.json'), state: await read('state.json'), env: await read('env.json')};
 }
 
+const text = value => (typeof value === 'string' ? value : '');
+/**
+ * One session record of a bundle as the app's own saved record, built field by field: state.json comes from a tester (redacted but untrusted), and the app throws on a record whose url, title or company is not a string
+ * (lib/session-contracts.js), which would fail every Sessions list call. Only the fields a restored, stopped session needs are kept: no transcript path, Claude id or output. -> record, or null without a usable id.
+ * Why (7 Nov 2026, review of 5/5): the first version spread the whole record in.
+ */
+const recordOf = record => {
+  if (!record || typeof record !== 'object' || !/^[\w-]{1,64}$/.test(text(record.id))) return null;
+  return {id: record.id, kind: ['claude', 'form', 'read'].includes(record.kind) ? record.kind : 'claude', url: text(record.url), title: text(record.title), company: text(record.company), location: text(record.location), workMode: text(record.workMode),
+    status: 'ended', note: '', question: '', outcome: text(record.outcome), events: [], output: '', cols: 120, rows: 32, exitCode: null, needsYouSince: null};
+};
+
 /**
  * Puts the bundle's session record(s) and job row into the twin's folder `home` (never the real one). The sessions join sessions.json (an array the app restores at start, as stopped sessions); the job row is
  * written to replay/<id>/job.json. -> {sessions: n, job: boolean, file}
  */
-export function loadBundle(id, bundle, home, {real = realDataFolders()} = {}) {
+export function loadBundle(id, bundle, home, {real = realDataFolders(), now = new Date()} = {}) {
+  if (!idOf(id)) throw new Error('loadBundle needs a bundle id (16 characters, 0-9 a-f)');
   const folder = path.resolve(home);
   if ([].concat(real).some(dir => folder === path.resolve(dir))) throw new Error('the replay never writes into the real app folder; start the twin and let it make its own');
-  const sessions = (Array.isArray(bundle.state?.sessions) ? bundle.state.sessions : []).filter(record => record && typeof record === 'object' && record.id)
-    .map(record => ({output: '', cols: 120, rows: 32, ...record, status: 'ended', needsYouSince: null, savedAt: new Date().toISOString()}));
+  const sessions = (Array.isArray(bundle.state?.sessions) ? bundle.state.sessions : []).map(recordOf).filter(Boolean)
+    .map(record => ({...record, note: `Replay of bundle ${id}`, startedAt: now.toISOString(), endedAt: now.toISOString(), savedAt: now.toISOString()}));
   const file = path.join(folder, 'sessions.json');
   let kept = [];
   try { const onDisk = JSON.parse(fs.readFileSync(file, 'utf8')); if (Array.isArray(onDisk)) kept = onDisk.filter(record => !sessions.some(added => added.id === record.id)); } catch { /* no file yet */ }

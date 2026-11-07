@@ -43,3 +43,26 @@ test('the replay says the bug first and warns when the app version differs', () 
   assert.deepEqual(describeReplay(BUNDLE, {version: '0.9.12'}), ['bug: Phone label [high, journey J12]', 'expected: typed phone', 'seen: label shown']);
   assert.match(describeReplay(BUNDLE, {version: '0.9.13'}).at(-1), /seen on app 0\.9\.12; this checkout is 0\.9\.13/);
 });
+
+test('a malformed or old record from a tester cannot break the Sessions list or reach outside the twin', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'twin-replay-'));
+  try {
+    const home = path.join(root, 'twin'), real = path.join(root, 'real'), now = new Date('2026-11-07T10:00:00Z');
+    const state = {sessions: [{id: 'a1', url: null, title: 5, company: undefined, startedAt: 12, transcript: '/etc/passwd', claudeId: 'x', output: 'secret'}, {id: '../escape'}, {id: 'old', url: 'https://x.test', startedAt: '2026-08-01T00:00:00Z'}]};
+    assert.throws(() => loadBundle('../../x', {state}, home, {real}), /bundle id/);
+    assert.equal(loadBundle(ID, {state}, home, {real, now}).sessions, 2);
+    const records = JSON.parse(fs.readFileSync(path.join(home, 'sessions.json'), 'utf8'));
+    for (const record of records) {
+      for (const field of ['url', 'title', 'company', 'note', 'startedAt']) assert.equal(typeof record[field], 'string', `${field} is a string`);
+      assert.equal(record.startedAt, now.toISOString(), 'an old bug is not dropped by the app\'s 14-day restore');
+      assert.ok(!record.transcript && !record.claudeId && !record.output, 'no transcript path, Claude id or output is carried');
+    }
+    assert.ok(!fs.existsSync(path.join(root, 'escape')), 'a record id with a path in it is dropped');
+  } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
+
+test('a wrong key, a non-JSON body and a network error each stop with words', async () => {
+  await assert.rejects(fetchBundle(ID, {key: 'k', fetcher: async () => new Response('no', {status: 401})}), /answered 401/);
+  await assert.rejects(fetchBundle(ID, {key: 'k', fetcher: async () => new Response('<html>', {status: 200})}), SyntaxError);
+  await assert.rejects(fetchBundle(ID, {key: 'k', fetcher: async () => { throw new Error('offline'); }}), /offline/);
+});

@@ -34,8 +34,9 @@ async function main() {
   // The Admin key lets the twin's Send feedback file a bug bundle (desktop/lib/tester-mode.js, JOBADABRA_TESTER=desktop-tester); it goes only to the twin's app process, never to a file. No key: tester mode stays off.
   const testerKey = process.env.JP_ADMIN_KEY || (() => { try { return keychain('jobadabra.site.api_key'); } catch { return ''; } })();   // Why: a missing Keychain item turns tester mode off, it never stops the twin
   say(testerKey ? 'tester mode: on (Send feedback files a bug bundle, never a note to the maker)' : 'tester mode: off (no Admin key in the Keychain: jobadabra.site.api_key)');
-  const replayAt = process.argv.indexOf('--replay');
-  const replay = replayAt > 0 ? await fetchBundle(process.argv[replayAt + 1], {key: testerKey}) : null;   // fetched first: a wrong id stops before anything is synced or started
+  const replayArg = process.argv.find(arg => arg === '--replay' || arg.startsWith('--replay=')), replayAt = process.argv.indexOf(replayArg);
+  const replayId = replayArg?.startsWith('--replay=') ? replayArg.slice('--replay='.length) : process.argv[replayAt + 1];
+  const replay = replayArg ? await fetchBundle(replayId, {key: testerKey}) : null;   // fetched first: a wrong id stops before anything is synced or started
   if (!fs.existsSync(path.join(LIVE, 'ids.env'))) throw new Error(`no ${path.join(LIVE, 'ids.env')}: create the mirror first (tools/notion_copy.py create, docs/live-test.md)`);
   const mirror = idsOf(path.join(LIVE, 'ids.env')), real = JSON.parse(fs.readFileSync(path.join(REAL, 'settings.json'), 'utf8')).notionIds || {};
   const token = keychain(MIRROR_TOKEN);
@@ -77,8 +78,8 @@ async function main() {
   fs.writeFileSync(path.join(HOME, 'settings.json'), JSON.stringify(settings, null, 2));
   say(`folder: a fresh copy of the real one at ${HOME} (no real Notion token, Always on or Telegram)`);
   if (replay) {   // --replay <id> (lib/twin-replay.mjs): the reported bug's session record and job row, in the twin's folder only
-    const loaded = loadBundle(process.argv[replayAt + 1], replay, HOME);
-    say(`replay: ${loaded.sessions} session record(s) and ${loaded.job ? `the job row (${path.join(HOME, 'replay', process.argv[replayAt + 1], 'job.json')})` : 'no job row'} loaded`);
+    const loaded = loadBundle(replayId, replay, HOME);
+    say(`replay: ${loaded.sessions} session record(s) and ${loaded.job ? `the job row (${path.join(HOME, 'replay', replayId, 'job.json')})` : 'no job row'} loaded`);
     for (const line of describeReplay(replay, {version: JSON.parse(fs.readFileSync(path.join(DESKTOP, 'package.json'), 'utf8')).version})) say(line);
   }
   // 4. The app and its own browser.
@@ -86,7 +87,7 @@ async function main() {
   // The owner's Chrome has the extension's "all sites" access granted (optional_host_permissions, one click there); the twin's copy has it
   // built in, so it reads any employer site as the owner's does (8 Oct 2026: on jobs.coop.ch the twin's extension saw no tab at all).
   grantAllSites(extensionDir);
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('JOBADABRA_')));
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('JOBADABRA_') && key !== 'JP_ADMIN_KEY'));
   // The app is started by a function: a refresh that touches its main process restarts it alone (same ports, same folder, same environment), the browser stays.
   const startApp = () => spawn(path.join(DESKTOP, 'node_modules', '.bin', 'electron'), [DESKTOP, `--remote-debugging-port=${cdp}`], {cwd: DESKTOP, stdio: ['ignore', 'inherit', 'inherit'], detached: true,   // its own process group: lib/twin-refresh.mjs killGroup
     env: withoutWrappers({...env, JOBADABRA_TWIN: '1', ...(testerKey ? {JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TESTER_KEY: testerKey} : {}), JOBADABRA_USER_DATA: HOME, JOBADABRA_TWIN_NOTION_TOKEN: token, JOBADABRA_PORT: String(port), JOBADABRA_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
