@@ -171,6 +171,13 @@ on:
       - 'desktop/i18n/catalogs/helpers/it-flow.js'
       - 'desktop/i18n/catalogs/helpers/ro-flow.js'
       - 'desktop/i18n/catalogs/helpers/ru-flow.js'
+      - 'desktop/i18n/catalogs/helpers/de-profile.js'
+      - 'desktop/i18n/catalogs/helpers/en-profile.js'
+      - 'desktop/i18n/catalogs/helpers/es-profile.js'
+      - 'desktop/i18n/catalogs/helpers/fr-profile.js'
+      - 'desktop/i18n/catalogs/helpers/it-profile.js'
+      - 'desktop/i18n/catalogs/helpers/ro-profile.js'
+      - 'desktop/i18n/catalogs/helpers/ru-profile.js'
   workflow_dispatch:
     inputs:
       window:

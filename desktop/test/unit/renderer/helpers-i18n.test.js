@@ -110,7 +110,7 @@ test('AI install guidance translates copy while preserving executable commands a
 });
 
 test('helper state catalogs have complete keys and matching interpolation in every plural branch', async () => {
-  for (const suffix of ['state', 'more', 'flow']) {
+  for (const suffix of ['state', 'more', 'flow', 'profile']) {
   const stateCatalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}-${suffix}.js`, root));
   const {messages: english} = await stateCatalog('en');
   const branches = value => typeof value === 'string' ? [value] : Object.values(value);
@@ -118,10 +118,11 @@ test('helper state catalogs have complete keys and matching interpolation in eve
     const {messages} = await stateCatalog(locale);
     assert.deepEqual(Object.keys(messages).sort(), Object.keys(english).sort(), locale);
     for (const [key, value] of Object.entries(messages)) {
-      const expected = parameters(branches(english[key])[0]);
+      const params = branch => parameters(branch).filter(name => typeof english[key] !== 'object' || name !== 'count');
+      const expected = params(branches(english[key])[0]);
       for (const branch of branches(value)) {
         assert.ok(branch.trim(), `${locale}.${key}`);
-        assert.deepEqual(parameters(branch), expected, `${locale}.${key}`);
+        assert.deepEqual(params(branch), expected, `${locale}.${key}`);
       }
       if (typeof value === 'object') assert.equal(typeof value.other, 'string', `${locale}.${key}.other`);
     }

@@ -39,3 +39,13 @@ import {messages as esFlow} from './catalogs/helpers/es-flow.js';
 import {messages as roFlow} from './catalogs/helpers/ro-flow.js';
 import {messages as ruFlow} from './catalogs/helpers/ru-flow.js';
 for (const [locale, messages] of Object.entries({en: enFlow, de: deFlow, fr: frFlow, it: itFlow, es: esFlow, ro: roFlow, ru: ruFlow})) registerMessages(locale, 'helperFlow', messages);
+
+// Profile review helpers have their own bounded display catalogs.
+import {messages as enProfile} from './catalogs/helpers/en-profile.js';
+import {messages as deProfile} from './catalogs/helpers/de-profile.js';
+import {messages as frProfile} from './catalogs/helpers/fr-profile.js';
+import {messages as itProfile} from './catalogs/helpers/it-profile.js';
+import {messages as esProfile} from './catalogs/helpers/es-profile.js';
+import {messages as roProfile} from './catalogs/helpers/ro-profile.js';
+import {messages as ruProfile} from './catalogs/helpers/ru-profile.js';
+for (const [locale, messages] of Object.entries({en: enProfile, de: deProfile, fr: frProfile, it: itProfile, es: esProfile, ro: roProfile, ru: ruProfile})) registerMessages(locale, 'helperProfile', messages);
