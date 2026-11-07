@@ -33,7 +33,7 @@ test('the CV address is read and offered, never stored as the notification addre
 test('without consent nothing is sent: no channel, no engine key, no call to the site', async () => {
   const kept = storage({links: CV}), calls = [];
   assert.deepEqual(channelsOf(kept), ['app']);
-  assert.deepEqual(notifyEnv(kept), {JOBADABRA_NOTIFY: 'app'});
+  assert.deepEqual(notifyEnv(kept), {JOBADABRA_NOTIFY: 'app', JOBADABRA_NOTIFICATION_LANGUAGE: 'en'});
   assert.equal(await sendEmail(kept, {subject: 's', text: 't'}, site(calls)), false);
   assert.deepEqual(calls, []);
 });

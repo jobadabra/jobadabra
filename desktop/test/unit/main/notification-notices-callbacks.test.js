@@ -92,11 +92,11 @@ test('mail row refusal carries canonical metadata through wrappers and logs befo
 test('successful save preserves normalized address, consent wording/flags/stamp, env enums and response shape', async () => {
   responses.push({ok: true}); setLocale('ru');
   assert.deepEqual(await invoke('notifySave', {by: ['email', 'app'], email: '  Original@Example.Test ', cadence: 'weekly', consentVia: 'cv', consentGiven: 'default'}), {ok: true});
-  assert.deepEqual(calls[0].body, {email: 'original@example.test', cadence: 'weekly'});
+  assert.deepEqual(calls[0].body, {email: 'original@example.test', language: 'en', cadence: 'weekly'});
   assert.equal(kept.notifyEmail, 'original@example.test'); assert.equal(kept.notifyEmailAt, new Date(NOW).toISOString());
   assert.equal(kept.emailConsent.wording, wordingOf('settings')); assert.equal(kept.emailConsent.where, 'settings'); assert.equal(kept.emailConsent.given, 'switched');
   assert.deepEqual(kept.notifyBy, ['email', 'app']);
-  assert.deepEqual(channel.notifyEnv(storage), {JOBADABRA_NOTIFY: 'email,app', JOBADABRA_TRIAL_KEY: KEY});
+  assert.deepEqual(channel.notifyEnv(storage), {JOBADABRA_NOTIFY: 'email,app', JOBADABRA_NOTIFICATION_LANGUAGE: 'en', JOBADABRA_TRIAL_KEY: KEY});
 });
 
 test('unknown enum validation, cached provider notes and successful values retain their original meaning', async () => {
@@ -171,7 +171,7 @@ test('network timeout retains the exact cap and request payload, then projects t
   t.mock.timers.tick(channel.SLOW_MS);
   assert.deepEqual(await pending, {ok: false, error: 'Не удалось связаться с сайтом. Повторите попытку при подключении к интернету.'});
   assert.equal(aborted, true); assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0].body, {email: 'original@example.test', cadence: 'weekly'});
+  assert.deepEqual(calls[0].body, {email: 'original@example.test', language: 'en', cadence: 'weekly'});
   assert.equal(logs.at(-1)[2].error, 'The website could not be reached. Try again when you are online.');
   assert.deepEqual(kept, {notifyBy: ['app']});
 });
@@ -181,7 +181,7 @@ test('turning a row on preserves consent, normalized address, write order and su
   responses.push({ok: true}, {ok: true, rows: [upstreamRow]}, {ok: true}); setLocale('de');
   assert.deepEqual(await invoke('mailChoiceSet', 'app-matches', true, {address: ' Original@Example.Test ', name: 'Original {name} Mac'}), {ok: true, addressSaved: true});
   assert.deepEqual(calls.map(call => [new URL(call.url).pathname, call.method, call.body]), [
-    ['/api/account/email', 'PUT', {email: 'original@example.test'}], ['/api/mail/choices', 'GET', null], ['/api/mail/choices', 'POST', {mail: 'app-matches', on: true}],
+    ['/api/account/email', 'PUT', {email: 'original@example.test', language: 'en'}], ['/api/mail/choices', 'GET', null], ['/api/mail/choices', 'POST', {mail: 'app-matches', on: true}],
   ]);
   assert.equal(kept.emailConsent.wording, rowLine('Original {name} Mac'));
   assert.equal(kept.emailConsent.given, 'switched'); assert.equal(kept.emailConsent.where, 'settings');
