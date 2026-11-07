@@ -133,7 +133,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
-  const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
+  const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', run: session.run || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
   const observations = {};
   for (const row of summary.goals) if (!['worked', 'not-started'].includes(row.verdict)) (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
   const completed = ends.filter(end => end.stopped === 'done').map(end => end.n);
