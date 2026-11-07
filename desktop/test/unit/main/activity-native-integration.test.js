@@ -114,7 +114,8 @@ test('actual learned save emits a localized notice without AI, network or real p
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'activity-learned-'));
   const previousFetch = globalThis.fetch;
-  const forbidden = () => assert.fail('fictional local learning must not call a network or AI');
+  const forbiddenCalls = [];
+  const forbidden = (...args) => {forbiddenCalls.push(args); throw new Error('fictional network/AI call forbidden');};
   globalThis.fetch = forbidden;
   try {
     for (const locale of SUPPORTED_LOCALES) {
@@ -124,6 +125,7 @@ test('actual learned save emits a localized notice without AI, network or real p
       const notices = [], raw = '1 Fictional {value} Lane';
       const result = await save(storage, {items: [{label: 'Street', value: raw}]}, {
         notify: (...args) => notices.push(args), client: {messages: {create: forbidden}}, fetcher: forbidden});
+      assert.deepEqual(forbiddenCalls, [], 'no attempted network/AI calls, even if production catches their errors');
       assert.deepEqual(result, {ok: true, count: 1});
       assert.deepEqual(notices, [[activityText('remembered', {count: 1}), activityText('learnedBody'), {view: 'settings', section: 'profile'}, 'good']]);
       assert.ok(storage.readText('profile.md').includes(raw));
