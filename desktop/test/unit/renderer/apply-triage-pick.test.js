@@ -31,7 +31,7 @@ test('a job with no read is Not checked, and each read says its mode and reason'
   const clean = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true};
   assert.equal(chipOf(clean).label, 'Can apply automatically');
   assert.equal(chipOf({...clean, allFactsSaved: false}).label, 'You review and submit');
-  assert.equal(chipOf({...clean, captcha: true}).detail, 'captcha');
+  assert.equal(chipOf({...clean, captcha: true}).detail, 'a check that you are human');   // was the raw id 'captcha' (#3548 review)
   assert.equal(chipOf({...clean, eligible: false}).label, 'Skipped');
 });
 
@@ -84,4 +84,15 @@ test('with no read under way Start picks at once; a later read makes the next St
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(settled, false);
   again();
+});
+
+// Review of #3548: a reason without a translation key showed as its raw id ("check", "no form") in the chip's detail.
+test('every reason the mode table gives is shown translated, never as its raw id', () => {
+  const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null};
+  for (const read of [{...look, simple: true, why: ''}, {...look, simple: false, why: 'no form'}, {...look, captcha: true, simple: false, why: 'captcha'}, {...look, captcha: true, simple: false, why: 'check'},
+    {...look, login: true, simple: false, why: 'login'}, {...look, accountCreation: true, simple: false, why: 'account'}, {...look, simple: false, why: ''}, {...look, allFactsSaved: true}, {...look, allFactsSaved: false}, {...look, eligible: false}]) {
+    const {detail} = chipOf(read);
+    assert.ok(detail && !['check', 'no form', 'captcha'].includes(detail), `raw reason shown for ${JSON.stringify(read)}: "${detail}"`);
+  }
+  assert.equal(chipOf({eligible: true, captcha: true, login: false, accountCreation: false, simple: false, why: 'check'}).detail, 'a check may be in the form');
 });
