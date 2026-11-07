@@ -173,9 +173,10 @@ def found_first(search_config, wait):
         pass
     with _lock:
         _early.pop(asked[0], None)
-    data = board_ideas.load()
-    found = finish(started, [], data=data)
-    board_ideas.save(data)
+    with board_ideas.STORE:
+        data = board_ideas.load()
+        found = finish(started, [], data=data)
+        board_ideas.save(data)
     return found
 
 
@@ -239,9 +240,10 @@ def _keep_late(done, copy, data):
     with _lock:
         if data is not None and data is not copy:
             _merge(data, copy)
-        saved = board_ideas.load()
-        _merge(saved, copy)
-        board_ideas.save(saved)
+        with board_ideas.STORE:
+            saved = board_ideas.load()
+            _merge(saved, copy)
+            board_ideas.save(saved)
 
 
 def _with_search(item, fetch):
