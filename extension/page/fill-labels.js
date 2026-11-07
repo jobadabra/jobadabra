@@ -47,8 +47,12 @@
   const labelOf = el => {
     const own = Array.from(el.labels || [], l => R.read(l)).join(' ') || el.getAttribute('aria-label');
     const byId = el.getAttribute('aria-labelledby');
-    const labelled = byId && byId.split(/\s+/).map(id => R.read(document.getElementById(id)) || '').join(' ');
-    return clean(own || labelled || looseLabel(el) || el.getAttribute('placeholder') || (el.type !== 'hidden' && blockTitle(el)) || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || el.id);
+    // Not for a radio or checkbox (its label names the OPTION; a labelledby there names the group + option, and the option matcher reads exact names), and never the box's own words.
+    const named = byId && !/^(radio|checkbox)$/.test(el.type) ? byId.split(/\s+/).filter(id => id && id !== el.id) : [];
+    const labelled = named.map(id => R.read(document.getElementById(id)) || '').join(' ').trim();
+    // Why (7 Nov 2026, a XING step 2 read as "Please select"): aria-labelledby names the box before a native <label for> does (accessible-name order). The site draws its placeholder as an aria-hidden
+    // label over the menu and names the question by a heading the select points at; the label won and the question was never read. Only aria-labelledby is promoted (an aria-label stays after the labels).
+    return clean(labelled || own || looseLabel(el) || el.getAttribute('placeholder') || (el.type !== 'hidden' && blockTitle(el)) || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || el.id);
   };
   // The question a radio group or checkbox belongs to: its fieldset legend or group label.
   // A fieldset's title: its <legend>, or (Ashby) a <label> whose `for` points at no control. Required when the title says so:

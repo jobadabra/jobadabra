@@ -1,0 +1,54 @@
+{
+ "origin": "hand-cut",
+ "shape": "a dropdown named by aria-labelledby (a heading) with an aria-hidden <label for> that holds its placeholder: the label won and the question was read as \"Please select\", the menu's own first option",
+ "why": "7 Nov 2026, a multi-step form's step 2 (twin session, fake applicant): \"Which country do you live in?\" stayed on \"Please select\", the fill stopped and the panel named the wrong field. Neutral page: the heading, the hidden label and the select in the same order as the capture; no site name, job or address.",
+ "control": {
+  "build": "0.9.761",
+  "failed": "the box was asked as \"Please select\"; the country was only proposed and the menu stayed on its placeholder"
+ },
+ "sample": "hand-cut from the shape of the twin's capture (input values stripped, options cut to five), 7 Nov 2026",
+ "pages": [
+  {
+   "url": "https://apply.example.com/acme/j/COUNTRY1/apply/",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "eligibility_note": "",
+   "answers": [
+    {
+     "field": "country",
+     "category": "fact",
+     "use": "fill",
+     "value": "Romania"
+    }
+   ]
+  }
+ },
+ "contact": {
+  "location": "Iasi, Romania"
+ },
+ "expect": {
+  "asked": [
+   "Which country do you live in?"
+  ],
+  "valueIs": [
+   "#country|Romania"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 45
+ }
+}
