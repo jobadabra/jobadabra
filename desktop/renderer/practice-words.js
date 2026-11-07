@@ -9,7 +9,6 @@ export const PRACTICE_WORDS = {
   waitingText: 'When Full automation presses Submit on this job, the form as it was sent shows here.',
   caughtTitle: count => (count === 1 ? 'Caught 1 submission' : `Caught ${count} submissions`),
   caughtText: 'Caught by the practice server on this computer. It did not reach the employer.',
-  newest: 'Newest',
   at: 'Caught',
   how: 'Pressed through',
   posted: 'Form posted',

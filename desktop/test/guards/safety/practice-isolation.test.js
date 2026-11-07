@@ -68,6 +68,8 @@ test('caughtFor returns only the job\'s own submissions, newest first, and survi
     fs.writeFileSync(file, [row('jobs.example.com', '/a', 'first'), row('jobs.example.com', '/b', 'other job'), row('jobs.example.com', '/a', 'second'), '{"half'].join('\n'));
     assert.deepEqual(caughtFor(file, 'https://jobs.example.com/a').map(entry => entry.at), ['second', 'first']);
     assert.deepEqual(caughtFor(file, 'https://other.example.com/a'), []);
+    fs.appendFileSync(file, '\n' + JSON.stringify({at: 'third', host: 'jobs.example.com', path: '/form-page', job: 'https://jobs.example.com/a', how: 'submit', fields: []}));
+    assert.deepEqual(caughtFor(file, 'https://jobs.example.com/a').map(entry => entry.at), ['third', 'second', 'first'], 'an entry names its job when the form was on another page');
     assert.deepEqual(caughtFor(path.join(dir, 'missing.jsonl'), 'https://jobs.example.com/a'), []);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

@@ -2,7 +2,7 @@
 // that was sent. Read from the catcher's ledger by the main process (IPC practiceCaught); a password shows "[hidden]". Same parts as Submitted (state card, fact grid, group).
 import {el} from '../components.js';
 import {PRACTICE_WORDS as W, caughtFacts} from '../practice-words.js';
-import {factGrid, group, stateCard} from './parts.js';
+import {factGrid, group, skeleton, stateCard} from './parts.js';
 
 const cache = new Map();   // job url → entries | 'loading'
 
@@ -13,6 +13,7 @@ export function practiceView({job}, redraw) {
     cache.set(job.url, 'loading');
     window.pilot.practiceCaught(job.url).then(entries => { cache.set(job.url, Array.isArray(entries) ? entries : []); redraw(); }, () => cache.set(job.url, []));
   }
+  if (have === undefined || have === 'loading') return skeleton();   // not "nothing caught" while the ledger is still being read
   const entries = Array.isArray(have) ? have : [];
   if (!entries.length) return [stateCard({icon: 'info', title: W.waitingTitle, text: W.waitingText})];
   return [stateCard({icon: 'check-circle', tone: 'good', title: W.caughtTitle(entries.length), text: W.caughtText}), ...entries.flatMap(entry => [

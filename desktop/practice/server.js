@@ -38,6 +38,10 @@ const THANKS = '<!doctype html><meta charset="utf-8"><title>Application received
 export async function startPractice({cases, ledgerFile = ''}) {
   const pages = new Map();
   for (const item of cases) for (const page of item.pages) { const url = new URL(page.url); pages.set(key(url.host, url.pathname), inlineVendor(fs.readFileSync(path.join(item.dir, page.file), 'utf8'))); }
+  // Why (7 Nov 2026, pj 3/4 code review): a job's address is its case's FIRST page (the posting), but the form can be on a later page; the entry carries the job's address so the app matches
+  // a caught Submit to its job whatever page the form was on.
+  const jobOf = new Map();
+  for (const item of cases) for (const page of item.pages) { const url = new URL(page.url); jobOf.set(key(url.host, url.pathname), item.pages[0].url); }
   const hosts = [...new Set([...pages.keys()].map(k => k.split('/')[0]))];
   const caught = [];
   let strangers = 0;
@@ -60,8 +64,8 @@ export async function startPractice({cases, ledgerFile = ''}) {
       const id = String(sent.id || '');
       // The page's own POST can arrive before the script's report (the page leaves as it posts): it made a name-only entry with the same token; this report completes it.
       const waiting = id && caught.find(entry => entry.id === id);
-      if (waiting) { Object.assign(waiting, {how: String(sent.how || 'submit'), path: pathOf(sent.page) || waiting.path, fields}); save(); }
-      else record({at: new Date().toISOString(), id, host, path: pathOf(sent.page), how: String(sent.how || 'submit'), fields, posted: false});
+      if (waiting) { Object.assign(waiting, {how: String(sent.how || 'submit'), path: pathOf(sent.page) || waiting.path, job: jobOf.get(key(host, pathOf(sent.page))) || waiting.job || '', fields}); save(); }
+      else record({at: new Date().toISOString(), id, host, path: pathOf(sent.page), job: jobOf.get(key(host, pathOf(sent.page))) || '', how: String(sent.how || 'submit'), fields, posted: false});
       res.writeHead(204).end(); return;
     }
     if (req.method === 'POST') {   // the form's own POST: it marks the script's entry for this submit, or is the entry when the script's report is missing or late

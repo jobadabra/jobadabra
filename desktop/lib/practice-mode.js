@@ -11,14 +11,16 @@ export function practiceLedger(env = process.env, packaged = false) {
 
 const where = url => { try { const parsed = new URL(url); return `${parsed.hostname}${parsed.pathname}`; } catch { return ''; } };
 
-/** The submissions the catcher caught for the job at `url`, newest first: [{at, how, fields: [[name, value]], posted}]. A missing or half-written ledger is no entries. */
+/** The submissions the catcher caught for the job at `url` (its entry's `job`, else the page it came from), newest first: [{at, how, fields: [[name, value]], posted}]. A missing or half-written ledger is no entries.
+ * TODO(AI): a Submit seen only as the form's own POST (no script report) has no job and matches only when its path is the job's (7 Nov 2026)
+ */
 export function caughtFor(file, url) {
   if (!file || !where(url)) return [];
   let text = '';
   try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
   const entries = [];
   for (const line of text.split('\n')) {
-    try { const entry = JSON.parse(line); if (`${entry.host}${entry.path}` === where(url)) entries.push({at: entry.at, how: entry.how, fields: entry.fields, posted: !!entry.posted}); } catch { /* a blank or partly written line */ }
+    try { const entry = JSON.parse(line); if ((entry.job ? where(entry.job) : `${entry.host}${entry.path}`) === where(url)) entries.push({at: entry.at, how: entry.how, fields: entry.fields, posted: !!entry.posted}); } catch { /* a blank or partly written line */ }
   }
   return entries.reverse();
 }
