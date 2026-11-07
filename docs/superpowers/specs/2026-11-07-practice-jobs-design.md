@@ -53,7 +53,7 @@ A **separate folder and store**, as the twin: `JOBADABRA_USER_DATA` = `<Applicat
 - Guard (safety): a test reads `package.json` `build.files` and fails if `practice` is listed, fails if anything under `lib/` imports `practice/`, and runs the hook with `packaged: true` + the env set → `[]`.
 
 ### AI in practice
-Decision for the owner (see sketch). Recommended: the person's own AI setup answers (Free AI or Claude plan), because "Full automation runs for real". Cost: one fill is a few calls; the app's own credit sentence shows it. Alternative: the case's recorded `ai` answers through a stand-in (free, repeatable, but not the product's AI).
+Owner, 7 Nov 2026: "Person's own AI (Recommended)". The person's own AI setup answers (Free AI or Claude plan), because "Full automation runs for real". Cost: one fill is a few calls; the app's own credit sentence shows it. Alternative: the case's recorded `ai` answers through a stand-in (free, repeatable, but not the product's AI).
 
 ## Acceptance criteria
 - [ ] `npm run practice` starts a second app; its window title and banner say Practice; its folder is not a real folder (a start on a real folder is refused with a test).
@@ -66,7 +66,7 @@ Decision for the owner (see sketch). Recommended: the person's own AI setup answ
 ## Non-goals
 - Not in a release build, not for users, no setting.
 - Not a Tier 1 e2e journey (registry + owner's yes needed); a later PR may add one.
-- No second server for the e2e (practice reuses `forms.mjs` `hostRules` and the cert helper; it adds the shim and the ledger only).
+- No change to the e2e harness: practice writes its own small server (`desktop/practice/server.js`) with the same host rule and self-signed cert approach as `e2e/lib/forms.mjs`, because that file is e2e-only (fixed host list, test fixtures) and heavy to import.
 - No real-employer pages, no captured real data; only the files in `e2e/recorded` and `e2e/ladder-fixtures/pages`.
 - The Claude Desktop skill lives outside the repo (`~/.claude/skills-src/jobadabra-how-it-works`): the coordinator adds its paragraph.
 
@@ -77,8 +77,8 @@ Decision for the owner (see sketch). Recommended: the person's own AI setup answ
 4. Docs: `docs/practice-jobs.md`, the map line, the paragraph for the skill (sent to the coordinator).
 
 ## Progress
-- [ ] Spec + sketch approved by the owner
-- [ ] 1/4 server + catcher + shim
+- [x] Spec + sketch approved by the owner (7 Nov 2026: own AI, about 12 jobs, result on each job's card)
+- [ ] 1/4 server + catcher + shim (this PR)
 - [ ] 2/4 dev launch + isolation + canary + release guard
 - [ ] 3/4 UI: banner, list, "What would have been sent"
 - [ ] 4/4 docs + skill paragraph
