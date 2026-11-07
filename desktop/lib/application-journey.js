@@ -27,6 +27,7 @@ const label = needs => String(needs || '').replace(/\s+/g, ' ').trim().slice(0, 
 const noteFor = (why, need) => (why === 'email' && need ? `Send your application to ${need}` : why === 'told' && need ? `The page says: ${need}` : why === 'other' ? 'Jobadabra could not tell how to apply: open the page' : why === 'site_broken' ? need || BROKEN : need ? `Needs you: ${need}` : why === 'account' ? 'This site needs an account' : 'The extension can\'t reach the form');
 
 /** Only explicit user provenance may attribute a Stop to the person; legacy or unclassified events stay neutral. */
+const stopSource = source => ['user', 'browser'].includes(source) ? source : 'unknown';
 const stopNote = source => source === 'user' ? STOPPED : `${source === 'browser' ? 'Chrome stopped the extension.' : 'The extension stopped.'} Press Reopen form to fill it again.`;
 
 // -> {set: {field: value} to apply (empty: nothing changed), result: what the old terminals function returned}.
@@ -52,7 +53,7 @@ export function journey(session, event) {
     const have = Array.isArray(session.accountTerms) ? session.accountTerms : [];
     return !text || have.includes(text) || have.length >= 3 ? none : {set: {accountTerms: [...have, text]}, result: true};
   }
-  if (event.type === 'stop') return session.kind !== 'form' || session.stuck === 'stopped' ? none : {set: {stuck: 'stopped', note: stopNote(event.source), accountNeeds: ''}, result: true};   // whatever step it was at: stop holds globally; attribution comes only from the trigger
+  if (event.type === 'stop') return session.kind !== 'form' || session.stuck === 'stopped' ? none : {set: {stuck: 'stopped', stopSource: stopSource(event.source), note: stopNote(event.source), accountNeeds: ''}, result: true};   // whatever step it was at: stop holds globally; attribution comes only from the trigger
   if (event.type === 'stuck') {
     if (session.kind !== 'form' || !STUCK.includes(event.why) || session.stuck === 'stopped') return none;   // invariant 8
     const why = event.why, need = why === 'other' ? 'how to apply is unclear' : label(event.needs), note = noteFor(why, need), set = {};

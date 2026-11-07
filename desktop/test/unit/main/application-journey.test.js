@@ -92,6 +92,13 @@ test('browser and unattributed extension stops never say the person pressed Stop
   assert.match(journeyStep(session).needs, /Stopped by you/);
 });
 
+test('a stop stores its origin for the screen to translate: user, browser, else unknown (#3410, Gitar on #3445)', () => {
+  for (const [source, stored] of [['user', 'user'], ['browser', 'browser'], ['unknown', 'unknown'], [undefined, 'unknown'], ['page', 'unknown']]) {
+    const session = form({stage: 'form'});
+    assert.equal(journey(session, {type: 'stop', source}).set.stopSource, stored, `a stop from ${source}`);
+  }
+});
+
 test('a legacy stopped session with no recorded explanation cannot claim a user Stop', () => {
   const step = journeyStep(form({stuck: 'stopped', stage: 'form'}));
   assert.doesNotMatch(step.needs, /by you|you stopped/i);

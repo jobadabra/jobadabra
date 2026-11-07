@@ -85,7 +85,7 @@ export function startTab(tabId, who = '', wasStopped = false) {
 // Why (1 Nov 2026, #2812, a8's yes): the page's own mark counts only where a script of ours runs. A page Chrome guards (chrome://, the web store, an error page) refuses every
 // injection, and all of ours is injected (no content_scripts), so nothing of ours is there; it refused on every press and the Stop never read as done. Whether ours runs is the
 // page's answer to the 'stopped' message (review.js, panel-overlay.js reply), never the error's words or the page's address. Each failed step goes to the log, not the page; the origin ('user' a Stop press, 'browser' Chrome's own cancel, else 'unknown') only words
-// the app's note, and every origin stops everything (#3410, owner approved 7 Nov 2026).
+// the app's note, and every origin stops everything (#3410; owner 7 Nov 2026: "Yes, ship it (Recommended)").
 export async function stopAll(reason = 'the person pressed Stop', origin = 'unknown') {
   const source = ['user', 'browser'].includes(origin) ? origin : 'unknown';
   const at = Date.now();

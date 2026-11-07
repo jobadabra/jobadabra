@@ -121,7 +121,7 @@ const publicView = s => assertSession({id: s.id, kind: asksHidden(s) ? 'form' : 
   // Came back from the last run (the app closed, or was killed) and you weren't asked yet what to do with it.
   askAtStart: !!s.restored && !s.asked && !isLive(s),
   startedAt: s.startedAt || '', endedAt: s.endedAt || null, exitCode: s.exitCode ?? null, needsYouSince: s.needsYouSince || null,
-  stuck: s.stuck || '', stage: s.stage || '', inChrome: !!s.inChrome, accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '', accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode, question: asksHidden(s) ? '' : s.question || '', brief: asksHidden(s) ? '' : briefly(s.question || s.note), location: s.location || '', workMode: s.workMode || ''});
+  stuck: s.stuck || '', stopSource: s.stopSource || '', stage: s.stage || '', inChrome: !!s.inChrome, accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '', accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode, question: asksHidden(s) ? '' : s.question || '', brief: asksHidden(s) ? '' : briefly(s.question || s.note), location: s.location || '', workMode: s.workMode || ''});
 /** Marks a session as being cancelled by Cancel all applications (on) or back to its own state (off) and tells the window; never saved, so a restart does not bring it back. */
 export function setCancelling(id, on = true) {
   const session = sessions.get(id);
@@ -277,7 +277,7 @@ export async function resume(id, launch) {
 export function persist(file) { saveFile = file; }
 const saved = s => ({
   background: s.background || null,
-  id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
+  id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', stopSource: s.stopSource || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
   stage: s.stage || '', accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '',
   accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode,
   claudeId: s.claudeId || '', asked: !!s.asked, transcript: s.transcript || '', events: s.events || [], outcome: s.outcome || '',
