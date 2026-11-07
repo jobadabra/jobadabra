@@ -18,7 +18,7 @@ export function trackerRow(issue) {
   if (labels.some(name => NOT_A_BUG.has(name))) return null;
   const miss = labels.includes('kind:detector-miss');
   if (labels.includes('auto-ui') && !miss) return null;   // the Finder found it itself
-  const title = String(issue.title || '').replace(/^\[auto-ui\]\s*[^:]*:\s*/, '').trim().slice(0, 150) || `Issue #${issue.number}`;
+  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 150) || `Issue #${issue.number}`;
   const severity = SEVERITY[(labels.find(name => name.startsWith('severity:')) || '').slice(9)] || 'Medium';
   const area = miss ? 'e2e harness' : AREAS.find(([pattern]) => pattern.test(`${issue.title} ${labels.join(' ')}`))?.[1] || '';
   const replay = parseReplay(issue.body);

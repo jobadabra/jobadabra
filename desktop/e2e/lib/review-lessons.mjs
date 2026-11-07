@@ -10,7 +10,7 @@ const MAX_LESSONS = 12;
 export function lessonFromIssue(issue, comments = []) {
   const view = String(issue.body || '').match(/Page `([^`]+)`/)?.[1];
   if (!view) return null;
-  const title = String(issue.title || '').replace(/^\[auto-ui\]\s*[^:]*:\s*/, '').trim().slice(0, 120);
+  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 120);
   let why = '';
   for (const comment of comments) {
     const said = String(comment.body || '').match(/###[^\n]*\bWhy\b[^\n]*\n+([\s\S]*?)(?=\n###|\n<sub>|$)/);

@@ -18,7 +18,7 @@ export function reasonOf(issue) {
 }
 
 const inWeek = (issue, since) => [issue.createdAt, issue.closedAt].some(date => date && Date.parse(date) >= since);
-const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${oneLine(issue.title, 90).replace(/^\[auto-ui\]\s*/, '')}`;
+const line = issue => `#${issue.number} [${detectorOf(issue)} / ${label(issue, 'kind:') || '?'} / ${label(issue, 'view:') || '?'}] ${oneLine(issue.title, 90).replace(/^\[(?:auto-ui|AI persona)\]\s*/, '')}`;
 
 export function weekFacts(issues, {now = Date.now(), days = 7, cap = 40} = {}) {
   const since = now - days * 86400000;

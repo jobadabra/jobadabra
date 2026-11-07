@@ -22,7 +22,7 @@ export function reversalsFrom(events, issues = {}) {
     const full = issues[event.issue.number] || event.issue;
     const said = (Array.isArray(full.comments) ? full.comments : []).filter(   // an event's own issue carries a comment COUNT, not the comments
       comment => comment.author && !BOT.test(comment.author.login || '') && ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.authorAssociation)).at(-1);
-    out.push({number: event.issue.number, title: String(event.issue.title || '').replace(/^\[auto-ui\] /, '').slice(0, 100), was, now, words: said ? whyOf(said.body).replace(/\s+/g, ' ').slice(0, 300) : '', at: event.created_at});
+    out.push({number: event.issue.number, title: String(event.issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, '').slice(0, 100), was, now, words: said ? whyOf(said.body).replace(/\s+/g, ' ').slice(0, 300) : '', at: event.created_at});
   }
   return out;
 }

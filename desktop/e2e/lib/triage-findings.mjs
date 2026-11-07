@@ -118,5 +118,9 @@ export function normalize({ui = [], ai = [], suite = [], dropped = []}) {
   return all.filter(item => item.severity !== 'low').filter(item => !seen.has(item.id) && seen.add(item.id));
 }
 
-export const issueTitle = finding => `[auto-ui] ${finding.view}: ${finding.shown || finding.title}`.slice(0, 120);
+/**
+ * The issue title: `[AI persona] <view>: <title>` for a finding of the AI user agent (source ai-user-agent), `[auto-ui] <view>: <title>` for every other finder, at most 120 characters.
+ * Why (7 Nov 2026, pz, owner via mac-50: "'[AI persona]' prefix (Recommended)": "by hand or automatic, and keep the source:ai-user-agent label as the filter. Other finders keep '[auto-ui]'"): the issue list says at a glance which bugs a persona found. Every reader that takes the view out of a title (triage.mjs, lib/triage-match.mjs, ...) accepts both tags.
+ */
+export const issueTitle = finding => `[${finding.source === 'ai-user-agent' ? 'AI persona' : 'auto-ui'}] ${finding.view}: ${finding.shown || finding.title}`.slice(0, 120);
 export const labelFor = id => `fp:${id}`.slice(0, 50);
