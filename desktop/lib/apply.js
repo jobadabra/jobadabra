@@ -291,7 +291,7 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 export async function start(storage, {n, mode, applyMode}, open = openBrowser, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
   // Why (2026-11-07, owner): one batch uses one saved eligibility choice across selection, drafting, and the reread after drafting.
-  const eligibility = {allowIneligible: applyOf(storage.settings()).allowIneligible};
+  const eligibility = {allowIneligible: applyOf(storage.settings?.()).allowIneligible};
   if (mode === 'agents') return startAgents(storage, n, {list, launch, next, prepare, report, eligibility});
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n, eligibility);
