@@ -1,10 +1,15 @@
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
+import '../i18n/focus-cards.js';
+import {copyField} from '../i18n/display-copy.js';
 import {stageText} from './jobs-board-rules.js';
 // Focus → the two funnel cards (Application funnel: jobs you went after; Inbound funnel: opportunities that found
 // you): each step's name, count, bar and share, a click shows those opportunities in the Jobs list.
 import {el} from './components.js';
 import {icon} from './icons.js';
+
+/** Present one engine-owned funnel name without changing the canonical step used by counts, filters and onboarding. */
+export const funnelName = step => stageText((copyField(step, 'step') || '').replace(/^\S+\s/, ''));
 
 // The Inbound funnel card's steps (src/focus.py funnel()['inbound']): share of those who contacted you, and the Jobs
 // list a click shows (its label and links). Empty when nothing found you yet: no card.
@@ -13,7 +18,7 @@ export function inboundSteps(inbound) {
   const contacted = steps[0]?.reached || 0;
   if (!contacted) return [];
   return steps.map((step, i) => {
-    const name = stageText(step.step.replace(/^\S+\s/, ''));
+    const name = funnelName(step);
     const share = Math.round(100 * step.reached / contacted);
     return {name, reached: step.reached, share, urls: step.urls || [],
       label: i ? t('helperTail.inboundReached', {name}) : t('helperTail.inboundContacted'),

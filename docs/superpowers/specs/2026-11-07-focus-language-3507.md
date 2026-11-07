@@ -29,8 +29,13 @@ Main-process UI producers use the same recipe shape. Unknown keys/untagged value
 Keep the existing focused Focus/store/funnel/letter/renderer tests. Add a regression through real engine/main producers and actual card renderers in German, covering the reported strings and their sibling branches. Assert canonical fields, filter/action identities and raw values remain unchanged. Render Focus and Jobs in light/dark with fictional data; retain before/after previews for owner review. Ship one PR with `Fixes #3507`, and handle its review/CI through exact-head READY.
 
 ## Progress
+### 1. Focus and Jobs producer localization
 - [x] Audit producer and consumer bypasses and record raw/control exclusions. (proof: docs/superpowers/specs/2026-11-07-focus-language-3507.md)
-- [ ] Route authored producer fields through portable copy recipes and all seven catalogs.
-- [ ] Render real cards in German with no uncataloged authored English; retain control/raw invariants.
-- [ ] Review before/after previews and complete the required owner UI decision.
+- [x] Route authored producer fields through portable copy recipes and all seven catalogs. (proof: desktop/test/unit/renderer/focus-catalogs.test.js)
+- [x] Render real cards in German with no uncataloged authored English; retain control/raw invariants. (proof: desktop/test/unit/renderer/focus-language-contract.test.js)
+- [x] Review before/after previews and complete the required owner UI decision. (proof: none: German light/dark before-after previews opened; owner replied "I approve" on 7 Nov 2026)
 - [ ] Publish one reviewed, green PR and report exact-head READY.
+
+### Check evidence
+
+Root integration: 43 named desktop tests pass (real engine/main German card rendering, preparation dialog, seven catalogs × 291 keys, six count values, raw interpolation/cached locale switching, existing letter/consumer guards). 98 named Python Focus/funnel/store/history/preparation/recipe tests pass. Worker checks additionally cover authored suggestions and workflow paths. A fresh read-only review found the prep dialog and pay-filter heading still reading canonical values; both consumers now resolve presentation fields while retaining original action objects. Before/after German demo screenshots cover Focus and Jobs; owner approved publication after reviewing the opened German light/dark previews on 7 Nov 2026. No live stores, AI calls or message delivery were used.

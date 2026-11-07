@@ -2,6 +2,8 @@
 import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import '../../i18n/focus-cards.js';
+import {copyField} from '../../i18n/display-copy.js';
 import {ai} from '../ai-name.js';
 import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
@@ -286,7 +288,7 @@ export function renderJobs() {
         title: ai(t('pagesAuditPunct.a33')),
         run: () => background(t('pagesFinalLabels.reviewingRejection'), async () => {
           const result = await window.pilot.reviewRejection(job.url);
-          toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), result.text, jobPlace(job), result.ok ? 'good' : 'bad');
+          toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), copyField(result, 'text'), jobPlace(job), result.ok ? 'good' : 'bad');
           if (result.ok) loadJobs();
         })});
     }
