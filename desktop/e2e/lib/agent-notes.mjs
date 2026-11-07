@@ -82,7 +82,7 @@ export const holdingIds = (note, reason, knowledge) => citedIds(reason, knowledg
  * Which notes are filed. Low severity is never filed (the Finder's rule, owner 4 Oct 2026: "if we assess it as low, let's not open it"; the agent's nitpicks of wording are low). The rest are ranked
  * proved first, then judge agrees, then severity, then the order the agent noted them, and cut at `cap`. A note whose second opinion was unavailable (no answer at all) is held, not filed, unless a script already proved it (its own evidence): it stays in the report and the artifact.
  * A note the judge disagrees with AND whose reason answers a rule the note itself cited or a closed verdict (`judgeCites`, from `holdingIds`, set by the run) is `ruled`: not filed, listed with the id. Any other disagree is still filed (`judge:disagrees`): the judge alone does not gate a filing.
- * Why (7 Nov 2026, pz, owner via mac-50: "hold a disagree only when it names a rule or closed verdict in the knowledge"; #3534 and #3539 were judge:disagrees and both by design): the 5 Nov exam dropped 5 of 7 real notes on a judge's say alone, a rule id is the part code can check.
+ * Why (7 Nov 2026, pz, owner via mac-50: "Don't gate filing on the judge alone" and "hold a disagree only when it cites the note's OWN `expected` id or a closed-<n> verdict"; exam run 42407753226): the 5 Nov exam dropped 5 of 7 real notes on a judge's say alone, and a bare "names a rule id" still held real note #9 in 3 of 3 runs; only the note's own cited rule or a closed verdict is evidence code can check (see holdingIds).
  * -> {filed, over, low, held, ruled}: `over`, `low`, `held` and `ruled` are listed in the report, never silently lost.
  */
 export function rankNotes(notes, cap = MAX_FILED) {
