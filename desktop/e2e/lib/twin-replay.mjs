@@ -2,6 +2,7 @@
 // folder (sessions.json, restored at the app's start) and its job row beside them (replay/<id>/job.json), and say what the tester expected and saw. Never the owner's real folder: a folder that is the real one is refused.
 // Why (7 Nov 2026, owner: a bug filed by an AI should be replayable by "any agent"; spec 2026-11-07-ai-tester-bug-reports-design.md): the bundle's state.json is the state the bug happened in.
 // Not done (parked): putting the job row into the twin's store as a row; it is saved as a file and printed so the replaying agent can add the job from its link in the twin.
+// Job: report health
 // Guard: desktop/e2e/test/harness/twin-replay.test.mjs (the real folder is refused; the key goes only in the Authorization header).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -48,7 +49,7 @@ export function loadBundle(id, bundle, home, {real = realDataFolders(), now = ne
     .map(record => ({...record, note: `Replay of bundle ${id}`, startedAt: now.toISOString(), endedAt: now.toISOString(), savedAt: now.toISOString()}));
   const file = path.join(folder, 'sessions.json');
   let kept = [];
-  try { const onDisk = JSON.parse(fs.readFileSync(file, 'utf8')); if (Array.isArray(onDisk)) kept = onDisk.filter(record => !sessions.some(added => added.id === record.id)); } catch { /* no file yet */ }
+  try { const onDisk = JSON.parse(fs.readFileSync(file, 'utf8')); if (Array.isArray(onDisk)) kept = onDisk.filter(record => !sessions.some(added => added.id === record.id)); } catch (error) { if (error.code !== 'ENOENT') throw new Error(`sessions.json in the twin folder is not readable: ${error.message}`); }   // Why: no file yet is the normal first replay
   fs.mkdirSync(folder, {recursive: true});
   fs.writeFileSync(file, JSON.stringify([...kept, ...sessions]), {mode: 0o600});
   const job = bundle.state?.job && typeof bundle.state.job === 'object' ? bundle.state.job : null;
