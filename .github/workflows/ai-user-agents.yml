@@ -185,6 +185,7 @@ jobs:
           E2E_AGENT_MINUTES: ${{ steps.prepare.outputs.minutes }}
           E2E_AGENT_CALLS: ${{ steps.prepare.outputs.calls }}
           E2E_AGENT_STEPS: ${{ steps.prepare.outputs.steps }}
+          E2E_AGENT_STEP_TOKENS: ${{ steps.prepare.outputs.step_tokens }}   # Why (7 Nov 2026, #3378): what one step costs on the engine that answered; the session sizes its goals from it and the token meter
         run: xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs agent
       - name: The summary of the night (cost, verdict per goal, or why there was none)
         if: always()
