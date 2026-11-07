@@ -12,6 +12,8 @@ on:
     branches: [main]
     paths:
       # Exactly what this workflow loads (tools/replay-files.mjs --paths page-cases.yml prints it; desktop/test/replay-workflow-paths.test.js fails when it drifts), plus its install files.
+      - 'desktop/i18n/catalogs/common.js'
+      - 'desktop/i18n/index.js'
       - 'desktop/cv/template.js'
       - 'desktop/e2e/fixtures/slice-ci-seconds.json'
       - 'desktop/e2e/fixtures/cv.json'

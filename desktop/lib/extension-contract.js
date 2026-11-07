@@ -11,7 +11,7 @@ const SKETCH = 'a page sketch (lib/page-kind.js sketchBody): controls, headings,
 
 /** Routes by path. handles: the app (or worker) files that read the request and build the answer. */
 export const routes = {
-  '/extension/pair': {auth: 'origin', method: 'GET', handles: [L('server-routes.js')], response: {url: 'string', token: 'string'}},
+  '/extension/pair': {auth: 'origin', method: 'GET', handles: [L('server-routes.js')], response: {url: 'string', token: 'string', displayLocale: 'string?'}},
   '/extension/tabs': {auth: 'token', handles: [L('server.js'), L('ext-server-handlers.js'), L('review.js'), L('visits.js')],
     request: {urls: 'array', ids: 'array?', boot: 'string?', browser: 'string?', worker: 'string?', reading: 'array?', sessions: 'array?', version: 'string?', reloadedFor: 'string?', owned: 'boolean?'},
     response: {ok: 'boolean', latest: 'string?', build: 'object?', reread: 'array?'}},
@@ -28,7 +28,7 @@ export const routes = {
     request: {host: 'string', items: 'array', trace: 'array?', aliasUse: 'any?', filled: 'any?', required: 'number?', starred: 'number?', uploads: 'array?', corrections: 'any?', flow: 'any?'}, response: {ok: 'boolean'}},
   '/extension/misses': {auth: 'token', handles: [L('server-routes.js'), L('ext-server-handlers.js'), L('misses.js')], request: {host: 'string', items: 'array'}, response: {ok: 'boolean'}},
   '/extension/review': {auth: 'token', open: true, handles: [L('server-routes.js'), L('ext-server-handlers.js'), L('review.js')],
-    request: {tab: 'number?', boot: 'string?', job: 'string?', session: 'string?', role: 'string?'}, readIn: ['extension/panel-markup.js', 'extension/panel-report.js', 'extension/review.js'], response: {matched: 'any?', stop: 'any?', theme: 'string?'}},
+    request: {tab: 'number?', boot: 'string?', job: 'string?', session: 'string?', role: 'string?'}, readIn: ['extension/panel-markup.js', 'extension/panel-report.js', 'extension/review.js', 'extension/flow.js'], response: {displayLocale: 'string?', matched: 'any?', stop: 'any?', theme: 'string?'}},
   '/extension/page-kind': {auth: 'token', open: SKETCH, handles: [L('server-routes.js'), L('server-pages.js'), L('ladder/rung2-sketch.js')],
     request: {url: 'string', fresh: 'boolean?', digest: 'boolean?', noEffect: 'array?', candidates: 'array?', forget: 'boolean?', reason: 'string?', kind: 'string?', why: 'string?', controls: 'array?'},
     response: {role: 'string?', kind: 'string?', confidence: 'number?', error: 'string?'}},
