@@ -1,4 +1,5 @@
 // A replaced CV and what follows it.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
@@ -74,7 +75,7 @@ export async function openCvChange() {
         redraft.disabled = true;
         redraft.textContent = 'Redrafting…';
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-        redraft.textContent = result.ok ? '✓ Redrafted' : 'Retry';
+        redraft.textContent = result.ok ? '✓ Redrafted' : t('pagesCommon.retry');
         sayRefused('Redraft did not start', result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;
       });
@@ -153,7 +154,7 @@ export async function init() {
     button.disabled = true;
     button.textContent = 'Reading your CV… (about 30 s)';
     const result = await window.pilot.importCv();
-    button.textContent = result.ok ? `✓ Done${costText(result.usd, usd => ` (${dollars(usd)})`)}` : 'Retry';
+    button.textContent = result.ok ? `✓ Done${costText(result.usd, usd => ` (${dollars(usd)})`)}` : t('pagesCommon.retry');
     button.disabled = !!result.ok;
     if (result.ok) setPill('cv-base-pill', '✓ Updated', 'good');
     loadCvSetting();

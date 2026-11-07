@@ -1,4 +1,5 @@
 // Jobs page, the list: renderJobs (rows, filters, row actions), the stuck banner, loading state, kit label. Guarded by: test/unit/renderer/count-flash.test.js.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
@@ -112,7 +113,7 @@ export function renderJobs() {
     const titleLine = el('div', 'title-line');
     // An opportunity that found you has no posting (its link is the email or chat): the title opens its Notion page.
     const inNotion = isInbound(job) && !!job.notion_url;
-    const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
+    const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? t('pagesCommon.openNotion') : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
     titleLine.append(link);
     for (const also of alsoOnTags(job)) titleLine.append(tag(also.text, {title: also.title}));   // the same posting on another site: one row (src/desktop_job_copies.py)
@@ -158,7 +159,7 @@ export function renderJobs() {
     // Notion is the source of truth: if it can't be written, nothing changes and the user is told.
     const setStatus = next => async () => {
       const result = await setStatusOnCopies(job, next, (url, status) => window.pilot.setStatus(url, status));   // a merged row stands for every copy of its posting (pages/jobs-copies.js)
-      if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
+      if (!result.ok) { toastMessage('Status not changed', result.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
       const stage = result.stage || job.stage;   // what Notion now holds (a dismissed job in process becomes Closed)
       jobsChanged(job, {status: next, stage: next === 'applied' && stage === 'Applying' ? 'Applied' : stage});
       if (next === 'dismissed' && jobsState.statFilter?.urls) linksOf([job]).forEach(url => jobsState.statFilter.urls.delete(fullKey(url)));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
@@ -182,7 +183,7 @@ export function renderJobs() {
     };
     // Why (2026-11-05, owner screenshots): queued and filling sessions must open their existing work, never offer another Apply, regardless of AI provider.
     if (job.status !== 'applied' && job.url && live) {
-      const open = el('button', `row-main ${live.status === 'input' ? 'state-apply' : 'state-opened'}`, live.status === 'input' ? 'Continue' : 'View session');
+      const open = el('button', `row-main ${live.status === 'input' ? 'state-apply' : 'state-opened'}`, live.status === 'input' ? t('pagesCommon.continue') : 'View session');
       open.title = live.note || 'Open this application session';
       open.addEventListener('click', () => openSession(live.id));
       box.append(open);
@@ -193,7 +194,7 @@ export function renderJobs() {
       // Apply with Claude (a session that drives Chrome through the employer's site, sign-up and every page) is in the
       // ⋯ menu, for pages the extension can't reach on its own.
       // Filled on the server: the main button opens that filled form (the night's hand-off) to check and submit, not a new fill.
-      const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? 'Review & submit' : opened ? 'Opened ↻' : 'Apply'), {
+      const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? 'Review & submit' : opened ? 'Opened ↻' : t('pagesCommon.apply')), {
         title: job.ready ? 'The server filled this form overnight: open it in Chrome, check it and press Submit yourself' : opened ? 'Opened in Chrome: click to open it there again' : 'Open in Chrome: the extension fills the form for you; you review and submit'});
       fill.addEventListener('click', async () => {
         if (!job.ready) return fillInChrome(fill);
@@ -213,7 +214,7 @@ export function renderJobs() {
             if (result.cancelled) return;
             if (result.ok) { claudeStarted.add(pageKey(job.url)); startedApplying(job); if (result.session) await refreshSessions(); renderJobs(); return; }
             // The list said there was a kit but Notion has none (removed or redrafting): Apply drafts it again.
-            if (/kit/i.test(result.error || '')) { toastMessage('Could not prepare the application', 'Press Apply to try again.', jobPlace(job), 'warn'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.', jobPlace(job), 'bad');
+            if (/kit/i.test(result.error || '')) { toastMessage('Could not prepare the application', 'Press Apply to try again.', jobPlace(job), 'warn'); loadJobs(); } else toastMessage('Claude could not start', result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad');
           }});
       }
     } else if (job.status !== 'applied' && job.url && job.code) {
@@ -221,7 +222,7 @@ export function renderJobs() {
       // the form in Chrome as it does for a job with a kit. "Prepare only" is in the ⋯ menu.
       const state = prepareState(job);
       const busy = state === 'local';
-      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state ? 'Preparing' : 'Apply'), {
+      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? 'Retry apply' : state ? 'Preparing' : t('pagesCommon.apply')), {
         title: state === 'local' ? 'Preparing your application (usually 15–30 s), then the form opens in Chrome'
           : 'Prepares your application and fills the form; you review and submit'});
       if (busy) { prepare.disabled = true; prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
@@ -245,9 +246,9 @@ export function renderJobs() {
     };
     menu.push({icon: 'file', label: 'Open job page', run: () => openJobPanel(job),
       title: 'Its application, interviews, documents, messages and history, here beside the list'});
-    if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: 'Open in Notion', run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
+    if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: t('pagesCommon.openNotion'), run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
       title: 'This job in your Notion'});   // about Notion
-    menu.push({icon: 'external', label: isInbound(job) ? 'Open the message' : 'Open posting', run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? 'The email or chat it came from' : 'The job posting'});
+    menu.push({icon: 'external', label: isInbound(job) ? 'Open the message' : t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? 'The email or chat it came from' : 'The job posting'});
     if (job.page_id) menu.push({icon: 'chat', label: 'Add employer feedback', run: () => openFeedback({...job, job: job.title}, 'receive')});
     if (job.employer_feedback && job.page_id) menu.push({icon: 'chat', label: 'Read employer feedback', run: () => openFeedback({...job, job: job.title}, 'review')});
     // The saved review is a tag on the row; the menu says it in words too, as the tag alone did not read as clickable.
@@ -268,7 +269,7 @@ export function renderJobs() {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).
       const tailorNow = () => background('✂️ Tailoring CV…', async () => {
         const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, job.url);
-        if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || 'Try again.', jobPlace(job), 'bad');
+        if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad');
       });
       menu.push({icon: 'scissors', wand: true, label: job.tailored ? 'Re-tailor CV + cover letter' : 'Tailor CV + cover letter',
         title: 'Make a version of your CV and a cover letter for this job: bullets reordered and reworded toward the posting, only from facts in your CV (about 1–2 min)',
@@ -286,7 +287,7 @@ export function renderJobs() {
       for (const choice of choices) {
         menu.push({icon: choice.icon, label: choice.label, title: choice.title, run: async () => {
           const result = await onEveryCopy(job, url => window.pilot.markOutcome({url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}));
-          if (!result.ok) { toastMessage('Not saved', result.error || 'Try again.', jobPlace(job), 'bad'); return; }
+          if (!result.ok) { toastMessage(t('pagesCommon.notSaved'), result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad'); return; }
           jobsChanged(job, choice.outcome !== 'reply' ? {stage: result.stage} : {});   // a reply is an event only: the stage stays where it is
           toastMessage('Saved', `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`, jobPlace(job), 'good');
           renderJobs();
@@ -295,12 +296,12 @@ export function renderJobs() {
     }
     // Actions read as verbs (the Status column shows where a job stands).
     menu.push('-');
-    if (job.status !== 'saved') menu.push({icon: 'bookmark', label: 'Save', run: setStatus('saved'), title: 'Keep this job on your list'});
+    if (job.status !== 'saved') menu.push({icon: 'bookmark', label: t('pagesCommon.save'), run: setStatus('saved'), title: 'Keep this job on your list'});
     if (job.stage === 'Applying') {  // the session is over or was closed: say what happened, instead of staying Applying
       menu.push({icon: 'tick', label: 'I submitted it', run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Mark this application as not submitted', run: async () => {
         const result = await onEveryCopy(job, url => window.pilot.unapplyJob(url));
-        if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
+        if (!result.ok) { toastMessage('Status not changed', result.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Kit ready', status: 'saved'});
         renderJobs();
       }});
@@ -311,19 +312,19 @@ export function renderJobs() {
         if (!confirm(`Mark this as not submitted? It goes back to Applying and the Applied date and event are removed from ${storeName()}.\n\n`
           + 'Use this when Jobadabra marked it Applied by itself and no application was sent.')) return;
         const result = await onEveryCopy(job, url => window.pilot.notSubmitted(url));
-        if (!result.ok) { toastMessage('Not changed', result.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
+        if (!result.ok) { toastMessage('Not changed', result.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
         jobsChanged(job, {stage: 'Applying', status: 'applied'});
         toastMessage('Back to Applying', `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`, jobPlace(job), 'good');
         renderJobs();
       }});
     if (reopenable(job.stage)) menu.push({icon: 'undo', label: 'Reopen', run: setStatus('applied'), title: `Back to Applied: waiting for a reply again (recorded in ${storeName()})`});
-    if (job.status !== 'dismissed') menu.push({icon: 'close', label: 'Dismiss', run: setStatus('dismissed'), title: 'Not interested: hide this job', danger: true});
+    if (job.status !== 'dismissed') menu.push({icon: 'close', label: t('pagesCommon.dismiss'), run: setStatus('dismissed'), title: 'Not interested: hide this job', danger: true});
     // A dismissed job can go for good (owner, 7 Oct 2026): its Notion pages to the trash (30 days there), and no search brings it back.
-    else menu.push({icon: 'trash', label: 'Delete', danger: true, title: byStore('Remove this job: its Notion pages go to the trash, and searches will not show it again', 'Remove this job for good: searches will not show it again'),
+    else menu.push({icon: 'trash', label: t('pagesCommon.delete'), danger: true, title: byStore('Remove this job: its Notion pages go to the trash, and searches will not show it again', 'Remove this job for good: searches will not show it again'),
       run: async () => {
         if (!confirm(`Delete "${job.title}" at ${job.company}?\n\n${byStore('Its Notion pages go to Notion\'s trash (restorable there for 30 days), and searches will not show it again.', 'It is removed from Jobadabra, and searches will not show it again.')}`)) return;
         const result = await onEveryCopy(job, url => window.pilot.deleteJob(url));
-        if (!result?.ok) { toastMessage('Not deleted', result?.error || 'Something went wrong.', jobPlace(job), 'bad'); return; }
+        if (!result?.ok) { toastMessage('Not deleted', result?.error || t('pagesCommon.wrong'), jobPlace(job), 'bad'); return; }
         const left = shared.allJobs.filter(other => other !== job);
         shared.allJobs = left;
         // The header and counters are counted from loaded data (showJobsData): counted again now, one job fewer.
@@ -396,10 +397,10 @@ document.addEventListener('click', event => { if (event.target.closest?.('[data-
 // While the list loads from Notion (a few seconds): a spinner in the empty list the first time; afterwards the
 // list stays and the subtitle says it's refreshing.
 export function showLoading() {
-  if (shared.allJobs.length) { $('jobs-stats').textContent = byStore('Refreshing from Notion…', 'Refreshing…'); return; }
+  if (shared.allJobs.length) { $('jobs-stats').textContent = byStore('Refreshing from Notion…', t('pagesCommon.refreshing')); return; }
   const box = el('div', 'list-loading');
   box.append(el('span', 'spinner'), el('div', '', byStore('Loading your jobs from Notion…', 'Loading your jobs…')),
     el('div', 'muted small', 'Job Matches and Applications, usually a few seconds'));
   $('jobs-body').replaceChildren(box);
-  $('jobs-stats').textContent = byStore('Loading from Notion…', 'Loading…');
+  $('jobs-stats').textContent = byStore('Loading from Notion…', t('pagesCommon.loading'));
 }

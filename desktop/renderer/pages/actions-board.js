@@ -1,6 +1,7 @@
 // "Read this board" (owner, 16 Oct 2026): a job list behind a login (LinkedIn and the like) read through a tab the app opens and manages in the person's own
 // Chrome. The card sits beside "Find jobs using your browser" (built here, not in index.html, which may only shrink); Run opens a small dialog for the board's
 // search address, or one of the sites the app knows; the tab waits for the person's Read (extension popup), after they sign in themselves. Guard: desktop/test/unit/extension/read-board.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {$, show} from './core.js';
@@ -15,7 +16,7 @@ export function boardCard() {
   const run = el('button', 'secondary action', '');
   run.id = 'board-run';
   run.dataset.palette = 'board';
-  run.append(Object.assign(el('b', '', 'Read this board'), {hidden: true}), 'Run');
+  run.append(Object.assign(el('b', '', 'Read this board'), {hidden: true}), t('pagesCommon.run'));
   const card = el('div', 'task-card is-row');
   card.id = 'board-card';
   card.append(el('span', 'task-category', 'DISCOVERY'), (() => {
@@ -39,7 +40,7 @@ export function boardDialog() {
   lead.append(el('h2', '', 'Read this board'));
   const close = el('button', 'ghost icon-btn', '');
   close.id = 'board-close';
-  close.setAttribute('aria-label', 'Close');
+  close.setAttribute('aria-label', t('pagesCommon.close'));
   close.append(icon('close'));
   const tile = el('span', 'dialog-icon');
   tile.append(icon('globe'));
@@ -60,7 +61,7 @@ export function boardDialog() {
   const never = el('p', 'muted small', 'Jobadabra never types your password.');
   const message = el('p', 'message', '');
   message.id = 'board-message';
-  const cancel = el('button', 'secondary', 'Cancel');
+  const cancel = el('button', 'secondary', t('pagesCommon.cancel'));
   cancel.id = 'board-cancel'; cancel.type = 'button';
   const start = el('button', 'primary', 'Open the board');
   start.id = 'board-start'; start.type = 'button'; start.disabled = true;

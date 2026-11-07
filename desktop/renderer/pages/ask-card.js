@@ -1,5 +1,6 @@
 // The invitation to tell us what went wrong, as a card at the top of the app (PR 3/7 of docs/superpowers/specs/2026-11-05-report-instead-of-leaving-design.md). The main process decides when (lib/asks.js);
 // this page draws what it holds. "Tell us" opens the Send feedback dialog; "Not now" is quiet for 14 days. Looks like the run banner (run-banner.css). Guarded by test/unit/renderer/ask-card.test.js.
+import {t} from '../../i18n/index.js';
 import {el, tile} from '../components.js';
 import {$} from './core.js';
 import {ASK_WORDS, answerAsk} from '../ask-card-text.js';
@@ -10,7 +11,7 @@ export function drawAsk(box, kind, onAnswer) {
   box.hidden = !words;
   if (!words) return void box.replaceChildren();
   const card = el('section', 'card run-banner tone-warn ask-card'), text = el('div', 'run-banner-words');
-  const answer = how => Object.assign(el('button', how === 'tell' ? 'primary' : '', how === 'tell' ? 'Tell us' : 'Not now'), {type: 'button', onclick: () => { box.hidden = true; box.replaceChildren(); onAnswer(how); }});
+  const answer = how => Object.assign(el('button', how === 'tell' ? 'primary' : '', how === 'tell' ? 'Tell us' : t('pagesCommon.notNow')), {type: 'button', onclick: () => { box.hidden = true; box.replaceChildren(); onAnswer(how); }});
   text.append(el('b', '', words.title), el('span', '', words.body));
   card.append(tile('chat', 'warn'), text, answer('tell'), answer('later'));
   box.replaceChildren(card);

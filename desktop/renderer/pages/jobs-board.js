@@ -1,6 +1,7 @@
 // Jobs → Board: the applications in columns by Stage (the 🎯 Pipeline page's board in Notion), a card per job like the "In conversation"
 // rows. Dragging a card to another column, or its ⋯ "Move to", asks the app for that stage (setStatus / setStage, jobs-board-rules.js
 // dropFor), so the store's rules decide; the card stays where the store left it. Guarded by: test/unit/renderer/jobs-board-page.test.js.
+import {t} from '../../i18n/index.js';
 import {el, moreButton, pill} from '../components.js';
 import {boardColumns, columnOf, dropFor, nextStepOf, STAGES, takesDrop, stageLabel} from '../jobs-board-rules.js';
 import {matchLabel} from '../jobs-view.js';
@@ -21,7 +22,7 @@ export async function moveJob(job, stage) {
   if (move.refused) { toastMessage('Not moved', move.refused, jobPlace(job), 'warn'); return; }
   const before = job.stage;
   const result = await window.pilot[move.call](job.url, move.arg).catch(error => ({ok: false, error: error.message}));
-  if (!result?.ok) { toastMessage('Not moved', result?.error || 'Try again.', jobPlace(job), 'bad'); return; }
+  if (!result?.ok) { toastMessage('Not moved', result?.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad'); return; }
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
   jobsChanged(job, {stage: landed});

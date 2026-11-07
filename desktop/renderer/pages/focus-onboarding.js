@@ -1,5 +1,6 @@
 // Focus → Get started (moved out of pages/focus.js, 9 Oct 2026): the first steps after the setup, and Focus without Notion, which shows only
 // this list (showFocusStarted, opened by nav.js). The steps' states are renderer/onboarding.js. Guards: test/unit/renderer/onboarding.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {focusMode, onboarding} from '../onboarding.js';
@@ -50,7 +51,7 @@ export function renderOnboarding({funnel} = {}) {
     round.append(step.done ? icon('tick') : String(i + 1));
     const body = el('div', 'focus-body');
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', step.label), pill(step.done ? 'Done' : isNext ? 'Next step' : 'To do', step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
+    top.append(el('span', 'focus-headline', step.label), pill(step.done ? t('pagesCommon.done') : isNext ? 'Next step' : 'To do', step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
     body.append(top, el('div', 'focus-meta muted small', step.hint));
     const actions = el('div', 'focus-actions');
     // Only the next step can be started: a later one waits for it ("After step 1"), so a search never runs before the employers are found.

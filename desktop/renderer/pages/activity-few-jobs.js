@@ -1,5 +1,6 @@
 // Recent activity: the few-jobs help boxes beside the run card (coverage actions, Explain with AI).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
@@ -117,7 +118,7 @@ export function withFewJobsHelp(runId) {
     }
     for (const source of groups?.sources || []) {
       items.push(row(source.id === 'serpapi' ? 'search' : 'link', source.name, source.sub,
-        act({kind: 'source', label: `Set up ${source.name}`, value: source.id}, Object.assign(el('button', 'secondary', 'Set up'), {type: 'button'})), source.title));
+        act({kind: 'source', label: `Set up ${source.name}`, value: source.id}, Object.assign(el('button', 'secondary', t('pagesCommon.setup')), {type: 'button'})), source.title));
     }
     if (groups?.visits?.length) {
       // One row, handed to Find jobs using your browser (owner, 7 Oct 2026: "pass them to Find jobs using your browser"): the extension reads them all in Chrome, a few at a time.

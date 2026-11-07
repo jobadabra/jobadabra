@@ -1,6 +1,7 @@
 // Settings → Notifications ("Tell me by"): e-mail, app notifications, Telegram, any mix, plus the address and how often the digest comes. Product news is its own card (mail-switches.js), never a tick here.
 // Its own Settings tab after Automation (owner, 3 Nov 2026: "Notifications should be a separate tab in Settings. Not inside Automations"); saves at once like Automation. The choice and the address live in lib/notify-channel.js; the engine and the Always on repo follow it. The words (why a switch does nothing) are
 // renderer/notify-words.js; guard test/unit/renderer/notify-choice.test.js.
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
 import {notes} from '../notify-words.js';
@@ -48,7 +49,7 @@ export function bindNotify({savedToast, updateRepo}) {
       error = result.ok ? '' : result.error;
       forgetEmailState();   // Overview's Email card asks again
       window.dispatchEvent(new Event('notify-changed'));   // the Suggestions card asks again
-      if (result.ok) { savedToast('Saved ✓', `Tell me by: ${by.join(', ') || 'nothing'}`, 'notifications'); updateRepo(); }
+      if (result.ok) { savedToast(t('pagesCommon.saved'), `Tell me by: ${by.join(', ') || 'nothing'}`, 'notifications'); updateRepo(); }
     } finally { busy = false; }
     await showNotify(error);
   };
@@ -57,7 +58,7 @@ export function bindNotify({savedToast, updateRepo}) {
   // Why (5 Nov 2026, owner): the card also lives in Always on's Test pop-up, where an address is confirmed right away; one button for both places.
   $('notify-resend').addEventListener('click', async () => {
     const sent = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || 'Try again in a minute.');
+    $('notify-message').textContent = plainError(sent?.ok ? 'Sent. Check your inbox and your spam folder for the link.' : sent?.error || t('pagesCommon.minute'));
   });
   bindMailSwitches(openSetting);
   window.addEventListener('notify-refresh', () => showNotify());   // the Test pop-up borrows this card and asks it to read the state again

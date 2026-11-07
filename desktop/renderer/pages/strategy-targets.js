@@ -1,6 +1,7 @@
 // Strategy page, the target cards: Locations and the Advanced ones (skills, exclusions, more search settings), their lists (chips,
 // the remote choice, the digest minimum) as read and in their editor, and renderStrategy. One card's editor at a time, drafts kept per card, one page bar
 // (strategy-cards.js); the Main goals card is main-goals.js. Guarded by: test/unit/renderer/strategy-cards.test.js, save-progress, strategy-chips, locations-card tests.
+import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, pill, tile} from '../components.js';
 import {readRows} from '../card-shell.js';
@@ -88,7 +89,7 @@ export function listChips(name, placeholder) {
   if (groups?.anywhere.length && groups.whole.length) {
     for (const [key, title] of GROUPS) box.append(el('span', 'muted small', title), ...groups[key].map(pillOf));
   } else box.append(...entries.map(pillOf));
-  if (!entries.length && !editing) box.append(el('span', 'muted small', 'None'));
+  if (!entries.length && !editing) box.append(el('span', 'muted small', t('pagesCommon.none')));
   if (editing) {
     const input = Object.assign(document.createElement('input'), {className: 'add', placeholder: `${placeholder}, then Enter`, value: typed[name] || ''});
     input.dataset.list = name;
@@ -120,7 +121,7 @@ function remoteChoice() {
   if (!isOpen('places')) return el('span', '', remoteWords(chosen, labelsOf('country').slice(0, 1).map(titleCase)));
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'Remote work');
+  group.setAttribute('aria-label', t('pagesCommon.remoteWork'));
   for (const [label, yes] of [['Yes', true], ['No', false]]) {
     const button = el('button', yes === chosen ? 'is-active' : '', label);
     button.type = 'button';
@@ -143,7 +144,7 @@ function levelChoice() {
     openCard('goals');
     document.querySelector('#strategy-main-goals .card')?.scrollIntoView({block: 'start'});
   });
-  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || 'Any'), el('span', 'muted small', ' · from your Target level · '), change);
+  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || t('pagesCommon.any')), el('span', 'muted small', ' · from your Target level · '), change);
   return line;
 }
 // The digest's minimum fit score (Search settings "Minimum fit score for the digest"; the engine's default is 50).
@@ -171,13 +172,13 @@ function targetCard([key, glyph, title, lists]) {
   if (!open) { const read = el('div', 'card-read'); read.append(...VIEWS[key]()); card.append(read); return card; }
   for (const [name, label, placeholder] of shownLists(lists)) {
     // Relocation is a value (Yes / No / Not specified); its places are asked only for Yes, and kept whatever the mode.
-    if (name === 'abroad') { card.append(el('p', 'sub', 'Relocation'), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
+    if (name === 'abroad') { card.append(el('p', 'sub', t('pagesCommon.relocation')), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
     const box = listChips(name, placeholder);
     if (name === 'places') { const priority = el('div', 'priority'); priority.append(el('b', '', label), box); card.append(priority); continue; }
     if (label) card.append(el('p', 'sub', label));
     card.append(box);
   }
-  if (key === 'places') card.append(el('p', 'sub', 'Remote work'), remoteChoice());
+  if (key === 'places') card.append(el('p', 'sub', t('pagesCommon.remoteWork')), remoteChoice());
   if (key === 'search') card.append(el('p', 'sub', 'Your level'), levelChoice(), el('p', 'sub', 'Minimum fit score for the digest'), minScoreInput());
   return card;
 }
@@ -211,7 +212,7 @@ async function fixTypo(name, entry, suggestion, button) {
   const stored = entriesOf(strategyState.lastStrategy, name).find(item => item.label === entry);
   const edits = {[name]: {add: [suggestion], remove: stored ? [stored.fragment] : []}};
   const result = await withSaveProgress(words => { button.textContent = words; }, () => sink.editTargets(edits)).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { toastMessage('Not fixed', result.error || 'Try again.', {card: 'strategy-advanced'}, 'bad'); renderTargets(); return; }
+  if (!result.ok) { toastMessage('Not fixed', result.error || t('pagesCommon.tryAgain'), {card: 'strategy-advanced'}, 'bad'); renderTargets(); return; }
   toastMessage({title: `"${suggestion}" saved ✓`, body: 'Refresh your jobs to search with it.', action: refreshAction, target: {card: 'strategy-advanced'}, tone: 'good'});
   await reloadTargets();
 }
@@ -233,17 +234,17 @@ const VIEWS = {
     remote.title = 'Work mode (in Main goals) is the kind of job you accept; Remote work is whether jobs you could do from where you can work count.';
     const preferred = places.length ? withHints('places', chipsOf) : none('None');
     preferred.title = 'Ranked first';
-    return [readRows([{icon: 'pin', label: 'Preferred locations', value: preferred},
-      {icon: 'globe', label: 'Acceptable locations', value: regions.length ? withHints('country', labels => folded(labels, 10, 'Show all')) : none('None selected')},
+    return [readRows([{icon: 'pin', label: t('pagesCommon.preferredPlaces'), value: preferred},
+      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, 'Show all')) : none('None selected')},
       mode === 'yes' && abroad.length ? {icon: 'send', label: 'Places you would relocate to', value: folded(abroad.map(entry => entry.label), 10, 'Show all')}
-        : {icon: 'send', label: 'Relocation', value: relocationWords(mode, abroad)},
-      {icon: 'building', label: 'Remote work', value: remote},
-      {icon: 'shield', label: 'Work rights', value: rights.length ? withHints('rights', chipsOf) : pill('Not set', 'warn', {title: 'Jobs abroad are flagged "visa sponsorship needed"'})}],
+        : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
+      {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},
+      {icon: 'shield', label: 'Work rights', value: rights.length ? withHints('rights', chipsOf) : pill(t('pagesCommon.notSet'), 'warn', {title: 'Jobs abroad are flagged "visa sponsorship needed"'})}],
     {lined: true})];
   },
   stack() {
     const stack = labelsOf('stack');
-    return [readRows([{icon: 'layers', label: 'Key skills', value: stack.length ? withHints('stack', labels => folded(labels, 10, 'Show all')) : el('span', 'muted', 'None')}], {lined: true})];
+    return [readRows([{icon: 'layers', label: 'Key skills', value: stack.length ? withHints('stack', labels => folded(labels, 10, 'Show all')) : el('span', 'muted', t('pagesCommon.none'))}], {lined: true})];
   },
   search() {
     const row = (glyph, label, name, none) => {
@@ -259,7 +260,7 @@ const VIEWS = {
   languages() {
     const data = strategyState.lastStrategy, {languages, hide, lower} = exclusionGroups({...data, texts: {...data?.texts, languages: labelsOf('languages')}});
     const block = el('div', 'setting-body');
-    block.append(languages.length ? chipsOf(languages) : el('span', 'muted', 'None'));
+    block.append(languages.length ? chipsOf(languages) : el('span', 'muted', t('pagesCommon.none')));
     // Warning colour only for a consequence: the last coverage check counted matching jobs these languages hid (src/coverage.py).
     const listed = new Set(languages.map(language => language.toLowerCase()));
     const hidden = (strategyState.shownVerdict?.languages || []).filter(item => listed.has(String(item.language).toLowerCase())).reduce((sum, item) => sum + (item.count || 0), 0);
@@ -268,7 +269,7 @@ const VIEWS = {
       warn.append(`Hides ${hidden.toLocaleString('en-US')} job${hidden === 1 ? '' : 's'} that match your roles and places (see Suggestions).`);
       block.append(warn);
     }
-    const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', 'None')];
+    const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', t('pagesCommon.none'))];
     const rules = el('div', 'setting-body');
     rules.append(...group('Hide matching jobs', hide), ...group('Rank them lower', lower));
     return [readRows([{icon: 'globe', label: 'Languages that rule a job out', value: block},

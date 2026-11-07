@@ -2,6 +2,7 @@
 // Full automation with nobody to tell, and what the window itself detects (a strong match or Gmail updates while the person was away: renderer/notify-detect.js; a recruiter waiting: Focus).
 // All of them offer themselves to the one pop-up slot (renderer/popup-slot.js): at most one opens per app open, each once (the app records it as it opens). The control follows the state:
 // an e-mail field (no address), "send the link again" (waiting or stopped), or the way to Notifications (unsubscribed); "Use Telegram" opens Settings → Notifications. Guard: test/unit/renderer/notify-moment-words.test.js.
+import {t} from '../../i18n/index.js';
 import {$, message} from './core.js';
 import {NO_PLACE} from '../targets.js';
 import {momentWords} from '../notify-words.js';
@@ -74,7 +75,7 @@ export function init() {
     const sent = current?.ask === 'email'
       ? await window.pilot.notifySave(saveChoice(answer.state, email.value.trim())).catch(error => ({ok: false, error: error.message}))
       : await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    if (!sent?.ok) { message('notify-moment-note', sent?.error || 'Try again in a minute.', 'bad'); return; }   // message(): the one place a result reaches the screen (plainError)
+    if (!sent?.ok) { message('notify-moment-note', sent?.error || t('pagesCommon.minute'), 'bad'); return; }   // message(): the one place a result reaches the screen (plainError)
     dialog.close();
     window.dispatchEvent(new Event('notify-changed'));   // the card asks again
     toastMessage(current.ask === 'email' ? 'Check your inbox ✓' : 'Sent again ✓', 'Check your inbox (and your spam folder) for the link.', NO_PLACE.itself, 'good');

@@ -1,4 +1,5 @@
 // Settings → Application profile.
+import {t} from '../../i18n/index.js';
 import {mountContactControls} from '../contact-controls.js';
 import {showMode} from '../assistant-mode.js';
 import {showClaudeAuto} from '../claude-auto.js';
@@ -147,7 +148,7 @@ export async function loadSettings() {
   $('open-login').checked = !!shared.state.settings.openAtLogin;
   $('last-search').textContent = shared.state.settings.lastSearchAt
     ? `${runWhen(shared.state.settings.lastSearchAt)}${shared.state.settings.lastSearchOk === false ? ' (with problems)' : ''}`
-    : 'No search yet';
+    : t('pagesCommon.noSearch');
   if (shared.state.settings.telegramBot && shared.state.secrets.TELEGRAM_BOT_TOKEN) {
     const line = document.querySelector('[data-secret="TELEGRAM_BOT_TOKEN"]');
     line.textContent = `✓ Connected to @${shared.state.settings.telegramBot}`;
@@ -195,7 +196,7 @@ export function showContact({redraw = false} = {}) {
     },
     fail: result => { reading(false); message('contact-panel-message', `${byStore('Couldn\'t read them from Notion', 'Couldn\'t read them from your Profile')}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
   });
-  $('contact-cv').textContent = shared.state.settings.cvName || 'None yet';
+  $('contact-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   return read;
 }
 

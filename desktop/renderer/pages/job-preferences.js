@@ -5,6 +5,7 @@
 // pages/outline-tab.js, on Strategy's one save bar. Work mode, seniority and the minimum salary are Main goals' (above); permit, languages and the salary
 // expectation are Your details'. On Strategy (owner, 18 Oct 2026, mockup 03) the card reads as label/value rows per side with a quiet Edit; Edit opens the
 // controls and "Review your preferences" (strategy-cards.js: one editor at a time). Guarded by test/unit/renderer/job-preferences.test.js and test/unit/renderer/profile-tabs-render.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {chipLine, readRows} from '../card-shell.js';
@@ -187,7 +188,7 @@ const LEAD = 'What a job must have, and what ranks it higher. Scoring reads them
 const readText = (field, item) => String(typed.get(field.key) ?? item?.value ?? '').replace(/\*\*/g, '').trim();
 function readValue(field, item) {
   const text = readText(field, item);
-  if (!text) return el('span', 'muted', 'Any');
+  if (!text) return el('span', 'muted', t('pagesCommon.any'));
   if (field.widget === 'chips') return chipLine(chipsOf(text));
   if (field.widget === 'workload') return workloadText(workloadOf(text)) || text;
   return text;
@@ -225,7 +226,7 @@ function strategyCard() {
   if (!card) return null;
   card.dataset.card = 'prefs';
   card.classList.toggle('is-editing', isOpen('prefs'));
-  card.querySelector(':scope > .card-head')?.replaceWith(cardHeader('prefs', 'sliders', 'violet', 'Job preferences', LEAD, card));
+  card.querySelector(':scope > .card-head')?.replaceWith(cardHeader('prefs', 'sliders', 'violet', t('pagesCommon.jobPreferences'), LEAD, card));
   return card;
 }
 
@@ -236,7 +237,7 @@ export async function loadPreferences() {
   const node = document.getElementById('preferences-body');
   if (!node) return;
   if (!tab || tab.node !== node) tab = {...outlineTab('preferences', [TEXT], node, draw, {onReset: () => { typed.clear(); handled.clear(); noteDraft = null; }, words: 'Future searches and scores use them once you save.',
-    bar: barFor(), tab: 'strategy-yours', label: 'Job preferences'}), node};
+    bar: barFor(), tab: 'strategy-yours', label: t('pagesCommon.jobPreferences')}), node};
   review.asked = false;
   await tab.load();
 }

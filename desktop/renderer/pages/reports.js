@@ -4,6 +4,7 @@
 // Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
 // Pure parts: renderer/reports-view.js. Guards: test/unit/renderer/reports-view.test.js, test/unit/main/reports-handlers.test.js.
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, pill} from '../components.js';
 import {dayLabel, funnelRows, improveLines, insightItems, weeklyCardOf, weeklyReports} from '../reports-view.js';
@@ -150,7 +151,7 @@ export async function loadReports(tab = state.tab) {
   if (gatedOut('reports')) return;   // behind the Notion gate: nothing reads it (#410)
   state.tab = tab;
   state.error = '';
-  $('reports-state').textContent = 'Refreshing…';
+  $('reports-state').textContent = t('pagesCommon.refreshing');
   draw();
   const result = await window.pilot.reportsInsights().catch(error => ({ok: false, error: error.message}));
   state.insights = result.ok ? result.insights : state.insights;

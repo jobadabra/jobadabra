@@ -1,5 +1,6 @@
 // The Email card in Settings → Overview "Your setup": its state (confirmed, waiting for the link, unsubscribed, our sender off) from notifyState, a click opens
 // Notifications. Drawn after the other service cards, since its state comes from the website. Words: renderer/notify-words.js emailCard; guard test/unit/renderer/notify-choice.test.js.
+import {t} from '../../i18n/index.js';
 import {el, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {emailCard} from '../notify-words.js';
@@ -19,7 +20,7 @@ export async function emailSetupCard(list, open) {
   const text = el('span', 'service-text'), line = el('span', `service-state${card.on ? ' is-on' : ''}`);
   line.append(icon(card.on ? 'check-circle' : 'info'), el('span', 'service-state-text', card.text));
   line.title = card.text;
-  text.append(el('b', '', 'Email'), line);
+  text.append(el('b', '', t('pagesCommon.email')), line);
   button.append(tile('inbox', card.on ? 'good' : 'warn'), text);
   button.addEventListener('click', () => open('notify'));
   list.append(button);

@@ -1,4 +1,5 @@
 // Session page: opening a session and its log.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -96,11 +97,11 @@ export function renderSessionPage() {
   $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}), modeChip(item));
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
   const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
-  again.addEventListener('click', () => busy(again, 'Restarting…', () => restartSession(item)));
+  again.addEventListener('click', () => busy(again, t('pagesCommon.restarting'), () => restartSession(item)));
   const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: 'Stop applying to this job'});
   cancel.addEventListener('click', () => busy(cancel, 'Cancelling…', () => cancelSession(item)));
   if (item.kind === 'form') cancel.title = 'Stop applying to this job';
-  $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), 'More'));
+  $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), t('pagesCommon.more')));
   show($('ss-log'), terminalShown(item));   // the terminal only for a Claude conversation with Claude help on, or when asked (session-steps.js)
   renderSteps(item);   // no terminal behind a form session: the form in Chrome is the whole story
   const job = sessionJob(item);
@@ -137,7 +138,7 @@ export function renderSessionPage() {
   const livePill = pill(`${logLabel} · ${sessionDuration(item)}`, logTone, {dot: true});
   if (item.status === 'running') ticking(livePill, `${logLabel} · `, item.startedAt);
   $('ss-live-state').replaceChildren(livePill);
-  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? 'Form filled in Chrome. Waiting for your review.' : item.note || 'Starting…'}`;
+  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? 'Form filled in Chrome. Waiting for your review.' : item.note || t('pagesCommon.starting')}`;
   // A session that isn't running (closed with the app, or ended) takes no typing: say so, with Resume one click away.
   const offline = !isLive(item);
   show($('ss-offline'), offline);

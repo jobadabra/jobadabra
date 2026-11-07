@@ -1,4 +1,5 @@
 // Interviews page: record a call, then list, relink and review its transcript, notes and recording (saved in Notion).
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import * as pendingReviews from '../review-pending.js';
 import * as reviewAgain from '../review-again.js';
@@ -360,7 +361,7 @@ function renderSaved() {
       main.title = byStore('The review and transcript, in Notion', 'The review and transcript');
       main.addEventListener('click', event => (row.url ? window.pilot.openNotion(row.url, event.metaKey) : openReview(row.id)));
     } else {
-      main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? 'Reviewing…' : 'Review'), {disabled: reviewing.has(row.id),
+      main = Object.assign(el('button', 'secondary iv-main', reviewing.has(row.id) ? 'Reviewing…' : t('pagesCommon.review')), {disabled: reviewing.has(row.id),
         title: ai(byStore('{AI:big} reviews it question by question; the review is added to the Notion page', '{AI:big} reviews it question by question; the review is saved with it'))});
       main.addEventListener('click', () => reviewRow(row.id));
     }
@@ -370,7 +371,7 @@ function renderSaved() {
       {label: cellJob.kind === 'none' ? 'Link a job…' : 'Change job…', run: () => openPicker(), title: `Link this interview to another job (updates ${storeName()})`},
       ...(row.overall ? [{again: true, run: () => reviewAgainRow(row.id)}] : []),  // built when the menu opens (busy or not)
       '-',
-      {label: 'Delete', danger: true, title: osText(byStore("Moves the row to Notion's trash (restorable for 30 days) and deletes its recording on this Mac", 'Deletes the interview and its recording on this Mac')), run: async () => {
+      {label: t('pagesCommon.delete'), danger: true, title: osText(byStore("Moves the row to Notion's trash (restorable for 30 days) and deletes its recording on this Mac", 'Deletes the interview and its recording on this Mac')), run: async () => {
         if (!confirm(osText(byStore(`Delete "${row.title}"? It goes to Notion's trash (30 days) and its recording is removed from this Mac.`,
           `Delete "${row.title}" and its recording on this Mac?`)))) return;
         const done = await iv.remove(row.id);

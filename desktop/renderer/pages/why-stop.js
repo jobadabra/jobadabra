@@ -1,5 +1,6 @@
 // Why setup stopped: asked once when quitting mid-setup ("Leaving setup?"), or any time from "Stuck? Tell us" in the
 // wizard. The reason goes to the setup funnel (lib/setup-funnel.js); typed words also reach the owner.
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
 import {NO_PLACE} from '../targets.js';
@@ -12,7 +13,7 @@ function open(asked) {
   $('why-title').textContent = quit ? 'Leaving setup? What stopped you?' : 'Stuck? What\'s in the way?';
   $('why-lead').textContent = quit ? 'One tap helps make setup easier for the next person. Optional.'
     : 'Tell us what\'s blocking you: it goes straight to the maker, and helps the next person too.';
-  $('why-skip').textContent = quit ? 'Just quit' : 'Cancel';
+  $('why-skip').textContent = quit ? 'Just quit' : t('pagesCommon.cancel');
   $('why-send').textContent = quit ? 'Send & quit' : 'Send';
   document.querySelectorAll('input[name=why]').forEach(input => { input.checked = false; });
   $('why-text').value = '';
@@ -24,7 +25,7 @@ async function answer(reason) {
   await window.pilot.leaveReason({reason, text: $('why-text').value, mode}).catch(() => {});
   $('why-send').disabled = false;
   $('why-dialog').close();
-  if (mode === 'stuck' && reason) toastMessage('Thank you!', 'Got it. If you wrote something, the maker will read it today.', NO_PLACE.done, 'good');
+  if (mode === 'stuck' && reason) toastMessage(t('pagesCommon.thanks'), 'Got it. If you wrote something, the maker will read it today.', NO_PLACE.done, 'good');
 }
 
 export async function init() {

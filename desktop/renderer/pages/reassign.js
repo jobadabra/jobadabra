@@ -1,6 +1,7 @@
 // Where an email belongs, in your words: Focus → "Is this about …?" (an email the Gmail check wasn't sure about).
 // One dialog: pick the job, a new job, or "not about a job"; src/ai/reassign.py attaches the email (Notion stays the
 // one copy).
+import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {shared} from './shared.js';
 import {$, message} from './core.js';
@@ -49,7 +50,7 @@ function open({title, context, why = ''}) {
 export async function moveEmail(eventId, target, item = null) {
   if (item) holdItem(item);   // the question leaves Focus at once ("Saving…"); Notion takes seconds
   const result = await window.pilot.reassignEmail(eventId, target).catch(error => ({ok: false, text: error.message}));
-  toastMessage(result.ok ? 'Saved ✓' : 'Not changed', result.text || '', {view: 'focus'}, result.ok ? 'good' : 'bad');
+  toastMessage(result.ok ? t('pagesCommon.saved') : 'Not changed', result.text || '', {view: 'focus'}, result.ok ? 'good' : 'bad');
   if (result.ok) { loadFocus(); loadJobs(); } else if (item) releaseItem(item);
   return result.ok;
 }

@@ -4,6 +4,7 @@
 // nothing saves per card: Strategy's one page bar (save-bar.js pageSaveBar, "Save strategy changes") saves or discards every card's draft, and never a
 // Profile draft. Goals follow the same Edit → Save. The cards: Main goals (main-goals.js), Locations and the Advanced ones (strategy-targets.js), Job
 // preferences (job-preferences.js, through outline-tab.js's {bar}). Guarded by test/unit/renderer/strategy-cards.test.js.
+import {t} from '../../i18n/index.js';
 import {cardEdit, pill} from '../components.js';
 import {cardHead, doneButton, setEditing} from '../card-shell.js';
 import {pageSaveBar} from '../save-bar.js';
@@ -14,13 +15,13 @@ import {inDraft, sink} from '../strategy-sink.js';
 
 // card key → what its draft holds: lists and one-value settings (Search settings, lib/strategy-edit.js) and goals (the Profile, lib/goals.js).
 export const CARDS = {
-  goals: {title: 'Main goals', lists: ['roles'], values: [], goals: ['seniority', 'work_mode', 'minimum_salary']},
+  goals: {title: t('pagesCommon.mainGoals'), lists: ['roles'], values: [], goals: ['seniority', 'work_mode', 'minimum_salary']},
   places: {title: 'Locations', lists: ['places', 'country', 'abroad', 'rights'], values: ['remote', 'relocation']},
   stack: {title: 'Skills & experience', lists: ['stack'], values: []},
   languages: {title: 'Exclusions & preferences', lists: ['languages'], values: []},
   search: {title: 'More search settings', lists: ['titleSkip', 'skip', 'remoteSkip', 'finders', 'gqueries', 'gplaces'], values: ['level', 'minScore']},
   // Job preferences keeps its drafts in pages/outline-tab.js and registers with the bar itself (barFor); job-preferences.js sets its count.
-  prefs: {title: 'Job preferences', lists: [], values: [], own: true, count: () => 0},
+  prefs: {title: t('pagesCommon.jobPreferences'), lists: [], values: [], own: true, count: () => 0},
 };
 export const GOAL_LABELS = {seniority: 'Target level', work_mode: 'Work mode', minimum_salary: 'Minimum salary'};
 export const cardOf = name => Object.keys(CARDS).find(key => CARDS[key].lists.includes(name) || CARDS[key].values.includes(name)) || '';

@@ -1,5 +1,6 @@
 // "Set aside" under a Which-is-right card (owner, 17 Oct 2026: a pick never deletes the other value): each value a pick moved out of the way, with Undo
 // (lib/set-aside.js). Shared by the Profile facts card and Strategy's Locations card. Guarded by test/unit/renderer/set-aside-view.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 
@@ -14,7 +15,7 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
   };
   if (makeRow) return entries.map(entry => {
     const undo = Object.assign(el('button', 'secondary small-btn with-icon', ''), {type: 'button'});
-    undo.append(icon('undo', 'icon'), el('span', '', 'Undo'));
+    undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
     undo.setAttribute('aria-label', `Undo: put back ${entry.title} ${entry.value}`);
     undo.addEventListener('click', press(entry, undo));
     return makeRow({words: `${entry.title}: ${entry.value}`, detail: 'Set aside when you picked the other value. Kept, not deleted.', button: undo, id: entry.id});
@@ -22,7 +23,7 @@ export function setAsideRows(entries, onChange, showError = () => {}, {rows: mak
   const rows = entries.map(entry => {
     const row = el('div', 'chip-row');
     row.dataset.setAside = entry.id;
-    const undo = Object.assign(el('button', 'link', 'Undo'), {type: 'button'});
+    const undo = Object.assign(el('button', 'link', t('pagesCommon.undo')), {type: 'button'});
     undo.setAttribute('aria-label', `Undo: put back ${entry.title} ${entry.value}`);
     undo.addEventListener('click', press(entry, undo));
     row.append(el('span', 'muted small', `${entry.title}: ${entry.value}`), undo);

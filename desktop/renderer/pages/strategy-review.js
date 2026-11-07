@@ -1,5 +1,6 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
 // owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/unit/renderer/setup-strategy.test.js.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
@@ -47,7 +48,7 @@ export function showDraftIntro() {
   placeNote('intro');
   show($('draft-intro')); show($('draft-actions'), false);
   show($('draft-loading'), false); show($('draft-view'), false); show($('draft-error'), false); show($('draft-stale'), false);
-  $('draft-title').textContent = 'Your strategy'; show($('draft-subtitle'), false); show($('draft-cost'), false);
+  $('draft-title').textContent = t('pagesCommon.yourStrategy'); show($('draft-subtitle'), false); show($('draft-cost'), false);
   $('goals-cost-text').textContent = ai(shared.state.settings.setupDone
     ? 'Rebuilding reads your CV and your note with {AI:main}: once. Nothing in your strategy changes until you review the result and pick what to apply.'
     : 'Building reads your CV and your note with {AI:main}: once. Nothing is saved until you review the result.');
@@ -104,7 +105,7 @@ async function saveDraft(parts = null) {
     show($('save-close')); show($('save-retry'));
     return;
   }
-  $('save-title').textContent = byStore('Saved to Notion ✓', 'Saved ✓');
+  $('save-title').textContent = byStore('Saved to Notion ✓', t('pagesCommon.saved'));
   $('save-bar').style.width = '100%';
   shared.state = await window.pilot.state();
   setupFinishReady = !replacing;

@@ -2,6 +2,7 @@
 // and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date and Open PDF).
 // Approved usable base letters automatically fill the gap when a job has no usable tailored letter. Who pays is said before and after a draft.
 // A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/unit/renderer/base-letter.test.js and test/unit/renderer/contact-reading.test.js.
+import {t} from '../../i18n/index.js';
 import {pill} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {profileBar} from './profile-save-bar.js';
@@ -24,7 +25,7 @@ let openAi = () => {};                   // Settings → Connections → AI, pas
 // The state as a pill: neutral while none exists (owner, 18 Oct 2026: never a green dot for "not written"); Writing… while a draft is written.
 // Why (28 Oct 2026, owner's shot): the card said "Approved · Today 19:40" while a new draft was being written over it.
 export function statePill(status, {drafting: busy = false} = {}) {
-  if (busy) return pill('Writing…', 'info');
+  if (busy) return pill(t('pagesCommon.writing'), 'info');
   if (status.state === 'approved') return pill(`Approved${status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}`, 'good');
   if (status.state === 'draft') return pill('Draft · approve to use it', 'warn');
   return pill('Not created');
@@ -49,8 +50,8 @@ function paint() {
   show($('letter-editor'), editor);
   show($('letter-empty'), !editor);
   if (!editor) drawEmpty();
-  $('letter-state').replaceChildren(isReading ? pill('Reading…') : statePill(saved, {drafting}));
-  $('letter-draft').querySelector('span').textContent = drafting ? 'Writing…' : saved.text ? 'Redraft with AI' : 'Draft with AI';
+  $('letter-state').replaceChildren(isReading ? pill(t('pagesCommon.reading')) : statePill(saved, {drafting}));
+  $('letter-draft').querySelector('span').textContent = drafting ? t('pagesCommon.writing') : saved.text ? 'Redraft with AI' : 'Draft with AI';
   show($('letter-pdf'), !!saved.pdf);
   document.querySelectorAll('[data-letter-usage]').forEach(node => { node.textContent = usageLine(); });
   buttons();

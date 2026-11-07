@@ -1,4 +1,5 @@
 // Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
+import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill, tile} from '../components.js';
 import * as confirmStep from '../lead-confirm.js';
@@ -19,7 +20,7 @@ let leadShots = [];  // [{name, type, data (base64)}]
 function renderShots() {
   $('lead-shots').replaceChildren(...leadShots.map((shot, i) => {
     const box = el('div', 'attachment');
-    const remove = el('button', 'soft-button', 'Remove');
+    const remove = el('button', 'soft-button', t('pagesCommon.remove'));
     remove.type = 'button';
     remove.addEventListener('click', () => { leadShots.splice(i, 1); renderShots(); });
     box.append(Object.assign(document.createElement('img'), {src: `data:${shot.type};base64,${shot.data}`, alt: `Screenshot ${i + 1}`}),
@@ -156,7 +157,7 @@ function renderConfirm() {
   const change = Object.assign(document.createElement('button'), {type: 'button', className: 'link',
     textContent: leadState.picking ? 'Keep this job' : 'Change'});
   change.addEventListener('click', () => { leadState = {...leadState, picking: !leadState.picking}; $('lead-job').value = ''; closeJobChoices(); renderConfirm(); });
-  $('lead-found-flag').replaceChildren(...(asked ? [] : [pill('Confirmed', 'good', {dot: true}), change]));
+  $('lead-found-flag').replaceChildren(...(asked ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true}), change]));
   $('lead-job-hint').textContent = asked ? 'Several of your jobs are from this recruiter or company: pick one, or a new job. The details follow your pick.'
     : 'Pick the job it is about, or a new job. The details follow your pick.';
   document.querySelectorAll('#lead-confirm .lead-field[data-field]').forEach(box => {
@@ -175,7 +176,7 @@ function renderConfirm() {
     box.classList.toggle('is-check', waiting?.why === 'check');
     box.classList.toggle('is-ask', !!waiting && waiting.why !== 'check');
     const flag = box.querySelector('.lead-flag');
-    if (!waiting) flag.replaceChildren(...(field.state === 'ok' || !leadState.confirmed.includes(name) ? [] : [pill('Confirmed', 'good', {dot: true})]));
+    if (!waiting) flag.replaceChildren(...(field.state === 'ok' || !leadState.confirmed.includes(name) ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true})]));
     else if (waiting.why === 'check') {
       const ok = Object.assign(document.createElement('button'), {type: 'button', className: 'link', textContent: 'Looks right'});
       ok.addEventListener('click', () => leadSet(name));

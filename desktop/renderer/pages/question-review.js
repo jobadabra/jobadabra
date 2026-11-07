@@ -6,6 +6,7 @@
 // details" walks the Your details items, "What we learned" the reusable questions with Later · Confirm / Save change); each is one list of
 // pages/jobs-questions.js questionsNow, so its count is the card's and the tab's. Set-aside questions are listed apart in What we learned's navigator.
 // Opened from Jobs' cards, the Profile tabs and ⌘K (nav.js). Guarded by test/unit/renderer/question-drawers.test.js, test/unit/renderer/question-review.test.js, test/unit/renderer/question-kinds-screens.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {answerControl} from '../question-control.js';
@@ -26,9 +27,9 @@ export {shortTitle};
 const DRAFTS = 'questionDrafts';
 // Each drawer's words (owner's sketch, 28 Oct 2026).
 export const DRAWERS = {
-  details: {title: 'Fill your details', lead: 'Forms ask these every time. Saved in Your details.', skip: 'Skip', save: 'Save',
+  details: {title: 'Fill your details', lead: 'Forms ask these every time. Saved in Your details.', skip: t('pagesCommon.skip'), save: t('pagesCommon.save'),
     done: 'Your details are complete', doneText: 'A detail shows here when a form asks for one you have not given.'},
-  learned: {title: 'What we learned', lead: 'Answers forms reuse. Confirm, change or add them.', skip: 'Later', save: 'Save', confirm: 'Confirm', change: 'Save change',
+  learned: {title: t('pagesCommon.learned'), lead: 'Answers forms reuse. Confirm, change or add them.', skip: 'Later', save: t('pagesCommon.save'), confirm: 'Confirm', change: 'Save change',
     done: 'Nothing to check', doneText: 'A question shows here when a form asks something your answers do not cover.'},
 };
 const state = {open: false, kind: 'details', queue: [], setAside: [], consent: 0, fromDetails: 0, at: 0, aside: null, saved: '', error: '', busy: false, loading: false, failed: ''};
@@ -41,7 +42,7 @@ const current = () => state.aside || state.queue[state.at] || null;
 function header() {
   const head = el('header', 'jd-head qr-head');
   const top = el('div', 'jd-top');
-  const close = Object.assign(el('button', 'ghost icon-btn jd-control'), {type: 'button', title: 'Close', ariaLabel: 'Close'});
+  const close = Object.assign(el('button', 'ghost icon-btn jd-control'), {type: 'button', title: t('pagesCommon.close'), ariaLabel: t('pagesCommon.close')});
   close.append(icon('close'));
   close.addEventListener('click', closeQuestionReview);
   const title = el('div', 'jd-title');
@@ -49,7 +50,7 @@ function header() {
   title.append(el('h2', '', words.title), el('p', 'muted', words.lead));
   // Why (28 Oct 2026, owner: "Saved answers… It's getting dropped"): the header's way out is "What we learned", the whole Profile tab (was Saved answers, 19 Oct).
   const saved = Object.assign(el('button', 'secondary with-icon qr-saved-btn'), {type: 'button', id: 'review-learned-tab'});
-  saved.append(icon('bookmark'), el('span', '', 'What we learned'));
+  saved.append(icon('bookmark'), el('span', '', t('pagesCommon.learned')));
   saved.addEventListener('click', () => manageAnswers('', 'all'));
   top.append(el('span', 'qr-head-icon', icon(state.kind === 'details' ? 'user' : 'sparkle')), title, ...(state.kind === 'learned' ? [saved] : []), close);
   head.append(top);
@@ -209,7 +210,7 @@ export function draw() {
   if (state.loading) { const body = el('div', 'jd-body qr-body'); body.append(...skeleton()); panel.replaceChildren(header(), body); return; }
   if (state.failed) {
     panel.replaceChildren(header(), el('div', 'jd-body qr-body', stateCard({icon: 'alert', tone: 'bad', title: 'Could not read your questions', text: state.failed,
-      actions: [button('Retry', () => openQuestionReview({force: true, queue: state.kind}))]})));   // the drawer that was open (Gitar on #2325)
+      actions: [button(t('pagesCommon.retry'), () => openQuestionReview({force: true, queue: state.kind}))]})));   // the drawer that was open (Gitar on #2325)
     return;
   }
   const q = current();
@@ -224,7 +225,7 @@ export function draw() {
       body.append(el('p', 'muted small qr-dismissed-row', `Dismissed: ${shortTitle(gone.question, 80)}`), back);
     }
     if (state.saved) body.append(el('p', 'muted small qr-saved', state.saved));
-    const foot = el('footer', 'jd-foot qr-foot', button('Close', closeQuestionReview, 'secondary'));
+    const foot = el('footer', 'jd-foot qr-foot', button(t('pagesCommon.close'), closeQuestionReview, 'secondary'));
     panel.replaceChildren(header(), body, foot);
     return;
   }

@@ -1,6 +1,7 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): how many jobs, how Jobadabra applies (Settings → Apply's own cards), "Apply to N jobs".
 // A card pick is this batch's mode only (never saved; the dialog opens on Settings → Apply's mode each time); a mode not built yet is a disabled "Coming soon" card. Pure parts: renderer/apply-dialog-model.js.
 // Guard: test/unit/renderer/apply-dialog-mode.test.js.
+import {t} from '../../i18n/index.js';
 import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
 import {applyChosen, applyOf} from '../apply-settings-model.js';
@@ -52,7 +53,7 @@ export function wireApplyDialog({startedApplying}) {
     await gate.run(async () => {
       // Feedback at once: picking the jobs reads Notion and checks each posting is still open (a few seconds). Before a first choice the
       // first-Apply dialog opens over this one (lib/apply-choice-gate.js), and the batch goes on after it.
-      Object.assign(go, {disabled: true, textContent: 'Starting…'});
+      Object.assign(go, {disabled: true, textContent: t('pagesCommon.starting')});
       go.classList.add('busy');
       $('apply-start-banner').hidden = false;
       $('apply-start-status').textContent = 'Choosing your jobs…';

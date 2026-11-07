@@ -1,5 +1,6 @@
 // Session actions: remove, close, cancel, skip, restart, resume and pause one application session.
 // Moved out of sessions.js (which re-exports them). Guarded by test/unit/main/terminals.test.js and test/unit/main/form-tab-closed.test.js.
+import {t} from '../../i18n/index.js';
 import {isLive} from '../session-state.js';
 import {shared} from './shared.js';
 import {jobsChanged, renderJobs, startedApplying} from './jobs.js';
@@ -32,7 +33,7 @@ export async function closeSession(item) {
 export async function cancelSession(item) {
   const result = await window.pilot.sessionCancel(item.id);
   if (result?.cancelled) return;
-  if (!result?.ok) { toastMessage('Not cancelled', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage('Not cancelled', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
   jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready', status: 'saved'} : {});
   // Why (2026-11-05, owner): cancellation confirms only the result, without internal stages or missing-tab instructions.
@@ -44,7 +45,7 @@ export async function cancelSession(item) {
 // Skip this role: give up. Claude stops, the form tab closes, the job is dismissed, the session goes (no question).
 export async function skipSession(item) {
   const result = await window.pilot.sessionSkip(item.id);
-  if (!result?.ok) { toastMessage('Not skipped', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage('Not skipped', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   jobsChanged(sessionJob(item), {stage: 'Dismissed', status: 'dismissed'});
   if (!result.closed) toastMessage('Role skipped', 'The job is dismissed. Its form tab wasn\'t found: close it in Chrome yourself.', NO_PLACE.outside, 'warn');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
@@ -55,7 +56,7 @@ export async function skipSession(item) {
 export async function restartSession(item) {
   const result = await window.pilot.sessionRestart(item.id);
   if (result?.cancelled || result?.needsExtension) return;   // needsExtension: the install dialog is open (extension-needed.js)
-  if (!result?.ok) { toastMessage('Not started again', result?.error || 'Try again.', sessionPlace(item), 'bad'); await refreshSessions(); return; }
+  if (!result?.ok) { toastMessage('Not started again', result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   startedApplying(sessionJob(item));
   await refreshSessions();
   if (result.session?.id) openSession(result.session.id);

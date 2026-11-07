@@ -1,5 +1,6 @@
 // Recent activity: run names, phases, outcomes, the Gmail connection and the card chooser (cardFor).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
 import {resumeOffered} from '../claude-help.js';
@@ -36,7 +37,7 @@ export async function showSearchStatus() {
   const searching = running && (running.kind || 'search') === 'search';
   box.dataset.state = searching ? 'busy' : lastSearchAt ? 'ok' : 'none';
   // Running: a link to its progress (the bottom bar's panel); done: what it found.
-  if (searching) { title.textContent = 'Finding jobs →'; detail.textContent = searchPhase(running.step) || 'Starting…'; return; }
+  if (searching) { title.textContent = 'Finding jobs →'; detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
   if (!lastSearchAt) { title.textContent = 'No check yet'; detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
   const found = last?.new != null ? ` · ${last.new} new match${last.new === 1 ? '' : 'es'}` : '';
@@ -73,7 +74,7 @@ export function searchPhase(step = '') {
   return step.length > 60 ? `${step.slice(0, 57)}…` : step;
 }
 // icon: emoji for text the owner reads (toasts, messages); line: the line icon for rows and headers (same as Actions → Recent runs).
-export const KIND = {search: {icon: '🔎', line: 'search', name: 'Find jobs'}, mail: {icon: '📧', line: 'mail', name: 'Gmail check'}, insight: {icon: '💡', line: 'chart', name: 'Insight'},
+export const KIND = {search: {icon: '🔎', line: 'search', name: t('pagesCommon.findJobs')}, mail: {icon: '📧', line: 'mail', name: 'Gmail check'}, insight: {icon: '💡', line: 'chart', name: 'Insight'},
   interviewInsight: {icon: '💡', line: 'bulb', name: 'Interview insights'}, tailor: {icon: '✂️', line: 'scissors', name: 'Tailor CV + cover letter'}, visits: {icon: '🌐', line: 'globe', name: 'Find jobs using your browser'},
   weekly: {icon: '📊', line: 'file', name: 'Search analysis'}, kits: {icon: '📝', line: 'file-text', name: 'Prepare top matches'}, today: {icon: '📋', line: 'send', name: "Today's list"}, scout: {icon: '🔭', line: 'building', name: 'More employers'},
   action: {icon: '⚡', line: 'zap', name: 'Telegram action'}, prepare: {icon: '📝', line: 'file-text', name: 'Application preparation'}, interview: {icon: '🎤', line: 'mic', name: 'Interview review'},

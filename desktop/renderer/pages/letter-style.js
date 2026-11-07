@@ -3,6 +3,7 @@
 // cover-letter/style.json (lib/letter-style.js, read and saved through letterStyle / letterStyleSave), no longer in the answers page. Read: one column per
 // rule with its own label (no icon guessed from words); Edit: one input per rule and "Add a style rule", a draft on Profile's one save bar
 // (pages/profile-save-bar.js). Guarded by test/unit/renderer/letter-style.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {doneButton, factColumns, setEditing} from '../card-shell.js';
 import {profileBar} from './profile-save-bar.js';
@@ -25,11 +26,11 @@ const changes = () => [...typed.entries()].filter(([key, text]) => (key === 'add
 function draw() {
   if (!node) return;
   const read = el('div', 'card-read');
-  read.append(saved.length ? factColumns(saved.map(line => { const rule = split(line); return {label: rule.label || 'Rule', value: rule.value}; })) : el('p', 'muted', DEFAULT));
+  read.append(saved.length ? factColumns(saved.map(line => { const rule = split(line); return {label: rule.label || t('pagesCommon.rule'), value: rule.value}; })) : el('p', 'muted', DEFAULT));
   const editor = el('div', 'card-editor'), grid = el('div', 'form-grid cols-2 pref-body');
   saved.forEach((line, i) => {
     const rule = split(line);
-    grid.append(labelled(rule.label || 'Rule', input(typed.has(i) ? typed.get(i) : rule.value, text => { typed.set(i, text); changed(); }, {ariaLabel: rule.label || 'Rule'})));
+    grid.append(labelled(rule.label || t('pagesCommon.rule'), input(typed.has(i) ? typed.get(i) : rule.value, text => { typed.set(i, text); changed(); }, {ariaLabel: rule.label || t('pagesCommon.rule')})));
   });
   if (!saved.length) grid.append(el('p', 'muted span-all', DEFAULT));
   grid.append(labelled('Add a style rule', input(typed.get('add') || '', text => { typed.set('add', text); changed(); },

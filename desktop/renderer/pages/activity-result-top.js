@@ -2,6 +2,7 @@
 // the one number, why, and its fix or next step.
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
 // desktop/test/unit/renderer/run-status.test.js and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {groupWarnings, limitedJobs, newDetails} from '../run-warnings.js';
 import {aiLimitHead, failureHead, stoppedHead, deliveryHead, notConnectedHead, waitedHead} from '../run-status.js';
 import {el} from '../components.js';
@@ -77,7 +78,7 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   if (problem) {
     // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
     $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
-      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || 'Run'} completed with warnings`;
+      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || t('pagesCommon.run')} completed with warnings`;
     const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
     $('activity-warnings-summary').textContent = summary;
     show($('activity-warnings-hint'), !!head?.hint);
@@ -107,12 +108,12 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
     $('activity-warnings-list').dataset.for = String(run?.id);
     show($('activity-warnings-list'), listShown);
     show($('activity-warnings-more'), grouped.length > 1);
-    $('activity-warnings-more').textContent = listShown ? 'Hide details' : `View ${grouped.length} detail${grouped.length === 1 ? '' : 's'}`;
+    $('activity-warnings-more').textContent = listShown ? t('pagesCommon.hideDetails') : `View ${grouped.length} detail${grouped.length === 1 ? '' : 's'}`;
     $('activity-warnings-list').replaceChildren(...grouped.map(text => el('li', '', text)));
     // Folded away: the headline stays, the rest hides (the chevron turns).
     $('activity-warnings').classList.toggle('is-folded', folded);
     $('activity-warnings-fold').setAttribute('aria-expanded', String(!folded));
-    $('activity-warnings-fold').title = folded ? 'Show' : 'Hide';
+    $('activity-warnings-fold').title = folded ? t('pagesCommon.show') : t('pagesCommon.hide');
   }
   return {next: false, clean: false};
 }

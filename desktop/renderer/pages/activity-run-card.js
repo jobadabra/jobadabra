@@ -1,5 +1,6 @@
 // Recent activity: the run card (a run's message as counts and items), its skeleton and the job box.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {fitTooltip} from '../jobs-view.js';
 import {jobActions, jobHeadline, withListJob} from '../job-link.js';
@@ -81,7 +82,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
       // A job with no score shows no pill (owner, 24 Oct 2026: no scoring words on a basic card); a scored one shows its fit.
       const fit = scored ? pill(String(item.fit), item.fit >= 70 ? 'warn' : 'neutral') : null;
       if (fit) fit.title = fitTooltip(item.fit);
-      const view = Object.assign(el('a', 'run-card-open', '↗'), {href: '#', title: 'Open the job posting'});
+      const view = Object.assign(el('a', 'run-card-open', '↗'), {href: '#', title: t('pagesCommon.openJobPosting')});
       view.dataset.link = item.url;
       row.append(words, ...(fit ? [fit] : []), ...(item.url ? [view] : []));
       return row;

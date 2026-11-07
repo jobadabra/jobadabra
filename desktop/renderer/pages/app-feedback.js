@@ -1,6 +1,7 @@
 // Send feedback (sidebar and Help → Send Feedback…): a note to the owner (lib/app-feedback.js → the website → the owner's Telegram). The user's own words; a contact only if they type one.
 // Opening it first asks the main process for the window's picture (taken BEFORE this dialog draws over the app), the redacted logs and this screen's data (renderer/feedback-data.js);
 // "See what's sent" shows the exact held text of every part that is ticked, plus what is always sent.
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
 import {NO_PLACE} from '../targets.js';
@@ -121,6 +122,6 @@ export async function init() {
     prepared = {...EMPTY};
     $('app-feedback-dialog').close();
     const left = result.skipped?.length ? ` (without the ${result.skipped.join(' and the ')}: too big)` : '';
-    toastMessage('Thank you!', `Your feedback went straight to the maker${left}. If you left a contact, expect a reply.`, NO_PLACE.done, 'good');
+    toastMessage(t('pagesCommon.thanks'), `Your feedback went straight to the maker${left}. If you left a contact, expect a reply.`, NO_PLACE.done, 'good');
   });
 }

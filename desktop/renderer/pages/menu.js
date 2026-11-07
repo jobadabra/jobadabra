@@ -1,4 +1,5 @@
 // The sidebar's progressive pages: Interviews, Reports and Employers appear when they have something, a "More" row lists the others with when they unlock, and a one-time tour points at the menu. Rules in renderer/menu-reveal.js and menu-tour.js; guarded by test/unit/renderer/menu-reveal.test.js.
+import {t} from '../../i18n/index.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
@@ -63,8 +64,8 @@ function tour() {
   const card = document.createElement('div');
   card.className = 'menu-tour'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'Menu tour');
   const title = document.createElement('b'), text = document.createElement('span'), count = document.createElement('small');
-  const next = Object.assign(document.createElement('button'), {className: 'primary', textContent: 'Next'});
-  const skip = Object.assign(document.createElement('button'), {className: 'link', textContent: 'Skip'});
+  const next = Object.assign(document.createElement('button'), {className: 'primary', textContent: t('pagesCommon.next')});
+  const skip = Object.assign(document.createElement('button'), {className: 'link', textContent: t('pagesCommon.skip')});
   const row = document.createElement('div'); row.className = 'menu-tour-row'; row.append(count, skip, next);
   card.append(title, text, row);
   document.body.append(card);
@@ -77,7 +78,7 @@ function tour() {
     if (at >= stops.length) return end();
     const stop = stops[at], target = document.querySelector(stop.target), rect = target.getBoundingClientRect();
     title.textContent = stop.title; text.textContent = stop.text; count.textContent = `${at + 1} of ${stops.length}`;
-    next.textContent = at === stops.length - 1 ? 'Done' : 'Next';
+    next.textContent = at === stops.length - 1 ? t('pagesCommon.done') : t('pagesCommon.next');
     const sidebar = target.closest('.sidebar') || document.querySelector('.sidebar');
     const spot = cardSpot({rect, sidebarRight: sidebar.getBoundingClientRect().right, cardWidth: card.offsetWidth, cardHeight: card.offsetHeight, viewport: {width: window.innerWidth, height: window.innerHeight}, above: !!stop.above});
     card.style.top = `${spot.top}px`;

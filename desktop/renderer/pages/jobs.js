@@ -1,4 +1,5 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
+import {t} from '../../i18n/index.js';
 import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
@@ -121,7 +122,7 @@ let jobsLimit = 200;
 async function showMore() {
   const button = $('jobs-more');
   button.disabled = true;
-  button.textContent = 'Loading…';
+  button.textContent = t('pagesCommon.loading');
   try {
     jobsLimit = shared.allJobs.length + MORE;
     const fresh = await writes.read({limit: jobsLimit});

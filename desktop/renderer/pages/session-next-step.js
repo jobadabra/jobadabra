@@ -1,3 +1,4 @@
+import {t} from '../../i18n/index.js';
 import {silentChromeButtons} from './silent-chrome.js';
 // The next-step card of an application session (the decision card: its state, Claude's question, the form's needs, what happened, the actions), moved out of sessions.js
 // as a pure move (13 Oct 2026) so both files stay one concern under 500 lines. The session list and its shared state stay in sessions.js and are imported from it (a cycle, as
@@ -60,7 +61,7 @@ const submittedButton = item => sessionButton('I submitted it', 'secondary', asy
   const button = event.currentTarget;
   button.disabled = true;
   const result = await window.pilot.setStatus(item.url, 'applied').catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { button.disabled = false; toastMessage('Not marked Applied', result.error || 'Try again.', sessionPlace(item), 'bad'); return; }
+  if (!result.ok) { button.disabled = false; toastMessage('Not marked Applied', result.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); return; }
   jobsChanged(sessionJob(item), {stage: 'Applied', status: 'applied'});   // its Jobs row too, not only this button
   button.textContent = '✓ Marked Applied';
 }, 'check');
@@ -221,7 +222,7 @@ export function renderNextStep(item) {
   if (stuck) {
     // Tier 3: the cheap ways ran out. Chrome first, Claude the safety net (owner, 9 Oct 2026: "remove the 'Apply with Claude' from being orange";
     // the panel's "Take over with Claude" is there while the form tab is open, this one when it isn't).
-    if (item.url) actions.push(sessionButton('Open in Chrome', 'primary', async event => { await openForm(item, event.currentTarget); }, 'link'));
+    if (item.url) actions.push(sessionButton(t('pagesCommon.openChrome'), 'primary', async event => { await openForm(item, event.currentTarget); }, 'link'));
     const offer = INFORM_STUCK.includes(item.stuck) ? {buttons: [], notes: []} : offerParts(item, {rerender: () => renderNextStep(item), after: async result => { await refreshSessions(); if (result?.session?.id) openSession(result.session.id); }});   // claude-offer.js
     actions.push(...offer.buttons);
     if (offer.notes.length) $('ss-question').append(...offer.notes);
@@ -277,7 +278,7 @@ export function renderNextStep(item) {
       toastMessage('Couldn\'t reload the form tab', why || osText('Press ⌘R in the form\'s tab instead.'), sessionPlace(item), 'bad');
     }, 'refresh'));
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
-    if (live) actions.push(sessionButton('Skip this role', 'secondary', () => skipSession(item)));
+    if (live) actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));
     else if (item.resumable) pushResume();
     const never = el('span', 'ss-never muted small');
     never.append(icon('info'), el('span', '', 'Jobadabra never clicks Submit.'));
@@ -285,7 +286,7 @@ export function renderNextStep(item) {
   } else if (asking && !live) {
     if (item.resumable) pushResume();
     // Claude closed with the app, but the form may still be open in Chrome.
-    if (item.url && !gone) actions.push(sessionButton('Open in Chrome', 'secondary', async event => {
+    if (item.url && !gone) actions.push(sessionButton(t('pagesCommon.openChrome'), 'secondary', async event => {
       await openForm(item, event.currentTarget);
     }, 'link'));
     actions.push(submittedButton(item));
@@ -294,19 +295,19 @@ export function renderNextStep(item) {
     // Continue only means something after a pause (Esc). When Claude asked for something, "Continue." gives it nothing
     // new and it asks again (a 4-hour loop on 1 Oct 2026): the main action is to answer it.
     if (/^Paused/i.test(item.note || '')) {
-      actions.push(sessionButton('Continue', 'primary', () => say('Continue.')));
+      actions.push(sessionButton(t('pagesCommon.continue'), 'primary', () => say('Continue.')));
       actions.push(sessionButton('Answer in your own words', 'link', () => openLog(true), 'chat'));
     } else {
-      actions.push(sessionButton('Answer', 'primary', () => openLog(true), 'chat'));
+      actions.push(sessionButton(t('pagesCommon.answer'), 'primary', () => openLog(true), 'chat'));
     }
     // The form is waiting in Chrome while Claude asks: one click to look at it, as when it works.
-    if (item.url) actions.push(sessionButton('Open in Chrome', 'secondary', async event => {
+    if (item.url) actions.push(sessionButton(t('pagesCommon.openChrome'), 'secondary', async event => {
       await openForm(item, event.currentTarget);
     }, 'link'));
     actions.push(submittedButton(item));
-    actions.push(sessionButton('Skip this role', 'secondary', () => skipSession(item)));
+    actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));
   } else if (running) {
-    if (item.url) actions.push(sessionButton('Open in Chrome', 'primary', async event => {
+    if (item.url) actions.push(sessionButton(t('pagesCommon.openChrome'), 'primary', async event => {
       await openForm(item, event.currentTarget);
     }, 'link'));
     actions.push(sessionButton('Pause', 'secondary', pauseSession));
@@ -319,7 +320,7 @@ export function renderNextStep(item) {
   // Every state with a job keeps a way to its form (owner, 8 Oct 2026: an ended session showed only Resume Claude).
   const toForm = /^(Open in Chrome|Reopen form|Open filled form)$/;
   if (item.url && !submitted && !actions.some(button => toForm.test(button.textContent))) {
-    actions.splice(1, 0, sessionButton('Open in Chrome', actions.length ? 'secondary' : 'primary', async event => {
+    actions.splice(1, 0, sessionButton(t('pagesCommon.openChrome'), actions.length ? 'secondary' : 'primary', async event => {
       await openForm(item, event.currentTarget);
     }, 'link'));
   }

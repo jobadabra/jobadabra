@@ -3,6 +3,7 @@
 // Guards: test/unit/main/extension-store-setup.test.js, test/unit/renderer/palette-every-action.test.js, test/unit/renderer/extension-card-first-paint.test.js.
 // The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
 // for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
+import {t} from '../../i18n/index.js';
 import {$, message, osPick, osText, show} from './core.js';
 import {extensionFrom, extensionState, justStarted} from '../service-status.js';
 import {foldFollows} from '../fold-follows.js';
@@ -90,7 +91,7 @@ export function bindExtension() {
     const result = await window.pilot.quitStrayChrome(Number(button.dataset.pid)).catch(() => null);
     button.disabled = false;
     toastMessage(result?.ok ? 'Background Chrome quit' : 'Couldn\'t quit it',
-      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || 'Try again.'), {card: 'extension'}, result?.ok ? 'good' : 'bad');
+      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || t('pagesCommon.tryAgain')), {card: 'extension'}, result?.ok ? 'good' : 'bad');
     showExtensionStatus();
   });
   // The step-1 chip: best effort at Chrome's page, and the URL on the clipboard so the paste always gets there.

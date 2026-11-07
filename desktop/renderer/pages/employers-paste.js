@@ -1,6 +1,7 @@
 // Employers → Add from a page (also ⌘K): a dialog where the person pastes a page's text or one address (an AI talent agent's matches, a newsletter,
 // a VC portfolio); the scout pulls the company names out and checks them first (lib/employers-handlers.js fromPage → src/scout_paste.py).
 // Built by script (index.html may only shrink). Guarded by test/unit/renderer/employers-paste.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {$, message} from './core.js';
@@ -12,7 +13,7 @@ function dialog() {
   box.id = 'emp-paste-dialog';
   const head = el('div', 'dialog-head'), tile = el('span', 'dialog-icon'), close = el('button', 'ghost icon-btn', '');
   tile.append(icon('building'));
-  close.type = 'button'; close.setAttribute('aria-label', 'Close'); close.append(icon('close'));
+  close.type = 'button'; close.setAttribute('aria-label', t('pagesCommon.close')); close.append(icon('close'));
   head.append(tile, el('h2', '', 'Add employers from a page'), close);
   const lead = el('p', 'dialog-lead', 'Paste a page that names companies: your matches from a talent agent, a newsletter, a startup list. '
     + 'Jobadabra finds each one’s job board and checks it first.');
@@ -20,7 +21,7 @@ function dialog() {
   label.htmlFor = 'emp-paste-text';
   Object.assign(field, {id: 'emp-paste-text', rows: 8, placeholder: 'Select all on the page, copy, and paste here. Or paste a public address (https://…).'});
   const note = el('p', 'muted small field-hint', 'A page behind a sign-in is never opened by the app: paste its text instead.');
-  const msg = el('p', 'message', ''), cancel = el('button', 'secondary', 'Cancel'), go = el('button', 'primary', 'Find companies'), foot = el('div', 'dialog-foot');
+  const msg = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), go = el('button', 'primary', 'Find companies'), foot = el('div', 'dialog-foot');
   msg.id = 'emp-paste-message'; cancel.type = 'button'; go.type = 'button'; go.id = 'emp-paste-go';
   foot.append(cancel, go);
   box.append(head, lead, label, field, note, msg, foot);
@@ -31,7 +32,7 @@ function dialog() {
     go.disabled = true;
     const result = await window.pilot.employersFromPage(field.value).catch(() => ({ok: false, error: 'That did not work. Try again in a moment.'}));
     go.disabled = false;
-    if (!result?.ok) { message('emp-paste-message', result?.error || 'That did not work.', 'error'); return; }
+    if (!result?.ok) { message('emp-paste-message', result?.error || t('pagesCommon.didNotWork'), 'error'); return; }
     field.value = '';
     box.close();
     message('emp-message', 'Looking for these companies’ job boards. Follow it in Recent activity; new employers show here when it ends.', 'ok');

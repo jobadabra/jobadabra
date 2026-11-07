@@ -1,5 +1,6 @@
 // Recent activity: the header filter, the open/close of the panel and the run announcements.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {claimOverlay, registerOverlay, releaseOverlay} from '../overlay-slot.js';
 import {humanError} from '../run-warnings.js';
 import {doneTitle} from '../run-status.js';
@@ -84,7 +85,7 @@ export async function buildDraft() {
   shared.rebuildAsked = false;
   show($('draft-intro'), false); show($('draft-actions'));
   show($('draft-loading')); show($('draft-view'), false); show($('draft-error'), false); show($('draft-stale'), false);
-  $('draft-title').textContent = 'Your strategy'; show($('draft-subtitle'), false); show($('draft-cost'), false);
+  $('draft-title').textContent = t('pagesCommon.yourStrategy'); show($('draft-subtitle'), false); show($('draft-cost'), false);
   $('draft-save').disabled = true;
   if (!aiReady()) {
     showDraftIntro();

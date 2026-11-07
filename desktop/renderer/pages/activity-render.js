@@ -1,5 +1,6 @@
 // Recent activity: renderActivity, the Recent activity panel redraw, its panel height and its list state.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
 import {runWarningLines, stepNote} from '../run-warnings.js';
@@ -76,11 +77,11 @@ export function prepareActions() {
 // "Remove" on a queued row (and its ⌘K twin, nav.js): the task never starts; Recent activity is drawn again either way.
 export async function unqueue(run) {
   const result = await window.pilot.unqueueTask(run.id).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) toastMessage('Could not remove it', result.error || 'Try again.', {activity: true}, 'bad');
+  if (!result.ok) toastMessage('Could not remove it', result.error || t('pagesCommon.tryAgain'), {activity: true}, 'bad');
   refreshActivity();
 }
 function removeLink(run) {
-  const link = el('span', 'run-link', 'Remove');
+  const link = el('span', 'run-link', t('pagesCommon.remove'));
   Object.assign(link, {title: `Take ${KIND[kindOf(run)].name} out of the queue: it will not start`, tabIndex: 0});
   link.setAttribute('role', 'button');
   const go = event => { event.preventDefault(); event.stopPropagation(); unqueue(run); };
@@ -116,18 +117,18 @@ export function renderActivity(fresh) {
     const next = (data.queued || []).length;
     $('activity-title').textContent = kindOf(running) === 'search' ? `Finding jobs${running.where === 'github' ? ' (on GitHub)' : ''}${next ? ` · ${next} queued` : ''}`
       : `${kind.icon} ${kind.name} running (${WHO[running.trigger] || running.trigger}${running.where === 'github' ? ', on GitHub' : ''})${next ? ` · ${next} queued` : ''}`;
-    $('activity-step').textContent = stepWords(running.step) || 'Starting…';
+    $('activity-step').textContent = stepWords(running.step) || t('pagesCommon.starting');
     barLabel();
     $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString())].filter(Boolean).join(' · ');
   } else if (lastSearch || lastMail) {
     barLabel();
-    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? 'Last refresh' : 'Last refresh had problems') : 'No jobs check yet';
+    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? t('pagesCommon.lastRefresh') : 'Last refresh had problems') : 'No jobs check yet';
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : ' · click to see why') : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
     $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
   } else {
-    $('activity-title').textContent = 'No search yet';
+    $('activity-title').textContent = t('pagesCommon.noSearch');
     $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';
     $('activity-meta').textContent = mailNote;
   }
@@ -210,14 +211,14 @@ export function renderActivity(fresh) {
     item.append(el('span', 'muted', name), ' ', el('b', '', at ? capital(nextWords(at)) : none));
     // A pill after the time, not a "Next:" before the name: that read as "Next Jobs" from a distance.
     if (kind === 'mail' && gmailOff) item.append(' ', pill('Connection required', 'warn'));   // the time stays; it won't check until connected
-    else if (at && at === soonest) item.append(' ', el('span', 'ap-next', 'Next'));
+    else if (at && at === soonest) item.append(' ', el('span', 'ap-next', t('pagesCommon.next')));
     return item;
   }));
   // Check Gmail now: with a selected Gmail check, not in the schedule strip. While Gmail is not connected it connects it instead.
   const selected = shown || (running ? null : last);
   // A not-connected run's box already offers Connect Gmail: the header doesn't say it twice.
   show($('check-mail'), !!selected && kindOf(selected) === 'mail' && !(gmailOff && (selected.off || GOOGLE_SIGNIN.test(selected.problem || ''))));
-  $('check-mail').textContent = gmailOff ? 'Connect Gmail' : 'Check Gmail now';
+  $('check-mail').textContent = gmailOff ? t('pagesCommon.connectGmail') : 'Check Gmail now';
   $('check-mail').dataset.connect = gmailOff ? '1' : '';
 
   // The selected run (or the live / latest one): what it did, its phases, and its full log. A run read from
@@ -349,9 +350,9 @@ export function renderActivity(fresh) {
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
   if (advice) {
     const words = el('div', 'insight-next-words');
-    const go = el('button', 'secondary', 'Find jobs again');   // the pane's one primary stays its own (View new jobs)
+    const go = el('button', 'secondary', t('pagesCommon.findAgain'));   // the pane's one primary stays its own (View new jobs)
     go.addEventListener('click', () => startSearch({employers: true}));
-    words.append(el('b', '', 'Recommended next step'), el('p', '', advice.text), go);
+    words.append(el('b', '', t('pagesCommon.nextStep')), el('p', '', advice.text), go);
     $('activity-next').replaceChildren(el('span', 'insight-next-icon', icon('building')), words);
   }
   show($('activity-next'), !!advice);
@@ -386,7 +387,7 @@ export function renderActivity(fresh) {
   }
   if (noLog) $('activity-log').open = false;
   $('activity-log').classList.toggle('is-empty', noLog);   // the same row, "No log available", nothing to open
-  $('log-title').textContent = noLog ? 'No log available' : 'Technical log';
+  $('log-title').textContent = noLog ? 'No log available' : t('pagesCommon.technicalLog');
   // In plain words (renderer/human-log.js): the raw lines stay in logs/engine.log; the progress bar and warnings above read the raw ones
   const readable = readableLog(lines);
   $('log-count').textContent = readable.length ? `· ${plural(readable.length, 'line')}` : '';

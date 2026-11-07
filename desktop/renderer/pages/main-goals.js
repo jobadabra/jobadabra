@@ -3,6 +3,7 @@
 // Languages and Work eligibility as recorded there (page-parts.js referenceRow: read-only, never goals), and one editor behind Edit: the roles list, then each
 // goal with its kind's control (goal-kinds.js). Saved by Strategy's page bar (strategy-cards.js): roles to Search settings, goals to the Profile
 // (lib/goals.js; Target level also sets the search's level, lib/goal-level.js). Guarded by test/unit/renderer/main-goals.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {editRows} from '../card-shell.js';
 import {referenceRow, summaryTiles} from '../page-parts.js';
@@ -88,6 +89,6 @@ export function renderMainGoals() {
   card.dataset.card = 'goals';
   const read = el('div', 'card-read');
   read.append(tiles(), ...[fromDetails()].filter(Boolean));
-  card.append(cardHeader('goals', 'target', 'signal', 'Main goals', 'What every job is scored against.', card), read, ...(isOpen('goals') ? [editor()] : []));
+  card.append(cardHeader('goals', 'target', 'signal', t('pagesCommon.mainGoals'), 'What every job is scored against.', card), read, ...(isOpen('goals') ? [editor()] : []));
   host.replaceChildren(card);
 }

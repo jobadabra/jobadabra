@@ -1,5 +1,6 @@
 // Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm, and Tune my strategy's row from Focus's pool
 // (pages/focus-suggestions.js). Guarded by: test/unit/renderer/advice-events.test.js, test/unit/renderer/coverage-card.test.js, test/unit/renderer/filters-card.test.js, test/unit/renderer/suggestions.test.js.
+import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -185,19 +186,19 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
 // Not true in your store. Shown only while your results support a change; drawn again only when that changes (a Focus read with the same
 // changes leaves the rows alone).
 function tuneRow(entry) {
-  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: 'Review'};
+  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: t('pagesCommon.review')};
   const row = el('section', `suggestion-card tone-${TONE.tune}`);
   Object.assign(row, {id: 'strategy-tune'});
   row.dataset.key = entry.key;
   const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
   name.append(el('h3', '', entry.title));
   words.append(name, emphasize(entry.detail));
-  const review = el('button', 'secondary', 'Review');
+  const review = el('button', 'secondary', t('pagesCommon.review'));
   review.type = 'button';
   review.addEventListener('click', () => RUN.tune());
   head.append(tile('sliders', TONE.tune), words, review, moreButton([
-    {icon: 'clock', label: 'Not now', title: 'Hidden for 14 days, then shown again if your results still support it', run: () => answerEntry(entry, 'Not now')},
-    {icon: 'close', label: 'Not true', title: 'Never shown again for these changes', run: () => answerEntry(entry, 'Not true')}], 'More about tuning'));
+    {icon: 'clock', label: t('pagesCommon.notNow'), title: 'Hidden for 14 days, then shown again if your results still support it', run: () => answerEntry(entry, 'Not now')},
+    {icon: 'close', label: t('pagesCommon.notTrue'), title: 'Never shown again for these changes', run: () => answerEntry(entry, 'Not true')}], 'More about tuning'));
   row.append(head);
   return row;
 }
@@ -247,7 +248,7 @@ export async function changeSearch(action, button, where = 'strategy') {
   const result = await withSaveProgress(words => { button.textContent = words; }, () => runAction(action, {pilot: window.pilot, openSetting}))
     .catch(error => ({ok: false, error: error.message}));
   button.textContent = label;
-  if (!result.ok) { toastMessage('Not added', result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
+  if (!result.ok) { toastMessage(t('pagesCommon.notAdded'), result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
   adviceEvent('taken', action.kind, where);
   // The next step with it: a refresh searches with the change (7 Oct 2026: the pop-up said only "Search widened").
   toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
@@ -256,7 +257,7 @@ export async function changeSearch(action, button, where = 'strategy') {
 }
 const press = action => button => changeSearch(action, button);
 
-export const refreshAction = {label: 'Find jobs', run: () => startSearch()};
+export const refreshAction = {label: t('pagesCommon.findJobs'), run: () => startSearch()};
 const LIST_WORDS = {roles: 'roles', places: 'places', languages: 'excluded languages'};
 // A row is drawn while its key is not answered (a verdict kept from before its keys draws every row, without the answers, until the fresh one).
 const unanswered = (card, key) => (card && !(key && answered(key)) ? card : null);
@@ -264,11 +265,11 @@ const paintCoverage = verdict => {
   strategyState.shownVerdict = verdict;
   const keys = verdict?.keys || {};
   const coverage = unanswered(coverageCard(verdict), keys.coverage);
-  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? 'Catch titles in other languages' : 'Add role words',
+  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? 'Catch titles in other languages' : t('pagesCommon.addRoleWords'),
     summary: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, text: coverage.text,
     options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
       run: press({kind: 'role', value: chip.term})})),
-    brief: {title: verdict.local ? 'Catch titles in other languages' : 'Add role words', text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
+    brief: {title: verdict.local ? 'Catch titles in other languages' : t('pagesCommon.addRoleWords'), text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
     menu: answerItems('coverage', keys.coverage, 'Add role words')});
   const places = unanswered(placesCard(verdict), keys.places);
   const topPlace = places?.chips[0];
@@ -282,19 +283,19 @@ const paintCoverage = verdict => {
   // Filters of the user's own that hide matching jobs: an option removes that filter.
   const filters = unanswered(filtersCard(verdict), keys.filters);
   const filterHidden = filters ? filters.chips.reduce((sum, chip) => sum + chip.count, 0) : 0;
-  rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: 'Loosen your filters',
+  rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: t('pagesCommon.loosen'),
     summary: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, text: filters.text,
     options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
       run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
-    brief: {title: 'Loosen your filters', text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
+    brief: {title: t('pagesCommon.loosen'), text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
     menu: answerItems('filters', keys.filters, 'Loosen your filters')});
   // Unused job sources: an option opens its panel in Settings → Connections (a key to add there); nothing is turned on from here.
   const sources = unanswered(sourcesCard(verdict), keys.sources);
-  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: 'Set up',
+  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: t('pagesCommon.setup'),
     summary: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(' · '), text: sources.text,
     options: sources.chips.map(chip => ({label: plain(chip.label), button: 'Open in Settings', preview: chip.title,
       run: () => { adviceEvent('taken', 'source', 'strategy', {source: chip.id}); openSetting(chip.id); }})),
-    brief: {title: 'Connect more sources', text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: 'Set up'},
+    brief: {title: 'Connect more sources', text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: t('pagesCommon.setup')},
     menu: answerItems('source', keys.sources, 'Connect more job sources')});
   // Sites only you can open: one chip per company in the row; Review lists every page (a company can have two genuinely different ones).
   const visits = unanswered(visitCard(verdict), keys.visits);
@@ -313,7 +314,7 @@ const paintCoverage = verdict => {
         return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/unit/renderer/wand-cursor.test.js)
       }));
       words.append(name, links);
-      const open = el('button', 'secondary with-icon', 'Open');
+      const open = el('button', 'secondary with-icon', t('pagesCommon.open'));
       Object.assign(open, {type: 'button', title: site.pages[0].title});
       open.append(icon('external'));
       open.addEventListener('click', openPage(site.pages[0]));
@@ -329,7 +330,7 @@ const paintCoverage = verdict => {
       all.addEventListener('click', () => { all.replaceWith(...sites.slice(SHOWN).map((site, i) => company(site, i + SHOWN))); });
       list.push(all);
     }
-    rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: 'Browse sites manually', count: sites.length,
+    rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: t('pagesCommon.browseManually'), count: sites.length,
       summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
       brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: 'Use the Chrome extension', cta: 'View sites'},
       menu: answerItems('visit', keys.visits, 'Browse sites manually')});

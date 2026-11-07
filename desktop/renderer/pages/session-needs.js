@@ -1,4 +1,5 @@
 // Session page: what Claude needs from you, and the form page in step.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {renderSteps} from './session-steps.js';
@@ -245,7 +246,7 @@ export const staleState = item => !!(rowsOf(item.id).length || reviewStates.get(
 export async function reopenClosedTab(item, button) {
   const result = await window.pilot.sessionReopen(item.id, staleState(item));   // not 'Looking for the form tab…' under the question
   if (result?.cancelled) return result;   // Not now in the first-Apply dialog
-  if (result?.ok === false) { toastMessage('Could not open the form', result.error || 'Try again.', sessionPlace(item), 'bad'); return result; }
+  if (result?.ok === false) { toastMessage('Could not open the form', result.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); return result; }
   if (result?.reset) {
     for (const key of rowsOf(item.id)) { handled.delete(key); syncedDone.delete(key); }
     keep();
@@ -290,7 +291,7 @@ export function needRow(need, item) {
   }
   if (need.kind === 'agree') {
     // Chrome comes forward on the form and the page scrolls to this field (extension/review.js picks it up).
-    actions.append(smallButton('Done', 'secondary is-answer', () => doneRow(li, key, 'Ticked in the form')), reviewButton(item, agreeLabel(need)));
+    actions.append(smallButton(t('pagesCommon.done'), 'secondary is-answer', () => doneRow(li, key, 'Ticked in the form')), reviewButton(item, agreeLabel(need)));
     li.dataset.watch = watchId(need.text);
   } else {
     // A judgement call: the proposal agrees in one click, Change… picks a saved answer or (Claude help on) takes your words (need-choice.js).
@@ -323,7 +324,7 @@ export function needRow(need, item) {
         parts.push(input, sendButton);
       }
       li.classList.add('is-asking');   // the picker takes its own line under the text, not a corner of the row
-      actions.replaceChildren(...parts, smallButton('Cancel', 'secondary', back));
+      actions.replaceChildren(...parts, smallButton(t('pagesCommon.cancel'), 'secondary', back));
       (input || parts[0])?.focus();
     };
     const button = (text, run, role) => smallButton(text, `secondary is-${role}`, run, offline(item));   // is-answer / is-change: each role its own border
@@ -362,7 +363,7 @@ export function askRow(need, item) {
   if (need.why) body.append(el('span', 'ss-need-desc small', need.why));
   const input = el('input', 'ss-ask-input');
   input.type = 'text';
-  input.placeholder = 'Your answer';
+  input.placeholder = t('pagesCommon.yourAnswer');
   loadAnswers();
   const saved = savedAnswers.get(need.question) ?? savedFor(need.question);
   input.value = saved || need.suggested;

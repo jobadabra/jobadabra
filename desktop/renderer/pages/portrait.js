@@ -1,6 +1,7 @@
 // Profile → Your portrait (spec 2026-10-28-your-portrait-design.md, owner 28 Oct 2026): a read-only text the app writes about you. No control edits it; each statement's
 // evidence chip opens the source tab where that source can be corrected, and the next run follows. Drawn from lib/portrait.js status(): not_yet (what it needs, with
 // progress), current, outdated (the text stays, "Updating soon"). Guarded by test/unit/renderer/portrait-tab.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill, tag} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {$} from './core.js';
@@ -13,7 +14,7 @@ const openTab = key => document.querySelector(`[data-profile-tab="${key}"]`)?.cl
 
 const progressRow = ({label, have, need}) => {
   const row = el('li', 'portrait-need');
-  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? 'Done' : 'Needed', have >= need ? 'good' : 'neutral'));
+  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? t('pagesCommon.done') : 'Needed', have >= need ? 'good' : 'neutral'));
   return row;
 };
 

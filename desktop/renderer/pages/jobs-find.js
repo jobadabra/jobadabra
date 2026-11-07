@@ -3,6 +3,7 @@
 // rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/unit/renderer/find-card.test.js.
 // It is in the page's first paint (owner, 26 Oct 2026: it came 2-3 s late and pushed the list down): as last drawn (renderer/late-blocks.js), else
 // index.html's skeleton in its place; activity.js draws the real state with its first runs answer, not 2 s later. Guarded by: test/unit/renderer/late-blocks.test.js.
+import {t} from '../../i18n/index.js';
 import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wand, wire} from '../magic.js';
@@ -64,9 +65,9 @@ function drawEmpty(card) {
   card.className = 'card find-card is-empty magic';
   const twinkles = [0, 1, 2].map(() => Object.assign(el('span', 'magic-twinkle'), {ariaHidden: 'true'}));
   twinkles.forEach(node => node.append(icon('sparkle')));
-  card.replaceChildren(...twinkles, tile('search'), el('span', 'eyebrow', 'Get started'), el('h2', 'magic-title', 'Find jobs'),
+  card.replaceChildren(...twinkles, tile('search'), el('span', 'eyebrow', 'Get started'), el('h2', 'magic-title', t('pagesCommon.findJobs')),
     el('p', 'muted subtitle magic-sub', 'Reads employer sites and job boards, scores each job against your profile, and lists the first matches in under a minute. The rest keeps coming.'),
-    button('Find jobs', () => start(), 'primary magic-go'));
+    button(t('pagesCommon.findJobs'), () => start(), 'primary magic-go'));
   wire(card);
 }
 
@@ -103,17 +104,17 @@ function draw(model) {
       ? findHead('Search ended at the time limit', model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
       : findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
     if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
-    card.replaceChildren(head, again('Find jobs again'));
+    card.replaceChildren(head, again(t('pagesCommon.findAgain')));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
     const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
-    card.replaceChildren(head, again('Find jobs'));
+    card.replaceChildren(head, again(t('pagesCommon.findJobs')));
   } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
     const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out
     card.replaceChildren(findHead('Find jobs did not start', model, model.problem),
-      label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: 'Find jobs', retry: () => start()}) : openSetting('plan')), 'primary find-again') : again('Try again'));
+      label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: 'Find jobs', retry: () => start()}) : openSetting('plan')), 'primary find-again') : again(t('pagesCommon.tryAgainShort')));
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
-      button('Try again', () => start()));
+      button(t('pagesCommon.tryAgainShort'), () => start()));
   }
   card.removeAttribute('aria-busy');
   show(card, visible(model.state));

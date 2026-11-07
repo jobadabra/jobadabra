@@ -4,6 +4,7 @@
 // AI, problems, scoring and the technical log (folded). Built from page-parts summaryTiles, components (tile, pill, chip, numberStrip, liveDot) and the
 // insight card; only the layout of the report's card grid and its bars is new (reports-searches.css). Logic: renderer/searches-view.js.
 // Guarded by test/unit/renderer/searches-view.test.js.
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {pairRows} from '../card-grid.js';
 import {chip, el, liveDot, numberStrip, pill, tile} from '../components.js';
@@ -142,7 +143,7 @@ export async function renderSearches(container, openId = null) {
   const answer = await window.pilot.reportsSearches().catch(error => ({error: error.message}));
   if (host !== container) return;
   if (answer?.error) {
-    const retry = Object.assign(el('button', 'link', 'Retry'), {type: 'button'});
+    const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderSearches(container));
     host.replaceChildren(el('p', 'message error', `Could not read your searches from ${storeName()}: ${plainError(answer.error)}`),
       el('p', 'muted small', byStore('Searches are kept in Notion ⏱️ Search runs.', 'Searches are kept by Jobadabra on this Mac.')), retry);

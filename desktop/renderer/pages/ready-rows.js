@@ -1,4 +1,5 @@
 // The Ready to send card's words for a form's result, apart from the page (no DOM, so a test can import it): what the site counted -> the text and tone of the row. Guard: test/unit/ready-fill/ready-site.test.js.
+import {t} from '../../i18n/index.js';
 const WORDS = {prepared: ['complete', 'good'], partial: ['needs you', 'warn'], wall: ['a wall', 'warn'], 'no-form': ['no form found', 'neutral'], closed: ['job closed', 'neutral'], failed: ['could not fill', 'bad'], queued: ['waiting', 'info'],
   filling: ['filling', 'info'], stopped: ['stopped', 'neutral']};
 
@@ -31,7 +32,7 @@ const WHY = {
   later: why => ({line: `Set for ${clock(why.at)}. Fill now starts it at once`}),
   soon: () => ({line: 'Sent: the server starts it within 5 minutes'}),
   'no-queue': () => ({badge: 'stuck', tone: 'warn', line: "Not started: the server's queue is not set up"}),
-  starting: why => ({line: 'Starting the server', since: Date.parse(why.at) || 0, percent: 2}),
+  starting: why => ({line: t('pagesCommon.serverStarting'), since: Date.parse(why.at) || 0, percent: 2}),
   silent: why => ({badge: 'stuck', tone: 'warn', line: `Started at ${clock(why.at)} but no form has reported: the server may have failed to start. Stop all, then Fill now`}),
   capped: () => ({badge: 'stuck', tone: 'warn', line: "Stopped: the night reached its cost cap"}),
 };

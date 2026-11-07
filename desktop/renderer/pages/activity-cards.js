@@ -1,5 +1,6 @@
 // Recent activity: the insight, interview-review, kits and weekly cards.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {cardHead, el, numberStrip, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {comparisonTable, confidenceLabel, confidenceTone, sourceLine} from '../insight-card.js';
@@ -31,7 +32,7 @@ export function renderInsightCard(insight, target = $('activity-card')) {
   const evidence = table ? insight.evidence.filter(line => !table.used.includes(line)) : insight.evidence;
   if (insight.action) {
     const words = el('div', 'insight-next-words');
-    words.append(el('b', '', 'Recommended next step'), el('p', '', insight.action));
+    words.append(el('b', '', t('pagesCommon.nextStep')), el('p', '', insight.action));
     const next = el('section', 'insight-next');
     next.append(el('span', 'insight-next-icon', icon('target')), words);
     box.append(next);
@@ -80,7 +81,7 @@ export function renderInterviewCard(review, target = $('activity-card')) {
   }
   if (review.next || review.stage) {
     const words = el('div', 'insight-next-words');
-    words.append(el('b', '', review.next ? 'Next' : 'Stage'), el('p', '', review.next || review.stage));
+    words.append(el('b', '', review.next ? t('pagesCommon.next') : 'Stage'), el('p', '', review.next || review.stage));
     if (review.next && review.stage) words.append(el('p', 'insight-subtitle', review.stage));
     const next = el('section', 'insight-next');
     next.append(el('span', 'insight-next-icon', icon('target')), words);
@@ -107,7 +108,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
     const words = el('div', 'item-words');
     const title = el('a', 'link', job.title);
     title.href = job.url; title.target = '_blank'; title.rel = 'noopener';
-    title.title = 'Open the job posting';
+    title.title = t('pagesCommon.openJobPosting');
     const name = el('b', '');
     name.append(title);
     words.append(name, ...(job.company ? [el('span', 'muted', job.company)] : []));

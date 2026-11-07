@@ -4,6 +4,7 @@
 // cards, never here. Your details: the voluntary survey answers. Read from the Profile's outline and saved block by block on every store (IPC
 // textOutline / textEdit); the model is renderer/experience-profile-model.js. Cards are the Application answers' folds (.answer-item.qa-fold).
 // Guarded by test/unit/renderer/experience-profile.test.js and test/unit/renderer/experience-cards.test.js.
+import {t} from '../../i18n/index.js';
 import {cardEdit, el, loadingCard, pill} from '../components.js';
 import {chipLine, doneButton, setEditing} from '../card-shell.js';
 import {keep, swr} from '../swr.js';
@@ -35,7 +36,7 @@ export async function loadExperienceProfile(tab = 'experience') {
   if (!$(boxId)) return;
   const box = $(boxId);
   await swr('profile-parts', () => window.pilot.textOutline('profile'), {
-    loading: () => box.replaceChildren(loadingCard('Reading your Profile…')),
+    loading: () => box.replaceChildren(loadingCard(t('pagesCommon.readingProfile'))),
     paint: (result, kept) => { if (kept || !editing.size) { setParts(tab, result.items); draw(tab); if (tab === 'experience') splitGaps(tab); } },   // a refresh never redraws a card under edit
     fail: result => message(messageId, `Couldn't read your Profile: ${result?.error || 'try again'}`, 'error'),
   });

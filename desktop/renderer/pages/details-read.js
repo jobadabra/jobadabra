@@ -2,6 +2,7 @@
 // Work eligibility, Availability & compensation and Languages each show a compact summary drawn from their editor's own boxes (so drafts, CV proposals and
 // saving stay exactly as they were), a quiet Edit opens the editor in place, and Done leaves an editor with no change; with changes the Profile page's one
 // bar decides, and Save all / Discard all close the editors. Contact and Links read as columns (mockup 05: icon · small grey label · value); the fact cards as a calm two-column summary (renderer/fact-summary.js). Guarded by test/unit/renderer/details-read.test.js.
+import {t} from '../../i18n/index.js';
 import {CARD_EDIT, el} from '../components.js';
 import {chipLine, doneButton, factColumns, isEditing, setEditing} from '../card-shell.js';
 import {checkBadge, checkCount, eligibilityView, languagesView, summaryView} from '../fact-summary.js';
@@ -29,7 +30,7 @@ export function contactView(read = value, visible = shown) {
   const salutation = visible('salutation') && read('salutation');
   if (salutation) name.append(el('span', 'muted', `${salutation} `));
   name.append(['first_name', 'last_name'].map(read).filter(Boolean).join(' ') || notSet('Name'));
-  who.append(name, read('location') ? el('span', 'muted', read('location')) : notSet('Location'));
+  who.append(name, read('location') ? el('span', 'muted', read('location')) : notSet(t('pagesCommon.location')));
   if (visible('salutation') && !salutation) who.append(notSet('Salutation'));
   const lines = group => {
     const list = el('ul', 'contact-lines');
@@ -50,7 +51,7 @@ export function contactView(read = value, visible = shown) {
 export function linksView(read = value, visible = shown) {
   return factColumns([['linkedin', 'LinkedIn', 'linkedin'], ['github', 'GitHub', 'github'], ['website', 'Website', 'link']].filter(([key]) => visible(key)).map(([key, label, glyph]) => {
     const address = read(key).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-    return {icon: glyph, label, value: address ? el('span', 'link-text', address) : el('span', 'muted', 'Not added')};
+    return {icon: glyph, label, value: address ? el('span', 'link-text', address) : el('span', 'muted', t('pagesCommon.notAdded'))};
   }));
 }
 

@@ -2,6 +2,7 @@
 // finished run as one line, in the running banner's look (.run-banner, toned): icon, task name + status pill, one meta line, the next step or fix,
 // Run again when it did not end well, View details, then Cancel or Dismiss. The full report is the run panel's (drawer / Actions → Runs), never here. Model: renderer/run-compact.js.
 // Guarded by test/unit/renderer/run-compact.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 
 const TONES = ['good', 'warn', 'bad', 'info', 'neutral'];
@@ -16,8 +17,8 @@ export function drawBanner(box, model, on = {}) {
   const button = (cls, text, run) => Object.assign(el('button', cls, text), {type: 'button', onclick: run});
   box.replaceChildren(tile(model.icon, model.tone), words,
     ...(model.next ? [button('primary', model.next.label, () => on.next?.(model.next))] : []),
-    ...(model.again ? [button(model.next ? 'secondary' : 'primary', 'Run again', () => on.again?.())] : []),
-    button('secondary run-banner-view', 'View details', () => on.view?.()),
+    ...(model.again ? [button(model.next ? 'secondary' : 'primary', t('pagesCommon.runAgain'), () => on.again?.())] : []),
+    button('secondary run-banner-view', t('pagesCommon.viewDetails'), () => on.view?.()),
     model.close.cancel ? button('secondary', model.close.label, () => on.close?.(model.close))
       : button('link', model.close.label, () => on.close?.(model.close)));
 }

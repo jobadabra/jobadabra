@@ -1,5 +1,6 @@
 // Settings → Profile → Experience: the sources of what tailoring knows about the person (the main CV, other CV versions) and, per job,
 // the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/unit/main/experience-page.test.js.
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -115,7 +116,7 @@ export function showChanges(answer) {
   const head = el('summary');
   head.append(el('b', '', 'What changed in your profile'));
   const list = el('ul');
-  for (const [text, tone] of lines) { const item = el('li', '', text); if (tone === 'bad') item.append(' ', pill('Not added', 'bad')); list.append(item); }
+  for (const [text, tone] of lines) { const item = el('li', '', text); if (tone === 'bad') item.append(' ', pill(t('pagesCommon.notAdded'), 'bad')); list.append(item); }
   box.append(head, list);
   $('exp-changes').replaceChildren(box);
 }
@@ -130,7 +131,7 @@ export function showExperience(view) {
       again.addEventListener('click', () => run(again, () => window.pilot.experienceRematch()));
       row.append(again);
     }
-    const button = Object.assign(el('button', 'link item-action', 'Remove'), {type: 'button', title: 'Tailored CVs stop drawing on this version. Your main CV is not changed.'});
+    const button = Object.assign(el('button', 'link item-action', t('pagesCommon.remove')), {type: 'button', title: 'Tailored CVs stop drawing on this version. Your main CV is not changed.'});
     button.addEventListener('click', async () => {
       // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
       if (!confirm(`Remove “${source.name}”? Tailored CVs stop drawing on this version. Your main CV is not changed.`)) return;
@@ -140,7 +141,7 @@ export function showExperience(view) {
     });
     row.append(button);
   }
-  $('exp-sources').replaceChildren(...(view.main ? [sourceRow({reference: true, name: 'Main CV', roles: view.main.roles})] : [el('li', 'muted', 'Read your main CV first (CV → Read my CV PDF).')]));
+  $('exp-sources').replaceChildren(...(view.main ? [sourceRow({reference: true, name: t('pagesCommon.mainCv'), roles: view.main.roles})] : [el('li', 'muted', 'Read your main CV first (CV → Read my CV PDF).')]));
   const removeAdded = async id => {
     const answer = await window.pilot.experienceRemoveAdded(id).catch(error => ({ok: false, error: error.message}));
     if (answer.ok) showExperience(answer); else message('exp-message', answer.error || 'Could not remove it.', 'error');
@@ -165,7 +166,7 @@ export function addedBlock(items, remove) {
     const name = el('b', '', item.text);
     name.append(' ', pill(KIND[item.kind] || 'Added', 'info'));
     words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
-    const button = Object.assign(el('button', 'secondary item-action', 'Remove'), {type: 'button'});
+    const button = Object.assign(el('button', 'secondary item-action', t('pagesCommon.remove')), {type: 'button'});
     button.addEventListener('click', () => {
       if (!confirm(`Remove “${item.text}”? Tailored CVs stop using it. Your main CV is not changed.`)) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
       button.disabled = true; remove(item.id);
@@ -192,7 +193,7 @@ async function run(button, action) {
   const answer = await action().catch(error => ({ok: false, error: error.message}));
   button.classList.remove('busy'); document.querySelectorAll('#setting-experience-sources button').forEach(b => { b.disabled = false; });
   if (answer.ok) { message('exp-message', 'Done ✓ Tailored CVs can use it from now on.', 'ok'); showExperience(answer); showChanges(answer); }
-  else { message('exp-message', answer.cancelled ? '' : answer.error || 'That did not work.', answer.cancelled ? '' : 'error'); if (answer.results) showChanges(answer); }
+  else { message('exp-message', answer.cancelled ? '' : answer.error || t('pagesCommon.didNotWork'), answer.cancelled ? '' : 'error'); if (answer.results) showChanges(answer); }
 }
 
 // "Connect with LinkedIn": who you are on LinkedIn (name, email), not your experience (that comes from the export above). Never a token kept.
@@ -212,7 +213,7 @@ export function showLinkedin(status) {
       const answer = await window.pilot.linkedinConnect().catch(error => ({ok: false, error: error.message}));
       node.classList.remove('busy'); node.disabled = false;
       if (answer.ok) { message('exp-message', 'Connected ✓', 'ok'); showLinkedin(answer); }
-      else message('exp-message', answer.error || 'That did not work.', 'error');
+      else message('exp-message', answer.error || t('pagesCommon.didNotWork'), 'error');
     }, 'link'), el('span', 'muted small', 'Your name and email only: LinkedIn shares positions and skills only with registered companies, so add your data export for those.'));
     return;
   }

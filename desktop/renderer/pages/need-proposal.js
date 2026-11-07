@@ -4,6 +4,7 @@
 // else, for a contact detail you have not given, from your CV (lib/contact-from-cv.js). "Use" fills it in the form through the
 // extension and keeps it for future forms (a contact detail in Your details, any other answer in your Answers). Guarded by
 // test/unit/renderer/need-proposal.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {renderSessionPage} from './session-log.js';
 import {badge, reviewStates, showInForm, smallButton, submitOnEnter, titleLine} from './session-needs.js';
@@ -57,7 +58,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   // A menu: the form's own choices, the one that means the same picked (proposal-pick.js onChoices); otherwise a text box.
   const input = proposal.options?.length ? el('select', 'ss-ask-input') : el('input', 'ss-ask-input');
   if (proposal.options?.length) input.append(el('option', '', proposal.waiting ? 'Finding the matching choice…' : ''), ...proposal.options.map(option => el('option', '', option)));
-  else { input.type = 'text'; input.placeholder = 'Your answer'; }
+  else { input.type = 'text'; input.placeholder = t('pagesCommon.yourAnswer'); }
   input.value = picks.start(key, tried?.value || proposal.value);
   input.addEventListener('input', () => picks.note(key, input.value));   // a text box and a menu both fire input
   const note = el('span', 'ss-need-desc small', proposal.from);

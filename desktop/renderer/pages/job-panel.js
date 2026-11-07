@@ -5,6 +5,7 @@
 // opening one closes the other, and a job opened from a run says "Back to Recent activity". Opening it never resizes the list.
 // Parts: job-drawer/ (header, tabs, parts, one file per tab). Pure words: renderer/job-page-view.js. Guards: test/unit/renderer/job-drawer.test.js,
 // test/unit/renderer/job-panel.test.js, test/unit/renderer/job-page-view.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {pageParts, tabKey, TABS} from '../job-page-view.js';
 import {claimOverlay, registerOverlay, releaseOverlay, reopenOverlay} from '../overlay-slot.js';
@@ -63,12 +64,12 @@ function draw() {
   const failed = page?.error || state.restError;
   if (page?.error) {
     body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: plainError(page.error),
-      actions: [button('Retry', () => load(job))]}));   // Retry only after a failure
+      actions: [button(t('pagesCommon.retry'), () => load(job))]}));   // Retry only after a failure
   } else if (state.tab === 'overview' && (state.stage !== 'none' || job.fit != null)) {
     // The Overview reads the list row's own facts first (matchView), so it is drawn at once; the store's answer only adds to it.
     body.append(...BODIES.overview({job, page: page || {}, parts: pageParts(page || {}), close: closeJobPanel, pick, reload: () => load(job)}, draw));
   } else if (state.stage !== 'full') {
-    if (failed) body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: state.restError, actions: [button('Retry', () => load(job))]}));
+    if (failed) body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: state.restError, actions: [button(t('pagesCommon.retry'), () => load(job))]}));
     else body.append(...skeleton());
   } else body.append(...BODIES[state.tab]({job, page, parts: pageParts(page), close: closeJobPanel, pick, reload: () => load(job)}, draw));
   panel.replaceChildren(head, tabs, body, footer(job, page));

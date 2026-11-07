@@ -1,5 +1,6 @@
 // Interview prep kit (Focus → Prepare): built from the job's description, your Profile and your past interviews,
 // on the job's Notion page (src/ai/prep.py). When the role is unknown it asks for the description first.
+import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {loadFocus, markPrep} from './focus.js';
 import {toastMessage} from './startup.js';
@@ -26,7 +27,7 @@ function reset(item) {
   show($('prep-open'), false);
   message('prep-message', '');
   $('prep-go').disabled = false;
-  $('prep-go').textContent = 'Prepare the interview';
+  $('prep-go').textContent = t('pagesCommon.prepareInterview');
 }
 
 function tick() {

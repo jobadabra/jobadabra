@@ -1,5 +1,6 @@
 // The Ready to send card on Actions (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md), always shown (owner, 18 Oct 2026); it works only when the site says this install is the owner's, else it says why with its buttons off: send tonight's finished jobs to be filled overnight,
 // start the night now (the test), and in the morning one row per form (complete, what is left, a wall) with Done and the night's video of its fill (a popup). You press Submit; nothing here does. Built from the task-card parts the Tailor card uses (.task-card, .task-body, pill). Guard: test/unit/renderer/ready-card.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {costText, dollars} from '../ai-cost.js';
@@ -74,7 +75,7 @@ export function paint(card, state, names, act) {
 export function build() {
   const card = el('div', 'task-card is-medium ready-card'), words = el('div', 'task-words');
   card.append(el('span', 'task-category', 'APPLICATIONS'));
-  const main = el('div', 'task-body'), send = el('button', 'secondary action', 'Fill tonight on the server'), run = el('button', 'secondary action', 'Fill now');
+  const main = el('div', 'task-body'), send = el('button', 'secondary action', 'Fill tonight on the server'), run = el('button', 'secondary action', t('pagesCommon.fillNow'));
   wand(send); wand(run);
   send.id = 'ready-send'; send.dataset.palette = 'ready'; run.id = 'ready-run';
   const hidden = el('b', '', 'Ready to send: fill tonight\'s forms on the server (nothing is submitted)'); hidden.hidden = true; send.prepend(hidden);
@@ -86,10 +87,10 @@ export function build() {
 
 // Not working right now (no owner key, no token today, the site refused or is down): the card stays, says why, and its two buttons are off.
 export function blocked(card, why, retry) {
-  const body = card.querySelector('.ready-body'), again = el('button', 'secondary', 'Try again');
+  const body = card.querySelector('.ready-body'), again = el('button', 'secondary', t('pagesCommon.tryAgainShort'));
   const checked = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
   // Try again answers visibly (owner, 18 Oct 2026: "no feedback. No reaction"): Checking… while it asks, then the reason with the time it was checked.
-  again.addEventListener('click', () => { again.disabled = true; again.textContent = 'Checking…'; retry(); });
+  again.addEventListener('click', () => { again.disabled = true; again.textContent = t('pagesCommon.checking'); retry(); });
   body.textContent = '';
   const status = el('div', 'ready-status');
   status.append(pill('Not available', 'warn'), el('span', 'muted', `${why || 'Our server did not answer.'} · checked ${checked}`), ...(why === OUTDATED_LINE ? [restartButton()] : []), again);
@@ -125,7 +126,7 @@ export async function initReadyCard() {
     last = state;
     const unfinished = (state.site?.jobs || []).some(job => ['queued', 'filling'].includes(job.state)), running = nightState(state) === 'running' && (unfinished || !state.site?.jobs?.length);
     const busy = ['sending', 'preparing'].includes(phase) || running;   // a night being filled is never replaced by a second press
-    run.textContent = busy ? 'Filling…' : 'Fill now';
+    run.textContent = busy ? 'Filling…' : t('pagesCommon.fillNow');
     Object.assign(names, state.names || {});
     const now = progressOf({phase, batch: state.site?.batch, jobs: state.site?.jobs || []})?.steps.find(step => step.state === 'now')?.label || '';
     if (now !== nowStep) { nowStep = now; since = now ? Date.now() : 0; }   // the clock counts the step running now
@@ -178,7 +179,7 @@ export async function initReadyCard() {
     watch: code => { const button = iconButton('eye', 'Watch the fill', 'the video of the server filling this form tonight (3 minutes at most)', 'watch');
       button.addEventListener('click', () => watchFill(button, code)); return button; },
     again: code => { const button = iconButton('refresh', 'Fill again', 'the server fills this form again from the start, after your yes', 'again'); button.addEventListener('click', () => fillAgain(code)); return button; },
-    stop: code => { const button = el('button', 'secondary ready-stop', 'Stop'); button.type = 'button'; button.title = 'Stop filling this form: it goes back to how it was'; button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
+    stop: code => { const button = el('button', 'secondary ready-stop', t('pagesCommon.stop')); button.type = 'button'; button.title = 'Stop filling this form: it goes back to how it was'; button.addEventListener('click', () => { button.disabled = true; stopFill(code); }); return button; },
     stopAll: () => { const button = el('button', 'secondary ready-stop-all', 'Stop all'); button.type = 'button'; button.title = 'Stop every form the night is filling or about to fill'; button.addEventListener('click', () => { button.disabled = true; stopFill(null); }); return button; },
     done: code => { const button = iconButton('check', 'Done', 'delete this form\'s data from the server', 'done'); button.addEventListener('click', async () => { await window.pilot.readyDone(code); refresh(); }); return button; }};
   // What just happened, as a badge and its line (owner, 18 Oct 2026: the status lines "should be shown as badges").

@@ -1,6 +1,7 @@
 // The Ready to send card's progress bar (owner, 18 Oct 2026: "I'd expect it to start instantly", "some progress bar", statuses as badges): Sending > Starting the server >
 // Filling k of n > Ready, from the card's own press first (shown before any answer), then the site's night (/state). progressOf is pure; strip() draws it from the
 // app's pill parts. Guard: test/unit/ready-fill/ready-fill-now.test.js (the steps), test/unit/renderer/ready-card.test.js (on the card).
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 
 const FINISHED = ['finished', 'capped', 'deleted'];
@@ -10,15 +11,15 @@ const step = (label, state) => ({label, state});
 // -> {steps: [{label, state: done|now|todo|bad}], percent} or null when there is nothing to follow.
 export function progressOf({phase = 'idle', batch = null, jobs = [], error = ''} = {}) {
   if (phase === 'failed') return {steps: [step(error || 'Could not start', 'bad')], percent: 0};
-  if (phase === 'preparing') return {steps: [step('Preparing applications, CVs and letters', 'now'), step('Sending', 'todo'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 5};
-  if (phase === 'sending') return {steps: [step('Sending', 'now'), step('Starting the server', 'todo'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 5};
+  if (phase === 'preparing') return {steps: [step('Preparing applications, CVs and letters', 'now'), step('Sending', 'todo'), step(t('pagesCommon.filling'), 'todo'), step(t('pagesCommon.ready'), 'todo')], percent: 5};
+  if (phase === 'sending') return {steps: [step('Sending', 'now'), step(t('pagesCommon.serverStarting'), 'todo'), step(t('pagesCommon.filling'), 'todo'), step(t('pagesCommon.ready'), 'todo')], percent: 5};
   const state = batch?.state, running = state === 'running' || (phase === 'started' && state === 'queued');
   if (!running && !(phase === 'started' && FINISHED.includes(state))) return null;
   const total = jobs.length, back = jobs.filter(job => job.state && job.state !== 'queued').length, sent = step(`Sent ${total} job${total === 1 ? '' : 's'}`, 'done');
-  if (FINISHED.includes(state) || (total && back === total)) return {steps: [sent, step('Server up', 'done'), step(`Filled ${back}`, 'done'), step('Ready', 'done')], percent: 100};
-  if (state === 'queued' || !back && state !== 'running') return {steps: [sent, step('Starting the server', 'now'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 15};
-  if (!back) return {steps: [sent, step('Starting the server', 'now'), step('Filling', 'todo'), step('Ready', 'todo')], percent: 20};
-  return {steps: [sent, step('Server up', 'done'), step(`Filling ${Math.min(back + 1, total)} of ${total}`, 'now'), step('Ready', 'todo')], percent: Math.round(25 + 70 * back / total)};
+  if (FINISHED.includes(state) || (total && back === total)) return {steps: [sent, step('Server up', 'done'), step(`Filled ${back}`, 'done'), step(t('pagesCommon.ready'), 'done')], percent: 100};
+  if (state === 'queued' || !back && state !== 'running') return {steps: [sent, step(t('pagesCommon.serverStarting'), 'now'), step(t('pagesCommon.filling'), 'todo'), step(t('pagesCommon.ready'), 'todo')], percent: 15};
+  if (!back) return {steps: [sent, step(t('pagesCommon.serverStarting'), 'now'), step(t('pagesCommon.filling'), 'todo'), step(t('pagesCommon.ready'), 'todo')], percent: 20};
+  return {steps: [sent, step('Server up', 'done'), step(`Filling ${Math.min(back + 1, total)} of ${total}`, 'now'), step(t('pagesCommon.ready'), 'todo')], percent: Math.round(25 + 70 * back / total)};
 }
 
 const TONE = {done: 'good', now: 'info', todo: 'neutral', bad: 'bad'};

@@ -1,4 +1,5 @@
 // Settings page: the overview of every service (AI, Notion, Gmail, Telegram, Always on, extras) and each one's sub-page.
+import {t} from '../../i18n/index.js';
 import {showMode} from '../assistant-mode.js';
 import {showClaudeAuto} from '../claude-auto.js';
 import {openLogs} from './logs.js';
@@ -109,7 +110,7 @@ async function serviceStatus() {
 export function stateLine(on, detail = '', checking = false, words = '') {
   if (checking) {
     const line = el('span', 'service-state is-checking');
-    line.append(el('span', 'spinner'), 'Checking…');
+    line.append(el('span', 'spinner'), t('pagesCommon.checking'));
     return line;
   }
   const line = el('span', `service-state${on ? ' is-on' : ''}`);
@@ -164,7 +165,7 @@ function renderConnections(status) {
     box.dataset.service = service.id;   // ⌘K folds its Manage under its card (nav.js)
     const text = el('span', 'service-text');
     text.append(el('b', '', service.name), el('span', 'muted small', service.what));
-    const button = el('button', on[service.id] ? 'secondary' : 'secondary is-signal', on[service.id] ? 'Manage' : service.connect || 'Connect');
+    const button = el('button', on[service.id] ? 'secondary' : 'secondary is-signal', on[service.id] ? t('pagesCommon.manage') : service.connect || t('pagesCommon.connect'));
     button.addEventListener('click', () => (service.id === 'linkedin-jobs' ? openLinkedinConsent({mode: on['linkedin-jobs'] ? 'manage' : 'turn-on'}) : connectsNow(service, status) ? connectExtension() : openSetting(service.id)));
     const actions = el('span', 'service-actions');
     actions.append(stateLine(on[service.id], detail[service.id], checking[service.id], words[service.id]), button);  // state, then the way in
@@ -234,7 +235,7 @@ function renderServices(status) {
 }
 // Overview's summaries. What this Mac knows is shown at once; the rest fills in as it answers.
 function renderKnown() {
-  $('ov-cv').textContent = shared.state.settings.cvName || 'None yet';
+  $('ov-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   const chosen = kind => document.querySelector(`[data-schedule="${kind}"]`)?.selectedOptions[0]?.textContent || '';
   $('ov-search').textContent = chosen('search') || '—';
   $('ov-cloud').textContent = shared.state.settings.cloud?.repo ? `On — GitHub ${shared.state.settings.cloud.repo}` : 'Off — runs while the app is open';
@@ -251,11 +252,11 @@ function renderContact(contact) {
   const needed = {first_name: 'first name', last_name: 'last name', email: 'email', phone: 'phone'};
   const gaps = Object.keys(needed).filter(key => !contact[key]).map(key => needed[key]);
   const line = el('span', `service-state${gaps.length ? '' : ' is-on'}`);
-  line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? `Missing: ${gaps.join(', ')}` : 'Complete'));
+  line.append(icon(gaps.length ? 'info' : 'check'), el('span', 'service-state-text', gaps.length ? `Missing: ${gaps.join(', ')}` : t('pagesCommon.complete')));
   $('ov-contact').replaceChildren(line);
 }
 function renderBackup(backup) {
-  $('ov-backup').textContent = backup?.at ? new Date(backup.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : 'None yet';
+  $('ov-backup').textContent = backup?.at ? new Date(backup.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : t('pagesCommon.noneYet');
 }
 // Automation: run mode (this Mac while open, or Always on in GitHub); both segments lead to the Always on card.
 export function showRunMode() {
@@ -347,7 +348,7 @@ export async function init() {
     });
     $(`${where}-copy`).addEventListener('click', async () => {
       const result = await window.pilot.sitePassword('copy');
-      $(said).textContent = plainError(result?.ok ? 'Copied.' : result?.error || '');
+      $(said).textContent = plainError(result?.ok ? t('pagesCommon.copied') : result?.error || '');
     });
   }
   // Data & backup and Advanced: explainers and the reset options open on demand; Diagnostics shows live status.
@@ -376,15 +377,15 @@ async function openCredentials() {
     const shown = el('span', '');
     shown.append(secret);
     const actions = el('span', 'inline');
-    const reveal = el('button', 'secondary small-button', 'Show');
+    const reveal = el('button', 'secondary small-button', t('pagesCommon.show'));
     reveal.addEventListener('click', async () => {
-      if (reveal.textContent === 'Hide') { secret.textContent = '••••••••'; reveal.textContent = 'Show'; return; }
+      if (reveal.textContent === t('pagesCommon.hide')) { secret.textContent = '••••••••'; reveal.textContent = t('pagesCommon.show'); return; }
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'show');
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       secret.textContent = answer.password;
-      reveal.textContent = 'Hide';
+      reveal.textContent = t('pagesCommon.hide');
     });
-    const copy = el('button', 'secondary small-button', 'Copy');
+    const copy = el('button', 'secondary small-button', t('pagesCommon.copy'));
     copy.addEventListener('click', async () => {
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'copy');
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
@@ -392,9 +393,9 @@ async function openCredentials() {
       $('credentials-message').textContent = `Copied the password for ${row.host}.`;
     });
     // Delete asks once in place (it cannot be undone): the password goes from this Mac's Keychain; the account on the site stays.
-    const remove = el('button', 'danger-outline small-button', 'Delete');
+    const remove = el('button', 'danger-outline small-button', t('pagesCommon.delete'));
     remove.addEventListener('click', () => {
-      const sure = el('button', 'danger-outline small-button', 'Delete for good'), keep = el('button', 'secondary small-button', 'Cancel');
+      const sure = el('button', 'danger-outline small-button', t('pagesCommon.deleteForever')), keep = el('button', 'secondary small-button', t('pagesCommon.cancel'));
       $('credentials-message').textContent = `Delete the saved password for ${row.host}? The account on the site stays; only this Mac forgets its password.`;
       keep.addEventListener('click', () => { actions.replaceChildren(reveal, copy, remove); $('credentials-message').textContent = ''; });
       sure.addEventListener('click', async () => {
@@ -407,7 +408,7 @@ async function openCredentials() {
       actions.replaceChildren(keep, sure);
     });
     // An account from before profiles (lib/profile-accounts.js): no application uses it until it is assigned to this profile, or deleted.
-    const assign = el('button', 'secondary small-button', 'Assign');
+    const assign = el('button', 'secondary small-button', t('pagesCommon.assign'));
     assign.addEventListener('click', async () => {
       const answer = await window.pilot.credentialAssign(row.key);
       if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }

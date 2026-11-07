@@ -1,5 +1,6 @@
 // Connecting Notion from anywhere in the window (Notion later: the app only tries until it is connected): the dialog with the
 // advantages, the locked pages, and the listener for any action that answers {needsNotion, reason} (see preload.cjs).
+import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {el, notionBenefits, notionGate} from '../components.js';
 import {GATE_FOOTNOTE, GATE_TITLE, LOCKED_VIEWS, WHY_CHOICES} from '../notion-benefits.js';
@@ -62,7 +63,7 @@ export function openNotionConnect({reason = 'none', where = 'dialog', from = 'di
   const box = current;
   window.pilot.state().then(state => { shared.state = state; if (current === box && !box.connecting && !box.moving) setMode(box); }).catch(() => {});
   show($('notion-connect-why'), false);
-  $('notion-connect-later').textContent = 'Not now';
+  $('notion-connect-later').textContent = t('pagesCommon.notNow');
   $('notion-connect-go').disabled = false;
   message('notion-connect-message', '');
   show($('notion-connect-token'), false);
@@ -170,7 +171,7 @@ export function init() {
     if (current.notNow) { $('notion-connect-dialog').close(); return; }
     current.notNow = true;
     show($('notion-connect-why'));
-    $('notion-connect-later').textContent = 'Close';
+    $('notion-connect-later').textContent = t('pagesCommon.close');
   });
   $('notion-connect-why').replaceChildren(el('span', 'muted small', 'Why not? (optional)'), ...WHY_CHOICES.map(([key, label]) => {
     const chip = el('button', 'ui-tag is-action', label);

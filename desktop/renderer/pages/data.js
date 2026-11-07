@@ -1,4 +1,5 @@
 // Your data: where it lives, export, import, backup, reset.
+import {t} from '../../i18n/index.js';
 import {$, message, osText, show} from './core.js';
 import {openInNotion, openNotionConnect} from './notion-connect.js';
 import {shared} from './shared.js';
@@ -11,7 +12,7 @@ import {whileBusy} from '../busy-dialog.js';
 async function showBackup() {
   const status = await window.pilot.backupStatus();
   const where = `${status.place} → Jobadabra Backups`;
-  $('backup-last').textContent = status.at ? new Date(status.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : 'None yet';
+  $('backup-last').textContent = status.at ? new Date(status.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : t('pagesCommon.noneYet');
   $('backup-where').textContent = where.replace(' → ', ' / ');
 }
 
@@ -33,7 +34,7 @@ async function showStore() {
   const cloud = store.caps.includes('cloud'), links = store.caps.includes('links');
   const unconnected = !store.trying && store.tracking === false;   // Notion chosen, not connected (#410): it asks to connect, as while trying
   const pill = $('store-pill');
-  pill.textContent = store.trying ? 'Not chosen' : unconnected ? 'Not connected' : store.label;
+  pill.textContent = store.trying ? 'Not chosen' : unconnected ? t('pagesCommon.notConnected') : store.label;
   pill.className = `ui-pill ${store.trying || unconnected ? 'tone-warn' : 'tone-good'}`;
   $('store-lead').textContent = store.trying
     ? `Jobadabra is only trying until your jobs and applications have a home: ${store.choice ? 'this Mac, or your Notion' : 'your Notion'}.`   // about Notion

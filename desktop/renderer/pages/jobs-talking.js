@@ -1,5 +1,6 @@
 // Jobs page, In conversation (moved from pages/jobs-render.js, 26 Oct 2026): the opportunities that found you and are still open, above the
 // search box. In the page's first paint as last drawn (renderer/late-blocks.js). Guarded by: test/unit/renderer/late-blocks.test.js, test/unit/renderer/notion-parity.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {isInbound} from '../origin.js';
@@ -33,7 +34,7 @@ export function renderTalking(narrowed = false) {
   const mixed = found > 0 && found < talking.length;  // a tag per row only tells something when both kinds are listed
   $('jobs-talking-list').replaceChildren(...talking.map(job => {
     const li = Object.assign(el('li', 'focus-item tone-info'), {tabIndex: 0, role: 'button',
-      title: job.notion_url ? 'Open in Notion' : 'Open its page'});
+      title: job.notion_url ? t('pagesCommon.openNotion') : 'Open its page'});
     const round = el('span', 'focus-round');
     round.append(icon('chat'));
     const top = el('div', 'focus-top');

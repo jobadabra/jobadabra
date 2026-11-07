@@ -1,5 +1,6 @@
 // Strategy → Locations card, the rows it owns besides the lists (owner, 17 Oct 2026): the relocation choice (Yes / No / Not specified) and the "Custom search
 // coverage active" line with Reset to preferences, shown even while Advanced is collapsed. Words and edits: renderer/locations-model.js. Guarded by test/unit/renderer/locations-card.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {RELOCATION, coverage, relocationNow, resetCoverage} from '../locations-model.js';
 import {strategyState} from './strategy-state.js';
@@ -15,7 +16,7 @@ export function coverageLine(reload) {
   reset.addEventListener('click', async () => {
     reset.disabled = true;
     const result = await sink.editTargets(resetCoverage(now)).catch(error => ({ok: false, error: error.message}));
-    if (!result.ok) { reset.disabled = false; toastMessage('Not reset', result.error || 'Try again.', {card: 'strategy-locations'}, 'bad'); return; }
+    if (!result.ok) { reset.disabled = false; toastMessage('Not reset', result.error || t('pagesCommon.tryAgain'), {card: 'strategy-locations'}, 'bad'); return; }
     toastMessage('Search coverage reset ✓', 'Searches use your preferred and acceptable locations again.', {card: 'strategy-locations'}, 'good');
     await reload();
   });
@@ -30,7 +31,7 @@ export function relocationChoice(redraw) {
   const stored = strategyState.lastStrategy?.relocation || 'unspecified', chosen = relocationNow(strategyState.lastStrategy, strategyState.targetEdits);
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'Relocation');
+  group.setAttribute('aria-label', t('pagesCommon.relocation'));
   for (const [value, label] of RELOCATION) {
     const button = el('button', value === chosen ? 'is-active' : '', label);
     button.type = 'button';

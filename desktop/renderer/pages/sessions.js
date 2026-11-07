@@ -1,4 +1,5 @@
 // Application sessions: the dock, the list, the next step.
+import {t} from '../../i18n/index.js';
 import {badgeLabel} from '../badge-label.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
@@ -117,7 +118,7 @@ export function renderDock() {
     note.title = note.textContent;
     state.append(pill(label, tone, {dot: item.status === 'running'}), note);
     words.append(title, state);
-    const action = el('button', item.status === 'input' ? 'primary' : 'secondary', item.status === 'input' ? 'Respond' : item.status === 'done' ? 'Review' : 'Open session');
+    const action = el('button', item.status === 'input' ? 'primary' : 'secondary', item.status === 'input' ? 'Respond' : item.status === 'done' ? t('pagesCommon.review') : 'Open session');
     action.addEventListener('click', () => openSession(item.id));
     card.addEventListener('click', event => { if (!event.target.closest('button')) openSession(item.id); });  // the whole card
     card.append(sessionLogo(item), words, action);  // stop / open posting: on the session page (⋯), keeping cards compact
@@ -125,7 +126,7 @@ export function renderDock() {
   }));
 }
 export function sessionMenu(item) {
-  const menu = [{icon: 'external', label: 'Open posting', run: () => window.pilot.openExternal(item.url)}];
+  const menu = [{icon: 'external', label: t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(item.url)}];
   if (isLive(item)) menu.push({label: '⏸ Pause Claude (Esc)', run: () => pauseSession()});
   if (item.resumable && !isSubmitted(item) && resumeOffered()) menu.push({label: '▶ Resume Claude', run: () => resumeSession(item)});
   if (isLive(item)) menu.push({label: '⏹ Stop Claude', run: () => window.pilot.sessionStop(item.id)});

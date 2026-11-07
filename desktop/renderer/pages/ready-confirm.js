@@ -1,5 +1,6 @@
 // Fill now's yes (owner, 18 Oct 2026: filling again a job you opened "should be possible, but with a confirmation popup"): the app's dialog parts (the head, icon and close of the
 // Watch the fill popup) with what would be filled and what it replaces; the answer is the promise's. Escape or × is a no. Guard: test/unit/renderer/ready-card.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 
@@ -14,7 +15,7 @@ export function confirmFill(ask) {
     lead.append(el('h2', '', ask.again ? `Fill ${n === 1 ? 'this job' : `these ${n} jobs`} again?` : `Fill ${forms(n)} now?`),
       el('p', 'muted', ask.again ? `The server fills ${n === 1 ? 'it' : 'them'} again from the start; nothing is submitted.` : 'The server fills them now; nothing is submitted.'));
     const close = el('button', 'ghost icon-btn', '');
-    close.id = 'ready-confirm-close'; close.type = 'button'; close.setAttribute('aria-label', 'Close');
+    close.id = 'ready-confirm-close'; close.type = 'button'; close.setAttribute('aria-label', t('pagesCommon.close'));
     close.append(icon('close'));
     head.append(tile, lead, close);
     const list = el('ul', 'ready-confirm-list');
@@ -23,10 +24,10 @@ export function confirmFill(ask) {
     if (ask.note) parts.push(el('p', 'muted', ask.note));
     if (ask.replaces) parts.push(el('p', 'message', `This replaces ${forms(ask.replaces)} from this night still waiting for you: open or finish ${ask.replaces === 1 ? 'it' : 'them'} first if you need ${ask.replaces === 1 ? 'it' : 'them'}.`));
     const foot = el('div', 'dialog-foot'), buttons = el('span', 'inline');
-    const no = el('button', 'secondary', 'Cancel'), yes = el('button', 'primary', ask.again ? 'Fill again' : 'Fill now');
+    const no = el('button', 'secondary', t('pagesCommon.cancel')), yes = el('button', 'primary', ask.again ? 'Fill again' : t('pagesCommon.fillNow'));
     no.id = 'ready-confirm-no'; yes.id = 'ready-confirm-yes'; no.type = yes.type = 'button';
     buttons.append(no, yes);
-    foot.append(el('span', 'muted small', 'Nothing is submitted.'), buttons);
+    foot.append(el('span', 'muted small', t('pagesCommon.nothingSubmitted')), buttons);
     dialog.append(...parts, foot);
     let answered = false;
     const answer = value => { if (answered) return; answered = true; if (dialog.open) dialog.close?.(); dialog.remove(); resolve(value); };

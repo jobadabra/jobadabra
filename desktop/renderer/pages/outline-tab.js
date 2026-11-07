@@ -3,6 +3,7 @@
 // changes per text, saved through the page's one save bar (save-bar.js; owner, 18 Oct 2026: one bar per page, no bar of its own since D's swap);
 // a tab only draws and calls change(name, change).
 // A change to the same block replaces the earlier one. Guarded by test/unit/renderer/profile-tabs-render.test.js.
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
@@ -77,6 +78,6 @@ export function lineInput(view, name, item, typed) {
   const field = input(typed.get(item.id) ?? original, text => {
     const change = changeFor(item, text);
     if (text === original) { typed.delete(item.id); view.undo(name, change); } else { typed.set(item.id, text); view.change(name, change); }
-  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : 'Not set', ariaLabel: item.label || 'Line'});
+  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.notSet'), ariaLabel: item.label || 'Line'});
   return labelled(item.label ? shown(item.label) : '', field, !item.label);
 }

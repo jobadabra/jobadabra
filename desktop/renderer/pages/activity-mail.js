@@ -1,5 +1,6 @@
 // Recent activity: the Gmail check card: its rows, questions, folds and interview panels.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {emailNoun, questionWhy} from '../question-words.js';
 import {el, pill} from '../components.js';
@@ -74,7 +75,7 @@ function mailCardRow({company, role = '', lines = [], tag = null, summary = '', 
   const card = el('li', 'mail-email');
   const head = el('div', 'mail-email-head');
   const words = el('div', 'mail-email-words');
-  words.append(el('h3', '', company || 'Email'));
+  words.append(el('h3', '', company || t('pagesCommon.email')));
   if (role) words.append(el('p', 'mail-email-role', role));
   lines.filter(Boolean).forEach(line => words.append(el('p', 'mail-email-meta', line)));
   head.append(words);
@@ -125,7 +126,7 @@ function emailCard(result, pending, answered, meetingPanel) {
   const {email, outcome, assessment: review, update} = result;
   const asked = email && NEEDS_YOU.has(email.action) ? questionState(email, pending, answered) : null;
   const kind = outcome?.kind || (update && !update.question ? update.summary : '');
-  const tag = asked ? (asked.answered ? pill('Answered', 'good') : pill('Needs your answer', 'warn'))
+  const tag = asked ? (asked.answered ? pill('Answered', 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'))
     : kind ? outcomePill(kind) : meetingPanel ? outcomePill('Interview scheduled')
     : email?.action === 'recorded' ? pill('Updated', 'good') : pill('No change', 'neutral');
   // The engine's sentence, unless the interview panel says the same (its date, event and source).
@@ -169,7 +170,7 @@ function placedCard(result, asked, kind) {
   const note = el('div', 'mail-mapped');
   const line = resolution(asked, result.company || company);
   const why = `The ${interview ? 'invitation' : 'email'} names ${result.company || 'the sender'} but doesn't specify the role.`;
-  note.append(line, fold(`asked:${subjectKey(email.subject)}`, 'Original question', el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
+  note.append(line, fold(`asked:${subjectKey(email.subject)}`, t('pagesCommon.originalQuestion'), el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
   let panel = note;
   if (interview) {
     panel = el('div', 'mail-placed');
@@ -189,7 +190,7 @@ function updateCard(update, pending, answered, meetingPanel) {
     if (state.answered && state.job && open) {   // placed: the card of what it is, for that job, as for an email
       return {card: placedCard({email: {subject: open.subject, sender: '', time: ''}, company: open.company}, state, update.summary), waiting: 0};
     }
-    const card = mailCardRow({company: open?.company || company, role: `${KIND_NOUN[update.summary] || 'Email'} · Role unidentified`, tag: state.answered ? pill('Answered', 'good') : pill('Needs your answer', 'warn'),
+    const card = mailCardRow({company: open?.company || company, role: `${KIND_NOUN[update.summary] || 'Email'} · Role unidentified`, tag: state.answered ? pill('Answered', 'good') : pill(t('pagesCommon.needsAnswer'), 'warn'),
       panel: questionPanel(state, subjectKey(update.job), open?.subject || '', {noun: 'email', company: ''}), details: open?.subject || ''});
     return {card, waiting: state.answered ? 0 : 1};
   }
@@ -245,7 +246,7 @@ function interviewPanel(report) {
   // The call to action: the interview's prep kit, built or opened from here as Focus does (focus.js prepAction).
   const side = el('div', 'mail-meeting-side');
   const prep = prepAction(interview.company) || jobPrep(interview.company, interview.title);
-  const go = el('button', prep?.busy ? 'secondary' : 'primary', prep ? prep.label : 'Prepare the interview');
+  const go = el('button', prep?.busy ? 'secondary' : 'primary', prep ? prep.label : t('pagesCommon.prepareInterview'));
   go.type = 'button';
   wand(go);
   if (prep?.busy) go.prepend(el('span', 'spinner small'));
@@ -297,7 +298,7 @@ function jobPrep(company, title) {
   if (kitBuilding.has(id)) return {label: 'Building…', busy: true, run: () => {}};
   // A ready kit opens where it is: its Notion page, else the job's page here on its Prep tab (never offered as a new build, $0.04).
   if (kitReady.has(id)) return {label: 'Open prep kit', run: event => (found.notion_url ? window.pilot.openNotion(found.notion_url, event?.metaKey) : (openView('jobs'), openJobPanel(found, 'prep')))};
-  return {label: 'Prepare the interview', title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
+  return {label: t('pagesCommon.prepareInterview'), title: ai('{AI:main} builds it from the job, your Profile and your earlier interviews'), run: () => {
     openPrep({page_id: id, company: found.company || found.via, job: found.title, notion_url: found.notion_url, url: found.url, badge: ''});
     kitBuilding.add(id);
     document.dispatchEvent(new Event('focus-rendered'));
@@ -358,7 +359,7 @@ function questionPanel(state, key, subject = '', {noun = 'email', company = ''} 
   }
   // Answered: the same compact resolution row as an email placed on a job, and the question folded under it.
   const note = el('div', 'mail-mapped');
-  note.append(resolution(state, company), fold(`asked:${key}`, 'Original question', el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
+  note.append(resolution(state, company), fold(`asked:${key}`, t('pagesCommon.originalQuestion'), el('p', 'mail-fold-text', `${QUESTION} ${why}`)));
   return note;
 }
 // What your answer did, one line for every answer (owner, 6 Oct 2026): linked to a job, created one, not about a job, or an answer

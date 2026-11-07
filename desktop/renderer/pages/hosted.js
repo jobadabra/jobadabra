@@ -1,5 +1,6 @@
 // Always on "on our servers": the Settings card, its status, and the actions to turn it on, export or delete the held data.
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/unit/main/hosted-search.test.js, test/unit/renderer/hosted-words.test.js.
+import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
 import {shared} from './shared.js';
@@ -50,7 +51,7 @@ export function mountCard() {
     message('hosted-set-message', done.ok ? (done.nothing ? 'Nothing to delete: this Mac never sent anything to our servers.' : 'Deleted ✓ Nothing of yours is on our servers.') : done.error || 'Could not delete it just now. Try again.', done.ok ? 'ok' : 'bad');
     refresh();
   });
-  $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? 'Saved ✓' : done.error || 'Could not save it just now.', done.ok ? 'ok' : 'bad'); });
+  $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? t('pagesCommon.saved') : done.error || 'Could not save it just now.', done.ok ? 'ok' : 'bad'); });
   window.pilot.onHostedArrived(refresh);
   refresh();
 }

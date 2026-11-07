@@ -2,6 +2,7 @@
 // session's steps in plain words, from what the app already knows (the session, the form's report), drawn as Recent activity's step list (.activity-phases:
 // ✓ done, ! needs you, ● now). The terminal (#ss-log) is shown instead only for a Claude conversation with Claude help on (claude-help.js); elsewhere it is
 // one click away ("Technical log", for support). Guard: test/unit/renderer/session-steps.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {isSubmitted} from '../session-state.js';
@@ -19,6 +20,6 @@ export function renderSteps(item) {
   const steps = !(resumeOffered() && (item.kind || 'claude') === 'claude');
   show($('ss-steps-card'), steps);
   if (steps) $('ss-steps').replaceChildren(...sessionSteps(item, reviewStates.get(item.id), {submitted: isSubmitted(item), time: clockTime, clock: secondsTime}).map(step => el('li', step.tone, step.text)));
-  $('ss-steps-log').textContent = logAsked.has(item.id) ? 'Hide technical log' : 'Technical log';
+  $('ss-steps-log').textContent = logAsked.has(item.id) ? t('pagesCommon.hideLog') : t('pagesCommon.technicalLog');
 }
 export function toggleTechnicalLog(item) { if (logAsked.has(item.id)) logAsked.delete(item.id); else logAsked.add(item.id); }

@@ -1,4 +1,5 @@
 // Setup wizard: the first-run steps, sidebar-derived labels and saving each step's answers.
+import {t} from '../../i18n/index.js';
 import {shared} from './shared.js';
 import {refreshCv} from './activity.js';
 import {$, STEPS, message, show} from './core.js';
@@ -23,7 +24,7 @@ function aiStep() {
   const keyTyped = !!$({openai: 'openai-key'}[picked] || 'anthropic-key').value.trim();
   $('ai-save').disabled = !canContinue({picked, hasKey: !!shared.state.secrets.ANTHROPIC_API_KEY, hasOpenAiKey: !!shared.state.secrets.OPENAI_API_KEY,
     keyTyped, status: chooser?.status()});
-  $('ai-save').textContent = picked === 'free' ? 'Use Free AI' : ['api', 'openai'].includes(picked) && keyTyped ? 'Check and save' : 'Continue';
+  $('ai-save').textContent = picked === 'free' ? 'Use Free AI' : ['api', 'openai'].includes(picked) && keyTyped ? 'Check and save' : t('pagesCommon.continue');
 }
 
 // The Free card (lib/ai-free.js): this install's own token, no key or account.
@@ -52,7 +53,7 @@ async function saveOpenAiKey() {
   shared.state.secrets = await window.pilot.saveSecret('OPENAI_API_KEY', key);
   shared.state.settings = await window.pilot.setAiEngine('openai');
   $('openai-key').value = '';
-  message('ai-openai-message', 'Saved ✓', 'ok');
+  message('ai-openai-message', t('pagesCommon.saved'), 'ok');
   goStep('cv');
 }
 
@@ -163,7 +164,7 @@ export async function init() {
     shared.state.secrets = await window.pilot.saveSecret('ANTHROPIC_API_KEY', key);
     shared.state.settings = await window.pilot.setAiEngine('api');
     $('anthropic-key').value = '';
-    message('ai-message', 'Saved ✓', 'ok');
+    message('ai-message', t('pagesCommon.saved'), 'ok');
     goStep('cv');
   });
   $('ai-skip').addEventListener('click', () => goStep('cv'));

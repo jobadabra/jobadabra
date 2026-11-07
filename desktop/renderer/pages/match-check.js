@@ -1,4 +1,5 @@
 // CV match dialog (lib/match-check.js): this job's posting against the CV, on request. Opened from the Jobs ⋯ menu and from the session card.
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {costText, dollars} from '../ai-cost.js';
 import {$, message, runWhen, show} from './core.js';
@@ -18,7 +19,7 @@ function row(label, tone, title, detail) {
 function showResult(data) {
   const result = data?.result;
   show($('match-result'), !!result);
-  $('match-run').textContent = result ? 'Check again' : 'Check the match';
+  $('match-run').textContent = result ? t('pagesCommon.checkAgain') : 'Check the match';
   if (!result) return;
   $('match-grade').textContent = result.grade;
   $('match-grade').className = `cvc-score ${result.grade <= 'A' ? 'good' : result.grade === 'B' ? 'ok' : 'low'}`;

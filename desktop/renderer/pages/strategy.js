@@ -1,4 +1,5 @@
 // Strategy page: the search strategy and its coverage. Entry: loadStrategy and init; the cards are main-goals.js, strategy-targets.js and strategy-suggestions.js, their drafts and one save bar strategy-cards.js, shared state strategy-state.js. Guarded by: advice-events, save-progress, activity-selection-kept, strategy-cards tests.
+import {t} from '../../i18n/index.js';
 import {openInNotion} from './notion-connect.js';
 import {el, openMenu, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -65,7 +66,7 @@ function strategySkeleton() {
   const goals = el('section', 'card main-goals is-loading'), strip = el('div', 'goal-strip main-goal-tiles');
   for (let i = 0; i < 4; i++) strip.append(bone('w-label'), bone('w-name tall'));
   goals.append(el('div', 'card-head'), strip);
-  goals.firstChild.append(Object.assign(el('h3'), {textContent: 'Main goals'}));
+  goals.firstChild.append(Object.assign(el('h3'), {textContent: t('pagesCommon.mainGoals')}));
   $('strategy-main-goals').replaceChildren(goals);
   $('strategy-scores').replaceChildren(...['settings', 'layers', 'pin', 'chart'].map(glyph => {
     const line = el('div', 'score-bar is-loading');

@@ -1,6 +1,7 @@
 // Focus → "Did the interview happen?" (src/focus.py 'happened': its time passed and nothing was recorded).
 // Yes: your notes become a 🎤 Interviews row, the job moves on, and a few lines get Claude's review (on this Mac, or on
 // GitHub when Always on). No: moved to a new date (Next interview) or cancelled (an event; the stage stays).
+import {t} from '../../i18n/index.js';
 import {aiName} from '../ai-name.js';
 import {$, aiReady, message, show} from './core.js';
 import {loadFocus} from './focus.js';
@@ -15,7 +16,7 @@ export function openHappened(item, answer) {
   current = {item, answer};
   const at = item.at ? new Date(item.at) : null;
   $('happened-title').textContent = answer === 'yes' ? 'How did it go?' : "The interview didn't happen";
-  $('happened-context').textContent = `${who(item)} · ${item.job || 'Interview'}${at ? ` · ${at.toLocaleString([], {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}` : ''}`;
+  $('happened-context').textContent = `${who(item)} · ${item.job || t('pagesCommon.interview')}${at ? ` · ${at.toLocaleString([], {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}` : ''}`;
   show($('happened-yes'), answer === 'yes');
   show($('happened-no'), answer !== 'yes');
   $('happened-notes').value = '';
@@ -29,10 +30,10 @@ export function openHappened(item, answer) {
 // A few lines of notes: Claude reviews them like a transcript (the same review as a recording), in the background.
 async function review(pageId, item) {
   if (!aiReady()) {
-    toastMessage('Saved ✓', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get a review of your notes (Interviews → Review).', {card: 'ai'}, 'good');
+    toastMessage(t('pagesCommon.saved'), 'Choose your AI in Settings (Claude Code, Codex or an API key) to get a review of your notes (Interviews → Review).', {card: 'ai'}, 'good');
     return;
   }
-  toastMessage('Saved ✓', `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'}, 'good');
+  toastMessage(t('pagesCommon.saved'), `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'}, 'good');
   const result = await window.pilot.interviews.review(pageId).catch(error => ({ok: false, error: error.message}));
   toastMessage(result.ok ? 'Interview reviewed' : 'Review failed', result.ok ? result.summary : result.error || 'Try again from Interviews.', {view: 'interviews'}, result.ok ? 'good' : 'bad');
   loadFocus();
@@ -58,7 +59,7 @@ async function save() {
   if (!result.ok) { message('happened-message', result.error || `${storeName()} could not save it. Try again.`, 'warn'); return false; }
   $('happened-dialog').close();
   if (kind === 'held' && result.review && result.id) review(result.id, item);
-  else toastMessage('Saved ✓', {held: `${who(item)}: marked as held${result.stage ? `, now ${result.stage}` : ''}.`,
+  else toastMessage(t('pagesCommon.saved'), {held: `${who(item)}: marked as held${result.stage ? `, now ${result.stage}` : ''}.`,
     moved: `${who(item)}: the interview is on the new date.`, cancelled: `${who(item)}: logged as cancelled.`}[kind], {view: 'interviews'}, 'good');
   loadFocus();
   loadJobs();
@@ -72,7 +73,7 @@ export async function dismissInterview({page_id, company, via}, {onConfirmed = (
   if (!confirm(`Dismiss the interview with ${name}?\n\nIt leaves Up next and the calendar and is logged as cancelled in ${storeName()}. The job itself stays as it is.`)) return false;
   onConfirmed();   // the row leaves the list at once; Notion takes seconds
   const result = await window.pilot.interviewHappened(page_id, 'cancelled', {}).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { onFail(); toastMessage('Not saved', result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}, 'bad'); return false; }
+  if (!result.ok) { onFail(); toastMessage(t('pagesCommon.notSaved'), result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}, 'bad'); return false; }
   toastMessage('Dismissed ✓', `${name}: the interview is logged as cancelled.`, {view: 'interviews'}, 'good');
   onDone();
   loadFocus();

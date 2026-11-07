@@ -1,5 +1,6 @@
 // Recent activity: the bar at the bottom of every screen and its panel. This file keeps init() (the start-up wiring) and re-exports the rest of the panel,
 // which lives in activity-*.js (basics, visits, results, render, run-card, mail, cards, panel, few-jobs). Guarded by the tests that read activity-*.js (test/activity-source.js).
+import {t} from '../../i18n/index.js';
 import {toggleOnBar} from '../components.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
@@ -124,7 +125,7 @@ export async function init() {
   $('activity-warnings-more').addEventListener('click', () => {
     const open = $('activity-warnings-list').hidden;
     show($('activity-warnings-list'), open);
-    $('activity-warnings-more').textContent = open ? 'Hide details' : `View ${$('activity-warnings-list').children.length} details`;
+    $('activity-warnings-more').textContent = open ? t('pagesCommon.hideDetails') : `View ${$('activity-warnings-list').children.length} details`;
   });
   $('activity-report').addEventListener('click', () => {
     const run = lastActivity?.runs?.find(each => each.id === detailRunId);

@@ -1,5 +1,6 @@
 // "Have a promo code?" (owner, 25 Oct 2026): a small link on the Free Plan card and the ⌘K entry open one dialog with one field. The site checks the code (lib/plan.js redeem); the app holds no
 // code and compares nothing. Shown only while the site's plan is on and the install is Free. Words: renderer/plan-view.js redeemWords. Guard: test/guards/money/plan-promo.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {redeemWords} from '../plan-view.js';
 
@@ -8,7 +9,7 @@ let dialog = null;
 export function openPromoDialog(onDone = () => {}) {
   if (!dialog) {
     dialog = el('dialog', 'save-dialog panel-dialog', '');
-    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', 'Cancel'), go = el('button', 'primary', 'Redeem');
+    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), go = el('button', 'primary', 'Redeem');
     Object.assign(field, {type: 'text', id: 'promo-code', placeholder: 'Enter your code', autocomplete: 'off', spellcheck: false, maxLength: 64});
     head.append(el('h2', '', 'Redeem a promo code'));
     cancel.type = go.type = 'button';

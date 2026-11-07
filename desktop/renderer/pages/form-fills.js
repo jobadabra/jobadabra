@@ -3,6 +3,7 @@
 // detail in place: the field-by-field table (answer source, result, note, low confidence), Left for you, learnings, step timings or the
 // session's timeline and numbers. Drawn inside the Reports card, so tables are .data-table (no box in a box); shared components only.
 // Logic without a window: renderer/form-fills-view.js. Guarded by test/unit/renderer/form-fills-view.test.js, test/unit/main/form-fills-handlers.test.js.
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {cardHead, el, numberStrip, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -90,7 +91,7 @@ function detailView(run) {
       const note = el('span', 'muted', row.note);
       return tr(el('b', '', row.label), el('span', '', row.required), el('span', '', row.source),
         pill(row.result === 'filled' ? 'Filled' : 'Left', row.result === 'filled' ? 'good' : 'warn'),
-        row.low ? (() => { const cell = el('span', ''); cell.append(pill('Check', 'warn'), ' ', note); return cell; })() : note);
+        row.low ? (() => { const cell = el('span', ''); cell.append(pill(t('pagesCommon.check'), 'warn'), ' ', note); return cell; })() : note);
     }))));
   }
   if (leftForYou(run).length) box.append(section('Left for you', list(leftForYou(run))));
@@ -122,7 +123,7 @@ export async function renderFormFills(container) {
   const answer = await withTimeout(window.pilot.formFills(), READ_TIMEOUT_MS);
   if (host !== container) return;
   if (answer?.error) {
-    const retry = Object.assign(el('button', 'link', 'Retry'), {type: 'button'});
+    const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderFormFills(container));
     host.replaceChildren(el('p', 'message error', `Could not read your form fills from ${storeName()}: ${plainError(answer.error)}`),
       el('p', 'muted small', byStore('Form fills are kept in Notion 🤖 Agent Runs.', 'Form fills are kept by Jobadabra on this Mac.')), retry);

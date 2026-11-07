@@ -1,6 +1,7 @@
 // "Import from LinkedIn" (Settings → Profile → CV, ⌘K, and the setup's CV step as its third way in): the dialog that says what is read, waits for the person's consent on LinkedIn's
 // own page, then shows "What came in" as rows to tick. Data and rules: lib/linkedin-import*.js (IPC linkedinImport*); spec docs/superpowers/specs/2026-11-03-linkedin-profile-import-design.md.
 // Nothing is added until rows are ticked and Add is pressed; a Your details line that differs is unticked. No password or key is ever on this screen. Guard: test/unit/renderer/linkedin-import-page.test.js.
+import {t} from '../../i18n/index.js';
 import {el, liveRows, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {plainError} from '../run-warnings.js';
@@ -27,11 +28,11 @@ function frame() {
   dialog = el('dialog', 'save-dialog panel-dialog cv-dialog');
   dialog.id = 'li-dialog';
   const head = el('div', 'dialog-head');
-  const closeButton = Object.assign(el('button', 'secondary icon-btn'), {type: 'button', title: 'Close', onclick: close});
-  closeButton.setAttribute('aria-label', 'Close');
+  const closeButton = Object.assign(el('button', 'secondary icon-btn'), {type: 'button', title: t('pagesCommon.close'), onclick: close});
+  closeButton.setAttribute('aria-label', t('pagesCommon.close'));
   closeButton.append(icon('close'));
   head.append(el('span', 'dialog-icon', icon('link')), Object.assign(el('div', 'cv-head'), {}), closeButton);
-  head.querySelector('.cv-head').append(Object.assign(el('h2', '', 'Import from LinkedIn'), {id: 'li-title'}), Object.assign(el('p', 'dialog-lead', ''), {id: 'li-lead'}));
+  head.querySelector('.cv-head').append(Object.assign(el('h2', '', t('pagesCommon.importLinkedin')), {id: 'li-title'}), Object.assign(el('p', 'dialog-lead', ''), {id: 'li-lead'}));
   dialog.append(head, Object.assign(el('div', 'li-body'), {}), el('div', 'dialog-foot'));
   dialog.querySelector('.li-body').dataset.liBody = '';
   dialog.querySelector('.dialog-foot').dataset.liFoot = '';
@@ -44,7 +45,7 @@ const setFoot = (...buttons) => footOf().replaceChildren(...buttons);
 // ---------- step 1: what is read ----------
 function intro() {
   const held = view.connected;
-  setHead(held ? 'Update from LinkedIn' : 'Import from LinkedIn', held ? `Connected until ${new Date(view.expiresAt).toLocaleDateString()}. Update reads your profile again, with no new sign-in.`
+  setHead(held ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin'), held ? `Connected until ${new Date(view.expiresAt).toLocaleDateString()}. Update reads your profile again, with no new sign-in.`
     : 'Bring your positions, education, skills and languages from your own LinkedIn profile. You sign in on LinkedIn\'s own page and choose what comes in.');
   const read = el('ul', 'li-list');
   for (const text of ['Positions, education, skills and languages', 'Your name, location, postal code, street and website']) read.append(el('li', '', text));
@@ -52,13 +53,13 @@ function intro() {
   for (const text of ['Messages, connections, posts or anything else on LinkedIn', 'Your password: you type it on LinkedIn, never here']) never.append(el('li', '', text));
   bodyOf().replaceChildren(el('h3', '', 'What is read'), read, el('h3', '', 'What is never read'), never, el('p', 'small muted', EU_NOTE),
     el('p', 'small muted', 'The key LinkedIn gives stays in your Keychain for up to 60 days so Update needs no new sign-in. Disconnect deletes it.'));
-  const actions = [button('Cancel', 'secondary', close), button('Use your LinkedIn data file', 'secondary', async () => {
+  const actions = [button(t('pagesCommon.cancel'), 'secondary', close), button('Use your LinkedIn data file', 'secondary', async () => {
     dialog.close();
     await window.pilot.experienceAddLinkedin?.().catch(() => null);
     onDone();
   })];
   if (held) actions.push(button('Disconnect', 'secondary', async () => { await window.pilot.linkedinImportDisconnect(); view = {connected: false}; onDone(); intro(); }));
-  actions.push(button(held ? 'Update from LinkedIn' : 'Continue on LinkedIn', 'primary', () => run(held)));
+  actions.push(button(held ? t('pagesCommon.updateLinkedin') : 'Continue on LinkedIn', 'primary', () => run(held)));
   setFoot(...actions);
 }
 
@@ -66,7 +67,7 @@ function intro() {
 function working(lines) {
   bodyOf().replaceChildren(el('ul', 'run-card-rows', ''), el('p', 'message', ''));
   bodyOf().firstChild.replaceChildren(...liveRows(lines));
-  setFoot(button('Cancel', 'secondary', close));
+  setFoot(button(t('pagesCommon.cancel'), 'secondary', close));
 }
 const progress = {lines: [], domains: {}};
 let running = false;
@@ -95,7 +96,7 @@ function failed(text, stopped) {
   setHead('Not imported', 'Nothing was added.');
   bodyOf().replaceChildren(el('p', 'message bad', text), el('p', 'small muted', EU_NOTE));
   // After LinkedIn asked us to slow down (rate) or changed its API (version) there is no Try again: asking again at once is a retry of a 429, which we never do.
-  setFoot(...(['rate', 'version'].includes(stopped) ? [button('Close', 'secondary', close)] : [button('Close', 'secondary', close), button('Try again', 'primary', () => run(false))]));
+  setFoot(...(['rate', 'version'].includes(stopped) ? [button(t('pagesCommon.close'), 'secondary', close)] : [button(t('pagesCommon.close'), 'secondary', close), button(t('pagesCommon.tryAgainShort'), 'primary', () => run(false))]));
 }
 
 // ---------- step 3: what came in ----------
@@ -138,10 +139,10 @@ function sheet(answer) {
   if (Object.values(answer.status || {}).includes('pending')) body.append(el('p', 'small muted', 'LinkedIn is still preparing a list. Press Update in a few minutes to bring it in.'));
   if (!body.querySelector('.li-group')) body.append(el('p', 'muted', 'Everything on your LinkedIn profile is already in your CV and Your details.'));
   body.append(el('p', 'message', ''));
-  const add = button('Add', 'primary', apply);
-  const count = () => { const n = body.querySelectorAll('input:checked').length; add.textContent = n ? `Add ${n} selected` : 'Add'; add.disabled = !n; };
+  const add = button(t('pagesCommon.add'), 'primary', apply);
+  const count = () => { const n = body.querySelectorAll('input:checked').length; add.textContent = n ? `Add ${n} selected` : t('pagesCommon.add'); add.disabled = !n; };
   body.addEventListener('change', count); count();
-  setFoot(button('Cancel', 'secondary', close), add);
+  setFoot(button(t('pagesCommon.cancel'), 'secondary', close), add);
 }
 async function apply(event) {
   const ids = [...bodyOf().querySelectorAll('input:checked')].map(box => box.dataset.id);
@@ -152,7 +153,7 @@ async function apply(event) {
   const parts = [answer.positions ? plural(answer.positions, 'position') : '', answer.details ? plural(answer.details, 'detail line') : ''].filter(Boolean);
   if (answer.mainless) return buildMainCv(answer);
   bodyOf().replaceChildren(el('p', '', parts.length ? `Added to your Experience${answer.details ? ' and Your details' : ''}: ${parts.join(', ')}. Tailoring and form filling use it from now on.` : 'Added to your Experience. Tailoring and form filling use it from now on.'));
-  setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); }));
+  setFoot(button(t('pagesCommon.done'), 'primary', () => { dialog.close(); onDone(); }));
 }
 
 /**
@@ -162,7 +163,7 @@ async function apply(event) {
  */
 async function buildMainCv(answer) {
   const details = answer.details ? `${plural(answer.details, 'detail line')} added to Your details. ` : '';
-  const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button('Done', 'primary', () => { dialog.close(); onDone(); })); };
+  const done = (text, className = '') => { bodyOf().replaceChildren(el('p', className, `${details}${text}`)); setFoot(button(t('pagesCommon.done'), 'primary', () => { dialog.close(); onDone(); })); };
   if (!answer.cv?.jobs?.length) return done('No position was ticked, so no CV was made. Start the LinkedIn import again to choose positions.');
   const mine = runId, shown = dialog;
   bodyOf().replaceChildren(el('p', 'muted', 'Making your CV…'));
@@ -196,7 +197,7 @@ export async function refreshButton() {
   const button = $('cv-import-linkedin');
   if (!button) return;
   const state = await window.pilot.linkedinImportState().catch(() => ({connected: false}));
-  button.querySelector('span').textContent = state.connected ? 'Update from LinkedIn' : 'Import from LinkedIn';
+  button.querySelector('span').textContent = state.connected ? t('pagesCommon.updateLinkedin') : t('pagesCommon.importLinkedin');
   button.title = EU_NOTE;
   const way = $('cv-linkedin');   // the setup's CV step keeps its own short label
   if (way) way.title = EU_NOTE;

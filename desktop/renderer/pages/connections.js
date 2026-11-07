@@ -1,4 +1,5 @@
 // Settings → connections: Apply with Claude, how often, Always on (the extension's card: extension-setup.js).
+import {t} from '../../i18n/index.js';
 import {aiFamily} from '../ai-name.js';
 import {alwaysOnNeeds, requirementRows} from '../always-on-needs.js';
 import {notionConnected, openNotionConnect} from './notion-connect.js';
@@ -84,14 +85,14 @@ async function saveSchedule(select) {
   await window.pilot.saveSettings({schedule});
   shared.state = await window.pilot.state();
   const task = select.closest('.task-row')?.querySelector('b')?.textContent || 'Schedule';
-  savedToast('Saved ✓', `${task}: ${select.selectedOptions[0]?.textContent}`);
+  savedToast(t('pagesCommon.saved'), `${task}: ${select.selectedOptions[0]?.textContent}`);
   updateRepo();
 }
 async function saveReminders() {
   await window.pilot.saveSettings({focusReminders: $('set-remind').checked});
   $('focus-remind').checked = $('set-remind').checked;
   shared.state = await window.pilot.state();
-  savedToast('Saved ✓', `Focus reminders ${$('set-remind').checked ? 'on' : 'off'}`);
+  savedToast(t('pagesCommon.saved'), `Focus reminders ${$('set-remind').checked ? 'on' : 'off'}`);
 }
 // The target lives in Notion's ⚙️ Search settings: written only when it really changed (it's a slow round trip).
 async function saveTarget() {
@@ -102,7 +103,7 @@ async function saveTarget() {
   saveState('');
   if (!ok) { input.value = input.dataset.saved || ''; return; }
   input.dataset.saved = input.value;
-  savedToast('Saved ✓', `Daily application target: ${input.value}`);
+  savedToast(t('pagesCommon.saved'), `Daily application target: ${input.value}`);
   updateRepo();
 }
 
@@ -112,7 +113,7 @@ export function showCloud() {
   showRunMode();
   $('cloud-status').textContent = cloud?.repo
     ? osText(`${cloud.repo} · runs the schedule above, even with the Mac off`) : 'Runs your search every day in a private repository of yours, even when this Mac is off. Until then it runs on this Mac while the app is open.';
-  $('cloud-connect').textContent = cloud?.repo ? 'Update' : 'Turn on';
+  $('cloud-connect').textContent = cloud?.repo ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   $('cloud-open').hidden = $('cloud-more').hidden = !cloud?.repo;
   $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut('Turn off Always on', () => $('cloud-off').click())] : []));
   showCloudPill();
@@ -146,7 +147,7 @@ function showCloudNeeds() {
 }
 function showCloudPill() {
   const on = !!shared.state.settings.cloud?.repo;
-  $('cloud-pill').replaceChildren(cloudWaiting && !on ? pill('Setting up', 'info', {dot: true}) : on ? pill('On', 'good', {dot: true}) : pill('Off', 'neutral'));
+  $('cloud-pill').replaceChildren(cloudWaiting && !on ? pill('Setting up', 'info', {dot: true}) : on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
 }
 
 // "Connected to …", or, when the setup found a repository from an earlier setup, which one and since when.
@@ -162,12 +163,12 @@ function showTelegramCloud() {
   show($('tg-cloud'), !!shared.state.settings.cloud?.repo);
   $('tg-cloud-status').textContent = on ? osText(`${on.url.replace('https://', '')} · your bot answers from Cloudflare, even with the Mac off`)
     : 'Your bot answers buttons and commands only while this app is open.';
-  $('tg-cloud-pill').replaceChildren(on ? pill('On', 'good', {dot: true}) : pill('Off', 'neutral'));
+  $('tg-cloud-pill').replaceChildren(on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
   // Off: "Set up" opens the steps and the token field (Turn on sits beside the field). On: Update in the row, Turn off in ⋯.
   show($('tg-cloud-setup'), !on);
   if (on) show($('tg-cloud-form'), false);
   if (on) $('tg-cloud-actions').prepend($('tg-cloud-on')); else $('tg-cloud-form').querySelector('.inline').append($('tg-cloud-on'));
-  $('tg-cloud-on').textContent = on ? 'Update' : 'Turn on';
+  $('tg-cloud-on').textContent = on ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   show($('tg-cloud-more'), !!on);
   $('tg-cloud-more').replaceChildren(...(on ? [wayOut('Turn off Telegram buttons', () => $('tg-cloud-off').click())] : []));
   refreshServices();  // Settings → Connections: the GitHub and Cloudflare cards move between Available and Connected
@@ -181,7 +182,7 @@ export async function showGoogle() {
   const google = await window.pilot.googleStatus().catch(() => ({connected: false}));
   const left = google.connected ? google.scopes?.missing || [] : [];
   googleOnly = left.length === 1 ? left[0] : undefined;
-  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected${google.email ? ` as ${google.email}` : ''}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? 'Sign-in expired: connect again' : 'Not connected';
+  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected${google.email ? ` as ${google.email}` : ''}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? 'Sign-in expired: connect again' : t('pagesCommon.notConnected');
   $('google-status').classList.toggle('on', !!google.connected);
   $('google-connect').textContent = google.connected ? 'Reconnect' : 'Connect Google';
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").
@@ -306,7 +307,7 @@ export async function init() {
       const box = $('cloud-message');
       box.className = 'message';
       const code = Object.assign(document.createElement('b'), {className: 'device-code', textContent: step.code});
-      const copy = Object.assign(document.createElement('button'), {className: 'link', textContent: 'Copy'});
+      const copy = Object.assign(document.createElement('button'), {className: 'link', textContent: t('pagesCommon.copy')});
       copy.addEventListener('click', () => { navigator.clipboard.writeText(step.code); copy.textContent = 'Copied ✓'; });
       box.replaceChildren('In the browser tab that opened, enter this code and approve Jobadabra:', document.createElement('br'),
         code, ' ', copy, document.createElement('br'), Object.assign(document.createElement('span'), {className: 'muted small', textContent: step.url}));

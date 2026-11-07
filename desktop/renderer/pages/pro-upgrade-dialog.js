@@ -1,5 +1,6 @@
 // "Upgrade to Pro" dialog (owner, 25 Oct 2026) for a Pro feature pressed by a free person while paying is off: what Pro gives, "Join the Pro waitlist" and "Have a promo code?"; no price, no buy
 // button. With paying on, openProGate sends the person to Settings → Plan instead. Rule: renderer/pro-gate.js. Guard: test/guards/money/pro-gate.test.js.
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {shared} from './shared.js';
@@ -16,7 +17,7 @@ function build() {
   box.id = 'pro-upgrade-dialog';
   const head = el('div', 'dialog-head'), tile = el('span', 'dialog-icon'), close = el('button', 'ghost icon-btn', '');
   tile.append(icon('sparkle'));
-  close.type = 'button'; close.setAttribute('aria-label', 'Close'); close.append(icon('close'));
+  close.type = 'button'; close.setAttribute('aria-label', t('pagesCommon.close')); close.append(icon('close'));
   close.addEventListener('click', () => box.close());
   head.append(tile, el('h2', '', 'Upgrade to Pro'), close);
   const list = el('ul', 'plan-list', ''), join = el('button', 'primary', 'Join the Pro waitlist'), row = el('div', 'inline', '');

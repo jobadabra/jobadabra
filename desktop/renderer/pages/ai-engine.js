@@ -3,6 +3,7 @@
 // Claude Code or Codex), the CLI's status block with Verify,
 // the in-family plan-limit fallback and the note.
 // The user picks; in the wizard nothing is pre-selected, in Settings the choice is remembered and switching is instant.
+import {t} from '../../i18n/index.js';
 import {refreshClaudeHelp} from '../claude-help.js';
 import {choiceCards, el, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -118,7 +119,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   const statusBlock = cli => {
     const block = el('div', 'engine-status');  // one tinted line: ready, or what is missing, then "Check again"
     const row = el('div', 'engine-status-row');
-    const again = el('button', 'link', busy ? 'Checking…' : 'Check again');
+    const again = el('button', 'link', busy ? t('pagesCommon.checking') : t('pagesCommon.checkAgain'));
     Object.assign(again, {type: 'button', disabled: busy});
     again.addEventListener('click', () => check());
     const lines = el('div', 'engine-status-lines');

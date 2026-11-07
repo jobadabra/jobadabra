@@ -1,6 +1,7 @@
 // Session page, "Form completion" card and "Before you submit" box (knockout questions, which CV goes in).
 // Moved out of session-needs.js, which calls showFormCard from showFormState. Guarded by test/unit/main/form-tab-closed.test.js
 // and test/unit/renderer/need-proposal.test.js (npm test in desktop/).
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {accountCardOf, isSubmitted} from '../session-state.js';
 import {KNOCKOUT} from '../knockout.js';
@@ -71,7 +72,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
         button.textContent = 'Adding…';
         const added = await window.pilot.importJob(String(item.url).split('#')[0]).catch(error => ({ok: false, text: error.message}));
         if (added?.ok) { try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {} }
-        button.textContent = added?.ok ? 'Tailor my CV' : 'Retry';
+        button.textContent = added?.ok ? 'Tailor my CV' : t('pagesCommon.retry');
         button.disabled = false;
         if (added?.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);
         else button.title = added?.text || '';
@@ -79,7 +80,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
       }
       button.textContent = 'Tailoring… (about 1–2 min)';
       const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, [job.url, item.url]);
-      button.textContent = result.ok ? 'Tailored ✓' : 'Retry';
+      button.textContent = result.ok ? 'Tailored ✓' : t('pagesCommon.retry');
       button.disabled = !!result.ok;
       for (const given of [false, true]) for (const failed of [false, true]) cvSeen.delete(`${item.url}:${given}:${failed}`);
       if (result.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);

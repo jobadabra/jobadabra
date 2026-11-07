@@ -3,6 +3,7 @@
 // The engine's refusal reaches here as the one restart line (lib/pipeline-commands.js jobs, renderer/errors.js). One owner of the state: <body data-jobs-outdated>,
 // which style.css turns into "the list is hidden" whoever shows it and in whatever order (Gitar on #3015: a hide call that has to run last is a trap).
 // Guarded by test/unit/renderer/jobs-outdated-card.test.js.
+import {t} from '../../i18n/index.js';
 import {OUTDATED_LINE_FINISH, relaunch} from '../errors.js';
 
 const $ = id => document.getElementById(id);   // not pages/core.js: it reads the app's state at import, and this card must draw when that read failed
@@ -12,7 +13,7 @@ export function showOutdatedJobs(on) {
   const card = $('jobs-outdated');
   if (!card) return;
   if (on) {
-    const button = Object.assign(document.createElement('button'), {className: 'primary', type: 'button', textContent: 'Restart Jobadabra'});
+    const button = Object.assign(document.createElement('button'), {className: 'primary', type: 'button', textContent: t('pagesCommon.restartJobadabra')});
     button.addEventListener('click', () => { button.disabled = true; relaunch(); });
     const words = Object.assign(document.createElement('span'), {textContent: OUTDATED_LINE_FINISH});
     card.replaceChildren(words, ' ', button);
