@@ -1,15 +1,19 @@
 // Pasted keys and tokens: drop what copying adds (spaces, line breaks, invisible characters) and
 // catch look-alike letters from another keyboard layout, which no API key contains.
+import '../i18n/setup-notices.js';
+import {withDisplay} from '../i18n/display-values.js';
+
 const INVISIBLE = /[\s ​-‍⁠﻿]/g;
 
+/** Clean a pasted key without changing validation; bad-character diagnostics disclose only one character and carry private UI metadata. */
 export function cleanSecret(value) {
   const cleaned = String(value ?? '').replace(INVISIBLE, '');
   const bad = [...cleaned].findIndex(char => char < '!' || char > '~');
   if (bad === -1) return {value: cleaned};
   const char = [...cleaned][bad];
   const code = `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
-  return {error: `Character ${bad + 1} ("${char}", ${code}) can't be part of a key: it looks like a letter ` +
-    'from another keyboard layout or text editor. Copy the key again with its copy button and paste it here.'};
+  return withDisplay({error: `Character ${bad + 1} ("${char}", ${code}) can't be part of a key: it looks like a letter ` +
+    'from another keyboard layout or text editor. Copy the key again with its copy button and paste it here.'}, 'setupNotice.badCharacter', {position: bad + 1, char, code});
 }
 
 // The keys the PERSON saved. Free AI keeps its own token (JPF1.…, and the older credit's JP1.…) in the Anthropic key slot (lib/ai-free.js); that is not their key, so Settings must not call it
