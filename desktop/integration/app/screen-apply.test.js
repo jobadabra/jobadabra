@@ -145,7 +145,7 @@ test("a silent Chrome in Background automation: a queued hidden-browser job says
 });
 
 test('Apply on a saved job without a kit prepares first, and when the kit cannot be drafted says Retry apply and opens nothing', live, () => {
-  assert.equal(retry.result.before, 'Apply');
+  assert.equal(retry.result.before, 'Apply in Chrome');
   assert.equal(retry.result.after, 'Retry apply');
   const called = retry.log.filter(line => line.includes('a blocked action was called')).map(line => /"name":"(\w+)"/.exec(line)?.[1]);
   assert.deepEqual(called, ['prepareKit'], 'the press must draft the kit once and open no form (applyOne)');
@@ -155,6 +155,6 @@ test('a scored job without a kit offers Apply and keeps preparation out of its m
   const {rows: shown, kitless, buttons, items} = rows.result;
   assert.equal(shown, 12);
   assert.ok(kitless > 0, 'no kitless job in the list to check');
-  assert.deepEqual(buttons.filter(button => button.label !== 'Apply' || !/state-apply/.test(button.cls) || button.prepare), [], 'a job without a kit does not show a plain Apply button');
+  assert.deepEqual(buttons.filter(button => !/^Apply( in Chrome| in background| automatically)?$/.test(button.label) || !/state-apply/.test(button.cls) || button.prepare), [], 'a job without a kit does not show a plain Apply button (its label names the saved mode)');
   assert.equal(items.some(text => /Prepare only|Redraft kit/.test(text)), false, 'preparation is automatic, not a separate menu action');
 });

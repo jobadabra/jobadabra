@@ -51,6 +51,15 @@ export function applyOf(settings) {
   const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
   return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : ''};
 }
+// Why (7 Nov 2026, owner: "Change the label (Recommended)" for the Apply button on a job, after it began to follow the saved mode): the button says where the application runs.
+// Same three modes, same order as MODES; `tip` is the button's tooltip.
+// Why (#3437): the words are read when called, not at load: this model is loaded without the pages catalog (page-case replays), and the Jobs page that draws the button has loaded it.
+const ROW_APPLY_WORDS = Object.freeze({check: ['applyInChrome', 'extensionHelp'], fill: ['applyInBackground', 'backgroundApplyHelp'], auto: ['applyAutomatically', 'autoApplyHelp']});
+/** The Apply button of one job for the saved mode: {label, tip}. Call after the pages catalog is loaded (pages/jobs-render.js does). */
+export function rowApply(settings) {
+  const [label, tip] = ROW_APPLY_WORDS[applyOf(settings).mode];
+  return {label: t(`pagesJobsHelp.${label}`), tip: t(`pagesJobsHelp.${tip}`)};
+}
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
 /** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;

@@ -27,7 +27,7 @@ globalThis.window.pilot = new Proxy({
 }, {get: (all, key) => all[key] || (async () => null)});
 const {shared} = await import('../../../renderer/pages/shared.js');
 const {jobsState} = await import('../../../renderer/pages/jobs-state.js');
-const {renderJobs} = await import('../../../renderer/pages/jobs-render.js');
+const {renderJobs, applySaved} = await import('../../../renderer/pages/jobs-render.js');
 const $ = id => doc.getElementById(id);
 
 function draw(result) {
@@ -39,7 +39,6 @@ function draw(result) {
   $('toasts').replaceChildren();
   renderJobs();
   const button = $('jobs-body').querySelector('button.row-main');
-  assert.equal(button.textContent, 'Apply');
   return {job, button};
 }
 
@@ -64,9 +63,34 @@ test('a hidden-browser refusal says why without changing the job or relabelling 
   assert.equal(job.stage, 'Kit ready');
   assert.equal(reads, 0);
   assert.equal(shared.openedInChrome.size, 0);
-  assert.equal(button.textContent, 'Apply');
+  assert.equal(button.textContent, 'Apply in Chrome');
   const toast = $('toasts').querySelector('.toast');
   assert.match(toast.textContent, /Apply did not startConfirm Full automation in Settings first\./);
   assert.equal(toast.classList.contains('tone-warn'), true);
   assert.doesNotMatch($('toasts').textContent, /No link|Could not open the job/);
+});
+
+// Owner, 7 Nov 2026 ("Change the label (Recommended)"): the row's Apply button says where the application runs, from the saved mode.
+test('the row\'s Apply button says the saved mode: in Chrome, in background, automatically', () => {
+  const was = shared.state;
+  try {
+    for (const [mode, label] of [['check', 'Apply in Chrome'], ['fill', 'Apply in background'], ['auto', 'Apply automatically']]) {
+      shared.state = {settings: {apply: {mode, chosenAt: '2026-11-07T00:00:00Z', ...(mode === 'auto' ? {autoConfirmedAt: '2026-11-07T00:00:00Z'} : {})}}};
+      assert.equal(draw({ok: true}).button.textContent, label, mode);
+    }
+    shared.state = {settings: {}};
+    assert.equal(draw({ok: true}).button.textContent, 'Apply in Chrome', 'nothing saved reads as Standard automation');
+  } finally { shared.state = was; }
+});
+
+// Gitar review on #3437: saving the mode in Settings → Apply must redraw the rows, not only remember it. Plays the save: the
+// rows are drawn in Standard, Settings saves Background, and the same list now says "Apply in background" without another action.
+test('saving a new Apply mode in Settings redraws the rows with its label', () => {
+  const was = shared.state;
+  try {
+    shared.state = {settings: {apply: {mode: 'check', chosenAt: '2026-11-07T00:00:00Z'}}};
+    assert.equal(draw({ok: true}).button.textContent, 'Apply in Chrome');
+    applySaved({apply: {mode: 'fill', chosenAt: '2026-11-07T00:00:00Z'}});
+    assert.equal($('jobs-body').querySelector('button.row-main').textContent, 'Apply in background');
+  } finally { shared.state = was; }
 });

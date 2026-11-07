@@ -19,13 +19,14 @@ import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
 import {jobsState, MORE, fullKey, startListRead} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
-import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
+import {applySaved, renderJobs, renderStuck, showLoading} from './jobs-render.js';
 import {wireScoreCall} from './jobs-score-call.js';
 import {scoreFirst} from './score-first.js';
 import {noteOutdated} from './rescore-run.js';
 import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
 import {paintJobsSuggestionsFirst} from './focus-suggestions.js';
 export {renderJobs} from './jobs-render.js';
+document.addEventListener('apply-saved', event => applySaved(event.detail));   // Settings → Apply saved a mode: the rows' Apply button names it (apply-settings.js dispatches)
 window.addEventListener('claude-help', () => renderJobs());   // Settings' Claude switch: the job menus follow it (claude-help.js)
 export {pageKey, fullKey} from './jobs-state.js';
 export {openLogFor} from './jobs-lead.js';

@@ -437,7 +437,7 @@ button.with-icon .icon { width: 15px; height: 15px; }
 .density button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .12); }
 
 /* The list: a header row, then one card per job, on one shared grid */
-/* Status is wide enough for its longest pill ("Confirmation received"), Actions for the main button (10em) + the menu.
+/* Status is wide enough for its longest pill ("Confirmation received"), Actions for the main button (12.5em, the narrow-row rule below) + the menu.
    Fit is wide enough for the ring and, beside it, the caret that opens the score's breakdown. */
 /* Jobs while the app is older than its engine (pages/jobs-outdated.js): the Restart card replaces the list, whoever shows it and in whatever order. */
 /* A re-score runs (pages/rescore-run.js, <body data-rescoring>): its own card stands in for the Find jobs card; the old scores stay on the rows, muted (.is-stale). */
@@ -547,7 +547,8 @@ body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, 
 .status-cell { padding-top: 4px; display: grid; justify-items: start; gap: 5px; }
 .row-actions { flex-wrap: nowrap; gap: 6px; padding-top: 2px; justify-content: flex-end; align-items: center; }
 /* Wide enough for the longest label ("Apply with Claude"); every row shares it so the rows line up. */
-.row-actions .row-main { width: 10em; padding: 7px 6px; font-size: var(--fs-sm); border-radius: var(--r-sm); overflow: hidden; text-overflow: ellipsis; }
+/* Why (7 Nov 2026, owner: the Apply button names its mode): 10em clipped "Apply in background" and "Apply automatically" with an ellipsis; the column is 12.5em. */
+.row-actions .row-main { width: 12.5em; padding: 7px 6px; font-size: var(--fs-sm); border-radius: var(--r-sm); overflow: hidden; text-overflow: ellipsis; }
 /* Apply is always the filled orange button; Prepare is a neutral outline, so a ready kit and a missing one read apart. */
 .icon-btn { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; color: var(--ink); border-radius: var(--r-sm); flex: none; }
 .icon-btn:hover { background: var(--bg); }

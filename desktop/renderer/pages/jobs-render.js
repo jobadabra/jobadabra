@@ -19,6 +19,7 @@ import {openSession} from './session-log.js';
 import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
 import {applyDialogOutcome} from '../apply-dialog-model.js';
+import {rowApply} from '../apply-settings-model.js';
 import {jobPlace} from '../targets.js';
 import {openFeedback} from './feedback.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
@@ -58,6 +59,17 @@ document.addEventListener('sessions-loaded', () => renderStuck());
 
 const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
 // clean-code-ok: Why (31 Oct 2026): the 252 complexity is the whole Jobs row draw, unchanged; this PR adds two lines to it (hold and restore the open ⋯ menu); splitting the draw is its own refactor.
+/**
+ * Settings → Apply saved a mode: remember it for the rows and redraw them, so every Apply button names the mode a press will use.
+ * Why (#3437, Gitar review): setting the state alone left the rows on the old label until an unrelated redraw.
+ * @param {object} saved the settings just saved (pages/apply-settings.js dispatches them in the 'apply-saved' event)
+ * @returns {void}
+ */
+export function applySaved(saved) {
+  if (shared.state) shared.state.settings = saved;
+  renderJobs();
+}
+
 export function renderJobs() {
   const restoreMenu = holdMenu(document.querySelector('.view[data-view="jobs"]'), 'url');   // Why (31 Oct 2026, owner): an open ⋯ menu survives the redraw a sessions update causes; only a menu on this page
   const filters = jobsState.filters;
@@ -196,8 +208,8 @@ export function renderJobs() {
       // Apply with Claude (a session that drives Chrome through the employer's site, sign-up and every page) is in the
       // ⋯ menu, for pages the extension can't reach on its own.
       // Filled on the server: the main button opens that filled form (the night's hand-off) to check and submit, not a new fill.
-      const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? t('pagesJobs.reviewSubmit') : opened ? t('pagesJobs.opened') : t('pagesCommon.apply')), {
-        title: job.ready ? t('pagesJobsHelp.serverFilled') : opened ? t('pagesJobsHelp.openedChromeHelp') : t('pagesJobsHelp.extensionHelp')});
+      const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? t('pagesJobs.reviewSubmit') : opened ? t('pagesJobs.opened') : rowApply(shared.state?.settings).label), {
+        title: job.ready ? t('pagesJobsHelp.serverFilled') : opened ? t('pagesJobsHelp.openedChromeHelp') : rowApply(shared.state?.settings).tip});
       fill.addEventListener('click', async () => {
         if (!job.ready) return fillInChrome(fill);
         const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
@@ -224,7 +236,7 @@ export function renderJobs() {
       // the form in Chrome as it does for a job with a kit. "Prepare only" is in the ⋯ menu.
       const state = prepareState(job);
       const busy = state === 'local';
-      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? t('pagesJobs.retryApply') : state ? t('pagesJobs.preparing') : t('pagesCommon.apply')), {
+      const prepare = Object.assign(el('button', busy ? 'row-main state-prepare' : 'row-main state-apply', state === 'failed' ? t('pagesJobs.retryApply') : state ? t('pagesJobs.preparing') : rowApply(shared.state?.settings).label), {
         title: state === 'local' ? t('pagesJobsHelp.preparingHelp')
           : t('pagesJobsHelp.prepareFillHelp')});
       if (busy) { prepare.disabled = true; prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
