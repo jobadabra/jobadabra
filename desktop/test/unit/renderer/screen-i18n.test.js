@@ -67,6 +67,7 @@ test('Windows static copy uses explicit localized PC and credential-storage word
     assert.equal(t('screenWelcome.privacy'), 'Passwords and keys are encrypted in Windows Credential Manager. While Always on is off, your data stays on this PC.');
     setLocale('ru');
     assert.equal(t('screenWelcome.staysMac'), 'Остаётся на этом ПК');
+    assert.equal(t('screenStaticConnections.text542'), 'Показать в проводнике');
     assert.ok(t('screenWelcome.privacy').includes('Диспетчере учётных данных Windows'));
   } finally {
     globalThis.window = oldWindow;
