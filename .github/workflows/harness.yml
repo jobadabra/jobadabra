@@ -31,6 +31,9 @@ on:
       - 'desktop/e2e/fixtures/golden-photographer/truth.json'
       - 'desktop/e2e/fixtures/real-forms/**'
       - 'desktop/e2e/fixtures/visits/**'
+      - 'desktop/e2e/fixtures/agent-judge-set-b1/**'   # Why (7 Nov 2026, pz): test/pool/agent-closed.test.mjs replays batch 1 of the persona lanes from this folder
+      - 'docs/app-expectations'
+      - 'docs/app-expectations/**'   # the same test reads the rules the persona's judge is given (jobs-6, jobs-7, settings-5)
       - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
       - 'extension/**'
       - 'src/**'   # test/pool/quality.test.mjs reads the engine's folder
