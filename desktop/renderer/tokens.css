@@ -109,7 +109,7 @@
   --lit-dots: rgb(var(--shadow-rgb) / .08);
   --lit-glow: rgb(255 178 36 / .24);
   /* Company initials tiles: one hue per company, these lightnesses */
-  --logo-ink-l: 36%; --logo-bg-l: 94%; --logo-line-l: 86%;
+  --logo-ink-l: 28%; --logo-bg-l: 94%; --logo-line-l: 86%;   /* Why (7 Nov 2026, dv): 36% read 3.3:1 on the tile for the worst hues (four of ten failed AA); 28% is at least 5.0:1 for all ten (AA text is 4.5) */
   --lit-line: rgb(var(--signal-rgb) / .32);
 
   /* Motion */
