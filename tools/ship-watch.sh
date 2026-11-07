@@ -25,20 +25,35 @@ echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees 
 trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 # Why (30 Oct 2026, owner: "Sessions are not watching their PR to be ready. Their PRs are broken but they take no action"): the session that shipped the PR is told by this
 #   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
-#   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Outside a cmux session both exit 0 silently and the log stays the channel.
-notify_session() {
+#   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Without an owning session those notifiers exit 0; the log stays the channel.
+# Why (7 Nov 2026, #3421): the independent coordinator notifier can fail even without an owning cmux session; keep its retry/result separate from worker delivery.
+notify_worker() {
   if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
   else python3 "$here/claude-pr-events.py" "$log"; fi
 }
+notify_coordinator() {
+  # Why (7 Nov 2026, owner, #3415): the worker received CONFLICT but stopped with its repair unpushed; the coordinator must hear it independently.
+  python3 "$here/pr-coordinator-events.py" "$log"
+}
+notify_session() {
+  local result=0
+  notify_worker || result=1
+  notify_coordinator || result=1
+  return "$result"
+}
 say() { echo "ship: $*" >> "$log"; notify_session; }
 finish_terminal() {
-  # Why (30 Oct 2026, owner; #2558): retry delivery locally, never keep polling GitHub after the PR merged or closed.
-  local attempt
+  # Why (#2558; #3421, 7 Nov 2026): retry only each failed recipient locally and label its pending delivery accurately; never poll GitHub after merge or close.
+  local attempt worker=1 coordinator=1
   for attempt in 1 2; do
-    notify_session && return 0
+    [ "$worker" = 0 ] || { notify_worker && worker=0; }
+    [ "$coordinator" = 0 ] || { notify_coordinator && coordinator=0; }
+    [ "$worker$coordinator" = 00 ] && return 0
     [ "$attempt" = 2 ] || sleep 1
   done
-  echo "ship: $([ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] && echo CODEX || echo CLAUDE) DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
+  [ "$worker" = 0 ] || echo "ship: $([ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] && echo CODEX || echo CLAUDE) DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
+  [ "$coordinator" = 0 ] || echo "ship: COORDINATOR DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
+  return 1
 }
 
 [ -n "$repo" ] || { say "WATCH ENDED #$n (no GitHub repository)"; exit 0; }
