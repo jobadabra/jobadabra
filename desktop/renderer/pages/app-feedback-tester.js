@@ -3,12 +3,14 @@
 import {$} from './core.js';
 
 const IDS = ['journey', 'expected', 'seen', 'steps'];
+let person = null;   // the dialog's placeholder for a person, before a tester app changes it
 
 /** Shows or hides the tester fields for this opening of the dialog: `tester` is the source word from feedbackPrepare ('persona', 'desktop-tester') or null. */
 export function drawTester(tester) {
   $('app-feedback-tester').hidden = !tester;
   $('app-feedback-person').hidden = !!tester;
-  $('app-feedback-text').placeholder = tester ? 'A short title for the bug' : 'e.g. Setup took 20 minutes; the Notion step was unclear…';
+  person ??= $('app-feedback-text').placeholder;   // the person's own words stay in index.html, read once
+  $('app-feedback-text').placeholder = tester ? 'A short title for the bug' : person;
   for (const id of IDS) $(`app-feedback-tester-${id}`).value = '';   // every open is a new bug (Gitar on #3406): the last one's words never ride on the next bundle
   $('app-feedback-tester-severity').value = 'medium';
 }
