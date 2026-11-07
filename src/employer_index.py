@@ -299,8 +299,10 @@ def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=
     (6 Oct 2026), judged by its jobs in the user's `countries` (default: me's) when the scout counted them there (role_kinds.located); a feed
     with no mix yet is not read (owner, 26 Oct 2026). With `me` (this user's labels), also not a feed that many installs of their family
     read fine and never found a job at (quiet_for, 7 Oct 2026): before QUIET_FROM only named (shadow mode), and never a company in `keep`
-    (where this user already has a scored job). `said`, a list, gets one line per decision for the log: [(company, label, 'out'|'shadow')]."""
-    out = []
+    (where this user already has a scored job). `said`, a list, gets one line per decision for the log: [(company, label, 'out'|'shadow')].
+    The feeds whose places name the user's come first, those with no place information after them (kept, not dropped): the feeds read first are the top of this list (src/first_jobs.py pick).
+    Why (#2920, 7 Nov 2026, p6 Zagreb): 372 of 413 feeds passing the filter had no place information, so the first 15 reads came from employers nobody had seen hiring there (0 of 21 role matches in Zagreb)."""
+    out, unplaced = [], []
     shadow = (today or datetime.now(timezone.utc).date().isoformat()) < QUIET_FROM
     countries = countries if countries is not None else (me or {}).get('countries')
     for f in index:
@@ -313,5 +315,5 @@ def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=
             said.append((f['company'], label, 'shadow' if shadow else 'out'))
         if label and not shadow:
             continue
-        out.append(f)
-    return out
+        (out if f.get('places') else unplaced).append(f)
+    return out + unplaced

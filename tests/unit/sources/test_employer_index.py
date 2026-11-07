@@ -162,8 +162,8 @@ class RelevantTest(unittest.TestCase):
                  {'company': 'Old', 'ats': 'lever', 'slug': 'old', 'places': None},
                  {'company': 'Rem', 'ats': 'lever', 'slug': 'rem', 'places': ['Remote']}]
         where = lambda job: 'zurich' in job['location'].lower() or 'remote' in job['location'].lower()  # noqa: E731
-        self.assertEqual([f['company'] for f in employer_index.relevant(index, where)], ['Zh', 'Old', 'Rem'])
-        self.assertEqual(employer_index.relevant(index, feeds.wanted_location)[1]['company'], 'Old')  # the real matcher
+        self.assertEqual([f['company'] for f in employer_index.relevant(index, where)], ['Zh', 'Rem', 'Old'], 'no place information: kept, after the feeds that name a place (#2920)')
+        self.assertEqual(employer_index.relevant(index, feeds.wanted_location)[-1]['company'], 'Old')  # the real matcher
 
     def test_daily_uses_the_filter_unless_asked_for_everything(self):
         from src import daily, features
