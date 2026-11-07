@@ -129,5 +129,9 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 ### 3. Extension follow-up
 
 - [x] Audit extension UI surfaces and desktop locale transport (proof: desktop/test/unit/extension/extension-locale-transport.test.js @317c3376faf389d6c429ee9aab4a7fdfd22c12bf).
-- [x] Translate extension UI in seven languages and add inherited Language setting in options (proof: extension/locales/ru.js @2171e3c2b08d3593e4745897bd8a81fb1fe39fec).
+- [ ] Translate extension UI in seven languages and add inherited Language setting in options. The inherited setting and initial catalog migration landed at 2171e3c2b08d3593e4745897bd8a81fb1fe39fec; the final audit found remaining authored banner/reason/error paths, so full UI coverage is not complete.
 - [x] Verify inheritance, explicit override, offline fallback and previews; supervise extension PR (proof: desktop/test/unit/extension/extension-i18n.test.js @317c3376faf389d6c429ee9aab4a7fdfd22c12bf).
+
+## Final coverage audit and follow-ups
+
+See [the final coverage record](2026-11-07-localization-final-coverage.md) for the confirmed remaining display paths and ownership. Catalog key parity is not whole-app coverage. The original checklist is 6/10 completed milestones after reopening the extension migration box on new source evidence; this is not a percentage of translated strings or screens. No completed implementation was removed.

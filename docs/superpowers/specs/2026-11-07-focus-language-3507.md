@@ -34,7 +34,7 @@ Keep the existing focused Focus/store/funnel/letter/renderer tests. Add a regres
 - [x] Route authored producer fields through portable copy recipes and all seven catalogs. (proof: desktop/test/unit/renderer/focus-catalogs.test.js)
 - [x] Render real cards in German with no uncataloged authored English; retain control/raw invariants. (proof: desktop/test/unit/renderer/focus-language-contract.test.js)
 - [x] Review before/after previews and complete the required owner UI decision. (proof: none: German light/dark before-after previews opened; owner replied "I approve" on 7 Nov 2026)
-- [ ] Publish one reviewed, green PR and report exact-head READY.
+- [x] Publish one reviewed, green PR and report exact-head READY. (proof: desktop/test/unit/renderer/focus-language-contract.test.js @5247f269967ff407fc22f85bd470e9d6c403cef8)
 
 ### Check evidence
 
