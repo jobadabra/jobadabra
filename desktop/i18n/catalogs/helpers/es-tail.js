@@ -1,5 +1,7 @@
 // Residual helper labels translate around canonical identifiers and original content.
 export const messages = {
+  "foldFilled": "{filled} de {total} completados",
+  "foldOpen": "{open} de {total} abiertos",
   "noneYet": "ninguna aún",
   "noSessions": "Aún no hay sesiones. Cuando solicites un empleo, su formulario aparecerá aquí.",
   "onSite": " en {host}",
@@ -206,5 +208,9 @@ export const messages = {
   "oldScoreCount": {
     "one": "{count} puntuación antigua",
     "other": "{count} puntuaciones antiguas"
+  },
+  "foldItems": {
+    "one": "{count} elemento",
+    "other": "{count} elementos"
   }
 };

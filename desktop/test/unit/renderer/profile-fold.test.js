@@ -54,3 +54,16 @@ test('class: every folded Profile card puts its summary in one column, whatever 
   assert.match(css, /\.panel-top\.has-summary > \.panel-actions \{ grid-column: 3/);
   assert.doesNotMatch(css, /\.panel-summary \{[^}]*margin-left/);
 });
+
+test('fold summaries localize app-owned counts without changing saved values', async () => {
+  await import('../../../i18n/screens-helpers.js');
+  const {setLocale} = await import('../../../i18n/index.js');
+  const {summaryOf} = await import('../../../renderer/profile-fold.js');
+  const panel = {dataset: {}, querySelectorAll: selector => selector.startsWith('input') ? [{type: 'text', value: 'Original answer', closest: () => null}, {type: 'text', value: '', closest: () => null}] : []};
+  try {
+    setLocale('de');
+    assert.equal(summaryOf(panel), '1 von 2 ausgefüllt');
+    setLocale('en');
+    assert.equal(summaryOf(panel), '1 of 2 filled');
+  } finally { setLocale('en'); }
+});
