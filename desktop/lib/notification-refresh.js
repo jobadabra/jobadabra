@@ -1,30 +1,31 @@
 // Refresh derived notification delivery metadata on normal app lifecycle events, without sending messages or editing the display preference.
 import {client, setVariables} from './github.js';
+import {serializeRepoUpdate} from './github-update-queue.js';
 import {refreshLanguage, SLOW_MS} from './notify-channel.js';
 import {notificationLanguage} from './notification-language.js';
 import {log} from './log.js';
 import {refresh as refreshBot} from './telegram-cloud.js';
 import {api as telegramApi} from './telegram.js';
-const scheduledLanguages = new WeakMap(), pending = new WeakMap();
+const pending = new WeakMap();
 
 async function refreshBotLanguage(storage, fetcher = globalThis.fetch) {
-  const signal = AbortSignal.timeout(SLOW_MS);
-  const bounded = (url, init) => fetcher(url, {...init, signal});
+  const bounded = (url, init) => fetcher(url, {...init, signal: AbortSignal.timeout(SLOW_MS)});
   return await refreshBot(storage, {fetcher: bounded, telegram: (token, method, data) => telegramApi(token, method, data, bounded)}) || {ok: false, skipped: true};
 }
 
-/** Update only the known user repo's language variable; no workflow/secret changes, and acknowledgement is private and rebuildable. */
-export async function refreshScheduledLanguage(storage, fetcher = globalThis.fetch) {
+/** Queue a language-only write with full repository updates; resolve the current target when its turn begins. */
+export function refreshScheduledLanguage(storage, fetcher = globalThis.fetch) {
+  return serializeRepoUpdate(storage, () => refreshScheduledCurrent(storage, fetcher));
+}
+
+async function refreshScheduledCurrent(storage, fetcher) {
   const repo = storage.settings().cloud?.repo;
   if (!repo) return {ok: false, skipped: true};
   const token = storage.secret('GITHUB_TOKEN');
   if (!token) return {ok: false, skipped: true};
   const language = notificationLanguage(storage);
-  const target = JSON.stringify([repo, language]);
-  if (scheduledLanguages.get(storage) === target) return {ok: true, language};
   const signal = AbortSignal.timeout(SLOW_MS);
   await setVariables(client(token, (url, init) => fetcher(url, {...init, signal})), repo, {JOBADABRA_NOTIFICATION_LANGUAGE: language});
-  scheduledLanguages.set(storage, target);
   return {ok: true, language};
 }
 

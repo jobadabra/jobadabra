@@ -29,10 +29,10 @@ test('demo skips all transport work; a service failure never prevents the schedu
   assert.deepEqual(calls, ['service', 'scheduled', 'service', 'scheduled']);
 });
 
-test('the initial repository payload and both scheduled workflows carry the same display-language variable', () => {
+test('the initial repository payload and all scheduled workflows carry the same display-language variable', () => {
   const storage = {settings: () => ({displayLanguage: 'it', telemetryId: 'fictional-id'}), secret: () => '', readText: () => '', saveSettings: () => assert.fail('fixture already has its install ID')};
   assert.equal(payload(storage).variables.JOBADABRA_NOTIFICATION_LANGUAGE, 'it');
-  for (const workflow of ['daily', 'mail']) {
+  for (const workflow of ['daily', 'mail', 'scout']) {
     const source = fs.readFileSync(new URL(`../../../../.github/workflows/${workflow}.yml`, import.meta.url), 'utf8');
     assert.ok(source.includes('JOBADABRA_NOTIFICATION_LANGUAGE: ${{ vars.JOBADABRA_NOTIFICATION_LANGUAGE }}'));
   }
@@ -46,4 +46,21 @@ test('an explicit language change refreshes the deployed bot while startup leave
   assert.deepEqual(calls, []);
   await refreshDeliveryLanguage(storage, {service, scheduled, bot, cloud: true});
   assert.deepEqual(calls, ['bot']);
+});
+
+test('each request in a real bot language redeploy gets a fresh timeout through webhook acknowledgement', async () => {
+  const signals = [], settings = {displayLanguage: 'ru', cloud: {repo: 'fictional/always-on'}, telegramChatId: 42, telegramCloud: {deployed: 'old'}};
+  const keys = {TELEGRAM_BOT_TOKEN: 'fake-bot', GITHUB_TOKEN: 'fake-gh', CLOUDFLARE_API_TOKEN: 'fake-cf'};
+  const storage = {settings: () => settings, secret: name => keys[name] || '', setSecret: (name, value) => { keys[name] = value; }, saveSettings: value => Object.assign(settings, value)};
+  const fetcher = async (url, init) => {
+    signals.push(init.signal);
+    if (url.includes('api.telegram.org')) return new Response(JSON.stringify({ok: true, result: true}));
+    const result = url.endsWith('/accounts') ? [{id: 'fictional'}] : url.endsWith('/workers/subdomain') ? {subdomain: 'fictional'} : {};
+    return new Response(JSON.stringify({success: true, result}));
+  };
+  const service = async () => ({ok: true}), scheduled = service;
+  assert.equal((await refreshDeliveryLanguage(storage, {cloud: true, fetcher, service, scheduled})).ok, true);
+  assert.ok(signals.length >= 5, 'exercise Worker upload and Telegram setWebhook');
+  assert.equal(new Set(signals).size, signals.length, 'each request owns its timeout instead of sharing the deployment deadline');
+  assert.notEqual(settings.telegramCloud.deployed, 'old');
 });

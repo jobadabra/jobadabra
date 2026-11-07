@@ -17,6 +17,7 @@ import {MODELS, REPO} from './pipeline.js';
 import {tar} from './tar.js';
 import {channelsOf} from './notify-channel.js';
 import {notificationLanguage} from './notification-language.js';
+import {serializeRepoUpdate} from './github-update-queue.js';
 import {pinned, resolveEngineRepo} from './engine-repo.js';
 import {STARTER_CANDIDATES} from './repos.js';
 export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from './engine-repo.js';
@@ -251,7 +252,11 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
 const REUSED_AFTER = 30 * 60 * 1000;
 
 // Everything in one go; safe to run again (after a key or setting changes).
-export async function connect(storage, token, {fetcher, siteFetcher, onStep = () => {}, repo: chosen = ''} = {}) {
+export function connect(storage, token, options = {}) {
+  return serializeRepoUpdate(storage, () => connectCurrent(storage, token, options));
+}
+
+async function connectCurrent(storage, token, {fetcher, siteFetcher, onStep = () => {}, repo: chosen = ''} = {}) {
   const api = client(token, fetcher);
   await ensureRepoKey(storage, siteFetcher);   // the trial status key for the repo, before it is built (ai-free.js)
   onStep('Finding your private repository…');
@@ -376,7 +381,11 @@ export async function retiredWorkflows(api, repo, files) {
 // app's release), retired ones deleted, and the secrets and variables (models included) sent again whenever they changed.
 // Before 8 Oct 2026 secrets and variables were sent only when Always on was turned on, so a new default model never reached a repo.
 // -> what changed, by name only (never a value).
-export async function updateRepo(storage, {fetcher, siteFetcher} = {}) {
+export function updateRepo(storage, options = {}) {
+  return serializeRepoUpdate(storage, () => updateRepoCurrent(storage, options));
+}
+
+async function updateRepoCurrent(storage, {fetcher, siteFetcher} = {}) {
   const cloud = storage.settings().cloud || {};
   if (!cloud.repo || !storage.secret('GITHUB_TOKEN')) return [];
   await ensureRepoKey(storage, siteFetcher);   // a repo made before 3 Nov 2026 holds the app's AI key as its trial key: this is what replaces it
