@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {observePage} from '../../e2e/lib/explore.mjs';
+import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 
 test('a control in a closed fold is not listed; the fold\'s summary, an open fold\'s control and a loose control are', async () => {
   const browser = await chromium.launch({headless: true});
@@ -20,12 +21,16 @@ test('a control in a closed fold is not listed; the fold\'s summary, an open fol
 });
 
 // Why (7 Nov 2026, pz 3/5): 10 of the 26 goals the persona could not finish were Settings sections (Appearance, Advanced, Data & backup) it could not see: the section list is a <nav>, skipped with the app's menu.
-test('the Settings section buttons are listed; the app menu and its sidebar are not', async () => {
+const TEST_MS = 30000, TEST_CAP = {timeout: TEST_MS + CLOSE_MS + 5000};
+test('the Settings section buttons are listed; the app menu and its sidebar are not', TEST_CAP, clocked(TEST_MS, async () => {
+  at('starting Chromium');
   const browser = await chromium.launch({headless: true});
+  onHang(() => browser.close());
   try {
     const page = await browser.newPage();
+    at('listing the controls of a Settings page');
     await page.setContent(`<nav class="sidebar"><button class="nav" data-view="jobs">Jobs</button></nav><div class="view" data-view="settings"><nav class="settings-nav"><button data-settings-go="appearance">Appearance</button><button data-settings-go="advanced">Advanced</button></nav><button>Save</button></div>`);
     const seen = await page.evaluate(observePage);
     assert.deepEqual(seen.controls.map(control => control.label), ['Appearance', 'Advanced', 'Save']);
   } finally { await browser.close(); }
-});
+}));
