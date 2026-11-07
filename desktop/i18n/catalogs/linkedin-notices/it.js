@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "Non è stato possibile aprire il browser.",
   "missingKey": "LinkedIn non ha inviato la chiave. Riprova.",
   "keySaveFailed": "Il Portachiavi non ha conservato la chiave LinkedIn, quindi non è stato importato nulla.",
+  "keySaveFailedWindows": "Gestione credenziali di Windows non ha conservato la chiave LinkedIn, quindi non è stato importato nulla.",
   "pending": "LinkedIn non ha ancora preparato questi dati.",
   "unauthorized": "LinkedIn non accetta più l’accesso salvato. Importa di nuovo.",
   "rate": "LinkedIn ci ha chiesto di rallentare. Riprova più tardi.",

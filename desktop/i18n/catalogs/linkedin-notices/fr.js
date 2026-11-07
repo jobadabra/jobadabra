@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "Impossible d’ouvrir votre navigateur.",
   "missingKey": "LinkedIn n’a pas envoyé la clé. Réessayez.",
   "keySaveFailed": "Le Trousseau n’a pas pu conserver la clé LinkedIn ; rien n’a donc été importé.",
+  "keySaveFailedWindows": "Le Gestionnaire d’identification Windows n’a pas pu conserver la clé LinkedIn ; rien n’a donc été importé.",
   "pending": "LinkedIn n’a pas encore préparé ces données.",
   "unauthorized": "LinkedIn n’accepte plus la connexion enregistrée. Importez à nouveau.",
   "rate": "LinkedIn nous demande de ralentir. Réessayez plus tard.",

@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "No se pudo abrir tu navegador.",
   "missingKey": "LinkedIn no envió la clave. Inténtalo de nuevo.",
   "keySaveFailed": "El Llavero no pudo guardar la clave de LinkedIn, así que no se importó nada.",
+  "keySaveFailedWindows": "El Administrador de credenciales de Windows no pudo guardar la clave de LinkedIn, así que no se importó nada.",
   "pending": "LinkedIn aún no ha preparado estos datos.",
   "unauthorized": "LinkedIn ya no acepta el inicio de sesión guardado. Vuelve a importar.",
   "rate": "LinkedIn nos ha pedido que reduzcamos el ritmo. Inténtalo más tarde.",

@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "Dein Browser konnte nicht geöffnet werden.",
   "missingKey": "LinkedIn hat den Schlüssel nicht gesendet. Versuche es erneut.",
   "keySaveFailed": "Der Schlüsselbund konnte den LinkedIn-Schlüssel nicht speichern. Deshalb wurde nichts importiert.",
+  "keySaveFailedWindows": "Die Windows-Anmeldeinformationsverwaltung konnte den LinkedIn-Schlüssel nicht speichern. Deshalb wurde nichts importiert.",
   "pending": "LinkedIn hat diese Daten noch nicht vorbereitet.",
   "unauthorized": "LinkedIn akzeptiert die gespeicherte Anmeldung nicht mehr. Importiere erneut.",
   "rate": "LinkedIn hat uns gebeten, langsamer vorzugehen. Versuche es später erneut.",

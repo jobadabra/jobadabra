@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "Browserul nu a putut fi deschis.",
   "missingKey": "LinkedIn nu a trimis cheia. Încearcă din nou.",
   "keySaveFailed": "Portcheiul nu a putut păstra cheia LinkedIn, așa că nu s-a importat nimic.",
+  "keySaveFailedWindows": "Managerul de acreditări Windows nu a putut păstra cheia LinkedIn, așa că nu s-a importat nimic.",
   "pending": "LinkedIn nu a pregătit încă aceste date.",
   "unauthorized": "LinkedIn nu mai acceptă autentificarea salvată. Importă din nou.",
   "rate": "LinkedIn ne-a cerut să încetinim. Încearcă din nou mai târziu.",

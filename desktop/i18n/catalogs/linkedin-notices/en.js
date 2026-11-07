@@ -4,6 +4,7 @@ export default {
   "browserOpenFailed": "Your browser could not be opened.",
   "missingKey": "LinkedIn did not send the key. Try again.",
   "keySaveFailed": "The Keychain would not keep the LinkedIn key, so nothing was imported.",
+  "keySaveFailedWindows": "The Windows Credential Manager would not keep the LinkedIn key, so nothing was imported.",
   "pending": "LinkedIn has not prepared this yet.",
   "unauthorized": "LinkedIn no longer accepts the saved sign-in. Import again.",
   "rate": "LinkedIn asked us to slow down. Try again later.",
