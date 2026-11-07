@@ -1,5 +1,6 @@
 // Your details filled from the CV at setup (lib/details-at-setup.js; owner, 27 Oct 2026: "in the wizard, we should extract the values from CV and put them in
 // 'your details'"): what the CV states plainly is saved for an empty detail; an inferred or unsure value stays a proposal; a detail you have is never replaced; the log names fields only.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {toSave} from '../../../lib/details-at-setup.js';
@@ -30,7 +31,7 @@ test('the save window says what the CV read gave, in counts only', async () => {
   assert.equal(detailsNote({saved: ['phone'], left: []}), '1 filled');
   assert.equal(detailsNote({}), 'nothing more in your CV');
   const fs = await import('node:fs');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), wizard = fs.readFileSync(new URL('../../../renderer/pages/wizard.js', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), wizard = fs.readFileSync(new URL('../../../renderer/pages/wizard.js', import.meta.url), 'utf8');
   assert.match(html, /data-save-step="details">Reading your details from your CV/);
   assert.match(wizard, /details: 10/);
 });
