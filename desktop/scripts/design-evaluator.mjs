@@ -74,7 +74,7 @@ function lowContrast(win, el, style, text) {
 /**
  * Whether text beyond the window's edge is still accounted for, so it is not a lost text: an ancestor's clip box ends before it (a carousel slide, off-screen by design),
  * a scroll region of its own reaches it (a table in its wrapper), or the page's own scroller `main` holds it (that scroller is one "page scrolls sideways" hit in textHits).
- * Why (7 Nov 2026, dv): the check counted every text past the edge, 132 hits at 380 px that were tables in scroll wrappers, tooltip slides and one scrolling `main`.
+ * Why (7 Nov 2026, dv): the check counted every text past the edge, 132 hits at 380 px (a 475 px window, below the app's 640 minimum) that were tables in scroll wrappers, tooltip slides and one scrolling `main`.
  */
 function reached(el, box) {
   for (let node = el.parentElement; node && node !== el.ownerDocument.body; node = node.parentElement) {

@@ -32,8 +32,8 @@ Plan: `docs/superpowers/plans/<topic>.md` (or the spec holding the PR list)
 | ⏳ Left | 12–N: <the next 2-3 names>, … |
 
 **Design system (measured on <sha>)**
-<desktop window changes: from desktop/, `npm run design-check -- --screens <the screens you changed>` on the committed change prints this block (spacing, primary buttons, ghost buttons, cards, clipping, contrast at 380 and 1100 px, light and dark); paste it here. A ❌ is a violation main's render does not have: fix it. A PR that draws nothing says "No visible change: <why>" below and needs none>
-| Rule | <screen> 380 | <screen> 1100 |
+<desktop window changes: from desktop/, `npm run design-check -- --screens <the screens you changed>` on the committed change prints this block (spacing, primary buttons, ghost buttons, cards, clipping, contrast at 640 and 1100 px, light and dark); paste it here. A ❌ is a violation main's render does not have: fix it. A PR that draws nothing says "No visible change: <why>" below and needs none>
+| Rule | <screen> 640 | <screen> 1100 |
 |---|---|---|
 | Spacing scale | ✅ | ✅ |
 | 1 primary / card | ✅ | ✅ |
