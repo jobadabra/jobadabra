@@ -4,7 +4,7 @@ under the fix's name, so a change that undoes one goes red as "L13 · #3089 · j
 - a new fix to the press adds its row here (and its proof test), then `python3 -m tests.unit.press.ledger --write-lock`;
 - changing or removing a row, or the source of one of its proofs, changes ledger.lock.json, and the PR then needs the owner's words:
   a `Ledger-change: L<nn> "<owner's words>"` line in its body (tools/press-ledger-check.py, pr-gate.yml "Fix ledger kept").
-A proof is `<test file>::<test method>`; one under desktop/ is `<node test file>::<text in it>`: its whole test(...) block is locked here and the desktop suite runs it."""
+A proof is `<test file>::<test method>`; one under desktop/ is `<node test file>::<text in it>`: its file minus the other tests' blocks is locked here and the desktop suite runs it."""
 import ast
 import hashlib
 import importlib
@@ -155,8 +155,8 @@ def resolve(proof):
 
 def source(proof):
     """The text a proof stands on, so weakening it changes the lock. Python: its module minus the other tests' bodies (constants, fixtures, helpers,
-    every setUp and base class stay in), plus the source of anything it imports from another test module. Node: the whole test(...) block holding the
-    text (the desktop suite runs it).
+    every setUp and base class stay in), plus the source of anything it imports from another test module. Node: the same, every line outside the other test(...)
+    blocks plus the block holding the text (the desktop suite runs it).
     Why (Gitar on #3561): the method and its setUp alone let `SLACK = 0.6` or a fixture's coordinates change without the owner's yes, and a node proof
     locked only as its own words let its assertion be inverted."""
     path, name = proof.split('::', 1)
@@ -165,9 +165,12 @@ def source(proof):
         at = next((n for n, line in enumerate(lines) if name in line), None)
         if at is None:
             raise LookupError(f'{proof}: no such test or assertion text in {path}')
-        first = next((n for n in range(at, -1, -1) if lines[n].startswith('test(')), 0)
-        last = next((n for n in range(at + 1, len(lines)) if lines[n].startswith('test(')), len(lines))
-        return '\n'.join(lines[first:last])
+        blocks = []   # each top-level test(...) block: from its `test(` line to its closing `});`
+        for start, line in enumerate(lines):
+            if line.startswith('test('):
+                blocks.append((start, next((n for n in range(start, len(lines)) if lines[n].startswith('});')), len(lines) - 1)))
+        other = {n for start, end in blocks if not start <= at <= end for n in range(start, end + 1)}
+        return '\n'.join(line for n, line in enumerate(lines) if n not in other)   # imports, helpers, constants and the proof's own block
     text = (ROOT / path).read_text()
     parts = []
     for node in ast.parse(text).body:

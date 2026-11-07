@@ -9,7 +9,7 @@
  },
  "L03": {
   "gets": "every stage counts from the press, so a press ends in 3 minutes",
-  "hash": "dc048976b9f7cb8b"
+  "hash": "2578df94d06ea142"
  },
  "L04": {
   "gets": "no AI call starts in the last seconds of the press",
@@ -109,7 +109,7 @@
  },
  "L28": {
   "gets": "a press ended by time says Partial, never \"Completed\"",
-  "hash": "a308a35e67ab59f6"
+  "hash": "e78e82670307a275"
  },
  "L29": {
   "gets": "big job boards are read whole and their open jobs stay open",
