@@ -1,5 +1,7 @@
 // Focus → Get started (moved out of pages/focus.js, 9 Oct 2026): the first steps after the setup, and Focus without Notion, which shows only
 // this list (showFocusStarted, opened by nav.js). The steps' states are renderer/onboarding.js. Guards: test/unit/renderer/onboarding.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {focusMode, onboarding} from '../onboarding.js';
@@ -41,7 +43,7 @@ export function renderOnboarding({funnel} = {}) {
   }
   show($('focus-onboarding'), state.show);
   if (!state.show) return false;
-  $('onboarding-count').replaceChildren(pill(`${state.doneCount} of ${state.steps.length}`, 'neutral'));
+  $('onboarding-count').replaceChildren(pill(t('pagesShortJobs.m134', {"doneCount": state.doneCount, "length": state.steps.length}), 'neutral'));
   const nextAt = state.steps.indexOf(state.next) + 1;
   $('onboarding-list').replaceChildren(...state.steps.map((step, i) => {
     const isNext = step === state.next;
@@ -50,12 +52,12 @@ export function renderOnboarding({funnel} = {}) {
     round.append(step.done ? icon('tick') : String(i + 1));
     const body = el('div', 'focus-body');
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', step.label), pill(step.done ? 'Done' : isNext ? 'Next step' : 'To do', step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
+    top.append(el('span', 'focus-headline', step.label), pill(step.done ? t('pagesCommon.done') : isNext ? t('pagesFocusReports.nextStep') : t('pagesFocusReports.todo'), step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
     body.append(top, el('div', 'focus-meta muted small', step.hint));
     const actions = el('div', 'focus-actions');
     // Only the next step can be started: a later one waits for it ("After step 1"), so a search never runs before the employers are found.
     if (isNext) actions.append(focusButton(step.button, 'primary', ONBOARDING_GO[step.key]));
-    else if (!step.done) actions.append(el('span', 'muted small', `After step ${nextAt}`));
+    else if (!step.done) actions.append(el('span', 'muted small', t('pagesDynamicFocusInterviews.m166', {"nextAt": nextAt})));
     li.append(round, body, actions);
     return li;
   }));

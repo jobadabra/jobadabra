@@ -1,6 +1,7 @@
 // The sidebar counter ("Free plan · 12 of 20 applications used"): the plan, the words, the bar (what is used, filling, red for the last 5) and the tone for
 // each situation the allowance can be in.
 import assert from 'node:assert/strict';
+import {readScreenSource} from '../../static-screen-source.js';
 import {test} from 'node:test';
 import {chip} from '../../../renderer/license-chip.js';
 
@@ -33,8 +34,7 @@ test('past the allowance it says so plainly, and a licensed install shows no cou
 });
 
 test('Settings → Plan counts the same thing as the chip: applications used, from the chip', async () => {
-  const {readFile} = await import('node:fs/promises');
-  const page = await readFile(new URL('../../../renderer/pages/license.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/license.js', import.meta.url), 'utf8');
   assert.match(page, /\$\{shown\.used\} of \$\{state\.limit\}/, 'the Settings number is the chip\'s used');
   assert.match(page, /style\.width = `\$\{shown\.percent\}%`/, 'the Settings bar is the chip\'s filling bar');
   assert.doesNotMatch(page, /state\.used \/ state\.limit/, 'no second, filling bar');

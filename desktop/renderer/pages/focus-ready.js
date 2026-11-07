@@ -1,5 +1,7 @@
 // The Ready to send line on Focus (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md), only on the owner's install: "3 forms ready for you to submit" above Up next, with a button to the card on Actions.
 // A strip of its own (focus.js is near its size limit); it reads the same readyState as the card and shows nothing when no form is waiting. Guard: test/unit/ready-fill/ready-site.test.js (waitingOf).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {$} from './core.js';
 import {openView} from './nav.js';
@@ -18,8 +20,8 @@ async function show() {
   if (!anchor) return;
   strip?.remove();
   strip = el('section', 'card ready-focus');
-  const open = el('button', 'secondary', 'Open'); open.addEventListener('click', () => openView('actions'));
-  strip.append(el('b', '', `Ready to send: ${waiting.ready} form${waiting.ready === 1 ? '' : 's'} filled overnight${waiting.left ? `, ${waiting.left} need you` : ''}`), open);
+  const open = el('button', 'secondary', t('pagesCommon.open')); open.addEventListener('click', () => openView('actions'));
+  strip.append(el('b', '', t('pagesDynamicFocusInterviews.m167', {"ready": waiting.ready, "value3": waiting.left ? t('pagesDynamicFocusInterviews.m168', {"left": waiting.left}) : '', count: waiting.ready})), open);
   anchor.before(strip);
 }
 export function initFocusReady() { paint(); window.addEventListener('activity-updated', paint); }

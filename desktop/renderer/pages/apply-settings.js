@@ -2,6 +2,8 @@
 // Confirm bar the first-Apply dialog's "Adjust settings…" opens (pages/apply-choice.js). Each change saves at once into settings.apply
 // (renderer/apply-settings-model.js); the consent and accounts cards moved here keep their own modules (consent-setting.js, assistant-mode.js).
 // Guards: test/unit/renderer/apply-settings.test.js, test/guards/safety/apply-choice-gate.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
 import {ANSWERS_TEXT, MODES, applyOf, modeBuilt, needsBrowser} from '../apply-settings-model.js';
@@ -19,15 +21,15 @@ export const settingsNow = () => current;
  * A mode not built yet is disabled with a "Coming soon" pill in place of its badge; busy: every card off (a save or a start in flight).
  */
 export function modeCards(selected, onPick, {busy = false} = {}) {
-  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : ['Coming soon', 'neutral']}));
-  const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
+  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : [t('pagesExtraCommon.comingSoon'), 'neutral']}));
+  const group = choiceCards(modes, {selected, onPick, label: t('pagesActivityMore.howApplying')});
   group.classList.add('is-single');
   return group;
 }
 
 // The one Full automation setting: the optional wait before a submit (owner, 29 Oct 2026: remove all checks), a number as a short field.
 export const CHECKS = [
-  {key: 'waitMin', before: 'Wait', after: 'minutes before sending, with Stop', min: 0, max: 120},
+  {key: 'waitMin', before: t('pagesExtraCommon.wait'), after: t('pagesAuditFirst.a31'), min: 0, max: 120},
 ];
 const el = (tag, cls = '', text = '') => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text ? {textContent: text} : {});
 
@@ -71,7 +73,7 @@ export async function askFullAutomation() {
   const channel = await prepareChannel();   // no way to be told yet: the same step asks for one (pages/auto-confirm-channel.js)
   const auto = applyOf(current).auto;
   $('auto-confirm-checks').replaceChildren(...[
-    auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)',
+    auto.waitMin ? t('pagesDynamicSetup.m66', {"waitMin": auto.waitMin}) : t('pagesFinalLabels.noWait'),
   ].map(text => Object.assign(document.createElement('li'), {textContent: text})));
   return new Promise(resolve => {
     const finish = yes => { dialog.close(); resolve(yes); };

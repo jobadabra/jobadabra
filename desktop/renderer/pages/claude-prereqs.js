@@ -1,4 +1,6 @@
 // Apply with Claude prerequisites: what only the user can install, shown in Settings when Claude help is available.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {resumeOffered} from '../claude-help.js';
 import {icon} from '../icons.js';
 
@@ -10,14 +12,14 @@ export async function showClaudePrereqs() {
   if (!found) return;
   const link = (href, text) => Object.assign(document.createElement('a'), {href, target: '_blank', textContent: text});
   const items = [
-    [found.claude, 'Claude Code installed', link('https://code.claude.com/docs/en/setup', 'Install Claude Code')],
-    [found.signedIn, 'Signed in to Claude Code with your Claude account', document.createTextNode('Settings → Connections → AI → Claude Code shows the steps')],
-    ...(found.windows ? [[found.git, 'Git for Windows installed (Claude Code needs it)', link('https://git-scm.com/downloads/win', 'Install Git for Windows')]] : []),
-    [found.chrome, found.chrome ? 'Claude in Chrome extension added (sign in to it in Chrome once)' : 'Claude in Chrome extension added and signed in',
-      link('https://chromewebstore.google.com/search/Claude', 'Get it from the Chrome Web Store')],
+    [found.claude, t('pagesFinalLabels.claudeInstalled'), link('https://code.claude.com/docs/en/setup', t('pagesFinalLabels.installClaude'))],
+    [found.signedIn, t('pagesFinalLabels.claudeSigned'), document.createTextNode(t('pagesFinalLabels.claudeSteps'))],
+    ...(found.windows ? [[found.git, t('pagesFinalLabels.gitInstalled'), link('https://git-scm.com/downloads/win', t('pagesFinalLabels.installGit'))]] : []),
+    [found.chrome, found.chrome ? t('pagesFinalLabels.chromeClaudeAdded') : t('pagesFinalLabels.chromeClaudeSigned'),
+      link('https://chromewebstore.google.com/search/Claude', t('pagesFinalLabels.getStore'))],
     // Built into the app (nothing to install): sessions run inside Jobadabra; without it, in Terminal windows.
-    [found.inApp, found.inApp ? 'In-app terminal ready (built in): sessions run inside Jobadabra' : 'In-app terminal unavailable',
-      document.createTextNode('sessions open in Terminal windows instead')],
+    [found.inApp, found.inApp ? t('pagesFinalLabels.terminalReady') : t('pagesFinalLabels.terminalUnavailable'),
+      document.createTextNode(t('pagesFinalLabels.terminalFallback'))],
   ];
   const draw = () => items.map(([done, text, action]) => {
     const li = document.createElement('li');

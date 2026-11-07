@@ -4,6 +4,8 @@
 // Why (2 Nov 2026, owner: "I go to Profile, I don't modify anything and when I want to leave it asks me if I want to save or discard the changes"): only the person's own edit
 // or press makes a draft; opening Profile filled the boxes itself, so leaving asked. Also the nudge after Apply when the details forms usually ask for are missing.
 // Guarded by test/unit/renderer/contact-from-cv.test.js and integration/app/profile-no-draft-on-open.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {message} from './core.js';
 import {contactSavedAs, detailsChanged} from './details-drafts.js';
@@ -25,14 +27,14 @@ function syncBadge() {
   title?.querySelector(`.${BADGE}`)?.remove();
   if (!title || !(left || offer.length)) return;
   if (!left) {
-    const review = Object.assign(el('button', `secondary small ${BADGE}`, `Review ${offer.length} from your CV`), {type: 'button', title: 'See what your CV says for the empty boxes, then choose to fill them. Nothing is saved until you press Save all changes.'});
+    const review = Object.assign(el('button', `secondary small ${BADGE}`, t('pagesDynamicCvData.m99', {"length": offer.length})), {type: 'button', title: t('pagesLettersData.cvEmptyGuidance')});
     review.addEventListener('click', () => askToFill(waiting.filter(each => emptyBox(each.field))));
     title.append(review);
     return;
   }
-  const badge = pill(`${left} from CV · check`, 'warn');
+  const badge = pill(t('pagesDynamicCvData.m100', {"left": left}), 'warn');
   badge.classList.add(BADGE);
-  badge.title = 'Filled in from your CV: check them, then Save all changes.';
+  badge.title = t('pagesLettersData.filledReviewSave');
   title.append(badge);
 }
 
@@ -48,12 +50,12 @@ function askToFill(list) {
     return node;
   })();
   const rows = el('ul', 'tune-list');
-  for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : ' (check it)'}`));
+  for (const {field, value, sure} of list) rows.append(el('li', '', `${nameOf(field)}: ${value}${sure ? '' : t('pagesAuditFirst.a48')}`));
   const foot = el('div', 'dialog-foot');
-  for (const [cls, value, label] of [['secondary', 'no', 'Not now'], ['primary', 'fill', 'Fill them in']]) foot.append(Object.assign(el('button', cls, label), {value}));
+  for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', t('pagesFieldsStatus.fillThem')]]) foot.append(Object.assign(el('button', cls, label), {value}));
   const form = el('form');
   form.method = 'dialog';
-  form.append(el('h2', '', 'Fill these from your CV?'), el('p', 'dialog-lead', 'Your CV only hints at these, so nothing is filled yet. They fill in now, marked "From your CV", and nothing is saved until you press Save all changes.'), rows, foot);
+  form.append(el('h2', '', t('pagesProfile.fillThese')), el('p', 'dialog-lead', t('pagesLettersData.cvHintsOnly')), rows, foot);
   dialog.replaceChildren(form);
   dialog.returnValue = '';
   dialog.onclose = () => { if (dialog.returnValue === 'fill') showProposals(list); };
@@ -85,7 +87,7 @@ export function showProposals(proposals = []) {
     if (!input || input.value.trim() || hiddenByForm(input)) continue;
     input.value = value;
     input.dataset.proposed = 'cv';
-    const mark = pill(sure ? 'From your CV' : 'From your CV · check it', sure ? 'info' : 'warn');
+    const mark = pill(sure ? t('pagesProfile.fromCv') : t('pagesProfile.fromCvCheck'), sure ? 'info' : 'warn');
     mark.classList.add(MARK);
     (input.nextElementSibling?.dataset?.contactControl ? input.nextElementSibling : input).after(mark);   // under the typed control when there is one
     input.addEventListener('input', () => { delete input.dataset.proposed; mark.remove(); syncBadge(); }, {once: true});
@@ -109,7 +111,7 @@ function sayApplied(applied = []) {
     contactSavedAs(field, value);
     done.push(`${nameOf(field)}: ${value}`);
   }
-  if (done.length) toastMessage({title: 'Filled in from your CV', body: `${done.join(' · ')}. Check them in Your details.`, target: {view: 'settings', section: 'profile'}, tone: 'good'});
+  if (done.length) toastMessage({title: t('pagesProfile.filledCv'), body: t('pagesDynamicCvData.m101', {"value1": done.join(' · ')}), target: {view: 'settings', section: 'profile'}, tone: 'good'});
 }
 // On opening Profile: what the CV states plainly is saved and said; the rest is only offered, never put in the boxes (no draft without the person's own yes).
 function offerProposals(proposals = [], applied = []) {
@@ -123,18 +125,18 @@ function offerProposals(proposals = [], applied = []) {
 // again: "Fill from my CV" (the Profile page's ⋯ menu), which reads the CV anew and says what it found in the Contact card's own line, also when it
 // found nothing or failed (#409: a press that said nothing at all).
 export async function loadProposals({again = false} = {}) {
-  if (again) message('contact-panel-message', 'Reading your CV for missing details… (about 15 s)');
+  if (again) message('contact-panel-message', t('pagesProfile.readingMissing'));
   const result = await window.pilot.contactProposals({again, settle: !again}).catch(error => ({proposals: [], error: error.message}));
   const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {
-    message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === 'no AI' ? 'choose your AI in Settings → Connections first' : result.error}.`
-      : 'Your CV has nothing for the empty boxes: type them once here.', result?.error ? 'error' : '');
+    message('contact-panel-message', result?.error && result.error !== 'notion' ? t('pagesDynamicCvData.m102', {"value1": result.error === 'no AI' ? t('pagesMisc.chooseAiFirst') : result.error})
+      : t('pagesLettersData.cvNoDetails'), result?.error ? 'error' : '');
   }
   return shown;
 }
 
 // After Apply: forms usually ask for these; when some are empty, say so once per app run, with what the CV can fill.
-const USUAL = {phone: 'phone', street: 'street', postal_code: 'postal code', location: 'town'};
+const USUAL = {phone: 'phone', street: 'street', postal_code: t('pagesFieldsStatus.postalCode'), location: 'town'};
 let nudged = false;
 export async function nudgeMissingDetails() {
   if (nudged) return;
@@ -144,7 +146,7 @@ export async function nudgeMissingDetails() {
   if (!missing.length) return;
   nudged = true;
   const fromCv = (result?.proposals || []).filter(item => missing.includes(item.field)).length;
-  toastMessage({title: 'Forms will ask for details you haven\'t given',
-    body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? ` ${fromCv} found in your CV: open your Profile, review them, fill them in and save.` : ' Add them once in your Profile.'}`,
+  toastMessage({title: t('pagesLettersData.formsAskDetails'),
+    body: t('pagesShortActivity.m97', {"value1": missing.map(key => USUAL[key]).join(', '), "value2": fromCv ? t('pagesDynamicCvData.m103', {"fromCv": fromCv}) : t('pagesAuditFirst.a49')}),
     target: {view: 'settings', section: 'profile'}, tone: 'warn'});
 }

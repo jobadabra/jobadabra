@@ -1,4 +1,7 @@
 // Session page: what Claude needs from you, and the form page in step.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
+import {outcomeLabel} from './session-outcomes.js';
 import {el, pill} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {renderSteps} from './session-steps.js';
@@ -30,7 +33,8 @@ const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };
 const handled = remembered(new Map(), keptRows.handled);  // `${session}|${text}` → what was done
 const KEEP = /^(?:keep|leave|ok|fine|no change|looks right|as is|nothing)/i;
-export const offline = item => (item.live === false ? 'The session has ended: resume it to send this' : '');
+/** Explain when a session must resume before sending; live sessions need no warning. */
+export const offline = item => (item.live === false ? t('pagesFinalLabels.resumeToSend') : '');
 // The answers you already saved (Notion → Application Answers, the same page the Profile shows), for the rows that
 // offer a choice: read once, on the side, the first time a row wants them. Offline or without Notion the row still
 // offers Claude's own answer and "Change with Claude…".
@@ -76,7 +80,7 @@ function doneRow(li, key, outcome) {
   li.classList.add('is-done');
   const number = li.querySelector('.ss-need-num');
   if (number) number.textContent = '✓';
-  li.querySelector('.ss-need-actions')?.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${outcome}`));
+  li.querySelector('.ss-need-actions')?.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${outcomeLabel(outcome)}`));
   updateNeedsCount();
 }
 // The form page says every required field is filled (the extension's ring is green).
@@ -96,11 +100,11 @@ export const redirecting = item => stepShown(item, reviewStates.get(item?.id)) &
 export const formGone = item => tabClosed(item, shared.formsOpen, !!reviewStates.get(item.id)?.total);
 /** -> [text, tone] for the tab part of a session's status pill (checking, waiting, redirecting, unseen, lost); null when the tab says nothing and the caller goes on to the session's own state. One ladder for the Sessions list and the log header. */
 export function tabStatus(item) {
-  if (checkingTab(item)) return ['Checking…', 'neutral'];
+  if (checkingTab(item)) return [t('pagesCommon.checking'), 'neutral'];
   if (redirecting(item)) return [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'];
-  if (waitingChrome(item)) return ['Waiting for Chrome…', 'neutral'];
+  if (waitingChrome(item)) return [t('pagesSession.waitingChrome'), 'neutral'];
   if (silentChrome(item)) return [silentPill(shared.formsOpen), 'warn'];
-  if (tabLost(item)) return ['Tab not found', 'warn'];
+  if (tabLost(item)) return [t('pagesSession.tabMissing'), 'warn'];
   return null;
 }
 // What's left, said the way you act on it: "2 actions remaining". The split it counts (in the form, to check) is the
@@ -108,10 +112,10 @@ export function tabStatus(item) {
 export function updateNeedsCount() {
   const open = [...document.querySelectorAll('#ss-needs .ss-need:not(.is-done)')];
   const check = open.filter(li => li.classList.contains('is-confirm')).length, form = open.length - check;
-  const detail = [form && `${form} in the form`, check && `${check} to check`].filter(Boolean).join(' · ');
+  const detail = [form && t('pagesDynamicSessionReports.m347', {"form": form}), check && t('pagesDynamicSessionReports.m348', {"check": check})].filter(Boolean).join(' · ');
   $('ss-needs-count').replaceChildren(open.length
-    ? pill(`${open.length} action${open.length === 1 ? '' : 's'} remaining`, 'neutral', {title: detail})
-    : pill('All handled', 'good', {dot: true}));
+    ? pill(t('pagesShortSettings.m312', {"length": open.length, count: open.length}), 'neutral', {title: detail})
+    : pill(t('pagesSession.allHandled'), 'good', {dot: true}));
   // The open rows are the numbered list you work through, in order.
   open.forEach((li, i) => { const number = li.querySelector('.ss-need-num'); if (number) number.textContent = String(i + 1); });
   // Now: only what's still open. What was handled (by you or in the form) is the history, one click away.
@@ -122,8 +126,8 @@ export function updateNeedsCount() {
   $('ss-needs-card').classList.toggle('is-all-done', !open.length);
   const history = $('ss-needs-history');
   history.hidden = !done;
-  history.replaceChildren(icon('check'), el('span', '', `${done} completed action${done === 1 ? '' : 's'}`));
-  history.title = $('ss-needs-card').classList.contains('show-history') ? 'Hide what you handled' : 'Show what you handled';
+  history.replaceChildren(icon('check'), el('span', '', t('pagesDynamicSessionReports.m349', {"done": done, count: done})));
+  history.title = $('ss-needs-card').classList.contains('show-history') ? t('pagesSession.hideHandled') : t('pagesSession.showHandled');
   const head = $('ss-needs-card').querySelector('.ss-fact-head .icon');
   if (head && head.dataset.state !== String(!open.length)) { const glyph = icon(open.length ? 'alert' : 'check'); glyph.dataset.state = String(!open.length); head.replaceWith(glyph); }
 }
@@ -135,7 +139,7 @@ export function smallButton(text, kind, run, title = '') {
 }
 // Enter in a row's answer box presses its button (Use, Fill it in, Send), unless the button is off or an IME is composing.
 // Review in form: always the row's last button, a quiet one (owner, 27 Oct 2026: same-size buttons in one column).
-export const reviewButton = (item, label) => smallButton('Review in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget));
+export const reviewButton = (item, label) => smallButton(t('pagesSession.reviewForm'), 'secondary is-review', event => showInForm(item, label, event.currentTarget));
 export function submitOnEnter(input, button) {
   input.addEventListener('keydown', event => {
     if (event.key !== 'Enter' || event.isComposing || button.disabled || !button.isConnected) return;
@@ -193,21 +197,22 @@ export function emptyFields(item, needs) {
   const listed = needs.flatMap(need => [agreeLabel(need), need.question, need.text]).filter(Boolean);
   const left = (state?.pending || state?.missing || []).filter(label => label && !listed.some(text => sameQuestion(text, label)));
   const unnamed = (state?.left || 0) - (state?.pending || state?.missing || []).length;
+  // This synthetic label is an internal marker recognized by proposal-pick; translate only its visible title.
   if (unnamed > 0) left.push(`${unnamed} more field${unnamed === 1 ? '' : 's'}`);
   return left;
 }
 // Text we drafted from the person's facts and they have not read yet: its own words, in place of a reason it was left (extension/panel-written.js).
-const draftNote = (state, label) => { const draft = (state?.drafts || []).find(one => sameQuestion(one.label, label)); return draft ? (draft.outline ? 'Outline for you: add your own details in the form (the lines starting with • Add:).' : 'Drafted for you: read it in the form, edit it or keep it. Review my answer is beside the box.') : ''; };
+const draftNote = (state, label) => { const draft = (state?.drafts || []).find(one => sameQuestion(one.label, label)); return draft ? (draft.outline ? t('pagesAuditThird.a184') : t('pagesAuditThird.a185')) : ''; };
 export function emptyRow(label, item) {
   const proposal = proposalFor(item, label); if (proposal) return markKnockout(proposedRow(item, label, proposal), item, label);   // its answer, back (need-proposal.js)
   const li = el('li', 'ss-need is-empty'), body = el('div', 'ss-need-body'), actions = el('div', 'ss-need-actions');
   li.dataset.empty = label;
   const more = /^\d+ more fields?$/.test(label), name = label.replace(/^\s*\*\s*|\s*\*\s*$/g, '');
-  body.append(titleLine(name), el('span', 'ss-need-desc small', more
-    ? `Still empty in the form (the ring on the form lists ${label.startsWith('1 ') ? 'it' : 'them'}).`
-    : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || 'This section is still empty in the form.'));   // why the fill left it (reason-words.js)
-  actions.append(more ? smallButton('Open the form', 'secondary is-review', event => openForm(item, event.currentTarget))
-    : smallButton('Open in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
+  body.append(titleLine(more ? t('pagesDynamicSessionReports.m350', {unnamed: Number.parseInt(label, 10), count: Number.parseInt(label, 10)}) : name), el('span', 'ss-need-desc small', more
+    ? t('pagesDynamicSessionReports.stillEmpty')
+    : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || t('pagesSession.sectionEmpty')));   // why the fill left it (reason-words.js)
+  actions.append(more ? smallButton(t('pagesSession.openForm'), 'secondary is-review', event => openForm(item, event.currentTarget))
+    : smallButton(t('pagesSession.openInForm'), 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
   li.append(badge(), body, actions);
   return markKnockout(li, item, label);
 }
@@ -216,15 +221,15 @@ export function emptyRow(label, item) {
 export async function explainExtension(row) {
   const seen = await window.pilot.extensionSeen().catch(() => null);
   if (!seen?.note) return;
-  row.append(el('div', 'small ss-check-more', `Likely cause: ${seen.note}`));
+  row.append(el('div', 'small ss-check-more', t('pagesDynamicSessionReports.m352', {"note": seen.note})));
 }
 // While Chrome is being brought to the form: the button says so at once, then what's taking time.
 export async function opening(button, work) {
   const words = button?.querySelector('span') || button;
   const before = words?.textContent;
   if (button) button.disabled = true;
-  if (words) words.textContent = 'Opening…';
-  const slow = setTimeout(() => { if (words) words.textContent = 'Looking for the form tab in Chrome…'; }, 2000);
+  if (words) words.textContent = t('pagesSession.opening');
+  const slow = setTimeout(() => { if (words) words.textContent = t('pagesSession.lookingTab'); }, 2000);
   try { return await work(); } finally {
     clearTimeout(slow);
     if (words) words.textContent = before;
@@ -245,15 +250,15 @@ export const staleState = item => !!(rowsOf(item.id).length || reviewStates.get(
 export async function reopenClosedTab(item, button) {
   const result = await window.pilot.sessionReopen(item.id, staleState(item));   // not 'Looking for the form tab…' under the question
   if (result?.cancelled) return result;   // Not now in the first-Apply dialog
-  if (result?.ok === false) { toastMessage('Could not open the form', result.error || 'Try again.', sessionPlace(item), 'bad'); return result; }
+  if (result?.ok === false) { toastMessage(t('pagesSession.openFormFailed'), result.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); return result; }
   if (result?.reset) {
     for (const key of rowsOf(item.id)) { handled.delete(key); syncedDone.delete(key); }
     keep();
     reviewStates.delete(item.id);
     clearAnswers(item.id);
   }
-  if (result?.focused) toastMessage('Form tab found', 'The form is still open in Chrome (its address changed): showing it.', NO_PLACE.outside, 'info');
-  else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it for you.', NO_PLACE.outside, 'info');
+  if (result?.focused) toastMessage(t('pagesSession.tabFound'), t('pagesSessionHelp.formStillOpen'), NO_PLACE.outside, 'info');
+  else toastMessage(t('pagesSession.formReopened'), t('pagesSessionHelp.formOpenedNew'), NO_PLACE.outside, 'info');
   await refreshSessions();
   renderSessionPage();
   return result;
@@ -262,14 +267,14 @@ export async function reopenClosedTab(item, button) {
 export async function showInForm(item, label, button) {
   const result = await opening(button, () => window.pilot.reviewFocus(item.id, label, item.url, sessionCompany(item)));
   if (result?.taken) {
-    if (result.found === false) toastMessage('Not a field on this form', `"${label}" is not a label on the open form.`, sessionPlace(item), 'warn');
+    if (result.found === false) toastMessage(t('pagesSession.notField'), t('pagesDynamicSessionReports.m353', {"label": label}), sessionPlace(item), 'warn');
     return;
   }
-  if (result?.outdated) toastMessage('Reload the Chrome extension once', `Chrome still runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
-    'In Chrome open chrome://extensions and click ↻ on Jobadabra. Your open forms keep their answers; later updates load by themselves.', {card: 'extension'}, 'warn');
+  if (result?.outdated) toastMessage(t('pagesSession.reloadExtension'), t('pagesDynamicSessionReports.m354', {"extension": result.extension, "latest": result.latest}) +
+    t('pagesSessionHelp.reloadKeepAnswers'), {card: 'extension'}, 'warn');
   else if (result?.went === 'none') await reopenClosedTab(item, button);
-  else if (result?.went !== 'tab') toastMessage('Opened the job in Chrome', `Find "${label}" in its form.`, NO_PLACE.outside, 'info');
-  else toastMessage('Scroll to it yourself this time', `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`, NO_PLACE.outside, 'warn');
+  else if (result?.went !== 'tab') toastMessage(t('pagesSession.openedJob'), t('pagesDynamicSessionReports.m355', {"label": label}), NO_PLACE.outside, 'info');
+  else toastMessage(t('pagesSession.scrollYourself'), t('pagesDynamicSessionReports.m356', {"label": label}), NO_PLACE.outside, 'warn');
 }
 export function needRow(need, item) {
   const key = `${item.id}|${need.text}`, li = el('li', `ss-need is-${need.kind}`);
@@ -283,14 +288,14 @@ export function needRow(need, item) {
   const name = need.label ? unbold(need.label) : `"${title}"`;
   const reply = need.kind !== 'agree' && replyOf(title);
   if (reply && resumeOffered()) {   // "Reply ok, and I'll click Create an account" (a reply to Claude: only with Claude help on, claude-help.js): one button that sends it, not a field to review
-    actions.append(smallButton(`Reply "${reply}"`, 'secondary is-answer', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
+    actions.append(smallButton(t('pagesShortSettings.m315', {"reply": reply}), 'secondary is-answer', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
     li.append(badge(), body, actions);
     if (handled.has(key)) doneRow(li, key, handled.get(key));
     return li;
   }
   if (need.kind === 'agree') {
     // Chrome comes forward on the form and the page scrolls to this field (extension/review.js picks it up).
-    actions.append(smallButton('Done', 'secondary is-answer', () => doneRow(li, key, 'Ticked in the form')), reviewButton(item, agreeLabel(need)));
+    actions.append(smallButton(t('pagesCommon.done'), 'secondary is-answer', () => doneRow(li, key, 'Ticked in the form')), reviewButton(item, agreeLabel(need)));
     li.dataset.watch = watchId(need.text);
   } else {
     // A judgement call: the proposal agrees in one click, Change… picks a saved answer or (Claude help on) takes your words (need-choice.js).
@@ -299,7 +304,7 @@ export function needRow(need, item) {
     const field = need.label ? unbold(need.label) : agreeLabel(need);
     const answer = async value => {   // your own answer (a saved one, or typed): into the form's field
       const sent = await sendAnswer(item, key, field, value, `${name}: ${value}`);
-      if (sent.ok) doneRow(li, key, sent.outcome); else toastMessage('Could not fill it in', sent.error, sessionPlace(item), 'bad');
+      if (sent.ok) doneRow(li, key, sent.outcome); else toastMessage(t('pagesSession.fillFailed'), sent.error, sessionPlace(item), 'bad');
     };
     const pick = chosen => {
       if (chosen.kind === 'saved') { answer(chosen.value); return; }
@@ -315,15 +320,15 @@ export function needRow(need, item) {
       let input = null;
       {   // say what it should be instead, in your own words
         input = el('input', 'ss-ask-input');
-        input.placeholder = `Something else for ${name}…`;
+        input.placeholder = t('pagesDynamicSessionReports.m360', {"name": name});
         const send = () => { if (input.value.trim()) answer(input.value.trim()); };
-        const sendButton = smallButton('Send', 'secondary is-answer', send, offline(item));
+        const sendButton = smallButton(t('pagesSession.send'), 'secondary is-answer', send, offline(item));
         submitOnEnter(input, sendButton);
         input.addEventListener('keydown', event => { if (event.key === 'Escape') back(); });
         parts.push(input, sendButton);
       }
       li.classList.add('is-asking');   // the picker takes its own line under the text, not a corner of the row
-      actions.replaceChildren(...parts, smallButton('Cancel', 'secondary', back));
+      actions.replaceChildren(...parts, smallButton(t('pagesCommon.cancel'), 'secondary', back));
       (input || parts[0])?.focus();
     };
     const button = (text, run, role) => smallButton(text, `secondary is-${role}`, run, offline(item));   // is-answer / is-change: each role its own border
@@ -342,17 +347,17 @@ const savedAnswers = remembered(new Map(), keptRows.saved);  // question → the
 const forgotten = new Set(keptRows.forgot || []);           // questions you chose to keep for this application only
 function savedLine(question) {
   const line = el('div', 'small ss-saved');
-  if (forgotten.has(question)) { line.textContent = 'Only for this application'; return line; }
+  if (forgotten.has(question)) { line.textContent = t('pagesSession.onlyApplication'); return line; }
   if (!savedAnswers.has(question)) return null;
-  const forget = smallButton('Forget', 'secondary', async () => {
+  const forget = smallButton(t('pagesSession.forget'), 'secondary', async () => {
     forget.disabled = true;
     const result = await window.pilot.jobQuestionOnly(question);
-    if (!result?.ok) { forget.disabled = false; forget.title = result?.error || 'Couldn\'t forget it'; return; }
+    if (!result?.ok) { forget.disabled = false; forget.title = result?.error || t('pagesSession.forgetFailed'); return; }
     savedAnswers.delete(question); forgotten.add(question); keep();
     line.replaceWith(savedLine(question));
   });
-  forget.title = 'Keep this answer for this application only: later forms will ask again';
-  line.append('Saved for future forms ', forget);
+  forget.title = t('pagesSession.onlyAnswer');
+  line.append(t('pagesAuditThird.a186'), forget);
   return line;
 }
 export function askRow(need, item) {
@@ -362,7 +367,7 @@ export function askRow(need, item) {
   if (need.why) body.append(el('span', 'ss-need-desc small', need.why));
   const input = el('input', 'ss-ask-input');
   input.type = 'text';
-  input.placeholder = 'Your answer';
+  input.placeholder = t('pagesCommon.yourAnswer');
   loadAnswers();
   const saved = savedAnswers.get(need.question) ?? savedFor(need.question);
   input.value = saved || need.suggested;
@@ -377,19 +382,19 @@ export function askRow(need, item) {
     if (number) number.textContent = '✓';
     actions.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${value}`));
   };
-  const fill = smallButton('Fill it in', 'secondary is-answer', async () => {
+  const fill = smallButton(t('pagesSession.fillIt'), 'secondary is-answer', async () => {
     const value = input.value.trim();
-    if (!value) { input.placeholder = 'Write an answer first'; input.focus(); return; }
+    if (!value) { input.placeholder = t('pagesSession.writeFirst'); input.focus(); return; }
     fill.disabled = true;
     const sent = await sendAnswer(item, key, need.question, value, `"${need.question}": ${value}`);
-    if (!sent.ok) { fill.disabled = false; toastMessage('Could not fill it in', sent.error, sessionPlace(item), 'bad'); return; }
+    if (!sent.ok) { fill.disabled = false; toastMessage(t('pagesSession.fillFailed'), sent.error, sessionPlace(item), 'bad'); return; }
     handled.set(key, sent.outcome);
     keep();
     done(sent.outcome);
     updateNeedsCount();
     if (value === saved && !forgotten.has(need.question)) { savedAnswers.set(need.question, value); keep(); body.append(savedLine(need.question)); return; }
     const result = await window.pilot.rememberAnswer(need.question, value);
-    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', plainError(result?.error || `Couldn't keep it in ${storeName()}`))); return; }
+    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', plainError(result?.error || t('pagesDynamicSessionReports.m362', {"storeName": storeName()})))); return; }
     savedAnswers.set(need.question, value); forgotten.delete(need.question); keep();
     body.append(savedLine(need.question));
   }, offline(item));

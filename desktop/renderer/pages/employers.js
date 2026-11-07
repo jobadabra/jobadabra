@@ -2,6 +2,8 @@
 // (lib/employers-handlers.js), as a library table like Interviews: search, kind / feed status / active filters, an Active switch per row
 // (the next search reads or skips its feed), and the row's detail (notes, integration, research links) under it on click.
 // Logic without a window: renderer/employers-view.js. Guarded by test/unit/renderer/employers-view.test.js, test/unit/main/employers-handlers.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
 import {byStore, storeName} from '../store-words.js';
@@ -27,7 +29,7 @@ function nameCell(row) {
   const badge = el('span', 'logo', logo.initials);
   badge.style.setProperty('--hue', logo.hue);
   const lines = el('div', '');
-  const name = Object.assign(el('button', 'link', row.name || 'Unnamed'), {type: 'button', title: 'Show notes and research links'});
+  const name = Object.assign(el('button', 'link', row.name || t('pagesEmployers.unnamed')), {type: 'button', title: t('pagesEmployers.showNotes')});
   name.setAttribute('aria-expanded', String(opened.has(row.id)));
   name.addEventListener('click', () => { opened.has(row.id) ? opened.delete(row.id) : opened.add(row.id); render(); });
   lines.append(el('b', '', ''));
@@ -39,16 +41,16 @@ function nameCell(row) {
 }
 
 function activeSwitch(row) {
-  const label = Object.assign(el('label', 'switch'), {title: row.active ? 'Active: searches read its jobs. Turn off to skip it.' : 'Paused: searches skip it. Turn on to read its jobs.'});
+  const label = Object.assign(el('label', 'switch'), {title: row.active ? t('pagesEmployers.activeHelp') : t('pagesEmployers.pausedHelp')});
   const input = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.active});
-  input.setAttribute('aria-label', `${row.name}: active`);
+  input.setAttribute('aria-label', t('pagesShortActivity.m117', {"name": row.name}));
   input.addEventListener('change', async () => {
     input.disabled = true;
     const done = await window.pilot.employerActive(row.name, input.checked);
     input.disabled = false;
-    if (!done?.ok) { input.checked = !!row.active; message('emp-message', done?.error || `Could not save it in ${storeName()}.`, 'error'); return; }
+    if (!done?.ok) { input.checked = !!row.active; message('emp-message', done?.error || t('pagesDynamicCvData.m135', {"storeName": storeName()}), 'error'); return; }
     row.active = input.checked;
-    message('emp-message', `${row.name} is ${row.active ? 'active: the next search reads its jobs' : 'paused: searches skip it'}.`, 'ok');
+    message('emp-message', t('pagesShortActivity.m118', {"name": row.name, "value2": row.active ? t('pagesEmployers.activeNext') : t('pagesEmployers.pausedSkip')}), 'ok');
     render();
   });
   label.append(input, el('span', '', ''));
@@ -82,8 +84,8 @@ function rowOf(row) {
   const cell = (...children) => { const td = el('td', ''); td.append(...children); tr.append(td); return td; };
   cell(nameCell(row));
   const kind = el('div', '');
-  kind.append(pill(row.kind || 'Employer', row.kind === 'Job board' ? 'violet' : 'neutral'));
-  if (row.tier === 'Tier 1') kind.append(' ', pill('Tier 1', 'signal'));
+  kind.append(pill(row.kind === 'Job board' ? t('pagesFieldsStatus.jobBoard') : row.kind || t('pagesEmployers.employer'), row.kind === 'Job board' ? 'violet' : 'neutral'));
+  if (row.tier === 'Tier 1') kind.append(' ', pill(t('pagesEmployers.tier'), 'signal'));
   cell(kind);
   const feed = el('div', '');
   if (row.feed_status) {
@@ -109,25 +111,25 @@ export function render() {
   if (!rows) return;
   drawHeader($('emp-head'), SORT_COLUMNS, sort, key => { sort = nextSort(sort, key, SORT_COLUMNS); saveSort(SORT_KEY, sort); render(); });
   const shown = sortRows(filterEmployers(rows, filters()), sort, SORT_COLUMNS);
-  $('emp-stats').textContent = rows.length ? statsLine(rows, shown) : byStore('Your 🏢 Employers & Sources in Notion', 'Your employers and job boards');
+  $('emp-stats').textContent = rows.length ? statsLine(rows, shown) : byStore(t('pagesEmployers.employersNotion'), t('pagesEmployers.employersBoards'));
   $('emp-rows').replaceChildren(...shown.flatMap(rowOf));
   // The table box clips: a tip in the last two rows (of 3 or more) opens upward, where there is room.
   const trs = [...$('emp-rows').querySelectorAll('tr[data-id]')];
   if (trs.length >= 3) for (const tr of trs.slice(-2)) for (const tip of tr.querySelectorAll('.tip')) tip.dataset.up = '';
   show($('emp-empty'), !shown.length);
-  $('emp-empty').textContent = rows.length ? 'No employer matches these filters.'
-    : 'No employers yet. Find jobs adds some, and every search adds the ones it reads.';
+  $('emp-empty').textContent = rows.length ? t('pagesEmployers.noEmployerFilter')
+    : t('pagesEmployers.noEmployers');
 }
 
 export async function loadEmployers() {
   if (gatedOut('employers')) return;   // behind the Notion gate: nothing reads it (#410)
   if (!rows) $('emp-rows').replaceChildren(...skeletonRows(4));
-  $('emp-stats').textContent = rows ? 'Refreshing…' : `Loading from ${storeName()}…`;
+  $('emp-stats').textContent = rows ? t('pagesCommon.refreshing') : t('pagesDynamicCvData.m136', {"storeName": storeName()});
   const answer = await window.pilot.employers();
   if (answer?.error) {
     rows = rows || [];
     $('emp-stats').textContent = '';
-    message('emp-message', `Could not read your employers from ${storeName()}: ${answer.error}`, 'error');
+    message('emp-message', t('pagesDynamicCvData.m137', {"storeName": storeName(), "error": answer.error}), 'error');
     $('emp-rows').replaceChildren();
     show($('emp-empty'), false);
     return;
@@ -135,7 +137,7 @@ export async function loadEmployers() {
   rows = answer?.employers || [];
   message('emp-message', '');
   const select = $('emp-feed'), keep = select.value;
-  select.replaceChildren(el('option', '', 'Any feed status'), ...feedStatuses(rows).map(status => el('option', '', status)));
+  select.replaceChildren(el('option', '', t('pagesEmployers.anyFeed')), ...feedStatuses(rows).map(status => el('option', '', status)));
   select.firstChild.value = '';
   select.value = feedStatuses(rows).includes(keep) ? keep : '';
   render();

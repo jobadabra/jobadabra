@@ -1,13 +1,13 @@
 // The job drawer (pages/job-panel.js, renderer/job-drawer/): one body per tab, every state through the one state card, one overlay slot with
 // Recent activity, the drawer never resizing the list. Source checks, as the other page tests (the DOM runs in the app and `npm run shot`).
 import '../../../i18n/screens-helpers.js';
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {TABS} from '../../../renderer/job-page-view.js';
 import {claimOverlay, registerOverlay, releaseOverlay, reopenOverlay} from '../../../renderer/overlay-slot.js';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 
 test('every tab has a body module, wired by its key, and each says "nothing yet" through the state card', () => {
   const bodies = read('job-drawer/tabs-body.js');
@@ -74,7 +74,7 @@ test('Timeline: one plain list with no filter, entries with the way to their det
   assert.match(source, /openLogFor\(job\.url, job\.title\)/);
   assert.match(source, /showSubmitted\(job\.url\); pick\(tab\)/, 'View snapshot opens what was sent');
   assert.match(source, /helpers\.nothingHappened/);
-  const shots = fs.readFileSync(new URL('../../../scripts/drawer-shots.mjs', import.meta.url), 'utf8');
+  const shots = readScreenSource(new URL('../../../scripts/drawer-shots.mjs', import.meta.url), 'utf8');
   for (const [key] of TABS) assert.ok(shots.includes(`'${key}'`), `drawer-shots has a picture of ${key}`);
 });
 
@@ -146,7 +146,7 @@ test('Description: reads the saved posting once per job, and offers Retry only a
   assert.match(source, /factStrip\(postingFacts\(/, 'the strip of facts');
   assert.match(source, /postingBody\(postingBlocks\(text\)\)/, 'headings and bullets, not one block');
   assert.match(source, /sourceCard\(postingSource\(found\)/, 'where it came from, with the way to the original');
-  assert.match(fs.readFileSync(new URL('../../../preload.cjs', import.meta.url), 'utf8'), /jobPosting: call\('jobPosting'\)/);
+  assert.match(readScreenSource(new URL('../../../preload.cjs', import.meta.url), 'utf8'), /jobPosting: call\('jobPosting'\)/);
 });
 
 test('every job row shows a pointer: a click anywhere on it opens the drawer, the score cell too when it has no analysis', () => {

@@ -1,5 +1,8 @@
 // Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm, and Tune my strategy's row from Focus's pool
 // (pages/focus-suggestions.js). Guarded by: test/unit/renderer/advice-events.test.js, test/unit/renderer/coverage-card.test.js, test/unit/renderer/filters-card.test.js, test/unit/renderer/suggestions.test.js.
+import {number as displayNumber} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -23,7 +26,7 @@ import {RUN, answerEntry, answered, homeSuggestions} from './focus-suggestions.j
 import {bone, loadFocus} from './focus.js';
 import {moveOldAside} from '../ideas-aside.js';
 // Where else the change shows: Notion's ⚙️ Search settings page, only while Notion holds the data (on this Mac they are the app's own).
-const alsoInSettings = () => byStore(' (also in your Search settings in Notion)', '');
+const alsoInSettings = () => byStore(t('pagesAuditThird.a206'), '');
 
 // ---------- Suggestions: one row per kind (owner mockup, 7 Oct 2026: five banners pushed your own settings below the fold) ----------
 // The engine's coverage verdict (src/coverage.py, read after the strategy: a Python start) and the roles from your Profile (src/ai/role_ideas.py)
@@ -39,7 +42,7 @@ const ORDER = ['tune', 'places', 'ideas', 'coverage', 'filters', 'sources', 'vis
 const SUGGESTIONS = 'strategy-suggestions';
 defineCount(SUGGESTIONS, () => ORDER.filter(kind => rows[kind]).length);
 const plain = label => label.replace(/^[+−] /, '');
-const number = value => Number(value || 0).toLocaleString('en-US');
+const number = value => displayNumber(Number(value || 0));
 
 // Review from elsewhere (Recent activity's "Review location"): Strategy opens with that row's options showing. Kept until the row is drawn.
 let pendingReview = '';
@@ -66,12 +69,12 @@ function drawSuggestions() {
     const row = el('section', 'suggestion-card is-loading'), head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words');
     row.id = 'strategy-coverage-checking';
     row.setAttribute('aria-busy', 'true');
-    words.append(el('h3', '', 'Checking whether your search is too narrow…'), el('span', 'muted', 'Reading the postings your searches saw.'));
+    words.append(el('h3', '', t('pagesStrategyMore.checkingNarrow')), el('span', 'muted', t('pagesStrategyMore.readingPostings')));
     head.append(tile('target', 'neutral'), words);
     row.append(head);
     list.push(row);
   }
-  box.replaceChildren(...(list.length ? list : [el('p', 'card muted empty-row', 'No suggestions right now: your search already catches what the last check saw.')]));
+  box.replaceChildren(...(list.length ? list : [el('p', 'card muted empty-row', t('pagesStrategyMore.noSuggestions'))]));
   paintCount(SUGGESTIONS);   // the tab's badge; the line under the tabs paints the same count (drawImprove)
   drawImprove();
   openPending();
@@ -101,10 +104,10 @@ export function drawImprove() {
   const {top} = improveWords(briefs[kinds[0]]);
   const words = el('div', 'notice-words'), title = el('b'), count = el('span');
   Object.assign(count.dataset, {countOf: SUGGESTIONS, countOne: 'suggestion'});
-  title.append(count, ' to improve your search');
+  title.append(count, t('pagesAuditThird.a207'));
   words.append(title);
-  if (top) box.title = `Top: ${top}`;   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
-  const go = el('button', 'secondary item-action', 'Review suggestions');
+  if (top) box.title = t('pagesShortSettings.m350', {"top": top});   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
+  const go = el('button', 'secondary item-action', t('pagesStrategyMore.reviewSuggestions'));
   go.type = 'button';
   go.addEventListener('click', () => showTab('strategy-suggestions'));
   box.replaceChildren(tile('bulb', 'signal'), words, go);
@@ -127,7 +130,7 @@ function emphasize(text) {
 }
 // One card per kind: tile, bold title (and how many options), a line with its numbers, its action; Review opens the options under a tinted head.
 // option: {label, why, meta?, tech?, button, accent?, run(button)}; body: drawn instead of the option cards (the sites, by company).
-function suggestionRow({kind, id, glyph, title, summary, text, options = [], hidden = [], hiddenLabel = '', review = 'Review', menu, brief, note = '', body = null, count = null}) {
+function suggestionRow({kind, id, glyph, title, summary, text, options = [], hidden = [], hiddenLabel = '', review = t('pagesCommon.review'), menu, brief, note = '', body = null, count = null}) {
   briefs[id] = {glyph, ...brief};
   const tone = TONE[id] || 'neutral';
   const row = el('section', `suggestion-card tone-${tone}`);
@@ -145,7 +148,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
     detail.hidden = !open;
     row.classList.toggle('is-open', open);
     toggle.setAttribute('aria-expanded', String(open));
-    toggle.textContent = open ? 'Collapse' : closedLabel;
+    toggle.textContent = open ? t('pagesJobs.collapse') : closedLabel;
     if (open) openRows.add(id); else openRows.delete(id);
   };
   toggle.addEventListener('click', () => setOpen(detail.hidden));
@@ -153,7 +156,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
     const card = el('div', 'option-row option-card'), words = el('div', 'option-words');
     words.append(el('b', '', option.label), el('span', 'muted', option.why || option.preview || ''));
     if (option.meta) { const meta = el('span', 'option-meta', icon('info')); meta.append(option.meta); words.append(meta); }
-    if (option.tech) { const more = el('details', 'plain option-tech'); more.append(el('summary', '', 'Search details'), el('span', 'muted small', option.tech)); words.append(more); }
+    if (option.tech) { const more = el('details', 'plain option-tech'); more.append(el('summary', '', t('pagesStrategyMore.searchDetails')), el('span', 'muted small', option.tech)); words.append(more); }
     const button = el('button', `secondary${option.accent ? ' is-signal' : ''}`, option.button);
     Object.assign(button, {type: 'button', title: option.preview || option.why || ''});
     button.addEventListener('click', () => option.run(button));
@@ -175,7 +178,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
   const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
   name.append(el('h3', '', title), ...(count ? [pill(String(count), tone)] : []));
   words.append(name, typeof summary === 'string' ? emphasize(summary) : summary);
-  head.append(tile(glyph, tone), words, toggle, ...(menu.length ? [moreButton(menu, `More about ${title.toLowerCase()}`)] : []));
+  head.append(tile(glyph, tone), words, toggle, ...(menu.length ? [moreButton(menu, t('pagesDynamicStrategy.m391', {"value1": title.toLowerCase()}))] : []));
   row.append(head, detail);
   if (openRows.has(id)) setOpen(true);
   adviceEvent('shown', kind, 'strategy');
@@ -185,19 +188,19 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
 // Not true in your store. Shown only while your results support a change; drawn again only when that changes (a Focus read with the same
 // changes leaves the rows alone).
 function tuneRow(entry) {
-  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: 'Review'};
+  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: t('pagesCommon.review')};
   const row = el('section', `suggestion-card tone-${TONE.tune}`);
   Object.assign(row, {id: 'strategy-tune'});
   row.dataset.key = entry.key;
   const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
   name.append(el('h3', '', entry.title));
   words.append(name, emphasize(entry.detail));
-  const review = el('button', 'secondary', 'Review');
+  const review = el('button', 'secondary', t('pagesCommon.review'));
   review.type = 'button';
   review.addEventListener('click', () => RUN.tune());
   head.append(tile('sliders', TONE.tune), words, review, moreButton([
-    {icon: 'clock', label: 'Not now', title: 'Hidden for 14 days, then shown again if your results still support it', run: () => answerEntry(entry, 'Not now')},
-    {icon: 'close', label: 'Not true', title: 'Never shown again for these changes', run: () => answerEntry(entry, 'Not true')}], 'More about tuning'));
+    {icon: 'clock', label: t('pagesCommon.notNow'), title: t('pagesStrategyMore.hidden14'), run: () => answerEntry(entry, 'Not now')},
+    {icon: 'close', label: t('pagesCommon.notTrue'), title: t('pagesStrategyMore.neverChanges'), run: () => answerEntry(entry, 'Not true')}], t('pagesStrategyMore.moreTuning')));
   row.append(head);
   return row;
 }
@@ -214,30 +217,30 @@ const rowKeys = () => [...Object.values(strategyState.shownVerdict?.keys || {}),
 const answeredKeys = () => rowKeys().filter(answered).join('\n');
 let answeredShown = '';
 const repaint = () => (strategyState.shownVerdict ? paintCoverage(strategyState.shownVerdict) : shownIdeas && paintIdeas(shownIdeas));
-const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', 'Hidden for 14 days, then shown again if it still holds. Your settings do not change.'],
-  ['close', 'Not true', 'Never shown again for this suggestion; a new one can still come.']].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
+const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', t('pagesAuditThird.a208')],
+  ['close', 'Not true', t('pagesAuditThird.a209')]].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
   run: () => { adviceEvent('dismissed', advice, 'strategy'); answerEntry({key, title, aside}, state); repaint(); }})) : []);
 // One option done, from Strategy or from Focus's one press (where): a change to your search (a role word, a place, a filter removed) is saved to
 // Search settings, said, and both pages read again; a site opens in your Chrome. action: {kind, value, note?} (coverage-actions.js runAction).
 // While a draft changes the same list, applying waits: reviewing is fine, the change itself asks for Save or Discard first (owner, 7 Oct 2026).
 const CHANGES = {
-  place: value => ({list: 'places', done: `${value} is now one of your places${alsoInSettings()}. Jobs you already have stay.`}),
-  role: value => ({list: 'roles', done: `"${value}" is now a role word${alsoInSettings()}.`}),
-  exclude: value => ({list: '', done: `Titles with "${value.replace(/\\b/g, '')}" are no longer left out${alsoInSettings()}.`}),
-  language: value => ({list: 'languages', done: `Jobs that require ${value} are no longer hidden${alsoInSettings()}.`}),
+  place: value => ({list: 'places', done: t('pagesDynamicStrategy.m393', {"value": value, "alsoInSettings": alsoInSettings()})}),
+  role: value => ({list: 'roles', done: t('pagesDynamicStrategy.m394', {"value": value, "alsoInSettings": alsoInSettings()})}),
+  exclude: value => ({list: '', done: t('pagesDynamicStrategy.m395', {"value1": value.replace(/\\b/g, ''), "alsoInSettings": alsoInSettings()})}),
+  language: value => ({list: 'languages', done: t('pagesDynamicStrategy.m396', {"value": value, "alsoInSettings": alsoInSettings()})}),
 };
 /** Does one search suggestion's option (Strategy's button, or Focus's one press: src/suggestions_search.py actions). */
 export async function changeSearch(action, button, where = 'strategy') {
   if (action.kind === 'visit') {
     adviceEvent('taken', 'visit', where);
     const opened = await readSiteInChrome(window.pilot, action.value);
-    if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${action.note ? ` ${action.note}.` : ''}`, {activity: true}, 'info');
-    else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
+    if (opened.started) toastMessage(t('pagesStrategyMore.readingChrome'), t('pagesDynamicStrategy.m397', {"value1": action.note ? ` ${action.note}.` : ''}), {activity: true}, 'info');
+    else toastMessage(opened.ok ? t('pagesStrategyMore.openedChrome') : t('pagesStrategyMore.notOpened'), opened.ok ? opened.why || t('pagesStrategyMore.readStartFailed') : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
     return;
   }
   const {list, done} = CHANGES[action.kind](action.value);
   if (list && dirty().has(list)) {
-    toastMessage('Save or discard your changes first', `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'}, 'warn');
+    toastMessage(t('pagesStrategyMore.saveDiscard'), t('pagesDynamicStrategy.m398', {"list": LIST_WORDS[list]}), {view: 'strategy'}, 'warn');
     const bar = strategyBarNow()?.node;
     if (bar) { bar.classList.remove('is-nudged'); void bar.offsetWidth; bar.classList.add('is-nudged'); }
     return;
@@ -247,55 +250,55 @@ export async function changeSearch(action, button, where = 'strategy') {
   const result = await withSaveProgress(words => { button.textContent = words; }, () => runAction(action, {pilot: window.pilot, openSetting}))
     .catch(error => ({ok: false, error: error.message}));
   button.textContent = label;
-  if (!result.ok) { toastMessage('Not added', result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
+  if (!result.ok) { toastMessage(t('pagesCommon.notAdded'), result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
   adviceEvent('taken', action.kind, where);
   // The next step with it: a refresh searches with the change (7 Oct 2026: the pop-up said only "Search widened").
-  toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
+  toastMessage({title: t('pagesStrategyMore.widened'), body: t('pagesDynamicStrategy.m399', {"done": done}), action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
   if (where === 'strategy') loadStrategy();   // the cards show it at once, not after the next visit (it re-reads the suggestions too)
   loadFocus();   // Focus's row offers the next option, or leaves
 }
 const press = action => button => changeSearch(action, button);
 
-export const refreshAction = {label: 'Find jobs', run: () => startSearch()};
-const LIST_WORDS = {roles: 'roles', places: 'places', languages: 'excluded languages'};
+export const refreshAction = {label: t('pagesCommon.findJobs'), run: () => startSearch()};
+const LIST_WORDS = {roles: 'roles', places: 'places', languages: t('pagesAuditThird.a210')};
 // A row is drawn while its key is not answered (a verdict kept from before its keys draws every row, without the answers, until the fresh one).
 const unanswered = (card, key) => (card && !(key && answered(key)) ? card : null);
 const paintCoverage = verdict => {
   strategyState.shownVerdict = verdict;
   const keys = verdict?.keys || {};
   const coverage = unanswered(coverageCard(verdict), keys.coverage);
-  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? 'Catch titles in other languages' : 'Add role words',
-    summary: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, text: coverage.text,
-    options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
+  rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'),
+    summary: t('pagesDynamicStrategy.m400', {"number": number(verdict.matched), "number2": number(verdict.in_places)}), text: coverage.text,
+    options: coverage.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.addRoleWord'), preview: t('pagesDynamicStrategy.m401', {"term": chip.term, "title": chip.title}),
       run: press({kind: 'role', value: chip.term})})),
-    brief: {title: verdict.local ? 'Catch titles in other languages' : 'Add role words', text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
-    menu: answerItems('coverage', keys.coverage, 'Add role words')});
+    brief: {title: verdict.local ? t('pagesStrategyMore.otherLanguages') : t('pagesCommon.addRoleWords'), text: t('pagesDynamicStrategy.m402', {"number": number(verdict.matched), "number2": number(verdict.in_places)}), cta: t('pagesStrategyMore.reviewWords')},
+    menu: answerItems('coverage', keys.coverage, t('pagesCommon.addRoleWords'))});
   const places = unanswered(placesCard(verdict), keys.places);
   const topPlace = places?.chips[0];
-  rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: 'Broaden locations',
-    summary: `${topPlace.place} · ${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} outside your places${places.chips.length > 1 ? `, and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`,
+  rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: t('pagesStrategyMore.broaden'),
+    summary: t('pagesDynamicStrategy.m403', {"place": topPlace.place, "number": number(topPlace.count), "value4": places.chips.length > 1 ? ',' + t('pagesDynamicStrategy.morePlaces', {count: places.chips.length - 1}) : '', count: topPlace.count}),
     text: places.text,
-    options: places.chips.map(chip => ({label: plain(chip.label), button: 'Add place', preview: `Adds ${chip.place} to your places; jobs you already have stay. ${chip.title}`,
+    options: places.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.addPlace'), preview: t('pagesDynamicStrategy.m405', {"place": chip.place, "title": chip.title}),
       run: press({kind: 'place', value: chip.place})})),
-    brief: {title: 'Expand your locations', text: `${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} in ${topPlace.place}${places.chips.length > 1 ? ` and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`, cta: 'Review location'},
-    menu: answerItems('places', keys.places, 'Broaden locations')});
+    brief: {title: t('pagesStrategyMore.expandPlaces'), text: t('pagesDynamicStrategy.m406', {"number": number(topPlace.count), "place": topPlace.place, "value4": places.chips.length > 1 ? t('pagesDynamicStrategy.morePlaces', {count: places.chips.length - 1}) : '', count: topPlace.count}), cta: t('pagesStrategyMore.reviewLocation')},
+    menu: answerItems('places', keys.places, t('pagesStrategyMore.broaden'))});
   // Filters of the user's own that hide matching jobs: an option removes that filter.
   const filters = unanswered(filtersCard(verdict), keys.filters);
   const filterHidden = filters ? filters.chips.reduce((sum, chip) => sum + chip.count, 0) : 0;
-  rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: 'Loosen your filters',
-    summary: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, text: filters.text,
-    options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
+  rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: t('pagesCommon.loosen'),
+    summary: t('pagesDynamicStrategy.m408', {"length": filters.chips.length, "number": number(filterHidden), count: filterHidden}), text: filters.text,
+    options: filters.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.removeFilter'), preview: chip.title,
       run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
-    brief: {title: 'Loosen your filters', text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
-    menu: answerItems('filters', keys.filters, 'Loosen your filters')});
+    brief: {title: t('pagesCommon.loosen'), text: t('pagesDynamicStrategy.m409', {"length": filters.chips.length, "number": number(filterHidden), count: filterHidden}), cta: t('pagesStrategyMore.reviewFilters')},
+    menu: answerItems('filters', keys.filters, t('pagesCommon.loosen'))});
   // Unused job sources: an option opens its panel in Settings → Connections (a key to add there); nothing is turned on from here.
   const sources = unanswered(sourcesCard(verdict), keys.sources);
-  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: 'Set up',
+  rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: t('pagesStrategyMore.moreJobSources'), review: t('pagesCommon.setup'),
     summary: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(' · '), text: sources.text,
-    options: sources.chips.map(chip => ({label: plain(chip.label), button: 'Open in Settings', preview: chip.title,
+    options: sources.chips.map(chip => ({label: plain(chip.label), button: t('pagesFinalLabels.openSettings'), preview: chip.title,
       run: () => { adviceEvent('taken', 'source', 'strategy', {source: chip.id}); openSetting(chip.id); }})),
-    brief: {title: 'Connect more sources', text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: 'Set up'},
-    menu: answerItems('source', keys.sources, 'Connect more job sources')});
+    brief: {title: t('pagesStrategyMore.moreSources'), text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: t('pagesCommon.setup')},
+    menu: answerItems('source', keys.sources, t('pagesStrategyMore.moreJobSources'))});
   // Sites only you can open: one chip per company in the row; Review lists every page (a company can have two genuinely different ones).
   const visits = unanswered(visitCard(verdict), keys.visits);
   if (visits) {
@@ -305,7 +308,7 @@ const paintCoverage = verdict => {
     const TINTS = ['info', 'teal', 'violet', 'good'];
     const company = (site, i) => {
       const line = el('div', 'site-row'), words = el('div', 'site-words'), name = el('div', 'site-name'), links = el('div', 'site-links');
-      name.append(el('b', '', site.name), ...(site.pages.length > 1 ? [pill(`${site.pages.length} destinations`)] : []));
+      name.append(el('b', '', site.name), ...(site.pages.length > 1 ? [pill(t('pagesShortSettings.m355', {"length": site.pages.length}))] : []));
       links.append(...site.pages.map(page => {
         const link = el('button', 'link', hostOf(page.url) || page.url);
         Object.assign(link, {type: 'button', title: page.title});
@@ -313,7 +316,7 @@ const paintCoverage = verdict => {
         return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/unit/renderer/wand-cursor.test.js)
       }));
       words.append(name, links);
-      const open = el('button', 'secondary with-icon', 'Open');
+      const open = el('button', 'secondary with-icon', t('pagesCommon.open'));
       Object.assign(open, {type: 'button', title: site.pages[0].title});
       open.append(icon('external'));
       open.addEventListener('click', openPage(site.pages[0]));
@@ -324,28 +327,28 @@ const paintCoverage = verdict => {
     const SHOWN = 5;
     const list = sites.slice(0, SHOWN).map(company);
     if (sites.length > SHOWN) {
-      const all = el('button', 'link site-all', `View all ${sites.length} sites →`);
+      const all = el('button', 'link site-all', t('pagesDynamicStrategy.m411', {"length": sites.length}));
       all.type = 'button';
       all.addEventListener('click', () => { all.replaceWith(...sites.slice(SHOWN).map((site, i) => company(site, i + SHOWN))); });
       list.push(all);
     }
-    rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: 'Browse sites manually', count: sites.length,
-      summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
-      brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: 'Use the Chrome extension', cta: 'View sites'},
-      menu: answerItems('visit', keys.visits, 'Browse sites manually')});
+    rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: t('pagesCommon.browseManually'), count: sites.length,
+      summary: t('pagesAuditThird.a211'), text: '', body: list,
+      brief: {title: t('pagesDynamicStrategy.m412', {"length": sites.length, count: sites.length}), text: t('pagesStrategyMore.useExtension'), cta: t('pagesStrategyMore.viewSites')},
+      menu: answerItems('visit', keys.visits, t('pagesCommon.browseManually'))});
   } else rows.visits = null;
   // Employers where people like you got interviews (shared pool): an option shows that employer's jobs in the Jobs list.
   const forYou = unanswered(employersCard(verdict), keys.foryou);
-  rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: 'Employers hiring people like you',
-    summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), text: forYou.text,
-    options: forYou.chips.map(chip => ({label: chip.label, button: 'See their jobs', preview: chip.title, run: () => {
+  rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: t('pagesStrategyMore.employersLikeYou'),
+    summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? t('pagesShortSettings.m357', {"value1": forYou.chips.length - 3}) : ''), text: forYou.text,
+    options: forYou.chips.map(chip => ({label: chip.label, button: t('pagesFinalLabels.seeJobs'), preview: chip.title, run: () => {
       adviceEvent('taken', 'employer', 'strategy');
       openView('jobs');
       const box = $('filter-text');
       if (box) { box.value = chip.company; box.dispatchEvent(new Event('input', {bubbles: true})); }
     }})),
-    brief: {title: 'Employers hiring people like you', text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: 'See employers'},
-    menu: answerItems('employer', keys.foryou, 'Employers hiring people like you')});
+    brief: {title: t('pagesStrategyMore.employersLikeYou'), text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? t('pagesShortSettings.m358', {"value1": forYou.chips.length - 3}) : ''), cta: t('pagesStrategyMore.seeEmployers')},
+    menu: answerItems('employer', keys.foryou, t('pagesStrategyMore.employersLikeYou'))});
   if (shownIdeas) paintIdeas(shownIdeas);   // drawn before this check answered: its "your role words catch" line comes now
   drawSuggestions();
   if (strategyState.strategyShown && !strategyState.editing) renderTargets();   // the exclusions card says what the languages hid
@@ -394,19 +397,19 @@ function paintIdeas(ideas) {
   const card = unanswered(ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), [], strategyState.shownVerdict), ideasKey);
   if (!card) { rows.ideas = null; drawSuggestions(); return; }
   // A card each: the role, why it fits, its openings; the word it is searched by under "Search details" (owner mockup, 7 Oct 2026).
-  const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: '+ Add role', accent: true,
-    meta: `${chip.count} opening${chip.count === 1 ? '' : 's'} now in your places`, tech: `Searched as "${chip.term}" in job titles. Adding it makes the next searches look for it.`,
-    preview: `Adds "${chip.term}" to your role words: ${chip.title}`,
+  const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: t('pagesFinalLabels.addRole'), accent: true,
+    meta: t('pagesDynamicStrategy.m413', {"count": chip.count}), tech: t('pagesDynamicStrategy.m414', {"term": chip.term}),
+    preview: t('pagesDynamicStrategy.m415', {"term": chip.term, "title": chip.title}),
     run: press({kind: 'role', value: chip.term})});
   const {open, empty} = byOpenings(card.chips);
   const top = open[0];
-  rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: 'Explore related roles', count: card.chips.length,
-    note: open.length ? '' : 'No current openings found in your selected locations.',
-    summary: card.narrow || (top ? `${plain(top.label).replace(/ · \d+$/, '')} · ${top.count} open role${top.count === 1 ? '' : 's'}${open.length > 1 ? `, and ${open.length - 1} more` : ''}`
-      : `${empty.length} role${empty.length === 1 ? '' : 's'} from your Profile, none with openings in your places now`),
-    text: 'Based on your Profile. A role you add is included in your future searches.', options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
-    hiddenLabel: 'Show roles with no current openings',
-    brief: {title: 'Explore related roles', text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: 'Review roles'},
-    menu: answerItems('ideas', ideasKey, 'Explore related roles', card.chips.map(chip => chip.term))});
+  rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: t('pagesStrategyMore.relatedRoles'), count: card.chips.length,
+    note: open.length ? '' : t('pagesAuditThird.a212'),
+    summary: card.narrow || (top ? t('pagesDynamicStrategy.m416', {"value1": plain(top.label).replace(/ · \d+$/, ''), "count": top.count, "value4": open.length > 1 ? t('pagesDynamicStrategy.andMore', {count: open.length - 1}) : ''})
+      : t('pagesDynamicStrategy.m417', {"length": empty.length, count: empty.length})),
+    text: t('pagesStrategyMore.roleFuture'), options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
+    hiddenLabel: t('pagesFinalLabels.noOpeningsRoles'),
+    brief: {title: t('pagesStrategyMore.relatedRoles'), text: t('pagesShortSettings.m359', {"length": card.chips.length, "value3": open.length ? t('pagesDynamicStrategy.m418', {"length": open.length}) : t('pagesAuditThird.a213'), count: card.chips.length}), cta: t('pagesStrategyMore.reviewRoles')},
+    menu: answerItems('ideas', ideasKey, t('pagesStrategyMore.relatedRoles'), card.chips.map(chip => chip.term))});
   drawSuggestions();
 }

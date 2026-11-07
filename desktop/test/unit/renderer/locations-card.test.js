@@ -1,11 +1,11 @@
 // Strategy → Locations card wiring (owner, 17 Oct 2026): every location row the Profile used to hold is owned by the card (the class), relocation and the
 // custom-coverage line exist in both modes, the old wording is gone, and ⌘K reaches the card (the reset only while a search-only list is active).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {FIELDS} from '../../../renderer/preferences-model.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const card = read('renderer/pages/strategy-targets.js'), nav = read('renderer/pages/nav.js');
 // The card's lists as [name, label], read from the source (importing the page needs the whole app's DOM).
 const lists = [...card.matchAll(/\['(places|country|abroad|rights)', '([^']+)', '[^']+'\]/g)].map(([, name, label]) => [name, label]);

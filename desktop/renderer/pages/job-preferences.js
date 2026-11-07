@@ -5,6 +5,8 @@
 // pages/outline-tab.js, on Strategy's one save bar. Work mode, seniority and the minimum salary are Main goals' (above); permit, languages and the salary
 // expectation are Your details'. On Strategy (owner, 18 Oct 2026, mockup 03) the card reads as label/value rows per side with a quiet Edit; Edit opens the
 // controls and "Review your preferences" (strategy-cards.js: one editor at a time). Guarded by test/unit/renderer/job-preferences.test.js and test/unit/renderer/profile-tabs-render.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {chipLine, readRows} from '../card-shell.js';
@@ -42,7 +44,7 @@ function chips(view, field, bind) {
   const list = el('div', 'chip-list');
   for (const [i, chip] of chipsOf(bind.text()).entries()) {
     const node = el('span', 'chip removable', chip);
-    const x = Object.assign(el('button', 'x', '×'), {type: 'button', ariaLabel: `Remove ${chip}`});
+    const x = Object.assign(el('button', 'x', '×'), {type: 'button', ariaLabel: t('pagesShortJobs.m165', {"chip": chip})});
     x.addEventListener('click', () => { const next = chipsOf(bind.text()); next.splice(i, 1); bind.set(chipsText(next)); view.redraw(); });
     node.append(x);
     list.append(node);
@@ -76,19 +78,19 @@ function workload(bind) {
     field.addEventListener('input', () => { now[key] = field.value; bind.set(workloadText(now)); });
     return labelled(text, field);
   };
-  box.append(part('min', 'Workload (minimum %)', 'e.g. 50'), part('max', 'Workload (maximum %)', 'e.g. 100'));
+  box.append(part('min', t('pagesControlStatus.workloadMin'), 'e.g. 50'), part('max', t('pagesControlStatus.workloadMax'), 'e.g. 100'));
   return box;
 }
 
 function control(view, field, item, anchor) {
   const bind = binding(view, field, item, anchor);
-  const hint = item?.hint ? `e.g. ${shown(item.hint)}` : field.placeholder || 'Not set';
+  const hint = item?.hint ? `e.g. ${shown(item.hint)}` : field.placeholder || t('pagesCommon.notSet');
   if (field.widget === 'chips') return labelled(field.label, chips(view, field, bind));
   if (field.widget === 'modes') return labelled(field.label, modes(view, bind));
   if (field.widget === 'workload') { const box = workload(bind); box.classList.add('span-all'); return box; }
   if (field.widget === 'select') {
     const now = bind.text();
-    const options = [['', 'Not set'], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, option])];
+    const options = [['', t('pagesCommon.notSet')], ...[...new Set([...field.options, ...(now ? [now] : [])])].map(option => [option, option])];
     return labelled(field.label, select(options, now, value => bind.set(value), field.label));
   }
   return labelled(field.label, input(bind.text(), value => bind.set(value), {placeholder: hint, ariaLabel: field.label}));
@@ -100,7 +102,7 @@ const itemField = (view, item) => lineInput(view, TEXT, item, typed);
 // The Original wording note: collapsed, the sentences kept from what you typed before the review.
 function noteBox(view, note) {
   const box = el('details', 'span-all pref-note');
-  box.append(el('summary', '', 'Original wording'));
+  box.append(el('summary', '', t('pagesJobs.originalWording')));
   box.append(itemField(view, {...note, label: ''}));
   return box;
 }
@@ -110,7 +112,7 @@ function noteBox(view, note) {
 function addChange(side, ends, text) {
   if (side === 'must' && ends.rules) return {op: 'insert', after: ends.rules, key: 'add-must', lines: [text]};
   const after = ends[side];
-  return after && {op: 'insert', after, key: `add-${side}`, lines: [`${side === 'must' ? 'Deal-breaker' : 'Preference'}: ${text}`]};
+  return after && {op: 'insert', after, key: `add-${side}`, lines: [`${side === 'must' ? t('pagesControlStatus.dealBreaker') : t('pagesControlStatus.preference')}: ${text}`]};
 }
 
 function side(view, key, {fields, other, ends, note}, anchor) {
@@ -130,7 +132,7 @@ function side(view, key, {fields, other, ends, note}, anchor) {
   more.open = folded[key];
   more.addEventListener('toggle', () => { folded[key] = more.open; });
   const line = el('summary', 'pref-more-head');
-  line.append(el('b', '', key === 'must' ? 'Other deal-breakers' : 'Other preferences'), el('span', 'muted small pref-summary', summaryOf(rules)));
+  line.append(el('b', '', key === 'must' ? t('pagesJobs.otherDealBreakers') : t('pagesJobs.otherPreferences')), el('span', 'muted small pref-summary', summaryOf(rules)));
   const list = el('div', 'form-grid cols-2 pref-body');
   for (const item of rules) list.append(itemField(view, item));
   if (key === 'rank' && note) list.append(noteBox(view, note));   // the review's one Original wording note
@@ -183,11 +185,11 @@ function draw(view, into) {
 }
 
 // ---------- The card as read: each side's fields as label/value rows, its other rules on one line; drafts shown as they will be saved.
-const LEAD = 'What a job must have, and what ranks it higher. Scoring reads them.';
+const LEAD = t('pagesAuditSecond.a95');
 const readText = (field, item) => String(typed.get(field.key) ?? item?.value ?? '').replace(/\*\*/g, '').trim();
 function readValue(field, item) {
   const text = readText(field, item);
-  if (!text) return el('span', 'muted', 'Any');
+  if (!text) return el('span', 'muted', t('pagesCommon.any'));
   if (field.widget === 'chips') return chipLine(chipsOf(text));
   if (field.widget === 'workload') return workloadText(workloadOf(text)) || text;
   return text;
@@ -199,12 +201,12 @@ function readSide(read, key) {
   const rows = FIELDS.filter(field => field.side === key && (field.key !== 'workload' || showWorkload(countries, review.parse?.countries)))
     .map(field => ({icon: ROW_ICONS[field.key] || 'check', label: field.label, value: readValue(field, read.fields[field.key]), any: !readText(field, read.fields[field.key])}));
   const rules = read.other.filter(item => item.side === key).map(item => ({...item, value: typed.get(item.id) ?? item.value}));
-  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? 'Deal-breakers' : 'Other preferences', value: summaryOf(rules)});
+  rows.push({icon: key === 'must' ? 'close' : 'sparkle', label: key === 'must' ? t('pagesJobs.dealBreakers') : t('pagesJobs.otherPreferences'), value: summaryOf(rules)});
   // Fields with no limit fold into one quiet row ("Must-haves: any home base, workload"), so the card reads its set values (mockup 03: three rows).
   // No heading per side (owner, 18 Oct 2026: "Either we're fully inline, either we're fully on the new line"): the row labels say which side.
   const open = rows.filter(row => row.any);
-  if (open.length > 1) rows.splice(rows.indexOf(open[0]), 0, {icon: group.icon, label: key === 'must' ? 'Must-haves' : 'Preferences',
-    value: el('span', 'muted', `Any ${open.map(row => row.label.toLowerCase()).join(', ')}`)});
+  if (open.length > 1) rows.splice(rows.indexOf(open[0]), 0, {icon: group.icon, label: key === 'must' ? t('pagesJobs.mustHaves') : t('pagesJobs.preferences'),
+    value: el('span', 'muted', t('pagesShortJobs.m170', {"value1": open.map(row => row.label.toLowerCase()).join(', ')}))});
   for (const row of open.length > 1 ? open : []) rows.splice(rows.indexOf(row), 1);
   const box = el('section', 'pref-read');
   box.dataset.side = key;
@@ -213,10 +215,10 @@ function readSide(read, key) {
 }
 // "Review your preferences" (also in ⌘K): in the editor, since what it proposes are edits.
 function reviewButton() {
-  const button = Object.assign(el('button', 'secondary small-btn', 'Review your preferences'), {type: 'button', id: 'preferences-review'});
+  const button = Object.assign(el('button', 'secondary small-btn', t('pagesJobs.reviewPreferences')), {type: 'button', id: 'preferences-review'});
   button.addEventListener('click', reviewPreferences);
   const row = el('div', 'pref-review-row');
-  row.append(el('span', 'muted small', 'The AI reads your preferences and proposes clean values; nothing changes until you accept.'), button);
+  row.append(el('span', 'muted small', t('pagesJobsHelp.reviewPreferences')), button);
   return row;
 }
 // On Strategy: the card's header (Unsaved, Edit / Done) and its mode. Elsewhere (tests, the Profile's old tab) there is no card: the controls are drawn.
@@ -225,7 +227,7 @@ function strategyCard() {
   if (!card) return null;
   card.dataset.card = 'prefs';
   card.classList.toggle('is-editing', isOpen('prefs'));
-  card.querySelector(':scope > .card-head')?.replaceWith(cardHeader('prefs', 'sliders', 'violet', 'Job preferences', LEAD, card));
+  card.querySelector(':scope > .card-head')?.replaceWith(cardHeader('prefs', 'sliders', 'violet', t('pagesCommon.jobPreferences'), LEAD, card));
   return card;
 }
 
@@ -235,8 +237,8 @@ const drawn = fields => Object.fromEntries(Object.entries(fields).filter(([key])
 export async function loadPreferences() {
   const node = document.getElementById('preferences-body');
   if (!node) return;
-  if (!tab || tab.node !== node) tab = {...outlineTab('preferences', [TEXT], node, draw, {onReset: () => { typed.clear(); handled.clear(); noteDraft = null; }, words: 'Future searches and scores use them once you save.',
-    bar: barFor(), tab: 'strategy-yours', label: 'Job preferences'}), node};
+  if (!tab || tab.node !== node) tab = {...outlineTab('preferences', [TEXT], node, draw, {onReset: () => { typed.clear(); handled.clear(); noteDraft = null; }, words: t('pagesAuditSecond.a96'),
+    bar: barFor(), tab: 'strategy-yours', label: t('pagesCommon.jobPreferences')}), node};
   review.asked = false;
   await tab.load();
 }

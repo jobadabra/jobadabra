@@ -3,6 +3,8 @@
 // Jobs' call to action and card, and the "Score first" gate on every Find jobs press. Changed only by runRescore (start and end of the re-score) and by noteOutdated
 // (a fresh read from the engine: the Jobs list or Strategy). <body data-rescoring> is the one attribute style.css turns into "the re-scoring card shows, the Find jobs
 // card does not", so no draw order matters. Guarded by test/unit/renderer/rescore-call.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {refusal} from '../refusal.js';
 import {$} from './core.js';
 import {dialogLead, jobs, pressLabel} from '../rescore-words.js';
@@ -26,7 +28,7 @@ export const rescoring = () => running;
 
 /** Whether a Find jobs search runs now (the one <body data-find-card> state, pages/jobs-find.js searchingNow, read here so this module stays light). */
 const searching = () => document.body.dataset.findCard === 'searching';
-const WAIT = ['Re-score waits', 'Jobs are being found right now: one run at a time. Press Re-score again when it ends.', {view: 'jobs'}, 'warn'];
+const WAIT = [t('pagesExtraLabels.rescoreWaits'), t('pagesAuditThird.a176'), {view: 'jobs'}, 'warn'];
 
 /**
  * Re-score every outdated job once: queue them (engine), then a re-score run (engine mode rescore, never a Find jobs search) scores up to 60 now; the rest stay marked Old score for the next press (its row says "Re-scoring N older scores").
@@ -43,12 +45,12 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
   changed();
   try {
     const result = await window.pilot.rescoreOutdated().catch(error => ({ok: false, error: error.message}));
-    if (!result.ok) { toast('Not re-scored', result.error, {view: 'strategy'}, 'bad'); return; }
+    if (!result.ok) { toast(t('pagesExtraLabels.notRescored'), result.error, {view: 'strategy'}, 'bad'); return; }
     const searching = startSearch({reason: 'rescore', count: result.queued});   // resolves when the search ends
     // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
     if (refusal(await Promise.race([searching, new Promise(resolve => setTimeout(resolve, 1500))]))) return;
-    toast({title: 'Re-scoring now', body: `${jobs(result.queued)} get a new score${result.queued > 60 ? ' (60 now, press Re-score again for the rest)' : ''}. ` +
-      'It shows in Recent activity as "Re-scoring".', target: null, tone: 'info'});
+    toast({title: t('pagesFocusReports.rescoring'), body: t('pagesDynamicSessionReports.m327', {"jobs": jobs(result.queued), "value2": result.queued > 60 ? t('pagesDynamicSessionReports.rescoreRest') : ''}) +
+      t('pagesAuditThird.a177'), target: null, tone: 'info'});
     await searching;
   } finally {
     running = null;
@@ -63,7 +65,7 @@ export function confirmRescore(count, how) {
   if (running) return;
   if (searching()) { how.toast(...WAIT); return; }   // asked before the dialog: nobody confirms a start that would be refused
   const dialog = $('rescore-dialog');
-  $('rescore-title').textContent = `Re-score ${jobs(count)}?`;
+  $('rescore-title').textContent = t('pagesShortReady.m298', {"jobs": jobs(count)});
   $('rescore-lead').textContent = dialogLead(count);
   $('rescore-go').textContent = pressLabel(count);
   dialog.returnValue = '';

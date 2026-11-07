@@ -1,5 +1,8 @@
 // Recent activity: Today's list and Find new employers as small cards (renderer/run-cards.js).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {t} from '../../../i18n/index.js';
 import {test} from 'node:test';
 import {byFit, newJobsShown, parseRunMessage, runItems, runNewCount} from '../../../renderer/run-cards.js';
 
@@ -140,11 +143,14 @@ test('every place showing a run\'s new count reads the run\'s own number', async
   assert.equal(digest.fresh, 9);
   assert.equal(runNewCount(run, digest), 7);
   assert.equal(newJobsShown(run, '✈️ Jobadabra · 🆕 9 new · top 10 of 105\n105 open'), 7);
-  const {readFileSync} = await import('node:fs');
-  const card = readFileSync(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  const card = readScreenSource(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
   assert.doesNotMatch(card, /stat\(card\.fresh, 'new this run'\)/);
   assert.doesNotMatch(card, /card\.fresh (===|<)/, 'nothing-new and few-new decide on the run\'s count');
-  assert.match(card, /stat\(fresh, `job\$\{fresh === 1 \? '' : 's'\} added to your list`\)/);
+  assert.match(card, /stat\(fresh, 'jobs added to your list'\)/);
+  const rawCard = readFileSync(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  assert.match(rawCard, /stat\(fresh, t\('pagesDynamicActivity\.m33', \{count: fresh\}\)\)/, 'the plural selector uses this run’s fresh count');
+  assert.equal(t('pagesDynamicActivity.m33', {count: 1}), 'job added to your list');
+  assert.equal(t('pagesDynamicActivity.m33', {count: 2}), 'jobs added to your list');
   assert.match(card, /'Added in this run'/, 'inside one run, only that run\'s jobs (owner, 25 Oct 2026)');
   assert.doesNotMatch(card, /since your last digest/, 'never the digest\'s wider list inside one run');
   const {notice} = await import('../../../lib/run-history.js'), {freshOf} = await import('../../../lib/few-jobs.js');
@@ -154,8 +160,7 @@ test('every place showing a run\'s new count reads the run\'s own number', async
 
 // Owner, 24 Oct 2026: "too many numbers". Every run card kind leads with ONE number line (the jobs/employers it added); the other counts sit in the closed Details.
 test('every run card draws one headline stat and no other count; no scoring words', async () => {
-  const fs = await import('node:fs');
-  const src = fs.readFileSync(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  const src = readScreenSource(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
   assert.equal((src.match(/stats\.append\(stat\(/g) || []).length, 2, 'one headline stat per card kind (digest, scout): a new count is not shown');
   assert.doesNotMatch(src, /detailsOf|run-card-details|Details/, 'no other count is shown (owner, 24 Oct 2026)');
   assert.doesNotMatch(src, /strong matches|waiting for a score|stat\([^)]*scor/i, 'no scoring count (a job row\'s own fit pill is not a run count)');
@@ -170,10 +175,9 @@ test('the one-number digest header still makes a card', () => {
 
 // Owner, 24 Oct 2026: "the border is not rounded"; "Do we need them? I don't think so" (open, in your places, applied).
 test('the run card draws its headline in one rounded box and no Details', async () => {
-  const fs = await import('node:fs');
-  const src = fs.readFileSync(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  const src = readScreenSource(new URL('../../../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
   assert.match(src, /el\('div', 'run-card-top'\)/);
   assert.doesNotMatch(src, /stat\(card\.(open|local|applied)/);
-  const css = fs.readFileSync(new URL('../../../renderer/find-card.css', import.meta.url), 'utf8');
+  const css = readScreenSource(new URL('../../../renderer/find-card.css', import.meta.url), 'utf8');
   assert.match(css, /\.run-card-top \{[^}]*border-radius: var\(--r-md\)/);
 });

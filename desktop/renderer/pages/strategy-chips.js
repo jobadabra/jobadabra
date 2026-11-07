@@ -2,6 +2,8 @@
 // kept inside it and still searched), a typo flagged as "Did you mean …? Fix · Keep" (never fixed silently), whole-word entries as their own group
 // and a Google Jobs place read as a place (renderer/match-groups.js, from the design system's PR B). The meanings come from lib/list-meanings.js (AI, cached by the lists).
 // chipsOf / folded moved here from strategy-targets.js (a pure move). Pure rules in ../chip-meanings.js. Guarded by test/unit/renderer/strategy-chips.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {chip as valueChip, el} from '../components.js';
 import {titleCase} from '../fragment-words.js';
 import {strategyState} from './strategy-state.js';
@@ -22,7 +24,7 @@ export function folded(labels, keep, more) {
   const box = chipsOf(labels.slice(0, keep));
   if (labels.length <= keep) return box;
   // "+N more", opening in place (owner, 18 Oct 2026: long lists show their first chips and "+N more"); `more` names it for the screen reader.
-  const rest = labels.slice(keep), toggle = el('button', 'link chip-more', `+${rest.length} more`);
+  const rest = labels.slice(keep), toggle = el('button', 'link chip-more', t('pagesShortSettings.m347', {"length": rest.length}));
   toggle.type = 'button';
   toggle.title = more;
   toggle.setAttribute('aria-expanded', 'false');
@@ -41,7 +43,7 @@ export function typoHints(name, {fix, keep}) {
   return typos.map(typo => {
     const line = el('span', 'muted small');
     const button = (label, run) => { const b = el('button', 'link', label); b.type = 'button'; b.addEventListener('click', () => { b.disabled = true; run(b); }); return b; };
-    line.append(`"${typo.entry}": did you mean "${typo.suggestion}"? `, button('Fix', b => fix(typo.entry, typo.suggestion, b)), ' · ', button('Keep', () => keep(typo.entry)));
+    line.append(t('pagesDynamicStrategy.m385', {"entry": typo.entry, "suggestion": typo.suggestion}), button(t('pagesStrategy.fix'), b => fix(typo.entry, typo.suggestion, b)), ' · ', button(t('pagesStrategy.keep'), () => keep(typo.entry)));
     return line;
   });
 }

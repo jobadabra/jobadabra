@@ -1,8 +1,8 @@
 // Needs your attention, simpler row controls (owner, 27 Oct 2026: "how can the user agree or not on the proposed answer?", "the remember
 // should be... maybe we should not ask the user"): the proposal is a button that agrees in one click, Change… opens the other answers;
 // a missing fact has no Remember tick (Fill it in keeps it, Forget undoes it). Code: renderer/pages/need-choice.js, session-needs.js.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -10,7 +10,7 @@ import {choiceButtons} from '../../../renderer/pages/need-choice.js';
 import {answerOptions} from '../../../renderer/answer-options.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const read = file => fs.readFileSync(path.join(here, '../../../renderer', file), 'utf8');
+const read = file => readScreenSource(path.join(here, '../../../renderer', file), 'utf8');
 // A stand-in button: its words, its role and what a press does.
 const fake = () => {
   const made = [];

@@ -1,5 +1,8 @@
 // Calendar page: screenings and interviews on a month grid, with the agenda beside it (renderer/calendar.js). From the job
 // list (Next interview) and the saved recordings (Notion 🎤 Interviews); clicking a meeting opens its job in Notion.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import * as cal from '../calendar.js';
@@ -12,7 +15,7 @@ import {byStore, storeName} from '../store-words.js';
 import {gatedOut} from './notion-connect.js';
 
 const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const KINDS = {screening: ['Screening', 'teal'], interview: ['Interview', 'info']};
+const KINDS = {screening: [t('pagesExtraCommon.screening'), 'teal'], interview: [t('pagesCommon.interview'), 'info']};
 let month = null;        // {year, month} shown
 let pastShown = 20;      // how many past meetings the Recent list shows (Load more adds 20)
 let calJobs = [];        // the jobs the meetings come from (the Calendar's own small read; the full list only while it is the one at hand)
@@ -26,10 +29,10 @@ const gone = new Map();   // meeting id → until (ms)
 const visible = list => list.filter(m => !(gone.get(m.id) > Date.now()));
 const jobsLoaded = () => Array.isArray(shared.allJobs) && shared.allJobs.length > 0;
 
-const monthName = ({year, month: m}) => new Date(Date.UTC(year, m, 1)).toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'});
-const timeOf = m => (m.timed ? new Date(m.at).toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', timeZone: ZONE}) : '');
-const dayLabel = m => new Date(`${m.day}T12:00:00Z`).toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'});
-const name = m => m.company || m.title || 'Interview';
+const monthName = ({year, month: m}) => displayDate(new Date(Date.UTC(year, m, 1)), {month: 'long', year: 'numeric', timeZone: 'UTC'});
+const timeOf = m => (m.timed ? displayDate(new Date(m.at), {hour: '2-digit', minute: '2-digit', timeZone: ZONE}) : '');
+const dayLabel = m => displayDate(new Date(`${m.day}T12:00:00Z`), {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'});
+const name = m => m.company || m.title || t('pagesCommon.interview');
 
 // A meeting's job: its Notion page when the store has one (as before), else the job's page in the app (Jobs → the side panel), so a click
 // is never dead on a store without pages (9 Oct 2026, found on SQLite).
@@ -44,8 +47,8 @@ function open(m) {
 // The small ✕ on a meeting that hasn't been held: give up on it (confirmation first). It leaves the calendar at once.
 function cross(m) {
   if (m.held || !m.job || !cal.page(m.job)) return null;
-  const button = Object.assign(el('button', 'cal-cross', '×'), {type: 'button', title: 'Dismiss this interview'});
-  button.setAttribute('aria-label', `Dismiss the ${name(m)} interview`);
+  const button = Object.assign(el('button', 'cal-cross', '×'), {type: 'button', title: t('pagesMisc.dismissInterview')});
+  button.setAttribute('aria-label', t('pagesDynamicSetup.m73', {"name": name(m)}));
   button.onclick = event => {
     event.stopPropagation();
     const before = m.job.next_interview;
@@ -62,7 +65,7 @@ function chip(m) {
   const when = `${m.held ? '✓ ' : ''}${timeOf(m)}`.trim();
   if (when) button.append(el('span', 'cal-chip-time', when));
   button.append(el('span', 'cal-chip-name', name(m)));
-  button.title = `${KINDS[m.kind][0]}${m.round ? ` · ${m.round}` : ''} · ${name(m)}${m.held ? ' (held)' : ''}`;
+  button.title = `${KINDS[m.kind][0]}${m.round ? ` · ${m.round}` : ''} · ${name(m)}${m.held ? t('pagesMisc.held') : ''}`;
   button.onclick = () => open(m);
   const x = cross(m);
   if (!x) return button;
@@ -86,15 +89,15 @@ function row(m) {
 
 function emptyUpcoming() {
   const box = el('div', 'cal-empty');
-  box.append(icon('calendar'), el('b', '', 'No upcoming interviews'), el('span', 'muted small', 'Email bookings appear after the next Gmail check.'));
+  box.append(icon('calendar'), el('b', '', t('pagesLettersData.noUpcoming')), el('span', 'muted small', t('pagesLettersData.emailBookings')));
   return box;
 }
 const skeletons = () => [0, 1, 2].map(() => { const box = el('div', 'cal-row'); box.append(el('span', 'skeleton w-40'), el('span', 'skeleton w-80')); return box; });
 
 function status() {
-  const text = phase === 'loading' ? byStore('Reading from Notion…', 'Reading…')
-    : phase === 'updating' ? byStore('Updating from Notion…', 'Updating…')
-    : phase === 'failed' ? `Couldn't refresh from ${storeName()}${savedAt ? ` · showing the copy saved ${savedAt}` : ''}. ${failure}`.trim() : '';
+  const text = phase === 'loading' ? byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))
+    : phase === 'updating' ? byStore(t('pagesExtraCommon.updatingNotion'), t('pagesExtraCommon.updating'))
+    : phase === 'failed' ? t('pagesDynamicSetup.m76', {"storeName": storeName(), "value2": savedAt ? t('pagesDynamicSetup.m77', {savedAt}) : '', "failure": failure}).trim() : '';
   const node = $('cal-status');
   node.replaceChildren(...(phase === 'failed' || !text ? [] : [el('span', 'spinner')]), text);
   node.className = `muted small cal-status${phase === 'failed' ? ' bad' : ''}`;
@@ -111,22 +114,22 @@ export function render() {
   $('cal-today').disabled = month.year === now.getFullYear() && month.month === now.getMonth();
   $('cal-title').textContent = monthName(month);
   const weeks = cal.monthGrid(month.year, month.month, list, today);
-  const head = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => el('span', 'cal-dow', day));
+  const head = [t('pagesAuditFirst.a37'), t('pagesAuditFirst.a38'), t('pagesAuditFirst.a39'), t('pagesAuditFirst.a40'), t('pagesAuditFirst.a41'), t('pagesAuditFirst.a42'), t('pagesAuditFirst.a43')].map(day => el('span', 'cal-dow', day));
   const cells = weeks.flat().map((cell, i) => {
     const node = el('div', `cal-cell${cell.inMonth ? '' : ' out'}${cell.today ? ' today' : ''}${i % 7 > 4 ? ' weekend' : ''}`);
     node.append(el('span', 'cal-num', cell.num), ...cell.meetings.slice(0, 3).map(chip));
-    if (cell.meetings.length > 3) node.append(el('span', 'muted small', `+${cell.meetings.length - 3} more`));
+    if (cell.meetings.length > 3) node.append(el('span', 'muted small', t('pagesShortActivity.m79', {"value1": cell.meetings.length - 3})));
     return node;
   });
   $('cal-grid').replaceChildren(...head, ...cells);
   const {upcoming, past} = cal.agenda(list, Date.now(), ZONE);
   if (phase === 'loading') { $('cal-upcoming').replaceChildren(...skeletons()); $('cal-past').replaceChildren(...skeletons()); return; }
   $('cal-upcoming').replaceChildren(...(upcoming.length ? upcoming.map(row) : [emptyUpcoming()]));
-  $('cal-past').replaceChildren(...(past.length ? past.slice(0, pastShown).map(row) : [el('p', 'muted small', 'No past meetings yet.')]));
+  $('cal-past').replaceChildren(...(past.length ? past.slice(0, pastShown).map(row) : [el('p', 'muted small', t('pagesLettersData.noPast'))]));
   $('cal-past-count').textContent = past.length || '';
   $('cal-past-count').hidden = !past.length;
   $('cal-past-foot').hidden = past.length <= 20;
-  $('cal-past-shown').textContent = `Showing ${Math.min(pastShown, past.length)} of ${past.length}`;
+  $('cal-past-shown').textContent = t('pagesShortActivity.m80', {"value1": Math.min(pastShown, past.length), "length": past.length});
   $('cal-past-more').hidden = pastShown >= past.length;
 }
 
@@ -163,7 +166,7 @@ export async function loadCalendar() {
     if (jobsOk && recordingsOk) {
       phase = 'ready'; failure = ''; savedAt = '';
       const still = new Set(cal.meetings(calJobs, recordings, {zone: ZONE}).map(m => m.id)); for (const id of [...gone.keys()]) if (!still.has(id)) gone.delete(id);
-    } else if (jobsOk === null || recordingsOk === null) { phase = 'failed'; failure = error || 'Try again in a moment; the reason is in the app log.'; }
+    } else if (jobsOk === null || recordingsOk === null) { phase = 'failed'; failure = error || t('pagesAuditFirst.a44'); }
     else phase = 'updating';
     openOnNext();
     render();

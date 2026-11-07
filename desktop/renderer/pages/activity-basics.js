@@ -1,5 +1,9 @@
 // Recent activity: run names, phases, outcomes, the Gmail connection and the card chooser (cardFor).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import {counted as countedLabel} from './page-counts.js';
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
 import {resumeOffered} from '../claude-help.js';
@@ -26,8 +30,9 @@ import {WORDS} from '../run-result-card.js';
 import {runCommand} from './actions.js';
 
 // ---------- runs ----------
-export const clockTime = iso => new Date(iso).toLocaleString([], {weekday: 'short', hour: '2-digit', minute: '2-digit'});
-export const duration = (a, b) => { const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000); return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; };
+export const clockTime = iso => displayDate(new Date(iso), {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+/** Format two valid run timestamps as a localized minute/second duration. */
+export const duration = (a, b) => { const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000); return s >= 60 ? t('pagesShortActivity.m4', {"value1": Math.floor(s / 60), "value2": s % 60}) : `${s} s`; };
 // The line under "Jobs": what's happening now, or when the last search ran.
 export async function showSearchStatus() {
   const {running, lastSearchAt, runs} = await window.pilot.runs();
@@ -36,21 +41,21 @@ export async function showSearchStatus() {
   const searching = running && (running.kind || 'search') === 'search';
   box.dataset.state = searching ? 'busy' : lastSearchAt ? 'ok' : 'none';
   // Running: a link to its progress (the bottom bar's panel); done: what it found.
-  if (searching) { title.textContent = 'Finding jobs →'; detail.textContent = searchPhase(running.step) || 'Starting…'; return; }
-  if (!lastSearchAt) { title.textContent = 'No check yet'; detail.textContent = ''; return; }
+  if (searching) { title.textContent = t('pagesActivity.findingJobs'); detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
+  if (!lastSearchAt) { title.textContent = t('pagesActivity.noCheck'); detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
-  const found = last?.new != null ? ` · ${last.new} new match${last.new === 1 ? '' : 'es'}` : '';
+  const found = last?.new != null ? t('pagesDynamicActivity.m3', {"new": last.new, count: last.new}) : '';
   const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
-  if (last && !last.ok) { title.textContent = 'Last check had problems →'; detail.textContent = clockTime(lastSearchAt); return; }
-  title.textContent = `Checked ${clockTime(lastSearchAt)}${found}${cost}`;
+  if (last && !last.ok) { title.textContent = t('pagesActivity.checkProblems'); detail.textContent = clockTime(lastSearchAt); return; }
+  title.textContent = t('pagesShortActivity.m5', {"when": clockTime(lastSearchAt), "found": found, "cost": cost});
   detail.textContent = '';
 }
 
 // ---------- activity bar (bottom of every screen) ----------
 // Plain-language phases of a search, recognised from its log lines.
 export const PHASES = [
-  {match: /^(Searching job boards|Job boards:)/, label: 'Job boards'},
-  {match: /^Checking employer career pages/, label: 'Employer career pages'},
+  {match: /^(Searching job boards|Job boards:)/, label: t('pagesActivity.jobBoards')},
+  {match: /^Checking employer career pages/, label: t('pagesActivity.careerPages')},
 ];
 // A running task's step as words, wherever it is shown (Actions banner and summary, header, bottom bar): a known phrase, else the engine's line
 // without its technical tail (7 Oct 2026: "Scored 60 of 60 job(s) with claude-sonnet-5-5; 0 failed; tokens in 120 (+173594 cached), out 22743").
@@ -65,47 +70,47 @@ export function searchPhase(step = '') {
   if (live) return live;
   const phase = PHASES.find(item => item.match.test(step));
   if (phase) return phase.label;
-  if (/^Scored (\d+) of (\d+)/.test(step)) return 'Matching jobs to your profile';
-  if (/^Enriched (\d+) of (\d+)/.test(step)) return 'Reading new jobs';
-  if (/^Checked: /.test(step)) return 'Employer career pages';
-  if (/^Job Matches:/.test(step)) return `Saving to ${storeName()}`;
-  if (/digest|telegram/i.test(step)) return 'Sending your digest';
+  if (/^Scored (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.matching');
+  if (/^Enriched (\d+) of (\d+)/.test(step)) return t('pagesExtraCommon.readingNew');
+  if (/^Checked: /.test(step)) return t('pagesActivity.careerPages');
+  if (/^Job Matches:/.test(step)) return t('pagesDynamicActivity.m4', {"storeName": storeName()});
+  if (/digest|telegram/i.test(step)) return t('pagesExtraCommon.sendingDigest');
   return step.length > 60 ? `${step.slice(0, 57)}…` : step;
 }
 // icon: emoji for text the owner reads (toasts, messages); line: the line icon for rows and headers (same as Actions → Recent runs).
-export const KIND = {search: {icon: '🔎', line: 'search', name: 'Find jobs'}, mail: {icon: '📧', line: 'mail', name: 'Gmail check'}, insight: {icon: '💡', line: 'chart', name: 'Insight'},
-  interviewInsight: {icon: '💡', line: 'bulb', name: 'Interview insights'}, tailor: {icon: '✂️', line: 'scissors', name: 'Tailor CV + cover letter'}, visits: {icon: '🌐', line: 'globe', name: 'Find jobs using your browser'},
-  weekly: {icon: '📊', line: 'file', name: 'Search analysis'}, kits: {icon: '📝', line: 'file-text', name: 'Prepare top matches'}, today: {icon: '📋', line: 'send', name: "Today's list"}, scout: {icon: '🔭', line: 'building', name: 'More employers'},
-  action: {icon: '⚡', line: 'zap', name: 'Telegram action'}, prepare: {icon: '📝', line: 'file-text', name: 'Application preparation'}, interview: {icon: '🎤', line: 'mic', name: 'Interview review'},
-  add: {icon: '📥', line: 'inbox', name: 'Logged activity'}, import: {icon: '➕', line: 'search', name: 'Add a job'}, rejection: {icon: '🔍', line: 'search', name: 'Rejection review'},
-  prep: {icon: '🎤', line: 'mic', name: 'Interview prep kit'}};
+export const KIND = {search: {icon: '🔎', line: 'search', name: t('pagesCommon.findJobs')}, mail: {icon: '📧', line: 'mail', name: t('pagesActivity.gmailCheck')}, insight: {icon: '💡', line: 'chart', name: t('pagesActivity.insight')},
+  interviewInsight: {icon: '💡', line: 'bulb', name: t('pagesActivity.interviewInsights')}, tailor: {icon: '✂️', line: 'scissors', name: t('pagesActivity.tailor')}, visits: {icon: '🌐', line: 'globe', name: t('pagesActivity.browserFind')},
+  weekly: {icon: '📊', line: 'file', name: t('pagesActivity.searchAnalysis')}, kits: {icon: '📝', line: 'file-text', name: t('pagesActivity.prepareTop')}, today: {icon: '📋', line: 'send', name: t('pagesActivity.todayList')}, scout: {icon: '🔭', line: 'building', name: t('pagesActivity.moreEmployers')},
+  action: {icon: '⚡', line: 'zap', name: t('pagesActivity.telegramAction')}, prepare: {icon: '📝', line: 'file-text', name: t('pagesActivity.preparation')}, interview: {icon: '🎤', line: 'mic', name: t('pagesActivity.interviewReview')},
+  add: {icon: '📥', line: 'inbox', name: t('pagesActivity.logged')}, import: {icon: '➕', line: 'search', name: t('pagesActivity.addJob')}, rejection: {icon: '🔍', line: 'search', name: t('pagesActivity.rejectionReview')},
+  prep: {icon: '🎤', line: 'mic', name: t('pagesActivity.prepKit')}};
 export const KITS_CARD = new Set(['kits', 'prepare', 'tailor']);   // the runs whose result is a list of jobs on the kits card
 export const kindOf = run => (KIND[run?.kind] ? run.kind : 'search');
-export const WHO = {schedule: 'scheduled', you: 'by you', first: 'first check'};
-export const WHERE = {github: 'GitHub', mac: 'this Mac', cloud: 'our servers'};  // where a run ran, after who started it
+export const WHO = {schedule: t('pagesFinalCopy.scheduled'), you: t('pagesExtraCommon.byYou'), first: t('pagesExtraCommon.firstCheck')};
+export const WHERE = {github: 'GitHub', mac: t('pagesFinalCopy.thisMac'), cloud: t('pagesExtraCommon.ourServers')};  // where a run ran, after who started it
 // The warnings in one plain sentence (the list is one click away).
 export function warningSummary(warnings) {
   // The Anthropic account's spending limit: jobs were left unscored. Said plainly, with what to do.
   const limited = limitedJobs(warnings);
   if (limited && warnings.some(text => /Claude Code/.test(text))) {  // the user's own Claude Code: its plan's usage window
-    return `Your Claude plan's usage window is exhausted, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
-      + 'The next check scores them once your plan\'s limit resets; Settings → Connections → AI shows Claude Code\'s status.';
+    return t('pagesDynamicActivity.m5', {"plural": plural(limited, 'job'), count: limited})
+      + t('pagesAuditFirst.a4');
   }
   if (limited) {
-    return `Your Anthropic API spending limit was reached, so ${plural(limited, 'job')} ${limited === 1 ? 'wasn\'t' : 'weren\'t'} scored. `
-      + 'Raise the limit at console.anthropic.com → Settings → Limits; the next check scores them.';
+    return t('pagesDynamicActivity.m6', {"plural": plural(limited, 'job'), count: limited})
+      + t('pagesAuditFirst.a5');
   }
   // The same limit stopped a step that scores nothing (a Gmail check's own AI call, an insight): say that, not the
   // API's error dump.
   if (warnings.some(text => /usage limits?|credit balance|AI limit reached|spending limit/i.test(text))) {
-    return 'Your Anthropic API spending limit was reached, so this step couldn\'t finish. '
-      + 'Raise the limit at console.anthropic.com → Settings → Limits; the next check runs it again.';
+    return t('pagesAuditFirst.a6')
+      + t('pagesAuditFirst.a7');
   }
   if (warnings.some(text => AI_BUSY.test(text))) {
-    return 'The AI service is busy (rate limit), so some jobs may not be scored yet. Try again in a few minutes.';
+    return t('pagesAuditFirst.a8');
   }
   if (warnings.some(text => /429|Too Many Requests/i.test(text))) {
-    return 'Notion was busy (rate limit): saved settings were used and some Notion steps were skipped. They run again next time.';   // about Notion
+    return t('pagesAuditFirst.a9');   // about Notion
   }
   // Otherwise the warnings in plain words (run-warnings.js groupWarnings): one or two said here, more under "View N details".
   const plain = groupWarnings(warnings);
@@ -113,8 +118,8 @@ export function warningSummary(warnings) {
   return humanError(warnings[0]) || '';
 }
 // "<task> completed with warnings": which run it is, said in the box's title.
-export const WARN_NOUN = {search: 'Job search', scout: 'Employer search', mail: 'Gmail check', tailor: 'Tailoring', visits: 'Site reading', kits: 'Application preparation',
-  weekly: 'Search analysis', insight: 'The insight', today: 'Today’s list'};
+export const WARN_NOUN = {search: t('pagesExtraCommon.jobSearch'), scout: t('pagesExtraCommon.employerSearch'), mail: t('pagesActivity.gmailCheck'), tailor: t('pagesExtraCommon.tailoring'), visits: t('pagesExtraCommon.siteReading'), kits: t('pagesActivity.preparation'),
+  weekly: t('pagesActivity.searchAnalysis'), insight: t('pagesExtraCommon.theInsight'), today: t('pagesExtraCommon.todayList')};
 export const runResults = new Map();  // run id -> the message a finished task produced, for Recent activity
 export const runDetails = new Map();  // a Notion run's result and log, read once (pageId -> {message, log})
 // Find jobs using your browser' step card (renderer/visits-card.js parseSiteRows): the meter (the few-jobs box's score-track) and one row per site.
@@ -126,23 +131,23 @@ export function runProgress({done, total, percent}, noun = '') {
   const track = el('span', 'score-track'), fill = el('span', 'score-fill');
   fill.style.width = `${percent}%`;
   track.append(fill);
-  li.append(el('span', '', `${done} of ${total}${noun ? ` ${noun}` : ''} · ${percent}%`), track);
+  li.append(el('span', '', t('pagesShortActivity.m6', {"done": done, "total": total, "value3": noun ? ` ${noun}` : '', "percent": percent})), track);
   return li;
 }
 // The one thing to do on a row, as a link after its words (as "Explain with AI"): a wait on you, a tab to look at, a tab you closed, a silent extension.
 // Each row's one action, a button on its right (owner, 7 Oct 2026: "per row, on the right, Open in Chrome"): the tab while it reads, the site
 // once it is done, Allow while it waits on you, Open again for a tab you closed, the extension when it did not answer.
 function siteAction(site) {
-  if (site.state === 'waiting') return ['Go to Chrome and allow', () => window.pilot.focusBrowser()];
-  if (site.state === 'reading' || site.state === 'opening') return ['Open in Chrome', () => window.pilot.visitShowTab(site.url)];
-  if (site.state === 'closed') return ['Open again', () => window.pilot.visitAgain(site.url)];
-  if (site.state === 'stopped' && /no answer from the extension|did not answer/.test(site.words)) return ['Check the extension', () => openSetting('extension')];
+  if (site.state === 'waiting') return [t('pagesFocusReports.goAllow'), () => window.pilot.focusBrowser()];
+  if (site.state === 'reading' || site.state === 'opening') return [t('pagesCommon.openChrome'), () => window.pilot.visitShowTab(site.url)];
+  if (site.state === 'closed') return [t('pagesExtraCommon.openAgain'), () => window.pilot.visitAgain(site.url)];
+  if (site.state === 'stopped' && /no answer from the extension|did not answer/.test(site.words)) return [t('pagesExtraCommon.checkExtension'), () => openSetting('extension')];
   if (site.state === 'next') return null;   // not opened yet: no tab to show
-  return ['Open in Chrome', () => window.pilot.openVisit(site.url)];   // done or stopped: the site itself
+  return [t('pagesCommon.openChrome'), () => window.pilot.openVisit(site.url)];   // done or stopped: the site itself
 }
 // live: the run is going. A finished run keeps its rows and marks (owner, 7 Oct 2026: "keep the ticks and crosses after the task completes"),
 // without the links that act on a running tab; a site the run left mid-way reads as stopped there, not as still going.
-const settled = site => (['done', 'stopped', 'closed'].includes(site.state) ? site : {...site, state: 'stopped', words: `${site.words.replace(/…$/, '')}: the run ended here`});
+const settled = site => (['done', 'stopped', 'closed'].includes(site.state) ? site : {...site, state: 'stopped', words: t('pagesDynamicActivity.m7', {"value1": site.words.replace(/…$/, '')})});
 export function siteRow(site, live = true, since = '') {
   if (!live) site = settled(site);
   const li = el('li', `${SITE_MARK[site.state] || 'todo'} site-row`);
@@ -155,13 +160,13 @@ export function siteRow(site, live = true, since = '') {
   // A finished run's stopped site: Read with Claude beside Open in Chrome (= Open it myself), as the result card's row had them.
   const finishedMiss = !live && ['stopped', 'closed'].includes(site.state);
   if (finishedMiss && site.url && resumeOffered() && !/no answer from the extension|did not answer/.test(site.words)) li.append(claudeReadButton(site, words));   // only with Claude help on (claude-help.js)
-  const action = site.url && (finishedMiss && site.state === 'closed' ? ['Open in Chrome', () => window.pilot.openVisit(site.url)] : siteAction(site));
+  const action = site.url && (finishedMiss && site.state === 'closed' ? [t('pagesCommon.openChrome'), () => window.pilot.openVisit(site.url)] : siteAction(site));
   if (action && (live || ['done', 'stopped', 'closed'].includes(site.state))) {
     const key = `site:${site.url}:${action[0]}`;
     const button = keepPress(key, Object.assign(el('button', 'secondary item-action', action[0]), {type: 'button', title: site.url}));
     button.addEventListener('click', async () => {
       const done = await pressWhile(key, '', async () => action[1]()).catch(error => ({ok: false, error: error.message}));
-      if (done?.ok === false) setPress(key, {text: plainError(done.error || 'Could not do it now')});
+      if (done?.ok === false) setPress(key, {text: plainError(done.error || t('pagesActivity.couldNotNow'))});
     });
     li.append(button);
   }
@@ -178,7 +183,8 @@ export function phaseIndex(lines) {
   lines.forEach(line => PHASES.forEach((phase, i) => { if (phase.match.test(line)) index = i; }));
   return index;
 }
-export const hhmm = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+/** Format a run timestamp with the active locale for compact activity times. */
+export const hhmm = ms => displayDate(new Date(ms), {hour: '2-digit', minute: '2-digit'});
 /**
  * When the next scheduled check is, in words, for any place that says it (the footer, Upcoming checks, Status): "due now" once the time has passed, else
  * "Today 14:00", "Tomorrow 01:53" or "Wed 01:53". Why (fx, 3 Nov 2026, a Windows tester): the footer printed "Next refresh 01:53 AM" at 02:00 and read as a refresh that never ran;
@@ -186,54 +192,55 @@ export const hhmm = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', 
  * @param {number} at ms of the next check. @param {number} [now] ms. @returns {string}
  */
 export function nextWords(at, now = Date.now()) {
-  if (at <= now) return 'due now';
+  if (at <= now) return t('pagesExtraCommon.dueNow');
   const date = new Date(at), today = new Date(now), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const day = date.toDateString() === today.toDateString() ? 'Today' : date.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : date.toLocaleDateString([], {weekday: 'short'});
+  const day = date.toDateString() === today.toDateString() ? t('pagesCommon.today') : date.toDateString() === tomorrow.toDateString() ? t('pagesExtraCommon.tomorrow') : displayDate(date, {weekday: 'short'});
   return `${day} ${hhmm(at)}`;
 }
-export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** Format a page-owned noun count with native plural categories; noun identifiers stay unchanged. */
+export const plural = (n, word) => countedLabel(word, n);
 export const capital = text => String(text || '').replace(/^./, c => c.toUpperCase());
 // One line on what a finished run did.
 export function outcome(run) {
   const said = outcomeOf(run);
-  return deliveryHead({...run, kind: kindOf(run)}) ? `${capital(said)} · Telegram not sent` : said;
+  return deliveryHead({...run, kind: kindOf(run)}) ? t('pagesDynamicActivity.m8', {"capital": capital(said)}) : said;
 }
 function outcomeOf(run) {
-  if (run.stopped === 'you') return 'Stopped by you · what it saved is kept, the next run continues';
+  if (run.stopped === 'you') return t('pagesExtraCommon.stoppedByYou');
   // Closed while it ran (lib/pipeline.js INTERRUPTED): said as such, as its box does (7 Oct 2026: the row read "Unexpected error")
-  if (run.interrupted) return 'Interrupted · Jobadabra was closed while this ran; run it again to continue';
+  if (run.interrupted) return t('pagesExtraCommon.interrupted');
   const explained = notConnectedHead(run) || waitedHead({...run, kind: kindOf(run)});
   if (explained) return explained.short;   // the box says the rest
   const stopped = stoppedHead({...run, kind: kindOf(run)});
-  if (stopped) return `Stopped · ${stopped.stopped}`;   // the watchdog stopped it: the box says why and where
+  if (stopped) return t('pagesShortActivity.m9', {"stopped": stopped.stopped});   // the watchdog stopped it: the box says why and where
   if (run.problem && (kindOf(run) === 'mail' || !run.ok)) return run.problem;   // why it read nothing or did not arrive comes before the counts a Notion row says (#290, #298)
-  if (aiLimitHead({...run, kind: kindOf(run)})) return 'results unavailable';   // the AI provider stopped it: the box says why
+  if (aiLimitHead({...run, kind: kindOf(run)})) return t('pagesExtraCommon.resultsUnavailable');   // the AI provider stopped it: the box says why
   const failed = failedOutcome(run);
   if (failed) return failed;   // a failed run says so before what its Notion row reports (#301)
-  if (!run.ok && !run.problem && !run.live && !run.waiting) return 'Unexpected error';   // no reason recognised: the box says what to do
+  if (!run.ok && !run.problem && !run.live && !run.waiting) return t('pagesExtraCommon.unexpectedError');   // no reason recognised: the box says what to do
   if (run.result) return run.result;  // a run read from Notion ⏱️ Search runs says it itself
-  if (unsavedRun(run)) return 'its result was not saved';   // the pill says No result (run-status.js)
+  if (unsavedRun(run)) return t('pagesExtraCommon.resultNotSaved');   // the pill says No result (run-status.js)
   if (kindOf(run) === 'mail') {
-    if (run.off) return 'Gmail not connected (Settings → Connections)';
+    if (run.off) return t('pagesExtraCommon.gmailNotConnected');
     if (run.problem) return run.problem;
-    if (!run.ok) return 'had problems';
+    if (!run.ok) return t('pagesExtraCommon.hadProblems');
     if (run.updates?.length) return plural(run.updates.length, 'application update');
     // "Mail: 2 new email(s) classified, 0 update(s), …": emails were read but none changed an application.
     const read = Number(/^Mail: (\d+) new email/.exec(run.summary || '')?.[1] || 0);
-    return read ? `${plural(read, 'email')} checked · no updates` : 'nothing new';
+    return read ? t('pagesDynamicActivity.m9', {"plural": plural(read, 'email')}) : t('pagesExtraCommon.nothingNew');
   }
-  if (!run.ok) return 'had problems';
+  if (!run.ok) return t('pagesExtraCommon.hadProblems');
   // A one-off job (insight, weekly report, today's list, find employers): the result line it printed.
   // An employers search or today's list says its number from its message (run-result-card.js WORDS), as its result card's top does: never "done".
   const card = !run.summary && WORDS[kindOf(run)] && run.message ? parseRunMessage(run.message) : null;
   if (kindOf(run) !== 'search') return run.summary || (card ? WORDS[kindOf(run)](card) : 'done');
-  return run.new != null ? plural(run.new, 'new job') : 'done';
+  return run.new != null ? plural(run.new, 'new job') : t('pagesCommon.done');
 }
 // An Actions page command waits for its run (by kind) to end, then its answer shows the result.
 // A Google sign-in that failed during a run, with Gmail working now: the run stays as it was, without the obsolete button.
 export const GOOGLE_SIGNIN = /Google sign-in/i;
 export const signedInSince = head => (head && GOOGLE_SIGNIN.test(head.problem || '') && gmailConnected() === true
-  ? {...head, title: 'Google sign-in failed during this run', summary: 'Gmail is connected now. You can run another check.', hint: '', fix: null} : head);
+  ? {...head, title: t('pagesActivity.googleFailed'), summary: t('pagesAuditFirst.a10'), hint: '', fix: null} : head);
 // Whether Gmail is connected now (true / false / null = not known yet): Settings keeps the last check (localStorage
 // 'serviceChecks'); it is read again from the app when Recent activity opens. A run's own state is history, not this.
 let gmailNow = null;

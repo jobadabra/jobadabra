@@ -2,6 +2,8 @@
 // and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date and Open PDF).
 // Approved usable base letters automatically fill the gap when a job has no usable tailored letter. Who pays is said before and after a draft.
 // A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/unit/renderer/base-letter.test.js and test/unit/renderer/contact-reading.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {pill} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {profileBar} from './profile-save-bar.js';
@@ -24,10 +26,10 @@ let openAi = () => {};                   // Settings → Connections → AI, pas
 // The state as a pill: neutral while none exists (owner, 18 Oct 2026: never a green dot for "not written"); Writing… while a draft is written.
 // Why (28 Oct 2026, owner's shot): the card said "Approved · Today 19:40" while a new draft was being written over it.
 export function statePill(status, {drafting: busy = false} = {}) {
-  if (busy) return pill('Writing…', 'info');
-  if (status.state === 'approved') return pill(`Approved${status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}`, 'good');
-  if (status.state === 'draft') return pill('Draft · approve to use it', 'warn');
-  return pill('Not created');
+  if (busy) return pill(t('pagesCommon.writing'), 'info');
+  if (status.state === 'approved') return pill(t('pagesShortActivity.m74', {"value1": status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}), 'good');
+  if (status.state === 'draft') return pill(t('pagesLettersData.draftApprove'), 'warn');
+  return pill(t('pagesLettersData.notCreated'));
 }
 // Which part shows: the empty state (two choices) or the editor. Reading shows the editor, its box a skeleton (contact-reading.js); a first draft being
 // written shows it too, the letter's shape in skeleton lines under the strip (ai-writing.js).
@@ -37,8 +39,8 @@ const usageLine = () => [usageBefore(shared.state?.settings, !!shared.state?.sec
 
 // The empty state (page-parts.js emptyState), drawn again each paint so its usage note follows the engine; its buttons keep their ids (⌘K, tests).
 function drawEmpty() {
-  const box = emptyState({icon: 'file', chip: '', title: 'No base letter yet', text: 'Draft one with AI from your CV, Profile and writing preferences, or write your own.',
-    actions: [{label: 'Draft with AI', ai: true, run: () => draft($('letter-start-ai'))}, {label: 'Write my own', run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
+  const box = emptyState({icon: 'file', chip: '', title: t('pagesLettersData.noLetter'), text: t('pagesLettersData.draftLetter'),
+    actions: [{label: t('pagesLettersData.draftAi'), ai: true, run: () => draft($('letter-start-ai'))}, {label: t('pagesLettersData.writeOwn'), run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
   const [ai, own] = box.querySelectorAll('button');
   ai.id = 'letter-start-ai';
   own.id = 'letter-own';
@@ -49,8 +51,8 @@ function paint() {
   show($('letter-editor'), editor);
   show($('letter-empty'), !editor);
   if (!editor) drawEmpty();
-  $('letter-state').replaceChildren(isReading ? pill('Reading…') : statePill(saved, {drafting}));
-  $('letter-draft').querySelector('span').textContent = drafting ? 'Writing…' : saved.text ? 'Redraft with AI' : 'Draft with AI';
+  $('letter-state').replaceChildren(isReading ? pill(t('pagesCommon.reading')) : statePill(saved, {drafting}));
+  $('letter-draft').querySelector('span').textContent = drafting ? t('pagesCommon.writing') : saved.text ? t('pagesLettersData.redraftAi') : t('pagesLettersData.draftAi');
   show($('letter-pdf'), !!saved.pdf);
   document.querySelectorAll('[data-letter-usage]').forEach(node => { node.textContent = usageLine(); });
   buttons();
@@ -81,7 +83,7 @@ export async function loadLetter() {
       painted = true;
       showLetter(letter);
     },
-    fail: result => { reading(false, document, 'letter'); isReading = false; paint(); message('letter-message', result.error || 'Couldn\'t read your letter', 'error'); },
+    fail: result => { reading(false, document, 'letter'); isReading = false; paint(); message('letter-message', result.error || t('pagesLettersData.readLetterFailed'), 'error'); },
   });
 }
 
@@ -105,8 +107,8 @@ async function act(button, working, run, {drafts = false} = {}) {
       message('letter-message', '');   // the last action's line ("Approved ✓ …") is not true while a new draft is written
       paint();
       const first = !editor.value.trim();
-      stop = aiWriting(editor, {title: first ? 'Writing your first draft' : 'Writing a new draft',
-        note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
+      stop = aiWriting(editor, {title: first ? t('pagesLettersData.firstDraft') : t('pagesLettersData.newDraft'),
+        note: first ? t('pagesAuditFirst.a32') : t('pagesAuditFirst.a33')});
     } else message('letter-message', working);
     result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
   } catch (error) { result = {ok: false, error: error.message}; }
@@ -122,12 +124,12 @@ async function act(button, working, run, {drafts = false} = {}) {
 async function draft(button) {
   if (draftPending) return draftPending;
   const text = $('letter-text').value.trim();
-  if (text && text !== (saved.text || '').trim() && !confirm('Replace the text you changed with a new draft?')) return;
+  if (text && text !== (saved.text || '').trim() && !confirm(t('pagesLettersData.replaceDraft'))) return;
   draftPending = (async () => {
     const result = await act(button, '', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {drafts: true});
     if (result.ok) $('letter-feedback').value = '';
     const used = result.ok ? usageAfter(result) : '';
-    message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');
+    message('letter-message', result.ok ? t('pagesDynamicSetup.m67', {"value1": used ? ` · ${used}` : ''}) : result.error, result.ok ? 'ok' : 'error');
     if (result.ok) hintAfter($('letter-message'), shared.state, openAi);   // Free AI wrote it: stronger writing with an own key
   })();
   try { return await draftPending; } finally { draftPending = null; }
@@ -138,17 +140,17 @@ export function initLetter({openAiSettings} = {}) {
   $('letter-text').addEventListener('input', buttons);
   $('letter-draft').addEventListener('click', () => draft($('letter-draft')));
   // Typed changes are a draft on Profile's one bar (Save all changes keeps it as a draft letter; Discard all puts the saved text back); Approve stays here.
-  draftSource = profileBar().register({id: 'base-letter', tab: 'letter', label: 'Base letter', count: typedChange,
+  draftSource = profileBar().register({id: 'base-letter', tab: 'letter', label: t('pagesLettersData.baseLetter'), count: typedChange,
     save: async () => {
       const result = await window.pilot.coverLetterSave($('letter-text').value).catch(error => ({ok: false, error: error.message}));
-      if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); message('letter-message', 'Saved as a draft. Approve it to make the PDF.', 'ok'); }
+      if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); message('letter-message', t('pagesLettersData.savedDraft'), 'ok'); }
       return result.ok ? {ok: true} : {ok: false, error: result.error};
     },
     discard: () => { $('letter-text').value = saved.text || ''; writing = false; paint(); },
     reveal: () => $('letter-text').focus()});
   $('letter-approve').addEventListener('click', async () => {
-    const result = await act($('letter-approve'), 'Making the PDF…', () => window.pilot.coverLetterApprove($('letter-text').value));
-    const words = 'Approved ✓ Used when a job has no usable tailored letter.';
+    const result = await act($('letter-approve'), t('pagesExtraCommon.makingPdf'), () => window.pilot.coverLetterApprove($('letter-text').value));
+    const words = t('pagesAuditFirst.a34');
     message('letter-message', result.ok ? words : result.error, result.ok ? 'ok' : 'error');
   });
   $('letter-pdf').addEventListener('click', () => window.pilot.coverLetterOpen());

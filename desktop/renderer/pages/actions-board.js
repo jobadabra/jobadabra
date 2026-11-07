@@ -1,6 +1,8 @@
 // "Read this board" (owner, 16 Oct 2026): a job list behind a login (LinkedIn and the like) read through a tab the app opens and manages in the person's own
 // Chrome. The card sits beside "Find jobs using your browser" (built here, not in index.html, which may only shrink); Run opens a small dialog for the board's
 // search address, or one of the sites the app knows; the tab waits for the person's Read (extension popup), after they sign in themselves. Guard: desktop/test/unit/extension/read-board.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {$, show} from './core.js';
@@ -15,13 +17,13 @@ export function boardCard() {
   const run = el('button', 'secondary action', '');
   run.id = 'board-run';
   run.dataset.palette = 'board';
-  run.append(Object.assign(el('b', '', 'Read this board'), {hidden: true}), 'Run');
+  run.append(Object.assign(el('b', '', t('pagesActivity.readBoard')), {hidden: true}), t('pagesCommon.run'));
   const card = el('div', 'task-card is-row');
   card.id = 'board-card';
-  card.append(el('span', 'task-category', 'DISCOVERY'), (() => {
+  card.append(el('span', 'task-category', t('pagesActivity.discovery')), (() => {
     const body = el('div', 'task-body');
     const words = el('div', 'task-words');
-    words.append(el('b', '', 'Read this board'), el('span', 'muted', 'A job list behind a sign-in: opens it in your Chrome, you sign in there, then it reads the list'));
+    words.append(el('b', '', t('pagesActivity.readBoard')), el('span', 'muted', t('pagesActivity.boardLogin')));
     const tile = el('span', 'task-tile');
     tile.append(icon('globe'));
     body.append(tile, words, run);
@@ -36,38 +38,38 @@ export function boardDialog() {
   dialog.id = 'board-dialog';
   const head = el('div', 'dialog-head');
   const lead = el('div', 'cv-head');
-  lead.append(el('h2', '', 'Read this board'));
+  lead.append(el('h2', '', t('pagesActivity.readBoard')));
   const close = el('button', 'ghost icon-btn', '');
   close.id = 'board-close';
-  close.setAttribute('aria-label', 'Close');
+  close.setAttribute('aria-label', t('pagesCommon.close'));
   close.append(icon('close'));
   const tile = el('span', 'dialog-icon');
   tile.append(icon('globe'));
   head.append(tile, lead, close);
   // One left edge under the head: the subtitle, the labelled field, its helper line and the steps (17 Oct 2026: the subtitle touched the field and sat under the title's text).
-  const subtitle = el('p', 'dialog-lead', 'Open the board\'s search results in Chrome, as yourself.');
-  const label = el('label', '', 'Search results link');
+  const subtitle = el('p', 'dialog-lead', t('pagesActivity.boardResults'));
+  const label = el('label', '', t('pagesActivity.resultsLink'));
   label.htmlFor = 'board-url';
   const field = el('input', 'board-url');
-  Object.assign(field, {id: 'board-url', type: 'url', placeholder: 'https://… the board\'s search results', autocomplete: 'off'});
+  Object.assign(field, {id: 'board-url', type: 'url', placeholder: t('pagesActivity.resultsPlaceholder'), autocomplete: 'off'});
   field.setAttribute('list', 'board-known');
-  field.setAttribute('aria-label', 'The board\'s address');
+  field.setAttribute('aria-label', t('pagesActivity.boardAddress'));
   const known = el('datalist', '');
   known.id = 'board-known';
-  const hint = el('p', 'muted small field-hint', 'The tab opens in your Chrome.');
+  const hint = el('p', 'muted small field-hint', t('pagesActivity.tabChrome'));
   const steps = el('ol', 'board-steps muted small', '');
-  for (const text of ['Sign in yourself if Chrome asks.', 'Press Read in the Jobadabra extension.', 'Choose "Filter for my search, then read" or "Read the jobs as they are".']) steps.append(el('li', '', text));
-  const never = el('p', 'muted small', 'Jobadabra never types your password.');
+  for (const text of [t('pagesAuditFirst.a0'), t('pagesAuditFirst.a1'), t('pagesAuditFirst.a2')]) steps.append(el('li', '', text));
+  const never = el('p', 'muted small', t('pagesActivity.neverPassword'));
   const message = el('p', 'message', '');
   message.id = 'board-message';
-  const cancel = el('button', 'secondary', 'Cancel');
+  const cancel = el('button', 'secondary', t('pagesCommon.cancel'));
   cancel.id = 'board-cancel'; cancel.type = 'button';
-  const start = el('button', 'primary', 'Open the board');
+  const start = el('button', 'primary', t('pagesActivity.openBoard'));
   start.id = 'board-start'; start.type = 'button'; start.disabled = true;
   const foot = el('div', 'dialog-foot');
   const buttons = el('span', 'inline');
   buttons.append(cancel, start);
-  foot.append(el('span', 'muted small', 'You read it; the app keeps the jobs that fit.'), buttons);
+  foot.append(el('span', 'muted small', t('pagesActivity.youRead')), buttons);
   dialog.append(head, subtitle, label, field, known, hint, steps, never, message, foot);
   return dialog;
 }
@@ -98,7 +100,7 @@ export function initBoard({answer}) {
     const result = await window.pilot.visitsRun({board: field.value.trim()}).catch(error => ({text: `⚠️ ${error.message}`}));
     if (result?.started) { refreshActivity(); show($('command-answer'), false); return; }
     release(button);
-    answer(result?.text || result?.error || 'Done.');
+    answer(result?.text || result?.error || t('pagesAuditFirst.a3'));
   };
   $('board-start').addEventListener('click', start);
   field.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); start(); } });

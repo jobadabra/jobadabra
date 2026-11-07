@@ -2,6 +2,8 @@
 // today's insight, a rejection lesson, Your week, Analyze now, Tune) come first, then the Focus items that moved here, with their own buttons.
 // Each entry's buttons run in one press (RUN); ⋯ holds Not now (14 days) and Not true, kept in the active store (lib/suggestion-answers.js).
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/unit/renderer/suggestions.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, barView, bySeverity, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
@@ -42,7 +44,7 @@ const held = new Set();     // keys answered here: gone at once, before Focus is
 let hiddenKeys = new Set(); // Strategy's rows answered anywhere (Focus's `suggestions_hidden`)
 
 // A task that did not start says why where you pressed (a refusal, no AI credit), as Find jobs does.
-const started = (what, result) => { if (result?.started) openActivity(true); else if (result?.text) toastMessage(`${what} did not start`, result.text.replace(/^⚠️\s*/, ''), NO_PLACE.itself, 'warn'); };
+const started = (what, result) => { if (result?.started) openActivity(true); else if (result?.text) toastMessage(t('pagesDynamicFocusInterviews.m169', {"what": what}), result.text.replace(/^⚠️\s*/, ''), NO_PLACE.itself, 'warn'); };
 
 // One handler per actions[].do (suggestions.js DOES): what the button names, done in one press.
 export const RUN = {
@@ -50,7 +52,7 @@ export const RUN = {
   add_email: (_action, _event, row) => row.addEmail(),
   resend_confirm: async () => {
     const done = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    toastMessage(done?.ok ? 'Sent again ✓' : 'Not sent', done?.ok ? 'Check your inbox (and your spam folder) for the link.' : done?.error || 'Try again in a minute.', NO_PLACE.itself, done?.ok ? 'good' : 'warn');
+    toastMessage(done?.ok ? t('pagesFocusReports.resent') : t('pagesFocusReports.notSent'), done?.ok ? t('pagesFocusReports.checkInbox') : done?.error || t('pagesCommon.minute'), NO_PLACE.itself, done?.ok ? 'good' : 'warn');
   },
   open_notifications: () => import('./settings.js').then(({openSetting}) => openSetting('notify')),
   connect_gmail: () => connectGmail(),   // Settings' own button: one sign-in flow
@@ -60,10 +62,10 @@ export const RUN = {
   read_week: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('weekly'))),
   open_rejection: (action, event) => (action.link ? openLink(action.link, event)
     : (openView('jobs'), openJobPanel({url: action.url, title: action.title, company: action.company}, 'review'))),
-  analyze: async () => started('Analyze my job search', await runCommand('weekly')),
+  analyze: async () => started(t('pagesFieldsStatus.analyzeSearch'), await runCommand('weekly')),
   tune: () => openTune(),
   find_jobs: () => { openView('jobs'); return startSearch(); },
-  tailor: async () => started('Tailor CVs', await startTailor()),
+  tailor: async () => started(t('pagesFieldsStatus.tailorCvs'), await startTailor()),
   // The next interview's prep kit, as its Up next row builds or opens it (pages/focus.js prepAction).
   prep: (_action, event) => {
     const next = focusItems().find(item => item.kind === 'prepare' && item.page_id);
@@ -83,7 +85,7 @@ export const RUN = {
   show_jobs: action => { openView('jobs'); showJobsIn(action.label.replace(/^Show /, ''), action.urls, 'focus'); },
   edit_minimum: () => import('./strategy-state.js').then(async ({showTab}) => { openView('strategy'); showTab('strategy-yours'); (await import('./strategy-cards.js')).openCard('goals'); }),
   // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
-  use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage('Could not add the skills', result?.error || 'Try again.', NO_PLACE.itself, 'warn'); },
+  use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage(t('pagesFocusReports.addSkillsFailed'), result?.error || t('pagesCommon.tryAgain'), NO_PLACE.itself, 'warn'); },
   open_letter: () => import('./settings.js').then(({openSetting}) => openSetting('letter')),   // the cover letter is a setting, as the card's button did
   open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
@@ -103,7 +105,7 @@ export async function answerEntry(entry, state) {
   if (!done?.ok) {
     held.delete(entry.key);
     redraw();
-    toastMessage('Not saved', done?.error || 'Your answer was not saved. Try again.', NO_PLACE.itself, 'bad');
+    toastMessage(t('pagesCommon.notSaved'), done?.error || t('pagesFocusReports.answerNotSaved'), NO_PLACE.itself, 'bad');
     return;
   }
   loadFocus();
@@ -118,9 +120,9 @@ const button = (label, className, run) => {
 };
 // The notification card's e-mail field and its Send button: saves the address (its confirm mail goes out), then the card asks again (`notify-changed`).
 function bindNotifyEmail(body, node) {
-  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
+  return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', t('pagesFieldsStatus.notifyWhere'), FIELD_HINT), draft: notifyDraft, words: {busy: t('pagesFieldsStatus.sendingLink'), failed: t('pagesPlans.saveFailed')},
     turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
-      toastMessage('Check your inbox ✓', `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
+      toastMessage(t('pagesFocusReports.inboxCheck'), t('pagesDynamicFocusInterviews.m170', {"sentTo": sentTo}), NO_PLACE.itself, 'good');
       window.dispatchEvent(new Event('notify-changed'));
     }});
 }
@@ -149,7 +151,7 @@ export function entryRow(entry) {
         turnOn: given => window.pilot.hostedOn(given), onSuccess: async sentTo => {
           hostedRead++;
           hostedContext.hosted.on = true;
-          toastMessage('Always on ✓', await turnedOnText(sentTo), NO_PLACE.itself, 'good');
+          toastMessage(t('pagesFocusReports.alwaysOn'), await turnedOnText(sentTo), NO_PLACE.itself, 'good');
           redraw();
           loadNotifyOffer();   // the address is new and unconfirmed: the notification card asks again
         }});
@@ -158,10 +160,10 @@ export function entryRow(entry) {
     actions.append(AI.has(action.do) ? wand(node) : node);
   }
   const more = [];
-  if (entry.answers.includes('Not now')) more.push({icon: 'clock', label: 'Not now', title: 'Hidden for 14 days, then shown again if it still holds', run: () => answerEntry(entry, 'Not now')});
-  if (entry.answers.includes('Not true')) more.push({icon: 'close', label: 'Not true', title: 'Never shown again for this evidence', run: () => answerEntry(entry, 'Not true')});
-  if (parts.evidence) more.push({icon: 'info', label: 'Evidence', run: () => toastMessage(entry.title, parts.evidence, NO_PLACE.itself, 'info')});
-  if (more.length) actions.append(moreButton(more, 'More'));
+  if (entry.answers.includes('Not now')) more.push({icon: 'clock', label: t('pagesCommon.notNow'), title: t('pagesFocusReports.hide14'), run: () => answerEntry(entry, 'Not now')});
+  if (entry.answers.includes('Not true')) more.push({icon: 'close', label: t('pagesCommon.notTrue'), title: t('pagesFocusReports.neverEvidence'), run: () => answerEntry(entry, 'Not true')});
+  if (parts.evidence) more.push({icon: 'info', label: t('pagesFocusReports.evidence'), run: () => toastMessage(entry.title, parts.evidence, NO_PLACE.itself, 'info')});
+  if (more.length) actions.append(moreButton(more, t('pagesCommon.more')));
   li.append(round, body, actions);
   return li;
 }
@@ -174,7 +176,7 @@ const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; 
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
 // Most severe first (suggestions.js SEVERITY): Cover letter, then the old scores, the details, what we learned.
 const rowsNow = () => bySeverity(drawerRows([...rescoreEntries({count: knownOutdated().count, running: rescoring()}), ...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys}));
-const FIELD_HINT = 'We e-mail you a link to confirm it. Nothing is sent until you press it.';   // Why (2 Nov 2026): not Always on's hint "We send the daily matches here": this card promises no matches
+const FIELD_HINT = t('pagesAuditPunct.a22');   // Why (2 Nov 2026): Localized display keys preserve this rule: not Always on's hint "We send the daily matches here": this card promises no matches
 let notifyContext = {state: null};
 const notifyDraft = {};
 // Read with the Focus load and again after Notifications saved (`notify-changed`): the website says whether the address is confirmed.
@@ -221,7 +223,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   $('focus-suggestions-list').replaceChildren(...shown.map(row => (row.entry ? entryRow(row.entry) : card(row.item))));
   $('focus-suggestions-count').textContent = countWords(shown.length, rows.length);
   const all = $('focus-suggestions-all');
-  all.textContent = showAll ? 'Show fewer' : `Show all ${rows.length}`;
+  all.textContent = showAll ? t('pagesProfile.showFewer') : t('pagesDynamicFocusInterviews.m172', {"length": rows.length});
   show(all, rows.length > SHOWN);
   renderJobsSuggestions();
   window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row, and its rows answered here

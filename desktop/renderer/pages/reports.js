@@ -4,6 +4,8 @@
 // Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
 // Pure parts: renderer/reports-view.js. Guards: test/unit/renderer/reports-view.test.js, test/unit/main/reports-handlers.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, pill} from '../components.js';
 import {dayLabel, funnelRows, improveLines, insightItems, weeklyCardOf, weeklyReports} from '../reports-view.js';
@@ -11,10 +13,10 @@ import {weeklyCard} from './activity-cards.js';
 import {$} from './core.js';
 import {gatedOut} from './notion-connect.js';
 
-export const REPORT_TABS = [['weekly', 'Weekly report', 'weekly report search analysis priorities numbers week'],
-  ['insights', 'Insights', 'insights history daily feedback useful'], ['funnel', 'Funnel', 'funnel pipeline conversion from previous where to improve'],
-  ['fills', 'Form fills', 'form fills history runs fields timings extension'],
-  ['searches', 'Searches', 'searches find jobs runs details numbers employers boards how the search ran full report']];
+export const REPORT_TABS = [['weekly', t('pagesExtraLabels.weeklyReport'), 'weekly report search analysis priorities numbers week'],
+  ['insights', t('pagesExtraLabels.insights'), 'insights history daily feedback useful'], ['funnel', t('pagesExtraLabels.funnel'), 'funnel pipeline conversion from previous where to improve'],
+  ['fills', t('pagesExtraLabels.formFills'), 'form fills history runs fields timings extension'],
+  ['searches', t('pagesFocusReports.searches'), 'searches find jobs runs details numbers employers boards how the search ran full report']];
 const state = {tab: 'weekly', insights: null, week: 0, error: '', openSearch: null};
 
 function group(title, lines) {
@@ -27,17 +29,17 @@ const empty = text => [el('p', 'muted', text)];
 
 function weeklyTab() {
   const weeks = weeklyReports(state.insights);
-  if (!weeks.length) return empty('No weekly report yet: one comes each Monday after your first week of applications.');
+  if (!weeks.length) return empty(t('pagesReadyReports.noWeekly'));
   state.week = Math.min(state.week, weeks.length - 1);
   const week = weeks[state.week];
   const nav = el('div', 'inline');
-  const older = Object.assign(el('button', 'secondary', '‹ Previous week'), {type: 'button', disabled: state.week >= weeks.length - 1});
-  const newer = Object.assign(el('button', 'secondary', 'Next week ›'), {type: 'button', disabled: state.week === 0});
+  const older = Object.assign(el('button', 'secondary', t('pagesFocusReports.previousWeek')), {type: 'button', disabled: state.week >= weeks.length - 1});
+  const newer = Object.assign(el('button', 'secondary', t('pagesFocusReports.nextWeek')), {type: 'button', disabled: state.week === 0});
   older.addEventListener('click', () => { state.week++; draw(); });
   newer.addEventListener('click', () => { state.week--; draw(); });
   nav.append(older, newer);
   const head = el('div', 'job-panel-head');
-  head.append(el('p', 'muted small', [dayLabel(week.day), week.confidence && `${week.confidence} confidence`].filter(Boolean).join(' · ')), nav);
+  head.append(el('p', 'muted small', [dayLabel(week.day), week.confidence && t('pagesShortReady.m296', {"confidence": week.confidence})].filter(Boolean).join(' · ')), nav);
   // The card Recent activity draws for this report, then the report's other sections in the same shape.
   const {weekly, extra} = weeklyCardOf(week);
   const card = weeklyCard(weekly);
@@ -64,16 +66,16 @@ function weeklyTab() {
 function feedbackChoice(item) {
   const box = el('div', 'segmented');
   box.setAttribute('role', 'group');
-  box.setAttribute('aria-label', 'Was it useful?');
+  box.setAttribute('aria-label', t('pagesFocusReports.useful'));
   for (const value of ['Useful', 'Not useful', 'Acting on it']) {
-    const button = Object.assign(el('button', item.feedback === value ? 'is-active' : '', value), {type: 'button'});
+    const button = Object.assign(el('button', item.feedback === value ? 'is-active' : '', t(({'Useful': 'pagesExtraLabels.useful', 'Not useful': 'pagesExtraLabels.notUseful', 'Acting on it': 'pagesExtraLabels.acting'})[value])), {type: 'button'});
     button.setAttribute('aria-pressed', String(item.feedback === value));
     button.addEventListener('click', async () => {
       const done = await window.pilot.insightFeedback(item.id, value).catch(error => ({ok: false, error: error.message}));
-      if (!done.ok) { $('reports-state').textContent = plainError(`Feedback not saved: ${done.error || 'try again'}`); return; }
+      if (!done.ok) { $('reports-state').textContent = plainError(t('pagesDynamicSessionReports.m324', {"value1": done.error || t('pagesAuditFirst.a67')})); return; }
       const row = state.insights.find(each => each.id === item.id);
       if (row) row.fields = {...row.fields, feedback: value};
-      $('reports-state').textContent = 'Feedback saved ✓';
+      $('reports-state').textContent = t('pagesFocusReports.feedbackSaved');
       draw();
     });
     box.append(button);
@@ -83,12 +85,12 @@ function feedbackChoice(item) {
 
 function insightsTab() {
   const items = insightItems(state.insights);
-  if (!items.length) return empty('No insights yet: the first comes after a few days of searching and applying.');
+  if (!items.length) return empty(t('pagesReadyReports.noInsights'));
   return items.map(item => {
     const box = el('section', 'card iv-moments-group reports-insight');   // one card per insight (#reports-body is then plain, see draw)
     const head = el('h3', '', item.title);
-    head.prepend(pill(item.category || 'Insight', item.category === 'Process' ? 'warn' : 'info'), ' ');
-    box.append(el('p', 'muted small', [dayLabel(item.day), item.confidence && `${item.confidence} confidence`].filter(Boolean).join(' · ')), head);
+    head.prepend(pill(item.category || t('pagesActivity.insight'), item.category === 'Process' ? 'warn' : 'info'), ' ');
+    box.append(el('p', 'muted small', [dayLabel(item.day), item.confidence && t('pagesShortReady.m297', {"confidence": item.confidence})].filter(Boolean).join(' · ')), head);
     // A process issue's own page (its action, "Supported hypothesis", the quotes); a daily insight's evidence and next step.
     if (item.groups.length) box.append(...item.groups.map(part => group(part.title, part.lines)));
     else box.append(...item.evidence.map(line => el('div', 'iv-moment', line)), ...(item.action ? [el('div', 'iv-moment', el('b', '', `👉 ${item.action}`))] : []));
@@ -100,10 +102,10 @@ function insightsTab() {
 async function funnelTab() {
   const read = await window.pilot.focus().catch(error => ({ok: false, error: error.message}));   // Focus's own read (shared with its page)
   const focus = read?.focus || {}, funnel = focus.funnel;
-  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : 'No applications yet: the funnel fills as you apply.');
+  if (!funnel?.steps?.length) return empty(read?.error ? t('pagesDynamicSessionReports.m325', {"plainError": plainError(read.error)}) : t('pagesReadyReports.noApplications'));
   const table = el('table', 'data-table');
   const head = el('tr');
-  for (const name of ['Step', 'Reached', 'From previous', 'Of applied', 'Still open here']) head.append(el('th', '', name));
+  for (const name of [t('pagesFieldsStatus.step'), t('pagesExtraLabels.reached'), t('pagesExtraLabels.fromPrevious'), t('pagesExtraLabels.ofApplied'), t('pagesExtraLabels.stillOpen')]) head.append(el('th', '', name));
   table.append(head);
   for (const row of funnelRows(funnel)) {
     const line = el('tr');
@@ -113,16 +115,16 @@ async function funnelTab() {
   }
   const improve = improveLines(funnel);
   const steps = el('section', 'card');
-  steps.append(table, el('p', 'muted small', 'From previous = share of the previous step that got this far.'));
+  steps.append(table, el('p', 'muted small', t('pagesReadyReports.fromPrevious')));
   const better = el('section', 'card');
-  if (improve.length) better.append(group('💡 Where to improve', improve.map(text => ({text}))));
+  if (improve.length) better.append(group(t('pagesExtraLabels.whereImprove'), improve.map(text => ({text}))));
   return improve.length ? [steps, better] : [steps];
 }
 
 async function fillsTab(box) {
   // Lane F's view (mac-cd): it owns its list, detail and states. Until it lands, this tab says so.
   const view = await import('./form-fills.js').catch(() => null);
-  if (!view?.renderFormFills) return empty('Your past form fills will show here soon.');
+  if (!view?.renderFormFills) return empty(t('pagesReadyReports.pastFills'));
   view.renderFormFills(box);
   return null;
 }
@@ -140,7 +142,7 @@ async function draw() {
   if (state.tab === 'searches') { await searchesTab(box); return; }
   if (state.tab === 'fills') { const parts = await fillsTab(box); if (parts) box.replaceChildren(...parts); return; }
   if (state.tab === 'funnel') { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60')); box.replaceChildren(...await funnelTab()); return; }
-  if (state.error) { box.replaceChildren(...empty(`Could not read your insights: ${plainError(state.error)}. Open Reports again to retry.`)); return; }
+  if (state.error) { box.replaceChildren(...empty(t('pagesDynamicSessionReports.m326', {"plainError": plainError(state.error)}))); return; }
   if (!state.insights) { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60'), el('span', 'skeleton w-40')); return; }
   box.replaceChildren(...(state.tab === 'insights' ? insightsTab() : weeklyTab()));
 }
@@ -150,12 +152,12 @@ export async function loadReports(tab = state.tab) {
   if (gatedOut('reports')) return;   // behind the Notion gate: nothing reads it (#410)
   state.tab = tab;
   state.error = '';
-  $('reports-state').textContent = 'Refreshing…';
+  $('reports-state').textContent = t('pagesCommon.refreshing');
   draw();
   const result = await window.pilot.reportsInsights().catch(error => ({ok: false, error: error.message}));
   state.insights = result.ok ? result.insights : state.insights;
-  state.error = result.ok ? '' : result.error || 'try again';
-  $('reports-state').textContent = result.ok ? 'Updated just now' : '';
+  state.error = result.ok ? '' : result.error || t('pagesAuditFirst.a67');
+  $('reports-state').textContent = result.ok ? t('pagesFocusReports.updatedNow') : '';
   if (!['fills', 'funnel', 'searches'].includes(state.tab)) draw();
 }
 

@@ -2,6 +2,8 @@
 // Work eligibility, Availability & compensation and Languages each show a compact summary drawn from their editor's own boxes (so drafts, CV proposals and
 // saving stay exactly as they were), a quiet Edit opens the editor in place, and Done leaves an editor with no change; with changes the Profile page's one
 // bar decides, and Save all / Discard all close the editors. Contact and Links read as columns (mockup 05: icon · small grey label · value); the fact cards as a calm two-column summary (renderer/fact-summary.js). Guarded by test/unit/renderer/details-read.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {CARD_EDIT, el} from '../components.js';
 import {chipLine, doneButton, factColumns, isEditing, setEditing} from '../card-shell.js';
 import {checkBadge, checkCount, eligibilityView, languagesView, summaryView} from '../fact-summary.js';
@@ -14,23 +16,23 @@ const shown = key => !document.querySelector(`[data-contact="${key}"]`)?.closest
 
 // Contact as columns (mockup 05): the name (salutation before it) over the location | how to reach you | where you live and the rest. Every detail
 // shows, an empty one as "<label> not set" so a missing detail is seen; the Swiss-only Place of origin only when the form shows it.
-export const CONTACT_ROWS = [['Name', ['first_name', 'last_name']], ['Salutation', ['salutation']], ['Email', ['email']], ['Phone', ['phone']],
-  ['Location', ['location']], ['Street', ['street']], ['Postal code', ['postal_code']], ['Place of origin', ['place_of_origin']], ['Date of birth', ['birth_date']]];
+export const CONTACT_ROWS = [[t('pagesProfile.name'), ['first_name', 'last_name']], [t('pagesProfile.salutation'), ['salutation']], [t('pagesCommon.email'), ['email']], [t('pagesStatus.phone'), ['phone']],
+  [t('pagesCommon.location'), ['location']], [t('pagesStatus.street'), ['street']], [t('pagesStatus.postalCode'), ['postal_code']], [t('pagesFieldsStatus.origin'), ['place_of_origin']], [t('pagesFieldsStatus.birthDate'), ['birth_date']]];
 const LINK_KEYS = ['linkedin', 'github', 'website'];
 const CONTACT_KEYS = CONTACT_ROWS.flatMap(([, keys]) => keys);
 // The icon lines of the 2nd and 3rd columns: [icon, label, keys].
-export const CONTACT_LINES = [[['mail', 'Email', ['email']], ['phone', 'Phone', ['phone']]],
-  [['home', 'Address', ['street', 'postal_code']], ['calendar', 'Date of birth', ['birth_date']], ['flag', 'Place of origin', ['place_of_origin']]]];
+export const CONTACT_LINES = [[['mail', t('pagesCommon.email'), ['email']], ['phone', t('pagesStatus.phone'), ['phone']]],
+  [['home', t('pagesFieldsStatus.address'), ['street', 'postal_code']], ['calendar', t('pagesFieldsStatus.birthDate'), ['birth_date']], ['flag', t('pagesFieldsStatus.origin'), ['place_of_origin']]]];
 
-const notSet = label => el('span', 'muted', `${label} not set`);
+const notSet = label => el('span', 'muted', t('pagesDynamicCvData.m133', {"label": label}));
 export function contactView(read = value, visible = shown) {
   const joined = keys => keys.map(read).filter(Boolean).join(', ');
   const who = el('div', 'contact-who'), name = el('b', 'contact-name');
   const salutation = visible('salutation') && read('salutation');
   if (salutation) name.append(el('span', 'muted', `${salutation} `));
-  name.append(['first_name', 'last_name'].map(read).filter(Boolean).join(' ') || notSet('Name'));
-  who.append(name, read('location') ? el('span', 'muted', read('location')) : notSet('Location'));
-  if (visible('salutation') && !salutation) who.append(notSet('Salutation'));
+  name.append(['first_name', 'last_name'].map(read).filter(Boolean).join(' ') || notSet(t('pagesProfile.name')));
+  who.append(name, read('location') ? el('span', 'muted', read('location')) : notSet(t('pagesCommon.location')));
+  if (visible('salutation') && !salutation) who.append(notSet(t('pagesProfile.salutation')));
   const lines = group => {
     const list = el('ul', 'contact-lines');
     for (const [glyph, label, keys] of group.filter(([, , keys]) => keys.every(visible))) {
@@ -48,9 +50,9 @@ export function contactView(read = value, visible = shown) {
 
 // Professional links as columns: the site's icon, its name, the address in the link colour (GitHub only when its box shows: fitDetailsToCandidate).
 export function linksView(read = value, visible = shown) {
-  return factColumns([['linkedin', 'LinkedIn', 'linkedin'], ['github', 'GitHub', 'github'], ['website', 'Website', 'link']].filter(([key]) => visible(key)).map(([key, label, glyph]) => {
+  return factColumns([['linkedin', 'LinkedIn', 'linkedin'], ['github', 'GitHub', 'github'], ['website', t('pagesFieldsStatus.website'), 'link']].filter(([key]) => visible(key)).map(([key, label, glyph]) => {
     const address = read(key).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-    return {icon: glyph, label, value: address ? el('span', 'link-text', address) : el('span', 'muted', 'Not added')};
+    return {icon: glyph, label, value: address ? el('span', 'link-text', address) : el('span', 'muted', t('pagesCommon.notAdded'))};
   }));
 }
 
@@ -62,7 +64,7 @@ function drawFacts(key) {
   if (!into || into.dataset.loading) return;
   const lines = linesOf(key).filter(line => line.label);
   const eligibility = key === 'eligibility' ? eligibilityView(lines, chipLine) : null;
-  into.replaceChildren(eligibility ? eligibility.node : !lines.length ? el('p', 'muted', 'Nothing yet. Edit to add a line.') : key === 'languages' ? languagesView(lines, chipLine) : summaryView(lines));
+  into.replaceChildren(eligibility ? eligibility.node : !lines.length ? el('p', 'muted', t('pagesProfile.nothingYet')) : key === 'languages' ? languagesView(lines, chipLine) : summaryView(lines));
   // One count in the card's title, not a mark on every line.
   const heading = into.closest('.panel')?.querySelector('.card-words h3');
   heading?.querySelector('.fact-check')?.remove();

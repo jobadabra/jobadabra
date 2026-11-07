@@ -1,5 +1,7 @@
 // App updates: when a newer stable release exists (lib/updater.js), the menu's foot offers it; one click downloads
 // it, swaps the app and restarts (the quit dialog still asks if a job is running).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 import {toastMessage} from './startup.js';
 import {updateLabel, updateTooltip} from '../update-label.js';
@@ -19,12 +21,12 @@ export async function init() {
   $('nav-update').addEventListener('click', async () => {
     const button = $('nav-update');
     button.disabled = true;
-    $('nav-update-text').textContent = 'Preparing…';
+    $('nav-update-text').textContent = t('pagesCommon.preparing');
     const result = await window.pilot.updateInstall().catch(error => ({ok: false, text: error.message}));
     if (result.ok) return;  // the app quits and reopens updated
     if (result.manual && result.url) window.pilot.openExternal(result.url);   // the automatic update failed before: the installer by hand
     button.disabled = false;
-    $('nav-update-text').textContent = 'Update: try again';
-    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.', NO_PLACE.app, 'bad');
+    $('nav-update-text').textContent = t('pagesMisc.updateRetry');
+    toastMessage(t('pagesMisc.updateFailed'), result.text || t('pagesMisc.websiteDownload'), NO_PLACE.app, 'bad');
   });
 }

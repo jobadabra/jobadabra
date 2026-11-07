@@ -3,6 +3,8 @@
 // fields still empty framed, a note line, then the actions. Four states: Filling, A bot check needs you, Review, Ready to submit. Pictures, the page's
 // facts and the dropdown/file asks come from main's 'liveEvent' (lib/live-view-handlers.js); the person's mouse and keys go back as liveInput.
 // Guard: test/unit/renderer/session-live.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, liveDot, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
@@ -23,7 +25,7 @@ let clock = 0;   // the once-a-second redraw of the title while a card counts do
 function viewFor(item) {
   if (view?.id === item.id) return view;
   closeLive();
-  const img = Object.assign(el('img', 'live-img'), {alt: 'The application page, live', draggable: false});
+  const img = Object.assign(el('img', 'live-img'), {alt: t('pagesFinalLabels.livePage'), draggable: false});
   const marks = el('div', 'live-marks'), page = el('div', 'live-page'), screen = el('div', 'live-screen'), strip = el('div', 'live-strip');
   const empty = el('div', 'live-empty');
   const ask = el('div', 'live-ask'), filling = el('div', 'live-filling'), zoomText = el('span', 'live-zoom-text', '100%'), address = el('span', 'live-url', '');
@@ -35,10 +37,10 @@ function viewFor(item) {
   stage.append(screen, filling, ask);
   const zoomButton = (text, label, step) => Object.assign(el('button', 'secondary live-zoom', text), {ariaLabel: label, onclick: () => setZoom(step)});
   const expand = el('button', 'secondary live-zoom with-icon', icon('maximize'));
-  expand.ariaLabel = 'Expand';
+  expand.ariaLabel = t('pagesFinalLabels.expand');
   expand.onclick = () => { root.classList.toggle('is-expanded'); expand.replaceChildren(icon(root.classList.contains('is-expanded') ? 'collapse' : 'maximize')); };
-  const hide = Object.assign(el('button', 'secondary live-zoom', 'Hide'), {ariaLabel: 'Hide the live page', onclick: () => dispatch(mine, {type: 'hide'})});
-  strip.append(liveDot('live'), el('b', '', 'Live'), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand, hide);
+  const hide = Object.assign(el('button', 'secondary live-zoom', t('pagesCommon.hide')), {ariaLabel: t('pagesSession.hideLive'), onclick: () => dispatch(mine, {type: 'hide'})});
+  strip.append(liveDot('live'), el('b', '', t('pagesSession.live')), address, el('span', 'live-gap'), zoomButton('−', t('pagesFinalLabels.zoomOut'), -1), zoomText, zoomButton('+', t('pagesFinalLabels.zoomIn'), 1), expand, hide);
   const root = el('div', 'live-view');
   root.append(strip, stage);
   // state: what the view is doing (renderer/live-view-state.js, its one owner); checked: the card kind whose page was last asked about (livePage); drawn: the stage last drawn.
@@ -130,14 +132,14 @@ function wireInput(v) {
 function showAsk(v, message) {
   const done = () => { v.ask.hidden = true; v.ask.replaceChildren(); };
   if (message.kind === 'select') {
-    const list = Object.assign(el('select', 'live-ask-list'), {size: Math.min(8, Math.max(2, message.options.length)), ariaLabel: message.label || 'Choose one'});
+    const list = Object.assign(el('select', 'live-ask-list'), {size: Math.min(8, Math.max(2, message.options.length)), ariaLabel: message.label || t('pagesSession.chooseOne')});
     list.append(...message.options.map(option => Object.assign(el('option', '', option.label || option.value), {value: option.value, disabled: option.disabled, selected: option.value === message.value})));
     list.onchange = () => { window.pilot.liveInput(v.id, {t: 'choose', id: message.id, value: list.value}); done(); };
-    v.ask.replaceChildren(el('b', '', message.label || 'Choose one'), list, Object.assign(el('button', 'secondary', 'Cancel'), {onclick: done}));
+    v.ask.replaceChildren(el('b', '', message.label || t('pagesSession.chooseOne')), list, Object.assign(el('button', 'secondary', t('pagesCommon.cancel')), {onclick: done}));
   } else {
     const answer = choice => () => { window.pilot.liveInput(v.id, {t: 'file', id: message.id, choice}); done(); };
-    v.ask.replaceChildren(el('b', '', 'The page asks for a file'), Object.assign(el('button', 'primary', 'Your CV'), {onclick: answer('cv')}),
-      Object.assign(el('button', 'secondary', 'Choose a file…'), {onclick: answer('pick')}), Object.assign(el('button', 'secondary', 'Cancel'), {onclick: answer('')}));
+    v.ask.replaceChildren(el('b', '', t('pagesSession.pageFile')), Object.assign(el('button', 'primary', t('pagesSession.yourCv')), {onclick: answer('cv')}),
+      Object.assign(el('button', 'secondary', t('pagesSession.chooseFile')), {onclick: answer('pick')}), Object.assign(el('button', 'secondary', t('pagesCommon.cancel')), {onclick: answer('')}));
   }
   v.ask.hidden = false;
 }
@@ -186,7 +188,7 @@ function drawCard(item) {
   if (card.live) checkPage(v, card.kind);   // a queued job has no page yet: nothing to ask main for
   drawStage(v);
   v.filling.hidden = !card.filling;
-  v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));
+  v.filling.replaceChildren(el('span', 'spinner'), el('span', '', t('pagesShortSettings.m306', {"filling": card.filling})));
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,
     style: `left:${box.x * 100}%;top:${box.y * 100}%;width:${box.w * 100}%;height:${box.h * 100}%`})));
   $('ss-question').replaceChildren(...(card.live ? [v.root] : []), el('p', 'rich-p muted small', card.note));
@@ -203,25 +205,25 @@ export function renderLive(item, on) {
   const card = drawCard(item), actions = [];
   view.on = on;
   if (card.kind === 'waiting') {
-    actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
+    actions.push(button(t('pagesCommon.stop'), 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
     $('ss-actions').replaceChildren(...actions);
     return;
   }
   if (card.kind === 'filling' || card.stop) {
-    actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
+    actions.push(button(t('pagesCommon.stop'), 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
   } else {
-    const submit = button('Submit application', card.submit.on ? 'primary' : 'secondary', async event => {
+    const submit = button(t('pagesSession.submit'), card.submit.on ? 'primary' : 'secondary', async event => {
       const pressed = event.currentTarget;
       pressed.disabled = true;
       const result = await window.pilot.liveSubmit(item.id).catch(error => ({ok: false, error: error.message}));
       pressed.disabled = false;
-      if (!result?.ok) on.problem('Not submitted', result?.error || 'Try again.');
+      if (!result?.ok) on.problem(t('pagesJobs.notSubmitted'), result?.error || t('pagesCommon.tryAgain'));
     });
     submit.disabled = !card.submit.on;
     actions.push(submit);
     if (card.submit.hint) actions.push(el('span', 'muted small live-hint', card.submit.hint));
   }
-  actions.push(button('Open in my browser', 'secondary', on.open, 'external'));
-  if (card.kind !== 'filling' && !card.stop) actions.push(button('Skip this role', 'secondary', on.skip));
+  actions.push(button(t('pagesSession.openBrowser'), 'secondary', on.open, 'external'));
+  if (card.kind !== 'filling' && !card.stop) actions.push(button(t('pagesCommon.skipRole'), 'secondary', on.skip));
   $('ss-actions').replaceChildren(...actions);
 }

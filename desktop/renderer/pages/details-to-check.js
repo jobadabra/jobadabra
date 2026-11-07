@@ -1,13 +1,15 @@
 // Your details → "To check", the card at the top of the tab (owner, 28 Oct 2026: "this should be at the top in this tab… slightly better UI"). Three things can sit in it,
 // each on its own: the details to review (the count and the one primary "Review" in the header), what the app concluded for the person (a notice row with Undo) and the values
 // a pick set aside (one row each, with Undo). Nothing to show = the card is hidden. Drawn here, called by pages/details-facts.js. Guarded by test/unit/renderer/details-to-check.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {showOnTab} from './tab-part.js';
 import {setAsideRows} from './set-aside.js';
 
 // The card's lead in index.html says what Review does; with nothing to review it says what else is here.
-const LEAD_NONE = 'Nothing waits for you. What was changed on your behalf is listed here, with Undo.';
+const LEAD_NONE = t('pagesAuditFirst.a62');
 const $ = id => document.getElementById(id);
 
 // One quiet row: an icon, the words (a line, then a muted one) and a solid Undo-style button at the right. Rows share dividers; never a box inside the card.
@@ -24,12 +26,12 @@ export function noteRow({words, detail = '', button = null, id = ''}) {
 export function tidiedRow(tidied, onUndo) {
   if (!tidied) return null;
   const eligibility = tidied.eligibility || 0, rest = tidied.changed - eligibility;
-  const words = [rest ? `${rest} of your details were tidied: a typed control, or the rules folded as a note for the AI.` : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
+  const words = [rest ? t('pagesDynamicCvData.m134', {"rest": rest}) : '', eligibility ? t('pagesAuditFirst.a63') : ''].filter(Boolean).join(' ');
   const undo = Object.assign(el('button', 'secondary small-btn with-icon', ''), {type: 'button'});
-  undo.append(icon('undo', 'icon'), el('span', '', 'Undo'));
-  undo.setAttribute('aria-label', 'Undo what was changed for you');
+  undo.append(icon('undo', 'icon'), el('span', '', t('pagesCommon.undo')));
+  undo.setAttribute('aria-label', t('pagesProfile.undoChange'));
   undo.addEventListener('click', () => onUndo(undo));
-  return noteRow({words, detail: 'The words you saved are kept, and the copy from before is backed up.', button: undo});
+  return noteRow({words, detail: t('pagesAuditFirst.a64'), button: undo});
 }
 
 // state: {count, aside, tidied}; hooks: {onReview, onUndoTidy(button), onChange (reload after an Undo), showError(text)}.
@@ -41,7 +43,7 @@ export function drawToCheck({count = 0, aside = [], tidied = null}, {onReview, o
   if (lead) { lead.dataset.review ||= lead.textContent; lead.textContent = count > 0 ? lead.dataset.review : LEAD_NONE; }   // the review wording is kept to put back
   card.classList?.toggle('needs-you', count > 0);   // the thin warn edge: this card needs the person (colour marks, never fills)
   $('which-count')?.replaceChildren(...(count > 0 ? [pill(countLabel(count), 'warn')] : []));
-  const review = Object.assign(el('button', 'primary small-btn', 'Review'), {type: 'button', id: 'details-review-go'});
+  const review = Object.assign(el('button', 'primary small-btn', t('pagesCommon.review')), {type: 'button', id: 'details-review-go'});
   review.addEventListener('click', onReview);
   $('which-list').replaceChildren(...(count > 0 ? [review] : []));
   const notice = tidiedRow(tidied, onUndoTidy);

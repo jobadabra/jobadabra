@@ -1,10 +1,12 @@
 // CV match dialog (lib/match-check.js): this job's posting against the CV, on request. Opened from the Jobs ⋯ menu and from the session card.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {costText, dollars} from '../ai-cost.js';
 import {$, message, runWhen, show} from './core.js';
 
-const FOUND = {found: ['Stated', 'good'], implied: ['Only implied', 'warn'], bank: ['In your bank', 'good'], missing: ['Not mentioned', 'bad']};
-const KNOCK = {ok: ['Supported', 'good'], check: ['Confirm it', 'warn'], conflict: ['May conflict', 'bad']};
+const FOUND = {found: [t('pagesExtraLabels.stated'), 'good'], implied: [t('pagesExtraLabels.implied'), 'warn'], bank: [t('pagesExtraLabels.inBank'), 'good'], missing: [t('pagesExtraLabels.notMentioned'), 'bad']};
+const KNOCK = {ok: [t('pagesExtraLabels.supported'), 'good'], check: [t('pagesExtraLabels.confirm'), 'warn'], conflict: [t('pagesExtraLabels.mayConflict'), 'bad']};
 let current = null;
 
 function row(label, tone, title, detail) {
@@ -18,12 +20,12 @@ function row(label, tone, title, detail) {
 function showResult(data) {
   const result = data?.result;
   show($('match-result'), !!result);
-  $('match-run').textContent = result ? 'Check again' : 'Check the match';
+  $('match-run').textContent = result ? t('pagesCommon.checkAgain') : t('pagesStrategy.checkMatch');
   if (!result) return;
   $('match-grade').textContent = result.grade;
   $('match-grade').className = `cvc-score ${result.grade <= 'A' ? 'good' : result.grade === 'B' ? 'ok' : 'low'}`;
   $('match-summary').textContent = result.summary;
-  $('match-sub').textContent = `${data.stale ? 'Made with an earlier CV · ' : ''}${runWhen(data.at)} ${costText(result.usd, usd => ` · ${dollars(usd)}`)}`;
+  $('match-sub').textContent = `${data.stale ? t('pagesAuditSecond.a136') : ''}${runWhen(data.at)} ${costText(result.usd, usd => ` · ${dollars(usd)}`)}`;
   $('match-musts').replaceChildren(...result.musts.map(item => row(...FOUND[item.status], item.term, item.evidence)));
   show($('match-knock-h'), result.knockouts.length > 0);
   $('match-knocks').replaceChildren(...result.knockouts.map(item => row(...KNOCK[item.status], item.requirement, item.note)));
@@ -36,7 +38,7 @@ export async function openMatchCheck(job, {tailor = null} = {}) {
   $('match-job').textContent = `${job.title} · ${job.company}`;
   message('match-message', '');
   showResult(await window.pilot.matchSaved(job.code).catch(() => null));
-  $('match-cost').textContent = 'Reads the posting and your CV once.';
+  $('match-cost').textContent = t('pagesStrategy.readsOnce');
   if (!$('match-dialog').open) $('match-dialog').showModal();
 }
 export function init() {
@@ -44,7 +46,7 @@ export function init() {
   $('match-run').addEventListener('click', async () => {
     const button = $('match-run'), label = button.textContent;
     button.disabled = true;
-    button.textContent = 'Comparing… (about 30 s)';
+    button.textContent = t('pagesStrategy.comparing');
     message('match-message', '');
     const result = await window.pilot.matchCheck(current.job.code);
     button.disabled = false;

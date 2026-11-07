@@ -1,14 +1,14 @@
 // An answered "which job?" email says what the answer did, one row for every answer: linked to a job, created one, not about a job,
 // or answered before the app kept which job; never the picker's option label as a job's name (owner, 6 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {activitySource} from '../../activity-source.js';
 
 const renderer = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const read = file => fs.readFileSync(path.join(renderer, file), 'utf8');
+const read = file => readScreenSource(path.join(renderer, file), 'utf8');
 
 test('a new job is recorded as "<company> — new job", not the option label', () => {
   const js = read('pages/reassign.js');

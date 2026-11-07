@@ -6,6 +6,8 @@
 // Form fills"): no Saved answers box and no site rules here; site rules stay in Form knowledge, used by fills. The page's own intro (lines before its first
 // heading) is shown small, never as answers. Never the not-answered mark on screen (renderer/answers-model.js). Same on every store: block edits through
 // pages/outline-tab.js. Guarded by test/unit/renderer/answers-layout.test.js and test/unit/renderer/profile-tabs-render.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {remembered} from '../view-memory.js';
 import {chip as tag, el, pill, toggleOnBar} from '../components.js';
 import {icon} from '../icons.js';
@@ -44,7 +46,7 @@ function stateAndEvidence(state, question) {
   if (!fills.length) return state;
   const box = el('div', 'chip-row qa-evidence');
   box.append(state, ...fills.slice(0, SHOWN).map(fill => {
-    const go = Object.assign(el('button', 'chip-button', [fill.company, shortDay(fill.day)].filter(Boolean).join(' · ')), {type: 'button', title: 'Open this form fill in Reports'});
+    const go = Object.assign(el('button', 'chip-button', [fill.company, shortDay(fill.day)].filter(Boolean).join(' · ')), {type: 'button', title: t('pagesActivityMore.formFillReports')});
     go.addEventListener('click', event => { event.stopPropagation(); import('./form-fill-link.js').then(link => link.showFormFill(fill.id)); });   // Why (B2b, 28 Oct 2026): Reports binds the window when loaded; read on press, like openDrawer
     return go;
   }));
@@ -68,7 +70,7 @@ function setAnswer(view, item, text) {
 }
 // One row's answer control and its "Answer as" choice.
 function answerField(view, item, placeholder) {
-  return answerControl(formatOf(item), valueOf(item), text => setAnswer(view, item, text), {placeholder, ariaLabel: item.question || 'Note'});
+  return answerControl(formatOf(item), valueOf(item), text => setAnswer(view, item, text), {placeholder, ariaLabel: item.question || t('pagesCommon.note')});
 }
 function kindField(view, item) {
   return kindPicker(formatOf(item).kind, kind => {
@@ -87,15 +89,23 @@ function rowToggle(view, {key, field, run, isOpen}) {
   return () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
 }
 
+// The answer cell shares the row's states without mixing its display choice into editing controls.
+function answerCell({isOpen, status, value, optional}) {
+  if (isOpen) return pill(t('pagesStatus.editing'), 'signal');
+  if (status && !value) return status;
+  const text = value ? shown(value) : optional ? t('pagesStatus.optional') : t('pagesCommon.notSet');
+  return el('span', value ? 'qa-value' : 'qa-value muted', text);
+}
+
 // One row: chevron · question (and its hint) · its answer or "Not set"; a row that needs an answer keeps "Add answer". Open: "Editing", the answer
 // field, and "Answer as" folded under Advanced options (the kind is read from forms or the AI; the picker only corrects it).
-function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, chip = null, action = 'Add answer', run = null}) {
+function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, chip = null, action = t('pagesCommon.addAnswer'), run = null}) {
   // Why (4 Nov 2026, #3152, the AI user agent: a New learned question's chevron threw a TypeError and left the list empty): only a row with an answer control (`field`) opens in place;
   // a row with none (a New one, answered in the review drawer) does with its chevron and its bar what its button does, and is never open.
   const isOpen = isOpenRow(key, field);
   const head = el('div', `qa-row${isOpen ? ' is-open' : ''}${button ? '' : ' no-action'}`);
   const toggle = rowToggle(view, {key, field, run, isOpen});
-  const chevron = Object.assign(el('button', 'link qa-chevron', icon('chevron')), {type: 'button', ariaLabel: isOpen ? 'Close' : 'Open'});
+  const chevron = Object.assign(el('button', 'link qa-chevron', icon('chevron')), {type: 'button', ariaLabel: isOpen ? t('pagesCommon.close') : t('pagesCommon.open')});
   chevron.classList.add('is-bar-chevron');
   chevron.addEventListener('click', toggle);
   toggleOnBar(head, toggle);
@@ -103,7 +113,7 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
   words.append(Object.assign(el('b', 'qa-title', title), {title}));   // long questions clamp to two lines (CSS); the whole one on hover and in the open row
   if (under) words.append(el('span', 'muted small', under));
   if (chip && !isOpen) words.append(chip);   // New / Confirmed / Guessed sits under the question: the row grid keeps its columns (it wrapped as a 5th cell)
-  head.append(chevron, words, isOpen ? pill('Editing', 'signal') : status && !value ? status : el('span', value ? 'qa-value' : 'qa-value muted', value ? shown(value) : optional ? 'Optional' : 'Not set'));
+  head.append(chevron, words, answerCell({isOpen, status, value, optional}));
   if (button) {
     const press = Object.assign(el('button', 'secondary qa-add', action), {type: 'button'});
     press.addEventListener('click', () => (run ? run() : (opened.add(key), view.redraw())));
@@ -111,36 +121,36 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
   }
   if (!isOpen) return [head];
   const edit = el('div', 'qa-edit');
-  edit.append(labelled('Your answer', field()));
+  edit.append(labelled(t('pagesCommon.yourAnswer'), field()));
   const advanced = el('details', 'plain qa-advanced');
-  advanced.append(el('summary', 'link', 'Advanced options'));
-  if (kind) advanced.append(labelled('Answer as', kind()));
-  advanced.append(el('p', 'muted small', 'Left empty, it stays not set and forms ask you again.'));
+  advanced.append(el('summary', 'link', t('pagesStatus.advanced')));
+  if (kind) advanced.append(labelled(t('pagesStatus.answerAs'), kind()));
+  advanced.append(el('p', 'muted small', t('pagesStatus.emptyStays')));
   edit.append(advanced);
   return [head, edit];
 }
 
 // Why a drawer row is there (mockup 04, from what the row already holds): an answer to accept, a saved answer to check, or none yet.
-const statusOf = row => (row.proposal ? {label: 'Suggested answer', tone: 'signal', action: 'Review', glyph: 'sparkle'}
-  : row.details ? {label: askWords(row.details, 'Review saved answer'), tone: 'info', action: 'Review', glyph: 'info'} : {label: 'Missing answer', tone: 'warn', action: 'Add answer', glyph: 'bang-circle'});
+const statusOf = row => (row.proposal ? {label: t('pagesStatus.suggestedAnswer'), tone: 'signal', action: t('pagesCommon.review'), glyph: 'sparkle'}
+  : row.details ? {label: askWords(row.details, t('pagesStatus.reviewSaved')), tone: 'info', action: t('pagesCommon.review'), glyph: 'info'} : {label: t('pagesCommon.missingAnswer'), tone: 'warn', action: t('pagesCommon.addAnswer'), glyph: 'bang-circle'});
 // A status pill leads with its icon (mockup 04), so the kind reads before the words.
 const statusPill = (label, tone, glyph) => { const node = pill(label, tone); node.prepend(icon(glyph)); return node; };
 // A question saved by a build before 17 Oct 2026 was cut at 120 characters (#1281): said under it, never guessed back.
 const cutShort = question => String(question || '').length >= 118 && String(question).length <= 120 && /[\p{L}\p{N}]$/u.test(question);
 // A question as a row's title: a cut one ends in "…" (never mid-word with nothing after), and every row that shows it says why (saved and Needs review alike).
 const titleOf = question => (cutShort(question) ? `${shown(question)}…` : shown(question));
-const cutNote = question => (cutShort(question) ? 'Cut short by an older version' : '');
+const cutNote = question => (cutShort(question) ? t('pagesExtraCommon.olderVersionCut') : '');
 const openDrawer = start => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned', start}));
 // A section's notes (an instruction for the AI, not an answer: owner, 17 Oct 2026) folded in one row; still on the page and still sent to the AI.
 function noteFold(notes) {
   const fold = el('details', 'plain qa-note-fold');
-  fold.append(el('summary', 'muted small', `Note for the AI · ${notes.length === 1 ? '1 paragraph' : `${notes.length} paragraphs`}`),
+  fold.append(el('summary', 'muted small', t('pagesDynamicSetup.m63', {"value1": t('pagesDynamicSetup.paragraphs', {count: notes.length})})),
     ...notes.map(note => el('p', 'muted small qa-note', shown(note.value || note.text))));
   return fold;
 }
-const answerRow = (view, item, chip = null) => row(view, {key: item.id, button: false, chip, title: item.kind === 'note' ? 'Note' : titleOf(item.question),
-  under: [item.asked ? `Asked by ${item.asked}` : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? 'Unconfirmed: saved as a guess' : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
-  field: () => (item.kind === 'note' ? input(valueOf(item), text => setAnswer(view, item, text), {placeholder: 'Your answer', ariaLabel: 'Note'}) : answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : 'Your answer')),
+const answerRow = (view, item, chip = null) => row(view, {key: item.id, button: false, chip, title: item.kind === 'note' ? t('pagesCommon.note') : titleOf(item.question),
+  under: [item.asked ? t('pagesDynamicSetup.m64', {"asked": item.asked}) : item.kind === 'note' ? '' : shown(item.hint), item.guess && !drafts.has(item.id) ? t('pagesExtraCommon.unconfirmedGuess') : '', cutNote(item.question)].filter(Boolean).join(' · '), value: valueOf(item), needs: missing(item), optional: item.optional,
+  field: () => (item.kind === 'note' ? input(valueOf(item), text => setAnswer(view, item, text), {placeholder: t('pagesCommon.yourAnswer'), ariaLabel: t('pagesCommon.note')}) : answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.yourAnswer'))),
   kind: item.kind === 'note' ? null : () => kindField(view, item)});
 
 function newQuestion(view, key, list) {
@@ -148,23 +158,23 @@ function newQuestion(view, key, list) {
   const after = () => (list.find(section => section.title === draft.section) || list[list.length - 1])?.after;
   const sync = () => { view.undo(TEXT, {op: 'insert', key}); if (draft.question.trim() && after()) view.change(TEXT, {op: 'insert', after: after(), key, lines: [lineFor(draft.question, draft.value)]}); };
   const edit = el('div', 'qa-edit is-new form-grid cols-3');
-  edit.append(labelled('Question', input(draft.question, value => { draft.question = value; sync(); }, {placeholder: 'As forms ask it'})),
-    labelled('Answer', input(draft.value, value => { draft.value = value; sync(); }, {placeholder: 'Left empty: not set'})),
-    labelled('Section', select(list.map(section => [section.title, section.title || 'Answers']), draft.section, value => { draft.section = value; sync(); }, 'Section')));
+  edit.append(labelled(t('pagesStatus.question'), input(draft.question, value => { draft.question = value; sync(); }, {placeholder: t('pagesStatus.formsAsk')})),
+    labelled(t('pagesCommon.answer'), input(draft.value, value => { draft.value = value; sync(); }, {placeholder: t('pagesStatus.leftEmpty')})),
+    labelled(t('pagesCommon.section'), select(list.map(section => [section.title, section.title || t('pagesCommon.answers')]), draft.section, value => { draft.section = value; sync(); }, t('pagesCommon.section'))));
   return edit;
 }
 
 // The search and All (n) · New (n) · Confirmed (n).
 function toolbar(view, into, counts) {
   const bar = el('div', 'toolbar');
-  const search = Object.assign(el('input', ''), {type: 'search', placeholder: 'Search what we learned…', value: filters.query, ariaLabel: 'Search what we learned'});
+  const search = Object.assign(el('input', ''), {type: 'search', placeholder: t('pagesStatus.searchLearned'), value: filters.query, ariaLabel: t('pagesStatus.searchLearnedAria')});
   search.addEventListener('input', () => { filters.query = search.value; const at = search.selectionStart; view.redraw(); const again = into.querySelector('input[type=search]'); again?.focus(); again?.setSelectionRange(at, at); });
   const box = el('label', 'search-box');
   box.append(icon('search'), search);
   const views = el('div', 'segmented');
   views.setAttribute('role', 'group');
-  views.setAttribute('aria-label', 'Show');
-  for (const [key, name] of [['all', 'All'], ['new', 'New'], ['confirmed', 'Confirmed']]) {
+  views.setAttribute('aria-label', t('pagesCommon.show'));
+  for (const [key, name] of [['all', t('pagesStatus.all')], ['new', t('pagesCommon.new')], ['confirmed', t('pagesCommon.confirmed')]]) {
     const button = Object.assign(el('button', key === filters.view ? 'is-active' : '', name), {type: 'button'});
     button.dataset.view = key;
     if (counts[key]) button.append(' ', pill(String(counts[key]), key === 'new' ? 'info' : 'neutral'));
@@ -198,7 +208,7 @@ function draw(view, into) {
 
   if (filters.view === 'all' && learned.length) {
     const banner = el('div', 'notice qa-banner');
-    const go = Object.assign(el('button', 'primary small-btn', 'Check'), {type: 'button', id: 'answers-review-go'});
+    const go = Object.assign(el('button', 'primary small-btn', t('pagesCommon.check')), {type: 'button', id: 'answers-review-go'});
     go.addEventListener('click', () => openDrawer());   // one review flow, the Jobs card's drawer
     const words = el('span', 'qa-banner-words');   // mockup 04: the icon, the count bold
     words.append(icon('sparkle'), el('b', '', countText.learned(learned.length)));
@@ -213,23 +223,23 @@ function draw(view, into) {
     for (const each of fresh) {
       const sure = statusOf(each);
       box.append(...row(view, {key: `new:${each.key}`, title: titleOf(each.question), under: [each.company, each.details?.line, cutNote(each.question)].filter(Boolean).join(' · '),
-        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: stateAndEvidence(each.details?.kind === 'conflict' ? pill('Two answers', 'warn') : pill('New', 'info'), each.question), action: sure.action, run: () => openDrawer(each.key)}));
+        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: stateAndEvidence(each.details?.kind === 'conflict' ? pill(t('pagesStatus.twoAnswers'), 'warn') : pill(t('pagesCommon.new'), 'info'), each.question), action: sure.action, run: () => openDrawer(each.key)}));
     }
   }
   if (filters.view !== 'new') {
-    if (fromDetails) box.append(el('p', 'muted small qa-from-details', `${fromDetailsLine(fromDetails)}: edit them in Your details`));
+    if (fromDetails) box.append(el('p', 'muted small qa-from-details', t('pagesDynamicSetup.m65', {"fromDetailsLine": fromDetailsLine(fromDetails)})));
     if (intro && !filters.query) for (const item of intro.items) box.append(el('p', 'muted small qa-intro', shown(item.question ? `${item.question}: ${item.value}` : item.value || item.text)));
     for (const {section, items} of confirmed) {
       const notes = filters.query ? [] : section.items.filter(item => item.kind === 'note');
       if (!items.length && !notes.length) continue;
-      box.append(el('h5', 'qa-group', shown(section.title) || 'Answers'));
+      box.append(el('h5', 'qa-group', shown(section.title) || t('pagesCommon.answers')));
       if (notes.length) box.append(noteFold(notes));
-      for (const item of items) box.append(...answerRow(view, item, stateAndEvidence(item.guess ? pill('Guessed', 'info') : pill('Confirmed', 'good'), item.question)));   // a guess is not confirmed (spec: states)
+      for (const item of items) box.append(...answerRow(view, item, stateAndEvidence(item.guess ? pill(t('pagesActivityMore.guessed'), 'info') : pill(t('pagesCommon.confirmed'), 'good'), item.question)));   // a guess is not confirmed (spec: states)
     }
   }
   const shownRows = (filters.view !== 'confirmed' ? fresh.length : 0) + (filters.view !== 'new' ? confirmedCount : 0);
-  if (!shownRows) box.append(el('p', 'muted qa-empty', filters.query ? 'Nothing matches this search.'
-    : filters.view === 'new' ? 'Nothing to check: forms have every answer they asked for.' : 'Nothing yet. As you apply, what we learn about you shows here.'));
+  if (!shownRows) box.append(el('p', 'muted qa-empty', filters.query ? t('pagesActivityMore.nothingSearch')
+    : filters.view === 'new' ? t('pagesActivityMore.answersComplete') : t('pagesActivityMore.learnAsApply')));
   into.append(box);
 }
 
@@ -256,7 +266,7 @@ export async function loadApplicationAnswers() {
   if (!node) return;
   if (!tab || tab.node !== node) {
     tab = {...outlineTab('answers', [TEXT], node, draw, {onReset: () => { drafts.clear(); kinds.clear(); opened.clear(); },
-      bar: profileBar(), tab: 'answers', label: 'What we learned'}), node};
+      bar: profileBar(), tab: 'answers', label: t('pagesCommon.learned')}), node};
   }
   const named = wanted;
   // Why (2026-10-27, owner; views All / New / Confirmed since 28 Oct 2026): refreshing data keeps the selected view; an explicit jump can change it.

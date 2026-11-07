@@ -1,4 +1,7 @@
 // Status card and the Actions page.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {channelLine} from '../notify-words.js';
@@ -19,19 +22,19 @@ export async function showStatusCard() {
   const {running, runs, nextSearchAt, nextMailAt} = data;
   const lastSearch = runs.find(run => kindOf(run) === 'search'), lastMail = runs.find(run => kindOf(run) === 'mail');
   const rows = [
-    running && ['▶️', 'Running now', `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
-    ['🔎', 'Last refresh', lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : 'none yet'],
-    ['⏭', 'Next refresh', nextSearchAt ? nextWords(nextSearchAt) : 'only when you ask'],
-    ['📧', 'Last Gmail check', lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : 'none yet'],
-    ['⏭', 'Next Gmail check', nextMailAt ? nextWords(nextMailAt) : 'off'],
+    running && ['▶️', t('pagesExtraLabels.runningNow'), `${KIND[kindOf(running)].icon} ${KIND[kindOf(running)].name} · ${stepWords(running.step) || 'starting'}`],
+    ['🔎', t('pagesCommon.lastRefresh'), lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${capital(outcome(lastSearch))}` : t('pagesExtraLabels.noneYet')],
+    ['⏭', t('pagesExtraLabels.nextRefresh'), nextSearchAt ? nextWords(nextSearchAt) : t('pagesExtraLabels.onlyAsk')],
+    ['📧', t('pagesExtraLabels.lastGmail'), lastMail ? `${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${capital(outcome(lastMail))}` : t('pagesExtraLabels.noneYet')],
+    ['⏭', t('pagesExtraLabels.nextGmail'), nextMailAt ? nextWords(nextMailAt) : t('pagesDynamicSetup.off')],
   ].filter(Boolean);
   const card = $('status-card');
-  card.replaceChildren(el('h2', '', '🩺 Status'), ...rows.map(([glyph, label, value]) => {
+  card.replaceChildren(el('h2', '', t('pagesFocusReports.status')), ...rows.map(([glyph, label, value]) => {
     const row = el('div', 'status-row');
     row.append(el('span', 'status-glyph', glyph), el('span', 'muted', label), el('b', '', value));
     return row;
   }));
-  const more = Object.assign(el('a', 'link small', 'View all runs →'), {href: '#'});
+  const more = Object.assign(el('a', 'link small', t('pagesFocusReports.allRuns')), {href: '#'});
   more.addEventListener('click', event => { event.preventDefault(); showRunsTab(); });
   card.append(more);
   show(card);
@@ -41,10 +44,10 @@ export async function showStatusCard() {
 
 // Actions page: the live banner (what runs now), Recent runs, and Telegram's state. Fed by the activity data.
 const TASK_ICON = {search: 'search', mail: 'mail', insight: 'chart', weekly: 'file', today: 'send', scout: 'building', kits: 'file-text', tailor: 'scissors'};
-const TASK_TITLE = {search: 'Find jobs', mail: 'Gmail & Calendar check', insight: 'Insight', weekly: 'Analyze my job search', kits: 'Prepare top matches', tailor: 'Tailor CV + cover letter for top matches',
-  today: "Today's matches", scout: 'More employers'};
+const TASK_TITLE = {search: t('pagesCommon.findJobs'), mail: t('pagesExtraLabels.gmailCalendar'), insight: t('pagesActivity.insight'), weekly: t('pagesFieldsStatus.analyzeSearch'), kits: t('pagesActivity.prepareTop'), tailor: t('pagesExtraLabels.tailorTop'),
+  today: t('pagesExtraLabels.todayMatches'), scout: t('pagesActivity.moreEmployers')};
 // A task's name as the Actions banners say it (running, queued and finished: one word for one task).
-export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || 'A task';
+export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask');
 // Every button that starts a task is off while that task runs or waits (a second press would only join it), and back when it ends: the Actions cards, Tailor CVs, and the same
 // task's other buttons (Jobs → Refresh jobs, Settings → Check Gmail now). `busy` is the kinds running or queued now. Only a button this turned off is turned on again.
 export function syncRunButtons(busy, runningKind = null) {
@@ -56,7 +59,7 @@ export function syncRunButtons(busy, runningKind = null) {
     if (now) {
       if (!node.disabled) { node.disabled = true; node.dataset.runBusy = '1'; }
       if (node.dataset.title0 === undefined) node.dataset.title0 = node.title || '';
-      node.title = `${(TASK_TITLE[kind] || KIND[kind]?.name || 'This task')} is running: follow it in the banner above`;
+      node.title = t('pagesDynamicSessionReports.m328', {"value1": TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.thisTask')});
     } else if (node.dataset.runBusy) {
       node.disabled = false; delete node.dataset.runBusy;
     }
@@ -83,16 +86,16 @@ export function renderActionsPage(data) {
   // The menu says so too, on every screen: a spinner on Actions while a task runs (not a count: the other badges mean "waiting for you").
   const dot = $('nav-actions-running');
   dot.hidden = !running;
-  dot.title = running ? `${TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || 'A task'} is running` : '';
+  dot.title = running ? t('pagesDynamicSessionReports.m329', {"value1": TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || t('pagesFocusReports.aTask')}) : '';
   dot.setAttribute('aria-label', dot.title);
   if (running) {
     const kind = kindOf(running);
-    $('run-banner-title').textContent = `${TASK_TITLE[kind] || KIND[kind]?.name || 'A task'} is running`;
-    $('run-banner-step').textContent = `Started ${new Date(running.startedAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
+    $('run-banner-title').textContent = t('pagesDynamicSessionReports.m330', {"value1": TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask')});
+    $('run-banner-step').textContent = t('pagesShortReady.m301', {"when": displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'}), "value2": stepWords(running.step) || t('pagesCommon.starting')});
     // Waiting on the person (Find jobs using your browser: the one-time Allow in Chrome): the one action, as a primary button, not text only (owner, 7 Oct 2026).
     const waitsOnYou = /^⏳ Waiting for you in Chrome/.test(String(running.step ?? ''));
     $('run-banner-act').hidden = !waitsOnYou;
-    $('run-banner-act').textContent = /press Read/.test(String(running.step ?? '')) ? 'Go to Chrome' : 'Go to Chrome and allow';   // a held board waits for Read, not for Allow
+    $('run-banner-act').textContent = /press Read/.test(String(running.step ?? '')) ? t('pagesFocusReports.goChrome') : t('pagesFocusReports.goAllow');   // a held board waits for Read, not for Allow
     const spinner = document.querySelector('#run-banner .spinner');
     if (spinner) spinner.hidden = waitsOnYou;   // blocked on the person: no "working" spinner, the button says what to do
     const log = $('run-banner-log');
@@ -106,12 +109,12 @@ export function renderActionsPage(data) {
     li.dataset.runId = run.id;   // which run this row is (the end-to-end suite opens a run by it)
     const tile = el('span', 'task-tile small');
     tile.append(icon(TASK_ICON[kind] || 'pulse'));
-    li.append(tile, el('b', '', KIND[kind]?.name || 'Task'), pill(label, tone), el('span', 'muted', runWhen(run.endedAt || run.startedAt)),
+    li.append(tile, el('b', '', KIND[kind]?.name || t('pagesFocusReports.task')), pill(label, tone), el('span', 'muted', runWhen(run.endedAt || run.startedAt)),
       el('span', 'muted runs-result', capital(outcome(run))), el('span', 'runs-go', '›'));
     li.addEventListener('click', () => showRunsTab(run.id));   // in the app, on that run (owner, 25 Oct 2026)
     return li;
   });
-  $('runs-table').replaceChildren(...(rows.length ? rows : [el('li', 'muted runs-empty', 'Nothing has run yet. Press Run on a task above.')]));
+  $('runs-table').replaceChildren(...(rows.length ? rows : [el('li', 'muted runs-empty', t('pagesReadyReports.noRuns'))]));
 }
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).

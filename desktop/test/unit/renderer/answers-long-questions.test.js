@@ -1,7 +1,7 @@
 // Application answers (owner's screenshot, 17 Oct 2026: "long text… looks broken"): a form question longer than 90 characters is still a question,
 // answered or open, never prose; a real note (an instruction for the AI) stays a note and is folded as "Note for the AI".
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {sections} from '../../../renderer/answers-model.js';
 
@@ -29,7 +29,7 @@ test('a long question line is a question (answered or open), never a note; the i
 });
 
 test('a section\'s notes are folded as "Note for the AI", never shown as answers', () => {
-  const screen = fs.readFileSync(new URL('../../../renderer/pages/application-answers.js', import.meta.url), 'utf8');
+  const screen = readScreenSource(new URL('../../../renderer/pages/application-answers.js', import.meta.url), 'utf8');
   assert.match(screen, /Note for the AI/);
   assert.match(screen, /Cut short by an older version/, 'a question an older build cut at 120 characters says so');
   assert.doesNotMatch(screen, /saved\.append\(el\('p', 'muted small qa-note'/, 'no note printed as a paragraph among the answers');

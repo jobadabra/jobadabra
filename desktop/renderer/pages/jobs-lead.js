@@ -1,4 +1,7 @@
 // Jobs page, Log a message: the recruiter-lead dialog (screenshots, confirm step, job picker) and wireLead(). Guarded by: test/unit/main/lead-confirm.test.js.
+import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
+import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {el, pill, tile} from '../components.js';
 import * as confirmStep from '../lead-confirm.js';
@@ -19,10 +22,10 @@ let leadShots = [];  // [{name, type, data (base64)}]
 function renderShots() {
   $('lead-shots').replaceChildren(...leadShots.map((shot, i) => {
     const box = el('div', 'attachment');
-    const remove = el('button', 'soft-button', 'Remove');
+    const remove = el('button', 'soft-button', t('pagesCommon.remove'));
     remove.type = 'button';
     remove.addEventListener('click', () => { leadShots.splice(i, 1); renderShots(); });
-    box.append(Object.assign(document.createElement('img'), {src: `data:${shot.type};base64,${shot.data}`, alt: `Screenshot ${i + 1}`}),
+    box.append(Object.assign(document.createElement('img'), {src: `data:${shot.type};base64,${shot.data}`, alt: t('pagesShortJobs.m184', {"value1": i + 1})}),
       el('span', 'attachment-name', `${leadShots.length > 1 ? `${i + 1}. ` : ''}${shot.name}`), remove);
     return box;
   }));
@@ -30,7 +33,7 @@ function renderShots() {
   $('lead-shot-add').disabled = $('lead-shot-paste').disabled = leadShots.length >= MAX_SHOTS;
 }
 function setLeadShot(shot) {
-  if (leadShots.length >= MAX_SHOTS) { leadResult('info', `Up to ${MAX_SHOTS} screenshots`, 'Remove one to add another.'); return; }
+  if (leadShots.length >= MAX_SHOTS) { leadResult('info', t('pagesDynamicJobs.m225', {"MAX_SHOTS": MAX_SHOTS}), t('pagesAuditSecond.a102')); return; }
   leadShots.push(shot);
   renderShots();
 }
@@ -49,7 +52,7 @@ function leadStep2(on) {
   $('lead-confirm').hidden = !on;
   $('lead-back').hidden = !on;
   $('lead-cancel').hidden = on;
-  if (!on) { leadProposal = leadState = null; $('lead-go').textContent = 'Log activity'; }
+  if (!on) { leadProposal = leadState = null; $('lead-go').textContent = t('pagesJobs.logActivity'); }
 }
 function showConfirm(proposal, state = null) {
   leadProposal = proposal;
@@ -65,15 +68,15 @@ function showConfirm(proposal, state = null) {
   $('lead-kind').value = leadState.values.kind || '';
   $('lead-channel-other').value = '';
   const started = fields.started || {};
-  $('lead-started-label').textContent = started.question || 'When did it start?';
+  $('lead-started-label').textContent = started.question || t('pagesJobsHelp.whenStart');
   $('lead-started').value = leadState.values.started || '';
   $('lead-started').max = localDay();
   $('lead-years').hidden = !started.years?.length;
   $('lead-years').replaceChildren(...(started.years || []).map(year => Object.assign(document.createElement('button'),
     {type: 'button', textContent: String(year), onclick: () => leadSet('started', confirmStep.withYear(started, year))})));
-  $('lead-interview-label').textContent = fields.interview?.question || 'When is the call?';
+  $('lead-interview-label').textContent = fields.interview?.question || t('pagesJobsHelp.whenCall');
   $('lead-interview').value = leadState.values.interview || '';
-  $('lead-last-label').textContent = fields.last?.question || 'When was the last message?';
+  $('lead-last-label').textContent = fields.last?.question || t('pagesJobsHelp.whenMessage');
   $('lead-last').value = leadState.values.last || '';
   $('lead-last').max = localDay();
   $('lead-company').value = leadState.values.company || '';
@@ -105,7 +108,7 @@ function showJobChoices() {
       button.addEventListener('click', () => { closeJobChoices(); pickJob(option.value); });
       buttons.push(button);
       return button;
-    })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: 'No matching jobs'})]));
+    })]) : [Object.assign(document.createElement('div'), {className: 'lead-job-empty', textContent: t('pagesJobs.noMatching')})]));
   leadJobActive = -1;
   list.hidden = false;
   $('lead-job').setAttribute('aria-expanded', 'true');
@@ -141,8 +144,8 @@ async function working(first, task) {
 async function pickJob(target) {
   if (!target || !leadProposal) return;
   const text = $('lead-text').value.trim();
-  const next = await working(`Reading your jobs in ${storeName()}`, () => window.pilot.proposeLead(text, [], target, leadProposal));
-  if (!next.ok) { leadResult('warn', "Couldn't use that job", String(next.text || '').replace(/^\S+\s/, '')); return; }
+  const next = await working(t('pagesDynamicJobs.m226', {"storeName": storeName()}), () => window.pilot.proposeLead(text, [], target, leadProposal));
+  if (!next.ok) { leadResult('warn', t('pagesControlStatus.useJobFailed'), String(next.text || '').replace(/^\S+\s/, '')); return; }
   showConfirm(next, confirmStep.carry(leadState, next));
 }
 // Every field's mark (please check / needs an answer / ✓), the choices shown, and the Save button's words.
@@ -154,17 +157,17 @@ function renderConfirm() {
   const asked = fields.job?.state === 'ask';
   $('lead-found').hidden = asked;
   const change = Object.assign(document.createElement('button'), {type: 'button', className: 'link',
-    textContent: leadState.picking ? 'Keep this job' : 'Change'});
+    textContent: leadState.picking ? t('pagesJobs.keepJob') : t('pagesStatus.change')});
   change.addEventListener('click', () => { leadState = {...leadState, picking: !leadState.picking}; $('lead-job').value = ''; closeJobChoices(); renderConfirm(); });
-  $('lead-found-flag').replaceChildren(...(asked ? [] : [pill('Confirmed', 'good', {dot: true}), change]));
-  $('lead-job-hint').textContent = asked ? 'Several of your jobs are from this recruiter or company: pick one, or a new job. The details follow your pick.'
-    : 'Pick the job it is about, or a new job. The details follow your pick.';
+  $('lead-found-flag').replaceChildren(...(asked ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true}), change]));
+  $('lead-job-hint').textContent = asked ? t('pagesJobsHelp.severalJobs')
+    : t('pagesJobsHelp.pickRelated');
   document.querySelectorAll('#lead-confirm .lead-field[data-field]').forEach(box => {
     const name = box.dataset.field, field = fields[name];
     if (name === 'job') {
       box.hidden = !choosing;
       box.classList.toggle('is-ask', choosing);
-      box.querySelector('.lead-flag').replaceChildren(pill('Needs an answer', 'warn'));
+      box.querySelector('.lead-flag').replaceChildren(pill(t('pagesJobs.needsAnswer'), 'warn'));
       return;
     }
     if (choosing) { box.hidden = true; return; }
@@ -175,12 +178,12 @@ function renderConfirm() {
     box.classList.toggle('is-check', waiting?.why === 'check');
     box.classList.toggle('is-ask', !!waiting && waiting.why !== 'check');
     const flag = box.querySelector('.lead-flag');
-    if (!waiting) flag.replaceChildren(...(field.state === 'ok' || !leadState.confirmed.includes(name) ? [] : [pill('Confirmed', 'good', {dot: true})]));
+    if (!waiting) flag.replaceChildren(...(field.state === 'ok' || !leadState.confirmed.includes(name) ? [] : [pill(t('pagesCommon.confirmed'), 'good', {dot: true})]));
     else if (waiting.why === 'check') {
-      const ok = Object.assign(document.createElement('button'), {type: 'button', className: 'link', textContent: 'Looks right'});
+      const ok = Object.assign(document.createElement('button'), {type: 'button', className: 'link', textContent: t('pagesJobs.looksRight')});
       ok.addEventListener('click', () => leadSet(name));
-      flag.replaceChildren(pill('Please check', 'warn'), ok);
-    } else flag.replaceChildren(pill(waiting.why === 'future' ? 'In the future' : 'Needs an answer', 'warn'));
+      flag.replaceChildren(pill(t('pagesJobs.pleaseCheck'), 'warn'), ok);
+    } else flag.replaceChildren(pill(waiting.why === 'future' ? t('pagesJobs.future') : t('pagesJobs.needsAnswer'), 'warn'));
   });
   $('lead-pair-box').hidden = choosing || (!fields.company && !fields.agency);
   $('lead-channel').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.channel === v.channel));
@@ -188,9 +191,9 @@ function renderConfirm() {
   $('lead-channel-hint').textContent = confirmStep.channelHint(fields.channel, v.channel);
   if ($('lead-started').value !== (v.started || '')) $('lead-started').value = v.started || '';  // a year picked fills the date
   $('lead-years').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', (v.started || '').startsWith(b.textContent)));
-  const said = fields.interview?.as_written ? `The message says "${fields.interview.as_written}". ` : '';
-  $('lead-interview-hint').textContent = said + (v.kind === 'Interview scheduled' ? 'A booked call needs its date and time.'
-    : 'Leave empty if no time is fixed yet.');
+  const said = fields.interview?.as_written ? t('pagesDynamicJobs.m227', {"as_written": fields.interview.as_written}) : '';
+  $('lead-interview-hint').textContent = said + (v.kind === 'Interview scheduled' ? t('pagesJobsHelp.bookedTime')
+    : t('pagesJobsHelp.noFixedTime'));
   if (fields.last) $('lead-last-hint').textContent = confirmStep.lastHint(fields.last, v.last);
   if (fields.origin) {
     $('lead-origin').querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.origin === v.origin));
@@ -226,10 +229,10 @@ function leadTargets() {
     .sort((a, b) => `${a.company} ${a.title}`.localeCompare(`${b.company} ${b.title}`));
   const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
   const group = document.createElement('optgroup');
-  group.label = 'Your applications';
-  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageLabel(job.stage)})`)));
-  $('lead-target').replaceChildren(option('', 'Choose the job…'),
-    option('new', 'Not in my list yet: add it from these details'), ...(tracked.length ? [group] : []));
+  group.label = t('pagesControlStatus.yourApplications');
+  tracked.forEach(job => group.append(option(job.url, `${job.company || job.via || '—'} · ${job.title} (${stageName(stageLabel(job.stage))})`)));
+  $('lead-target').replaceChildren(option('', t('pagesControlStatus.chooseJob')),
+    option('new', t('pagesControlStatus.addFromDetails')), ...(tracked.length ? [group] : []));
 }
 // "Find the job automatically" (ticked by default): untick it to choose the job yourself.
 function setAuto(on, locked = false) {
@@ -267,9 +270,9 @@ export function wireLead() {
   $('lead-shot-file').addEventListener('change', () => { [...$('lead-shot-file').files].forEach(readShot); $('lead-shot-file').value = ''; });
   $('lead-shot-paste').addEventListener('click', async () => {
     const shot = await window.pilot.clipboardImage();
-    if (shot) setLeadShot(shot); else leadResult('info', 'No image on the clipboard',
-      osPick('Copy a screenshot first (⇧⌘4, then Ctrl-click to copy it), or use Add screenshot.',
-        'Copy a screenshot first (Win+Shift+S saves one to the clipboard), or use Add screenshot.'));
+    if (shot) setLeadShot(shot); else leadResult('info', t('pagesControlStatus.noClipboardImage'),
+      osPick(t('pagesAuditSecond.a103'),
+        t('pagesAuditSecond.a104')));
   });
   $('lead-dialog').addEventListener('paste', event => {
     const files = [...(event.clipboardData?.files || [])].filter(f => /^image\//.test(f.type));
@@ -329,16 +332,16 @@ export function wireLead() {
     const text = $('lead-text').value.trim();
     leadResult('', '');
     if (!leadProposal) {  // step 1: Claude reads it; nothing is written yet
-      if (!leadShots.length && text.length < 40) { leadResult('warn', 'Nothing to log yet', 'Paste the whole message, or add a screenshot of it.'); return; }
-      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', 'Which job is it?', 'Choose the job, or tick "Find the job automatically".'); return; }
-      const proposal = await working(leadShots.length > 1 ? `Sending ${leadShots.length} screenshots` : 'Starting the engine',
+      if (!leadShots.length && text.length < 40) { leadResult('warn', t('pagesControlStatus.nothingLog'), t('pagesAuditSecond.a105')); return; }
+      if (!$('lead-auto').checked && !leadTarget()) { leadResult('warn', t('pagesControlStatus.whichJob'), t('pagesAuditSecond.a106')); return; }
+      const proposal = await working(leadShots.length > 1 ? t('pagesShortJobs.m187', {"length": leadShots.length}) : t('pagesControlStatus.startingEngine'),
         () => window.pilot.proposeLead(text, leadShots, leadTarget()));
       if (!proposal.ok) {
         const said = String(proposal.text || '').replace(/^\S+\s/, '');  // without the leading emoji
         const notJob = /doesn't look like a message about a job/.test(said);
         const unsure = /can't tell which company and role/.test(said);
-        leadResult('warn', notJob ? 'No job activity found' : unsure ? 'Which job is it?' : "Couldn't log it",
-          notJob ? 'This looks like something other than a job (e.g. a services pitch), so nothing was added.' : said, notJob || unsure);
+        leadResult('warn', notJob ? t('pagesControlStatus.noActivity') : unsure ? t('pagesControlStatus.whichJob') : t('pagesControlStatus.logFailed'),
+          notJob ? t('pagesAuditSecond.a107') : said, notJob || unsure);
         return;
       }
       showConfirm(proposal);
@@ -347,17 +350,17 @@ export function wireLead() {
     // Step 2: only once every marked detail is confirmed, then it's written with your answers.
     const left = confirmStep.pending(leadProposal, leadState, localDay());
     if (left.length) {
-      leadResult('warn', confirmStep.saveLabel(left), 'The marked details were guessed or missing: confirm or fill them in first.');
+      leadResult('warn', confirmStep.saveLabel(left), t('pagesAuditSecond.a108'));
       document.querySelector(`#lead-confirm .lead-field[data-field="${left[0].name}"]`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
       return;
     }
     const answers = confirmStep.confirmed(leadProposal, leadState);
-    const result = await working(`Saving to ${storeName()}`, () => window.pilot.addLead(text, leadShots,
+    const result = await working(t('pagesDynamicJobs.m229', {"storeName": storeName()}), () => window.pilot.addLead(text, leadShots,
       leadProposal.target ?? leadTarget(), leadProposal, answers));
     const said = result.text.replace(/^\S+\s/, '');
-    if (!result.ok) { leadResult('warn', "Couldn't log it", said); return; }
+    if (!result.ok) { leadResult('warn', t('pagesControlStatus.logFailed'), said); return; }
     leadStep2(false);
-    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? 'Nothing new' : result.job ? jobHeadline(result.job) : 'Logged', said);
+    leadResult(/^ℹ️/.test(result.text) ? 'info' : 'good', /^ℹ️/.test(result.text) ? t('pagesProfile.nothingNew') : result.job ? jobHeadline(result.job) : t('pagesControlStatus.logged'), said);
     if (/^ℹ️/.test(result.text)) return;
     // The job it created or updated, one click away (its Notion page, or the Jobs list filtered to it).
     if (result.job) $('lead-result-text').after(jobActions(result.job, {openNotion: window.pilot.openNotion,

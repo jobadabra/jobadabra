@@ -3,6 +3,8 @@
 // Languages and Work eligibility as recorded there (page-parts.js referenceRow: read-only, never goals), and one editor behind Edit: the roles list, then each
 // goal with its kind's control (goal-kinds.js). Saved by Strategy's page bar (strategy-cards.js): roles to Search settings, goals to the Profile
 // (lib/goals.js; Target level also sets the search's level, lib/goal-level.js). Guarded by test/unit/renderer/main-goals.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {editRows} from '../card-shell.js';
 import {referenceRow, summaryTiles} from '../page-parts.js';
@@ -18,7 +20,7 @@ import {strategyState} from './strategy-state.js';
 import {GOAL_LABELS, cardHeader, changed, drafts, isOpen} from './strategy-cards.js';
 import {draftEntries, listChips} from './strategy-targets.js';
 
-const TILES = [['roles', 'briefcase', 'Target roles'], ['seniority', 'user', 'Target level'], ['work_mode', 'building', 'Work mode'], ['minimum_salary', 'coins', 'Minimum salary']];
+const TILES = [['roles', 'briefcase', t('pagesStrategy.targetRoles')], ['seniority', 'user', t('pagesExtraLabels.targetLevel')], ['work_mode', 'building', t('pagesExtraLabels.workMode')], ['minimum_salary', 'coins', t('pagesExtraLabels.minimumSalary')]];
 const TONES = {roles: 'violet', seniority: 'info', work_mode: 'good', minimum_salary: 'warn'};
 
 // The saved goals, a Profile written before the goals rows standing in with its Compensation line and the search's level.
@@ -32,8 +34,8 @@ const goalNow = key => (key in (strategyState.goalEdits || {}) ? strategyState.g
 // Target roles as read: the role families' first titles, the draft included, "+N more" for the rest.
 function rolesValue() {
   const titles = roleFamilies(draftEntries('roles')).flatMap(family => family.entries.map(entry => titleCase(entry.label)));
-  if (!titles.length) return {text: '', note: 'No roles yet: Edit to add one.'};
-  return {text: titles.slice(0, 3).join(' · '), more: titles.length > 3 ? `+${titles.length - 3} more` : '', title: titles.join(', ')};
+  if (!titles.length) return {text: '', note: t('pagesAuditSecond.a135')};
+  return {text: titles.slice(0, 3).join(' · '), more: titles.length > 3 ? t('pagesShortReady.m231', {"value1": titles.length - 3}) : '', title: titles.join(', ')};
 }
 function tileValue(key) {
   if (key === 'roles') return rolesValue();
@@ -41,8 +43,8 @@ function tileValue(key) {
   // A status beside the value, its words on hover (owner: no lone grey line under a value).
   if (key === 'minimum_salary') {
     const words = salaryWords(text);
-    if (note === 'estimated') return {text: words.text, badge: {text: 'Estimated', title: 'Estimated by the AI: Edit to confirm it'}};
-    return {text: words.text, ...(words.note ? {badge: {text: 'As written', tone: 'neutral', title: words.note}} : {})};
+    if (note === 'estimated') return {text: words.text, badge: {text: t('pagesStrategy.estimated'), title: t('pagesStrategy.estimateConfirm')}};
+    return {text: words.text, ...(words.note ? {badge: {text: t('pagesStrategy.asWritten'), tone: 'neutral', title: words.note}} : {})};
   }
   const shown = GOAL_KINDS[key]?.read && text ? GOAL_KINDS[key].read(text) || text : text;
   return {text: shown};
@@ -65,7 +67,7 @@ function fromDetails() {
 }
 
 function editor() {
-  const rows = [{label: 'Target roles', control: listChips('roles', 'Add a job title'), hint: 'The job titles your search looks for. The first 5 (with the magnifier) are also searched on job boards.'}];
+  const rows = [{label: t('pagesStrategy.targetRoles'), control: listChips('roles', t('pagesExtraLabels.addTitle')), hint: t('pagesStrategy.roleHelp')}];
   for (const [key, , label] of TILES.slice(1)) {
     const kind = GOAL_KINDS[key], saved = savedGoals()[key] || '';
     const format = formatFor({marked: {kind: kind.kind, options: kind.options || []}});
@@ -74,7 +76,7 @@ function editor() {
       if (String(next || '').trim() && String(next).trim() !== saved) drafts().goalEdits[key] = String(next).trim(); else delete drafts().goalEdits[key];
       changed();
     }, {ariaLabel: GOAL_LABELS[key] || label, chips: kind.chips});
-    rows.push({label, control, hint: key === 'seniority' ? 'Also the level your search keeps: postings that plainly name another level are skipped.' : ''});
+    rows.push({label, control, hint: key === 'seniority' ? t('pagesStrategy.levelHelp') : ''});
   }
   const box = el('div', 'card-editor');
   box.append(editRows(rows));
@@ -88,6 +90,6 @@ export function renderMainGoals() {
   card.dataset.card = 'goals';
   const read = el('div', 'card-read');
   read.append(tiles(), ...[fromDetails()].filter(Boolean));
-  card.append(cardHeader('goals', 'target', 'signal', 'Main goals', 'What every job is scored against.', card), read, ...(isOpen('goals') ? [editor()] : []));
+  card.append(cardHeader('goals', 'target', 'signal', t('pagesCommon.mainGoals'), t('pagesStrategy.scoredAgainst'), card), read, ...(isOpen('goals') ? [editor()] : []));
   host.replaceChildren(card);
 }

@@ -4,6 +4,8 @@
 // AI, problems, scoring and the technical log (folded). Built from page-parts summaryTiles, components (tile, pill, chip, numberStrip, liveDot) and the
 // insight card; only the layout of the report's card grid and its bars is new (reports-searches.css). Logic: renderer/searches-view.js.
 // Guarded by test/unit/renderer/searches-view.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {pairRows} from '../card-grid.js';
 import {chip, el, liveDot, numberStrip, pill, tile} from '../components.js';
@@ -14,7 +16,7 @@ import {listLine, listRow, metaOf, report} from '../searches-view.js';
 
 const state = {runs: null, open: null, full: null};
 let host = null;
-const label = text => (text === 'OK' ? 'Done' : text);
+const label = text => (text === 'OK' ? t('pagesCommon.done') : text);
 const kicker = (category, title, tone) => { const head = el('div', 'rs-card-head'); head.append(el('span', 'insight-category', category), ...(tone ? [pill(title, tone, {dot: true})] : [el('h3', 'rs-card-title', title)])); return head; };
 // A status chip is a pill in its tone (the chip component colours only 'bad'); a plain value stays a chip.
 const badge = item => (item.tone ? pill(item.detail ? `${item.label} · ${item.detail}` : item.label, item.tone, {dot: true}) : chip(item.label, {detail: item.detail || ''}));
@@ -24,7 +26,7 @@ function widget(card) {
   box.dataset.card = card.id;
   if (card.kind === 'fold') {
     const fold = el('details', 'rs-fold'), summary = el('summary', '');
-    summary.append(el('b', '', card.title), el('span', 'muted small', `${card.lines.length} line${card.lines.length === 1 ? '' : 's'}`));
+    summary.append(el('b', '', card.title), el('span', 'muted small', t('pagesShortReady.m289', {"length": card.lines.length, count: card.lines.length})));
     const list = el('ul', 'insight-evidence');
     list.append(...card.lines.map(text => el('li', card.mono ? 'mono' : '', text)));
     fold.append(summary, list);
@@ -38,7 +40,7 @@ function widget(card) {
       const row = el('div', 'rs-step'), bar = el('span', 'bar'), fill = el('span', '');
       fill.style.width = `${step.share}%`;
       bar.append(fill);
-      row.append(liveDot('done'), el('b', '', step.label), el('span', 'muted small', `at ${step.at}`), bar, el('span', 'rs-took', step.took));
+      row.append(liveDot('done'), el('b', '', step.label), el('span', 'muted small', t('pagesShortReady.m290', {"at": step.at})), bar, el('span', 'rs-took', step.took));
       rows.append(row);
     }
     box.append(rows);
@@ -58,7 +60,7 @@ function widget(card) {
     const rows = el('div', 'rs-board-rows');
     for (const row of card.rows) {
       const line = el('div', 'rs-board');
-      line.append(tile('globe', 'info'), el('b', '', row.name), chip(`${row.jobs} jobs`), chip(`${row.relevant} relevant`, {tone: row.relevant === '0' ? '' : 'good'}));
+      line.append(tile('globe', 'info'), el('b', '', row.name), chip(t('pagesShortReady.m292', {"jobs": row.jobs})), chip(t('pagesShortReady.m293', {"relevant": row.relevant}), {tone: row.relevant === '0' ? '' : 'good'}));
       rows.append(line);
     }
     box.append(rows);
@@ -75,22 +77,22 @@ function listView() {
   box.append(el('p', 'muted small', listLine(rows)));
   if (!rows.length) {
     const empty = el('section', 'card');
-    empty.append(el('p', 'empty', 'No searches yet. Run Find jobs and every number of the search lands here: how it ran, how many jobs and employers, what was left out.'));
+    empty.append(el('p', 'empty', t('pagesReadyReports.noSearches')));
     box.append(empty);
     return box;
   }
   const added = state.runs.reduce((sum, run) => sum + (Number(run.stats?.new_jobs) || 0), 0);
   const employers = state.runs.reduce((sum, run) => sum + (Number(run.details?.employers?.employers_checked) || 0), 0);
   const problems = state.runs.filter(run => run.details?.problems?.length || run.status === 'Failed' || run.status === 'Warnings').length;
-  box.append(summaryTiles([{icon: 'search', tone: 'signal', label: 'Searches', value: String(rows.length)}, {icon: 'plus', tone: 'good', label: 'Jobs added', value: String(added)},
-    {icon: 'building', tone: 'violet', label: 'Employers checked', value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: 'With problems', value: String(problems)}]));
+  box.append(summaryTiles([{icon: 'search', tone: 'signal', label: t('pagesFocusReports.searches'), value: String(rows.length)}, {icon: 'plus', tone: 'good', label: t('pagesFocusReports.jobsAdded'), value: String(added)},
+    {icon: 'building', tone: 'violet', label: t('pagesJobs.employersChecked'), value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: t('pagesFocusReports.withProblems'), value: String(problems)}]));
   const items = el('div', 'rs-runs');
   for (const run of rows) {
     const card = el('section', `card rs-run is-${run.tone}`), words = el('div', 'rs-run-words'), head = el('div', 'rs-run-head');
     head.append(el('b', '', run.name), pill(label(run.outcome), run.tone, {dot: true}));
     words.append(head, el('span', 'muted small', `${runWhen(run.at)} · ${metaOf(run)}`));
-    const open = Object.assign(el('button', 'secondary', 'Full report ›'), {type: 'button', title: 'Open the full report of this search'});
-    const number = el('div', 'rs-run-number'); number.append(el('b', '', run.added === null ? '–' : String(run.added)), el('span', 'muted small', 'added'));
+    const open = Object.assign(el('button', 'secondary', t('pagesFocusReports.fullReport')), {type: 'button', title: t('pagesFocusReports.openReport')});
+    const number = el('div', 'rs-run-number'); number.append(el('b', '', run.added === null ? '–' : String(run.added)), el('span', 'muted small', t('pagesProfile.added')));
     card.append(tile(run.outcome === 'Failed' ? 'alert' : 'search', run.tone === 'neutral' ? 'neutral' : run.tone), words, number, open);
     card.dataset.id = run.id;
     card.addEventListener('click', () => openRun(run.id));
@@ -103,7 +105,7 @@ function listView() {
 function detailView(row) {
   const view = listRow(row), {tiles, cards} = report(row), box = el('div', 'rs-detail');
   box.dataset.id = row.id;
-  const back = Object.assign(el('button', 'link', '‹ All searches'), {type: 'button'});
+  const back = Object.assign(el('button', 'link', t('pagesFocusReports.allSearches')), {type: 'button'});
   back.addEventListener('click', () => { state.open = state.full = null; draw(); });
   const head = el('section', 'card rs-head'), words = el('div', 'rs-run-words'), title = el('div', 'rs-run-head');
   title.append(el('h3', 'insight-title', view.name), pill(label(view.outcome), view.tone, {dot: true}));
@@ -121,7 +123,7 @@ function detailView(row) {
 
 function draw() {
   if (!host) return;
-  if (!state.runs) { host.replaceChildren(el('p', 'muted', `Loading your searches from ${storeName()}…`)); return; }
+  if (!state.runs) { host.replaceChildren(el('p', 'muted', t('pagesDynamicSessionReports.m322', {"storeName": storeName()}))); return; }
   const row = state.open && (state.full || state.runs.find(run => run.id === state.open));
   host.replaceChildren(row ? detailView(row) : listView());
 }
@@ -142,10 +144,10 @@ export async function renderSearches(container, openId = null) {
   const answer = await window.pilot.reportsSearches().catch(error => ({error: error.message}));
   if (host !== container) return;
   if (answer?.error) {
-    const retry = Object.assign(el('button', 'link', 'Retry'), {type: 'button'});
+    const retry = Object.assign(el('button', 'link', t('pagesCommon.retry')), {type: 'button'});
     retry.addEventListener('click', () => renderSearches(container));
-    host.replaceChildren(el('p', 'message error', `Could not read your searches from ${storeName()}: ${plainError(answer.error)}`),
-      el('p', 'muted small', byStore('Searches are kept in Notion ⏱️ Search runs.', 'Searches are kept by Jobadabra on this Mac.')), retry);
+    host.replaceChildren(el('p', 'message error', t('pagesDynamicSessionReports.m323', {"storeName": storeName(), "plainError": plainError(answer.error)})),
+      el('p', 'muted small', byStore(t('pagesReadyReports.searchesNotion'), t('pagesReadyReports.searchesLocal'))), retry);
     return;
   }
   state.runs = answer?.runs || [];

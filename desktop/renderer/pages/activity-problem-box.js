@@ -1,5 +1,7 @@
 // The amber box a run that did not end well is drawn in on the Actions result card: the same parts as Recent activity's box (#activity-warnings), from the same run-status words.
 // Guarded by desktop/test/unit/renderer/no-result-card.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {rerunSites} from '../visits-card.js';
@@ -10,7 +12,7 @@ import {runButton, kindOf} from './activity-basics.js';
 export function problemBox(head, {onFix, onLog} = {}) {
   const actions = el('div', 'alert-actions');
   if (head.fix && onFix) actions.append(Object.assign(el('button', 'primary', head.fix.label), {type: 'button', onclick: onFix}));
-  if (onLog) actions.append(Object.assign(el('a', 'link', 'View technical log'), {href: '#', onclick: event => { event.preventDefault(); event.currentTarget.blur(); onLog(); }}));
+  if (onLog) actions.append(Object.assign(el('a', 'link', t('pagesStatus.viewLog')), {href: '#', onclick: event => { event.preventDefault(); event.currentTarget.blur(); onLog(); }}));
   const title = el('div', 'ap-warn-head');
   title.append(el('span', 'ap-warn-icon'), el('strong', '', head.title));
   title.firstChild.append(icon('alert'));

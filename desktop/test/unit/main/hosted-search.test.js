@@ -1,5 +1,6 @@
 // Hosted Always on in the app (lib/hosted-search.js, lib/hosted-handlers.js, renderer/pages/hosted.js): the calls to the site with the install key, the config it pushes, the inbox merge,
 // delete on turn off, and the wizard step's place and words.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -87,7 +88,7 @@ test('Always on stays in Settings while setup ends after strategy with the share
   assert.equal(view.document.getElementById('finish').closest('.step').dataset.step, 'draft');
   await view.click('finish');
   assert.equal(view.settings.setupDone, true);
-  const page = fs.readFileSync(new URL('../../../renderer/pages/hosted.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/hosted.js', import.meta.url), 'utf8');
   assert.match(page, /export function init\(\) \{ mountCard\(\); mountChoice\(\); \}/);
   assert.match(page, /\$\('setting-cloud'\)\.after\(card\)/);
   assert.match(page, /window\.pilot\.hostedOn\(\{\}\)/, 'Settings retains the shared notification-address turn-on action');

@@ -1,5 +1,7 @@
 // "Have a promo code?" (owner, 25 Oct 2026): a small link on the Free Plan card and the ⌘K entry open one dialog with one field. The site checks the code (lib/plan.js redeem); the app holds no
 // code and compares nothing. Shown only while the site's plan is on and the install is Free. Words: renderer/plan-view.js redeemWords. Guard: test/guards/money/plan-promo.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {redeemWords} from '../plan-view.js';
 
@@ -8,13 +10,13 @@ let dialog = null;
 export function openPromoDialog(onDone = () => {}) {
   if (!dialog) {
     dialog = el('dialog', 'save-dialog panel-dialog', '');
-    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', 'Cancel'), go = el('button', 'primary', 'Redeem');
-    Object.assign(field, {type: 'text', id: 'promo-code', placeholder: 'Enter your code', autocomplete: 'off', spellcheck: false, maxLength: 64});
-    head.append(el('h2', '', 'Redeem a promo code'));
+    const head = el('div', 'dialog-head', ''), field = el('input', '', ''), answer = el('p', 'message', ''), cancel = el('button', 'secondary', t('pagesCommon.cancel')), go = el('button', 'primary', t('pagesPlans.redeem'));
+    Object.assign(field, {type: 'text', id: 'promo-code', placeholder: t('pagesPlans.enterCode'), autocomplete: 'off', spellcheck: false, maxLength: 64});
+    head.append(el('h2', '', t('pagesPlans.redeemPromo')));
     cancel.type = go.type = 'button';
     cancel.addEventListener('click', () => dialog.close());
     const redeem = async () => {
-      if (!field.value.trim()) { answer.textContent = 'Enter your code.'; answer.className = 'message warn'; return; }
+      if (!field.value.trim()) { answer.textContent = t('pagesPlans.enterCodePeriod'); answer.className = 'message warn'; return; }
       go.disabled = true;
       const result = await window.pilot.planRedeem(field.value.trim()).catch(() => ({ok: false, error: 'offline'}));
       go.disabled = false;
@@ -24,7 +26,7 @@ export function openPromoDialog(onDone = () => {}) {
     };
     go.addEventListener('click', redeem);
     field.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); redeem(); } });
-    dialog.append(head, el('label', '', 'Promo code'), field, answer, el('div', 'dialog-foot', ''));
+    dialog.append(head, el('label', '', t('pagesPlans.promo')), field, answer, el('div', 'dialog-foot', ''));
     dialog.querySelector('.dialog-foot').append(cancel, go);
     dialog.querySelector('label').htmlFor = 'promo-code';
     document.body.append(dialog);
@@ -37,7 +39,7 @@ export function openPromoDialog(onDone = () => {}) {
 
 // The quiet link under the Free plan's packages.
 export function promoLink(onDone) {
-  const link = el('button', 'ghost', 'Have a promo code?');
+  const link = el('button', 'ghost', t('pagesPlans.havePromo'));
   link.id = 'plan-promo-link';
   link.type = 'button';
   link.addEventListener('click', () => openPromoDialog(onDone));

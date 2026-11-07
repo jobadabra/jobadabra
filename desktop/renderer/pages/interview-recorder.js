@@ -1,6 +1,8 @@
 // Interviews page, recording: the macOS permission panel and the recorder (your microphone on the left channel, the
 // call's audio on the right). Moved out of interviews.js; it opens the finished draft through the openDraft passed to
 // startRecording. Guarded by test/unit/main/interviews.test.js and test/unit/renderer/interview-library.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 
 const iv = window.pilot.interviews;
@@ -11,20 +13,20 @@ let permissionKind = 'screen';
 export async function showPermission(noCallAudio = false) {
   const access = await iv.access();
   // npm start: macOS may list the terminal that started the app instead of Electron.
-  const who = access.dev ? 'your terminal app (e.g. <b>iTerm</b>; quit and reopen it)' : '<b>Jobadabra</b> (+ to add it)';
+  const who = access.dev ? t('pagesAuditPunct.a23') : t('pagesAuditPunct.a24');
   let text = '';
   if (access.microphone === 'denied' || access.microphone === 'restricted') {
     permissionKind = 'microphone';
-    text = `🎙️ <b>Allow the microphone</b>: Privacy &amp; Security → Microphone → ${who}, then restart.`;
+    text = t('pagesShortJobs.m156', {"who": who});
   } else if (await iv.tapAvailable()) {
     // AudioTee: only "System Audio Recording Only" is needed; shown when a recording hears no call audio.
     if (noCallAudio) {
       permissionKind = 'screen';
-      text = `🔊 <b>No call audio yet</b>: Privacy &amp; Security → Screen &amp; System Audio Recording → <b>System Audio Recording Only</b> → ${who}, then restart.`;
+      text = t('pagesShortJobs.m157', {"who": who});
     }
   } else if (access.screen !== 'granted' || noCallAudio) {
     permissionKind = 'screen';
-    text = `🔊 <b>Allow the call's audio</b>: Privacy &amp; Security → Screen &amp; System Audio Recording → <b>top list</b> (not "System Audio Recording Only") → ${who}, then restart.`;
+    text = t('pagesShortJobs.m158', {"who": who});
   }
   $('iv-permission-text').innerHTML = text;
   show($('iv-permission'), !!text);
@@ -49,16 +51,16 @@ let levelListener = null;
 
 export async function startRecording(micOnly, openDraft) {
   message('iv-message', '');
-  if (!$('iv-consent').checked) { message('iv-message', 'First ask everyone on the call and tick the consent box.', 'error'); return; }
+  if (!$('iv-consent').checked) { message('iv-message', t('pagesInterviews.consentFirst'), 'error'); return; }
   if (recorder) return;
   $('iv-record').disabled = true;
   let call = null;
   const tap = !micOnly && await iv.tapAvailable();  // the call's audio through AudioTee, no screen capture
   if (!micOnly && !tap) {
-    message('iv-message', 'Connecting to the call\'s audio…');
+    message('iv-message', t('pagesInterviews.connectingAudio'));
     call = await callAudio();
     if (!call) {
-      message('iv-message', 'Not recording: allow the call\'s audio first (above), or choose Mic only.', 'error');
+      message('iv-message', t('pagesInterviews.notRecording'), 'error');
       await showPermission(true);
       $('iv-record').disabled = !$('iv-consent').checked;
       $('iv-permission').scrollIntoView({behavior: 'smooth', block: 'center'});
@@ -71,7 +73,7 @@ export async function startRecording(micOnly, openDraft) {
     mic = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
   } catch {
     call?.getTracks().forEach(t => t.stop());
-    message('iv-message', 'Jobadabra may not use the microphone yet: allow it (see above), then restart.', 'error');
+    message('iv-message', t('pagesInterviews.micPermission'), 'error');
     showPermission();
     $('iv-record').disabled = !$('iv-consent').checked;
     return;
@@ -102,7 +104,7 @@ export async function startRecording(micOnly, openDraft) {
       context.close();
       await iv.recordStop(id, 0);
       await iv.discard(id);
-      message('iv-message', `Not recording: the call's audio couldn't start (${tapped.error}). Try again, or choose Mic only.`, 'error');
+      message('iv-message', t('pagesDynamicFocusInterviews.m198', {"error": tapped.error}), 'error');
       $('iv-record').disabled = !$('iv-consent').checked;
       return;
     }
@@ -112,13 +114,13 @@ export async function startRecording(micOnly, openDraft) {
   let heard = false;
   const quiet = tap ? setTimeout(() => {
     if (!heard && recorder === media) {
-      $('iv-sources').textContent = 'No call audio heard yet.';
+      $('iv-sources').textContent = t('pagesInterviews.noCallAudio');
       showPermission(true);
     }
   }, 20000) : null;
   levelListener = ({id: tapped, level}) => {
     if (tapped !== id) return;
-    if (level > 0.02 && !heard) { heard = true; $('iv-sources').textContent = 'Your microphone and the call\'s audio'; show($('iv-permission'), false); }
+    if (level > 0.02 && !heard) { heard = true; $('iv-sources').textContent = t('pagesInterviews.micCall'); show($('iv-permission'), false); }
     $('iv-meter-bar').style.width = `${Math.min(100, Math.round(Math.sqrt(level) * 140))}%`;
   };
   const started = Date.now();
@@ -149,7 +151,7 @@ export async function startRecording(micOnly, openDraft) {
   recorder = media;
   $('iv-record').disabled = true;
   $('iv-timer').textContent = '00:00';
-  $('iv-sources').textContent = call ? 'Your microphone and the call\'s audio' : tap ? 'Listening for the call\'s audio…' : 'Your microphone only (as you chose)';
+  $('iv-sources').textContent = call ? t('pagesInterviews.micCall') : tap ? t('pagesInterviews.listeningCall') : t('pagesInterviews.micOnly');
   show($('iv-meter'), tap);
   $('iv-meter-bar').style.width = '0';
   show($('iv-permission'), false);

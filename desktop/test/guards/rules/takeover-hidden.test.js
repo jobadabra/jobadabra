@@ -2,13 +2,14 @@
 // Resume Claude that shows the terminal, or Takeover with Claude should be hidden/disabled"). The class: no renderer file gates a Claude surface with claudeHelp() alone
 // (that is "Claude Code is installed", which stays true on the owner's Mac); each asks resumeOffered() = the flag AND claudeHelp(). Sibling guards: resume-hidden,
 // claude-asks-hidden, apply-with-claude-hidden, claude-help.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../../../renderer');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const walk = dir => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]));
 const code = file => read(file).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
 

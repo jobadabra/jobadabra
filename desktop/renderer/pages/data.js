@@ -1,4 +1,8 @@
 // Your data: where it lives, export, import, backup, reset.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
+import {counted as countedLabel} from './page-counts.js';
 import {$, message, osText, show} from './core.js';
 import {openInNotion, openNotionConnect} from './notion-connect.js';
 import {shared} from './shared.js';
@@ -11,7 +15,7 @@ import {whileBusy} from '../busy-dialog.js';
 async function showBackup() {
   const status = await window.pilot.backupStatus();
   const where = `${status.place} → Jobadabra Backups`;
-  $('backup-last').textContent = status.at ? new Date(status.at).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) : 'None yet';
+  $('backup-last').textContent = status.at ? displayDate(new Date(status.at), {dateStyle: 'medium', timeStyle: 'short'}) : t('pagesCommon.noneYet');
   $('backup-where').textContent = where.replace(' → ', ' / ');
 }
 
@@ -20,7 +24,7 @@ function savedLine(id, words, file) {
   const line = $(id);
   line.className = 'message ok';
   const link = document.createElement('button');
-  link.className = 'arrow-link'; link.textContent = osText('Show in Finder');   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
+  link.className = 'arrow-link'; link.textContent = osText(t('pagesFieldsStatus.showFinder'));   // one wording on a PC: renderer/os.js ("Show in File Explorer"), not a second one here
   link.addEventListener('click', () => window.pilot.showFile(file));
   line.replaceChildren(`${words} ${file.split(/[\\/]/).pop()} `, link);
 }
@@ -33,15 +37,15 @@ async function showStore() {
   const cloud = store.caps.includes('cloud'), links = store.caps.includes('links');
   const unconnected = !store.trying && store.tracking === false;   // Notion chosen, not connected (#410): it asks to connect, as while trying
   const pill = $('store-pill');
-  pill.textContent = store.trying ? 'Not chosen' : unconnected ? 'Not connected' : store.label;
+  pill.textContent = store.trying ? t('pagesProfile.notChosen') : unconnected ? t('pagesCommon.notConnected') : store.label;
   pill.className = `ui-pill ${store.trying || unconnected ? 'tone-warn' : 'tone-good'}`;
   $('store-lead').textContent = store.trying
-    ? `Jobadabra is only trying until your jobs and applications have a home: ${store.choice ? 'this Mac, or your Notion' : 'your Notion'}.`   // about Notion
-    : unconnected ? 'Your jobs and applications are to be kept in your Notion, which is not connected yet: connect it to keep track of them.'   // about Notion
-    : cloud ? 'Your jobs, applications and answers are in your Notion workspace: open and edit them there too.'
-      : 'Your jobs, applications and answers are kept on this Mac, in one place, and in its backups. Move them to Notion to use Always on.';   // about Notion
-  $('store-where').textContent = store.trying ? 'Not chosen yet' : store.label;
-  $('store-cloud').textContent = cloud && !store.trying && !unconnected ? 'Available' : 'Needs Notion';
+    ? t('pagesDynamicCvData.m119', {"value1": store.choice ? t('pagesDynamicCvData.macOrNotion') : t('pagesDynamicCvData.yourNotion')})   // about Notion
+    : unconnected ? t('pagesLettersData.notionStoreConnect')   // about Notion
+    : cloud ? t('pagesLettersData.notionStore')
+      : t('pagesLettersData.localStore');   // about Notion
+  $('store-where').textContent = store.trying ? t('pagesProfile.notChosenYet') : store.label;
+  $('store-cloud').textContent = cloud && !store.trying && !unconnected ? t('pagesProfile.available') : t('pagesProfile.needsNotion');
   show($('store-keep'), store.trying && store.choice);
   show($('store-connect'), store.trying || unconnected);
   show($('store-move'), !store.trying && !cloud);
@@ -59,18 +63,18 @@ export async function init() {
     $('store-keep').disabled = true;
     const result = await window.pilot.keepOnThisMac();
     $('store-keep').disabled = false;
-    if (!result?.ok) { say(result?.error || 'Not changed.', 'error'); return; }
-    say('Your data is kept on this Mac ✓', 'ok');
+    if (!result?.ok) { say(result?.error || t('pagesAuditFirst.a52'), 'error'); return; }
+    say(t('pagesFieldsStatus.localData'), 'ok');
     shared.state = await window.pilot.state();
     showStore();
   });
   $('store-connect').addEventListener('click', () => openNotionConnect({reason: 'none', where: 'settings', from: 'settings', then: () => showStore()}));
   // The move (lib/store-move.js): its progress as it copies, then what moved and which texts Notion already had (kept there, this Mac's in the archive).
   window.pilot.onStoreMoveProgress(({entity, done, total} = {}) =>
-    say(`Moving ${MOVE_WORDS[entity] || entity}… ${done} of ${total}`, 'waiting'));
+    say(t('pagesShortActivity.m105', {"value1": MOVE_WORDS[entity] || entity, "done": done, "total": total}), 'waiting'));
   // "Move my data to Notion": the same prompt as every connect (pages/notion-connect.js, "Connect and move" or "Move to Notion"); its result lands here.
   $('store-move').addEventListener('click', () => openNotionConnect({reason: 'move', where: 'settings', from: 'settings', then: async result => {
-    if (!result?.ok) { say(result?.text || result?.error || 'Not moved.', 'error'); return; }
+    if (!result?.ok) { say(result?.text || result?.error || t('pagesStrategy.notMoved'), 'error'); return; }
     shared.state = await window.pilot.state();
     await showStore();
     say(movedText(result), 'ok');
@@ -81,25 +85,25 @@ export async function init() {
   $('export-data').addEventListener('click', async () => {
     // Notion data is not exported: it stays in Notion, with Notion's own history, Duplicate, Export and Move (owner, 8 Oct 2026)
     const result = await window.pilot.exportProfile({keys: $('export-keys').checked, accounts: $('export-accounts').checked});
-    if (result.ok) savedLine('data-message', 'Exported ✓', result.file);
-    else if (result.cancelled) message('data-message', 'Export cancelled.', 'waiting');
-    else if (result.error) message('data-message', `Export failed: ${result.error}`, 'error');
+    if (result.ok) savedLine('data-message', t('pagesFieldsStatus.exported'), result.file);
+    else if (result.cancelled) message('data-message', t('pagesProfile.exportCancelled'), 'waiting');
+    else if (result.error) message('data-message', t('pagesDynamicCvData.m120', {"error": result.error}), 'error');
   });
   // Settings → Your data, and the setup's Welcome (after a reset the app opens at the setup, where Settings is out of reach: 6 Oct 2026).
   document.querySelectorAll('[data-import]').forEach(button => button.addEventListener('click', async () => {
     const result = await window.pilot.importProfile();
-    if (result?.cancelled) { if (button.id === 'import-data') message('data-message', 'Import cancelled.', 'waiting'); return; }
+    if (result?.cancelled) { if (button.id === 'import-data') message('data-message', t('pagesProfile.importCancelled'), 'waiting'); return; }
     if (!result?.error) return;
-    if (button.id === 'import-data') message('data-message', `Import failed: ${result.error}`, 'error');
-    else toastMessage('Import failed', result.error, {card: 'data'}, 'bad');
+    if (button.id === 'import-data') message('data-message', t('pagesDynamicCvData.m121', {"error": result.error}), 'error');
+    else toastMessage(t('pagesProfile.importFailed'), result.error, {card: 'data'}, 'bad');
   }));
   // ---------- clear my job list (src/clear_jobs.py): the counts first, then a backup and the clear ----------
   const clearBox = $('clear-jobs-confirm');
     const showClearCounts = async () => {
     const plan = await window.pilot.clearJobsPlan();
-    if (plan?.error || plan?.ok === false) { message('data-message', plan.error || 'Could not count your jobs.', 'error'); return false; }
-    const n = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
-    $('clear-jobs-counts').textContent = `${n(plan.clear, 'job')} will be cleared and ${n(plan.keep, 'job')} stay. A backup is made first.`;
+    if (plan?.error || plan?.ok === false) { message('data-message', plan.error || t('pagesLettersData.countFailed'), 'error'); return false; }
+    const n = (count, word) => countedLabel(word, count);
+    $('clear-jobs-counts').textContent = t('pagesDynamicCvData.m122', {"n": n(plan.clear, 'job'), "n2": n(plan.keep, 'job')});
     $('clear-jobs-go').disabled = plan.clear === 0;
     return true;
   };
@@ -116,18 +120,18 @@ export async function init() {
     // A rejected clear (an IPC error, a thrown write) still ends the wait: the toast says it, and the Clear button comes back (Gitar on #2466).
     let result;
     try {
-      result = await whileBusy($('busy-dialog'), {title: 'Backing up, then clearing your job list…', note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
+      result = await whileBusy($('busy-dialog'), {title: t('pagesLettersData.backupClear'), note: t('pagesAuditFirst.a53')}, () => window.pilot.clearJobs());
     } catch (error) { result = {ok: false, error: error?.message || String(error)}; }
     finally { $('clear-jobs-go').disabled = false; show(clearBox, false); show($('clear-jobs'), true); }
-    if (!result?.ok) { toastMessage('Job list not cleared', result?.error || 'Nothing was changed.', {card: 'data'}, 'bad'); return; }
+    if (!result?.ok) { toastMessage(t('pagesProfile.listNotCleared'), result?.error || t('pagesProfile.nothingChanged'), {card: 'data'}, 'bad'); return; }
     shared.allJobs = [];
-    toastMessage('Job list cleared', `${result.cleared} removed, ${result.kept} kept. Run Check for new jobs to fill it again.`, {view: 'jobs'}, 'good');
+    toastMessage(t('pagesProfile.listCleared'), t('pagesDynamicCvData.m123', {"cleared": result.cleared, "kept": result.kept}), {view: 'jobs'}, 'good');
   });
   showBackup();
   $('backup-now').addEventListener('click', async () => {
     const result = await window.pilot.backupNow();
-    if (result.ok) savedLine('data-message', 'Backed up ✓', result.file);
-    else message('data-message', result.error === 'cancelled' ? 'Backup cancelled.' : `Backup failed: ${result.error}`, result.error === 'cancelled' ? 'waiting' : 'error');
+    if (result.ok) savedLine('data-message', t('pagesFieldsStatus.backedUp'), result.file);
+    else message('data-message', result.error === 'cancelled' ? t('pagesProfile.backupCancelled') : t('pagesDynamicCvData.m124', {"error": result.error}), result.error === 'cancelled' ? 'waiting' : 'error');
     showBackup();
   });
   $('backup-show').addEventListener('click', () => window.pilot.showBackups());
@@ -140,11 +144,11 @@ export async function init() {
     const typed = $('reset-confirm').value.trim(), unlocked = !$('reset-confirm').disabled;
     const left = WORD.length - typed.length;
     const ready = unlocked && typed === WORD;
-    const hint = !unlocked ? 'Save a copy or skip it in step 1 first.' : ready ? '✓ Ready' : !typed ? `Type ${WORD} to enable the button.`
-      : WORD.startsWith(typed) ? `${left} more letter${left === 1 ? '' : 's'}` : `Type ${WORD} in capital letters.`;
+    const hint = !unlocked ? t('pagesAuditFirst.a54') : ready ? '✓ Ready' : !typed ? t('pagesDynamicCvData.m125', {"WORD": WORD})
+      : WORD.startsWith(typed) ? t('pagesDynamicCvData.m126', {"left": left, count: left}) : t('pagesDynamicCvData.m127', {"WORD": WORD});
     $('reset-go').disabled = !ready;
     $('reset-go').title = ready ? '' : hint;
-    $('reset-go').setAttribute('aria-label', ready ? 'Reset and restart' : `Reset and restart (unavailable: ${hint})`);
+    $('reset-go').setAttribute('aria-label', ready ? t('pagesProfile.resetRestart') : t('pagesDynamicCvData.m128', {"hint": hint}));
     $('reset-hint').textContent = hint;
     $('reset-hint').classList.toggle('ready', ready);
   };
@@ -155,8 +159,8 @@ export async function init() {
   };
   $('reset-export').addEventListener('click', async () => {
     const result = await window.pilot.exportProfile({keys: false, accounts: $('reset-export-accounts').checked});
-    if (result?.ok) allowReset(`✓ Saved: ${result.file.split(/[\\/]/).pop()}`, 'tone-good');
-    else if (result?.error) message('reset-message', `Export failed: ${result.error}`, 'error');
+    if (result?.ok) allowReset(t('pagesShortActivity.m107', {"value1": result.file.split(/[\\/]/).pop()}), 'tone-good');
+    else if (result?.error) message('reset-message', t('pagesDynamicCvData.m129', {"error": result.error}), 'error');
   });
   $('reset-skip-export').addEventListener('click', () => allowReset('✓ Skipped', ''));
   $('reset-confirm').addEventListener('input', syncReset);
@@ -165,15 +169,15 @@ export async function init() {
     if ($('reset-confirm').value.trim() !== WORD) return;
     const result = await window.pilot.resetProfile();
     if (result?.error) message('reset-message', result.error, 'error');
-    else if (!result?.ok) message('reset-message', 'Not reset.', 'waiting');
+    else if (!result?.ok) message('reset-message', t('pagesProfile.notReset'), 'waiting');
   });
   window.pilot.lastReset().then(done => {
-    if (done?.failed) toastMessage('Import or reset did not finish', `${done.failed}. Your data on this computer is as it was; try again.`, {card: 'data'}, 'bad');
-    else if (done?.imported) toastMessage('Data imported ✓', `Your previous data is in ${done.backup}.`, {card: 'data'}, 'good');
+    if (done?.failed) toastMessage(t('pagesProfile.importResetFailed'), t('pagesDynamicCvData.m130', {"failed": done.failed}), {card: 'data'}, 'bad');
+    else if (done?.imported) toastMessage(t('pagesProfile.imported'), t('pagesDynamicCvData.m131', {"backup": done.backup}), {card: 'data'}, 'good');
     // The backup's Profile and tracking are in its Notion workspace (lib/reset.js notionLeftBehind): say which one to connect, before a new one is made.
-    if (done?.imported && done.notionElsewhere) toastMessage({title: 'Connect the same Notion workspace',
-      body: 'Your Profile and job tracking are in the Notion workspace this backup used. Connect that workspace and pick your existing Jobadabra page: '
-        + 'a new workspace starts with an empty Profile.', target: {view: 'settings', section: 'connections'}, tone: 'warn'});
-    else if (done?.deleted) toastMessage('Jobadabra was reset', 'Your previous data on this computer was deleted. Import your export to get it back.', {card: 'data'}, 'info');
+    if (done?.imported && done.notionElsewhere) toastMessage({title: t('pagesProfile.connectSame'),
+      body: t('pagesAuditFirst.a55')
+        + t('pagesAuditFirst.a56'), target: {view: 'settings', section: 'connections'}, tone: 'warn'});
+    else if (done?.deleted) toastMessage(t('pagesProfile.reset'), t('pagesLettersData.previousDeleted'), {card: 'data'}, 'info');
   });
 }

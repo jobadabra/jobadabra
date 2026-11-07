@@ -3,6 +3,8 @@
 // Claude Code or Codex), the CLI's status block with Verify,
 // the in-family plan-limit fallback and the note.
 // The user picks; in the wizard nothing is pre-selected, in Settings the choice is remembered and switching is instant.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {refreshClaudeHelp} from '../claude-help.js';
 import {choiceCards, el, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -51,7 +53,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     free.classList.add('is-single');
     // The engine cards of the open family (API key / its own CLI), only once a family is open.
     const cards = family ? choiceCards(FAMILY_CARDS[family].map(id => ({id, icon: ICONS[id], title: TEXT[id].title, text: context === 'settings' ? TEXT[id].short : TEXT[id].text,
-      note: id === CLI_OF[family] && status && ['app-only', 'nothing', 'elsewhere', 'broken'].includes(status.state) ? `Needs ${FAMILY[family].cli}` : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
+      note: id === CLI_OF[family] && status && ['app-only', 'nothing', 'elsewhere', 'broken'].includes(status.state) ? t('pagesShortActivity.m63', {"cli": FAMILY[family].cli}) : ''})), {selected: chosenCards.find(id => FAMILY_CARDS[family].includes(id)), onPick: pick, label: TEXT.title}) : null;
     // Settings: the key box under the chooser shows only for the API key card of the open family (owner, 16 Oct 2026: hide technical details until asked).
     if (context === 'settings') for (const foot of document.querySelectorAll('#setting-ai [data-family]')) foot.hidden = selection({picked, family}).keyBox !== API_OF[foot.dataset.family] || foot.dataset.family !== family;
     const head = el('div', 'engine-head');
@@ -63,16 +65,16 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     // Only the picked subscription card says more: one line (ready, or what is missing), the rest folded under "More about this".
     const aboutCli = !!family && picked === CLI_OF[family];
     if (aboutCli) parts.push(cli.checking || busy ? statusBlock(cli) : planBlock(status));
-    if (aboutCli && copied) parts.push(el('p', 'muted small', 'Details copied. Paste them into your message to support.'));
+    if (aboutCli && copied) parts.push(el('p', 'muted small', t('pagesActivityMore.detailsCopied')));
     if (problem) parts.push(el('p', 'message error', problem));   // our own words only (a file refused, Free AI could not start): never a CLI's raw message
     if (aboutCli && cli.usable) parts.push(moreAbout(cli));
     box.replaceChildren(...parts);
   };
   // One readiness state, drawn from lib/plan-readiness.js (the status carries it): the words and the one next step are renderer/ai-plan-guide.js.
   const stateOf = found => found.state || (found.installed ? (found.authenticated ? 'ready' : 'sign-in') : 'nothing');
-  const RUNNING = {install: f => ({title: `Installing ${CLI[f].short}…`, text: 'This usually takes about a minute. Jobadabra notices when it is done.'}),
-    'install-git': () => ({title: 'Installing Git for Windows…', text: 'This can take a minute. Windows may ask you to allow it.'}),
-    'sign-in': () => ({title: 'Waiting for you to sign in…', text: 'Finish signing in on the page that opened in your browser.'})};
+  const RUNNING = {install: f => ({title: t('pagesShortActivity.m64', {"short": CLI[f].short}), text: t('pagesActivityMore.minuteDone')}),
+    'install-git': () => ({title: t('pagesActivityMore.installGit'), text: t('pagesActivityMore.windowsAllow')}),
+    'sign-in': () => ({title: t('pagesActivityMore.waitingSignIn'), text: t('pagesActivityMore.finishSignIn')})};
   const planBlock = found => {
     if (manual && !INSTALL_STATES.includes(stateOf(found))) manual = false;   // the manual steps belong to the install states only: another state gets its own buttons
     return running && running.family === family ? progressCard({...RUNNING[running.what](family), seconds: running.seconds, onCancel: () => window.pilot.planCancel()})
@@ -99,7 +101,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     render(); onChange(picked);
     if (outcome.check && family === which) check();   // it appeared (or Git was added): one real check decides signed in or not
   }
-  const REFUSED = {'not-the-cli': file => `That is not ${file}. Choose the ${file} file.`, 'did-not-start': () => 'That file did not start. Choose another one.'};
+  const REFUSED = {'not-the-cli': file => t('pagesDynamicSetup.m56', {"file": file, "file2": file}), 'did-not-start': () => t('pagesAuditFirst.a28')};
   async function act(id) {
     const which = family;
     problem = ''; copied = false;
@@ -118,7 +120,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   const statusBlock = cli => {
     const block = el('div', 'engine-status');  // one tinted line: ready, or what is missing, then "Check again"
     const row = el('div', 'engine-status-row');
-    const again = el('button', 'link', busy ? 'Checking…' : 'Check again');
+    const again = el('button', 'link', busy ? t('pagesCommon.checking') : t('pagesCommon.checkAgain'));
     Object.assign(again, {type: 'button', disabled: busy});
     again.addEventListener('click', () => check());
     const lines = el('div', 'engine-status-lines');
@@ -130,7 +132,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
   // The technical rest, folded: version and path, how it is billed, and the plan-limit fallback.
   const moreAbout = cli => {
     const details = el('details', 'engine-details plain');
-    details.append(el('summary', 'small', 'More about this'));
+    details.append(el('summary', 'small', t('pagesStatus.moreAbout')));
     for (const line of cli.lines.filter(each => each.tone === 'good')) details.append(el('p', 'muted small', line.text));
     if (cli.path) details.append(el('code', 'engine-path', cli.path));
     details.append(el('p', 'muted small engine-note', family === 'openai' ? TEXT.codexNote : TEXT.note));

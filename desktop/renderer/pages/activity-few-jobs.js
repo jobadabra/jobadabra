@@ -1,5 +1,7 @@
 // Recent activity: the few-jobs help boxes beside the run card (coverage actions, Explain with AI).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
@@ -70,15 +72,15 @@ export function withFewJobsHelp(runId) {
   // card that is on screen, not in one already replaced.
   const showAsking = () => {
     const line = el('p', 'run-card-asking');
-    line.append(el('span', 'spinner small'), ai('{AI} is reading this search\'s counts…'));
+    line.append(el('span', 'spinner small'), ai(t('pagesAuditPunct.a5')));
     answer.replaceChildren(line);
   };
   const explain = el('button', 'link with-icon', icon('sparkle'));
-  explain.append('Understand these results with AI →');
-  explain.title = ai('{AI} reads the counts of this search (never your CV) and says why it found few jobs, and what to do first');
+  explain.append(t('pagesActivity.understandAi'));
+  explain.title = ai(t('pagesAuditPunct.a6'));
   keepButton('explain', explain);
   const settle = result => {
-    if (!result?.ok) { answer.textContent = plainError(result?.error || ai('{AI} could not answer now.')); return; }
+    if (!result?.ok) { answer.textContent = plainError(result?.error || ai(t('pagesAuditPunct.a7'))); return; }
     showAnswer(result);
   };
   if (kept.explained) showAnswer(kept.explained);
@@ -95,21 +97,21 @@ export function withFewJobsHelp(runId) {
   });
   const why = el('div', 'few-explain');
   why.append(explain);
-  const strategy = el('button', 'link', 'Review strategy ↗');
+  const strategy = el('button', 'link', t('pagesActivity.reviewStrategy'));
   strategy.type = 'button';
   strategy.addEventListener('click', () => { openActivity(false); openView('strategy'); });
   const paint = groups => {
     const parts = [];
     // One plain action in place of the employer numbers and schedule (owner, 24 Oct 2026); those live in Reports.
     if (groups?.employers) {
-      const further = el('button', 'secondary item-action', 'Search wider');
+      const further = el('button', 'secondary item-action', t('pagesStatus.searchWider'));
       further.type = 'button';
       further.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
       adviceEvent('shown', 'employer', 'few-jobs');
-      const coverage = card('file', 'Wider search', 'Looks beyond your current sources for jobs that fit you', further);
+      const coverage = card('file', t('pagesExtraCommon.widerSearch'), t('pagesExtraCommon.beyondSources'), further);
       parts.push(coverage);
     }
-    const broaden = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);
+    const broaden = card('bulb', t('pagesExtraCommon.otherWays'), t('pagesExtraCommon.optionalSearch'), strategy);
     const items = [];
     for (const action of groups?.words || []) {
       const button = Object.assign(el('button', 'secondary', action.row.button), {type: 'button', title: action.title});
@@ -117,29 +119,29 @@ export function withFewJobsHelp(runId) {
     }
     for (const source of groups?.sources || []) {
       items.push(row(source.id === 'serpapi' ? 'search' : 'link', source.name, source.sub,
-        act({kind: 'source', label: `Set up ${source.name}`, value: source.id}, Object.assign(el('button', 'secondary', 'Set up'), {type: 'button'})), source.title));
+        act({kind: 'source', label: t('pagesDynamicActivity.m11', {"name": source.name}), value: source.id}, Object.assign(el('button', 'secondary', t('pagesCommon.setup')), {type: 'button'})), source.title));
     }
     if (groups?.visits?.length) {
       // One row, handed to Find jobs using your browser (owner, 7 Oct 2026: "pass them to Find jobs using your browser"): the extension reads them all in Chrome, a few at a time.
       const names = groups.siteNames;
-      const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
+      const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? t('pagesShortActivity.m18', {"value1": names.length - 2}) : '');
       adviceEvent('shown', 'visit', 'few-jobs');
-      // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js).
-      const read = wand(Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'}));
+      // Why (#2350, Gitar): Localized display keys preserve this rule: a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js).
+      const read = wand(Object.assign(el('button', 'secondary', t('pagesActivity.readChrome')), {type: 'button', title: t('pagesActivity.readTwo')}));
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
-        if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', '✓ Reading in Chrome'); return; }
+        if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', t('pagesExtraCommon.readingChrome')); return; }
         onScreen('read-sites').title = result?.text || read.title;
-        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || 'Try again.'}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
+        sayRefused(t('pagesExtraCommon.readingNotStarted'), {ok: false, error: result?.text || result?.error || t('pagesCommon.tryAgain')}, {place: {activity: true}});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
-      items.push(row('external', 'Browse sites manually', [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
+      items.push(row('external', t('pagesCommon.browseManually'), [t('pagesDynamicActivity.m12', {"length": names.length, count: names.length}), shown], read));
     }
-    broaden.append(items.length ? rows(items) : el('p', 'muted small', 'Nothing obvious to change yet.'), why, answer);
+    broaden.append(items.length ? rows(items) : el('p', 'muted small', t('pagesActivity.noObvious')), why, answer);
     parts.push(broaden);
     box.replaceChildren(...parts);
   };
-  const waiting = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);
+  const waiting = card('bulb', t('pagesExtraCommon.otherWays'), t('pagesExtraCommon.optionalSearch'), strategy);
   waiting.append(why, answer);
   box.append(waiting);
   if (kept.ready !== undefined) paint(kept.ready); else kept.groups.then(groups => { kept.ready = groups; paint(groups); });

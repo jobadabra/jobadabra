@@ -1,6 +1,9 @@
 // Where an email belongs, in your words: Focus → "Is this about …?" (an email the Gmail check wasn't sure about).
 // One dialog: pick the job, a new job, or "not about a job"; src/ai/reassign.py attaches the email (Notion stays the
 // one copy).
+import '../../i18n/screens-pages.js';
+import {stageName} from './page-labels.js';
+import {t} from '../../i18n/index.js';
 import {stageLabel} from '../jobs-board-rules.js';
 import {shared} from './shared.js';
 import {$, message} from './core.js';
@@ -13,7 +16,7 @@ import {el} from '../components.js';
 import {storeName} from '../store-words.js';
 
 const option = (value, text) => Object.assign(document.createElement('option'), {value, textContent: text});
-const labelOf = job => `${job.company || job.via || '—'} · ${job.title}${job.stage ? ` (${stageLabel(job.stage)})` : ''}`;
+const labelOf = job => `${job.company || job.via || '—'} · ${job.title}${job.stage ? ` (${stageName(stageLabel(job.stage))})` : ''}`;
 
 // The job picker holds only the jobs you track; "a new job" and "not about a job" are their own choices.
 function targets(current = '', suggested = '') {
@@ -49,14 +52,14 @@ function open({title, context, why = ''}) {
 export async function moveEmail(eventId, target, item = null) {
   if (item) holdItem(item);   // the question leaves Focus at once ("Saving…"); Notion takes seconds
   const result = await window.pilot.reassignEmail(eventId, target).catch(error => ({ok: false, text: error.message}));
-  toastMessage(result.ok ? 'Saved ✓' : 'Not changed', result.text || '', {view: 'focus'}, result.ok ? 'good' : 'bad');
+  toastMessage(result.ok ? t('pagesCommon.saved') : t('pagesJobs.notChanged'), result.text || '', {view: 'focus'}, result.ok ? 'good' : 'bad');
   if (result.ok) { loadFocus(); loadJobs(); } else if (item) releaseItem(item);
   return result.ok;
 }
 
 // Focus → Other job…: the question's email, to the job you pick. `onSaved(job)` hears the job saved ("Company — Title", or ''
 // for "not about a job"): Recent activity's Gmail card turns that email to "Answered" at once.
-const jobOf = (choice, item) => (choice === 'none' ? '' : choice === 'new' ? `${item.company || 'New job'} — new job`   // as the answered list records it
+const jobOf = (choice, item) => (choice === 'none' ? '' : choice === 'new' ? t('pagesDynamicProfileReady.m316', {"value1": item.company || t('pagesExtraLabels.newJob')})   // as the answered list records it
   : ($('reassign-target').selectedOptions[0]?.textContent || '').replace(/\s*\([^)]*\)$/, '').replace(' · ', ' — '));
 export function whichJob(item, onSaved = null) {
   targets('', item.suggested_url);
@@ -66,7 +69,7 @@ export function whichJob(item, onSaved = null) {
     if (ok && onSaved) onSaved(jobOf(choice, item));
     return ok;
   };
-  open({title: 'Which job is this email about?', context: item.detail,
+  open({title: t('pagesReadyReports.whichJob'), context: item.detail,
     why: questionWhy(emailNoun({subject: item.subject}), item.company)});
 }
 
@@ -77,9 +80,9 @@ export async function init() {
     event.preventDefault();
     if (!pending) return;
     $('reassign-save').disabled = true;
-    message('reassign-message', `Saving to ${storeName()}…`, 'waiting');
+    message('reassign-message', t('pagesDynamicProfileReady.m317', {"storeName": storeName()}), 'waiting');
     const ok = await pending();
     $('reassign-save').disabled = false;
-    if (ok) $('reassign-dialog').close(); else message('reassign-message', 'Not saved. Try again.', 'error');
+    if (ok) $('reassign-dialog').close(); else message('reassign-message', t('pagesReadyReports.notSavedRetry'), 'error');
   });
 }

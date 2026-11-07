@@ -2,6 +2,7 @@
 // a Notion URL, a link/button/menu labelled "… in Notion" (JS), and an <a>/<button> with an id labelled "… in Notion" (index.html).
 // Wording that only mentions Notion ("Saved in Notion", a toast) is not an entry point. Each one is keyed by file + its top-level function
 // (JS) or file#id (HTML), so moving lines keeps the key. Used by notion-parity.test.js against notion-parity.js.
+import {readScreenSource} from './static-screen-source.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -56,7 +57,7 @@ export function scanHtml(file, text) {
 // [{key, line}] for every entry point, in file order.
 export function notionEntryPoints(root = ROOT) {
   return walk(root).filter(full => !SKIP.has(path.basename(full))).flatMap(full => {
-    const file = path.relative(root, full).split(path.sep).join('/'), text = fs.readFileSync(full, 'utf8');
+    const file = path.relative(root, full).split(path.sep).join('/'), text = readScreenSource(full, 'utf8');
     return full.endsWith('.js') ? scanJs(file, text) : full.endsWith('.html') ? scanHtml(file, text) : [];
   });
 }

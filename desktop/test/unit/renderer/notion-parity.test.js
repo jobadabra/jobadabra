@@ -1,5 +1,6 @@
 // Parity guard (Notion optional, end of P8): every place the window opens Notion names the in-app view a person without Notion sees,
 // or is marked pending with its lane. A new entry point without a row in notion-parity.js fails; the pending ones are printed.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -26,7 +27,7 @@ test('every row is one kind, and each named view still exists', () => {
     if (!row.view) continue;
     const [file, name] = row.view.split(' ');
     assert.ok(fs.existsSync(renderer(file)), `${key}: ${file} does not exist`);
-    assert.match(fs.readFileSync(renderer(file), 'utf8'), new RegExp(`(function\\s+${name}\\b|\\b${name}\\s*=)`), `${key}: ${row.view} not found`);
+    assert.match(readScreenSource(renderer(file), 'utf8'), new RegExp(`(function\\s+${name}\\b|\\b${name}\\s*=)`), `${key}: ${row.view} not found`);
   }
 });
 

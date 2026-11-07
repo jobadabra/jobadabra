@@ -1,4 +1,7 @@
 // Actions: every Telegram command.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {setFilters} from './jobs-filter-menu.js';
 import {ai} from '../ai-name.js';
 import {shared} from './shared.js';
@@ -54,7 +57,7 @@ export async function runCommand(command, button = null) {
   const refused = refusal(result);   // no AI credit, trial over, Notion (renderer/refusal.js): said here, never taken for a started task
   if (task && !refused && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // a started task keeps its button off until it ends (syncRunButtons)
   release(button);  // its row, then its result, show in Recent activity
-  const text = refused ? `⚠️ ${refused.text}` : (result.text || result.error || '') + (result.telegram ? '\n\n(Also sent to Telegram.)' : '');
+  const text = refused ? `⚠️ ${refused.text}` : (result.text || result.error || '') + (result.telegram ? t('pagesAuditPunct.a0') : '');
   answer(text);
   return {text};
 }
@@ -69,7 +72,7 @@ export async function startTailor() {
   const result = await window.pilot.tailorTop(count).catch(error => ({text: `⚠️ ${error.message}`}));
   if (result?.started) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // the Actions page keeps Run off while the task runs, and on again when it ends
   release(button);
-  const text = result?.text || result?.error || 'Done.';
+  const text = result?.text || result?.error || t('pagesAuditFirst.a3');
   answer(text);
   return {text};
 }
@@ -131,23 +134,23 @@ export async function init() {
     if (visitsLoading) return;   // 7 Oct 2026: a click while loading said "No sites to read yet · Read 0 sites"
     const ticked = visitBoxes().filter(box => box.checked).length, all = visitBoxes().length;
     const jobs = unreadBoxes().filter(box => box.checked).length, unread = unreadBoxes().length;
-    $('visits-lead').textContent = all ? `${plural(all, 'site')} · ${ticked} selected (${visitsAgain ? 'the ones that did not finish last time' : 'the ones not read this week'})` : 'No sites to read yet.';
+    $('visits-lead').textContent = all ? t('pagesShortActivity.m0', {"plural": plural(all, 'site'), "ticked": ticked, "value3": visitsAgain ? t('pagesActivity.notFinished') : t('pagesActivity.notReadWeek')}) : t('pagesActivity.noSites');
     // Two tabs when there are jobs we couldn't read, each with its count ticked of all; else the sites alone, no tabs.
     $('visits-sites-count').textContent = `${ticked}/${all}`;
     $('visits-unread-count').textContent = `${jobs}/${unread}`;
     $('visits-tabs').hidden = !unread;
     if (!unread && visitsTab !== 'visits-sites') showVisitsTab('visits-sites');
-    $('visits-start').textContent = jobs ? `Read ${ticked ? `${plural(ticked, 'site')}, ` : ''}${plural(jobs, 'job')}` : `Read ${plural(ticked, 'site')}`;
+    $('visits-start').textContent = jobs ? t('pagesShortActivity.m1', {"value1": ticked ? `${plural(ticked, 'site')}, ` : '', "plural": plural(jobs, 'job')}) : t('pagesShortActivity.m2', {"plural": plural(ticked, 'site')});
     $('visits-start').disabled = !ticked && !jobs;
   };
   const paintVisits = async () => {
     visitsLoading = true;
-    $('visits-lead').textContent = 'The sites to read in your browser';
+    $('visits-lead').textContent = t('pagesActivity.sitesBrowser');
     for (const id of ['visits-start', 'visits-all', 'visits-none']) $(id).disabled = true;
     // While the list loads (Claude picks the sites that suit your roles, ~5 s): the Jobs list's loading look in the empty list, not a blank
     // dialog (owner, 8 Oct 2026). The list it replaces is not kept: it may be another run's.
     const loading = el('li', 'list-loading');
-    loading.append(el('span', 'spinner'), el('div', '', 'Finding your sites…'), el('div', 'muted small', ai('{AI} checks which suit your roles, a few seconds')));
+    loading.append(el('span', 'spinner'), el('div', '', t('pagesActivity.findingSites')), el('div', 'muted small', ai(t('pagesAuditPunct.a3'))));
     $('visits-sites').replaceChildren(loading);
     $('visits-tabs').hidden = true;
     showVisitsTab('visits-sites');
@@ -167,15 +170,15 @@ export async function init() {
     const ordered = [...sites.filter(tickedSite), ...sites.filter(site => !tickedSite(site))];
     $('visits-sites').replaceChildren(...ordered.map(site => visitRow({value: site.url,
       ticked: tickedSite(site),
-      name: site.kind === 'portal' ? `${site.name} · your search` : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
-      note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : 'never read', title: site.note,
-      drop: 'Remove', dropTitle: 'Not offered again', onDrop: () => window.pilot.visitsHide(site.url)})));
+      name: site.kind === 'portal' ? t('pagesDynamicActivity.m0', {"name": site.name}) : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
+      note: site.last_read ? t('pagesShortActivity.m3', {"value1": site.last_read.slice(0, 10)}) : t('pagesExtraCommon.neverRead'), title: site.note,
+      drop: t('pagesCommon.remove'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsHide(site.url)})));
     // Jobs in your places whose posting only your browser can open: ticked (not on Run again of a run, which is about its sites); Dismiss: not offered again.
     // A site that asked us to slow down (429) waits for its next try, unticked: a browser read now would be asked the same (owner, 20 Oct 2026).
-    const nextTry = job => (job.waiting_until ? ` · waiting: the site asked us to slow down, next try ${new Date(job.waiting_until * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}` : '');
+    const nextTry = job => (job.waiting_until ? t('pagesDynamicActivity.m1', {"when": displayDate(new Date(job.waiting_until * 1000), {hour: '2-digit', minute: '2-digit'})}) : '');
     $('visits-unread').replaceChildren(...(stuck?.jobs || []).map(job => visitRow({value: job.url, ticked: !wanted && !job.waiting_until,
       name: job.company ? `${job.title} · ${job.company}` : job.title, note: `${job.location ? `${job.location} · ` : ''}${new URL(job.url).hostname.replace(/^www\./, '')}${nextTry(job)}`,
-      drop: 'Dismiss', dropTitle: 'Not offered again', onDrop: () => window.pilot.visitsDismiss(job.url)})));
+      drop: t('pagesCommon.dismiss'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsDismiss(job.url)})));
     countVisits();
   };
   $('visits-run').addEventListener('click', () => {
@@ -199,7 +202,7 @@ export async function init() {
     const result = await window.pilot.visitsRun({urls, postings, atOnce, filter}).catch(error => ({text: `⚠️ ${error.message}`}));
     if (result?.started) { refreshActivity(); show($('command-answer'), false); return; }
     release(button);
-    answer(result?.text || result?.error || 'Done.');
+    answer(result?.text || result?.error || t('pagesAuditFirst.a3'));
   });
   initBoard({answer});   // Read this board: its card and dialog (actions-board.js)
   initFocusCheck();   // a captcha held in the hidden window: one line + Show the check (focus-check.js)
@@ -215,7 +218,7 @@ export async function init() {
     await replaceCv({choose: () => window.pilot.chooseCv(), readState: async () => { shared.state = await window.pilot.state(); },
       say: file => {
         $('contact-cv').textContent = file;
-        message('strategy-message', `CV replaced: ${file}. New applications use it now. Review what it changes in your strategy when you're ready.`, 'ok');
+        message('strategy-message', t('pagesDynamicActivity.m2', {"file": file}), 'ok');
         showCvChanged();
       }});   // the CV card and its check redraw through cv-replace.js (profile.js registers its loader)
   });

@@ -1,4 +1,6 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
@@ -63,7 +65,7 @@ async function linkToJob(dialogId, messageId, result) {
   const job = (shared.allJobs || []).find(row => row.url === added.jobUrl || (added.url && row.notion_url === added.url))
     || {url: added.jobUrl, title: added.title, notion_url: added.url};
   const open = document.createElement('button');
-  open.type = 'button'; open.className = 'link'; open.textContent = 'Open job →';
+  open.type = 'button'; open.className = 'link'; open.textContent = t('pagesJobsFinal.openJob');
   open.addEventListener('click', () => { $(dialogId).close(); openJobPanel(job); });
   $(messageId).append(' ', open);
 }
@@ -83,14 +85,14 @@ export async function loadJobs() {
     // The last good list at once (lib/view-cache.js), then the fresh one from Notion replaces it.
     if (!shared.allJobs.length) {
       const saved = await window.pilot.cached('jobs');
-      if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += ` · saved ${savedAgo(saved.at)}, updating…`; jobsState.jobsLoading = true; }
+      if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += t('pagesShortJobs.m204', {"savedAgo": savedAgo(saved.at)}); jobsState.jobsLoading = true; }
     }
     const fresh = await writes.read();
     if (fresh) { showOutdatedJobs(false); showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
     else await writes.settled();   // that write's reread paints the fresh list: a Start waits for it too (jobs-state.js)
   } catch (error) {
     if (isOutdated(error)) { shared.allJobs = []; showOutdatedJobs(true); $('jobs-stats').textContent = ''; }   // the app is older than its engine: the Restart card, not the saved list
-    else $('jobs-stats').textContent = plainError(`Couldn't read your jobs: ${error.message}`);
+    else $('jobs-stats').textContent = plainError(t('pagesDynamicJobs.m241', {"message": error.message}));
   }
   jobsState.jobsLoading = false;
   jobsState.jobsRead = true;   // read or failed: the Find jobs card stops waiting for the count
@@ -114,20 +116,20 @@ async function askAboutLeftOpen() {
   leftOpenAsked = true;
   if (!open.length) return;
   const answer = await window.pilot.sessionsLeftOpen(open.map(item => item.id));
-  if (answer?.kept) toastMessage(`${answer.kept} application${answer.kept === 1 ? '' : 's'} restored`,
-    `${answer.kept === 1 ? 'Its form is' : 'Their forms are'} still open in Chrome: review and submit them there.`, {view: 'sessions'}, 'good');
+  if (answer?.kept) toastMessage(t('pagesShortJobs.m205', {"kept": answer.kept, count: answer.kept}),
+    t('pagesDynamicJobs.m242', {count: answer.kept}), {view: 'sessions'}, 'good');
 }
 let jobsLimit = 200;
 async function showMore() {
   const button = $('jobs-more');
   button.disabled = true;
-  button.textContent = 'Loading…';
+  button.textContent = t('pagesCommon.loading');
   try {
     jobsLimit = shared.allJobs.length + MORE;
     const fresh = await writes.read({limit: jobsLimit});
     if (fresh) showJobsData(fresh);
   } catch (error) {
-    toastMessage('Could not load more jobs', error.message, {view: 'jobs'}, 'bad');
+    toastMessage(t('pagesJobsFinal.loadMoreFailed'), error.message, {view: 'jobs'}, 'bad');
   }
   button.disabled = false;
   renderJobs();
@@ -160,7 +162,7 @@ export function showJobsData(data) {
   if ('profile_empty' in data) showProfileEmpty(!!data.profile_empty);   // "Your Profile is empty, so fit scores are paused" (#2759): setup ends here
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
-      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your application is kept.`, jobPlace(job), 'warn');
+      toastMessage(t('pagesJobsFinal.postingRemoved'), t('pagesDynamicJobs.m243', {"value1": job.company ? `${job.company} · ` : '', "value2": job.title || job.url}), jobPlace(job), 'warn');
     }
     shared.allJobs = data.jobs;
     noteOutdated(data.outdated);   // the scores from the previous strategy: Strategy's own count, kept by rescore-run.js (after the rows: its redraw reads them)
@@ -169,12 +171,12 @@ export function showJobsData(data) {
     document.dispatchEvent(new Event('menu:refresh'));   // pages/nav.js: Interviews appears with the first application
         // Total / high fit / new / companies count job matches; opportunities that found you are "In conversation".
     const count = jobCounts(data);   // one definition for every count (jobs-view.js), the Find jobs card's too
-    $('jobs-stats').textContent = `${count.total} matches` +
-      (count.week ? ` · ${count.week} new this week` : '') + (data.filtered ? ` · ${data.filtered} hidden` : '') +
+    $('jobs-stats').textContent = t('pagesShortJobs.m206', {"total": count.total}) +
+      (count.week ? t('pagesDynamicJobs.m244', {"week": count.week}) : '') + (data.filtered ? t('pagesShortJobs.m207', {"filtered": data.filtered}) : '') +
       // Found but not checked yet (the engine: not scored): the next refreshes take them, a batch at a time, best places first (src/daily.py).
-      (data.waiting ? ` · ${data.waiting} waiting, run Find jobs again` : '') +
-      (data.stale ? ' · ⚠️ Notion unreachable: statuses may be out of date' : '');   // about Notion
-    $('jobs-stats').title = `${count.scored} scored by the AI` + (data.filtered ? `; ${data.filtered} hidden by your language or company filters` : '');
+      (data.waiting ? t('pagesDynamicJobs.m245', {"waiting": data.waiting}) : '') +
+      (data.stale ? t('pagesJobsFinal.notionUnreachable') : '');   // about Notion
+    $('jobs-stats').title = t('pagesDynamicJobs.m246', {"scored": count.scored}) + (data.filtered ? t('pagesDynamicJobs.m247', {"filtered": data.filtered}) : '');
     const totalBefore = $('stat-total').textContent, flash = setCount($('stat-total'), count.total);
     // Whether a person could see it (7 Oct 2026: "the flashing is not consistently working"): logs/app.log, area ui
     if (flash !== 'same') window.pilot.uiLog?.('Total matches changed', {from: totalBefore, to: count.total, flash,
@@ -187,15 +189,15 @@ export function showJobsData(data) {
     const toReviewCount = toReview(shared.allJobs) + (data.review_beyond || 0);   // with the rows not loaded (a cut list)
     setCount($('nav-jobs-badge'), toReviewCount);
     Object.assign($('nav-jobs-badge'), {hidden: !toReviewCount, textContent: badgeLabel(toReviewCount),
-      title: `${toReviewCount} job${toReviewCount === 1 ? '' : 's'} to review · ${count.week} new this week`});
+      title: t('pagesDynamicJobs.m248', {"toReviewCount": toReviewCount, "week": count.week, count: toReviewCount})});
     setCount($('stat-companies'), count.companies);
     const applications = applicationStats(shared.allJobs);
     for (const kind of Object.keys(applications)) setCount($(`stat-${kind}`), applications[kind]);
     const talking = inProcess(shared.allJobs);
-    document.querySelector('[data-stat="interviews"]').title = `Now: ${talking.screening} screening · ${talking.interviews} interviewing or offer.`;
-    document.querySelector('[data-stat="applied"]').title = 'Applications sent = waiting for a reply + in process + closed. Forms still being filled are sessions, not counted here.';
-    document.querySelector('[data-stat="waiting"]').title = 'Sent, no answer yet (Applied, Confirmation received).';
-    document.querySelector('[data-stat="closed"]').title = 'Rejected, withdrawn, or no answer after the waiting time.';
+    document.querySelector('[data-stat="interviews"]').title = t('pagesDynamicJobs.m249', {"screening": talking.screening, "interviews": talking.interviews});
+    document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.sentDefinition');
+    document.querySelector('[data-stat="waiting"]').title = t('pagesJobsFinal.waitingDefinition');
+    document.querySelector('[data-stat="closed"]').title = t('pagesJobsFinal.closedDefinition');
     renderStuck();
   }
 }
@@ -236,7 +238,7 @@ async function runSearch(why) {
     result = await window.pilot.refresh(why).catch(error => ({ok: false, error: error.message}));
     const refused = refusal(result);
     // On the card when it is in view; elsewhere a pop-up. No AI credit or a Free AI line also opens the top-up dialog, which can press it again.
-    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? 'Re-score did not start' : why?.employers ? 'Search wider did not start' : 'Find jobs did not start', result, {place: {view: 'jobs'}, retry: () => startSearch(why)});
+    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? t('pagesFinalLabels.rescoreNotStarted') : why?.employers ? t('pagesFinalLabels.widerNotStarted') : t('pagesControlStatus.findNotStarted'), result, {place: {view: 'jobs'}, retry: () => startSearch(why)});
     return result;
   } finally {
     $('refresh').disabled = false;
@@ -286,9 +288,9 @@ export async function init() {
   $('import-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('import-url').value.trim();
-    if (!/^https?:\/\//.test(url)) { message('import-message', 'Paste the job link (it starts with https://).', 'error'); return; }
+    if (!/^https?:\/\//.test(url)) { message('import-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('import-go').disabled = true;
-    message('import-message', 'Reading the posting and scoring it…', 'waiting');
+    message('import-message', t('pagesJobsFinal.readingScoring'), 'waiting');
     const result = await window.pilot.importJob(url);
     $('import-go').disabled = false;
     message('import-message', result.text, result.ok ? 'ok' : 'error');
@@ -318,16 +320,16 @@ export async function init() {
   $('applied-go').addEventListener('click', async event => {
     event.preventDefault();
     const url = $('applied-url').value.trim();
-    if (!/^https?:\/\//.test(url)) { message('applied-message', 'Paste the job link (it starts with https://).', 'error'); return; }
+    if (!/^https?:\/\//.test(url)) { message('applied-message', t('pagesJobsFinal.pasteLink'), 'error'); return; }
     $('applied-go').disabled = true;
-    message('applied-message', `Reading the posting and adding it to ${storeName()}…`, 'waiting');
+    message('applied-message', t('pagesDynamicJobs.m250', {"storeName": storeName()}), 'waiting');
     const day = $('applied-when').value;  // YYYY-MM-DD from the date picker
-    if (!day) { message('applied-message', 'Pick the day you applied.', 'error'); return; }
+    if (!day) { message('applied-message', t('pagesJobsFinal.appliedDay'), 'error'); return; }
     const manual = !$('applied-manual').hidden;
-    if (manual && !$('applied-title').value.trim()) { message('applied-message', 'Add the job title (the page itself isn\'t read).', 'error'); return; }
+    if (manual && !$('applied-title').value.trim()) { message('applied-message', t('pagesJobsFinal.addTitle'), 'error'); return; }
     const details = {...(manual ? {title: $('applied-title').value.trim(), company: $('applied-company').value.trim(), text: $('applied-text').value.trim()} : {}),
       ...(appliedOrigin() === 'inbound' ? {origin: 'inbound'} : {})};
-    const result = await window.pilot.addApplied(url, $('applied-approx').checked ? `on or before ${day}` : day, details);
+    const result = await window.pilot.addApplied(url, $('applied-approx').checked ? t('pagesDynamicJobs.m251', {"day": day}) : day, details);
     $('applied-go').disabled = false;
     message('applied-message', result.text, result.ok ? 'ok' : 'error');
     if (!result.ok) return;

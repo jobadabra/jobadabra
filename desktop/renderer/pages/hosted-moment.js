@@ -1,5 +1,7 @@
 // The dialog that offers Always on at a moment it matters (lib/always-on-moments.js; spec docs/superpowers/specs/2026-11-02-always-on-moments-design.md): today, a scheduled check that did not run
 // because the Mac was asleep or off. Shown once per moment (the app records it when it opens); the card on Focus and Jobs stays whatever is answered here.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {NO_PLACE} from '../targets.js';
 import {bindHostedOffer, turnedOnText} from '../hosted-suggestion.js';
@@ -32,7 +34,7 @@ export function init() {
       const turnOn = bindHostedOffer({body: $('hosted-moment-body'), button: go, email, emailField: () => emailField('hosted-moment-email'), draft,
         turnOn: given => window.pilot.hostedOn(given), onSuccess: async sentTo => {
           dialog.close();
-          toastMessage('Always on ✓', await turnedOnText(sentTo), NO_PLACE.itself, 'good');
+          toastMessage(t('pagesFocusReports.alwaysOn'), await turnedOnText(sentTo), NO_PLACE.itself, 'good');
           window.dispatchEvent(new Event('hosted-changed'));
         }});
       go.onclick = turnOn;

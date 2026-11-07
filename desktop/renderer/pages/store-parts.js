@@ -1,5 +1,7 @@
 // Settings: every control that opens the store's own page (Notion) shown only on that store ([data-notion-only]), and every "Saved in …" said
 // from where the data is ([data-store-saved], store-words.js). Guarded by test/unit/renderer/profile-tabs.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {show} from './core.js';
 import {inNotion, storeName, syncStoreName} from '../store-words.js';
 
@@ -7,10 +9,10 @@ export function showStoreParts() {
   syncStoreName();
   const links = inNotion();
   document.querySelectorAll('[data-notion-only]').forEach(node => show(node, links));
-  document.querySelectorAll('[data-store-saved]').forEach(node => { node.textContent = `Saved in ${storeName()}`; });
+  document.querySelectorAll('[data-store-saved]').forEach(node => { node.textContent = t('pagesDynamicSessionReports.m381', {"storeName": storeName()}); });
   // The setup sidebar's privacy note: its text names Notion only when it is the store; opened by the row, closed by x, Esc, click-away.
   const text = document.getElementById('privacy-text');
-  if (text) text.textContent = `Passwords and keys are encrypted in the Keychain. While Always on is off, your data stays on this Mac${links ? ` and in your connected ${storeName()}` : ''}.`;
+  if (text) text.textContent = t('pagesDynamicSessionReports.m382', {"value1": links ? t('pagesDynamicSessionReports.m383', {"storeName": storeName()}) : ''});
   bindPrivacyPop();
   return links;
 }

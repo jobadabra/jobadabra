@@ -1,6 +1,8 @@
 // Gmail offered at the right moment (owner, 2 Nov 2026, spec docs/superpowers/specs/2026-11-02-gmail-offer-timing-design.md): the ONE dialog behind the first Submit and a page that asks for a mailed code,
 // the window's copy of "is Gmail connected" (for the Suggestions card and ⌘K), and the connect press, which is Settings' own button so there is one sign-in flow.
 // Invariants: one dialog at a time; the main process decides when (lib/gmail-offer.js) and the window only shows what it is told; connected → nothing is shown. Guard: test/unit/renderer/gmail-offer.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {offerWords} from '../gmail-offer-words.js';
 import {slot} from '../popup-slot.js';
@@ -60,5 +62,5 @@ export function initGmailOffer() {
 
 /** The ⌘K command (pages/nav.js), only while Gmail is not connected. `add` is the palette's (group, label, hint, keywords, run). Why (2 Nov 2026): the branch lives here so nav.js's over-limit function does not grow. */
 export const addGmailCommand = add => {
-  if (view.loaded && !view.connected) add('Settings', 'Connect Gmail', 'Replies move your jobs; mailed codes are typed for you', 'gmail google connect mail email calendar sign in', connectGmail);
+  if (view.loaded && !view.connected) add(t('pagesCommon.settings'), t('pagesCommon.connectGmail'), t('pagesFieldsStatus.repliesCodes'), 'gmail google connect mail email calendar sign in', connectGmail);
 };

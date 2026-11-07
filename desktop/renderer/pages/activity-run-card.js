@@ -1,5 +1,7 @@
 // Recent activity: the run card (a run's message as counts and items), its skeleton and the job box.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {fitTooltip} from '../jobs-view.js';
 import {jobActions, jobHeadline, withListJob} from '../job-link.js';
@@ -34,7 +36,7 @@ export function showRunJob(runJob) {
 export function showJob(job) {
   openActivity(false);
   openView('jobs');
-  showJobsIn(job.title || 'Logged job', [job.jobUrl]);
+  showJobsIn(job.title || t('pagesExtraCommon.loggedJob'), [job.jobUrl]);
 }
 // Text with its web addresses as links (the run's Notion page, a GitHub run…); the log's click handler opens them.
 export function linked(text) {
@@ -62,7 +64,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // internal and never drawn; the digest's open, in-your-places and applied counts are not shown either (owner, 24 Oct 2026: "Do we need them? I don't think so"). The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
     const fresh = runNewCount(run, card);
     // In the run panel the card's top says the number (run-result-card.js): the bottom never says it again.
-    if (target.id !== 'activity-card') stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
+    if (target.id !== 'activity-card') stats.append(stat(fresh, t('pagesDynamicActivity.m33', {count: fresh})));
     // A run that found nothing new lists no jobs: the digest's "top matches" are the best open jobs from any run, and shown here they read as
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
@@ -71,7 +73,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // this run added. A digest whose new section mixes in earlier runs' jobs lists none here: the count stays and Jobs has them.
     const listed = nothingNew ? [] : runItems(card);
     const items = card.own || listed.length === fresh ? listed : [];
-    heading = nothingNew ? 'No new jobs this run' : 'Added in this run';
+    heading = nothingNew ? t('pagesExtraCommon.noNewJobs') : t('pagesExtraCommon.addedRun');
     rows.append(...byFit(items).slice(0, 3).map(item => {   // highest fit first, unscored last
       const row = el('li', 'run-card-row');
       // Two lines: the job, then who it is with. Its fit as a pill when it has a score; the posting opens from the arrow.
@@ -81,7 +83,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
       // A job with no score shows no pill (owner, 24 Oct 2026: no scoring words on a basic card); a scored one shows its fit.
       const fit = scored ? pill(String(item.fit), item.fit >= 70 ? 'warn' : 'neutral') : null;
       if (fit) fit.title = fitTooltip(item.fit);
-      const view = Object.assign(el('a', 'run-card-open', '↗'), {href: '#', title: 'Open the job posting'});
+      const view = Object.assign(el('a', 'run-card-open', '↗'), {href: '#', title: t('pagesCommon.openJobPosting')});
       view.dataset.link = item.url;
       row.append(words, ...(fit ? [fit] : []), ...(item.url ? [view] : []));
       return row;
@@ -95,12 +97,12 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // Counted in postings, as the page counts rows: a merged row stands for every link it holds, so two links of one posting are one (pages/jobs-copies.js).
     const {postings, inJobs: here} = countPostings(urls, shared.allJobs, fullKey);
     const total = items.length - (urls.length - postings);
-    if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? 'Nothing new since the last check. Jobs found before are in Jobs.'
-      : fresh ? 'They are in Jobs.' : 'This run found nothing new to show. Your saved jobs are in Jobs.'));
+    if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? t('pagesActivityMore.nothingNewCheck')
+      : fresh ? t('pagesActivityMore.inJobs') : t('pagesActivityMore.runNothingNew')));
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
-    if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));
-    const words = !total || nothingNew ? 'Open Jobs →' : !here ? 'View in Jobs →' : here === total ? `View all ${total} in Jobs →` : `View ${here} in Jobs →`;
+    if (here && here < total) rows.append(el('li', 'muted', t('pagesDynamicActivity.m34', {"value1": total - here, "total": total, count: total - here})));
+    const words = !total || nothingNew ? t('pagesExtraCommon.openJobs') : !here ? t('pagesExtraCommon.viewJobs') : here === total ? t('pagesDynamicActivity.m35', {"total": total}) : t('pagesDynamicActivity.m36', {"here": here});
     const view = el('button', 'link run-card-view', words);
     // In the run panel the card's top offers it ("See the N new jobs" presses this button): the bottom does not show it again.
     view.hidden = target.id === 'activity-card';
@@ -118,35 +120,34 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   } else {
     // New to the search or checked again after its wait: a run never re-reads the same list (an older message has neither number).
     // Every count says its word for 1 and for many (7 Oct 2026: "1 new job feeds"); the bottom line says why some were set aside.
-    const s = n => (n === 1 ? '' : 's');
     // The one number: the employers this run added. Nothing else is shown (checked, checked again, set aside).
     // In the run panel the card's top says it (run-result-card.js WORDS.scout).
-    if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
-    heading = 'New employers';
+    if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, t('pagesDynamicActivity.m37', {count: card.fresh ?? 0})));
+    heading = t('pagesExtraCommon.newEmployers');
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');
     rows.append(...card.items.slice(0, all ? undefined : 5).map(item => {
       const row = el('li', 'run-card-row');
       const words = el('span', 'run-card-words');
-      words.append(el('b', '', item.company), el('span', 'muted', [item.ats, item.roles != null && `${item.roles} matching role${item.roles === 1 ? '' : 's'}`,
-        item.yours != null && `${item.yours} in your places`].filter(Boolean).join(' · ')));
+      words.append(el('b', '', item.company), el('span', 'muted', [item.ats, item.roles != null && t('pagesDynamicActivity.m38', {"roles": item.roles, count: item.roles}),
+        item.yours != null && t('pagesDynamicActivity.m39', {"yours": item.yours})].filter(Boolean).join(' · ')));
       row.append(words, ...(item.tier ? [el('span', 'run-card-fit', item.tier.replace('Tier ', 'T'))] : []));
       return row;
     }));
     more = el('div', 'run-card-foot');
     const rest = card.items.length - 5;
     if (rest > 0) {
-      const toggle = el('button', 'link', all ? 'Show less' : `+${rest} more`);
+      const toggle = el('button', 'link', all ? t('pagesStatus.showLess') : t('pagesShortActivity.m50', {"rest": rest}));
       toggle.addEventListener('click', () => { expandedCard = all ? '' : card.items.map(item => item.company).join('|'); renderRunCard(card, run, target); });
       more.append(toggle);
     }
     // The whole list in the app, on every store (pages/employers.js); a Notion user also gets the database as an extra.
-    const list = Object.assign(el('button', 'arrow-link', 'All employers'), {type: 'button'});
+    const list = Object.assign(el('button', 'arrow-link', t('pagesStatus.allEmployers')), {type: 'button'});
     list.addEventListener('click', () => { openActivity(false); openView('employers'); });
     more.append(list);
     const employers = shared.state?.notion?.NOTION_EMPLOYERS_DB;
     if (employers) {
-      const open = Object.assign(el('a', 'arrow-link', 'All employers in Notion ↗'), {href: '#'});
+      const open = Object.assign(el('a', 'arrow-link', t('pagesActivityMore.allNotion')), {href: '#'});
       open.addEventListener('click', event => { event.preventDefault(); window.pilot.openNotion(employers, event.metaKey || event.ctrlKey); });
       more.append(open);
     }

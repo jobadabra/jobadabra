@@ -2,6 +2,8 @@
 // the detection and the launch lib/desktop-ai.js. The Focus and Jobs rows (question-entries.js) run the same press (focus-suggestions.js RUN.copy_desktop_ai) and ⌘K lists it (nav.js).
 // Invariant: Not now is the Suggestions answer of KEY, kept by focus-suggestions.js answerEntry (14 days, like every card); a screen that has not seen Focus yet draws nothing (#2366: a hidden card flashed).
 // This module imports no page (focus-suggestions.js hands in its three seams and the toast, as pages/notify-commands.js does), so the palette and the answers page add no import cycle (the arch gate counts them: #3011).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {KEY, connectWords, whenText, words} from '../desktop-ai-words.js';
@@ -77,7 +79,7 @@ export const readConnection = () => refreshConnection();
 /** The press with its toast, for the Focus and Jobs row and ⌘K: says what was copied and whether the app opened. */
 export async function pressDesktopAi() {
   const done = await copyDesktopAi(questionsNow().desktopAi?.family);
-  seams.toast(done.ok ? 'Instruction copied ✓' : 'Nothing copied', done.text, done.ok ? 'good' : 'warn');
+  seams.toast(done.ok ? t('pagesFieldsStatus.instructionCopied') : t('pagesFieldsStatus.nothingCopied'), done.text, done.ok ? 'good' : 'warn');
 }
 
 /**
@@ -87,9 +89,9 @@ export async function pressDesktopAi() {
 export function addDesktopAiCommands(add) {
   const family = questionsNow().desktopAi?.family, link = connectWords(family || 'claude');
   const tell = (title, done) => { if (done.text) seams.toast(title, done.text, done.ok ? 'good' : 'warn'); };
-  if (family === 'claude' && view.state === 'off') add('Settings', link.connect, link.cardLine.off, 'claude connect desktop app tools mcp answer questions', async () => tell(link.connect, await pressConnect(family)));
-  if (view.state !== 'off') add('Settings', `${link.disconnect} ${link.name}`, link.cardLine[view.state], 'claude disconnect remove stop desktop app tools mcp', async () => tell(link.disconnect, await pressDisconnect('claude')));
+  if (family === 'claude' && view.state === 'off') add(t('pagesCommon.settings'), link.connect, link.cardLine.off, 'claude connect desktop app tools mcp answer questions', async () => tell(link.connect, await pressConnect(family)));
+  if (view.state !== 'off') add(t('pagesCommon.settings'), `${link.disconnect} ${link.name}`, link.cardLine[view.state], 'claude disconnect remove stop desktop app tools mcp', async () => tell(link.disconnect, await pressDisconnect('claude')));
   if (!offered()) return;
   const say = words(questionsNow().desktopAi.family);
-  add('Profile', say.title, say.button, 'claude chatgpt desktop app answer questions instruction copy paste learned ai', () => pressDesktopAi());
+  add(t('pagesCommon.profile'), say.title, say.button, 'claude chatgpt desktop app answer questions instruction copy paste learned ai', () => pressDesktopAi());
 }

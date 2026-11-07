@@ -3,6 +3,8 @@
 // Guards: test/unit/main/extension-store-setup.test.js, test/unit/renderer/palette-every-action.test.js, test/unit/renderer/extension-card-first-paint.test.js.
 // The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
 // for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, message, osPick, osText, show} from './core.js';
 import {extensionFrom, extensionState, justStarted} from '../service-status.js';
 import {foldFollows} from '../fold-follows.js';
@@ -15,19 +17,19 @@ function showStray(entry) {
   const box = $('ext-stray');
   show(box, !!entry);
   if (!entry) return;
-  $('ext-stray-text').textContent = `A windowless Chrome from an earlier automation (started ${entry.since}) holds Chrome's scripting connection, so this app can't reach your own Chrome window.`;
+  $('ext-stray-text').textContent = t('pagesDynamicExperience.m160', {"since": entry.since});
   $('ext-stray-quit').dataset.pid = String(entry.pid);
 }
 
 // ---------- Chrome extension: is it installed (the browser says so at once), and is it awake (its report)? ----------
 // What the card says in each state: the pill is the state, this is the sentence that explains it.
 const EXT_LINE = {
-  connected: 'Connected: it fills application forms with your details and CV.',
-  closed: 'Installed in Chrome. Chrome isn\'t running, so it can\'t reach this app: open it and it reports within 30 seconds.',
-  idle: 'Installed in Chrome, connecting to this app. If it stays amber, press Connect the extension below and then Connect to the Jobadabra app.',
-  off: 'Installed in Chrome but turned off: switch it back on in chrome://extensions.',
-  absent: 'Not installed in Chrome yet: Add to Chrome below takes a minute.',
-  checking: 'Looking for it in Chrome…',
+  connected: t('pagesAuditSecond.a69'),
+  closed: t('pagesAuditSecond.a70'),
+  idle: t('pagesAuditSecond.a71'),
+  off: t('pagesAuditSecond.a72'),
+  absent: t('pagesAuditSecond.a73'),
+  checking: t('pagesFieldsStatus.lookingChrome'),
 };
 let browserApp = 'Google Chrome';  // the browser the extension is (or will be) installed in, from the app
 
@@ -40,8 +42,8 @@ function drawCard(state) {
   $('ext-line').textContent = inBrowser(EXT_LINE[state.state] || EXT_LINE.absent, browserApp);
   show($('ext-connect'), state.state === 'idle');
   foldFollows($('ext-setup'), state.state, state.state !== 'connected');
-  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: 'Install the extension'};
-  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || 'Troubleshoot the connection';
+  const SUMMARY = {connected: t('pagesFieldsStatus.reinstall'), absent: t('pagesDetails.installExtension')};
+  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || t('pagesConnections.troubleshoot');
 }
 
 // The window's first paint (connections.js init): the last known state at once; with nothing kept, index.html's Checking… stays.
@@ -79,9 +81,9 @@ export function bindExtension() {
       button.disabled = true;
       const result = await window.pilot.extensionStore().catch(() => null);
       button.disabled = false;
-      toastMessage(result?.opened ? 'Chrome Web Store opened' : 'Couldn\'t open Chrome',
-        inBrowser(result?.opened ? 'Press Add to Chrome there. It connects to this app by itself within 30 seconds.'
-          : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
+      toastMessage(result?.opened ? t('pagesConnections.storeOpened') : t('pagesConnections.chromeFailed'),
+        inBrowser(result?.opened ? t('pagesAuditSecond.a75')
+          : t('pagesAuditSecond.a76'), browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-stray-quit').addEventListener('click', async event => {
@@ -89,16 +91,16 @@ export function bindExtension() {
     button.disabled = true;
     const result = await window.pilot.quitStrayChrome(Number(button.dataset.pid)).catch(() => null);
     button.disabled = false;
-    toastMessage(result?.ok ? 'Background Chrome quit' : 'Couldn\'t quit it',
-      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || 'Try again.'), {card: 'extension'}, result?.ok ? 'good' : 'bad');
+    toastMessage(result?.ok ? t('pagesConnections.backgroundQuit') : t('pagesConnections.quitFailed'),
+      result?.ok ? t('pagesConnections.scriptingReady') : (result?.error || t('pagesCommon.tryAgain')), {card: 'extension'}, result?.ok ? 'good' : 'bad');
     showExtensionStatus();
   });
   // The step-1 chip: best effort at Chrome's page, and the URL on the clipboard so the paste always gets there.
   $('ext-open-page').addEventListener('click', async () => {
     const result = await window.pilot.extensionPage().catch(() => null);
     message('ext-message', inBrowser(result?.opened
-      ? osText('Asked Chrome to open its extensions page. If nothing appears: chrome://extensions is on your clipboard (⌘L, ⌘V, ⏎).')
-      : osText('chrome://extensions is on your clipboard: in Chrome press ⌘L, then ⌘V and ⏎.'), browserApp), result?.opened ? 'ok' : 'error');
+      ? osText(t('pagesAuditSecond.a77'))
+      : osText(t('pagesAuditPunct.a20')), browserApp), result?.opened ? 'ok' : 'error');
   });
   // The folder in front of the user and its path on the clipboard. The Mac's dialog takes ⌘⇧G (Go to Folder), ⌘V,
   // Return; the PC's has no such shortcut, so it gets its own sentence. Bound by attribute, so the setup wizard's
@@ -108,15 +110,15 @@ export function bindExtension() {
       button.disabled = true;
       const result = await window.pilot.extensionShow().catch(() => null);
       button.disabled = false;
-      toastMessage(result?.opened ? 'Extension folder opened' : 'Couldn\'t open the folder',
-        inBrowser(result?.opened ? osPick('Its path is on your clipboard: in Chrome press Load unpacked, then ⌘⇧G, ⌘V, Return.',
-          'Its path is on your clipboard: in Chrome press Load unpacked, paste it into the folder box (Ctrl+V), and press Enter.')
-          : 'Open the extension folder by hand, then press Load unpacked in Chrome.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
+      toastMessage(result?.opened ? t('pagesConnections.folderOpened') : t('pagesConnections.folderFailed'),
+        inBrowser(result?.opened ? osPick(t('pagesAuditSecond.a78'),
+          t('pagesAuditSecond.a79'))
+          : t('pagesAuditSecond.a80'), browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-connect').addEventListener('click', async () => {
     const result = await window.pilot.extensionOptions().catch(() => null);
-    message('ext-message', result?.opened ? 'Its settings page is open: press Connect to the Jobadabra app there.'
-      : inBrowser('Couldn\'t open the extension\'s settings page. Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.', browserApp), result?.opened ? 'ok' : 'error');
+    message('ext-message', result?.opened ? t('pagesConnections.extensionConnect')
+      : inBrowser(t('pagesAuditSecond.a81'), browserApp), result?.opened ? 'ok' : 'error');
   });
 }

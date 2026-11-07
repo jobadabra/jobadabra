@@ -1,5 +1,7 @@
 // Jobs page, the Show menu: one multi-select holding every filter (jobs-filters.js), with each one's count. A change asks for a render through
 // the "jobs-rerender" event. Guarded by: test/unit/renderer/jobs-filters.test.js, test/unit/renderer/jobs-board-page.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {multiSelect} from '../multi-select.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
@@ -18,7 +20,7 @@ export function renderFilterMenu() {
     canClear: jobsState.filters.join() !== DEFAULT_FILTERS.join()});
 }
 export function wireFilterMenu() {
-  control = multiSelect($('filter-status'), {label: 'Show',
+  control = multiSelect($('filter-status'), {label: t('pagesCommon.show'),
     onToggle: id => { jobsState.filters = toggled(jobsState.filters, id); jobsState.statFilter = null; document.dispatchEvent(new CustomEvent('jobs-rerender')); },
     onClear: () => { setFilters(DEFAULT_FILTERS); jobsState.statFilter = null; document.dispatchEvent(new CustomEvent('jobs-rerender')); }});
   renderFilterMenu();

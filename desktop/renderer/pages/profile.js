@@ -1,4 +1,6 @@
 // Settings → Application profile.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {mountContactControls} from '../contact-controls.js';
 import {showMode} from '../assistant-mode.js';
 import {showClaudeAuto} from '../claude-auto.js';
@@ -69,17 +71,17 @@ export function profileTab(name, {byDefault = false} = {}) {
 }
 // What we learned's ⋯ (one "View source" link per page, in a menu: owner, 18 Oct 2026, fix 10); the button shows only where the store has pages.
 function answersMenu() {
-  openMenu($('answers-review'), [{label: `View source in ${storeName()}`, icon: 'external', run: () => openInNotion('NOTION_ANSWERS_PAGE_ID')}]);
+  openMenu($('answers-review'), [{label: t('pagesDynamicProfileReady.m298', {"storeName": storeName()}), icon: 'external', run: () => openInNotion('NOTION_ANSWERS_PAGE_ID')}]);
 }
 // Professional links: shown as tiles; Edit shows the fields (saved by the Profile page's one save bar).
 // The links card's read view (pages/details-read.js linksView; GitHub only while its box shows).
 const showLinks = () => $('links-view')?.replaceChildren(linksView());
 // Sidebar: the Notion pages, most used first. Click opens them in the app's Notion window; ⌘-click in the browser.
-const NOTION_LINKS = [['NOTION_MATCHES_DB', 'Job matches', 'target'], ['NOTION_APPLICATIONS_DB', 'Applications', 'layers'],
-  ['NOTION_EVENTS_DB', 'Replies & events', 'mail'], ['NOTION_INTERVIEWS_DB', 'Interviews', 'mic'], ['NOTION_INSIGHTS_DB', 'Insights', 'chart'],
-  ['NOTION_PIPELINE_PAGE', 'Pipeline', 'columns'], ['NOTION_PROFILE_PAGE_ID', 'Profile', 'user'], ['NOTION_ANSWERS_PAGE_ID', 'Standard answers', 'file'],
-  ['NOTION_SEARCH_SETTINGS_PAGE', 'Search settings', 'settings'], ['NOTION_KNOWLEDGE_PAGE', 'Form knowledge', 'bookmark'],
-  ['NOTION_EMPLOYERS_DB', 'Employers', 'building'], ['NOTION_CRON_RUNS_DB', 'Search runs', 'search'], ['NOTION_AGENT_RUNS_DB', 'Form fills', 'bot']];
+const NOTION_LINKS = [['NOTION_MATCHES_DB', t('pagesExtraLabels.jobMatches'), 'target'], ['NOTION_APPLICATIONS_DB', t('pagesCommon.applications'), 'layers'],
+  ['NOTION_EVENTS_DB', t('pagesExtraLabels.repliesEvents'), 'mail'], ['NOTION_INTERVIEWS_DB', t('pagesFocusReports.interviews'), 'mic'], ['NOTION_INSIGHTS_DB', t('pagesExtraLabels.insights'), 'chart'],
+  ['NOTION_PIPELINE_PAGE', t('pagesExtraLabels.pipeline'), 'columns'], ['NOTION_PROFILE_PAGE_ID', t('pagesCommon.profile'), 'user'], ['NOTION_ANSWERS_PAGE_ID', t('pagesExtraLabels.standardAnswers'), 'file'],
+  ['NOTION_SEARCH_SETTINGS_PAGE', t('pagesExtraLabels.searchSettings'), 'settings'], ['NOTION_KNOWLEDGE_PAGE', t('pagesExtraLabels.formKnowledge'), 'bookmark'],
+  ['NOTION_EMPLOYERS_DB', t('pagesExtraLabels.employers'), 'building'], ['NOTION_CRON_RUNS_DB', t('pagesExtraLabels.searchRuns'), 'search'], ['NOTION_AGENT_RUNS_DB', t('pagesExtraLabels.formFills'), 'bot']];
 function renderNotionLinks() {
   const box = $('notion-links');
   box.querySelectorAll('.notion-link').forEach(link => link.remove());
@@ -87,7 +89,7 @@ function renderNotionLinks() {
   show(box, links.length > 0);
   for (const [env, label, glyph] of links) {
     const link = Object.assign(document.createElement('button'), {className: 'notion-link', textContent: label,
-      title: osText(`${shared.state.notionTitles?.[env] || label}: opens in Notion (⌘-click: in a Jobadabra window)`)});
+      title: osText(t('pagesDynamicProfileReady.m299', {"value1": shared.state.notionTitles?.[env] || label}))});
     link.prepend(icon(glyph));
     link.addEventListener('click', event => window.pilot.openNotion(shared.state.notion[env], event.metaKey || event.ctrlKey));
     box.append(link);
@@ -105,12 +107,12 @@ export async function loadCvSetting() {
   const status = await window.pilot.cvStatus();
   // One glance: ready (and which design), or not read yet. ✂️ Tailor CV on a job uses it.
   $('cv-state').textContent = cvStateText(status, shared.cvReadFailed);
-  $('cv-facts').textContent = ['Current CV', documentFacts({pages: lastCheck()?.ats?.pages, ...(status.file || {})}, runWhen)].filter(Boolean).join(' · ');
+  $('cv-facts').textContent = [t('pagesExtraLabels.currentCv'), documentFacts({pages: lastCheck()?.ats?.pages, ...(status.file || {})}, runWhen)].filter(Boolean).join(' · ');
   $('cv-view').hidden = !status.base;
   // ⋯ the rarer CV actions: read the PDF again (or for the first time), and the folder with the CV's files.
   $('cv-more').replaceChildren(moreButton(() => [
-    {label: status.base ? 'Read my CV PDF again' : 'Read my CV PDF', icon: 'refresh', disabled: cvReadBlocked, run: readCvPdf},
-    {label: 'Show CV folder', icon: 'folder', run: () => window.pilot.showCvFolder()}], 'More CV actions'));
+    {label: status.base ? t('pagesSetup.readCvAgain') : t('pagesSetup.readCv'), icon: 'refresh', disabled: cvReadBlocked, run: readCvPdf},
+    {label: t('pagesSetup.cvFolder'), icon: 'folder', run: () => window.pilot.showCvFolder()}], t('pagesSetup.cvActions')));
 }
 
 export async function loadSettings() {
@@ -118,9 +120,9 @@ export async function loadSettings() {
   showNotionPanel();
   const hints = await window.pilot.secretHints();
   for (const [id, name, empty] of [['set-anthropic', 'ANTHROPIC_API_KEY', 'sk-ant-…'], ['set-openai', 'OPENAI_API_KEY', 'sk-…'], ['set-notion', 'NOTION_TOKEN', 'ntn_…'],
-    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', 'SerpApi key'], ['set-brave', 'BRAVE_SEARCH_API_KEY', 'Brave Search key'], ['set-adzuna-id', 'ADZUNA_APP_ID', 'Adzuna app id'],
-    ['set-adzuna-key', 'ADZUNA_APP_KEY', 'Adzuna app key'], ['set-jooble', 'JOOBLE_API_KEY', 'Jooble key']]) {
-    if ($(id)) $(id).placeholder = hints[name] ? `${hints[name]} · saved (paste a new one to replace it)` : empty;
+    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', t('pagesExtraLabels.serpapiKey')], ['set-brave', 'BRAVE_SEARCH_API_KEY', t('pagesExtraLabels.braveKey')], ['set-adzuna-id', 'ADZUNA_APP_ID', t('pagesExtraLabels.adzunaId')],
+    ['set-adzuna-key', 'ADZUNA_APP_KEY', t('pagesExtraLabels.adzunaKey')], ['set-jooble', 'JOOBLE_API_KEY', t('pagesExtraLabels.joobleKey')]]) {
+    if ($(id)) $(id).placeholder = hints[name] ? t('pagesDynamicProfileReady.m300', {"name": hints[name]}) : empty;
   }
   renderNotionLinks();
   showEngineSettings();
@@ -146,11 +148,11 @@ export async function loadSettings() {
   $('auto-search').checked = shared.state.settings.autoSearch !== false;
   $('open-login').checked = !!shared.state.settings.openAtLogin;
   $('last-search').textContent = shared.state.settings.lastSearchAt
-    ? `${runWhen(shared.state.settings.lastSearchAt)}${shared.state.settings.lastSearchOk === false ? ' (with problems)' : ''}`
-    : 'No search yet';
+    ? `${runWhen(shared.state.settings.lastSearchAt)}${shared.state.settings.lastSearchOk === false ? t('pagesSetup.withProblems') : ''}`
+    : t('pagesCommon.noSearch');
   if (shared.state.settings.telegramBot && shared.state.secrets.TELEGRAM_BOT_TOKEN) {
     const line = document.querySelector('[data-secret="TELEGRAM_BOT_TOKEN"]');
-    line.textContent = `✓ Connected to @${shared.state.settings.telegramBot}`;
+    line.textContent = t('pagesDynamicProfileReady.m301', {"telegramBot": shared.state.settings.telegramBot});
   }
   renderOverview().catch(() => {});
 }
@@ -193,9 +195,9 @@ export function showContact({redraw = false} = {}) {
       showFacts();   // Work eligibility, Availability & compensation, Languages (details-facts.js)
       loadExperienceProfile('details');   // the voluntary survey answers (pages/experience-profile.js)
     },
-    fail: result => { reading(false); message('contact-panel-message', `${byStore('Couldn\'t read them from Notion', 'Couldn\'t read them from your Profile')}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
+    fail: result => { reading(false); message('contact-panel-message', `${byStore(t('pagesSetup.readFromNotionFailed'), t('pagesSetup.readProfileFailed'))}: ${result.error}`, 'error'); },   // the panel's line: the save bar's is hidden
   });
-  $('contact-cv').textContent = shared.state.settings.cvName || 'None yet';
+  $('contact-cv').textContent = shared.state.settings.cvName || t('pagesCommon.noneYet');
   return read;
 }
 
@@ -214,19 +216,19 @@ export async function init() {
   renderNotionLinks();
   $('strategy-redo').addEventListener('click', () => { shared.rebuildAsked = true; show($('app'), false); show($('wizard')); goStep('cv'); });
   // An error from the AI service is said in words, never shown as the API's JSON (#94: "400 {"type":"error",…}" sat in the CV card).
-  const cvError = (raw, verb) => { const said = humanError(raw); return said === String(raw || '').trim() ? said : `Couldn't ${verb} your CV: ${said}.`; };
+  const cvError = (raw, verb) => { const said = humanError(raw); return said === String(raw || '').trim() ? said : t('pagesDynamicProfileReady.m302', {"verb": t(verb === 'show' ? 'pagesDynamicProfileReady.showVerb' : 'pagesDynamicProfileReady.readVerb'), "said": said}); };
   $('cv-view').addEventListener('click', async () => {
     const result = await window.pilot.viewBaseCv();
-    $('cv-message').textContent = !result.ok ? cvError(result.error, 'show') : result.overflow?.length ? `Page ${result.overflow.join(', ')} is too full: its end is cut off.` : '';
+    $('cv-message').textContent = !result.ok ? cvError(result.error, 'show') : result.overflow?.length ? t('pagesDynamicProfileReady.m303', {"value1": result.overflow.join(', ')}) : '';
   });
   readCvPdf = async () => {
-    if ((await window.pilot.cvStatus()).base && !confirm('Replace your CV data (and any hand edits) with a fresh read of your CV PDF?')) return;
-    $('cv-message').textContent = 'Reading your CV… (about 30 s)';
+    if ((await window.pilot.cvStatus()).base && !confirm(t('pagesSetup.replaceCvData'))) return;
+    $('cv-message').textContent = t('pagesProfile.readingCv');
     const result = await window.pilot.importCv();
     cvReadBlocked = !result.ok && isSpendingLimit(humanError(result.error));
     show($('cv-limit-link'), cvReadBlocked);
     shared.cvReadFailed = !result.ok;
-    $('cv-message').textContent = result.ok ? `Done${costText(result.usd, usd => ` (${dollars(usd)})`)}.` : cvError(result.error, 'read');
+    $('cv-message').textContent = result.ok ? t('pagesShortReady.m266', {"costText": costText(result.usd, usd => ` (${dollars(usd)})`)}) : cvError(result.error, 'read');
     loadCvSetting();
   };
   $('cv-limit-link').addEventListener('click', event => {
@@ -238,18 +240,18 @@ export async function init() {
   // Long detail cards start closed; the bar shows their summary (owner, 17 Oct 2026). Forms you fill in stay open.
   foldProfilePanels({closed: new Set(['setting-experience-sources', 'setting-details-profile'])});   // every Profile card folds (profile-fold.js); these start closed (the voluntary surveys: optional, owner's review item 5); Work history starts open (owner, 18 Oct 2026, mockup 09)
   initFoldBar();
-  $('cvc-run').addEventListener('click', () => cvCheckAction($('cvc-run'), 'Reading your CV…', () => window.pilot.cvCheckRun(), checkOptions).then(loadCvSetting));
-  $('cvc-ai-run').addEventListener('click', () => cvCheckAction($('cvc-ai-run'), 'Reviewing… (about 30 s)', () => window.pilot.cvCheckAi(), checkOptions));
+  $('cvc-run').addEventListener('click', () => cvCheckAction($('cvc-run'), t('pagesExtraLabels.readingCv'), () => window.pilot.cvCheckRun(), checkOptions).then(loadCvSetting));
+  $('cvc-ai-run').addEventListener('click', () => cvCheckAction($('cvc-ai-run'), t('pagesExtraLabels.reviewing'), () => window.pilot.cvCheckAi(), checkOptions));
   $('set-telegram-save').addEventListener('click', async () => {
     const value = $('set-telegram').value.trim();
-    if (!/^\d+:[\w-]{30,}$/.test(value)) { message('telegram-message', 'That doesn\'t look like a bot token (numbers, a colon, then letters).', 'error'); return; }
+    if (!/^\d+:[\w-]{30,}$/.test(value)) { message('telegram-message', t('pagesSetup.botToken'), 'error'); return; }
     $('set-telegram-save').disabled = true;
-    message('telegram-message', 'Checking the token…');
+    message('telegram-message', t('pagesSetup.checkingToken'));
     const result = await window.pilot.telegramConnect(value);
     $('set-telegram-save').disabled = false;
     if (!result.ok) { message('telegram-message', result.error, 'error'); return; }
     $('set-telegram').value = '';
-    message('telegram-message', `Connected to @${result.username} ✓ Matches arrive there after each search.`, 'ok');
+    message('telegram-message', t('pagesDynamicProfileReady.m304', {"username": result.username}), 'ok');
     loadSettings();
   });
   registerDetails({repaintContact: () => showContact({redraw: true})});   // Contact and the fact sections save through the Profile page's one bar (details-drafts.js)

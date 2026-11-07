@@ -1,6 +1,9 @@
 // Strategy page, the target cards: Locations and the Advanced ones (skills, exclusions, more search settings), their lists (chips,
 // the remote choice, the digest minimum) as read and in their editor, and renderStrategy. One card's editor at a time, drafts kept per card, one page bar
 // (strategy-cards.js); the Main goals card is main-goals.js. Guarded by: test/unit/renderer/strategy-cards.test.js, save-progress, strategy-chips, locations-card tests.
+import {number as displayNumber} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, pill, tile} from '../components.js';
 import {readRows} from '../card-shell.js';
@@ -35,14 +38,14 @@ import {GROUPS, asWholeWord, matchGroups, placeLabel, shownGroups, shownWord} fr
 // 2026, mockup 03); every other list still edits here: Locations beside Job preferences, the rest folded under Advanced search settings.
 export const CARD_TONE = {roles: 'violet', places: 'teal', stack: 'info', languages: 'warn', search: 'neutral'};   // the colours of each kind's suggestions
 export const TARGET_CARDS = [
-  ['places', 'pin', 'Locations', [['places', 'Preferred locations', 'Add a city or region'], ['country', 'Acceptable locations', 'Add a country or region'],
-    ['abroad', 'Places you would relocate to', 'Add a city abroad'], ['rights', 'Work rights: where you can work without a visa', 'Add a country or EU']]],
-  ['stack', 'layers', 'Skills & experience', [['stack', 'Key skills and tools you want in jobs.', 'Add a skill or tool']]],
-  ['languages', 'shield', 'Exclusions & preferences', [['languages', 'Languages that rule a job out', 'Add a language']]],
+  ['places', 'pin', t('pagesStrategy.locations'), [['places', t('pagesCommon.preferredPlaces'), t('pagesFinalLabels.addCity')], ['country', t('pagesCommon.acceptablePlaces'), t('pagesFinalLabels.addCountry')],
+    ['abroad', t('pagesStrategyMore.relocatePlaces'), t('pagesFinalLabels.addCityAbroad')], ['rights', t('pagesFinalLabels.rightsHelp'), t('pagesFinalLabels.addCountryEu')]]],
+  ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', t('pagesAuditThird.a214'), t('pagesFinalLabels.addSkill')]]],
+  ['languages', 'shield', t('pagesStrategy.exclusions'), [['languages', t('pagesStrategyMore.languageExclusions'), t('pagesFinalLabels.addLanguage')]]],
   // What only the ⚙️ Search settings page had (P8, 9 Oct 2026), so every store edits it here (lib/strategy-edit.js), with the level and the digest's minimum.
-  ['search', 'search', 'More search settings', [['titleSkip', 'Job titles to skip', 'Add a word'], ['skip', 'Companies to skip', 'Add a company'], ['remoteSkip', 'Remote jobs: regions to skip', 'Add a region'],
-    ['finders', 'Words that find new employers', 'Add a word'], ['gqueries', 'Google Jobs searches', 'Add a search'],
-    ['gplaces', 'Google Jobs places: "City,Region,Country · language"', 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
+  ['search', 'search', t('pagesStrategy.moreSearch'), [['titleSkip', t('pagesFinalLabels.skipTitles'), t('pagesFinalLabels.addWord')], ['skip', t('pagesFinalLabels.skipCompanies'), t('pagesFinalLabels.addCompany')], ['remoteSkip', t('pagesFinalLabels.remoteSkip'), t('pagesFinalLabels.addRegion')],
+    ['finders', t('pagesFinalLabels.finders'), t('pagesFinalLabels.addWord')], ['gqueries', t('pagesFinalLabels.googleSearches'), t('pagesFinalLabels.addSearch')],
+    ['gplaces', t('pagesFinalLabels.googlePlacesHelp'), t('pagesAuditThird.a215')]]],
 ];
 export const TARGET_LISTS = ['roles', ...TARGET_CARDS.flatMap(([, , , lists]) => lists.map(([name]) => name))];
 export {shownLists};
@@ -70,11 +73,11 @@ export function listChips(name, placeholder) {
   const searched = name === 'roles' ? new Set(entries.slice(0, SEARCHED)) : new Set();
   const pillOf = entry => {
     const pill = el('span', `chip${editing ? ' removable' : ''}${entry.added ? ' is-added' : ''}${searched.has(entry) ? ' is-searched' : ''}`);
-    if (searched.has(entry)) { pill.title = 'Also searched on job boards'; pill.append(icon('search')); }
+    if (searched.has(entry)) { pill.title = t('pagesStrategyMore.searchedBoards'); pill.append(icon('search')); }
     pill.append(el('span', '', name === 'gplaces' ? placeLabel(entry.label) : AS_TYPED.has(name) ? entry.label : titleCase(shownWord(entry.label))));
     if (editing) {
-      const remove = Object.assign(document.createElement('button'), {type: 'button', className: 'x', textContent: '×', title: `Remove ${shownWord(entry.label)}`});
-      remove.setAttribute('aria-label', `Remove ${shownWord(entry.label)}`);
+      const remove = Object.assign(document.createElement('button'), {type: 'button', className: 'x', textContent: '×', title: t('pagesShortSettings.m361', {"shownWord": shownWord(entry.label)})});
+      remove.setAttribute('aria-label', t('pagesShortSettings.m362', {"shownWord": shownWord(entry.label)}));
       remove.addEventListener('click', () => {
         if (entry.added) edit.add = edit.add.filter(word => word !== entry.label); else edit.remove.push(entry.fragment);
         redrawCards();
@@ -88,9 +91,9 @@ export function listChips(name, placeholder) {
   if (groups?.anywhere.length && groups.whole.length) {
     for (const [key, title] of GROUPS) box.append(el('span', 'muted small', title), ...groups[key].map(pillOf));
   } else box.append(...entries.map(pillOf));
-  if (!entries.length && !editing) box.append(el('span', 'muted small', 'None'));
+  if (!entries.length && !editing) box.append(el('span', 'muted small', t('pagesCommon.none')));
   if (editing) {
-    const input = Object.assign(document.createElement('input'), {className: 'add', placeholder: `${placeholder}, then Enter`, value: typed[name] || ''});
+    const input = Object.assign(document.createElement('input'), {className: 'add', placeholder: t('pagesDynamicStrategy.m419', {"placeholder": placeholder}), value: typed[name] || ''});
     input.dataset.list = name;
     input.addEventListener('input', () => { typed[name] = input.value; changed(); });
     // A match word can be added as the whole word only (stored \bword\b by lib/strategy-edit.js cleanEdits), never by typing quotes.
@@ -109,7 +112,7 @@ export function listChips(name, placeholder) {
       document.querySelector(`.strategy-live input.add[data-list="${name}"]`)?.focus();
     });
     box.append(input);
-    if (whole) { const label = el('label', 'check-row muted small'); label.append(whole, el('span', '', 'Add as a whole word only')); box.append(label); }   // the shared checkbox row
+    if (whole) { const label = el('label', 'check-row muted small'); label.append(whole, el('span', '', t('pagesStrategyMore.wholeWord'))); box.append(label); }   // the shared checkbox row
   }
   return box;
 }
@@ -120,9 +123,9 @@ function remoteChoice() {
   if (!isOpen('places')) return el('span', '', remoteWords(chosen, labelsOf('country').slice(0, 1).map(titleCase)));
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'Remote work');
+  group.setAttribute('aria-label', t('pagesCommon.remoteWork'));
   for (const [label, yes] of [['Yes', true], ['No', false]]) {
-    const button = el('button', yes === chosen ? 'is-active' : '', label);
+    const button = el('button', yes === chosen ? 'is-active' : '', yes ? t('pagesCommon.yes') : t('pagesStatus.no'));
     button.type = 'button';
     button.setAttribute('aria-pressed', String(yes === chosen));
     button.addEventListener('click', () => {
@@ -135,23 +138,23 @@ function remoteChoice() {
 }
 // Your level (Search settings "Your level"): postings whose title plainly names another level are skipped; Any keeps them all. Its one home is Goals → Target
 // level (owner, 18 Oct 2026: "Goals only"; lib/goal-level.js writes it): shown here read-only, in both modes, with "Change in Goals" (opens Main goals' editor).
-const LEVELS = [['', 'Any'], ['junior', 'Junior'], ['mid', 'Mid'], ['senior', 'Senior'], ['lead', 'Lead']];
+const LEVELS = [['', t('pagesCommon.any')], ['junior', t('pagesFinalLabels.junior')], ['mid', t('pagesFinalLabels.mid')], ['senior', t('pagesFinalLabels.senior')], ['lead', t('pagesFinalLabels.lead')]];
 function levelChoice() {
   const goal = strategyState.lastStrategy?.goals?.seniority, now = goal ? searchLevel(goal) : strategyState.lastStrategy?.level || '', line = el('span', '');
-  const change = Object.assign(el('button', 'link', 'Change in Goals'), {type: 'button', title: 'Your level follows your Target level'});
+  const change = Object.assign(el('button', 'link', t('pagesStrategyMore.changeGoals')), {type: 'button', title: t('pagesStrategyMore.followsLevel')});
   change.addEventListener('click', () => {
     openCard('goals');
     document.querySelector('#strategy-main-goals .card')?.scrollIntoView({block: 'start'});
   });
-  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || 'Any'), el('span', 'muted small', ' · from your Target level · '), change);
+  line.append(el('span', '', LEVELS.find(([value]) => value === now)?.[1] || t('pagesCommon.any')), el('span', 'muted small', t('pagesAuditThird.a216')), change);
   return line;
 }
 // The digest's minimum fit score (Search settings "Minimum fit score for the digest"; the engine's default is 50).
 function minScoreInput() {
   const now = strategyState.lastStrategy?.digest_min_score ?? 50, shown = drafts().targetEdits.minScore?.set ?? now;
-  if (!isOpen('search')) return el('span', '', `${shown} / 100: lower scores stay in your list, out of the digest`);
+  if (!isOpen('search')) return el('span', '', t('pagesDynamicStrategy.m421', {"shown": shown}));
   const input = Object.assign(document.createElement('input'), {type: 'number', min: 0, max: 100, step: 1, className: 'add', value: shown});
-  input.setAttribute('aria-label', 'Minimum fit score for the digest');
+  input.setAttribute('aria-label', t('pagesStrategyMore.minimumScore'));
   input.addEventListener('change', () => {
     const value = Math.round(Number(input.value));
     if (!Number.isFinite(value) || value < 0 || value > 100 || value === now) delete drafts().targetEdits.minScore;
@@ -160,8 +163,8 @@ function minScoreInput() {
   });
   return input;
 }
-const LEADS = {places: 'Where you want to work.', stack: 'Key skills and tools you want in jobs.',
-  languages: 'A job that requires one is hidden; one that only prefers it ranks lower.'};
+const LEADS = {places: t('pagesAuditThird.a217'), stack: t('pagesAuditThird.a214'),
+  languages: t('pagesAuditThird.a218')};
 function targetCard([key, glyph, title, lists]) {
   const open = isOpen(key), card = el('section', `card${open ? ' is-editing' : ''}`);
   card.dataset.list = key;
@@ -171,14 +174,14 @@ function targetCard([key, glyph, title, lists]) {
   if (!open) { const read = el('div', 'card-read'); read.append(...VIEWS[key]()); card.append(read); return card; }
   for (const [name, label, placeholder] of shownLists(lists)) {
     // Relocation is a value (Yes / No / Not specified); its places are asked only for Yes, and kept whatever the mode.
-    if (name === 'abroad') { card.append(el('p', 'sub', 'Relocation'), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
+    if (name === 'abroad') { card.append(el('p', 'sub', t('pagesCommon.relocation')), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
     const box = listChips(name, placeholder);
     if (name === 'places') { const priority = el('div', 'priority'); priority.append(el('b', '', label), box); card.append(priority); continue; }
     if (label) card.append(el('p', 'sub', label));
     card.append(box);
   }
-  if (key === 'places') card.append(el('p', 'sub', 'Remote work'), remoteChoice());
-  if (key === 'search') card.append(el('p', 'sub', 'Your level'), levelChoice(), el('p', 'sub', 'Minimum fit score for the digest'), minScoreInput());
+  if (key === 'places') card.append(el('p', 'sub', t('pagesCommon.remoteWork')), remoteChoice());
+  if (key === 'search') card.append(el('p', 'sub', t('pagesStrategyMore.yourLevel')), levelChoice(), el('p', 'sub', t('pagesStrategyMore.minimumScore')), minScoreInput());
   return card;
 }
 // ---------- The cards as read (not editing): grouped and short; Edit shows every list in full as before ----------
@@ -211,8 +214,8 @@ async function fixTypo(name, entry, suggestion, button) {
   const stored = entriesOf(strategyState.lastStrategy, name).find(item => item.label === entry);
   const edits = {[name]: {add: [suggestion], remove: stored ? [stored.fragment] : []}};
   const result = await withSaveProgress(words => { button.textContent = words; }, () => sink.editTargets(edits)).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { toastMessage('Not fixed', result.error || 'Try again.', {card: 'strategy-advanced'}, 'bad'); renderTargets(); return; }
-  toastMessage({title: `"${suggestion}" saved ✓`, body: 'Refresh your jobs to search with it.', action: refreshAction, target: {card: 'strategy-advanced'}, tone: 'good'});
+  if (!result.ok) { toastMessage(t('pagesStrategyMore.notFixed'), result.error || t('pagesCommon.tryAgain'), {card: 'strategy-advanced'}, 'bad'); renderTargets(); return; }
+  toastMessage({title: t('pagesShortSettings.m365', {"suggestion": suggestion}), body: t('pagesAuditThird.a219'), action: refreshAction, target: {card: 'strategy-advanced'}, tone: 'good'});
   await reloadTargets();
 }
 async function keepTypo(entry) {
@@ -230,49 +233,49 @@ const VIEWS = {
     // The goal "Work mode" (what you accept) and Remote work (where remote jobs are searched) read as a contradiction side by side (owner, 7 Oct 2026):
     // said on the row's hover, never as a footnote under the card (owner, 18 Oct 2026: no floating footnotes).
     const remote = remoteChoice();
-    remote.title = 'Work mode (in Main goals) is the kind of job you accept; Remote work is whether jobs you could do from where you can work count.';
-    const preferred = places.length ? withHints('places', chipsOf) : none('None');
-    preferred.title = 'Ranked first';
-    return [readRows([{icon: 'pin', label: 'Preferred locations', value: preferred},
-      {icon: 'globe', label: 'Acceptable locations', value: regions.length ? withHints('country', labels => folded(labels, 10, 'Show all')) : none('None selected')},
-      mode === 'yes' && abroad.length ? {icon: 'send', label: 'Places you would relocate to', value: folded(abroad.map(entry => entry.label), 10, 'Show all')}
-        : {icon: 'send', label: 'Relocation', value: relocationWords(mode, abroad)},
-      {icon: 'building', label: 'Remote work', value: remote},
-      {icon: 'shield', label: 'Work rights', value: rights.length ? withHints('rights', chipsOf) : pill('Not set', 'warn', {title: 'Jobs abroad are flagged "visa sponsorship needed"'})}],
+    remote.title = t('pagesStrategyMore.modeHelp');
+    const preferred = places.length ? withHints('places', chipsOf) : none(t('pagesCommon.none'));
+    preferred.title = t('pagesStrategyMore.rankedFirst');
+    return [readRows([{icon: 'pin', label: t('pagesCommon.preferredPlaces'), value: preferred},
+      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesFinalLabels.noneSelected'))},
+      mode === 'yes' && abroad.length ? {icon: 'send', label: t('pagesStrategyMore.relocatePlaces'), value: folded(abroad.map(entry => entry.label), 10, t('pagesCommon.showAll'))}
+        : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
+      {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},
+      {icon: 'shield', label: t('pagesStrategyMore.workRights'), value: rights.length ? withHints('rights', chipsOf) : pill(t('pagesCommon.notSet'), 'warn', {title: t('pagesStrategyMore.visaFlag')})}],
     {lined: true})];
   },
   stack() {
     const stack = labelsOf('stack');
-    return [readRows([{icon: 'layers', label: 'Key skills', value: stack.length ? withHints('stack', labels => folded(labels, 10, 'Show all')) : el('span', 'muted', 'None')}], {lined: true})];
+    return [readRows([{icon: 'layers', label: t('pagesStrategyMore.keySkills'), value: stack.length ? withHints('stack', labels => folded(labels, 10, t('pagesCommon.showAll'))) : el('span', 'muted', t('pagesCommon.none'))}], {lined: true})];
   },
   search() {
     const row = (glyph, label, name, none) => {
-      const draw = labels => (AS_TYPED.has(name) ? chipsOf(labels, false) : folded(labels, 6, 'Show all'));
+      const draw = labels => (AS_TYPED.has(name) ? chipsOf(labels, false) : folded(labels, 6, t('pagesCommon.showAll')));
       const value = !labelsOf(name).length ? el('span', 'muted', none) : name === 'gplaces' ? draw(labelsOf(name).map(placeLabel)) : withHints(name, draw);
       return {icon: glyph, label, value};
     };
-    return [readRows([{icon: 'user', label: 'Your level', value: levelChoice()}, {icon: 'target', label: 'Minimum fit score for the digest', value: minScoreInput()},
-      row('close', 'Job titles to skip', 'titleSkip', 'None'), row('building', 'Companies to skip', 'skip', 'None'), row('globe', 'Remote jobs: regions to skip', 'remoteSkip', 'None'),
-      row('sparkle', 'Words that find new employers', 'finders', 'None'),
-      ...(offered('serpapi') ? [row('search', 'Google Jobs searches', 'gqueries', 'None: Google Jobs is not searched'), row('pin', 'Google Jobs places', 'gplaces', 'None')] : [])], {lined: true})];
+    return [readRows([{icon: 'user', label: t('pagesStrategyMore.yourLevel'), value: levelChoice()}, {icon: 'target', label: t('pagesStrategyMore.minimumScore'), value: minScoreInput()},
+      row('close', t('pagesFinalLabels.skipTitles'), 'titleSkip', t('pagesCommon.none')), row('building', t('pagesFinalLabels.skipCompanies'), 'skip', t('pagesCommon.none')), row('globe', t('pagesFinalLabels.remoteSkip'), 'remoteSkip', t('pagesCommon.none')),
+      row('sparkle', t('pagesFinalLabels.finders'), 'finders', t('pagesCommon.none')),
+      ...(offered('serpapi') ? [row('search', t('pagesFinalLabels.googleSearches'), 'gqueries', t('pagesFinalLabels.noGoogle')), row('pin', t('pagesFinalLabels.googlePlaces'), 'gplaces', t('pagesCommon.none'))] : [])], {lined: true})];
   },
   languages() {
     const data = strategyState.lastStrategy, {languages, hide, lower} = exclusionGroups({...data, texts: {...data?.texts, languages: labelsOf('languages')}});
     const block = el('div', 'setting-body');
-    block.append(languages.length ? chipsOf(languages) : el('span', 'muted', 'None'));
+    block.append(languages.length ? chipsOf(languages) : el('span', 'muted', t('pagesCommon.none')));
     // Warning colour only for a consequence: the last coverage check counted matching jobs these languages hid (src/coverage.py).
     const listed = new Set(languages.map(language => language.toLowerCase()));
     const hidden = (strategyState.shownVerdict?.languages || []).filter(item => listed.has(String(item.language).toLowerCase())).reduce((sum, item) => sum + (item.count || 0), 0);
     if (hidden) {
       const warn = el('p', 'tone-warn exclusion-warn', icon('alert'));
-      warn.append(`Hides ${hidden.toLocaleString('en-US')} job${hidden === 1 ? '' : 's'} that match your roles and places (see Suggestions).`);
+      warn.append(t('pagesDynamicStrategy.m422', {"displayNumber": displayNumber(hidden), count: hidden}));
       block.append(warn);
     }
-    const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', 'None')];
+    const group = (title, items) => [el('span', 'muted small', title), items.length ? chipsOf(items.map(item => item.label), false) : el('span', 'muted small', t('pagesCommon.none'))];
     const rules = el('div', 'setting-body');
-    rules.append(...group('Hide matching jobs', hide), ...group('Rank them lower', lower));
-    return [readRows([{icon: 'globe', label: 'Languages that rule a job out', value: block},
-      {icon: 'sliders', label: labelWith('Other exclusions and ranking rules', `${hide.length} hide jobs, ${lower.length} rank${lower.length === 1 ? 's' : ''} lower`), value: rules}], {lined: true})];
+    rules.append(...group(t('pagesFinalLabels.hideMatching'), hide), ...group(t('pagesFinalLabels.rankLower'), lower));
+    return [readRows([{icon: 'globe', label: t('pagesStrategyMore.languageExclusions'), value: block},
+      {icon: 'sliders', label: labelWith(t('pagesFinalLabels.otherRules'), t('pagesDynamicStrategy.m423', {"length": hide.length, "length2": lower.length, count: lower.length})), value: rules}], {lined: true})];
   },
 };
 const reloadTargets = async () => { await loadStrategy(); renderTargets(); };
@@ -304,8 +307,8 @@ export function renderStrategy(data) {
   renderCards();
   const level = value => (value >= 70 ? 'good' : value >= 50 ? 'warn' : 'bad');
   // Averages of what the matches scored, not the weights of the score (owner, 7 Oct 2026: "How matches are scored" read as weights).
-  $('strategy-score-note').textContent = !data.scored ? 'No scored matches yet: run a search with your AI key.'
-    : `Across your ${data.scored} scored match${data.scored === 1 ? '' : 'es'} · Averages, not scoring weights.`;
+  $('strategy-score-note').textContent = !data.scored ? t('pagesStrategyMore.noScores')
+    : t('pagesDynamicStrategy.m424', {"scored": data.scored, count: data.scored});
   drawImprove();
   $('strategy-scores').replaceChildren(...data.components.map(part => {
     const line = el('div', 'score-bar');
@@ -323,8 +326,8 @@ export function renderStrategy(data) {
     return button;
   };
   const jobsBy = kind => () => { openView('jobs'); if (kind) document.querySelector(`[data-stat="${kind}"]`)?.click(); };
-  $('strategy-glance').replaceChildren(glance('file', data.counts.matches, 'scored matches', jobsBy('total'), 'info'),
-    glance('layers', data.counts.saved, 'saved jobs', () => { openView('jobs'); setFilters(['saved']); }, 'violet'), glance('send', data.counts.sent, 'applications sent', jobsBy('applied'), 'signal'));
+  $('strategy-glance').replaceChildren(glance('file', data.counts.matches, t('pagesAuditThird.a220'), jobsBy('total'), 'info'),
+    glance('layers', data.counts.saved, t('pagesAuditThird.a221'), () => { openView('jobs'); setFilters(['saved']); }, 'violet'), glance('send', data.counts.sent, t('pagesAuditThird.a222'), jobsBy('applied'), 'signal'));
   show($('strategy-insight'), !!data.insight);
   if (data.insight) {
     $('strategy-insight-text').textContent = data.insight.action || data.insight.headline;

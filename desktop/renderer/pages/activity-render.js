@@ -1,5 +1,7 @@
 // Recent activity: renderActivity, the Recent activity panel redraw, its panel height and its list state.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
 import {runWarningLines, stepNote} from '../run-warnings.js';
@@ -76,12 +78,12 @@ export function prepareActions() {
 // "Remove" on a queued row (and its ⌘K twin, nav.js): the task never starts; Recent activity is drawn again either way.
 export async function unqueue(run) {
   const result = await window.pilot.unqueueTask(run.id).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) toastMessage('Could not remove it', result.error || 'Try again.', {activity: true}, 'bad');
+  if (!result.ok) toastMessage(t('pagesStatus.removeFailed'), result.error || t('pagesCommon.tryAgain'), {activity: true}, 'bad');
   refreshActivity();
 }
 function removeLink(run) {
-  const link = el('span', 'run-link', 'Remove');
-  Object.assign(link, {title: `Take ${KIND[kindOf(run)].name} out of the queue: it will not start`, tabIndex: 0});
+  const link = el('span', 'run-link', t('pagesCommon.remove'));
+  Object.assign(link, {title: t('pagesDynamicActivity.m21', {"name": KIND[kindOf(run)].name}), tabIndex: 0});
   link.setAttribute('role', 'button');
   const go = event => { event.preventDefault(); event.stopPropagation(); unqueue(run); };
   link.addEventListener('click', go);
@@ -108,27 +110,27 @@ export function renderActivity(fresh) {
   const lastMail = runs.find(run => kindOf(run) === 'mail');
   $('activity').dataset.state = barState(running, lastSearch || lastMail || last);
   const liveLines = running ? shared.logLines : null;
-  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? 'not checked' : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
-    : gmailConnected() === false ? 'Gmail not checked · not connected'   // #541: no "due now" for a check that cannot run
-    : nextMailAt ? `First Gmail check ${nextWords(nextMailAt)}` : '';
+  const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? t('pagesExtraCommon.notChecked') : t('pagesShortActivity.m35', {"when": clockTime(lastMail.endedAt || lastMail.startedAt), "outcome": outcome(lastMail)})}`
+    : gmailConnected() === false ? t('pagesExtraCommon.gmailNotChecked')   // #541: no "due now" for a check that cannot run
+    : nextMailAt ? t('pagesDynamicActivity.m22', {"nextWords": nextWords(nextMailAt)}) : '';
   if (running) {
     const kind = KIND[kindOf(running)];
     const next = (data.queued || []).length;
-    $('activity-title').textContent = kindOf(running) === 'search' ? `Finding jobs${running.where === 'github' ? ' (on GitHub)' : ''}${next ? ` · ${next} queued` : ''}`
-      : `${kind.icon} ${kind.name} running (${WHO[running.trigger] || running.trigger}${running.where === 'github' ? ', on GitHub' : ''})${next ? ` · ${next} queued` : ''}`;
-    $('activity-step').textContent = stepWords(running.step) || 'Starting…';
+    $('activity-title').textContent = kindOf(running) === 'search' ? t('pagesDynamicActivity.m23', {"value1": running.where === 'github' ? t('pagesDynamicActivity.onGithub') : '', "value2": next ? t('pagesDynamicActivity.queued', {next}) : ''})
+      : t('pagesShortActivity.m36', {"icon": kind.icon, "name": kind.name, "value3": WHO[running.trigger] || running.trigger, "value4": running.where === 'github' ? t('pagesShortActivity.onGithub') : '', "value5": next ? t('pagesShortActivity.m37', {"next": next}) : ''});
+    $('activity-step').textContent = stepWords(running.step) || t('pagesCommon.starting');
     barLabel();
     $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString())].filter(Boolean).join(' · ');
   } else if (lastSearch || lastMail) {
     barLabel();
-    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? 'Last refresh' : 'Last refresh had problems') : 'No jobs check yet';
+    $('activity-title').textContent = lastSearch ? (lastSearch.ok ? t('pagesCommon.lastRefresh') : t('pagesStatus.lastProblems')) : t('pagesStatus.noJobsCheck');
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
-      (lastSearch.ok ? '' : ' · click to see why') : '';
+      (lastSearch.ok ? '' : t('pagesActivityMore.clickWhy')) : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
-    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [mailNote, nextSearchAt && t('pagesDynamicActivity.m24', {"nextWords": nextWords(nextSearchAt)})].filter(Boolean).join(' · ');
   } else {
-    $('activity-title').textContent = 'No search yet';
-    $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';
+    $('activity-title').textContent = t('pagesCommon.noSearch');
+    $('activity-step').textContent = t('pagesActivityMore.startSearch');
     $('activity-meta').textContent = mailNote;
   }
   if (!running) keepStatusBar();
@@ -141,7 +143,7 @@ export function renderActivity(fresh) {
   // Each queued one says what it waits for: the one queued before it, or the running task.
   const queue = data.queued || [];
   const waiting = queue.map((run, i) => ({...run, waiting: true,
-    after: i ? KIND[kindOf(queue[i - 1])].name : running ? KIND[kindOf(running)].name : 'the current task'})).reverse();
+    after: i ? KIND[kindOf(queue[i - 1])].name : running ? KIND[kindOf(running)].name : t('pagesExtraCommon.currentTask')})).reverse();
   // Task, Status and Date keep what the list shows (renderer/run-filters.js); a page of them, queued and running first, then Load more.
   const by = {kindOf, toneOf: run => runPill(run)[1]};
   const liveRows = filterBy(waiting.concat(running ? [{...running, live: true}] : []), listFilter, by);
@@ -163,15 +165,15 @@ export function renderActivity(fresh) {
     if (warned) button.dataset.state = 'warn';
     const words = el('span', 'run-words');
     // A run's note says what it is for beyond its kind ("Re-scoring 75 older scores", lib/pipeline.js refresh), queued, running and done.
-    words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [`Running now`, run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
-      ? [run.note, `Waiting · starts after ${run.after}`].filter(Boolean).join(' · ')
+    words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [t('pagesDynamicActivity.m25'), run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
+      ? [run.note, t('pagesDynamicActivity.m26', {"after": run.after})].filter(Boolean).join(' · ')
       : [run.note, capital(outcome(run)), WHERE[run.where]].filter(Boolean).join(' · ')));
-    if (byYou(run)) words.lastChild.prepend(tag('By you', {title: 'You started it (not a schedule)'}), ' ');
+    if (byYou(run)) words.lastChild.prepend(tag(t('pagesExtraCommon.byYouTitle'), {title: t('pagesActivityMore.youStarted')}), ' ');
     // No cost and no live log here: the list is for finding a run and seeing its state; the log and the cost are in the detail pane.
     const when = el('span', 'run-time', run.live || run.waiting ? '' : runTime(run));
     if (run.live && run.where === 'github' && run.url) {
       const link = el('span', 'run-github', 'GitHub ↗');
-      link.title = 'Open this run on GitHub';
+      link.title = t('pagesActivityMore.openGithub');
       link.setAttribute('role', 'link');
       link.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); window.pilot.openExternal(run.url); });
       when.replaceChildren(link);
@@ -190,7 +192,7 @@ export function renderActivity(fresh) {
     ...group.runs.map(run => { const item = document.createElement('li'); item.append(recentRow(run)); return item; })]));
   if (keepFocus) $('activity-recent').querySelector('.recent-row.current')?.focus({preventScroll: true});
   if (!recent.length) $('activity-recent').append(Object.assign(document.createElement('li'), {className: 'muted',
-    textContent: runs.length && anyFilter(listFilter) ? 'No runs match these filters.' : 'Nothing has run yet.'}));
+    textContent: runs.length && anyFilter(listFilter) ? t('pagesStatus.noMatchingRuns') : t('pagesStatus.nothingRun')}));
   // "View more": the runs the filter keeps that the list hasn't shown yet (they scroll in below).
   show($('activity-all'), kept.length > shownRuns);
 
@@ -200,24 +202,24 @@ export function renderActivity(fresh) {
   const plan = {search: 4, mail: 3, ...(shared.state?.settings?.schedule || {})};
   // No time: "Off" only when Settings → Automation says so; else the app just doesn't know it yet (it was started
   // before an update: a restart fixes it), so it names where it runs.
-  const unknown = cloud ? 'On GitHub' : 'On this Mac';
-  // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): no "Employers" card; the run itself is unchanged (lib/schedule.js).
-  const items = [['Find jobs', 'search', nextSearchAt, plan.search ? unknown : 'When you ask'], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : 'Off']];
+  const unknown = cloud ? t('pagesExtraCommon.onGithub') : t('pagesExtraCommon.onMac');
+  // Why (5 Nov 2026, owner: the person sees Find jobs and Gmail, not a separate employer run): Localized display keys preserve this rule: no "Employers" card; the run itself is unchanged (lib/schedule.js).
+  const items = [[t('pagesCommon.findJobs'), 'search', nextSearchAt, plan.search ? unknown : t('pagesExtraCommon.whenAsk')], ['Gmail', 'mail', nextMailAt, plan.mail ? unknown : t('pagesCommon.off')]];
   const soonest = Math.min(...items.map(([, , at]) => at || Infinity));
   const gmailOff = gmailConnected() === false;   // Gmail as it is now, not as the selected run found it
   $('activity-schedule').replaceChildren(...items.map(([name, kind, at, none]) => {
     const item = el('span', `ap-item${at && at === soonest ? ' is-next' : ''}${at ? '' : ' is-off'}`);
     item.append(el('span', 'muted', name), ' ', el('b', '', at ? capital(nextWords(at)) : none));
     // A pill after the time, not a "Next:" before the name: that read as "Next Jobs" from a distance.
-    if (kind === 'mail' && gmailOff) item.append(' ', pill('Connection required', 'warn'));   // the time stays; it won't check until connected
-    else if (at && at === soonest) item.append(' ', el('span', 'ap-next', 'Next'));
+    if (kind === 'mail' && gmailOff) item.append(' ', pill(t('pagesStatus.connectionRequired'), 'warn'));   // the time stays; it won't check until connected
+    else if (at && at === soonest) item.append(' ', el('span', 'ap-next', t('pagesCommon.next')));
     return item;
   }));
   // Check Gmail now: with a selected Gmail check, not in the schedule strip. While Gmail is not connected it connects it instead.
   const selected = shown || (running ? null : last);
   // A not-connected run's box already offers Connect Gmail: the header doesn't say it twice.
   show($('check-mail'), !!selected && kindOf(selected) === 'mail' && !(gmailOff && (selected.off || GOOGLE_SIGNIN.test(selected.problem || ''))));
-  $('check-mail').textContent = gmailOff ? 'Connect Gmail' : 'Check Gmail now';
+  $('check-mail').textContent = gmailOff ? t('pagesCommon.connectGmail') : t('pagesStatus.checkGmail');
   $('check-mail').dataset.connect = gmailOff ? '1' : '';
 
   // The selected run (or the live / latest one): what it did, its phases, and its full log. A run read from
@@ -231,18 +233,18 @@ export function renderActivity(fresh) {
   if (needsPage(picked) && !runDetails.has(picked.pageId)) {
     const pageId = picked.pageId, hasLog = !!picked.log;
     readingPages.add(pageId);   // the card's skeleton bars show while the page is read, also for a local run that has its own log: the read waits its turn behind the app's other Notion calls (25 s+ right after a start) and the pane was empty meanwhile
-    runDetails.set(pageId, hasLog ? {} : {log: [byStore('Reading from Notion…', 'Reading…')]});
+    runDetails.set(pageId, hasLog ? {} : {log: [byStore(t('pagesCommon.readingNotion'), t('pagesCommon.reading'))]});
     // A run that just finished may not have its log on its page yet (it's written a moment after the status):
     // an empty answer is read again a few times before it's kept.
     const read = (tries = 0) => (readTrace.push(`${pageId} read #${tries} asked`), window.pilot.runDetail(pageId)).then(detail => {
       readTrace.push(`${pageId} read #${tries} gave message=${!!detail?.message} log=${(detail?.log || []).length}`);
       const empty = !detail?.message && !(detail?.log || []).length;
       if (empty && tries < 4 && !hasLog) {
-        runDetails.set(pageId, {log: [byStore('Waiting for the log from Notion…', 'Waiting for the log…')]});
+        runDetails.set(pageId, {log: [byStore(t('pagesExtraCommon.waitingNotionLog'), t('pagesExtraCommon.waitingLog'))]});
         setTimeout(() => read(tries + 1), 5000);
       } else {
         readingPages.delete(pageId);
-        runDetails.set(pageId, empty ? (hasLog ? {} : {log: [byStore('This run left no log on its Notion page.', 'This run left no log.')]}) : detail);
+        runDetails.set(pageId, empty ? (hasLog ? {} : {log: [byStore(t('pagesAuditFirst.a16'), t('pagesAuditFirst.a17'))]}) : detail);
       }
       renderActivity(lastActivity);
     }).catch(error => { readTrace.push(`${pageId} read failed: ${error?.message || error}`); console.error('activity: a run page was not shown', pageId, error); readingPages.delete(pageId); renderActivity(lastActivity); });
@@ -265,7 +267,7 @@ export function renderActivity(fresh) {
   // took, what it cost and where it ran (the mockup's "Nothing new · Finished 18:06 · 62 s · GitHub").
   const status = !run ? null : runPill({...run, kind: kindOf(run)}, {long: true});
   $('activity-icon').replaceChildren(...(kind ? [icon(kind.line)] : []));
-  $('activity-selected').textContent = run ? kind.name : 'Nothing has run yet';
+  $('activity-selected').textContent = run ? kind.name : t('pagesStatus.nothingRunShort');
   $('activity-status').replaceChildren(...(status ? [pill(...status)] : []));
   showStop($('activity-stop'), run?.live ? run : null);   // a task this Mac runs can be stopped from its detail too
   // What it found, without repeating the task's name ("Gmail check: 4 new emails…" → "4 new emails…").
@@ -280,26 +282,26 @@ export function renderActivity(fresh) {
   const said = run && !run.live && !hasCard && !boxSaysIt ? capital(String(outcome(run)).replace(new RegExp(`^${kind?.name || ''}:\\s*`, 'i'), '')) : '';
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
-  const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => `AI ${dollars(usd)}`));
-  const queued = queueWords(run, data, kindName => KIND[kindName]?.name || 'the current task');
+  const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => t('pagesShortActivity.m42', {"dollars": dollars(usd)})));
+  const queued = queueWords(run, data, kindName => KIND[kindName]?.name || t('pagesExtraCommon.currentTask'));
   show($('activity-unqueue'), !!run?.waiting && !!run.id);
   $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';
   // The run's result in one line goes in its card's top when that top is drawn (subLine(false)): the header says it only when no top does.
   const subLine = withSaid => (!run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
     run.note,
-    run.live ? (run.startedAt ? `Started ${hhmm(Date.parse(run.startedAt))}` : '') : withSaid && said,   // the step is the card's top (one fact, once)
-    !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
-    !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
+    run.live ? (run.startedAt ? t('pagesShortActivity.m43', {"hhmm": hhmm(Date.parse(run.startedAt))}) : '') : withSaid && said,   // the step is the card's top (one fact, once)
+    !run.live && t('pagesShortActivity.m44', {"hhmm": hhmm(Date.parse(run.endedAt || run.startedAt))}),
+    !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : t('pagesShortActivity.m45', {"value1": Math.round(seconds / 60)})),
     cost,
-    run.where === 'github' ? 'In the cloud' : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
-    !run.live && run.telegram && 'Sent to Telegram',
+    run.where === 'github' ? t('pagesExtraCommon.inCloud') : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
+    !run.live && run.telegram && t('pagesExtraCommon.sentTelegram'),
   ].filter(Boolean).join(' · '));
   $('activity-sub').textContent = subLine(true);
   // A search that found new jobs: straight to them (newest first).
   const found = !run?.live && kindOf(run) === 'search' ? newJobsShown(run, shownText) : 0;   // the card's own count (run-cards.js)
   show($('activity-report'), hasFullReport({...run, kind: kindOf(run)}));   // the search's full report in Reports → Searches
   show($('activity-go'), found > 0);
-  $('activity-go').textContent = `View new job${found === 1 ? '' : 's'} →`;
+  $('activity-go').textContent = t('pagesDynamicActivity.m29', {count: found});
   // The header's one visible link, then the rest under ⋯: a Notion page is the run's record, its GitHub run the build
   // behind it. A GitHub-only run shows that link itself; with nothing else to offer there is no ⋯ at all.
   // A run's record opens only when it is a page somewhere (Notion); in the store on this Mac its link is only a key (store:cron_runs/<id>).
@@ -309,7 +311,7 @@ export function renderActivity(fresh) {
   show($('activity-github'), !!run?.url && (!page || !!run?.live));
   $('activity-github').dataset.url = run?.url || '';
   $('activity-more').replaceChildren(...(run?.url && page && !run?.live
-    ? [moreButton([{label: 'View GitHub run ↗', run: () => window.pilot.openExternal(run.url)}], 'More links')] : []));
+    ? [moreButton([{label: t('pagesActivityMore.viewGithub'), run: () => window.pilot.openExternal(run.url)}], t('pagesStatus.moreLinks'))] : []));
   const result = run && !run.live ? runResults.get(run.id) || '' : '';
   $('activity-result').textContent = result;
   show($('activity-result'), !!result);
@@ -325,7 +327,7 @@ export function renderActivity(fresh) {
       const li = Object.assign(document.createElement('li'), {className: phaseStatus(run, i, at), textContent: phaseLabel(phase, lines)});
       // The step a stopped run was on says what it was doing and the last thing it reported.
       if (li.className === 'warn' && stepWarnings.length) li.append(el('span', 'phase-note', stepNote(stepWarnings)));   // why this step has the !
-      if (i === at && stopped) li.append(...[stopped.doing && `Stopped while ${stopped.doing}.`, stopped.last && `Last reported: ${stopped.last}`].filter(Boolean).map(text => el('span', 'phase-note', text)));
+      if (i === at && stopped) li.append(...[stopped.doing && t('pagesDynamicActivity.m30', {"doing": stopped.doing}), stopped.last && t('pagesDynamicActivity.m31', {"last": stopped.last})].filter(Boolean).map(text => el('span', 'phase-note', text)));
       return li;
     })));
   // Find jobs using your browser: a row per tab it opens in Chrome, each at its state, and how far the run is (owner, 7 Oct 2026: "right now it's a black box").
@@ -349,9 +351,9 @@ export function renderActivity(fresh) {
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
   if (advice) {
     const words = el('div', 'insight-next-words');
-    const go = el('button', 'secondary', 'Find jobs again');   // the pane's one primary stays its own (View new jobs)
+    const go = el('button', 'secondary', t('pagesCommon.findAgain'));   // the pane's one primary stays its own (View new jobs)
     go.addEventListener('click', () => startSearch({employers: true}));
-    words.append(el('b', '', 'Recommended next step'), el('p', '', advice.text), go);
+    words.append(el('b', '', t('pagesCommon.nextStep')), el('p', '', advice.text), go);
     $('activity-next').replaceChildren(el('span', 'insight-next-icon', icon('building')), words);
   }
   show($('activity-next'), !!advice);
@@ -386,7 +388,7 @@ export function renderActivity(fresh) {
   }
   if (noLog) $('activity-log').open = false;
   $('activity-log').classList.toggle('is-empty', noLog);   // the same row, "No log available", nothing to open
-  $('log-title').textContent = noLog ? 'No log available' : 'Technical log';
+  $('log-title').textContent = noLog ? t('pagesStatus.noLog') : t('pagesCommon.technicalLog');
   // In plain words (renderer/human-log.js): the raw lines stay in logs/engine.log; the progress bar and warnings above read the raw ones
   const readable = readableLog(lines);
   $('log-count').textContent = readable.length ? `· ${plural(readable.length, 'line')}` : '';
@@ -394,8 +396,8 @@ export function renderActivity(fresh) {
   show($('log-copy'), !noLog);   // nothing to copy on "No log available"
   const log = $('log');
   const text = readable.join('\n') || (githubLive
-    ? (run.url ? 'This run is on GitHub. Its log is copied here when it finishes.' : 'Starting on GitHub…')
-    : (run?.live ? 'Nothing to show yet.' : 'No log for this run.'));
+    ? (run.url ? t('pagesAuditFirst.a18') : t('pagesExtraCommon.startingGithub'))
+    : (run?.live ? t('pagesAuditFirst.a19') : t('pagesAuditFirst.a20')));
   if (log.textContent !== text) {
     const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
     log.replaceChildren(...linked(text));

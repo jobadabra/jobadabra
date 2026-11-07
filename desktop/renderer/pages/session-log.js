@@ -1,4 +1,7 @@
 // Session page: opening a session and its log.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -39,13 +42,13 @@ export async function openSession(id) {
 }
 // The header has nothing to say about a session that isn't there (or isn't known yet).
 function clearHeader() {
-  $('ss-title').textContent = 'Application sessions';
+  $('ss-title').textContent = t('pagesSessionStates.sessions');
   $('ss-role').textContent = '';
   $('ss-status').replaceChildren();
   $('ss-more').replaceChildren();
 }
 // A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
-const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
+const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? [t('pagesFinalLabels.formClosed'), 'neutral'] : sessionState(item));
 // The header's way out of every unfinished application at once (session-state.js cancellable). While it works the button says how many are closing (owner, 7 Nov 2026: a greyed button and the old list showed nothing).
 function paintCancelAll(button, list) {
   const {closing, ...paint} = cancelAllButton(list);
@@ -93,14 +96,14 @@ export function renderSessionPage() {
   const [label, tone] = stateOf(item);
   $('ss-title').textContent = sessionCompany(item);
   $('ss-role').textContent = sessionTitle(item);
-  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? 'Ready for review' : label, tone, {dot: true}), modeChip(item));
+  $('ss-status').replaceChildren(pill(sessionReview(item, formReady(item)) && tone !== 'good' && item.kind !== 'form' && !item.inChrome ? t('pagesSessionStates.readyReview') : label, tone, {dot: true}), modeChip(item));
   // Start again and Cancel beside ⋯: the two ways out of a session that isn't going well.
-  const again = Object.assign(el('button', 'secondary', '↺ Start again'), {title: 'Close this session and start a new one on the same job'});
-  again.addEventListener('click', () => busy(again, 'Restarting…', () => restartSession(item)));
-  const cancel = Object.assign(el('button', 'secondary', 'Cancel application'), {title: 'Stop applying to this job'});
-  cancel.addEventListener('click', () => busy(cancel, 'Cancelling…', () => cancelSession(item)));
-  if (item.kind === 'form') cancel.title = 'Stop applying to this job';
-  $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), 'More'));
+  const again = Object.assign(el('button', 'secondary', t('pagesSessionStates.startAgain')), {title: t('pagesSessionStates.startAgainHelp')});
+  again.addEventListener('click', () => busy(again, t('pagesCommon.restarting'), () => restartSession(item)));
+  const cancel = Object.assign(el('button', 'secondary', t('pagesSessionStates.cancelApplication')), {title: t('pagesSessionStates.stopApplying')});
+  cancel.addEventListener('click', () => busy(cancel, t('pagesSessionStates.cancelling'), () => cancelSession(item)));
+  if (item.kind === 'form') cancel.title = t('pagesSessionStates.stopApplying');
+  $('ss-more').replaceChildren(...(isSubmitted(item) ? [] : item.kind === 'form' ? [cancel] : [again, cancel]), moreButton(sessionMenu(item), t('pagesCommon.more')));
   show($('ss-log'), terminalShown(item));   // the terminal only for a Claude conversation with Claude help on, or when asked (session-steps.js)
   renderSteps(item);   // no terminal behind a form session: the form in Chrome is the whole story
   const job = sessionJob(item);
@@ -114,40 +117,40 @@ export function renderSessionPage() {
     const line = el('span', 'muted small ss-job-tab');
     const link = Object.assign(el('a', 'link', address), {href: '#', title: tab.url});
     link.addEventListener('click', event => { event.preventDefault(); window.pilot.openExternal(tab.url); });
-    const opened = tab.tabAt ? new Date(tab.tabAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+    const opened = tab.tabAt ? displayDate(new Date(tab.tabAt), {hour: '2-digit', minute: '2-digit'}) : '';
     // Unknown while Chrome is checked or silent: its last address, never "open for" a tab nobody can see (owner, 8 Oct 2026).
     const unknown = checkingTab(item) || waitingChrome(item) || silentChrome(item) || tabLost(item);
-    line.append(formGone(item) ? 'Chrome tab (closed): ' : unknown ? 'Chrome tab (last seen): ' : 'Chrome tab: ', link);
-    if (opened) line.append(` · opened ${opened}`);
-    if (opened && !formGone(item) && !unknown) line.append(ticking(el('span'), ' · open for ', new Date(tab.tabAt).toISOString()));
+    line.append(formGone(item) ? t('pagesAuditThird.a180') : unknown ? t('pagesAuditThird.a181') : t('pagesAuditThird.a182'), link);
+    if (opened) line.append(t('pagesShortSettings.m309', {"opened": opened}));
+    if (opened && !formGone(item) && !unknown) line.append(ticking(el('span'), t('pagesAuditThird.a183'), new Date(tab.tabAt).toISOString()));
     words.append(line);
   }
-  const view = Object.assign(el('a', 'link small', 'View job ↗'), {href: '#'});
+  const view = Object.assign(el('a', 'link small', t('pagesSessionStates.viewJob')), {href: '#'});
   view.addEventListener('click', event => { event.preventDefault(); window.pilot.openExternal(item.url); });
   head.append(sessionLogo(item), words, view);
   $('ss-job').replaceChildren(head);
   renderNextStep(item);
   const review = sessionReview(item, formReady(item));
-  const [logLabel, logTone] = isSubmitted(item) ? [label, tone] : item.status === 'running' ? ['Working', 'info']
+  const [logLabel, logTone] = isSubmitted(item) ? [label, tone] : item.status === 'running' ? [t('pagesCommon.working'), 'info']
     // Claude stopped on a list for you ("Needs you: tick the robot box, reply ok") in a live window: it waits, it has not completed (8 Oct 2026).
-    : review && isLive(item) && readSessionMessage(item.question || '').needs.length ? ['Waiting for you', 'warn']
-    : review ? ['Completed', 'good']
-    : item.status === 'input' && !isLive(item) ? ['Closed with the app', 'neutral']
-    : item.status === 'input' ? ['Waiting for your reply', 'warn'] : [label, tone];
+    : review && isLive(item) && readSessionMessage(item.question || '').needs.length ? [t('pagesFinalLabels.waitingYou'), 'warn']
+    : review ? [t('pagesFinalLabels.completed'), 'good']
+    : item.status === 'input' && !isLive(item) ? [t('pagesFinalLabels.closedWithApp'), 'neutral']
+    : item.status === 'input' ? [t('pagesFinalLabels.waitingReply'), 'warn'] : [label, tone];
   const livePill = pill(`${logLabel} · ${sessionDuration(item)}`, logTone, {dot: true});
   if (item.status === 'running') ticking(livePill, `${logLabel} · `, item.startedAt);
   $('ss-live-state').replaceChildren(livePill);
-  $('ss-log-last').textContent = `> ${isSubmitted(item) ? `Submitted. Marked Applied in ${storeName()}.` : review ? 'Form filled in Chrome. Waiting for your review.' : item.note || 'Starting…'}`;
+  $('ss-log-last').textContent = `> ${isSubmitted(item) ? t('pagesDynamicSessionReports.m344', {"storeName": storeName()}) : review ? t('pagesSessionStates.filledReview') : item.note || t('pagesCommon.starting')}`;
   // A session that isn't running (closed with the app, or ended) takes no typing: say so, with Resume one click away.
   const offline = !isLive(item);
   show($('ss-offline'), offline);
   show($('ss-replies'), !offline);
   $('ss-offline-resume').hidden = !item.resumable || isSubmitted(item) || !resumeOffered();
   $('ss-offline').querySelector('span').textContent = isSubmitted(item)
-    ? `Submitted. This application is marked Applied in ${storeName()}.`
+    ? t('pagesDynamicSessionReports.m345', {"storeName": storeName()})
     : item.resumable
-    ? (resumeOffered() ? ai('{AI} isn\'t running. This is its conversation; resume it to answer or ask for more.') : 'The session isn\'t running. This is its conversation, kept for reference.')
-    : 'This session has ended. Start a new session from the job to continue.';
+    ? (resumeOffered() ? ai(t('pagesAuditPunct.a52')) : t('pagesSessionStates.conversationReference'))
+    : t('pagesSessionStates.endedNew');
   openLog(logChoice[item.id] ?? item.status === 'running', false);
 }
 // A button that waits on the main process (a confirmation, the form tab closing, Notion) says so and cannot be pressed twice.
@@ -207,14 +210,14 @@ export async function attachTerminal(id) {
 // One font for every session, the page's size. A running Claude redraws for the log's width; a finished session is
 // a recording wrapped at the width it had, so it may leave room on the right (bigger text to fill it looked out of
 // place next to the page, 29 Sep 2026).
-const hhmm = iso => (iso ? new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '');
+const hhmm = iso => (iso ? displayDate(new Date(iso), {hour: '2-digit', minute: '2-digit'}) : '');
 function renderTranscript(talk) {
   const box = $('ss-transcript');
   box.replaceChildren(...talk.map(entry => {
     if (entry.kind === 'steps') {
       const fold = el('details', 'ss-tr-steps');
       const count = entry.count || entry.steps.length;
-      fold.append(el('summary', '', `${count} step${count === 1 ? '' : 's'} · ${entry.steps.at(-1)}`));
+      fold.append(el('summary', '', t('pagesShortSettings.m310', {"count": count, "value3": entry.steps.at(-1)})));
       const list = el('ul');
       list.append(...entry.steps.map(text => el('li', '', text)));
       fold.append(list);
@@ -222,7 +225,7 @@ function renderTranscript(talk) {
     }
     const row = el('div', `ss-tr-msg is-${entry.kind}`);
     const head = el('div', 'ss-tr-who');
-    head.append(el('b', '', entry.kind === 'you' ? 'You' : ai('{AI}')), el('span', '', entry.time || hhmm(entry.at)));
+    head.append(el('b', '', entry.kind === 'you' ? t('pagesSessionStates.you') : ai('{AI}')), el('span', '', entry.time || hhmm(entry.at)));
     const body = el('div', 'ss-tr-text');
     body.append(...(entry.kind === 'claude' ? richText(entry.text) : [el('p', '', entry.text.length > 400 ? `${entry.text.slice(0, 400)}…` : entry.text)]));
     row.append(head, body);
@@ -252,7 +255,7 @@ export async function init() {
   $('ss-copy').addEventListener('click', async () => {
     const text = (await window.pilot.sessionOutput(shared.openSessionId)).replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
     await navigator.clipboard.writeText(text);
-    toastMessage('Log copied', 'The session\'s output is on the clipboard.', NO_PLACE.done, 'good');
+    toastMessage(t('pagesSessionStates.logCopied'), t('pagesSessionStates.outputClipboard'), NO_PLACE.done, 'good');
   });
   // The whole header bar opens and closes the log (Copy log does its own thing).
   $('ss-log-head').addEventListener('click', event => { if (!event.target.closest('#ss-copy')) openLog($('ss-log-body').hidden); });

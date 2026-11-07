@@ -1,10 +1,10 @@
 // Every Strategy card's read view draws through readRows (owner, 19 Oct 2026: "these 2 cards with chips look good, the other 4 look randomly arranged"):
 // no intro sentence glued to chips, no lone caption between chip rows, no second row helper. The class: a new card, or a card edited later, fails here.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const src = read('renderer/pages/strategy-targets.js');
 const views = src.slice(src.indexOf('const VIEWS = {'), src.indexOf('const reloadTargets'));
 const keys = [...src.matchAll(/^  \['(\w+)', '\w+', '[^']+', \[\[/gm)].map(match => match[1]);

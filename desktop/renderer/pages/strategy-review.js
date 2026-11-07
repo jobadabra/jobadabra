@@ -1,5 +1,7 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
 // owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/unit/renderer/setup-strategy.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
@@ -38,7 +40,7 @@ function placeNote(where) {
 }
 function noteSummary() {
   const note = currentAnswers().anything_else;
-  $('note-summary').textContent = note ? note.replace(/\s+/g, ' ').slice(0, 80) + (note.length > 80 ? '…' : '') : 'none yet: add one, then Regenerate draft';
+  $('note-summary').textContent = note ? note.replace(/\s+/g, ' ').slice(0, 80) + (note.length > 80 ? '…' : '') : t('pagesMisc.noDraftEntries');
 }
 // Before a draft exists, after a failed one, or on Rebuild from CV: what the user wants, then Build my strategy.
 export function showDraftIntro() {
@@ -47,22 +49,22 @@ export function showDraftIntro() {
   placeNote('intro');
   show($('draft-intro')); show($('draft-actions'), false);
   show($('draft-loading'), false); show($('draft-view'), false); show($('draft-error'), false); show($('draft-stale'), false);
-  $('draft-title').textContent = 'Your strategy'; show($('draft-subtitle'), false); show($('draft-cost'), false);
+  $('draft-title').textContent = t('pagesCommon.yourStrategy'); show($('draft-subtitle'), false); show($('draft-cost'), false);
   $('goals-cost-text').textContent = ai(shared.state.settings.setupDone
-    ? 'Rebuilding reads your CV and your note with {AI:main}: once. Nothing in your strategy changes until you review the result and pick what to apply.'
-    : 'Building reads your CV and your note with {AI:main}: once. Nothing is saved until you review the result.');
+    ? t('pagesAuditPunct.a68')
+    : t('pagesAuditPunct.a69'));
 }
 export function renderDraft() {
   placeNote('review');
   show($('draft-intro'), false); show($('draft-actions'));
   show($('draft-loading'), false); show($('draft-error'), false); show($('draft-view'));
-  $('draft-title').textContent = 'Review your strategy';
+  $('draft-title').textContent = t('pagesStrategy.reviewStrategy');
   show($('draft-subtitle'));
-  const spent = costText(shared.draft.usd, usd => `✦ AI draft · ${dollars(usd)}`);   // only on the user's own API key (ai-cost.js)
+  const spent = costText(shared.draft.usd, usd => t('pagesDynamicStrategy.m387', {"dollars": dollars(usd)}));   // only on the user's own API key (ai-cost.js)
   $('draft-cost').textContent = spent;
   show($('draft-cost'), !!spent);
   $('draft-summary').textContent = shared.draft.summary;
-  $('draft-summary').title = 'Click to show all';
+  $('draft-summary').title = t('pagesStrategy.showAll');
   showCards({changed: draftChanged});   // Main goals, Locations, Job preferences and Advanced search settings: the Strategy page's cards, reading the draft
   $('draft-save').disabled = false;
 }
@@ -77,8 +79,8 @@ export async function toDraft() {
   shared.draft = cached.draft;
   goStep('draft');
   renderDraft();
-  $('draft-stale-text').textContent = cached.cvChanged ? 'Your CV changed since this strategy was drafted.'
-    : answersChanged ? 'Your note changed since this strategy was drafted.' : '';
+  $('draft-stale-text').textContent = cached.cvChanged ? t('pagesStrategy.cvChanged')
+    : answersChanged ? t('pagesStrategy.noteChanged') : '';
   show($('draft-stale'), !!stale);
   if (stale) setupFinishReady = false;
   if (setupFinishReady) showSetupFinish();
@@ -87,7 +89,7 @@ async function saveDraft(parts = null) {
   for (const key of Object.keys(saveState)) delete saveState[key];
   document.querySelectorAll('#save-steps li').forEach(li => { li.className = ''; const count = li.querySelector('.count'); if (count) count.textContent = ''; });
   $('save-bar').style.width = '3%';
-  $('save-title').textContent = byStore('Saving your strategy to Notion', 'Saving your strategy');
+  $('save-title').textContent = byStore(t('pagesStrategy.savingNotion'), t('pagesStrategy.saving'));
   message('save-message', '');
   show($('save-close'), false); show($('save-retry'), false);
   const replacing = !!shared.state.settings.setupDone;
@@ -99,12 +101,12 @@ async function saveDraft(parts = null) {
   if (!$('save-dialog').open) $('save-dialog').showModal();
   const result = await window.pilot.saveStrategy(shared.draft, parts);
   if (!result.ok) {
-    $('save-title').textContent = byStore('Not saved to Notion yet', 'Not saved yet');
-    message('save-message', osText(`${result.error} Your strategy is kept on this computer: try again.`), 'error');
+    $('save-title').textContent = byStore(t('pagesStrategy.notSavedNotion'), t('pagesStrategy.notSaved'));
+    message('save-message', osText(t('pagesDynamicStrategy.m388', {"error": result.error})), 'error');
     show($('save-close')); show($('save-retry'));
     return;
   }
-  $('save-title').textContent = byStore('Saved to Notion ✓', 'Saved ✓');
+  $('save-title').textContent = byStore(t('pagesStrategy.savedNotion'), t('pagesCommon.saved'));
   $('save-bar').style.width = '100%';
   shared.state = await window.pilot.state();
   setupFinishReady = !replacing;
@@ -112,26 +114,26 @@ async function saveDraft(parts = null) {
   setTimeout(() => {
     $('save-dialog').close();
     // The Strategy page read again: it still showed the strategy from before (7 Oct 2026: "Your Profile is empty" stayed after a rebuild filled it).
-    if (replacing) { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); import('./strategy.js').then(page => page.loadStrategy()); toastMessage('Strategy replaced ✓', byStore('The previous one is kept in Notion as “🗂 Previous strategy”.', 'The previous one is kept as “🗂 Previous strategy”.'), {view: 'strategy'}, 'good'); }
+    if (replacing) { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); import('./strategy.js').then(page => page.loadStrategy()); toastMessage(t('pagesStrategy.replaced'), byStore(t('pagesStrategy.previousNotion'), t('pagesStrategy.previousLocal')), {view: 'strategy'}, 'good'); }
     else showSetupFinish();
   }, 900);
 }
 async function openRebuildReview() {
-  $('rebuild-groups').replaceChildren(el('p', 'message waiting', 'Comparing the draft with your current strategy…'));
+  $('rebuild-groups').replaceChildren(el('p', 'message waiting', t('pagesStrategy.comparingDraft')));
   $('rebuild-total').textContent = '';
   $('replace-go').disabled = true;
   $('replace-dialog').showModal();
   const current = shared.draft;
-  $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => `This draft cost ${dollars(usd)} (already spent). `);
+  $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => t('pagesDynamicStrategy.m389', {"dollars": dollars(usd)}));
   const result = await window.pilot.rebuildImpact(current);
   if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', plainError(result.error))); return; }
-  if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', 'This draft changes nothing in your current strategy.')); return; }
+  if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', t('pagesStrategy.draftNoChange'))); return; }
   const boxes = {};
   const update = () => {
     const picked = result.groups.filter(group => boxes[group.id].checked);
     $('replace-go').disabled = !picked.length;
     const uses = picked.some(group => group.cost === 'Uses AI');
-    $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'your scored jobs are marked as old scores until you re-score them' : 'no AI re-scoring'}.` : 'Nothing selected.';
+    $('rebuild-total').textContent = picked.length ? t('pagesShortSettings.m348', {"length": picked.length, "length2": result.groups.length, "value3": uses ? t('pagesMisc.oldScores') : t('pagesMisc.noRescoring')}) : t('pagesProfile.nothingSelected');
   };
   $('rebuild-groups').replaceChildren(...result.groups.map(group => {
     const box = el('label', 'review-group inline-label');
@@ -140,11 +142,11 @@ async function openRebuildReview() {
     boxes[group.id] = check;
     const text = el('span', 'review-text');
     const head = el('span', 'review-head');
-    head.append(el('b', '', group.title), pill(group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
+    head.append(el('b', '', group.title), pill(group.cost === 'Uses AI' ? t('pagesFinalLabels.usesAi') : group.cost, group.cost === 'Uses AI' ? 'warn' : 'neutral'));
     const list = el('ul', 'review-changes');
-    list.append(...group.changes.slice(0, 8).map(change => el('li', '', change)), ...(group.changes.length > 8 ? [el('li', 'muted', `+ ${group.changes.length - 8} more`)] : []));
+    list.append(...group.changes.slice(0, 8).map(change => el('li', '', change)), ...(group.changes.length > 8 ? [el('li', 'muted', t('pagesShortSettings.m349', {"value1": group.changes.length - 8}))] : []));
     text.append(head, list, el('span', 'muted small', group.impact));
-    if (group.linked) text.append(el('span', 'small review-linked', 'Locations and remote rules changed: applied to the search and the Profile together, so the crawl and the fit score agree.'));
+    if (group.linked) text.append(el('span', 'small review-linked', t('pagesMisc.locationsTogether')));
     box.append(check, text);
     check.addEventListener('change', () => {
       if (group.linked && boxes[group.linked]) boxes[group.linked].checked = check.checked;  // one atomic change

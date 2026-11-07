@@ -1,5 +1,7 @@
 // Always on "on our servers": the Settings card, its status, and the actions to turn it on, export or delete the held data.
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/unit/main/hosted-search.test.js, test/unit/renderer/hosted-words.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
 import {shared} from './shared.js';
@@ -23,9 +25,9 @@ export function mountCard() {
   const held = el('p', 'muted small'); held.id = 'hosted-held';   // when the profile was last copied to our servers, or deleted (owner, 27 Oct 2026)
   info.append(status, held);
   const main = el('div', 'aon-actions');
-  main.append(button('hosted-turn-on', 'Turn on Always on', 'secondary'), button('hosted-resume', 'Resume Always on', 'secondary'),
-    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-download', 'Download my data', 'secondary'), button('hosted-turn-off', 'Turn off and delete', 'danger-outline'),
-    button('hosted-delete', 'Delete our copy of your data', 'danger-outline'));   // destroys data: the red outline (owner, 27 Oct 2026)
+  main.append(button('hosted-turn-on', t('pagesPlans.turnOnAlways'), 'secondary'), button('hosted-resume', t('pagesPlans.resumeAlways'), 'secondary'),
+    button('hosted-change-email', t('pagesPlans.changeEmail'), 'secondary'), button('hosted-download', t('pagesPlans.downloadData'), 'secondary'), button('hosted-turn-off', t('pagesPlans.turnOffDelete'), 'danger-outline'),
+    button('hosted-delete', t('pagesPlans.deleteServerData'), 'danger-outline'));   // destroys data: the red outline (owner, 27 Oct 2026)
   row.append(tile('cloud'), info, main);
   // No e-mail field of its own (#1711, owner 27 Oct 2026: one shared e-mail): the address and the news choice are Notifications', a button goes there.
   const msg = el('p', 'message'); msg.id = 'hosted-set-message';
@@ -34,7 +36,7 @@ export function mountCard() {
   $('setting-cloud').after(card);
   const turnOn = async () => {
     const done = await window.pilot.hostedOn({});   // main uses the Notifications address and news choice (lib/hosted-email.js)
-    message('hosted-set-message', done.ok ? 'Always on ✓' : done.error || 'Could not turn it on just now.', done.ok ? 'ok' : 'bad');
+    message('hosted-set-message', done.ok ? t('pagesFocusReports.alwaysOn') : done.error || t('pagesPlans.turnOnFailed'), done.ok ? 'ok' : 'bad');
     refresh();
   };
   const toNotify = () => { openSetting('notify'); setTimeout(() => $('notify-address')?.focus(), 120); };
@@ -44,13 +46,13 @@ export function mountCard() {
   });
   $('hosted-change-email').addEventListener('click', toNotify);
   $('hosted-resume').addEventListener('click', turnOn);
-  $('hosted-turn-off').addEventListener('click', async () => { const done = await window.pilot.hostedOff(); message('hosted-set-message', done.ok ? 'Always on is off. Everything we held is deleted.' : done.error || 'Could not turn it off just now.', done.ok ? 'ok' : 'bad'); refresh(); });
+  $('hosted-turn-off').addEventListener('click', async () => { const done = await window.pilot.hostedOff(); message('hosted-set-message', done.ok ? t('pagesPlans.alwaysOffDeleted') : done.error || t('pagesPlans.turnOffFailed'), done.ok ? 'ok' : 'bad'); refresh(); });
   $('hosted-delete').addEventListener('click', async () => {
     const done = await window.pilot.hostedDelete();
-    message('hosted-set-message', done.ok ? (done.nothing ? 'Nothing to delete: this Mac never sent anything to our servers.' : 'Deleted ✓ Nothing of yours is on our servers.') : done.error || 'Could not delete it just now. Try again.', done.ok ? 'ok' : 'bad');
+    message('hosted-set-message', done.ok ? (done.nothing ? t('pagesPlans.noServerData') : t('pagesPlans.serverDeleted')) : done.error || t('pagesPlans.deleteFailed'), done.ok ? 'ok' : 'bad');
     refresh();
   });
-  $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? 'Saved ✓' : done.error || 'Could not save it just now.', done.ok ? 'ok' : 'bad'); });
+  $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? t('pagesCommon.saved') : done.error || t('pagesPlans.saveFailed'), done.ok ? 'ok' : 'bad'); });
   window.pilot.onHostedArrived(refresh);
   refresh();
 }
@@ -59,7 +61,7 @@ export function mountCard() {
 export function draw(view, email = '') {
   $('hosted-pill').replaceChildren(pill(view.pill[0], view.pill[1], {dot: true}));
   $('hosted-status').textContent = view.line;
-  $('hosted-turn-on').textContent = view.button === 'email' ? 'Add your e-mail' : 'Turn on Always on';
+  $('hosted-turn-on').textContent = view.button === 'email' ? t('pagesPlans.addEmail') : t('pagesPlans.turnOnAlways');
   show($('hosted-turn-on'), view.button === 'on' || view.button === 'email');
   show($('hosted-resume'), view.button === 'resume');
   show($('hosted-change-email'), !!email && view.button !== 'email');

@@ -1,5 +1,7 @@
 // Connecting Notion from anywhere in the window (Notion later: the app only tries until it is connected): the dialog with the
 // advantages, the locked pages, and the listener for any action that answers {needsNotion, reason} (see preload.cjs).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {el, notionBenefits, notionGate} from '../components.js';
 import {GATE_FOOTNOTE, GATE_TITLE, LOCKED_VIEWS, WHY_CHOICES} from '../notion-benefits.js';
@@ -16,7 +18,7 @@ export const tracking = () => notionConnected() || shared.state?.store?.tracking
 export const gatedOut = name => !!LOCKED_VIEWS[name] && !tracking();
 export const reasonText = reason => {
   const words = shared.state?.notionReasons?.[reason];
-  return words ? `Connect Notion ${words}.` : '';
+  return words ? t('pagesDynamicProfileReady.m279', {"words": words}) : '';
 };
 
 
@@ -28,11 +30,11 @@ function finish() {
 }
 
 function progressLine({found, total, building, waitingPage, template, moving}) {
-  if (moving) return 'Moving your strategy and matches into Notion…';
-  if (building) return 'Connected ✓ Building your Jobadabra workspace in Notion (databases, columns, pages)… about a minute.';
-  if (waitingPage) return 'Waiting for Notion to share an empty page for your new Jobadabra workspace with the app…';
-  return template ? `Connected ✓ Notion is copying the Jobadabra template into your workspace: ${found} of ${total} ready. About a minute; the app keeps checking.`
-    : `Notion is still sharing your workspace with the connection: ${found} of ${total} found. This can take a minute; the app keeps checking.`;
+  if (moving) return t('pagesExtraLabels.movingStrategy');
+  if (building) return t('pagesAuditSecond.a137');
+  if (waitingPage) return t('pagesAuditPunct.a42');
+  return template ? t('pagesDynamicProfileReady.m280', {"found": found, "total": total})
+    : t('pagesDynamicProfileReady.m281', {"found": found, "total": total});
 }
 
 // The prompt's words for its mode (rules connectMode): "Connect and move" with the move said up front, "Move to Notion" when connected already.
@@ -41,8 +43,8 @@ function setMode(box) {
   box.mode = connectMode({store: shared.state?.store, connected: !!shared.state?.store?.notionConnected || notionConnected()});
   box.sent = box.mode === 'move';   // a move-only prompt is no connect to report
   const why = shared.state?.notionReasons?.[box.reason];
-  const words = box.mode !== 'move' ? reasonText(box.reason) : why && box.reason !== 'move' ? `Needed ${why}.` : '';
-  $('notion-connect-title').textContent = box.mode === 'move' ? 'Move your data to Notion' : GATE_TITLE;   // about Notion
+  const words = box.mode !== 'move' ? reasonText(box.reason) : why && box.reason !== 'move' ? t('pagesShortReady.m245', {"why": why}) : '';
+  $('notion-connect-title').textContent = box.mode === 'move' ? t('pagesStrategy.moveNotion') : GATE_TITLE;   // about Notion
   $('notion-connect-reason').textContent = words;
   show($('notion-connect-reason'), !!words);
   show($('notion-connect-move'), box.mode !== 'connect');
@@ -62,7 +64,7 @@ export function openNotionConnect({reason = 'none', where = 'dialog', from = 'di
   const box = current;
   window.pilot.state().then(state => { shared.state = state; if (current === box && !box.connecting && !box.moving) setMode(box); }).catch(() => {});
   show($('notion-connect-why'), false);
-  $('notion-connect-later').textContent = 'Not now';
+  $('notion-connect-later').textContent = t('pagesCommon.notNow');
   $('notion-connect-go').disabled = false;
   message('notion-connect-message', '');
   show($('notion-connect-token'), false);
@@ -74,7 +76,7 @@ export function openNotionConnect({reason = 'none', where = 'dialog', from = 'di
 async function move(box) {
   box.moving = true;
   $('notion-connect-go').disabled = true;
-  message('notion-connect-message', 'Moving your data to Notion…', 'waiting');
+  message('notion-connect-message', t('pagesStrategy.movingNotion'), 'waiting');
   const result = await window.pilot.moveToNotion().catch(error => ({ok: false, error: error.message}));
   box.moving = false;
   $('notion-connect-go').disabled = false;
@@ -83,7 +85,7 @@ async function move(box) {
     // Stopped: nothing changed, the data is still on this Mac; the prompt stays open with "Move to Notion" to try again.
     box.mode = 'move';
     $('notion-connect-go').textContent = GO_LABEL.move;
-    message('notion-connect-message', result?.text || result?.error || 'Not moved.', 'error');
+    message('notion-connect-message', result?.text || result?.error || t('pagesStrategy.notMoved'), 'error');
     box.then?.(result);
     return;
   }
@@ -100,10 +102,10 @@ async function connect() {
   setMode(box);
   if (box.mode === 'move') { await move(box); return; }
   box.connecting = true;
-  message('notion-connect-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
+  message('notion-connect-message', t('pagesConnections.waitingNotion'));
   const result = await waitSignIn(() => window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message})));
   if (!result.ok) {
-    message('notion-connect-message', result.error || 'Not connected.', 'error');
+    message('notion-connect-message', result.error || t('pagesProfile.notConnected'), 'error');
     show($('notion-connect-token'));
     return;
   }
@@ -112,11 +114,11 @@ async function connect() {
   if (box.mode === 'connect-move' && moveAfterConnect(result)) { await move(box); return; }
   // Where the data lives now (lib/store-handlers.js startOnNotionIfEmpty): nothing on this Mac yet → Notion from now on; data here → it stays
   // until "Move my data to Notion" (Settings → Data & backup).
-  const where = result.startedOnNotion ? ' Your jobs and applications live in Notion from now on.'
-    : moveAfterConnect(result) ? ' Your data is still on this Mac: Settings → Data & backup → Move my data to Notion.' : '';
+  const where = result.startedOnNotion ? t('pagesAuditSecond.a138')
+    : moveAfterConnect(result) ? t('pagesAuditSecond.a139') : '';
   message('notion-connect-message', result.kept
-    ? `Connected ✓ Your Notion already had a Profile, so it was kept. This Mac's version is saved in ${result.kept}.${where}`
-    : `Connected ✓${where}`, 'ok');
+    ? t('pagesDynamicProfileReady.m282', {"kept": result.kept, "where": where})
+    : t('pagesShortReady.m246', {"where": where}), 'ok');
   setTimeout(() => { $('notion-connect-dialog').close(); box.then?.(); }, result.kept || where ? 4000 : 900);
 }
 
@@ -128,7 +130,7 @@ export async function openInNotion(key, event, reason = 'profile') {
   // The words change only where they are plain text (a <span>, or a button with no icon): an icon inside must survive.
   const label = button && (button.querySelector('span') || (button.children.length ? null : button));
   const was = label?.textContent;
-  if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); if (label) label.textContent = 'Opening…'; }
+  if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); if (label) label.textContent = t('pagesSession.opening'); }
   try { return await window.pilot.openNotion(shared.state.notion[key], !!event?.metaKey); }
   finally { if (button) { button.disabled = false; button.removeAttribute('aria-busy'); if (label) label.textContent = was; } }
 }
@@ -139,7 +141,7 @@ export function showNotionPanel() {
   const list = $('set-notion-benefits');
   if (!list.children.length) list.replaceChildren(...notionBenefits().children);
   show(list, !on);
-  $('set-notion-oauth').textContent = on ? 'Reconnect with Notion' : 'Connect with Notion';
+  $('set-notion-oauth').textContent = on ? t('pagesStrategy.reconnectNotion') : t('pagesStrategy.connectNotion');
 }
 
 // A page that needs Notion: until it is connected only the gate card shows. true = locked (don't load the page).
@@ -170,9 +172,9 @@ export function init() {
     if (current.notNow) { $('notion-connect-dialog').close(); return; }
     current.notNow = true;
     show($('notion-connect-why'));
-    $('notion-connect-later').textContent = 'Close';
+    $('notion-connect-later').textContent = t('pagesCommon.close');
   });
-  $('notion-connect-why').replaceChildren(el('span', 'muted small', 'Why not? (optional)'), ...WHY_CHOICES.map(([key, label]) => {
+  $('notion-connect-why').replaceChildren(el('span', 'muted small', t('pagesStrategy.whyNot')), ...WHY_CHOICES.map(([key, label]) => {
     const chip = el('button', 'ui-tag is-action', label);
     chip.type = 'button';
     chip.addEventListener('click', () => { if (current) current.why = key; $('notion-connect-dialog').close(); });
@@ -192,7 +194,7 @@ export function init() {
   });
   // A move this prompt runs: its progress here (data.js shows the same in Settings → Your data).
   window.pilot.onStoreMoveProgress(({entity, done, total} = {}) => {
-    if (current?.moving && $('notion-connect-dialog').open) message('notion-connect-message', `Moving ${MOVE_WORDS[entity] || entity}… ${done} of ${total}`, 'waiting');
+    if (current?.moving && $('notion-connect-dialog').open) message('notion-connect-message', t('pagesShortReady.m251', {"value1": MOVE_WORDS[entity] || entity, "done": done, "total": total}), 'waiting');
   });
   // An action that runs off this Mac (Always on, Telegram buttons while it is off) while the data is here (preload.cjs): the move, then the action again.
   window.addEventListener('pilot-needs-move', () => {

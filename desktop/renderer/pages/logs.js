@@ -1,14 +1,16 @@
 // Settings → Logs: the app's logs on this Mac, for the user (and whoever helps them) to see what happened. One day at a
 // time, 100 lines a page, a search capped at 100 hits (lib/log-view.js reads the files; the window never holds a whole
 // log). Live: while the page is on screen, today's newest lines are read again every few seconds.
+import '../../i18n/screens-pages.js';
+import {getLocale, t} from '../../i18n/index.js';
 import {$, show} from './core.js';
 
 const LIVE_MS = 3000, PAGE = 100;
-const DAY_LABEL = new Intl.DateTimeFormat([], {weekday: 'short', day: 'numeric', month: 'short'});
+const DAY_LABEL = new Intl.DateTimeFormat(getLocale(), {weekday: 'short', day: 'numeric', month: 'short'});
 let log = 'app', day = 'today', shown = PAGE, query = '', timer = null, searchTimer = null, reading = 0;
 
 const onScreen = () => !$('setting-logs').closest('[hidden]') && document.visibilityState === 'visible';
-const dayLabel = d => (d === 'today' ? 'Today' : DAY_LABEL.format(new Date(`${d}T12:00:00`)));
+const dayLabel = d => (d === 'today' ? t('pagesCommon.today') : DAY_LABEL.format(new Date(`${d}T12:00:00`)));
 const size = bytes => (bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`);
 
 async function loadDays() {
@@ -18,7 +20,7 @@ async function loadDays() {
     const option = new Option(`${dayLabel(d.day)}${d.bytes ? ` · ${size(d.bytes)}` : ''}`, d.day);
     option.selected = d.day === day;
     return option;
-  }), new Option('Every day (search)', ''));
+  }), new Option(t('pagesExtraLabels.everyDay'), ''));
 }
 
 // Today's page, an older page ("Show older lines"), or the search's hits; the newest line at the bottom.
@@ -29,16 +31,16 @@ async function read({keepScroll = false} = {}) {
   let result, stats;
   if (query) {
     result = await window.pilot.logs.search(log, query, {day}).catch(error => ({lines: [], error}));
-    const where = !day ? 'in the last 30 days' : day === 'today' ? 'today' : `on ${dayLabel(day)}`;
-    stats = result.lines.length ? `${result.lines.length}${result.more ? ' newest' : ''} line${result.lines.length === 1 ? '' : 's'} with "${query}" ${where}${result.more ? ' (more are older: narrow the search)' : ''}`
-      : `No line with "${query}" ${where}.`;
+    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? 'today' : t('pagesShortReady.m225', {"dayLabel": dayLabel(day)});
+    stats = result.lines.length ? t('pagesShortReady.m226', {"length": result.lines.length, "value2": result.more ? t('pagesShortReady.newest') : '', "query": query, "where": where, "value6": result.more ? t('pagesShortReady.older') : '', count: result.lines.length})
+      : t('pagesShortReady.m227', {"query": query, "where": where});
   } else {
     result = await pages(shown).catch(error => ({lines: [], more: false, error}));
     const when = (day || 'today') === 'today' ? 'today' : dayLabel(day);
-    stats = result.lines.length ? `The newest ${result.lines.length} line${result.lines.length === 1 ? '' : 's'} of ${when}` : `Nothing written ${when === 'today' ? 'today' : 'that day'} yet.`;
+    stats = result.lines.length ? t('pagesShortReady.m228', {"length": result.lines.length, "when": when, count: result.lines.length}) : t('pagesShortReady.m229', {"value1": when === 'today' ? t('pagesCommon.today') : t('pagesExtraLabels.thatDay')});
   }
   if (ticket !== reading) return;   // a newer read (another tab, day or search) already answered
-  if (result.error) stats = `Couldn't read this log: ${result.error.message || result.error}`;
+  if (result.error) stats = t('pagesShortReady.m230', {"value1": result.error.message || result.error});
   $('logs-stats').textContent = stats;
   show($('logs-more'), !query && !!result.more);
   box.textContent = result.lines.join('\n');

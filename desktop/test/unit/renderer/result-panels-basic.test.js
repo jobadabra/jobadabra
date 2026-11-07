@@ -1,11 +1,11 @@
 // Result panels stay basic (owner, 24 Oct 2026): no API-key setup rows, no internal counts (employers checked, ideas left, schedules), no scoring words; details live only in Reports.
 // Guards: renderer/pages/activity-*.js (run cards, drawer header, few-jobs boxes), renderer/key-sources.js, src/coverage.py KEY_SOURCES_OFFERED.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {keySources, KEY_SOURCE_IDS, offered, shownLists} from '../../../renderer/key-sources.js';
 
-const read = path => fs.readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(`../../../${path}`, import.meta.url), 'utf8');
 const CARDS = ['activity-render.js', 'activity-run-card.js', 'activity-few-jobs.js', 'activity-basics.js'].map(name => [name, read(`renderer/pages/${name}`)]);
 // The words a run card or its header may not draw (comments are skipped below).
 const INTERNAL = [/companies checked/, /Started: /, /'This Mac'/, /employer ideas?\b/, /How employer checks are scheduled/, /numberStrip/, /employers? checked/, /Not scored/, /'primary/];   // one filled action per panel: Look further is secondary

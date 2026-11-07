@@ -4,6 +4,8 @@
 // cards, never here. Your details: the voluntary survey answers. Read from the Profile's outline and saved block by block on every store (IPC
 // textOutline / textEdit); the model is renderer/experience-profile-model.js. Cards are the Application answers' folds (.answer-item.qa-fold).
 // Guarded by test/unit/renderer/experience-profile.test.js and test/unit/renderer/experience-cards.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {cardEdit, el, loadingCard, pill} from '../components.js';
 import {chipLine, doneButton, setEditing} from '../card-shell.js';
 import {keep, swr} from '../swr.js';
@@ -35,9 +37,9 @@ export async function loadExperienceProfile(tab = 'experience') {
   if (!$(boxId)) return;
   const box = $(boxId);
   await swr('profile-parts', () => window.pilot.textOutline('profile'), {
-    loading: () => box.replaceChildren(loadingCard('Reading your Profile…')),
+    loading: () => box.replaceChildren(loadingCard(t('pagesCommon.readingProfile'))),
     paint: (result, kept) => { if (kept || !editing.size) { setParts(tab, result.items); draw(tab); if (tab === 'experience') splitGaps(tab); } },   // a refresh never redraws a card under edit
-    fail: result => message(messageId, `Couldn't read your Profile: ${result?.error || 'try again'}`, 'error'),
+    fail: result => message(messageId, t('pagesDynamicExperience.m138', {"value1": result?.error || t('pagesAuditFirst.a67')}), 'error'),
   });
 }
 
@@ -84,7 +86,7 @@ function draw(tab) {
 // The card's Edit/Add: the shared header button (components.js cardEdit), at the right of the title line.
 const editButton = (tab, each) => {
   const empty = isEmpty(each.part);
-  return cardEdit(empty ? 'Add' : 'Edit', each.title.toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
+  return cardEdit(empty ? t('pagesCommon.add') : t('pagesStatus.edit'), each.title.toLowerCase(), event => { event.preventDefault(); startEdit(tab, each); });
 };
 
 function card(tab, each) {
@@ -98,7 +100,7 @@ function card(tab, each) {
   const count = key === 'strengths' ? part?.lines.length : 0, toReview = key === 'gaps' ? pendingCount(part) : 0;
   // The CV gaps are decided row by row (Confirm skill / Dismiss), never edited as lines: no Edit on that card (owner review fix 6, 18 Oct 2026).
   head.append(icon('file-text'), el('h4', '', title), ...(part?.note ? [el('span', 'muted small', part.note)] : []), ...(count ? [el('span', 'muted small', String(count))] : []),
-    ...(toReview ? [pill(`${toReview} to review`, 'warn')] : []), el('span', 'exp-part-gap'), ...(key === 'gaps' ? gapsTeaser(toReview) : [editButton(tab, each)]));
+    ...(toReview ? [pill(t('pagesDynamicExperience.m139', {"toReview": toReview}), 'warn')] : []), el('span', 'exp-part-gap'), ...(key === 'gaps' ? gapsTeaser(toReview) : [editButton(tab, each)]));
   setEditing(box, editing.has(key));
   box.append(head, editing.has(key) ? editorOf(key, box) : key === 'gaps' ? gapsBody(part, (item, state) => pressGap(tab, part, item, state), {tidied: gapsTidied, onUndo: () => undoGaps(tab)}) : body(key, part));
   return box;
@@ -107,9 +109,9 @@ function card(tab, each) {
 // The CV gaps card's header (mockups 09 + 06): folded beside Education it says what waits and "Review →"; open (the full-width list) only its lead stays.
 function gapsTeaser(toReview) {
   const words = el('div', 'gaps-teaser');
-  words.append(el('b', '', toReview ? `${toReview} suggestion${toReview === 1 ? '' : 's'} to review` : 'Nothing to review'),
+  words.append(el('b', '', toReview ? t('pagesDynamicExperience.m140', {"toReview": toReview, count: toReview}) : t('pagesProfile.nothingReview')),
     el('span', 'muted small gaps-lead', GAPS_LEAD));
-  return [el('span', 'link small gaps-review', 'Review →'), words];
+  return [el('span', 'link small gaps-review', t('pagesEmployers.reviewArrow')), words];
 }
 
 // A panel with one part: its title is the panel's own (index.html), so the button goes in that title line (the slot next to it).
@@ -127,7 +129,7 @@ function solo(tab, each) {
 function body(key, part) {
   if (key === 'surveys') return surveyRead(part, {sorting});
   const box = el('div', 'exp-part-body');
-  if (isEmpty(part)) { box.append(el('p', 'muted', 'Not set yet.')); return box; }
+  if (isEmpty(part)) { box.append(el('p', 'muted', t('pagesEmployers.notSetYet'))); return box; }
   if (key === 'strengths') {
     for (const group of groupsOf(part)) {
       if (!group.label) { box.append(el('p', '', group.items[0])); continue; }
@@ -155,7 +157,7 @@ function body(key, part) {
     tip.append(icon('info'));
     tip.setAttribute('title', words);
     tip.setAttribute('role', 'img');
-    tip.setAttribute('aria-label', `Note: ${words}`);
+    tip.setAttribute('aria-label', t('pagesShortActivity.m120', {"words": words}));
     const last = box.children.at?.(-1) ?? box.children[box.children.length - 1];
     (last || box).append(tip);
   }
@@ -211,7 +213,7 @@ async function write(open) {
     draw(tab);
   }
   if (result.items) keep('profile-parts', {...result, ok: true});
-  return result.ok ? {ok: true} : {ok: false, error: result.error || 'couldn\'t save it'};
+  return result.ok ? {ok: true} : {ok: false, error: result.error || t('pagesFieldsStatus.saveFailed')};
 }
 
 function editorOf(key, card) {

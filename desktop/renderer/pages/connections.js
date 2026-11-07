@@ -1,4 +1,7 @@
 // Settings → connections: Apply with Claude, how often, Always on (the extension's card: extension-setup.js).
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {aiFamily} from '../ai-name.js';
 import {alwaysOnNeeds, requirementRows} from '../always-on-needs.js';
 import {notionConnected, openNotionConnect} from './notion-connect.js';
@@ -44,12 +47,12 @@ export function showScheduleState(next = shared.nextRuns || {}) {
   try { google = JSON.parse(localStorage.getItem('serviceChecks') || 'null')?.google?.connected ?? null; } catch {}
   const when = at => nextWord(at);
   const state = {
-    search: value('search') === '0' ? ['Off'] : ['On', [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
-    mail: value('mail') === '0' ? ['Off'] : google === false ? ['Connect Google', '', '', 'warn'] : ['On', [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
+    search: value('search') === '0' ? [t('pagesCommon.off')] : [t('pagesCommon.on'), [place('search'), when(searchAt)].filter(Boolean).join(' · ')],
+    mail: value('mail') === '0' ? [t('pagesCommon.off')] : google === false ? [t('pagesConnections.connectGoogle'), '', '', 'warn'] : [t('pagesCommon.on'), [place('mail'), when(next.mail)].filter(Boolean).join(' · ')],
   };
   document.querySelectorAll('[data-schedule-state]').forEach(node => {
-    const [label, where, at, tone] = state[node.dataset.scheduleState] || ['Off'];
-    node.className = `task-state${tone === 'warn' ? ' is-warn' : label === 'On' ? ' is-on' : ''}`;
+    const [label, where, at, tone] = state[node.dataset.scheduleState] || [t('pagesCommon.off')];
+    node.className = `task-state${tone === 'warn' ? ' is-warn' : label === t('pagesCommon.on') ? ' is-on' : ''}`;
     const detail = [where, at].filter(Boolean).join(' · ');
     node.replaceChildren(label, ...(detail ? [Object.assign(document.createElement('small'), {textContent: detail})] : []));
   });
@@ -67,42 +70,42 @@ function savedToast(title, body = '', section = 'automation') {   // section: th
   setTimeout(() => toast.remove(), 3000);
 }
 // Both tabs that save at once (Automation, Notifications) show the line; updateRepo is shared, so the tab the person is on says "Updating…".
-const saveState = text => { for (const id of ['automation-state', 'notifications-state']) $(id).textContent = text || 'Changes save automatically'; };
+const saveState = text => { for (const id of ['automation-state', 'notifications-state']) $(id).textContent = text || t('pagesLettersData.autoSave'); };
 function updateRepo() {
   if (!shared.state.settings.cloud?.repo) return;
   clearTimeout(repoTimer);
   repoTimer = setTimeout(async () => {
-    saveState(`Updating ${shared.state.settings.cloud.repo}…`);
+    saveState(t('pagesShortActivity.m83', {"repo": shared.state.settings.cloud.repo}));
     const result = await window.pilot.cloudConnect();
     saveState('');
-    if (result.ok) savedToast('GitHub updated ✓', `${result.repo} follows the new settings.`);
-    else toastMessage('GitHub not updated', `${result.error} Your change is saved on this Mac; change a setting again to retry.`, {card: 'cloud'}, 'bad');
+    if (result.ok) savedToast(t('pagesConnections.githubUpdated'), t('pagesDynamicSetup.m81', {"repo": result.repo}));
+    else toastMessage(t('pagesConnections.githubNotUpdated'), t('pagesDynamicSetup.m82', {"error": result.error}), {card: 'cloud'}, 'bad');
   }, REPO_DELAY);
 }
 async function saveSchedule(select) {
   const schedule = scheduleWith(shared.state.settings.schedule, select.dataset.schedule, /^\d+$/.test(select.value) ? Number(select.value) : select.value);
   await window.pilot.saveSettings({schedule});
   shared.state = await window.pilot.state();
-  const task = select.closest('.task-row')?.querySelector('b')?.textContent || 'Schedule';
-  savedToast('Saved ✓', `${task}: ${select.selectedOptions[0]?.textContent}`);
+  const task = select.closest('.task-row')?.querySelector('b')?.textContent || t('pagesFinalLabels.schedule');
+  savedToast(t('pagesCommon.saved'), `${task}: ${select.selectedOptions[0]?.textContent}`);
   updateRepo();
 }
 async function saveReminders() {
   await window.pilot.saveSettings({focusReminders: $('set-remind').checked});
   $('focus-remind').checked = $('set-remind').checked;
   shared.state = await window.pilot.state();
-  savedToast('Saved ✓', `Focus reminders ${$('set-remind').checked ? 'on' : 'off'}`);
+  savedToast(t('pagesCommon.saved'), t('pagesDynamicSetup.m83', {"value1": $('set-remind').checked ? t('pagesDynamicSetup.on') : t('pagesDynamicSetup.off')}));
 }
 // The target lives in Notion's ⚙️ Search settings: written only when it really changed (it's a slow round trip).
 async function saveTarget() {
   const input = $('set-target');
   if (!input.value || input.value === input.dataset.saved) return;
-  saveState(`Saving the daily target to ${storeName()}…`);
+  saveState(t('pagesDynamicSetup.m84', {"storeName": storeName()}));
   const ok = await saveDailyTarget(input);
   saveState('');
   if (!ok) { input.value = input.dataset.saved || ''; return; }
   input.dataset.saved = input.value;
-  savedToast('Saved ✓', `Daily application target: ${input.value}`);
+  savedToast(t('pagesCommon.saved'), t('pagesDynamicSetup.m85', {"value": input.value}));
   updateRepo();
 }
 
@@ -111,10 +114,10 @@ export function showCloud() {
   const cloud = shared.state.settings.cloud;
   showRunMode();
   $('cloud-status').textContent = cloud?.repo
-    ? osText(`${cloud.repo} · runs the schedule above, even with the Mac off`) : 'Runs your search every day in a private repository of yours, even when this Mac is off. Until then it runs on this Mac while the app is open.';
-  $('cloud-connect').textContent = cloud?.repo ? 'Update' : 'Turn on';
+    ? osText(t('pagesDynamicSetup.m86', {"repo": cloud.repo})) : t('pagesConnections.githubDaily');
+  $('cloud-connect').textContent = cloud?.repo ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   $('cloud-open').hidden = $('cloud-more').hidden = !cloud?.repo;
-  $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut('Turn off Always on', () => $('cloud-off').click())] : []));
+  $('cloud-more').replaceChildren(...(cloud?.repo ? [wayOut(t('pagesFinalLabels.turnOffAlways'), () => $('cloud-off').click())] : []));
   showCloudPill();
   showCloudNeeds();
   $('auto-search').disabled = !!cloud?.repo;
@@ -129,7 +132,7 @@ const aiKey = () => (aiFamily() === 'openai' ? {name: 'OPENAI_API_KEY', provider
 const cloudMissing = () => alwaysOnNeeds(shared.state, aiKey());   // renderer/always-on-needs.js
 function showCloudNeeds() {
   const on = !!shared.state.settings.cloud?.repo, {rows, done} = requirementRows(shared.state, aiKey(), {githubOn: on});
-  $('aon-own-count').textContent = done === 3 ? 'All three are set up: Always on is fully active.' : `All three are needed for Always on to run: Notion, an API key and GitHub (${done} of 3 set up).`; // about Notion
+  $('aon-own-count').textContent = done === 3 ? t('pagesConnections.allThree') : t('pagesDynamicSetup.m87', {"done": done}); // about Notion
   for (const row of rows) {
     const id = row.id === 'ai' ? 'key' : 'notion', go = $(`aon-${id}-go`);
     $(`aon-${id}-pill`).replaceChildren(pill(row.pill[0], row.pill[1], {dot: true}));
@@ -146,30 +149,30 @@ function showCloudNeeds() {
 }
 function showCloudPill() {
   const on = !!shared.state.settings.cloud?.repo;
-  $('cloud-pill').replaceChildren(cloudWaiting && !on ? pill('Setting up', 'info', {dot: true}) : on ? pill('On', 'good', {dot: true}) : pill('Off', 'neutral'));
+  $('cloud-pill').replaceChildren(cloudWaiting && !on ? pill(t('pagesConnections.settingUp'), 'info', {dot: true}) : on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
 }
 
 // "Connected to …", or, when the setup found a repository from an earlier setup, which one and since when.
 function connectedTo(result) {
-  if (!result.existing) return `Connected to ${result.repo}`;
-  const since = new Date(result.existing.createdAt).toLocaleDateString([], {day: 'numeric', month: 'short', year: 'numeric'});
-  return `Using your existing private repository ${result.repo} (created ${since})`;
+  if (!result.existing) return t('pagesDynamicSetup.m88', {"repo": result.repo});
+  const since = displayDate(new Date(result.existing.createdAt), {day: 'numeric', month: 'short', year: 'numeric'});
+  return t('pagesDynamicSetup.m89', {"repo": result.repo, "since": since});
 }
 
 // Telegram buttons, always on (the user's own Cloudflare Worker; lib/telegram-cloud.js).
 function showTelegramCloud() {
   const on = shared.state.settings.telegramCloud;
   show($('tg-cloud'), !!shared.state.settings.cloud?.repo);
-  $('tg-cloud-status').textContent = on ? osText(`${on.url.replace('https://', '')} · your bot answers from Cloudflare, even with the Mac off`)
-    : 'Your bot answers buttons and commands only while this app is open.';
-  $('tg-cloud-pill').replaceChildren(on ? pill('On', 'good', {dot: true}) : pill('Off', 'neutral'));
+  $('tg-cloud-status').textContent = on ? osText(t('pagesDynamicSetup.m90', {"value1": on.url.replace('https://', '')}))
+    : t('pagesConnections.botLocal');
+  $('tg-cloud-pill').replaceChildren(on ? pill(t('pagesCommon.on'), 'good', {dot: true}) : pill(t('pagesCommon.off'), 'neutral'));
   // Off: "Set up" opens the steps and the token field (Turn on sits beside the field). On: Update in the row, Turn off in ⋯.
   show($('tg-cloud-setup'), !on);
   if (on) show($('tg-cloud-form'), false);
   if (on) $('tg-cloud-actions').prepend($('tg-cloud-on')); else $('tg-cloud-form').querySelector('.inline').append($('tg-cloud-on'));
-  $('tg-cloud-on').textContent = on ? 'Update' : 'Turn on';
+  $('tg-cloud-on').textContent = on ? t('pagesCommon.update') : t('pagesCommon.turnOn');
   show($('tg-cloud-more'), !!on);
-  $('tg-cloud-more').replaceChildren(...(on ? [wayOut('Turn off Telegram buttons', () => $('tg-cloud-off').click())] : []));
+  $('tg-cloud-more').replaceChildren(...(on ? [wayOut(t('pagesFinalLabels.turnOffTelegram'), () => $('tg-cloud-off').click())] : []));
   refreshServices();  // Settings → Connections: the GitHub and Cloudflare cards move between Available and Connected
 }
 let cloudUrls = null;
@@ -181,12 +184,12 @@ export async function showGoogle() {
   const google = await window.pilot.googleStatus().catch(() => ({connected: false}));
   const left = google.connected ? google.scopes?.missing || [] : [];
   googleOnly = left.length === 1 ? left[0] : undefined;
-  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected${google.email ? ` as ${google.email}` : ''}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? 'Sign-in expired: connect again' : 'Not connected';
+  $('google-status').textContent = google.connected ? t('pagesShortActivity.m87', {"value1": left.length ? '⚠' : '✓', "value2": google.email ? t('pagesShortActivity.m88', {"email": google.email}) : '', "value3": left.length ? `. ${google.scopes.say}` : ''}) : google.error ? t('pagesConnections.signInExpired') : t('pagesCommon.notConnected');
   $('google-status').classList.toggle('on', !!google.connected);
-  $('google-connect').textContent = google.connected ? 'Reconnect' : 'Connect Google';
+  $('google-connect').textContent = google.connected ? t('pagesConnections.reconnect') : t('pagesConnections.connectGoogle');
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").
   $('google-more').hidden = !google.connected;
-  $('google-more').replaceChildren(...(google.connected ? [wayOut('Disconnect Gmail', disconnectGoogle)] : []));
+  $('google-more').replaceChildren(...(google.connected ? [wayOut(t('pagesFinalLabels.disconnectGmail'), disconnectGoogle)] : []));
   setGmailConnected(google.connected);   // the Suggestions card and ⌘K follow (pages/gmail-offer.js)
   noteCheck({google: {connected: !!google.connected, email: google.email || ''}});  // the cards above follow
 }
@@ -194,21 +197,21 @@ export async function showGoogle() {
 export function showTelegram() {
   const on = !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId);
   $('telegram-more').hidden = !on;
-  $('telegram-more').replaceChildren(...(on ? [wayOut('Disconnect Telegram', disconnectTelegram)] : []));
+  $('telegram-more').replaceChildren(...(on ? [wayOut(t('pagesFinalLabels.disconnectTelegram'), disconnectTelegram)] : []));
 }
 async function disconnectTelegram() {
-  message('telegram-message', 'Disconnecting…', 'waiting');
+  message('telegram-message', t('pagesConnections.disconnecting'), 'waiting');
   const result = await window.pilot.telegramDisconnect().catch(error => ({ok: false, error: error.message}));
   if (!result.ok) { message('telegram-message', result.error, 'error'); return; }
   await loadSettings();
-  message('telegram-message', `Disconnected: no more messages${result.github === true ? ', from this Mac or Always on' : ''}. ` +
-    `The bot${result.bot ? ` @${result.bot}` : ''} is still yours in Telegram (@BotFather → /deletebot removes it).`, 'ok');
+  message('telegram-message', t('pagesDynamicSetup.m91', {"value1": result.github === true ? t('pagesDynamicSetup.fromMacAlways') : ''}) +
+    t('pagesDynamicSetup.m92', {"value1": result.bot ? ` @${result.bot}` : ''}), 'ok');
 }
 async function disconnectGoogle() {
-  message('google-message', 'Disconnecting…', 'waiting');
+  message('google-message', t('pagesConnections.disconnecting'), 'waiting');
   const result = await window.pilot.googleDisconnect().catch(error => ({ok: false, error: error.message}));
   message('google-message', result.ok
-    ? `Disconnected: Gmail and Calendar are no longer read${result.github === true ? ', here or by Always on' : ''}.${result.revoked ? '' : ' Google could not be reached: remove Jobadabra under myaccount.google.com → Security → Third-party access.'}`
+    ? t('pagesDynamicSetup.m93', {"value1": result.github === true ? t('pagesDynamicSetup.hereAlways') : '', "value2": result.revoked ? '' : t('pagesDynamicSetup.googleRevokeHelp')})
     : result.error, result.ok ? 'ok' : 'error');
   showGoogle();
 }
@@ -241,7 +244,7 @@ export async function init() {
     shared.state = await window.pilot.state();
     showRunMode();
     showCloud();
-    savedToast('Runs while the app is open', 'Always on is off. Your GitHub repository stays there.');
+    savedToast(t('pagesConnections.localRuns'), t('pagesAuditFirst.a47'));
   }));
   $('run-mode-more').addEventListener('click', () => openSetting('cloud'));
   document.querySelectorAll('[data-schedule]').forEach(select => select.addEventListener('change', () => { saveSchedule(select); showScheduleState(); }));
@@ -255,21 +258,21 @@ export async function init() {
   });
   $('tg-cloud-on').addEventListener('click', async () => {
     $('tg-cloud-on').disabled = true;
-    message('tg-cloud-message', 'Setting up your bot helper on Cloudflare…');
+    message('tg-cloud-message', t('pagesConnections.botCloudflare'));
     const result = await window.pilot.telegramCloudOn($('tg-cloud-token').value);
     $('tg-cloud-on').disabled = false;
     if (result.ok) { $('tg-cloud-token').value = ''; shared.state = await window.pilot.state(); showTelegramCloud(); }
-    message('tg-cloud-message', result.ok ? 'Done ✓ Try a button in Telegram.' : result.error, result.ok ? 'ok' : 'error');
+    message('tg-cloud-message', result.ok ? t('pagesConnections.telegramTry') : result.error, result.ok ? 'ok' : 'error');
   });
   $('tg-cloud-off').addEventListener('click', async () => {
     await window.pilot.telegramCloudOff();
     shared.state = await window.pilot.state(); showTelegramCloud();
-    message('tg-cloud-message', 'Off: the app answers your bot again while it\'s open.', 'ok');
+    message('tg-cloud-message', t('pagesConnections.botOff'), 'ok');
   });
   $('cloud-connect').addEventListener('click', async () => {
-    if (cloudMissing().length) { showCloudNeeds(); message('cloud-message', 'Finish Notion and the API key above first, then press Turn on.', 'bad'); return; } // about Notion
+    if (cloudMissing().length) { showCloudNeeds(); message('cloud-message', t('pagesConnections.finishSetup'), 'bad'); return; } // about Notion
     $('cloud-connect').disabled = true;
-    if (!cloudWaiting) message('cloud-message', 'Opening GitHub sign-in…');
+    if (!cloudWaiting) message('cloud-message', t('pagesConnections.openingGithub'));
     const result = await window.pilot.cloudConnect();
     $('cloud-connect').disabled = false;
     if (result.needsRepo) {
@@ -277,11 +280,11 @@ export async function init() {
       cloudUrls = result;
       show($('cloud-steps'));
       if (!cloudWaiting) { window.pilot.openExternal(result.installUrl); cloudSince = Date.now(); }
-      message('cloud-message', 'Signed in to GitHub ✓ Now pick the repository on GitHub. Waiting for the install…', 'waiting');
+      message('cloud-message', t('pagesConnections.githubSigned'), 'waiting');
       cloudWaiting = true;
       showCloudPill();
       if (Date.now() - cloudSince < 10 * 60 * 1000) setTimeout(() => $('cloud-connect').click(), 5000);
-      else { cloudWaiting = false; showCloudPill(); message('cloud-message', 'Still not installed. Install Jobadabra on a repository on GitHub, then press Turn on again.', 'error'); }
+      else { cloudWaiting = false; showCloudPill(); message('cloud-message', t('pagesConnections.notInstalled'), 'error'); }
       return;
     }
     cloudWaiting = false;
@@ -290,7 +293,7 @@ export async function init() {
       show($('cloud-steps'), false);
       $('cloud-repo').replaceChildren(...result.repos.map(name => Object.assign(document.createElement('option'), {value: name, textContent: name})));
       show($('cloud-choose'));
-      message('cloud-message', 'Jobadabra is installed on several repositories: choose the one to use.', '');
+      message('cloud-message', t('pagesConnections.chooseRepo'), '');
       return;
     }
     if (!result.ok) { message('cloud-message', result.error, 'error'); return; }
@@ -298,7 +301,7 @@ export async function init() {
     shared.state = await window.pilot.state();
     showCloud();
     message('cloud-message', `${connectedTo(result)} ✓ ` +
-      `${result.secrets.length} keys stored as encrypted secrets. The first run follows your schedule; press Search now to start one right away.`, 'ok');
+      t('pagesDynamicSetup.m94', {"length": result.secrets.length}), 'ok');
   });
   window.pilot.onCloudStep(step => {
     if (step.code) {
@@ -306,9 +309,9 @@ export async function init() {
       const box = $('cloud-message');
       box.className = 'message';
       const code = Object.assign(document.createElement('b'), {className: 'device-code', textContent: step.code});
-      const copy = Object.assign(document.createElement('button'), {className: 'link', textContent: 'Copy'});
-      copy.addEventListener('click', () => { navigator.clipboard.writeText(step.code); copy.textContent = 'Copied ✓'; });
-      box.replaceChildren('In the browser tab that opened, enter this code and approve Jobadabra:', document.createElement('br'),
+      const copy = Object.assign(document.createElement('button'), {className: 'link', textContent: t('pagesCommon.copy')});
+      copy.addEventListener('click', () => { navigator.clipboard.writeText(step.code); copy.textContent = t('pagesProfile.copied'); });
+      box.replaceChildren(t('pagesConnections.githubCode'), document.createElement('br'),
         code, ' ', copy, document.createElement('br'), Object.assign(document.createElement('span'), {className: 'muted small', textContent: step.url}));
     }
     else message('cloud-message', step.text);
@@ -321,7 +324,7 @@ export async function init() {
     show($('cloud-choose'), false);
     shared.state = await window.pilot.state();
     showCloud();
-    message('cloud-message', `${connectedTo(result)} ✓ ${result.secrets.length} keys stored as encrypted secrets.`, 'ok');
+    message('cloud-message', t('pagesDynamicSetup.m95', {"connectedTo": connectedTo(result), "length": result.secrets.length}), 'ok');
   });
   $('cloud-create').addEventListener('click', () => window.pilot.openExternal(cloudUrls.createUrl));
   $('cloud-install').addEventListener('click', () => window.pilot.openExternal(cloudUrls.installUrl));
@@ -330,10 +333,10 @@ export async function init() {
     await window.pilot.cloudOff();
     shared.state = await window.pilot.state();
     showCloud();
-    message('cloud-message', 'Off. The app searches while it is open. Your GitHub repository is still there: delete it on GitHub, or turn this on again later.');
+    message('cloud-message', t('pagesConnections.githubOff'));
   });
   window.pilot.onTelegramWaiting(username => {
-    message('telegram-message', `Now open t.me/${username} in Telegram and press Start (waiting up to 2 minutes)…`);
+    message('telegram-message', t('pagesDynamicSetup.m96', {"username": username}));
     window.pilot.openExternal(`https://t.me/${username}`);
   });
   $('auto-search').addEventListener('change', () => window.pilot.setAutomation({autoSearch: $('auto-search').checked}));
@@ -350,24 +353,24 @@ export async function init() {
   });
   $('google-warning-go').addEventListener('click', async () => {
     $('google-warning-dialog').close();
-    message('google-message', 'Finish the sign-in in your browser: on Google\'s warning page press Advanced, then Go to Jobadabra (unsafe). Closed that page? Press Cancel sign-in here.');
+    message('google-message', t('pagesConnections.googleWarning'));
     const result = await waitGoogle(() => window.pilot.googleConnect({only: googleOnly}));
-    message('google-message', result.ok ? 'Connected ✓' : result.error, result.ok ? 'ok' : result.cancelled ? '' : 'error');
+    message('google-message', result.ok ? t('pagesProfile.connected') : result.error, result.ok ? 'ok' : result.cancelled ? '' : 'error');
     showGoogle();
   });
   $('set-notion-oauth').addEventListener('click', async () => {
     // Not connected yet (Notion later): the same prompt as everywhere, with the advantages.
     if (!notionConnected()) { openNotionConnect({reason: 'none', where: 'settings', from: 'settings', then: () => loadSettings()}); return; }
-    message('set-notion-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
+    message('set-notion-message', t('pagesConnections.waitingNotion'));
     const result = await waitNotion(() => window.pilot.notionOAuth({from: 'settings-reconnect'}));
-    message('set-notion-message', result.ok ? 'Reconnected ✓' : result.error || 'Not connected.', result.ok ? 'ok' : 'error');
+    message('set-notion-message', result.ok ? t('pagesProfile.reconnected') : result.error || t('pagesProfile.notConnected'), result.ok ? 'ok' : 'error');
     if (result.ok) { shared.state = await window.pilot.state(); loadSettings(); }
   });
   $('set-notion-save').addEventListener('click', async () => {
     const value = $('set-notion').value.trim();
     if (!value) return;
     const result = await window.pilot.notionConnect(value);
-    if (!result.ok) { alertLine('NOTION_TOKEN', result.error || `Not found: ${(result.missing || []).join(', ') || 'columns missing'}`); return; }
+    if (!result.ok) { alertLine('NOTION_TOKEN', result.error || t('pagesDynamicSetup.m97', {"value1": (result.missing || []).join(', ') || t('pagesDynamicSetup.columnsMissing')})); return; }
     $('set-notion').value = '';
     loadSettings();
     // Connected with the data still on this Mac: the move, in the same prompt as every connect (pages/notion-connect.js "Move to Notion").
@@ -379,7 +382,7 @@ export async function init() {
       const value = $(`set-${id}`).value.trim();
       if (!value) return;
       const checked = check ? await window.pilot[check](value) : {ok: true};   // a free call: is the key valid?
-      if (!checked.ok) { alertLine(name, checked.error || 'That key was rejected'); return; }
+      if (!checked.ok) { alertLine(name, checked.error || t('pagesFinalLabels.keyRejected')); return; }
       try {
         await window.pilot.saveSecret(name, value);
       } catch (error) {

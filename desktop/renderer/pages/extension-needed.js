@@ -1,10 +1,12 @@
 // Apply with no Chrome extension to fill the form (lib/extension-gate.js answers {needsExtension}; preload.cjs raises pilot-needs-extension):
 // a dialog says why the extension is needed and what installing it takes, then leads to the install steps in Settings → Connections.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {openSetting} from './settings.js';
 
-const TITLE = {absent: 'Install the Chrome extension first', off: 'Turn the Chrome extension on first'};
-const GO = {absent: 'Install the extension', off: 'Show me how'};
+const TITLE = {absent: t('pagesDetails.installFirst'), off: t('pagesDetails.enableFirst')};
+const GO = {absent: t('pagesDetails.installExtension'), off: t('pagesDetails.showHow')};
 
 export function init() {
   const dialog = $('extension-needed-dialog');

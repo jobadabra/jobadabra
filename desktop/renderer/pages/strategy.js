@@ -1,4 +1,7 @@
 // Strategy page: the search strategy and its coverage. Entry: loadStrategy and init; the cards are main-goals.js, strategy-targets.js and strategy-suggestions.js, their drafts and one save bar strategy-cards.js, shared state strategy-state.js. Guarded by: advice-events, save-progress, activity-selection-kept, strategy-cards tests.
+import {date as displayDate} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {openInNotion} from './notion-connect.js';
 import {el, openMenu, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -33,14 +36,14 @@ export async function loadStrategy() {
     // The saved copy draws the page at once, but not its alerts about what changes: "Your Profile is empty" and "N scores kept" came back
     // for a few seconds after every refresh, from a copy older than the rebuild that cleared them (7 Oct 2026). The fresh read shows them.
     renderStrategy({...saved.result, profile_empty: false, previous: 0, outdated: null});
-    $('strategy-synced').textContent = `Saved ${savedAgo(saved.at)} · updating…`;
+    $('strategy-synced').textContent = t('pagesShortSettings.m368', {"savedAgo": savedAgo(saved.at)});
   } else if (!strategyState.strategyShown) strategySkeleton();
   const data = await window.pilot.strategyData().catch(error => ({ok: false, error: error.message}));
   if (!data.ok) { $('strategy-view-loading')?.remove(); message('strategy-load', data.error, 'error'); return; }
   message('strategy-load', '');
   $('strategy-view-loading')?.remove();
   renderStrategy(data);
-  $('strategy-synced').textContent = `Synced ${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+  $('strategy-synced').textContent = t('pagesShortSettings.m369', {"when": displayDate(new Date(), {hour: '2-digit', minute: '2-digit'})});
 }
 // First load: every card in its final shape, greyed (the same rows, icons and chips), and a pill in the header.
 function strategySkeleton() {
@@ -65,7 +68,7 @@ function strategySkeleton() {
   const goals = el('section', 'card main-goals is-loading'), strip = el('div', 'goal-strip main-goal-tiles');
   for (let i = 0; i < 4; i++) strip.append(bone('w-label'), bone('w-name tall'));
   goals.append(el('div', 'card-head'), strip);
-  goals.firstChild.append(Object.assign(el('h3'), {textContent: 'Main goals'}));
+  goals.firstChild.append(Object.assign(el('h3'), {textContent: t('pagesCommon.mainGoals')}));
   $('strategy-main-goals').replaceChildren(goals);
   $('strategy-scores').replaceChildren(...['settings', 'layers', 'pin', 'chart'].map(glyph => {
     const line = el('div', 'score-bar is-loading');
@@ -81,7 +84,7 @@ function strategySkeleton() {
   insight.hidden = false;
   insight.classList.add('is-loading');
   $('strategy-insight-text').replaceChildren(bone('w-80'), bone('w-60'));
-  const pill = el('span', 'loading-pill', 'Loading strategy…');
+  const pill = el('span', 'loading-pill', t('pagesSetup.loadingStrategy'));
   pill.id = 'strategy-view-loading';
   $('strategy-synced').replaceChildren(pill);
 }
@@ -92,8 +95,8 @@ export async function init() {
   // Few new jobs twice in a row (lib/few-jobs.js): a dot on Strategy until it is opened.
   window.pilot.onFewJobs?.(() => show($('strategy-dot'), true));
   document.querySelector('.nav[data-view=strategy]')?.addEventListener('click', () => show($('strategy-dot'), false));
-  window.pilot.onVisitRead?.(answer => toastMessage(answer.fits === undefined ? `Read ${answer.jobs} jobs from ${answer.name}` : `Read ${answer.jobs} jobs from ${answer.name}, ${answer.fits} matching your search`,
-    answer.fits ? 'Your next jobs check scores the matching ones: those that fit your profile join your Jobs list.' : 'The reading works; none of these match your role words and places, so your Jobs list stays the same.', {view: 'jobs'}, 'good'));
+  window.pilot.onVisitRead?.(answer => toastMessage(answer.fits === undefined ? t('pagesDynamicStrategy.m426', {"jobs": answer.jobs, "name": answer.name}) : t('pagesDynamicStrategy.m427', {"jobs": answer.jobs, "name": answer.name, "fits": answer.fits}),
+    answer.fits ? t('pagesMisc.nextScore') : t('pagesMisc.readingNoMatch'), {view: 'jobs'}, 'good'));
   for (const tab of document.querySelectorAll('.strategy-tabs [data-tab]')) tab.addEventListener('click', () => showTab(tab.dataset.tab));
   // One bar for every Strategy draft, "Save strategy changes" (owner, 18 Oct 2026, decision 4); leaving with a draft asks (Keep editing / Discard all / Save).
   const bar = strategyBar({redraw: renderCards, reload: loadStrategy, entriesOf: name => entriesOf(strategyState.lastStrategy, name)});
@@ -101,7 +104,7 @@ export async function init() {
   $('profile-empty-rebuild').addEventListener('click', () => $('strategy-redo').click());   // the same Rebuild from CV as the Profile page
   // ⋯ → the one Notion link (owner, 18 Oct 2026, review fix 10): the search settings page, else the Profile (Job preferences live there).
   const sourceKey = () => (shared.state.notion?.NOTION_SEARCH_SETTINGS_PAGE ? 'NOTION_SEARCH_SETTINGS_PAGE' : 'NOTION_PROFILE_PAGE_ID');
-  $('strategy-more').addEventListener('click', () => openMenu($('strategy-more'), [{label: 'View source in Notion', icon: 'link', run: event => openInNotion(sourceKey(), event)}]));   // about Notion
+  $('strategy-more').addEventListener('click', () => openMenu($('strategy-more'), [{label: t('pagesDetails.viewSource'), icon: 'link', run: event => openInNotion(sourceKey(), event)}]));   // about Notion
   $('strategy-jobs').addEventListener('click', () => openView('jobs'));
 }
 

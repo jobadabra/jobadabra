@@ -1,6 +1,8 @@
 // Profile → Your portrait (spec 2026-10-28-your-portrait-design.md, owner 28 Oct 2026): a read-only text the app writes about you. No control edits it; each statement's
 // evidence chip opens the source tab where that source can be corrected, and the next run follows. Drawn from lib/portrait.js status(): not_yet (what it needs, with
 // progress), current, outdated (the text stays, "Updating soon"). Guarded by test/unit/renderer/portrait-tab.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {el, pill, tag} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {$} from './core.js';
@@ -13,7 +15,7 @@ const openTab = key => document.querySelector(`[data-profile-tab="${key}"]`)?.cl
 
 const progressRow = ({label, have, need}) => {
   const row = el('li', 'portrait-need');
-  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? 'Done' : 'Needed', have >= need ? 'good' : 'neutral'));
+  row.append(el('span', '', label), el('span', 'muted', `${have} / ${need}`), pill(have >= need ? t('pagesCommon.done') : t('pagesMisc.needed'), have >= need ? 'good' : 'neutral'));
   return row;
 };
 
@@ -25,7 +27,7 @@ function sectionBlock(section, evidence, open) {
   const list = el('div', 'portrait-statements');
   for (const statement of section.statements) {
     const one = el('div', 'portrait-statement'), sources = el('div', 'portrait-sources');
-    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: `Open ${PROFILE_TABS[evidence[id].tab] || 'the source'} to correct it`, onClick: () => open(evidence[id].tab)})));
+    sources.append(...statement.evidence.filter(id => evidence[id]).map(id => tag(evidence[id].label, {title: t('pagesDynamicProfileReady.m292', {"value1": PROFILE_TABS[evidence[id].tab] || t('pagesExtraLabels.theSource')}), onClick: () => open(evidence[id].tab)})));
     one.append(el('p', 'portrait-text', statement.text), sources);
     list.append(one);
   }
@@ -33,11 +35,11 @@ function sectionBlock(section, evidence, open) {
   return block;
 }
 
-const VIEWS = [['structured', 'Structured'], ['letter', 'Plain text']];
+const VIEWS = [['structured', t('pagesExtraLabels.structured')], ['letter', t('pagesExtraLabels.plainText')]];
 const viewSwitch = (view, onView) => {
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
-  group.setAttribute('aria-label', 'How to read your portrait');
+  group.setAttribute('aria-label', t('pagesMisc.portraitRead'));
   for (const [key, label] of VIEWS) {
     const button = Object.assign(el('button', key === view ? 'is-active' : '', label), {type: 'button'});
     button.dataset.portraitView = key;
@@ -50,7 +52,7 @@ const viewSwitch = (view, onView) => {
 /** The plain view: the portrait as a recommendation letter, raw coherent text on the sheet, no label, chip or control (owner, 28 Oct 2026). */
 const letterSheet = status => {
   const sheet = el('article', 'portrait-sheet portrait-letter');
-  sheet.append(...status.letter.map(paragraph => el('p', 'portrait-letter-text', paragraph)), el('p', 'portrait-letter-end', `Written by Jobadabra, ${status.updated}`));
+  sheet.append(...status.letter.map(paragraph => el('p', 'portrait-letter-text', paragraph)), el('p', 'portrait-letter-end', t('pagesDynamicProfileReady.m293', {"updated": status.updated})));
   return sheet;
 };
 
@@ -62,24 +64,24 @@ const letterSheet = status => {
 export function portraitView(status, {open = openTab, view = 'structured', onView = () => {}, note = ''} = {}) {
   const box = el('div', 'portrait-view');
   if (status.state === 'not_yet') {
-    box.append(emptyState({icon: 'user', chip: 'Not yet', title: 'Not enough to describe you yet',
-      text: 'Your portrait appears as we learn about you: your CV, your form fills and your interview reviews. You cannot edit it; correct the sources and it follows.'}));
+    box.append(emptyState({icon: 'user', chip: t('pagesExtraLabels.notYet'), title: t('pagesProfileMore.notEnough'),
+      text: t('pagesProfileMore.portraitHelp')}));
     const needs = el('ul', 'portrait-needs');
     needs.append(...status.progress.map(progressRow));
     box.append(needs);
     return box;
   }
   if (!status.sections.length) {   // enough to write, nothing written yet: the first run is pending, or it could not run (Gitar on #2334)
-    box.append(emptyState({icon: 'user', chip: note ? 'Not written' : 'Updating soon', title: note ? 'Your portrait could not be written yet' : 'Writing your first portrait',
-      text: note || 'It is written when you open this tab, from what we know about you.'}));
+    box.append(emptyState({icon: 'user', chip: note ? t('pagesExtraLabels.notWritten') : t('pagesProfileMore.updatingSoon'), title: note ? t('pagesProfileMore.portraitFailed') : t('pagesProfileMore.writingPortrait'),
+      text: note || t('pagesProfileMore.portraitOnOpen')}));
     return box;
   }
   const showLetter = view === 'letter' && status.letter?.length > 0;
   const line = el('header', 'portrait-masthead'), cited = new Set(status.sections.flatMap(section => section.statements.flatMap(each => each.evidence)));
   const title = el('div', 'portrait-title');
-  title.append(el('h2', '', 'Your portrait'), el('span', 'muted small', `Updated ${status.updated} · from ${cited.size} sources`));
+  title.append(el('h2', '', t('pagesDetails.yourPortrait')), el('span', 'muted small', t('pagesShortReady.m262', {"updated": status.updated, "size": cited.size})));
   line.append(title);
-  if (status.state === 'outdated') line.append(note ? pill('Not updated', 'bad', {title: note}) : pill('Updating soon', 'info'));   // a note says why it is not (the AI key was refused)
+  if (status.state === 'outdated') line.append(note ? pill(t('pagesProfileMore.notUpdated'), 'bad', {title: note}) : pill(t('pagesProfileMore.updatingSoon'), 'info'));   // a note says why it is not (the AI key was refused)
   if (status.letter?.length) line.append(viewSwitch(showLetter ? 'letter' : 'structured', onView));
   box.append(line);
   if (showLetter) { box.append(letterSheet(status)); return box; }
@@ -88,14 +90,14 @@ export function portraitView(status, {open = openTab, view = 'structured', onVie
   const tabs = new Map();
   for (const id of cited) { const info = status.evidence[id]; if (info) tabs.set(info.tab, (tabs.get(info.tab) || 0) + 1); }
   const built = el('footer', 'portrait-built');
-  built.append(el('span', 'portrait-label', 'Built from'), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: `Open ${PROFILE_TABS[tab] || tab}`, onClick: () => open(tab)})));
+  built.append(el('span', 'portrait-label', t('pagesProfileMore.builtFrom')), ...[...tabs].map(([tab, count]) => tag(`${PROFILE_TABS[tab] || tab} · ${count}`, {title: t('pagesShortReady.m263', {"value1": PROFILE_TABS[tab] || tab}), onClick: () => open(tab)})));
   sheet.append(built);
   box.append(sheet);
   return box;
 }
 
-const KEY_REFUSED = 'Your AI key was refused, so the portrait cannot be written. Paste a working key in Settings → Connections → AI, then open this tab again.';
-const REASONS = {no_ai: 'Choose your AI in Settings → Connections → AI, then open this tab again.', failed: 'The writer could not run just now. Open this tab again to retry.'};
+const KEY_REFUSED = t('pagesAuditThird.a143');
+const REASONS = {no_ai: t('pagesAuditThird.a144'), failed: t('pagesAuditThird.a145')};
 let view = 'structured', last = null, loaded = false;
 try { view = localStorage.getItem('portraitView') === 'letter' ? 'letter' : 'structured'; } catch { /* storage blocked: the default view */ }
 function draw(status, note = '') {

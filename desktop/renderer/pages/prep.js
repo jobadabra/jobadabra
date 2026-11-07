@@ -1,5 +1,7 @@
 // Interview prep kit (Focus → Prepare): built from the job's description, your Profile and your past interviews,
 // on the job's Notion page (src/ai/prep.py). When the role is unknown it asks for the description first.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$, message, show} from './core.js';
 import {loadFocus, markPrep} from './focus.js';
 import {toastMessage} from './startup.js';
@@ -18,7 +20,7 @@ let timer = null;
 
 function reset(item) {
   current = item;
-  $('prep-title').textContent = `Prepare for ${item.company || item.via || 'the interview'}`;
+  $('prep-title').textContent = t('pagesDynamicProfileReady.m296', {"value1": item.company || item.via || t('pagesExtraLabels.theInterview')});
   $('prep-context').textContent = [item.job, item.badge].filter(Boolean).join(' · ');
   $('prep-text').value = '';
   $('prep-url').value = '';
@@ -26,7 +28,7 @@ function reset(item) {
   show($('prep-open'), false);
   message('prep-message', '');
   $('prep-go').disabled = false;
-  $('prep-go').textContent = 'Prepare the interview';
+  $('prep-go').textContent = t('pagesCommon.prepareInterview');
 }
 
 function tick() {
@@ -36,7 +38,7 @@ function tick() {
 
 async function build() {
   if (!running || running.pageId !== current.page_id) {
-    step = 'Starting';
+    step = t('pagesJobs.starting');
     const pageId = current.page_id;
     running = {pageId, started: Date.now(),
       promise: window.pilot.interviewPrep(pageId).catch(error => ({ok: false, text: error.message}))};
@@ -54,7 +56,7 @@ async function build() {
   $('prep-go').disabled = false;
   if (result.needs_description) {
     show($('prep-describe'), true);
-    $('prep-go').textContent = 'Save and prepare';
+    $('prep-go').textContent = t('pagesProfileMore.savePrepare');
     message('prep-message', result.text, 'info');
     $('prep-text').focus();
     return;
@@ -64,10 +66,10 @@ async function build() {
     hintAfter($('prep-message'), shared.state, () => import('./settings.js').then(({openSetting}) => { openSetting('ai'); }));   // Free AI wrote it: stronger prep with an own key
     // The kit where it is: its Notion page, else the job's page here, Prep tab (the button's words follow: the Notion label is index.html's).
     const jobUrl = current.url || current.job_url;
-    $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : 'Open the prep kit';
+    $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : t('pagesProfileMore.openPrep');
     show($('prep-open'), !!(current.notion_url || jobUrl));
-    $('prep-go').textContent = 'Prepare the interview again';
-    toastMessage('Interview preparation ready', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`, {view: 'jobs', job: jobUrl || ''}, 'good');
+    $('prep-go').textContent = t('pagesProfileMore.prepareAgain');
+    toastMessage(t('pagesProfileMore.prepReady'), t('pagesDynamicProfileReady.m297', {"value1": current.company || current.via || '', "job": current.job, "byStore": byStore(t('pagesProfileMore.notionPage'), t('pagesDynamicProfileReady.page'))}), {view: 'jobs', job: jobUrl || ''}, 'good');
     loadFocus();
   }
 }
@@ -98,9 +100,9 @@ export async function init() {
     if (!current) return;
     if (!$('prep-describe').hidden) {
       const text = $('prep-text').value.trim(), url = $('prep-url').value.trim();
-      if (!text && !url) { message('prep-message', 'Paste the job description or its link.', 'error'); return; }
+      if (!text && !url) { message('prep-message', t('pagesProfileMore.pasteDescription'), 'error'); return; }
       $('prep-go').disabled = true;
-      message('prep-message', 'Saving the description on the job…', 'waiting');
+      message('prep-message', t('pagesProfileMore.savingDescription'), 'waiting');
       const saved = await window.pilot.describeJob(current.page_id, text, url).catch(error => ({ok: false, text: error.message}));
       $('prep-go').disabled = false;
       if (!saved.ok) { message('prep-message', saved.text, 'error'); return; }

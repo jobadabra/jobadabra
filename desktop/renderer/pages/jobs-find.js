@@ -3,6 +3,9 @@
 // rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/unit/renderer/find-card.test.js.
 // It is in the page's first paint (owner, 26 Oct 2026: it came 2-3 s late and pushed the list down): as last drawn (renderer/late-blocks.js), else
 // index.html's skeleton in its place; activity.js draws the real state with its first runs answer, not 2 s later. Guarded by: test/unit/renderer/late-blocks.test.js.
+import {number as displayNumber} from '../../i18n/format.js';
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wand, wire} from '../magic.js';
@@ -33,11 +36,11 @@ const button = (text, handler, className = 'primary') => Object.assign(el('butto
 // This search's one number (find-card-model.js addedSoFar): the jobs it added to your list, a green "+9 added" beside the title (owner, 24 Oct 2026: scoring and its
 // queue are internal, never shown). A search that added nothing yet shows no pill while it runs, and a quiet "No jobs added" when it is done.
 // A search that ended at the 3-minute limit (model.partial, #3108) is an amber "Partial" when it added nothing: never the quiet "No jobs added" of a search that finished and found nothing.
-const addedPill = (model, done) => (model.added ? pill(`+${model.added.toLocaleString('en-US')} added`, 'good') : done && model.partial ? pill('Partial', 'warn') : done ? pill('No jobs added', 'neutral') : null);
+const addedPill = (model, done) => (model.added ? pill(t('pagesShortJobs.m177', {"displayNumber": displayNumber(model.added)}), 'good') : done && model.partial ? pill(t('pagesJobs.partial'), 'warn') : done ? pill(t('pagesJobs.noAdded'), 'neutral') : null);
 function findHead(title, model, lead, {done = false, spinner = false} = {}) {
   const row = el('div', 'find-head'), pillNode = addedPill(model, done);
   if (spinner) row.append(Object.assign(el('span', 'spinner'), {ariaHidden: 'true'}));
-  row.append(el('h3', 'find-title', title), ...(pillNode ? [pillNode] : []), el('span', 'muted find-scope', 'This search'));
+  row.append(el('h3', 'find-title', title), ...(pillNode ? [pillNode] : []), el('span', 'muted find-scope', t('pagesJobs.thisSearch')));
   const box = el('div', 'find-head-box');
   box.append(row, el('p', 'muted find-lead', lead));
   return box;
@@ -49,12 +52,12 @@ const again = label => wand(button(label, () => start(), 'primary find-again'));
 // Employers read as progress (bar + "1,953 of 2,251"); before the first count the bar slides, so the card never looks still. The raw count of
 // downloaded listings is not shown: 130k+ is noise (owner, 19 Oct 2026).
 function readProgress(model) {
-  const box = el('div', 'find-progress'), n = value => value.toLocaleString('en-US'), progress = readProgressModel(model.employers);
+  const box = el('div', 'find-progress'), n = value => displayNumber(value), progress = readProgressModel(model.employers);
   const head = el('div', 'progress-head'), bar = el('div', progress.kind === 'count' ? 'bar' : 'bar is-sliding'), fill = el('span');
   if (progress.kind === 'count') fill.style.width = `${progress.percent}%`;
   bar.append(fill);
-  const count = progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}${model.employers.stopped ? ' · time up, the rest is read first next search' : ''}` : 'Starting…';
-  head.append(el('span', '', 'Employers checked'), el('span', 'muted', count));
+  const count = progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}${model.employers.stopped ? t('pagesAuditSecond.a97') : ''}` : t('pagesCommon.starting');
+  head.append(el('span', '', t('pagesJobs.employersChecked')), el('span', 'muted', count));
   box.append(head, bar);
   return box;
 }
@@ -64,9 +67,9 @@ function drawEmpty(card) {
   card.className = 'card find-card is-empty magic';
   const twinkles = [0, 1, 2].map(() => Object.assign(el('span', 'magic-twinkle'), {ariaHidden: 'true'}));
   twinkles.forEach(node => node.append(icon('sparkle')));
-  card.replaceChildren(...twinkles, tile('search'), el('span', 'eyebrow', 'Get started'), el('h2', 'magic-title', 'Find jobs'),
-    el('p', 'muted subtitle magic-sub', 'Reads employer sites and job boards, scores each job against your profile, and lists the first matches in under a minute. The rest keeps coming.'),
-    button('Find jobs', () => start(), 'primary magic-go'));
+  card.replaceChildren(...twinkles, tile('search'), el('span', 'eyebrow', t('pagesJobs.getStarted')), el('h2', 'magic-title', t('pagesCommon.findJobs')),
+    el('p', 'muted subtitle magic-sub', t('pagesJobsHelp.searchHelp')),
+    button(t('pagesCommon.findJobs'), () => start(), 'primary magic-go'));
   wire(card);
 }
 
@@ -92,28 +95,28 @@ function draw(model) {
     lines.addEventListener('scroll', () => { liveFollow = lines.scrollHeight - lines.scrollTop - lines.clientHeight < 24; });   // scrolled up to read: stay there
     // The live updates fold (owner, 24 Oct 2026): a native <details>, open by default; the choice survives the card's redraws.
     const live = Object.assign(el('details', 'find-live'), {open: liveOpen});
-    live.append(el('summary', '', 'Live updates'), lines);
+    live.append(el('summary', '', t('pagesJobs.liveUpdates')), lines);
     live.addEventListener('toggle', () => { liveOpen = live.open; });
     const steps = el('div', 'find-steps-row');   // the chips, with the fold's label at the right of the same row; the lines open below it
     steps.append(chips, live);
-    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
+    card.replaceChildren(findHead(t('pagesControlStatus.findingJobs'), model, model.added ? t('pagesAuditSecond.a98') : t('pagesControlStatus.firstJobs'), {spinner: true}), readProgress(model), steps);
     if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
     const head = model.partial
-      ? findHead('Search ended at the time limit', model, `${limitWords(model.partial).replace(/^./, c => c.toUpperCase())}. The rest is read first next time.`, {done: true})
-      : findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
-    if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
-    card.replaceChildren(head, again('Find jobs again'));
+      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, t('pagesDynamicJobs.m223', {"value1": limitWords(model.partial).replace(/^./, c => c.toUpperCase())}), {done: true})
+      : findHead(t('pagesControlStatus.searchDone'), model, t('pagesAuditSecond.a99'), {done: true});
+    if (model.runId) head.append(wand(button(t('pagesJobs.fullReport'), () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
+    card.replaceChildren(head, again(t('pagesCommon.findAgain')));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
-    const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
-    card.replaceChildren(head, again('Find jobs'));
+    const head = findHead(t('pagesControlStatus.findMore'), model, t('pagesAuditSecond.a100'));
+    card.replaceChildren(head, again(t('pagesCommon.findJobs')));
   } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
     const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out
-    card.replaceChildren(findHead('Find jobs did not start', model, model.problem),
-      label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: 'Find jobs', retry: () => start()}) : openSetting('plan')), 'primary find-again') : again('Try again'));
+    card.replaceChildren(findHead(t('pagesControlStatus.findNotStarted'), model, model.problem),
+      label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: t('pagesCommon.findJobs'), retry: () => start()}) : openSetting('plan')), 'primary find-again') : again(t('pagesCommon.tryAgainShort')));
   } else if (model.state === 'failed') {
-    card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
-      button('Try again', () => start()));
+    card.replaceChildren(cardHead(t('pagesControlStatus.searchStopped'), t('pagesControlStatus.searchNotFinished'), {subtitles: [model.problem || t('pagesAuditSecond.a101')]}),
+      button(t('pagesCommon.tryAgainShort'), () => start()));
   }
   card.removeAttribute('aria-busy');
   show(card, visible(model.state));

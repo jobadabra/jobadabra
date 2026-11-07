@@ -3,6 +3,8 @@
 // changes per text, saved through the page's one save bar (save-bar.js; owner, 18 Oct 2026: one bar per page, no bar of its own since D's swap);
 // a tab only draws and calls change(name, change).
 // A change to the same block replaces the earlier one. Guarded by test/unit/renderer/profile-tabs-render.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {plainError} from '../run-warnings.js';
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
@@ -18,7 +20,7 @@ const keyOf = change => (change.op === 'append' || change.op === 'insert' ? `${c
 // (save-bar.js pageSaveBar: Profile's profileBar, Strategy's), the tab it sits on and the card's name in "N unsaved changes in <label>".
 export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange = () => {}, bar, tab = '', label = ''} = {}) {
   // No page bar yet (Strategy before its cards are drawn, a unit test): the shared bar in this card, never buttons of its own.
-  bar ||= pageSaveBar({host: body.parentNode, area: label || 'this card', words: 'Your changes are kept as a draft until you save.'});
+  bar ||= pageSaveBar({host: body.parentNode, area: label || t('pagesExtraLabels.thisCard'), words: t('pagesAuditSecond.a140')});
   const pending = Object.fromEntries(names.map(name => [name, new Map()]));
   let state = {items: {}, store: '', link: {}};
   const size = () => names.reduce((sum, name) => sum + pending[name].size, 0);
@@ -60,9 +62,9 @@ export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange 
         const failed = results.find(result => !result.ok);
         return failed ? {ok: false, error: failed.error} : {ok: true, results};
       }, {
-        loading: () => body.replaceChildren(loadingCard('Reading it from your store…')),
+        loading: () => body.replaceChildren(loadingCard(t('pagesStrategy.readingStore'))),
         paint: (answer, kept) => settle(answer.results, kept),
-        fail: failed => body.replaceChildren(el('p', 'message error', `Couldn't read it: ${plainError(failed.error)}`)),
+        fail: failed => body.replaceChildren(el('p', 'message error', t('pagesDynamicProfileReady.m283', {"plainError": plainError(failed.error)}))),
       });
     },
     redraw: () => redraw(),
@@ -77,6 +79,6 @@ export function lineInput(view, name, item, typed) {
   const field = input(typed.get(item.id) ?? original, text => {
     const change = changeFor(item, text);
     if (text === original) { typed.delete(item.id); view.undo(name, change); } else { typed.set(item.id, text); view.change(name, change); }
-  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : 'Not set', ariaLabel: item.label || 'Line'});
+  }, {placeholder: item.hint ? `e.g. ${shown(item.hint)}` : t('pagesCommon.notSet'), ariaLabel: item.label || t('pagesStrategy.line')});
   return labelled(item.label ? shown(item.label) : '', field, !item.label);
 }

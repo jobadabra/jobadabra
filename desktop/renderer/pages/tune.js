@@ -1,6 +1,8 @@
 // Tune my strategy (a Suggestions row on Focus and Strategy when your results support a change, and ⌘K): the changes your own results
 // support (src/tune.py, no AI), each one ticked or not;
 // only the ticked ones are written to ⚙️ Search settings (main.js tuneApply → lib/strategy.js retune).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el} from '../components.js';
 import {$, message, show} from './core.js';
@@ -39,12 +41,12 @@ export async function openTune() {
   $('tune-list').replaceChildren();
   for (const id of ['tune-apply', 'tune-cancel']) show($(id), false);
   message('tune-message', '');
-  $('tune-basis').textContent = 'Reading your results…';
+  $('tune-basis').textContent = t('pagesMisc.readingResults');
   if (!$('tune-dialog').open) $('tune-dialog').showModal();
   const answer = await window.pilot.tuneProposals();
   if (!answer?.ok) {
     $('tune-basis').textContent = '';
-    message('tune-message', answer?.error || 'Could not read your results.', 'bad');
+    message('tune-message', answer?.error || t('pagesMisc.readResultsFailed'), 'bad');
     return;
   }
   showBasis(answer);
@@ -56,13 +58,13 @@ export async function openTune() {
 
 async function apply() {
   const ids = [...$('tune-list').querySelectorAll('input:checked')].map(box => box.value);
-  if (!ids.length) { message('tune-message', 'Tick at least one change, or close.', 'bad'); return; }
+  if (!ids.length) { message('tune-message', t('pagesMisc.tickChange'), 'bad'); return; }
   $('tune-apply').disabled = true;
   const result = await withSaveProgress(words => message('tune-message', words, 'waiting'), () => window.pilot.tuneApply(ids)).catch(error => ({ok: false, error: error.message}));
   countTicked();
-  if (!result?.ok) { message('tune-message', result?.error || 'Nothing changed. Try again.', 'bad'); return; }
+  if (!result?.ok) { message('tune-message', result?.error || t('pagesMisc.nothingChanged'), 'bad'); return; }
   $('tune-dialog').close();
-  toastMessage(`Strategy tuned: ${result.changed.length} change${result.changed.length === 1 ? '' : 's'}. The next search uses ${result.changed.length === 1 ? 'it' : 'them'}.`, '', {view: 'strategy'}, 'good');
+  toastMessage(t('pagesDynamicStrategy.m428', {"length": result.changed.length, count: result.changed.length}), '', {view: 'strategy'}, 'good');
 }
 
 export function init() {

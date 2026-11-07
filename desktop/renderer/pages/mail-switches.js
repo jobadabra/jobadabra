@@ -1,6 +1,8 @@
 // The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows; the news mails, #news-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {el} from '../components.js';
 import {plainError} from '../run-warnings.js';
@@ -11,8 +13,8 @@ const mail = createMailState(window.pilot, () => draw(), {
   saved: result => { if (result.addressSaved) window.dispatchEvent(new Event('notify-refresh')); },   // e-mail is on now: the Email switch and every row read the state again
 });   // window.pilot is the bridge object: its methods are read at call time
 // What each row says in the app, in the person's words (the website's `when` is Admin's wording: "the person's day, Mondays by default").
-const WHEN = {'app-matches': 'When a search finds new jobs', 'app-needs-you': 'When an application is waiting for you', 'app-applied': 'When Full automation sends an application', 'app-weekly': 'Your week in one e-mail, on Mondays',
-  'app-stopped': 'When Always on stops working', 'app-nothing': 'When days pass with no new match'};
+const WHEN = {'app-matches': t('pagesExtraLabels.newJobsNotify'), 'app-needs-you': t('pagesExtraLabels.waitingNotify'), 'app-applied': t('pagesExtraLabels.fullAutoNotify'), 'app-weekly': t('pagesExtraLabels.weeklyEmail'),
+  'app-stopped': t('pagesExtraLabels.alwaysStopsNotify'), 'app-nothing': t('pagesExtraLabels.noMatchesNotify')};
 // The mails the Mac writes in every mode (an application waits, Full automation applied): they come from the Mac even when the card's line says Always on.
 const FROM_MAC = ['app-needs-you', 'app-applied'];
 const sentence = text => (text ? text[0].toUpperCase() + text.slice(1) : '');
@@ -22,13 +24,13 @@ export function switchRow(row, where, note = '', press = () => {}) {
   const wrap = el('div', 'mail-row');
   wrap.dataset.mailRow = row.id;
   const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.on});
-  box.setAttribute('aria-label', `E-mail me: ${row.name}`);
+  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {"name": row.name}));
   box.addEventListener('change', () => press(row.id, box.checked));
   const track = el('span', 'switch');
   track.append(box, el('span'));
   const words = el('span');
   const title = el('span', '', row.name);
-  if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', 'Suggested'));   // e-mail is not on yet: the row is off, and this is what the mode would start with
+  if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', t('pagesStrategy.suggested')));   // e-mail is not on yet: the row is off, and this is what the mode would start with
   words.append(title, el('span', 'muted small', [WHEN[row.id] || sentence(row.when), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
   const label = el('label', 'switch-row');
   label.append(track, words);

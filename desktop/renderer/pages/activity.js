@@ -1,5 +1,7 @@
 // Recent activity: the bar at the bottom of every screen and its panel. This file keeps init() (the start-up wiring) and re-exports the rest of the panel,
 // which lives in activity-*.js (basics, visits, results, render, run-card, mail, cards, panel, few-jobs). Guarded by the tests that read activity-*.js (test/activity-source.js).
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {toggleOnBar} from '../components.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
@@ -112,8 +114,8 @@ export async function init() {
     shared.selectedRun = null;
     try {
       const result = await window.pilot.checkMail().catch(error => ({ok: false, error: error.message}));
-      sayRefused('Gmail check did not start', result, {place: {activity: true}});   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
-      if (result.cloud) toastMessage('Gmail check started in your GitHub repo', 'Results arrive in Notion and Telegram in a few minutes.', {activity: true}, 'info');   // about Notion
+      sayRefused(t('pagesExtraCommon.gmailNotStarted'), result, {place: {activity: true}});   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
+      if (result.cloud) toastMessage(t('pagesActivityMore.gmailGithub'), t('pagesActivityMore.resultsSoon'), {activity: true}, 'info');   // about Notion
     } finally {
       $('check-mail').disabled = false;
       refreshActivity();
@@ -124,7 +126,7 @@ export async function init() {
   $('activity-warnings-more').addEventListener('click', () => {
     const open = $('activity-warnings-list').hidden;
     show($('activity-warnings-list'), open);
-    $('activity-warnings-more').textContent = open ? 'Hide details' : `View ${$('activity-warnings-list').children.length} details`;
+    $('activity-warnings-more').textContent = open ? t('pagesCommon.hideDetails') : t('pagesShortActivity.m60', {"length": $('activity-warnings-list').children.length});
   });
   $('activity-report').addEventListener('click', () => {
     const run = lastActivity?.runs?.find(each => each.id === detailRunId);
