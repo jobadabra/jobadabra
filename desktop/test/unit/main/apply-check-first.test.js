@@ -153,6 +153,7 @@ test('the existing Full automation confirmation still decides first: an unconfir
   assert.equal(answer.ok, false);
   assert.match(answer.error, /Full automation is off until you confirm it/);
   assert.equal(answer.check, undefined);
+  assert.deepEqual(answer.outcomes.map(item => [item.url, item.status]), JOBS.map(item => [item.url, 'not-started']), 'the same refusal enqueue gives: each job not started');
   assert.deepEqual(asked, []);
 });
 

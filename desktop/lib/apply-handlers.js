@@ -64,8 +64,8 @@ export function registerApplyHandlers(ctx) {
   const checkFirst = createCheckFirst({stored: storedCheck, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
     enqueue: (jobs, mode, batch, eligibility) => background.enqueue(jobs, mode, batch, eligibility), openInChrome: jobs => applyRunner.openInChrome(storage, jobs), chromeBlocked: needExtension});
   const holdForCheck = async (jobs, batch, eligibility) => {
-    const can = background.canQueue('auto', batch);   // the batch's own Full automation confirmation and the browser, refused before the check, as enqueue would
-    return can.ok ? await checkFirst.hold(jobs, {batch, eligibility}) : {...can, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: can.error}))};
+    const can = background.canQueue('auto', batch, jobs);   // the batch's own Full automation confirmation and the browser, refused before the check with enqueue's own answer
+    return can.ok ? await checkFirst.hold(jobs, {batch, eligibility}) : can;
   };
   ipcMain.handle('applyCheckRead', (_, plan, url) => checkFirst.readOne(plan, url));
   ipcMain.handle('applyCheckConfirm', async (_, plan, autoUrls) => {
