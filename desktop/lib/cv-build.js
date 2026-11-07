@@ -2,6 +2,7 @@
 // The AI only writes words (a summary, one role's bullets, a skills line); every fact (employer, title, dates, place, school) comes from the
 // person's answers in code, and a bullet holding a number the person never said is dropped. A built CV is saved as the main CV with its PDF and
 // marked as already imported, so the PDF import never reads it a second time. Guarded by test/unit/cv/cv-build.test.js.
+import {cvNotice} from '../i18n/cv-notices.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {nameOfClient} from './ai/names.js';
 import {MODEL, usd} from './cv.js';
@@ -23,10 +24,10 @@ a result or a qualification. If a job has little detail, write fewer bullets rat
 
 export function validAnswers(answers) {
   const jobs = (answers?.jobs || []).filter(j => text(j.company) || text(j.title));
-  if (!text(answers?.name)) return {ok: false, error: 'Add your name.'};
-  if (!jobs.length) return {ok: false, error: 'Add at least one job: an employer and your title.'};
-  if (jobs.length > MAX_JOBS) return {ok: false, error: `Add up to ${MAX_JOBS} jobs; the rest can wait for the next version.`};
-  if (jobs.some(j => !text(j.company) || !text(j.title))) return {ok: false, error: 'Each job needs an employer and your title.'};
+  if (!text(answers?.name)) return {ok: false, error: cvNotice('addName')};
+  if (!jobs.length) return {ok: false, error: cvNotice('addJob')};
+  if (jobs.length > MAX_JOBS) return {ok: false, error: cvNotice('maxJobs', {limit: MAX_JOBS})};
+  if (jobs.some(j => !text(j.company) || !text(j.title))) return {ok: false, error: cvNotice('jobNeeds')};
   return {ok: true, jobs};
 }
 
@@ -61,7 +62,7 @@ export async function buildCv(answers, apiKey, client = null) {
     jobs: checked.jobs.map((j, index) => ({index, employer: text(j.company), title: text(j.title), from: text(j.from), to: text(j.to), what_they_did: text(j.did)}))};
   const response = await ai.messages.create({model: MODEL, max_tokens: 4000, system: INSTRUCTIONS,
     messages: [{role: 'user', content: JSON.stringify(given)}], output_config: {format: {type: 'json_schema', schema: WRITE_SCHEMA}}}, {headers: {'x-jp-action': 'tailor'}});
-  if (response.stop_reason === 'refusal') throw new Error(`${nameOfClient(ai)} declined to write this CV`);
+  if (response.stop_reason === 'refusal') throw new Error(cvNotice('refused', {provider: nameOfClient(ai)}));
   const written = JSON.parse(response.content.find(block => block.type === 'text').text);
   return {cv: assemble(answers, written), usd: usd(response.usage)};
 }
