@@ -13,6 +13,7 @@ import shutil
 
 from PIL import Image, ImageDraw, ImageFilter
 
+import brand_icon
 import brand_mark as mm
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,7 +72,8 @@ def main():
     for name, targets in copies.items():
         for target in targets:
             shutil.copyfile(BRAND / name, ROOT / target)
-    print('Built brand/ icons (Jobadabra): the app icon, the sidebar logo, the favicon and the extension icons.')
+    brand_icon.write()   # the Mac app's Icon Composer icon (desktop/assets/icon.icon) from the same mark, so it never lags icon.png (#3510)
+    print('Built brand/ icons (Jobadabra): the app icon (and its Mac Icon Composer layer), the sidebar logo, the favicon and the extension icons.')
 
 if __name__ == '__main__':
     main()

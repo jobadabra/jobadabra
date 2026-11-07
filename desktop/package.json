@@ -113,7 +113,7 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "icon": "assets/icon.png",
+      "icon": "assets/icon.icon",
       "extendInfo": {
         "CFBundleDisplayName": "Jobadabra",
         "NSMicrophoneUsageDescription": "Jobadabra records your interview calls (with everyone's agreement) to transcribe them on this Mac.",
