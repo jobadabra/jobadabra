@@ -50,29 +50,38 @@ export const languageDue = coverage => !coverage.slice(-(LANGUAGE_EVERY - 1)).so
 /** The night's language: the seed picks one of the six other languages, replayable from the seed. */
 export const languageOf = seed => { const codes = Object.keys(OTHER_LANGUAGES); return codes[Math.floor(rng(Number(seed) + 11)() * codes.length)]; };
 
-/** The most lanes a batch can start (each takes MAX_GOALS moves of the pool; lanePool says when the pool is too small for one). */
-export const MAX_LANES = 8;
+/** The most lanes a batch can start: the move pool is split in this many parts, so each part holds a quarter of it (lanePool says when a part is too small to plan from). */
+export const MAX_LANES = 4;
 
 /** The lane a dispatch asked for: '' = 0 (a night), else a whole number 1..MAX_LANES; anything else throws before the app is seeded. */
 export function laneOf(raw = '') {
   if (raw === '' || raw === undefined) return 0;
-  const lane = Number(raw);
-  if (!Number.isInteger(lane) || lane < 1 || lane > MAX_LANES) throw new Error(`AGENT_LANE must be empty or a whole number from 1 to ${MAX_LANES}, got "${raw}"`);
+  const lane = /^\d+$/.test(String(raw)) ? Number(raw) : 0;
+  if (lane < 1 || lane > MAX_LANES) throw new Error(`AGENT_LANE must be empty or a whole number from 1 to ${MAX_LANES}, got "${raw}"`);
   return lane;
 }
 
 /** A lane's own seed (the batch seed + its number): its order, person, data shape and language differ from the other lanes'; lane 0 is a night and keeps the seed. */
 export const laneSeed = (seed, lane = 0) => Number(seed) + lane;
 
+/** A 32-bit mix of a text (murmur3's finalizer over FNV-1a): every bit of the text moves every bit of the result, so `% n` splits evenly. */
+const mix = text => {
+  let h = 2166136261;
+  for (const char of text) h = Math.imul(h ^ char.charCodeAt(0), 16777619);
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return h >>> 0;
+};
+
 /**
- * Lane n's slice of the move pool: the moves sorted and shuffled by the batch seed ALONE (every lane of the batch does the same), then cut in slices of MAX_GOALS, lane n taking the n-th. Two lanes with
- * one seed therefore never share a goal, and the batch needs no list of its lanes. Throws when the pool has fewer than MIN_GOALS moves left for this lane, so a lane too high never runs a thin plan.
- * Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time, each one on different paths/goals"): lanes drawn from one pool by their own seeds would overlap by chance.
+ * Lane n's part of the move pool: the moves whose own key, mixed with the batch seed, falls in part n of MAX_LANES. A move's part depends on that move and the seed ONLY, so two lanes of one seed never share a goal
+ * even when their palettes differ by a move (each lane seeds its own data shape, which can show or hide a ⌘K entry), and the batch needs no list of its lanes. Throws when the part holds fewer than MIN_GOALS moves,
+ * so a thin plan never runs. Why (7 Nov 2026, pz, owner via mac-50: "several AI persona at the same time, each one on different paths/goals"; code review: slicing a shuffled list by index put 196 of 200 seeds in
+ * two lanes' goals once their pools differed by one move): lanes drawn from one pool by their own seeds, or cut by position, would overlap.
  */
 export function lanePool(moves, seed, lane) {
-  const from = (lane - 1) * MAX_GOALS, slice = shuffle([...moves].sort((a, b) => moveKey(a).localeCompare(moveKey(b))), rng(seed)).slice(from, from + MAX_GOALS);
-  if (slice.length < MIN_GOALS) throw new Error(`lane ${lane}: the pool holds ${moves.length} moves, enough for ${Math.floor(moves.length / MAX_GOALS)} lanes of ${MAX_GOALS} goals`);
-  return slice;
+  const part = moves.filter(move => mix(`${seed}|${moveKey(move)}`) % MAX_LANES === lane - 1);
+  if (part.length < MIN_GOALS) throw new Error(`lane ${lane}: ${part.length} of the pool's ${moves.length} moves fall to this lane with seed ${seed}, fewer than ${MIN_GOALS}: start the batch with another seed`);
+  return part;
 }
 
 /** One goal order: `must` moves are in it (shuffled with the rest, not first), pending goals lead, with a representative for changed areas, then fresh moves fill the remaining slots. */

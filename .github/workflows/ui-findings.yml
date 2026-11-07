@@ -65,10 +65,10 @@ jobs:
       # Why (7 Nov 2026, pz): the Finder reads the open issues once, then files; two filings at the same time could open the same issue twice. A lane waits while an EARLIER run of this workflow is in progress (by run id, so the waiting ends and none cancels another); after 25 minutes it files anyway.
       - name: A lane's findings wait for an earlier filing to end
         if: startsWith(github.event.workflow_run.display_title, 'AI user agent · lane')
-        timeout-minutes: 27
+        timeout-minutes: 27   # the loop below stops at 25 minutes by the clock, so its own message prints before this limit
         run: |
-          for _ in $(seq 1 150); do
-            earlier=$(gh run list --repo "$REPO" --workflow ui-findings.yml --status in_progress --limit 50 --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length")
+          while [ "$SECONDS" -lt 1500 ]; do
+            earlier=$(gh run list --repo "$REPO" --workflow ui-findings.yml --status in_progress --limit 50 --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length") || earlier=0   # a failed read (502, rate limit) must not fail the filing
             if [ "$earlier" = 0 ]; then exit 0; fi
             echo "$earlier earlier filing(s) still running: waiting"; sleep 10
           done
