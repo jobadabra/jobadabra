@@ -4,9 +4,9 @@ Spec: [2026-11-07-ai-tester-bug-reports-design.md](../specs/2026-11-07-ai-tester
 
 ## Progress
 
-- [ ] 1/5 Spec and plan (this PR; docs only)
-- [ ] 2/5 `jobadabra-web`: bundle store `POST /agent/bundle` + Admin page `/admin/bug-bundle/<id>` by link (site first: nothing writes yet)
-- [ ] 3/5 App: tester mode + the bundle (job-tab picture, ±5 min logs, session record + job row, versions, mode chip) sent to the tester route
+- [x] 1/5 Spec and plan (this PR; docs only) (proof: none: merged as #3375, docs only)
+- [x] 2/5 `jobadabra-web`: bundle store `POST /agent/bundle` + Admin page `/admin/bug-bundle/<id>` by link (site first: nothing writes yet) (proof: none: merged as jobadabra-web#478, tests in that repo)
+- [x] 3/5 App: tester mode + the bundle (job-tab picture, ±5 min logs, session record + job row, versions, mode chip) sent to the tester route (proof: none: merged as #3406 7a590a5)
 - [ ] 4/5 Persona filing: bundle id on the finding, issue sections and labels, `source:persona` / `source:desktop-tester`, two clean nights close a persona issue (waits on the persona step-plan fix)
 - [ ] 5/5 Twin `--replay <id>` + the testing skill's "How to report" (skill text in the PR body; the owner rebuilds the zip)
 

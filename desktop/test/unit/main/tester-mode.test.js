@@ -2,7 +2,7 @@
 // Guard: privacy — a real person's app is never in tester mode, and a tester's bug never reaches the real feedback box (/api/feedback) or its counts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {testerMode} from '../../../lib/tester-mode.js';
+import {takeTesterKey, testerMode} from '../../../lib/tester-mode.js';
 import {registerFeedbackHandlers} from '../../../lib/feedback-handlers.js';
 
 test('a real person\'s app is never in tester mode, whatever the variables say', () => {
@@ -83,4 +83,21 @@ test('in a tester app the real feedback send refuses even if the dialog fell bac
     assert.equal((await handlers.sendTesterBug({}, INPUT)).ok, true);
     assert.match((await handlers.sendTesterBug({}, INPUT)).error, /Open Send feedback first/);
   } finally { globalThis.fetch = realFetch; }
+});
+
+test('the launcher\'s key leaves the process environment once, so a Claude session or CLI the app spawns cannot inherit it', () => {
+  const env = {JOBADABRA_TESTER: 'persona', JOBADABRA_E2E: '1', JOBADABRA_TESTER_KEY: 'SECRET'};
+  takeTesterKey(env);
+  assert.equal(env.JOBADABRA_TESTER_KEY, undefined);
+  assert.equal(testerMode(env), null, 'an environment copy without the key is not tester mode (the held key is only for process.env)');
+});
+
+test('the held key still makes the twin a tester app after it leaves process.env', () => {
+  const saved = {...process.env};
+  try {
+    Object.assign(process.env, {JOBADABRA_TESTER: 'desktop-tester', JOBADABRA_TWIN: '1', JOBADABRA_TESTER_KEY: 'SECRET'});
+    takeTesterKey(process.env);
+    assert.equal(process.env.JOBADABRA_TESTER_KEY, undefined);
+    assert.equal(testerMode()?.key, 'SECRET');
+  } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
 });
