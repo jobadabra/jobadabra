@@ -1,0 +1,5 @@
+<!-- Offline fixture: the public employer route is rendered inside an open shadow root. -->
+<!doctype html><html><head><meta charset="utf-8"><title>Example role</title></head><body>
+<main><h1>Example role</h1><p>Apply on the employer site.</p><div id="route"></div></main>
+<script>const root=document.querySelector('#route').attachShadow({mode:'open'});root.innerHTML='<a href="https://employer.example.test/apply/route-1" target="_blank">Visit employer website</a>';</script>
+</body></html>
