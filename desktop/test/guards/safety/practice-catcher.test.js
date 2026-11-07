@@ -86,3 +86,16 @@ test('every recorded case with a form loads and its pages sit on hosts the rule 
   const hosts = [...new Set(cases.flatMap(item => item.pages.map(page => new URL(page.url).host)))];
   assert.match(hostRulesFor(hosts, 1234), new RegExp(`MAP ${hosts[0].replace(/\./g, '\\.')} 127\\.0\\.0\\.1:1234`));
 });
+
+test('a Submit on a later page of a case is filed under the job\'s own address (the first page), so the app shows it on that job', async () => {
+  const one = oneCase('<form></form>');
+  fs.writeFileSync(path.join(one.dir, 'posting.html'), '<p>posting</p>');
+  one.pages = [{url: 'https://jobs.example.com/x/posting', file: 'posting.html'}, {url: 'https://jobs.example.com/x/apply', file: 'form.html'}];
+  const server = await startPractice({cases: [one]});
+  try {
+    await askAt(server.port, 'jobs.example.com', '/__caught', {method: 'POST', body: JSON.stringify({id: 't1', page: 'https://jobs.example.com/x/apply', how: 'submit', fields: [['email', 'a@example.com']]})});
+    const [entry] = server.caught();
+    assert.equal(entry.path, '/x/apply');
+    assert.equal(entry.job, 'https://jobs.example.com/x/posting');
+  } finally { await server.close(); }
+});

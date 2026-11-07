@@ -14,6 +14,7 @@ import {drawerHeader} from '../job-drawer/header.js';
 import {button, skeleton, stateCard} from '../job-drawer/parts.js';
 import {BODIES} from '../job-drawer/tabs-body.js';
 import {tabStrip} from '../job-drawer/tabs.js';
+import {forgetPractice} from '../job-drawer/application-practice.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
 import {plainError} from '../run-warnings.js';
@@ -119,6 +120,7 @@ export async function openJobPanel(job, tab = '') {
   else if (!state.url) state.back = null;
   state.job = job;
   state.url = job.url;
+  forgetPractice(job.url);   // a Submit caught since the drawer last closed shows (practice run only; nothing is cached otherwise)
   state.tab = tab ? tabKey(tab) : state.tabs.get(job.url) || 'overview';
   $('job-drawer-layer').hidden = false;
   for (const row of document.querySelectorAll('.job-row, .board-card')) row.classList.toggle('is-selected', row.dataset.url === job.url);
