@@ -1,5 +1,6 @@
 """Which desktop tests READ what changed (not import it): whole-tree walkers, readers of a named folder, ratchets, guards over the test files. Split out of tools/affected-tests.py (a pure move, 450-line rule, 7 Nov 2026).
 Also tells a package.json change that touches dependencies from one that only edits scripts (ts 4/4). Used only by tools/affected-tests.py; it holds no state and reads git and the changed package.json only."""
+import functools
 import json
 import re
 import subprocess
@@ -7,6 +8,12 @@ import subprocess
 TREE_RE = re.compile(r'''globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]|(?:execFile|exec|spawn)(?:Sync)?\([^\n]*['"]tools/''')   # walks the whole tree: picked for every desktop change
 
 IMPORT_LINE_RE = re.compile(r"""^[ \t]*(?:import\b.*|.*\bfrom\s+['"][^'"\n]+['"].*|.*\brequire\(.*)$""", re.M)
+
+
+@functools.lru_cache(maxsize=None)   # a test's text does not change during a run; stripped once, not on every call (ts 8/8: 0.6 s of every select)
+def without_imports(text):
+    """The text with its import lines removed (an import path is not a read)."""
+    return IMPORT_LINE_RE.sub('', text)
 
 
 def names_folder(text, changed):
@@ -18,7 +25,7 @@ def names_folder(text, changed):
         below = parts[1:] if parts[0] == 'desktop' else parts   # desktop/<folder>/... is named by <folder>, as extension/... is by extension
         folders = parts[2:-1] if parts[:2] == ['desktop', 'test'] else below[:1] if len(below) > 1 else []
         names |= set(folders) or {parts[-1]}
-    text = IMPORT_LINE_RE.sub('', text)
+    text = without_imports(text)
     return any(re.search(r"""['"`/]""" + re.escape(name) + r"""['"`/]""", text) for name in names)
 
 
@@ -30,13 +37,20 @@ RATCHETS = ('test/tooling/ci/hardcoded-page-words.test.js', 'test/tooling/ci/unp
 READS_TESTS_RE = re.compile(r'test-files|TEST_DIR|\\\.test\\\.')   # the helper, its constant, or a filter on `\.test\.js` names
 
 
+@functools.lru_cache(maxsize=None)   # what a test is does not depend on what changed: computed once per test per process (ts 8/8)
+def static_kind(name, text, body):
+    """(walks the whole tree, is a ratchet, reads the test files) of one test, whatever changed."""
+    walks = bool(TREE_RE.search(body)) or (bool(VARIABLE_WALK_RE.search(text)) and 'isDirectory' in text)
+    return walks, name.endswith(RATCHETS), bool(READS_TESTS_RE.search(body))
+
+
 def desktop_reader(name, text, body, relevant, tooling_changed):
     """Is this desktop test a reader of what changed? A whole-tree walk (git ls-files, globSync, a recursive walk from a root in a variable) counts for any change, but a test of our own tooling only for a tooling
     change; a reader of a folder it names counts when a changed file sits there; a ratchet always counts; a guard over the test files counts when a test file changed."""
-    tree = bool(TREE_RE.search(body)) or (bool(VARIABLE_WALK_RE.search(text)) and 'isDirectory' in text)
+    walks, ratchet, reads_tests = static_kind(name, text, body)
     named = 'readdirSync' in body and names_folder(body, relevant)
     tests_changed = any(f.startswith('desktop/test/') and f.endswith('.test.js') for f in relevant)
-    return (tree and (tooling_changed or '/tooling/' not in name)) or named or name.endswith(RATCHETS) or (tests_changed and bool(READS_TESTS_RE.search(body)))
+    return (walks and (tooling_changed or '/tooling/' not in name)) or named or ratchet or (tests_changed and reads_tests)
 
 
 MANIFEST_NOISE = ('scripts', 'version')   # the fields of a package.json that no installed code or test run depends on; any other field (dependencies, overrides, engines, type, main, imports, description: a Python guard reads it...) can change what a test loads

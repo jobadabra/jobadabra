@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 # What the checks are made of: their own scripts, the picker, the gate cache, the hook config.
-CHECKS_OWN = re.compile(r'^(tools/(pre-push-check|affected[-_](?:tests|readers)|gate-cache|check-slot|heavy-lock|gate-cache-ignore|file-size|journey-gate)[^/]*|\.claude/settings\.json|\.github/workflows/.*)$')
+CHECKS_OWN = re.compile(r'^(tools/(pre-push-check|affected[-_](?:tests|readers|reach)|gate-cache|check-slot|heavy-lock|gate-cache-ignore|file-size|journey-gate)[^/]*|\.claude/settings\.json|\.github/workflows/.*)$')
 DEPENDENCY = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml)$')
 # The paths the journey and ladder gates read (ship.sh slow_gate_paths).
 SLOW_GATE = ('extension', 'desktop/lib', 'desktop/test', 'desktop/e2e', 'desktop/scripts', 'app-core/src', 'docs/flows')
