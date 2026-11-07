@@ -16,7 +16,7 @@ import threading
 from . import batch_scope, slots
 
 _cv = threading.Condition()
-_heap = []   # (key, seq, titles, ask, box): the batches waiting, the nearest first
+_heap = []   # (key, seq, titles, ask, put, landed, refresh): waiting batches, nearest first
 _seq = itertools.count()
 _running = [0]   # worker threads alive
 _local = threading.local()
@@ -78,10 +78,10 @@ def handing():
     return getattr(_local, 'hand', None)
 
 
-def serve(batches, ask, land, parallel):
+def serve(batches, ask, land, parallel, rank=None):
     """Ask `batches` ([(key, titles)], key a comparable tuple: the nearest first) with `ask(titles)` in worker threads, `parallel` at once across ALL readers, and
     call `land(titles, result)` in THIS thread as each one lands (result is ask's answer, or its exception, which `serve` raises after the last batch landed).
-    A thread that is the hub also runs the other readers' posted work while it waits."""
+    A thread that is the hub also runs the other readers' posted work while it waits. Optional rank(titles) refreshes waiting priorities from the originating reader's view."""
     if not batches:
         return
     mine = _hub[0]
@@ -98,9 +98,13 @@ def serve(batches, ask, land, parallel):
                     land(titles, result)
             except Exception as error:  # noqa: BLE001 — a failed hand-over to scoring must not lose the sort's answers (the reader's final pass takes the jobs)
                 print(f'Warning: a sorted batch was not handed to scoring ({type(error).__name__}: {error}); the search goes on', flush=True)
+    def refresh(titles):
+        with batch_scope.using(views):
+            return rank(titles)
+
     with _cv:
         for key, titles in batches:
-            heapq.heappush(_heap, (key, next(_seq), titles, ask, functools.partial(box.put), landed))
+            heapq.heappush(_heap, (key, next(_seq), titles, ask, functools.partial(box.put), landed, refresh if rank else None))
         for _ in range(max(0, min(parallel - _running[0], len(_heap)))):   # every worker alive is asking (an idle one has left): a waiting batch needs a new one
             _running[0] += 1
             threading.Thread(target=_work, daemon=True, name='title-queue').start()
@@ -117,7 +121,19 @@ def _work():
             if not _heap:
                 _running[0] -= 1
                 return
-            key, _, titles, ask, put, landed = heapq.heappop(_heap)
+            # Why (7 Nov 2026, #2920): EURES hands jobs over before map resolution; newly learned geography must order waiting work too.
+            refreshed = []
+            for key, seq, titles, ask, put, landed, refresh in _heap:
+                try:
+                    refreshed.append((refresh(titles) if refresh else key, seq, titles, ask, put, landed, refresh))
+                except BaseException as error:  # noqa: BLE001 — a reader's failed refresh is delivered as its failed ask; other readers continue
+                    put(functools.partial(landed, titles, error))
+            _heap[:] = refreshed
+            heapq.heapify(_heap)
+            if not _heap:
+                _running[0] -= 1
+                return
+            key, _, titles, ask, put, landed, _refresh = heapq.heappop(_heap)
         try:
             with slots.ranked(key):   # Why (#2918 review): order applies at the model's slots too, not only at the pop
                 result = ask(titles)

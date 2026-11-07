@@ -7,12 +7,15 @@ def nearness(asked, search, in_my_place):
     share takes its nearest job's. Geo's kept answers only, no call; a place never placed is last (time_budget.near_best)."""
     from ..time_budget import near_best
     from ..ai.title_triage import _norm
-    near, key = near_best((search.get('locations') or {}).get('top_tier') or []), {}
+    near = near_best((search.get('locations') or {}).get('top_tier') or [])
+    by_title = {}
     for job in asked:
-        mine = (0 if in_my_place(job) else 1, near(job.get('location')))
-        title = _norm(job['title'])
-        key[title] = min(key.get(title, mine), mine)
-    return lambda title: key.get(title, (1, float('inf')))
+        by_title.setdefault(_norm(job['title']), []).append(job)
+
+    def key(title):
+        # Why (7 Nov 2026, #2920): the map may learn a reader's locations after its jobs reach sorting; the reader's shared map view updates in place, so recompute distance without rereading the map per title.
+        return min(((0 if in_my_place(job) else 1, near(job.get('location'))) for job in by_title.get(title, ())), default=(1, float('inf')))
+    return key
 
 
 def handing(asked, wanted_location):
