@@ -113,6 +113,38 @@ export const messages = {
   "reports": "Informes",
   "skipped": "Omitido",
   "aboutSeconds": "unos {count} segundos",
+  "modeFull": "Rellena formularios, crea e inicia sesión en cuentas de empresas (aceptando sus términos), abre el enlace o escribe el código de confirmación del correo si Gmail está conectado y revisa páginas de cuenta poco claras (captura a la IA, texto escrito oculto, máximo 10 al día). Nunca: enviar una candidatura, superar captchas o controles de bots, introducir códigos SMS.",
+  "modeAssist": "Rellena formularios. Tú aceptas los términos de la cuenta, pulsas sus botones e introduces sus códigos. Nunca: enviar una candidatura, superar captchas o controles de bots.",
+  "lookedIn": "Se buscó en {folders}.",
+  "foldersMissing": "{first} Ninguna de esas carpetas está en este equipo: un navegador con --user-data-dir o desconocido guarda el perfil en otro lugar. chrome://version muestra la ruta real del perfil.",
+  "foldersHere": "{first} En este equipo: {folders}.",
+  "listAnd": "{items} y {last}",
+  "liveNotYet": "La página aún no está abierta: se abre al empezar el rellenado. Pulsa Ver en directo de nuevo en un momento.",
+  "liveDropped": "La página en directo se cerró. Pulsa Ver en directo para volver a verla.",
+  "questionsReadFailed": "No se pudieron leer tus preguntas de {where}. Reintenta en un momento.",
+  "inboundReached": "Entrante: alcanzó {name}",
+  "inboundContacted": "Entrante: te contactó",
+  "inboundShare": "{reached} de los {contacted} contactos alcanzaron {name} ({percent} %)",
+  "inboundOpportunities": "{count} oportunidades te encontraron: reclutador, mensaje de LinkedIn, llamada",
+  "emptyFunnel": "Se completa al preparar y enviar candidaturas.",
+  "percentReached": "{percent} % alcanzado",
+  "clickSee": ". Haz clic para verlas",
+  "anEmail": "un correo",
+  "anEmailTitle": "Un correo",
+  "fromGmail": "De {sender} (Gmail)",
+  "notEligible": "No cumple los requisitos",
+  "insideWords": "También dentro de palabras más largas",
+  "wholeWords": "Solo palabra completa",
+  "changeClaude": "Cambiar con Claude…",
+  "townExample": "p. ej. tu localidad",
+  "placeExample": "p. ej. {place}",
+  "dateExample": "p. ej. 31 dic 1990",
+  "triageIneligible": "no cumple los requisitos",
+  "triageLogin": "requiere iniciar sesión",
+  "triageAccount": "pide crear una cuenta",
+  "triageUnsaved": "respuestas sin guardar",
+  "triageFacts": "cada respuesta es un dato guardado",
+  "consentSaveFailed": "No se pudo guardar ahora. Puedes activarlo en Ajustes → Notificaciones.",
   "aboutMinutes": {
     "one": "aproximadamente {count} minuto",
     "other": "aproximadamente {count} minutos"
@@ -172,5 +204,9 @@ export const messages = {
   "infoCount": {
     "one": "{count} información",
     "other": "{count} informaciones"
+  },
+  "oldScoreCount": {
+    "one": "{count} puntuación antigua",
+    "other": "{count} puntuaciones antiguas"
   }
 };

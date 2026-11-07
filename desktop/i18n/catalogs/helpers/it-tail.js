@@ -113,6 +113,38 @@ export const messages = {
   "reports": "Rapporti",
   "skipped": "Saltato",
   "aboutSeconds": "circa {count} secondi",
+  "modeFull": "Compila i moduli, crea account dei datori e accede (accettandone i termini), apre il link di conferma o inserisce il codice email con Gmail collegato e analizza pagine account poco chiare (screenshot all’IA, testo digitato nascosto, massimo 10 al giorno). Mai: inviare una candidatura, superare captcha o controlli anti-bot, inserire codici SMS.",
+  "modeAssist": "Compila i moduli. Accetti tu i termini dell’account, premi i pulsanti e inserisci i codici. Mai: inviare una candidatura, superare captcha o controlli anti-bot.",
+  "lookedIn": "Cercato in {folders}.",
+  "foldersMissing": "{first} Nessuna cartella è su questo computer: un browser avviato con --user-data-dir o sconosciuto conserva il profilo altrove. chrome://version mostra il vero percorso del profilo.",
+  "foldersHere": "{first} Su questo computer: {folders}.",
+  "listAnd": "{items} e {last}",
+  "liveNotYet": "La pagina non è ancora aperta: si apre all’avvio della compilazione. Premi di nuovo Guarda dal vivo tra poco.",
+  "liveDropped": "La pagina dal vivo si è chiusa. Premi Guarda dal vivo per rivederla.",
+  "questionsReadFailed": "Impossibile leggere le domande da {where}. Riprova tra poco.",
+  "inboundReached": "In entrata: ha raggiunto {name}",
+  "inboundContacted": "In entrata: ti ha contattato",
+  "inboundShare": "{reached} dei {contacted} contatti hanno raggiunto {name} ({percent}%)",
+  "inboundOpportunities": "{count} opportunità ti hanno trovato: recruiter, messaggio LinkedIn, chiamata",
+  "emptyFunnel": "Si riempie preparando e inviando candidature.",
+  "percentReached": "{percent}% raggiunto",
+  "clickSee": ". Fai clic per vederli",
+  "anEmail": "un’email",
+  "anEmailTitle": "Un’email",
+  "fromGmail": "Da {sender} (Gmail)",
+  "notEligible": "Non idoneo",
+  "insideWords": "Anche dentro parole più lunghe",
+  "wholeWords": "Solo parola intera",
+  "changeClaude": "Modifica con Claude…",
+  "townExample": "ad es. la tua città",
+  "placeExample": "ad es. {place}",
+  "dateExample": "ad es. 31 dic 1990",
+  "triageIneligible": "non idoneo",
+  "triageLogin": "accesso richiesto",
+  "triageAccount": "chiede di creare un account",
+  "triageUnsaved": "risposte non salvate",
+  "triageFacts": "ogni risposta è un fatto salvato",
+  "consentSaveFailed": "Impossibile salvare ora. Puoi attivarlo in Impostazioni → Notifiche.",
   "aboutMinutes": {
     "one": "circa {count} minuto",
     "other": "circa {count} minuti"
@@ -172,5 +204,9 @@ export const messages = {
   "infoCount": {
     "one": "{count} informazione",
     "other": "{count} informazioni"
+  },
+  "oldScoreCount": {
+    "one": "{count} valutazione precedente",
+    "other": "{count} valutazioni precedenti"
   }
 };

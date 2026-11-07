@@ -159,3 +159,21 @@ test('suggestion badges translate without changing metadata, severity or repeate
     assert.equal(cancelAllButton([]).hidden, true);
   } finally { setLocale('en'); }
 });
+
+test('browser paths and match fragments stay original while their display explanations translate', async () => {
+  const {lookedText} = await import('../../../renderer/extension-looked.js');
+  const {placeLabel, matchGroups} = await import('../../../renderer/match-groups.js');
+  const {answerOptions} = await import('../../../renderer/answer-options.js');
+  try {
+    setLocale('de');
+    const path = '/Original <Profile>/Browser';
+    assert.equal(lookedText([{dir: path, there: true}]), `Gesucht in ${path}.`);
+    assert.equal(placeLabel('Zurich,Zurich,Switzerland · de'), 'Zurich, Switzerland · Deutsch');
+    const entry = {fragment: '\\bOriginal\\b', label: 'Original'};
+    assert.equal(matchGroups([entry]).whole[0], entry);
+    const options = answerOptions({question: 'Original question', suggested: '<Original answer>'});
+    assert.equal(options[0].value, '<Original answer>');
+    assert.equal(options.at(-1).kind, 'change');
+    assert.equal(options.at(-1).label, 'Mit Claude ändern…');
+  } finally { setLocale('en'); }
+});

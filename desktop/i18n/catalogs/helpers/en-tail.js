@@ -113,6 +113,38 @@ export const messages = {
   "reports": "Reports",
   "skipped": "Skipped",
   "aboutSeconds": "about {count} seconds",
+  "modeFull": "Fills every form, creates and signs in to employer accounts (accepting the account's terms), opens the confirmation link or types the code from your email when Gmail is connected, and takes a closer look at an unclear account page (a screenshot to the AI, what you typed hidden, at most 10 a day). Never: an application's Submit, a captcha or bot check, an SMS code.",
+  "modeAssist": "Fills every form. You accept an account's terms, press its buttons and type its codes. Never: an application's Submit, a captcha or bot check.",
+  "lookedIn": "Looked in {folders}.",
+  "foldersMissing": "{first} None of those folders is on this computer: a browser started with --user-data-dir, or one this app doesn't know, keeps its profile somewhere else — chrome://version shows the browser's real Profile Path.",
+  "foldersHere": "{first} On this computer: {folders}.",
+  "listAnd": "{items} and {last}",
+  "liveNotYet": "The page is not open yet: it opens when the fill starts. Press Watch live again in a moment.",
+  "liveDropped": "The live page closed. Press Watch live to see it again.",
+  "questionsReadFailed": "Couldn't read your questions from {where} just now. Try again in a moment.",
+  "inboundReached": "Inbound: ever reached {name}",
+  "inboundContacted": "Inbound: contacted you",
+  "inboundShare": "{reached} of the {contacted} who contacted you ever reached {name} ({percent}%)",
+  "inboundOpportunities": "{count} opportunities found you: a recruiter, a LinkedIn message, a call",
+  "emptyFunnel": "Fills in as you prepare and send applications.",
+  "percentReached": "{percent}% reached",
+  "clickSee": ". Click to see them",
+  "anEmail": "an email",
+  "anEmailTitle": "An email",
+  "fromGmail": "From {sender} (Gmail)",
+  "notEligible": "Not eligible",
+  "insideWords": "Also inside longer words",
+  "wholeWords": "Whole word only",
+  "changeClaude": "Change with Claude…",
+  "townExample": "e.g. your town or city",
+  "placeExample": "e.g. {place}",
+  "dateExample": "e.g. 31 Dec 1990",
+  "triageIneligible": "not eligible",
+  "triageLogin": "login wall",
+  "triageAccount": "asks you to create an account",
+  "triageUnsaved": "answers you have not saved",
+  "triageFacts": "every answer is a saved fact",
+  "consentSaveFailed": "Could not save it just now. You can turn it on in Settings → Notifications.",
   "aboutMinutes": {
     "one": "about {count} minute",
     "other": "about {count} minutes"
@@ -172,5 +204,9 @@ export const messages = {
   "infoCount": {
     "one": "{count} info",
     "other": "{count} info"
+  },
+  "oldScoreCount": {
+    "one": "{count} old score",
+    "other": "{count} old scores"
   }
 };

@@ -113,6 +113,38 @@ export const messages = {
   "reports": "Berichte",
   "skipped": "Übersprungen",
   "aboutSeconds": "etwa {count} Sekunden",
+  "modeFull": "Füllt alle Formulare aus, erstellt Arbeitgeberkonten und meldet sich an (akzeptiert deren Bedingungen), öffnet Bestätigungslinks oder gibt E-Mail-Codes ein, wenn Gmail verbunden ist, und prüft unklare Kontoseiten genauer (Screenshot an die KI, Eingaben verborgen, höchstens 10 pro Tag). Niemals: Bewerbung absenden, Captcha oder Bot-Prüfung, SMS-Code.",
+  "modeAssist": "Füllt alle Formulare aus. Sie akzeptieren Kontobedingungen, drücken die Schaltflächen und geben Codes ein. Niemals: Bewerbung absenden, Captcha oder Bot-Prüfung.",
+  "lookedIn": "Gesucht in {folders}.",
+  "foldersMissing": "{first} Keiner dieser Ordner ist auf diesem Computer vorhanden. Ein mit --user-data-dir gestarteter oder unbekannter Browser speichert sein Profil anderswo. chrome://version zeigt den tatsächlichen Profilpfad.",
+  "foldersHere": "{first} Auf diesem Computer: {folders}.",
+  "listAnd": "{items} und {last}",
+  "liveNotYet": "Die Seite ist noch nicht offen; sie öffnet sich beim Ausfüllen. Drücken Sie gleich erneut Live ansehen.",
+  "liveDropped": "Die Live-Seite wurde geschlossen. Drücken Sie Live ansehen, um sie wieder zu sehen.",
+  "questionsReadFailed": "Ihre Fragen konnten gerade nicht aus {where} gelesen werden. Versuchen Sie es gleich erneut.",
+  "inboundReached": "Eingehend: jemals {name} erreicht",
+  "inboundContacted": "Eingehend: hat Sie kontaktiert",
+  "inboundShare": "{reached} von {contacted} Kontakten haben {name} erreicht ({percent} %)",
+  "inboundOpportunities": "{count} Gelegenheiten haben Sie gefunden: Recruiter, LinkedIn-Nachricht, Anruf",
+  "emptyFunnel": "Füllt sich beim Vorbereiten und Senden von Bewerbungen.",
+  "percentReached": "{percent} % erreicht",
+  "clickSee": ". Zum Anzeigen klicken",
+  "anEmail": "einer E-Mail",
+  "anEmailTitle": "Eine E-Mail",
+  "fromGmail": "Von {sender} (Gmail)",
+  "notEligible": "Nicht berechtigt",
+  "insideWords": "Auch innerhalb längerer Wörter",
+  "wholeWords": "Nur ganzes Wort",
+  "changeClaude": "Mit Claude ändern…",
+  "townExample": "z. B. Ihr Wohnort",
+  "placeExample": "z. B. {place}",
+  "dateExample": "z. B. 31. Dez. 1990",
+  "triageIneligible": "nicht berechtigt",
+  "triageLogin": "Anmeldung erforderlich",
+  "triageAccount": "Kontoerstellung erforderlich",
+  "triageUnsaved": "nicht gespeicherte Antworten",
+  "triageFacts": "jede Antwort ist eine gespeicherte Angabe",
+  "consentSaveFailed": "Konnte gerade nicht gespeichert werden. Sie können es unter Einstellungen → Benachrichtigungen aktivieren.",
   "aboutMinutes": {
     "one": "etwa {count} Minute",
     "other": "etwa {count} Minuten"
@@ -172,5 +204,9 @@ export const messages = {
   "infoCount": {
     "one": "{count} Info",
     "other": "{count} Infos"
+  },
+  "oldScoreCount": {
+    "one": "{count} alte Bewertung",
+    "other": "{count} alte Bewertungen"
   }
 };

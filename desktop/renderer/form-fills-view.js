@@ -57,7 +57,7 @@ export function sessionNumbers(run) {
   const pairs = [[t('helperTail.working'), f.working_min, ' min'], [t('helperTail.waitingYou'), f.waiting_min, ' min'], [t('helperTail.timesAsked'), f.times_asked, ''],
     [t('helperTail.replyMedian'), f.reply_median_s, ' s'], [t('helperTail.readyDecided'), f.ready_to_decided_min, ' min'], [t('helperTail.turns'), f.turns, ''],
     [t('helperTail.toolCalls'), f.tool_calls, '']];
-  return [...pairs.filter(([, value]) => num(value) !== null).map(([label, value, unit]) => [label, `${num(value)}${unit}`]),
+  return [...pairs.filter(([, value]) => num(value) !== null).map(([label, value, unit]) => [label, unit === ' min' ? t('helperRest.minutes', {count: num(value)}) : unit === ' s' ? t('helperRest.seconds', {count: num(value)}) : String(num(value))]),
     ...(f.model ? [[t('helperRest.model'), f.model]] : [])];
 }
 

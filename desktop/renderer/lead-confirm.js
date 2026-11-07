@@ -84,14 +84,14 @@ export function withYear(field, year) { return `${year}-${field.month_day}`; }
 export function channelHint(field = {}, chosen) {
   const guess = field.guess;
   if (field.state === 'ok') return chosen === guess ? t('helperGuide.shownMessage', {guess}) : t('helperGuide.messageSaved', {guess, chosen: CHANNEL_LABEL[chosen] || chosen});
-  if (!guess || guess === 'Other') return chosen === 'Other' ? t('helperGuide.sayWhere') : "Couldn't tell from the message: pick one.";
+  if (!guess || guess === 'Other') return chosen === 'Other' ? t('helperGuide.sayWhere') : t('helperGuide.channelUnclear');
   if (chosen === guess) return t('helperGuide.looksLike', {guess});
   return t('helperGuide.aiGuessed', {ai: aiName(), guess, chosen: CHANNEL_LABEL[chosen] || chosen});
 }
 
 export function startedHint(isNew) {
   return isNew ? t('helperGuide.firstMessageDate')
-    : "Earlier than this job's first contact? Then this conversation becomes where it started (its Source).";
+    : t('helperGuide.earlierContact');
 }
 
 // Who wrote last (src/ai/inbox.py fields() 'last'): what saving it does for Focus, and what they wrote.
@@ -109,7 +109,7 @@ export function agreeHint(field = {}, value = '', isNew = false) {
   if (field.state === 'ok' && value === 'yes') return t('helperGuide.agreedConfirmed');
   if (value === 'yes') return t('helperGuide.movesScreening');
   if (value === 'no') return isNew ? t('helperGuide.savedRecruiter') : t('helperGuide.staysRecruiter');
-  return "Your reply doesn't say it clearly. Yes moves the job to Screening.";
+  return t('helperGuide.unclearAgreement');
 }
 
 // Under "Who reached out first?": why it is asked, and what each answer means.

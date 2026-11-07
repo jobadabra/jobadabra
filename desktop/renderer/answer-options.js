@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // What a "needs you" row can offer as an answer, kept free of the window so a test can check it (session-needs.js
 // draws the rows): Claude's proposed answer first, then any answer you saved for the same question, and last the
 // escape hatch — "Change with Claude…" — for when neither fits.
@@ -23,6 +25,6 @@ export function answerOptions(need, saved = [], {claude = true} = {}) {
       if (sameQuestion(entry.question, asked)) options.push({value, label: value, kind: 'saved'});
     }
   }
-  if (claude) options.push({value: '', label: 'Change with Claude…', kind: 'change'});   // the caller passes claudeHelp() (claude-help.js)
+  if (claude) options.push({value: '', label: t('helperTail.changeClaude'), kind: 'change'});   // the caller passes claudeHelp() (claude-help.js)
   return options;
 }

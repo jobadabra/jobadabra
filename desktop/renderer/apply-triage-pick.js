@@ -33,7 +33,8 @@ export const CHIPS = {
 export function chipOf(read) {
   if (!read) return {label: t('helperTail.notChecked'), tone: 'neutral', detail: ''};
   const {mode, reason} = modeOfRead(read);
-  return {...CHIPS[mode], detail: reason};
+  const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts'}[reason];
+  return {...CHIPS[mode], detail: reasonKey ? t(`helperTail.${reasonKey}`) : reason};
 }
 
 // Why (30 Oct 2026, owner's "go" on the measured read): one real form-judge call on the Claude plan took 49 s wall; a first check has no timings yet, so the guess is a minute a job and says so.

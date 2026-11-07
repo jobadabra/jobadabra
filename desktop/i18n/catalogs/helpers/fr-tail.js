@@ -113,6 +113,38 @@ export const messages = {
   "reports": "Rapports",
   "skipped": "Ignoré",
   "aboutSeconds": "environ {count} secondes",
+  "modeFull": "Remplit les formulaires, crée des comptes employeur et s’y connecte (en acceptant les conditions), ouvre le lien de confirmation ou saisit le code reçu par e-mail si Gmail est connecté, et examine les pages de compte ambiguës (capture envoyée à l’IA, vos saisies masquées, au plus 10 par jour). Jamais : envoyer une candidature, résoudre un captcha ou contrôle de robot, saisir un code SMS.",
+  "modeAssist": "Remplit les formulaires. Vous acceptez les conditions du compte, cliquez sur ses boutons et saisissez les codes. Jamais : envoyer une candidature, résoudre un captcha ou contrôle de robot.",
+  "lookedIn": "Recherche dans {folders}.",
+  "foldersMissing": "{first} Aucun de ces dossiers n’est sur cet ordinateur : un navigateur lancé avec --user-data-dir ou inconnu de l’application conserve son profil ailleurs. chrome://version indique son vrai chemin de profil.",
+  "foldersHere": "{first} Sur cet ordinateur : {folders}.",
+  "listAnd": "{items} et {last}",
+  "liveNotYet": "La page n’est pas encore ouverte : elle s’ouvre au début du remplissage. Réessayez Voir en direct dans un instant.",
+  "liveDropped": "La page en direct s’est fermée. Appuyez sur Voir en direct pour la revoir.",
+  "questionsReadFailed": "Impossible de lire vos questions depuis {where}. Réessayez dans un instant.",
+  "inboundReached": "Entrant : a atteint {name}",
+  "inboundContacted": "Entrant : vous a contacté",
+  "inboundShare": "{reached} des {contacted} contacts ont atteint {name} ({percent} %)",
+  "inboundOpportunities": "{count} occasions sont venues à vous : recruteur, message LinkedIn, appel",
+  "emptyFunnel": "Se remplit au fil des candidatures préparées et envoyées.",
+  "percentReached": "{percent} % atteint",
+  "clickSee": ". Cliquez pour les voir",
+  "anEmail": "un e-mail",
+  "anEmailTitle": "Un e-mail",
+  "fromGmail": "De {sender} (Gmail)",
+  "notEligible": "Non admissible",
+  "insideWords": "Aussi dans des mots plus longs",
+  "wholeWords": "Mot entier uniquement",
+  "changeClaude": "Modifier avec Claude…",
+  "townExample": "p. ex. votre ville",
+  "placeExample": "p. ex. {place}",
+  "dateExample": "p. ex. 31 déc. 1990",
+  "triageIneligible": "non admissible",
+  "triageLogin": "connexion requise",
+  "triageAccount": "demande de créer un compte",
+  "triageUnsaved": "réponses non enregistrées",
+  "triageFacts": "chaque réponse est un fait enregistré",
+  "consentSaveFailed": "Enregistrement impossible pour l’instant. Vous pouvez l’activer dans Paramètres → Notifications.",
   "aboutMinutes": {
     "one": "environ {count} minute",
     "other": "environ {count} minutes"
@@ -172,5 +204,9 @@ export const messages = {
   "infoCount": {
     "one": "{count} info",
     "other": "{count} infos"
+  },
+  "oldScoreCount": {
+    "one": "{count} ancienne note",
+    "other": "{count} anciennes notes"
   }
 };
