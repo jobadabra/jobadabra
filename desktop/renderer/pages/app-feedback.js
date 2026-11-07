@@ -105,6 +105,7 @@ export async function init() {
       button.disabled = false;
       if (!filed?.ok) { $('app-feedback-message').textContent = plainError(filed?.error || 'The bundle was not stored.'); return; }
       $('app-feedback-text').value = '';
+      drawTester(prepared.tester);   // clear this bug's report before the next bundle is opened
       prepared = {...EMPTY};
       $('app-feedback-dialog').close();
       toastMessage('Bug filed', `Bundle ${filed.id}: ${filed.url}`, NO_PLACE.done, 'good');

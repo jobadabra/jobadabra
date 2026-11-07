@@ -13,9 +13,13 @@ test('only the lines within five minutes of the capture are kept, oldest first; 
   const lines = ['2026-11-07T09:54:59.000Z [x] too early', '2026-11-07T09:55:01.000Z [x] in', 'continuation', '2026-11-07T10:05:00.000Z [x] edge', '2026-11-07T10:05:01.000Z [x] too late'];
   assert.deepEqual(windowLines(lines, AT), [lines[1], lines[2], lines[3]]);
   assert.deepEqual(windowLines(lines, 'not a date'), []);
-  // engine.log's real shape: timed run markers with the engine's raw, untimed output between them
-  const engine = ['2026-11-07T09:00:00.000Z ---- python -m old', 'old output', '2026-11-07T09:00:09.000Z ---- exit 0', '2026-11-07T09:58:00.000Z ---- python -m run', 'raw line one', 'raw line two', '2026-11-07T09:58:30.000Z ---- exit 1'];
-  assert.deepEqual(windowLines(engine, AT), engine.slice(3));
+  // engine.log's real shape: timestamped run markers with raw, untimed engine output between them
+  const engine = ['2026-11-07T09:00:00.000Z ---- python -m src.daily --mode old', 'old output', 'old continuation', '2026-11-07T09:00:09.000Z ---- exit 0 after 9s',
+    '2026-11-07T09:58:00.000Z ---- python -m src.daily --mode run', 'raw line one', 'raw line two', '2026-11-07T09:58:30.000Z ---- exit 1 after 30s'];
+  const inWindow = windowLines(engine, AT);
+  assert.deepEqual(inWindow, engine.slice(4));
+  assert.deepEqual(inWindow.slice(1, 3), ['raw line one', 'raw line two'], 'raw output inherits the in-window start marker time');
+  assert.ok(!inWindow.includes('old output') && !inWindow.includes('old continuation'), 'raw output inherits the out-of-window start marker time');
   assert.deepEqual(windowLines(['no time yet', '2026-11-07T10:00:00.000Z x'], AT), ['2026-11-07T10:00:00.000Z x']);
 });
 

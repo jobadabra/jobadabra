@@ -25,8 +25,8 @@ export function testerReport(input = {}, at = new Date()) {
 }
 
 /**
- * The lines within `minutes` of `at`. A line's time is its own ISO timestamp (the first token, lib/log.js format), else the time of the last timed line above it: engine.log holds the engine's raw output between
- * two timed run markers (lib/engine-log.js), and a wrapped line belongs to the line it wraps. A line before any timed line is dropped. -> lines, oldest first
+ * The lines within `minutes` of `at`. A line's time is its own ISO timestamp (the first token, lib/log.js format), else untimed lines inherit the time of the last timed line above them: engine.log holds the engine's raw output between
+ * two timed run markers (lib/engine-log.js), and a wrapped line belongs to the line it wraps. Lines before any timed line are dropped. -> lines, oldest first
  * Why (Gitar on #3406): keeping only timed lines left just the run markers of engine.log and none of what the engine printed.
  */
 export function windowLines(lines, at, minutes = WINDOW_MINUTES) {
