@@ -64,19 +64,20 @@ test('switching on makes an id when there is none; switching off removes everyth
 test('Always on follows the switch: variables set when on, removed when off', async () => {
   // (a fresh install is on; the first update below is with it switched off)
   const calls = [];
-  const fetcher = async (url, options = {}) => { calls.push(`${options.method || 'GET'} ${new URL(url).pathname}`); return new Response('{}', {status: 200}); };
+  const fetcher = async (url, options = {}) => { calls.push({method: options.method || 'GET', path: new URL(url).pathname, body: options.body ? JSON.parse(options.body) : null}); return new Response('{}', {status: 200}); };
   const storage = fresh();
   storage.saveSettings({cloud: {repo: 'me/job-pilotto-private'}});
   storage.setSecret('GITHUB_TOKEN', 'ghu_x');
   poolShare.set(storage, false);
   await github.updateRepo(storage, {fetcher});
-  assert.ok(calls.some(c => c.startsWith('DELETE') && c.includes('JOBADABRA_SHARE_EMPLOYERS')), calls.join('\n'));
-  assert.ok(!calls.some(c => c.startsWith('POST') && c.includes('/variables')));
+  assert.ok(calls.some(call => call.method === 'DELETE' && call.path.endsWith('/JOBADABRA_SHARE_EMPLOYERS')), JSON.stringify(calls));
+  assert.ok(!calls.some(call => ['POST', 'PATCH'].includes(call.method) && call.path.includes('/variables') && call.body?.name === 'JOBADABRA_SHARE_EMPLOYERS'));
+  assert.ok(calls.some(call => call.body?.name === 'JOBADABRA_NOTIFICATION_LANGUAGE' && call.body.value === 'en'), 'language metadata is independent of pool sharing');
   calls.length = 0;
   poolShare.set(storage, true);
   await github.updateRepo(storage, {fetcher});
-  assert.ok(calls.some(c => c.includes('/actions/variables')), calls.join('\n'));
-  assert.ok(!calls.some(c => c.startsWith('DELETE') && c.includes('JOBADABRA_SHARE_EMPLOYERS')));
+  assert.ok(calls.some(call => ['POST', 'PATCH'].includes(call.method) && call.path.includes('/actions/variables') && call.body?.name === 'JOBADABRA_SHARE_EMPLOYERS' && call.body.value === '1'), JSON.stringify(calls));
+  assert.ok(!calls.some(call => call.method === 'DELETE' && call.path.endsWith('/JOBADABRA_SHARE_EMPLOYERS')));
 });
 
 test('the first screen of setup says, in one plain sentence, that employer pages are shared and where to switch it off', () => {

@@ -5,12 +5,21 @@ import {notificationFailure} from '../i18n/notification-notices.js';
 import {FREE_BASE, TRIAL_KEY} from './ai-free.js';
 import {wordingOf} from '../renderer/email-consent-words.js';
 import * as consent from './email-consent.js';
+import {notificationLanguage} from './notification-language.js';
+import {log as appLog} from './log.js';
+import {keptToken} from './install-token.js';
 
 const BASE = FREE_BASE.replace(/\/api\/ai$/, '');
 export const CHANNELS = ['email', 'app', 'telegram'];
 
 export const telegramReady = storage => !!(storage.secret('TELEGRAM_BOT_TOKEN') && storage.settings().telegramChatId);
-export const installKey = storage => storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
+/** Reuse this install's existing full site credential, including own-key Pro installs; never mint a token for metadata. */
+export function installKey(storage) {
+  const direct = storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
+  if (direct) return direct;
+  const install = storage.settings().telemetryId, token = install && keptToken(storage, install, 'ai');
+  return token ? `JPF1.${install}.${token}` : '';
+}
 export const emailOf = storage => String(storage.settings().notifyEmail || '');
 
 // The chosen channels. E-mail needs the person's consent (lib/email-consent.js) as well as an address. Unset = what the person already has: e-mail when an address was given, Telegram when it is connected, and the app always.
@@ -27,7 +36,28 @@ export const deliveryReady = storage => channelsOf(storage).some(name => name ==
 // What the engine and the Always on repo are told (src/notify.py reads JOBADABRA_NOTIFY; the key identifies the install to the site).
 export function notifyEnv(storage) {
   const channels = channelsOf(storage);
-  return {JOBADABRA_NOTIFY: channels.join(','), ...(channels.includes('email') && installKey(storage) ? {JOBADABRA_TRIAL_KEY: installKey(storage)} : {})};
+  return {JOBADABRA_NOTIFY: channels.join(','), JOBADABRA_NOTIFICATION_LANGUAGE: notificationLanguage(storage), ...(channels.includes('email') && installKey(storage) ? {JOBADABRA_TRIAL_KEY: installKey(storage)} : {})};
+}
+
+// Only acknowledged delivery metadata is cached, privately and per storage; this is never another editable preference.
+const languageRefreshes = new WeakMap();
+
+/** Refresh derived service language on normal events; serialize changes, reuse acknowledgement, and leave the saved appearance choice unchanged. */
+export function refreshLanguage(storage, fetcher = globalThis.fetch, {force = false} = {}) {
+  if (!installKey(storage)) return Promise.resolve({ok: false, skipped: true});
+  let state = languageRefreshes.get(storage);
+  if (!state) { state = {pending: Promise.resolve(), acknowledged: null}; languageRefreshes.set(storage, state); }
+  const next = state.pending.then(async () => {
+    const language = notificationLanguage(storage);
+    const target = JSON.stringify([installKey(storage), emailOf(storage), language]);
+    if (!force && state.acknowledged === target) return {ok: true, language};
+    const answer = await call(storage, 'PUT', '/api/account/language', {language}, fetcher);
+    if (answer.ok && answer.language === language) { state.acknowledged = target; return answer; }
+    appLog('notify', 'language refresh not acknowledged', {language});
+    return {...answer, ok: false};
+  }).catch(() => ({ok: false, error: 'language_not_saved'}));
+  state.pending = next;
+  return next;
 }
 
 const WORDS = {
@@ -68,7 +98,7 @@ export async function save(storage, {by, email, cadence, consentVia, consentGive
   if (Array.isArray(by) && by.includes('email') && !clean && !emailOf(storage)) return notificationFailure({ok: false, error: 'Enter your email address to be told by email.'}, 'needEmail');
   const digest = ['daily', 'weekly'].includes(cadence) ? cadence : null;   // how often the digest of everything but new matches comes
   if (clean && (clean !== emailOf(storage) || digest)) {
-    const site = await call(storage, 'PUT', '/api/account/email', {email: clean, ...(digest ? {cadence: digest} : {})}, fetcher);
+    const site = await call(storage, 'PUT', '/api/account/email', {email: clean, language: notificationLanguage(storage), ...(digest ? {cadence: digest} : {})}, fetcher);
     if (!site.ok) return site;
     keepAddress(storage, {clean, digest, consentVia, consentGiven, consentWording}, now);
   }
@@ -98,7 +128,9 @@ function followConsent(storage, by, wasOn, {consentVia, consentGiven, consentWor
 export async function sendEmail(storage, {subject, text, urgent = false, buttons, mail = ''}, fetcher = globalThis.fetch) {
   if (!channelsOf(storage).includes('email')) return false;
   const escape = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return (await call(storage, 'POST', '/api/notify/email', {subject, html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity', ...(mail ? {mail} : {})}, fetcher)).ok === true;   // `mail`: the row the person's switch holds it by (lib/mail-choices.js; the site refuses a row they turned off)
+  const answer = await call(storage, 'POST', '/api/notify/email', {subject, language: notificationLanguage(storage), html: buttons?.length ? escape(text) : `<b>${escape(subject)}</b>\n${escape(text)}`, ...(buttons ? {buttons} : {}), kind: urgent ? 'urgent' : 'activity', ...(mail ? {mail} : {})}, fetcher);   // `mail`: the row the person's switch holds it by (lib/mail-choices.js; the site refuses a row they turned off)
+  void refreshLanguage(storage, fetcher);
+  return answer.ok === true;
 }
 
 const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switched off on our side for now.', rate: 'Too many e-mails today. Try again tomorrow.', suppressed: 'Your address bounced or marked us as spam. Check it in Settings → Notifications.', unsubscribed: 'You stopped our e-mails. Turn them back on in Settings → Notifications.', empty: 'Nothing to send.', unconfirmed_stopped: 'Confirm your address first: press "Send the confirm link again" in Settings → Notifications.'};
@@ -106,7 +138,7 @@ const TEST_WHY = {no_address: 'No address is saved yet.', off: 'E-mail is switch
 /** One test e-mail, at once (not held for the digest): Always on's Test on your own GitHub. The site limits it to once a day per address and answers `earlier: true` when today's went already.
  *  -> {ok, earlier} or {ok: false, error: words}. */
 export async function sendTest(storage, {subject, text}, fetcher = globalThis.fetch) {
-  const done = await call(storage, 'POST', '/api/notify/email', {subject, html: `<b>${subject}</b>\n${text}`, kind: 'test'}, fetcher);
+  const done = await call(storage, 'POST', '/api/notify/email', {subject, language: notificationLanguage(storage), html: `<b>${subject}</b>\n${text}`, kind: 'test'}, fetcher);
   return done.ok ? {ok: true, earlier: done.earlier === true} : {ok: false, error: TEST_WHY[done.reason] || done.error || 'The e-mail could not be sent just now. Try again in a minute.'};
 }
 
@@ -123,7 +155,7 @@ const RESEND_WORDS = {
 /** Sends the confirm mail again to the saved address (at most 1 an hour and 3 a day, the site decides). -> {ok} or {ok: false, error: words, code?: the site's reason} */
 export async function resend(storage, fetcher = globalThis.fetch) {
   if (!emailOf(storage)) return notificationFailure({ok: false, error: RESEND_WORDS.no_address, code: 'no_address'}, 'noAddress');
-  const done = await call(storage, 'POST', '/api/account/email/resend', null, fetcher);
+  const done = await call(storage, 'POST', '/api/account/email/resend', {language: notificationLanguage(storage)}, fetcher);
   if (done.ok) return {ok: true};
   const keys = {wait: 'resendWait', confirmed: 'resendConfirmed', stopped: 'resendStopped', no_address: 'noAddress', off: 'serviceOff', not_sent: 'notSent'};
   if (!RESEND_WORDS[done.error]) return done;

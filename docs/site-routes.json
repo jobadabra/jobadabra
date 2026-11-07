@@ -12,6 +12,11 @@
    "kind": "app"
   },
   {
+   "path": "/api/account/language",
+   "kind": "app",
+   "methods": ["PUT"]
+  },
+  {
    "path": "/api/account/email/resend",
    "kind": "app"
   },

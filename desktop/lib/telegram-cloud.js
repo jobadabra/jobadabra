@@ -12,6 +12,7 @@ import {fileURLToPath} from 'node:url';
 import {isFreeKey} from './ai-free.js';
 import {MODELS} from './pipeline.js';
 import {api as telegramApi} from './telegram.js';
+import {notificationLanguage} from './notification-language.js';
 
 export const SCRIPT = 'job-pilotto-bot';
 const API = 'https://api.cloudflare.com/client/v4';
@@ -44,7 +45,8 @@ export function missing(storage) {
 export function bindings(storage, webhookSecret) {
   const settings = storage.settings();
   const plain = {OWNER_CHAT_ID: String(settings.telegramChatId), GITHUB_REPO: settings.cloud.repo, WORKFLOW_FILE: 'daily.yml',
-    JOBADABRA_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
+    JOBADABRA_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v)),
+    JOBADABRA_NOTIFICATION_LANGUAGE: notificationLanguage(storage)};
   const secret = {TELEGRAM_BOT_TOKEN: storage.secret('TELEGRAM_BOT_TOKEN'), WEBHOOK_SECRET: webhookSecret,
     GITHUB_TOKEN: storage.secret('GITHUB_TOKEN'), NOTION_TOKEN: storage.secret('NOTION_TOKEN'),
     ANTHROPIC_API_KEY: isFreeKey(storage.secret('ANTHROPIC_API_KEY')) ? '' : storage.secret('ANTHROPIC_API_KEY')};   // Why (3 Nov 2026, owner: no Free AI key outside the app): the user's own Cloudflare Worker never holds our key (it could not use it there anyway)
@@ -69,17 +71,19 @@ export async function turnOn(storage, token, {fetcher, telegram = telegramApi, b
     try { subdomain = (await cf('GET', `/accounts/${account.id}/workers/subdomain`)).subdomain; } catch {}
     if (!subdomain) subdomain = (await cf('PUT', `/accounts/${account.id}/workers/subdomain`, {subdomain: `jobadabra-${random().slice(0, 6)}`})).subdomain;
     const webhookSecret = random();
+    const code = bundle(), configured = bindings(storage, webhookSecret);
+    const deployed = fingerprintBindings(code, configured);
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify({main_module: 'index.js', compatibility_date: '2026-09-01',
-      bindings: bindings(storage, webhookSecret)})], {type: 'application/json'}));
-    form.append('index.js', new Blob([bundle()], {type: 'application/javascript+module'}), 'index.js');
+      bindings: configured})], {type: 'application/json'}));
+    form.append('index.js', new Blob([code], {type: 'application/javascript+module'}), 'index.js');
     await cf('PUT', `/accounts/${account.id}/workers/scripts/${SCRIPT}`, form);
     await cf('POST', `/accounts/${account.id}/workers/scripts/${SCRIPT}/subdomain`, {enabled: true, previews_enabled: false});
     const url = `https://${SCRIPT}.${subdomain}.workers.dev`;
     await telegram(storage.secret('TELEGRAM_BOT_TOKEN'), 'setWebhook', {url: `${url}/telegram`, secret_token: webhookSecret,
       allowed_updates: ['message', 'callback_query']});
     storage.setSecret('CLOUDFLARE_API_TOKEN', token);
-    storage.saveSettings({telegramCloud: {url, account: account.id, at: new Date().toISOString(), deployed: fingerprint(storage, bundle())}});
+    storage.saveSettings({telegramCloud: {url, account: account.id, at: new Date().toISOString(), deployed}});
     return {ok: true, url};
   } catch (error) {
     const hint = error.status === 403 || error.codes?.includes(10000)
@@ -91,14 +95,28 @@ export async function turnOn(storage, token, {fetcher, telegram = telegramApi, b
 // What the deployed Worker should be: its code and its settings (models, Notion IDs, keys), without the webhook secret, which
 // changes at each deploy. A SHA-256, kept on this Mac only.
 export function fingerprint(storage, code) {
-  const settings = bindings(storage, '').filter(binding => binding.name !== 'WEBHOOK_SECRET');
+  return fingerprintBindings(code, bindings(storage, ''));
+}
+
+function fingerprintBindings(code, configured) {
+  const settings = configured.filter(binding => binding.name !== 'WEBHOOK_SECRET');
   return crypto.createHash('sha256').update(code).update(JSON.stringify(settings)).digest('hex');
 }
 
-// At each app start: the Worker in the user's Cloudflare account is redeployed when this app ships other bot code or its settings
+// At app start or a language change: the Worker in the user's Cloudflare account is redeployed when this app ships other bot code or its settings
 // changed (8 Oct 2026: before, it kept the code and models of the day it was turned on, forever). -> null when nothing was to do,
 // else turnOn's result.
-export async function refresh(storage, {fetcher, telegram = telegramApi, bundle = () => fs.readFileSync(BUNDLE, 'utf8')} = {}) {
+// Why (7 Nov 2026): startup and language-change refreshes must not race webhook writes, and acknowledgement must describe the uploaded snapshot.
+const refreshes = new WeakMap();
+
+/** Queue refreshes per profile; return the existing refresh result while keeping failures from blocking the next normal event. */
+export function refresh(storage, options = {}) {
+  const next = (refreshes.get(storage) || Promise.resolve()).then(() => refreshCurrent(storage, options));
+  refreshes.set(storage, next.catch(() => null));
+  return next;
+}
+
+async function refreshCurrent(storage, {fetcher, telegram = telegramApi, bundle = () => fs.readFileSync(BUNDLE, 'utf8')} = {}) {
   const deployed = storage.settings().telegramCloud;
   if (!deployed || missing(storage) || !storage.secret('CLOUDFLARE_API_TOKEN')) return null;
   let code;

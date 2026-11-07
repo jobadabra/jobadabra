@@ -6,6 +6,8 @@ import {installId} from './pool-share.js';
 import {FREE_BASE} from './ai-free.js';
 import {siteOffForUser} from './recipes.js';
 import {forgetToken, installToken} from './install-token.js';
+import {notificationLanguage} from './notification-language.js';
+import {refreshLanguage} from './notify-channel.js';
 
 const SITE = FREE_BASE.replace(/\/api\/ai$/, '');
 export const GRACE_DAYS = 14, REFRESH_MS = 10 * 60 * 1000;
@@ -56,9 +58,12 @@ export function createPlan(storage, {fetcher = globalThis.fetch, now = () => Dat
   async function signin(step, body) {
     if (siteOffForUser()) return {ok: false, error: 'Not available in this build.'};
     try {
-      const response = await fetcher(`${SITE}/api/pro/signin/${step}`, {method: 'POST', headers: {'x-api-key': await siteKey(), 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+      const response = await fetcher(`${SITE}/api/pro/signin/${step}`, {method: 'POST', headers: {'x-api-key': await siteKey(), 'Content-Type': 'application/json'}, body: JSON.stringify({...body, language: notificationLanguage(storage)})});
       const answer = await response.json().catch(() => ({}));
-      if (response.ok && step === 'verify') await refresh();
+      if (response.ok && step === 'verify') {
+        if (answer.ok === true) void refreshLanguage(storage, fetcher, {force: true});
+        await refresh();
+      }
       return {...answer, ok: response.ok && answer.ok === true, status: response.status};
     } catch { return {ok: false, error: 'Could not reach Jobadabra. Check your connection and try again.'}; }
   }

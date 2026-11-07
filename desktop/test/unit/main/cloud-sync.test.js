@@ -8,6 +8,7 @@ import {test} from 'node:test';
 import * as github from '../../../lib/github.js';
 import {MODELS} from '../../../lib/pipeline.js';
 import {createStorage} from '../../../lib/storage.js';
+import {refreshScheduledLanguage} from '../../../lib/notification-refresh.js';
 
 const KEY = Buffer.alloc(32, 7).toString('base64');   // a well-formed public key for the sealed secrets
 
@@ -38,6 +39,35 @@ function fakeGitHub(files = {}) {
   };
   return {calls, fetcher, files};
 }
+
+test('a language refresh follows a full sync that captured an older language, even when the new language was acknowledged before', async t => {
+  const storage = setUp();
+  t.after(() => fs.rmSync(storage.dir, {recursive: true, force: true}));
+  const gh = fakeGitHub(), languages = [];
+  let began, release;
+  const started = new Promise(resolve => { began = resolve; });
+  const paused = new Promise(resolve => { release = resolve; });
+  let hold = false;
+  const fetcher = async (url, init = {}) => {
+    if (hold && url.includes('/contents/')) { hold = false; began(); await paused; }
+    if (init.method === 'POST' && url.endsWith('/actions/variables')) {
+      const body = JSON.parse(init.body);
+      if (body.name === 'JOBADABRA_NOTIFICATION_LANGUAGE') languages.push(body.value);
+    }
+    return gh.fetcher(url, init);
+  };
+  storage.saveSettings({displayLanguage: 'ru'});
+  await refreshScheduledLanguage(storage, fetcher);
+  storage.saveSettings({displayLanguage: 'en'});
+  hold = true;
+  const full = github.updateRepo(storage, {fetcher});
+  await started;
+  storage.saveSettings({displayLanguage: 'ru'});
+  const refresh = refreshScheduledLanguage(storage, fetcher);
+  release();
+  await Promise.all([full, refresh]);
+  assert.equal(languages.at(-1), 'ru', 'an old full sync must not overwrite the latest acknowledged preference');
+});
 
 test('the models reach the repo as variables, the small one included, and nothing is sent again while unchanged', async () => {
   const storage = setUp();

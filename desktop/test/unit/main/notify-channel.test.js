@@ -11,7 +11,7 @@ const storage = ({settings = {}, secrets = {}} = {}) => {
 };
 const BOT = {secrets: {TELEGRAM_BOT_TOKEN: 't'}, settings: {telegramChatId: '1'}};
 const KEY = {JOBADABRA_TRIAL_KEY: 'JPF1.install-0001.tok'};
-const site = (answers, asked = []) => async (url, init) => { asked.push({url, method: init?.method, key: init?.headers['x-api-key'], body: init?.body ? JSON.parse(init.body) : null}); const answer = answers.shift(); if (answer instanceof Error) throw answer; return {json: async () => answer}; };
+const site = (answers, asked = []) => async (url, init) => { asked.push({url, method: init?.method, key: init?.headers['x-api-key'], body: init?.body ? JSON.parse(init.body) : null}); const answer = url.endsWith('/account/language') ? {ok: true, language: JSON.parse(init.body).language} : answers.shift(); if (answer instanceof Error) throw answer; return {json: async () => answer}; };
 
 test('with nothing chosen the channels follow what is set up: the app always, e-mail with an address, Telegram with a bot', () => {
   assert.deepEqual(channelsOf(storage()), ['app']);
@@ -36,8 +36,8 @@ test('every command that sends follows the choice: e-mail only gets --send witho
 
 test('the engine is told the channels and, for e-mail, the install key; Telegram-only runs get no key', () => {
   const chosen = storage({settings: {notifyBy: ['email', 'app'], notifyEmail: 'a@b.co'}, secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}});
-  assert.deepEqual(notifyEnv(chosen), {JOBADABRA_NOTIFY: 'email,app', ...KEY});
-  assert.deepEqual(notifyEnv(storage({secrets: {JOBADABRA_TRIAL_KEY: 'JPF1.x.y'}})), {JOBADABRA_NOTIFY: 'app'});
+  assert.deepEqual(notifyEnv(chosen), {JOBADABRA_NOTIFY: 'email,app', JOBADABRA_NOTIFICATION_LANGUAGE: 'en', ...KEY});
+  assert.deepEqual(notifyEnv(storage({secrets: {JOBADABRA_TRIAL_KEY: 'JPF1.x.y'}})), {JOBADABRA_NOTIFY: 'app', JOBADABRA_NOTIFICATION_LANGUAGE: 'en'});
   const free = storage({settings: {notifyEmail: 'a@b.co'}, secrets: {ANTHROPIC_API_KEY: 'JPF1.free.tok'}});
   assert.equal(notifyEnv(free).JOBADABRA_TRIAL_KEY, 'JPF1.free.tok');
 });
@@ -52,7 +52,7 @@ test('saving a new address asks the site first and keeps nothing when the site s
   const saved = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: true}], asked));
   assert.equal(saved.ok, true);
   assert.deepEqual([s.settings().notifyEmail, s.settings().notifyBy, s.settings().notifyMarketing], ['me@example.com', ['email', 'app'], undefined]);   // a stray `marketing` from an old caller goes nowhere
-  assert.deepEqual(asked[1], {url: 'https://www.jobadabra.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com'}});
+  assert.deepEqual(asked[1], {url: 'https://www.jobadabra.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com', language: 'en'}});
 });
 
 test('e-mail cannot be chosen without an address, and a switch change alone does not call the site', async () => {
@@ -77,7 +77,7 @@ test('an e-mail the app sends itself needs e-mail chosen, and never throws', asy
   assert.equal(asked[0].body.html, '<b>Few &lt;new&gt; jobs</b>\na &amp; b');
   assert.equal(asked[0].body.kind, 'activity', 'the app\'s own notices wait for the digest');
   assert.equal(await sendEmail(on, {subject: 'An application is waiting for you', text: 't', urgent: true}, site([{ok: true}], asked)), true);
-  assert.equal(asked[1].body.kind, 'urgent', 'an application waiting for the person goes at once, not in the digest (lib/waiting-message.js)');
+  assert.equal(asked.filter(item => item.url.endsWith('/api/notify/email'))[1].body.kind, 'urgent', 'an application waiting for the person goes at once, not in the digest (lib/waiting-message.js)');
   assert.equal(await sendEmail(on, {subject: 's', text: 't'}, site([new Error('offline')])), false);
   assert.equal(await sendEmail(storage(), {subject: 's', text: 't'}, site([])), false);
 });
@@ -85,7 +85,7 @@ test('an e-mail the app sends itself needs e-mail chosen, and never throws', asy
 test('the digest cadence (daily or weekly) goes to the site with the address; anything else is ignored', async () => {
   const s = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}}), asked = [];
   assert.equal((await save(s, {by: ['email'], email: 'a@b.co', cadence: 'weekly'}, site([{ok: true}], asked))).ok, true);
-  assert.deepEqual([asked[0].body, s.settings().notifyCadence], [{email: 'a@b.co', cadence: 'weekly'}, 'weekly']);
+  assert.deepEqual([asked[0].body, s.settings().notifyCadence], [{email: 'a@b.co', cadence: 'weekly', language: 'en'}, 'weekly']);
   await save(s, {by: ['email'], email: 'a@b.co', cadence: 'hourly'}, site([{ok: true}], asked));
   assert.equal(asked.length, 1, 'an unknown cadence is not sent');
   assert.equal((await state(s, site([{ok: true, email: 'a@b.co', cadence: 'weekly'}], []))).cadence, 'weekly');

@@ -29,6 +29,47 @@ function fakeCloudflare({subdomain = 'alex'} = {}) {
   return {calls, fetcher};
 }
 
+test('deployed user bot receives the resolved notification language as a plain binding', t => {
+  const storage = ready();
+  t.after(() => fs.rmSync(storage.dir, {recursive: true, force: true}));
+  for (const language of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+    storage.saveSettings({displayLanguage: language});
+    const binding = tgCloud.bindings(storage, 'fake-hook').find(value => value.name === 'JOBADABRA_NOTIFICATION_LANGUAGE');
+    assert.deepEqual(binding, {type: 'plain_text', name: 'JOBADABRA_NOTIFICATION_LANGUAGE', text: language});
+  }
+});
+
+test('queued bot refreshes acknowledge the uploaded language snapshot rather than a later preference', async t => {
+  const storage = ready();
+  t.after(() => fs.rmSync(storage.dir, {recursive: true, force: true}));
+  const telegram = async () => ({}), initial = fakeCloudflare();
+  await tgCloud.turnOn(storage, 'fake-cf', {fetcher: initial.fetcher, telegram, bundle: () => 'fictional bot'});
+  storage.saveSettings({displayLanguage: 'ru'});
+  const remote = fakeCloudflare(), uploads = [];
+  let release, started;
+  const pending = new Promise(resolve => { release = resolve; });
+  const began = new Promise(resolve => { started = resolve; });
+  const fetcher = async (url, init) => {
+    if (init.body instanceof FormData) {
+      const metadata = JSON.parse(await init.body.get('metadata').text());
+      uploads.push(metadata.bindings.find(value => value.name === 'JOBADABRA_NOTIFICATION_LANGUAGE')?.text);
+      if (uploads.length === 1) { started(); await pending; }
+    }
+    return remote.fetcher(url, init);
+  };
+  const first = tgCloud.refresh(storage, {fetcher, telegram, bundle: () => 'fictional bot'});
+  await began;
+  storage.saveSettings({displayLanguage: 'de'});
+  const callsBefore = remote.calls.length;
+  const second = tgCloud.refresh(storage, {fetcher, telegram, bundle: () => 'fictional bot'});
+  const overlapped = remote.calls.length !== callsBefore;
+  release();
+  await Promise.all([first, second]);
+  assert.equal(overlapped, false, 'startup and preference refreshes must not race webhook/deployment writes');
+  assert.deepEqual(uploads, ['ru', 'de']);
+  assert.equal(storage.settings().telegramCloud.deployed, tgCloud.fingerprint(storage, 'fictional bot'));
+});
+
 test('turning it on needs the Telegram bot and Always on first', async () => {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-tgc-')), {encrypt: v => v, decrypt: v => v});
   assert.match((await tgCloud.turnOn(storage, 'cf')).error, /Telegram/);

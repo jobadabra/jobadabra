@@ -109,7 +109,8 @@ test('the install user test localizes only outbound subject/body with exact rout
     const result = await notifyCheck(storage, {fetcher}); assert.deepEqual(result, {state: 'ok', line: ''});
     assert.deepEqual(calls.map(item => [item.method, item.path]), [['POST', '/botfixture/sendMessage'], ['GET', '/api/account/email'], ['POST', '/api/notify/email']]);
     const mail = calls[2].body; assert.equal(mail.subject, headings[index]); assert.equal(mail.kind, 'test');
-    assert.deepEqual(Object.keys(mail).sort(), ['html', 'kind', 'subject']);
+    assert.deepEqual(Object.keys(mail).sort(), ['html', 'kind', 'language', 'subject']);
+    assert.equal(mail.language, locale);
     assert.equal(calls[0].body.chat_id, 42); assert.ok(mail.html.includes(calls[0].body.text));
     assert.deepEqual(settings.notifyBy, ['email', 'telegram']); assert.deepEqual(forbidden, []);
   }

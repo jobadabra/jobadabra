@@ -50,6 +50,7 @@ env:
   JOBADABRA_DISABLE: ${{ vars.JOBADABRA_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
   JOBADABRA_NOTIFY: ${{ vars.JOBADABRA_NOTIFY }}
+  JOBADABRA_NOTIFICATION_LANGUAGE: ${{ vars.JOBADABRA_NOTIFICATION_LANGUAGE }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}

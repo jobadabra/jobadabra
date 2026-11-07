@@ -1,6 +1,7 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
 import {claudeConsentOptions, claudeOffText, stuckSessionNotice} from './lib/native-notices.js';
 import {initializeStartupLocale} from './lib/locale-startup.js';
+import {refreshDeliveryLanguage} from './lib/notification-refresh.js';
 import {ownSecretsPresent} from './lib/secrets.js'; import {registerLocaleHandlers} from './lib/locale-handlers.js';
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
 import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
@@ -13,7 +14,7 @@ import {recordIpc} from './lib/e2e-ipc.js';
 import {standInHost, watchRunner} from './lib/e2e-host.js';
 import {isTwin, twinRefusal} from './lib/twin.js';
 import {forWindow} from './lib/site-accounts.js';
-import {channelsOf} from './lib/notify-channel.js';
+import {channelsOf, refreshLanguage} from './lib/notify-channel.js';
 import * as devMarker from './lib/dev-marker.js';
 import {hideWindows} from './lib/e2e-hidden.js';
 import fs from 'node:fs';
@@ -398,8 +399,8 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   // E2E on a Linux CI runner only (no keyring there): Electron's safeStorage refuses the basic store unless told to. A user's app never takes this path.
   if (process.platform === 'linux' && process.env.JOBADABRA_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
   storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(sealer));
-  registerLocaleHandlers({ipcMain, app, storage, onChange: () => buildMenu()});
-  buildMenu();   // again, now the saved update channel can be read (Update Channel's radio)
+  registerLocaleHandlers({ipcMain, app, storage, onChange: () => { buildMenu(); void refreshDeliveryLanguage(storage, {demo: DEMO, cloud: true}); }});
+  buildMenu(); void refreshDeliveryLanguage(storage, {demo: DEMO});   // saved appearance is ready; refresh derived delivery caches without blocking startup
   // An import on the Mac that made it: its sealed keys open here; an older export without them takes them from the same Profile's backup (lib/reset.js adoptBackupKeys).
   if (resetDone?.imported) {
     const kept = reset.adoptBackupKeys(storage);
@@ -412,7 +413,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   { const lost = (storage.secretsPresent(), storage.unreadableSecrets()); if (lost.length) appLog('secrets', 'unreadable on this computer: asked again', {names: lost}); }
   const firstStart = DEMO ? null : versionLine(storage, app.getVersion(), buildInfo ? `build ${buildInfo.build} · ${buildInfo.commit}` : '');
   if (firstStart) appLog('update', firstStart);
-  aiFree.apply(storage.settings()); watchAiCaps(); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => trialServer.keepFresh(storage, license)).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
+  aiFree.apply(storage.settings()); watchAiCaps(); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => { void refreshLanguage(storage); return trialServer.keepFresh(storage, license); }).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
   // Technical reports (lib/telemetry.js): on by default, off in Settings → Advanced; never in demo mode, and never
   // from a source checkout (npm start): its crashes are work in progress, not users' problems, and would open triage issues.
   license = licenseLib.create(storage, {appliedNow: () => viewCache.recall(storage, 'focus')?.result?.focus?.funnel?.steps
