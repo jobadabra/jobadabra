@@ -378,6 +378,6 @@ export async function init() {
   wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying, openJob: openJobPanel});
-  wireTriage({read: job => window.pilot.applyReadiness({url: job.url, code: job.code, title: job.title, kit: job.kit === true, posted_at: job.posted_at}).then(done => done?.check ?? null), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
+  wireTriage({read: job => window.pilot.applyReadiness({url: job.url, code: job.code, title: job.title, kit: job.kit === true, posted_at: job.posted_at}).then(done => (done?.check ? {...done.check, stored: done.stored === true} : null)), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
 }
 

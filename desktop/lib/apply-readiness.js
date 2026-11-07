@@ -12,8 +12,8 @@ export const VERSION = 1;
 export const MAX_CHARS = 1800;
 const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];
 
-/** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match. Pure. */
-export const storable = read => !!read && read.unreadable !== true && !(read.simple === true && read.questions?.length && !read.match);
+/** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match with every question judged (a form the AI never judged is "answers not checked", never stored as done). Pure. */
+export const storable = read => !!read && read.unreadable !== true && !(read.simple === true && read.questions?.length && (!read.match || read.match.unjudged !== 0));
 
 /** The compact JSON kept on the record, or '' when it cannot fit (then nothing is stored). Pure. */
 export function pack(read, {posted = '', now = new Date()} = {}) {
@@ -43,13 +43,25 @@ export const isFresh = (entry, job) => !!entry && entry.posted === String(job?.p
  * `match(asked)` is the one question match of a check; `call` is the store call (lib/store/engine.js).
  */
 export function createReadiness({storage, prepareKit, readForm, match = asked => matchReads(storage, asked), call = engine.call, clock = () => new Date(), log = () => {}}) {
+  let cancels = 0;   // counts Stops, so a check that was drafting a kit can tell one arrived before it opens the browser
   const waiting = new Map();   // url → {job, read}: fresh simple forms whose questions the check's one match has not judged yet
-  const recordOf = url => call(storage, 'applications', 'get', {url}).catch(() => null);
+  const recordOf = url => call(storage, 'applications', 'get', {url}).catch(error => { log('apply', 'readiness: the record was not read', {error: String(error?.message || error).slice(0, 200)}); return null; });
 
-  /** The stored check of a job as a read (match included), or null when none, another posting's, or not ours. */
+  /**
+   * The stored check of a job as a read (match included), or null when none, another posting's, or not ours. A form that needed the person's details is matched again from its stored questions
+   * (verdicts are kept per question, so this is the saved details compared again, no browser and no new AI); without its questions it is read again.
+   */
   async function storedCheck(job) {
     const entry = unpack((await recordOf(String(job?.url || '')))?.apply_readiness);
-    return isFresh(entry, job) ? entry.read : null;
+    if (!isFresh(entry, job)) return null;
+    const {read} = entry;
+    if (!read.match?.missing?.length) return read;
+    if (!read.questions?.length) return null;
+    const again = (await match([{url: job.url, questions: read.questions}]).catch(() => ({})))?.[job.url];
+    if (!again || again.unjudged !== 0) return read;
+    const updated = {...read, match: again};
+    if (JSON.stringify(again) !== JSON.stringify(read.match)) await save(job, updated);
+    return updated;
   }
 
   async function save(job, read) {
@@ -62,7 +74,10 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
 
   /** One job: its kit when missing, then its stored check or a fresh read. → {kit, check, stored}. */
   async function applyReadiness(job) {
+    const asked = cancels;
     const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job').catch(error => ({ok: false, error: String(error?.message || error)}));
+    if (kit.ok === false) { log('apply', 'readiness: the kit was not drafted, so the form was not read', {error: String(kit.error || '').slice(0, 200)}); return {kit, check: null, stored: false}; }   // no kit, no Applications row to keep a check on
+    if (cancels !== asked) return {kit, check: null, stored: false};
     const stored = await storedCheck(job);
     if (stored) return {kit, check: stored, stored: true};
     const read = await readForm(job);
@@ -76,11 +91,12 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
     const found = await match(asked).catch(() => ({}));
     for (const [url, matched] of Object.entries(found || {})) {
       const entry = waiting.get(url);
-      if (entry) await save(entry.job, {...entry.read, match: matched});
+      const merged = entry && {...entry.read, match: matched};
+      if (merged && storable(merged)) await save(entry.job, merged);   // a match with a question nobody judged is not stored: the next check asks again
     }
     waiting.clear();   // a form left unmatched (Stop, a failed match) is not stored
     return found || {};
   }
 
-  return {storedCheck, applyReadiness, settle};
+  return {storedCheck, applyReadiness, settle, cancel: () => { cancels += 1; waiting.clear(); }};
 }

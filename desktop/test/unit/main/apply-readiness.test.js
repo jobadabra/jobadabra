@@ -84,3 +84,38 @@ test('no Applications row yet: nothing is stored and nothing throws', async () =
   await readiness.applyReadiness({...JOB, kit: true});
   assert.equal(calls.store.some(([, method]) => method === 'update'), false);
 });
+
+test('a match with an unjudged question is not stored: the next check asks again instead of freezing "answers not checked"', async () => {
+  assert.equal(storable({...SIMPLE, match: {missing: [], unjudged: 2}}), false);
+  const {readiness, calls} = make({match: async asked => Object.fromEntries(asked.map(item => [item.url, {missing: [], unjudged: 1}]))});
+  await readiness.applyReadiness({...JOB, kit: true});
+  await readiness.settle([{url: JOB.url, questions: SIMPLE.questions}]);
+  assert.equal(calls.store.some(([, method]) => method === 'update'), false);
+});
+
+test('a stored form that needed details is matched again from its questions, so saving the detail clears it', async () => {
+  let answer = {missing: [{kind: 'detail', label: 'Phone'}], unjudged: 0};
+  const {readiness, calls} = make({match: async asked => Object.fromEntries(asked.map(item => [item.url, answer]))});
+  await readiness.applyReadiness({...JOB, kit: true});
+  await readiness.settle([{url: JOB.url, questions: SIMPLE.questions}]);
+  answer = {missing: [], unjudged: 0};   // the person saved the phone number
+  const again = await readiness.storedCheck({...JOB, kit: true});
+  assert.deepEqual(again.match.missing, []);
+  assert.equal(calls.read, 1, 'the form was not read again');
+  assert.equal((await readiness.storedCheck({...JOB, kit: true})).match.missing.length, 0, 'and the new match is what is stored');
+});
+
+test('a Stop while the kit drafts ends the check before the browser opens; a kit that failed reads nothing', async () => {
+  let release;
+  const calls = {read: 0};
+  const slow = createReadiness({storage: {}, prepareKit: () => new Promise(done => { release = () => done({ok: true}); }), readForm: async () => { calls.read += 1; return SIMPLE; },
+    call: async () => ({id: 'r1', apply_readiness: ''})});
+  const pending = slow.applyReadiness(JOB);
+  slow.cancel();
+  release();
+  assert.equal((await pending).check, null);
+  assert.equal(calls.read, 0);
+  const failed = createReadiness({storage: {}, prepareKit: async () => ({ok: false, error: 'no posting'}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
+  assert.equal((await failed.applyReadiness(JOB)).kit.ok, false);
+  assert.equal(calls.read, 0, 'no kit, no row to keep a check on');
+});

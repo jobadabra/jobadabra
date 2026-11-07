@@ -69,7 +69,7 @@ export function registerApplyHandlers(ctx) {
     const asked = (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
-  ipcMain.handle('triageCancel', () => background.cancelTriage());
+  ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
   // storedCheck(job): the check prepared with the job's kit, fresh, or null: Apply readiness's own reader (lib/apply-readiness.js), unless a test hands one in.
   const checkFirst = createCheckFirst({stored: storedCheck, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),

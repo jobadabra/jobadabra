@@ -109,7 +109,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
-      if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
+      if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { if (!result.stored) rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
       const row = resultRow(job, result);
