@@ -20,7 +20,7 @@ const CASES = [
   // chip/reason: the words the person reads for that read, written out here (not derived from the renderer's table, which would pass with the table wrong).
   {name: 'plain, every answer saved', judged: plain, allFactsSaved: true, chip: 'Can apply automatically', reason: 'every answer is a saved fact'},
   {name: 'plain, an answer not saved', judged: plain, allFactsSaved: false, chip: 'You review and submit', reason: 'answers you have not saved'},
-  {name: 'bot check', judged: {...plain, botCheck: true}, chip: 'Needs you', reason: 'captcha'},
+  {name: 'bot check', judged: {...plain, botCheck: true}, chip: 'Needs you', reason: 'a check that you are human'},   // was the raw id 'captcha' (#3548 review)
   {name: 'login wall', judged: {...plain, loginWall: true}, chip: 'Needs you', reason: 'login wall'},
   {name: 'account to create', judged: {...plain, accountCreation: true}, chip: 'Needs you', reason: 'asks you to create an account'},
 ].map((item, index) => ({...item, url: `https://jobs.triage-chip.example/roles/${index + 1}`, read: readFromJudge(item.judged, {allFactsSaved: item.allFactsSaved})}));
