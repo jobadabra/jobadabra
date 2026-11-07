@@ -1,4 +1,5 @@
 // The record of accounts we made (lib/site-accounts.js): sign-in only for a confirmed account of this very email; a pending one waits for its mail.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {modeOf, record, withCompanies, withoutHost} from '../../../lib/site-accounts.js';
@@ -45,10 +46,9 @@ test('an account made earlier counts: the email recorded on the Credentials item
   assert.equal(modeOf(record({}, 'a.example', 'me@example.com', 'pending'), 'a.example', 'me@example.com', 'me@example.com'), 'confirm');   // our record wins
 });
 
-import fs from 'node:fs';
 
 test('the assistant mode is one choice in the window (Profile > Application assistant): two buttons, saved as full or assist, drawn from the effective setting', () => {
-  const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
   const html = read('renderer/index.html');
   assert.ok(html.includes('data-assistant-mode="full"') && html.includes('data-assistant-mode="assist"'));
   assert.ok(!html.includes('id="account-automation"') && !html.includes('id="escalation"'), 'the two old switches are gone: one choice');
@@ -68,7 +68,7 @@ test('every settings answer to the window is the effective one: an unset assista
   assert.equal(forWindow({accountAutomation: 'full'}).accountAutomation, 'full');
   assert.equal(forWindow({escalation: 'on'}).escalation, 'on');   // the rest is kept
   // the class: a handler that hands the window the settings (or a saveSettings result) goes through forWindow
-  const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
   for (const file of ['main.js', 'lib/setup-handlers.js', 'lib/focus-handlers.js']) {
     const source = read(file);
     assert.doesNotMatch(source, /return storage\.settings\(\);|return saved;|return storage\.saveSettings\(/, `${file} returns raw settings to the window`);
@@ -88,13 +88,13 @@ test('a saved password for the host means sign in first, once: no email recorded
 });
 
 test('the app records a refused sign-in as state refused, without a confirmation to wait for', () => {
-  const source = fs.readFileSync(new URL('../../../lib/ext-server-handlers.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../lib/ext-server-handlers.js', import.meta.url), 'utf8');
   assert.match(source, /state === 'refused'[\s\S]{0,200}record\(storage\.settings\(\)\.siteAccounts, host, email, 'refused', Date\.now\(\), /);
   assert.match(source, /modeOf\(storage\.settings\(\)\.siteAccounts, host, email, credentials\.emailOf\(host\), !!answer\.ok, company\)/);
 });
 
 test('a refused sign-in reaches the session card, and the password log says which mode the app chose (10 Oct 2026: the log could not say why Deloitte was signed in to)', () => {
-  const source = fs.readFileSync(new URL('../../../lib/ext-server-handlers.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../lib/ext-server-handlers.js', import.meta.url), 'utf8');
   assert.match(source, /sign-in refused: no account[\s\S]{0,260}terminals\.setAccount\(session, 'refused'\)/);
   assert.match(source, /'site password given for a sign-in page', \{host: [^}]*given: !!answer\.ok, mode, email: !!email\}/);
 });

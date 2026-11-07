@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {readScreenSource} from '../../static-screen-source.js';
 
 const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
@@ -32,4 +33,26 @@ test('every screen catalog supplies all seven locales and keeps the same named v
       });
     }
   }
+});
+
+test('every static binding resolves through the same loader used before renderer startup', async () => {
+  await import('../../../i18n/screens.js');
+  const {setLocale, t} = await import('../../../i18n/index.js');
+  const keys = [...new Set([...html.matchAll(/data-i18n(?:-[\w-]+)?="([^"]+)"/g)].map(match => match[1]))];
+  assert.ok(keys.length > 0);
+  try {
+    for (const locale of locales) {
+      setLocale(locale);
+      for (const key of keys) assert.notEqual(t(key), key, `${locale}: unregistered ${key}`);
+    }
+  } finally { setLocale('en'); }
+});
+
+test('text bindings are leaves so translating them cannot erase nested links, icons or controls', () => {
+  const slots = [...html.matchAll(/<([a-z][\w-]*)\b[^>]* data-i18n="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/gi)];
+  assert.ok(slots.length > 0);
+  for (const [, , key, text] of slots) assert.ok(!/<[a-z]/i.test(text), `${key} contains a child element`);
+  const english = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  assert.ok(!english.includes('data-i18n'), 'the source guards see only fallback markup');
+  assert.ok(english.includes('<span data-notion-only> and in your Notion</span>'), 'inline spacing and original visibility stay intact');
 });

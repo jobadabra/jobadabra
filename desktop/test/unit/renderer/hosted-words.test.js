@@ -1,6 +1,6 @@
 // Always on "on our servers": the card's states and words (renderer/hosted-words.js), one name everywhere, ON by default until Skip (owner, 17 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {NAME, model, turnedOnLine, when} from '../../../renderer/hosted-words.js';
 
@@ -49,7 +49,7 @@ test('when() speaks in the person\'s own day', () => {
 });
 
 test('one name: "Always on", with the two told apart, and nothing user-visible says daily searches, hosted search or on our servers alone', () => {
-  const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+  const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
   assert.equal(NAME, 'Always on: on our servers');
   const html = read('renderer/index.html');
   assert.match(html, /<h3>Always on: your GitHub<\/h3>/);

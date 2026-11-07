@@ -1,11 +1,12 @@
 // Profile is its own page (owner, 18 Oct 2026, UI redesign fix 9 + 10): every way in (the menu's Profile, Settings → Profile, Overview's Edit profile, ⌘K)
 // passes settingsPage('profile'), which drops "Settings", its list of sections and the second heading; one save bar for the 5 tabs; Fill from my CV and the
 // one "View source in Notion" sit in a quiet ⋯ menu; the assistant moved to Automation and the old password lives only in Credentials.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const html = read('index.html');
 const page = name => { const from = html.indexOf(`data-settings-page="${name}"`); return html.slice(from, html.indexOf('data-settings-page="', from + 30)); };
 const files = dir => fs.readdirSync(new URL(`../../../renderer/${dir}`, import.meta.url), {withFileTypes: true})

@@ -1,12 +1,13 @@
 // Blocks shown late above content already drawn (renderer/late-blocks.js; owner, 26 Oct 2026: the Find jobs card came 2-3 s late and pushed the
 // job list down): each one is in the page's first paint, as last drawn or as a skeleton, and the real data replaces it in place.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {LATE_BLOCKS, keepBlock, keptBlock} from '../../../renderer/late-blocks.js';
 import {findCard, keptFindCard, waitsForList} from '../../../renderer/find-card-model.js';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const html = read('index.html');
 const memory = () => { const map = new Map(); return {writes: 0, getItem: key => map.get(key) ?? null, setItem(key, value) { this.writes += 1; map.set(key, String(value)); }}; };
 

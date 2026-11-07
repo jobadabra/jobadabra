@@ -1,10 +1,10 @@
 // The wiring of "which build runs" (owner, 16 Oct 2026): the window's line and Restart button, the palette entry, the server's answer to the extension, the panel's foot and its Reload button.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {readPanel} from '../../../../app-core/test/helpers/panel.js';
 
-const read = file => fs.readFileSync(new URL(`../../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../../${file}`, import.meta.url), 'utf8');
 
 test('the window has the build line and the Restart button, started with the other pages, and ⌘K lists the restart', () => {
   const html = read('desktop/renderer/index.html');

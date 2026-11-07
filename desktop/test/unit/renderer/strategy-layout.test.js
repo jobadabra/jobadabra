@@ -1,12 +1,12 @@
 // Strategy's order and its one line of suggestions (owner, 18 Oct 2026, review fixes 3 and 10): heading → tabs → a compact notice → content; the
 // full suggestions list only in Suggestions, one "N suggestions to improve your search · Review" line elsewhere; Notion only as one "View source in
 // Notion" in the header's ⋯ menu, on the Notion store only.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {improveWords} from '../../../renderer/strategy-parts.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const html = read('renderer/index.html');
 const page = html.slice(html.indexOf('<div class="view strategy-page"'), html.indexOf('<p class="message" id="strategy-load">'));
 

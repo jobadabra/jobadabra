@@ -1,8 +1,8 @@
 // The "Which job is this email about?" popup: three explicit answers (a tracked job, a new job, not a job), the job picker
 // only for the first, and the same "why" sentence as the Gmail card (owner's mockup, 6 Oct 2026).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {CHOICES, emailNoun, questionWhy} from '../../../renderer/question-words.js';
@@ -11,13 +11,13 @@ import {activitySource} from '../../activity-source.js';
 const renderer = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
 
 test('the dialog offers the three answers as radios, and the picker holds only tracked jobs', () => {
-  const html = fs.readFileSync(path.join(renderer, 'index.html'), 'utf8');
+  const html = readScreenSource(path.join(renderer, 'index.html'), 'utf8');
   const dialog = /<dialog id="reassign-dialog"[\s\S]*?<\/dialog>/.exec(html)[0];
   const values = [...dialog.matchAll(/type="radio" name="reassign-choice" value="(\w+)"/g)].map(m => m[1]);
   assert.deepEqual(values, ['tracked', 'new', 'none']);
   assert.deepEqual(Object.keys(CHOICES), values);
   assert.match(dialog, /id="reassign-pick" hidden/);
-  const js = fs.readFileSync(path.join(renderer, 'pages/reassign.js'), 'utf8');
+  const js = readScreenSource(path.join(renderer, 'pages/reassign.js'), 'utf8');
   assert.doesNotMatch(js, /option\('(new|none)'/, 'a new job / not a job are choices, not picker entries');
 });
 

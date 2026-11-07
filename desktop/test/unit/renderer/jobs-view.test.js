@@ -1,7 +1,7 @@
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {interviewJob, notionPageUrl, ago, applicationStats, avatar, inProcess, band, byStat, isStuck, matchLabel, placeAndMode, sorted, stats, statusPill, tags, unscoredWhy, workMode} from '../../../renderer/jobs-view.js';
-import fs from 'node:fs';
 
 test('place and mode on one line say the mode once', () => {
   assert.equal(placeAndMode('Remote (Europe)', 'Remote'), 'Remote (Europe)');
@@ -195,7 +195,7 @@ test('the Inbound counter opens the Inbound list; again shows every match; the o
 
 test('Jobs page: "New matches" (not "To review"), Inbound and Everything as options of the one Show menu', async () => {
   const fs = await import('node:fs');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const {FILTER_OPTIONS} = await import('../../../renderer/jobs-filters.js');
   const labels = FILTER_OPTIONS.map(option => option.label);
   for (const wanted of ['New matches', 'Saved', 'Applied', 'Dismissed', 'Inbound', 'All matches', 'Everything']) assert.ok(labels.includes(wanted), wanted);
@@ -237,7 +237,7 @@ test('a job whose place is unclear says so instead of "not scored yet"', () => {
   assert.match(unscoredWhy({fit: null, place_unclear: true}), /place is unclear.*could not be read/);
   assert.match(unscoredWhy({fit: null}), /^Not scored yet/);
   assert.equal(unscoredWhy({fit: 80, place_unclear: true}), '', 'a scored job needs no reason');
-  const render = fs.readFileSync(new URL('../../../renderer/pages/jobs-render.js', import.meta.url), 'utf8');
+  const render = readScreenSource(new URL('../../../renderer/pages/jobs-render.js', import.meta.url), 'utf8');
   assert.match(render, /pill\(PLACE_UNCLEAR, 'warn'\)/, 'the row shows the badge');
   assert.match(render, /job\.status === 'unreviewed' && !job\.place_unclear\)\.length/, 'the AI banner leaves these out');
 });
@@ -256,7 +256,7 @@ test('tags are the skills the AI read from the posting, for any trade and langua
 });
 
 test('jobs-view.js holds no tech word list', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/jobs-view.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/jobs-view.js', import.meta.url), 'utf8');
   for (const word of ['Observability', 'Kubernetes', 'Terraform', 'OpenTelemetry', 'DevOps']) assert.ok(!source.includes(word), word);
 });
 

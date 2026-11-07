@@ -1,6 +1,6 @@
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {STEPS, track} from '../../../lib/setup-funnel.js';
 import {assertSiteAccepts, siteTest} from '../../site-private.js';
 
@@ -8,17 +8,17 @@ import {assertSiteAccepts, siteTest} from '../../site-private.js';
 const SITE_STEPS = [...STEPS, 'done'];
 
 siteTest('the website counts every setup step', () => {
-  const site = fs.readFileSync(new URL('../../../../shared/telemetry.js', import.meta.url), 'utf8');
+  const site = readScreenSource(new URL('../../../../shared/telemetry.js', import.meta.url), 'utf8');
   const counted = [...site.match(/SETUP_STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]);
   assertSiteAccepts(SITE_STEPS, counted, 'setup steps');   // the site may count more (it lands first)
 });
 
 test('the steps match the wizard', () => {
-  const core = fs.readFileSync(new URL('../../../renderer/pages/core.js', import.meta.url), 'utf8');
+  const core = readScreenSource(new URL('../../../renderer/pages/core.js', import.meta.url), 'utf8');
   const wizardSteps = [...core.match(/STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(match => match[1]);
   assert.deepEqual(wizardSteps, STEPS, 'telemetry follows the remaining wizard steps');
     // Every step has its page in the wizard, and the sidebar lists exactly these.
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.deepEqual([...html.matchAll(/<li data-step="([a-z]+)"/g)].map(m => m[1]), wizardSteps);
   for (const step of wizardSteps) assert.match(html, new RegExp(`class="step" data-step="${step}"`));
 });

@@ -1,12 +1,12 @@
 // Setup step 3 is the Strategy page's own cards (owner, 24 Oct 2026: "literally the same cards"). The class: every card of the Strategy page's live block is
 // the one in the wizard (moved, not redrawn); the setup has no renderer of its own for a field the cards own; its edits change the draft, never the store.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 import {editDraftLists, editDraftText} from '../../../lib/draft-edit-handlers.js';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const html = read('index.html');
 const review = read('pages/strategy-review.js');
 const live = html.slice(html.indexOf('id="strategy-live"'), html.indexOf('id="strategy-suggestions"'));

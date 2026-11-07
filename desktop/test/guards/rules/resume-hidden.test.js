@@ -1,12 +1,13 @@
 // "Resume Claude" is hidden everywhere while SHOW_RESUME_CLAUDE is off (owner, 15 Oct 2026). The class: every place that builds or offers it asks resumeOffered,
 // and no text tells the person to press it. The places: the session card's button, its ⋯ menu entry, the log banner's button and the banner's wording.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '../../..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => readScreenSource(path.join(root, file), 'utf8');
 const walk = dir => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]));
 
 test('the flag is off, and resumeOffered follows it', async () => {
@@ -50,7 +51,7 @@ test('class: the takeover is off in the app and the extension reads the same fla
   assert.match(app('lib/ladder/rung5-takeover.js'), /enabled = false/);
   assert.match(app('renderer/claude-auto.js'), /hidden = !resumeOffered\(\)/);
   assert.match(app('renderer/claude-offer.js'), /help: resumeOffered\(\)/);
-  assert.match(fs.readFileSync(path.join(root, '..', 'extension', 'review.js'), 'utf8'), /takeover: reply\?\.claudeTakeover|claudeTakeover !== false/);
+  assert.match(readScreenSource(path.join(root, '..', 'extension', 'review.js'), 'utf8'), /takeover: reply\?\.claudeTakeover|claudeTakeover !== false/);
   // The panel: flag off -> the Report this form button where Claude's offer was (or "needs" when the report switch is off); flag on -> the offer as before.
   globalThis.window = {};
   await import('../../../../extension/panel-claude.js');

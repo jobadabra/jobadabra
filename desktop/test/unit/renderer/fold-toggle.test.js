@@ -1,13 +1,13 @@
 // The Show / Hide button of the Jobs folds (owner, 5 Nov 2026: "\"Show\" doesn't look like a button, but rather like a text"): one word source and one style for every `.jobs-fold`
 // (Suggestions for your search, In conversation). The class loop reads the page: a fold added later without the toggle fails here.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {foldToggleWord} from '../../../renderer/fold-toggle.js';
 import {jobsBarWords} from '../../../renderer/suggestions.js';
 import {talkingBar} from '../../../renderer/jobs-view.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 
 test('Show when folded, Hide when open: the one word for every fold', () => {
   assert.equal(foldToggleWord(false), 'Show');

@@ -1,10 +1,10 @@
 // Settings → Profile → Experience: its tab, its two panels, the page module's hooks and the four actions the window calls
 // (renderer/pages/experience.js, lib/experience-handlers.js). The data and the AI match are guarded by experience.test.js.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const html = read('../../../renderer/index.html'), profile = read('../../../renderer/pages/profile.js'), page = read('../../../renderer/pages/experience.js');
 const preload = read('../../../preload.cjs'), handlers = read('../../../lib/experience-handlers.js');
 

@@ -1,9 +1,9 @@
 // Jobs → a job's page (pages/job-panel.js): every way into a job's sections reaches the panel when there is no Notion page, and ⌘K lists it.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 
 test('the rejection chip and "View rejection review" open the job page when there is no Notion page', () => {
   const rows = read('pages/jobs-render.js');

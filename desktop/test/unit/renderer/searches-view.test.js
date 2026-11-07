@@ -1,7 +1,7 @@
 // Reports → Searches (renderer/searches-view.js, lib/searches-handlers.js): which runs are searches, the list row, and the report of one run for
 // each kind of run: a full local run, a cloud run with a problem, a run from before the details were kept, a stopped run, and no runs at all.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -13,7 +13,7 @@ setCostsShown(true);
 setCostEngine(() => 'api');   // these cases are the API-key user's; test/guards/money/ai-cost.test.js covers every other engine
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const demo = JSON.parse(fs.readFileSync(path.join(here, '../../../demo/searches.json'), 'utf8'));
+const demo = JSON.parse(readScreenSource(path.join(here, '../../../demo/searches.json'), 'utf8'));
 
 test('only search runs are listed, newest first, at most 50', () => {
   const rows = [{id: 'a', mode: 'mail', started_at: '2026-10-25'}, ...Array.from({length: 60}, (_, i) => ({id: `r${i}`, mode: SEARCH_MODES[i % 5], started_at: `2026-09-${String(i % 28 + 1).padStart(2, '0')}`}))];
@@ -88,7 +88,7 @@ test('every finished search run of the store has a Full report link; live runs a
 });
 
 test('the link is on the Jobs find card and the run panel header (the Actions banner leads there through View details), and opens the report through one helper', () => {
-  const read = name => fs.readFileSync(path.join(here, '../../../renderer', name), 'utf8');
+  const read = name => readScreenSource(path.join(here, '../../../renderer', name), 'utf8');
   assert.match(read('pages/jobs-find.js'), /Full report →/);
   assert.match(read('index.html'), /id="activity-report"[^>]*>Full report →/);
   assert.match(read('pages/activity.js'), /showFullReport\(run\.pageId/);

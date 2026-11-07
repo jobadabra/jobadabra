@@ -1,10 +1,10 @@
 // "Import from LinkedIn" in the window (renderer/pages/linkedin-import.js): the Profile button, the ⌘K entry, every channel the page calls is exposed and answered, the EU note is said,
 // and the page never holds a key. Static checks of the sources, like experience-page.test.js; the engine and rows are guarded by linkedin-import*.test.js.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const html = read('../../../renderer/index.html'), page = read('../../../renderer/pages/linkedin-import.js'), nav = read('../../../renderer/pages/nav.js'), app = read('../../../renderer/app.js');
 const preload = read('../../../preload.cjs'), handlers = read('../../../lib/linkedin-import-handlers.js'), experienceHandlers = read('../../../lib/experience-handlers.js');
 
@@ -44,7 +44,7 @@ test('a differing Your details row is shown with both values; nothing is added u
 });
 
 test('a stale run never draws into a newer dialog, and after a 429 or a changed API there is no Try again (that would retry a 429)', () => {
-  const page = fs.readFileSync(new URL('../../../renderer/pages/linkedin-import.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-import.js', import.meta.url), 'utf8');
   assert.match(page, /const mine = \+\+runId;[^]*mine !== runId\) return;/, 'a late answer of a closed or replaced run is ignored');
   assert.match(page, /addEventListener\('close', \(\) => \{ runId\+\+; window\.pilot\.linkedinImportCancel\(\)/, 'Escape and the backdrop cancel the wait too');
   assert.match(page, /\['rate', 'version'\]\.includes\(stopped\)/, 'no Try again after rate or version');

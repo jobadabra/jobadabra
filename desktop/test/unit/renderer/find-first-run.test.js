@@ -1,6 +1,7 @@
 // The first run (owner, 24 Oct 2026): setup ends on Jobs with a big centered "Find jobs" card and the search starts when the person presses it; in the
 // demo the same press plays a scripted search. Guards: no path starts the first search behind the person's back, the card is the shared magic card,
 // every start picks the fast first slice by itself, the demo's script walks the real card model, the searching card moves.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ import {SCRIPT, play, isSearchRun, isQuietStep, hideJobsUntilSearched, SECONDS_E
 import {searchTrigger} from '../../../lib/search-steps.js';
 
 const root = path.resolve(import.meta.dirname, '../../..');
-const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const read = name => readScreenSource(path.join(root, name), 'utf8');
 const code = name => read(name).replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(line => line.replace(/(^|\s)\/\/.*$/, '$1')).join('\n');
 const walk = (dir, out = []) => {
   for (const entry of fs.readdirSync(path.join(root, dir), {withFileTypes: true})) {

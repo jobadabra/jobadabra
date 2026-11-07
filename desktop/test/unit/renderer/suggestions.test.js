@@ -3,13 +3,13 @@
 // about the search or applying, on Jobs; every button the engine writes has its handler; Up next keeps only what can't wait; Tune and Analyze
 // left the Actions page and stay in ⌘K.
 /* global document */
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {DOES, LOOK, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries, movedItems, upNext} from '../../../renderer/suggestions.js';
 import {install} from '../../tiny-dom.js';
 
-const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(file, import.meta.url), 'utf8');
 const engine = read('../../../../src/suggestions.py'), searchRows = read('../../../../src/suggestions_search.py') + read('../../../../src/suggestions_pay.py');
 const tuple = name => [...engine.match(new RegExp(`^${name} = \\(([^)]*)\\)`, 'm'))[1].matchAll(/'(\w+)'/g)].map(match => match[1]);
 const SEARCH_ROWS = ['places', 'ideas', 'coverage', 'filters', 'visits', 'pay'];   // src/suggestions_search.py KINDS: Strategy's rows, PR 1b; pay: src/suggestions_pay.py, PR 3

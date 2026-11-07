@@ -1,12 +1,12 @@
 // Connect with LinkedIn, app side (lib/linkedin-oauth.js, lib/experience-handlers.js, renderer/pages/experience.js): the state travels to the
 // site, the profile comes back to this app's own socket once, a token is never kept, and the window offers connect, "use my name and email" and disconnect.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {cancel, connect, kept} from '../../../lib/linkedin-oauth.js';
 import {receive} from '../../../lib/oauth-handoff.js';
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const PROFILE = {ok: true, sub: 's1', name: 'Ada Example', given_name: 'Ada', family_name: 'Example', email: 'ada@example.test', locale: 'en'};
 
 test('connect opens the start page with a state, waits for the site to hand the profile to this app, and returns it', async () => {

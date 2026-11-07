@@ -1,11 +1,11 @@
 // The screen for "Which locations are right?" (owner, 17 Oct 2026): no side is preselected, every choice the model offers is a button, the advanced one sits
 // in the Choose… menu, the card is hidden until a conflict exists, Strategy loads it, and ⌘K lists it only while one is open.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {CHOICES} from '../../../lib/locations-move.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const screen = read('renderer/pages/locations-which.js');
 
 test('every choice has a button, "separate" only in the Choose… menu, and nothing is preselected', () => {

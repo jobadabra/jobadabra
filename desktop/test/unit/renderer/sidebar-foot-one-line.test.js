@@ -1,13 +1,13 @@
 // Setup sidebar foot: the privacy note and the version are one line each; the privacy detail sits in the .tip tooltip (hover and keyboard focus).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
+const html = readScreenSource(path.join(root, 'index.html'), 'utf8');
+const css = readScreenSource(path.join(root, 'style.css'), 'utf8');
 const foot = html.match(/<div class="steps-foot">([\s\S]*?)<\/aside>/)[1];
 const rows = [...foot.matchAll(/<(?:p|button)[^>]*class="fine (steps-[a-z]+)[^"]*"[^>]*>[\s\S]*?<\/(?:p|button)>/g)];
 
@@ -29,7 +29,7 @@ test('the privacy note opens a popover with every old fact and its own close but
   assert.match(pop, /encrypted/);
   assert.match(pop, /While Always on is off/);
   assert.doesNotMatch(pop, /Notion/, 'the Notion part is added only when connected');
-  const store = fs.readFileSync(path.join(root, 'pages', 'store-parts.js'), 'utf8');
+  const store = readScreenSource(path.join(root, 'pages', 'store-parts.js'), 'utf8');
   assert.match(store, /privacy-text[\s\S]*connected/);
   assert.match(store, /Escape/);
   assert.match(store, /closest\('\.steps-privacy-wrap'\)/);
@@ -44,6 +44,6 @@ test('the main sidebar foot lines (build, plan chip, search hint, update, sessio
   assert.match(rule[2], /overflow: hidden/);
   assert.match(rule[2], /text-overflow: ellipsis/);
   assert.match(css, /\.nav-sessions > span:nth-child\(2\) \{[^}]*white-space: nowrap/);
-  const sessions = fs.readFileSync(path.join(root, 'pages', 'sessions.js'), 'utf8');
+  const sessions = readScreenSource(path.join(root, 'pages', 'sessions.js'), 'utf8');
   assert.match(sessions, /\$\('nav-sessions'\)\.title = text/, 'the full text is in the tooltip');
 });

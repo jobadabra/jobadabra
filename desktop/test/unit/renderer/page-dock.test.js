@@ -1,10 +1,10 @@
 // A sticky page save bar never covers another bar or a button (owner, 18 Oct 2026; the Profile save bar slid over Expand all / Collapse all on a short tab):
 // Profile's fold bar and save bar sit in one sticky dock, stacked; every page's save bar sticks at the bottom edge, never lifted for a bar that is not there.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 
 test('Profile: the fold bar and the save bar share one sticky dock, neither sticky on its own inside it', () => {
   const html = read('index.html'), dock = html.indexOf('id="profile-dock"');

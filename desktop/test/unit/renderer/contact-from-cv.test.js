@@ -1,7 +1,7 @@
 // "Your details from your CV" (lib/contact-from-cv.js): Claude proposes values for empty contact fields, once per CV file; nothing is
 // saved without the person's Save; a filled field is never proposed over; the log names fields, never values.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {FIELDS, cleanProposals, emptyFields, forCv, pending, settleSure, sourceKey, statedText} from '../../../lib/contact-from-cv.js';
 
@@ -54,13 +54,13 @@ test('a failure is kept for that CV (no paying again on every open) and said; no
 });
 
 test('the window offers unsure proposals and Save is the only way they are kept; a sure value is saved one detail at a time', () => {
-  const page = fs.readFileSync(new URL('../../../renderer/pages/contact-proposals.js', import.meta.url), 'utf8');
-  const profile = fs.readFileSync(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/contact-proposals.js', import.meta.url), 'utf8');
+  const profile = readScreenSource(new URL('../../../renderer/pages/profile.js', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   assert.ok(!/saveContact\(/.test(page), 'no proposal saves the whole form');
   assert.match(page, /contactProposals\(\{again, settle: !again\}\)/, 'only opening Profile asks the engine to save the sure values; a press (again) fills drafts');
   assert.match(profile, /loadProposals\(\);/);
-  assert.match(fs.readFileSync(new URL('../../../renderer/pages/profile-menu.js', import.meta.url), 'utf8'), /label: 'Fill empty details from my CV', run: \(\) => fillFromCv/, 'Fill from my CV lives in the Profile ⋯ menu');
+  assert.match(readScreenSource(new URL('../../../renderer/pages/profile-menu.js', import.meta.url), 'utf8'), /label: 'Fill empty details from my CV', run: \(\) => fillFromCv/, 'Fill from my CV lives in the Profile ⋯ menu');
   assert.match(html, /data-contact="salutation"/);
   assert.match(page, /pill\(`\$\{left\} from CV · check`, 'warn'\)/, 'how many proposals are left shows as a badge in the Contact title (mockup 05)');
   assert.doesNotMatch(page, /filled in from your CV: check/, 'never a lone line under the card');

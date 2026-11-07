@@ -1,11 +1,11 @@
 // ⌘K lists every task action also while it runs; choosing a running one opens its progress (owner, 18 Oct 2026: typed "find", no "Find jobs" while a search ran).
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {buttonEntry, reveal} from '../../../renderer/pages/palette-busy.js';
 import {activitySource} from '../../activity-source.js';
 
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 const [html, nav, board] = [read('index.html'), read('pages/nav.js'), read('pages/actions-board.js')];
 const entry = {group: 'Actions', label: 'Find jobs', hint: 'Reads boards', keywords: 'find', run: () => 'run'};
 

@@ -1,13 +1,13 @@
 // Every screen that installs the extension leads with the Chrome Web Store ("Add to Chrome"); Load unpacked stays only in the developer part.
 // Owner, 26 Oct 2026: "we're going to change this section in the settings, but also in the wizard". Store ID: chromewebstore.google.com/detail/jobadabra/nmbnjhmpofifgcdalfefddbiihccogoi.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import * as ext from '../../../lib/extension-install.js';
 import * as env from '../../../lib/server-env.js';
 import * as server from '../../../lib/server.js';
 
-const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
 // One install surface's markup: from its opening tag to the next card on the same level.
 const card = id => {
   const start = html.indexOf(`id="${id}"`);

@@ -1,13 +1,13 @@
 // One press to apply (owner, 5 Nov 2026: "Preparing the kit separately by the user, without applying brings no value"): a kit is made only by Apply, on this computer.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {draftMissing} from '../../../lib/apply.js';
 import {registerKitHandlers, stoppedWith} from '../../../lib/kit-handlers.js';
 import {dailyArgs} from '../../../lib/pipeline-args.js';
 import * as pipeline from '../../../lib/pipeline.js';
 
-const read = path => fs.readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(`../../../${path}`, import.meta.url), 'utf8');
 const storageWith = schedule => ({settings: () => ({schedule}), secret: name => (name === 'ANTHROPIC_API_KEY' ? 'sk-fake' : ''), path: name => `/fake/${name}`});
 
 test('a search never drafts kits by itself, even for someone who had turned the setting on', () => {
@@ -92,7 +92,7 @@ test('in a batch the stopped job is also notified, so a batch that started other
 });
 
 test('the app and the engine agree on the stop code', () => {
-  assert.match(fs.readFileSync(new URL('../../../../src/ai/kit.py', import.meta.url), 'utf8'), new RegExp(`^JOB_STOPPED = ${pipeline.JOB_STOPPED}\\b`, 'm'));
+  assert.match(readScreenSource(new URL('../../../../src/ai/kit.py', import.meta.url), 'utf8'), new RegExp(`^JOB_STOPPED = ${pipeline.JOB_STOPPED}\\b`, 'm'));
 });
 
 test('only the engine\'s own stop code is a reason in words: a crash or a run that worked never is', () => {

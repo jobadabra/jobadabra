@@ -1,5 +1,6 @@
 // "Report this form" wiring (spec 2026-10-15-report-this-form.md §3, §7): the panel flag (the only entry point since 16 Oct 2026; no app button, no ⌘K entry) is off with the Settings switch and until the uploader exists,
 // nothing records before the person's press, the debugger is used only inside start(), the manifest's permissions are unchanged, and the app side holds, previews, drops hosts and sends only through the gate.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -7,7 +8,7 @@ import {registerReportHandlers, reportFormOn} from '../../../lib/report-handlers
 import {PANEL_FILES} from '../../../../extension/panel-files.js';
 import {visitMore} from '../../../lib/server-hooks.js';
 
-const read = file => fs.readFileSync(new URL(`../../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../../${file}`, import.meta.url), 'utf8');
 const code = file => read(file).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
 const TEXTS = ['full name: Rosalind Quill\nemail: rosalind.quill@mailbox.test\n'];
 const entry = (url, body, type = 'text/html') => ({method: 'GET', url, type: 'document', mode: 'navigate', startMs: 0, waitMs: 5, bodyKey: '', status: 200, failed: false, headers: {'content-type': type}, hadCookie: false, body: Buffer.from(body).toString('base64'), size: body.length});

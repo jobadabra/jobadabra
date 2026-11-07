@@ -1,7 +1,7 @@
 // Your portrait tab (spec criteria 1-3): it is the last Profile tab with its subtitle, nothing on it edits, every statement has a chip, and each chip opens its source tab.
 // Fictional status; a minimal DOM.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
@@ -11,7 +11,7 @@ const {document} = globalThis;
 const {wireTabLinks} = await import('../../../renderer/pages/profile-save-bar.js');
 
 const renderer = path.join(import.meta.dirname, '../../../renderer');
-const read = file => fs.readFileSync(path.join(renderer, file), 'utf8');
+const read = file => readScreenSource(path.join(renderer, file), 'utf8');
 
 test('Your portrait is the last Profile tab, has its subtitle, and the palette lists tabs by their buttons', () => {
   const html = read('index.html');

@@ -1,5 +1,6 @@
 // The window and its helpers: scripts and wizard markup, open questions and fill reports, the Jobs filter, Windows wording, Gmail failures.
 // Split from app.test.js (8 Oct 2026) without changing any test.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -183,7 +184,7 @@ test('Windows wording: the PC, File Explorer, Ctrl, its own encryption; the Mac 
 });
 
 test('every wizard step sits inside the wizard\'s content column (an extra </div> pushes the rest below the sidebar)', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const body = html.slice(html.indexOf('<div class="step-body">'), html.indexOf('<!-- After setup'));
   let depth = 0;
   for (const tag of body.matchAll(/<(\/?)div\b[^>]*>/g)) {
@@ -194,7 +195,7 @@ test('every wizard step sits inside the wizard\'s content column (an extra </div
 });
 
 test('every Settings card is closed before the next one starts (an unclosed card nests the rest inside it)', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const start = html.indexOf('<div class="view" data-view="settings"');
   const view = html.slice(start, html.indexOf('</main>', start));
   let depth = 0, page = null;  // cards sit directly inside a Settings sub-page (Overview, Connections…)

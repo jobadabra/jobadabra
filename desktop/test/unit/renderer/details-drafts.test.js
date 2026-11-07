@@ -1,14 +1,14 @@
 // Your details on the Profile page's one save bar (pages/details-drafts.js, renderer/details-count.js; owner, 18 Oct 2026, UI redesign D2): the bar counts the
 // fields that differ from what was read or saved, a refresh never draws over drafts, a proposal from the CV is a draft only once the person presses Fill (never saved by itself, never filled on open), and nothing
 // on the tab has its own Save any more.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
 install();
 const {contactNow, countContact, countFacts} = await import('../../../renderer/details-count.js');
-const read = file => fs.readFileSync(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../renderer/${file}`, import.meta.url), 'utf8');
 
 test('contact: one change per box that differs; full_name is not a box', async () => {
   const {el} = await import('../../../renderer/components.js');

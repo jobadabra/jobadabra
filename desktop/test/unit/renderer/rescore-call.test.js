@@ -4,12 +4,12 @@
 // ... but still, there should be the old scored." / "Find jobs should be only for finding jobs. But pressing Find jobs should open a dialog saying: Score first").
 // One counter and one running state (renderer/pages/rescore-run.js), one sentence (renderer/rescore-words.js) for Strategy's notice and Jobs. tests/unit/ai/test_strategy_outdated.py
 // checks the engine marks the rows and counts them like Strategy; desktop/integration/app/screen-jobs-rescore.test.js plays it in the window.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const body = install();
 const make = (tag, id, extra = {}) => { const node = globalThis.document.createElement(tag); node.id = id; Object.assign(node, extra); body.append(node); return node; };
 const call = make('div', 'jobs-unscored'), text = make('span', 'jobs-unscored-text'), go = make('button', 'jobs-unscored-go'), card = make('section', 'rescore-card');

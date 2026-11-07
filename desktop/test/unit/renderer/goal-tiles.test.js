@@ -1,7 +1,7 @@
 // Strategy's goal tiles (renderer/goal-tiles.js): Work eligibility and Languages are Your details' facts (owner, 17 Oct 2026: one home per value),
 // so Strategy shows them read-only with "Edit in Your details" and no pencil; the search goals stay editable in place. Tiny DOM (test/tiny-dom.js).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 
@@ -26,9 +26,9 @@ test('a fixed tile shows its value and "Edit in Your details", never a pencil; t
 });
 
 test('Strategy\'s Main goals reads Work eligibility and Languages from Your details, with the link to their section there', () => {
-  const source = fs.readFileSync(new URL('../../../renderer/pages/main-goals.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/main-goals.js', import.meta.url), 'utf8');
   assert.match(source, /referenceRow\(\{text: words, open: \(\) => openSetting\(section\)\}\)/, 'the shared reference row (page-parts.js): "From Your details" + "Edit in Your details"');
   assert.match(source, /'languages' : 'eligibility'/);
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   for (const key of ['eligibility', 'languages']) assert.match(html, new RegExp(`id="setting-${key}"[^>]*data-profile-panel="details"|data-profile-panel="details"[^>]*id="setting-${key}"`), key);
 });

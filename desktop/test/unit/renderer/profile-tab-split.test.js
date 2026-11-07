@@ -2,11 +2,11 @@
 // docs/superpowers/specs/2026-10-17-base-facts.md). The class, not the case: every tab has panels, every panel names a tab, ⌘K reaches every tab and
 // every section on a tab that is not open, and no screen still says "CV & details". Strategy keeps its one-word sidebar label; its page title reads
 // "Search strategy" (owner: "Strategy (+ page title 'Search strategy')").
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
-const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const html = read('renderer/index.html');
 const tabs = [...html.matchAll(/data-profile-tab="(\w+)"[^>]*>([^<]+)</g)].map(match => [match[1], match[2].replace('&amp;', '&')]);
 const panels = [...html.matchAll(/id="([\w-]+)"[^>]*data-profile-panel="(\w+)"/g)].map(match => [match[1], match[2]]);

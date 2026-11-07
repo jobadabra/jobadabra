@@ -1,7 +1,7 @@
 // A session's state on the session page: ready for review, asking you, working, and how long it took.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import fs from 'node:fs';
 import {CHECK_MS, SESSION_STATE, cancelAllButton, cancellingState, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../../../renderer/session-state.js';
 
 test('a filled form waiting for you is "ready for review"; a message ending on your question is not', () => {
@@ -171,7 +171,7 @@ test('a new session opened after the app has been up for minutes gets its own fi
 test('every view of the tab state (list, dock, session title, next-step card) draws "Tab not found" from the one function', () => {
   // The list and the log header take the tab part of their pill from tabStatus in session-needs.js (one ladder, 30 Oct 2026), which is where tabLost is drawn.
   for (const [file, drawn] of [['sessions.js', /tabStatus\(item\)/], ['session-log.js', /tabStatus\(item\)/], ['session-needs.js', /tabLost\(item\)/], ['session-next-step.js', /tabLost\(item\)/]]) {
-    const source = fs.readFileSync(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
+    const source = readScreenSource(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
     assert.match(source, drawn, `${file} draws the state without tabLost`);
   }
 });
@@ -310,10 +310,10 @@ test('Claude stopped on an account page with things for you: "Needs you", never 
   assert.equal(leftForYou(item), true);
   assert.deepEqual(sessionState(item), ['Needs you', 'warn']);
   // The card of what Claude needs is shown whenever it has rows, also while Claude asks: its answer boxes and "Remember" live there (owner, 8 Oct 2026).
-  const page = fs.readFileSync(new URL('../../../renderer/pages/session-next-step.js', import.meta.url), 'utf8');
+  const page = readScreenSource(new URL('../../../renderer/pages/session-next-step.js', import.meta.url), 'utf8');
   assert.match(page, /show\(\$\('ss-needs-card'\), needs\.length \+ empty\.length > 0 && !gone\)/);
   assert.doesNotMatch(page, /What Claude needs from you:'/, 'the list is the card below, not a second copy in the top card');
-  const needs = fs.readFileSync(new URL('../../../renderer/pages/session-needs.js', import.meta.url), 'utf8');
+  const needs = readScreenSource(new URL('../../../renderer/pages/session-needs.js', import.meta.url), 'utf8');
   assert.equal((needs.match(/if \(item\.stage !== 'account'\) actions\.append\(reviewButton\(/g) || []).length, 2, 'no form to review on the account step (decision and ask rows)');
 });
 
@@ -399,7 +399,7 @@ test('a card\'s time-based phase moves on with the clock alone, and the window\'
   // Only the clock moved between the two reads, and the string differs: that difference is what makes the tick redraw.
   assert.notEqual(tabPhases([item], silent, CHECK_MS + 5000, now), tabPhases([item], silent, WAIT_MS + 5000, now));
   assert.equal(tabPhases([item], silent, WAIT_MS + 5000, now), tabPhases([item], silent, WAIT_MS + 9000, now));
-  const source = fs.readFileSync(new URL('../../../renderer/pages/activity.js', import.meta.url), 'utf8');
+  const source = readScreenSource(new URL('../../../renderer/pages/activity.js', import.meta.url), 'utf8');
   assert.match(source, /tabPhases\(sessionList, shared\.formsOpen, performance\.now\(\)\)/, 'the 2 s tick reads every card\'s phase on the clock the cards use');
   assert.doesNotMatch(source, /CHECK_MS \+ 100/, 'no one-shot timer redraws the cards once');
 });
@@ -419,7 +419,7 @@ test('the empty tray links open the Sessions page; with sessions they open the o
   assert.equal(dockLinkSession([], 'gone'), null, 'a remembered id of a session that is gone does not count');
   assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], null), 'a');
   assert.equal(dockLinkSession([{id: 'a'}, {id: 'b'}], 'b'), 'b');
-  assert.doesNotMatch(fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="sessions-dock"[^>]*hidden/, 'the tray is in the page from the start, so the tour can reach it');
+  assert.doesNotMatch(readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8'), /id="sessions-dock"[^>]*hidden/, 'the tray is in the page from the start, so the tour can reach it');
 });
 
 // Owner, 7 Nov 2026: Cancel all gave no sign of life for seconds. A row being cancelled says so in place of its own state.

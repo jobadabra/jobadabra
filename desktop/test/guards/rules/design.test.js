@@ -1,6 +1,7 @@
 // The design system's guard: colours, corner radii, font sizes and font families come from
 // renderer/tokens.css. Any other stylesheet using a raw one fails here, with its file and line, so the UI
 // can't drift back into one-off values (see docs/rules/desktop-ui.md).
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,7 +35,7 @@ export function violations(css) {
 
 test('every stylesheet takes its colours, radii, font sizes and fonts from tokens.css', () => {
   assert.ok(sheets.includes('style.css'));
-  const report = sheets.flatMap(file => violations(fs.readFileSync(path.join(renderer, file), 'utf8'))
+  const report = sheets.flatMap(file => violations(readScreenSource(path.join(renderer, file), 'utf8'))
     .map(v => `${file}:${v.line} ${v.rule} "${v.text}" → use ${v.use}`));
   assert.deepEqual(report, [], `\n${report.join('\n')}`);
 });
@@ -52,6 +53,6 @@ test('an id selector that starts with hex letters is not a colour; the same word
 });
 
 test('the index page loads the tokens before the screens\' styles', () => {
-  const html = fs.readFileSync(path.join(renderer, 'index.html'), 'utf8');
+  const html = readScreenSource(path.join(renderer, 'index.html'), 'utf8');
   assert.ok(html.indexOf('href="tokens.css"') > -1 && html.indexOf('href="tokens.css"') < html.indexOf('href="style.css"'));
 });

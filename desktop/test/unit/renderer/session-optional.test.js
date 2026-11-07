@@ -1,11 +1,11 @@
 // The session page's "Optional questions" card (owner, 9 Oct 2026): the form's empty optional fields, folded, never counted as left, never a consent.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import fs from 'node:fs';
 import {optionalLabels} from '../../../renderer/optional-questions.js';
 import * as review from '../../../lib/review.js';
 
-const read = path => fs.readFileSync(new URL(`../../../../${path}`, import.meta.url), 'utf8');
+const read = path => readScreenSource(new URL(`../../../../${path}`, import.meta.url), 'utf8');
 
 test('the card lists the empty optional questions, once each, none on a closed tab or an account page, none already needing you', () => {
   const state = {optional: ['LinkedIn profile', 'Salary expectation', 'LinkedIn profile', '']};

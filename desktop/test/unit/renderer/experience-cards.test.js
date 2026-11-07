@@ -2,8 +2,8 @@
 // should be using cards"; the roles "redundant. Just duplicating data" with the job cards; "Where your experience comes from" first). The shape is a
 // real Profile's (fictional words): "Experience (full detail, …)" with a heading per role, a noted "Interests and strengths (…)", "Label:" strengths,
 // a bracketed note with a ❓ under Education.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
 import {groupsOf, partsOn, profileParts, splitNote} from '../../../renderer/experience-profile-model.js';
@@ -74,7 +74,7 @@ test('Edit opens Strengths as its groups: a name field and the values as chips (
 });
 
 test('the tab opens with where the experience comes from, then Your background, then the job cards', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const at = id => html.indexOf(`id="${id}"`);
   assert.ok(at('setting-experience-sources') > 0 && at('setting-experience-sources') < at('setting-experience-profile') && at('setting-experience-profile') < at('setting-experience-roles'));
 });

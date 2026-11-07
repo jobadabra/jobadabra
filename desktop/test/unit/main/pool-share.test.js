@@ -1,4 +1,5 @@
 // "Help the pool grow" is opt-in: off by default, nothing in the run environment or the user's GitHub repo until switched on.
+import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -79,7 +80,7 @@ test('Always on follows the switch: variables set when on, removed when off', as
 });
 
 test('the first screen of setup says, in one plain sentence, that employer pages are shared and where to switch it off', () => {
-  const html = fs.readFileSync(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
+  const html = readScreenSource(new URL('../../../renderer/index.html', import.meta.url), 'utf8');
   const start = html.indexOf('<div class="step" data-step="welcome">');
   const welcome = html.slice(start, html.indexOf('<div class="step" data-step="ai">', start));
   assert.match(welcome, /shares which employer career pages you use/);

@@ -1,13 +1,13 @@
 // The menu at the smallest window height (owner, 4 Oct 2026): the bottom buttons stay in view, the list between brand and bottom scrolls with a visible scrollbar and takes the wheel itself.
+import {readScreenSource} from '../../static-screen-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(dir, 'style.css'), 'utf8');
+const html = readScreenSource(path.join(dir, 'index.html'), 'utf8');
+const css = readScreenSource(path.join(dir, 'style.css'), 'utf8');
 
 test('the menu list is its own scroll area, between the brand and the bottom buttons', () => {
   const side = html.slice(html.indexOf('<nav class="sidebar">'), html.indexOf('</nav>'));
