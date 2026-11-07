@@ -67,7 +67,7 @@ jobs:
         timeout-minutes: 2
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
-        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the command's exit code without pipefail; the same pipe let the judge exam step (run 42410653476) show success after a crash
         run: python3 tools/persona-search/reference.py send out/reference.json 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v6
         if: always()

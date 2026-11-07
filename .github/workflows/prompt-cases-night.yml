@@ -46,7 +46,7 @@ jobs:
           if [ -z "$url" ]; then echo "No earlier baseline: tonight stores the first one."; exit 0; fi
           gh api "$url" > prompt-cases-in/baseline.zip && unzip -oq prompt-cases-in/baseline.zip -d prompt-cases-in || echo "::warning title=Prompt cases (nightly, report only)::last night's baseline could not be read: tonight stores a new one."
       - name: Replay the live prompt cases on the Codex plan
-        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the tool's exit code without pipefail; this step showed success after its node step crashed (judge exam run 42410653476)
+        shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the command's exit code without pipefail; the same pipe let the judge exam step (run 42410653476) show success after a crash
         run: |
           mkdir -p prompt-cases-out
           node tools/prompt-cases-night.mjs --out prompt-cases-out --baseline prompt-cases-in/prompt-cases-night.json --jobs 6 --max-calls 160 2>&1 | tee prompt-cases-night.log   # Why (Gitar on #2851): the log lives outside the uploaded folder, so a crashed night uploads nothing and the previous baseline stays the newest artifact
