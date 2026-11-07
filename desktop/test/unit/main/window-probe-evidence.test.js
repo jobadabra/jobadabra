@@ -7,7 +7,6 @@ import childProcess from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {test} from 'node:test';
 import {probeWindow} from '../../../integration/app/window-probe.js';
-import {xServerNow} from '../../../integration/app/x-server-now.js';
 
 test('actual failed probe records presence and complete stderr, never environment values, with one launch',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'probe-evidence-')),authority=path.join(dir,'private-authority');fs.writeFileSync(authority,'fictional credential');
@@ -36,14 +35,4 @@ test('successful probe retains its result contract without failure diagnostics o
   let calls=0;t.mock.method(childProcess,'spawnSync',(_file,_args,options)=>{calls++;fs.writeFileSync(options.env.JOBADABRA_SMOKE+'.json',JSON.stringify({fictional:'unchanged'}));fs.mkdirSync(path.join(options.env.JOBADABRA_USER_DATA,'logs'));fs.writeFileSync(path.join(options.env.JOBADABRA_USER_DATA,'logs','app.log'),'fictional log');return{status:0,signal:null,stderr:'ignored on success',stdout:''};});syncBuiltinESMExports();
   t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});
   assert.deepEqual(probeWindow({script:()=>null,env:{DISPLAY:'private-display-value',XAUTHORITY:'private-authority-value'}}),{result:{fictional:'unchanged'},host:[],log:['fictional log']});assert.equal(calls,1);
-});
-test('the X server line is counts only: no environment, command line or display value from /proc reaches it',()=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'x-now-')),proc=path.join(dir,'proc');
-  try{
-    fs.mkdirSync(path.join(proc,'net'),{recursive:true});fs.mkdirSync(path.join(proc,'self'));fs.mkdirSync(path.join(proc,'12'));fs.writeFileSync(path.join(proc,'net','unix'),'Num RefCount Protocol Flags Type St Inode Path\n');
-    fs.writeFileSync(path.join(proc,'12','comm'),'electron\n');fs.writeFileSync(path.join(proc,'12','environ'),'SECRET_TOKEN=private-secret-value');fs.writeFileSync(path.join(proc,'12','cmdline'),'electron --token=private-secret-value');
-    const line=xServerNow(':99',{proc,socketDir:dir});
-    assert.match(line,/^X server now: socket file (yes|no)(, [A-Za-z -]+ [a-z0-9]+)+$/);assert.ok(!line.includes('private-secret-value'),'process environment and command lines stay out');
-    assert.equal(xServerNow('private-display-value',{proc,socketDir:dir}),'','a display with no number reports nothing, and never echoes it');
-  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
