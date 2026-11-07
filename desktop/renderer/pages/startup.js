@@ -1,4 +1,5 @@
 // Start-up: what the window opens on.
+import {settingsText} from '../../i18n/settings-native.js';
 import {showMode, wireMode} from '../assistant-mode.js';
 import {wireClaudeAuto} from '../claude-auto.js';
 import {refreshClaudeHelp} from '../claude-help.js';
@@ -38,12 +39,11 @@ export function toastMessage(title, body, target = null, tone = 'info') {
   toast.dataset.key = `${title}\n${body}`;
   toast.append(Object.assign(document.createElement('b'), {textContent: title}), Object.assign(document.createElement('span'), {textContent: body}));
   if (hint) toast.append(Object.assign(document.createElement('small'), {textContent:
-    window.pilot.platform === 'win32' ? 'Windows notifications are off for this app: Settings → System → Notifications → Jobadabra → On.'
-      : 'macOS notifications are off for this app: System Settings → Notifications → Electron (or Jobadabra) → Allow notifications.'}));
+    settingsText(window.pilot.platform === 'win32' ? 'toastPermissionWindows' : 'toastPermissionMac')}));
   // One click, one thing: the action when there is one, else open what the pop-up is about (renderer/targets.js); the others just close.
   const place = clean(target);   // a NO_PLACE reason (a string) is no place
-  if (action) { toast.append(Object.assign(document.createElement('small'), {className: 'toast-next', textContent: `${action.label} ›`})); toast.title = `Click: ${action.label}`; }
-  else if (place) toast.title = 'Click to open';
+  if (action) { toast.append(Object.assign(document.createElement('small'), {className: 'toast-next', textContent: `${action.label} ›`})); toast.title = settingsText('toastClickAction', {action: action.label}); }
+  else if (place) toast.title = settingsText('toastClickOpen');
   if (action || place) toast.classList.add('toast-link');
   toast.addEventListener('click', () => { toast.remove(); if (action) action.run(); else if (place) openTarget(place); });
   $('toasts').append(toast);
@@ -74,7 +74,7 @@ export async function init() {
   window.pilot.onAiKeyRejected?.(async () => {
     shared.state = await window.pilot.state();
     refreshServices();   // an open Connections page stops saying "Connected" at once
-    toastMessage('Your AI key was refused', 'AI steps cannot run until you paste a working key (Settings → Connections → AI).', {card: 'ai'}, 'bad');
+    toastMessage(settingsText('toastKeyRejected'), settingsText('toastKeyRejectedDetail'), {card: 'ai'}, 'bad');
   });
   // ---------- start ----------
   // Set up: the app. Without Notion (Notion later) it is only trying, so it opens on Jobs; the pages that need Notion show a gate.
@@ -95,7 +95,7 @@ export async function init() {
 
   // In-window notifications (when macOS blocks system ones).
 window.pilot.onToast(toast => {
-  const shown = toast.retrySave ? {...toast, action: {label: 'Retry', run: () => window.pilot.retrySave(toast.retrySave)}} : toast;   // a save Windows held too long: the click retries (lib/save-notice.js)
+  const shown = toast.retrySave ? {...toast, action: {label: settingsText('retry'), run: () => window.pilot.retrySave(toast.retrySave)}} : toast;   // a save Windows held too long: the click retries (lib/save-notice.js)
   toastMessage(shown);
 });
   window.pilot.onOpenTarget(openTarget);   // a clicked system notification

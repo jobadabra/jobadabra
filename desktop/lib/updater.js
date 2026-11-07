@@ -5,6 +5,8 @@
 // this process has let go of Jobadabra.exe and its app.asar. Its Notion schema, pipeline and extension come with it
 // (the schema repair runs at the next start).
 import {t} from '../i18n/native.js';
+import {getLocale} from '../i18n/index.js';
+import {withDisplay} from '../i18n/display-values.js';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -69,7 +71,7 @@ const kept = new Map();   // GitHub url -> {etag, data}: an unchanged answer (30
 let limitedUntil = 0;     // GitHub said this network used its hour: no call before then
 export const resetLimit = () => { limitedUntil = 0; kept.clear(); };   // tests
 const at = ms => new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-const limitError = () => new Error(`GitHub is limiting update checks from this network; trying again at ${at(limitedUntil)}`);
+const limitError = () => withDisplay(new Error(`GitHub is limiting update checks from this network; trying again at ${at(limitedUntil)}`), 'settingsNative.updateLimited', {time: new Intl.DateTimeFormat(getLocale(), {hour: '2-digit', minute: '2-digit'}).format(new Date(limitedUntil))});
 
 async function fromGithub(fetcher, url, now) {
   if (now < limitedUntil) throw limitError();
@@ -81,7 +83,7 @@ async function fromGithub(fetcher, url, now) {
     limitedUntil = reset > now ? reset : now + (retry > 0 ? retry : 60 * 60 * 1000);
     throw limitError();
   }
-  if (!response.ok) throw new Error(`GitHub answered ${response.status}`);
+  if (!response.ok) throw withDisplay(new Error(`GitHub answered ${response.status}`), 'settingsNative.updateGithubAnswered', {status: response.status});
   const data = await response.json();
   const etag = response.headers?.get?.('etag');
   if (etag) kept.set(url, {etag, data});
@@ -93,7 +95,7 @@ async function getJson(fetcher, path, now = Date.now()) {
   const e2e = apiBase();
   if (e2e !== 'https://api.github.com') {
     const response = await fetcher(`${e2e}/repos/${REPO}/${path}`, {headers: HEADERS});
-    if (!response.ok) throw new Error(`GitHub answered ${response.status}`);
+    if (!response.ok) throw withDisplay(new Error(`GitHub answered ${response.status}`), 'settingsNative.updateGithubAnswered', {status: response.status});
     return response.json();
   }
   try {
@@ -163,7 +165,7 @@ export function macSwapScript(pid, oldApp, newApp, logFile = '', target = oldApp
 // doesn't understand what's happening"). The one-click installer asks nothing; it only shows its progress bar.
 export const WINDOWS_INSTALLER_ARGS = ['--updated', '--force-run'];
 
-// Downloads and installs `update`; calls quit() when the app should close. onStep(text) for progress.
+// Downloads and installs `update`; calls quit() when the app should close. onStep(canonicalText, displayKey) for progress.
 // What a Windows person reads before the app closes for an update (lib/app-updates.js shows it as a dialog).
 export const windowsExplanation = update => ({type: 'info', buttons: [t('native.updateWindowsAction')], defaultId: 0, title: t('native.updateWindowsTitle'),
   message: t('native.updateWindowsInstalling', {version: update.version}),
@@ -173,18 +175,18 @@ export const windowsExplanation = update => ({type: 'info', buttons: [t('native.
 export async function install(update, {exe, pid = process.pid, quit, onStep = () => {}, logFile = '', fetcher = globalThis.fetch,
   platform = process.platform, spawn: run = spawn, explain = async () => {}}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-update-'));
-  onStep('Downloading…');
+  onStep('Downloading…', 'updateDownloading');
   const response = await fetcher(update.download);
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw withDisplay(new Error(`Download failed (${response.status})`), 'settingsNative.updateDownloadFailed', {status: response.status});
   const file = path.join(dir, platform === 'win32' ? 'Jobadabra-Setup.exe' : 'update.zip');
   fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
   if (platform === 'win32') {
-    onStep('Ready to install…');
+    onStep('Ready to install…', 'updateReady');
     await explain(update);
-    onStep('Installing and restarting…');
+    onStep('Installing and restarting…', 'updateInstalling');
     const child = run(file, WINDOWS_INSTALLER_ARGS, {detached: true, stdio: 'ignore'});   // its window shown: the progress is the feedback
     await new Promise((resolve, reject) => {   // a blocked installer (antivirus, AppLocker) says so here, and the app stays open
-      child.once('error', error => reject(new Error(`The installer couldn't start: ${error.message}`)));
+      child.once('error', error => reject(withDisplay(new Error(`The installer couldn't start: ${error.message}`), 'settingsNative.updateStartFailed', {error: error.message})));
       child.once('spawn', resolve);
     });
     child.unref();
@@ -192,13 +194,13 @@ export async function install(update, {exe, pid = process.pid, quit, onStep = ()
     return;
   }
   const oldApp = path.resolve(exe, '..', '..', '..');  // …/Jobadabra.app/Contents/MacOS/Jobadabra (Job Pilotto.app before the rename)
-  if (!oldApp.endsWith('.app') || oldApp.startsWith('/Volumes/')) throw new Error('Move Jobadabra to Applications first, then update.');
+  if (!oldApp.endsWith('.app') || oldApp.startsWith('/Volumes/')) throw withDisplay(new Error('Move Jobadabra to Applications first, then update.'), 'settingsNative.updateMoveFirst');
   fs.accessSync(path.dirname(oldApp), fs.constants.W_OK);  // an Applications folder this user can write to
-  onStep('Unpacking…');
-  await new Promise((resolve, reject) => run('ditto', ['-x', '-k', file, dir]).on('exit', code => (code ? reject(new Error('Unpacking failed')) : resolve())));
+  onStep('Unpacking…', 'updateUnpacking');
+  await new Promise((resolve, reject) => run('ditto', ['-x', '-k', file, dir]).on('exit', code => (code ? reject(withDisplay(new Error('Unpacking failed'), 'settingsNative.updateUnpackFailed')) : resolve())));
   const newApp = fs.readdirSync(dir).map(name => path.join(dir, name)).find(name => name.endsWith('.app'));
-  if (!newApp) throw new Error('The download has no app in it');
-  onStep('Restarting…');
+  if (!newApp) throw withDisplay(new Error('The download has no app in it'), 'settingsNative.updateNoApp');
+  onStep('Restarting…', 'updateRestarting');
   run('/bin/sh', ['-c', macSwapScript(pid, oldApp, newApp, logFile, swapTarget(oldApp))], {detached: true, stdio: 'ignore'}).unref();
   quit();
 }

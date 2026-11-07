@@ -1,6 +1,9 @@
 // The strategy draft's IPC (moved out of main.js, 8 Oct 2026): drafting a Strategy from the CV, the cached draft and the edits kept on it, how a rebuild
 // would change the search, and saving it to Notion with its progress. main.js passes in the services they share. Guards: the strategy, draft
 // and save-progress tests in desktop/test.
+import {settingsText as words} from '../i18n/settings-native.js';
+import {rememberDisplay, displayNote, forWindow} from './settings-native-display.js';
+import {detailsProgress} from './wizard-progress-copy.js';
 import {afterWrite} from './shared-read.js';
 import {aiNameOf, aiText} from './ai/names.js';
 import * as claudeCode from './claude-code.js';
@@ -14,36 +17,39 @@ import {log as appLog} from './log.js';
 import {demoPath} from './demo.js';
 import {aiClient} from './confirmation.js';
 import {contactSaved} from './server-contact.js';
-import {detailsFromCvAtSetup, detailsNote} from './details-at-setup.js';
+import {detailsFromCvAtSetup} from './details-at-setup.js';
 
 export function registerStrategyDraftHandlers(ctx) {
   const writeHandle = (channel, fn) => ipcMain.handle(channel, afterWrite(fn));   // a finished write closes the running reads' join (shared-read.js)
   const {DEMO, here, ipcMain, storage, syncCv, toWindow, trackSetup} = ctx;
   ipcMain.handle('draftStrategy', async (_, answers) => {
     storage.saveSettings({questionnaire: {...storage.settings().questionnaire, ...answers}});  // the note (older fields kept)
-    const send = progress => toWindow('draftProgress', progress);
+    const send = progress => toWindow('draftProgress', forWindow(progress));
     // Demo mode: the fictional draft in demo/draft.json after a short pretend run; no AI is called.
     if (DEMO) {
       const demo = JSON.parse(fs.readFileSync(demoPath(here, 'draft.json'), 'utf8')).draft;
       demo.profile_markdown = strategy.withNote(demo.profile_markdown, answers);
-      send({part: 'Proposing your goals', percent: 20, notes: [aiText(storage, 'Sent your CV to {AI} (demo: nothing is sent)'), aiText(storage, '{AI} read your CV')]});
+      send(rememberDisplay({part: 'Proposing your goals', percent: 20, notes: [aiText(storage, 'Sent your CV to {AI} (demo: nothing is sent)'), aiText(storage, '{AI} read your CV')]}, {part: () => words('draftGoals'), notes: () => [words('draftDemoSent', {AI: aiNameOf(storage)}), words('draftRead', {AI: aiNameOf(storage)})]}));
       await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_DEMO_STRATEGY_DELAY) || 300));
       return demo;
     }
     const kb = Math.round(fs.statSync(storage.path('cv.pdf')).size / 1024);
-    const sent = `Sent your CV (${kb} KB)${answers.anything_else ? ' and your note' : ''} to ${aiNameOf(storage)} (${aiText(storage, '{AI:main}')})`;
+    const sentAI = aiNameOf(storage), sentModel = aiText(storage, '{AI:main}');
+    const sent = `Sent your CV (${kb} KB)${answers.anything_else ? ' and your note' : ''} to ${sentAI} (${sentModel})`;
+    const sentNotes = [];
+    displayNote(sentNotes, sent, () => words(answers.anything_else ? 'draftSentNote' : 'draftSent', {kb, AI: sentAI, model: sentModel}));
     // Before Claude writes anything it reads the CV (about 25 s): the bar moves by time, up to 10%.
     const started = Date.now();
     let writing = false;
-    const reading = setInterval(() => !writing && send({part: aiText(storage, '{AI} is reading your CV'), notes: [sent, aiText(storage, '{AI} is reading your CV…')],
-      percent: Math.min(strategy.READING - 1, Math.round((Date.now() - started) / 25000 * strategy.READING))}), 1000);
-    send({part: aiText(storage, 'Sending your CV to {AI}'), percent: 0, notes: [sent]});
+    const reading = setInterval(() => !writing && send(rememberDisplay({part: aiText(storage, '{AI} is reading your CV'), notes: [sent, aiText(storage, '{AI} is reading your CV…')],
+      percent: Math.min(strategy.READING - 1, Math.round((Date.now() - started) / 25000 * strategy.READING))}, {part: () => words('draftAiReading', {AI: aiNameOf(storage)}), notes: () => [...forWindow(sentNotes), words('draftAiReadingEllipsis', {AI: aiNameOf(storage)})]})), 1000);
+    send(rememberDisplay({part: aiText(storage, 'Sending your CV to {AI}'), percent: 0, notes: [sent]}, {part: () => words('draftSending', {AI: aiNameOf(storage)}), notes: () => forWindow(sentNotes)}));
     let draft;
     try {
       draft = await strategy.draft(storage, answers, storage.secret('ANTHROPIC_API_KEY'), claudeCode.client(storage),
-        progress => { writing = true; send({...progress, notes: [sent, aiText(storage, '{AI} read your CV'), ...progress.notes]}); });
+        progress => { writing = true; send({...forWindow(progress), notes: [...forWindow(sentNotes), words('draftRead', {AI: aiNameOf(storage)}), ...forWindow(progress.notes)]}); });
     } finally { clearInterval(reading); }
-    send({part: 'Checking the draft', percent: 99, notes: ['Checking the draft (valid settings, nothing missing)…']});
+    send(rememberDisplay({part: 'Checking the draft', percent: 99, notes: ['Checking the draft (valid settings, nothing missing)…']}, {part: () => words('draftChecking'), notes: () => [words('draftCheckingNote')]}));
     // Kept so reopening the wizard shows it again instead of paying for a new draft.
     storage.writeText('draft.json', JSON.stringify({answers, draft, cv: cvFingerprint(), at: new Date().toISOString()}));
     return draft;
@@ -70,7 +76,7 @@ export function registerStrategyDraftHandlers(ctx) {
         pipeline.run(storage, ['src.desktop', 'strategy']).then(({stdout}) => JSON.parse(stdout.trim().split('\n').pop())).catch(() => ({counts: {}}))]);
       const groups = strategy.rebuildGroups({search: readJson('search.json'), preferences: readJson('preferences.json'), profile, answers},
         draft, {scored: facts.scored || 0, kits: facts.counts?.kits || 0});
-      return {ok: true, groups};
+      return {ok: true, groups: forWindow(groups)};
     } catch (error) { return {ok: false, error: error.message}; }
   });
   // parts: the review's accepted groups (search, filters, profile, answers); null = everything (first setup).
@@ -79,11 +85,11 @@ export function registerStrategyDraftHandlers(ctx) {
   const DETAILS_WAIT_MS = 30000;
   const detailsAfter = async result => {
     if (!result?.ok) return result;
-    if (DEMO) { toWindow('saveProgress', {step: 'details', finished: true, note: detailsNote({saved: Array(5).fill(''), left: Array(2).fill('')})}); return result; }   // demo: fictional counts, no AI
+    if (DEMO) { toWindow('saveProgress', {step: 'details', finished: true, note: detailsProgress({saved: Array(5).fill(''), left: Array(2).fill('')})}); return result; }   // demo: fictional counts, no AI
     toWindow('saveProgress', {step: 'details'});
     const read = detailsFromCvAtSetup(storage, {client: aiClient(storage), log: appLog, contactSaved: saved => contactSaved(storage, saved)}).catch(() => ({saved: [], left: []}));
     const done = await Promise.race([read, new Promise(resolve => setTimeout(() => resolve(null), DETAILS_WAIT_MS))]);
-    toWindow('saveProgress', {step: 'details', finished: true, note: done ? detailsNote(done) : 'still reading: they appear in Your details shortly'});
+    toWindow('saveProgress', {step: 'details', finished: true, note: detailsProgress(done)});
     return result;
   };
   writeHandle('saveStrategy', (_, draft, parts = null) => {

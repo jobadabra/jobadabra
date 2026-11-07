@@ -1,6 +1,8 @@
 // Settings → Logs: the app's logs on this Mac, for the user (and whoever helps them) to see what happened. One day at a
 // time, 100 lines a page, a search capped at 100 hits (lib/log-view.js reads the files; the window never holds a whole
 // log). Live: while the page is on screen, today's newest lines are read again every few seconds.
+import {logDay} from '../settings-final-words.js';
+import {number} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {getLocale, t} from '../../i18n/index.js';
 import {$, show} from './core.js';
@@ -11,7 +13,7 @@ let log = 'app', day = 'today', shown = PAGE, query = '', timer = null, searchTi
 
 const onScreen = () => !$('setting-logs').closest('[hidden]') && document.visibilityState === 'visible';
 const dayLabel = d => (d === 'today' ? t('pagesCommon.today') : DAY_LABEL.format(new Date(`${d}T12:00:00`)));
-const size = bytes => (bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`);
+const size = bytes => (bytes >= 1e6 ? `${number(bytes / 1e6, {minimumFractionDigits: 1, maximumFractionDigits: 1})} MB` : `${number(Math.max(1, Math.round(bytes / 1e3)))} KB`);
 
 async function loadDays() {
   const list = await window.pilot.logs.days(log).catch(() => []);
@@ -31,13 +33,13 @@ async function read({keepScroll = false} = {}) {
   let result, stats;
   if (query) {
     result = await window.pilot.logs.search(log, query, {day}).catch(error => ({lines: [], error}));
-    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? 'today' : t('pagesShortReady.m225', {"dayLabel": dayLabel(day)});
+    const where = !day ? t('pagesExtraLabels.last30') : day === 'today' ? logDay(day, dayLabel) : t('pagesShortReady.m225', {"dayLabel": dayLabel(day)});
     stats = result.lines.length ? t('pagesShortReady.m226', {"length": result.lines.length, "value2": result.more ? t('pagesShortReady.newest') : '', "query": query, "where": where, "value6": result.more ? t('pagesShortReady.older') : '', count: result.lines.length})
       : t('pagesShortReady.m227', {"query": query, "where": where});
   } else {
     result = await pages(shown).catch(error => ({lines: [], more: false, error}));
-    const when = (day || 'today') === 'today' ? 'today' : dayLabel(day);
-    stats = result.lines.length ? t('pagesShortReady.m228', {"length": result.lines.length, "when": when, count: result.lines.length}) : t('pagesShortReady.m229', {"value1": when === 'today' ? t('pagesCommon.today') : t('pagesExtraLabels.thatDay')});
+    const when = logDay(day || 'today', dayLabel);
+    stats = result.lines.length ? t('pagesShortReady.m228', {"length": result.lines.length, "when": when, count: result.lines.length}) : t('pagesShortReady.m229', {"value1": (day || 'today') === 'today' ? t('pagesCommon.today') : t('pagesExtraLabels.thatDay')});
   }
   if (ticket !== reading) return;   // a newer read (another tab, day or search) already answered
   if (result.error) stats = t('pagesShortReady.m230', {"value1": result.error.message || result.error});

@@ -4,6 +4,7 @@
 // Guards: desktop/test/unit/main/update-channel.test.js, app-menu.test.js.
 import {log as appLog} from './log.js';
 import {t} from '../i18n/native.js';
+import {displayText} from '../i18n/display-values.js';
 
 export const CHANNELS = ['stable', 'beta', 'test'];
 export const channelOf = settings => (settings.testChannel === true ? 'test' : settings.betaChannel === true ? 'beta' : 'stable');
@@ -37,7 +38,7 @@ export function createUpdateChannel(ctx) {
   async function rollback() {
     if (isLocked()) return locked();
     const stable = await updater.stableRelease(app.getVersion()).catch(error => ({error}));
-    if (stable?.error) return {ok: false, text: t('native.updateGithubFailed', {error: stable.error.message})};
+    if (stable?.error) return {ok: false, text: t('native.updateGithubFailed', {error: displayText(stable.error, stable.error.message)})};
     if (!stable?.ahead) return {ok: false, reason: 'notAhead', text: t('native.updateNotAhead')};
     const {response} = await dialog.showMessageBox(parentWindow(), {type: 'question', message: t('native.updateStableQuestion', {version: stable.version}), buttons: [t('native.updateStableAction'), t('native.cancel')], defaultId: 0, cancelId: 1,
       detail: t('native.updateStableDetail', {version: app.getVersion()})});

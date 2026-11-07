@@ -3,6 +3,8 @@
 // Guards: the updater, app-menu, setup-funnel and beta tests in desktop/test.
 import * as appMenu from './app-menu.js';
 import {t} from '../i18n/native.js';
+import {updateStepText} from '../i18n/settings-native.js';
+import {displayText} from '../i18n/display-values.js';
 import * as setupFunnel from './setup-funnel.js';
 import * as updater from './updater.js';
 import {createUpdateChannel} from './update-channel.js';
@@ -37,7 +39,7 @@ export function createAppUpdates(ctx) {
       if (updateOffer) { appLog('update', `available: ${updateOffer.version}`); toWindow('update', updateOffer); }
       return {ok: true, offer: updateOffer, current: app.getVersion()};
     } catch (error) {
-      return {ok: false, text: t('native.updateCheckError', {error: error.message}), current: app.getVersion()};
+      return {ok: false, text: t('native.updateCheckError', {error: displayText(error, error.message)}), current: app.getVersion()};
     }
   }
   // The last update this install started, and what became of it, read back at the next check: it runs after the app has quit,
@@ -98,14 +100,14 @@ export function createAppUpdates(ctx) {
       storage.saveSettings({updateTried: {to: updateOffer.version, from: app.getVersion()}});
       appLog('update', `install ${updateOffer.version} over ${app.getVersion()}: started`);
       await updater.install(updateOffer, {exe: app.getPath('exe'), logFile: logFile(),
-        onStep: text => { appLog('update', `install ${updateOffer.version}: ${text}`); toWindow('updateStep', text); },
+        onStep: (text, key) => { appLog('update', `install ${updateOffer.version}: ${text}`); toWindow('updateStep', updateStepText(text, key)); },
         quit: () => { appLog('update', `install ${updateOffer.version}: quitting so the new version can be put in place`); app.quit(); },
         explain: async update => { await dialog.showMessageBox(parentWindow(), updater.windowsExplanation(update)); }});  // the quit dialog still asks if a job runs; the swap waits for the app to close
       return {ok: true};
     } catch (error) {
       appLog('update', `install failed: ${error.message}`);
       storage.saveSettings({updateTried: null});   // it never got to quit: nothing to read back at the next start, or the offer reads as "did not take" (#333)
-      return {ok: false, text: error.message, url: updateOffer.url};
+      return {ok: false, text: displayText(error, error.message), url: updateOffer.url};
     }
   }
   // Menu → Check for Updates…: always answers (up to date, an update to install, or why it couldn't check).
