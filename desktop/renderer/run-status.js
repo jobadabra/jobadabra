@@ -1,4 +1,5 @@
 // How a run ended, in one word and a tone: the Actions page and Recent activity both use this, so they cannot disagree.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {AI_BUSY, isSpendingLimit, runWarningLines, stopCause} from './run-warnings.js';
 

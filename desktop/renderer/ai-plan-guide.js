@@ -3,6 +3,7 @@
 // Why (2 Nov 2026, owner, a Windows tester who had only the Claude app): "We should never show a raw error. We should handle it properly. If the user has ChatGPT desktop or Claude Desktop,
 // we should say explicitly: we detected the app, but the CLI is still missing. Please install using this guide."
 // The install lines are the official ones: Claude Code from code.claude.com/docs/en/setup, Codex from the openai/codex README (checked 2 Nov 2026).
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 export const FAMILY = {
   claude: {app: t('helpers.claudeApp'), cli: 'Claude Code', plan: t('helpers.claudePlan'), account: t('helpers.claudeAccount'), file: 'claude', run: 'claude', page: 'https://code.claude.com/docs/en/setup',

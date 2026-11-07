@@ -1,5 +1,7 @@
 // Lines of a run's log that are warnings (Notion busy, a step skipped or failed…), each once. A count of zero is not
 // one: "Enriched 1 of 1 job(s); 0 failed" is a normal report line, not a warning.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {where} from './store-name.js';
 import {notionReason} from './notion-reason.js';
 const WARNING = /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached|^AI stopped/i;
@@ -28,7 +30,7 @@ export const isSpendingLimit = text => LIMIT.test(String(text || ''));
 const STOPPED = /^(?:Warning:\s*)?AI stopped: (.+?)(?: \(|, \d+ job\(s\)|$)/i;
 /** The cause in a stop line ("AI stopped: Claude Code is not signed in, 3 job(s) left…" -> "Claude Code is not signed in"); '' for any other line. */
 export const stopCause = line => STOPPED.exec(String(line).trim())?.[1] || '';
-export const STOP_HELP = 'Settings → Connections → AI shows what to do';
+export const STOP_HELP = t('helperState.stopHelp');
 const SKIPPED =/^Skipped job (\S+): (.*)$/;
 // "N job(s) not read by AI / not scored / left for the next check": the same loss, said three ways by the pipeline.
 const UNSCORED = /^(?:AI (?:limit reached|stopped)\b.*?,\s*)?(\d+)\s+job\(s\)\s+(?:left for the next check|not read by AI|not scored|not enriched|not ranked)/i;
@@ -47,25 +49,25 @@ const HTTP = /(?:\b\w*Error:\s*)?HTTP Error (\d{3})\b[^]*$/i;
 const HTML = /<!DOCTYPE[^]*$|<html[^]*$/i;
 export function httpSentence(code) {
   const status = Number(code);
-  if (status === 429) return 'the service is busy right now (HTTP 429). Try again in a few minutes';
-  if (status === 401 || status === 403) return `the service refused access (HTTP ${status}). Check the connection in Settings`;
-  if (status >= 500) return `the service was unavailable (HTTP ${status}). It is usually back within minutes: try again`;
-  return `the service answered with an error (HTTP ${status})`;
+  if (status === 429) return t('helperState.httpBusy');
+  if (status === 401 || status === 403) return t('helperState.httpRefused', {status});
+  if (status >= 500) return t('helperState.httpUnavailable', {status});
+  return t('helperState.httpError', {status});
 }
 export function humanError(text, limit = false) {
   const raw = String(text || '').trim();
   if (!PROVIDER.test(raw) && (HTTP.test(raw) || HTML.test(raw))) {
     const code = HTTP.exec(raw)?.[1];
-    return raw.replace(HTTP, '').replace(HTML, '').replace(/[:\s]+$/, '').concat(code ? `: ${httpSentence(code)}` : ': the service answered with an error page').replace(/^: /, '');
+    return raw.replace(HTTP, '').replace(HTML, '').replace(/[:\s]+$/, '').concat(code ? `: ${httpSentence(code)}` : t('helperState.httpErrorPage')).replace(/^: /, '');
   }
   if (!PROVIDER.test(raw)) return raw.replace(/^\w*Error:\s*/, '') || raw;
   const message = (MESSAGE.exec(raw)?.[1] || '').replace(/\s+/g, ' ').trim();
   if (limit || LIMIT.test(raw) || LIMIT.test(message)) {
     const back = (BACK.exec(raw) || BACK.exec(message) || [])[1];
-    return `the Anthropic API spending limit was reached${back ? ` (back on ${back})` : ''}`;
+    return t('helperState.anthropicLimit', {back: back ? t('helperState.backOn', {date: back}) : ''});
   }
-  if (AI_BUSY.test(raw)) return 'the AI service is rate-limited right now';
-  return message || 'the AI service refused the call';
+  if (AI_BUSY.test(raw)) return t('helperState.aiRateLimited');
+  return message || t('helperState.aiRefusedCall');
 }
 
 // A whole message with a raw error somewhere in it: the app's own words before it are kept, the dump becomes humanError's sentence
@@ -88,9 +90,9 @@ export function plainError(text) {
 // Known engine warnings as what they mean for you, the exact text staying in the technical log (owner, 6 Oct 2026: "candidate
 // source skipped: TimeoutError" and "KeyError: 'watch'" were the box's explanation).
 const PLAIN = [
-  [/^candidate source skipped: (?:[\w.]+\.)?\w*Timeout\w*\b/i, () => 'One source could not be checked because it timed out.'],
-  [/^candidate source skipped: /i, () => 'One source could not be checked.'],
-  [/^Notion not updated for (.+?): /i, m => `The Notion update for ${m[1]} failed.`],   // about Notion
+  [/^candidate source skipped: (?:[\w.]+\.)?\w*Timeout\w*\b/i, () => t('helperState.sourceTimeout')],
+  [/^candidate source skipped: /i, () => t('helperState.sourceNotChecked')],
+  [/^Notion not updated for (.+?): /i, m => t('helperState.notionUpdateFailed', {item: m[1]})],   // about Notion
 ];
 // A line that still ends in a raw exception ("<what>: KeyError: 'watch'"): what failed, and where its details are.
 const RAW_EXCEPTION = /^(.{3,80}?):\s*(?:[\w.]+\.)?\w+(?:Error|Exception)\b.*$/;
@@ -101,7 +103,7 @@ function runRowWarning(raw) {
   const m = RUN_ROW.exec(raw);
   if (!m) return null;
   const reason = notionReason(m[2], {strict: false}) || humanError(m[2]);
-  return `${m[1].toLowerCase() === 'opened' ? "The run's row could not be opened in" : "The run's result could not be saved to"} ${where()}${reason ? `: ${reason}` : ''}`;
+  return t(m[1].toLowerCase() === 'opened' ? 'helperState.runRowNotOpened' : 'helperState.runRowNotSaved', {store: where(), reason: reason ? `: ${reason}` : ''});
 }
 export function plainWarning(raw) {
   const row = runRowWarning(raw);
@@ -110,12 +112,12 @@ export function plainWarning(raw) {
   return null;
 }
 // Only for a line nothing else reworded (an HTTP status or the AI provider's error have their own sentences).
-const rawException = raw => { const m = RAW_EXCEPTION.exec(raw); return m && !PROVIDER.test(raw) ? `${m[1].replace(/^./, c => c.toUpperCase())} (an internal error; details in the technical log).` : null; };
+const rawException = raw => { const m = RAW_EXCEPTION.exec(raw); return m && !PROVIDER.test(raw) ? t('helperState.internalErrorDetail', {task: m[1].replace(/^./, c => c.toUpperCase())}) : null; };
 // The head lines of grouped warnings: the jobs left unscored, with what stopped them. A real limit in the same run keeps the count, and the stop is then its own line.
 function leftUnscored(total, stop, limit) {
   const stopSaid = stop && `${stop}. ${STOP_HELP}`;
-  const why = stop && !limit ? stopSaid : 'the Anthropic API spending limit was reached';
-  return [...(total ? [`${total} job${total === 1 ? '' : 's'} left unscored: ${why}`] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
+  const why = stop && !limit ? stopSaid : t('helperState.anthropicLimitPlain');
+  return [...(total ? [t('helperState.unscoredJobs', {count: total, why})] : []), ...(stop && (limit || !total) ? [stopSaid] : [])];
 }
 export function groupWarnings(warnings) {
   const limit = warnings.some(text => LIMIT.test(String(text)));
@@ -141,14 +143,14 @@ export function groupWarnings(warnings) {
   for (const label of order) {
     const ids = groups.get(label) || [];
     if (!ids.length) { if (!out.includes(label)) out.push(label); continue; }
-    out.push(`Skipped ${ids.length} job${ids.length === 1 ? '' : 's'} (${ids.slice(0, 6).join(', ')}${ids.length > 6 ? ', …' : ''}): ${label}`);
+    out.push(t('helperState.skippedJobs', {count: ids.length, ids: `${ids.slice(0, 6).join(', ')}${ids.length > 6 ? ', …' : ''}`, reason: label}));
   }
   return out;
 }
 
 // The grouped lines minus those that only say again what the banner's "AI service is busy" sentence says.
 // A line the summary above already says word for word is no detail either (#285: one warning was printed as the summary and again under "Hide details").
-export const newDetails = (grouped, summary = '') => grouped.filter(line => !/^(?!Skipped )(?:[^:]*: )?the AI service is rate-limited right now$/.test(line) && !String(summary).includes(line.trim()));
+export const newDetails = (grouped, summary = '') => grouped.filter(line => line !== t('helperState.aiRateLimited') && !/^(?!Skipped )(?:[^:]*: )?the AI service is rate-limited right now$/.test(line) && !String(summary).includes(line.trim()));
 
 // How many jobs the spend limit left unscored: the ones that failed on it, and those the run stopped before.
 export function limitedJobs(warnings) {
@@ -163,7 +165,7 @@ export function limitedJobs(warnings) {
 export function sentences(lines, more = false) {
   const end = text => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
   if (!lines.length) return '';
-  if (more && lines.length > 2) return `${end(lines[0])} And ${lines.length - 1} more.`;
+  if (more && lines.length > 2) return t('helperState.andMoreSentences', {first: end(lines[0]), count: lines.length - 1});
   return (more ? lines.slice(0, 1) : lines).map(end).join(' ');
 }
 

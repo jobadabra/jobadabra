@@ -1,6 +1,7 @@
 // Documents → Cover letter: the job's own cover letter, made with its tailored CV: the text (copy, edit, write again) and its PDF (open).
 // Filled from the app (IPC jobLetter); an edit remakes the PDF at once. One label → value row per fact (rows in documents-rows.js). Write again shows the
 // shared AI-writing state over the kept letter (ai-writing.js). Guarded by test/unit/renderer/job-letter.test.js, test/unit/renderer/job-documents.test.js and test/unit/renderer/ai-writing.test.js.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {aiWriting} from '../ai-writing.js';

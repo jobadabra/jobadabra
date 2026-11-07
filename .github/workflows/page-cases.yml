@@ -142,6 +142,21 @@ on:
       - '.github/actions/playwright-browser/**'
       - 'desktop/i18n/catalogs/common.js'
       - 'desktop/i18n/index.js'
+      - 'desktop/i18n/catalogs/helpers/de-state.js'
+      - 'desktop/i18n/catalogs/helpers/de.js'
+      - 'desktop/i18n/catalogs/helpers/en-state.js'
+      - 'desktop/i18n/catalogs/helpers/en.js'
+      - 'desktop/i18n/catalogs/helpers/es-state.js'
+      - 'desktop/i18n/catalogs/helpers/es.js'
+      - 'desktop/i18n/catalogs/helpers/fr-state.js'
+      - 'desktop/i18n/catalogs/helpers/fr.js'
+      - 'desktop/i18n/catalogs/helpers/it-state.js'
+      - 'desktop/i18n/catalogs/helpers/it.js'
+      - 'desktop/i18n/catalogs/helpers/ro-state.js'
+      - 'desktop/i18n/catalogs/helpers/ro.js'
+      - 'desktop/i18n/catalogs/helpers/ru-state.js'
+      - 'desktop/i18n/catalogs/helpers/ru.js'
+      - 'desktop/i18n/screens-helpers.js'
   workflow_dispatch:
     inputs:
       window:

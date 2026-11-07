@@ -2,6 +2,7 @@
 // disagree. Two facts go in: whether a browser has the extension (lib/extension-install.js reads the browser's own
 // profile — instant, and true even with Chrome closed) and when it last reported in (every 30 s; only a fresh report
 // says the app can fill a form right now). Free of the DOM, like renderer/ai-engine-view.js, so tests can check it.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 export const FRESH_MS = 90 * 1000;
 

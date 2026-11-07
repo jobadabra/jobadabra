@@ -4,6 +4,7 @@
 // saved; a save that fails part-way keeps the failed drafts and names them, never a blanket "Saved". Leaving the page or closing the window with drafts asks
 // first (leave() for nav.js guardLeave; beforeunload + lib/unsaved-guard.js for the window). Actions with their own button (read the CV again, an AI review)
 // are not drafts and never go through here. Cards register a source; the card shell is card-shell.js. Guarded by test/unit/renderer/save-bar.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {el} from './components.js';
 

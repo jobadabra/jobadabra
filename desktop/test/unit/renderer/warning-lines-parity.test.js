@@ -1,5 +1,6 @@
 // The panel (renderer/run-warnings.js) and the engine (src/warning_lines.py) call the same lines warnings: one list of cases, read by both (tests/unit/notion/test_warning_lines.py).
 // A run that logs a warning the engine does not record shows "Completed" in the list and "Completed with warnings" in the panel (beta 2, 25 Oct 2026).
+import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';

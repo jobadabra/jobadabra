@@ -1,5 +1,6 @@
 // Drawer → Match: the score with its parts, why it fits and what to check (the Jobs list's own analysis, pages/jobs-fit.js fitDetail),
 // then the fit line the search saved. Not scored: a state card. A score read with an earlier Profile says so.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {matchGroups, matchView} from '../job-page-view.js';
 import {lastActivity} from '../pages/activity-render.js';

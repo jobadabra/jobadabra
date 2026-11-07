@@ -1,6 +1,7 @@
 // What the window says about "Tell me by" (Settings → Notifications, the Actions header, Connections): why a switch does nothing (no address, no bot, our sender
 // switched off, the person unsubscribed), and whether Telegram is still required. Pure (no DOM), so test/unit/renderer/notify-choice.test.js runs it in Node.
 
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {date} from '../i18n/format.js';
 const NAMES = {email: 'Email', telegram: 'Telegram'};

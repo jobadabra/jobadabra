@@ -1,6 +1,7 @@
 // Jobs → Board and the saved views, the rules without a window: the stage columns in funnel order, the Applications database's 10 views
 // (read from the real workspace's view filters, 9 Oct 2026) and which app action a card dropped on a column asks for.
 // Guarded by: test/unit/renderer/jobs-board-rules.test.js. Drawn by pages/jobs-board.js and pages/jobs-views.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {READY_LABEL} from './pages/ready-rows.js';
 

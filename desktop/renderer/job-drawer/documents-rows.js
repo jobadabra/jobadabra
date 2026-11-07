@@ -1,5 +1,6 @@
 // The Documents tab's row grid: one label → value row per fact (owner's rule, 18 Oct 2026: no caption lines above or below a button row), the
 // cards' buttons (one primary, the rest the same secondary) and the letter's inset text panel. Guarded by test/unit/renderer/job-documents.test.js.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';

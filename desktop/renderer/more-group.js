@@ -1,4 +1,5 @@
 // The "More · N" group, one component for the sidebar and the Actions page: a closed row that opens a list, its count, hidden at 0, its open/closed state remembered. Guarded by test/unit/renderer/more-group.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 export const moreTitle = count => t('helpers.moreCount', {count});
 export const isOpen = (storage, key) => { try { return storage.getItem(key) === 'open'; } catch { return false; } };

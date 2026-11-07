@@ -1,5 +1,6 @@
 // The notification card in Suggestions (Focus and the Jobs bar): "Get a message when something needs you" while no channel works (owner, 2 Nov 2026, the Always on card's pattern: always
 // present, Not now hides it 14 days). Words and states: renderer/notify-words.js offerCard. Spec docs/superpowers/specs/2026-11-02-notify-moments-design.md. Guard: test/unit/renderer/notify-suggestion.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {offerCard} from './notify-words.js';
 

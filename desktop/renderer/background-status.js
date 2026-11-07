@@ -1,11 +1,13 @@
 // A hidden-browser session's status words (sessions list, dock, nav badge, and the card's pill) from its own background state, not from a Chrome tab it never had. Guard: test/unit/renderer/background-status.test.js.
 
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {MODES} from './apply-settings-model.js';
 
 // Why (5 Nov 2026, owner: "we need to have a distinguish about what session and mode does it have? Are they fully automated? are they manually triggered"; the
 // sketch's chips, owner's yes): each session says at a glance where it runs and who presses Submit, in its Settings mode's own icon (MODES). [words, tone]
 // Why (5 Nov 2026, owner, of the Sessions list: "2 yellow chips. Looks bad"): the words fit one line of the list, and the status chip beside this one owns "Needs you".
-const MODE_CHIPS = {auto: ['Full auto · sends itself', 'violet'], fill: ['Background · you submit', 'info'], check: ['In Chrome · you submit', 'neutral']};
+const MODE_CHIPS = {auto: [t('helperState.fullAutoSends'), 'violet'], fill: [t('helperState.backgroundSubmit'), 'info'], check: [t('helperState.chromeSubmit'), 'neutral']};
 // Why (5 Nov 2026, review of [ap] 4/7): a bot check, Stop, a mode change or a quit hands a Full automation job to the person and the store keeps mode 'auto'
 // (lib/background-apply-store.js manual()), so its chip said "sends by itself" beside "Needs you".
 const HANDED = new Set(['needs_user_handoff', 'manual_submit_required']);
@@ -18,13 +20,13 @@ const sessionMode = item => item?.background?.mode || (item?.background ? 'fill'
 export function sessionModeChip(item) {
   const id = sessionMode(item);
   const mode = MODES.find(entry => entry.id === id) || MODES.find(entry => entry.id === 'fill'), [text, tone] = MODE_CHIPS[mode.id];
-  if (mode.id === 'auto' && HANDED.has(item?.background?.state)) return {glyph: mode.icon, text: 'Full auto · you submit', tone, title: 'Full automation handed this one to you: review and submit it yourself.'};
+  if (mode.id === 'auto' && HANDED.has(item?.background?.state)) return {glyph: mode.icon, text: t('helperState.fullAutoYou'), tone, title: t('helperState.fullAutoHandoff')};
   return {glyph: mode.icon, text, tone, title: `${mode.title}: ${mode.text}`};
 }
 
 const WORDS = {
-  queued: ['Queued', 'neutral'], preflight: ['Filling', 'info'], filling: ['Filling', 'info'], ready_for_review: ['Ready for review', 'warn'],
-  needs_user_handoff: ['Needs you', 'warn'], manual_submit_required: ['Needs you', 'warn'], waiting_to_submit: ['Submitting soon', 'info'], submitting: ['Submitting…', 'info'],
+  queued: [t('helpers.queued'), 'neutral'], preflight: [t('helperState.filling'), 'info'], filling: [t('helperState.filling'), 'info'], ready_for_review: [t('helperState.readyReview'), 'warn'],
+  needs_user_handoff: [t('helperState.needsYou'), 'warn'], manual_submit_required: [t('helperState.needsYou'), 'warn'], waiting_to_submit: [t('helperState.submittingSoon'), 'info'], submitting: [t('helperState.submitting'), 'info'],
 };
 
 /**
@@ -35,8 +37,8 @@ const WORDS = {
 export function backgroundStatus(item, {ready = false, fields = null, linkOff = false} = {}) {
   const state = item?.background?.state, words = WORDS[state];
   if (!words) return null;
-  if (state === 'queued' && linkOff) return ['Connection off', 'warn'];   // the hidden browser's extension is told to start through the app's own socket: while it is closed the job cannot start, whatever turn it is
-  if (state === 'ready_for_review' && ready) return ['Ready to submit', 'good'];   // the card knows the page has no required field left; the list does not read the page
-  if (fields?.of && (state === 'filling' || state === 'preflight')) return [`Filling · ${fields.done} of ${fields.of} fields`, 'info'];
+  if (state === 'queued' && linkOff) return [t('helperState.connectionOff'), 'warn'];   // the hidden browser's extension is told to start through the app's own socket: while it is closed the job cannot start, whatever turn it is
+  if (state === 'ready_for_review' && ready) return [t('helperState.readySubmit'), 'good'];   // the card knows the page has no required field left; the list does not read the page
+  if (fields?.of && (state === 'filling' || state === 'preflight')) return [t('helperState.fillingFields', {done: fields.done, total: fields.of}), 'info'];
   return [...words];
 }

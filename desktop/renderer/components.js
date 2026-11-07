@@ -1,6 +1,7 @@
 // Jobadabra's UI building blocks (styles in components.css, values in tokens.css). Screens build their
 // pills, tags, tiles and ⋯ menus with these, so the same thing looks and behaves the same everywhere;
 // gallery.html shows every one of them side by side.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {icon} from './icons.js';
 import {isRawValue} from './chip-text.js';

@@ -2,6 +2,7 @@
 // Actions → Runs, or in the Drawer"): what the Actions banner says about a queued or finished run, for every kind, as the running banner does. Pure: the
 // pill is run-status.js runPill, the one line is the Recent runs row's outcome, the next step a failure's own fix, else the kind's own (NEXT). The full report stays in
 // the run panel (pages/activity-render.js). Drawn by pages/run-banner.js. Guarded by test/unit/renderer/run-compact.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {failureHead, runPill} from './run-status.js';
 export {unsavedRun} from './run-status.js';

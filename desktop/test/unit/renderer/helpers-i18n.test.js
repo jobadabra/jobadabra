@@ -126,3 +126,26 @@ test('helper state catalogs have complete keys and matching interpolation in eve
     }
   }
 });
+
+test('pure helpers retain English defaults when offline tooling imports them without renderer bootstrap', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {runStatus} from './renderer/run-status.js'; console.log(runStatus({ok:true,result:'original'},false)[0]);"], {cwd: root, encoding: 'utf8'});
+  assert.equal(output.trim(), 'Completed');
+});
+
+test('page step display is localized while canonical journal lines stay unchanged', async () => {
+  const {setLocale} = await import('../../../i18n/index.js');
+  const pages = await import('../../../renderer/page-lines.js');
+  try {
+    setLocale('de');
+    assert.equal(pages.pageLine('reading'), 'Reading this page…');
+    assert.equal(pages.displayPageLine('reading'), 'Diese Seite wird gelesen…');
+    assert.equal(pages.displayPageLine('account', true), 'Anmeldeseite');
+  } finally { setLocale('en'); }
+});
+
+test('a localized session keeps active counts and account identifiers independent of displayed words', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {setLocale} from './i18n/index.js'; setLocale('de'); const {sessionState,dockCounts}=await import('./renderer/session-state.js'); const items=[{status:'running',kind:'claude',live:true},{status:'done',kind:'form',endedAt:'2026-11-07'}]; console.log(JSON.stringify({label:sessionState(items[0])[0],counts:dockCounts(items)}));"], {cwd: root, encoding: 'utf8'});
+  assert.deepEqual(JSON.parse(output), {label: 'Bewerbung läuft', counts: {active: 2, waiting: 0}});
+});

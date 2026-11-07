@@ -2,6 +2,7 @@
 // a review list (pending first, done folded as "Reviewed · N"), an empty state ("Not created" + one line + two actions), summary tiles (icon, label, big
 // value), and a read-only reference row ("From Your details" + one link). Styles: page-parts.css. Rules: docs/rules/desktop-ui.md "Page blocks".
 // Living copy: npm run gallery → "Page blocks". Guarded by test/unit/renderer/page-parts.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {el, pill, tile} from './components.js';
 import {icon} from './icons.js';

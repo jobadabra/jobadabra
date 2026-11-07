@@ -1,5 +1,6 @@
 // Application → Preparation: what the app drafted for the application: the kit (check before sending, lead with, form answers:
 // each copyable) and the interview preparation. The cover letter and the tailored CV are in the Documents tab (tab-documents.js). Not drafted yet: a state card.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {checkPill} from '../no-mark.js';

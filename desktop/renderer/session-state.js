@@ -1,11 +1,13 @@
 // A session's state as the window shows it, from what the app reports (lib/terminals.js publicView) and Claude's
 // last message. No window needed: tested in desktop/test/unit/renderer/session-state.test.js.
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 import {READY_LINE, readSessionMessage} from './session-message.js';
 import {backgroundStatus} from './background-status.js';
-import {PAGE_LINES, pageLine} from './page-lines.js';
+import {PAGE_LINES, displayPageLine as pageLine} from './page-lines.js';
 
-export const SESSION_STATE = {running: ['Applying', 'info'], input: ['Question for you', 'warn'], done: ['Ready for review', 'warn'],
-  ended: ['Ended', 'neutral'], failed: ['Stopped', 'bad'], submit: ['Ready to submit', 'good'], submitted: ['Submitted', 'good']};
+export const SESSION_STATE = {running: [t('helpers.stageApplying'), 'info'], input: [t('helperState.questionForYou'), 'warn'], done: [t('helperState.readyReview'), 'warn'],
+  ended: [t('helperState.ended'), 'neutral'], failed: [t('helperState.stopped'), 'bad'], submit: [t('helperState.readySubmit'), 'good'], submitted: [t('helpers.submitted'), 'good']};
 // Claude is running in it (demo sessions say nothing: they run while not ended).
 export const isLive = item => item.live ?? !item.endedAt;
 // The application was submitted and Claude is no longer in it. The badge, the step and the log all read this.
@@ -43,20 +45,20 @@ export const sessionReview = (item, formReady = false) => {
 // formReady: the form page says every required field is filled (the extension's ring is green): ready to submit.
 // A session whose application was submitted is finished, whatever its process did: "Submitted", never "Applying".
 export const sessionState = (item, formReady = false) => (item?.outcome === 'submitted' && !isLive(item) ? SESSION_STATE.submitted
-  : item.kind === 'form' && item.accountState === 'confirm' ? ['Confirm your email', 'info']   // the account is made and awaits its confirmation mail
-  : item.kind === 'form' && item.accountState === 'refused' && !item.stuck ? ['Sign-in refused', 'warn']   // the site refused our sign-in: tried once, never retried
-  : item.kind === 'form' && item.stuck === 'stopped' ? ['Stopped', 'warn']   // the person's Stop (the sessions page, ⌘K, the extension's own button): nothing runs until Reopen form
-  : item.kind === 'form' && item.stuck ? [item.stuck === 'account' ? (item.accountNeeds ? 'Needs you' : item.accountStep === 'sign_in' ? 'Needs sign-in' : 'Needs an account') : item.stuck === 'incomplete' ? 'Needs you' : item.stuck === 'email' ? 'Needs your email' : item.stuck === 'told' ? 'The page says what to do' : item.stuck === 'other' ? 'Open the page' : item.stuck === 'site_broken' ? 'Site not answering' : 'Can\'t reach form', 'warn']
+  : item.kind === 'form' && item.accountState === 'confirm' ? [t('helperState.confirmEmail'), 'info']   // the account is made and awaits its confirmation mail
+  : item.kind === 'form' && item.accountState === 'refused' && !item.stuck ? [t('helperState.signInRefused'), 'warn']   // the site refused our sign-in: tried once, never retried
+  : item.kind === 'form' && item.stuck === 'stopped' ? [t('helperState.stopped'), 'warn']   // the person's Stop (the sessions page, ⌘K, the extension's own button): nothing runs until Reopen form
+  : item.kind === 'form' && item.stuck ? [item.stuck === 'account' ? (item.accountNeeds ? t('helperState.needsYou') : item.accountStep === 'sign_in' ? t('helperState.needsSignIn') : t('helperState.needsAccount')) : item.stuck === 'incomplete' ? t('helperState.needsYou') : item.stuck === 'email' ? t('helperState.needsEmail') : item.stuck === 'told' ? t('helperState.pageSays') : item.stuck === 'other' ? t('helperState.openPage') : item.stuck === 'site_broken' ? t('helperState.siteNotAnswering') : t('helperState.cannotReachForm'), 'warn']
   // Claude at work on a sign-in or sign-up page: it is creating the account, not filling the application (owner, 8 Oct 2026: "Applying").
-  : item.kind !== 'form' && item.status === 'running' && item.stage === 'account' ? ['Creating account', 'info']
-  : (item.kind === 'form' || item.inChrome) && !formReady && item.status === 'done' ? ['Form open', 'info']   // the Apply button's session: no Claude, the form is open in Chrome
+  : item.kind !== 'form' && item.status === 'running' && item.stage === 'account' ? [t('helperState.creatingAccount'), 'info']
+  : (item.kind === 'form' || item.inChrome) && !formReady && item.status === 'done' ? [t('helperState.formOpen'), 'info']   // the Apply button's session: no Claude, the form is open in Chrome
   : sessionReview(item, formReady) ? (formReady ? SESSION_STATE.submit : SESSION_STATE.done)
     // Claude ended without saying the form is ready: what it left for you if it listed something, else just ended (never "ready").
-    : item.status === 'done' ? (leftForYou(item) ? ['Needs you', 'warn'] : SESSION_STATE.ended) : SESSION_STATE[item.status] || SESSION_STATE.ended);
+    : item.status === 'done' ? (leftForYou(item) ? [t('helperState.needsYou'), 'warn'] : SESSION_STATE.ended) : SESSION_STATE[item.status] || SESSION_STATE.ended);
 // The dock's two pills and its card order, from the same state the sessions list shows: a form whose Chrome tab was closed
 // (`gone`) is neither active nor waiting, and sorts last, so an open form is never hidden behind closed ones (2 Oct 2026:
 // the dock said "Form open" for two closed forms and left out the one that was open).
-const WORKING = ['Applying', 'Form open', 'Ready to submit', 'Filling', 'Submitting soon', 'Submitting…'];   // a queued hidden-browser job ("Queued") only waits: not active
+const WORKING = [t('helpers.stageApplying'), t('helperState.formOpen'), t('helperState.readySubmit'), t('helperState.filling'), t('helperState.submittingSoon'), t('helperState.submitting')];   // a queued hidden-browser job ("Queued") only waits: not active
 export const dockCounts = (items, gone = () => false) => ({
   active: items.filter(item => !gone(item) && WORKING.includes((backgroundStatus(item) || sessionState(item))[0])).length,
   waiting: items.filter(item => !gone(item) && item.status === 'input').length,
@@ -207,11 +209,11 @@ export function tabPhase(item, formsOpen, sinceStart, now = Date.now()) {
  */
 export const tabPhases = (items, formsOpen, sinceStart, now = Date.now()) => (items || []).map(item => `${item.id}:${tabPhase(item, formsOpen, sinceStart, now)}`).join(' ');
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
-export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
+export const silentPill = formsOpen => (formsOpen?.linkOff ? t('helperState.connectionOff') : 'Chrome not reporting');
 /** The one sentence for a closed connection (`formsOpen.linkOff`: {port, code}), on every card it stops: Chrome's, and a queued hidden-browser job's (`who`: whose extension reports).
  * Why (#2508, Gitar): another program is only the cause for EADDRINUSE, which the app retries; any other code (EACCES) is not retried, so no "updates by itself". */
-export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.code === 'EADDRINUSE' ? `Another program is using the connection ${who} reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
-  : `Jobadabra could not open the connection ${who} reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
+export const linkOffLine = (off, who = t('helperState.extensionWho')) => (off.code === 'EADDRINUSE' ? t('helperState.linkInUse', {who, port: off.port})
+  : t('helperState.linkCannotOpen', {who, port: off.port, code: off.code}));
 
 /** The state a row shows while Cancel all applications is closing it ([label, tone]), or null: it comes before the row's own state, so a queued or filling application does not look untouched. */
 export const cancellingState = item => (item?.cancelling ? ['Cancelling…', 'neutral'] : null);
@@ -243,21 +245,21 @@ export const stopShown = (pinnedUntil = 0, now = Date.now()) => now < pinnedUnti
 // progress). state: the form page's review state ({account, total, left, needs, pending, missing}); null when this is not an account page with fields.
 export function accountCardOf(item, state) {
   if (!state?.account || !(state.total > 0)) return null;
-  const need = state.needs === '1' ? 'See what the page asks' : String(state.needs || '').trim();   // the AI's word for the one thing only you can do, e.g. 'Solve the check, then press "Créer un compte"'
+  const need = state.needs === '1' ? t('helperState.seePageAsks') : String(state.needs || '').trim();   // the AI's word for the one thing only you can do, e.g. 'Solve the check, then press "Créer un compte"'
   const done = Math.max(0, state.total - state.left);
   const left = [...(need ? [need] : []), ...(state.pending || state.missing || [])];
-  return {title: item.accountStep === 'sign_in' ? 'Sign-in page' : 'Account page', done, total: state.total, count: ` of ${state.total} fields filled`, left,
-    pill: need ? {text: `Needs you: ${need}`, tone: 'warn'} : state.left ? {text: `${state.left} remaining`, tone: 'warn'} : {text: 'All fields filled', tone: 'good'}};
+  return {title: item.accountStep === 'sign_in' ? t('helperState.signInPage') : t('helperState.accountPage'), done, total: state.total, count: t('helperState.countFieldsFilled', {total: state.total}), left,
+    pill: need ? {text: t('helperState.needsYouText', {need}), tone: 'warn'} : state.left ? {text: t('helperState.remainingCount', {count: state.left}), tone: 'warn'} : {text: t('helperState.allFilled'), tone: 'good'}};
 }
 // The short line after the title of an account stop: how far the page is, or nothing was reported yet.
-export const accountProgress = state => (state?.account && state.total > 0 ? `· ${Math.max(0, state.total - state.left)} of ${state.total} filled` : '· nothing filled yet');
+export const accountProgress = state => (state?.account && state.total > 0 ? t('helperState.accountProgress', {done: Math.max(0, state.total - state.left), total: state.total}) : t('helperState.nothingFilled'));
 
 // The account record on a session's card (owner, 10 Oct 2026): where an account was made, which terms the extension accepted (the page's own wording) and whether a code came from the
 // mail. '' for an application with no account made by us (an existing account, a refused sign-in). Guarded by test/unit/renderer/account-record.test.js.
 export function accountRecordLine(item) {
   if (!item || !item.accountHost || !['created', 'confirm'].includes(item.accountState)) return '';
   const terms = Array.isArray(item.accountTerms) ? item.accountTerms : [];
-  return [`Account created on ${item.accountHost.replace(/^www\./, '')}`, ...(terms.length ? [`terms accepted: ${terms.map(term => `\u2018${term}\u2019`).join(', ')}`] : []), ...(item.accountCode ? ['code from your email'] : [])].join(' \u00b7 ');
+  return [t('helperState.accountCreatedOn', {host: item.accountHost.replace(/^www\./, '')}), ...(terms.length ? [t('helperState.termsAccepted', {terms: terms.map(term => `\u2018${term}\u2019`).join(', ')})] : []), ...(item.accountCode ? [t('helperState.codeEmail')] : [])].join(' \u00b7 ');
 }
 
 // The card's words for a session as the app itself reports it (no Chrome-tab checks): the step's line, else the session's state. [words, tone]

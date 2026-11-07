@@ -3,6 +3,7 @@
 // search saved (IPC jobPosting, asked once per job and kept for the session). None saved: "Fetch original" reads the posting's page and
 // "Paste description" saves your own text (both through IPC describeJob, for a job with an application). States: reading it, saved, none
 // saved, fetching, could not be fetched (a saved copy stays readable), could not be read (Retry, only then). Words and blocks: job-page-view.js.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {postingBlocks, postingFacts, postingSource, notSeen} from '../job-page-view.js';

@@ -2,6 +2,7 @@
 // single card… consistent across runs"): how it ended, the one number and the next step. Pure: the number's words are the app's own (find-card-model.js
 // addedWords, the Jobs card's), the next step the Actions banner's (run-compact.js NEXT), so the two never disagree. Drawn by pages/activity-result-top.js.
 // Guarded by test/unit/renderer/run-result-card.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {number} from '../i18n/format.js';
 import {addedWords, partialWords} from './find-card-model.js';

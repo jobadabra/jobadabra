@@ -1,6 +1,7 @@
 // Draws one readiness state of the person's own AI plan (renderer/ai-plan-guide.js says it): an alert box with the title, one line of text, the numbered install steps with the official line
 // (and Copy), and the buttons (one primary, the rest links). onAction(id) is the page's; copy(text) puts the install line on the clipboard.
 // Why (2 Nov 2026, owner): "We should never show a raw error": this box is the only thing drawn for a missing, broken or signed-out CLI.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {el} from './components.js';
 import {icon} from './icons.js';

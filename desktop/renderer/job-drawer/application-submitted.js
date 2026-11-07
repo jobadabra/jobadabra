@@ -2,6 +2,7 @@
 // recorded and how the answers were captured, the answers and cover letter as sent (an edit from the draft is marked), the CV version and the
 // files. It never changes when the kit or CV are edited afterwards. No record: "Not submitted yet", or, for a job marked applied, "No
 // application snapshot captured". Opening the employer's page is not proof of submission: only a recorded submission shows here.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {copyButton, factGrid, group, stateCard} from './parts.js';

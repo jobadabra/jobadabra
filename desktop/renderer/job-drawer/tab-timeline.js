@@ -2,6 +2,7 @@
 // from and what it said, and the way to its detail ("View message" in Messages, "View snapshot" in Application, "Open interviews"). One plain list, no filter (owner, 21 Oct 2026: messages have their own tab);
 // "Add note" at its end opens the Log box on this job. The newest part of the line is
 // the job's own events; the oldest entry is when the search found it. Data: renderer/job-page-view.js timelineOf. Replaces History.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';

@@ -2,6 +2,7 @@
 // asked by this job only (a motivation essay, "why us"); asked by this employer only so far ("seen twice": it becomes a standard answer when a
 // second employer asks); remembered on this job (it was the second: "✓ Remembered for future forms · Undo", Undo = only this job). Nothing shown
 // when the job asked none. Guarded by test/guards/rules/question-lists.test.js and test/unit/main/seen-twice.test.js.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {group} from './parts.js';

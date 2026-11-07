@@ -1,6 +1,7 @@
 // Drawer → Documents: the job's tailored CV and its cover letter, each a card of label → value rows (Status, File, Actions). They used to sit
 // inside Application → Preparation (owner, 18 Oct 2026: "New 'Documents' tab"). The CV opens in its window and saves as a file; the letter is
 // the job's own (job-letter.js: copy, edit, write again) or, before one is made, the kit's. Nothing drafted: the state card with the action.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el, pill} from '../components.js';
 import {wand} from '../magic.js';

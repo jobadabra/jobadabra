@@ -2,6 +2,7 @@
 // (All / Email / Notes) kept per job; each email a card that folds (from, what it said, "Open in Gmail"); Gmail not connected says so with
 // the way to connect it (existing messages still show); "Add note" opens the Log box on this job. Screenshots of a logged message are listed
 // below. Words and data: renderer/job-page-view.js messagesOf, gmailUrl.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {messagesOf, waitingEmails} from '../job-page-view.js';

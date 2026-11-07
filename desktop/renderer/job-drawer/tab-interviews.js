@@ -1,6 +1,7 @@
 // Drawer → Interviews (owner's board 05): the job's interviews as cards that fold: what is scheduled (an invitation by email and the calendar
 // entry for the same time are one) and what was recorded or practised (result, round, next step, the transcript, and the way to its review).
 // None: a state card. Data: the page's events and its interview records (IPC jobPage); words: renderer/job-page-view.js interviewsOf.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {shortDay} from '../date.js';

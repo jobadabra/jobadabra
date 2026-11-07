@@ -1,6 +1,7 @@
 // Drawer → Overview (owner's mock, 10 Oct 2026): "At a glance" (six fact tiles), "What the role involves" (a line each, the technologies as
 // chips), "Worth clarifying" (what the score says to check) and "From your conversations" (what the calls said). Each part shows only
 // when it has something; a job with none of it says so once. Words: renderer/job-page-view.js.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el, tag} from '../components.js';
 import {callFacts, clarifyOf, foundLine, glanceTiles, lines, matchView, notSeen, technologiesOf} from '../job-page-view.js';

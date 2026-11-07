@@ -1,6 +1,7 @@
 // Recent activity's run list: the runs under "Today" and "Earlier", the time each row shows, and the header's filter.
 // Kept free of the window so desktop/test/unit/renderer/run-list.test.js can check the day boundary (23:59 vs 00:01), the labels,
 // the filter and its counts.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {date} from '../i18n/format.js';
 const TIME = {hour: '2-digit', minute: '2-digit', hourCycle: 'h23'};

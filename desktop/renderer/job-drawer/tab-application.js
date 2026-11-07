@@ -1,5 +1,6 @@
 // Drawer → Application, in two parts (owner's spec, 10 Oct 2026): Preparation (what the app drafted) and Submitted (what was actually sent,
 // frozen at submission). Opens on Submitted when a snapshot exists, else on Preparation; the choice is kept per job for the session.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {choice} from './parts.js';
 import {preparationView} from './application-preparation.js';

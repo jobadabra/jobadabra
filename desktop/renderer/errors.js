@@ -1,5 +1,6 @@
 // The plain line for an error from the app behind the window: a window newer than the running app gets "Restart it" and a Restart button, never the raw IPC text.
 // Guards: test/unit/main/outdated-error.test.js (preload turns "No handler registered" into OUTDATED_LINE for every action; the Ready card shows line + Restart).
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 export const OUTDATED_LINE = 'Jobadabra was updated while it was open. Restart it to use this.';   // same words as preload.cjs
 export const OUTDATED_LINE_FINISH = 'Jobadabra was updated while it was open. Restart it to finish the update.';   // the Jobs card (pages/jobs-outdated.js); src/paths.py OUTDATED_APP says the same

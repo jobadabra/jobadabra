@@ -1,5 +1,6 @@
 // A searchable "select": the native <select> stays the source of truth (its options, value and change event, so the code that fills and
 // reads it is untouched); a search box with a list of matches sits in front of it. Used where the list is long (your jobs).
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {icon} from './icons.js';
 

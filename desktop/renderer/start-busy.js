@@ -2,6 +2,7 @@
 // "We should handle this properly"). One rule for every button that starts a run: its task waiting behind another turns the button into
 // "Queued · starts after <task>" (the short form on small buttons), and the press answers with a toast. Pure functions; pages/runs-page.js applies them.
 // Guarded by: test/unit/renderer/start-busy.test.js.
+import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 export const queuedText = (afterName, small = false) => (small ? t('helpers.queuedAfter', {task: afterName}) : t('helpers.queuedStarts', {task: afterName}));
 export const queuedToast = (kindName, afterName) => ({title: t('helpers.taskQueued', {task: kindName}), body: t('helpers.taskEnds', {task: afterName})});

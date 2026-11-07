@@ -1,6 +1,7 @@
 // Drawer → Review (owner's board 06): the analysis of a rejection or of a completed interview, with a choice between them when there is more
 // than one (the rejection's review, then each interview's, newest first). "Reviewed by …" muted on top, the verdict a callout, each section's
 // lines a plain list, the to-dos as the interview insights' "Practice next" steps (read-only: the review is a record). None yet: a state card.
+import '../../i18n/screens-helpers.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {groupsOf, rejectionOf, reviewsOf} from '../job-page-view.js';
