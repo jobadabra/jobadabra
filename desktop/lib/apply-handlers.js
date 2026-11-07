@@ -194,9 +194,7 @@ export function registerApplyHandlers(ctx) {
     if (DEMO) return {ok: true, password: 'Maple-Rocket-42'};
     if (process.platform === 'darwin' && !sitePassword.read()) return {ok: false, error: 'No shared password: every account made by Jobadabra has its own. Show it in Credentials.'};
     if (action === 'show' && sitePassword.read()) return {ok: true, password: sitePassword.read()};
-    let {code} = await pipeline.run(storage, sitePassword.runArgs(action));
-    // Why (7 Nov 2026, #3532): Show makes the password without the clipboard; only a host the app cannot read the store on (Windows) falls back to copying, so "paste it to read it" stays true there.
-    if (action === 'show' && code === 0 && !sitePassword.read()) ({code} = await pipeline.run(storage, sitePassword.runArgs('copy')));
+    const code = await sitePassword.runFor(action, args => pipeline.run(storage, args).then(done => done.code));
     appLog('apply', `job-site password ${action === 'show' ? 'shown' : 'copied'}`, {ok: code === 0});
     if (code !== 0) return {ok: false, error: 'The password could not be made or read.'};
     return {ok: true, copied: true, password: action === 'show' ? sitePassword.read() : null};

@@ -184,3 +184,17 @@ test('Settings\' Show asks the engine for the job-site password without the clip
   assert.deepEqual(runArgs('show'), ['src.ai.passwords', 'shared', '--no-copy']);
   assert.deepEqual(runArgs('copy'), ['src.ai.passwords', 'shared']);
 });
+
+// #3532 (Gitar): the handler's Show runs --no-copy once; only a host whose store the app cannot read (Windows) copies as a second run.
+test('Show runs once without the clipboard when the store can be read, and copies as a second run when it cannot', async () => {
+  const {runFor} = await import('../../../lib/site-password.js');
+  const play = async (action, readable, codes = [0, 0]) => {
+    const runs = [];
+    const code = await runFor(action, async args => { runs.push(args.slice(1)); return codes[runs.length - 1] ?? 0; }, () => (readable ? 'Maple-Rocket-42' : null));
+    return {runs, code};
+  };
+  assert.deepEqual(await play('show', true), {runs: [['shared', '--no-copy']], code: 0});
+  assert.deepEqual(await play('show', false), {runs: [['shared', '--no-copy'], ['shared']], code: 0});
+  assert.deepEqual(await play('show', false, [1]), {runs: [['shared', '--no-copy']], code: 1});   // the first run failed: no second one
+  assert.deepEqual(await play('copy', false), {runs: [['shared']], code: 0});
+});

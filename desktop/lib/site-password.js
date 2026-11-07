@@ -17,3 +17,16 @@ export function read(platform = process.platform, exec = execFileSync) {
  * @returns {string[]} the arguments of `python -m`
  */
 export const runArgs = action => ['src.ai.passwords', 'shared', ...(action === 'show' ? ['--no-copy'] : [])];
+
+/**
+ * Runs the engine for Show or Copy and returns its exit code. Why (7 Nov 2026, #3532): Show makes the password without the clipboard; only a host the app cannot read the store on
+ * (Windows: `read()` is null) falls back to the copying run, so "Copied: paste it to read it." stays true there.
+ * @param {'show'|'copy'} action
+ * @param {(args: string[]) => Promise<number>} runEngine  the engine call, → its exit code
+ * @param {() => (string|null)} [readNow]  the store read after the run
+ */
+export async function runFor(action, runEngine, readNow = read) {
+  let code = await runEngine(runArgs(action));
+  if (action === 'show' && code === 0 && !readNow()) code = await runEngine(runArgs('copy'));
+  return code;
+}
