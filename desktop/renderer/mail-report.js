@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // A Gmail check's message as the parts of it the owner reads. src/ai/mail.py writes the lines (prep_message and the
 // notes around it); nothing here re-words them, it only puts each one where it belongs.
 //
@@ -56,12 +58,12 @@ export function mailStatus(result) {
   // "Gmail check: 1 new email(s) read, 0 update(s) recorded" (a Notion row), or "Mail: 6 new email(s) classified, 1 update(s)"
   // (a run this Mac kept from its own log): one card for both.
   const found = /(\d+)\s+new email\(s\)\s+(?:read|classified),\s*(\d+)\s+update\(s\)/i.exec(String(result || ''));
-  if (!found) return {title: 'Check complete', sentence: '', emails: null, updates: null};
+  if (!found) return {title: t('helperTail.checkComplete'), sentence: '', emails: null, updates: null};
   const emails = Number(found[1]), updates = Number(found[2]);
-  if (!emails && !updates) return {title: 'Check complete', sentence: 'No new job emails, and no application records changed.', emails, updates};
-  const read = emails ? `${emails} email${emails === 1 ? '' : 's'} reviewed.` : 'No new job emails.';
-  const changed = updates ? `${updates} application record${updates === 1 ? '' : 's'} changed.` : 'No application records changed.';
-  return {title: 'Check complete', sentence: `${read} ${changed}`, emails, updates};
+  if (!emails && !updates) return {title: t('helperTail.checkComplete'), sentence: t('helperTail.noMailChanges'), emails, updates};
+  const read = emails ? t('helperTail.emailsReviewed', {count: emails}) : t('helperTail.noNewEmails');
+  const changed = updates ? t('helperTail.recordsChanged', {count: updates}) : t('helperTail.noRecordsChanged');
+  return {title: t('helperTail.checkComplete'), sentence: `${read} ${changed}`, emails, updates};
 }
 
 // One card per email the check read, with what it recorded on that job and the AI's reading of a rejection attached;
@@ -104,25 +106,26 @@ export function mailResults(report) {
 // in small print under the rows: "2 new emails · 1 relevant". The engine counts a rejection's AI review as an update too;
 // the card shows it on the email, so "updates" is What changed's rows. A run kept on this Mac has no email rows: its
 // own count stays, with no claim about which were relevant. -> [{value, label}], or [] when there is nothing to count.
+// Both the strip and empty-card summary use data counts, never translated label matching.
+const recordedUpdates = report => report.updates.length ? report.updates.filter(update => !update.question).length : report.status.updates || 0;
 export function mailCounts(report) {
-  const plural = (n, one, many) => `${n === 1 ? one : many}`;
   const listed = report.emails.length;
   const seen = report.status.emails ?? listed;
   // A "which job?" moved nothing: it is a question, not a change.
-  const changes = report.updates.length ? report.updates.filter(update => !update.question).length : report.status.updates || 0;
+  const changes = recordedUpdates(report);
   if (!seen && !changes) return [];
-  const updates = {value: changes, label: plural(changes, 'update recorded', 'updates recorded')};
-  if (listed && seen > listed) return [{value: seen, label: plural(seen, 'new email', 'new emails')}, {value: listed, label: 'relevant'}, updates];
-  return [{value: seen, label: plural(seen, 'email reviewed', 'emails reviewed')}, updates];
+  const updates = {value: changes, label: t('helperTail.updateLabel', {count: changes})};
+  if (listed && seen > listed) return [{value: seen, label: t('helperTail.newEmailLabel', {count: seen})}, {value: listed, label: t('helperTail.relevant')}, updates];
+  return [{value: seen, label: t('helperTail.emailLabel', {count: seen})}, updates];
 }
 
 // The one line a check with no email cards shows under its strip. It uses the strip's own update count (mailCounts), so the card never says
 // "No application records changed" beside "3 updates recorded" (issue #343: a run kept on this Mac has a count but no rows).
 export function mailNoCards(report) {
-  const recorded = mailCounts(report).find(count => /^updates? recorded$/.test(count.label))?.value || 0;
+  const recorded = recordedUpdates(report);
   return recorded
-    ? `${recorded} ${recorded === 1 ? 'update' : 'updates'} recorded, but this run kept no details of which.`
-    : 'No application records changed.';
+    ? t('helperTail.unlistedUpdates', {count: recorded})
+    : t('helperTail.noRecordsChanged');
 }
 
 // A next step with a clause in it reads as two paragraphs ("…salary expectations, with a further call planned to
@@ -290,5 +293,5 @@ export function settleQuestion(text, pending) {
   const company = (ASKED.exec(line.replace(HEAD, '')) || [])[1]?.trim();
   if (!company) return line;
   const open = pending.some(item => `${item.headline || ''} ${item.title || ''} ${item.detail || ''}`.toLowerCase().includes(company.toLowerCase()));
-  return open ? line : `${company} — which job? Answered in Focus`;
+  return open ? line : t('helperTail.whichJobFocus', {text: company});
 }

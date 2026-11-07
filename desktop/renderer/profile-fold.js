@@ -1,6 +1,8 @@
 // Every card on a Profile tab folds to its title and a one-line summary, and one bar at the bottom of the page opens or folds ALL the cards of the tab you are on, never another tab's
 // (owner, 18 Oct 2026: "all the tabs in Profile", "it should close/expand only the cards in the current tab"). The panels use the shared collapsiblePanel (components.js, remembered per
 // panel); the Experience cards (details.qa-fold, pages/experience-profile.js) are folded through the same registry. Guarded by test/unit/renderer/profile-fold.test.js.
+import {t} from '../i18n/index.js';
+import {number} from '../i18n/format.js';
 import {collapsiblePanel} from './components.js';
 
 export const TABS = ['cv', 'details', 'experience', 'answers', 'letter'];
@@ -25,9 +27,9 @@ export function countTab(cards, tab) {
 export function summaryOf(panel) {
   if (panel.dataset.summary) return panel.dataset.summary;   // a card that says it in its own words (the CV check: "Mostly readable · 3 issues")
   const fields = [...panel.querySelectorAll('input, textarea, select')].filter(node => !['checkbox', 'radio', 'hidden', 'button', 'file'].includes(node.type) && !node.closest('[hidden]'));
-  if (fields.length) return `${fields.filter(node => String(node.value || '').trim()).length} of ${fields.length} filled`;
+  if (fields.length) return t('helperTail.foldFilled', {filled: number(fields.filter(node => String(node.value || '').trim()).length), total: number(fields.length)});
   const rows = panel.querySelectorAll('.summary-rows dt, .fact-line, .exp-part').length;
-  if (rows) return `${rows} ${rows === 1 ? 'item' : 'items'}`;
+  if (rows) return t('helperTail.foldItems', {count: rows});
   return '';
 }
 
@@ -74,7 +76,7 @@ export function showFoldBar() {
   const {cards, open} = countTab(registry, tab);
   bar.hidden = cards === 0;
   const count = bar.querySelector('.foldbar-count');
-  if (count) count.textContent = `${open} of ${cards} open`;
+  if (count) count.textContent = t('helperTail.foldOpen', {open: number(open), total: number(cards)});
 }
 export function initFoldBar() {
   const bar = document.getElementById('profile-foldbar');

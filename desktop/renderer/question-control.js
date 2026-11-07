@@ -16,8 +16,8 @@ const FEW = 3, SHORT = 18, FEW_PICKS = 6;
 const segmentedOk = (options, most) => options.length <= most && options.every(option => option.length <= SHORT);
 
 // Draw display labels separately from canonical options; native multi-select changes must never rewrite its selection through .value.
-function choiceControl(control, options, {read, set, change, ariaLabel, chips}) {
-  const label = option => control === 'yes_no' ? t(option === 'Yes' ? 'helperMore.answerYes' : 'helperMore.answerNo') : option;
+function choiceControl(control, options, {read, set, change, ariaLabel, chips, optionLabel}) {
+  const label = option => control === 'yes_no' ? t(option === 'Yes' ? 'helperMore.answerYes' : 'helperMore.answerNo') : optionLabel(option);
   if (control === 'yes_no' || (control === 'single' && segmentedOk(options, chips ? FEW_PICKS : FEW))) {
     const isOn = option => option.toLowerCase() === read().toLowerCase();
     return segmented(options, isOn, (option, group) => { set(isOn(option) ? '' : option); refresh(group, isOn); }, ariaLabel, label);
@@ -27,7 +27,7 @@ function choiceControl(control, options, {read, set, change, ariaLabel, chips}) 
     node.append(new Option(t('helperMore.choose'), ''));
     // A saved answer outside the known options stays available exactly as written.
     if (current && !options.some(option => option.toLowerCase() === current.toLowerCase())) node.append(new Option(current, current));
-    for (const option of options) node.append(new Option(option, option));
+    for (const option of options) node.append(new Option(label(option), option));
     node.value = options.find(option => option.toLowerCase() === current.toLowerCase()) || current;
     node.addEventListener('change', () => change(node.value));
     return node;
@@ -38,24 +38,25 @@ function choiceControl(control, options, {read, set, change, ariaLabel, chips}) 
       const picks = picksOf(read(), options);
       set(joinPicks(options.filter(each => (each === option ? !picks.includes(each) : picks.includes(each)))));
       refresh(group, isOn);
-    }, ariaLabel);
+    }, ariaLabel, label);
   }
   const node = Object.assign(el('select', ''), {multiple: true, ariaLabel, size: Math.min(6, options.length)});
   const picks = picksOf(read(), options);
-  for (const option of options) node.append(new Option(option, option, false, picks.includes(option)));
+  for (const option of options) node.append(new Option(label(option), option, false, picks.includes(option)));
   node.addEventListener('change', () => change(joinPicks([...node.selectedOptions].map(option => option.value))));
   return node;
 }
 
 // format: {control, options}; value: the saved answer ('' = none); onChange(value). -> the control node (its .value reads the current answer).
-export function answerControl(format, value, onChange, {placeholder = t('helperMore.yourAnswer'), ariaLabel = t('helperMore.answer'), chips = false} = {}) {
+/** Draw localized choice labels separately from canonical saved values and callback payloads. */
+export function answerControl(format, value, onChange, {placeholder = t('helperMore.yourAnswer'), ariaLabel = t('helperMore.answer'), chips = false, optionLabel = value => value} = {}) {
   const control = format?.control || 'text', options = format?.options || [];
   let current = String(value ?? '');
   const set = next => { current = next; node.value = next; onChange(next); };
   const change = next => { current = next; onChange(next); };
   let node;
   if (['yes_no', 'single', 'multi'].includes(control)) {
-    node = choiceControl(control, options, {read: () => current, set, change, ariaLabel, chips});
+    node = choiceControl(control, options, {read: () => current, set, change, ariaLabel, chips, optionLabel});
   } else if (control === 'date') {
     node = dateControl(format, current, change, {ariaLabel});
   } else if (control === 'amount') {

@@ -85,7 +85,7 @@ export function kitParts(kit, markdown) {
   const list = value => (Array.isArray(value) ? value : []).map(String).filter(Boolean);
   return {
     intro,
-    ineligible: kit.eligible === false ? String(kit.eligibility_note || 'Not eligible') : '',
+    ineligible: kit.eligible === false ? String(kit.eligibility_note || t('helperTail.notEligible')) : '',
     check: list(kit.check_before_sending), lead: list(kit.highlights), letter: String(kit.cover_letter || '').trim(),
     answers: (Array.isArray(kit.answers) ? kit.answers : []).filter(item => item?.question)
       .map(item => ({question: String(item.question), answer: String(item.answer ?? ''), review: !!item.needs_review})),
@@ -260,7 +260,7 @@ export function timelineOf(events = [], job = {}, match = null, parts = {}) {
     const link = interview ? 'interviews' : email ? 'messages' : event.kind === 'Applied' && parts.submitted ? 'snapshot' : null;
     return {key: String(event.id || `${event.kind}-${event.at}`), at: String(event.at || event.created_at || ''), when: day(event.at || event.created_at),
       time: clock(event.at), kind: String(event.kind), title: plain(changes.subject && email ? `${stageText(event.kind)}: ${changes.subject}` : stageText(event.kind)),
-      source: email ? `From ${plain(changes.from || 'an email')} (Gmail)` : event.source ? `Source: ${event.source}` : '', text: plain(event.note || ''), kinds, link};
+      source: email ? t('helperTail.fromGmail', {sender: plain(changes.from || t('helperTail.anEmail'))}) : event.source ? t('helperGuide.sourceLine', {source: event.source}) : '', text: plain(event.note || ''), kinds, link};
   }).sort((a, b) => b.at.localeCompare(a.at));
   const found = match?.first_seen || job.first_seen_at;
   if (found && pastDay(found)) items.push({key: 'discovered', at: String(found), when: day(found), time: clock(found), kind: 'Job discovered', title: t('helpers.jobDiscovered'), source: '', text: t('helpers.foundSearch'), kinds: ['application'], link: null});
@@ -285,7 +285,7 @@ export function interviewsOf(page = {}, now = Date.now()) {
     const key = at.slice(0, 16);
     const changes = changesOf(event);
     const found = planned.get(key) || {key: `slot-${key}`, kind: 'slot', at, title: t('helpers.interview'), note: '', source: ''};
-    if (event.source === 'Gmail') { found.title = plain(changes.subject || found.title); found.note = plain(event.note || found.note); found.source = `From ${plain(changes.from || 'an email')}`; }
+    if (event.source === 'Gmail') { found.title = plain(changes.subject || found.title); found.note = plain(event.note || found.note); found.source = t('helpers.from', {name: plain(changes.from || t('helperTail.anEmail'))}); }
     else if (!found.note) found.note = plain(event.note || '');
     planned.set(key, found);
   }
@@ -323,7 +323,7 @@ export const notSeen = page => page?.match?.status === 'Not seen';
 // `item` is the Focus item itself, as pages/reassign.js whichJob takes it.
 export function waitingEmails(items = [], url = '') {
   return (items || []).filter(item => item?.kind === 'which_job' && item.event_id && url && item.suggested_url === url)
-    .map(item => ({key: String(item.event_id), eventId: String(item.event_id), subject: plain(item.title || 'An email'), note: plain(item.note || item.detail || ''), item}));
+    .map(item => ({key: String(item.event_id), eventId: String(item.event_id), subject: plain(item.title || t('helperTail.anEmailTitle')), note: plain(item.note || item.detail || ''), item}));
 }
 
 // The page's content: {tabs: TABS (every job has all nine), kit, groups: {match, prep, review, record, messages, description}, history, shots,

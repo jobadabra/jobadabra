@@ -1,3 +1,6 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
+import {number as formatNumber} from '../i18n/format.js';
 // The Strategy page's pure parts (owner mockup, 7 Oct 2026): role families, goal notes (estimated salary, language levels not set), the
 // exclusions split by what they do, and the suggestion rows' options in order. Data in, words out; strategy.js draws them.
 
@@ -5,10 +8,10 @@ import {LEVELS, splitPermit, splitSalary} from './question-values.js';
 import {NATIONALITY, eligibilityOf, isRowName} from './work-eligibility.js';
 
 // src/role_kinds.py KINDS, in words. A role the engine did not label (an older read) is "Other roles".
-export const KIND_LABELS = {software: 'Software', sales_b2b: 'Business sales', sales_retail: 'Retail', logistics: 'Logistics', hospitality: 'Hospitality',
-  healthcare: 'Healthcare', creative_media: 'Creative & media', finance_admin: 'Office & finance', education: 'Education', trades: 'Trades',
-  engineering: 'Engineering', business_ops: 'Business & operations', manufacturing: 'Manufacturing', science: 'Science & research',
-  customer_service: 'Customer service', legal: 'Legal', aviation_transport: 'Aviation & transport', public_security: 'Public service & security', other: 'Other roles'};
+export const KIND_LABELS = {software: t('helperGuide.software'), sales_b2b: t('helperGuide.businessSales'), sales_retail: t('helperGuide.retail'), logistics: t('helperGuide.logistics'), hospitality: t('helperGuide.hospitality'),
+  healthcare: t('helperGuide.healthcare'), creative_media: t('helperGuide.creativeMedia'), finance_admin: t('helperGuide.officeFinance'), education: t('helperGuide.education'), trades: t('helperGuide.trades'),
+  engineering: t('helperGuide.engineering'), business_ops: t('helperGuide.businessOps'), manufacturing: t('helperGuide.manufacturing'), science: t('helperGuide.scienceResearch'),
+  customer_service: t('helperGuide.customerService'), legal: t('helperGuide.legal'), aviation_transport: t('helperGuide.aviationTransport'), public_security: t('helperGuide.publicSecurity'), other: t('helperGuide.otherRoles')};
 
 // Roles grouped by family, in the order the user listed them: [{kind, label, entries}]. A single family keeps its own name too.
 export function roleFamilies(entries) {
@@ -41,10 +44,10 @@ export function exclusionGroups(data) {
   for (const item of data?.avoid || []) {
     const [, prefix, rest] = String(item).match(/^(Company|Title|Remote only from):?\s*(.*)$/) || [];
     if (prefix === 'Company') hide.push({kind: 'company', label: rest});
-    else if (prefix === 'Title') hide.push({kind: 'title', label: `Title: ${rest}`});
-    else if (prefix) hide.push({kind: 'remote', label: `Remote only from ${rest}`});
+    else if (prefix === 'Title') hide.push({kind: 'title', label: t('helperGuide.excludedTitle', {word: rest})});
+    else if (prefix) hide.push({kind: 'remote', label: t('helperGuide.remoteFrom', {place: rest})});
   }
-  if (languages.length) lower.push({kind: 'language', label: `${languages.join(', ')} only "nice to have"`});
+  if (languages.length) lower.push({kind: 'language', label: t('helperGuide.niceLanguages', {languages: languages.join(', ')})});
   return {languages, hide, lower};
 }
 
@@ -59,7 +62,7 @@ export function byOpenings(options) {
 export function sitesByName(chips) {
   const byName = new Map();
   for (const chip of chips || []) {
-    const name = chip.label.replace(/^Open /, '');
+    const name = chip.name || chip.label.replace(/^Open /, '');
     if (!byName.has(name)) byName.set(name, {name, pages: []});
     byName.get(name).pages.push(chip);
   }
@@ -93,7 +96,8 @@ export function withTyped(edits, typed, plain, stored = () => []) {
 }
 // The one suggestions line under Strategy's tabs (owner, 18 Oct 2026, review fix 3): its count is shared-counts.js "strategy-suggestions"; this is the
 // top one. top: the first kind's brief {title, text}; its "+ " / "− " lead is dropped.
-export const improveWords = top => ({top: top ? `Top: ${top.title.replace(/^[+−] /, '')}${top.text ? ` (${top.text})` : ''}` : ''});
+/** Describe the top suggestion while preserving its original title and detail. */
+export const improveWords = top => ({top: top ? t('helperGuide.topSuggestion', {title: top.title.replace(/^[+−] /, ''), text: top.text ? ` (${top.text})` : ''}) : ''});
 
 // Main goals' Minimum salary as read (owner, 18 Oct 2026: "Show salary currency and period explicitly"): a salary the control can read is said as
 // "CHF 130,000 / year" (· gross); one it cannot is shown as written, with the way to pick its parts. -> {text, note}.
@@ -101,9 +105,11 @@ export function salaryWords(text) {
   const raw = String(text || '').trim();
   if (!raw) return {text: ''};
   const {number, currency, period, basis} = splitSalary(raw);
-  if (!number) return {text: raw, note: 'As written: Edit to pick its currency and period'};
-  const amount = Number(number) ? Number(number).toLocaleString('en-US') : number;
-  return {text: `${currency} ${amount} / ${period || '?'}${basis ? ` · ${basis}` : ''}`, ...(period ? {} : {note: 'Period not set: Edit to add it'})};
+  if (!number) return {text: raw, note: t('helperGuide.salaryAsWritten')};
+  const amount = Number(number) ? formatNumber(Number(number)) : number;
+  const periodLabel = {year: 'periodYear', month: 'periodMonth', week: 'periodWeek', day: 'periodDay', hour: 'periodHour'}[period];
+  const basisLabel = {net: 'basisNet', gross: 'basisGross'}[basis];
+  return {text: `${currency} ${amount} / ${periodLabel ? t(`helperMore.${periodLabel}`) : period || '?'}${basis ? ` · ${basisLabel ? t(`helperMore.${basisLabel}`) : basis}` : ''}`, ...(period ? {} : {note: t('helperGuide.salaryPeriodMissing')})};
 }
 // Main goals' "From Your details" line (owner, 18 Oct 2026: "What is this long text?"): one short line, never the notes, marks or instructions Your details
 // keeps for the AI. Languages with their levels ("English B2"), and where the person may work as recorded per country: a country answered "allowed" or
@@ -112,7 +118,7 @@ export function salaryWords(text) {
 // Your details has none. -> words or ''.
 const SHOWN = 4, OLD_LANGUAGES = 60;
 const bare = text => String(text ?? '').replace(/\s*\(note:[\s\S]*$/i, '').replace(/\s*\[[^\]]*\]\s*$/, '').trim();
-const listed = items => (items.length > SHOWN ? `${items.slice(0, SHOWN).join(', ')} +${items.length - SHOWN} more` : items.join(', '));
+const listed = items => (items.length > SHOWN ? t('helperGuide.moreListed', {list: items.slice(0, SHOWN).join(', '), count: items.length - SHOWN}) : items.join(', '));
 // The place a per-country line names: the label itself ("Switzerland"), or the capitalised words that end a question ("Authorised to work in the UK?" → "UK").
 const placeOf = label => (bare(label).replace(/\([^)]*\)/g, '').replace(/[?:\s]+$/, '').match(/(?:\p{Lu}[\p{L}.'-]*)(?:\s*(?:\/|\s)\s*\p{Lu}[\p{L}.'-]*)*$/u) || [''])[0];
 function eligibility(lines) {
@@ -126,17 +132,17 @@ function eligibility(lines) {
     const answer = (line.value.match(/^(yes|no|allowed|needs visa)\b/i)?.[1] || '').toLowerCase();
     if (['yes', 'allowed', 'no', 'needs visa'].includes(answer)) add(['yes', 'allowed'].includes(answer) ? works : needs, placeOf(line.label));
   }
-  return [works.length && `Works in: ${listed(works)}`, needs.length && `Needs sponsorship: ${listed(needs)}`].filter(Boolean).join(' · ');
+  return [works.length && t('helperGuide.worksIn', {places: listed(works)}), needs.length && t('helperGuide.needsSponsorship', {places: listed(needs)})].filter(Boolean).join(' · ');
 }
 function spoken(lines, older) {
   const levels = new Set(LEVELS.map(level => level.toLowerCase()));
   const said = (lines || []).map(line => ({name: bare(line.label), level: bare(line.value)}))
     .filter(({name, level}) => name && levels.has(level.toLowerCase())).map(({name, level}) => `${name} ${level}`);
-  if (said.length) return said.length > SHOWN ? `${said.slice(0, SHOWN).join(' · ')} +${said.length - SHOWN} more` : said.join(' · ');
+  if (said.length) return said.length > SHOWN ? t('helperGuide.moreListed', {list: said.slice(0, SHOWN).join(' · '), count: said.length - SHOWN}) : said.join(' · ');
   const old = bare(older);
   return old.length > OLD_LANGUAGES ? `${old.slice(0, OLD_LANGUAGES).replace(/\s+\S*$/, '')}…` : old;
 }
 export function detailsLine(details = {}, languages = '') {
   const said = spoken(details?.languages, languages);
-  return [said && `Languages: ${said}`, eligibility(details?.eligibility)].filter(Boolean).join(' · ');
+  return [said && t('helperGuide.languagesLine', {languages: said}), eligibility(details?.eligibility)].filter(Boolean).join(' · ');
 }

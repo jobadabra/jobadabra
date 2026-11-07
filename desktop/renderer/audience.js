@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Is this candidate looking for IT / engineering work? The same rule as src/coverage.py looks_technical (a table of cases in tests/fixtures/audience_cases.json holds both to it).
 // Pure, no DOM: main.js answers the window's question with it, and the tips use it to keep IT examples away from everyone else.
 const TECH_WORDS = /(?<![a-z])(software|developer|devops|sre|site reliability|cloud|backend|back-end|frontend|front-end|full.?stack|data|analytics|machine learning|ml|infrastructure|platform|sysadmin|sysop|systems?|syst[eè]mes?|programmer|sdet|qa|security|network|database|kubernetes|it|entwickler|informatiker|d[eé]veloppeur|sviluppatore|desarrollador|ontwikkelaar|programista|sistemista)(?![a-z])/i;
@@ -25,7 +27,7 @@ export const swissPlaces = (places = []) => places.some(place => SWISS_PLACE.tes
 // only for someone with Swiss places (or who already filled it in), and the GitHub link only for someone technical (or who already has one).
 export function contactHints({places = [], technical = false} = {}, contact = {}) {
   const own = places.map(plainPlace).find(Boolean);
-  return {locationExample: own ? `e.g. ${own}` : 'e.g. your town or city', dateExample: 'e.g. 31 Dec 1990', showOrigin: swissPlaces(places) || Boolean(String(contact.place_of_origin || '').trim()),
+  return {locationExample: own ? t('helperTail.placeExample', {place: own}) : t('helperTail.townExample'), dateExample: t('helperTail.dateExample'), showOrigin: swissPlaces(places) || Boolean(String(contact.place_of_origin || '').trim()),
     // GitHub is a developer's profile: a non-technical candidate is not asked for it (unless they already filled it in).
     showGithub: Boolean(technical) || Boolean(String(contact.github || '').trim())};
 }

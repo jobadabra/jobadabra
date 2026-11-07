@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Text size in the window: the font tokens never draw smaller than 10 px on screen at any zoom (the 80% laptop default would make 11 px text 8.8 px), and the words under Settings → Appearance → Text size. Guarded by test/unit/renderer/zoom.test.js.
 export const MIN_ON_SCREEN_PX = 10;
 const BASE = {'--fs-xs': 11, '--fs-sm': 12};   // tokens.css
@@ -11,8 +13,8 @@ export function floorTokens(factor) {
   return out;
 }
 export const SIZE_TEXT = {
-  small: 'Smaller text, more on screen.',
-  default: 'Fits your screen: 80% on a laptop, 100% on a large display.',
-  large: 'Bigger text, easier to read.',
-  other: 'A custom size from ⌘+ and ⌘-. ⌘0 goes back to Default.',
+  small: t('helperTail.smallerZoom'),
+  default: t('helperTail.defaultZoom'),
+  large: t('helperTail.biggerZoom'),
+  other: t('helperTail.customZoom'),
 };

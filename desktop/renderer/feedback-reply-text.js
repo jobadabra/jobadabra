@@ -1,3 +1,7 @@
+import '../i18n/screens-helpers.js';
+import {date} from '../i18n/format.js';
+import {getLocale} from '../i18n/index.js';
+import {t} from '../i18n/index.js';
 // The words on the card for the owner's answer to a feedback (drawn by pages/feedback-reply.js). Pure, so a test reads it without a window.
 const SHORT = new Intl.DateTimeFormat(undefined, {day: 'numeric', month: 'short'});
 
@@ -6,8 +10,8 @@ const sameVersion = reply => { const version = String(reply.arrival || '').match
 
 /** One reply ({on, excerpt, kind, message, arrival}) -> {title, said, answer, tone}. */
 export function cardText(reply) {
-  const day = reply.on ? SHORT.format(new Date(`${reply.on}T12:00:00`)) : '';
+  const day = reply.on ? (getLocale() === 'en' ? SHORT.format(new Date(`${reply.on}T12:00:00`)) : date(`${reply.on}T12:00:00`, {day: 'numeric', month: 'short'})) : '';
   const fixed = reply.kind === 'fixed';
-  return {tone: fixed ? 'good' : 'info', title: fixed ? 'Your feedback was fixed' : 'Your feedback was heard',
-    said: `You wrote${day ? ` on ${day}` : ''}: "${reply.excerpt}"`, answer: [reply.message, sameVersion(reply) ? '' : reply.arrival].filter(Boolean).join(' ')};
+  return {tone: fixed ? 'good' : 'info', title: fixed ? t('helperTail.feedbackFixed') : t('helperTail.feedbackHeard'),
+    said: t('helperTail.wroteExcerpt', {day: day ? t('helperTail.onDay', {day}) : '', excerpt: reply.excerpt}), answer: [reply.message, sameVersion(reply) ? '' : reply.arrival].filter(Boolean).join(' ')};
 }

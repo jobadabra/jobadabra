@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // When the "Connect Notion" prompt must stay out of the way: pure rules, so they are tested without a window.
 // 3 Oct 2026 (wizard e2e): a token connect started elsewhere (Settings, a pasted token) takes a minute (building, moving the strategy in), and a page that asked for Notion
 // meanwhile reopened the prompt over the app. It then sat on "Moving your strategy and matches into Notion…" for ever, because only its own connect closes it, and blocked every click.
@@ -24,4 +26,4 @@ export function connectMode({store, connected}) {
 // startOnNotionIfEmpty), so the move the prompt announced runs now.
 export const moveAfterConnect = result => !!result?.ok && !!result.stayedOnMac;
 // The prompt's button for each mode.
-export const GO_LABEL = {connect: 'Connect with Notion', 'connect-move': 'Connect and move', move: 'Move to Notion'};
+export const GO_LABEL = {connect: t('helperTail.connectNotion'), 'connect-move': t('helperTail.connectMove'), move: t('helperTail.moveNotion')};

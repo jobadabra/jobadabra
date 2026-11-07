@@ -1,8 +1,10 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The one owner of what a hidden application's live view is doing: hidden, opening, showing or closed ([ap] 7/7; spec 2026-11-05-applying-redesign, decision 4).
 // Guard: test/unit/renderer/live-view-state.test.js.
 
-export const NOT_YET = 'The page is not open yet: it opens when the fill starts. Press Watch live again in a moment.';
-export const DROPPED = 'The live page closed. Press Watch live to see it again.';
+export const NOT_YET = t('helperTail.liveNotYet');
+export const DROPPED = t('helperTail.liveDropped');
 export const START = {kind: 'hidden', ask: 0, note: ''};
 const STREAMING = new Set(['opening', 'showing']);
 

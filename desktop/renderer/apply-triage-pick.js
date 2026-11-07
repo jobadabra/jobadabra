@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Apply triage's pure parts (spec 2026-10-30-apply-triage, PR B): which jobs the popup picks (the best N not checked before), and the chip each read shows. No window, no I/O.
 import {modeOfRead} from './apply-triage-mode.js';
 
@@ -21,17 +23,18 @@ export async function pickWhenFresh(listNow, listReady, choice) {
 }
 
 export const CHIPS = {
-  auto: {label: 'Can apply automatically', tone: 'good'},
-  fill: {label: 'You review and submit', tone: 'info'},
-  check: {label: 'Needs you', tone: 'warn'},
-  none: {label: 'Skipped', tone: 'neutral'},
+  auto: {label: t('helperTail.canAuto'), tone: 'good'},
+  fill: {label: t('helperTail.reviewSubmit'), tone: 'info'},
+  check: {label: t('helperTail.needsYou'), tone: 'warn'},
+  none: {label: t('helperTail.skipped'), tone: 'neutral'},
 };
 
 /** The chip for a job's read: {label, tone, detail}. No read yet is "Not checked", never a guess. */
 export function chipOf(read) {
-  if (!read) return {label: 'Not checked', tone: 'neutral', detail: ''};
+  if (!read) return {label: t('helperTail.notChecked'), tone: 'neutral', detail: ''};
   const {mode, reason} = modeOfRead(read);
-  return {...CHIPS[mode], detail: reason};
+  const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts'}[reason];
+  return {...CHIPS[mode], detail: reasonKey ? t(`helperTail.${reasonKey}`) : reason};
 }
 
 // Why (30 Oct 2026, owner's "go" on the measured read): one real form-judge call on the Claude plan took 49 s wall; a first check has no timings yet, so the guess is a minute a job and says so.
@@ -50,6 +53,6 @@ export function estimateOf(count, timings = []) {
   const seconds = Math.round(perJob * Math.max(0, count));
   if (!count) return {seconds: 0, text: '', measured: usable.length > 0};
   const minutes = Math.max(1, Math.round(seconds / 60));
-  const text = seconds < 45 ? `about ${Math.max(5, Math.round(seconds / 5) * 5)} seconds` : `about ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  const text = seconds < 45 ? t('helperTail.aboutSeconds', {count: Math.max(5, Math.round(seconds / 5) * 5)}) : t('helperTail.aboutMinutes', {count: minutes});
   return {seconds, text, measured: usable.length > 0};
 }
