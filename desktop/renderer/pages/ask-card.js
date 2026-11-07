@@ -12,7 +12,7 @@ export function drawAsk(box, kind, onAnswer) {
   box.hidden = !words;
   if (!words) return void box.replaceChildren();
   const card = el('section', 'card run-banner tone-warn ask-card'), text = el('div', 'run-banner-words');
-  const answer = how => Object.assign(el('button', how === 'tell' ? 'primary' : '', how === 'tell' ? 'Tell us' : t('pagesCommon.notNow')), {type: 'button', onclick: () => { box.hidden = true; box.replaceChildren(); onAnswer(how); }});
+  const answer = how => Object.assign(el('button', how === 'tell' ? 'primary' : '', how === 'tell' ? t('pagesActivityMore.tellUs') : t('pagesCommon.notNow')), {type: 'button', onclick: () => { box.hidden = true; box.replaceChildren(); onAnswer(how); }});
   text.append(el('b', '', words.title), el('span', '', words.body));
   card.append(tile('chat', 'warn'), text, answer('tell'), answer('later'));
   box.replaceChildren(card);

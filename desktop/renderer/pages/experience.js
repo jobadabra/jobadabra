@@ -16,7 +16,7 @@ export function sourceRow(source) {
   const row = el('li');
   const words = el('div', 'item-words');
   const name = el('b', '', source.name);
-  name.append(' ', source.reference ? pill('Reference', 'info') : source.stale ? pill('Needs matching', 'warn', {title: 'Your main CV changed since this version was compared with it'}) : pill(source.added ? `+${plural(source.added, 'detail')}` : t('pagesProfile.nothingNew'), source.added ? 'good' : 'neutral'));
+  name.append(' ', source.reference ? pill(t('pagesEmployers.reference'), 'info') : source.stale ? pill(t('pagesEmployers.needsMatching'), 'warn', {title: t('pagesEmployers.mainChanged')}) : pill(source.added ? `+${plural(source.added, 'detail')}` : t('pagesProfile.nothingNew'), source.added ? 'good' : 'neutral'));
   words.append(name);
   const meta = source.reference ? `${plural(source.roles, 'job role')}: tailored CVs keep its jobs, titles and dates` : `${plural(source.roles, 'job role')} · added ${runWhen(source.addedAt)}`;
   words.append(el('span', 'muted', meta));
@@ -35,7 +35,7 @@ export function roleBlock(role) {
   head.append(el('span', 'job-initial', String(role.company || role.title || '?').trim().charAt(0).toUpperCase()), who, when);
   if (extras) head.append(pill(`+${plural(extras, 'detail')}`, 'good', {title: `${plural(extras, 'detail')} from other CV versions: tailoring may use them for this job`}));
   const left = role.dropped || [];   // Why (3 Nov 2026, #3057, Windows tester): a job takes at most `maxExtra` extra details and the rest were dropped without a word
-  if (left.length) head.append(pill(`${left.length} not used`, 'warn', {title: 'This job has more details in your other CV versions than a tailored CV can hold'}));
+  if (left.length) head.append(pill(`${left.length} not used`, 'warn', {title: t('pagesEmployers.moreDetails')}));
   head.append(icon('chevron', 'icon job-chevron'));
   const list = el('ul');
   for (const bullet of role.bullets) {
@@ -65,14 +65,14 @@ export function onlyHereBlock(sources) {
   if (!items.length) return null;
   const box = el('details', 'exp-role');
   const head = el('summary');
-  head.append(el('b', '', 'Not in your main CV'), ' ', pill(String(items.length), 'warn', {title: 'Roles found in other versions only'}));
+  head.append(el('b', '', t('pagesEmployers.notMain')), ' ', pill(String(items.length), 'warn', {title: t('pagesEmployers.rolesOther')}));
   const list = el('ul');
   for (const role of items) {
     const item = el('li', '', [role.title, role.company, role.period].filter(Boolean).join(' · '));
     item.append(' ', pill(role.from, 'neutral'));
     list.append(item);
   }
-  box.append(head, el('p', 'muted small', 'Tailored CVs keep your main CV\'s jobs, so these are not used. If they belong on your CV, add them to it and replace it on the CV tab.'), list);
+  box.append(head, el('p', 'muted small', t('pagesEmployers.keepMainRoles')), list);
   return box;
 }
 
@@ -115,7 +115,7 @@ export function showChanges(answer) {
   const box = el('details', 'exp-role');
   box.open = true;
   const head = el('summary');
-  head.append(el('b', '', 'What changed in your profile'));
+  head.append(el('b', '', t('pagesEmployers.profileChanged')));
   const list = el('ul');
   for (const [text, tone] of lines) { const item = el('li', '', text); if (tone === 'bad') item.append(' ', pill(t('pagesCommon.notAdded'), 'bad')); list.append(item); }
   box.append(head, list);
@@ -132,27 +132,27 @@ export function showExperience(view) {
       again.addEventListener('click', () => run(again, () => window.pilot.experienceRematch()));
       row.append(again);
     }
-    const button = Object.assign(el('button', 'link item-action', t('pagesCommon.remove')), {type: 'button', title: 'Tailored CVs stop drawing on this version. Your main CV is not changed.'});
+    const button = Object.assign(el('button', 'link item-action', t('pagesCommon.remove')), {type: 'button', title: t('pagesEmployers.stopDrawing')});
     button.addEventListener('click', async () => {
       // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
       if (!confirm(`Remove “${source.name}”? Tailored CVs stop drawing on this version. Your main CV is not changed.`)) return;
       button.disabled = true;
       const answer = await window.pilot.experienceRemove(source.id).catch(error => ({ok: false, error: error.message}));
-      if (answer.ok) { showExperience(answer); showChanges(answer); } else message('exp-message', answer.error || 'Could not remove it.', 'error');
+      if (answer.ok) { showExperience(answer); showChanges(answer); } else message('exp-message', answer.error || t('pagesEmployers.removeFailed'), 'error');
     });
     row.append(button);
   }
-  $('exp-sources').replaceChildren(...(view.main ? [sourceRow({reference: true, name: t('pagesCommon.mainCv'), roles: view.main.roles})] : [el('li', 'muted', 'Read your main CV first (CV → Read my CV PDF).')]));
+  $('exp-sources').replaceChildren(...(view.main ? [sourceRow({reference: true, name: t('pagesCommon.mainCv'), roles: view.main.roles})] : [el('li', 'muted', t('pagesEmployers.readMainFirst'))]));
   const removeAdded = async id => {
     const answer = await window.pilot.experienceRemoveAdded(id).catch(error => ({ok: false, error: error.message}));
-    if (answer.ok) showExperience(answer); else message('exp-message', answer.error || 'Could not remove it.', 'error');
+    if (answer.ok) showExperience(answer); else message('exp-message', answer.error || t('pagesEmployers.removeFailed'), 'error');
   };
   $('exp-versions').replaceChildren(...(view.sources.length ? [versionsBlock(rows, view.sources.length)] : []), ...addedBlock(view.added, removeAdded));
   const extras = view.roles.reduce((n, r) => n + r.bullets.filter(b => b.from !== 'Main CV').length, 0);
   $('exp-count').textContent = view.roles.length ? `${plural(view.roles.length, 'role')}${extras ? ` · ${plural(extras, 'detail')} from other versions` : ''}` : '';
   $('setting-experience-sources').dataset.summary = sourcesSummary(view);   // the folded card's one line (profile-fold.js)
   const notInMain = onlyHereBlock(view.sources);
-  $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(role => roleBlock({...role, maxExtra: view.maxExtra})) : [el('p', 'muted', 'Nothing yet: your main CV is read the first time you tailor one, or on the CV tab.')]), ...(notInMain ? [notInMain] : []));
+  $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(role => roleBlock({...role, maxExtra: view.maxExtra})) : [el('p', 'muted', t('pagesEmployers.noMainRead'))]), ...(notInMain ? [notInMain] : []));
   $('exp-add').disabled = $('exp-add-linkedin').disabled = !view.main;
 }
 
@@ -166,7 +166,7 @@ export function addedBlock(items, remove) {
     const row = el('li'), words = el('div', 'item-words');
     const name = el('b', '', item.text);
     name.append(' ', pill(KIND[item.kind] || t('pagesProfile.added'), 'info'));
-    words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
+    words.append(name, el('span', 'muted', t('pagesEmployers.mayUse')));
     const button = Object.assign(el('button', 'secondary item-action', t('pagesCommon.remove')), {type: 'button'});
     button.addEventListener('click', () => {
       if (!confirm(`Remove “${item.text}”? Tailored CVs stop using it. Your main CV is not changed.`)) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove
@@ -193,7 +193,7 @@ async function run(button, action) {
   message('exp-message', t('pagesProfile.waitingFile'), 'waiting');
   const answer = await action().catch(error => ({ok: false, error: error.message}));
   button.classList.remove('busy'); document.querySelectorAll('#setting-experience-sources button').forEach(b => { b.disabled = false; });
-  if (answer.ok) { message('exp-message', 'Done ✓ Tailored CVs can use it from now on.', 'ok'); showExperience(answer); showChanges(answer); }
+  if (answer.ok) { message('exp-message', t('pagesEmployers.canUseNow'), 'ok'); showExperience(answer); showChanges(answer); }
   else { message('exp-message', answer.cancelled ? '' : answer.error || t('pagesCommon.didNotWork'), answer.cancelled ? '' : 'error'); if (answer.results) showChanges(answer); }
 }
 
@@ -210,12 +210,12 @@ export function showLinkedin(status) {
   if (!status) {
     line.replaceChildren(button(t('pagesProfile.connectLinkedin'), 'secondary', async node => {
       node.classList.add('busy'); node.disabled = true;
-      message('exp-message', 'Waiting for LinkedIn… approve in your browser, then come back here.');
+      message('exp-message', t('pagesEmployers.waitingLinkedin'));
       const answer = await window.pilot.linkedinConnect().catch(error => ({ok: false, error: error.message}));
       node.classList.remove('busy'); node.disabled = false;
       if (answer.ok) { message('exp-message', t('pagesProfile.connected'), 'ok'); showLinkedin(answer); }
       else message('exp-message', answer.error || t('pagesCommon.didNotWork'), 'error');
-    }, 'link'), el('span', 'muted small', 'Your name and email only: LinkedIn shares positions and skills only with registered companies, so add your data export for those.'));
+    }, 'link'), el('span', 'muted small', t('pagesEmployers.nameEmailOnly')));
     return;
   }
   line.replaceChildren(pill(t('pagesProfile.linkedinConnected'), 'good'), el('span', '', ` ${status.name || ''}${status.email ? ` · ${status.email}` : ''}`),

@@ -46,7 +46,7 @@ function stateAndEvidence(state, question) {
   if (!fills.length) return state;
   const box = el('div', 'chip-row qa-evidence');
   box.append(state, ...fills.slice(0, SHOWN).map(fill => {
-    const go = Object.assign(el('button', 'chip-button', [fill.company, shortDay(fill.day)].filter(Boolean).join(' · ')), {type: 'button', title: 'Open this form fill in Reports'});
+    const go = Object.assign(el('button', 'chip-button', [fill.company, shortDay(fill.day)].filter(Boolean).join(' · ')), {type: 'button', title: t('pagesActivityMore.formFillReports')});
     go.addEventListener('click', event => { event.stopPropagation(); import('./form-fill-link.js').then(link => link.showFormFill(fill.id)); });   // Why (B2b, 28 Oct 2026): Reports binds the window when loaded; read on press, like openDrawer
     return go;
   }));
@@ -226,12 +226,12 @@ function draw(view, into) {
       if (!items.length && !notes.length) continue;
       box.append(el('h5', 'qa-group', shown(section.title) || t('pagesCommon.answers')));
       if (notes.length) box.append(noteFold(notes));
-      for (const item of items) box.append(...answerRow(view, item, stateAndEvidence(item.guess ? pill('Guessed', 'info') : pill(t('pagesCommon.confirmed'), 'good'), item.question)));   // a guess is not confirmed (spec: states)
+      for (const item of items) box.append(...answerRow(view, item, stateAndEvidence(item.guess ? pill(t('pagesActivityMore.guessed'), 'info') : pill(t('pagesCommon.confirmed'), 'good'), item.question)));   // a guess is not confirmed (spec: states)
     }
   }
   const shownRows = (filters.view !== 'confirmed' ? fresh.length : 0) + (filters.view !== 'new' ? confirmedCount : 0);
-  if (!shownRows) box.append(el('p', 'muted qa-empty', filters.query ? 'Nothing matches this search.'
-    : filters.view === 'new' ? 'Nothing to check: forms have every answer they asked for.' : 'Nothing yet. As you apply, what we learn about you shows here.'));
+  if (!shownRows) box.append(el('p', 'muted qa-empty', filters.query ? t('pagesActivityMore.nothingSearch')
+    : filters.view === 'new' ? t('pagesActivityMore.answersComplete') : t('pagesActivityMore.learnAsApply')));
   into.append(box);
 }
 

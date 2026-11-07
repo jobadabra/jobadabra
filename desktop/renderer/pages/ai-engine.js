@@ -65,16 +65,16 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     // Only the picked subscription card says more: one line (ready, or what is missing), the rest folded under "More about this".
     const aboutCli = !!family && picked === CLI_OF[family];
     if (aboutCli) parts.push(cli.checking || busy ? statusBlock(cli) : planBlock(status));
-    if (aboutCli && copied) parts.push(el('p', 'muted small', 'Details copied. Paste them into your message to support.'));
+    if (aboutCli && copied) parts.push(el('p', 'muted small', t('pagesActivityMore.detailsCopied')));
     if (problem) parts.push(el('p', 'message error', problem));   // our own words only (a file refused, Free AI could not start): never a CLI's raw message
     if (aboutCli && cli.usable) parts.push(moreAbout(cli));
     box.replaceChildren(...parts);
   };
   // One readiness state, drawn from lib/plan-readiness.js (the status carries it): the words and the one next step are renderer/ai-plan-guide.js.
   const stateOf = found => found.state || (found.installed ? (found.authenticated ? 'ready' : 'sign-in') : 'nothing');
-  const RUNNING = {install: f => ({title: `Installing ${CLI[f].short}…`, text: 'This usually takes about a minute. Jobadabra notices when it is done.'}),
-    'install-git': () => ({title: 'Installing Git for Windows…', text: 'This can take a minute. Windows may ask you to allow it.'}),
-    'sign-in': () => ({title: 'Waiting for you to sign in…', text: 'Finish signing in on the page that opened in your browser.'})};
+  const RUNNING = {install: f => ({title: `Installing ${CLI[f].short}…`, text: t('pagesActivityMore.minuteDone')}),
+    'install-git': () => ({title: t('pagesActivityMore.installGit'), text: t('pagesActivityMore.windowsAllow')}),
+    'sign-in': () => ({title: t('pagesActivityMore.waitingSignIn'), text: t('pagesActivityMore.finishSignIn')})};
   const planBlock = found => {
     if (manual && !INSTALL_STATES.includes(stateOf(found))) manual = false;   // the manual steps belong to the install states only: another state gets its own buttons
     return running && running.family === family ? progressCard({...RUNNING[running.what](family), seconds: running.seconds, onCancel: () => window.pilot.planCancel()})

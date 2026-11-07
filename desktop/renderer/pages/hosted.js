@@ -36,7 +36,7 @@ export function mountCard() {
   $('setting-cloud').after(card);
   const turnOn = async () => {
     const done = await window.pilot.hostedOn({});   // main uses the Notifications address and news choice (lib/hosted-email.js)
-    message('hosted-set-message', done.ok ? 'Always on ✓' : done.error || 'Could not turn it on just now.', done.ok ? 'ok' : 'bad');
+    message('hosted-set-message', done.ok ? t('pagesFocusReports.alwaysOn') : done.error || 'Could not turn it on just now.', done.ok ? 'ok' : 'bad');
     refresh();
   };
   const toNotify = () => { openSetting('notify'); setTimeout(() => $('notify-address')?.focus(), 120); };

@@ -97,8 +97,8 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // Counted in postings, as the page counts rows: a merged row stands for every link it holds, so two links of one posting are one (pages/jobs-copies.js).
     const {postings, inJobs: here} = countPostings(urls, shared.allJobs, fullKey);
     const total = items.length - (urls.length - postings);
-    if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? 'Nothing new since the last check. Jobs found before are in Jobs.'
-      : fresh ? 'They are in Jobs.' : 'This run found nothing new to show. Your saved jobs are in Jobs.'));
+    if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? t('pagesActivityMore.nothingNewCheck')
+      : fresh ? t('pagesActivityMore.inJobs') : t('pagesActivityMore.runNothingNew')));
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
     if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));
@@ -148,7 +148,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     more.append(list);
     const employers = shared.state?.notion?.NOTION_EMPLOYERS_DB;
     if (employers) {
-      const open = Object.assign(el('a', 'arrow-link', 'All employers in Notion ↗'), {href: '#'});
+      const open = Object.assign(el('a', 'arrow-link', t('pagesActivityMore.allNotion')), {href: '#'});
       open.addEventListener('click', event => { event.preventDefault(); window.pilot.openNotion(employers, event.metaKey || event.ctrlKey); });
       more.append(open);
     }

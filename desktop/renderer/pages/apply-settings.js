@@ -2,6 +2,8 @@
 // Confirm bar the first-Apply dialog's "Adjust settings…" opens (pages/apply-choice.js). Each change saves at once into settings.apply
 // (renderer/apply-settings-model.js); the consent and accounts cards moved here keep their own modules (consent-setting.js, assistant-mode.js).
 // Guards: test/unit/renderer/apply-settings.test.js, test/guards/safety/apply-choice-gate.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
 import {ANSWERS_TEXT, MODES, applyOf, modeBuilt, needsBrowser} from '../apply-settings-model.js';
@@ -20,7 +22,7 @@ export const settingsNow = () => current;
  */
 export function modeCards(selected, onPick, {busy = false} = {}) {
   const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : ['Coming soon', 'neutral']}));
-  const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
+  const group = choiceCards(modes, {selected, onPick, label: t('pagesActivityMore.howApplying')});
   group.classList.add('is-single');
   return group;
 }

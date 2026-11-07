@@ -76,7 +76,7 @@ export function withFewJobsHelp(runId) {
     answer.replaceChildren(line);
   };
   const explain = el('button', 'link with-icon', icon('sparkle'));
-  explain.append('Understand these results with AI →');
+  explain.append(t('pagesActivity.understandAi'));
   explain.title = ai('{AI} reads the counts of this search (never your CV) and says why it found few jobs, and what to do first');
   keepButton('explain', explain);
   const settle = result => {
@@ -97,7 +97,7 @@ export function withFewJobsHelp(runId) {
   });
   const why = el('div', 'few-explain');
   why.append(explain);
-  const strategy = el('button', 'link', 'Review strategy ↗');
+  const strategy = el('button', 'link', t('pagesActivity.reviewStrategy'));
   strategy.type = 'button';
   strategy.addEventListener('click', () => { openActivity(false); openView('strategy'); });
   const paint = groups => {
@@ -127,7 +127,7 @@ export function withFewJobsHelp(runId) {
       const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
       adviceEvent('shown', 'visit', 'few-jobs');
       // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js).
-      const read = wand(Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'}));
+      const read = wand(Object.assign(el('button', 'secondary', t('pagesActivity.readChrome')), {type: 'button', title: t('pagesActivity.readTwo')}));
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
@@ -137,7 +137,7 @@ export function withFewJobsHelp(runId) {
       });
       items.push(row('external', t('pagesCommon.browseManually'), [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
     }
-    broaden.append(items.length ? rows(items) : el('p', 'muted small', 'Nothing obvious to change yet.'), why, answer);
+    broaden.append(items.length ? rows(items) : el('p', 'muted small', t('pagesActivity.noObvious')), why, answer);
     parts.push(broaden);
     box.replaceChildren(...parts);
   };

@@ -27,14 +27,14 @@ function syncBadge() {
   title?.querySelector(`.${BADGE}`)?.remove();
   if (!title || !(left || offer.length)) return;
   if (!left) {
-    const review = Object.assign(el('button', `secondary small ${BADGE}`, `Review ${offer.length} from your CV`), {type: 'button', title: 'See what your CV says for the empty boxes, then choose to fill them. Nothing is saved until you press Save all changes.'});
+    const review = Object.assign(el('button', `secondary small ${BADGE}`, `Review ${offer.length} from your CV`), {type: 'button', title: t('pagesLettersData.cvEmptyGuidance')});
     review.addEventListener('click', () => askToFill(waiting.filter(each => emptyBox(each.field))));
     title.append(review);
     return;
   }
   const badge = pill(`${left} from CV · check`, 'warn');
   badge.classList.add(BADGE);
-  badge.title = 'Filled in from your CV: check them, then Save all changes.';
+  badge.title = t('pagesLettersData.filledReviewSave');
   title.append(badge);
 }
 
@@ -55,7 +55,7 @@ function askToFill(list) {
   for (const [cls, value, label] of [['secondary', 'no', t('pagesCommon.notNow')], ['primary', 'fill', 'Fill them in']]) foot.append(Object.assign(el('button', cls, label), {value}));
   const form = el('form');
   form.method = 'dialog';
-  form.append(el('h2', '', t('pagesProfile.fillThese')), el('p', 'dialog-lead', 'Your CV only hints at these, so nothing is filled yet. They fill in now, marked "From your CV", and nothing is saved until you press Save all changes.'), rows, foot);
+  form.append(el('h2', '', t('pagesProfile.fillThese')), el('p', 'dialog-lead', t('pagesLettersData.cvHintsOnly')), rows, foot);
   dialog.replaceChildren(form);
   dialog.returnValue = '';
   dialog.onclose = () => { if (dialog.returnValue === 'fill') showProposals(list); };
@@ -130,7 +130,7 @@ export async function loadProposals({again = false} = {}) {
   const shown = again ? showProposals(result?.proposals || []) : offerProposals(result?.proposals || [], result?.applied);   // "Fill from my CV" is the person's press: it fills; opening only offers
   if (again && !shown) {
     message('contact-panel-message', result?.error && result.error !== 'notion' ? `Couldn't read your CV: ${result.error === 'no AI' ? 'choose your AI in Settings → Connections first' : result.error}.`
-      : 'Your CV has nothing for the empty boxes: type them once here.', result?.error ? 'error' : '');
+      : t('pagesLettersData.cvNoDetails'), result?.error ? 'error' : '');
   }
   return shown;
 }
@@ -146,7 +146,7 @@ export async function nudgeMissingDetails() {
   if (!missing.length) return;
   nudged = true;
   const fromCv = (result?.proposals || []).filter(item => missing.includes(item.field)).length;
-  toastMessage({title: 'Forms will ask for details you haven\'t given',
+  toastMessage({title: t('pagesLettersData.formsAskDetails'),
     body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? ` ${fromCv} found in your CV: open your Profile, review them, fill them in and save.` : ' Add them once in your Profile.'}`,
     target: {view: 'settings', section: 'profile'}, tone: 'warn'});
 }

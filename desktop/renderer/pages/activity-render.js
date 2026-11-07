@@ -125,12 +125,12 @@ export function renderActivity(fresh) {
     barLabel();
     $('activity-title').textContent = lastSearch ? (lastSearch.ok ? t('pagesCommon.lastRefresh') : t('pagesStatus.lastProblems')) : t('pagesStatus.noJobsCheck');
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
-      (lastSearch.ok ? '' : ' · click to see why') : '';
+      (lastSearch.ok ? '' : t('pagesActivityMore.clickWhy')) : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
     $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh: ${nextWords(nextSearchAt)}`].filter(Boolean).join(' · ');
   } else {
     $('activity-title').textContent = t('pagesCommon.noSearch');
-    $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';
+    $('activity-step').textContent = t('pagesActivityMore.startSearch');
     $('activity-meta').textContent = mailNote;
   }
   if (!running) keepStatusBar();
@@ -168,12 +168,12 @@ export function renderActivity(fresh) {
     words.append(el('b', 'run-kind', kind.name), el('span', 'muted run-what', run.live ? [`Running now`, run.note, searchPhase(run.step) || 'starting'].filter(Boolean).join(' · ') : run.waiting
       ? [run.note, `Waiting · starts after ${run.after}`].filter(Boolean).join(' · ')
       : [run.note, capital(outcome(run)), WHERE[run.where]].filter(Boolean).join(' · ')));
-    if (byYou(run)) words.lastChild.prepend(tag('By you', {title: 'You started it (not a schedule)'}), ' ');
+    if (byYou(run)) words.lastChild.prepend(tag('By you', {title: t('pagesActivityMore.youStarted')}), ' ');
     // No cost and no live log here: the list is for finding a run and seeing its state; the log and the cost are in the detail pane.
     const when = el('span', 'run-time', run.live || run.waiting ? '' : runTime(run));
     if (run.live && run.where === 'github' && run.url) {
       const link = el('span', 'run-github', 'GitHub ↗');
-      link.title = 'Open this run on GitHub';
+      link.title = t('pagesActivityMore.openGithub');
       link.setAttribute('role', 'link');
       link.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); window.pilot.openExternal(run.url); });
       when.replaceChildren(link);
@@ -311,7 +311,7 @@ export function renderActivity(fresh) {
   show($('activity-github'), !!run?.url && (!page || !!run?.live));
   $('activity-github').dataset.url = run?.url || '';
   $('activity-more').replaceChildren(...(run?.url && page && !run?.live
-    ? [moreButton([{label: 'View GitHub run ↗', run: () => window.pilot.openExternal(run.url)}], t('pagesStatus.moreLinks'))] : []));
+    ? [moreButton([{label: t('pagesActivityMore.viewGithub'), run: () => window.pilot.openExternal(run.url)}], t('pagesStatus.moreLinks'))] : []));
   const result = run && !run.live ? runResults.get(run.id) || '' : '';
   $('activity-result').textContent = result;
   show($('activity-result'), !!result);

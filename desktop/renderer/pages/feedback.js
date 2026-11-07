@@ -10,7 +10,7 @@ let current = null;
 export function openFeedback(item, mode = 'receive') {
   current = {...item, mode};
   $('feedback-title').textContent = mode === 'request' ? t('pagesProfile.askFeedback') : mode === 'review' ? t('pagesProfile.employerFeedback') : t('pagesProfile.addFeedback');
-  $('feedback-context').textContent = `${item.company || 'Employer'} · ${item.job || item.title || t('pagesProfile.application')}`;
+  $('feedback-context').textContent = `${item.company || t('pagesEmployers.employer')} · ${item.job || item.title || t('pagesProfile.application')}`;
   $('feedback-help').textContent = mode === 'request'
     ? 'You reached Screening or later. One specific point can improve your next interview. Copy this short request, send it yourself, then mark it sent.'
     : mode === 'review' ? 'Look for one change to practise next. This evidence also feeds your daily insights and weekly report.'

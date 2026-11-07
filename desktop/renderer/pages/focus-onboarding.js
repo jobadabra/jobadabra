@@ -52,7 +52,7 @@ export function renderOnboarding({funnel} = {}) {
     round.append(step.done ? icon('tick') : String(i + 1));
     const body = el('div', 'focus-body');
     const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', step.label), pill(step.done ? t('pagesCommon.done') : isNext ? 'Next step' : 'To do', step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
+    top.append(el('span', 'focus-headline', step.label), pill(step.done ? t('pagesCommon.done') : isNext ? t('pagesFocusReports.nextStep') : t('pagesFocusReports.todo'), step.done ? 'good' : isNext ? 'info' : 'neutral', {dot: true}));
     body.append(top, el('div', 'focus-meta muted small', step.hint));
     const actions = el('div', 'focus-actions');
     // Only the next step can be started: a later one waits for it ("After step 1"), so a search never runs before the employers are found.

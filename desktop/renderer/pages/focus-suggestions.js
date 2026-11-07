@@ -52,7 +52,7 @@ export const RUN = {
   add_email: (_action, _event, row) => row.addEmail(),
   resend_confirm: async () => {
     const done = await window.pilot.notifyResend().catch(error => ({ok: false, error: error.message}));
-    toastMessage(done?.ok ? 'Sent again ✓' : 'Not sent', done?.ok ? 'Check your inbox (and your spam folder) for the link.' : done?.error || t('pagesCommon.minute'), NO_PLACE.itself, done?.ok ? 'good' : 'warn');
+    toastMessage(done?.ok ? t('pagesFocusReports.resent') : t('pagesFocusReports.notSent'), done?.ok ? t('pagesFocusReports.checkInbox') : done?.error || t('pagesCommon.minute'), NO_PLACE.itself, done?.ok ? 'good' : 'warn');
   },
   open_notifications: () => import('./settings.js').then(({openSetting}) => openSetting('notify')),
   connect_gmail: () => connectGmail(),   // Settings' own button: one sign-in flow
@@ -85,7 +85,7 @@ export const RUN = {
   show_jobs: action => { openView('jobs'); showJobsIn(action.label.replace(/^Show /, ''), action.urls, 'focus'); },
   edit_minimum: () => import('./strategy-state.js').then(async ({showTab}) => { openView('strategy'); showTab('strategy-yours'); (await import('./strategy-cards.js')).openCard('goals'); }),
   // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
-  use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage('Could not add the skills', result?.error || t('pagesCommon.tryAgain'), NO_PLACE.itself, 'warn'); },
+  use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage(t('pagesFocusReports.addSkillsFailed'), result?.error || t('pagesCommon.tryAgain'), NO_PLACE.itself, 'warn'); },
   open_letter: () => import('./settings.js').then(({openSetting}) => openSetting('letter')),   // the cover letter is a setting, as the card's button did
   open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
@@ -105,7 +105,7 @@ export async function answerEntry(entry, state) {
   if (!done?.ok) {
     held.delete(entry.key);
     redraw();
-    toastMessage(t('pagesCommon.notSaved'), done?.error || 'Your answer was not saved. Try again.', NO_PLACE.itself, 'bad');
+    toastMessage(t('pagesCommon.notSaved'), done?.error || t('pagesFocusReports.answerNotSaved'), NO_PLACE.itself, 'bad');
     return;
   }
   loadFocus();
@@ -122,7 +122,7 @@ const button = (label, className, run) => {
 function bindNotifyEmail(body, node) {
   return bindHostedOffer({body, button: node, email: '', emailField: () => emailField('focus-notify-email', 'Where should we tell you?', FIELD_HINT), draft: notifyDraft, words: {busy: 'Sending the link…', failed: 'Could not save it just now.'},
     turnOn: given => window.pilot.notifySave(saveChoice(notifyContext.state, given.email)), onSuccess: sentTo => {
-      toastMessage('Check your inbox ✓', `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
+      toastMessage(t('pagesFocusReports.inboxCheck'), `We sent a link to ${sentTo}. Press it to start.`, NO_PLACE.itself, 'good');
       window.dispatchEvent(new Event('notify-changed'));
     }});
 }
@@ -151,7 +151,7 @@ export function entryRow(entry) {
         turnOn: given => window.pilot.hostedOn(given), onSuccess: async sentTo => {
           hostedRead++;
           hostedContext.hosted.on = true;
-          toastMessage('Always on ✓', await turnedOnText(sentTo), NO_PLACE.itself, 'good');
+          toastMessage(t('pagesFocusReports.alwaysOn'), await turnedOnText(sentTo), NO_PLACE.itself, 'good');
           redraw();
           loadNotifyOffer();   // the address is new and unconfirmed: the notification card asks again
         }});
@@ -160,9 +160,9 @@ export function entryRow(entry) {
     actions.append(AI.has(action.do) ? wand(node) : node);
   }
   const more = [];
-  if (entry.answers.includes('Not now')) more.push({icon: 'clock', label: t('pagesCommon.notNow'), title: 'Hidden for 14 days, then shown again if it still holds', run: () => answerEntry(entry, 'Not now')});
-  if (entry.answers.includes('Not true')) more.push({icon: 'close', label: t('pagesCommon.notTrue'), title: 'Never shown again for this evidence', run: () => answerEntry(entry, 'Not true')});
-  if (parts.evidence) more.push({icon: 'info', label: 'Evidence', run: () => toastMessage(entry.title, parts.evidence, NO_PLACE.itself, 'info')});
+  if (entry.answers.includes('Not now')) more.push({icon: 'clock', label: t('pagesCommon.notNow'), title: t('pagesFocusReports.hide14'), run: () => answerEntry(entry, 'Not now')});
+  if (entry.answers.includes('Not true')) more.push({icon: 'close', label: t('pagesCommon.notTrue'), title: t('pagesFocusReports.neverEvidence'), run: () => answerEntry(entry, 'Not true')});
+  if (parts.evidence) more.push({icon: 'info', label: t('pagesFocusReports.evidence'), run: () => toastMessage(entry.title, parts.evidence, NO_PLACE.itself, 'info')});
   if (more.length) actions.append(moreButton(more, t('pagesCommon.more')));
   li.append(round, body, actions);
   return li;

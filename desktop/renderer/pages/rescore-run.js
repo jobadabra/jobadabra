@@ -3,6 +3,8 @@
 // Jobs' call to action and card, and the "Score first" gate on every Find jobs press. Changed only by runRescore (start and end of the re-score) and by noteOutdated
 // (a fresh read from the engine: the Jobs list or Strategy). <body data-rescoring> is the one attribute style.css turns into "the re-scoring card shows, the Find jobs
 // card does not", so no draw order matters. Guarded by test/unit/renderer/rescore-call.test.js.
+import '../../i18n/screens-pages.js';
+import {t} from '../../i18n/index.js';
 import {refusal} from '../refusal.js';
 import {$} from './core.js';
 import {dialogLead, jobs, pressLabel} from '../rescore-words.js';
@@ -47,7 +49,7 @@ export async function runRescore(count, {search: startSearch, reload, toast}) {
     const searching = startSearch({reason: 'rescore', count: result.queued});   // resolves when the search ends
     // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
     if (refusal(await Promise.race([searching, new Promise(resolve => setTimeout(resolve, 1500))]))) return;
-    toast({title: 'Re-scoring now', body: `${jobs(result.queued)} get a new score${result.queued > 60 ? ' (60 now, press Re-score again for the rest)' : ''}. ` +
+    toast({title: t('pagesFocusReports.rescoring'), body: `${jobs(result.queued)} get a new score${result.queued > 60 ? ' (60 now, press Re-score again for the rest)' : ''}. ` +
       'It shows in Recent activity as "Re-scoring".', target: null, tone: 'info'});
     await searching;
   } finally {

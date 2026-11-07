@@ -25,8 +25,8 @@ function showStep(step) {   // 'form' | 'draft' | 'saved'
   $('cvb-go').hidden = false;
   $('cvb-go').textContent = step === 'form' ? t('pagesProfile.writeCv') : step === 'draft' ? t('pagesProfile.useCv') : t('pagesCommon.done');
   $('cvb-title').textContent = step === 'form' ? t('pagesProfile.buildCv') : step === 'draft' ? t('pagesProfile.yourDraft') : t('pagesProfile.cvReady');
-  $('cvb-lead').textContent = step === 'form' ? 'Answer what you can. The AI writes the wording; your employers, titles and dates stay exactly as you type them.'
-    : step === 'draft' ? 'Change any words you like. Employers, titles and dates come from your answers.' : 'It is now your CV, saved on this Mac. Save the PDF to keep a copy.';
+  $('cvb-lead').textContent = step === 'form' ? t('pagesLettersData.cvFactsExact')
+    : step === 'draft' ? t('pagesLettersData.changeWords') : t('pagesLettersData.cvSavedMac');
   message('cvb-message', '', '');
 }
 

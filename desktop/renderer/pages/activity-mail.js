@@ -88,7 +88,7 @@ function mailCardRow({company, role = '', lines = [], tag = null, summary = '', 
   // "Email details" closes every card, the same everywhere; a card the run kept without its email (an update from this Mac's
   // log, a calendar event, a reminder) says so instead of leaving the fold out.
   card.append(fold(`details:${subjectKey(details || company)}:${subjectKey(role)}`, t('pagesStatus.emailDetails'),
-    el('p', 'mail-fold-text', details ? `Subject: ${details}` : noDetails || 'This run kept no email for it.'), 'mail-fold mail-email-details'));
+    el('p', 'mail-fold-text', details ? `Subject: ${details}` : noDetails || t('pagesActivity.noEmail')), 'mail-fold mail-email-details'));
   return card;
 }
 
@@ -210,7 +210,7 @@ function assessmentPanel(review) {
   const top = el('div', 'mail-ai-top');
   // The AI's own rating of how sure it is that this is the reason (src/ai/rejection.py: "low" when the evidence is thin).
   top.append(el('b', '', VERDICT_TITLE[review.verdict] || review.verdict), pill(`${review.confidence.replace(/^./, c => c.toUpperCase())} confidence`, 'warn',
-    {title: 'How sure the AI is that this is the reason, from what Jobadabra kept: the posting, your profile and the emails. Low means little evidence.'}));
+    {title: t('pagesActivity.confidence')}));
   words.append(top, el('p', '', review.focus || review.summary));
   // "AI assessment ⌄" (the mockup's label) opens the comparison under the verdict: what the role wanted, what you bring.
   const key = `ai:${jobKey(review.job)}`;
@@ -251,12 +251,12 @@ function interviewPanel(report) {
   go.type = 'button';
   wand(go);
   if (prep?.busy) go.prepend(el('span', 'spinner small'));
-  go.title = prep ? prep.title || '' : 'Place this interview on a job first: the kit is built on the job\'s page.';
+  go.title = prep ? prep.title || '' : t('pagesActivity.placeInterview');
   go.disabled = !prep || !!prep.busy;
   go.addEventListener('click', event => prep?.run(event));
   side.append(go);
   if (report.url) {
-    const view = Object.assign(el('a', 'link', 'Application in Notion ↗'), {href: '#'});
+    const view = Object.assign(el('a', 'link', t('pagesActivity.applicationNotion')), {href: '#'});
     view.dataset.link = report.url;
     side.append(view);
   }
@@ -266,7 +266,7 @@ function interviewPanel(report) {
     const columns = el('div', 'mail-meeting-columns');
     if (report.topics.length) {
       const left = el('section', '');
-      left.append(el('h4', '', 'Prepare for the conversation'));
+      left.append(el('h4', '', t('pagesActivity.prepareConversation')));
       const list = el('ul', 'mail-topics');
       report.topics.forEach(topic => list.append(el('li', '', topic)));
       left.append(list);
@@ -345,7 +345,7 @@ function questionPanel(state, key, subject = '', {noun = 'email', company = ''} 
   const words = el('div', 'mail-ask-words');
   if (!state.answered) {
     words.append(el('b', '', state.open?.title || QUESTION), el('p', '', why));
-    const go = el('button', 'primary mail-question-go', state.open ? 'Choose the job ' : 'Answer in Focus ');
+    const go = el('button', 'primary mail-question-go', state.open ? t('pagesActivity.chooseJob') : t('pagesActivity.answerFocus'));
     go.type = 'button';
     go.append(icon(state.open ? 'chevron' : 'external'));
     go.addEventListener('click', () => {
@@ -369,10 +369,10 @@ const isNewJob = job => /\s—\s*new job$/i.test(job || '');
 function resolution(state, company = '') {
   const line = el('p', 'mail-mapped-line');
   line.append(icon('check-circle'));
-  if (state.unknown) line.append(t('pagesStatus.alreadyAnswered'), el('span', 'muted', 'which job it went to was not recorded'));
-  else if (!state.job) line.append('Marked as not job-related');
-  else if (isNewJob(state.job)) line.append(`Created a job for ${company || state.job.split(/\s+—\s+/)[0]} and linked this email`, el('span', 'muted', 'Add its role in Focus'));
-  else line.append('Linked to ', jobLink(state.job, 'span'));
+  if (state.unknown) line.append(t('pagesStatus.alreadyAnswered'), el('span', 'muted', t('pagesActivity.noJobRecorded')));
+  else if (!state.job) line.append(t('pagesActivity.notJobRelated'));
+  else if (isNewJob(state.job)) line.append(`Created a job for ${company || state.job.split(/\s+—\s+/)[0]} and linked this email`, el('span', 'muted', t('pagesActivity.addRoleFocus')));
+  else line.append(t('pagesActivity.linkedTo'), jobLink(state.job, 'span'));
   return line;
 }
 export function renderMailCard(report, pending = [], answered = null, target = $('activity-card')) {

@@ -130,7 +130,7 @@ export function renderJobs() {
     if (skills.length > 3) chips.append(tag(`+${skills.length - 3}`, {title: skills.slice(3).join(', ')}));
     // A section of the job's page (kit, rejection review): Notion's page when the store has one, else the job's page here (pages/job-panel.js).
     const openPage = (tab, event) => (job.notion_url ? window.pilot.openNotion(job.notion_url, event?.metaKey) : openJobPanel(job, tab));
-    if (job.tailored && job.code) chips.append(tag('📄 Tailored CV', {title: 'Your CV tailored to this job, with the changes highlighted',
+    if (job.tailored && job.code) chips.append(tag('📄 Tailored CV', {title: t('pagesActivity.cvHighlighted'),
       onClick: () => window.pilot.openTailoredCv(job.code)}));
     if (parts.rejection) chips.append(tag(`🔎 ${parts.rejection}`, {title: job.rejection_lesson || t('pagesJobs.whyRejected'),
       onClick: event => openPage('review', event)}));
@@ -272,7 +272,7 @@ export function renderJobs() {
         const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, job.url);
         if (result.ok) job.tailored = true; else toastMessage(t('pagesJobs.tailorFailed'), result.error || t('pagesCommon.tryAgain'), jobPlace(job), 'bad');
       });
-      menu.push({icon: 'scissors', wand: true, label: job.tailored ? t('pagesJobs.retailor') : 'Tailor CV + cover letter',
+      menu.push({icon: 'scissors', wand: true, label: job.tailored ? t('pagesJobs.retailor') : t('pagesActivity.tailor'),
         title: 'Make a version of your CV and a cover letter for this job: bullets reordered and reworded toward the posting, only from facts in your CV (about 1–2 min)',
         run: tailorNow});
       // Which terms the posting asks for the CV states, and which requirements could be a yes/no question on the form (a dialog: nothing added to the list).
@@ -403,5 +403,5 @@ export function showLoading() {
   box.append(el('span', 'spinner'), el('div', '', byStore('Loading your jobs from Notion…', 'Loading your jobs…')),
     el('div', 'muted small', 'Job Matches and Applications, usually a few seconds'));
   $('jobs-body').replaceChildren(box);
-  $('jobs-stats').textContent = byStore('Loading from Notion…', t('pagesCommon.loading'));
+  $('jobs-stats').textContent = byStore(t('pagesFocusReports.loadingNotion'), t('pagesCommon.loading'));
 }

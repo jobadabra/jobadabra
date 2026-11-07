@@ -33,8 +33,8 @@ function weeklyTab() {
   state.week = Math.min(state.week, weeks.length - 1);
   const week = weeks[state.week];
   const nav = el('div', 'inline');
-  const older = Object.assign(el('button', 'secondary', '‹ Previous week'), {type: 'button', disabled: state.week >= weeks.length - 1});
-  const newer = Object.assign(el('button', 'secondary', 'Next week ›'), {type: 'button', disabled: state.week === 0});
+  const older = Object.assign(el('button', 'secondary', t('pagesFocusReports.previousWeek')), {type: 'button', disabled: state.week >= weeks.length - 1});
+  const newer = Object.assign(el('button', 'secondary', t('pagesFocusReports.nextWeek')), {type: 'button', disabled: state.week === 0});
   older.addEventListener('click', () => { state.week++; draw(); });
   newer.addEventListener('click', () => { state.week--; draw(); });
   nav.append(older, newer);
@@ -66,7 +66,7 @@ function weeklyTab() {
 function feedbackChoice(item) {
   const box = el('div', 'segmented');
   box.setAttribute('role', 'group');
-  box.setAttribute('aria-label', 'Was it useful?');
+  box.setAttribute('aria-label', t('pagesFocusReports.useful'));
   for (const value of ['Useful', 'Not useful', 'Acting on it']) {
     const button = Object.assign(el('button', item.feedback === value ? 'is-active' : '', value), {type: 'button'});
     button.setAttribute('aria-pressed', String(item.feedback === value));
@@ -75,7 +75,7 @@ function feedbackChoice(item) {
       if (!done.ok) { $('reports-state').textContent = plainError(`Feedback not saved: ${done.error || 'try again'}`); return; }
       const row = state.insights.find(each => each.id === item.id);
       if (row) row.fields = {...row.fields, feedback: value};
-      $('reports-state').textContent = 'Feedback saved ✓';
+      $('reports-state').textContent = t('pagesFocusReports.feedbackSaved');
       draw();
     });
     box.append(button);
@@ -89,7 +89,7 @@ function insightsTab() {
   return items.map(item => {
     const box = el('section', 'card iv-moments-group reports-insight');   // one card per insight (#reports-body is then plain, see draw)
     const head = el('h3', '', item.title);
-    head.prepend(pill(item.category || 'Insight', item.category === 'Process' ? 'warn' : 'info'), ' ');
+    head.prepend(pill(item.category || t('pagesActivity.insight'), item.category === 'Process' ? 'warn' : 'info'), ' ');
     box.append(el('p', 'muted small', [dayLabel(item.day), item.confidence && `${item.confidence} confidence`].filter(Boolean).join(' · ')), head);
     // A process issue's own page (its action, "Supported hypothesis", the quotes); a daily insight's evidence and next step.
     if (item.groups.length) box.append(...item.groups.map(part => group(part.title, part.lines)));
@@ -157,7 +157,7 @@ export async function loadReports(tab = state.tab) {
   const result = await window.pilot.reportsInsights().catch(error => ({ok: false, error: error.message}));
   state.insights = result.ok ? result.insights : state.insights;
   state.error = result.ok ? '' : result.error || 'try again';
-  $('reports-state').textContent = result.ok ? 'Updated just now' : '';
+  $('reports-state').textContent = result.ok ? t('pagesFocusReports.updatedNow') : '';
   if (!['fills', 'funnel', 'searches'].includes(state.tab)) draw();
 }
 

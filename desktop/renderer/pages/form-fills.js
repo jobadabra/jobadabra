@@ -36,20 +36,20 @@ function listView() {
   const box = el('div', 'ff-list');
   const bar = el('div', 'toolbar');
   const search = el('label', 'search-box');
-  const input = Object.assign(document.createElement('input'), {type: 'search', placeholder: 'Search form fills', value: state.text});
-  input.setAttribute('aria-label', 'Search form fills');
+  const input = Object.assign(document.createElement('input'), {type: 'search', placeholder: t('pagesFocusReports.searchFills'), value: state.text});
+  input.setAttribute('aria-label', t('pagesFocusReports.searchFills'));
   search.append(icon('search'), input);
   const outcomes = [...new Set((state.runs || []).map(run => summary(run).outcome))].sort();
   const select = document.createElement('select');
-  select.setAttribute('aria-label', 'Outcome');
-  select.append(Object.assign(el('option', '', 'All outcomes'), {value: ''}), ...outcomes.map(o => Object.assign(el('option', '', o), {value: o})));
+  select.setAttribute('aria-label', t('pagesFocusReports.outcome'));
+  select.append(Object.assign(el('option', '', t('pagesFocusReports.allOutcomes')), {value: ''}), ...outcomes.map(o => Object.assign(el('option', '', o), {value: o})));
   select.value = state.outcome;
   bar.append(search, select);
   const shown = filterRuns(state.runs, state);
   const rows = shown.map(run => {
     const s = summary(run);
     const name = el('div', '');
-    const open = Object.assign(el('button', 'link', s.title), {type: 'button', title: 'Open this form fill'});
+    const open = Object.assign(el('button', 'link', s.title), {type: 'button', title: t('pagesFocusReports.openFill')});
     open.addEventListener('click', () => { state.open = run.id; draw(); });
     name.append(open);
     if (s.company) name.append(el('div', 'muted small', s.company));
@@ -63,7 +63,7 @@ function listView() {
   select.addEventListener('change', () => { state.outcome = select.value; draw(); });
   box.append(el('p', 'muted small', listLine(state.runs, shown)), bar);   // the tab's meta line, as Weekly's
   if (rows.length) box.append(table(['When', 'Job', 'By', 'Outcome', 'Fields', 'Time'], rows));
-  else box.append(el('p', 'empty', state.runs.length ? 'No form fill matches this filter.'
+  else box.append(el('p', 'empty', state.runs.length ? t('pagesFocusReports.noFillFilter')
     : 'No form fills yet. Apply on a job (the extension fills the form) and each fill is listed here with what it did, field by field.'));
   return box;
 }
@@ -71,7 +71,7 @@ function listView() {
 function detailView(run) {
   const s = summary(run), box = el('div', 'insight-card is-flat');
   box.dataset.id = run.id;
-  const back = Object.assign(el('button', 'link', '‹ All form fills'), {type: 'button'});
+  const back = Object.assign(el('button', 'link', t('pagesFocusReports.allFills')), {type: 'button'});
   back.addEventListener('click', () => { state.open = null; draw(); });
   const head = cardHead(`${s.agent}${s.at ? ` · ${runWhen(s.at)}` : ''}`, `${s.title}${s.company ? ` · ${s.company}` : ''}`,
     {badges: [pill(s.outcome, s.tone, {dot: true})], subtitles: [[run.fields?.billed_to, run.fields?.reason].filter(Boolean).join(' · ')]});
@@ -91,7 +91,7 @@ function detailView(run) {
     box.append(section('Field by field', table(['Field', 'Required', 'Answer from', 'Result', t('pagesCommon.note')], fields.map(row => {
       const note = el('span', 'muted', row.note);
       return tr(el('b', '', row.label), el('span', '', row.required), el('span', '', row.source),
-        pill(row.result === 'filled' ? 'Filled' : 'Left', row.result === 'filled' ? 'good' : 'warn'),
+        pill(row.result === 'filled' ? t('pagesFocusReports.filled') : t('pagesFocusReports.left'), row.result === 'filled' ? 'good' : 'warn'),
         row.low ? (() => { const cell = el('span', ''); cell.append(pill(t('pagesCommon.check'), 'warn'), ' ', note); return cell; })() : note);
     }))));
   }

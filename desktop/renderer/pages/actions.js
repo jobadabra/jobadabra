@@ -134,7 +134,7 @@ export async function init() {
     if (visitsLoading) return;   // 7 Oct 2026: a click while loading said "No sites to read yet · Read 0 sites"
     const ticked = visitBoxes().filter(box => box.checked).length, all = visitBoxes().length;
     const jobs = unreadBoxes().filter(box => box.checked).length, unread = unreadBoxes().length;
-    $('visits-lead').textContent = all ? `${plural(all, 'site')} · ${ticked} selected (${visitsAgain ? 'the ones that did not finish last time' : 'the ones not read this week'})` : 'No sites to read yet.';
+    $('visits-lead').textContent = all ? `${plural(all, 'site')} · ${ticked} selected (${visitsAgain ? t('pagesActivity.notFinished') : t('pagesActivity.notReadWeek')})` : t('pagesActivity.noSites');
     // Two tabs when there are jobs we couldn't read, each with its count ticked of all; else the sites alone, no tabs.
     $('visits-sites-count').textContent = `${ticked}/${all}`;
     $('visits-unread-count').textContent = `${jobs}/${unread}`;
@@ -145,12 +145,12 @@ export async function init() {
   };
   const paintVisits = async () => {
     visitsLoading = true;
-    $('visits-lead').textContent = 'The sites to read in your browser';
+    $('visits-lead').textContent = t('pagesActivity.sitesBrowser');
     for (const id of ['visits-start', 'visits-all', 'visits-none']) $(id).disabled = true;
     // While the list loads (Claude picks the sites that suit your roles, ~5 s): the Jobs list's loading look in the empty list, not a blank
     // dialog (owner, 8 Oct 2026). The list it replaces is not kept: it may be another run's.
     const loading = el('li', 'list-loading');
-    loading.append(el('span', 'spinner'), el('div', '', 'Finding your sites…'), el('div', 'muted small', ai('{AI} checks which suit your roles, a few seconds')));
+    loading.append(el('span', 'spinner'), el('div', '', t('pagesActivity.findingSites')), el('div', 'muted small', ai('{AI} checks which suit your roles, a few seconds')));
     $('visits-sites').replaceChildren(loading);
     $('visits-tabs').hidden = true;
     showVisitsTab('visits-sites');
@@ -172,13 +172,13 @@ export async function init() {
       ticked: tickedSite(site),
       name: site.kind === 'portal' ? `${site.name} · your search` : `${site.name} (${new URL(site.url).hostname.replace(/^www\./, '')})`,
       note: site.last_read ? `read ${site.last_read.slice(0, 10)}` : 'never read', title: site.note,
-      drop: t('pagesCommon.remove'), dropTitle: 'Not offered again', onDrop: () => window.pilot.visitsHide(site.url)})));
+      drop: t('pagesCommon.remove'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsHide(site.url)})));
     // Jobs in your places whose posting only your browser can open: ticked (not on Run again of a run, which is about its sites); Dismiss: not offered again.
     // A site that asked us to slow down (429) waits for its next try, unticked: a browser read now would be asked the same (owner, 20 Oct 2026).
     const nextTry = job => (job.waiting_until ? ` · waiting: the site asked us to slow down, next try ${displayDate(new Date(job.waiting_until * 1000), {hour: '2-digit', minute: '2-digit'})}` : '');
     $('visits-unread').replaceChildren(...(stuck?.jobs || []).map(job => visitRow({value: job.url, ticked: !wanted && !job.waiting_until,
       name: job.company ? `${job.title} · ${job.company}` : job.title, note: `${job.location ? `${job.location} · ` : ''}${new URL(job.url).hostname.replace(/^www\./, '')}${nextTry(job)}`,
-      drop: t('pagesCommon.dismiss'), dropTitle: 'Not offered again', onDrop: () => window.pilot.visitsDismiss(job.url)})));
+      drop: t('pagesCommon.dismiss'), dropTitle: t('pagesActivity.notOffered'), onDrop: () => window.pilot.visitsDismiss(job.url)})));
     countVisits();
   };
   $('visits-run').addEventListener('click', () => {

@@ -89,7 +89,7 @@ function row(m) {
 
 function emptyUpcoming() {
   const box = el('div', 'cal-empty');
-  box.append(icon('calendar'), el('b', '', 'No upcoming interviews'), el('span', 'muted small', 'Email bookings appear after the next Gmail check.'));
+  box.append(icon('calendar'), el('b', '', t('pagesLettersData.noUpcoming')), el('span', 'muted small', t('pagesLettersData.emailBookings')));
   return box;
 }
 const skeletons = () => [0, 1, 2].map(() => { const box = el('div', 'cal-row'); box.append(el('span', 'skeleton w-40'), el('span', 'skeleton w-80')); return box; });
@@ -125,7 +125,7 @@ export function render() {
   const {upcoming, past} = cal.agenda(list, Date.now(), ZONE);
   if (phase === 'loading') { $('cal-upcoming').replaceChildren(...skeletons()); $('cal-past').replaceChildren(...skeletons()); return; }
   $('cal-upcoming').replaceChildren(...(upcoming.length ? upcoming.map(row) : [emptyUpcoming()]));
-  $('cal-past').replaceChildren(...(past.length ? past.slice(0, pastShown).map(row) : [el('p', 'muted small', 'No past meetings yet.')]));
+  $('cal-past').replaceChildren(...(past.length ? past.slice(0, pastShown).map(row) : [el('p', 'muted small', t('pagesLettersData.noPast'))]));
   $('cal-past-count').textContent = past.length || '';
   $('cal-past-count').hidden = !past.length;
   $('cal-past-foot').hidden = past.length <= 20;

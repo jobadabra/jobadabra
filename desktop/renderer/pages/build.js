@@ -17,7 +17,7 @@ async function restart() {
   if (result.ok) return;   // the app quits and opens again on the new code
   button.disabled = false;
   $('nav-restart-text').textContent = state.restart;
-  toastMessage("Couldn't restart", result.text || 'Quit the app and open it again.', NO_PLACE.app, 'bad');
+  toastMessage(t('pagesLettersData.restartFailed'), result.text || t('pagesLettersData.quitOpen'), NO_PLACE.app, 'bad');
 }
 
 function paint(next) {
@@ -32,7 +32,7 @@ function paint(next) {
 }
 
 // ⌘K: the same action as the button, only while there is something to restart for.
-export const buildCommands = () => (state.ahead > 0 ? [{group: 'App', label: state.restart, hint: 'Open the app again so it runs the latest code', keywords: 'restart relaunch reload update fixes build new version', run: restart}] : []);
+export const buildCommands = () => (state.ahead > 0 ? [{group: 'App', label: state.restart, hint: t('pagesLettersData.reopenLatest'), keywords: 'restart relaunch reload update fixes build new version', run: restart}] : []);
 
 export async function init() {
   const ask = () => window.pilot.buildState().then(paint).catch(() => {});

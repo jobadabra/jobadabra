@@ -45,7 +45,7 @@ export async function openCvChange() {
       `${data.counts?.kits ? `; ${data.counts.kits} unsent applications were prepared with the old Profile` : ''}.`;
   }).catch(() => {});
   $('cv-dialog-name').textContent = change.name || 'your CV';
-  $('cv-dialog-sub').textContent = change.previous === change.name ? 'New upload · same file name as the previous CV' : `New upload${change.previous ? ` · replaces ${change.previous}` : ''}`;
+  $('cv-dialog-sub').textContent = change.previous === change.name ? t('pagesLettersData.newSameName') : `New upload${change.previous ? ` · replaces ${change.previous}` : ''}`;
   show($('cv-verdict'), false);
   show($('cv-profile-text'), true);
   $('cv-profile-status').textContent = t('pagesProfile.notCompared');
@@ -62,7 +62,7 @@ export async function openCvChange() {
     show($('cv-profile-status').parentElement, false);
     setPill('cv-profile-pill', 'Edit in Notion', 'neutral');
   }
-  $('cv-base-text').textContent = change.base ? 'Made from the previous CV. Read the new one so tailored CVs start from it.' : 'Read from this CV on your first Tailor CV. Nothing to do.';
+  $('cv-base-text').textContent = change.base ? t('pagesLettersData.oldCvVersion') : t('pagesLettersData.firstTailorRead');
   setPill('cv-base-pill', change.base ? 'To update' : 'Nothing to do', change.base ? 'warn' : 'neutral');
   show($('cv-base-actions'), change.base);
   const kits = shared.allJobs.filter(job => job.kit && job.code && job.status !== 'applied' && job.status !== 'dismissed');

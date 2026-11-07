@@ -68,7 +68,7 @@ const submittedButton = item => sessionButton(t('pagesSession.iSubmitted'), 'sec
   button.textContent = t('pagesSession.marked');
 }, 'check');
 // Where to answer: the button opens the reply box in the log below (a quick reply there sends one tap of text).
-const answerHint = () => el('p', 'rich-p muted small', 'Press Answer, then type your reply in the log below, or use a quick reply there.');
+const answerHint = () => el('p', 'rich-p muted small', t('pagesSessionHelp.answerLog'));
 // While the app checks Chrome for the session's tab: a loading card (the existing .skeleton lines), nothing from the last state.
 function renderChecking() {
   $('ss-decision').className = 'ss-next tone-neutral';
@@ -87,7 +87,7 @@ const START_MS = 30 * 1000;   // as lib/chrome-launch-once.js: how long one pres
 function renderWaiting() {
   renderChecking();
   $('ss-next-title').textContent = t('pagesSession.waitingChrome');
-  $('ss-question').replaceChildren(el('p', 'rich-p', 'The app just started. This card updates by itself once Chrome\'s Jobadabra extension reports.'));
+  $('ss-question').replaceChildren(el('p', 'rich-p', t('pagesSessionHelp.justStarted')));
   $('ss-actions').replaceChildren();   // nothing to press while it waits
 }
 // The tab is on a posting whose Apply the extension presses (or just pressed): nothing else of the session is true for this page, so no counts, no ready, no asks (owner, 15 Oct 2026).
@@ -110,12 +110,12 @@ function renderSilent(item) {
   $('ss-next-title').textContent = t('pagesSession.notReporting');
   const starting = Date.now() - shared.chromeStartedAt < START_MS;
   const retried = shared.chromeStartedAt && !starting;   // pressed before, and Chrome still has not reported
-  $('ss-question').replaceChildren(el('p', 'rich-p', retried ? 'Chrome didn\'t report within 30 seconds. Check that Chrome is open with the Jobadabra extension on, or try Open Chrome again.'
-    : 'Jobadabra can\'t see this application\'s tab: Chrome is closed, or its Jobadabra extension isn\'t running. Open Chrome and this card updates by itself.'));
+  $('ss-question').replaceChildren(el('p', 'rich-p', retried ? t('pagesSessionHelp.chromeTimeout')
+    : t('pagesSessionHelp.chromeInvisible')));
   const connect = sessionButton(starting ? t('pagesSession.startingChrome') : t('pagesSession.openChrome'), 'secondary', async event => {
     const result = await opening(event.currentTarget, () => window.pilot.extensionOptions());
     window.pilot.uiLog('sessions: Chrome not reporting, Open Chrome pressed', {opened: !!result?.opened, starting: !!result?.starting});
-    if (!result?.opened) { toastMessage(t('pagesSession.chromeFailed'), 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.', NO_PLACE.outside, 'bad'); return; }
+    if (!result?.opened) { toastMessage(t('pagesSession.chromeFailed'), t('pagesSessionHelp.openYourself'), NO_PLACE.outside, 'bad'); return; }
     shared.chromeStartedAt = result.since || Date.now();
     renderNextStep(item);
     setTimeout(() => { if (silentChrome(item)) renderNextStep(item); }, START_MS + 100);   // offered again, with the reason
@@ -134,7 +134,7 @@ function renderLost(item) {
   renderChecking();
   $('ss-decision').className = 'ss-next tone-warn';
   $('ss-next-title').textContent = t('pagesSession.tabMissing');
-  $('ss-question').replaceChildren(el('p', 'rich-p', 'Jobadabra can\'t find this application\'s tab in Chrome. It may still be open under another address. Open it again and the extension fills it for you; if the tab shows up by itself, this card updates.'));
+  $('ss-question').replaceChildren(el('p', 'rich-p', t('pagesSessionHelp.tabLost')));
   $('ss-actions').replaceChildren(reopenButton(item));
 }
 export function renderNextStep(item) {
@@ -188,20 +188,20 @@ export function renderNextStep(item) {
   const said = intro.filter(line => line.replace(/\*/g, '') !== ask && !isDevTalk(line));
   $('ss-question').replaceChildren(...(submitted ? [el('p', 'rich-p', `Marked Applied in ${storeName()}. The confirmation page in Chrome is what decided it.`)]
     : stuck ? [el('p', 'rich-p', item.stuck === 'account'
-      ? 'The form is behind a sign-in or sign-up. The extension fills it in Chrome; a robot check or a choice there is yours. If it stays stuck, Claude can take over; you still submit the application.'
-      : item.stuck === 'other' ? 'Jobadabra read the page and could not tell how to apply: there may be no form, or the way is not written on it. Open it in Chrome and look. Jobadabra never acts on it for you.'
-      : item.stuck === 'site_broken' ? `${item.accountNeeds || 'The site did not answer'}. Open it in Chrome to check, or try again later. Jobadabra never acts on it for you.`
+      ? t('pagesSessionHelp.accountHelp')
+      : item.stuck === 'other' ? t('pagesSessionHelp.unknownApply')
+      : item.stuck === 'site_broken' ? `${item.accountNeeds || t('pagesSessionHelp.siteDidNotAnswer')}. Open it in Chrome to check, or try again later. Jobadabra never acts on it for you.`
       : item.stuck === 'told' ? `The page says: "${item.accountNeeds || ''}". Open it in Chrome to read it. Jobadabra never acts on it for you.`
-      : item.stuck === 'email' ? `This job is applied to by email, not through a form. Send your CV and cover letter to ${item.accountNeeds || 'the address on the page'}. Jobadabra never sends it for you.`
-      : item.stuck === 'incomplete' ? 'The form is open in Chrome, but the extension could not fill any of it and required fields are still empty. Fill them there, or let Claude take over; you still submit the application.'
-      : 'This page has no form the extension can open by itself (no Apply button it may press, or it leads to another site). Open it in Chrome to go on; if it stays stuck, Claude can find the form and fill it; you still submit it.'),
+      : item.stuck === 'email' ? `This job is applied to by email, not through a form. Send your CV and cover letter to ${item.accountNeeds || t('pagesSessionHelp.addressOnPage')}. Jobadabra never sends it for you.`
+      : item.stuck === 'incomplete' ? t('pagesSessionHelp.nothingFilledHelp')
+      : t('pagesSessionHelp.noFormHelp')),
       // The next press, in the AI's own words (e.g. 'Solve the check, then press "Créer un compte"'): what is left for you on this page.
       ...(['account', 'incomplete'].includes(item.stuck) && item.accountNeeds ? [el('p', 'rich-p', el('b', '', 'Left for you: '), item.accountNeeds)] : [])]
-    : stopped ? [el('p', 'rich-p', 'Nothing runs on this application until you start it again. Reopen form opens it in a new Chrome tab and the extension fills it for you; the form already open in Chrome is left as it is.')]
-    : gone && asking ? [el('p', 'rich-p', 'This application was open in the Chrome tab you closed, so its last question was about that tab. Reopen form opens it again (you choose whether to start over).')]
-    : gone ? [el('p', 'rich-p', item.kind === 'form' ? 'You closed the form\'s Chrome tab. Reopen it and the extension fills it again. If you submitted it, the extension has already marked it Applied.' : 'The filled form was in the Chrome tab you closed. Reopen it to fill it again, or mark it submitted if you already sent it.')]
-    : open ? [el('p', 'rich-p', 'The form is open in Chrome. Complete the remaining fields shown below, then review the answers before submitting.') ]
-    : review ? [el('p', 'rich-p', item.kind === 'form' || item.inChrome ? 'The extension fills the form in Chrome. Check the answers and legal boxes there, then submit it yourself.' : 'Check the answers and legal boxes in Chrome, then submit it yourself.')]
+    : stopped ? [el('p', 'rich-p', t('pagesSessionHelp.stoppedHelp'))]
+    : gone && asking ? [el('p', 'rich-p', t('pagesSessionHelp.closedQuestion'))]
+    : gone ? [el('p', 'rich-p', item.kind === 'form' ? t('pagesSessionHelp.closedFormHelp') : t('pagesSessionHelp.closedFilledHelp'))]
+    : open ? [el('p', 'rich-p', t('pagesSessionHelp.completeRemaining')) ]
+    : review ? [el('p', 'rich-p', item.kind === 'form' || item.inChrome ? t('pagesSessionHelp.extensionFillReview') : t('pagesSessionHelp.reviewLegal'))]
     : asking ? (forYou.length
       // Claude listed what it needs: its first sentence for context, then each thing as a line, then where to answer.
       // Why Claude stopped stays in sight here (owner, 12 Oct 2026: it was folded away); each thing it needs is a row of the card below, with its answer box.
@@ -260,12 +260,12 @@ export function renderNextStep(item) {
       if (result?.result === 'reloaded' || result?.result === 'reloaded-chrome') {
         panelDead.delete(item.id);
         renderSessionPage();
-        if (result.went !== 'tab') toastMessage(t('pagesSession.reloadedWaiting'), 'The tab is fresh; give the extension a few seconds, then press Open filled form again.', NO_PLACE.outside, 'warn');
+        if (result.went !== 'tab') toastMessage(t('pagesSession.reloadedWaiting'), t('pagesSessionHelp.freshTabWait'), NO_PLACE.outside, 'warn');
         return;
       }
       if (result?.outdated) {
         toastMessage(t('pagesSession.reloadExtension'), `Chrome runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
-          'In Chrome open chrome://extensions and click ↻ on Jobadabra, then press again — it updates itself from then on.', {card: 'extension'}, 'warn');
+          t('pagesSessionHelp.reloadExtensionHelp'), {card: 'extension'}, 'warn');
         return;
       }
       const why = {permission: 'macOS won\'t let Jobadabra control Chrome: System Settings → Privacy & Security → Automation → Jobadabra → Google Chrome. Or press ⌘R in that tab.',

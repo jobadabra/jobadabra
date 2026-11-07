@@ -46,7 +46,7 @@ export function openLink(url, event) {
 export const bone = (className = '') => el('span', `skeleton ${className}`);  // a grey placeholder bar while loading
 // First load: skeleton cards (the page's shape, greyed); later the content stays while it refreshes.
 function focusSkeleton() {
-  $('focus-count-note').textContent = 'Checking replies, interviews and applications';
+  $('focus-count-note').textContent = t('pagesFocusReports.checkingReplies');
   $('focus-list').replaceChildren(...[0, 1, 2].map(() => {
     const li = el('li', 'focus-item is-loading');
     const body = el('div', 'focus-body');
@@ -170,29 +170,29 @@ function focusCard(item) {
   body.title = item.detail || '';
   const actions = el('div', 'focus-actions');
   if (item.kind === 'feedback') actions.append(focusButton(t('pagesProfile.askFeedback'), 'primary', () => openFeedback(item, 'request')));
-  if (item.kind === 'feedback_wait') actions.append(focusButton('Add feedback', 'primary', () => openFeedback(item, 'receive')));
-  if (item.kind === 'feedback_review') actions.append(focusButton('Read feedback', 'primary', () => openFeedback(item, 'review')));
+  if (item.kind === 'feedback_wait') actions.append(focusButton(t('pagesFocusReports.addFeedback'), 'primary', () => openFeedback(item, 'receive')));
+  if (item.kind === 'feedback_review') actions.append(focusButton(t('pagesFocusReports.readFeedback'), 'primary', () => openFeedback(item, 'review')));
   if (item.link && !item.kind.startsWith('feedback')) actions.append(focusButton(item.link_label || t('pagesCommon.open'), 'primary', event => openLink(item.link, event)));
   if (item.kind === 'details') {
-    actions.append(focusButton('Add details', 'primary',
+    actions.append(focusButton(t('pagesFocusReports.addDetails'), 'primary',
       () => openLogFor(item.job_url, `${item.company || item.via || '—'} · ${item.job}`)));
     const skip = focusButton(t('pagesCommon.skip'), 'secondary', () => finishItem(item, () => window.pilot.focusDone(item.page_id, 'details_skipped')));
-    skip.title = "I don't know the employer yet";
+    skip.title = t('pagesFocusReports.unknownEmployer');
     actions.append(skip);
   }
   if (item.kind === 'which_job') {  // an email the Gmail check wasn't sure about: your answer places it
-    if (item.suggested_url) actions.append(focusButton('Yes, that job', 'primary', async event => {
+    if (item.suggested_url) actions.append(focusButton(t('pagesFocusReports.yesJob'), 'primary', async event => {
       event.currentTarget.disabled = true;
       await moveEmail(item.event_id, item.suggested_url, item);
     }));
-    actions.append(focusButton(item.suggested_url ? 'Other job…' : 'Pick the job', item.suggested_url ? 'secondary' : 'primary', () => whichJob(item)));
+    actions.append(focusButton(item.suggested_url ? t('pagesFocusReports.otherJob') : t('pagesFocusReports.pickJob'), item.suggested_url ? 'secondary' : 'primary', () => whichJob(item)));
   }
   if (item.kind === 'apply') actions.append(focusButton(t('pagesCommon.apply'), 'primary', () => { openView('jobs'); $('apply-open')?.click(); }));   // the same door as Get started's Apply
-  if (item.kind === 'review') actions.append(focusButton('Interviews', 'primary', () => openView('interviews')));
+  if (item.kind === 'review') actions.append(focusButton(t('pagesFocusReports.interviews'), 'primary', () => openView('interviews')));
   if (item.kind === 'happened' && item.page_id) {  // its time passed, nothing recorded: yes (notes) or no (moved/cancelled)
     const no = focusButton(t('pagesStatus.no'), 'secondary', () => openHappened(item, 'no'));
-    no.title = 'It was cancelled or moved';  // a short label: the row keeps room for the company's name
-    actions.append(focusButton('Yes, it happened', 'primary', () => openHappened(item, 'yes')), no);
+    no.title = t('pagesFocusReports.cancelledMoved');  // a short label: the row keeps room for the company's name
+    actions.append(focusButton(t('pagesFocusReports.yesHappened'), 'primary', () => openHappened(item, 'yes')), no);
   }
   // The prep kit: built on the job's page (a button press: it costs about $0.04), then opened there. A kit from an
   // earlier call offers the new one first; the earlier kit stays on the page, in the ⋯ menu.
@@ -215,22 +215,22 @@ function focusCard(item) {
     () => window.pilot.focusDone(item.page_id, item.kind === 'follow_up' ? 'followed_up' : 'replied'))));
   const more = [];
   if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: t('pagesProfile.addFeedback'), run: () => openFeedback(item, 'receive')});
-  if (item.kind === 'feedback') more.push({label: 'Skip this request', run: async () => {
+  if (item.kind === 'feedback') more.push({label: t('pagesFocusReports.skipRequest'), run: async () => {
     dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it
     const result = await saveFeedbackAction(item, 'skip');
     if (!result.ok) { releaseItem(item); toastMessage(t('pagesCommon.notSaved'), result.error, {view: 'focus'}, 'bad'); }
   }});
   if (item.notion_url) more.push({icon: 'layers', label: t('pagesCommon.openNotion'), run: event => openLink(item.notion_url, event)});
   if (item.job_url && item.job_url !== item.link && !/jobadabra|mail\.google/.test(item.job_url)) more.push({icon: 'external', label: t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(item.job_url)});
-  if (['follow_up', 'nudge', 'waiting'].includes(item.kind) && item.job_url && item.page_id) more.push({icon: 'close', label: "I'm out: withdraw",
+  if (['follow_up', 'nudge', 'waiting'].includes(item.kind) && item.job_url && item.page_id) more.push({icon: 'close', label: t('pagesFocusReports.withdraw'),
     title: `You no longer want this job: it is marked Withdrawn in ${storeName()} and leaves Focus`,
     run: () => finishItem(item, () => window.pilot.markOutcome({url: item.job_url, outcome: 'withdrawn'}).then(result => { if (result?.ok) jobsChanged(); return result; }))});
   if (item.kind === 'which_job') more.push({icon: 'close', label: t('pagesCommon.dismiss'), run: () => moveEmail(item.event_id, 'none', item)});
-  if (item.kind === 'prepare' && item.page_id) more.push({icon: 'close', label: 'Dismiss interview',
+  if (item.kind === 'prepare' && item.page_id) more.push({icon: 'close', label: t('pagesFocusReports.dismissInterview'),
     run: () => dismissInterview(item, {onConfirmed: () => holdItem(item), onFail: () => releaseItem(item)})});
   if (prep && item.page_id) prep.more.forEach(entry => more.push({icon: entry.icon, label: entry.label, run: prepRun(entry.run)}));
-  if (item.kind === 'apply') more.push({icon: 'target', label: 'Change the daily target', run: () => editTarget()});
-  if (item.detail) more.push({icon: 'info', label: 'Details', run: () => toastMessage(item.headline || item.title, item.detail, NO_PLACE.itself, 'info')});
+  if (item.kind === 'apply') more.push({icon: 'target', label: t('pagesFocusReports.changeTarget'), run: () => editTarget()});
+  if (item.detail) more.push({icon: 'info', label: t('pagesFocusReports.details'), run: () => toastMessage(item.headline || item.title, item.detail, NO_PLACE.itself, 'info')});
   if (more.length) actions.append(moreButton(more, t('pagesCommon.more')));
   li.append(round, body, actions);
   return li;
@@ -239,8 +239,8 @@ function focusCard(item) {
 let historyShown = false;
 function showHistory(on) {
   historyShown = on;
-  $('focus-up-title').textContent = on ? 'History' : 'Up next';
-  $('focus-history-toggle').textContent = on ? '← Up next' : 'History';
+  $('focus-up-title').textContent = on ? t('pagesFocusReports.history') : t('pagesFocusReports.upNext');
+  $('focus-history-toggle').textContent = on ? t('pagesFocusReports.backNext') : t('pagesFocusReports.history');
   show($('focus-count-note'), !on);
   show($('focus-list'), !on);
   show($('focus-empty'), !on && !$('focus-list').children.length);
@@ -254,11 +254,11 @@ const dayOf = iso => {
 };
 async function loadHistory() {
   const list = $('focus-history');
-  list.replaceChildren(el('li', 'muted small', byStore('Loading from Notion…', t('pagesCommon.loading'))));
+  list.replaceChildren(el('li', 'muted small', byStore(t('pagesFocusReports.loadingNotion'), t('pagesCommon.loading'))));
   const {ok, items = [], error} = await window.pilot.focusHistory().catch(failure => ({ok: false, error: failure.message}));
   if (!historyShown) return;
   if (!ok) { list.replaceChildren(el('li', 'message error', `Couldn't read your history from Notion: ${error || 'try again'}`)); return; }
-  if (!items.length) { list.replaceChildren(el('li', 'muted', 'Nothing resolved yet. What you mark done here shows up in this list.')); return; }
+  if (!items.length) { list.replaceChildren(el('li', 'muted', t('pagesFocusReports.noResolved'))); return; }
   const rows = [];
   let day = '';
   for (const item of items) {
@@ -368,7 +368,7 @@ function renderFunnel(funnel) {
   const full = $('focus-funnel-notion');
   full.dataset.url = funnel.notion_url || '';
   full.dataset.notionLabel ||= full.textContent;
-  full.textContent = funnel.notion_url ? full.dataset.notionLabel : 'Open in Reports';
+  full.textContent = funnel.notion_url ? full.dataset.notionLabel : t('pagesFocusReports.openReports');
   show(full, true);
 }
 // The target box shows the saved target, except while it is being typed in: Focus drawn again then (a Gmail check ending, a late load)
@@ -388,7 +388,7 @@ export async function saveDailyTarget(input) {
     .catch(error => ({ok: false, error: error.message}));
   input.disabled = false;
   input.title = ''; input.closest('label')?.removeAttribute('data-saving');
-  if (!result.ok) { toastMessage('Target not changed', result.error, {view: 'focus'}, 'bad'); return false; }
+  if (!result.ok) { toastMessage(t('pagesFocusReports.targetNotChanged'), result.error, {view: 'focus'}, 'bad'); return false; }
   for (const id of ['focus-target', 'set-target']) $(id).value = result.target;
   return true;
 }
@@ -436,6 +436,6 @@ export async function init() {
   window.addEventListener('pilot-outdated', () => {
     if (shared.outdatedShown) return;
     shared.outdatedShown = true;
-    toastMessage({title: 'Jobadabra was updated', body: 'Restart it to finish the update: some buttons won\'t work until then.', action: {label: 'Restart', run: relaunch}, target: NO_PLACE.app, tone: 'warn'});
+    toastMessage({title: t('pagesFocusReports.updated'), body: 'Restart it to finish the update: some buttons won\'t work until then.', action: {label: t('pagesFocusReports.restart'), run: relaunch}, target: NO_PLACE.app, tone: 'warn'});
   });
 }

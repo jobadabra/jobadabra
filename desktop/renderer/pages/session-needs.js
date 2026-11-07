@@ -254,8 +254,8 @@ export async function reopenClosedTab(item, button) {
     reviewStates.delete(item.id);
     clearAnswers(item.id);
   }
-  if (result?.focused) toastMessage(t('pagesSession.tabFound'), 'The form is still open in Chrome (its address changed): showing it.', NO_PLACE.outside, 'info');
-  else toastMessage(t('pagesSession.formReopened'), 'Opened the form in a new Chrome tab; the extension fills it for you.', NO_PLACE.outside, 'info');
+  if (result?.focused) toastMessage(t('pagesSession.tabFound'), t('pagesSessionHelp.formStillOpen'), NO_PLACE.outside, 'info');
+  else toastMessage(t('pagesSession.formReopened'), t('pagesSessionHelp.formOpenedNew'), NO_PLACE.outside, 'info');
   await refreshSessions();
   renderSessionPage();
   return result;
@@ -268,7 +268,7 @@ export async function showInForm(item, label, button) {
     return;
   }
   if (result?.outdated) toastMessage(t('pagesSession.reloadExtension'), `Chrome still runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
-    'In Chrome open chrome://extensions and click ↻ on Jobadabra. Your open forms keep their answers; later updates load by themselves.', {card: 'extension'}, 'warn');
+    t('pagesSessionHelp.reloadKeepAnswers'), {card: 'extension'}, 'warn');
   else if (result?.went === 'none') await reopenClosedTab(item, button);
   else if (result?.went !== 'tab') toastMessage(t('pagesSession.openedJob'), `Find "${label}" in its form.`, NO_PLACE.outside, 'info');
   else toastMessage(t('pagesSession.scrollYourself'), `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`, NO_PLACE.outside, 'warn');

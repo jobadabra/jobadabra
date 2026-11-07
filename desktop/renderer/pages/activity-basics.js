@@ -39,12 +39,12 @@ export async function showSearchStatus() {
   const searching = running && (running.kind || 'search') === 'search';
   box.dataset.state = searching ? 'busy' : lastSearchAt ? 'ok' : 'none';
   // Running: a link to its progress (the bottom bar's panel); done: what it found.
-  if (searching) { title.textContent = 'Finding jobs →'; detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
-  if (!lastSearchAt) { title.textContent = 'No check yet'; detail.textContent = ''; return; }
+  if (searching) { title.textContent = t('pagesActivity.findingJobs'); detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
+  if (!lastSearchAt) { title.textContent = t('pagesActivity.noCheck'); detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
   const found = last?.new != null ? ` · ${last.new} new match${last.new === 1 ? '' : 'es'}` : '';
   const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
-  if (last && !last.ok) { title.textContent = 'Last check had problems →'; detail.textContent = clockTime(lastSearchAt); return; }
+  if (last && !last.ok) { title.textContent = t('pagesActivity.checkProblems'); detail.textContent = clockTime(lastSearchAt); return; }
   title.textContent = `Checked ${clockTime(lastSearchAt)}${found}${cost}`;
   detail.textContent = '';
 }
@@ -52,8 +52,8 @@ export async function showSearchStatus() {
 // ---------- activity bar (bottom of every screen) ----------
 // Plain-language phases of a search, recognised from its log lines.
 export const PHASES = [
-  {match: /^(Searching job boards|Job boards:)/, label: 'Job boards'},
-  {match: /^Checking employer career pages/, label: 'Employer career pages'},
+  {match: /^(Searching job boards|Job boards:)/, label: t('pagesActivity.jobBoards')},
+  {match: /^Checking employer career pages/, label: t('pagesActivity.careerPages')},
 ];
 // A running task's step as words, wherever it is shown (Actions banner and summary, header, bottom bar): a known phrase, else the engine's line
 // without its technical tail (7 Oct 2026: "Scored 60 of 60 job(s) with claude-sonnet-5-5; 0 failed; tokens in 120 (+173594 cached), out 22743").
@@ -76,12 +76,12 @@ export function searchPhase(step = '') {
   return step.length > 60 ? `${step.slice(0, 57)}…` : step;
 }
 // icon: emoji for text the owner reads (toasts, messages); line: the line icon for rows and headers (same as Actions → Recent runs).
-export const KIND = {search: {icon: '🔎', line: 'search', name: t('pagesCommon.findJobs')}, mail: {icon: '📧', line: 'mail', name: 'Gmail check'}, insight: {icon: '💡', line: 'chart', name: 'Insight'},
-  interviewInsight: {icon: '💡', line: 'bulb', name: 'Interview insights'}, tailor: {icon: '✂️', line: 'scissors', name: 'Tailor CV + cover letter'}, visits: {icon: '🌐', line: 'globe', name: 'Find jobs using your browser'},
-  weekly: {icon: '📊', line: 'file', name: 'Search analysis'}, kits: {icon: '📝', line: 'file-text', name: 'Prepare top matches'}, today: {icon: '📋', line: 'send', name: "Today's list"}, scout: {icon: '🔭', line: 'building', name: 'More employers'},
-  action: {icon: '⚡', line: 'zap', name: 'Telegram action'}, prepare: {icon: '📝', line: 'file-text', name: 'Application preparation'}, interview: {icon: '🎤', line: 'mic', name: 'Interview review'},
-  add: {icon: '📥', line: 'inbox', name: 'Logged activity'}, import: {icon: '➕', line: 'search', name: 'Add a job'}, rejection: {icon: '🔍', line: 'search', name: 'Rejection review'},
-  prep: {icon: '🎤', line: 'mic', name: 'Interview prep kit'}};
+export const KIND = {search: {icon: '🔎', line: 'search', name: t('pagesCommon.findJobs')}, mail: {icon: '📧', line: 'mail', name: t('pagesActivity.gmailCheck')}, insight: {icon: '💡', line: 'chart', name: t('pagesActivity.insight')},
+  interviewInsight: {icon: '💡', line: 'bulb', name: t('pagesActivity.interviewInsights')}, tailor: {icon: '✂️', line: 'scissors', name: t('pagesActivity.tailor')}, visits: {icon: '🌐', line: 'globe', name: t('pagesActivity.browserFind')},
+  weekly: {icon: '📊', line: 'file', name: t('pagesActivity.searchAnalysis')}, kits: {icon: '📝', line: 'file-text', name: t('pagesActivity.prepareTop')}, today: {icon: '📋', line: 'send', name: t('pagesActivity.todayList')}, scout: {icon: '🔭', line: 'building', name: t('pagesActivity.moreEmployers')},
+  action: {icon: '⚡', line: 'zap', name: t('pagesActivity.telegramAction')}, prepare: {icon: '📝', line: 'file-text', name: t('pagesActivity.preparation')}, interview: {icon: '🎤', line: 'mic', name: t('pagesActivity.interviewReview')},
+  add: {icon: '📥', line: 'inbox', name: t('pagesActivity.logged')}, import: {icon: '➕', line: 'search', name: t('pagesActivity.addJob')}, rejection: {icon: '🔍', line: 'search', name: t('pagesActivity.rejectionReview')},
+  prep: {icon: '🎤', line: 'mic', name: t('pagesActivity.prepKit')}};
 export const KITS_CARD = new Set(['kits', 'prepare', 'tailor']);   // the runs whose result is a list of jobs on the kits card
 export const kindOf = run => (KIND[run?.kind] ? run.kind : 'search');
 export const WHO = {schedule: 'scheduled', you: 'by you', first: 'first check'};
@@ -164,7 +164,7 @@ export function siteRow(site, live = true, since = '') {
     const button = keepPress(key, Object.assign(el('button', 'secondary item-action', action[0]), {type: 'button', title: site.url}));
     button.addEventListener('click', async () => {
       const done = await pressWhile(key, '', async () => action[1]()).catch(error => ({ok: false, error: error.message}));
-      if (done?.ok === false) setPress(key, {text: plainError(done.error || 'Could not do it now')});
+      if (done?.ok === false) setPress(key, {text: plainError(done.error || t('pagesActivity.couldNotNow'))});
     });
     li.append(button);
   }
@@ -236,7 +236,7 @@ function outcomeOf(run) {
 // A Google sign-in that failed during a run, with Gmail working now: the run stays as it was, without the obsolete button.
 export const GOOGLE_SIGNIN = /Google sign-in/i;
 export const signedInSince = head => (head && GOOGLE_SIGNIN.test(head.problem || '') && gmailConnected() === true
-  ? {...head, title: 'Google sign-in failed during this run', summary: 'Gmail is connected now. You can run another check.', hint: '', fix: null} : head);
+  ? {...head, title: t('pagesActivity.googleFailed'), summary: 'Gmail is connected now. You can run another check.', hint: '', fix: null} : head);
 // Whether Gmail is connected now (true / false / null = not known yet): Settings keeps the last check (localStorage
 // 'serviceChecks'); it is read again from the app when Recent activity opens. A run's own state is history, not this.
 let gmailNow = null;

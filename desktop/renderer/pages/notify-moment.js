@@ -79,7 +79,7 @@ export function init() {
     if (!sent?.ok) { message('notify-moment-note', sent?.error || t('pagesCommon.minute'), 'bad'); return; }   // message(): the one place a result reaches the screen (plainError)
     dialog.close();
     window.dispatchEvent(new Event('notify-changed'));   // the card asks again
-    toastMessage(current.ask === 'email' ? 'Check your inbox ✓' : 'Sent again ✓', 'Check your inbox (and your spam folder) for the link.', NO_PLACE.itself, 'good');
+    toastMessage(current.ask === 'email' ? t('pagesFocusReports.inboxCheck') : t('pagesFocusReports.resent'), t('pagesFocusReports.checkInbox'), NO_PLACE.itself, 'good');
   });
   setTimeout(ask, FIRST_MS);
 }

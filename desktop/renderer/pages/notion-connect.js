@@ -102,7 +102,7 @@ async function connect() {
   setMode(box);
   if (box.mode === 'move') { await move(box); return; }
   box.connecting = true;
-  message('notion-connect-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
+  message('notion-connect-message', t('pagesConnections.waitingNotion'));
   const result = await waitSignIn(() => window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message})));
   if (!result.ok) {
     message('notion-connect-message', result.error || t('pagesProfile.notConnected'), 'error');

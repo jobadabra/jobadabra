@@ -22,8 +22,8 @@ function drawShot() {
   $('app-feedback-shot').hidden = !on;
   if (on) $('app-feedback-shot-img').src = prepared.shot.dataUrl;
   $('app-feedback-include-shot').disabled = !prepared.shot;
-  $('app-feedback-shot-note').textContent = prepared.shot ? 'Only this Jobadabra window, as it is on screen. Remove it if it shows anything private.'
-    : 'The window could not be captured, so no screenshot goes with this.';
+  $('app-feedback-shot-note').textContent = prepared.shot ? t('pagesActivityMore.windowOnly')
+    : t('pagesActivityMore.captureFailed');
 }
 
 // "See what's sent": what is always sent, then each ticked part's exact text. One state: the checkboxes plus what the main process holds.
@@ -51,7 +51,7 @@ async function profileChanged() {
     prepared.profile = profile;
     box.disabled = false;
     $('app-feedback-send').disabled = false;
-    if (!profile) { box.checked = false; $('app-feedback-message').textContent = 'Your Profile could not be read, so it is not included.'; }
+    if (!profile) { box.checked = false; $('app-feedback-message').textContent = t('pagesActivityMore.profileExcluded'); }
   }
   drawPreview();
 }
@@ -65,7 +65,7 @@ async function open() {
   $('app-feedback-include-logs').disabled = !prepared.logs;
   $('app-feedback-include-page').checked = !!prepared.page;   // on by default (owner, 2 Nov 2026)
   $('app-feedback-include-page').disabled = !prepared.page;
-  $('app-feedback-page-note').textContent = prepared.page ? PAGE_NOTE : 'This screen has no data to send: Settings and your Profile are only sent through the snapshot below.';
+  $('app-feedback-page-note').textContent = prepared.page ? PAGE_NOTE : t('pagesActivityMore.noScreenData');
   $('app-feedback-include-profile').checked = false;   // off by default, with its privacy note
   $('app-feedback-include-profile').disabled = false;
   $('app-feedback-send').disabled = false;   // a read left pending by the last dialog never holds this one

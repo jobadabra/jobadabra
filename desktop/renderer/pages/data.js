@@ -40,9 +40,9 @@ async function showStore() {
   pill.className = `ui-pill ${store.trying || unconnected ? 'tone-warn' : 'tone-good'}`;
   $('store-lead').textContent = store.trying
     ? `Jobadabra is only trying until your jobs and applications have a home: ${store.choice ? 'this Mac, or your Notion' : 'your Notion'}.`   // about Notion
-    : unconnected ? 'Your jobs and applications are to be kept in your Notion, which is not connected yet: connect it to keep track of them.'   // about Notion
-    : cloud ? 'Your jobs, applications and answers are in your Notion workspace: open and edit them there too.'
-      : 'Your jobs, applications and answers are kept on this Mac, in one place, and in its backups. Move them to Notion to use Always on.';   // about Notion
+    : unconnected ? t('pagesLettersData.notionStoreConnect')   // about Notion
+    : cloud ? t('pagesLettersData.notionStore')
+      : t('pagesLettersData.localStore');   // about Notion
   $('store-where').textContent = store.trying ? t('pagesProfile.notChosenYet') : store.label;
   $('store-cloud').textContent = cloud && !store.trying && !unconnected ? t('pagesProfile.available') : t('pagesProfile.needsNotion');
   show($('store-keep'), store.trying && store.choice);
@@ -100,7 +100,7 @@ export async function init() {
   const clearBox = $('clear-jobs-confirm');
     const showClearCounts = async () => {
     const plan = await window.pilot.clearJobsPlan();
-    if (plan?.error || plan?.ok === false) { message('data-message', plan.error || 'Could not count your jobs.', 'error'); return false; }
+    if (plan?.error || plan?.ok === false) { message('data-message', plan.error || t('pagesLettersData.countFailed'), 'error'); return false; }
     const n = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
     $('clear-jobs-counts').textContent = `${n(plan.clear, 'job')} will be cleared and ${n(plan.keep, 'job')} stay. A backup is made first.`;
     $('clear-jobs-go').disabled = plan.clear === 0;
@@ -119,7 +119,7 @@ export async function init() {
     // A rejected clear (an IPC error, a thrown write) still ends the wait: the toast says it, and the Clear button comes back (Gitar on #2466).
     let result;
     try {
-      result = await whileBusy($('busy-dialog'), {title: 'Backing up, then clearing your job list…', note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
+      result = await whileBusy($('busy-dialog'), {title: t('pagesLettersData.backupClear'), note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
     } catch (error) { result = {ok: false, error: error?.message || String(error)}; }
     finally { $('clear-jobs-go').disabled = false; show(clearBox, false); show($('clear-jobs'), true); }
     if (!result?.ok) { toastMessage(t('pagesProfile.listNotCleared'), result?.error || t('pagesProfile.nothingChanged'), {card: 'data'}, 'bad'); return; }
@@ -177,6 +177,6 @@ export async function init() {
     if (done?.imported && done.notionElsewhere) toastMessage({title: t('pagesProfile.connectSame'),
       body: 'Your Profile and job tracking are in the Notion workspace this backup used. Connect that workspace and pick your existing Jobadabra page: '
         + 'a new workspace starts with an empty Profile.', target: {view: 'settings', section: 'connections'}, tone: 'warn'});
-    else if (done?.deleted) toastMessage(t('pagesProfile.reset'), 'Your previous data on this computer was deleted. Import your export to get it back.', {card: 'data'}, 'info');
+    else if (done?.deleted) toastMessage(t('pagesProfile.reset'), t('pagesLettersData.previousDeleted'), {card: 'data'}, 'info');
   });
 }

@@ -84,14 +84,14 @@ function listView() {
   const added = state.runs.reduce((sum, run) => sum + (Number(run.stats?.new_jobs) || 0), 0);
   const employers = state.runs.reduce((sum, run) => sum + (Number(run.details?.employers?.employers_checked) || 0), 0);
   const problems = state.runs.filter(run => run.details?.problems?.length || run.status === 'Failed' || run.status === 'Warnings').length;
-  box.append(summaryTiles([{icon: 'search', tone: 'signal', label: 'Searches', value: String(rows.length)}, {icon: 'plus', tone: 'good', label: 'Jobs added', value: String(added)},
-    {icon: 'building', tone: 'violet', label: t('pagesJobs.employersChecked'), value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: 'With problems', value: String(problems)}]));
+  box.append(summaryTiles([{icon: 'search', tone: 'signal', label: t('pagesFocusReports.searches'), value: String(rows.length)}, {icon: 'plus', tone: 'good', label: t('pagesFocusReports.jobsAdded'), value: String(added)},
+    {icon: 'building', tone: 'violet', label: t('pagesJobs.employersChecked'), value: String(employers)}, {icon: problems ? 'alert' : 'check-circle', tone: problems ? 'warn' : 'good', label: t('pagesFocusReports.withProblems'), value: String(problems)}]));
   const items = el('div', 'rs-runs');
   for (const run of rows) {
     const card = el('section', `card rs-run is-${run.tone}`), words = el('div', 'rs-run-words'), head = el('div', 'rs-run-head');
     head.append(el('b', '', run.name), pill(label(run.outcome), run.tone, {dot: true}));
     words.append(head, el('span', 'muted small', `${runWhen(run.at)} · ${metaOf(run)}`));
-    const open = Object.assign(el('button', 'secondary', 'Full report ›'), {type: 'button', title: 'Open the full report of this search'});
+    const open = Object.assign(el('button', 'secondary', t('pagesFocusReports.fullReport')), {type: 'button', title: t('pagesFocusReports.openReport')});
     const number = el('div', 'rs-run-number'); number.append(el('b', '', run.added === null ? '–' : String(run.added)), el('span', 'muted small', 'added'));
     card.append(tile(run.outcome === 'Failed' ? 'alert' : 'search', run.tone === 'neutral' ? 'neutral' : run.tone), words, number, open);
     card.dataset.id = run.id;
@@ -105,7 +105,7 @@ function listView() {
 function detailView(row) {
   const view = listRow(row), {tiles, cards} = report(row), box = el('div', 'rs-detail');
   box.dataset.id = row.id;
-  const back = Object.assign(el('button', 'link', '‹ All searches'), {type: 'button'});
+  const back = Object.assign(el('button', 'link', t('pagesFocusReports.allSearches')), {type: 'button'});
   back.addEventListener('click', () => { state.open = state.full = null; draw(); });
   const head = el('section', 'card rs-head'), words = el('div', 'rs-run-words'), title = el('div', 'rs-run-head');
   title.append(el('h3', 'insight-title', view.name), pill(label(view.outcome), view.tone, {dot: true}));

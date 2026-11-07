@@ -28,8 +28,8 @@ let openAi = () => {};                   // Settings → Connections → AI, pas
 export function statePill(status, {drafting: busy = false} = {}) {
   if (busy) return pill(t('pagesCommon.writing'), 'info');
   if (status.state === 'approved') return pill(`Approved${status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}`, 'good');
-  if (status.state === 'draft') return pill('Draft · approve to use it', 'warn');
-  return pill('Not created');
+  if (status.state === 'draft') return pill(t('pagesLettersData.draftApprove'), 'warn');
+  return pill(t('pagesLettersData.notCreated'));
 }
 // Which part shows: the empty state (two choices) or the editor. Reading shows the editor, its box a skeleton (contact-reading.js); a first draft being
 // written shows it too, the letter's shape in skeleton lines under the strip (ai-writing.js).
@@ -39,8 +39,8 @@ const usageLine = () => [usageBefore(shared.state?.settings, !!shared.state?.sec
 
 // The empty state (page-parts.js emptyState), drawn again each paint so its usage note follows the engine; its buttons keep their ids (⌘K, tests).
 function drawEmpty() {
-  const box = emptyState({icon: 'file', chip: '', title: 'No base letter yet', text: 'Draft one with AI from your CV, Profile and writing preferences, or write your own.',
-    actions: [{label: 'Draft with AI', ai: true, run: () => draft($('letter-start-ai'))}, {label: 'Write my own', run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
+  const box = emptyState({icon: 'file', chip: '', title: t('pagesLettersData.noLetter'), text: t('pagesLettersData.draftLetter'),
+    actions: [{label: t('pagesLettersData.draftAi'), ai: true, run: () => draft($('letter-start-ai'))}, {label: t('pagesLettersData.writeOwn'), run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
   const [ai, own] = box.querySelectorAll('button');
   ai.id = 'letter-start-ai';
   own.id = 'letter-own';
@@ -52,7 +52,7 @@ function paint() {
   show($('letter-empty'), !editor);
   if (!editor) drawEmpty();
   $('letter-state').replaceChildren(isReading ? pill(t('pagesCommon.reading')) : statePill(saved, {drafting}));
-  $('letter-draft').querySelector('span').textContent = drafting ? t('pagesCommon.writing') : saved.text ? 'Redraft with AI' : 'Draft with AI';
+  $('letter-draft').querySelector('span').textContent = drafting ? t('pagesCommon.writing') : saved.text ? t('pagesLettersData.redraftAi') : t('pagesLettersData.draftAi');
   show($('letter-pdf'), !!saved.pdf);
   document.querySelectorAll('[data-letter-usage]').forEach(node => { node.textContent = usageLine(); });
   buttons();
@@ -83,7 +83,7 @@ export async function loadLetter() {
       painted = true;
       showLetter(letter);
     },
-    fail: result => { reading(false, document, 'letter'); isReading = false; paint(); message('letter-message', result.error || 'Couldn\'t read your letter', 'error'); },
+    fail: result => { reading(false, document, 'letter'); isReading = false; paint(); message('letter-message', result.error || t('pagesLettersData.readLetterFailed'), 'error'); },
   });
 }
 
@@ -107,7 +107,7 @@ async function act(button, working, run, {drafts = false} = {}) {
       message('letter-message', '');   // the last action's line ("Approved ✓ …") is not true while a new draft is written
       paint();
       const first = !editor.value.trim();
-      stop = aiWriting(editor, {title: first ? 'Writing your first draft' : 'Writing a new draft',
+      stop = aiWriting(editor, {title: first ? t('pagesLettersData.firstDraft') : t('pagesLettersData.newDraft'),
         note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
     } else message('letter-message', working);
     result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
@@ -124,7 +124,7 @@ async function act(button, working, run, {drafts = false} = {}) {
 async function draft(button) {
   if (draftPending) return draftPending;
   const text = $('letter-text').value.trim();
-  if (text && text !== (saved.text || '').trim() && !confirm('Replace the text you changed with a new draft?')) return;
+  if (text && text !== (saved.text || '').trim() && !confirm(t('pagesLettersData.replaceDraft'))) return;
   draftPending = (async () => {
     const result = await act(button, '', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {drafts: true});
     if (result.ok) $('letter-feedback').value = '';
@@ -140,10 +140,10 @@ export function initLetter({openAiSettings} = {}) {
   $('letter-text').addEventListener('input', buttons);
   $('letter-draft').addEventListener('click', () => draft($('letter-draft')));
   // Typed changes are a draft on Profile's one bar (Save all changes keeps it as a draft letter; Discard all puts the saved text back); Approve stays here.
-  draftSource = profileBar().register({id: 'base-letter', tab: 'letter', label: 'Base letter', count: typedChange,
+  draftSource = profileBar().register({id: 'base-letter', tab: 'letter', label: t('pagesLettersData.baseLetter'), count: typedChange,
     save: async () => {
       const result = await window.pilot.coverLetterSave($('letter-text').value).catch(error => ({ok: false, error: error.message}));
-      if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); message('letter-message', 'Saved as a draft. Approve it to make the PDF.', 'ok'); }
+      if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); message('letter-message', t('pagesLettersData.savedDraft'), 'ok'); }
       return result.ok ? {ok: true} : {ok: false, error: result.error};
     },
     discard: () => { $('letter-text').value = saved.text || ''; writing = false; paint(); },

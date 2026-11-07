@@ -111,7 +111,7 @@ function gapsTeaser(toReview) {
   const words = el('div', 'gaps-teaser');
   words.append(el('b', '', toReview ? `${toReview} suggestion${toReview === 1 ? '' : 's'} to review` : t('pagesProfile.nothingReview')),
     el('span', 'muted small gaps-lead', GAPS_LEAD));
-  return [el('span', 'link small gaps-review', 'Review →'), words];
+  return [el('span', 'link small gaps-review', t('pagesEmployers.reviewArrow')), words];
 }
 
 // A panel with one part: its title is the panel's own (index.html), so the button goes in that title line (the slot next to it).
@@ -129,7 +129,7 @@ function solo(tab, each) {
 function body(key, part) {
   if (key === 'surveys') return surveyRead(part, {sorting});
   const box = el('div', 'exp-part-body');
-  if (isEmpty(part)) { box.append(el('p', 'muted', 'Not set yet.')); return box; }
+  if (isEmpty(part)) { box.append(el('p', 'muted', t('pagesEmployers.notSetYet'))); return box; }
   if (key === 'strengths') {
     for (const group of groupsOf(part)) {
       if (!group.label) { box.append(el('p', '', group.items[0])); continue; }

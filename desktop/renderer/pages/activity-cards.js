@@ -40,7 +40,7 @@ export function renderInsightCard(insight, target = $('activity-card')) {
   }
   if (evidence.length || insight.groups.length) {
     const why = el('section', 'insight-section');
-    why.append(el('h4', '', 'Why this was flagged'));
+    why.append(el('h4', '', t('pagesActivity.whyFlag')));
     if (insight.groups.length) {
       const columns = el('div', 'insight-groups');
       for (const group of insight.groups) {
@@ -117,7 +117,7 @@ export function renderKitsCard(kits, target = $('activity-card')) {
     if (cvs) {   // the tailored CV itself, as the Jobs list's 📄 Tailored CV opens it
       const view = el('button', 'secondary item-action', t('pagesStatus.viewCv'));
       view.type = 'button';
-      view.title = 'Your CV tailored to this job, with the changes highlighted';
+      view.title = t('pagesActivity.cvHighlighted');
       view.append(icon('external'));
       view.addEventListener('click', () => window.pilot.openTailoredCv(job.url));
       row.append(view);

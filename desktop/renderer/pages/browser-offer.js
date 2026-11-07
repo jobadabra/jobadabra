@@ -17,7 +17,7 @@ export function drawBrowserOffer(anchor, run, context, start = () => window.pilo
   if (!box) { box = el('section', 'insight-next'); box.id = 'activity-browser-next'; anchor.after(box); }
   const go = el('button', 'secondary', LABEL);
   go.id = 'browser-offer-go';
-  const waiting = () => { go.disabled = true; go.textContent = 'Starting in your browser in a moment…'; };
+  const waiting = () => { go.disabled = true; go.textContent = t('pagesLettersData.startingBrowser'); };
   if (pressedFor === offer.at) waiting();
   go.addEventListener('click', async () => {
     waiting();

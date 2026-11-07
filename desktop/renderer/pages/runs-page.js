@@ -29,12 +29,12 @@ export async function showStatusCard() {
     ['⏭', 'Next Gmail check', nextMailAt ? nextWords(nextMailAt) : 'off'],
   ].filter(Boolean);
   const card = $('status-card');
-  card.replaceChildren(el('h2', '', '🩺 Status'), ...rows.map(([glyph, label, value]) => {
+  card.replaceChildren(el('h2', '', t('pagesFocusReports.status')), ...rows.map(([glyph, label, value]) => {
     const row = el('div', 'status-row');
     row.append(el('span', 'status-glyph', glyph), el('span', 'muted', label), el('b', '', value));
     return row;
   }));
-  const more = Object.assign(el('a', 'link small', 'View all runs →'), {href: '#'});
+  const more = Object.assign(el('a', 'link small', t('pagesFocusReports.allRuns')), {href: '#'});
   more.addEventListener('click', event => { event.preventDefault(); showRunsTab(); });
   card.append(more);
   show(card);
@@ -59,7 +59,7 @@ export function syncRunButtons(busy, runningKind = null) {
     if (now) {
       if (!node.disabled) { node.disabled = true; node.dataset.runBusy = '1'; }
       if (node.dataset.title0 === undefined) node.dataset.title0 = node.title || '';
-      node.title = `${(TASK_TITLE[kind] || KIND[kind]?.name || 'This task')} is running: follow it in the banner above`;
+      node.title = `${(TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.thisTask'))} is running: follow it in the banner above`;
     } else if (node.dataset.runBusy) {
       node.disabled = false; delete node.dataset.runBusy;
     }
@@ -86,16 +86,16 @@ export function renderActionsPage(data) {
   // The menu says so too, on every screen: a spinner on Actions while a task runs (not a count: the other badges mean "waiting for you").
   const dot = $('nav-actions-running');
   dot.hidden = !running;
-  dot.title = running ? `${TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || 'A task'} is running` : '';
+  dot.title = running ? `${TASK_TITLE[kindOf(running)] || KIND[kindOf(running)]?.name || t('pagesFocusReports.aTask')} is running` : '';
   dot.setAttribute('aria-label', dot.title);
   if (running) {
     const kind = kindOf(running);
-    $('run-banner-title').textContent = `${TASK_TITLE[kind] || KIND[kind]?.name || 'A task'} is running`;
+    $('run-banner-title').textContent = `${TASK_TITLE[kind] || KIND[kind]?.name || t('pagesFocusReports.aTask')} is running`;
     $('run-banner-step').textContent = `Started ${displayDate(new Date(running.startedAt), {hour: '2-digit', minute: '2-digit'})} · ${stepWords(running.step) || 'starting'}`;
     // Waiting on the person (Find jobs using your browser: the one-time Allow in Chrome): the one action, as a primary button, not text only (owner, 7 Oct 2026).
     const waitsOnYou = /^⏳ Waiting for you in Chrome/.test(String(running.step ?? ''));
     $('run-banner-act').hidden = !waitsOnYou;
-    $('run-banner-act').textContent = /press Read/.test(String(running.step ?? '')) ? 'Go to Chrome' : 'Go to Chrome and allow';   // a held board waits for Read, not for Allow
+    $('run-banner-act').textContent = /press Read/.test(String(running.step ?? '')) ? t('pagesFocusReports.goChrome') : t('pagesFocusReports.goAllow');   // a held board waits for Read, not for Allow
     const spinner = document.querySelector('#run-banner .spinner');
     if (spinner) spinner.hidden = waitsOnYou;   // blocked on the person: no "working" spinner, the button says what to do
     const log = $('run-banner-log');
@@ -109,7 +109,7 @@ export function renderActionsPage(data) {
     li.dataset.runId = run.id;   // which run this row is (the end-to-end suite opens a run by it)
     const tile = el('span', 'task-tile small');
     tile.append(icon(TASK_ICON[kind] || 'pulse'));
-    li.append(tile, el('b', '', KIND[kind]?.name || 'Task'), pill(label, tone), el('span', 'muted', runWhen(run.endedAt || run.startedAt)),
+    li.append(tile, el('b', '', KIND[kind]?.name || t('pagesFocusReports.task')), pill(label, tone), el('span', 'muted', runWhen(run.endedAt || run.startedAt)),
       el('span', 'muted runs-result', capital(outcome(run))), el('span', 'runs-go', '›'));
     li.addEventListener('click', () => showRunsTab(run.id));   // in the app, on that run (owner, 25 Oct 2026)
     return li;

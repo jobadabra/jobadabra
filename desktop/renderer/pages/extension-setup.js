@@ -43,7 +43,7 @@ function drawCard(state) {
   show($('ext-connect'), state.state === 'idle');
   foldFollows($('ext-setup'), state.state, state.state !== 'connected');
   const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: t('pagesDetails.installExtension')};
-  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || 'Troubleshoot the connection';
+  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || t('pagesConnections.troubleshoot');
 }
 
 // The window's first paint (connections.js init): the last known state at once; with nothing kept, index.html's Checking… stays.
@@ -81,7 +81,7 @@ export function bindExtension() {
       button.disabled = true;
       const result = await window.pilot.extensionStore().catch(() => null);
       button.disabled = false;
-      toastMessage(result?.opened ? 'Chrome Web Store opened' : 'Couldn\'t open Chrome',
+      toastMessage(result?.opened ? t('pagesConnections.storeOpened') : t('pagesConnections.chromeFailed'),
         inBrowser(result?.opened ? 'Press Add to Chrome there. It connects to this app by itself within 30 seconds.'
           : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
@@ -91,8 +91,8 @@ export function bindExtension() {
     button.disabled = true;
     const result = await window.pilot.quitStrayChrome(Number(button.dataset.pid)).catch(() => null);
     button.disabled = false;
-    toastMessage(result?.ok ? 'Background Chrome quit' : 'Couldn\'t quit it',
-      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || t('pagesCommon.tryAgain')), {card: 'extension'}, result?.ok ? 'good' : 'bad');
+    toastMessage(result?.ok ? t('pagesConnections.backgroundQuit') : t('pagesConnections.quitFailed'),
+      result?.ok ? t('pagesConnections.scriptingReady') : (result?.error || t('pagesCommon.tryAgain')), {card: 'extension'}, result?.ok ? 'good' : 'bad');
     showExtensionStatus();
   });
   // The step-1 chip: best effort at Chrome's page, and the URL on the clipboard so the paste always gets there.
@@ -110,7 +110,7 @@ export function bindExtension() {
       button.disabled = true;
       const result = await window.pilot.extensionShow().catch(() => null);
       button.disabled = false;
-      toastMessage(result?.opened ? 'Extension folder opened' : 'Couldn\'t open the folder',
+      toastMessage(result?.opened ? t('pagesConnections.folderOpened') : t('pagesConnections.folderFailed'),
         inBrowser(result?.opened ? osPick('Its path is on your clipboard: in Chrome press Load unpacked, then ⌘⇧G, ⌘V, Return.',
           'Its path is on your clipboard: in Chrome press Load unpacked, paste it into the folder box (Ctrl+V), and press Enter.')
           : 'Open the extension folder by hand, then press Load unpacked in Chrome.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
@@ -118,7 +118,7 @@ export function bindExtension() {
   }
   $('ext-connect').addEventListener('click', async () => {
     const result = await window.pilot.extensionOptions().catch(() => null);
-    message('ext-message', result?.opened ? 'Its settings page is open: press Connect to the Jobadabra app there.'
+    message('ext-message', result?.opened ? t('pagesConnections.extensionConnect')
       : inBrowser('Couldn\'t open the extension\'s settings page. Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.', browserApp), result?.opened ? 'ok' : 'error');
   });
 }

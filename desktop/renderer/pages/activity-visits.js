@@ -41,7 +41,7 @@ function claudeReadEnded(url, said) {
   for (const each of claudeGroups.get(url) || [url]) claudeSiteEnded(each, said);
   claudeGroups.delete(url);
   const all = [...presses.keys()].find(key => key.startsWith('claude-all:') && key.includes(url));
-  if (all) setPress(all, {done: false, text: presses.get(all).idle || 'Read them with Claude'});
+  if (all) setPress(all, {done: false, text: presses.get(all).idle || t('pagesActivityMore.readClaude')});
 }
 function claudeSiteEnded(url, said) {
   const key = `claude:${url}`;
@@ -54,7 +54,7 @@ function claudeSiteEnded(url, said) {
 window.pilot?.onVisitClaudeDone?.(result => {
   claudeReadEnded(result.url, `Claude read ${result.jobs} job${result.jobs === 1 ? '' : 's'}${(result.urls || []).length > 1 ? ` from ${result.urls.length} sites` : ''}, ${result.fits} matching your search`);
   toastMessage(`Claude read ${result.jobs} jobs from ${result.name || 'the site'}, ${result.fits} matching your search`,
-    result.fits ? 'The matching ones are being scored now (about a minute): those that fit your profile join your Jobs list.' : 'None has your role words and places, so your Jobs list stays the same.', {view: 'jobs'}, 'good');
+    result.fits ? t('pagesActivityMore.matchingScored') : t('pagesActivityMore.noneMatch'), {view: 'jobs'}, 'good');
 });
 window.pilot?.onSession?.((event, payload) => {   // a session that stopped without finishing (closed, failed)
   if (event === 'update' && payload?.kind === 'read' && ['ended', 'failed'].includes(payload.status)) claudeReadEnded(payload.url, `Claude's session ${payload.status === 'failed' ? 'stopped' : 'ended'} before it finished`);
@@ -67,7 +67,7 @@ export function claudeReadButton(site, words) {
   const claude = el('button', 'secondary item-action', t('pagesCommon.readClaude'));
   claude.type = 'button';
   wand(claude);
-  claude.title = 'A Claude in Chrome session opens this site, sets the filters for your search and reads its jobs (needs Claude Code)';
+  claude.title = t('pagesActivityMore.oneSiteClaude');
   // Starting a Claude session takes ~10 s (owner, 7 Oct 2026: "I press, nothing happens"): said on the button, the way Re-score does it,
   // then it stays off while that session reads; a refusal is said in the row.
   const key = `claude:${site.url}`;
@@ -131,7 +131,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
   if (allStopped && card.sites.some(site => site.ok)) {
     const again = el('button', 'secondary', `Run again on the ${allStopped === 1 ? 'stopped site' : `${allStopped} stopped sites`}`);
     again.type = 'button';
-    again.title = 'Opens Find jobs using your browser with these sites ticked';
+    again.title = t('pagesActivityMore.openBrowserFind');
     again.addEventListener('click', () => {
       shared.visitsPreselect = card.sites.filter(site => !site.ok).map(site => ({name: site.name, url: site.url}));
       runButton('visits')?.click();
@@ -142,7 +142,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     const idle = allStopped > stopped.length ? `Read the first ${stopped.length} of ${allStopped} stopped sites with Claude` : `Read the ${stopped.length} stopped sites with Claude`;
     const all = el('button', 'secondary', idle);
     all.type = 'button';
-    all.title = 'One Claude in Chrome session opens them one after the other, sets their filters for your search and reads their jobs (needs Claude Code)';
+    all.title = t('pagesActivityMore.manySitesClaude');
     const key = `claude-all:${stopped.map(site => site.url).join(' ')}`;
     keepPress(key, all);
     presses.set(key, {...presses.get(key), idle});

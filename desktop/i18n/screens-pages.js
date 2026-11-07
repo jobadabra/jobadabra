@@ -8,6 +8,13 @@ import {messages as downloads} from './catalogs/pages/downloads.js';
 import {messages as session} from './catalogs/pages/session.js';
 import {messages as jobs} from './catalogs/pages/jobs.js';
 import {messages as setup} from './catalogs/pages/setup.js';
+import {messages as activity} from './catalogs/pages/activity.js';
+import {messages as activityMore} from './catalogs/pages/activity-more.js';
+import {messages as lettersData} from './catalogs/pages/letters-data.js';
+import {messages as connections} from './catalogs/pages/connections.js';
+import {messages as sessionHelp} from './catalogs/pages/session-help.js';
+import {messages as employers} from './catalogs/pages/employers.js';
+import {messages as focusReports} from './catalogs/pages/focus-reports.js';
 import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
@@ -19,3 +26,10 @@ for (const [locale, messages] of Object.entries(downloads)) registerMessages(loc
 for (const [locale, messages] of Object.entries(session)) registerMessages(locale, 'pagesSession', messages);
 for (const [locale, messages] of Object.entries(jobs)) registerMessages(locale, 'pagesJobs', messages);
 for (const [locale, messages] of Object.entries(setup)) registerMessages(locale, 'pagesSetup', messages);
+for (const [locale, messages] of Object.entries(activity)) registerMessages(locale, 'pagesActivity', messages);
+for (const [locale, messages] of Object.entries(activityMore)) registerMessages(locale, 'pagesActivityMore', messages);
+for (const [locale, messages] of Object.entries(lettersData)) registerMessages(locale, 'pagesLettersData', messages);
+for (const [locale, messages] of Object.entries(connections)) registerMessages(locale, 'pagesConnections', messages);
+for (const [locale, messages] of Object.entries(sessionHelp)) registerMessages(locale, 'pagesSessionHelp', messages);
+for (const [locale, messages] of Object.entries(employers)) registerMessages(locale, 'pagesEmployers', messages);
+for (const [locale, messages] of Object.entries(focusReports)) registerMessages(locale, 'pagesFocusReports', messages);
