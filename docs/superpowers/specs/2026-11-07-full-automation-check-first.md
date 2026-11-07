@@ -23,15 +23,31 @@ The split (`desktop/renderer/apply-split.js`, the same pure function in the app 
 
 - The existing Full automation confirmation (`autoConfirmedAt`, from Settings or the dialog pick) is asked exactly as before; this is a second confirmation on top.
 - A check only moves a job down a mode, never up. Only the jobs in the Full automation group get the confirmation stamp; Background items carry none (the store's `reserve` refuses them), Chrome tabs are the person's.
-- The app keeps the check's reads itself. Confirm carries the list of Full automation jobs the person saw; a list that differs from the app's split queues nothing.
+- The app keeps the check's reads itself. Confirm carries the list of Full automation jobs the person saw: a job in it that the app's reads do not allow queues nothing at all; a job the app allows but the list left out is lowered to Background (the window may lower, never raise).
 - The Jobs dialog never writes Settings' mode; each queued item carries its own {mode, confirmation} (unchanged).
+
+## Progress
+- [x] 1/2 app holds the batch, split, Confirm/Cancel (proof: desktop/test/unit/main/apply-check-first.test.js @fd0f52bc), merged as #3564
+- [ ] 2/2 the dialog. Waits on: ac's stored check (`desktop/lib/form-checks.js`, not merged yet) and the owner's yes on the rendered side-by-side
 
 ## Plan
 
-1. `[fa] 1/2` The app holds a Full automation batch for its check: plan, the kit's stored check (injected) then live reads, split, Confirm and Cancel IPC; the window may lower a job, never raise it; asked for by the window (`checkFirst`), so today's dialog keeps working until 2/2. Test: 5 jobs → 3 queued as Full automation with the stamp, 2 as Background that the store refuses to submit; Cancel and a mismatched Confirm queue nothing.
-2. `[fa] 2/2` The Apply to jobs dialog: live check (ac's `runTriage`), then the split, in every language; every Full automation batch goes through the check. Waits on ac's check prepared with the kit (its stored shape is wired into `storedCheck`) and the owner's yes on the rendered side-by-side; L2a #3556 is merged. Integration test on the app with a fake browser. The "Fill <detail> to unblock" link follows ac's L2b.
-   - From the 1/2 review: the dialog handles the held answer (`check`) before `applyDialogOutcome`, which would otherwise close it as "Applying started" (`test/unit/renderer/apply-dialog-mode.test.js` asserts that for `{ok: true}`); a window caller of `applyCheckConfirm` handles `{cancelled}` (the first-choice gate's class test); the reads run only for jobs whose `read` is null.
+1. `[fa] 1/2` **Merged, #3564.** On main: `desktop/lib/apply-check-first.js` (`createCheckFirst`: `hold`, `readOne`, `confirm`, `cancel`, `splitOf`; `HOLD_MS` 30 min), `desktop/renderer/apply-split.js` (`splitBatch`, `urlsOf`), IPC `applyCheckRead(plan, url)`, `applyCheckConfirm(plan, autoUrls)`, `applyCheckCancel(plan)` (`desktop/lib/apply-handlers.js`, `desktop/preload.cjs`), `canQueue(mode, batch, jobs)` on the background controller, `openInChrome(storage, jobs)` in `desktop/lib/apply.js`. `applyCheckConfirm` is in `APPLY_ACTIONS` (first-choice gate) and `RUN_STARTS` (start-refusals guard). The hold happens only when `apply` is called with `checkFirst: true`; nothing calls it so yet.
+2. `[fa] 2/2` The Apply to jobs dialog shows the check and then the split; every Full automation batch goes through it. Build it from this list alone:
 
-## Progress
-- [ ] 1/2 app holds the batch, split, Confirm/Cancel
-- [ ] 2/2 the dialog
+| Step | File | What |
+|---|---|---|
+| a | `desktop/main.js` (499 lines: edit the existing `registerApplyHandlers({...})` line, add no line) | pass `storedCheck: job => storedCheck(storage, job)` from ac's `desktop/lib/form-checks.js` (`storedCheck(storage, job) → read \| null`; null = none, stale, kit changed or unreadable; the read already has ac's `match` merged, so `modeOfRead` takes it as is) |
+| b | `desktop/lib/apply-handlers.js` | the hold runs for every Full automation batch: drop the `options?.checkFirst === true` condition in the `apply` handler's `enqueue` (keep `which === 'auto'`) |
+| c | `desktop/renderer/apply-dialog-model.js` | pure: `applyDialogStart` passes a `check` answer through; a new `checkView(check, readsByUrl)` gives the dialog's groups from `splitBatch` (the same function the app uses), the headline counts ("We can apply to N jobs automatically", "The other M need another way", "K could not be read") and the Full automation urls Confirm sends |
+| d | new `desktop/renderer/pages/apply-check.js` | the dialog's check and split states, one owner `state` + one `paint()` (as `jobs-triage.js`): running (Checking i of n · company, seconds, rows as they land, Cancel) → split (groups Full automation / Background · you submit / In Chrome · you submit / Not applied, each row the job and its reason, Cancel + "Apply to N jobs") |
+| e | `desktop/renderer/pages/jobs-apply.js` | after Start: a result with `check` goes to `apply-check.js` before `applyDialogOutcome`. Live-read only jobs whose `read` is null, through `window.pilot.applyCheckRead(plan, url)`. Confirm calls `window.pilot.applyCheckConfirm(plan, autoUrls)`, then the result goes to the existing `applyDialogOutcome`; its caller handles `{cancelled}` and says `.error` (both class guards read the next lines). Cancel or closing the dialog calls `applyCheckCancel(plan)` |
+| f | read loop shared with ac | `runTriage` in `desktop/renderer/pages/jobs-triage.js` paints into the form-check dialog's own elements: agree with ac (session jobadabra-78) to move its loop into a pure `readEach(jobs, read, {onStart, onResult, isCancelled})` both dialogs call (a pure move in ac's file), never a copy |
+| g | `desktop/renderer/index.html`, `desktop/renderer/style.css` | inside `#apply-dialog`: a check panel (bar, now-line, results list) and a split panel (groups); reuse the triage dialog's `.triage-progress` / `.triage-results` classes and the app's `chip`; new CSS only scoped under the new root |
+| h | `desktop/i18n/catalogs/pages/*.js` (7 languages) | every new word; the reasons from `chipOf` (L2a) are reused, not reworded |
+| i | tests | `desktop/integration/app/screen-apply-check-first.test.js` (probeWindow, demo `settings.demoTriageReads` for 5 jobs, as `screen-apply-triage.test.js`): Start in Full automation → rows land → split 3 / 1 / 1 → Confirm → outcomes; Cancel → nothing queued. Update `desktop/test/unit/main/apply-check-first.test.js` test "without checkFirst" (now every Full automation batch holds) and `desktop/test/unit/renderer/apply-dialog-mode.test.js` for the `check` answer. Unit test of `checkView`. |
+| j | picture | before any commit: `npm run side-by-side` (file name starts with `fa`), the running check and the split, light + dark, narrow too; the owner's yes relayed by the coordinator with their words |
+
+- The "Fill <detail> to unblock" link (L2c) and the detail names (L2b) come with ac's PRs; until then a Background row says "Needs your details".
+- Behaviour PR touching Submit safety: one `/code-review` in a fresh subagent, asked "which existing test asserts the opposite?". Commit trailers the push gate asks for these files: `Recorded-unneeded`, `Pool-row: none …`, `Rung: none: …`, `Fixture: none: …`.
+- Parked from the 1/2 review (Work board draft, Low): reads still queued after Confirm, non-automatic groups not compared, a partial success's message names no refused reason.
