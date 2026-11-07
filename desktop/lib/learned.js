@@ -6,6 +6,7 @@
 //     later fill's AI reads (app-core/src/extension.js answerContext). Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): the 🧠 Form
 //     knowledge notes it wrote before are retired; old ones stay in the store, unread.
 // Nothing leaves your store. You can read, fix or delete every line there.
+import {activityText} from '../i18n/activity-notices.js';
 import {asksQuestion} from './label-shape.js';
 import {aliasKey} from '../shared/alias-schema.js';
 import * as sharedMeanings from './aliases.js';
@@ -78,7 +79,7 @@ export async function save(storage, payload, {notify = () => {}, contactSaved = 
     // Decisions, not content: how many, and which kind, never the values (lib/log.js).
     log('learned', `kept ${count} answer(s) you entered yourself: ${Object.keys(details).length} to your details, ${answers.length} to What we learned`,
       {host: String(payload?.host || '').slice(0, 80), details: Object.keys(details)});
-    if (count) notify(`Remembered ${count} answer${count === 1 ? '' : 's'}`, `Next forms that ask the same will be filled for you. Read or fix them in Profile → What we learned${notionGate.notionInUse(storage) ? ' and your Notion standard answers' : ''}.`, {view: 'settings', section: 'profile'}, 'good');   // about Notion
+    if (count) notify(activityText('remembered', {count}), activityText(notionGate.notionInUse(storage) ? 'learnedNotionBody' : 'learnedBody'), {view: 'settings', section: 'profile'}, 'good');   // about Notion
     return {ok: true, count};
   } catch (error) {
     log('learned', `could not keep the answers: ${error.message}`);

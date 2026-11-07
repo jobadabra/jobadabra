@@ -1,5 +1,6 @@
 // Ready to send, the window's calls (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): is this install the owner's (else why not: the card says it), what tonight would send, send it, start it now, the morning's rows, Done, the two numbers.
 // Registered once from kit-handlers.js (main.js is at its size limit). Nothing here presses Submit or leaves data on the site beyond what ready-batch.js builds; the site deletes it on Done, after 24 h, or on Delete everything. Guard: test/ready-handlers.test.js.
+import {activityText} from '../i18n/activity-notices.js';
 import fs from 'node:fs';
 import * as pipeline from './pipeline.js';
 import {extensionStore} from './store/extension-store.js';
@@ -47,7 +48,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     const waiting = waitingOf(rows.jobs || []), night = rows.batch?.night;
     if (!waiting || !night || storage.settings().ready?.told === night) return;
     storage.saveSettings({ready: {...settings(), told: night}});
-    notify('Ready to send ✓', `${waiting.ready} form${waiting.ready === 1 ? '' : 's'} filled overnight${waiting.left ? `, ${waiting.left} need you` : ''}. Open Actions to press Submit.`, {view: 'actions'}, 'good');
+    notify(activityText('overnightTitle'), activityText('overnight', {count: waiting.ready, left: waiting.left ? activityText('overnightLeft', {count: waiting.left}) : ''}), {view: 'actions'}, 'good');
   };
   // Which jobs the night filled and left ready to submit (ready-rows.js readyToSubmit): the Jobs list marks them. Light, no job read; a kept answer for 30 s.
   let codesAt = 0, codesKept = null;
