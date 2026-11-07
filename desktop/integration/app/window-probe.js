@@ -81,10 +81,7 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: launchEnv});
     const answer = `${out}.json`;
     if (!fs.existsSync(answer)) {
-      const authorityPresent = Boolean(launchEnv.XAUTHORITY && fs.existsSync(launchEnv.XAUTHORITY));
-      let serverNow;
-      try { serverNow = xServerNow(launchEnv.DISPLAY); } catch (error) { serverNow = `X server now: unreadable (${error.code || error.message})`; }   // the evidence line never hides the launch's own failure
-      throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}${serverNow ? `; ${serverNow}` : ''}): ${run.stderr || (run.stdout || '').slice(-600)}`);
+      throw new Error(noAnswerMessage(run, launchEnv));
     }
     const value = JSON.parse(fs.readFileSync(answer, 'utf8'));
     if (value && typeof value === 'object' && Object.keys(value).length === 1 && typeof value.error === 'string') throw new Error(value.error);
@@ -93,6 +90,17 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const host = fs.existsSync(hostFile) ? fs.readFileSync(hostFile, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line)) : [];
     return {result: value, host, log: appLogLines(folder)};
   } finally { fs.rmSync(folder, {recursive: true, force: true}); }
+}
+
+/**
+ * The error for a launch that wrote no answer: exit code and signal, whether DISPLAY and the auth file were set (presence only, never values), the X server's state right now (Linux),
+ * and the app's own stderr. The evidence line never hides the launch's own failure.
+ */
+function noAnswerMessage(run, launchEnv) {
+  const authorityPresent = Boolean(launchEnv.XAUTHORITY && fs.existsSync(launchEnv.XAUTHORITY));
+  let serverNow;
+  try { serverNow = xServerNow(launchEnv.DISPLAY); } catch (error) { serverNow = `X server now: unreadable (${error.code || error.message})`; }
+  return `the app wrote no answer (exit ${run.status}, signal ${run.signal}; DISPLAY-present=${Boolean(launchEnv.DISPLAY)}, XAUTHORITY-file-present=${authorityPresent}${serverNow ? `; ${serverNow}` : ''}): ${run.stderr || (run.stdout || '').slice(-600)}`;
 }
 
 /** Copies the app's end-of-run picture to <dir>/ui-<name>.png; a failure is a warning, the test goes on. */
