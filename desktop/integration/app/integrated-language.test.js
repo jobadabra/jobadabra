@@ -6,17 +6,19 @@ import {needsElectron} from '../../test/needs-electron.js';
 import {probeWindow} from './window-probe.js';
 
 for (const locale of ['de', 'ru']) test(`${locale} pages render localized session counts and accessible labels`, needsElectron, () => {
-  const seen = probeWindow({settings: {displayLanguage: locale}, script: async kit => {
-    await kit.until(() => document.getElementById('nav-sessions-text').textContent.includes('2'), 'the demo sessions to load');
+  // Why (#3570, Gitar): 13 waits x 8 s hang cap stay under the 150 s launch cap, so a hang names its stage before the launch is killed.
+  const seen = probeWindow({timeout: 150000, settings: {displayLanguage: locale}, script: async kit => {
+    const hang = 8000;
+    await kit.until(() => document.getElementById('nav-sessions-text').textContent.includes('2'), 'the demo sessions to load', hang);
     const open = async name => {
       document.querySelector(`.nav[data-view="${name}"]:not([data-settings])`).click();
-      await kit.until(() => document.querySelector(`.view[data-view="${name}"]:not([hidden])`), `the ${name} page`);
+      await kit.until(() => document.querySelector(`.view[data-view="${name}"]:not([hidden])`), `the ${name} page`, hang);
       if (name === 'strategy') {
-        await kit.until(() => document.getElementById('strategy-improve').textContent.includes('6'), 'the strategy suggestion count');
+        await kit.until(() => document.getElementById('strategy-improve').textContent.includes('6'), 'the strategy suggestion count', hang);
         document.querySelector('[data-tab="strategy-suggestions"]').click();
-        await kit.until(() => document.getElementById('strategy-tune')?.textContent.includes('2'), 'the tuning summary');
+        await kit.until(() => document.getElementById('strategy-tune')?.textContent.includes('2'), 'the tuning summary', hang);
       }
-      if (name === 'employers') await kit.until(() => document.getElementById('emp-rows').textContent.includes('Bluefin'), 'the employer rows');
+      if (name === 'employers') await kit.until(() => document.getElementById('emp-rows').textContent.includes('Bluefin'), 'the employer rows', hang);
     };
     const only = (name, wanted, read) => (name === wanted ? read() : '');
     const edges = name => {
@@ -43,7 +45,7 @@ for (const locale of ['de', 'ru']) test(`${locale} pages render localized sessio
       pages[name] = snapshot(name);
     }
     document.querySelector('[data-settings-go="notifications"]').click();
-    await kit.until(() => document.querySelectorAll('#mail-rows .switch-row').length >= 4, 'the notification rows');
+    await kit.until(() => document.querySelectorAll('#mail-rows .switch-row').length >= 4, 'the notification rows', hang);
     const {switchRow} = await import('./pages/mail-switches.js');
     const custom = {id: 'custom', name: 'My <custom> notification', when: 'Supplied description', on: false};
     const before = JSON.stringify(custom), presses = [];
@@ -53,7 +55,7 @@ for (const locale of ['de', 'ru']) test(`${locale} pages render localized sessio
     customRow.remove();
     const {openJobPanel} = await import('./pages/job-panel.js');
     await openJobPanel(globalThis.__jp.shared.allJobs[0], 'messages');
-    await kit.until(() => document.getElementById('job-panel').textContent.includes('Technical interview invitation'), 'the linked message cards');
+    await kit.until(() => document.getElementById('job-panel').textContent.includes('Technical interview invitation'), 'the linked message cards', hang);
     return {lang: document.documentElement.lang, pages, mail: document.getElementById('mail-rows').textContent, news: document.getElementById('news-rows').textContent,
       filters: [...document.getElementById('emp-feed').options].map(option => option.value),
       custom: {text: customRow.textContent, unchanged: before === JSON.stringify(custom), presses}, drawer: document.getElementById('job-panel').innerText};
