@@ -23,15 +23,20 @@ export async function pickWhenFresh(listNow, listReady, choice) {
 }
 
 export const CHIPS = {
-  auto: {label: t('helperTail.canAuto'), tone: 'good'},
-  fill: {label: t('helperTail.reviewSubmit'), tone: 'info'},
+  auto: {label: t('helperTail.simpleForm'), tone: 'good'},   // Why (7 Nov 2026, owner: "3 general ones, and have substatus"): three statuses; the sub-status is the chip's detail
+  fill: {label: t('helperTail.simpleForm'), tone: 'info'},
   check: {label: t('helperTail.needsYou'), tone: 'warn'},
   none: {label: t('helperTail.skipped'), tone: 'neutral'},
 };
+// "Couldn't read" is not a verdict of modeOfRead (a read that gave nothing has no mode), so it stays out of CHIPS.
+const UNREADABLE_CHIP = {label: t('helperTail.couldntRead'), tone: 'neutral'};
+// Why a read could not be made (the reader's `why`): the sub-status of "Couldn't read", never the raw id.
+const UNREAD_REASONS = {unreadable: 'triageNoLoad', frame: 'triageFrame', unknown: 'triageUnknown', timeout: 'triageTimeout'};
 
 /** The chip for a job's read: {label, tone, detail}. No read yet is "Not checked", never a guess. */
 export function chipOf(read) {
   if (!read) return {label: t('helperTail.notChecked'), tone: 'neutral', detail: ''};
+  if (read.unreadable === true) return {...UNREADABLE_CHIP, detail: t(`helperTail.${UNREAD_REASONS[read.why] || 'triageNoLoad'}`)};
   const {mode, reason} = modeOfRead(read);
   const reasonKey = {'not eligible': 'triageIneligible', 'login wall': 'triageLogin', 'asks you to create an account': 'triageAccount', 'answers you have not saved': 'triageUnsaved', 'every answer is a saved fact': 'triageFacts', captcha: 'triageCaptcha', check: 'triageCheck', 'a simple form': 'triageSimple', 'no form': 'triageNoForm', 'not a simple form': 'triageNotSimple'}[reason];
   return {...CHIPS[mode], detail: reasonKey ? t(`helperTail.${reasonKey}`) : reason};

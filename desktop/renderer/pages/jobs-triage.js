@@ -37,7 +37,8 @@ const state = {picking: false, running: false, stopping: false, total: 0, seen: 
 let cancelled = false, ticker = null;   // one run at a time: a second Start while one runs does nothing
 
 // The popup's one choice: the first N best matching jobs not checked before (owner, 30 Oct 2026), N from the one field.
-const choiceNow = () => ({n: Math.max(1, Math.floor(Number($('triage-n')?.value) || 10)), isChecked: job => readOf(job.url) !== null});
+// A job whose read gave "Couldn't read" is offered again; any other read counts as checked.
+const choiceNow = () => ({n: Math.max(1, Math.floor(Number($('triage-n')?.value) || 10)), isChecked: job => { const read = readOf(job.url); return read !== null && read.unreadable !== true; }});
 const busy = () => state.picking || state.running;
 const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -76,15 +77,15 @@ function paint() {
 
 /**
  * Runs the checks on the picked jobs, one at a time, through `read(job)` (the hidden-browser read). The dialog names the job in flight from the first moment, counts its seconds, and lists
- * each finished job's result as it lands; Stop ends before the next one. Resolves with how many were read.
+ * each finished job's result as it lands; Stop ends before the next one. Resolves with {read, failed}: how many were read and how many could not be.
  */
 export async function runTriage(jobs, read) {
-  if (state.running) return 0;
+  if (state.running) return {read: 0, failed: 0};
   Object.assign(state, {picking: false, running: true, stopping: false, total: jobs.length, seen: 0, job: null});
   cancelled = false;
   $('triage-results')?.replaceChildren();
   ticker = setInterval(paint, 1000);   // Why (#3519): one read takes about a minute; the seconds are the proof it is alive between its steps
-  let done = 0;
+  let done = 0, failed = 0;
   try {
     for (const job of jobs) {
       if (cancelled) break;
@@ -92,7 +93,7 @@ export async function runTriage(jobs, read) {
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
-      if (result) { setRead(job.url, result); rememberTiming((Date.now() - started) / 1000); done += 1; }   // only a real read counts as read, and as a timing
+      if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
       $('triage-results')?.append(resultRow(job, result));
@@ -104,7 +105,7 @@ export async function runTriage(jobs, read) {
     Object.assign(state, {running: false, stopping: false, job: null});
     paint();
   }
-  return done;
+  return {read: done, failed};
 }
 
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
@@ -121,16 +122,18 @@ export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () 
   $('triage-start').addEventListener('click', async () => {
     if (busy()) return;
     state.picking = true; paint();
-    let jobs = [], done = 0;
+    let jobs = [], done = 0, failed = 0;
     try {
       jobs = await pickWhenFresh(() => shared.allJobs || [], listReady, choiceNow());   // never the kept copy painted before the fresh read (jobs-state.js)
-      done = await runTriage(jobs, read);
+      ({read: done, failed} = await runTriage(jobs, read));
     } finally {
       state.picking = false;
       paint();
     }
     rerender();
-    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : t('pagesAuditSecond.a119'), null, done ? 'good' : 'info');
+    // Why (7 Nov 2026, owner: three statuses with a sub-status; coordinator's "Checked 7 of 10, 3 couldn't be read"): a read that could not be made is said, never silently counted away.
+    const body = failed ? t('pagesControlStatus.checkedSome', {done, length: jobs.length, failed}) : done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : t('pagesAuditSecond.a119');
+    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), body, null, done && !failed ? 'good' : done || failed ? 'warn' : 'info');
   });
   paint();
 }

@@ -40,12 +40,12 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
     return true;
   }
   return {
-    /** Queues one job's read; resolves with the read flags, or null when the page could not be read in time. Takes the job's URL. */
+    /** Queues one job's read; resolves with the read flags, {unreadable: true, why} when the page could not be read (or not in time), or null when it was cancelled. Takes the job's URL. */
     read(url) {
       const id = `tr${uuid().slice(0, 8)}`;
       const address = String(url || '');
       return new Promise(resolve => {
-        waiting.set(id, {resolve, url: address, queued: now(), marks: {}, timer: set(() => finish(id, null), timeoutMs)});
+        waiting.set(id, {resolve, url: address, queued: now(), marks: {}, timer: set(() => finish(id, {unreadable: true, why: 'timeout'}), timeoutMs)});
         queue.push({id, url: address});
       });
     },
@@ -64,7 +64,7 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
     /** The extension's answer for the active read: {simple, why} from the light look, or {botCheck, loginWall, accountCreation} from the judge and allFactsSaved from the answer plan, or {unreadable: true} when the page never became a form. Returns false for any other id. */
     report(id, payload = {}) {
       if (!active || id !== active) return false;
-      if (payload.unreadable === true) return finish(id, null, true);
+      if (payload.unreadable === true) return finish(id, {unreadable: true, why: typeof payload.why === 'string' && payload.why ? payload.why : 'unreadable'}, true);
       return finish(id, 'simple' in payload ? readFromLook(payload) : readFromJudge(payload, {eligible: true, allFactsSaved: payload.allFactsSaved}), true);   // the light read says `simple`; the judge-based read (kept for the demo and older extensions) says its flags
     },
     /** Resolves every queued and active read with null (Cancel, the app quitting). Returns how many it ended. */
@@ -77,7 +77,7 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
 /** Where one read's time went. Queue = waiting for the browser; open = handed out until the page was a form; judge = the AI's judgment; plan = matching the saved answers. A step that never started is 0. */
 function summaryOf(row, value, reported, end) {
   const {opening, judging, planning} = row.marks, span = (from, to) => (from === undefined ? 0 : Math.max(0, to - from));
-  const outcome = !reported ? (opening === undefined ? 'cancelled-before-start' : 'ended-without-report') : value === null ? 'unreadable' : 'read';
+  const outcome = !reported ? (opening === undefined ? 'cancelled-before-start' : 'ended-without-report') : value === null || value?.unreadable === true ? 'unreadable' : 'read';
   // Each step ends where the next one that was reported starts, so a lost report never makes two steps count the same time.
   const judgingStart = judging ?? planning, address = row.url.split(/[?#]/)[0];   // the address without its query: a tracking token has no place in the log
   return {url: address, outcome, totalMs: end - row.queued, queueMs: (opening ?? end) - row.queued, openMs: span(opening, judgingStart ?? end), judgeMs: judging === undefined ? 0 : span(judging, planning ?? end), planMs: span(planning, end)};
