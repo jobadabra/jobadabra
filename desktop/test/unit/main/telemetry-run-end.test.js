@@ -43,6 +43,20 @@ test('a failed run with no tail still says its error kind, never an empty error'
   assert.equal(runFailure({code: 1, timedOut: false, tail: []}).error, 'exit 1, no error line');
 });
 
+// Sentry 4H, 4W, 4R, 4T, 4J, 4Q (31 Oct-5 Nov 2026, one Windows tester's scheduled runs): the engine exited non-zero after a normal-looking run, and the report's title was its last ORDINARY line
+// ("Enriched 5 of 5 job(s)…", "Digest ready…", "Codex answered in 3 s"), six issues for one unexplained exit. The label now says what is known: the exit code and that no line is an error.
+// It is the report's label, not the cause: the cause waits for an event carrying `code` (lib/sentry.js runExtra).
+test('a non-zero exit with no error line is labelled by its exit code, never by an ordinary last line', () => {
+  const tails = [['Claude Code haiku: answered in 3 s', '⏱ Time is up for this refresh: 95 job(s) left for the next one (it stops at 3 min)', 'Enriched 5 of 5 job(s) with claude-haiku-5-5; 0 failed; tokens in 24, out 10286'],
+    ['Digest ready: 10 jobs, 40 new. Telegram isn\'t connected, so nothing was sent.'], ['Interview sweep: 0 application(s) moved on after a recorded interview.']];
+  for (const tail of tails) {
+    const failure = runFailure({code: 1, timedOut: false, tail});
+    assert.equal(failure.error, 'exit 1, no error line');
+    assert.equal(runFailure({code: 143, timedOut: false, tail}).error, 'exit 143, no error line');
+  }
+  assert.equal(runFailure({code: 1, timedOut: false, tail: ['Boom: ValueError: x', 'Enriched 5 of 5 job(s); 0 failed']}).error, 'Boom: ValueError: x', 'a real error line still wins');
+});
+
 test('every captured kind gets a non-empty message, even from empty fields', async () => {
   const sentry = await import('../../../lib/sentry.js');
   for (const kind of sentry.CAPTURED) {
