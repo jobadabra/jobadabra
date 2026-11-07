@@ -100,3 +100,13 @@ test('a fact already in its section is replaced, never written twice', async () 
   await questions.answer(storage, await openKey(storage, undefined, 'Notice period'), '3 months', undefined, null, {ai: ai()});
   assert.deepEqual((await sections.read(storage)).availability, [{label: 'Earliest start', value: 'January'}, {label: 'Notice period', value: '3 months'}]);
 });
+
+// #3514: a question that is a Your details fact's own label is that fact (lib/question-lists.js keeps it out of What we learned with no AI); a longer wording or another question is not.
+test('factLabelled names the fact whose catalogue label a question is, and nothing else', async () => {
+  const {factLabelled} = await import('../../../lib/answer-home.js');
+  assert.equal(factLabelled('Notice period')?.id, 'notice');
+  assert.equal(factLabelled('  notice   PERIOD ')?.id, 'notice', 'case and spacing do not matter');
+  assert.equal(factLabelled('What is your preferred start date and notice period?'), null, 'a sentence is a question of its own');
+  assert.equal(factLabelled('Salary expectation in Germany'), null);
+  assert.equal(factLabelled(''), null);
+});

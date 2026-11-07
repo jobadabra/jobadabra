@@ -13,6 +13,7 @@ import {formatFor, proposalIn} from '../renderer/question-kind.js';
 import {letterQuestion} from './letter-availability.js';
 import * as detailsReview from './details-review.js';
 import {split, wordsKeys} from './question-dismissed.js';
+import {factLabelled} from './answer-home.js';
 
 const NOT_LEARNED = new Set(['details', 'one_job', 'consent']);   // lib/question-reuse.js verdicts that are never a learning
 const answeredNow = async (storage, groups, fetcher) => verdicts.answeredOf(storage, groups ?? await questions.standardAnswers(storage, fetcher));
@@ -49,7 +50,11 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   const formRows = [...(rows || await questions.list(storage, fetcher)), ...asks], answered = await answeredNow(storage, groups, fetcher), baseFacts = await factsOf(storage, fetcher);
   // The saved answers get the same verdict in the same one call (AC2: the tab lists no Your details fact, no one job's, no consent); then the one filter.
   const {verdicts: judged, usage} = await verdicts.ensure(storage, [...formRows, ...saved, ...answered].map(row => row.question), {answered, facts: baseFacts, ai});
-  const {shown, hidden, fromDetails} = visibleQuestions(formRows, judged, {open: baseFacts.filter(fact => !fact.value).map(fact => fact.label)});
+  // A form question that is a Your details fact's own label is that fact, as the AI's 'details' verdict would say: no AI, no verdict, and it was listed here as a bare label as well as in Fill your details (#3514).
+  // Only when that drawer asks it today or the fact already holds a value; a fact the daily pick has not reached yet stays listed here, its only ask (never in neither list). The AI's own verdict wins.
+  const askedHere = new Set([...items.filter(row => row.details?.kind === 'missing').map(row => row.details.fact), ...baseFacts.filter(fact => fact.value).map(fact => fact.label)].map(keyOf));
+  const ownFacts = Object.fromEntries(formRows.map(row => [row, factLabelled(row.question)]).filter(([, fact]) => fact && askedHere.has(keyOf(fact.label))).map(([row, fact]) => [keyOf(row.question), {reuse: 'details', fact: fact.label}]));
+  const {shown, hidden, fromDetails} = visibleQuestions(formRows, {...ownFacts, ...judged}, {open: baseFacts.filter(fact => !fact.value).map(fact => fact.label)});
   const kept = await keptFormats(storage, shown.filter(row => !row.details), ai);   // the kinds of what is shown only: a hidden row costs no call
   const known = verdicts.cached(storage), formatted = rows => rows.map(row => (row.details ? row : withFormat([row], kept)[0]));
   // A Profile line merged into a form question's topic is that topic's copy: never answered as another wording (lib/questions.js answers the answers page only).

@@ -19,6 +19,12 @@ export const HOME_NAMES = Object.fromEntries(Object.entries(sections.SECTIONS).m
  */
 export const factHomeOf = (question, mark) => CATALOG.find(fact => fact.kind !== 'per_country' && fact.kind !== 'text' && mark?.kind === fact.kind && same(fact.label) === same(question))?.home || '';
 
+/**
+ * The Your details fact whose catalogue label is this question, whatever its kind ("Notice period"), or null: such a question is the fact, asked in Fill your details, so What we learned never lists it as a learning
+ * (the same place the AI's 'details' verdict sends it: lib/question-lists.js). Why (7 Nov 2026, #3514, AI persona runs 42397493597, 42397491150, 42397498182): with no AI there is no verdict, and the bare label showed in both lists.
+ */
+export const factLabelled = question => CATALOG.find(fact => same(fact.label) === same(question)) || null;
+
 // -> a section key, or '' (a standard answer). mark: the kind the answer was given with (lib/questions.js answer).
 export async function homeOf(question, value, ai = {}, mark = null) {
   if (!question || !value) return '';
