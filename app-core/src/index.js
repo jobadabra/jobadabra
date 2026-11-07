@@ -347,10 +347,14 @@ async function handleButton(env, query) {
 const TRANSCRIPT_TYPES = /\.(txt|md|srt|vtt|text)$/i;
 const RECORDING_TYPES = /\.(webm|m4a|mp3|wav|ogg|oga|opus|mp4|mov|aac|flac|aiff|mkv)$/i;
 const MAX_FILE = 20 * 1024 * 1024;
+// Canonical file values stay fixed in code, independently of editable display catalogs.
+const RECORDING_NAMES = {voiceNote: 'voice note', videoNote: 'video note', recording: 'recording'};
+const recordingOf = message => ({media: message.voice || message.audio || message.video || message.video_note,
+  key: message.voice ? 'voiceNote' : message.video_note ? 'videoNote' : 'recording'});
 
 export function interviewFile(message) {
-  const media = message.voice || message.audio || message.video || message.video_note;
-  if (media) return {...media, file_name: media.file_name || (message.voice ? 'voice note' : message.video_note ? 'video note' : 'recording'), recording: true};
+  const {media, key} = recordingOf(message);
+  if (media) return {...media, file_name: media.file_name || RECORDING_NAMES[key], recording: true};
   const doc = message.document;
   if (!doc) return null;
   return {...doc, recording: RECORDING_TYPES.test(doc.file_name || ''), transcript: TRANSCRIPT_TYPES.test(doc.file_name || '')};
@@ -367,9 +371,9 @@ export async function handleInterview(env, message) {
     }
     await dispatch(env, { mode: 'interview', file: file.file_id, note: (message.caption || '').slice(0, 500) });
     if (file.recording) {
-      const media = message.voice || message.audio || message.video || message.video_note;
-      // Why (7 Nov 2026, notification-language scope): only fabricated display labels localize; the canonical file_name and real supplied filenames remain raw.
-      const name = media && !media.file_name ? botText(env, message.voice ? 'voiceNote' : message.video_note ? 'videoNote' : 'recording') : file.file_name;
+      const {media, key} = recordingOf(message);
+      // Why (7 Nov 2026, notification-language review): the shared selector identifies the fabricated label; canonical names stay fixed in code and only this presentation uses the catalog.
+      const name = media && !media.file_name ? botText(env, key) : file.file_name;
       return botText(env, 'gotRecording', {file: escapeHtml(name)});
     }
     return botText(env, 'gotTranscript', {file: escapeHtml(file.file_name)});
