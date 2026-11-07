@@ -366,9 +366,13 @@ export async function handleInterview(env, message) {
       return botText(env, 'fileLarge');
     }
     await dispatch(env, { mode: 'interview', file: file.file_id, note: (message.caption || '').slice(0, 500) });
-    return file.recording
-      ? botText(env, 'gotRecording', {file: escapeHtml(file.file_name)})
-      : botText(env, 'gotTranscript', {file: escapeHtml(file.file_name)});
+    if (file.recording) {
+      const media = message.voice || message.audio || message.video || message.video_note;
+      // Why (7 Nov 2026, notification-language scope): only fabricated display labels localize; the canonical file_name and real supplied filenames remain raw.
+      const name = media && !media.file_name ? botText(env, message.voice ? 'voiceNote' : message.video_note ? 'videoNote' : 'recording') : file.file_name;
+      return botText(env, 'gotRecording', {file: escapeHtml(name)});
+    }
+    return botText(env, 'gotTranscript', {file: escapeHtml(file.file_name)});
   }
   const text = message.text || '';
   if (!text.includes('\n')) {

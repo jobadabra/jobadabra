@@ -122,3 +122,30 @@ test('known run modes have localized presentation while canonical defaults and u
   assert.ok(formatRunItems([run], {JOBADABRA_NOTIFICATION_LANGUAGE: 'de'}).includes('Stellen suchen'));
   assert.equal(run.mode, 'run');
 });
+
+
+test('recording callbacks localize only fabricated display labels and preserve canonical files, raw names and dispatch', async t => {
+  const {handleInterview, interviewFile} = await import('../src/index.js');
+  const {botText} = await import('../src/bot-copy.js');
+  const trips = []; t.mock.method(globalThis, 'fetch', (...args) => {trips.push(args); throw new Error('No external transport');});
+  t.after(() => assert.deepEqual(trips, []));
+  const labels = {en: ['voice note', 'video note', 'recording'], de: ['Sprachnachricht', 'Videonachricht', 'Aufnahme'], fr: ['message vocal', 'message vidéo', 'enregistrement'], it: ['messaggio vocale', 'videomessaggio', 'registrazione'], es: ['nota de voz', 'nota de vídeo', 'grabación'], ro: ['mesaj vocal', 'mesaj video', 'înregistrare'], ru: ['голосовое сообщение', 'видеосообщение', 'запись']};
+  for (const locale of [...locales, undefined, 'system', 'unknown']) {
+    const language = labels[locale] ? locale : 'en', dispatched = [];
+    const env = {JOBADABRA_NOTIFICATION_LANGUAGE: locale, dispatch: async (...args) => dispatched.push(args)};
+    for (const [kind, index] of [['voice', 0], ['video_note', 1], ['audio', 2], ['video', 2]]) {
+      const message = {[kind]: {file_id: 'Original {file} ' + kind, file_size: 23}, caption: 'Raw <caption> {note}'};
+      const before = JSON.stringify(message), canonical = interviewFile(message);
+      assert.equal(canonical.file_name, labels.en[index]);
+      assert.equal(await handleInterview(env, message), botText(env, 'gotRecording', {file: labels[language][index]}));
+      assert.deepEqual(dispatched.at(-1), [{mode: 'interview', file: message[kind].file_id, note: message.caption}, undefined]);
+      assert.deepEqual(interviewFile(message), canonical); assert.equal(JSON.stringify(message), before);
+      for (const name of ['voice note', 'video note', 'recording', '工程師 <name> & {file}.mp3']) {
+        const named = {[kind]: {...message[kind], file_name: name}};
+        const expected = name.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+        assert.equal(await handleInterview(env, named), botText(env, 'gotRecording', {file: expected}), 'real/default-like filename is content');
+        assert.equal(interviewFile(named).file_name, name);
+      }
+    }
+  }
+});

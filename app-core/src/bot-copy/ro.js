@@ -1,5 +1,8 @@
 // Bundled end-user bot presentation; canonical commands, action IDs and supplied content are never translated.
 export default {
+  "voiceNote": "mesaj vocal",
+  "videoNote": "mesaj video",
+  "recording": "înregistrare",
   "unknown": "Nu cunosc această comandă.",
   "run": "🔄 Căutarea a început. Rezumatul ajunge în aproximativ 3 minute.",
   "today": "📋 Lista actuală ajunge în aproximativ un minut.",

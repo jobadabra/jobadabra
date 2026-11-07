@@ -1,5 +1,8 @@
 // Bundled end-user bot presentation; canonical commands, action IDs and supplied content are never translated.
 export default {
+  "voiceNote": "nota de voz",
+  "videoNote": "nota de vídeo",
+  "recording": "grabación",
   "unknown": "No conozco ese comando.",
   "run": "🔄 Búsqueda en curso. El resumen llega en unos 3 minutos.",
   "today": "📋 La lista actual llega en aproximadamente un minuto.",
