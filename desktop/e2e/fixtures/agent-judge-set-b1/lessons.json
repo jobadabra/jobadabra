@@ -1,0 +1,55 @@
+{
+ "source": "closedLessons() of the persona issues closed as by design on 7 Nov 2026, as lib/agent-closed.mjs wrote them",
+ "lessons": {
+  "Settings": [
+   {
+    "id": "closed-3539",
+    "number": 3539,
+    "text": "GitHub row claims \"Always on\" but is not connected",
+    "why": "The row's name is the feature \"GitHub · Always on\"; the \"Not connected\" badge and \"Set up\" button beside it are that feature's state, which is exactly rule settings-3 (\"a row names a setting and the value beside it is that setting's state\")…",
+    "at": "2026-11-07T19:16:23Z"
+   },
+   {
+    "id": "closed-3531",
+    "number": 3531,
+    "text": "Text size description contradicts selected Large option",
+    "why": "The percentage is the real zoom, the description is the choice's own word. On a laptop-size display (width up to 1512, the persona's 1280 window) the Default size is 80%, so Large is 0.8 x 1.25 = 100%. \"100%.",
+    "at": "2026-11-07T19:15:29Z"
+   }
+  ],
+  "Jobs": [
+   {
+    "id": "closed-3537",
+    "number": 3537,
+    "text": "Job row titled by a raw URL",
+    "why": "Add application tracks a link the app cannot read with what it has and then asks for the missing facts in the same dialog: when the answer says \"not scored yet\" the Job title, Company and description fields open and the same Track it saves…",
+    "at": "2026-11-07T19:15:56Z"
+   },
+   {
+    "id": "closed-3529",
+    "number": 3529,
+    "text": "Issue banner reports problems although there are no jobs",
+    "why": "The banner on Jobs lists the profile's open items, not per-job ones: Cover letter missing, details to fill in Your details, answers to check in What we learned and search suggestions.",
+    "at": "2026-11-07T19:15:15Z"
+   }
+  ],
+  "Actions": [
+   {
+    "id": "closed-3534",
+    "number": 3534,
+    "text": "Unavailable reason uses internal wording",
+    "why": "\"Not in the end-to-end journey: it never reaches our server.\" is shown only when siteOffForUser() is true, that is a test run of the app; a person's install never sees it.",
+    "at": "2026-11-07T19:15:43Z"
+   }
+  ],
+  "Strategy": [
+   {
+    "id": "closed-3427",
+    "number": 3427,
+    "text": "consistency on strategy: Relocation says Not specified but Home base says open to rel",
+    "why": "\"Not specified\" is an answer, not a missing value, and the search only restricts on \"no\", so \"Not specified\" next to a Home base saying \"open to relocating within Switzerland\" does not make scoring treat the person as not open to relocating…",
+    "at": "2026-11-07T03:16:09Z"
+   }
+  ]
+ }
+}

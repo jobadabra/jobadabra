@@ -14,7 +14,8 @@ import {actorAskOf, brokerAsk, MODELS} from '../lib/agent-ask.mjs';
 import {planLine, planSizing} from '../lib/agent-steps.mjs';
 import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens, runBudget, stoppedLabel, tokensLine} from '../lib/agent-tier.mjs';
 import {actionSchema} from '../lib/explore.mjs';
-import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
+import {areaOfView, areasWith, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
+import {closedForRun} from '../lib/agent-closed.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
 import {movesFromPalette, readPalette, withLanguage} from '../lib/agent-moves.mjs';
 import {laneOf, laneSeed, moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
@@ -86,8 +87,10 @@ export async function run(ctx) {
     const fresh = planId ? namedPlan(planId, seed) : planSession({seed: batchSeed, lane, moves, coverage, changed: changed.areas, pending, max: goalMax});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};
-    const areas = [...new Set([...plan.goals.map(goal => goal.group), ...changed.areas])].filter(area => expectations[area] || notes[area]);
-    const knowledge = [knowledgeFor(areas, {expectations, notes}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
+    // Why (7 Nov 2026, pz, owner via mac-50: "are we treating the root cause?"): the closed by-design verdicts of the persona's issues are knowledge for the actor and the judge (lib/agent-closed.mjs); a replay or an unprompted run measures one app state, so it is told none.
+    const closed = closedForRun({planId, off: rulesOff(process.env.AGENT_RULES_OFF), log: console.log});
+    const areas = areasWith([...plan.goals.map(goal => goal.group), ...changed.areas], expectations, notes, closed);
+    const knowledge = [knowledgeFor(areas, {expectations, notes, closed}), changed.changes.length ? `## Changed since your last session\n${changedLines(changed).join('\n')}` : ''].filter(Boolean).join('\n\n');
     // Why (5 Nov 2026, owner via mac-32: "Assuming the initial context/harness would be max 20k"): what every actor call carries before the page is measured now and the run fails here, before any call, when it is over 20k; the cap of 250k is spent on the app, not on the same words again.
     const harness = harnessTokens({system: AGENT_SYSTEM, schema: actionSchema(AGENT_VIEWS, agentExtend({knowledgeIds: [], views: AGENT_VIEWS, goal: {}, sink: []})), intros: plan.goals.map(goal => goalIntro(goal, knowledge))});
     console.log(`  harness: ${harness} tokens in every call before the page (limit 20000)`);
@@ -97,7 +100,7 @@ export async function run(ctx) {
     const meter = {usable: budget.usable, actorUsed: () => budget.state.used.actor, stepTokens};   // Why (7 Nov 2026, #3378): goals are sized by the token meter
     const actorAsk = actorAskOf(actorTier, engine);   // a night on one engine has none to fall back to
     try {
-      session = await runSession({act, ask: budget.actor(actorAsk), failover: actorAsk.failover, judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
+      session = await runSession({act, ask: budget.actor(actorAsk), failover: actorAsk.failover, judgeAsk: budget.judge(brokerAsk('mid', {only: 'claude'})), judgeKnowledge: note => knowledgeFor([areaOfView(note.view)], {expectations, notes, closed, maxTokens: 1000}), screenAsk: screen === 'off' ? null : budget.reader(brokerAsk('mid', {only: 'claude'})), views: AGENT_VIEWS, plan, knowledge, knowledgeIds: Object.values(expectations).flat().map(entry => entry.id),
         caps: CAPS, meter, log: line => console.log(line), shoot: () => shootPage(page), where: video.position, session: {id: `${today}-${seed}`, snapshot: commitNow, run: process.env.GITHUB_RUN_ID || '', chain: pointerOf(chainState)}});
     } finally { kept = await video.finish(); console.log(`  ${tokensLine(budget.state, actorTier)}`); }   // Why (5 Nov 2026, 9/12 part 2b and the tier cap): a session that throws still leaves the video of what it did and the line of what the actor ran on; `kept` (the video's meta) is what the run record below reads
     // Why (5 Nov 2026, owner via mac-32: cap each run at 250k tokens): the cap refusing the actor's next call ends the session cleanly, it is not a lost broker: the notes made are kept and the run is green.

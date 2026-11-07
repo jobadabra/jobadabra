@@ -40,19 +40,54 @@ export function validateNote(raw, {knowledgeIds = [], views = null} = {}) {
 
 const SEVERITY_RANK = {high: 0, medium: 1, low: 2};
 const JUDGE_RANK = {agrees: 0, unknown: 1, disagrees: 2};
+const QUOTED = /["\u201c]([^"\u201c\u201d]{4,80})["\u201d]/g;
+const quotesOf = note => new Set([...String(note.observed || '').matchAll(QUOTED)].map(match => match[1].trim().toLowerCase()));
+
+/**
+ * One note per element per run. Two notes of one run on one screen that share TWO quoted strings (the row's name and its status, as the person reads them) are the same bug found by two goals: the one with the
+ * higher severity stays (the first on a tie), carries the other's goal in `alsoGoals`, and the other is returned in `joined` with `joinedTo` (its title), never filed twice and never lost. A single shared quote does not join
+ * (code-review finding, 7 Nov 2026: "Not connected" is on unrelated rows, and a low note could hide a high one). The joined note is listed in the run summary; its picture and trail are not in the Admin record.
+ * Why (7 Nov 2026, pz, owner via mac-50: batch 1 of the lanes, #3538 and #3539 were the "Always on" row of one run noted by goals 4 and 2): the Finder's fingerprint hashes the title, and two titles for one row make two issues.
+ * -> {kept, joined}. A note that quotes nothing is never joined (it has no element to compare).
+ */
+export function joinSameElement(notes) {
+  const kept = [], joined = [];
+  for (const note of notes) {
+    const mine = quotesOf(note);
+    const at = mine.size ? kept.findIndex(other => other.view === note.view && [...quotesOf(other)].filter(text => mine.has(text)).length >= 2) : -1;
+    if (at < 0) { kept.push(note); continue; }
+    const twin = kept[at], winner = SEVERITY_RANK[note.severity] < SEVERITY_RANK[twin.severity] ? note : twin, loser = winner === note ? twin : note;
+    winner.alsoGoals = [...new Set([...(winner.alsoGoals || []), ...(loser.alsoGoals || []), loser.goal].filter(goal => goal !== undefined))];
+    loser.joinedTo = winner.title;
+    kept[at] = winner;
+    joined.push(loser);
+  }
+  return {kept, joined};
+}
+
+/** The rule or closed-verdict ids a judge's reason names that are really a line of the knowledge it was given: only an id code can find at the start of a knowledge line counts, a made-up one never holds a note. */
+export const citedIds = (reason, knowledge) => {
+  const lines = String(knowledge || '').split('\n');
+  return [...new Set([...String(reason || '').matchAll(/\b([a-z]+-\d+)\b/g)].map(match => match[1]))].filter(id => lines.some(line => line.startsWith(`- ${id} `)));
+};
+
 /**
  * Which notes are filed. Low severity is never filed (the Finder's rule, owner 4 Oct 2026: "if we assess it as low, let's not open it"; the agent's nitpicks of wording are low). The rest are ranked
  * proved first, then judge agrees, then severity, then the order the agent noted them, and cut at `cap`. A note whose second opinion was unavailable (no answer at all) is held, not filed, unless a script already proved it (its own evidence): it stays in the report and the artifact.
- * -> {filed, over, low, held}: `over`, `low` and `held` are listed in the report, never silently lost.
+ * A note the judge disagrees with AND whose reason names a rule or closed verdict of its knowledge (`judgeCites`, set by the run) is `ruled`: not filed, listed with the id. A disagree that names nothing is still filed (`judge:disagrees`): the judge alone does not gate a filing.
+ * Why (7 Nov 2026, pz, owner via mac-50: "hold a disagree only when it names a rule or closed verdict in the knowledge"; #3534 and #3539 were judge:disagrees and both by design): the 5 Nov exam dropped 5 of 7 real notes on a judge's say alone, a rule id is the part code can check.
+ * -> {filed, over, low, held, ruled}: `over`, `low`, `held` and `ruled` are listed in the report, never silently lost.
  */
 export function rankNotes(notes, cap = MAX_FILED) {
   const low = notes.filter(note => note.severity === 'low');
   const isHeld = note => note.judge === 'unavailable' && !note.proved;
+  const isRuled = note => note.judge === 'disagrees' && (note.judgeCites || []).length > 0 && !note.proved;
   const held = notes.filter(note => note.severity !== 'low' && isHeld(note));
-  const ranked = notes.filter(note => note.severity !== 'low' && !isHeld(note)).map((note, index) => ({note, index}))
+  const ruled = notes.filter(note => note.severity !== 'low' && isRuled(note));
+  const ranked = notes.filter(note => note.severity !== 'low' && !isHeld(note) && !isRuled(note)).map((note, index) => ({note, index}))
     .sort((a, b) => (Number(!!b.note.proved) - Number(!!a.note.proved)) || ((JUDGE_RANK[a.note.judge] ?? 1) - (JUDGE_RANK[b.note.judge] ?? 1)) || (SEVERITY_RANK[a.note.severity] - SEVERITY_RANK[b.note.severity]) || (a.index - b.index))
     .map(each => each.note);
-  return {filed: ranked.slice(0, cap), over: ranked.slice(cap), low, held};
+  return {filed: ranked.slice(0, cap), over: ranked.slice(cap), low, held, ruled};
 }
 
 /** The Admin page of the AI persona's runs (jobadabra-web admin/ai-persona-page.js: `?run=<GitHub run id>`). Private: only the owner reads it. */

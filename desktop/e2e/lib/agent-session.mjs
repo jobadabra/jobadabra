@@ -12,7 +12,7 @@ export const goalSchema = () => ({type: 'object', additionalProperties: false, r
  * One session's summary. `goals`: the planner's [{n, group, label}]; `results`: [{n, verdict, summary, steps, noteIds?}]; `notes`: the validated notes of the session; `cost`: {calls, tokensIn, tokensOut, ms}.
  * A goal with no result is "not-started"; only an attempted goal can be "could-not-finish". Unknown actor verdicts become "doubts". The actor cannot claim that it never started a goal.
  */
-export function summarizeSession({session, persona, seed, goals, results = [], notes = [], cost = {}, cap}) {
+export function summarizeSession({session, persona, seed, goals, results = [], notes = [], joined = [], cost = {}, cap}) {
   const byGoal = new Map(results.map(result => [result.n, result]));
   const rows = goals.map(goal => {
     const result = byGoal.get(goal.n);
@@ -22,7 +22,7 @@ export function summarizeSession({session, persona, seed, goals, results = [], n
   });
   const ranked = rankNotes(notes, cap);
   const counts = Object.fromEntries([...GOAL_VERDICTS, 'not-started'].map(verdict => [verdict, rows.filter(row => row.verdict === verdict).length]));
-  return {session, persona, seed, goals: rows, counts, filed: ranked.filed, over: ranked.over, low: ranked.low, held: ranked.held, steps: rows.reduce((sum, row) => sum + row.steps, 0), cost: {calls: 0, tokensIn: 0, tokensOut: 0, ms: 0, ...cost}};
+  return {session, persona, seed, goals: rows, counts, filed: ranked.filed, over: ranked.over, low: ranked.low, held: ranked.held, ruled: ranked.ruled, joined, steps: rows.reduce((sum, row) => sum + row.steps, 0), cost: {calls: 0, tokensIn: 0, tokensOut: 0, ms: 0, ...cost}};
 }
 
 /** The cost line of a session: calls, tokens and time, in the words the sessions page and the PR use. */
@@ -36,6 +36,9 @@ export function summaryMarkdown(summary) {
   const table = ['| # | Goal | Verdict | What it saw |', '|---|---|---|---|', ...summary.goals.map(goal => `| ${goal.n} | ${goal.label} | ${ICON[goal.verdict]} ${goal.verdict} | ${goal.summary.replace(/\|/g, '/')} |`)];
   // Why (3 Nov 2026, code review on 8/12): a night where Claude is down files nothing and looks green, so the held notes are named here (title, screen, what was seen) with the reason the judge gave.
   const held = summary.held.length ? ['', `**Held, not filed (${summary.held[0].judgeReason || 'the second opinion was unavailable'}):**`, ...summary.held.map(note => `- ${note.title} (${note.view}): ${String(note.observed).replace(/\s+/g, ' ').slice(0, 160)}`)] : [];
+  // Why (7 Nov 2026, pz, owner via mac-50: "list the held notes, never lose them"): a note the judge disagreed with by naming a rule or closed verdict is not filed, and a twin of an earlier note is joined; both are named here with the id or the note they follow.
+  const ruled = summary.ruled?.length ? ['', `**Not filed, the second opinion names a rule or a closed verdict (${summary.ruled.length}):**`, ...summary.ruled.map(note => `- ${note.title} (${note.view}): ${(note.judgeCites || []).join(', ')}: ${String(note.judgeReason || '').slice(0, 160)}`)] : [];
+  const joinedLines = summary.joined?.length ? ['', `**Joined to an earlier note of this run (${summary.joined.length}):**`, ...summary.joined.map(note => `- ${note.title} (${note.view}), goal ${note.goal ?? '?'}, joined to "${note.joinedTo || 'an earlier note'}"`)] : [];
   const stopped = summary.stopped ? [`Stopped: ${{goals: 'every goal returned a verdict', budget: 'remaining token budget cannot fund another goal', steps: 'a goal reached its step limit'}[summary.stopped] || summary.stopped}.`, ''] : [];
-  return [head, '', ...stopped, ...table, ...held].join('\n');
+  return [head, '', ...stopped, ...table, ...held, ...ruled, ...joinedLines].join('\n');
 }
