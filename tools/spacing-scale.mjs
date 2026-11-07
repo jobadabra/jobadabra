@@ -11,7 +11,8 @@ import {fileURLToPath} from 'node:url';
 const DIR = 'desktop/renderer/';
 // margin / padding in any side or logical form, and the three gaps; the value is checked for a raw length.
 const PROPERTY = /(?:^|[;{\s])((?:margin|padding)(?:-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?)?|(?:row-|column-)?gap)\s*:\s*([^;}]*)/g;
-const RAW_LENGTH = /-?\d*\.?\d+(?:px|rem|em)\b/g;
+const UNITS = 'px|rem|em|ex|ch|vh|vw|vmin|vmax|pt|pc|cm|mm|in|q';   // every unit but % is raw
+const RAW_LENGTH = new RegExp(`-?\\d*\\.?\\d+(?:${UNITS})\\b`, 'gi');
 
 /**
  * The raw spacing declarations of one stylesheet: [{line, text}], text as `padding: 7px 6px`.
@@ -24,7 +25,7 @@ export function rawSpacing(css) {
   const code = css.replace(/\/\*[\s\S]*?\*\//g, blank).replace(/[^{};]*\{/g, blank);   // lines stay, comments and selectors go
   const found = [];
   for (const match of code.matchAll(PROPERTY)) {
-    const raw = (match[2].match(RAW_LENGTH) || []).filter(length => !/^-?0*\.?0+(?:px|rem|em)$/.test(length));
+    const raw = (match[2].match(RAW_LENGTH) || []).filter(length => !new RegExp(`^-?0*\\.?0+(?:${UNITS})$`, 'i').test(length));
     if (raw.length) found.push({line: code.slice(0, match.index + match[0].indexOf(match[1])).split('\n').length, text: `${match[1]}: ${match[2].trim().replace(/\s+/g, ' ')}`});
   }
   return found;
