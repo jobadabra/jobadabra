@@ -4,6 +4,7 @@ import {test, afterEach} from 'node:test';
 import '../../../i18n/screens-helpers.js';
 import '../../../i18n/screens-pages.js';
 import windowsTemplates from '../../../i18n/catalogs/windows-platform.js';
+import {osText} from '../../../i18n/platform.js';
 import {guide} from '../../../renderer/ai-plan-guide.js';
 import {SUPPORTED_LOCALES, setLocale, t} from '../../../i18n/index.js';
 
@@ -42,7 +43,7 @@ test('reviewed Windows variants preserve catalog parameters and leave all insert
     const names = parameters(original), values = Object.fromEntries(names.map(name => [name, raw]));
     for (const [column, locale] of SUPPORTED_LOCALES.entries()) {
       setLocale(locale);
-      assert.deepEqual(parameters(variants[column]), names, `${key}/${locale}`);
+      assert.deepEqual(parameters(variants[column] ?? t(key, {}, 'darwin')), names, `${key}/${locale}`);
       const rendered = t(key, values, 'win32');
       if (names.length) assert.ok(rendered.includes(raw), `${key}/${locale}`);
       assert.doesNotMatch(rendered.replaceAll(raw, ''), /\bMac\b|Keychain|⌘/, `${key}/${locale}`);
@@ -62,5 +63,20 @@ test('the real AI guide keeps its existing Windows shell selector instead of tra
   for (const locale of SUPPORTED_LOCALES) {
     setLocale(locale);
     assert.match(guide('app-only', {platform: 'win32'}).steps[0], /PowerShell/, locale);
+  }
+});
+
+test('Windows storage wording retains each locale’s established Always on feature name', () => {
+  const names = ['Always on', 'Immer an', 'Toujours actif', 'Sempre attivo', 'Siempre activo', 'Mereu activ', 'постоянная работа'];
+  for (const [column, locale] of SUPPORTED_LOCALES.entries()) {
+    setLocale(locale);
+    assert.ok(t('pagesDynamicSessionReports.m382', {}, 'win32').includes(names[column]), locale);
+  }
+});
+
+test('English Windows overrides only exist when they differ from the canonical catalog formatter', () => {
+  setLocale('en');
+  for (const [key, variants] of Object.entries(windowsTemplates)) {
+    if (variants[0] !== null) assert.notEqual(variants[0], osText(t(key, {}, 'darwin'), 'win32'), key);
   }
 });
