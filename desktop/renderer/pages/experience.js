@@ -135,7 +135,7 @@ export function showExperience(view) {
     }
     const button = Object.assign(el('button', 'link item-action', t('pagesCommon.remove')), {type: 'button', title: t('pagesEmployers.stopDrawing')});
     button.addEventListener('click', async () => {
-      // Why (3 Nov 2026, #3056, Windows tester): a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version. Display copy now uses localized keys; the decision is unchanged.
+      // Why (3 Nov 2026, #3056, Windows tester): Localized display keys preserve this rule: a press deleted at once, and the rows move up after each removal, so a second press hit the next version. It asks first and names the version.
       if (!confirm(t('pagesDynamicExperience.m154', {"name": source.name}))) return;
       button.disabled = true;
       const answer = await window.pilot.experienceRemove(source.id).catch(error => ({ok: false, error: error.message}));
@@ -170,7 +170,7 @@ export function addedBlock(items, remove) {
     words.append(name, el('span', 'muted', t('pagesEmployers.mayUse')));
     const button = Object.assign(el('button', 'secondary item-action', t('pagesCommon.remove')), {type: 'button'});
     button.addEventListener('click', () => {
-      if (!confirm(t('pagesDynamicExperience.m156', {"text": item.text}))) return;   // Why (3 Nov 2026, #3056): same one-press delete as a CV version's Remove Display copy now uses localized keys; the decision is unchanged.
+      if (!confirm(t('pagesDynamicExperience.m156', {"text": item.text}))) return;   // Why (3 Nov 2026, #3056): Localized display keys preserve this rule: same one-press delete as a CV version's Remove
       button.disabled = true; remove(item.id);
     });
     row.append(tile('user', 'signal'), words, button);

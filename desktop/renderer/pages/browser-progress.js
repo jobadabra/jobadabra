@@ -12,7 +12,7 @@ const MB = bytes => Math.round(bytes / 1048576);
 const etas = new Map();
 const etaOf = started => { if (!etas.has(started)) etas.set(started, new Eta(0)); return etas.get(started); };
 const AT = {checking: 0, download: 0, unpack: 2};
-// Why (1 Nov 2026, #2485): Background and Full automation both run in this browser, so the offer names neither mode and promises nothing about who presses Submit. Display copy now uses localized keys; the decision is unchanged.
+// Why (1 Nov 2026, #2485): Localized display keys preserve this rule: Background and Full automation both run in this browser, so the offer names neither mode and promises nothing about who presses Submit.
 const OFFER = {title: t('pagesDownloads.browserOffer'), right: '', share: null, steps: [],
   fine: t('pagesDownloads.browserSize'), action: t('pagesDownloads.download')};
 

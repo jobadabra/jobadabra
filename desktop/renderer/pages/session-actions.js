@@ -37,7 +37,7 @@ export async function cancelSession(item) {
   if (!result?.ok) { toastMessage(t('pagesSessionStates.notCancelled'), result?.error || t('pagesCommon.tryAgain'), sessionPlace(item), 'bad'); await refreshSessions(); return; }
   const job = sessionJob(item);
   jobsChanged(job, job.stage === 'Applying' ? {stage: 'Kit ready', status: 'saved'} : {});
-  // Why (2026-11-05, owner): cancellation confirms only the result, without internal stages or missing-tab instructions. Display copy now uses localized keys; the decision is unchanged.
+  // Why (2026-11-05, owner): Localized display keys preserve this rule: cancellation confirms only the result, without internal stages or missing-tab instructions.
   toastMessage(t('pagesSessionStates.cancelled'), '', NO_PLACE.done, 'info');
   if (shared.openSessionId === item.id) shared.openSessionId = null;
   await refreshSessions();

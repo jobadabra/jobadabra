@@ -126,7 +126,7 @@ export function withFewJobsHelp(runId) {
       const names = groups.siteNames;
       const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? t('pagesShortActivity.m18', {"value1": names.length - 2}) : '');
       adviceEvent('shown', 'visit', 'few-jobs');
-      // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js). Display copy now uses localized keys; the decision is unchanged.
+      // Why (#2350, Gitar): Localized display keys preserve this rule: a site read starts AI work in Chrome, so its button carries the wand (test/unit/renderer/wand-cursor.test.js).
       const read = wand(Object.assign(el('button', 'secondary', t('pagesActivity.readChrome')), {type: 'button', title: t('pagesActivity.readTwo')}));
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {

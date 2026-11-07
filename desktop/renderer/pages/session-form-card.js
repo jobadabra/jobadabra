@@ -56,7 +56,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
     }
     show($('ss-before-cv'), true);
     $('ss-before-cv-mark').textContent = info.tailored ? '✓' : '○';
-    // Why (27 Oct 2026, owner): the form's panel no longer tailors; its "Tailor in Jobadabra" opens this card, and a tailored CV restarts the form (lib/tailored-restart.js). Display copy now uses localized keys; the decision is unchanged.
+    // Why (27 Oct 2026, owner): Localized display keys preserve this rule: the form's panel no longer tailors; its "Tailor in Jobadabra" opens this card, and a tailored CV restarts the form (lib/tailored-restart.js).
     $('ss-before-cv-title').textContent = info.tailored ? t('pagesSessionStates.tailoredReady') : info.working ? t('pagesSessionStates.tailoringJob') : job?.code ? t('pagesSessionStates.generalCv') : t('pagesSessionStates.jobNotListed');
     $('ss-before-cv-sub').textContent = info.tailored ? t('pagesSessionStates.fillAgainStart') : info.working ? t('pagesSessionStates.tailorTime')
       : job?.code ? t('pagesSessionStates.tailorReplies') : t('pagesSessionStates.addToTailor');
