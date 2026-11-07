@@ -14,6 +14,7 @@ import path from 'node:path';
 import {copyExtension, freePort, launchBrowser, makeOpenShim} from './lib/extension.mjs';
 import {grantAllSites, killGroup, portsFree, refresh, reloadExtension} from './lib/twin-refresh.mjs';
 import {realFolder} from '../lib/twin.js';
+import {describeReplay, fetchBundle, loadBundle} from './lib/twin-replay.mjs';
 import {TOKEN_VAR} from './lib/real-notion-token.mjs';
 import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
@@ -30,6 +31,8 @@ export async function notionStatus(token, id) {
 }
 
 async function main() {
+  const replayAt = process.argv.indexOf('--replay');
+  const replay = replayAt > 0 ? await fetchBundle(process.argv[replayAt + 1], {key: process.env.JP_ADMIN_KEY || keychain('jobadabra.site.api_key')}) : null;   // fetched first: a wrong id stops before anything is synced or started
   if (!fs.existsSync(path.join(LIVE, 'ids.env'))) throw new Error(`no ${path.join(LIVE, 'ids.env')}: create the mirror first (tools/notion_copy.py create, docs/live-test.md)`);
   const mirror = idsOf(path.join(LIVE, 'ids.env')), real = JSON.parse(fs.readFileSync(path.join(REAL, 'settings.json'), 'utf8')).notionIds || {};
   const token = keychain(MIRROR_TOKEN);
@@ -70,6 +73,11 @@ async function main() {
   if (fs.existsSync(ACCOUNTS)) settings.siteAccounts = {...(settings.siteAccounts || {}), ...JSON.parse(fs.readFileSync(ACCOUNTS, 'utf8'))};
   fs.writeFileSync(path.join(HOME, 'settings.json'), JSON.stringify(settings, null, 2));
   say(`folder: a fresh copy of the real one at ${HOME} (no real Notion token, Always on or Telegram)`);
+  if (replay) {   // --replay <id> (lib/twin-replay.mjs): the reported bug's session record and job row, in the twin's folder only
+    const loaded = loadBundle(process.argv[replayAt + 1], replay, HOME);
+    say(`replay: ${loaded.sessions} session record(s) and ${loaded.job ? `the job row (${path.join(HOME, 'replay', process.argv[replayAt + 1], 'job.json')})` : 'no job row'} loaded`);
+    for (const line of describeReplay(replay, {version: JSON.parse(fs.readFileSync(path.join(DESKTOP, 'package.json'), 'utf8')).version})) say(line);
+  }
   // 4. The app and its own browser.
   const port = await freePort(), cdp = await freePort(), browserCdp = await freePort(), shim = makeOpenShim(), extensionDir = copyExtension(port);
   // The owner's Chrome has the extension's "all sites" access granted (optional_host_permissions, one click there); the twin's copy has it

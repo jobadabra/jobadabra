@@ -1,6 +1,8 @@
 # Live test: a twin of the owner's app
 
 > **Verdict:** to see a fix work on the owner's real state and real websites, run `cd desktop && npm run twin`.
+
+> **Replay a bug an AI tester reported:** `cd desktop && npm run twin -- --replay <bundle id>` (the id is in the bug's GitHub issue, "Evidence bundle"). It reads the bundle with the Admin key from the Keychain (`jobadabra.site.api_key`), puts the bug's session record in the twin's folder, saves its job row at `replay/<id>/job.json`, and prints what the tester expected and saw. Never the real folder. The bundle page: Admin → Testing → Bug bundles.
 > A second app (its own window, port and browser) on a fresh copy of the real app folder, with Notion replaced by a one-way mirror.
 > Nothing it does reaches the owner's app window, Chrome windows, Telegram or real Notion. Never Submit. (Owner, 8 Oct 2026.)
 
