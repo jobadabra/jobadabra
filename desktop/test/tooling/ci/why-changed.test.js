@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {test} from 'node:test';
+import {after as afterAll, test} from 'node:test';
 import {checkPush, guardedChanges, missingWhyChanged, whyBlocks} from '../../../../tools/why-changed.mjs';
 
 const OLD = [
@@ -18,17 +18,22 @@ const OLD = [
   '}',
 ].join('\n');
 
-// A one-file push from OLD to `after`, as git diff -U0 prints it (computed here by a throwaway repo, so the hunks are git's own).
+// A push from `files` to `after`, as git diff -U0 prints it: the hunks are git's own, from one shared repo.
+// Why (7 Nov 2026, ts 6/7, owner: "windows unit tests are still very slow"): each push made its own repo with ~10 git processes (init, 3 config, add, commit, branch, add, commit): 417 processes for 16 tests, 27.3 s on a Windows runner (8.4 s on a Mac).
+// One repo for the file, and each push's two commits made by ONE `git fast-import`; HEAD is pointed at the push's branch by writing the file git reads. checkPush still runs its own git calls on that history, so renames and hunks are real.
+let shared = null;
+let pushes = 0;
+afterAll(() => { if (shared) fs.rmSync(shared, {recursive: true, force: true}); });
 function repo(files, after, message = 'Change it') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'why-changed-'));
-  const git = (...rest) => execFileSync('git', ['-C', dir, ...rest], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
-  git('init', '-q', '-b', 'main'); git('config', 'user.email', 't@example.com'); git('config', 'user.name', 't'); git('config', 'commit.gpgsign', 'false');
-  const write = set => { for (const [name, text] of Object.entries(set)) { const file = path.join(dir, name); if (text === null) fs.rmSync(file); else { fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, text); } } };
-  write(files); git('add', '-A'); git('commit', '-qm', 'Base'); git('branch', 'base');
-  write(after); git('add', '-A'); git('commit', '-qm', message);
-  return {dir, problem: () => checkPush({root: dir, base: 'base'}), done: () => fs.rmSync(dir, {recursive: true, force: true})};
+  if (!shared) { shared = fs.mkdtempSync(path.join(os.tmpdir(), 'why-changed-')); execFileSync('git', ['init', '-q', '-b', 'main', shared]); }
+  const n = ++pushes, data = text => `data ${Buffer.byteLength(text)}\n${text}\n`;
+  const commit = (ref, text, set, parent) => `commit refs/heads/${ref}\ncommitter test <test@example.com> ${n} +0000\n${data(`${text}\n`)}${parent ? `from refs/heads/${parent}\n` : ''}`
+    + Object.entries(set).map(([name, body]) => (body === null ? `D ${name}\n` : `M 100644 inline ${name}\n${data(body)}`)).join('') + '\n';
+  execFileSync('git', ['-C', shared, 'fast-import', '--quiet'], {input: commit(`base${n}`, 'Base', files) + commit(`change${n}`, message, after, `base${n}`)});
+  fs.writeFileSync(path.join(shared, '.git/HEAD'), `ref: refs/heads/change${n}\n`);
+  return {problem: () => checkPush({root: shared, base: `base${n}`})};
 }
-const push = (files, after, message) => { const r = repo(files, after, message); try { return r.problem(); } finally { r.done(); } };
+const push = (files, after, message) => repo(files, after, message).problem();
 
 test('only "Why:" and "Why (...):" mark a decision; "// Why a job has no score" describes a function and guards nothing', () => {
   assert.equal(whyBlocks('// Why a job has no score\nconst x = 1;').length, 0);

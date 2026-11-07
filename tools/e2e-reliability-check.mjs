@@ -201,20 +201,38 @@ export function harnessProblems(changes, messages) {
   return found;
 }
 
+/** Reads many `<revision>:<path>` blobs with ONE git process: {spec: text, or null when the path is not in that revision}. A name git cannot take on one line, or anything that is not a blob, fails closed.
+ * Why (7 Nov 2026, ts 6/7, owner: "windows unit tests are still very slow"; 3rd change to this checker's test in a week, Design in the spec): it read each file with `ls-tree` then `show`, two processes (596 of the test file's 1,207 git processes, 70.9 s on a Windows runner). */
+export function readBlobs(root, specs) {
+  const found = new Map();
+  if (!specs.length) return found;
+  if (specs.some(spec => spec.includes('\n'))) throw new Error('a file name with a line break cannot be checked');
+  const out = execFileSync('git', ['-C', root, 'cat-file', '--batch'], {input: `${specs.join('\n')}\n`, maxBuffer: 256 << 20, stdio: ['pipe', 'pipe', 'pipe']});
+  let at = 0;
+  for (const spec of specs) {
+    const end = out.indexOf(10, at);
+    const header = out.toString('utf8', at, end);
+    at = end + 1;
+    if (header.endsWith(' missing')) { found.set(spec, null); continue; }
+    const [, type, size] = header.split(' ');
+    if (type !== 'blob') throw new Error(`${spec} is a ${type}, not a file`);
+    found.set(spec, out.toString('utf8', at, at + Number(size)));
+    at += Number(size) + 1;
+  }
+  return found;
+}
+
 // Repo/base -> blocking message (empty on success). Git errors fail closed; callers must supply a fetched base.
 export function checkPush({root, base = 'origin/main'}) {
   const git = (...args) => execFileSync('git', ['-C', root, ...args], {encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe']});
   const from = git('merge-base', base, 'HEAD').trim();
-  const show = (revision, file) => {
-    if (!git('ls-tree', revision, '--', file).trim()) return null;
-    return git('show', `${revision}:${file}`);
-  };
-  const changes = git('diff', '--name-only', '--no-renames', '-z', `${from}..HEAD`).split('\0').filter(Boolean)
-    .map(file => ({file, before: show(from, file), after: show('HEAD', file)}));
+  const names = git('diff', '--name-only', '--no-renames', '-z', `${from}..HEAD`).split('\0').filter(Boolean);
+  const blobs = readBlobs(root, [...names.flatMap(file => [`${from}:${file}`, `HEAD:${file}`]), `${from}:${REGISTRY}`]);
+  const changes = names.map(file => ({file, before: blobs.get(`${from}:${file}`), after: blobs.get(`HEAD:${file}`)}));
   const touched = touchedLines(git('diff', '-U0', '--no-renames', `${from}..HEAD`, '--', 'desktop/e2e', 'desktop/integration'));
   for (const change of changes) Object.assign(change, touched.get(change.file) || {added: new Set(), removed: new Set()});
   const messages = git('log', '--format=%B%x00', `${from}..HEAD`).split('\0');
-  const lanes = JSON.parse(show(from, REGISTRY) || '{"suites":{}}');
+  const lanes = JSON.parse(blobs.get(`${from}:${REGISTRY}`) || '{"suites":{}}');
   const needsCitation = [];
   for (const {file, before, after} of changes) {
     const suite = SUITE.exec(file)?.[1];

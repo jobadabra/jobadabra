@@ -38,3 +38,18 @@ The runner fails when the number of files it runs differs from the number it pri
 - [ ] 5/5 On a PR the Windows job runs only the picked tests that are OS-sensitive (decided from the test's code); Linux runs the whole pick, main and the nightly everything (owner: "Only windows OS sensitive tests")
 
 Changed from the Design above, on measurement (7 Nov 2026): no guard file needed a declared `// Reaches:` line. 90 of the 98 guards read named folders with `readdirSync` and name them in their own text, so the picker matches a changed file's folder against the quoted folder names in the test and its helpers. The fresh review found five kinds of reader this alone dropped, each now picked with a positive control: a recursive walk from a root held in a variable (`readdirSync(dir)` and `isDirectory()`; such a new walker must name its folder), a tooling test that names a folder (recorded-cases), the ratchets that read `git ls-files` (hardcoded-page-words, unpinned-clock, file-size), and guards over the test files (picked when a test file changes). A second review added: a reader names any folder on the changed path (not only the first), or the file itself when it sits directly under `desktop/` (main.js is read by name through a helper). Import lines do not count as naming a folder. Tooling tests run for a change to `tools/`, `.github/`, `desktop/e2e`, `desktop/integration`, `desktop/scripts` or `desktop/test/tooling`.
+
+## Design: tests that start a git process per case (6/7; owner, 7 Nov 2026: "windows unit tests are still very slow", "Make the slow tests faster")
+
+**Why a Design block:** `e2e-reliability-check.test.js` was made fast once already (#3442: one repo, one `git fast-import` per history; 110 s → 72 s on Windows) and is still the slowest file (70.9 s of the 468 s Windows file-time on main run 42379362652). A third change to the same file in a week is a redesign, not another patch.
+
+**Measured cause of the 70.9 s:** 1,207 git processes for 30 tests (Mac, a `git` shim counting calls): 107 histories × (1 fast-import by the test + 11 by `checkPush`: merge-base, 2 diffs, log, and 2 per changed file for `ls-tree` + `show`, both sides, plus the registry). Mac 25.8 s ≈ 21 ms a process; Windows 70.9 s ≈ 59 ms a process. #3442 removed the 61 repos × 10 processes but not the checker's own spawns.
+
+**Intended behaviour (states, their one owner, the verdicts):**
+- *What a case needs from git:* the merge base, the changed names, the hunks, the messages, and the text of each changed file on both sides. One owner: `checkPush` in `tools/e2e-reliability-check.mjs`.
+- *Reading files:* all of a case's `<revision>:<path>` reads go through ONE `git cat-file --batch` process (`readBlobs`), never one `ls-tree` + `show` per file. A path that is not in the revision is `null`; anything that is not a file, or a name with a line break, fails closed (as every git error does).
+- *The tests:* the same 30 assertions on the same real git history (renames, hunks and messages are git's own); a new test of `readBlobs` on its own (missing path, multi-byte text, a directory, a line break).
+- *Not done, on purpose:* an in-memory fake of git. It would test a re-implementation of `diff -U0`, not the checker; the cost of real git is the number of processes, not git.
+- *The same cause in `why-changed.test.js`* (417 processes for 16 tests, 27.3 s on Windows): its pushes were built by ~10 processes each (init, config × 3, add, commit, branch, add, commit); now one shared repo and one fast-import per push, as in #3442.
+
+**Result (Mac, git processes / seconds):** `e2e-reliability-check` 1,207 → 643 and 25.8 s → 16.2 s; `why-changed` 417 → 162 and 8.4 s → 3.9 s. Windows seconds come from the PR's own run.
