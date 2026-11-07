@@ -1,7 +1,9 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // The time left, said so a person can trust it (owner, 25 Oct 2026: "it was saying before 1 min left, now it says 2 min left"): the same rule as
 // Eta in src/progress.py (smoothed recent pace, never goes up, SLOW instead of a bigger number). tests/fixtures/eta-sequence.json is run by both
 // (tests/unit/engine/test_progress.py, desktop/test/unit/renderer/eta.test.js). Used by pages/office-progress.js (the LibreOffice download).
-export const SLOW = ' · taking longer than expected';
+export const SLOW = t('helperTail.longerEta');
 const SMOOTH = 0.3, STALL_MIN = 60, STALL_PACES = 5;
 
 export class Eta {
@@ -23,8 +25,8 @@ export class Eta {
       seconds = Math.min(fresh, allowed);
     }
     this.cap = seconds; this.capAt = now;
-    if (seconds < 60) return seconds >= 10 ? ' · under a minute left' : '';
-    return ` · about ${pyRound(seconds / 60)} min left`;
+    if (seconds < 60) return seconds >= 10 ? t('helperTail.underMinute') : '';
+    return t('helperTail.minutesEta', {count: pyRound(seconds / 60)});
   }
 }
 

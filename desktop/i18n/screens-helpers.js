@@ -49,3 +49,43 @@ import {messages as esProfile} from './catalogs/helpers/es-profile.js';
 import {messages as roProfile} from './catalogs/helpers/ro-profile.js';
 import {messages as ruProfile} from './catalogs/helpers/ru-profile.js';
 for (const [locale, messages] of Object.entries({en: enProfile, de: deProfile, fr: frProfile, it: itProfile, es: esProfile, ro: roProfile, ru: ruProfile})) registerMessages(locale, 'helperProfile', messages);
+
+// Remaining helper copy uses bounded catalogs.
+import {messages as enRest} from './catalogs/helpers/en-rest.js';
+import {messages as deRest} from './catalogs/helpers/de-rest.js';
+import {messages as frRest} from './catalogs/helpers/fr-rest.js';
+import {messages as itRest} from './catalogs/helpers/it-rest.js';
+import {messages as esRest} from './catalogs/helpers/es-rest.js';
+import {messages as roRest} from './catalogs/helpers/ro-rest.js';
+import {messages as ruRest} from './catalogs/helpers/ru-rest.js';
+for (const [locale, messages] of Object.entries({en: enRest, de: deRest, fr: frRest, it: itRest, es: esRest, ro: roRest, ru: ruRest})) registerMessages(locale, 'helperRest', messages);
+
+// Confirmation and guidance catalogs.
+import {messages as enGuide} from './catalogs/helpers/en-guide.js';
+import {messages as deGuide} from './catalogs/helpers/de-guide.js';
+import {messages as frGuide} from './catalogs/helpers/fr-guide.js';
+import {messages as itGuide} from './catalogs/helpers/it-guide.js';
+import {messages as esGuide} from './catalogs/helpers/es-guide.js';
+import {messages as roGuide} from './catalogs/helpers/ro-guide.js';
+import {messages as ruGuide} from './catalogs/helpers/ru-guide.js';
+for (const [locale, messages] of Object.entries({en: enGuide, de: deGuide, fr: frGuide, it: itGuide, es: esGuide, ro: roGuide, ru: ruGuide})) registerMessages(locale, 'helperGuide', messages);
+
+// Desktop-only tips catalogs.
+import {messages as enTips} from './catalogs/helpers/en-tips.js';
+import {messages as deTips} from './catalogs/helpers/de-tips.js';
+import {messages as frTips} from './catalogs/helpers/fr-tips.js';
+import {messages as itTips} from './catalogs/helpers/it-tips.js';
+import {messages as esTips} from './catalogs/helpers/es-tips.js';
+import {messages as roTips} from './catalogs/helpers/ro-tips.js';
+import {messages as ruTips} from './catalogs/helpers/ru-tips.js';
+for (const [locale, messages] of Object.entries({en: enTips, de: deTips, fr: frTips, it: itTips, es: esTips, ro: roTips, ru: ruTips})) registerMessages(locale, 'helperTips', messages);
+
+// Residual helper catalogs.
+import {messages as enTail} from './catalogs/helpers/en-tail.js';
+import {messages as deTail} from './catalogs/helpers/de-tail.js';
+import {messages as frTail} from './catalogs/helpers/fr-tail.js';
+import {messages as itTail} from './catalogs/helpers/it-tail.js';
+import {messages as esTail} from './catalogs/helpers/es-tail.js';
+import {messages as roTail} from './catalogs/helpers/ro-tail.js';
+import {messages as ruTail} from './catalogs/helpers/ru-tail.js';
+for (const [locale, messages] of Object.entries({en: enTail, de: deTail, fr: frTail, it: itTail, es: esTail, ro: roTail, ru: ruTail})) registerMessages(locale, 'helperTail', messages);

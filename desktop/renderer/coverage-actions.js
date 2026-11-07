@@ -1,3 +1,7 @@
+import '../i18n/screens-helpers.js';
+import {date, number} from '../i18n/format.js';
+import {getLocale} from '../i18n/index.js';
+import {t} from '../i18n/index.js';
 // What to do after a jobs check that found few new jobs (owner, 6 Oct 2026: "buttons after the search is done"): the coverage answer's cards
 // (renderer/coverage-card.js) as one list of actions, least effort first: a filter of yours to remove, a role word to add, a place to add (one
 // click each), then a job source to connect (a key). Pure: the same actions the Strategy cards offer, so both say and do the same.
@@ -38,13 +42,13 @@ export const QUIET_SHARE = 0.3;   // under this share of employers with a match,
 export function runwayWords(runway, read) {
   if (!runway || !read) return '';
   const total = Number(read) || 0, resting = Number(runway.resting) || 0;
-  const day = until => new Date(until).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
-  if (resting && resting * 2 >= total) return `${resting} of ${total} employers resting until ${day(runway.until)}: Find jobs again to keep searching`;
+  const day = until => getLocale() === 'en' ? new Date(until).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : date(until, {day: 'numeric', month: 'short'});
+  if (resting && resting * 2 >= total) return t('helperRest.employersRestingSearch', {resting: number(resting), total: number(total), day: day(runway.until)});
   const soon = runway.soon;
-  if (!soon?.count) return resting ? `${resting} of ${total} employers resting until ${day(runway.until)}` : '';
+  if (!soon?.count) return resting ? t('helperRest.employersResting', {resting: number(resting), total: number(total), day: day(runway.until)}) : '';
   // Said as a condition: nobody rests yet (owner, 7 Oct 2026: "don't imply those employers are already paused").
-  return `If the next ${soon.runs === 1 ? 'search finds' : `${soon.runs} searches find`} nothing new for them, ${soon.count} of ${total} employers rest for ${runway.rest_days} days.`
-    + ` An employer rests after ${runway.rest_after} searches in a row with nothing for you.`;
+  return t('helperRest.runwaySoon', {searches: t('helperRest.runwaySearches', {count: soon.runs}), count: number(soon.count), total: number(total), days: number(runway.rest_days)})
+    + t('helperRest.employerRestAfter', {count: number(runway.rest_after)});
 }
 export function fewJobsGroups(verdict) {
   const actions = coverageActions(verdict);
@@ -55,27 +59,26 @@ export function fewJobsGroups(verdict) {
     const share = matched / e.read;
     const dry = share < QUIET_SHARE;
     employers = {read: e.read, matched, pending, fill: Math.max(2, Math.round(share * 100)), dry,
-      advice: dry ? 'Most have nothing new for you' : 'They still bring jobs',
+      advice: dry ? t('helperRest.employersDry') : t('helperRest.employersStillBring'),
       runway: runwayWords(e.runway, e.read),
       // Ideas the Find new employers task has not tried yet: a job search never touches them (owner, 7 Oct 2026: "why didn't 410 go down?").
-      explore: pending > 0 ? `Checks up to ${Number(e.batch) || 40} employer ideas per run · About 3 min` : 'Every idea tried: Find jobs looks for new names'};
+      explore: pending > 0 ? t('helperRest.employerIdeasBatch', {count: number(Number(e.batch) || 40)}) : t('helperRest.employerIdeasAll')};
   }
   const sources = (Array.isArray(verdict?.sources) ? verdict.sources : []).filter(source => offered(source.id)).map(source => ({id: source.id, name: source.name, sub: source.people || source.effort, title: `${source.effort}: ${source.gain}`}));
   const visits = (Array.isArray(verdict?.visits) ? verdict.visits : []).map(site => ({url: site.url, name: site.name,
-    sub: site.kind === 'portal' ? 'your search' : `${site.why}${site.last_read ? ` · read ${site.last_read.slice(0, 10)}` : ''}`, title: site.note || ''}));
+    sub: site.kind === 'portal' ? t('helperRest.yourSearch') : `${site.why}${site.last_read ? t('helperRest.siteRead', {day: site.last_read.slice(0, 10)}) : ''}`, title: site.note || ''}));
   // A company with two pages (Tiffany & Co. on tiffany.com and tiffanycareers.com) is one site to the reader; both pages are still read.
   const siteNames = [...new Set(visits.map(site => site.name))];
   return {employers, words: actions.filter(action => !['source', 'visit'].includes(action.kind)).map(action => ({...action, row: wordRow(action)})), sources, visits, siteNames};
 }
 // A word action as a row (owner mockup, 7 Oct 2026: "Germany — 30 matching roles" and Review location, not a "+ Germany · 30" chip). Review opens
 // that suggestion on Strategy (its row id there), where the change is previewed before it is made.
-const n = value => Number(value || 0).toLocaleString('en-US');
+const jobs = (count, key) => t(`helperRest.${key}`, {count: count || 0});
 export function wordRow(action) {
-  const jobs = (count, what) => `${n(count)} ${what}${count === 1 ? '' : 's'}`;
-  if (action.kind === 'place') return {glyph: 'pin', title: `Include ${action.value}`, sub: `${jobs(action.count, 'matching role')} outside your selected locations`, button: 'Review location', review: 'places'};
-  if (action.kind === 'role') return {glyph: 'search', title: `Add "${action.value}" to your role words`, sub: `${jobs(action.count, 'posting')} in your places your role words miss`, button: 'Review role word', review: 'coverage'};
-  const what = action.kind === 'exclude' ? `Stop leaving out titles with "${String(action.value).replace(/\\b/g, '')}"` : `Stop hiding jobs that require ${String(action.value).replace(/^./, letter => letter.toUpperCase())}`;
-  return {glyph: 'sliders', title: what, sub: `${jobs(action.count, 'matching job')} hidden by this filter`, button: 'Review filter', review: 'filters'};
+  if (action.kind === 'place') return {glyph: 'pin', title: t('helperRest.includePlace', {place: action.value}), sub: t('helperRest.placeRowSub', {jobs: jobs(action.count, 'matchingRoles')}), button: t('helperRest.reviewLocation'), review: 'places'};
+  if (action.kind === 'role') return {glyph: 'search', title: t('helperRest.addRoleWord', {word: action.value}), sub: t('helperRest.roleRowSub', {jobs: jobs(action.count, 'postings')}), button: t('helperRest.reviewRoleWord'), review: 'coverage'};
+  const what = action.kind === 'exclude' ? t('helperRest.stopExcludingTitle', {word: String(action.value).replace(/\\b/g, '')}) : t('helperRest.stopHidingLanguage', {language: String(action.value).replace(/^./, letter => letter.toUpperCase())});
+  return {glyph: 'sliders', title: what, sub: t('helperRest.filterRowSub', {jobs: jobs(action.count, 'matchingJobs')}), button: t('helperRest.reviewFilter'), review: 'filters'};
 }
 
 // Open on a "Browse sites manually" card (owner, 13 Oct 2026: opening a site did not read it): the tracked "Find jobs using your browser" task for that

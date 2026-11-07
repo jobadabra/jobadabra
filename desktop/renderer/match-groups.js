@@ -1,9 +1,11 @@
+import '../i18n/screens-helpers.js';
+import {t, getLocale} from '../i18n/index.js';
 // Strategy's match lists in two groups (design system, owner 17 Oct 2026: "no raw values in chips"): a word stored as "word" or
 // \bword\b matches the whole word only, any other also inside longer words. Chips never show the quotes; the group says it. Also a
 // Google Jobs place in words ("Zurich,Zurich,Switzerland · de" -> "Zurich, Switzerland · German"). Pure; guarded by test/unit/renderer/match-groups.test.js.
 
 // The two groups' names, for every match list (places, skills, skip words): "inside longer words" (tax finds syntax), or the whole word only.
-export const GROUPS = [['anywhere', 'Also inside longer words'], ['whole', 'Whole word only']];
+export const GROUPS = [['anywhere', t('helperTail.insideWords')], ['whole', t('helperTail.wholeWords')]];
 
 // fragment -> true when it matches the whole word only: the settings page's "word" or a pattern wrapped in \b … \b.
 export const isWholeWord = fragment => /^".+"$/s.test(String(fragment ?? '').trim()) || /^\\b.+\\b$/s.test(String(fragment ?? '').trim());
@@ -29,7 +31,7 @@ export function shownGroups(entries, shown) {
 }
 
 const languageName = code => {
-  try { return new Intl.DisplayNames(['en'], {type: 'language'}).of(code) || code; } catch { return code; }
+  try { return new Intl.DisplayNames([getLocale()], {type: 'language'}).of(code) || code; } catch { return code; }
 };
 // "Zurich,Zurich,Switzerland · de" -> "Zurich, Switzerland · German": a repeated part said once, the language code as its name.
 export function placeLabel(text) {

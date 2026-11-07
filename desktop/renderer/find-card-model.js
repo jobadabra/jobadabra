@@ -1,3 +1,6 @@
+import '../i18n/screens-helpers.js';
+import {t, getLocale} from '../i18n/index.js';
+import {date, number} from '../i18n/format.js';
 // The "Find jobs" card on top of Jobs, as data (pure): which of its five states shows (empty first run, searching, done, failed, none), the step chips
 // with the one that is running, the last lines in words, and the one number (jobs added). Drawn by pages/jobs-find.js. Guarded by: test/unit/renderer/find-card.test.js.
 // Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md
@@ -10,13 +13,13 @@ import {hasFullReport} from './searches-view.js';
 // (src/sources/aggregators.py scan) or once a step after it starts (owner, 26 Oct 2026: ✓ showed before the boards a web search found were read).
 export const FIRST = /^(Finding your first jobs|First jobs:)/;
 const EMPLOYERS = /^(Checking employer|Reading employer|⏳ Reading employer|Titles:|Places:|⏳ Scoring|Scored |Added |Job Matches)/;
-const BOARDS = {label: 'Job boards', match: /^(Searching job boards|Job boards( found| first)?:|⏳ Reading job boards)/, done: /^Job boards: done\b/, beside: true};
+const BOARDS = {label: t('helperRest.jobBoards'), match: /^(Searching job boards|Job boards( found| first)?:|⏳ Reading job boards)/, done: /^Job boards: done\b/, beside: true};
 const MORE = /^(Searching wider|Growing your sources|Source scout|🔭)/;   // Growing your sources: the line older runs printed (kept so their logs still draw)
-const WEB = {label: 'Web search', web: true, beside: true};   // its own chip, beside the others (webSearchChip)
+const WEB = {label: t('helperGuide.webSearch'), web: true, beside: true};   // its own chip, beside the others (webSearchChip)
 const SLICE_END = /^First jobs: (\d+ scored|\d+ found, none to score)/;
 const STEPS = {
-  first: [{label: 'First jobs', match: FIRST}, WEB, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'Wider search', match: MORE}],
-  usual: [WEB, BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'Wider search', match: MORE}],
+  first: [{label: t('helperRest.firstJobs'), match: FIRST}, WEB, {label: t('helperGuide.allEmployers'), match: EMPLOYERS}, BOARDS, {label: t('helperGuide.widerSearch'), match: MORE}],
+  usual: [WEB, BOARDS, {label: t('helperGuide.employerSites'), match: EMPLOYERS}, {label: t('helperGuide.widerSearch'), match: MORE}],
 };
 
 export function stepChips(log = []) {
@@ -33,31 +36,31 @@ export function stepChips(log = []) {
   const employers = order.findIndex(step => step.match === EMPLOYERS);
   const state = i => (i < active ? 'done' : i === active ? 'active' : 'pending');
   const web = webSearchChip(log), last = active === order.length - 1;   // a search that never said a word about it, at its last step: not run
-  return steps.map(step => (step.web ? (web.state === 'pending' && last ? {label: 'Web search · not run', state: 'skipped'} : web) : {label: step.label, state: !step.beside ? state(order.indexOf(step))
+  return steps.map(step => (step.web ? (web.state === 'pending' && last ? {label: t('helperGuide.webNotRun'), state: 'skipped'} : web) : {label: step.label, state: !step.beside ? state(order.indexOf(step))
     : boardsDone || last ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'}));
 }
 
 // The web search's own chip (owner, 26 Oct 2026: "why I don't see here a chip with Web Search?"), its state in words from the engine's lines
 // (src/sources/board_web.py): searching, the boards it found, rested until its next date (when it last searched in the note), off (why in the
 // note) or no answer. Guarded by: test/unit/renderer/live-updates.test.js.
-const day = iso => new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+const day = iso => getLocale() === 'en' ? new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : date(iso, {day: 'numeric', month: 'short'});
 const clock = iso => new Date(iso).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 const boardCount = names => names.replace(/\([^)]*\)/g, '').split(',').filter(name => name.trim()).length;   // "A (x, y), B" is 2 boards
 const SAME_RUN = /^Job boards: no web search: searched in this run/;
 export function webSearchChip(log = []) {
-  let chip = {label: 'Web search', state: 'pending'}, m;
+  let chip = {label: t('helperGuide.webSearch'), state: 'pending'}, m;
   for (const raw of log) {
     const line = String(raw);
     if (SAME_RUN.test(line)) continue;   // a second ask in this run: no news
-    if (/^Job boards: (searching the web|the web search is still searching)/.test(line)) chip = {label: 'Web search', state: 'active'};
+    if (/^Job boards: (searching the web|the web search is still searching)/.test(line)) chip = {label: t('helperGuide.webSearch'), state: 'active'};
     else if ((m = /^Job boards: a web search found (.+)$/.exec(line))) {
       const n = /^no trade or local board/.test(m[1]) ? 0 : boardCount(m[1]);
-      chip = {label: `Web search · ${n ? `${n} board${n === 1 ? '' : 's'} found` : 'none found'}`, state: 'done', note: m[1]};
+      chip = {label: t('helperGuide.webFound', {found: n ? t('helperGuide.boardsFound', {count: n}) : t('helperGuide.noneFound')}), state: 'done', note: m[1]};
     } else if ((m = /^Job boards: no web search: searched (\S+), next after (\S+?);/.exec(line))) {
-      chip = {label: `Web search · rested until ${day(m[2])}`, state: 'skipped', note: `Searched ${day(m[1])}, ${clock(m[1])}; searches again after ${day(m[2])}`};
+      chip = {label: t('helperGuide.webUntil', {day: day(m[2])}), state: 'skipped', note: t('helperGuide.searchedAgain', {day: day(m[1]), time: clock(m[1]), next: day(m[2])})};
     } else if ((m = /^Job boards: no web search: (.+)$/.exec(line))) {
-      chip = {label: /^searched lately/.test(m[1]) ? 'Web search · rested' : 'Web search · off', state: 'skipped', note: m[1]};
-    } else if (/^Job boards: the web search .*did not answer/.test(line)) chip = {label: 'Web search · no answer', state: 'failed', note: line.replace(/^Job boards: /, '')};
+      chip = {label: /^searched lately/.test(m[1]) ? t('helperGuide.webRested') : t('helperGuide.webOff'), state: 'skipped', note: m[1]};
+    } else if (/^Job boards: the web search .*did not answer/.test(line)) chip = {label: t('helperGuide.webNoAnswer'), state: 'failed', note: line.replace(/^Job boards: /, '')};
   }
   return chip;
 }
@@ -79,7 +82,7 @@ export function liveLines(log = []) {
     else if (COUNTS.test(line)) matches = Number(COUNTS.exec(line)[2]);
   }
   // the tick says the jobs that match so far (owner, 26 Oct 2026: "13 pilot jobs found" showed nowhere while 1,221 listings were read)
-  if (tick[0] && matches) tick[0] += ` · ${matches.toLocaleString('en-US')} match your search so far`;
+  if (tick[0] && matches) tick[0] += t('helperGuide.matchingSoFar', {count: number(matches)});
   return readableLog([...results, ...tick]);
 }
 
@@ -98,7 +101,8 @@ export function runCounts(log = []) {
 export function addedSoFar(log = []) {
   return (log || []).reduce((sum, line) => sum + Number((/^Added (\d+) new job/.exec(String(line)) || [])[1] || 0), 0);
 }
-export const addedWords = n => (n ? `${n.toLocaleString('en-US')} job${n === 1 ? '' : 's'} added to your list` : 'No jobs added to your list');
+/** Describe jobs added to the list using the display language’s plural form. */
+export const addedWords = n => (n ? t('helperGuide.addedJobs', {count: n}) : t('helperGuide.noAddedJobs'));
 
 // The employer read as progress: the latest "Reading employer job sites: 1953 of 2251" ticker line (src/progress.py), or null before it starts.
 // When time ran out, the engine's "Employers: read 78 of 608 sites in the time" ends the bar there, not at the last tick (owner, 26 Oct 2026).
@@ -115,10 +119,12 @@ export function employersRead(log = []) {
 // The sites a search that ended at the limit had read, from the engine's own count ({done, total}); {} when it reported none (no number is invented).
 export const partialSites = log => { const sites = employersRead(log || []); return sites ? {done: sites.done, total: sites.total} : {}; };
 // How a search that ended at the 3-minute limit says so, lower-case, for a title or a lead: with the engine's count when it gave one, else without any number (#3108).
-export const limitWords = (sites = {}) => `ended at the 3-minute limit${sites.total ? `, ${sites.done.toLocaleString('en-US')} of ${sites.total.toLocaleString('en-US')} sites searched` : ''}`;
+/** Describe the search time limit using only the employer counts the engine reported. */
+export const limitWords = (sites = {}) => t('helperGuide.endedLimit') + (sites.total ? t('helperGuide.searchedSites', {done: number(sites.done), total: number(sites.total)}) : '');
 // The title of a search that ended at the 3-minute limit (#3108): says so, how many employer sites it read when the engine reported that, and the jobs it did add.
 // Never "No jobs added to your list" alone: that reads as a finished search that found nothing. Used by the result card, the pop-up and the Find card.
-export const partialWords = (run, added = 0) => `Partial: ${limitWords(partialSites(run?.log))}${added ? ` · ${addedWords(added)}` : ''}`;
+/** Name a partial search result with its known site counts and added jobs. */
+export const partialWords = (run, added = 0) => t('helperGuide.partial', {text: limitWords(partialSites(run?.log))}) + (added ? ` · ${addedWords(added)}` : '');
 
 // The bar under the numbers: counted once the engine says "N of M" employers, a sliding bar before (the search is working, the count is not known yet).
 export const readProgressModel = employers => (employers

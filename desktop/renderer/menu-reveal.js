@@ -1,3 +1,5 @@
+import '../i18n/screens-helpers.js';
+import {t} from '../i18n/index.js';
 // Which sidebar pages show yet: Interviews after the first application, Reports after the first weekly report, Employers after the first employer; once shown they stay, with a dot until opened. Guarded by test/unit/renderer/menu-reveal.test.js.
 export const PROGRESSIVE = {
   interviews: signals => signals.applied,
@@ -7,10 +9,10 @@ export const PROGRESSIVE = {
 };
 // What the "More" row lists for a page that is not shown yet (owner, 17 Oct 2026): its name, icon and when it unlocks.
 export const LOCKED = {
-  interviews: {label: 'Interviews', icon: 'mic', when: 'after your first application'},
-  calendar: {label: 'Calendar', icon: 'calendar', when: 'with interviews'},
-  reports: {label: 'Reports', icon: 'chart', when: 'after your first week'},
-  employers: {label: 'Employers', icon: 'building', when: 'after your first employer search'},
+  interviews: {label: t('helpers.interviews'), icon: 'mic', when: t('helperTail.firstApplication')},
+  calendar: {label: t('helperTail.calendar'), icon: 'calendar', when: t('helperTail.withInterviews')},
+  reports: {label: t('helperTail.reports'), icon: 'chart', when: t('helperTail.firstWeek')},
+  employers: {label: t('helperRest.employers'), icon: 'building', when: t('helperTail.firstEmployers')},
 };
 // The still-hidden pages, in the menu's order; the row shows their count and disappears at 0.
 export const stillLocked = state => Object.keys(LOCKED)

@@ -25,13 +25,13 @@ test('helper messages have seven complete catalogs with matching named parameter
 test('every migrated helper lookup is registered and user content stays outside the catalog', async () => {
   const {messages} = await catalog('en');
   const namespaces = {helpers: messages};
-  for (const [namespace, suffix] of Object.entries({helperState: 'state', helperMore: 'more', helperFlow: 'flow', helperProfile: 'profile'})) namespaces[namespace] = (await import(new URL(`i18n/catalogs/helpers/en-${suffix}.js`, root))).messages;
+  for (const [namespace, suffix] of Object.entries({helperState: 'state', helperMore: 'more', helperFlow: 'flow', helperProfile: 'profile', helperRest: 'rest', helperGuide: 'guide', helperTips: 'tips', helperTail: 'tail'})) namespaces[namespace] = (await import(new URL(`i18n/catalogs/helpers/en-${suffix}.js`, root))).messages;
   const files = fs.readdirSync(new URL('renderer/job-drawer/', root)).filter(file => file.endsWith('.js')).map(file => `renderer/job-drawer/${file}`);
   files.push(...fs.readdirSync(new URL('renderer/', root)).filter(file => file.endsWith('.js')).map(file => `renderer/${file}`));
   let count = 0;
   for (const file of files) {
     const source = fs.readFileSync(new URL(file, root), 'utf8');
-    for (const match of source.matchAll(/t\('(helpers|helperState|helperMore|helperFlow|helperProfile)\.([^']+)'/g)) {
+    for (const match of source.matchAll(/t\('(helpers|helperState|helperMore|helperFlow|helperProfile|helperRest|helperGuide|helperTips|helperTail)\.([^']+)'/g)) {
       assert.ok(match[2] in namespaces[match[1]], `${file}: ${match[1]}.${match[2]}`);
       count++;
     }
@@ -112,7 +112,7 @@ test('AI install guidance translates copy while preserving executable commands a
 });
 
 test('helper state catalogs have complete keys and matching interpolation in every plural branch', async () => {
-  for (const suffix of ['state', 'more', 'flow', 'profile']) {
+  for (const suffix of ['state', 'more', 'flow', 'profile', 'rest', 'guide', 'tips', 'tail']) {
   const stateCatalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}-${suffix}.js`, root));
   const {messages: english} = await stateCatalog('en');
   const branches = value => typeof value === 'string' ? [value] : Object.values(value);

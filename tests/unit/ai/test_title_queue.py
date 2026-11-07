@@ -25,6 +25,8 @@ NEAR_KM, FAR_KM = 10, 900
 BUSY = [f'Busy role {n:03d}' for n in range(60)]   # 2 batches: other AI work holds both of Claude's slots
 FAR = [f'Far role {n:03d}' for n in range(90)]     # 3 batches, the employer sites', their level FIRST
 NEAR = [f'Near role {n:03d}' for n in range(30)]   # 1 batch, another reader's, NORMAL
+EMPLOYER = [f'Employer role {n:03d}' for n in range(180)]   # 6 batches: the employer sites' (night p9 Lyon: 169 titles)
+EURES = [f'Eures role {n:03d}' for n in range(90)]          # 3 batches: EURES's (p9: 65 titles), handed over right after
 
 
 class Model:
@@ -104,6 +106,25 @@ class OneQueueTest(unittest.TestCase):
         asked = [title.split(' ')[0] for title in self.model.order]
         self.assertEqual(sorted(asked), ['busy', 'busy', 'far', 'far', 'far', 'near'], 'every batch was asked once')
         self.assertEqual(asked[2], 'near', f'the first free slot goes to the nearest batch, not to the far reader\'s level: {asked}')
+
+
+    def test_readers_whose_distance_is_unknown_take_turns_instead_of_the_first_taking_every_call(self):
+        """#2920, night p9 Lyon (run 42315566393): the employer sites' 6 batches and EURES's 3 were all unplaced (the map learns locations after the titles), so every key tied and arrival
+        order asked the employer batches first; the press's clock allowed 6 title calls and EURES got none ("sorted 0 new title(s)", 0 of its jobs listed). Equal keys now alternate readers."""
+        with mock.patch.object(engine, 'PARALLEL', 1):
+            self.model = Model(1, held=1)   # one worker, as the pop order is then the ask order
+            with batch_scope.concurrent():
+                employer = self.start('employer sites', EMPLOYER, 'Town A', slots.NORMAL)
+                self.until('the first employer batch holds the only slot', lambda: len(self.model.order) == 1)
+                self.until('the other five employer batches wait', lambda: self.pending() >= 5)
+                eures = self.start('EURES', EURES, 'Town B', slots.NORMAL)
+                self.until('EURES\'s three batches wait behind them', lambda: self.pending() >= 8)
+                self.model.gate.set()
+                for thread in (employer, eures):
+                    thread.join(30)
+        asked = [title.split(' ')[0] for title in self.model.order]
+        self.assertEqual(sorted(asked), ['employer'] * 6 + ['eures'] * 3, 'every batch was asked once')
+        self.assertEqual(asked[:6].count('eures'), 3, f'of the 6 calls the clock allowed, EURES gets its share, not none: {asked}')
 
 
 class TheShapesAroundIt(unittest.TestCase):
@@ -243,7 +264,7 @@ class DelayedMapOrdering(unittest.TestCase):
 
         def push(heap, entry):
             original_push(heap, entry)
-            if entry[2] == ['near role']:
+            if ['near role'] in entry:   # the batch's titles, wherever the entry keeps them
                 queued.set()
 
         def ask(batch):

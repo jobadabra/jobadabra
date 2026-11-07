@@ -110,7 +110,7 @@ export function applyingBadge(items, urgency) {
 }
 // The menu foot's line for local sessions (#1676): "session" words only; "Applying" and "Ready to submit" are the Jobs list's server rule (pages/ready-rows.js).
 /** What the sessions tray says before any session exists (owner, 5 Nov 2026: "it should show something, even an empty state, but they should be present, so that the user knows about them"). */
-export const DOCK_EMPTY = {pill: 'none yet', text: 'No application sessions yet. When you apply to a job, its form shows up here.'};
+export const DOCK_EMPTY = {pill: t('helperTail.noneYet'), text: t('helperTail.noSessions')};
 /** What the tray shows: with no sessions, the 'none yet' pill and the explanation, closed or open by the person's own toggle; null when there are sessions (the tray draws them). Why (Gitar on #3321, 5 Nov 2026): the empty state is decided here, where a test can play it, not inside the DOM code. */
 export const dockEmptyView = (sessions, dockOpen) => sessions.length ? null : {pill: DOCK_EMPTY.pill, text: DOCK_EMPTY.text, closed: !dockOpen};
 /** Which session the tray's title and "View all" open: the one on screen or the first; null with no sessions (then they open the Sessions page, which has its own empty state). Why (code review of fb 6b/7, 5 Nov 2026): with an empty tray both links did nothing. */
@@ -154,13 +154,13 @@ export function firstLine(text, limit = 110) {
 // account or filling the job's own form). Step numbers only when there was an account step; nothing once it is submitted.
 export function sessionStage(item, ready = false) {
   if (!item || item.outcome === 'submitted') return null;
-  const site = item.accountHost ? ` on ${item.accountHost.replace(/^www\./, '')}` : '';
-  if (item.accountState === 'refused') return {step: 1, text: `Step 1 of 2 · Sign-in refused${site}: tried once, not retried`, tone: 'warn'};   // before the account step's own line: that one says "Sign in" as if all were well
-  if (item.stage === 'account' || item.stuck === 'account') return {step: 1, text: `Step 1 of 2 · ${item.accountStep === 'sign_in' ? 'Sign in' : 'Creating your account'}${site}`, tone: 'info'};
-  if (item.accountState === 'confirm') return {step: 1, text: `Step 1 of 2 · Confirm your email${site}`, tone: 'info'};
+  const site = item.accountHost ? t('helperTail.onSite', {host: item.accountHost.replace(/^www\./, '')}) : '';
+  if (item.accountState === 'refused') return {step: 1, text: t('helperTail.signRefusedStep', {site}), tone: 'warn'};   // before the account step's own line: that one says "Sign in" as if all were well
+  if (item.stage === 'account' || item.stuck === 'account') return {step: 1, text: t('helperTail.accountStep', {doing: t(item.accountStep === 'sign_in' ? 'helperTail.signIn' : 'helperTail.creatingAccount'), site}), tone: 'info'};
+  if (item.accountState === 'confirm') return {step: 1, text: t('helperTail.confirmEmailStep', {site}), tone: 'info'};
   // ready: the session is at Review (the form says every field is filled): never "Filling" beside "Ready to submit" (#1433).
-  const doing = ready ? 'Application form filled' : 'Filling the application form';
-  if (item.stage === 'form') return {step: 2, text: item.accountHost || item.accountState ? `Step 2 of 2 · ${item.accountState === 'created' ? 'Account created · ' : ''}${doing}` : doing, tone: 'info'};
+  const doing = t(ready ? 'helperTail.formFilled' : 'helperTail.fillingForm');
+  if (item.stage === 'form') return {step: 2, text: item.accountHost || item.accountState ? t('helperTail.formStep', {account: item.accountState === 'created' ? t('helperTail.accountCreatedLead') : '', doing}) : doing, tone: 'info'};
   return null;
 }
 
@@ -236,7 +236,8 @@ export function tabPhase(item, formsOpen, sinceStart, now = Date.now()) {
  */
 export const tabPhases = (items, formsOpen, sinceStart, now = Date.now()) => (items || []).map(item => `${item.id}:${tabPhase(item, formsOpen, sinceStart, now)}`).join(' ');
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
-export const silentPill = formsOpen => (formsOpen?.linkOff ? t('helperState.connectionOff') : 'Chrome not reporting');
+/** Explain missing browser reports without changing the connection status flags. */
+export const silentPill = formsOpen => (formsOpen?.linkOff ? t('helperState.connectionOff') : t('helperTail.chromeSilent'));
 /** The one sentence for a closed connection (`formsOpen.linkOff`: {port, code}), on every card it stops: Chrome's, and a queued hidden-browser job's (`who`: whose extension reports).
  * Why (#2508, Gitar): another program is only the cause for EADDRINUSE, which the app retries; any other code (EACCES) is not retried, so no "updates by itself". */
 export const linkOffLine = (off, who = t('helperState.extensionWho')) => (off.code === 'EADDRINUSE' ? t('helperState.linkInUse', {who, port: off.port})
@@ -248,7 +249,7 @@ export const cancellingState = item => (item?.cancelling ? ['Cancelling…', 'ne
 /** The header button of Cancel all applications: hidden with nothing to cancel; while some are being closed it says how many and is off (owner, 7 Nov 2026: a greyed button and the old list showed nothing). */
 export function cancelAllButton(list) {
   const closing = list.filter(item => item.cancelling).length;
-  const text = closing ? `Cancelling ${closing} application${closing === 1 ? '' : 's'}…` : 'Cancel all applications';
+  const text = closing ? t('helperTail.cancelling', {count: closing}) : t('helperTail.cancelAll');
   return {hidden: !cancellable(list).length, textContent: text, closing};
 }
 /** -> whether this application is being sent right now: Full automation pressed Submit and waits for the site's reply (lib/background-apply-store.js `submitting`). */

@@ -1,3 +1,6 @@
+import '../i18n/screens-helpers.js';
+import {surveyText} from './survey-display.js';
+import {t} from '../i18n/index.js';
 // The Profile's Voluntary surveys as one row per question with its fixed list and Decline (owner, 17 Oct 2026, decision B), the words besides the choice in a note under it
 // and instructions for the AI in "Notes for the AI"; a line that is none of these stays as written. Drawn in Settings → Profile → Your details (pages/experience-profile.js);
 // the lines are the model's (survey-model.js). Reads as label/value rows with the note muted under the value; edits as label | compact list | "+ note" (folded, open when
@@ -6,7 +9,7 @@ import {el, pill} from './components.js';
 import {icon} from './icons.js';
 import {answerControl} from './question-control.js';
 import {formatFor} from './question-kind.js';
-import {SURVEYS, NOTES_LABEL, readLines, textsFor} from './survey-model.js';
+import {SURVEYS, readLines, textsFor} from './survey-model.js';
 import {longText} from './edit-controls.js';
 
 // An answer to a question that is not on a list ("Label: value") shows as a row like the others; display only, the saved line stays as written. The label is up to the FIRST colon
@@ -47,43 +50,49 @@ function noteNode(text) {
 }
 const valueCell = (value, note, extra = []) => { const cell = el('dd', ''); cell.append(el('div', '', value), ...extra, ...(note ? [noteNode(note)] : [])); return cell; };
 
+// Recognize existing prose answers by canonical question label; each source row is used once.
+function proseAnswers(others, answers) {
+  const byLabel = new Map(SURVEYS.map(each => [each.label.toLowerCase(), each.key]));
+  const prose = new Map();   // question key -> its line written as words (not yet a choice)
+  for (const each of others) {
+    const key = each.row && byLabel.get(each.row.label.toLowerCase());
+    if (key && !answers.has(key) && !prose.has(key)) { prose.set(key, each.row.value); each.used = true; }
+  }
+  return prose;
+}
+
 // What the card shows: one lined list, one row per field (owner, 18 Oct 2026: "looks bad … make it more nice UI"). Every question first, with its choice and its note small and muted
 // under it ("Not set" when unanswered). A line written before the question had a list ("Race / ethnicity: White (use …)") fills that question's row with its words and "Check",
 // never a second row while the first says "Not set". Then the other answers in the same rhythm (a long question as a short label, the whole question folded), then the notes for the AI folded last.
 export function surveyBody(part, {sorting = false} = {}) {
   const box = el('div', 'exp-part-body'), read = readLines(part?.lines || []);
-  if (sorting) box.append(el('p', 'muted small survey-sorting', 'Sorting your answers…'));
+  if (sorting) box.append(el('p', 'muted small survey-sorting', t('helperRest.sortingAnswers')));
   const list = el('dl', 'summary-rows is-lined survey-answers');
   const others = read.other.map(other => ({other, row: otherRow(other.text)}));
-  const byLabel = new Map(SURVEYS.map(each => [each.label.toLowerCase(), each.key]));
-  const prose = new Map();   // question key -> its line written as words (not yet a choice)
-  for (const each of others) {
-    const key = each.row && byLabel.get(each.row.label.toLowerCase());
-    if (key && !read.answers.has(key) && !prose.has(key)) { prose.set(key, each.row.value); each.used = true; }
-  }
+  const prose = proseAnswers(others, read.answers);
   for (const each of SURVEYS) {
     const answer = read.answers.get(each.key), words = prose.get(each.key);
-    list.append(el('dt', '', each.label));
-    if (answer) list.append(valueCell(answer.option, answer.note));
+    list.append(el('dt', '', surveyText(each.label)));
+    if (answer) list.append(valueCell(surveyText(answer.option), answer.note));
     else if (words) {
-      const {value, note} = valueAndNote(words), check = pill('Check', 'warn', {title: 'Written as words, not yet one of the choices: Edit to pick one.'});
+      const {value, note} = valueAndNote(words), check = pill(t('helpers.check'), 'warn', {title: t('helperRest.wordsNotChoice')});
       check.classList.add('survey-check');
       list.append(valueCell(value, note, [check]));
-    } else { const cell = el('dd', ''); cell.append(el('div', 'muted small survey-unset', 'Not set')); list.append(cell); }
+    } else { const cell = el('dd', ''); cell.append(el('div', 'muted small survey-unset', t('helpers.notSet'))); list.append(cell); }
   }
   for (const {row, used} of others) {
     if (!row || used) continue;
     const label = shortLabel(row.label), {value, note} = valueAndNote(row.value), dt = el('dt', 'survey-other', label);
     if (label !== row.label) dt.title = row.label;
     const cell = valueCell(value, note);
-    if (label !== row.label) { const whole = el('details', 'plain survey-question'); whole.append(el('summary', 'muted small', 'The whole question'), el('div', 'muted small', row.label)); cell.append(whole); }
+    if (label !== row.label) { const whole = el('details', 'plain survey-question'); whole.append(el('summary', 'muted small', t('helperRest.wholeQuestion')), el('div', 'muted small', row.label)); cell.append(whole); }
     list.append(dt, cell);
   }
   box.append(list);
   for (const {other, row} of others) if (!row) box.append(el('p', 'muted small', other.text));
   if (read.notes.length) {
     const fold = el('details', 'survey-notes-read plain');
-    fold.append(el('summary', 'muted small', `${NOTES_LABEL} · ${read.notes.length} note${read.notes.length === 1 ? '' : 's'}`), ...read.notes.map(note => el('p', 'muted small', note.text)));
+    fold.append(el('summary', 'muted small', `${t('helperRest.notesAi')} · ${t('helperRest.noteCount', {count: read.notes.length})}`), ...read.notes.map(note => el('p', 'muted small', note.text)));
     box.append(fold);
   }
   return box;
@@ -93,18 +102,18 @@ export function surveyBody(part, {sorting = false} = {}) {
 // a question is answered in words only, and every answer folded under it (surveyBody; open while the answers are being sorted).
 export function surveyRead(part, {sorting = false} = {}) {
   const read = readLines(part?.lines || []), byLabel = new Set(SURVEYS.map(each => each.label.toLowerCase()));
-  const answered = SURVEYS.filter(each => read.answers.has(each.key)).map(each => each.label);
+  const answered = SURVEYS.filter(each => read.answers.has(each.key)).map(each => surveyText(each.label));
   const inWords = read.other.map(other => otherRow(other.text)).filter(row => row && byLabel.has(row.label.toLowerCase())).length;
   const named = [...answered, ...read.other.map(other => otherRow(other.text)?.label).filter(Boolean)];
-  const words = named.length > 3 ? `${named.slice(0, 3).join(', ')} and ${named.length - 3} more saved` : `${named.join(', ')} saved`;
+  const words = named.length > 3 ? t('helperRest.savedMore', {names: named.slice(0, 3).join(', '), count: named.length - 3}) : t('helperRest.savedNames', {names: named.join(', ')});
   const folds = named.length || sorting, box = el('div', 'survey-read');
   const line = el(folds ? 'summary' : 'div', 'survey-saved');
-  line.append(icon(named.length ? 'tick' : 'info'), el('b', '', named.length ? 'Saved preferences' : 'No answers yet'),
-    el('span', 'muted', named.length ? words : 'Edit to add the answers equal-opportunity questions ask for'),
-    ...(inWords ? [pill(`${inWords} to check`, 'warn', {title: 'Written as words, not yet one of the choices: Edit to pick one.'})] : []));
+  line.append(icon(named.length ? 'tick' : 'info'), el('b', '', named.length ? t('helperRest.savedPreferences') : t('helperRest.noAnswersYet')),
+    el('span', 'muted', named.length ? words : t('helperRest.editEqualAnswers')),
+    ...(inWords ? [pill(t('helperRest.toCheck', {count: inWords}), 'warn', {title: t('helperRest.wordsNotChoice')})] : []));
   if (!folds) { box.append(line); return box; }
   // One boxed row (mockup 05): the saved line is the fold's own header, "Show answers · N" at its right, every answer under it.
-  line.append(el('span', 'link small survey-toggle', `Show answers · ${named.length}`), icon('chevron', 'icon survey-chevron'));
+  line.append(el('span', 'link small survey-toggle', t('helperRest.showAnswers', {count: named.length})), icon('chevron', 'icon survey-chevron'));
   const fold = el('details', 'plain survey-all');
   fold.open = sorting;
   fold.append(line, surveyBody(part, {sorting}));
@@ -120,30 +129,30 @@ export function surveyForm(part, {onChange = () => {}} = {}) {
   for (const each of SURVEYS) {
     const answer = read.answers.get(each.key), row = el('div', 'survey-row');
     choices[each.key] = {option: answer?.option || '', note: answer?.note || ''};
-    const control = answerControl(formatFor({marked: {kind: 'single', options: each.options}}), choices[each.key].option, next => { choices[each.key].option = next; onChange(); }, {ariaLabel: each.label});
-    const note = longText(choices[each.key].note, `${each.label}: note`, 'A note for the AI (optional)', next => { choices[each.key].note = next; onChange(); });
+    const control = answerControl(formatFor({marked: {kind: 'single', options: each.options}}), choices[each.key].option, next => { choices[each.key].option = next; onChange(); }, {ariaLabel: surveyText(each.label), optionLabel: surveyText});
+    const note = longText(choices[each.key].note, t('helperRest.noteLabel', {label: surveyText(each.label)}), t('helperRest.aiNoteOptional'), next => { choices[each.key].note = next; onChange(); });
     note.className = 'fact-note';
     note.hidden = !choices[each.key].note;
-    const more = Object.assign(el('button', 'link small', '+ note'), {type: 'button'});
+    const more = Object.assign(el('button', 'link small', t('helperRest.plusNote')), {type: 'button'});
     more.hidden = !note.hidden;
     more.addEventListener('click', () => { note.hidden = false; more.hidden = true; note.focus?.(); });
-    row.append(el('b', '', each.label), control, more, note);
+    row.append(el('b', '', surveyText(each.label)), control, more, note);
     node.append(row);
   }
   // One "Notes for the AI" box (no empty twin beside a filled one); "+ Add another note" opens a further box, an empty one is dropped on save (textsFor).
   const fold = el('details', 'survey-notes'), notes = [], notesBox = el('div', 'survey-notes-boxes');
-  const addNote = text => { const field = longText(text, NOTES_LABEL, `${NOTES_LABEL} (optional)`, onChange); notes.push(field); notesBox.append(field); return field; };
+  const addNote = text => { const field = longText(text, t('helperRest.notesAi'), t('helperRest.optionalLabel', {label: t('helperRest.notesAi')}), onChange); notes.push(field); notesBox.append(field); return field; };
   (read.notes.length ? read.notes.map(each => each.text) : ['']).forEach(addNote);
-  const another = Object.assign(el('button', 'link small', '+ Add another note'), {type: 'button'});
+  const another = Object.assign(el('button', 'link small', t('helperRest.addAnotherNote')), {type: 'button'});
   another.addEventListener('click', () => addNote('').focus?.());
   fold.open = read.notes.length > 0;
-  fold.append(el('summary', '', NOTES_LABEL), notesBox, another);
-  const others = read.other.map(each => ({index: each.index, field: longText(each.text, 'Line', '', onChange)}));
+  fold.append(el('summary', '', t('helperRest.notesAi')), notesBox, another);
+  const others = read.other.map(each => ({index: each.index, field: longText(each.text, t('helperRest.line'), '', onChange)}));
   node.append(fold);
   if (others.length) {
     const box = el('div', 'survey-others'), fields = el('div', 'survey-notes-boxes');
     fields.append(...others.map(each => each.field));
-    box.append(el('b', '', 'Other answers'), el('div', 'muted small', 'Not on a list, kept as written'), fields);
+    box.append(el('b', '', t('helperRest.otherAnswers')), el('div', 'muted small', t('helperRest.keptWritten')), fields);
     node.append(box);
   }
   return {node, texts() {
