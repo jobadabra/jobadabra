@@ -111,7 +111,7 @@ Spec PR: [#3360](https://github.com/jobadabra/jobadabra/pull/3360).
 
 ### 2. Implementation and review
 
-- [x] Implement and verify the translation backbone and selectors (proof: desktop/test/unit/renderer/i18n.test.js, desktop/test/unit/renderer/language.test.js and desktop/test/unit/main/locale-handlers.test.js; 15 focused new/IPC checks pass).
+- [x] Implement and verify the translation backbone and selectors (proof: desktop/test/unit/renderer/language.test.js).
 - [ ] Migrate all desktop screen text and seven catalogs.
 - [ ] Translate app-owned native desktop text and finish formatting.
 - [ ] Verify coverage, previews, and focused tests; open and supervise PRs.
