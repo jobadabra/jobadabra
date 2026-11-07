@@ -76,7 +76,7 @@ async function main() {
   const browserArguments = [`--host-resolver-rules=${server.hostRules()}`, '--ignore-certificate-errors', ...(process.platform === 'linux' ? ['--no-sandbox'] : [])];
   await proveHostRule(chromium, browserArguments, jobs[0].url);
   say('host rule proven: a real name does not resolve, a practice page loads');
-  // Why (7 Nov 2026, pj 2/4, code review): the app opens pages in the person's own Chrome (`open -a "Google Chrome"`, the non-background Apply modes) and asks it about its tabs
+  // Why (7 Nov 2026, pj 2/4, code review): the app opens pages in the person's own Chrome (through the `open` command, in the non-background Apply modes) and asks it about its tabs
   // (osascript). Only the harness's stand-ins keep it from doing either: `open` writes the URL to a folder instead, and `osascript` fails. Full automation uses the hidden browser.
   held.shim = makeOpenShim();
   fs.writeFileSync(path.join(held.shim.bin, 'osascript'), '#!/bin/sh\necho "practice: the app may not drive the person\'s Chrome" >&2\nexit 1\n', {mode: 0o755});
