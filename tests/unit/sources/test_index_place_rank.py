@@ -3,6 +3,7 @@ the 15 first employer reads came from a pool where 372 of 413 passing feeds had 
 information is still kept (rank, not drop): after the feeds with evidence it fills the slice and the full crawl reads it. The shape is the real one: 41 feeds with
 place information that name the search's place, 372 without, 100 elsewhere; the matcher is the test's own, the product holds no place word."""
 import unittest
+import unittest.mock
 
 from src import employer_index, first_jobs
 
@@ -51,6 +52,18 @@ class IndexPlaceRankTest(unittest.TestCase):
         picked = first_jobs.pick(employer_index.merge([], employer_index.relevant(index, lambda job: 'moldova' in job['location'].lower())))
         self.assertEqual([s['company'] for s in picked[:6]], [f'Known{n}' for n in range(6)])
         self.assertEqual(len(picked), first_jobs.SLICE)
+
+    def test_fast_kinds_still_come_first_and_the_place_order_holds_inside_each_group(self):
+        # reviewer, 7 Nov 2026: pick() puts the feeds that answer in one request ahead of the others (the slice's speed rule, unchanged); the place order is inside each group
+        slow_known = [{**feed(f'SlowKnown{n}', ['Zagreb, Croatia']), 'ats': 'workday'} for n in range(3)]
+        fast_unknown = [feed(f'FastUnknown{n}', None) for n in range(20)]
+        fast_known = [feed(f'FastKnown{n}', ['Zagreb, Croatia']) for n in range(4)]
+        with unittest.mock.patch.object(first_jobs.ats, 'FETCHERS', {'lever': None, 'workday': None}):
+            picked = first_jobs.pick(employer_index.merge([], employer_index.relevant(slow_known + fast_unknown + fast_known, croatia)))
+        names = [source['company'] for source in picked]
+        self.assertEqual(names[:4], [f'FastKnown{n}' for n in range(4)], 'inside the fast group, the feeds that name the place first')
+        self.assertEqual(names[4:6], ['FastUnknown0', 'FastUnknown1'])
+        self.assertNotIn('SlowKnown0', names, 'a slower kind still waits behind the fast ones, as before: the speed rule is the slice\'s')
 
     def test_no_place_information_anywhere_keeps_the_index_order(self):
         index = [feed(f'Unknown{n}', None) for n in range(5)]
