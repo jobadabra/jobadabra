@@ -4,14 +4,15 @@
 // to it without anyone editing a prompt. Read from GitHub at review time (GITHUB_TOKEN, issues: read); none readable: the review runs without them.
 // Guarded by test/review-lessons.test.mjs.
 // Job: report health
+import {textOfTitle} from './finder-prefix.mjs';
 export const LESSON_LABELS = ['source:ai-review', 'resolution:by-design'];
 const MAX_LESSONS = 12;
 
-// `Page \`<view>\`` in the issue body (lib/ui-issue body); the title without its "[auto-ui] <view>: " prefix; the last verdict's "Why" section.
+// `Page \`<view>\`` in the issue body (lib/ui-issue body); the title without its "[<tag>] <view>: " prefix (lib/finder-prefix.mjs); the last verdict's "Why" section.
 export function lessonFromIssue(issue, comments = []) {
   const view = String(issue.body || '').match(/Page `([^`]+)`/)?.[1];
   if (!view) return null;
-  const title = String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*[^:]*:\s*/, '').trim().slice(0, 120);
+  const title = textOfTitle(issue.title).trim().slice(0, 120);
   let why = '';
   for (const comment of comments) {
     const said = String(comment.body || '').match(/###[^\n]*\bWhy\b[^\n]*\n+([\s\S]*?)(?=\n###|\n<sub>|$)/);

@@ -4,6 +4,7 @@
 // Job: report health
 import {afterEpoch, STATS_SINCE} from './stats-epoch.mjs';
 import {resolutionCounts, resolutionOf} from './resolution.mjs';
+import {stripTag} from './finder-prefix.mjs';
 export const SCHEMA = 1;
 export const CATEGORIES = ['fixed', 'queued', 'falsePositive', 'duplicate', 'stale', 'harness', 'unclear', 'open'];
 // The resolution label an issue was closed with (lib/resolution.mjs) is the loop's own word for why: it is read before any guess from the comments.
@@ -117,7 +118,7 @@ export function build({issues: all = [], prs = [], costs = [], recall = null, ru
     row.filed++; if (kind === 'fixed' || kind === 'queued') row.real++; if (kind === 'falsePositive') row.falsePositive++;
   }
   const notable = issues.filter(issue => ['fixed', 'queued'].includes(classify(issue))).sort((a, b) => b.number - a.number).slice(0, 15)
-    .map(issue => ({number: issue.number, title: String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\]\s*/, '').slice(0, 110), url: issue.url || '', detector: DETECTORS[detectorOf(issue)] || detectorOf(issue),
+    .map(issue => ({number: issue.number, title: stripTag(issue.title).slice(0, 110), url: issue.url || '', detector: DETECTORS[detectorOf(issue)] || detectorOf(issue),
       status: classify(issue) === 'fixed' ? 'fixed' : 'queued', severity: (names(issue).find(name => name.startsWith('severity:')) || 'severity:medium').slice(9)}));
   return {schema: SCHEMA, at: new Date(now).toISOString(), since: STATS_SINCE, excluded: all.length - issues.length, causes: resolutionCounts(issues), runs, breaker, signatures, history: dailyHistory(all), costDays, periods, totals: {...totals, real, precision: judged ? Math.round(100 * real / judged) : null},
     byDetector: Object.values(by).sort((a, b) => b.filed - a.filed), fixer, verdicts,

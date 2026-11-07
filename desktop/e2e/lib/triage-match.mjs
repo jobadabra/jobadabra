@@ -4,6 +4,7 @@
 import {LABEL, NEEDS_HUMAN, FALSE_POSITIVE, CONFIRMED, NOT_SEEN, SIGHTINGS_NEEDED, LOGIC_KINDS, FIX_KINDS, allowedPath, labelFor} from './triage-findings.mjs';
 import {foundText, similar} from './triage-issues.mjs';
 import {resolutionOf} from './resolution.mjs';
+import {stripTag, textOfTitle, viewOfTitle} from './finder-prefix.mjs';
 
 // A finding from a Windows run that the Mac already told: an open Mac issue, or one a person rejected as not planned (4 Oct 2026: #239 / #202, #215 / #146 were the same finding filed twice).
 // A Mac issue closed as fixed does not count: a Windows run that sees it again may be a real regression.
@@ -44,7 +45,7 @@ export function matchExisting(finding, issues, threshold = 0.3, state = 'OPEN') 
   if (named) return named;
   const text = `${finding.title} ${finding.detail}`;
   const kindOf = issue => /·\s*([a-z0-9-]+)\s*·/.exec(issue.body || '')?.[1] || '';
-  const best = (pool, floor) => pool.map(issue => ({issue, score: similar(text, `${(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] [^:]+:/, '')} ${foundText(issue.body)}`)}))
+  const best = (pool, floor) => pool.map(issue => ({issue, score: similar(text, `${textOfTitle(issue.title)} ${foundText(issue.body)}`)}))
     .filter(item => item.score >= floor).sort((a, b) => b.score - a.score)[0]?.issue || null;
   const open = issues.filter(issue => issue.state === state && kindOf(issue) === finding.kind);
   const same = best(open.filter(issue => viewOf(issue) === finding.view), threshold);
@@ -82,8 +83,8 @@ export const fixedBefore = (finding, issues) => matchExisting(finding, (issues |
 // The commits a failed-step issue was seen failing on (its body and its "Seen again" comments).
 export const failedCommits = issue => new Set([commitOf(issue.body), ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => commitOf(comment.body))].filter(Boolean));
 export const flakyOn = (issue, sha7) => !!sha7 && /·\s*test-failure\s*·/.test(issue.body || '') && failedCommits(issue).has(sha7);
-/** The comment on an issue whose fix did not hold: takes the reopened issue (number, title with its `[auto-ui]` or `[AI persona]` tag) and the run's URL, returns the Markdown line; from the issue's own fields only, so it cannot fail. */
-export const regressionComment = (issue, runUrl) => `↩️ **Regression:** this looks like #${issue.number} ("${String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, '').slice(0, 80)}"), which a fix closed. The fix did not hold (${runUrl}).`;
+/** The comment on an issue whose fix did not hold: takes the reopened issue (number, title with its tag, lib/finder-prefix.mjs) and the run's URL, returns the Markdown line; from the issue's own fields only, so it cannot fail. */
+export const regressionComment = (issue, runUrl) => `↩️ **Regression:** this looks like #${issue.number} ("${stripTag(issue.title).slice(0, 80)}"), which a fix closed. The fix did not hold (${runUrl}).`;
 export const flakyComment = (sha7, runUrl, why = '') => `🎲 **Flaky:** this step failed and then passed on the same commit \`${sha7}\` (${runUrl})${why ? `, on ${why}` : ''}: the test's timing or environment, not a wrong value. Labelled \`flaky\`, ranked last, never offered to the fixer. (A wrong value that comes right on a rerun is labelled \`intermittent\` instead: lib/flaky-proof.mjs.)`;
 
 export function recentSightings(issue, now = Date.now(), days = 7) {
@@ -121,7 +122,7 @@ export function priorityOf(issue, now = Date.now()) {
 const KIND_WEIGHT = {functionality: 3, 'error-shown': 3, 'wrong-result': 3, 'console-error': 3, 'dead-control': 2, 'silent-control': 2, 'expand-broken': 2, 'page-overflow': 2, 'tall-row': 2, 'broken-image': 2, 'no-loading-state': 1, 'test-failure': 0.5};
 const CRITICAL_VIEWS = ['apply', 'applyflows', 'strategy', 'activity', 'wizard'];   // the critical path: apply, strategy sync, run results, setup
 const kindOf = issue => /·\s*([a-z0-9-]+)\s*·/.exec(issue.body || '')?.[1] || '';
-const viewOf = issue => /^\[(?:auto-ui|AI persona)\] ([^:]+):/.exec(issue.title || '')?.[1] || '';
+const viewOf = issue => viewOfTitle(issue.title);
 export const rankWeight = (issue, now = Date.now()) => score(issue, now) * (KIND_WEIGHT[kindOf(issue)] ?? 1) * (CRITICAL_VIEWS.includes(viewOf(issue)) ? 1.5 : 1);
 
 // -> the open UI-loop issues, most important first: priority, then (already clean last), then weighted score, Mac before Windows (Windows never blocks a release), then the oldest.
@@ -145,7 +146,7 @@ export function rankingOf(ranked, repo, now = Date.now(), limit = 12) {
   const has = (issue, name) => (issue.labels || []).some(item => (item.name || item) === name);
   const rows = ranked.slice(0, limit).map(({issue, priority, score: points}) => {
     const at = lastSeen(issue);
-    return {number: issue.number, title: String(issue.title || '').replace(/^\[(?:auto-ui|AI persona)\] /, '').slice(0, 100), priority, platform: has(issue, 'platform:windows') ? 'Windows' : 'Mac', score: points,
+    return {number: issue.number, title: stripTag(issue.title).slice(0, 100), priority, platform: has(issue, 'platform:windows') ? 'Windows' : 'Mac', score: points,
       needsPerson: has(issue, NEEDS_HUMAN), clean: has(issue, NOT_SEEN), build: lastBuild(issue), days: at ? Math.max(0, Math.floor((now - Date.parse(at)) / 86400000)) : null,
       url: `https://github.com/${repo}/issues/${issue.number}`};
   });

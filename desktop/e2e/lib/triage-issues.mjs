@@ -4,6 +4,7 @@
 import {replayBlock, replayCommand, replayComment} from './replay.mjs';
 import {CONFIRMED, NOT_SEEN} from './triage-findings.mjs';
 import {agentLabels} from './agent-notes.mjs';
+import {viewOfTitle} from './finder-prefix.mjs';
 
 // A suite that failed because the AI had no credit says nothing about the product. A suite that tests the spend-limit message on purpose is not read from its logs.
 export const NO_CREDIT = /credit balance is too low|spend limit is reached|AI limit reached|usage limits?\b/i;
@@ -136,7 +137,7 @@ export const toClose = (issues, matched, runUrl, cleared) => issues.filter(issue
 // them: the check only knew screenshot reviews, so a fixed probe finding stayed open until a pull request named it.
 export const probeTarget = issue => {
   if (!(issue.labels || []).some(item => (item.name || item) === 'source:interaction-probe')) return null;
-  const view = /^\[(?:auto-ui|AI persona)\] ([^:]+):/.exec(issue.title || '')?.[1], control = /"([^"]+)"\s*$/.exec(issue.title || '')?.[1];
+  const view = viewOfTitle(issue.title) || undefined, control = /"([^"]+)"\s*$/.exec(issue.title || '')?.[1];
   return view && control ? {view, control} : null;
 };
 export const probeCleared = (issue, pressed) => { const target = probeTarget(issue); return !!target && pressed.some(row => row.view === target.view && row.control === target.control); };
