@@ -41,7 +41,7 @@ The service PRs land before the public bridge starts sending new metadata. Templ
 
 ## Progress
 ### 1. Scope and inventory
-- [ ] Record complete producer/template/audience inventory and exclusions.
+- [x] Record complete producer/template/audience inventory and exclusions. (proof: docs/superpowers/specs/2026-11-07-user-notification-inventory.md)
 - [x] Confirm preference and fallback contract with owner. (proof: none: owner explicitly approved this design on 7 Nov 2026)
 ### 2. Shared language delivery
 - [ ] Service accepts/stores/resolves end-user preference with English-default operational rendering.
@@ -49,7 +49,7 @@ The service PRs land before the public bridge starts sending new metadata. Templ
 ### 3. End-user content
 - [ ] All twelve email templates and shared frame/footer localize.
 - [ ] Python notification templates localize with canonical diagnostics preserved.
-- [ ] Desktop notification and bot help/reply templates localize.
+- [x] Desktop notification and bot help/reply templates localize. (proof: app-core/src/bot-copy.js @22adc19fdab6a9c7af1edbbf510d3ec463584896)
 ### 4. Verification and handoff
 - [ ] Seven-language content/plural/escape tests and operational-English negative cases pass.
 - [ ] Fictional email/Telegram render inventory reviewed; remaining dynamic-content fallbacks disclosed.
