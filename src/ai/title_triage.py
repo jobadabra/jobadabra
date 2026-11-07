@@ -109,7 +109,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     mine = {_norm(t) for t in (titles if local is True else local or ())}
     ask = list(dict.fromkeys(t for t in (_norm(t) for t in titles) if t and t not in decided))
     ask = [t for t in ask if t in mine] + [t for t in ask if t not in mine]   # your own places' titles first, then the rest in the caller's order
-    ask = ask[:MAX_NEW]
+    ask = ask[:min(sum(1 for t in ask if t in mine), MAX_NEW) + MAX_NEW]   # as the two passes did: up to MAX_NEW of your own places' titles, and up to MAX_NEW others
     # The rounds of calls that end by the titles' stop (src/time_budget.py); the rest is asked next time. 18 Oct 2026, persona runs: paced per title (0.5 s at least), a refresh
     # planned "28 of 600 titles" for its 3 minutes, sorted them in one 7 s call and left 572 waiting. 7 Nov 2026 (#2920): one pass for all, a round that fits starts.
     taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.PARALLEL, noun='title(s)', stop='titles')

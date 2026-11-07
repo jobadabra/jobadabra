@@ -25,12 +25,13 @@ JOBS = [{'title': title, 'location': 'Dublin'} for title in LOCAL] + [{'title': 
 class Model:
     """Says a title fits when it starts with Keep; remembers every title it was asked."""
     def __init__(self):
-        self.asked = []
+        self.asked, self.systems = [], []
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
         listed = kwargs['messages'][0]['content'].split('The titles:\n', 1)[1].split('\n')
         titles = [line.split('. ', 1)[1] for line in listed]
+        self.systems.append(kwargs['system'][0]['text'])
         if kwargs['system'][0]['text'] == title_triage.SYSTEM:
             self.asked += titles
         fit = [n for n, title in enumerate(titles, 1) if title.startswith('keep')]
@@ -112,6 +113,37 @@ class OnePassTest(unittest.TestCase):
                 with self.subTest(now=now, pace=pace):
                     if now + pace <= 71.25:
                         self.assertGreater(time_budget.in_calls('title_rounds', 106, title_triage.BATCH, PARALLEL, now=now, stop='titles'), 0)
+
+    def test_with_no_room_only_the_local_titles_are_asked_up_to_their_floor(self):
+        # the `local=<titles>` path: the floor is the search's first LOCAL_TITLES local titles; the others wait (a reviewer found no test of this path)
+        local = [f'Keep Engineer Dublin {n}' for n in range(time_budget.LOCAL_TITLES + 20)]
+        with mock.patch.object(time_budget, 'in_calls', return_value=0), contextlib.redirect_stdout(self.out):
+            title_triage.decide(local + OTHERS, {'role_keywords': ['engineer']}, self.model, local=local)
+        self.assertEqual(len(self.model.asked), time_budget.LOCAL_TITLES)
+        self.assertTrue(all('dublin' in title for title in self.model.asked), 'no other title rides in a call the floor alone pays for')
+
+    def test_with_the_floor_spent_nothing_is_asked_past_the_clock(self):
+        with mock.patch.object(time_budget, 'in_calls', return_value=0), mock.patch.object(time_budget, 'over', return_value=True), \
+                mock.patch.object(time_budget, 'local_titles', return_value=0), contextlib.redirect_stdout(self.out):
+            title_triage.decide(LOCAL + OTHERS, {'role_keywords': ['engineer']}, self.model, local=LOCAL)
+        self.assertEqual(self.model.asked, [])
+
+    def test_the_cap_per_run_is_as_before_for_each_kind(self):
+        # reviewer, 7 Nov 2026: one pass must not turn "600 local + 600 others" into 600 in all (no deadline: a CLI or cloud run asks all it may)
+        time_budget.DEADLINE = None
+        local = [f'Keep Engineer Dublin {n}' for n in range(300)]
+        others = [f'Keep Engineer Remote {n}' for n in range(900)]
+        with contextlib.redirect_stdout(self.out):
+            title_triage.decide(local + others, {'role_keywords': ['engineer']}, self.model, local=local)
+        self.assertEqual(len(self.model.asked), 300 + title_triage.MAX_NEW)
+
+    def test_the_second_look_is_asked_for_a_role_word_no_on_the_one_pass(self):
+        with mock.patch.object(feeds, '_SEARCH', {'role_keywords': ['engineer'], 'title_exclude_keywords': []}), contextlib.redirect_stdout(self.out):
+            self.round = 1.0
+            (self.data / 'step_pace.json').write_text(json.dumps({'title_rounds': 1.0}))
+            feeds.triage(JOBS)
+        self.assertTrue(any(system == title_triage.RECHECK_SYSTEM for system in self.model.systems), 'the narrow second call ran for the role-word nos')
+        self.assertFalse(feeds.wanted_title('Drop Engineer Remote 0'), 'both nos: the job stays out')
 
     def test_the_verdict_rules_are_unchanged_on_the_one_pass(self):
         # the "Paris, Texas" class (#3512's first design): the AI's no beats a role word, and a title it did not judge is never kept on the words' guess
