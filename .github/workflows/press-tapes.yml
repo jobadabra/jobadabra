@@ -66,9 +66,26 @@ jobs:
           node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 2 --fresh --engine api --tag tape \
             --tape "$GITHUB_WORKSPACE/tape" --record --ceiling "$CEILING" 2>&1 | tee out/run.log
           cp out/draw/draft.json tape/draft.json
+      - name: Is the records App's key set
+        id: records_app_key
+        env:
+          CI_APP_PRIVATE_KEY: ${{ secrets.CI_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CI_APP_PRIVATE_KEY" ]; then echo "set=true" >> "$GITHUB_OUTPUT"
+          else echo "set=false" >> "$GITHUB_OUTPUT"; echo "::notice::records App key not set, the old write token is used (it shares the owner's GitHub API limit)"; fi
+      - name: The records token from the GitHub App (its own API limit, not the owner's account's)
+        id: records_app
+        if: steps.records_app_key.outputs.set == 'true'
+        continue-on-error: true   # a failed mint falls back to the old secret, never a red job
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
+          repositories: jobadabra-lab
       - name: Publish the tape (encrypted)
         env:
-          GH_TOKEN: ${{ secrets.NET_RECORDS_WRITE_TOKEN }}
+          GH_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_WRITE_TOKEN }}
         run: node tools/persona-search/tape-store.mjs publish "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"
       - uses: actions/upload-artifact@v6
         if: always()
