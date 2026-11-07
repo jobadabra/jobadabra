@@ -3,7 +3,7 @@
 // profile data never passes our server. Same consent shape as lib/linkedin-oauth.js. Settings: settings.linkedinImport = {connectedAt, expiresAt} (no value;
 // settings.linkedin is the identity connection). The key is a credential: Keychain only (lib/keychain.js: a test or the twin writes its own file), never a log,
 // the store, Notion or an upload; deleted by Disconnect, at expiry and on any 401/403. Nothing here is about LinkedIn jobs. Guard: test/unit/main/linkedin-import.test.js.
-import {hostPlatform} from '../i18n/platform.js';
+import {hostPlatform, pick} from '../i18n/platform.js';
 import {linkedinText} from '../i18n/linkedin-notices.js';
 import * as realKeychain from './keychain.js';
 import {begin, cancel as cancelFlow, fail} from './oauth-handoff.js';
@@ -38,7 +38,7 @@ export async function connect(openExternal, {site = SITE, timeout = 5 * 60 * 100
 
 /** Keep the key (Keychain) and when it was made and ends (settings). -> {ok} | {ok: false, error}; the value is never in the answer. */
 export function saveToken(storage, {token, expiresIn}, {keychain = realKeychain, now = new Date()} = {}) {
-  if (!keychain.write(SERVICE, token, {account: ACCOUNT, label: 'Jobadabra: LinkedIn import'})) return {ok: false, error: linkedinText(hostPlatform() === 'win32' ? 'keySaveFailedWindows' : 'keySaveFailed')};
+  if (!keychain.write(SERVICE, token, {account: ACCOUNT, label: 'Jobadabra: LinkedIn import'})) return {ok: false, error: linkedinText(pick('keySaveFailed', 'keySaveFailedWindows', hostPlatform()))};
   const days60 = 60 * 24 * 3600;   // LinkedIn's documented lifetime, used when it says nothing
   storage.saveSettings({linkedinImport: {connectedAt: now.toISOString(), expiresAt: new Date(now.getTime() + (expiresIn || days60) * 1000).toISOString()}});
   return {ok: true};

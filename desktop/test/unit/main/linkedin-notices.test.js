@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test, beforeEach, afterEach} from 'node:test';
-import {hostPlatform} from '../../../i18n/platform.js';
+import {hostPlatform, pick} from '../../../i18n/platform.js';
 import {SUPPORTED_LOCALES, setLocale, t} from '../../../i18n/index.js';
 import {ACCOUNT, API, DOMAINS, SERVICE, VERSION, connect, fetchAll, fetchDomain, saveToken, toProfileCv} from '../../../lib/linkedin-import.js';
 import {receive, fail} from '../../../lib/oauth-handoff.js';
@@ -39,7 +39,7 @@ test('key failure and authored refusals localize at invocation while request and
     setLocale(locale);
     const storage = memory(), keysWritten = [];
     const failed = saveToken(storage, {token: TOKEN}, {now: NOW, keychain: {write: (...args) => {keysWritten.push(args); return false;}}});
-    assert.deepEqual(failed, {ok: false, error: text(hostPlatform() === 'win32' ? 'keySaveFailedWindows' : 'keySaveFailed')});
+    assert.deepEqual(failed, {ok: false, error: text(pick('keySaveFailed', 'keySaveFailedWindows', hostPlatform()))});
     if (locale === 'de') assert.notEqual(failed.error, 'The Keychain would not keep the LinkedIn key, so nothing was imported.');
     assert.throws(() => toProfileCv({'Positions.csv': []}), error => error.message === text('noPositions'));
     assert.deepEqual(keysWritten, [[SERVICE, TOKEN, {account: ACCOUNT, label: 'Jobadabra: LinkedIn import'}]]); assert.deepEqual(storage.writes, []);
