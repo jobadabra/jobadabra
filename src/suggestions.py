@@ -10,6 +10,8 @@ One entry, the producer interface every screen draws (Focus Suggestions, the Job
 - actions[].do: what the app does in one press (renderer/suggestions.js maps each to its handler).
 Guarded by tests/unit/ai/test_suggestions.py; the screens by desktop/test/unit/renderer/suggestions.test.js.
 """
+from .ui_copy import text, join
+from .focus_items import date_words
 from datetime import date, datetime, timedelta
 import json
 import re
@@ -82,9 +84,9 @@ def insight_entry(insights, now):
     row = max(fresh, key=lambda r: (bool(_extra(r, 'issue_detected')), r['day'], r.get('created_at') or ''))
     issue = bool(_extra(row, 'issue_detected'))
     return _entry('insight', home='focus', topic=CATEGORY_TOPICS.get(row['category'], 'applying'),
-                  source='Issue detected' if issue else row['category'], title=row['title'], detail=_extra(row, 'action'),
+                  source=text('focusCards.suggestions.m001', 'Issue detected') if issue else row['category'], title=row['title'], detail=_extra(row, 'action'),
                   evidence=_extra(row, 'evidence').split('\n'), row_id=row['id'], key=f"row:{row['id']}",
-                  actions=[{'label': 'Review evidence' if issue else 'Open insight', 'do': 'open_insight', 'link': row.get('link') or ''}])
+                  actions=[{'label': text('focusCards.suggestions.m002', 'Review evidence') if issue else text('focusCards.suggestions.m003', 'Open insight'), 'do': 'open_insight', 'link': row.get('link') or ''}])
 
 
 def rejection_entry(rows, now):
@@ -96,9 +98,9 @@ def rejection_entry(rows, now):
     row = max(recent, key=lambda r: r.get('updated_at') or '')
     lesson = _field(row, 'rejection_lesson')
     first = re.split(r'(?<=[.;])\s', lesson, maxsplit=1)[0].rstrip('.;')
-    return _entry('rejection', home='jobs', topic='applying', source=_field(row, 'rejection') or 'Rejection',
+    return _entry('rejection', home='jobs', topic='applying', source=_field(row, 'rejection') or text('focusCards.suggestions.m004', 'Rejection'),
                   title=_short(first, 220), detail=f"{_field(row, 'company')} — {_role(row)}", evidence=[lesson], key=f"rejection:{row['id']}",
-                  actions=[{'label': 'Review rejection', 'do': 'open_rejection', 'link': row.get('link') or '', 'url': _field(row, 'url'),
+                  actions=[{'label': text('focusCards.suggestions.m005', 'Review rejection'), 'do': 'open_rejection', 'link': row.get('link') or '', 'url': _field(row, 'url'),
                             'title': _field(row, 'title'), 'company': _field(row, 'company')}])
 
 
@@ -129,8 +131,8 @@ def week_entry(insights, now, doors):
     if not weeks:
         return None
     row = max(weeks, key=lambda r: (r['day'], r.get('created_at') or ''))
-    actions = [found for found in (door(row, doors),) if found] + [{'label': 'Read the week', 'do': 'read_week', 'link': row.get('link') or ''}]
-    return _entry('week', home='focus', topic='search', source='Your week', title=row['title'], detail=_extra(row, 'action'),
+    actions = [found for found in (door(row, doors),) if found] + [{'label': text('focusCards.suggestions.m006', 'Read the week'), 'do': 'read_week', 'link': row.get('link') or ''}]
+    return _entry('week', home='focus', topic='search', source=text('focusCards.suggestions.m007', 'Your week'), title=row['title'], detail=_extra(row, 'action'),
                   evidence=[_extra(row, 'evidence')], row_id=row['id'], key=f"row:{row['id']}", actions=actions)
 
 
@@ -143,7 +145,7 @@ def _day_words(iso):
         day = date.fromisoformat(iso[:10])
     except ValueError:
         return ''
-    return f'{day:%a} {day.day} {day:%b}'   # not %-d: Windows' strftime has no "-" flag
+    return date_words(day, '%a %d %b', f'{day:%a} {day.day} {day:%b}')   # not %-d: Windows' strftime has no "-" flag
 
 
 def analyze_entry(events, insights, now):
@@ -156,11 +158,11 @@ def analyze_entry(events, insights, now):
     real = [e for e in events if e.get('kind') in EVENT_KINDS and e.get('source') != 'Backfill']
     new = [e for e in real if (e.get('at') or '') > since]
     key = f"analyze:{last['id'] if last else 'none'}"
-    actions = [{'label': 'Analyze now', 'do': 'analyze'}]
+    actions = [{'label': text('focusCards.suggestions.m009', 'Analyze now'), 'do': 'analyze'}]
     if len(new) >= ANALYZE_AFTER:
-        when = f'since your last analysis ({_day_words(last["day"])})' if last else 'since you started'
-        return _entry('analyze', home='focus', topic='search', source='Analyze my job search', title='A lot happened since your last analysis',
-                      detail=f'{len(new)} new applications and outcomes {when}', key=key, actions=actions, answers=('Not now',))
+        when = text('focusCards.suggestions.m010', 'since your last analysis ({value})', {'value': _day_words(last["day"])}) if last else text('focusCards.suggestions.m011', 'since you started')
+        return _entry('analyze', home='focus', topic='search', source=text('focusCards.suggestions.m012', 'Analyze my job search'), title=text('focusCards.suggestions.m013', 'A lot happened since your last analysis'),
+                      detail=text('focusCards.suggestions.m014', '{value} new applications and outcomes {when}', {'value': len(new), 'when': when}), key=key, actions=actions, answers=('Not now',))
     window = (now - timedelta(days=QUIET_WINDOW_DAYS)).isoformat()
     applied = [e for e in real if e['kind'] == 'Applied' and (e.get('at') or '') >= window]
     replies = sorted(e.get('at') or '' for e in real if e['kind'] in HUMAN)
@@ -170,8 +172,8 @@ def analyze_entry(events, insights, now):
         return None
     if since and since[:10] >= (quiet_since + timedelta(days=QUIET_DAYS)).date().isoformat():
         return None   # the last analysis already saw this silence
-    return _entry('analyze', home='focus', topic='search', source='Analyze my job search', title='Replies stopped',
-                  detail=f'{len(applied)} applications in 2 weeks, no replies in {QUIET_DAYS} days', key=f'{key}:quiet',
+    return _entry('analyze', home='focus', topic='search', source=text('focusCards.suggestions.m012', 'Analyze my job search'), title=text('focusCards.suggestions.m015', 'Replies stopped'),
+                  detail=text('focusCards.suggestions.m016', '{value} applications in 2 weeks, no replies in {QUIET_DAYS} days', {'value': len(applied), 'QUIET_DAYS': QUIET_DAYS}), key=f'{key}:quiet',
                   actions=actions, answers=('Not now',))
 
 
@@ -184,13 +186,12 @@ def tune_entry(answer):
     if not found:
         return None
     count = len(found)
-    words = [TUNE_WORDS.get(p['kind'], '{label}').format(label=p['label']) for p in found[:2]]
-    detail = ', '.join(words) + (f' and {count - 2} more' if count > 2 else '')
-    detail = detail[:1].upper() + detail[1:]
-    return _entry('tune', home='strategy', topic='search', source='Search strategy · Tune',
-                  title=f'{count} change{"s" if count != 1 else ""} your results support', detail=detail,
+    words = [text('focusCards.tune.' + ('start.' if index == 0 else 'next.') + p['kind'], (TUNE_WORDS[p['kind']][:1].upper() + TUNE_WORDS[p['kind']][1:]) if index == 0 else TUNE_WORDS[p['kind']], {'label': p['label']}) if p['kind'] in TUNE_WORDS else (p['label'][:1].upper() + p['label'][1:] if index == 0 else p['label']) for index, p in enumerate(found[:2])]
+    detail = join("", [join(', ', words), text('focusCards.suggestions.m017', ' and {value} more', {'value': count - 2}) if count > 2 else ''])
+    return _entry('tune', home='strategy', topic='search', source=text('focusCards.suggestions.m018', 'Search strategy · Tune'),
+                  title=text('focusCards.tune.one' if count == 1 else 'focusCards.tune.other', '{count} change your results support' if count == 1 else '{count} changes your results support', {'count': count}), detail=detail,
                   evidence=[p.get('why') or '' for p in found], key='tune:' + '|'.join(sorted(p['id'] for p in found)),
-                  actions=[{'label': 'Review', 'do': 'tune'}])
+                  actions=[{'label': text('focusCards.suggestions.m020', 'Review'), 'do': 'tune'}])
 
 
 def _answers(insights):

@@ -5,6 +5,7 @@ by it. When jobs that match your role and place (80+) score under the app's High
 parts, the pay is what pulls them down: the row names them, opens them in Jobs, and opens the minimum for you to review. It says only what the scores show: the scorer compares pay with your minimum and your target, and this code does not. Counts of saved
 scores only: no AI call. Guarded by tests/unit/engine/test_suggestions_pay.py.
 """
+from .ui_copy import text
 import os
 import sys
 
@@ -38,13 +39,13 @@ def entry(jobs):
     if len(jobs) < MIN_JOBS:
         return None
     count = len(jobs)
-    names = [f"{job.get('title') or 'A job'} at {job.get('company') or 'an employer'}" for job in jobs[:SHOWN]]
-    return _entry(KIND, home='strategy', topic='search', source='Search strategy', key='pay:minimum',
-                  title=f'{count} jobs match you but pay keeps them under High fit',
-                  detail='They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).',
-                  evidence=[*names, f'and {count - SHOWN} more' if count > SHOWN else ''],
-                  actions=[{'label': f'Show these {count} jobs', 'do': 'show_jobs', 'urls': [job['url'] for job in jobs if job.get('url')]},
-                           {'label': 'Review minimum salary', 'do': 'edit_minimum'}])
+    names = [text('focusCards.pay.m003', '{value} at {value2}', {'value': job.get('title') or text('focusCards.pay.m001', 'A job'), 'value2': job.get('company') or text('focusCards.pay.m002', 'an employer')}) for job in jobs[:SHOWN]]
+    return _entry(KIND, home='strategy', topic='search', source=text('focusCards.pay.m004', 'Search strategy'), key='pay:minimum',
+                  title=text('focusCards.pay.m005', '{count} jobs match you but pay keeps them under High fit', {'count': count}),
+                  detail=text('focusCards.pay.m006', 'They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).'),
+                  evidence=[*names, text('focusCards.pay.m007', 'and {value} more', {'value': count - SHOWN}) if count > SHOWN else ''],
+                  actions=[{'label': text('focusCards.pay.m008', 'Show these {count} jobs', {'count': count}), 'do': 'show_jobs', 'urls': [job['url'] for job in jobs if job.get('url')]},
+                           {'label': text('focusCards.pay.m009', 'Review minimum salary'), 'do': 'edit_minimum'}])
 
 
 def now(rows):

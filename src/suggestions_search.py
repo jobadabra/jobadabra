@@ -10,6 +10,7 @@ this search (src/ai/role_ideas.py): no AI call and no wait. A Not now or Not tru
 the one Focus offers; for role ideas, this search's role words (the AI's ideas change from day to day, the roles they are for do not).
 Guarded by tests/unit/ai/test_suggestions_search.py.
 """
+from .ui_copy import text, join
 import re
 import sys
 
@@ -26,7 +27,7 @@ def _n(value):
 
 
 def _s(count, word, many=''):
-    return word if count == 1 else (many or word + 's')
+    return text('focusCards.noun.' + word + ('.one' if count == 1 else '.other'), word if count == 1 else (many or word + 's'), {'count': count})
 
 
 def _plain(fragment):
@@ -53,11 +54,11 @@ def keys(verdict):
 
 
 def _see_all(row, count):
-    return [{'label': 'See both' if count == 2 else f'See all {count}', 'do': 'see_all', 'row': row}] if count > 1 else []
+    return [{'label': text('focusCards.search.m001', 'See both') if count == 2 else text('focusCards.search.m002', 'See all {count}', {'count': count}), 'do': 'see_all', 'row': row}] if count > 1 else []
 
 
 def _search_entry(kind, key, title, detail, evidence, first, count, **extra):
-    return {**_entry(kind, home='strategy', topic='search', source=SOURCE, title=title, detail=detail, evidence=evidence, key=key,
+    return {**_entry(kind, home='strategy', topic='search', source=text('focusCards.source.search', SOURCE), title=title, detail=detail, evidence=evidence, key=key,
                      actions=[{'do': 'change_search', **first}] + _see_all(kind, count)), **extra}
 
 
@@ -67,10 +68,10 @@ def places_entry(verdict):
     if not found:
         return None
     top, more = found[0][1], len(found) - 1
-    return _search_entry('places', keys(verdict)['places'], f"Add {top['place']} to your places",
-                         f"{_n(top['count'])} matching {_s(top['count'], 'role')} outside your places" + (f' · and {more} more {_s(more, "place")}' if more else ''),
-                         [f"{o['place']}: {_n(o['count'])} open {_s(o['count'], 'role')}, e.g. {'; '.join(o.get('examples') or [])}" for _, o in found],
-                         {'label': f"Add {top['place']}", 'kind': 'place', 'value': top['place']}, len(found))
+    return _search_entry('places', keys(verdict)['places'], text('focusCards.search.m003', 'Add {place} to your places', {'place': top['place']}),
+                         join("", [text('focusCards.search.m004', '{value} matching {value2} outside your places', {'value': _n(top['count']), 'value2': _s(top['count'], 'role')}), text('focusCards.search.m005', ' · and {more} more {value}', {'more': more, 'value': _s(more, "place")}) if more else '']),
+                         [text('focusCards.search.m006', '{place}: {value} open {value2}, e.g. {value3}', {'place': o['place'], 'value': _n(o['count']), 'value2': _s(o['count'], 'role'), 'value3': '; '.join(o.get('examples') or [])}) for _, o in found],
+                         {'label': text('focusCards.search.m007', 'Add {place}', {'place': top['place']}), 'kind': 'place', 'value': top['place']}, len(found))
 
 
 def coverage_entry(verdict):
@@ -79,10 +80,10 @@ def coverage_entry(verdict):
     if not found:
         return None
     term = found[0][0]
-    return _search_entry('coverage', keys(verdict)['coverage'], f'Add "{term}" to your role words',
-                         f"Your keywords catch {_n(verdict['matched'])} of {_n(verdict['in_places'])} postings in your places",
-                         [f"{s['term']}: {_n(s['count'])} open {_s(s['count'], 'posting')}" for _, s in found],
-                         {'label': 'Add role word', 'kind': 'role', 'value': term}, len(found))
+    return _search_entry('coverage', keys(verdict)['coverage'], text('focusCards.search.m008', 'Add "{term}" to your role words', {'term': term}),
+                         text('focusCards.search.m009', 'Your keywords catch {value} of {value2} postings in your places', {'value': _n(verdict['matched']), 'value2': _n(verdict['in_places'])}),
+                         [text('focusCards.search.m010', '{term}: {value} open {value2}', {'term': s['term'], 'value': _n(s['count']), 'value2': _s(s['count'], 'posting')}) for _, s in found],
+                         {'label': text('focusCards.search.m011', 'Add role word'), 'kind': 'role', 'value': term}, len(found))
 
 
 def filters_entry(verdict):
@@ -91,13 +92,13 @@ def filters_entry(verdict):
     if not found:
         return None
     hidden = sum(item.get('count') or 0 for _, item in found)
-    words = [f'Titles with "{_plain(item["fragment"])}"' if 'fragment' in item else f'jobs requiring {item["language"].capitalize()}' for _, item in found]
+    words = [text('focusCards.search.m012', 'Titles with "{value}"', {'value': _plain(item["fragment"])}) if 'fragment' in item else text('focusCards.search.m013', 'jobs requiring {value}', {'value': item["language"].capitalize()}) for _, item in found]
     top = found[0][1]
-    first = ({'label': f'Remove "{_plain(top["fragment"])}"', 'kind': 'exclude', 'value': top['fragment']} if 'fragment' in top
-             else {'label': f'Allow jobs requiring {top["language"].capitalize()}', 'kind': 'language', 'value': top['language']})
-    title = (f'{len(found)} of your filters hide' if len(found) > 1 else 'One of your filters hides') + f" {_n(hidden)} matching {_s(hidden, 'job')}"
-    return _search_entry('filters', keys(verdict)['filters'], title, ' · '.join(words[:2]) + (f' and {len(words) - 2} more' if len(words) > 2 else ''),
-                         [f"{word}: {_n(item.get('count'))} {_s(item.get('count'), 'job')}" for word, (_, item) in zip(words, found)], first, len(found))
+    first = ({'label': text('focusCards.search.m014', 'Remove "{value}"', {'value': _plain(top["fragment"])}), 'kind': 'exclude', 'value': top['fragment']} if 'fragment' in top
+             else {'label': text('focusCards.search.m015', 'Allow jobs requiring {value}', {'value': top["language"].capitalize()}), 'kind': 'language', 'value': top['language']})
+    title = join("", [text('focusCards.search.m016', '{value} of your filters hide', {'value': len(found)}) if len(found) > 1 else text('focusCards.search.m017', 'One of your filters hides'), text('focusCards.search.m018', ' {value} matching {value2}', {'value': _n(hidden), 'value2': _s(hidden, 'job')})])
+    return _search_entry('filters', keys(verdict)['filters'], title, join("", [join(' · ', words[:2]), text('focusCards.search.m019', ' and {value} more', {'value': len(words) - 2}) if len(words) > 2 else '']),
+                         [join('', [word, ': ', _n(item.get('count')), ' ', _s(item.get('count'), 'job')]) for word, (_, item) in zip(words, found)], first, len(found))
 
 
 def visits_entry(verdict):
@@ -108,11 +109,11 @@ def visits_entry(verdict):
     names = list(dict.fromkeys(v['name'] for _, v in found))   # one per company, as Strategy lists them
     top = found[0][1]
     name = top['name'] if len(top['name']) <= LABEL_MAX else top['name'][:LABEL_MAX - 1].rstrip() + '…'
-    return _search_entry('visits', keys(verdict)['visits'], f"{len(names)} {_s(len(names), 'site')} only you can open",
-                         ' · '.join(names[:3]) + (f' and {len(names) - 3} more' if len(names) > 3 else ''),
+    return _search_entry('visits', keys(verdict)['visits'], text('focusCards.search.m020', '{value} {value2} only you can open', {'value': len(names), 'value2': _s(len(names), 'site')}),
+                         join("", [' · '.join(names[:3]), text('focusCards.search.m019', ' and {value} more', {'value': len(names) - 3}) if len(names) > 3 else '']),
                          [f"{v['name']}: {v['why']}" for _, v in found],
                          # Why (#2350): its own do: the read starts AI work in Chrome, so its button carries the wand and no probe presses it.
-                         {'label': f'Read {name}', 'do': 'read_site', 'kind': 'visit', 'value': top['url']}, len(names))
+                         {'label': text('focusCards.search.m021', 'Read {name}', {'name': name}), 'do': 'read_site', 'kind': 'visit', 'value': top['url']}, len(names))
 
 
 def ideas_key(search):
@@ -129,10 +130,10 @@ def ideas_entry(ideas, key):
     if not top:
         return None   # no openings: nothing one press would bring
     more = sum(1 for i in shown if (i.get('count') or 0) > 0) - 1
-    return _search_entry('ideas', key, f"Add {top['role']} to your roles",
-                         f"{_n(top['count'])} {_s(top['count'], 'opening')} now in your places" + (f' · and {more} more {_s(more, "role")}' if more else ''),
-                         [f"{i['role']}: {i.get('why') or ''} ({_n(i.get('count'))} {_s(i.get('count'), 'opening')})" for i in shown],
-                         {'label': 'Add role', 'kind': 'role', 'value': top['word']}, len(shown), aside=[i['word'] for i in shown])
+    return _search_entry('ideas', key, text('focusCards.search.m022', 'Add {role} to your roles', {'role': top['role']}),
+                         join("", [text('focusCards.search.m023', '{value} {value2} now in your places', {'value': _n(top['count']), 'value2': _s(top['count'], 'opening')}), text('focusCards.search.m005', ' · and {more} more {value}', {'more': more, 'value': _s(more, "role")}) if more else '']),
+                         [join('', [i['role'], ': ', i.get('why') or '', ' (', _n(i.get('count')), ' ', _s(i.get('count'), 'opening'), ')']) for i in shown],
+                         {'label': text('focusCards.search.m024', 'Add role'), 'kind': 'role', 'value': top['word']}, len(shown), aside=[i['word'] for i in shown])
 
 
 def entries(verdict, ideas=(), ideas_key=''):
