@@ -65,16 +65,34 @@ function shadowCheck(tab, config, sketch, answer, host) {
   }).catch(() => {});
 }
 
+// The one reader of a step that changed in place after Continue (next-step-read.js; fill-flow.js hands it in, as ladder/dead-end.js useReporter: no import cycle).
+let readNextStep = async () => {};
+/** Hands in the reader ((tab, signature before the press, frame) -> promise) called after a pressed Continue; fill-flow.js sets it once at load. A failing reader is ignored: the page is then read by the old ways (a load, the 30 s sweep). */
+export const useNextStepRead = fn => { readNextStep = fn; };
+
+const sigOf = sketch => JSON.stringify([sketch.controls, sketch.buttons, sketch.texts, sketch.frames, sketch.onTop]);
+/** -> the signature of the page's state as the judge is asked about it (controls, buttons, texts, frames, the layer on top), or '' when the page cannot be read. The same value askForm keeps per tab, so "did the step change" and "was this state judged" are one comparison. */
+export async function pageSignature(tab, frameId = 0) {
+  const sketch = await sketchOf(tab.id, frameId, 'MAIN');
+  if (!sketch) return '';
+  sketch.onTop = await run(tab, frameId, onTop, [], 'MAIN') || null;
+  return sigOf(sketch);
+}
+
+const nextStepPressed = (pressed, tab, before, frameId) => { if (pressed) readNextStep(tab, before, frameId).catch(() => {}); };
+
 async function askForm(tab, frameId, again = false) {
   if (looking.has(tab.id)) return;
   looking.add(tab.id);
+  let pressed = false, lastSig = '';
   try {
     const config = await settings();
     if (config.workerUrl && !config.workerUrl.startsWith('http://127.0.0.1')) return;   // your own Worker: no app to ask
     const sketch = await sketchOf(tab.id, frameId, 'MAIN');   // with the one control reader loaded first (judge-sketch.js)
     if (!sketch) return;
     sketch.onTop = await run(tab, frameId, onTop, [], 'MAIN') || null;   // what sits on top of the form, by structure (on-top.js)
-    const sig = JSON.stringify([sketch.controls, sketch.buttons, sketch.texts, sketch.frames, sketch.onTop]);
+    const sig = sigOf(sketch);
+    lastSig = sig;
     if (judged.get(tab.id) === sig) return;   // the page is as it was when it was judged: the flag stays as it is
     const silent = unanswered.get(tab.id);
     if (silent?.sig === sig && silent.n >= MAX_NO_ANSWER) return;   // asked enough times without an answer: the same page is not asked again
@@ -92,8 +110,9 @@ async function askForm(tab, frameId, again = false) {
     // The site's own error about what was entered, on a phone number: it is typed again in another writing the AI names from the error text (format-retry.js, at most twice), then the page is judged anew.
     if (answer.answer === 'blocked' && answer.blockedKind === 'error' && await retryRefusedFormats(tab, frameId, config)) { setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, again).catch(() => {}); }, 2500); return; }
     if (answer.answer === 'blocked' && !again) setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, true).catch(() => {}); }, timing.recheckMs);
-    await pressNext(tab, frameId, answer, sig);   // a multi-step form's next step, when the person turned it on (next-step.js)
+    pressed = await pressNext(tab, frameId, answer, sig);   // a multi-step form's next step, when the person turned it on (next-step.js)
   } finally { looking.delete(tab.id); }
+  nextStepPressed(pressed, tab, lastSig, frameId);   // after `looking` is free: the new step's own fill asks this judge again
 }
 
 // A fill that gave up on a REQUIRED control it can never settle (a suggest-only combobox whose list never offers a match) ends at the person, whatever the AI judge says or whether it answers

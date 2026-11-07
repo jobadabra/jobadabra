@@ -21,7 +21,7 @@ import {closerLook} from './ladder/rung4-picture.js';
 import {applyPressed} from './tabs.js';
 import {isStopped} from './stop-state.js';
 import {pageStill} from './page-still.js';
-import {runId, sessionOf} from './tab-identity.js';
+import {jobOf, runId, sessionOf} from './tab-identity.js';
 import {formCame, pageKey} from './tab-pages.js';
 import {restoreLostQuery} from './restore-query.js';
 import {restartFromPosting} from './restart-from-posting.js';
@@ -34,6 +34,8 @@ import {brokenOf, onBrokenPage} from './ladder/site-broken.js';
 import {deadEnd, useFallback, useReporter} from './ladder/dead-end.js';
 import {notePage, noteProgress, useProgressLog} from './ladder/progress.js';
 import {onTop} from './on-top.js';
+import {pageSignature, useNextStepRead} from './form-ready.js';
+import {readAfterNextStep} from './next-step-read.js';
 import {labelReaderIn, pageShape, pageSketchOf} from './page-reads.js';
 import {setApply} from './apply-state.js';
 import {dropIfLate, openRead} from './read-gen.js';
@@ -255,6 +257,11 @@ export async function readAgain(tab, jobUrl) {
   await pageStill(tab.id, {maxMs: 1500});
   return consider(tab, jobUrl);
 }
+// After Continue was pressed (form-ready.js): a step that changed in place is read and filled (next-step-read.js).
+/** After Continue was pressed: reads the tab's new step when the page changed in place (signature `before`, frame `frameId`); see next-step-read.js. -> its verdict ('read', 'moved', 'unchanged', 'gone'). */
+export const readNextStep = (tab, before, frameId = 0) => readAfterNextStep(tab, before, {still: tabId => pageStill(tabId, {maxMs: 3000}), getTab: tabId => chrome.tabs.get(tabId).catch(() => null), signature: live => pageSignature(live, frameId),
+  read: async live => readAgain(live, await jobOf(live)), log: text => decide('fill', text, {})});   // readAgain: the one in-place reader (forget the address's mark, wait, read)
+useNextStepRead(readNextStep);
 // Read one armed page through the guards, page decisions, fill and after-fill steps.
 export async function consider(tab, jobUrl) {
   if (isStopped()) return;   // stopped by the person: nothing is read, pressed or filled until they press Apply again (stop.js)
