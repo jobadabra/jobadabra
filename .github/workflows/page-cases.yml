@@ -148,6 +148,7 @@ on:
       - 'desktop/i18n/catalogs/native/system.js'
       - 'desktop/i18n/index.js'
       - 'desktop/i18n/native.js'
+      - 'desktop/i18n/platform.js'
       - 'desktop/i18n/screens-helpers.js'
       - 'desktop/integration/extension/recorded-pages.test.mjs'
       - 'desktop/lib/**'

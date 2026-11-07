@@ -3,6 +3,7 @@
 // fresh folder, only the Read tool and only inside it, the user's skills/slash commands/settings not loaded, the schema enforced by
 // `--json-schema` when this Claude Code offers it. A page ask (lane 'page') reads its prompt as one stream-json message on a process started
 // before it came (cli-spares.js). Billing 'subscription'. Guarded by test/unit/main/claude-code.test.js, test/unit/main/ai-contract.test.js and test/unit/main/cli-spares.test.js.
+import {osText} from '../../i18n/platform.js';
 import {execFile, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -91,7 +92,7 @@ export class ClaudeCode extends CliAdapter {
   static fallbackLabel = 'your Anthropic API key';
   static tool = 'Claude Code';
   static folder = 'claude';
-  static missingText = 'Claude Code is not installed on this Mac: install it, or switch to an API key in Settings → Connections → AI.';
+  static missingText = osText('Claude Code is not installed on this Mac: install it, or switch to an API key in Settings → Connections → AI.', process.platform);
   static queue = slots(2);
   static spares = sparePool();   // pre-started processes for the page's questions (cli-spares.js)
 

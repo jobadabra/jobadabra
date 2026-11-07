@@ -22,7 +22,7 @@ const handlers = (storage, choice = true, extra = {}) => {
 };
 
 test('the card\'s state: a label and capabilities, never an adapter name', () => {
-  assert.deepEqual(storeState(make({store: 'sqlite'})), {label: 'This Mac', caps: [], trying: false, tracking: true, notionConnected: false, choice: true});
+  assert.deepEqual(storeState(make({store: 'sqlite'})), {label: `This ${process.platform === 'win32' ? 'PC' : 'Mac'}`, caps: [], trying: false, tracking: true, notionConnected: false, choice: true});
   const notion = storeState(make({notionIds: {NOTION_PROFILE_PAGE_ID: 'p'}}, 't'));
   assert.equal(notion.label, 'Notion');
   assert.deepEqual(notion.caps.sort(), ['cloud', 'files', 'links']);
@@ -71,7 +71,7 @@ test('at start, an install with no store gets its home once: Notion when connect
   // Connecting Notion later (for Always on) does not move the data: only "Move my data to Notion" does.
   fresh.setSecret('NOTION_TOKEN', 't'); fresh.saveSettings({notionIds: {NOTION_PROFILE_PAGE_ID: 'p'}});
   assert.equal(settleStore(fresh, {choice: true}), null);
-  assert.equal(storeState(fresh, {choice: true}).label, 'This Mac');
+  assert.equal(storeState(fresh, {choice: true}).label, `This ${process.platform === 'win32' ? 'PC' : 'Mac'}`);
 
   const onNotion = make({notionIds: {NOTION_PROFILE_PAGE_ID: 'p'}}, 't');
   assert.equal(settleStore(onNotion, {choice: true}), 'notion');

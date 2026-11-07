@@ -227,20 +227,22 @@ test('the window is one module per page, and every import between them resolves'
   assert.ok(pages.length > 10 && pages.includes('shared.js'));
 });
 
-test('Windows wording keeps watching: text drawn after start (a status card, a run result) is swapped too, the Mac is left alone', async () => {
+// The localization design replaces arbitrary text rewriting with trusted catalog boundaries.
+test('Windows localization hides Mac-only tips without observing or changing user content', async () => {
   const {localize} = await import('../../../renderer/os.js');
-  const empty = {nodeType: 1, ownerDocument: {createTreeWalker: () => ({nextNode: () => null})}, querySelectorAll: () => []};
-  const watch = platform => {
-    let callback = null;
-    localize(empty, platform, class { constructor(fn) { callback = fn; } observe() {} });
-    return callback;
+  const tip = {hidden: false};
+  const personal = {nodeType: 3, nodeValue: 'This Mac’s Keychain ⌘K'};
+  let observers = 0;
+  const root = {
+    nodeType: 1,
+    ownerDocument: {createTreeWalker: () => {let next = personal; return {nextNode: () => {const value = next; next = null; return value;}};}},
+    querySelectorAll: selector => selector === '[data-mac-only]' ? [tip] : [],
   };
-  const text = value => ({nodeType: 3, nodeValue: value});
-  const late = [text('Not installed on this Mac'), text('Claude Code is not installed on this Mac. Install it, then Verify.')];
-  watch('win32')([{type: 'childList', addedNodes: late}]);
-  assert.deepEqual(late.map(node => node.nodeValue), ['Not installed on this PC', 'Claude Code is not installed on this PC. Install it, then Verify.']);
-  const edited = text('Runs while your Mac is on');   // a text node changed in place
-  watch('win32')([{type: 'characterData', target: edited}]);
-  assert.equal(edited.nodeValue, 'Runs while your PC is on');
-  assert.equal(watch('darwin'), null);   // on the Mac nothing is watched or changed
+  localize(root, 'win32', class {constructor() {observers++;} observe() {}});
+  assert.equal(tip.hidden, true);
+  assert.equal(personal.nodeValue, 'This Mac’s Keychain ⌘K');
+  assert.equal(observers, 0, 'user content must never enter a global platform text observer');
+  tip.hidden = false;
+  localize(root, 'darwin');
+  assert.equal(tip.hidden, false);
 });

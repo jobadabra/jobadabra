@@ -2,11 +2,12 @@
 // row per search run and the sections of one run's full report, from a store run record (src/stores CRON_RUN_FIELDS) and its `details`
 // (src/run_details.py: steps, jobs, employers, boards, AI, scoring, problems). Every part is optional: a run from before the details were
 // kept shows its totals and says so. Drawn by pages/reports-searches.js. Guarded by test/unit/renderer/searches-view.test.js.
+import {hostPlatform, osText} from '../i18n/platform.js';
 import {costText} from './ai-cost.js';
 export const SEARCH_MODES = ['scheduled', 'run', 'first', 'visits', 'scout'];   // the runs that search: Find jobs (any trigger), in the browser, more employers
 export const KEPT = 50;                                                          // runs listed (owner, 25 Oct 2026)
 const NAMES = {scheduled: 'Find jobs', run: 'Find jobs', first: 'First jobs', visits: 'Find jobs using your browser', scout: 'More employers'};
-const WHERE = {mac: 'This Mac', github: 'GitHub', cloud: 'In the cloud'};
+const WHERE = {mac: osText('This Mac', hostPlatform()), github: 'GitHub', cloud: 'In the cloud'};
 const STAGES = {enrich: 'Reading jobs with AI', kits: 'Applications', insight: 'Insights', interview: 'Interviews', mail: 'Emails', sources: 'Reading sources'};
 const TONES = {OK: 'good', Quiet: 'neutral', Warnings: 'warn', Failed: 'bad', Running: 'info'};
 const n = value => (value === null || value === undefined || value === '' ? null : Number(value).toLocaleString('en-US'));

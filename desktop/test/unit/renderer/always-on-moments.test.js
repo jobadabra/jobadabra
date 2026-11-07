@@ -73,6 +73,6 @@ test('the words: the due time in the person\'s own clock, honest about asleep or
   const words = missedWords(new Date(at(7)).toISOString());
   assert.equal(words.title, 'Your 7:00 check didn\'t run');
   assert.match(words.body, /asleep or off/);
-  assert.match(words.body, /even when your Mac is off/);
+  assert.ok(words.body.includes(`even when your ${process.platform === 'win32' ? 'PC' : 'Mac'} is off`));
   assert.equal(missedWords(new Date(at(14, 5)).toISOString()).title, 'Your 14:05 check didn\'t run');
 });
