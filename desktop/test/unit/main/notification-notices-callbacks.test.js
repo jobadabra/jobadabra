@@ -69,7 +69,8 @@ test('resend preserves code and request data while resolving current display lan
   assert.deepEqual(logs[0], ['notify', 'confirm mail not sent again', {code: 'wait'}]);
 });
 
-test('mail read clones UI delivery guidance while cached notes and upstream names/when remain byte-identical', async () => {
+test('mail read clones Mac UI delivery guidance while cached notes and upstream names/when remain byte-identical', async () => {
+  globalThis.window = {pilot: {platform: 'darwin'}};
   kept.mailNote = 'Not every e-mail could be turned on just now: Original provider {error} Mac';
   responses.push({ok: true, rows: [upstreamRow], news: [{id: 'tips', name: 'Original news Mac', when: 'Original schedule', on: true}]});
   setLocale('de'); const answer = await invoke('mailChoices');
