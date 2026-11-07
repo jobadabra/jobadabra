@@ -82,7 +82,13 @@ export const labelsFor = (finding, suite = '') => [`severity:${finding.severity}
   `source:${finding.source}`, ...(finding.agent ? agentLabels(finding.agent) : [])];
 
 /** The sections only an AI user agent's issue has: what it expected (the knowledge entry or UX principle its argument rests on, lib/agent-notes.mjs) and who found it. Empty for every other detector. */
-export const agentSections = finding => [...(finding.expected ? ['', '### What it expected', finding.expected] : []), ...(finding.agent ? ['', '### Who found it', agentBlock(finding.agent)] : [])];
+export const agentSections = finding => [...(finding.expected ? ['', '### What it expected', finding.expected] : []), ...(finding.agent ? ['', '### Who found it', agentBlock(finding.agent)] : []), ...(finding.evidence ? ['', evidenceBundle(finding.evidence)] : [])];
+
+/**
+ * The "Evidence bundle" block of an issue: the private bundle's id and Admin link, then one line on what is in it. ONE renderer for every finder that keeps its evidence private: the twin's tester bugs (lib/tester-issue.mjs) and the AI persona's notes (lib/agent-notes.mjs toFinding).
+ * Why (7 Nov 2026, pz 4/5, owner: "Yes, same path as the twin"): a persona issue linked only the Actions run; the run's path, the screen when the note was made and the video live in Admin, so the issue names them the way a tester's does.
+ */
+export const evidenceBundle = ({id, url, line}) => ['### Evidence bundle', `\`${id}\` (private, Admin only): ${url}`, line].join('\n');
 
 /** The "Who found it" paragraph of an AI user agent issue: the persona and seed to replay it, the second opinion with its reason, and whether a replay without AI held. */
 export function agentBlock(agent) {
