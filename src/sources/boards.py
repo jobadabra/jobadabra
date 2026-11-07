@@ -435,9 +435,9 @@ def main():
     elif pairs and taken<len(pairs):
         print(f'Job boards: {taken} of {len(pairs)} searches this refresh (your roles x your places); the next refresh goes on from there',flush=True)
     # Which titles are your kind of job: the AI title check, as for every source (7 Oct 2026: a word match dropped most titles here)
-    from . import feeds
+    from . import feed_places, feeds
     board_jobs=[job for _,_,_,fresh in pages_found for job in fresh]
-    try:feeds.triage_places(board_jobs);feeds.triage(board_jobs)
+    try:feed_places.triage_with_places(board_jobs)
     except Exception as e:
         print(f'Warning: job board titles not checked by AI ({reason(e)}): your role words decide',flush=True)
         detail("job board titles", e)

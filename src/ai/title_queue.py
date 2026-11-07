@@ -79,6 +79,17 @@ def handing():
     return getattr(_local, 'hand', None)
 
 
+def wait_for(future):
+    """future.result(); the hub thread runs the other readers' posted work while it waits, never idle with a reader's hand-over in its box (#2920: a 20 s place call held EURES's)."""
+    mine = _hub[0]
+    if mine is None or threading.current_thread() is not mine.thread:
+        return future.result()
+    future.add_done_callback(lambda _done: mine.post(lambda: None))   # wakes the hub when the call ends
+    while not future.done():
+        mine.run_next()
+    return future.result()
+
+
 def serve(batches, ask, land, parallel, rank=None):
     """Ask `batches` ([(key, titles)], key a comparable tuple: the nearest first; a batch's index in this list is its turn when keys tie) with `ask(titles)` in worker threads, `parallel` at once across ALL readers, and
     call `land(titles, result)` in THIS thread as each one lands (result is ask's answer, or its exception, which `serve` raises after the last batch landed).

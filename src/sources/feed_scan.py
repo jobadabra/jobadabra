@@ -6,7 +6,7 @@ import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
-from . import ats, feed_facts, feeds, late_reads, read_budget
+from . import ats, feed_facts, feed_places, feeds, late_reads, read_budget
 from ..ai import slots, title_queue
 from .. import read_methods, source_yield
 
@@ -139,10 +139,9 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
     shown = {(where[index], job): item for (index, job), item in shown.items() if index in where}
     report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested), "unchanged": [source['company'] for source in same]}
     tally = feeds.coverage.Tally()
-    feeds.triage_places([job for jobs, failure in downloads if not failure for job in jobs or []])   # where the new locations are: Claude, once each
     hand = _hander(db, sources, downloads, shown, now, on_sorted)
-    with title_queue.handing_to(hand):
-        feeds.triage([job for jobs, failure in downloads if not failure for job in jobs or []])   # titles the words miss: Claude sorts the new ones, once
+    with title_queue.handing_to(hand):   # where the new locations are (Claude, once each) beside the titles the words miss (Claude sorts the new ones, once): src/sources/feed_places.py
+        feed_places.triage_with_places([job for jobs, failure in downloads if not failure for job in jobs or []])
     for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)):
         board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
         try:
