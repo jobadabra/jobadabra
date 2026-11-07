@@ -177,3 +177,13 @@ test('browser paths and match fragments stay original while their display explan
     assert.equal(options.at(-1).label, 'Mit Claude ändern…');
   } finally { setLocale('en'); }
 });
+
+test('a localized task title still receives the hint for its canonical run kind', async () => {
+  const {aiLimitHead} = await import('../../../renderer/run-status.js');
+  const {t} = await import('../../../i18n/index.js');
+  try {
+    setLocale('de');
+    assert.equal(aiLimitHead({kind: 'mail', ok: false, problem: 'AI limit reached'}, 'Gmail prüfen').hint, t('helperState.increaseCheck'));
+    assert.equal(aiLimitHead({kind: 'search', ok: false, problem: 'AI limit reached'}, 'Stellen suchen').hint, t('helperState.increaseSearch'));
+  } finally { setLocale('en'); }
+});
