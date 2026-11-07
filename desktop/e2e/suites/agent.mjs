@@ -78,7 +78,7 @@ export async function run(ctx) {
     const planId = process.env.AGENT_PLAN || '';
     const changed = changedSince(planId ? '' : changedLog);
     const available = new Set(moves.map(moveKey));
-    const pending = memoryDir ? readPending(memoryDir).filter(goal => available.has(moveKey(goal))) : [];
+    const pending = readPending(memoryDir).filter(goal => available.has(moveKey(goal)));
     const fresh = planId ? namedPlan(planId, seed) : planSession({seed, moves, coverage, changed: changed.areas, pending});
     const {state: chainState, plan} = chainFor({prev: prevChain, links: process.env.AGENT_CHAIN_LINKS, fresh, tier: actorTier, commitNow, runId: process.env.GITHUB_RUN_ID || 'local'});
     const expectations = withoutRules(readExpectations(path.join(REPO, 'docs/app-expectations')), rulesOff(process.env.AGENT_RULES_OFF)), notes = memoryDir ? readNotes(memoryDir) : {};

@@ -24,6 +24,7 @@ export function readNotes(dir) {
 
 /** Pending goal identities from the preceding night, never its data or assumed screen state. A missing/damaged queue simply leaves the seeded plan unchanged. */
 export function readPending(dir) {
+  if (!dir) return [];
   try {
     const goals = JSON.parse(fs.readFileSync(path.join(dir, 'pending.json'), 'utf8'));
     return Array.isArray(goals) ? goals.filter(goal => typeof goal?.group === 'string' && typeof goal?.label === 'string') : [];

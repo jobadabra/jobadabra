@@ -92,6 +92,9 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
   }
 }
 
+/** Prefer a shared-budget/broker stop; otherwise preserve the first goal interrupted before its final verdict. */
+const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== 'done')?.stopped || 'goals';
+
 /**
  * Runs a whole session. `judgeKnowledge(note)`: the rules and field notes of the note's area for the second opinion (empty = none). `plan`: planSession's {seed, persona, goals}; `knowledge`: the prompt text (knowledgeFor); `knowledgeIds`: the rule ids a note may cite; `caps`: {maxSteps, maxCalls, maxMinutes} for the whole session,
  * shared out between the goals (at least 6 steps each); `screenAsk`: the mid-tier call that reads the screen each goal ended on (lib/agent-screen.mjs; null = not read); `shoot()` -> base64 PNG of the screen, taken when a note is made and kept for the second opinion (optional). The session ends early, keeping what it has, when the broker refuses (an `api:` stop).
@@ -134,5 +137,5 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   const observations = {};
   for (const row of summary.goals) if (!['worked', 'not-started'].includes(row.verdict)) (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
   const completed = ends.filter(end => end.stopped === 'done').map(end => end.n);
-  return {summary, findings, observations, trace, spent, notes, ends, unfunded, completed, played: results.map(each => each.n), stopped: stopped || (completed.length === plan.goals.length ? 'goals' : ends.find(end => end.stopped !== 'done')?.stopped || 'steps')};
+  return {summary, findings, observations, trace, spent, notes, ends, unfunded, completed, played: results.map(each => each.n), stopped: runStop(stopped, ends)};
 }

@@ -10,6 +10,8 @@ import {pushMemory} from '../../lib/agent-memory.mjs';
 import {planSession} from '../../lib/agent-plan.mjs';
 import {runSession} from '../../lib/agent-run.mjs';
 
+const BLANK = {control: -1, text: '', key: '', view: '', title: '', kind: '', severity: '', what: '', check_type: '', check_text: '', check_control: '', summary: '', type: '', expected: '', observed: '', why: '', verdict: ''};
+
 test('a partially funded night publishes pending work without moving the completed-night checkpoint', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jt-persona-memory-'));
   try {
@@ -60,9 +62,9 @@ test('the last funded turn verifies the saved page and cannot mutate it or excee
     const act = {observe: async () => ({view: 'profile', text: `Saved value: ${value}`, overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false}]}), click: async () => { clicks++; value = 'new'; }};
     const ask = async args => {
       calls++;
-      if (calls < 6) return {text: JSON.stringify({action: 'click', control: 0}), usage: {input_tokens: 10, output_tokens: 1}};
+      if (calls < 6) return {text: JSON.stringify({...BLANK, action: 'click', control: 0}), usage: {input_tokens: 10, output_tokens: 1}};
       finalArgs = structuredClone(args);
-      return {text: JSON.stringify(attemptsMutation ? {action: 'click', control: 0} : {action: 'done', verdict: 'worked', summary: 'The saved value is new'}), usage: {input_tokens: 10, output_tokens: 1}};
+      return {text: JSON.stringify({...BLANK, ...(attemptsMutation ? {action: 'click', control: 0} : {action: 'done', verdict: 'worked', summary: 'The saved value is new'})}), usage: {input_tokens: 10, output_tokens: 1}};
     };
     const result = await runSession({act, ask, views: ['profile'], plan: {goals: [{n: 1, group: 'Profile', label: 'Save value'}], persona: {name: 'Fictional'}}, caps: {maxSteps: 6, maxCalls: 6}, judgeAsk: async () => { throw new Error('no notes'); }});
     assert.deepEqual(finalArgs.schema.properties.action.enum, ['done'], 'the reserved final turn only gives a verdict');
@@ -72,4 +74,20 @@ test('the last funded turn verifies the saved page and cannot mutate it or excee
     assert.equal(result.summary.goals[0].verdict, attemptsMutation ? 'could-not-finish' : 'worked');
     assert.deepEqual(result.completed, attemptsMutation ? [] : [1]);
   }
+});
+
+test('a final verdict receives the previous failed action in its resumed conversation delta', async () => {
+  let calls = 0, clicks = 0, observations = 0, finalArgs;
+  const act = {observe: async () => ({view: 'profile', text: `Profile verification ${observations++}`, overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false}]}), click: async () => { if (++clicks === 5) throw new Error('save rejected'); }};
+  const ask = async args => {
+    calls++;
+    if (calls < 6) return {text: JSON.stringify({...BLANK, action: 'click', control: 0}), usage: {input_tokens: 10, output_tokens: 1}};
+    finalArgs = structuredClone(args);
+    return {text: JSON.stringify({...BLANK, action: 'done', verdict: args.delta.includes('save rejected') ? 'could-not-finish' : 'worked', summary: 'The save result was inspected'}), usage: {input_tokens: 10, output_tokens: 1}};
+  };
+  const result = await runSession({act, ask, views: ['profile'], plan: {goals: [{n: 1, group: 'Profile', label: 'Save value'}], persona: {name: 'Fictional'}}, caps: {maxSteps: 6, maxCalls: 6}, judgeAsk: async () => { throw new Error('no notes'); }});
+  assert.match(finalArgs.delta, /That failed: save rejected/);
+  assert.equal(finalArgs.messages.filter(message => message.role === 'user').length, 6, 'one user turn per result; no duplicate page-view turn');
+  assert.equal((finalArgs.delta.match(/Profile verification/g) || []).length, 1);
+  assert.equal(result.summary.goals[0].verdict, 'could-not-finish');
 });
