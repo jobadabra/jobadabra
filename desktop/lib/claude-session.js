@@ -44,6 +44,8 @@ export function sessionEnv(storage, parent = process.env, platform = process.pla
   const env = {...parent};
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_BASE_URL;  // Claude Code uses the user's own Claude login, never Free AI
+  delete env.JOBADABRA_TESTER_KEY;   // Why (code review, 7 Nov 2026): the tester bundle's key must not reach a Claude session that reads untrusted job pages (lib/tester-mode.js)
+  delete env.JOBADABRA_TESTER;
   for (const [key, value] of Object.entries(app)) if (KEEP.test(key)) env[key] = value;
   env.JOBADABRA_PYTHON = pipeline.python();
   env.JOBADABRA_APPLY_RUN_DIR = storage.path('apply-runs');

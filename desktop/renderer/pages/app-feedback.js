@@ -8,10 +8,11 @@ import {plainError} from '../run-warnings.js';
 import {readScreenData} from '../feedback-data.js';
 import {countLine} from '../feedback-count.js';
 import './feedback-screens.js';   // registers each page's data
+import {drawTester, readTester} from './app-feedback-tester.js';
 
-let prepared = {shot: null, logs: null, page: null, profile: null, identity: null};
+let prepared = {shot: null, logs: null, page: null, profile: null, identity: null, tester: null};
 const PAGE_NOTE = "Its rows or questions with their ids, states and filters, so the problem can be reproduced. Never a job posting's text.";
-const EMPTY = {shot: null, logs: null, page: null, profile: null, identity: null};
+const EMPTY = {shot: null, logs: null, page: null, profile: null, identity: null, tester: null};
 
 // One state: the checkbox. The thumbnail shows while it is on and a picture exists; the × turns it off.
 function drawShot() {
@@ -71,6 +72,7 @@ async function open() {
   $('app-feedback-contact-note').hidden = !email;
   drawShot();
   drawPreview();
+  drawTester(prepared.tester);   // only an AI tester app is told; a person's dialog is unchanged
   drawCount();   // derived from the box's current value: a reopened dialog keeps its text
   $('app-feedback-dialog').showModal();
   $('app-feedback-text').focus();
@@ -98,6 +100,16 @@ export async function init() {
     const button = $('app-feedback-send');
     button.disabled = true;
     $('app-feedback-message').textContent = 'Sending…';
+    if (prepared.tester) {   // an AI tester files one bug bundle (lib/tester-bundle.js), never a note to the maker
+      const filed = await window.pilot.sendTesterBug(readTester()).catch(error => ({ok: false, error: error.message}));
+      button.disabled = false;
+      if (!filed?.ok) { $('app-feedback-message').textContent = plainError(filed?.error || 'The bundle was not stored.'); return; }
+      $('app-feedback-text').value = '';
+      prepared = {...EMPTY};
+      $('app-feedback-dialog').close();
+      toastMessage('Bug filed', `Bundle ${filed.id}: ${filed.url}`, NO_PLACE.done, 'good');
+      return;
+    }
     const include = {screenshot: $('app-feedback-include-shot').checked, logs: $('app-feedback-include-logs').checked, page: $('app-feedback-include-page').checked, profile: $('app-feedback-include-profile').checked};
     const result = await window.pilot.sendFeedback($('app-feedback-text').value, $('app-feedback-contact').value, include)
       .catch(error => ({ok: false, error: error.message}));
