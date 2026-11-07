@@ -22,7 +22,7 @@ def deliver(log, surface, cmux, *, run=subprocess.run):
     try:
         surface = str(uuid.UUID(surface)).upper()
     except (ValueError, TypeError, AttributeError):
-        return False
+        return True  # Invalid configuration is not a transient delivery failure; match the owning cmux notifier.
 
     def send(events):
         message = ('Delegated PR escalation. Verify the current GitHub head first; events may be superseded. '
