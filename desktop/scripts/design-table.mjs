@@ -1,5 +1,5 @@
-// The PR's "Design system" table: pure functions from measured hits to the owner-approved table (owner, 7 Nov 2026, "Measured check (Recommended)").
-// A cell is ❌ only for a violation (rule + selector) that the BASE render of the same screen, width and theme does not have, so the existing ones can only shrink
+// The PR's "Design system" block: pure functions from measured hits to the owner-approved report (owner, 7 Nov 2026, "Measured check (Recommended)").
+// A problem is counted only for a violation (rule + selector) that the BASE render of the same screen, width and theme does not have, so the existing ones can only shrink
 // (coordinator 27, 7 Nov 2026: "❌ only for a violation the base render of that screen does not have, like the spacing ratchet the owner merged").
 
 export const RULES = [
@@ -32,27 +32,52 @@ export function newHits(base, head) {
   return fresh;
 }
 
+const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+/** One table cell's text: the hits' selector and note (short), light/dark noted only for a hit one theme has; `|` would split the row. */
+function whatOf(hits) {
+  const seen = new Map();
+  for (const hit of hits) {
+    const label = `\`${hit.at}\`${hit.note ? ` ${hit.note.slice(0, 40)}` : ''}`;
+    seen.set(label, [...(seen.get(label) || []), hit.theme]);
+  }
+  const labels = [...seen].map(([label, themes]) => (new Set(themes).size === 2 ? label : `${label} (${themes[0]})`));
+  return (labels.slice(0, 3).join('; ') + (labels.length > 3 ? ` +${labels.length - 3}` : '')).replaceAll('|', '/');
+}
+
+/** The rule's column name for a hit: a primary-button finding inside a list row (#3500: one per row of peer rows) is "1 primary / row", else the rule's own name. */
+const nameOf = (hit, name) => (hit.rule === 'primary' && /^li(?![\w-])/.test(hit.at) ? '1 primary / row' : name);
+
 /**
- * The table. `runs` is a list of {screen, width, theme, base, head}; light and dark of one screen and width share a cell.
+ * The report, one verdict for the whole PR (owner, 7 Nov 2026: "In the PR body, let's make it one green per column. I don't want to see 100 checkboxes"; chosen "Verdict + only what fails"):
+ * all passing is one line, plus "vs main:" for the rules whose count changed; a failure is a table of only the failing rule x screen cells, each with its count and what it is.
+ * `runs` is a list of {screen, width, theme, base, head}; light and dark of one screen and width share a cell. A cell's count is its worst theme's new hits (the same hit in both themes counts once,
+ * two new hits on one selector count twice), and the verdict counts failing cells: the owner's preview read "2 new problems" over a table of 2 rows.
+ * Why (7 Nov 2026): tools/design-table-check.py reads the first line (the sha, then ✅ or ⛔); keep the two in step.
  * @param {{screen: string, width: number, theme: string, base: object[], head: object[]}[]} runs every measured render
- * @param {string} sha the head commit the table was measured on
- * @returns {{table: string, failed: boolean, baseline: Object<string, {hits: number, distinct: number}>}} the markdown, whether any cell is ❌, the base counts per rule
+ * @param {string} sha the head commit the report was measured on
+ * @returns {{report: string, failed: boolean}} the markdown block, and whether any rule has a new problem
  */
-export function renderTable(runs, sha) {
+export function renderReport(runs, sha) {
   const columns = [...new Set(runs.map(run => `${run.screen} ${run.width}`))];
-  const cell = (rule, column) => {
-    const mine = runs.filter(run => `${run.screen} ${run.width}` === column);
-    const fresh = mine.flatMap(run => newHits(run.base, run.head).filter(hit => hit.rule === rule).map(hit => ({...hit, theme: run.theme})));
-    if (!fresh.length) return '✅';
-    return `❌ ${fresh.slice(0, 3).map(hit => `\`${hit.at}\` ${hit.note ? hit.note.slice(0, 40) : ''} (${hit.theme})`.replace('  ', ' ')).join('; ')}${fresh.length > 3 ? ` +${fresh.length - 3}` : ''}`;
-  };
-  const rows = RULES.map(([rule, name]) => `| ${name} | ${columns.map(column => cell(rule, column)).join(' | ')} |`);
-  const failed = rows.some(row => row.includes('❌'));
-  const baseline = Object.fromEntries(RULES.map(([rule]) => {
-    const hits = runs.flatMap(run => run.base.filter(hit => hit.rule === rule));
-    return [rule, {hits: hits.length, distinct: new Set(hits.map(hit => hit.at)).size}];
-  }));
-  const table = [`**Design system (measured on ${sha})**`, '',
-    `| Rule | ${columns.join(' | ')} |`, `|---|${columns.map(() => '---').join('|')}|`, ...rows].join('\n');
-  return {table, failed, baseline};
+  const rows = [];
+  for (const [rule, ruleName] of RULES) {
+    for (const column of columns) {
+      const fresh = runs.filter(run => `${run.screen} ${run.width}` === column)
+        .map(run => newHits(run.base, run.head).filter(hit => hit.rule === rule).map(hit => ({...hit, theme: run.theme})));
+      for (const name of new Set(fresh.flat().map(hit => nameOf(hit, ruleName)))) {
+        const mine = fresh.map(hits => hits.filter(hit => nameOf(hit, ruleName) === name));
+        rows.push({name, column, count: Math.max(...mine.map(hits => hits.length)), what: whatOf(mine.flat())});
+      }
+    }
+  }
+  const count = (side, rule) => runs.reduce((sum, run) => sum + run[side].filter(hit => hit.rule === rule).length, 0);
+  const moved = RULES.map(([rule]) => [rule, count('base', rule), count('head', rule)]).filter(([, before, after]) => before !== after)
+    .map(([rule, before, after]) => `${rule} ${before} → ${after} ${after < before ? '▼' : '▲'}${Math.abs(after - before)}`);
+  const title = `**Design system (measured on ${sha})**`;
+  const verdict = rows.length ? `⛔ ${plural(rows.length, 'new problem')}` : `✅ all ${RULES.length} rules pass on ${plural(columns.length, 'screen')}`;
+  const lines = [`${title} ${verdict}`];
+  if (moved.length) lines.push(`vs main: ${moved.join(' · ')}`);
+  if (rows.length) lines.push('', '| Rule | Screen | New | What |', '|---|---|---|---|', ...rows.map(row => `| ${row.name} | ${row.column} | +${row.count} | ${row.what} |`));
+  return {report: lines.join('\n'), failed: rows.length > 0};
 }

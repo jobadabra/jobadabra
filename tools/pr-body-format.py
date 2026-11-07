@@ -7,7 +7,7 @@ import re
 import sys
 
 RUN = re.compile(r'(?<![\[/\w])run (\d{8,})\b(?![\]\w])')
-DESIGN = re.compile(r'^\*\*Design system \(measured on ([^)]+)\)\*\*\s*$')   # npm run design-check's first line
+DESIGN = re.compile(r'^\*\*Design system \(measured on ([^)]+)\)\*\*[ \t]*(.*)$')   # npm run design-check's first line: the commit, then the verdict (✅ all N rules pass on N screens, or ⛔ N new problems)
 HEADINGS = [   # (what starts the block, its heading)
     (re.compile(r'^\|\s*Area\s*\|\s*Impact\b', re.I), '### 📊 Impact'),
     (re.compile(r'^\|\s*What changed\s*\|\s*Before\s*\|\s*After\b', re.I), '### 🖼️ Screens'),   # the screens table (tools/pr-screens.py), before the numbers table
@@ -96,8 +96,8 @@ def lay_out(text, repo=''):
                 out += ['---', '', heading, '']   # a rule between sections (owner, 15 Oct 2026); the blank line above keeps it a rule, never a setext heading
                 break
         design = DESIGN.match(line)
-        if design:   # the measured table's bold title becomes its heading, the commit it names kept (tools/design-table-check.py reads it)
-            out += ['---', '', f'### 🎨 Design system (measured on {design.group(1)})', '']
+        if design:   # the measured report's bold title becomes its heading, the commit it names and the verdict kept on it (tools/design-table-check.py reads both)
+            out += ['---', '', f'### 🎨 Design system (measured on {design.group(1)}) {design.group(2)}'.rstrip(), '']
             continue
         if line.startswith('**Plan progress**'):
             continue
