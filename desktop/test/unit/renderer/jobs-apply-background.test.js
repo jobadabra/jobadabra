@@ -1,4 +1,6 @@
 // One-job Apply drives the real Jobs renderer: hidden-browser replies show Sessions or the refusal, never Chrome's Opened state.
+// Cheapest-layer coverage: apply-one-follows-mode.test.js pins saved mode → queued reply with visible launchers forbidden; this file pins that reply → row and Sessions toast.
+// No existing journey expectation changed: the Standard-mode journeys keep their meaning; no new browser journey is needed to exercise this renderer branch.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
