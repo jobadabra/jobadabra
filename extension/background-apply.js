@@ -55,6 +55,8 @@ export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {  
   if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   return true;
 }
+/** Tells the app which step a triage read is on (judging, planning) so the Jobs dialog and the app log can say where the time goes; never waited for and never fails the read. */
+const readStep = (context, step) => { request(context, {action: 'triage-step', step}).catch(() => null); };
 /** Tell the app what a triage read saw, then close its tab: the page is never typed into and never shown to the person. */
 async function reportRead(context, found) {
   await request(context, {action: 'triage-read', ...found}).catch(() => null);
@@ -69,7 +71,7 @@ export async function backgroundRead(tab, step) {
   if (context?.mode !== 'read') return false;
   if (step.kind?.botCheck === true) await reportRead(context, {botCheck: true});
   else if (step.role !== 'form' && step.role !== 'account') await reportRead(context, {unreadable: true});
-  else { forgetJudged(tab.id); await formNext(tab, 0); }
+  else { forgetJudged(tab.id); readStep(context, 'judging'); await formNext(tab, 0); }
   return true;
 }
 /** Opens one job the app handed over; a session that could not open goes back to the person, and a read that could not open is reported unreadable. */
@@ -124,6 +126,7 @@ export async function backgroundFormReady(tab, frameId, answer) {
     // Why (30 Oct 2026, owner): only a usable application form gets an answer plan; unknown, blocked, bot and account pages stay unknown.
     const fillable = ['ready', 'needs_person'].includes(answer.answer) && answer.botCheck === false && answer.loginWall === false && answer.accountCreation === false;   // words-ok: the judge's own flag names
     if (fillable) {
+      readStep(context, 'planning');
       try { allFactsSaved = allFactsSavedOf(await planAnswers(tab, await settings())); }
       catch { /* a failed plan stays unknown; the read still reports and closes */ }
     }

@@ -90,3 +90,68 @@ test('the read deadline allows the judge and answer plan, without waiting on a c
   r.cancelAll();
   await pending;
 });
+
+// #3519: ten reads took about ten minutes and nothing said which step cost it; each read now says where its time went, and the Jobs dialog hears each step.
+const ticking = () => { let t = 1000; return {now: () => t, at: ms => { t = ms; }}; };
+
+test('a read says where its time went: queue, open, judge, plan, and the dialog hears each step as it starts', async () => {
+  const clock = ticking(), steps = [], done = [];
+  const r = reader({now: clock.now, onStep: step => steps.push(step), onDone: summary => done.push(summary)});
+  const pending = r.read('https://jobs.example/t1');
+  clock.at(3000);   // 2 s waiting for the browser
+  const {id} = r.take();
+  clock.at(11000);  // 8 s to open the page and see a form
+  assert.equal(r.step(id, 'judging'), true);
+  clock.at(60000);  // 49 s of AI judgment
+  assert.equal(r.step(id, 'planning'), true);
+  clock.at(75000);  // 15 s matching the saved answers
+  r.report(id, {botCheck: false, loginWall: false, accountCreation: false, allFactsSaved: true});
+  await pending;
+  assert.deepEqual(steps.map(item => item.step), ['opening', 'judging', 'planning']);
+  assert.deepEqual(done, [{url: 'https://jobs.example/t1', outcome: 'read', totalMs: 74000, queueMs: 2000, openMs: 8000, judgeMs: 49000, planMs: 15000}]);
+});
+
+test('a read that never reached a step, or was cut short, says so and counts only the steps it started', async () => {
+  const clock = ticking(), done = [];
+  const r = reader({now: clock.now, onDone: summary => done.push(summary)});
+  const queued = r.read('https://jobs.example/t2');
+  clock.at(5000);
+  r.cancelAll();
+  assert.equal(await queued, null);
+  const out = r.read('https://jobs.example/t3');
+  clock.at(6000);
+  const {id} = r.take();
+  clock.at(9000);
+  r.step(id, 'judging');
+  clock.at(20000);
+  r.cancelAll();
+  await out;
+  assert.deepEqual(done.map(item => [item.outcome, item.queueMs, item.openMs, item.judgeMs, item.planMs]), [['cancelled-before-start', 4000, 0, 0, 0], ['ended-without-report', 1000, 3000, 11000, 0]]);
+});
+
+test('a step is accepted once, only for the active read and only if it is a reported step; a failing listener never loses a read', async () => {
+  const r = reader({onStep: () => { throw new Error('listener broke'); }, onDone: () => { throw new Error('listener broke'); }});
+  const pending = r.read('https://jobs.example/t4');
+  const {id} = r.take();
+  assert.equal(r.step('nope', 'judging'), false);
+  assert.equal(r.step(id, 'opening'), false, 'the app marks opening itself');
+  assert.equal(r.step(id, 'dancing'), false);
+  assert.equal(r.step(id, 'judging'), true);
+  assert.equal(r.step(id, 'judging'), false, 'a repeat is not a new step');
+  r.report(id, {botCheck: false, loginWall: false, accountCreation: false});
+  assert.ok(await pending);
+});
+
+test('a lost judging report never makes two steps count the same time, and the address in the summary has no query', async () => {
+  const clock = ticking(), done = [];
+  const r = reader({now: clock.now, onDone: summary => done.push(summary)});
+  const pending = r.read('https://jobs.example/t5?utm=tracking#frag');
+  clock.at(1000);
+  const {id} = r.take();
+  clock.at(4000);
+  r.step(id, 'planning');   // the judging report was lost
+  clock.at(9000);
+  r.report(id, {botCheck: false, loginWall: false, accountCreation: false});
+  await pending;
+  assert.deepEqual(done, [{url: 'https://jobs.example/t5', outcome: 'read', totalMs: 8000, queueMs: 0, openMs: 3000, judgeMs: 0, planMs: 5000}]);
+});

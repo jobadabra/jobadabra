@@ -9,7 +9,7 @@ import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
-import {notify as notifyDefault, stopAsked} from './server-hooks.js';
+import {notify as notifyDefault, stopAsked, tellWindow} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {waitingMessageFor} from './waiting-message.js';
 import * as journal from './session-journal.js';
@@ -71,7 +71,9 @@ export function backgroundApplyFor(storage) {
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  waiting = null,   // the waiting-application message sender, injectable for tests (lib/waiting-message.js)
- log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
+ log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
+  // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"): each read's step goes to the Jobs window, and where its time went is one app.log line, so the next real run names the slow step.
+  reader = createTriageReader({onStep: step => tellWindow('triageStep', step), onDone: summary => log('apply', 'triage: read finished', summary)}),
   port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
@@ -329,6 +331,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (payload.action === 'poll') return poll(payload.owner, 'extension');
       if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
+      if (payload.action === 'triage-step') return {ok: reader.step(String(payload.session || ''), String(payload.step || ''))};   // which step a form read is on: no application item behind it
       if (payload.action === 'triage-read') return {ok: reader.report(String(payload.session || ''), payload)};   // a form read's answer: no application item behind it
       const item = itemFor(payload.session);
       if (!item) return {ok: false};

@@ -148,3 +148,18 @@ test('a forced poll waits for an in-flight alarm then makes its own extension re
   assert.equal(wasSettled, false, 'no success acknowledgement while another poll is in flight');
   assert.equal(calls, 2, 'the forced poll made a new request after the alarm');
 });
+
+// #3519: the app and the Jobs dialog learn which step a read is on; the report is the last thing posted and the step posts never wait for or fail the read.
+test('a usable form is reported as planning before its answer, and a failing step post never loses the read', async t => {
+  const {posted, removed} = install(t);
+  const {backgroundFormReady} = await import('../../../../extension/background-apply.js');
+  const base = globalThis.fetch;
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    if (JSON.parse(init?.body || '{}').action === 'triage-step') throw new Error('the app did not answer');
+    return base(url, init);
+  });
+  await backgroundFormReady({id: 7, url: 'https://jobs.example.test/a'}, 0, {answer: 'ready', botCheck: false, loginWall: false, accountCreation: false});
+  const actions = posted.map(call => call.body.action);
+  assert.equal(actions.at(-1), 'triage-read', 'the report comes last');
+  assert.deepEqual(removed, [7], 'the read still ended and closed its tab');
+});
