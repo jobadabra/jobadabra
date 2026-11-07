@@ -103,7 +103,9 @@ test('in a batch, an ineligible job is skipped and said while the others still s
   assert.deepEqual(touched, ['startForm s-b', 'browser.start']);
   const broken = await make({config: fillConfig, store: {queue: async () => { throw new Error('Could not write the application record.'); }}, browser: {ready: () => true, start: spy('browser.start')}})
     .enqueue([{url: 'https://jobs.example.test/a'}, {url: 'https://jobs.example.test/b'}], 'fill');
-  assert.deepEqual(broken, {ok: false, error: 'Could not write the application record.'}, 'a real failure is not called "not eligible" and is not hidden');
+  assert.deepEqual(broken, {ok: false, error: 'Could not write the application record.', outcomes: [
+    {url: 'https://jobs.example.test/a', title: '', company: '', status: 'failed', reason: 'Could not write the application record.'},
+  ]}, 'a real failure stays distinct from "not eligible" and is shown for its job');
 });
 
 // Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule "10-minute wait with Stop"): the one test of the wait: once the person has pressed Stop, an elapsed timer must never issue the press.

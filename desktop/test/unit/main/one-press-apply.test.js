@@ -91,6 +91,18 @@ test('in a batch the stopped job is also notified, so a batch that started other
   assert.deepEqual(notes, ['Application could not be prepared']);
 });
 
+test('quiet kit preparation preserves the engine eligibility reason for an Apply batch summary', async () => {
+  const engineRun = async (_storage, _args, onLine) => { onLine('Not eligible: required credential missing.'); return {code: 0}; };
+  const {handed} = prepareKit({engineRun});
+  assert.deepEqual(await handed.prepareKitFor('ab12cd34', 'Analyst · Birch', {quiet: true}), {ok: true, ineligible: 'Not eligible: required credential missing.'});
+});
+
+test('quiet kit preparation preserves the last technical error for an Apply batch summary', async () => {
+  const engineRun = async (_storage, _args, onLine) => { onLine('The application kit could not be saved.'); return {code: 1}; };
+  const {handed} = prepareKit({engineRun});
+  assert.deepEqual(await handed.prepareKitFor('ab12cd34', 'Analyst · Birch', {quiet: true}), {ok: false, ineligible: '', error: 'The application kit could not be saved.'});
+});
+
 test('the app and the engine agree on the stop code', () => {
   assert.match(readScreenSource(new URL('../../../../src/ai/kit.py', import.meta.url), 'utf8'), new RegExp(`^JOB_STOPPED = ${pipeline.JOB_STOPPED}\\b`, 'm'));
 });
@@ -109,7 +121,10 @@ test('a stopped job does not hold a batch: the next best job is tried in its pla
   const prepare = async code => { asked.push(code); return code === 'a' ? {ok: false, stopped: true, error: 'a: unread'} : {ok: true}; };
   const result = await draftMissing(openJobs(['a', 'b', 'c']), 1, prepare, line => lines.push(line));
   assert.deepEqual(asked, ['a', 'b']);
-  assert.deepEqual(result, {done: 1, why: 'a: unread'});
+  assert.deepEqual(result, {done: 1, why: 'a: unread', outcomes: [
+    {url: 'https://jobs.example/a', title: 'Analyst', company: 'Birch', status: 'failed', reason: 'a: unread'},
+    {url: 'https://jobs.example/b', title: 'Analyst', company: 'Birch', status: 'prepared', reason: ''},
+  ]});
   assert.ok(lines.every(line => line.startsWith('Preparing application 1 of 1')), lines.join(' | '));
 });
 
@@ -121,4 +136,10 @@ test('a batch of stopped jobs ends after three spare tries, and a job that faile
   asked.length = 0;
   await draftMissing(openJobs(['a', 'b']), 1, async code => { asked.push(code); return {ok: false}; });
   assert.deepEqual(asked, ['a']);
+});
+
+test('a rejected kit preparation keeps its technical reason on that job outcome', async () => {
+  const reason = 'The application record could not be written.';
+  const result = await draftMissing(openJobs(['rejected']), 1, async () => { throw new Error(reason); });
+  assert.deepEqual(result.outcomes, [{url: 'https://jobs.example/rejected', title: 'Analyst', company: 'Birch', status: 'failed', reason}]);
 });
