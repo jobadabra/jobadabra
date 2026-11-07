@@ -4,6 +4,7 @@
 // "Check" chip of renderer/fact-line.js, one rule: needsCheck) and a ❓ on the Profile that nothing asked. Each item has the queue's shape ({key, question,
 // format, hint, value}) plus .details {kind, source, where, fact (the label it is scored by)}; lib/question-lists.js openShown sorts them into the two drawers the Jobs cards,
 // the drawers and the Profile tabs count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/unit/main/details-review.test.js.
+import {t} from '../i18n/detail-notices.js';
 import {openStore} from './store/index.js';
 import * as sections from './profile-sections.js';
 import {itemsOf, openConflicts, resolve, unsureKey} from './profile-move.js';
@@ -163,7 +164,7 @@ async function setLine(storage, home, label, value, {fetcher, save}) {
   await save(storage, home, current.map(line => (same(line.label) === same(label) ? {...line, value} : line)).filter(line => String(line.value).trim()), fetcher);
   const back = (await sections.read(storage, fetcher))[home] || [];
   const ok = value ? back.some(line => same(line.label) === same(label) && same(line.value) === same(value)) : !back.some(line => same(line.label) === same(label));
-  return ok ? {ok: true, homeName: HOME_NAMES[home]} : {ok: false, error: 'It did not save; nothing else changed'};
+  return ok ? {ok: true, homeName: HOME_NAMES[home]} : {ok: false, error: t('detailNotice.saveFailed')};
 }
 
 // A line of a page outside Your details, found again by its words: {page, block (the outline entry or table row), item}.
@@ -182,7 +183,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
   if (kind === 'which') {
     const conflict = (storage.settings().profileConflicts || []).find(each => each.topic === ref.topic);
     const pick = conflict ? conflict.choices.findIndex(each => same(each.value) === same(text)) : -1;
-    if (pick < 0) return {ok: false, error: 'Pick one of the values'};
+    if (pick < 0) return {ok: false, error: t('detailNotice.pickValue')};
     const done = await resolve(storage, ref.topic, pick, {fetcher, save});
     return done.ok ? {...done, homeName: HOME_NAMES[conflict.home]} : done;
   }
@@ -196,12 +197,12 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
       return {ok: true, homeName: pages.map(page => PAGES[page]).join(' · ')};
     }
     const home = Object.keys(sections.SECTIONS).find(each => sections.SECTIONS[each] === text);
-    if (!home) return {ok: false, error: 'Pick where it goes'};
+    if (!home) return {ok: false, error: t('detailNotice.pickHome')};
     const label = ref.label || ref.value, target = {label, value: ref.value};
     const current = (await sections.read(storage, fetcher))[home] || [];
     // Why (2026-10-27, d9): choosing a home relocates an existing fact; it is not an edit that may replace a different value with the same label.
     if (!current.some(line => unsureKey(line) === unsureKey(target))) await save(storage, home, [...current, target], fetcher);
-    if (!(await sections.read(storage, fetcher))[home]?.some(line => unsureKey(line) === unsureKey(target))) return {ok: false, error: 'It did not save; nothing else changed'};
+    if (!(await sections.read(storage, fetcher))[home]?.some(line => unsureKey(line) === unsureKey(target))) return {ok: false, error: t('detailNotice.saveFailed')};
     // Remove each exact source copy only after the destination read-back succeeded; reverse order keeps Markdown line IDs valid.
     const opened = openStore(storage, {fetcher});
     for (const page of pages) {
@@ -218,9 +219,9 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
   if (kind === 'open' && ref.home) return setLine(storage, ref.home, ref.label, text, {fetcher, save});
   if (kind === 'open') {
     const line = await lineOn(storage, ref.page, each => each.open && same(each.label) === same(ref.label), {fetcher});
-    if (!line) return {ok: false, error: 'Already answered'};
+    if (!line) return {ok: false, error: t('detailNotice.alreadyAnswered')};
     const home = text ? await homeOf(ref.label, text, ai) : '';
-    if (home && !await writeHome(storage, home, ref.label, text, fetcher, save)) return {ok: false, error: 'It did not save; nothing else changed'};
+    if (home && !await writeHome(storage, home, ref.label, text, fetcher, save)) return {ok: false, error: t('detailNotice.saveFailed')};
     if (!text || home) { await line.page.remove({id: line.block.id, text: line.item.check}); return {ok: true, ...(home ? {homeName: HOME_NAMES[home]} : {})}; }
     // Its home is this Profile line (owner, 18 Oct 2026: "answer onto that line").
     if (line.table) await line.page.setCell(line.block, 1, text.slice(0, 1900));
@@ -231,19 +232,19 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
   if (kind === 'contact') return contactReview.answer(storage, ref.field, text, {fetcher});
   if (kind === 'missing') {
     const fact = missingFacts.byId(ref.id);
-    if (!fact) return {ok: false, error: 'That question is no longer open'};
+    if (!fact) return {ok: false, error: t('detailNotice.questionClosed')};
     if (!text) { missingFacts.never(storage, fact.id); return {ok: true}; }   // "Don't keep": never asked again
-    return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
+    return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: t('detailNotice.saveFailed')};
   }
-  return {ok: false, error: 'That question is no longer open'};
+  return {ok: false, error: t('detailNotice.questionClosed')};
 }
 
 // An unclear answer: "Keep as is" closes it for that value; a new value replaces it on its line (a section's, or the Profile / answers page's own).
 // A learning confirmed or changed (PR B2): its line written with the answer and no state, its kind mark kept. -> {ok, homeName} | {ok: false, error}.
 async function answerTaught(storage, ref, text, {fetcher}) {
-  if (!text) return {ok: false, error: 'Type the answer first'};
+  if (!text) return {ok: false, error: t('detailNotice.typeAnswer')};
   const line = await lineOn(storage, ref.page, each => same(each.label) === same(ref.label) && same(each.value) === same(ref.value), {fetcher});
-  if (!line) return {ok: false, error: 'That line changed; nothing was saved'};
+  if (!line) return {ok: false, error: t('detailNotice.lineChanged')};
   if (line.table) await line.page.setCell(line.block, 1, text.slice(0, 1900));
   else { const split = splitMark(line.block.text); await line.page.setText(line.block, withMark(`${ref.label}: ${text}`, split.marked ? split : null)); }
   return {ok: true, homeName: `your ${PAGES[ref.page] || ref.page}`};
@@ -252,25 +253,25 @@ async function answerTaught(storage, ref, text, {fetcher}) {
 // A line made exact: one language's level (ref.part), or the whole value once its parts read.
 function answerCheck(storage, ref, text, {fetcher, save}) {
   if (ref.part !== undefined) return answerPart(storage, ref, text, {fetcher, save});
-  return text && !needsCheck(ref.kind || '', text) ? setLine(storage, ref.home, ref.label, text, {fetcher, save}) : {ok: false, error: 'Pick the parts first'};
+  return text && !needsCheck(ref.kind || '', text) ? setLine(storage, ref.home, ref.label, text, {fetcher, save}) : {ok: false, error: t('detailNotice.pickParts')};
 }
 
 // One language's level written into its part of the line; the other parts stay as written. The line must still hold the part that was asked.
 async function answerPart(storage, ref, text, {fetcher, save}) {
-  if (!partIsExact({level: text})) return {ok: false, error: 'Pick the level first'};
+  if (!partIsExact({level: text})) return {ok: false, error: t('detailNotice.pickLevel')};
   const line = ((await sections.read(storage, fetcher))[ref.home] || []).find(each => same(each.label) === same(ref.label));
-  if (!line || languageParts(line.value)[ref.part]?.raw !== ref.was) return {ok: false, error: 'That line changed; nothing was saved'};
+  if (!line || languageParts(line.value)[ref.part]?.raw !== ref.was) return {ok: false, error: t('detailNotice.lineChanged')};
   return setLine(storage, ref.home, ref.label, withLevel(line.value, ref.part, text), {fetcher, save});
 }
 
 async function answerUnclear(storage, ref, text, {fetcher, save}) {
-  if (!text) return {ok: false, error: 'Type the answer, or keep it as is'};
-  // Why (3 Nov 2026, owner): a heading read as an answer ("Summary: Summary") is never kept as it is; a new value still replaces it.
-  if (text === KEEP_AS_IS && isHeading(ref.label, ref.value)) return {ok: false, error: 'That is a heading, not an answer: it is not kept'};
+  if (!text) return {ok: false, error: t('detailNotice.typeOrKeep')};
+  // Why (7 Nov 2026, preserving the 3 Nov owner decision): reject keeping a heading as an answer before any write; only the rejection instruction follows the display locale.
+  if (text === KEEP_AS_IS && isHeading(ref.label, ref.value)) return {ok: false, error: t('detailNotice.heading')};
   if (text === KEEP_AS_IS) { clarity.keepAsIs(storage, ref); return {ok: true, homeName: ref.home ? HOME_NAMES[ref.home] : `your ${PAGES[ref.page] || ref.page}`}; }
   if (ref.home) return setLine(storage, ref.home, ref.label, text, {fetcher, save});
   const line = await lineOn(storage, ref.page, each => same(each.label) === same(ref.label) && same(each.value) === same(ref.value), {fetcher});
-  if (!line) return {ok: false, error: 'That line changed; nothing was saved'};
+  if (!line) return {ok: false, error: t('detailNotice.lineChanged')};
   if (line.table) await line.page.setCell(line.block, 1, text.slice(0, 1900));
   else await line.page.setText(line.block, ref.label ? `${ref.label}: ${text}` : text);
   return {ok: true, homeName: `your ${PAGES[ref.page] || ref.page}`};
