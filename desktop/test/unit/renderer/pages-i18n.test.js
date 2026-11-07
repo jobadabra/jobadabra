@@ -12,6 +12,30 @@ const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 const sameSpelling = new Set(['short-settings.js/ro/m325','short-settings.js/fr/m322', 'short-settings.js/fr/m355', 'short-settings.js/fr/m359','short-ready.js/de/m293','short-jobs.js/fr/m141','short-jobs.js/de/m184', 'short-jobs.js/fr/m200','short-activity.js/fr/m4', 'short-activity.js/es/m4','dynamic-profile-ready.js/fr/page','status.js/it/no', 'status.js/es/no', 'status.js/fr/question', 'count-nouns.js/fr/site', 'count-nouns.js/fr/version', 'dynamic-cv-data.js/de/inNotion', 'dynamic-cv-data.js/it/inNotion']);
 const parameters = text => [...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
+function checkMessageForms(file, locale, key, value, english) {
+  const forms = typeof value === 'string' ? [['other', value]] : Object.entries(value);
+  const fallback = typeof english === 'string' ? english : english.other;
+  assert.ok(forms.length);
+  for (const [category, form] of forms) {
+    const expected = typeof english === 'string' ? english : english[category] || fallback;
+    assert.equal(typeof form, 'string');
+    assert.deepEqual(parameters(form), parameters(expected), `${locale}.${key}`);
+    if (locale !== 'en' && !sameSpelling.has(`${file}/${locale}/${key}`)) assert.notEqual(form, fallback, `${locale}.${key}: real translation`);
+  }
+}
+
+function checkLocaleMessages(file, locale, messages, keys) {
+  assert.deepEqual(Object.keys(messages[locale]).sort(), keys, `${file}: ${locale} keys`);
+  for (const key of keys) {
+    const value = messages[locale][key];
+    checkMessageForms(file, locale, key, value, messages.en[key]);
+    if (typeof value !== 'object') continue;
+    for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
+      assert.ok(value[category] || value.other, `${locale}.${key}.${category}`);
+    }
+  }
+}
+
 test('page catalogs provide seven real translations with matching interpolation', async () => {
   const dir = new URL('i18n/catalogs/pages/', root);
   const files = fs.readdirSync(dir).filter(file => file.endsWith('.js'));
@@ -19,24 +43,7 @@ test('page catalogs provide seven real translations with matching interpolation'
   for (const file of files) {
     const {messages} = await import(new URL(file, dir));
     const keys = Object.keys(messages.en).sort();
-    for (const locale of locales) {
-      assert.deepEqual(Object.keys(messages[locale]).sort(), keys, `${file}: ${locale} keys`);
-      for (const key of keys) {
-        const value = messages[locale][key];
-        const forms = typeof value === 'string' ? [['other', value]] : Object.entries(value);
-        const english = typeof messages.en[key] === 'string' ? messages.en[key] : messages.en[key].other;
-        assert.ok(forms.length);
-        for (const [category, form] of forms) {
-          const expected = typeof messages.en[key] === 'string' ? english : messages.en[key][category] || english;
-          assert.equal(typeof form, 'string');
-          assert.deepEqual(parameters(form), parameters(expected), `${locale}.${key}`);
-          if (locale !== 'en' && !sameSpelling.has(`${file}/${locale}/${key}`)) assert.notEqual(form, english, `${locale}.${key}: real translation`);
-        }
-        if (typeof value === 'object') for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
-          assert.ok(value[category] || value.other, `${locale}.${key}.${category}`);
-        }
-      }
-    }
+    for (const locale of locales) checkLocaleMessages(file, locale, messages, keys);
   }
 });
 

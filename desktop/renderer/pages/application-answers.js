@@ -89,6 +89,14 @@ function rowToggle(view, {key, field, run, isOpen}) {
   return () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
 }
 
+// The answer cell shares the row's states without mixing its display choice into editing controls.
+function answerCell({isOpen, status, value, optional}) {
+  if (isOpen) return pill(t('pagesStatus.editing'), 'signal');
+  if (status && !value) return status;
+  const text = value ? shown(value) : optional ? t('pagesStatus.optional') : t('pagesCommon.notSet');
+  return el('span', value ? 'qa-value' : 'qa-value muted', text);
+}
+
 // One row: chevron · question (and its hint) · its answer or "Not set"; a row that needs an answer keeps "Add answer". Open: "Editing", the answer
 // field, and "Answer as" folded under Advanced options (the kind is read from forms or the AI; the picker only corrects it).
 function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, chip = null, action = t('pagesCommon.addAnswer'), run = null}) {
@@ -105,7 +113,7 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
   words.append(Object.assign(el('b', 'qa-title', title), {title}));   // long questions clamp to two lines (CSS); the whole one on hover and in the open row
   if (under) words.append(el('span', 'muted small', under));
   if (chip && !isOpen) words.append(chip);   // New / Confirmed / Guessed sits under the question: the row grid keeps its columns (it wrapped as a 5th cell)
-  head.append(chevron, words, isOpen ? pill(t('pagesStatus.editing'), 'signal') : status && !value ? status : el('span', value ? 'qa-value' : 'qa-value muted', value ? shown(value) : optional ? t('pagesStatus.optional') : t('pagesCommon.notSet')));
+  head.append(chevron, words, answerCell({isOpen, status, value, optional}));
   if (button) {
     const press = Object.assign(el('button', 'secondary qa-add', action), {type: 'button'});
     press.addEventListener('click', () => (run ? run() : (opened.add(key), view.redraw())));
