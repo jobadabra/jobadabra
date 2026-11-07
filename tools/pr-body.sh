@@ -38,11 +38,10 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   fi
   # Every image in a row of | What changed | Before | After | (owner, 17 Oct 2026, #1290: "just screens, it's not clear") and every image URL answers 200 (owner, 6 Nov 2026): tools/pr-screens.py, the same check CI runs on the body.
   python3 "$(dirname "$0")/pr-screens.py" < "$summary" || { echo 'pr-body: the screens are not in the | What changed | Before | After | table (tools/pr-body-template.md)' >&2; exit 2; }
-  # A change to the desktop window carries the 6 design checks, ticked on the after-shot (owner, 17 Oct 2026: the design system, docs/rules/desktop-ui.md;
-  # the block is in tools/pr-body-template.md). "No screenshots: <why>" (nothing drawn changed) needs none.
+  # A change to the desktop window carries the measured Design system table of `npm run design-check` (owner, 7 Nov 2026: "this Design checks on the PR seems stale and inefficient";
+  # chosen "Measured check (Recommended)"), replacing the 6 ticks this line used to count: tools/design-table-check.py. "No screenshots/No visible change: <why>" needs none.
   if git diff --name-only "$base"..HEAD | grep -q '^desktop/renderer/' && ! grep -qE '^No (screenshots|visible change): ' "$summary"; then
-    ticked="$(sed -n '/Design checks/,$p' "$summary" | grep -cE '^[[:space:]]*- \[[xX]\] ' || true)"
-    [ "$ticked" -ge 6 ] || { echo "pr-body: this PR changes the desktop window but has $ticked of the 6 design checks ticked: copy the \"Design checks\" block from tools/pr-body-template.md and tick each one you checked on the after-shot; fix the screen for any that fails (docs/rules/desktop-ui.md)" >&2; exit 2; }
+    design_err="$(python3 "$(dirname "$0")/design-table-check.py" "$base" "$summary" 2>&1)" || { echo "pr-body: $design_err" >&2; exit 2; }
   fi
   # At most 5 before/after pairs, usually 1-2 (owner, 17 Oct 2026): more than 10 images is refused.
   images="$(grep -oiE '!\[[^]]*\]\([^)]+\)|<img ' "$summary" | wc -l | tr -d ' ' || true)"
