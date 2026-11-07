@@ -18,3 +18,14 @@ test('a control in a closed fold is not listed; the fold\'s summary, an open fol
     assert.deepEqual(seen.controls.map(control => control.label), ['Chrome extension', 'Technical log Copy', 'Copy', 'Open fold', 'Inside open', 'Outside']);
   } finally { await browser.close(); }
 });
+
+// Why (7 Nov 2026, pz 3/5): 10 of the 26 goals the persona could not finish were Settings sections (Appearance, Advanced, Data & backup) it could not see: the section list is a <nav>, skipped with the app's menu.
+test('the Settings section buttons are listed; the app menu and its sidebar are not', async () => {
+  const browser = await chromium.launch({headless: true});
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<nav class="sidebar"><button class="nav" data-view="jobs">Jobs</button></nav><div class="view" data-view="settings"><nav class="settings-nav"><button data-settings-go="appearance">Appearance</button><button data-settings-go="advanced">Advanced</button></nav><button>Save</button></div>`);
+    const seen = await page.evaluate(observePage);
+    assert.deepEqual(seen.controls.map(control => control.label), ['Appearance', 'Advanced', 'Save']);
+  } finally { await browser.close(); }
+});
