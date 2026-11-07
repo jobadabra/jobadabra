@@ -20,7 +20,9 @@ test('start and verify go to the site with the install key; a verified code refr
   assert.equal((await plan.signin('start', {email: 'a@b.co'})).ok, true);
   const done = await plan.signin('verify', {email: 'a@b.co', code: '123456'});
   assert.equal(done.ok, true);
-  assert.deepEqual(calls.map(call => call[0]), ['/pro/signin/start', '/pro/signin/verify', '/pro/status']);
+  assert.deepEqual(calls.map(call => call[0]), ['/pro/signin/start', '/pro/signin/verify', '/account/language', '/pro/status']);
+  assert.deepEqual(calls.find(call => call[0] === '/account/language').slice(1, 3), ['PUT', {language: 'en'}]);
+  assert.equal(calls[0][2].language, 'en');
   assert.ok(calls.every(call => call[3]), 'every call carries the install key');
   assert.equal(plan.state().plan, 'pro');
 });

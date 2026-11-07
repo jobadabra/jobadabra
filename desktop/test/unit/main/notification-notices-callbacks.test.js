@@ -64,7 +64,7 @@ test('reason-map errors project only at IPC reply, leaving producer results and 
 test('resend preserves code and request data while resolving current display language', async () => {
   kept.notifyEmail = 'Original@example.test'; responses.push({ok: false, error: 'wait'}); setLocale('fr');
   assert.deepEqual(await invoke('notifyResend'), {ok: false, error: 'Nous venons de l’envoyer. Vérifiez votre boîte de réception et vos courriers indésirables ; vous pourrez le redemander dans une heure.', code: 'wait'});
-  assert.deepEqual(calls[0].body, null); assert.equal(calls[0].method, 'POST');
+  assert.deepEqual(calls[0].body, {language: 'en'}); assert.equal(calls[0].method, 'POST');
   assert.equal(calls[0].headers['x-api-key'], KEY); assert.ok(calls[0].url.endsWith('/api/account/email/resend'));
   assert.deepEqual(logs[0], ['notify', 'confirm mail not sent again', {code: 'wait'}]);
 });

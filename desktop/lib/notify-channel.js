@@ -7,12 +7,19 @@ import {wordingOf} from '../renderer/email-consent-words.js';
 import * as consent from './email-consent.js';
 import {notificationLanguage} from './notification-language.js';
 import {log as appLog} from './log.js';
+import {keptToken} from './install-token.js';
 
 const BASE = FREE_BASE.replace(/\/api\/ai$/, '');
 export const CHANNELS = ['email', 'app', 'telegram'];
 
 export const telegramReady = storage => !!(storage.secret('TELEGRAM_BOT_TOKEN') && storage.settings().telegramChatId);
-export const installKey = storage => storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
+/** Reuse this install's existing full site credential, including own-key Pro installs; never mint a token for metadata. */
+export function installKey(storage) {
+  const direct = storage.secret(TRIAL_KEY) || (/^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') ? storage.secret('ANTHROPIC_API_KEY') : '');
+  if (direct) return direct;
+  const install = storage.settings().telemetryId, token = install && keptToken(storage, install, 'ai');
+  return token ? `JPF1.${install}.${token}` : '';
+}
 export const emailOf = storage => String(storage.settings().notifyEmail || '');
 
 // The chosen channels. E-mail needs the person's consent (lib/email-consent.js) as well as an address. Unset = what the person already has: e-mail when an address was given, Telegram when it is connected, and the app always.
@@ -36,14 +43,14 @@ export function notifyEnv(storage) {
 const languageRefreshes = new WeakMap();
 
 /** Refresh derived service language on normal events; serialize changes, reuse acknowledgement, and leave the saved appearance choice unchanged. */
-export function refreshLanguage(storage, fetcher = globalThis.fetch) {
-  if (!emailOf(storage) || !installKey(storage)) return Promise.resolve({ok: false, skipped: true});
+export function refreshLanguage(storage, fetcher = globalThis.fetch, {force = false} = {}) {
+  if (!installKey(storage)) return Promise.resolve({ok: false, skipped: true});
   let state = languageRefreshes.get(storage);
   if (!state) { state = {pending: Promise.resolve(), acknowledged: null}; languageRefreshes.set(storage, state); }
   const next = state.pending.then(async () => {
     const language = notificationLanguage(storage);
-    const target = JSON.stringify([emailOf(storage), language]);
-    if (state.acknowledged === target) return {ok: true, language};
+    const target = JSON.stringify([installKey(storage), emailOf(storage), language]);
+    if (!force && state.acknowledged === target) return {ok: true, language};
     const answer = await call(storage, 'PUT', '/api/account/language', {language}, fetcher);
     if (answer.ok && answer.language === language) { state.acknowledged = target; return answer; }
     appLog('notify', 'language refresh not acknowledged', {language});
@@ -148,7 +155,7 @@ const RESEND_WORDS = {
 /** Sends the confirm mail again to the saved address (at most 1 an hour and 3 a day, the site decides). -> {ok} or {ok: false, error: words, code?: the site's reason} */
 export async function resend(storage, fetcher = globalThis.fetch) {
   if (!emailOf(storage)) return notificationFailure({ok: false, error: RESEND_WORDS.no_address, code: 'no_address'}, 'noAddress');
-  const done = await call(storage, 'POST', '/api/account/email/resend', null, fetcher);
+  const done = await call(storage, 'POST', '/api/account/email/resend', {language: notificationLanguage(storage)}, fetcher);
   if (done.ok) return {ok: true};
   const keys = {wait: 'resendWait', confirmed: 'resendConfirmed', stopped: 'resendStopped', no_address: 'noAddress', off: 'serviceOff', not_sent: 'notSent'};
   if (!RESEND_WORDS[done.error]) return done;
