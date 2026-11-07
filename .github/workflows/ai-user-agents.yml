@@ -22,7 +22,7 @@ on:
         description: 'Replay: the commit whose APP is tested (a 7-40 character SHA, e.g. the commit before a fix); the tests and the agent come from this workflow''s commit. Empty = this commit'
         required: false
       plan:
-        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound, board, tour) instead of the seeded goals'
+        description: 'Replay: a named plan (learned-questions, saved-answers, languages, inbound, board, app-language, tour) instead of the seeded goals'
         required: false
       rules_off:
         description: 'Replay: rule ids taken out of what the agent knows, comma separated (profile-1,jobs-3): the unprompted run'

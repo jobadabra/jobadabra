@@ -19,7 +19,14 @@ export function agentAct(page) {
   const tagged = i => page.locator(`[data-explore="${i}"]`);
   let pressed = null;   // where the last pressed control sat in the window, for the admin tab to box it in a note's screenshot (9/12 part 2b)
   return {
-    observe: () => page.evaluate(observePage),
+    // Why (7 Nov 2026, pz, code review): choosing a language reloads the window right after the pick, so the read that follows can land in the old page; that one error waits for the new page's first screen and reads again, any other error stays one.
+    observe: async () => {
+      try { return await page.evaluate(observePage); } catch (error) {
+        if (!/context was destroyed|navigat/i.test(error.message)) throw error;
+        await page.waitForSelector('.view:not([hidden])');
+        return page.evaluate(observePage);
+      }
+    },
     lastPress: () => pressed,
     click: async i => {
       await tagged(i).scrollIntoViewIfNeeded();
@@ -27,7 +34,25 @@ export function agentAct(page) {
       pressed = box ? {x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height), window} : null;
       await tagged(i).click({noWaitAfter: true}); await settle(page);
     },
-    type: async (i, text) => { pressed = null; await tagged(i).fill(String(text || '').slice(0, 200)); await settle(page); },
+    // Why (7 Nov 2026, pz): a native dropdown cannot be opened by a click in a test window, so typing its option's words picks that option (the first whose text holds them, case apart); no option with those words says which exist, never a guess.
+    type: async (i, text) => {
+      pressed = null;
+      const word = String(text || '').slice(0, 200), control = tagged(i);
+      if (await control.evaluate(node => node.tagName === 'SELECT')) {
+        const options = await control.evaluate(node => [...node.options].map(option => option.textContent.replace(/\s+/g, ' ').trim()));
+        const at = options.findIndex(option => option.toLowerCase().includes(word.trim().toLowerCase()));
+        if (at < 0 || !word.trim()) throw new Error(`no option holds "${word}"; the options are ${options.join(' | ')}`);
+        await control.selectOption({index: at}, {noWaitAfter: true});
+      } else await control.fill(word);
+      await settle(page);
+    },
+    /** The app back in English when a goal left it in another language (the page's `lang`): saves the choice the way Settings does and reloads. -> true when it switched. */
+    english: async () => {
+      if (/^en\b/i.test(await page.evaluate(() => document.documentElement.lang || 'en'))) return false;
+      await page.evaluate(() => window.pilot.setLocale('en'));
+      await page.reload(); await page.waitForSelector('.view:not([hidden])'); await settle(page);
+      return true;
+    },
     press: async key => { pressed = null; await page.keyboard.press(key); await settle(page); },
     /** Scrolls the first visible element showing one of `quotes` into view, so the screenshot taken next shows what a note is about; false when none is on the page. */
     reveal: async quotes => {

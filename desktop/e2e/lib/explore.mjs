@@ -55,8 +55,12 @@ export function observePage() {
     // Why (4 Nov 2026, AI user agents, owner: "Yes, fix it now"): the badge in a control ("What we learned" + the pill "2 to check") is information, not the press; safety reads the name without the app's pills, so "check" in a count never refuses the tab (replay 41807054784: the whole Profile tab was [not allowed]).
     const named = el.cloneNode(true);
     for (const badge of named.querySelectorAll('.ui-pill')) badge.remove();
-    const safeLabel = el.getAttribute('aria-label') ? label : named.textContent.replace(/\s+/g, ' ').trim().slice(0, 80);
-    controls.push({i: controls.length, kind, label, safeLabel, disabled: !!el.disabled, cls: String(el.className || ''), href: el.getAttribute('href') || '', type: el.getAttribute('type') || ''});
+    // Why (7 Nov 2026, pz, owner via mac-50: "switch the app language … check Focus, Jobs, Settings"): a dropdown's text is all of its options, so its safety is read on its own name ("Language"), and the agent sees the options to pick one by typing its words (act.type); nothing else in the page is a dropdown the agent may pick from unless that name is safe too (a dropdown named with an unsafe word, such as "Apply …", stays [not allowed]).
+    const safeLabel = el.tagName === 'SELECT' ? label : el.getAttribute('aria-label') ? label : named.textContent.replace(/\s+/g, ' ').trim().slice(0, 80);
+    const options = el.tagName === 'SELECT' ? [...el.options].slice(0, 12).map(option => option.textContent.replace(/\s+/g, ' ').trim().slice(0, 30)) : undefined;
+    // Why (7 Nov 2026, pz): the word list of lib/interact.mjs (delete, send, apply…) is English; in another language "Löschen" or "Bewerben" would pass it, so a page not in English offers only the dropdowns, fields, tabs and the Settings section list (choosing, typing or moving between sections sends nothing); `go` still moves between screens.
+    const foreign = !/^en\b/i.test(document.documentElement.lang || 'en'), moves = el.matches('[role="tab"]') || Boolean(el.closest('.settings-nav'));
+    controls.push({i: controls.length, kind, label, safeLabel, disabled: !!el.disabled, cls: String(el.className || ''), href: el.getAttribute('href') || '', type: el.getAttribute('type') || '', ...(options ? {options} : {}), ...(foreign && kind !== 'select' && kind !== 'field' && !moves ? {foreign: true} : {})});
   }
   const shown = document.querySelector('.view:not([hidden])');
   const text = (shown?.innerText || document.body.innerText || '').replace(/\n{3,}/g, '\n\n').slice(0, 3000);
@@ -66,11 +70,11 @@ export function observePage() {
 
 // A control's safety is judged on its own name (safeLabel: the label without the app's pills, as a count "2 to check" is not a press); an old record without one keeps its label.
 // Typing into a field presses nothing (Enter is never sent), so a field named "Search" is allowed; a password field never is. Anything pressable follows the probe's rule.
-export const allowed = control => !control.disabled && control.type !== 'password' && (control.kind === 'field' || isSafe({text: control.safeLabel ?? control.label, cls: control.cls, href: control.href}));
+export const allowed = control => !control.disabled && !control.foreign && control.type !== 'password' && (control.kind === 'field' || isSafe({text: control.safeLabel ?? control.label, cls: control.cls, href: control.href}));
 
 export function formatObservation(seen) {
   return [`Page: ${seen.view || '(unknown)'}`, ...(seen.overlays.length ? [`Open dialogs and toasts: ${seen.overlays.join(' | ')}`] : []), '', 'Visible text:', seen.text, '',
-    'Controls (index · kind · label):', ...seen.controls.map(c => `${c.i} · ${c.kind} · ${c.label || '(no label)'}${c.disabled ? ' [disabled]' : ''}${allowed(c) ? '' : ' [not allowed]'}`)].join('\n');
+    'Controls (index · kind · label):', ...seen.controls.map(c => `${c.i} · ${c.kind} · ${c.label || '(no label)'}${c.options ? ` [options: ${c.options.join(' | ')}]` : ''}${c.disabled ? ' [disabled]' : ''}${allowed(c) ? '' : ' [not allowed]'}`)].join('\n');
 }
 
 // The replayable steps of a report: from the latest "go" before it (or the start) to the report.
@@ -225,7 +229,7 @@ function repeated(tries, row, view) {
 function refusal(input, seen, views) {
   const tool = input.action, control = Number.isInteger(input.control) ? seen.controls[input.control] : null;
   if ((tool === 'click' || tool === 'type') && (!control || !allowed(control))) return `Refused: control ${input.control} is ${control ? 'not allowed' : 'not in the latest page view'}.`;
-  if (tool === 'type' && control.kind !== 'field') return 'Refused: that control is not a field.';
+  if (tool === 'type' && !['field', 'select'].includes(control.kind)) return 'Refused: that control is not a field or a dropdown.';
   if (tool === 'go' && !views.includes(input.view)) return `Refused: ${input.view || 'no page'} is not a page of the app.`;
   if (tool === 'press' && !KEYS.includes(input.key)) return `Refused: the key must be one of ${KEYS.join(', ')}.`;
   return '';

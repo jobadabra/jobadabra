@@ -137,6 +137,8 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
     if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
     notes.push(...mine);
+    // Why (7 Nov 2026, pz, owner via mac-50: the language goal "switches back to English"): the screen reader above read the screen in the language the goal ended on; the harness puts the app back in English before the next goal, so a goal that forgot (or stopped early) never turns the next goals' screens into false findings.
+    try { if (await act.english?.()) log(`  goal ${goal.n}: the app was put back in English`); } catch (error) { log(`  goal ${goal.n}: could not put the app back in English: ${String(error.message).split('\n')[0]}`); }
     results.push(goalResult(goal, result));
     failedOver = noteFailover({failedOver, reason: failover(), goalResult: results.at(-1), stopped: result.stopped, goal, log});   // Why (7 Nov 2026, pz): the record keeps the reason a goal moved to Claude (the Admin page shows each goal's summary); named once, on the goal during which the first call failed.
     ends.push({n: goal.n, stopped: result.stopped, steps: result.steps.map(stepWords)});   // Why (5 Nov 2026, SC 2/2): a chain hands on the goals that did not end on done, and the steps of the one that stopped

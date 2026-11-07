@@ -16,7 +16,7 @@ import {actorEngineOf, actorTierOf, conversationLine, engineLine, harnessTokens,
 import {actionSchema} from '../lib/explore.mjs';
 import {areaOfView, changedSince, changedLines, knowledgeFor, mergeNotes} from '../lib/agent-knowledge.mjs';
 import {memoryFiles, readExpectations, readNotes, readPending} from '../lib/agent-memory.mjs';
-import {movesFromPalette, readPalette} from '../lib/agent-moves.mjs';
+import {movesFromPalette, readPalette, withLanguage} from '../lib/agent-moves.mjs';
 import {moveKey, planSession, queueAfter, recordSession} from '../lib/agent-plan.mjs';
 import {namedPlan, rulesOff, shapeFor, withoutRules} from '../lib/agent-plans.mjs';
 import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../lib/agent-run.mjs';
@@ -71,7 +71,8 @@ export async function run(ctx) {
     if (prevChain) ({restored, page} = await restoreLink(ctx, chainDir, prevChain));
     const seeded = prevChain ? '' : await seedPlanData(ctx, process.env.AGENT_PLAN || '', seed, shapeId);
     if (seeded) { console.log(`  ${seeded}`); await page.reload(); await page.waitForSelector('.view:not([hidden])'); console.log(`  the app kept its CV read after ${await waitCvRead(ctx, process.env.AGENT_PLAN || '', shapeId)} ms`); }   // the app reads the CV and the rows again on a fresh load
-    const moves = movesFromPalette(await readPalette(page));
+    // Why (7 Nov 2026, pz, code review): the night's pool was the palette alone, so the language goal (an OWN_MOVE) was never drawn; only that move is added, the other OWN_MOVES have no harness step yet
+    const moves = withLanguage(movesFromPalette(await readPalette(page)));
     const coverage = memoryDir && fs.existsSync(path.join(memoryDir, 'coverage.json')) ? JSON.parse(fs.readFileSync(path.join(memoryDir, 'coverage.json'), 'utf8')) : [];
     const changedLog = process.env.AGENT_CHANGED_LOG && fs.existsSync(process.env.AGENT_CHANGED_LOG) ? fs.readFileSync(process.env.AGENT_CHANGED_LOG, 'utf8') : '';
     // Why (3 Nov 2026, AI user agents 8/12): a replay run (AGENT_PLAN: one named plan of the proof, lib/agent-plans.mjs) is a measurement of one app state, so what changed since the last night does not steer it; AGENT_RULES_OFF takes rules out of what the agent knows (the unprompted run).
