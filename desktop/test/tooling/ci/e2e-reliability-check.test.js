@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {test} from 'node:test';
+import {after as afterAll, test} from 'node:test';
 import {checkPush, expectationChanges, harnessProblems, newClockWaits} from '../../../../tools/e2e-reliability-check.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -22,21 +22,28 @@ function replay(commit) {
   return {before: side('before'), after: side('after')};
 }
 
+// Why (7 Nov 2026, owner: "desktop unit tests still take crazily long"; measured: this file ran 61 temp repos of ~10 git processes each, 59.9 s on a Mac, 109 s on Windows where a process start is slow):
+// one repo for the whole file, and each scenario's two commits (base, then change) made by ONE `git fast-import`; HEAD is pointed at the scenario's branch by writing the file git reads.
+// checkPush still runs its own git calls on that history, so what is asserted is unchanged.
+let shared = null;
+let scenarios = 0;
+afterAll(() => { if (shared) fs.rmSync(shared, {recursive: true, force: true}); });
+
+/** Takes the files before and after (null = delete), the change's commit message and the registry's suites; returns {root, base} with HEAD on the change's commit. @returns {{root: string, base: string}} */
+function history(before, after, message = 'Change', lanes = {}) {
+  if (!shared) { shared = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-check-')); execFileSync('git', ['init', '-q', '-b', 'main', shared]); }
+  const n = ++scenarios;
+  const data = text => `data ${Buffer.byteLength(text)}\n${text}\n`;
+  const commit = (ref, text, files, parent) => `commit refs/heads/${ref}\ncommitter test <test@example.com> ${n} +0000\n${data(`${text}\n`)}${parent ? `from refs/heads/${parent}\n` : ''}`
+    + Object.entries(files).map(([file, body]) => (body === null ? `D ${file}\n` : `M 100644 inline ${file}\n${data(body)}`)).join('') + '\n';
+  execFileSync('git', ['-C', shared, 'fast-import', '--quiet'], {input: commit(`base${n}`, 'Base', {'desktop/e2e/lanes.json': JSON.stringify({suites: lanes}), ...before}) + commit(`change${n}`, message, after, `base${n}`)});
+  fs.writeFileSync(path.join(shared, '.git/HEAD'), `ref: refs/heads/change${n}\n`);
+  return {root: shared, base: `base${n}`};
+}
+
 // Default to an empty registry: every suite is backbone unless the test supplies lanes.
 function push(before, after, message = 'Change', lanes = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-check-'));
-  const git = (...args) => execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
-  const write = files => { for (const [file, text] of Object.entries(files)) {
-    if (text === null) fs.rmSync(path.join(dir, file));
-    else { fs.mkdirSync(path.dirname(path.join(dir, file)), {recursive: true}); fs.writeFileSync(path.join(dir, file), text); }
-  } };
-  try {
-    git('init', '-q', '-b', 'main'); git('config', 'user.email', 'test@example.com'); git('config', 'user.name', 'test'); git('config', 'commit.gpgsign', 'false');
-    write({'desktop/e2e/lanes.json': JSON.stringify({suites: lanes}), ...before});
-    git('add', '-A'); git('commit', '-qm', 'Base'); git('branch', 'base');
-    write(after); git('add', '-A'); git('commit', '-qm', message);
-    return checkPush({root: dir, base: 'base'});
-  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+  return checkPush(history(before, after, message, lanes));
 }
 
 test('an expected number changed without a citation blocks; either citation passes', () => {
@@ -109,17 +116,9 @@ test('a backbone step newly suspended in the steps map needs a citation; one alr
   const registry = steps => ({'desktop/e2e/lanes.json': JSON.stringify({suites: {}, steps})});
   assert.match(push({}, registry({apply: {'the read step': entry}})), /Rule E.*apply · the read step leaves backbone/s);
   assert.equal(push({}, registry({apply: {'the read step': entry}}), `Change\n\n${why}`), '');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-steps-'));
-  try {
-    const git = (...args) => execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
-    const lanes = steps => { fs.mkdirSync(path.join(dir, 'desktop/e2e'), {recursive: true}); fs.writeFileSync(path.join(dir, 'desktop/e2e/lanes.json'), JSON.stringify({suites: {}, steps})); };
-    git('init', '-q', '-b', 'main'); git('config', 'user.email', 'test@example.com'); git('config', 'user.name', 'test'); git('config', 'commit.gpgsign', 'false');
-    lanes({apply: {'the read step': entry}}); git('add', '-A'); git('commit', '-qm', 'Base'); git('branch', 'base');
-    lanes({apply: {'the read step': entry, 'another step': entry}}); git('add', '-A'); git('commit', '-qm', 'Change');
-    const found = checkPush({root: dir, base: 'base'});
-    assert.match(found, /another step leaves backbone/);
-    assert.doesNotMatch(found, /the read step/, 'a step already suspended on the base is not a new move');
-  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+  const found = push(registry({apply: {'the read step': entry}}), registry({apply: {'the read step': entry, 'another step': entry}}));
+  assert.match(found, /another step leaves backbone/);
+  assert.doesNotMatch(found, /the read step/, 'a step already suspended on the base is not a new move');
 });
 
 test('raising or dropping an AI-ask ceiling needs a citation; lowering it is free', () => {
