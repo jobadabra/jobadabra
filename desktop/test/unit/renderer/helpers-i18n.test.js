@@ -272,3 +272,15 @@ test('interview display preserves review parsing, transcript content and prepara
   assert.doesNotMatch(value.prep.meta[1], /on heute/);
   assert.equal(value.ready.primary.run, 'open');
 });
+
+test('insight counts use Russian plural forms while generated titles and quotes remain original', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "import {install} from './test/tiny-dom.js'; install(); import {setLocale,t} from './i18n/index.js'; setLocale('ru'); const {insightView}=await import('./renderer/interview-insight.js'); const insight=insightView({sample:2,headline:'Original headline',confidence:'high',interviews:[{id:'one',title:'Example company'}],patterns:[{title:'Original pattern',text:'Original explanation',interviews:['one'],evidence:[{quote:'Original quote',interview:'one'}]}]},[{id:'one',overall:'Good'}]); console.log(JSON.stringify({insight,counts:[1,2,5].map(count=>t('helperFlow.interviewsCount',{count}))}));"], {cwd: root, encoding: 'utf8'});
+  const value = JSON.parse(output);
+  assert.deepEqual(value.counts, ['1 собеседование', '2 собеседования', '5 собеседований']);
+  assert.equal(value.insight.primary.headline, 'Original headline');
+  assert.equal(value.insight.primary.tag, 'Наблюдалось: 2 собеседования');
+  assert.equal(value.insight.patterns[0].title, 'Original pattern');
+  assert.equal(value.insight.moments[0].quotes[0].quote, 'Original quote');
+  assert.equal(value.insight.chip.level, 'high');
+});

@@ -197,5 +197,58 @@ export const messages = {
   "earlierKit": "Frühere Vorbereitung öffnen (erstellt {day})",
   "prepReady": "✓ Vorbereitung fertig · erstellt {day}",
   "openPrepKit": "Vorbereitung öffnen",
-  "prepareAgain": "Gespräch erneut vorbereiten"
+  "prepareAgain": "Gespräch erneut vorbereiten",
+  "confidenceHigh": "Hohe Sicherheit",
+  "confidenceMedium": "Mittlere Sicherheit",
+  "confidenceLow": "Geringe Sicherheit",
+  "confidenceLowTip": "Auf wenigen Gesprächen beruhend: kann sich mit weiteren Gesprächen ändern.",
+  "confidenceMediumTip": "In mehreren Gesprächen bestätigt, aber noch eine kleine Stichprobe.",
+  "confidenceHighTip": "In vielen Gesprächen bestätigt.",
+  "insightDisclaimer": "Diese Erkenntnisse sind Vorschläge aus wenigen Gesprächen und möglicherweise nicht abschließend.",
+  "interview": "Vorstellungsgespräch",
+  "noInsights": "Noch keine Erkenntnisse",
+  "reviewedBasis": {
+    "other": "Ausgewertete Gespräche: {count} · Aktualisieren, um sie gemeinsam zu lesen"
+  },
+  "basedInterviews": "Basierend auf: {interviews}",
+  "updatedLower": "aktualisiert {when}",
+  "updatedUpper": "Aktualisiert {when}",
+  "newReviewsPending": {
+    "one": "{count} neue Auswertung noch nicht enthalten",
+    "other": "{count} neue Auswertungen noch nicht enthalten"
+  },
+  "patternsAcross": "Muster aus {count} · {round}",
+  "reviewChanged": "Eine Auswertung hat sich geändert · Zum Aktualisieren auffrischen",
+  "insightOldVersion": "Von einer älteren Version erstellt · Zum Aktualisieren auffrischen",
+  "tentative": "Vorläufig",
+  "interviewInsights": "Erkenntnisse aus Gesprächen",
+  "insights": "Erkenntnisse",
+  "seenInterviews": "Beobachtet in: {interviews}",
+  "showInsights": "Erkenntnisse anzeigen",
+  "hideInsights": "Erkenntnisse ausblenden",
+  "checkNewer": "In {where} nach neuerer Version suchen",
+  "refreshInsightsTip": "Liest Ihre ausgewerteten Gespräche gemeinsam. {AI:big} wird nur bei geänderter Auswertung gefragt",
+  "refreshing": "Wird aktualisiert…",
+  "refreshInsights": "Erkenntnisse aktualisieren",
+  "primarySignal": "Wichtigstes Signal",
+  "patternsObserved": "Beobachtete Muster",
+  "showPatternQuotes": "Zitate zu diesem Muster anzeigen",
+  "showLibraryInterview": "Dieses Gespräch in der Bibliothek anzeigen",
+  "practiceNext": "Als Nächstes üben",
+  "markDone": "Als erledigt markieren",
+  "doneTitle": "Erledigt: {title}",
+  "startPractice": "Übung starten",
+  "aboutMinutes": "Etwa {count} Minuten",
+  "supportingMoments": "Belege ansehen ({count}) →",
+  "minutesAgo": "vor {count} Min.",
+  "hoursAgoSpaced": "vor {count} Std.",
+  "daysAgoFull": "vor {count} Tagen",
+  "interviewsCount": {
+    "one": "{count} Vorstellungsgespräch",
+    "other": "{count} Vorstellungsgespräche"
+  },
+  "quoteCount": {
+    "one": "{count} Zitat",
+    "other": "{count} Zitate"
+  }
 };

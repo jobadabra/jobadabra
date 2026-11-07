@@ -197,5 +197,61 @@ export const messages = {
   "earlierKit": "Deschide pregătirea anterioară (creată {day})",
   "prepReady": "✓ pregătire gata · creată {day}",
   "openPrepKit": "Deschide pregătirea",
-  "prepareAgain": "Pregătește din nou interviul"
+  "prepareAgain": "Pregătește din nou interviul",
+  "confidenceHigh": "Încredere ridicată",
+  "confidenceMedium": "Încredere medie",
+  "confidenceLow": "Încredere scăzută",
+  "confidenceLowTip": "Bazat pe puține interviuri: se poate schimba când adaugi altele.",
+  "confidenceMediumTip": "Consecvent în mai multe interviuri, dar eșantionul este încă mic.",
+  "confidenceHighTip": "Consecvent în multe interviuri.",
+  "insightDisclaimer": "Aceste observații sunt sugestii bazate pe puține interviuri și pot să nu fie definitive.",
+  "interview": "Interviu",
+  "noInsights": "Încă fără observații",
+  "reviewedBasis": {
+    "other": "Interviuri evaluate: {count} · Reîmprospătează pentru a le citi împreună"
+  },
+  "basedInterviews": "Bazat pe: {interviews}",
+  "updatedLower": "actualizat {when}",
+  "updatedUpper": "Actualizat {when}",
+  "newReviewsPending": {
+    "one": "{count} evaluare nouă încă neinclusă",
+    "few": "{count} evaluări noi încă neincluse",
+    "other": "{count} de evaluări noi încă neincluse"
+  },
+  "patternsAcross": "Tipare din {count} · {round}",
+  "reviewChanged": "O evaluare s-a schimbat · Reîmprospătează",
+  "insightOldVersion": "Scris de o versiune veche · Reîmprospătează",
+  "tentative": "Provizoriu",
+  "interviewInsights": "Observații din interviuri",
+  "insights": "Observații",
+  "seenInterviews": "Observat în: {interviews}",
+  "showInsights": "Arată observațiile",
+  "hideInsights": "Ascunde observațiile",
+  "checkNewer": "Se verifică o versiune mai nouă în {where}",
+  "refreshInsightsTip": "Citește împreună interviurile evaluate. {AI:big} este întrebat doar dacă o evaluare s-a schimbat",
+  "refreshing": "Se reîmprospătează…",
+  "refreshInsights": "Reîmprospătează observațiile",
+  "primarySignal": "Semnal principal",
+  "patternsObserved": "Tipare observate",
+  "showPatternQuotes": "Arată citatele pentru acest tipar",
+  "showLibraryInterview": "Arată interviul în bibliotecă",
+  "practiceNext": "Exersează în continuare",
+  "markDone": "Marchează finalizat",
+  "doneTitle": "Finalizat: {title}",
+  "startPractice": "Începe exersarea",
+  "aboutMinutes": "Aproximativ {count} minute",
+  "supportingMoments": "Vezi momentele de susținere ({count}) →",
+  "minutesAgo": "acum {count} min",
+  "hoursAgoSpaced": "acum {count} h",
+  "daysAgoFull": "acum {count} zile",
+  "interviewsCount": {
+    "one": "{count} interviu",
+    "few": "{count} interviuri",
+    "other": "{count} de interviuri"
+  },
+  "quoteCount": {
+    "one": "{count} citat",
+    "few": "{count} citate",
+    "other": "{count} de citate"
+  }
 };

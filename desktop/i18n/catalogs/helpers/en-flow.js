@@ -197,5 +197,59 @@ export const messages = {
   "earlierKit": "Open earlier kit (built {day})",
   "prepReady": "✓ prep kit ready · built {day}",
   "openPrepKit": "Open prep kit",
-  "prepareAgain": "Prepare the interview again"
+  "prepareAgain": "Prepare the interview again",
+  "confidenceHigh": "High confidence",
+  "confidenceMedium": "Medium confidence",
+  "confidenceLow": "Low confidence",
+  "confidenceLowTip": "Based on a limited number of interviews: it may change as you add more.",
+  "confidenceMediumTip": "Consistent across several interviews, but still a small sample.",
+  "confidenceHighTip": "Consistent across many interviews.",
+  "insightDisclaimer": "These insights are suggestions based on a limited number of interviews and may not be definitive.",
+  "interview": "Interview",
+  "noInsights": "No insights yet",
+  "reviewedBasis": {
+    "one": "{count} reviewed interview · Refresh to read them together",
+    "other": "{count} reviewed interviews · Refresh to read them together"
+  },
+  "basedInterviews": "Based on {interviews}",
+  "updatedLower": "updated {when}",
+  "updatedUpper": "Updated {when}",
+  "newReviewsPending": {
+    "one": "{count} new review not included yet",
+    "other": "{count} new reviews not included yet"
+  },
+  "patternsAcross": "Patterns across {count} {round}",
+  "reviewChanged": "A review changed since · Refresh to update",
+  "insightOldVersion": "Written by an older version · Refresh to update",
+  "tentative": "Tentative",
+  "interviewInsights": "Interview insights",
+  "insights": "Insights",
+  "seenInterviews": "Seen in {interviews}",
+  "showInsights": "Show the insights",
+  "hideInsights": "Hide the insights",
+  "checkNewer": "Checking {where} for a newer version",
+  "refreshInsightsTip": "Reads your reviewed interviews together. {AI:big} is only asked when a review changed",
+  "refreshing": "Refreshing…",
+  "refreshInsights": "Refresh insights",
+  "primarySignal": "Primary signal",
+  "patternsObserved": "Patterns observed",
+  "showPatternQuotes": "Show the quotes behind this pattern",
+  "showLibraryInterview": "Show this interview in the library",
+  "practiceNext": "Practice next",
+  "markDone": "Mark it done",
+  "doneTitle": "Done: {title}",
+  "startPractice": "Start practice session",
+  "aboutMinutes": "About {count} minutes",
+  "supportingMoments": "View supporting moments ({count}) →",
+  "minutesAgo": "{count} min ago",
+  "hoursAgoSpaced": "{count} h ago",
+  "daysAgoFull": "{count} days ago",
+  "interviewsCount": {
+    "one": "{count} interview",
+    "other": "{count} interviews"
+  },
+  "quoteCount": {
+    "one": "{count} quote",
+    "other": "{count} quotes"
+  }
 };

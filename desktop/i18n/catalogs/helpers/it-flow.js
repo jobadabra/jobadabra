@@ -197,5 +197,58 @@ export const messages = {
   "earlierKit": "Apri la preparazione precedente (creata {day})",
   "prepReady": "✓ preparazione pronta · creata {day}",
   "openPrepKit": "Apri preparazione",
-  "prepareAgain": "Prepara di nuovo il colloquio"
+  "prepareAgain": "Prepara di nuovo il colloquio",
+  "confidenceHigh": "Alta affidabilità",
+  "confidenceMedium": "Affidabilità media",
+  "confidenceLow": "Bassa affidabilità",
+  "confidenceLowTip": "Basato su pochi colloqui: può cambiare aggiungendone altri.",
+  "confidenceMediumTip": "Coerente in diversi colloqui, ma il campione è ancora piccolo.",
+  "confidenceHighTip": "Coerente in molti colloqui.",
+  "insightDisclaimer": "Questi spunti sono suggerimenti basati su pochi colloqui e potrebbero non essere definitivi.",
+  "interview": "Colloquio",
+  "noInsights": "Ancora nessuno spunto",
+  "reviewedBasis": {
+    "other": "Colloqui valutati: {count} · Aggiorna per leggerli insieme"
+  },
+  "basedInterviews": "Basato su: {interviews}",
+  "updatedLower": "aggiornato {when}",
+  "updatedUpper": "Aggiornato {when}",
+  "newReviewsPending": {
+    "one": "{count} nuova valutazione non ancora inclusa",
+    "other": "{count} nuove valutazioni non ancora incluse"
+  },
+  "patternsAcross": "Schemi da {count} · {round}",
+  "reviewChanged": "Una valutazione è cambiata · Aggiorna",
+  "insightOldVersion": "Scritto da una versione precedente · Aggiorna",
+  "tentative": "Provvisorio",
+  "interviewInsights": "Spunti dai colloqui",
+  "insights": "Spunti",
+  "seenInterviews": "Osservato in: {interviews}",
+  "showInsights": "Mostra gli spunti",
+  "hideInsights": "Nascondi gli spunti",
+  "checkNewer": "Ricerca di una versione più recente in {where}",
+  "refreshInsightsTip": "Legge insieme i colloqui valutati. {AI:big} viene usato solo se una valutazione cambia",
+  "refreshing": "Aggiornamento…",
+  "refreshInsights": "Aggiorna gli spunti",
+  "primarySignal": "Segnale principale",
+  "patternsObserved": "Schemi osservati",
+  "showPatternQuotes": "Mostra le citazioni di questo schema",
+  "showLibraryInterview": "Mostra il colloquio nella raccolta",
+  "practiceNext": "Prossimi esercizi",
+  "markDone": "Segna completato",
+  "doneTitle": "Completato: {title}",
+  "startPractice": "Inizia la pratica",
+  "aboutMinutes": "Circa {count} minuti",
+  "supportingMoments": "Vedi i passaggi di supporto ({count}) →",
+  "minutesAgo": "{count} min fa",
+  "hoursAgoSpaced": "{count} h fa",
+  "daysAgoFull": "{count} giorni fa",
+  "interviewsCount": {
+    "one": "{count} colloquio",
+    "other": "{count} colloqui"
+  },
+  "quoteCount": {
+    "one": "{count} citazione",
+    "other": "{count} citazioni"
+  }
 };

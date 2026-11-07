@@ -1,24 +1,26 @@
 // Interviews → the Insights card: what the reviewed interviews say together (src/ai/interview_insights.py, one
 // 💡 Insights row in Notion, updated after each review). Pure view code: insightView() decides what to show,
 // insightCard() draws it; pages/interviews.js wires Refresh and the links to the library rows.
+import '../i18n/screens-helpers.js';
+import {t, getLocale} from '../i18n/index.js';
 import {ai} from './ai-name.js';
 import {el, pill} from './components.js';
 import {icon} from './icons.js';
 import {minutes} from './practice-session.js';
 import {where} from './store-name.js';
 
-const CONFIDENCE = {high: ['good', 'High confidence'], medium: ['info', 'Medium confidence'], low: ['neutral', 'Low confidence']};
-const CONFIDENCE_TIP = {low: 'Based on a limited number of interviews: it may change as you add more.',
-  medium: 'Consistent across several interviews, but still a small sample.', high: 'Consistent across many interviews.'};
-const DISCLAIMER = 'These insights are suggestions based on a limited number of interviews and may not be definitive.';
+const CONFIDENCE = {high: ['good', t('helperFlow.confidenceHigh')], medium: ['info', t('helperFlow.confidenceMedium')], low: ['neutral', t('helperFlow.confidenceLow')]};
+const CONFIDENCE_TIP = {low: t('helperFlow.confidenceLowTip'),
+  medium: t('helperFlow.confidenceMediumTip'), high: t('helperFlow.confidenceHighTip')};
+const DISCLAIMER = t('helperFlow.insightDisclaimer');
 
 export function ago(at, now = Date.now()) {
   const minutes = Math.max(0, Math.round((now - Date.parse(at)) / 60000));
   if (!at || Number.isNaN(minutes)) return '';
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} min ago`;
-  if (minutes < 48 * 60) return `${Math.round(minutes / 60)} h ago`;
-  return `${Math.round(minutes / 1440)} days ago`;
+  if (minutes < 1) return t('helperFlow.justNow');
+  if (minutes < 60) return t('helperFlow.minutesAgo', {count: minutes});
+  if (minutes < 48 * 60) return t('helperFlow.hoursAgoSpaced', {count: Math.round(minutes / 60)});
+  return t('helperFlow.daysAgoFull', {count: Math.round(minutes / 1440)});
 }
 
 // null: no card (no reviewed interview). Otherwise what the card says. rows: the library rows (reviewed = overall set).
@@ -31,30 +33,30 @@ export function insightView(insight, rows = [], now = Date.now()) {
   if (!reviewed.length) return null;
   const known = new Map(rows.map(row => [row.id, row.title]));
   for (const item of list(insight?.interviews)) if (!known.has(item?.id)) known.set(item?.id, item?.title);
-  const link = id => ({id, title: known.get(id) || 'Interview', inLibrary: rows.some(row => row.id === id)});
+  const link = id => ({id, title: known.get(id) || t('helperFlow.interview'), inLibrary: rows.some(row => row.id === id)});
   if (!insight) {
-    return {empty: true, reviewed: reviewed.length, headline: 'No insights yet',
-      basis: `${reviewed.length} reviewed interview${reviewed.length === 1 ? '' : 's'} · Refresh to read them together`};
+    return {empty: true, reviewed: reviewed.length, headline: t('helperFlow.noInsights'),
+      basis: t('helperFlow.reviewedBasis', {count: reviewed.length})};
   }
   const n = Number(insight.sample) || list(insight.interviews).length || 0;
   const pending = reviewed.filter(row => !list(insight.interviews).some(item => item?.id === row.id)).length;
   const when = ago(insight.updated, now);
-  const basis = [`Based on ${n} interview${n === 1 ? '' : 's'}`, when && `updated ${when}`,
-    pending && `${pending} new review${pending === 1 ? '' : 's'} not included yet`].filter(Boolean).join(' · ');
+  const basis = [t('helperFlow.basedInterviews', {interviews: t('helperFlow.interviewsCount', {count: n})}), when && t('helperFlow.updatedLower', {when}),
+    pending && t('helperFlow.newReviewsPending', {count: pending})].filter(Boolean).join(' · ');
   // "Patterns across 2 recruiter screens · Updated 2 h ago": the round type when they are all the same one.
   const rounds = list(insight.interviews).map(item => item?.round_type).filter(Boolean);
   const same = rounds.length && rounds.every(round => round === rounds[0]) ? rounds[0].toLowerCase() : 'interview';
-  const subtitle = [`Patterns across ${n} ${same}${n === 1 ? '' : 's'}`, when && `Updated ${when}`,
-    pending ? `${pending} new review${pending === 1 ? '' : 's'} not included yet` : insight.outdated ? 'A review changed since · Refresh to update'
-      : olderFormat(insight) && 'Written by an older version · Refresh to update']
+  const subtitle = [t('helperFlow.patternsAcross', {count: n, round: getLocale() === 'en' ? `${same}${n === 1 ? '' : 's'}` : same === 'interview' ? t('helperFlow.interview') : same}), when && t('helperFlow.updatedUpper', {when}),
+    pending ? t('helperFlow.newReviewsPending', {count: pending}) : insight.outdated ? t('helperFlow.reviewChanged')
+      : olderFormat(insight) && t('helperFlow.insightOldVersion')]
     .filter(Boolean).join(' · ');
-  const company = id => String(link(id).title).split(' · ')[0].trim() || 'Interview';
+  const company = id => String(link(id).title).split(' · ')[0].trim() || t('helperFlow.interview');
   const patterns = list(insight.patterns).map(p => {
     const titled = !!String(p?.title || '').trim();
     const companies = [...new Map(list(p?.interviews).map(id => [company(id), {id, name: company(id)}])).values()];  // one chip per employer
     return {text: String(p?.text || ''), round: p?.round_type, tentative: !!p?.tentative || n < 2,
       kind: ['weakness', 'strength'].includes(p?.kind) ? p.kind : 'note', title: titled ? String(p.title).trim() : String(p?.text || ''),
-      detail: titled ? String(p?.text || '') : '', tag: p?.tentative || n < 2 ? 'Tentative' : `${list(p?.interviews).length} interviews`,
+      detail: titled ? String(p?.text || '') : '', tag: p?.tentative || n < 2 ? t('helperFlow.tentative') : t('helperFlow.interviewsCount', {count: list(p?.interviews).length}),
       quotes: list(p?.evidence).filter(e => String(e?.quote || '').trim()).length, companies, links: list(p?.interviews).map(link)};
   }).filter(p => p.text);
   // A row written before its Data column existed: its text columns, as lines.
@@ -68,9 +70,9 @@ export function insightView(insight, rows = [], now = Date.now()) {
   const fallback = !patterns.length && !insight.nothing_useful ? lines(bullets.join('\n')) : [];
   const confidence = CONFIDENCE[insight.confidence] || CONFIDENCE.low;
   const quotes = list(insight.patterns).reduce((sum, p) => sum + list(p?.evidence).length, 0);
-  return {title: 'Interview insights', subtitle, headline: String(insight.headline || 'Insights'), basis, pending, confidence,
-    chip: {text: `${confidence[1]} · ${n} interview${n === 1 ? '' : 's'}`, tone: confidence[0], level: CONFIDENCE[insight.confidence] ? insight.confidence : 'low', tip: CONFIDENCE_TIP[insight.confidence] || CONFIDENCE_TIP.low},
-    primary: {headline: String(insight.headline || 'Insights'), detail: String(insight.headline_detail || ''), tag: n ? `Seen in ${n} interview${n === 1 ? '' : 's'}` : ''},
+  return {title: t('helperFlow.interviewInsights'), subtitle, headline: String(insight.headline || t('helperFlow.insights')), basis, pending, confidence,
+    chip: {text: `${confidence[1]} · ${t('helperFlow.interviewsCount', {count: n})}`, tone: confidence[0], level: CONFIDENCE[insight.confidence] ? insight.confidence : 'low', tip: CONFIDENCE_TIP[insight.confidence] || CONFIDENCE_TIP.low},
+    primary: {headline: String(insight.headline || t('helperFlow.insights')), detail: String(insight.headline_detail || ''), tag: n ? t('helperFlow.seenInterviews', {interviews: t('helperFlow.interviewsCount', {count: n})}) : ''},
     patterns: patterns.length ? patterns : fallback.map(text => ({text, title: text, detail: '', kind: 'note', tag: '', companies: [], links: []})), steps,
     supporting: quotes && insight.url ? {count: quotes, url: insight.url} : null,
     // The quotes behind each pattern (View supporting moments), each with the employer of the interview it came from.
@@ -96,18 +98,18 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
   const head = el('div', 'iv-insight-head');
   const title = el('div', 'iv-insight-title');
   const h2 = el('h2', 'with-glyph');
-  const toggle = Object.assign(el('button', 'ghost iv-insight-toggle'), {type: 'button', title: collapsed ? 'Show the insights' : 'Hide the insights'});
+  const toggle = Object.assign(el('button', 'ghost iv-insight-toggle'), {type: 'button', title: collapsed ? t('helperFlow.showInsights') : t('helperFlow.hideInsights')});
   toggle.setAttribute('aria-expanded', String(!collapsed));
-  toggle.setAttribute('aria-label', collapsed ? 'Show the insights' : 'Hide the insights');
+  toggle.setAttribute('aria-label', collapsed ? t('helperFlow.showInsights') : t('helperFlow.hideInsights'));
   toggle.append(icon('chevron'));  // its click (or Enter) bubbles to the bar, which does the folding
-  h2.append(icon('bulb'), view.title || 'Interview insights', toggle);  // the arrow sits right after the title
+  h2.append(icon('bulb'), view.title || t('helperFlow.interviewInsights'), toggle);  // the arrow sits right after the title
   title.append(h2, el('div', 'muted small iv-insight-basis', view.subtitle || view.basis));
 
   const side = el('div', 'iv-insight-side');
   if (note) side.append(el('span', 'muted small', note));
   if (updating) {  // this Mac's saved copy is on screen while Notion is read: a small spinner, explained on hover
     const sync = el('span', 'spinner small iv-insight-sync');
-    sync.title = `Checking ${where()} for a newer version`;
+    sync.title = t('helperFlow.checkNewer', {where: where()});
     side.append(sync);
   }
   if (view.chip) {  // a ring that fills with the confidence, the words, and what the words mean on hover
@@ -119,8 +121,8 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
     side.append(chip);
   }
   const button = Object.assign(el('button', 'secondary with-icon small-btn iv-insight-refresh'), {type: 'button', disabled: busy,
-    title: ai('Reads your reviewed interviews together. {AI:big} is only asked when a review changed')});
-  button.append(busy ? el('span', 'spinner small') : icon('refresh'), el('span', '', busy ? 'Refreshing…' : 'Refresh insights'));
+    title: ai(t('helperFlow.refreshInsightsTip'))});
+  button.append(busy ? el('span', 'spinner small') : icon('refresh'), el('span', '', busy ? t('helperFlow.refreshing') : t('helperFlow.refreshInsights')));
   button.addEventListener('click', event => { event?.stopPropagation(); refresh(); });  // on the bar, but it only refreshes
   side.append(button);
   head.append(title, side);
@@ -131,7 +133,7 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
 
   const signal = el('div', 'iv-insight-top iv-signal');
   const words = el('div', 'iv-insight-words');
-  if (!view.empty) words.append(el('div', 'iv-signal-label', 'Primary signal'));
+  if (!view.empty) words.append(el('div', 'iv-signal-label', t('helperFlow.primarySignal')));
   words.append(el('div', 'focus-headline', view.primary?.headline || view.headline));
   const detail = view.empty ? view.basis : view.primary?.detail;
   if (detail) words.append(el('div', 'muted small iv-insight-basis', detail));
@@ -143,7 +145,7 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
   const columns = el('div', 'iv-insight-cols');
   if (view.patterns.length) {
     const block = el('div', 'iv-patterns');
-    block.append(el('h3', '', 'Patterns observed'));
+    block.append(el('h3', '', t('helperFlow.patternsObserved')));
     for (const p of view.patterns) {
       const row = el('div', 'iv-pattern');
       const tile = el('span', `iv-tile is-${p.kind}`);
@@ -154,12 +156,12 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
       const chips = el('div', 'iv-chips');
       if (p.tag) chips.append(pill(p.tag, p.tentative ? 'neutral' : 'info'));
       if (p.quotes) {  // the evidence: opens the moments at this pattern
-        const evidence = Object.assign(el('button', 'iv-chip iv-quotes', `${p.quotes} quote${p.quotes === 1 ? '' : 's'}`), {type: 'button', title: 'Show the quotes behind this pattern'});
+        const evidence = Object.assign(el('button', 'iv-chip iv-quotes', t('helperFlow.quoteCount', {count: p.quotes})), {type: 'button', title: t('helperFlow.showPatternQuotes')});
         evidence.addEventListener('click', event => { event?.stopPropagation(); onMoments(p.title); });
         chips.append(evidence);
       }
       for (const c of p.companies || []) {
-        const chip = Object.assign(el('button', 'iv-chip', c.name), {type: 'button', title: 'Show this interview in the library'});
+        const chip = Object.assign(el('button', 'iv-chip', c.name), {type: 'button', title: t('helperFlow.showLibraryInterview')});
         chip.addEventListener('click', () => open(c.id));
         chips.append(chip);
       }
@@ -170,23 +172,23 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
   }
   if (view.steps.length) {
     const block = el('div', 'iv-practice');
-    block.append(el('h3', '', 'Practice next'));
+    block.append(el('h3', '', t('helperFlow.practiceNext')));
     for (const step of view.steps) {
       const row = el('div', `iv-step${step.done ? ' is-done' : ''}`);
       const text = el('div', 'iv-row-words');
       text.append(el('b', '', step.title));
       if (step.detail) text.append(el('span', 'muted', step.detail));
-      const box = Object.assign(el('input', 'iv-step-box'), {type: 'checkbox', checked: !!step.done, title: 'Mark it done'});
-      box.setAttribute('aria-label', `Done: ${step.title}`);
+      const box = Object.assign(el('input', 'iv-step-box'), {type: 'checkbox', checked: !!step.done, title: t('helperFlow.markDone')});
+      box.setAttribute('aria-label', t('helperFlow.doneTitle', {title: step.title}));
       box.addEventListener('change', () => onTick(step, !!box.checked));
       row.append(el('span', 'iv-step-n', String(step.n)), text, box);
       block.append(row);
     }
     if (view.practice?.pending) {
       const actions = el('div', 'iv-practice-foot');
-      const start = Object.assign(el('button', 'secondary iv-practice-start', 'Start practice session'), {type: 'button'});
+      const start = Object.assign(el('button', 'secondary iv-practice-start', t('helperFlow.startPractice')), {type: 'button'});
       start.addEventListener('click', () => onPractice());
-      actions.append(start, el('span', 'muted small', `About ${view.practice.minutes} minutes`));
+      actions.append(start, el('span', 'muted small', t('helperFlow.aboutMinutes', {count: view.practice.minutes})));
       block.append(actions);
     }
     columns.append(block);
@@ -198,7 +200,7 @@ export function insightCard(view, {open = () => {}, onMoments = () => {}, onPrac
     if (view.disclaimer) note.append(icon('info'), view.disclaimer);
     foot.append(note);
     if (view.supporting) {
-      const more = Object.assign(el('button', 'link iv-supporting', `View supporting moments (${view.supporting.count}) →`), {type: 'button'});
+      const more = Object.assign(el('button', 'link iv-supporting', t('helperFlow.supportingMoments', {count: view.supporting.count})), {type: 'button'});
       more.addEventListener('click', () => onMoments());
       foot.append(more);
     }

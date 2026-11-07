@@ -197,5 +197,58 @@ export const messages = {
   "earlierKit": "Abrir preparación anterior (creada {day})",
   "prepReady": "✓ preparación lista · creada {day}",
   "openPrepKit": "Abrir preparación",
-  "prepareAgain": "Preparar de nuevo la entrevista"
+  "prepareAgain": "Preparar de nuevo la entrevista",
+  "confidenceHigh": "Alta confianza",
+  "confidenceMedium": "Confianza media",
+  "confidenceLow": "Baja confianza",
+  "confidenceLowTip": "Basado en pocas entrevistas: puede cambiar al añadir más.",
+  "confidenceMediumTip": "Coherente en varias entrevistas, pero la muestra sigue siendo pequeña.",
+  "confidenceHighTip": "Coherente en muchas entrevistas.",
+  "insightDisclaimer": "Estas conclusiones son sugerencias basadas en pocas entrevistas y pueden no ser definitivas.",
+  "interview": "Entrevista",
+  "noInsights": "Aún sin conclusiones",
+  "reviewedBasis": {
+    "other": "Entrevistas evaluadas: {count} · Actualiza para leerlas juntas"
+  },
+  "basedInterviews": "Basado en: {interviews}",
+  "updatedLower": "actualizado {when}",
+  "updatedUpper": "Actualizado {when}",
+  "newReviewsPending": {
+    "one": "{count} nueva evaluación aún no incluida",
+    "other": "{count} nuevas evaluaciones aún no incluidas"
+  },
+  "patternsAcross": "Patrones de {count} · {round}",
+  "reviewChanged": "Una evaluación cambió · Actualiza",
+  "insightOldVersion": "Escrito por una versión anterior · Actualiza",
+  "tentative": "Provisional",
+  "interviewInsights": "Conclusiones de entrevistas",
+  "insights": "Conclusiones",
+  "seenInterviews": "Visto en: {interviews}",
+  "showInsights": "Mostrar conclusiones",
+  "hideInsights": "Ocultar conclusiones",
+  "checkNewer": "Buscando una versión más reciente en {where}",
+  "refreshInsightsTip": "Lee juntas las entrevistas evaluadas. Solo consulta a {AI:big} si cambia una evaluación",
+  "refreshing": "Actualizando…",
+  "refreshInsights": "Actualizar conclusiones",
+  "primarySignal": "Señal principal",
+  "patternsObserved": "Patrones observados",
+  "showPatternQuotes": "Mostrar las citas de este patrón",
+  "showLibraryInterview": "Mostrar esta entrevista en la biblioteca",
+  "practiceNext": "Practicar después",
+  "markDone": "Marcar completado",
+  "doneTitle": "Completado: {title}",
+  "startPractice": "Iniciar práctica",
+  "aboutMinutes": "Unos {count} minutos",
+  "supportingMoments": "Ver momentos de apoyo ({count}) →",
+  "minutesAgo": "hace {count} min",
+  "hoursAgoSpaced": "hace {count} h",
+  "daysAgoFull": "hace {count} días",
+  "interviewsCount": {
+    "one": "{count} entrevista",
+    "other": "{count} entrevistas"
+  },
+  "quoteCount": {
+    "one": "{count} cita",
+    "other": "{count} citas"
+  }
 };

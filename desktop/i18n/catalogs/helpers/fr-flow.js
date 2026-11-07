@@ -197,5 +197,58 @@ export const messages = {
   "earlierKit": "Ouvrir la préparation précédente (créée {day})",
   "prepReady": "✓ préparation prête · créée {day}",
   "openPrepKit": "Ouvrir la préparation",
-  "prepareAgain": "Préparer à nouveau l’entretien"
+  "prepareAgain": "Préparer à nouveau l’entretien",
+  "confidenceHigh": "Confiance élevée",
+  "confidenceMedium": "Confiance moyenne",
+  "confidenceLow": "Confiance faible",
+  "confidenceLowTip": "Basé sur peu d’entretiens : peut changer avec de nouveaux entretiens.",
+  "confidenceMediumTip": "Cohérent sur plusieurs entretiens, mais l’échantillon reste petit.",
+  "confidenceHighTip": "Cohérent sur de nombreux entretiens.",
+  "insightDisclaimer": "Ces observations sont des suggestions basées sur peu d’entretiens et ne sont pas définitives.",
+  "interview": "Entretien",
+  "noInsights": "Pas encore d’observations",
+  "reviewedBasis": {
+    "other": "Entretiens analysés : {count} · Actualisez pour les lire ensemble"
+  },
+  "basedInterviews": "Basé sur : {interviews}",
+  "updatedLower": "actualisé {when}",
+  "updatedUpper": "Actualisé {when}",
+  "newReviewsPending": {
+    "one": "{count} nouvelle analyse pas encore incluse",
+    "other": "{count} nouvelles analyses pas encore incluses"
+  },
+  "patternsAcross": "Tendances sur {count} · {round}",
+  "reviewChanged": "Une analyse a changé · Actualisez",
+  "insightOldVersion": "Rédigé par une ancienne version · Actualisez",
+  "tentative": "Provisoire",
+  "interviewInsights": "Observations sur les entretiens",
+  "insights": "Observations",
+  "seenInterviews": "Observé dans : {interviews}",
+  "showInsights": "Afficher les observations",
+  "hideInsights": "Masquer les observations",
+  "checkNewer": "Recherche d’une version récente dans {where}",
+  "refreshInsightsTip": "Lit ensemble vos entretiens analysés. {AI:big} n’est sollicité que si une analyse change",
+  "refreshing": "Actualisation…",
+  "refreshInsights": "Actualiser les observations",
+  "primarySignal": "Signal principal",
+  "patternsObserved": "Tendances observées",
+  "showPatternQuotes": "Voir les citations de cette tendance",
+  "showLibraryInterview": "Voir cet entretien dans la bibliothèque",
+  "practiceNext": "À pratiquer ensuite",
+  "markDone": "Marquer terminé",
+  "doneTitle": "Terminé : {title}",
+  "startPractice": "Commencer la pratique",
+  "aboutMinutes": "Environ {count} minutes",
+  "supportingMoments": "Voir les passages associés ({count}) →",
+  "minutesAgo": "il y a {count} min",
+  "hoursAgoSpaced": "il y a {count} h",
+  "daysAgoFull": "il y a {count} jours",
+  "interviewsCount": {
+    "one": "{count} entretien",
+    "other": "{count} entretiens"
+  },
+  "quoteCount": {
+    "one": "{count} citation",
+    "other": "{count} citations"
+  }
 };
