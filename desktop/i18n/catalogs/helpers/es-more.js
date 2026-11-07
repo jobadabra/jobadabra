@@ -398,20 +398,8 @@ export const messages = {
   "hostedFailed": "No se pudo activar ahora.",
   "hostedOnPill": "Activado",
   "hostedPausedPill": "En pausa",
-  "aboutApplications": {
-    "one": "unas {count} solicitud",
-    "other": "unas {count} solicitudes"
-  },
-  "signinCodeWrong": {
-    "one": "El código no es correcto. Queda {count} intento.",
-    "other": "El código no es correcto. Quedan {count} intentos."
-  },
-  "daysDuration": {
-    "one": "{count} día",
-    "other": "{count} días"
-  },
-  "lastSearchNew": {
-    "one": "Última búsqueda: {count} oferta nueva",
-    "other": "Última búsqueda: {count} ofertas nuevas"
-  }
+  "aboutApplications": {"one":"unas {count} solicitud","other":"unas {count} solicitudes","many":"unas {count} solicitudes"},
+  "signinCodeWrong": {"one":"El código no es correcto. Queda {count} intento.","other":"El código no es correcto. Quedan {count} intentos.","many":"El código no es correcto. Quedan {count} intentos."},
+  "daysDuration": {"one":"{count} día","other":"{count} días","many":"{count} días"},
+  "lastSearchNew": {"one":"Última búsqueda: {count} oferta nueva","other":"Última búsqueda: {count} ofertas nuevas","many":"Última búsqueda: {count} ofertas nuevas"}
 };

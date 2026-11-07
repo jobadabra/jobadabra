@@ -161,72 +161,21 @@ export const messages = {
   "notMyTech": "Pas mes technologies",
   "notMyRole": "Pas mon type de poste",
   "company": "Entreprise",
-  "aboutMinutes": {
-    "one": "environ {count} minute",
-    "other": "environ {count} minutes"
-  },
-  "cancelling": {
-    "one": "Annulation de {count} candidature…",
-    "other": "Annulation de {count} candidatures…"
-  },
-  "emailsReviewed": {
-    "one": "{count} e-mail examiné.",
-    "other": "{count} e-mails examinés."
-  },
-  "recordsChanged": {
-    "one": "{count} candidature modifiée.",
-    "other": "{count} candidatures modifiées."
-  },
-  "updateLabel": {
-    "one": "mise à jour enregistrée",
-    "other": "mises à jour enregistrées"
-  },
-  "newEmailLabel": {
-    "one": "nouvel e-mail",
-    "other": "nouveaux e-mails"
-  },
-  "emailLabel": {
-    "one": "e-mail examiné",
-    "other": "e-mails examinés"
-  },
-  "unlistedUpdates": {
-    "one": "{count} mise à jour enregistrée, sans détails conservés.",
-    "other": "{count} mises à jour enregistrées, sans détails conservés."
-  },
-  "formFills": {
-    "one": "{count} remplissage",
-    "other": "{count} remplissages"
-  },
-  "needsInput": {
-    "one": "{count} demande une réponse",
-    "other": "{count} demandent une réponse"
-  },
-  "fields": {
-    "one": "{count} champs",
-    "other": "{count} champs"
-  },
-  "suggestionsForSearch": {
-    "one": "{count} suggestion pour votre recherche",
-    "other": "{count} suggestions pour votre recherche"
-  },
-  "urgentCount": {
-    "one": "{count} urgent",
-    "other": "{count} urgents"
-  },
-  "warningCount": {
-    "one": "{count} avertissement",
-    "other": "{count} avertissements"
-  },
-  "infoCount": {
-    "one": "{count} info",
-    "other": "{count} infos"
-  },
-  "oldScoreCount": {
-    "one": "{count} ancienne note",
-    "other": "{count} anciennes notes"
-  },
-  "foldItems": {
-    "one": "{count} élément",
-    "other": "{count} éléments"
-  }
+  "aboutMinutes": {"one":"environ {count} minute","other":"environ {count} minutes","many":"environ {count} minutes"},
+  "cancelling": {"one":"Annulation de {count} candidature…","other":"Annulation de {count} candidatures…","many":"Annulation de {count} candidatures…"},
+  "emailsReviewed": {"one":"{count} e-mail examiné.","other":"{count} e-mails examinés.","many":"{count} e-mails examinés."},
+  "recordsChanged": {"one":"{count} candidature modifiée.","other":"{count} candidatures modifiées.","many":"{count} candidatures modifiées."},
+  "updateLabel": {"one":"mise à jour enregistrée","other":"mises à jour enregistrées","many":"mises à jour enregistrées"},
+  "newEmailLabel": {"one":"nouvel e-mail","other":"nouveaux e-mails","many":"nouveaux e-mails"},
+  "emailLabel": {"one":"e-mail examiné","other":"e-mails examinés","many":"e-mails examinés"},
+  "unlistedUpdates": {"one":"{count} mise à jour enregistrée, sans détails conservés.","other":"{count} mises à jour enregistrées, sans détails conservés.","many":"{count} mises à jour enregistrées, sans détails conservés."},
+  "formFills": {"one":"{count} remplissage","other":"{count} remplissages","many":"{count} remplissages"},
+  "needsInput": {"one":"{count} demande une réponse","other":"{count} demandent une réponse","many":"{count} demandent une réponse"},
+  "fields": {"one":"{count} champs","other":"{count} champs","many":"{count} champs"},
+  "suggestionsForSearch": {"one":"{count} suggestion pour votre recherche","other":"{count} suggestions pour votre recherche","many":"{count} suggestions pour votre recherche"},
+  "urgentCount": {"one":"{count} urgent","other":"{count} urgents","many":"{count} urgents"},
+  "warningCount": {"one":"{count} avertissement","other":"{count} avertissements","many":"{count} avertissements"},
+  "infoCount": {"one":"{count} info","other":"{count} infos","many":"{count} infos"},
+  "oldScoreCount": {"one":"{count} ancienne note","other":"{count} anciennes notes","many":"{count} anciennes notes"},
+  "foldItems": {"one":"{count} élément","other":"{count} éléments","many":"{count} éléments"}
 };

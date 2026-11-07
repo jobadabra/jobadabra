@@ -177,60 +177,18 @@ export const messages = {
   "fact": "Dato",
   "tip": "Consejo",
   "sourceLine": "Fuente: {source}",
-  "confirmDetails": {
-    "one": "Confirmar {count} dato",
-    "other": "Confirmar {count} datos"
-  },
-  "boardsFound": {
-    "one": "{count} portal encontrado",
-    "other": "{count} portales encontrados"
-  },
-  "addedJobs": {
-    "one": "{count} oferta añadida a tu lista",
-    "other": "{count} ofertas añadidas a tu lista"
-  },
-  "basisJobs": {
-    "one": "Basado en {count} oferta sobre la que actuaste.",
-    "other": "Basado en {count} ofertas sobre las que actuaste."
-  },
-  "applyCount": {
-    "one": "Aplicar {count} cambio",
-    "other": "Aplicar {count} cambios"
-  },
-  "moved_applications": {
-    "one": "{count} candidatura",
-    "other": "{count} candidaturas"
-  },
-  "moved_events": {
-    "one": "{count} evento de historial",
-    "other": "{count} eventos de historial"
-  },
-  "moved_matches": {
-    "one": "{count} resultado de búsqueda",
-    "other": "{count} resultados de búsqueda"
-  },
-  "moved_interviews": {
-    "one": "{count} entrevista",
-    "other": "{count} entrevistas"
-  },
-  "moved_insights": {
-    "one": "{count} análisis",
-    "other": "{count} análisis"
-  },
-  "moved_employers": {
-    "one": "{count} empresa",
-    "other": "{count} empresas"
-  },
-  "moved_agent_runs": {
-    "one": "{count} rellenado",
-    "other": "{count} rellenados"
-  },
-  "moved_cron_runs": {
-    "one": "{count} ejecución",
-    "other": "{count} ejecuciones"
-  },
-  "moved_texts": {
-    "one": "{count} texto",
-    "other": "{count} textos"
-  }
+  "confirmDetails": {"one":"Confirmar {count} dato","other":"Confirmar {count} datos","many":"Confirmar {count} datos"},
+  "boardsFound": {"one":"{count} portal encontrado","other":"{count} portales encontrados","many":"{count} portales encontrados"},
+  "addedJobs": {"one":"{count} oferta añadida a tu lista","other":"{count} ofertas añadidas a tu lista","many":"{count} ofertas añadidas a tu lista"},
+  "basisJobs": {"one":"Basado en {count} oferta sobre la que actuaste.","other":"Basado en {count} ofertas sobre las que actuaste.","many":"Basado en {count} ofertas sobre las que actuaste."},
+  "applyCount": {"one":"Aplicar {count} cambio","other":"Aplicar {count} cambios","many":"Aplicar {count} cambios"},
+  "moved_applications": {"one":"{count} candidatura","other":"{count} candidaturas","many":"{count} candidaturas"},
+  "moved_events": {"one":"{count} evento de historial","other":"{count} eventos de historial","many":"{count} eventos de historial"},
+  "moved_matches": {"one":"{count} resultado de búsqueda","other":"{count} resultados de búsqueda","many":"{count} resultados de búsqueda"},
+  "moved_interviews": {"one":"{count} entrevista","other":"{count} entrevistas","many":"{count} entrevistas"},
+  "moved_insights": {"one":"{count} análisis","other":"{count} análisis","many":"{count} análisis"},
+  "moved_employers": {"one":"{count} empresa","other":"{count} empresas","many":"{count} empresas"},
+  "moved_agent_runs": {"one":"{count} rellenado","other":"{count} rellenados","many":"{count} rellenados"},
+  "moved_cron_runs": {"one":"{count} ejecución","other":"{count} ejecuciones","many":"{count} ejecuciones"},
+  "moved_texts": {"one":"{count} texto","other":"{count} textos","many":"{count} textos"}
 };

@@ -20,26 +20,11 @@ export const messages = {
   "application": "Candidature",
   "waitingTitle": "Jobadabra vous attend dans Chrome",
   "waitingBody": "Appuyez une fois sur « Autoriser sur les sites ouverts par l’application » : les sites seront ensuite lus automatiquement.",
-  "fillDoneBody": {
-    "one": "{job} : {count} champ rempli{remaining}. Vérifiez, puis envoyez.",
-    "other": "{job} : {count} champs remplis{remaining}. Vérifiez, puis envoyez."
-  },
-  "fillRemaining": {
-    "one": ", {count} à compléter (indiqués sur la page)",
-    "other": ", {count} à compléter (indiqués sur la page)"
-  },
-  "rememberedBody": {
-    "one": "{count} réponse déjà donnée, redemandée par {company} : mémorisée comme réponse standard. Annulez dans le panneau de l’offre.",
-    "other": "{count} réponses déjà données, redemandées par {company} : mémorisées comme réponses standard. Annulez dans le panneau de l’offre."
-  },
-  "learnedBody": {
-    "one": "{count} réponse de {company} conservée pour les prochains formulaires. Vérifiez dans Profil → Ce que nous avons appris.",
-    "other": "{count} réponses de {company} conservées pour les prochains formulaires. Vérifiez dans Profil → Ce que nous avons appris."
-  },
-  "questionBody": {
-    "one": "{count} question de {company} n’avait pas de réponse standard. Répondez dans Jobadabra → Offres.",
-    "other": "{count} questions de {company} n’avaient pas de réponse standard. Répondez dans Jobadabra → Offres."
-  },
+  "fillDoneBody": {"one":"{job} : {count} champ rempli{remaining}. Vérifiez, puis envoyez.","other":"{job} : {count} champs remplis{remaining}. Vérifiez, puis envoyez.","many":"{job} : {count} champs remplis{remaining}. Vérifiez, puis envoyez."},
+  "fillRemaining": {"one":", {count} à compléter (indiqués sur la page)","other":", {count} à compléter (indiqués sur la page)","many":", {count} à compléter (indiqués sur la page)"},
+  "rememberedBody": {"one":"{count} réponse déjà donnée, redemandée par {company} : mémorisée comme réponse standard. Annulez dans le panneau de l’offre.","other":"{count} réponses déjà données, redemandées par {company} : mémorisées comme réponses standard. Annulez dans le panneau de l’offre.","many":"{count} réponses déjà données, redemandées par {company} : mémorisées comme réponses standard. Annulez dans le panneau de l’offre."},
+  "learnedBody": {"one":"{count} réponse de {company} conservée pour les prochains formulaires. Vérifiez dans Profil → Ce que nous avons appris.","other":"{count} réponses de {company} conservées pour les prochains formulaires. Vérifiez dans Profil → Ce que nous avons appris.","many":"{count} réponses de {company} conservées pour les prochains formulaires. Vérifiez dans Profil → Ce que nous avons appris."},
+  "questionBody": {"one":"{count} question de {company} n’avait pas de réponse standard. Répondez dans Jobadabra → Offres.","other":"{count} questions de {company} n’avaient pas de réponse standard. Répondez dans Jobadabra → Offres.","many":"{count} questions de {company} n’avaient pas de réponse standard. Répondez dans Jobadabra → Offres."},
   "versionStore": "Chrome utilise l’extension Jobadabra {version} du Chrome Web Store ; cette application fournit {latest}. Chrome la met à jour automatiquement dès que la nouvelle version est disponible dans le Store, généralement sous un jour.",
   "versionFolder": "Chrome utilise l’extension Jobadabra {version}, plus ancienne que {latest} fournie avec cette application : rechargez-la une fois (chrome://extensions → ↻ sur Jobadabra) ; elle se mettra ensuite à jour automatiquement."
 };

@@ -273,72 +273,21 @@ export const messages = {
   "submittedMarked": "Inviata · segnata come Candidatura inviata",
   "workingEllipsis": "In lavorazione…",
   "yourTurnSubmit": "Tocca a te: controlla e invia in Chrome",
-  "unsaved": {
-    "one": "{count} modifica non salvata",
-    "other": "{count} modifiche non salvate"
-  },
-  "hours": {
-    "one": "{count} ora",
-    "other": "{count} ore"
-  },
-  "waitedMany": {
-    "one": "{count} candidatura ti ha aspettato fino a {hours}",
-    "other": "{count} candidature ti hanno aspettato fino a {hours}"
-  },
-  "updatesTitle": {
-    "one": "Gmail ha trovato {count} aggiornamento di candidatura",
-    "other": "Gmail ha trovato {count} aggiornamenti di candidatura"
-  },
-  "updates": {
-    "one": "{count} aggiornamento",
-    "other": "{count} aggiornamenti"
-  },
-  "minutes": {
-    "one": "{count} minuto",
-    "other": "{count} minuti"
-  },
-  "seconds": {
-    "one": "{count} secondo",
-    "other": "{count} secondi"
-  },
-  "seeNewJobs": {
-    "one": "Vedi la nuova offerta ({count})",
-    "other": "Vedi le {count} nuove offerte"
-  },
-  "answerQuestions": {
-    "one": "Rispondi a {count} domanda",
-    "other": "Rispondi a {count} domande"
-  },
-  "questionsForYou": {
-    "one": "{count} domanda per te",
-    "other": "{count} domande per te"
-  },
-  "employersAdded": {
-    "one": "{amount} datore aggiunto",
-    "other": "{amount} datori aggiunti"
-  },
-  "todayNewJobs": {
-    "one": "{amount} nuova offerta nella lista di oggi",
-    "other": "{amount} nuove offerte nella lista di oggi"
-  },
-  "unscoredJobs": {
-    "one": "{count} offerta non valutata: {why}",
-    "other": "{count} offerte non valutate: {why}"
-  },
-  "skippedJobs": {
-    "one": "{count} offerta saltata ({ids}): {reason}",
-    "other": "{count} offerte saltate ({ids}): {reason}"
-  },
-  "readFormFields": {
-    "one": "Modulo letto: {count} campo obbligatorio",
-    "other": "Modulo letto: {count} campi obbligatori"
-  },
-  "answersSuggested": {
-    "one": "{count} risposta suggerita da verificare",
-    "other": "{count} risposte suggerite da verificare"
-  },
-  "yourTurnFields": {
-    "one": "Tocca a te: resta {count} campo, poi invia in Chrome",
-    "other": "Tocca a te: restano {count} campi, poi invia in Chrome"
-  }
+  "unsaved": {"one":"{count} modifica non salvata","other":"{count} modifiche non salvate","many":"{count} modifiche non salvate"},
+  "hours": {"one":"{count} ora","other":"{count} ore","many":"{count} ore"},
+  "waitedMany": {"one":"{count} candidatura ti ha aspettato fino a {hours}","other":"{count} candidature ti hanno aspettato fino a {hours}","many":"{count} candidature ti hanno aspettato fino a {hours}"},
+  "updatesTitle": {"one":"Gmail ha trovato {count} aggiornamento di candidatura","other":"Gmail ha trovato {count} aggiornamenti di candidatura","many":"Gmail ha trovato {count} aggiornamenti di candidatura"},
+  "updates": {"one":"{count} aggiornamento","other":"{count} aggiornamenti","many":"{count} aggiornamenti"},
+  "minutes": {"one":"{count} minuto","other":"{count} minuti","many":"{count} minuti"},
+  "seconds": {"one":"{count} secondo","other":"{count} secondi","many":"{count} secondi"},
+  "seeNewJobs": {"one":"Vedi la nuova offerta ({count})","other":"Vedi le {count} nuove offerte","many":"Vedi le {count} nuove offerte"},
+  "answerQuestions": {"one":"Rispondi a {count} domanda","other":"Rispondi a {count} domande","many":"Rispondi a {count} domande"},
+  "questionsForYou": {"one":"{count} domanda per te","other":"{count} domande per te","many":"{count} domande per te"},
+  "employersAdded": {"one":"{amount} datore aggiunto","other":"{amount} datori aggiunti","many":"{amount} datori aggiunti"},
+  "todayNewJobs": {"one":"{amount} nuova offerta nella lista di oggi","other":"{amount} nuove offerte nella lista di oggi","many":"{amount} nuove offerte nella lista di oggi"},
+  "unscoredJobs": {"one":"{count} offerta non valutata: {why}","other":"{count} offerte non valutate: {why}","many":"{count} offerte non valutate: {why}"},
+  "skippedJobs": {"one":"{count} offerta saltata ({ids}): {reason}","other":"{count} offerte saltate ({ids}): {reason}","many":"{count} offerte saltate ({ids}): {reason}"},
+  "readFormFields": {"one":"Modulo letto: {count} campo obbligatorio","other":"Modulo letto: {count} campi obbligatori","many":"Modulo letto: {count} campi obbligatori"},
+  "answersSuggested": {"one":"{count} risposta suggerita da verificare","other":"{count} risposte suggerite da verificare","many":"{count} risposte suggerite da verificare"},
+  "yourTurnFields": {"one":"Tocca a te: resta {count} campo, poi invia in Chrome","other":"Tocca a te: restano {count} campi, poi invia in Chrome","many":"Tocca a te: restano {count} campi, poi invia in Chrome"}
 };

@@ -207,9 +207,7 @@ export const messages = {
   "insightDisclaimer": "Aceste observații sunt sugestii bazate pe puține interviuri și pot să nu fie definitive.",
   "interview": "Interviu",
   "noInsights": "Încă fără observații",
-  "reviewedBasis": {
-    "other": "Interviuri evaluate: {count} · Reîmprospătează pentru a le citi împreună"
-  },
+  "reviewedBasis": "Interviuri evaluate: {count} · Reîmprospătează pentru a le citi împreună",
   "basedInterviews": "Bazat pe: {interviews}",
   "updatedLower": "actualizat {when}",
   "updatedUpper": "Actualizat {when}",
@@ -386,10 +384,7 @@ export const messages = {
     "few": "{count} oferte",
     "other": "{count} de oferte"
   },
-  "scoresOld": {
-    "one": "{jobs} a fost evaluată cu setările de căutare anterioare.",
-    "other": "{jobs} au fost evaluate cu setările de căutare anterioare."
-  },
+  "scoresOld": {"one":"{jobs} a fost evaluată cu setările de căutare anterioare.","other":"{jobs} au fost evaluate cu setările de căutare anterioare.","few":"{jobs} au fost evaluate cu setările de căutare anterioare."},
   "applyCount": {
     "one": "Candidează la {count} ofertă",
     "few": "Candidează la {count} oferte",

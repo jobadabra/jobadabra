@@ -3,6 +3,9 @@
 // words) is painted from it by paintCount(name), so they can never disagree. A node with data-count-one / data-count-many gets words ("3 details to
 // check"), else the bare number; a node hides at 0 unless data-count-zero="show". Guarded by test/unit/renderer/page-parts.test.js.
 import {setCount} from './components.js';
+import '../i18n/screens-pages.js';
+import {t} from '../i18n/index.js';
+import {number} from '../i18n/format.js';
 
 const sources = new Map();
 export const countWords = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -17,8 +20,9 @@ export function defineCount(name, compute, root = globalThis.document) {
 export function paintCount(name, root = globalThis.document) {
   const n = countOf(name);
   for (const node of root?.querySelectorAll?.(`[data-count-of="${name}"]`) || []) {
-    const {countOne: one, countMany: many, countZero: zero} = node.dataset;
-    if (one) node.textContent = countWords(n, one, many); else setCount(node, n);
+    const {countOne: one, countMany: many, countZero: zero, countKey: key} = node.dataset;
+    if (key) node.textContent = t(key, {count: n, shown: number(n)});
+    else if (one) node.textContent = countWords(n, one, many); else setCount(node, n);
     node.hidden = n === 0 && zero !== 'show';
   }
   return n;

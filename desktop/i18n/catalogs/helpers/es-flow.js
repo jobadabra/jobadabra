@@ -207,16 +207,11 @@ export const messages = {
   "insightDisclaimer": "Estas conclusiones son sugerencias basadas en pocas entrevistas y pueden no ser definitivas.",
   "interview": "Entrevista",
   "noInsights": "Aún sin conclusiones",
-  "reviewedBasis": {
-    "other": "Entrevistas evaluadas: {count} · Actualiza para leerlas juntas"
-  },
+  "reviewedBasis": "Entrevistas evaluadas: {count} · Actualiza para leerlas juntas",
   "basedInterviews": "Basado en: {interviews}",
   "updatedLower": "actualizado {when}",
   "updatedUpper": "Actualizado {when}",
-  "newReviewsPending": {
-    "one": "{count} nueva evaluación aún no incluida",
-    "other": "{count} nuevas evaluaciones aún no incluidas"
-  },
+  "newReviewsPending": {"one":"{count} nueva evaluación aún no incluida","other":"{count} nuevas evaluaciones aún no incluidas","many":"{count} nuevas evaluaciones aún no incluidas"},
   "patternsAcross": "Patrones de {count} · {round}",
   "reviewChanged": "Una evaluación cambió · Actualiza",
   "insightOldVersion": "Escrito por una versión anterior · Actualiza",
@@ -370,32 +365,11 @@ export const messages = {
   "applicationsUsed": "{used} de {limit} candidaturas usadas",
   "freeEndedTip": "Plan gratuito: {used} de {limit} candidaturas usadas y días gratuitos terminados. Nuevas candidaturas y búsquedas pausadas. {tracking} Una clave elimina el límite. Pro es un {promise}.",
   "freeActiveTip": "Plan gratuito: {used} de {limit} candidaturas usadas · {days}. Gratis hasta alcanzar {limit} candidaturas y 60 días, lo que tarde más; después Pro, un {promise} (próximamente). (Tu meta diaria de Enfoque es independiente.)",
-  "interviewsCount": {
-    "one": "{count} entrevista",
-    "other": "{count} entrevistas"
-  },
-  "quoteCount": {
-    "one": "{count} cita",
-    "other": "{count} citas"
-  },
-  "jobsCount": {
-    "one": "{count} oferta",
-    "other": "{count} ofertas"
-  },
-  "scoresOld": {
-    "one": "{jobs} se evaluó con los ajustes de búsqueda anteriores.",
-    "other": "{jobs} se evaluaron con los ajustes de búsqueda anteriores."
-  },
-  "applyCount": {
-    "one": "Postular a {count} oferta",
-    "other": "Postular a {count} ofertas"
-  },
-  "requiredLeft": {
-    "one": "Falta {count} campo obligatorio",
-    "other": "Faltan {count} campos obligatorios"
-  },
-  "licenseDays": {
-    "one": "Queda {count} día",
-    "other": "Quedan {count} días"
-  }
+  "interviewsCount": {"one":"{count} entrevista","other":"{count} entrevistas","many":"{count} entrevistas"},
+  "quoteCount": {"one":"{count} cita","other":"{count} citas","many":"{count} citas"},
+  "jobsCount": {"one":"{count} oferta","other":"{count} ofertas","many":"{count} ofertas"},
+  "scoresOld": {"one":"{jobs} se evaluó con los ajustes de búsqueda anteriores.","other":"{jobs} se evaluaron con los ajustes de búsqueda anteriores.","many":"{jobs} se evaluaron con los ajustes de búsqueda anteriores."},
+  "applyCount": {"one":"Postular a {count} oferta","other":"Postular a {count} ofertas","many":"Postular a {count} ofertas"},
+  "requiredLeft": {"one":"Falta {count} campo obligatorio","other":"Faltan {count} campos obligatorios","many":"Faltan {count} campos obligatorios"},
+  "licenseDays": {"one":"Queda {count} día","other":"Quedan {count} días","many":"Quedan {count} días"}
 };

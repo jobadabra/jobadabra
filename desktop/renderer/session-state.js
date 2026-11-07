@@ -1,6 +1,8 @@
 // A session's state as the window shows it, from what the app reports (lib/terminals.js publicView) and Claude's
 // last message. No window needed: tested in desktop/test/unit/renderer/session-state.test.js.
 import '../i18n/screens-helpers.js';
+import '../i18n/session-counts.js';
+import {number} from '../i18n/format.js';
 import {t} from '../i18n/index.js';
 import {READY_LINE, readSessionMessage} from './session-message.js';
 import {backgroundStatus} from './background-status.js';
@@ -115,11 +117,11 @@ export const DOCK_EMPTY = {pill: t('helperTail.noneYet'), text: t('helperTail.no
 export const dockEmptyView = (sessions, dockOpen) => sessions.length ? null : {pill: DOCK_EMPTY.pill, text: DOCK_EMPTY.text, closed: !dockOpen};
 /** Which session the tray's title and "View all" open: the one on screen or the first; null with no sessions (then they open the Sessions page, which has its own empty state). Why (code review of fb 6b/7, 5 Nov 2026): with an empty tray both links did nothing. */
 export const dockLinkSession = (sessions, openId) => sessions.length ? (openId || sessions[0].id) : null;
+/** Describe the highest-priority session bucket in the active display language, with the same count and tone. */
 export function sessionsFoot(needs, working, ready, all) {
-  const plural = count => `${count} session${count === 1 ? '' : 's'}`;
-  const [text, tone] = needs ? [`${plural(needs)} need${needs === 1 ? 's' : ''} you`, 'warn']
-    : working ? [`${plural(working)} open`, 'info'] : ready ? [`${plural(ready)} filled`, 'good'] : [plural(all), 'neutral'];
-  return {text, tone};
+  const [key, count, tone] = needs ? ['needs', needs, 'warn'] : working ? ['open', working, 'info']
+    : ready ? ['filled', ready, 'good'] : ['all', all, 'neutral'];
+  return {text: t(`sessionCounts.${key}`, {count, shown: number(count)}), tone};
 }
 const DOCK_ORDER = {input: 0, running: 1, done: 2, failed: 3, ended: 4};
 export const dockOrder = (item, gone = () => false) => gone(item) ? 9 : (DOCK_ORDER[item.status] ?? 5);

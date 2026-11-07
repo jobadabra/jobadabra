@@ -43,9 +43,6 @@ export const messages = {
   "putBack": "{skill}: вернуть",
   "reviewedCount": "Проверено · {count}",
   "profileNotes": "Заметки в профиле · {count}",
-  "splitParagraph": {
-    "one": "Абзац преобразован в один список. ",
-    "other": "Абзац разбит на списки: {count}. "
-  },
+  "splitParagraph": {"one":"Абзац преобразован в один список. ","other":"Абзац разбит на списки: {count}. ","few":"Абзац разбит на списки: {count}. ","many":"Абзац разбит на списки: {count}. "},
   "putGapsBack": "Вернуть абзац навыков для проверки"
 };

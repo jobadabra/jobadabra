@@ -177,60 +177,18 @@ export const messages = {
   "fact": "Fatto",
   "tip": "Consiglio",
   "sourceLine": "Fonte: {source}",
-  "confirmDetails": {
-    "one": "Conferma {count} dettaglio",
-    "other": "Conferma {count} dettagli"
-  },
-  "boardsFound": {
-    "one": "{count} sito trovato",
-    "other": "{count} siti trovati"
-  },
-  "addedJobs": {
-    "one": "{count} offerta aggiunta all’elenco",
-    "other": "{count} offerte aggiunte all’elenco"
-  },
-  "basisJobs": {
-    "one": "In base a {count} offerta su cui hai agito.",
-    "other": "In base a {count} offerte su cui hai agito."
-  },
-  "applyCount": {
-    "one": "Applica {count} modifica",
-    "other": "Applica {count} modifiche"
-  },
-  "moved_applications": {
-    "one": "{count} candidatura",
-    "other": "{count} candidature"
-  },
-  "moved_events": {
-    "one": "{count} evento di cronologia",
-    "other": "{count} eventi di cronologia"
-  },
-  "moved_matches": {
-    "one": "{count} risultato di ricerca",
-    "other": "{count} risultati di ricerca"
-  },
-  "moved_interviews": {
-    "one": "{count} colloquio",
-    "other": "{count} colloqui"
-  },
-  "moved_insights": {
-    "one": "{count} analisi",
-    "other": "{count} analisi"
-  },
-  "moved_employers": {
-    "one": "{count} datore",
-    "other": "{count} datori"
-  },
-  "moved_agent_runs": {
-    "one": "{count} compilazione",
-    "other": "{count} compilazioni"
-  },
-  "moved_cron_runs": {
-    "one": "{count} esecuzione",
-    "other": "{count} esecuzioni"
-  },
-  "moved_texts": {
-    "one": "{count} testo",
-    "other": "{count} testi"
-  }
+  "confirmDetails": {"one":"Conferma {count} dettaglio","other":"Conferma {count} dettagli","many":"Conferma {count} dettagli"},
+  "boardsFound": {"one":"{count} sito trovato","other":"{count} siti trovati","many":"{count} siti trovati"},
+  "addedJobs": {"one":"{count} offerta aggiunta all’elenco","other":"{count} offerte aggiunte all’elenco","many":"{count} offerte aggiunte all’elenco"},
+  "basisJobs": {"one":"In base a {count} offerta su cui hai agito.","other":"In base a {count} offerte su cui hai agito.","many":"In base a {count} offerte su cui hai agito."},
+  "applyCount": {"one":"Applica {count} modifica","other":"Applica {count} modifiche","many":"Applica {count} modifiche"},
+  "moved_applications": {"one":"{count} candidatura","other":"{count} candidature","many":"{count} candidature"},
+  "moved_events": {"one":"{count} evento di cronologia","other":"{count} eventi di cronologia","many":"{count} eventi di cronologia"},
+  "moved_matches": {"one":"{count} risultato di ricerca","other":"{count} risultati di ricerca","many":"{count} risultati di ricerca"},
+  "moved_interviews": {"one":"{count} colloquio","other":"{count} colloqui","many":"{count} colloqui"},
+  "moved_insights": {"one":"{count} analisi","other":"{count} analisi","many":"{count} analisi"},
+  "moved_employers": {"one":"{count} datore","other":"{count} datori","many":"{count} datori"},
+  "moved_agent_runs": {"one":"{count} compilazione","other":"{count} compilazioni","many":"{count} compilazioni"},
+  "moved_cron_runs": {"one":"{count} esecuzione","other":"{count} esecuzioni","many":"{count} esecuzioni"},
+  "moved_texts": {"one":"{count} testo","other":"{count} testi","many":"{count} testi"}
 };

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from '../../tiny-dom.js';
+import {setLocale} from '../../../i18n/index.js';
 
 install();
 const listeners = {};
@@ -22,6 +23,19 @@ const {questionsNow} = await import('../../../renderer/pages/jobs-questions.js')
 const {desktopAiBanner, setDesktopAiSeams} = await import('../../../renderer/pages/desktop-ai.js');
 const {view, brief, pressConnect} = await import('../../../renderer/pages/desktop-ai-connect.js');
 const {changesStrip} = await import('../../../renderer/pages/desktop-ai-changes.js');
+
+test('German history translates authored undo guidance and preserves unknown reasons and original changes', () => {
+  const rows = [{id: 'a', tool: 'answer_question', question: 'Raw applicant question', after: 'Raw answer', why: 'It moved to Your details; change it there.'},
+    {id: 'b', tool: 'answer_question', question: 'Other question', after: 'Other answer', why: 'My <custom> explanation'}];
+  const before = JSON.stringify(rows);
+  setLocale('de');
+  try {
+    const strip = changesStrip(rows, 'claude', () => {});
+    assert.doesNotMatch(strip.textContent, /It moved to Your details/);
+    assert.ok(strip.textContent.includes('My <custom> explanation'));
+    assert.equal(JSON.stringify(rows), before);
+  } finally { setLocale('en'); }
+});
 
 const offer = state => {
   Object.assign(questionsNow(), {learned: [{question: 'Why', key: 'a'}], desktopAi: {family: 'claude'}});

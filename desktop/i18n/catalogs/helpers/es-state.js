@@ -273,72 +273,21 @@ export const messages = {
   "submittedMarked": "Enviada · marcada como Solicitada",
   "workingEllipsis": "Trabajando…",
   "yourTurnSubmit": "Tu turno: revisa y envía en Chrome",
-  "unsaved": {
-    "one": "{count} cambio sin guardar",
-    "other": "{count} cambios sin guardar"
-  },
-  "hours": {
-    "one": "{count} hora",
-    "other": "{count} horas"
-  },
-  "waitedMany": {
-    "one": "{count} solicitud te esperó hasta {hours}",
-    "other": "{count} solicitudes te esperaron hasta {hours}"
-  },
-  "updatesTitle": {
-    "one": "Gmail encontró {count} actualización de solicitud",
-    "other": "Gmail encontró {count} actualizaciones de solicitudes"
-  },
-  "updates": {
-    "one": "{count} actualización",
-    "other": "{count} actualizaciones"
-  },
-  "minutes": {
-    "one": "{count} minuto",
-    "other": "{count} minutos"
-  },
-  "seconds": {
-    "one": "{count} segundo",
-    "other": "{count} segundos"
-  },
-  "seeNewJobs": {
-    "one": "Ver la nueva oferta ({count})",
-    "other": "Ver las {count} nuevas ofertas"
-  },
-  "answerQuestions": {
-    "one": "Responder {count} pregunta",
-    "other": "Responder {count} preguntas"
-  },
-  "questionsForYou": {
-    "one": "{count} pregunta para ti",
-    "other": "{count} preguntas para ti"
-  },
-  "employersAdded": {
-    "one": "{amount} empleador añadido",
-    "other": "{amount} empleadores añadidos"
-  },
-  "todayNewJobs": {
-    "one": "{amount} oferta nueva en la lista de hoy",
-    "other": "{amount} ofertas nuevas en la lista de hoy"
-  },
-  "unscoredJobs": {
-    "one": "{count} oferta sin evaluar: {why}",
-    "other": "{count} ofertas sin evaluar: {why}"
-  },
-  "skippedJobs": {
-    "one": "{count} oferta omitida ({ids}): {reason}",
-    "other": "{count} ofertas omitidas ({ids}): {reason}"
-  },
-  "readFormFields": {
-    "one": "Formulario leído: {count} campo obligatorio",
-    "other": "Formulario leído: {count} campos obligatorios"
-  },
-  "answersSuggested": {
-    "one": "{count} respuesta sugerida para revisar",
-    "other": "{count} respuestas sugeridas para revisar"
-  },
-  "yourTurnFields": {
-    "one": "Tu turno: queda {count} campo, luego envía en Chrome",
-    "other": "Tu turno: quedan {count} campos, luego envía en Chrome"
-  }
+  "unsaved": {"one":"{count} cambio sin guardar","other":"{count} cambios sin guardar","many":"{count} cambios sin guardar"},
+  "hours": {"one":"{count} hora","other":"{count} horas","many":"{count} horas"},
+  "waitedMany": {"one":"{count} solicitud te esperó hasta {hours}","other":"{count} solicitudes te esperaron hasta {hours}","many":"{count} solicitudes te esperaron hasta {hours}"},
+  "updatesTitle": {"one":"Gmail encontró {count} actualización de solicitud","other":"Gmail encontró {count} actualizaciones de solicitudes","many":"Gmail encontró {count} actualizaciones de solicitudes"},
+  "updates": {"one":"{count} actualización","other":"{count} actualizaciones","many":"{count} actualizaciones"},
+  "minutes": {"one":"{count} minuto","other":"{count} minutos","many":"{count} minutos"},
+  "seconds": {"one":"{count} segundo","other":"{count} segundos","many":"{count} segundos"},
+  "seeNewJobs": {"one":"Ver la nueva oferta ({count})","other":"Ver las {count} nuevas ofertas","many":"Ver las {count} nuevas ofertas"},
+  "answerQuestions": {"one":"Responder {count} pregunta","other":"Responder {count} preguntas","many":"Responder {count} preguntas"},
+  "questionsForYou": {"one":"{count} pregunta para ti","other":"{count} preguntas para ti","many":"{count} preguntas para ti"},
+  "employersAdded": {"one":"{amount} empleador añadido","other":"{amount} empleadores añadidos","many":"{amount} empleadores añadidos"},
+  "todayNewJobs": {"one":"{amount} oferta nueva en la lista de hoy","other":"{amount} ofertas nuevas en la lista de hoy","many":"{amount} ofertas nuevas en la lista de hoy"},
+  "unscoredJobs": {"one":"{count} oferta sin evaluar: {why}","other":"{count} ofertas sin evaluar: {why}","many":"{count} ofertas sin evaluar: {why}"},
+  "skippedJobs": {"one":"{count} oferta omitida ({ids}): {reason}","other":"{count} ofertas omitidas ({ids}): {reason}","many":"{count} ofertas omitidas ({ids}): {reason}"},
+  "readFormFields": {"one":"Formulario leído: {count} campo obligatorio","other":"Formulario leído: {count} campos obligatorios","many":"Formulario leído: {count} campos obligatorios"},
+  "answersSuggested": {"one":"{count} respuesta sugerida para revisar","other":"{count} respuestas sugeridas para revisar","many":"{count} respuestas sugeridas para revisar"},
+  "yourTurnFields": {"one":"Tu turno: queda {count} campo, luego envía en Chrome","other":"Tu turno: quedan {count} campos, luego envía en Chrome","many":"Tu turno: quedan {count} campos, luego envía en Chrome"}
 };

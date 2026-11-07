@@ -207,9 +207,7 @@ export const messages = {
   "insightDisclaimer": "Эти выводы — рекомендации на основе малого числа собеседований и могут быть неполными.",
   "interview": "Собеседование",
   "noInsights": "Выводов ещё нет",
-  "reviewedBasis": {
-    "other": "Разобрано собеседований: {count} · Обновите для совместного анализа"
-  },
+  "reviewedBasis": "Разобрано собеседований: {count} · Обновите для совместного анализа",
   "basedInterviews": "На основе: {interviews}",
   "updatedLower": "обновлено {when}",
   "updatedUpper": "Обновлено {when}",
@@ -390,9 +388,7 @@ export const messages = {
     "many": "{count} вакансий",
     "other": "{count} вакансии"
   },
-  "scoresOld": {
-    "other": "Со старыми настройками поиска оценено: {jobs}."
-  },
+  "scoresOld": "Со старыми настройками поиска оценено: {jobs}.",
   "applyCount": {
     "one": "Подать заявку на {count} вакансию",
     "few": "Подать заявки на {count} вакансии",

@@ -84,14 +84,8 @@ export default {
   "impactsearch": "La prossima ricerca le userà per cercare e classificare. Le offerte già trovate restano finché non vengono più viste per 7 giorni.",
   "impactfilters": "Le offerte corrispondenti vengono nascoste subito.",
   "impactanswers": "Usato per le prossime candidature e compilazioni. Nessun punteggio viene ricalcolato.",
-  "impactProfile": {
-    "one": "Segna {count} offerta valutata come obsoleta; Ricalcola punteggi ne aggiorna fino a 60 alla volta",
-    "other": "Segna {count} offerte valutate come obsolete; Ricalcola punteggi ne aggiorna fino a 60 alla volta"
-  },
-  "impactKits": {
-    "one": "; {count} candidatura non inviata era stata preparata con il vecchio profilo (riprepara quelle che vuoi ancora)",
-    "other": "; {count} candidature non inviate erano state preparate con il vecchio profilo (riprepara quelle che vuoi ancora)"
-  },
+  "impactProfile": {"one":"Segna {count} offerta valutata come obsoleta; Ricalcola punteggi ne aggiorna fino a 60 alla volta","other":"Segna {count} offerte valutate come obsolete; Ricalcola punteggi ne aggiorna fino a 60 alla volta","many":"Segna {count} offerte valutate come obsolete; Ricalcola punteggi ne aggiorna fino a 60 alla volta"},
+  "impactKits": {"one":"; {count} candidatura non inviata era stata preparata con il vecchio profilo (riprepara quelle che vuoi ancora)","other":"; {count} candidature non inviate erano state preparate con il vecchio profilo (riprepara quelle che vuoi ancora)","many":"; {count} candidature non inviate erano state preparate con il vecchio profilo (riprepara quelle che vuoi ancora)"},
   "noteProfileWritten": "Profilo completato",
   "noteAnswersWritten": "Risposte standard completate",
   "updateGithubAnswered": "GitHub ha risposto {status}",

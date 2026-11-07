@@ -20,26 +20,11 @@ export const messages = {
   "application": "Solicitud",
   "waitingTitle": "Jobadabra te espera en Chrome",
   "waitingBody": "Pulsa una vez « Permitir en los sitios que abre la aplicación »: después los sitios se leerán automáticamente.",
-  "fillDoneBody": {
-    "one": "{job}: {count} campo rellenado{remaining}. Revisa y después envía.",
-    "other": "{job}: {count} campos rellenados{remaining}. Revisa y después envía."
-  },
-  "fillRemaining": {
-    "one": ", {count} pendientes (indicados en la página)",
-    "other": ", {count} pendientes (indicados en la página)"
-  },
-  "rememberedBody": {
-    "one": "{count} respuesta anterior, solicitada otra vez por {company}: guardada como respuesta estándar. Deshazlo en el panel de la oferta.",
-    "other": "{count} respuestas anteriores, solicitadas otra vez por {company}: guardadas como respuestas estándar. Deshazlo en el panel de la oferta."
-  },
-  "learnedBody": {
-    "one": "{count} respuesta de {company} guardada para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido.",
-    "other": "{count} respuestas de {company} guardadas para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido."
-  },
-  "questionBody": {
-    "one": "{count} pregunta de {company} no tenía respuesta estándar. Responde en Jobadabra → Ofertas.",
-    "other": "{count} preguntas de {company} no tenían respuesta estándar. Responde en Jobadabra → Ofertas."
-  },
+  "fillDoneBody": {"one":"{job}: {count} campo rellenado{remaining}. Revisa y después envía.","other":"{job}: {count} campos rellenados{remaining}. Revisa y después envía.","many":"{job}: {count} campos rellenados{remaining}. Revisa y después envía."},
+  "fillRemaining": {"one":", {count} pendientes (indicados en la página)","other":", {count} pendientes (indicados en la página)","many":", {count} pendientes (indicados en la página)"},
+  "rememberedBody": {"one":"{count} respuesta anterior, solicitada otra vez por {company}: guardada como respuesta estándar. Deshazlo en el panel de la oferta.","other":"{count} respuestas anteriores, solicitadas otra vez por {company}: guardadas como respuestas estándar. Deshazlo en el panel de la oferta.","many":"{count} respuestas anteriores, solicitadas otra vez por {company}: guardadas como respuestas estándar. Deshazlo en el panel de la oferta."},
+  "learnedBody": {"one":"{count} respuesta de {company} guardada para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido.","other":"{count} respuestas de {company} guardadas para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido.","many":"{count} respuestas de {company} guardadas para los próximos formularios. Revísalas en Perfil → Lo que hemos aprendido."},
+  "questionBody": {"one":"{count} pregunta de {company} no tenía respuesta estándar. Responde en Jobadabra → Ofertas.","other":"{count} preguntas de {company} no tenían respuesta estándar. Responde en Jobadabra → Ofertas.","many":"{count} preguntas de {company} no tenían respuesta estándar. Responde en Jobadabra → Ofertas."},
   "versionStore": "Chrome usa la extensión Jobadabra {version} de Chrome Web Store; esta aplicación incluye {latest}. Chrome la actualiza automáticamente cuando la nueva versión está disponible en la tienda, normalmente en un día.",
   "versionFolder": "Chrome usa la extensión Jobadabra {version}, anterior a {latest} incluida en esta aplicación: recárgala una vez (chrome://extensions → ↻ en Jobadabra); después se actualizará automáticamente."
 };

@@ -15,6 +15,17 @@ import {failedToast} from '../../../lib/save-notice.js';
 
 afterEach(() => setLocale('en'));
 
+test('native plural maps explicitly cover every category of their display locale', () => {
+  for (const catalog of [menus, quits, pickers, system, channels]) for (const [locale, messages] of Object.entries(catalog)) {
+    for (const [key, value] of Object.entries(messages)) {
+      if (typeof value !== 'object') continue;
+      for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
+        assert.ok(Object.hasOwn(value, category), `${locale}.${key}: missing ${category}`);
+      }
+    }
+  }
+});
+
 test('all native catalog languages carry the same keys and interpolation names', () => {
   const parameters = value => [...new Set((typeof value === 'string' ? [value] : Object.values(value)).flatMap(text => [...text.matchAll(/\{(\w+)\}/g)].map(found => found[1])))].sort();
   for (const catalog of [menus, quits, pickers, system, channels]) for (const locale of ['de', 'fr', 'it', 'es', 'ro', 'ru']) {

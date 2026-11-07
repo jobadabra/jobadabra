@@ -273,72 +273,21 @@ export const messages = {
   "submittedMarked": "Envoyée · marquée Candidature envoyée",
   "workingEllipsis": "Traitement…",
   "yourTurnSubmit": "À vous : vérifiez et envoyez dans Chrome",
-  "unsaved": {
-    "one": "{count} modification non enregistrée",
-    "other": "{count} modifications non enregistrées"
-  },
-  "hours": {
-    "one": "{count} heure",
-    "other": "{count} heures"
-  },
-  "waitedMany": {
-    "one": "{count} candidature vous a attendu jusqu’à {hours}",
-    "other": "{count} candidatures vous ont attendu jusqu’à {hours}"
-  },
-  "updatesTitle": {
-    "one": "Gmail a trouvé {count} nouvelle de candidature",
-    "other": "Gmail a trouvé {count} nouvelles de candidatures"
-  },
-  "updates": {
-    "one": "{count} nouvelle",
-    "other": "{count} nouvelles"
-  },
-  "minutes": {
-    "one": "{count} minute",
-    "other": "{count} minutes"
-  },
-  "seconds": {
-    "one": "{count} seconde",
-    "other": "{count} secondes"
-  },
-  "seeNewJobs": {
-    "one": "Voir la nouvelle offre ({count})",
-    "other": "Voir les {count} nouvelles offres"
-  },
-  "answerQuestions": {
-    "one": "Répondre à {count} question",
-    "other": "Répondre à {count} questions"
-  },
-  "questionsForYou": {
-    "one": "{count} question pour vous",
-    "other": "{count} questions pour vous"
-  },
-  "employersAdded": {
-    "one": "{amount} employeur ajouté",
-    "other": "{amount} employeurs ajoutés"
-  },
-  "todayNewJobs": {
-    "one": "{amount} nouvelle offre dans la liste du jour",
-    "other": "{amount} nouvelles offres dans la liste du jour"
-  },
-  "unscoredJobs": {
-    "one": "{count} offre non évaluée : {why}",
-    "other": "{count} offres non évaluées : {why}"
-  },
-  "skippedJobs": {
-    "one": "{count} offre ignorée ({ids}) : {reason}",
-    "other": "{count} offres ignorées ({ids}) : {reason}"
-  },
-  "readFormFields": {
-    "one": "Formulaire lu : {count} champ obligatoire",
-    "other": "Formulaire lu : {count} champs obligatoires"
-  },
-  "answersSuggested": {
-    "one": "{count} réponse proposée à vérifier",
-    "other": "{count} réponses proposées à vérifier"
-  },
-  "yourTurnFields": {
-    "one": "À vous : {count} champ restant, puis envoyez dans Chrome",
-    "other": "À vous : {count} champs restants, puis envoyez dans Chrome"
-  }
+  "unsaved": {"one":"{count} modification non enregistrée","other":"{count} modifications non enregistrées","many":"{count} modifications non enregistrées"},
+  "hours": {"one":"{count} heure","other":"{count} heures","many":"{count} heures"},
+  "waitedMany": {"one":"{count} candidature vous a attendu jusqu’à {hours}","other":"{count} candidatures vous ont attendu jusqu’à {hours}","many":"{count} candidatures vous ont attendu jusqu’à {hours}"},
+  "updatesTitle": {"one":"Gmail a trouvé {count} nouvelle de candidature","other":"Gmail a trouvé {count} nouvelles de candidatures","many":"Gmail a trouvé {count} nouvelles de candidatures"},
+  "updates": {"one":"{count} nouvelle","other":"{count} nouvelles","many":"{count} nouvelles"},
+  "minutes": {"one":"{count} minute","other":"{count} minutes","many":"{count} minutes"},
+  "seconds": {"one":"{count} seconde","other":"{count} secondes","many":"{count} secondes"},
+  "seeNewJobs": {"one":"Voir la nouvelle offre ({count})","other":"Voir les {count} nouvelles offres","many":"Voir les {count} nouvelles offres"},
+  "answerQuestions": {"one":"Répondre à {count} question","other":"Répondre à {count} questions","many":"Répondre à {count} questions"},
+  "questionsForYou": {"one":"{count} question pour vous","other":"{count} questions pour vous","many":"{count} questions pour vous"},
+  "employersAdded": {"one":"{amount} employeur ajouté","other":"{amount} employeurs ajoutés","many":"{amount} employeurs ajoutés"},
+  "todayNewJobs": {"one":"{amount} nouvelle offre dans la liste du jour","other":"{amount} nouvelles offres dans la liste du jour","many":"{amount} nouvelles offres dans la liste du jour"},
+  "unscoredJobs": {"one":"{count} offre non évaluée : {why}","other":"{count} offres non évaluées : {why}","many":"{count} offres non évaluées : {why}"},
+  "skippedJobs": {"one":"{count} offre ignorée ({ids}) : {reason}","other":"{count} offres ignorées ({ids}) : {reason}","many":"{count} offres ignorées ({ids}) : {reason}"},
+  "readFormFields": {"one":"Formulaire lu : {count} champ obligatoire","other":"Formulaire lu : {count} champs obligatoires","many":"Formulaire lu : {count} champs obligatoires"},
+  "answersSuggested": {"one":"{count} réponse proposée à vérifier","other":"{count} réponses proposées à vérifier","many":"{count} réponses proposées à vérifier"},
+  "yourTurnFields": {"one":"À vous : {count} champ restant, puis envoyez dans Chrome","other":"À vous : {count} champs restants, puis envoyez dans Chrome","many":"À vous : {count} champs restants, puis envoyez dans Chrome"}
 };

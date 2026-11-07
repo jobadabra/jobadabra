@@ -84,14 +84,8 @@ export default {
   "impactsearch": "La próxima búsqueda los usará para rastrear y clasificar. Los puestos encontrados permanecen hasta que no se vean durante 7 días.",
   "impactfilters": "Los puestos coincidentes se ocultan de inmediato.",
   "impactanswers": "Se usa en las próximas solicitudes y formularios. No se recalcula ninguna puntuación.",
-  "impactProfile": {
-    "one": "Marca {count} puesto puntuado como antiguo; Recalcular actualiza hasta 60 a la vez",
-    "other": "Marca {count} puestos puntuados como antiguos; Recalcular actualiza hasta 60 a la vez"
-  },
-  "impactKits": {
-    "one": "; {count} solicitud sin enviar se preparó con el perfil anterior (vuelve a preparar las que aún quieras)",
-    "other": "; {count} solicitudes sin enviar se prepararon con el perfil anterior (vuelve a preparar las que aún quieras)"
-  },
+  "impactProfile": {"one":"Marca {count} puesto puntuado como antiguo; Recalcular actualiza hasta 60 a la vez","other":"Marca {count} puestos puntuados como antiguos; Recalcular actualiza hasta 60 a la vez","many":"Marca {count} puestos puntuados como antiguos; Recalcular actualiza hasta 60 a la vez"},
+  "impactKits": {"one":"; {count} solicitud sin enviar se preparó con el perfil anterior (vuelve a preparar las que aún quieras)","other":"; {count} solicitudes sin enviar se prepararon con el perfil anterior (vuelve a preparar las que aún quieras)","many":"; {count} solicitudes sin enviar se prepararon con el perfil anterior (vuelve a preparar las que aún quieras)"},
   "noteProfileWritten": "Perfil redactado",
   "noteAnswersWritten": "Respuestas habituales redactadas",
   "updateGithubAnswered": "GitHub respondió {status}",
