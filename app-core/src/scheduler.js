@@ -85,7 +85,7 @@ export async function runScheduled(event, env, {dispatch, notify = async () => {
       console.log(`scheduled ${job.workflow} cron=${event.cron}`);
     } catch (error) {
       console.log(`scheduled start failed ${job.workflow} cron=${event.cron}: ${error.message}`);
-      // Why (31 Oct 2026, review #2653; 5 Nov 2026, ms): a failed ten-minute sweep must not page Telegram and the watchdog issue 144 times a day, nor the hourly Store check 24 times a day; still log and fail the cron.
+      // Why (31 Oct 2026, review #2653; 5 Nov 2026, ms): a failed ten-minute sweep (the PR verdicts, and since 7 Nov 2026 the Gitar labels) must not page Telegram and the watchdog issue 144 times a day, nor the hourly Store check 24 times a day; still log and fail the cron.
       if (!['pr-verdict.yml', 'pr-labels.yml', 'msix-store-watch.yml'].includes(job.workflow)) {
         await notify(`⚠️ The scheduled start of ${job.workflow} failed (${event.cron}): ${error.message.slice(0, 200)}. GitHub's own schedule is the backup.`);
         await report(`The Worker's cron (${event.cron}) could not start ${job.workflow}: ${error.message.slice(0, 300)}`).catch(() => {});

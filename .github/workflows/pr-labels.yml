@@ -10,7 +10,7 @@
 # that met the limit left labels wrong in silence (#2516). Edits start nothing; a new Gitar comment does (about 12 an hour).
 # Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs; their gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
 name: PR
-# Why (30 Oct 2026, run names): the value stays quoted, or the ' #' in it starts a YAML comment and cuts the number off; a push to main and a Gitar check have no number, so they get their own words (4 and 5 Nov 2026).
+# Why (30 Oct 2026, run names): the value stays quoted, or the ' #' in it starts a YAML comment and cuts the number off; a push to main and the Worker's sweep have no number, so they get their own words (4 Nov and 7 Nov 2026; a Gitar check no longer starts a run).
 run-name: "${{ github.event_name == 'push' && 'PR labels after a push to main' || github.event_name == 'workflow_dispatch' && 'PR labels sweep · on time (Worker cron)' || format('PR labels on #{0}', github.event.pull_request.number || github.event.issue.number) }}"
 
 on:
