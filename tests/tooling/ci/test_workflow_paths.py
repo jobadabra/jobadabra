@@ -214,6 +214,16 @@ class TheCheckedPaths(unittest.TestCase):
     """The workflow-paths family in ONE place (prune audit 3/4, 1 Nov 2026): the push gate's single "workflow paths" step runs this module. It replaces the gate's own per-workflow loop of
     `replay-files.mjs --check`, tests/test_pre_push_workflow_paths.py (the pin that the hook runs that loop) and the copy of the harness.yml check in test/harness/test-reach.test.mjs."""
 
+    def test_catalogs_and_registrars_share_one_stable_trigger(self):
+        script = """import {pathEntries} from './tools/replay-files.mjs';
+const before = ['desktop/i18n/catalogs/en.js', 'desktop/i18n/index.js'];
+const after = [...before, 'desktop/i18n/catalogs/new-group/de.js', 'desktop/i18n/new-notices.js'];
+console.log(JSON.stringify([pathEntries(before), pathEntries(after)]));"""
+        before, after = json.loads(node_out('--input-type=module', '-e', script))
+        self.assertEqual(before, ['desktop/i18n/**'])
+        self.assertEqual(after, before, 'another catalog must not edit the shared workflow paths')
+        self.assertTrue(starts('page-cases.yml', ['desktop/i18n/catalogs/future-group/ru.js']))
+
     def test_harness_yml_starts_for_every_file_a_harness_test_reaches(self):
         # Moved from test/harness/test-reach.test.mjs (owner, 30 Oct 2026, option C: every harness PR runs every test file, so `paths:` must cover what a test reaches). The reach comes from the
         # harness's own parser (tools/e2e-test-reach.mjs: the tests `npm test` runs in desktop/e2e). The extension integration tests are run by integration.yml, whose own paths

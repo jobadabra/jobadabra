@@ -86,7 +86,11 @@ export function withSharedSources(files, root = ROOT) {
 
 // The `paths:` entries for a set of files: the extension and the app modules as whole folders (all of them load), a folder as `<folder>**`, any other file by name.
 export function pathEntries(files) {
-  const entries = new Set([...files].map(file => (/^(extension|desktop\/lib)\//.test(file) ? file.split('/').slice(0, file.startsWith('extension') ? 1 : 2).join('/') + '/**' : file.endsWith('/') ? `${file}**` : file)));
+  // Why (7 Nov 2026): catalogs and their registrars affect replay copy; one i18n directory trigger keeps independent localization PRs from conflicting on generated filename lists.
+  const trigger = file => file.startsWith('desktop/i18n/') ? 'desktop/i18n/**'
+    : /^(extension|desktop\/lib)\//.test(file) ? file.split('/').slice(0, file.startsWith('extension') ? 1 : 2).join('/') + '/**'
+      : file.endsWith('/') ? `${file}**` : file;
+  const entries = new Set([...files].map(trigger));
   return [...entries].sort();
 }
 
