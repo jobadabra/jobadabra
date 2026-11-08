@@ -35,6 +35,18 @@ class MailCalendarTests(MailCase):
         _, sent = self.run_mail(tracker, google, [], calendar=True)
         self.assertFalse([m for m in sent if m.startswith('🗓 <b>Interview tomorrow')])  # once only
 
+    def test_the_prep_reminder_goes_through_the_reminder_sender_not_the_digest_one(self):
+        # Why (8 Nov 2026, owner: a switch for every automation): the reminder is its own mail (row app-reminder); the summary of the check stays on the ordinary sender.
+        start = NOW + timedelta(hours=20)
+        event = {'id': 'e9', 'status': 'confirmed', 'summary': 'Screening Call with Alex Morgan', 'created': '2026-09-26T10:00:00Z',
+                 'start': {'dateTime': start.isoformat()}, 'end': {'dateTime': (start + timedelta(minutes=30)).isoformat()},
+                 'attendees': [{'email': 'alex@yupe.io', 'displayName': 'Alex Morgan'}, {'email': 'me@x', 'self': True}]}
+        apps = [app('p1', 'Zephyr AI', 'Infrastructure Engineer', stage='Screening', contact='Alex Morgan · alex@yupe.io')]
+        reminders = []
+        _, sent = self.run_mail(FakeTracker(apps), FakeGoogle(events=[event]), [], calendar=True, reminders=reminders)
+        self.assertEqual(len([m for m in reminders if m.startswith('🗓 <b>Interview tomorrow')]), 1)
+        self.assertFalse([m for m in sent if m.startswith('🗓')], 'the reminder is not also sent as an ordinary message')
+
     def test_after_the_interview_asks_for_the_transcript(self):
         start = NOW - timedelta(hours=3)
         event = {'id': 'e2', 'summary': 'Zephyr AI technical interview', 'start': {'dateTime': start.isoformat()},

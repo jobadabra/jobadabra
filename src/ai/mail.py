@@ -77,11 +77,12 @@ def _allowed(google, part):
 
 
 def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None, calendar=True, dry_run=False,
-        now=None, state_path=STATE_FILE, stats=None, on_new=None, always_report=False, stores=None):
+        now=None, state_path=STATE_FILE, stats=None, on_new=None, always_report=False, stores=None, send_reminder=None):
     """always_report: a check answers even when there's nothing new. Off for the mail workflow, which the app
     dispatches for "Check Gmail now": a quiet check says so in the app and on its ⏱️ Search runs row, and a
     Telegram message for every check someone started is noise (1 Oct 2026).
-    stores: the active store (src/stores); by default the one open_stores() picks, on `tracker` when one is given."""
+    stores: the active store (src/stores); by default the one open_stores() picks, on `tracker` when one is given.
+    send_reminder: how an interview reminder goes (the CLI: at once, under the person's "Interview reminder" switch, owner 8 Nov 2026); by default `send`."""
     stores = stores or open_stores(tracker=tracker)
     state = load_state(state_path, ledger_key(stores))
     apps = applications(stores)
@@ -127,7 +128,7 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
                          [cards.words('mail.noChanges')] if count else [], emoji='📧'))
     for note in notes:
         if send:
-            send(note)
+            (send_reminder or send)(note)
     if (stats or {}).get('updates') and not dry_run:  # one short line each, for the desktop app's activity panel
         print('Updates:')
         for line in stats['updates']:
@@ -165,11 +166,14 @@ def main(argv=None):
               'See README → Gmail and Calendar.')
         return 0
     stores = open_stores()  # the active store: this Mac's (sqlite) or Notion; JOBADABRA_STORE picks it
-    sender = None
+    sender = reminder_sender = None
     from ..features import disabled
     if args.send and not disabled('telegram'):
         token, chat_id = telegram.credentials()
         sender = lambda text: telegram.deliver(text, token, chat_id, **cards.delivery(text))
+        # Why (8 Nov 2026, owner: "an e-mail for every automation"): a reminder (the evening before, the morning of) was e-mailed as 'activity', held for the digest and under no switch, so it could arrive after the interview.
+        # Now it goes at once under `app-reminder`, which the person's Interview reminder switch holds (src/notify.py mail_off).
+        reminder_sender = lambda text: telegram.deliver(text, token, chat_id, urgent=True, mail='app-reminder', **cards.delivery(text))
     stats = {}
     logged = (args.send or args.log_run) and not args.dry_run
     if logged:
@@ -193,7 +197,7 @@ def main(argv=None):
         from . import added  # jobs tracked from an email get facts and a fit score, like found ones
         print(run(None, google, days=args.days, send=sender, calendar=not args.no_calendar, dry_run=args.dry_run,
                   stats=stats, on_new=added.hook(stores, jobs_db(), log),
-                  always_report=args.always_report, stores=stores))
+                  always_report=args.always_report, stores=stores, send_reminder=reminder_sender))
         if logged:
             log_check()
     except Exception as error:  # noqa: BLE001 — a spend limit is expected, not a crash
