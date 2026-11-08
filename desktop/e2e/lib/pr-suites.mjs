@@ -239,7 +239,8 @@ export function windowsCiText(read) {
   for (let i = 0; i < files.length; i++) {
     const text = uncommented(read(files[i]));
     parts.push(text);
-    for (const [, local] of text.matchAll(/uses:\s*\.\/(?:\.ci-relay\/)?(\.github\/[\w./-]+)/g)) {
+    // Why (ec, 8 Nov 2026, Gitar on #3632): an action read from the workflow's own commit sits in a `.ci-*` side checkout (.ci-relay, .ci-electron); only .ci-relay was followed, so editing the electron-cache action skipped the Windows smoke.
+    for (const [, local] of text.matchAll(/uses:\s*\.\/(?:\.ci-[\w-]+\/)?(\.github\/[\w./-]+)/g)) {
       const file = /\.ya?ml$/.test(local) ? local : `${local.replace(/\/$/, '')}/action.yml`;
       if (!files.includes(file) && read(file) != null) files.push(file);
     }

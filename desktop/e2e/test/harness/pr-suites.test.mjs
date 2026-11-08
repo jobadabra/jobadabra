@@ -2,7 +2,7 @@
 // The PR check that names suites quoting UI text a PR removes: strings come from removed app lines only, a lib file counts for its importing suites, a touched step is told apart.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {removedStrings, suitesExpecting, stepTouched, report} from '../../lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, stepTouched, report, windowsCiText} from '../../lib/pr-suites.mjs';
 
 const DIFF = [
   '+++ b/desktop/renderer/pages/settings.js', "-  toast('Backup saved to the folder');", "+  toast('Backup saved as a file');", "-  const id = 'x-1';",
@@ -53,4 +53,12 @@ test('every macOS suite runs on a PR that changes it (its file, a helper it impo
     const plan = planPrSuites({pointed: [suite], linux: name => name !== suite, cadence: facts.cadence});
     assert.deepEqual(plan.suites, [suite], `${suite} changed by the PR must run on it`);
   }
+});
+
+test('a local action read from a .ci-* side checkout of the workflow\'s own commit still counts for the Windows run', () => {
+  const files = {
+    '.github/workflows/e2e-windows.yml': 'steps:\n  - uses: ./.ci-relay/.github/actions/free-ai-relay\n  - uses: ./.ci-electron/.github/actions/electron-cache\n  - uses: ./.github/actions/gh-ledger\n',
+    '.github/actions/free-ai-relay/action.yml': 'name: relay', '.github/actions/electron-cache/action.yml': 'name: electron', '.github/actions/gh-ledger/action.yml': 'name: ledger',
+  };
+  assert.deepEqual(windowsCiText(file => files[file] ?? null).files.sort(), [...Object.keys(files)].sort());
 });
