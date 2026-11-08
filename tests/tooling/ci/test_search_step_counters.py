@@ -75,8 +75,8 @@ class TheRow(unittest.TestCase):
 
 class TheStepYield(unittest.TestCase):
     """8 Nov 2026, owner: "Can I get in Admin these stats as well?": each press row carries the step yield the engine saved in the persona's own job cache (src/press/step_yield.py)."""
-    ROWS = [{'step': 'employer_sites', 'seconds': None, 'jobs': 12, 'local': 9, 'scored': 7, 'fit70': 3, 'local_fit70': 2},
-            {'step': 'scoring', 'seconds': 31.5, 'jobs': 50, 'local': 40, 'scored': 50, 'fit70': 18, 'local_fit70': 15}]
+    ROWS = [{'step': 'scoring', 'seconds': 31.5, 'jobs': 50, 'local': 40, 'scored': 50, 'fit70': 18, 'local_fit70': 15},
+            {'step': 'employer_sites', 'seconds': None, 'jobs': 12, 'local': 9, 'scored': 7, 'fit70': 3, 'local_fit70': 2}]   # STEPS order: scoring first; alphabetical would put employer_sites first
 
     def cache(self, runs):
         import sqlite3
@@ -90,6 +90,7 @@ class TheStepYield(unittest.TestCase):
     def test_the_newest_run_since_the_press_started_is_read_back_as_the_writer_saved_it(self):
         path = self.cache([('2026-11-08T09:00:00+00:00', [{**self.ROWS[0], 'jobs': 1}]), ('2026-11-08T10:05:00+00:00', self.ROWS)])
         self.assertEqual(funnel.step_yield('2026-11-08T10:00:00', db=path), self.ROWS, 'an earlier night run is not this press')
+        self.assertEqual([row['step'] for row in funnel.step_yield('2026-11-08T10:00:00', db=path)], ['scoring', 'employer_sites'], 'the engine\'s step order, not the table\'s key order')
         self.assertIsNone(funnel.step_yield('2026-11-08T11:00:00', db=path), 'no run since: nothing is claimed')
 
     def test_no_table_no_cache_or_a_build_before_the_table_claims_nothing_never_zeros(self):
