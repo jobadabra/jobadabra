@@ -332,15 +332,16 @@ def best_first(jobs):
     "in"; geo's stored place answers can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
     from .paths import load_search_config, place_regex
     from .job_rank import ranker
+    from .press import rank
     search = load_search_config()
     tops = (search.get('locations') or {}).get('top_tier') or []
     best = place_regex(tops or [r'(?!x)x'])
     closeness, near = ranker(search), near_best(tops)
     from .sources import feeds
-    def first(job):   # Claude's answer when it placed the location (src/ai/place_triage.py), else the best places' words
+    def in_best_place(job):   # Claude's answer when it placed the location (src/ai/place_triage.py), else the best places' words
         verdict = feeds.place_of(job)
-        return (0 if (verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')) else 1, near(job.get('location')), -closeness(job))
-    return sorted(jobs, key=first)
+        return verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')
+    return rank.jobs(jobs, rank.in_your_places(in_best_place), rank.km_to_best_place(lambda job: near(job.get('location'))), rank.role_closeness(closeness))
 
 
 def near_best(tops):

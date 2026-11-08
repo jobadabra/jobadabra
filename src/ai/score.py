@@ -248,10 +248,11 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None, scope='all')
         pending.append(((2, -previous) if profile_only else (1, 0), job))
     db.commit()
     from ..time_budget import best_first
-    ordered = [job for _, job in sorted(pending, key=lambda item: item[1].get('first_seen_at') or '', reverse=True)]
+    from ..press import rank
+    ordered = rank.jobs([job for _, job in pending], rank.fresh, reverse=True)                      # newest first
     ordered = best_first(ordered)                                                                   # your best places first
     group = {id(job): key for key, job in pending}
-    ordered.sort(key=lambda job: group[id(job)])                                                    # then by group (stable)
+    ordered = rank.jobs(ordered, rank.waiting_for_score(group))                                     # then by group (stable)
     return ordered[:limit]
 
 

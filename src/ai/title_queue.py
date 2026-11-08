@@ -9,11 +9,12 @@ The hub is the one thread that owns the job store (a sqlite connection is bound 
 runs it while it waits for its own batches (`serve`) or for the next reader (`Hub.run_next`). Tests: tests/unit/ai/test_title_queue.py."""
 import contextlib
 import functools
-import heapq
 import itertools
 import queue
 import threading
 
+from ..press import rank as ranking   # `serve` has a parameter named rank
+heapq = ranking.heapq   # Why (5/6, 8 Nov 2026): the heap calls live in src/press/rank.py; ledger L19's locked proof (tests/unit/ai/test_title_queue.py) spies on a push through this name, and a ledger change needs the owner's words
 from . import batch_scope, slots
 
 _cv = threading.Condition()
@@ -117,8 +118,8 @@ def serve(batches, ask, land, parallel, rank=None):
     with _cv:
         for turn, (key, titles) in enumerate(batches):
             # Why (7 Nov 2026, #2920, night p9 Lyon, run 42315566393): equal keys (no distance known yet: a first press has an empty map) were served in arrival order, so the reader that pushed first took every
-            # call the clock allowed and EURES's 3 batches got none. Its position in its own reader's list now breaks the tie: readers alternate, each in its own nearest-first order.
-            heapq.heappush(_heap, (key, turn, next(_seq), titles, ask, functools.partial(box.put), landed, refresh if rank else None))
+            # call the clock allowed and EURES's 3 batches got none. Its position in its own reader's list (the `turn` of rank.waiting_entry, src/press/rank.py since 5/6) breaks the tie: readers alternate, each in its own nearest-first order.
+            ranking.push(_heap, ranking.waiting_entry(key, turn, next(_seq), titles, ask, functools.partial(box.put), landed, refresh if rank else None))
         for _ in range(max(0, min(parallel - _running[0], len(_heap)))):   # every worker alive is asking (an idle one has left): a waiting batch needs a new one
             _running[0] += 1
             threading.Thread(target=_work, daemon=True, name='title-queue').start()
@@ -139,15 +140,14 @@ def _work():
             refreshed = []
             for key, turn, seq, titles, ask, put, landed, refresh in _heap:
                 try:
-                    refreshed.append((refresh(titles) if refresh else key, turn, seq, titles, ask, put, landed, refresh))
+                    refreshed.append(ranking.waiting_entry(refresh(titles) if refresh else key, turn, seq, titles, ask, put, landed, refresh))
                 except BaseException as error:  # noqa: BLE001 — a reader's failed refresh is delivered as its failed ask; other readers continue
                     put(functools.partial(landed, titles, error))
-            _heap[:] = refreshed
-            heapq.heapify(_heap)
+            ranking.reorder(_heap, refreshed)
             if not _heap:
                 _running[0] -= 1
                 return
-            key, _, _, titles, ask, put, landed, _refresh = heapq.heappop(_heap)
+            key, _, _, titles, ask, put, landed, _refresh = ranking.pop(_heap)
         try:
             with slots.ranked(key):   # Why (#2918 review): order applies at the model's slots too, not only at the pop
                 result = ask(titles)
