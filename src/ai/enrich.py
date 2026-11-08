@@ -173,7 +173,8 @@ def pending_jobs(db, limit):
         pending.append(job)
     # Newest first, so a capped run spends its budget on what the next digest will show; your best places before the rest (src/time_budget.py).
     from ..time_budget import best_first
-    return best_first(sorted(pending, key=lambda j: j['first_seen_at'], reverse=True))[:limit]
+    from ..press import rank
+    return best_first(rank.jobs(pending, rank.fresh, reverse=True))[:limit]
 
 
 # The judged facts a reader needs (columns the app promises) that a posting usually gives: left empty, they are asked once more, alone, and the second

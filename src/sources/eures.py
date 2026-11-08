@@ -19,6 +19,7 @@ import urllib.parse
 
 from . import nuts_names
 from .. import geo
+from ..press import rank
 from ..paths import DATA
 from ..press import budget
 
@@ -161,7 +162,7 @@ def _areas(wanted, places):
     always last, so a code the portal does not know loses nothing."""
     table = nuts_names.names() if wanted else {}
     named = [wanted[word][0] for word in (place.strip() for place in places) if word in wanted]
-    return [_codes(area, table) for area in dict.fromkeys([code for code in named if len(code) > 2] + [code[:2] for code in named])]
+    return [_codes(area, table) for area in rank.areas(named)]
 
 
 def _words(search):

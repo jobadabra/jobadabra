@@ -13,7 +13,7 @@ from concurrent.futures import TimeoutError as Late
 from datetime import datetime, timezone
 
 from .. import paths, time_budget
-from ..press import budget
+from ..press import budget, rank
 
 READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
 READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
@@ -123,7 +123,7 @@ def left_first(sources, key, now=None):
     if not left:
         return list(sources)
     head, tail = list(sources[:READ_FLOOR]), list(sources[READ_FLOOR:])
-    waited = sorted((s for s in tail if key(s) in left), key=lambda s: left[key(s)])
+    waited = rank.sources([s for s in tail if key(s) in left], rank.left_last_time(left, key))
     return head + waited + [s for s in tail if key(s) not in left]
 
 

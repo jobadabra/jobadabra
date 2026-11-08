@@ -15,6 +15,7 @@ import secrets
 import urllib.request
 
 from . import role_kinds, source_rank
+from .press import rank
 from .paths import DATA
 from . import service
 
@@ -149,7 +150,7 @@ def for_you(index, me, n=8):
         why = {'families': 'your kind of work', 'metros': 'your area', 'roles': 'your kind of role', 'countries': 'your country'}[shared[0]]
         scored.append((score, {'company': feed['company'], 'interview': pool.get('interview', 0), 'applied': pool.get('applied', 0), 'why': why,
                                'score': round(score, 1), 'label': shared[0]}))
-    return [item for _, item in sorted(scored, key=lambda pair: -pair[0])[:n] if item['interview'] or item['applied']]
+    return [item for _, item in rank.sources(scored, rank.feed_quality)[:n] if item['interview'] or item['applied']]
 
 
 def central_nofeed(cache=None, today=None, days=30):
@@ -302,7 +303,7 @@ def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=
     (where this user already has a scored job). `said`, a list, gets one line per decision for the log: [(company, label, 'out'|'shadow')].
     The feeds whose places name the user's come first, those with no place information after them (kept, not dropped): the feeds read first are the top of this list (src/first_jobs.py pick).
     Why (#2920, 7 Nov 2026, p6 Zagreb): 372 of 413 feeds passing the filter had no place information, so the first 15 reads came from employers nobody had seen hiring there (0 of 21 role matches in Zagreb)."""
-    out, unplaced = [], []
+    kept = []
     shadow = (today or datetime.now(timezone.utc).date().isoformat()) < QUIET_FROM
     countries = countries if countries is not None else (me or {}).get('countries')
     for f in index:
@@ -315,5 +316,5 @@ def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=
             said.append((f['company'], label, 'shadow' if shadow else 'out'))
         if label and not shadow:
             continue
-        (out if f.get('places') else unplaced).append(f)
-    return out + unplaced
+        kept.append(f)
+    return rank.sources(kept, rank.seen_hiring_there)   # the weight is the order: feeds naming your places, then the feeds with no place information

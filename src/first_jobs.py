@@ -14,7 +14,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from . import store
-from .press import budget
+from .press import budget, rank
 from .ai import score, slots, title_queue
 from .sources import ats, feeds
 
@@ -31,8 +31,7 @@ def pick(sources, size=SLICE):
     """The feeds read first: the ones that answer in one request (fast kinds), then the others; each group in the list's own order
     (the index ranks it). A page read in Chrome belongs to one install's visits, not to this slice."""
     usable = [source for source in sources if source.get('ats', 'greenhouse') in ats.FETCHERS and source.get('ats') != 'visit']
-    fast = [source for source in usable if source.get('ats', 'greenhouse') in FAST]
-    return (fast + [source for source in usable if source not in fast])[:size]
+    return rank.sources(usable, rank.fast_to_read(FAST))[:size]
 
 
 def to_score(db, hidden):

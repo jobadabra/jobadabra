@@ -5,10 +5,11 @@ and src/sources/board_web.py. Tests: tests/unit/ai/test_ai_slots.py.
 Why (#first-press-slots, owner, 27 Oct 2026: "Web search, combined with more AI slots, combined with local boards first"): on rerun 40450152414
 the board reads' calls waited 13-24 s each behind the web search's 25 s call, and the read cut (67 s) came first."""
 import contextlib
-import heapq
 import itertools
 import threading
 import time
+
+from ..press import rank as order   # this file has its own rank()
 
 FIRST, NORMAL, LATER = 0, 1, 2
 _local = threading.local()
@@ -80,19 +81,19 @@ class Slots:
             return len(self._queue)
 
     def __enter__(self):
-        ticket = (level(), rank(), next(self._order))
+        ticket = order.slot_ticket(level(), rank(), next(self._order))
         asked = time.monotonic()
         with self._cond:
-            heapq.heappush(self._queue, ticket)
+            order.push(self._queue, ticket)
             try:
                 while not (self.free and self._queue[0] == ticket):
                     self._cond.wait()
             except BaseException:
                 self._queue.remove(ticket)
-                heapq.heapify(self._queue)
+                order.reorder(self._queue)
                 self._cond.notify_all()
                 raise
-            heapq.heappop(self._queue)
+            order.pop(self._queue)
             self.free -= 1
             if self.free:   # the next in line may take another free slot
                 self._cond.notify_all()
