@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, sentenceClaimsDemo, titleTags, verdictLine} from './parse.mjs';
 
 export const REPOS = ['jobadabra/jobadabra', 'jobadabra/jobadabra-web'];
@@ -12,7 +13,7 @@ export const OWNER = 'GarryOne';
 // Why (review, 8 Nov 2026): the scratch root holds the account's uid; a fixed 502 found nothing on another account.
 export const SCRATCH_ROOT = `/private/tmp/claude-${typeof process.getuid === 'function' ? process.getuid() : 502}`;
 const DAY = 86400000;
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 
 /** One authenticated `gh` call (stdout as text). */

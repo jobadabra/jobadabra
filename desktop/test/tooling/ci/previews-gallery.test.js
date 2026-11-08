@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {boardWaiting, demoNote, demoWhy, downloadHosted, prCards} from '../../../../tools/previews-gallery/collect.mjs';
 import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, saysDemo, titleTags, verdictLine} from '../../../../tools/previews-gallery/parse.mjs';
 import {renderPage, STATES} from '../../../../tools/previews-gallery/render.mjs';
@@ -78,7 +79,7 @@ test('the board cards kept are those waiting on the owner, tagged by their Sessi
 
 test('the session\'s own words decide a picture: demo words, a person\'s approval, a refusal that always wins', () => {
   assert.ok(saysDemo('Our render (demo data)') && saysDemo('a fictional candidate') && !saysDemo("the owner's screenshot"));
-  const png = {file: new URL(import.meta.url).pathname, name: 'sc-a.png'};
+  const png = {file: fileURLToPath(import.meta.url), name: 'sc-a.png'};
   const ctx = {checked: {}, refused: {}, notes: '', tokens: ['sc'], prs: [{number: 7, tags: ['sc'], body: 'Shots: sc-a.png is rendered with demo data.'}]};
   assert.equal(demoWhy(png, ctx), 'PR #7 says demo data');
   assert.equal(demoWhy(png, {...ctx, prs: [{number: 8, tags: ['sc'], body: 'demo data everywhere. Other shot: sc-b.png'}]}), '', 'a PR that says demo data but does not name this picture unlocks nothing');
@@ -126,6 +127,9 @@ test('a transcript calls a picture demo only in the session\'s own message that 
   assert.deepEqual([...demoClaims(mixed, ['a.png', 'b.png', 'c.png'])], ['b.png']);
   const comma = line('assistant', [{type: 'text', text: 'a.png shows the owner list, b.png uses fictional data. d.png and e.png: e.png uses demo data'}]);
   assert.deepEqual([...demoClaims(comma, ['a.png', 'b.png', 'd.png', 'e.png'])].sort(), ['b.png', 'e.png']);
+  // Gitar, 8 Nov 2026: the demo phrase leads to the NEXT name; a tie must not unlock the first one.
+  const lead = line('assistant', [{type: 'text', text: 'a.png shows my jobs, fictional ones are in b.png'}]);
+  assert.deepEqual([...demoClaims(lead, ['a.png', 'b.png'])], []);
 });
 
 test('a table row with a backtick in a cell keeps its pictures', () => {

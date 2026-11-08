@@ -120,16 +120,18 @@ export function namesFile(text, name) {
 }
 
 /**
- * True when a sentence of `text` has demo words whose NEAREST picture name is `name`: "a.png shows the list, b.png uses fictional data" counts for b.png only, "shown.png, rendered with demo data" for shown.png.
- * Why (review, Gitar 8 Nov 2026): two picture names in one sentence ("a.png is real, b.png is fictional") unlocked the real one; each demo word now belongs to one name.
+ * True when a sentence of `text` has a demo word that belongs to `name`: the last picture name before the word, with no other name after it. "a.png shows the list, b.png uses fictional data" counts for b.png only; "shown.png, rendered with demo data" for shown.png; "a.png shows my jobs, fictional ones are in b.png" for neither (a name follows the word: ambiguous).
+ * Why (review, Gitar 8 Nov 2026): two picture names in one sentence ("a.png is real, b.png is fictional") unlocked the real one, and a distance tie unlocked a.png when the demo phrase led to b.png; a word now counts only for the name right before it, and an ambiguous sentence unlocks nothing.
  */
 export function sentenceClaimsDemo(text, name) {
   return String(text || '').split(/\r?\n|;|(?<=[.!?])\s+/).some(part => {
     const names = [...part.matchAll(/[\w.-]+\.png\b/gi)].map(m => ({name: m[0], at: m.index}));
     if (!names.some(n => n.name === name) || !namesFile(part, name)) return false;
     return demoMatches(part).some(at => {
-      const nearest = names.reduce((best, n) => (Math.abs(n.at - at) < Math.abs(best.at - at) ? n : best), names[0]);
-      return nearest.name === name;
+      const before = names.filter(n => n.at < at);
+      const after = names.filter(n => n.at > at);
+      const owner = before.length ? before[before.length - 1] : (names.length === 1 ? names[0] : null);
+      return owner !== null && owner.name === name && (before.length === 0 || after.length === 0);
     });
   });
 }
