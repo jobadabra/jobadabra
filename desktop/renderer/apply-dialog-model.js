@@ -48,13 +48,13 @@ export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', 
 
 /**
  * What the dialog does with a finished start: fully started batches close to the Sessions toast; batches with attempted-job outcomes stay open with rows and an optional browser offer.
- * -> {close: true, toast: {title, body, target, tone}} | {close: false, error, outcomes?, browserOffer?}
+ * -> {close: true, toast: {title, body, target, tone}} | {close: false, error?, outcomes?, browserOffer?}; with outcomes the words come from resultView (apply-result-model.js), not `error`
  */
 export function applyDialogOutcome(result) {
   // Why (7 Nov 2026, #3424): a fully-started batch uses the existing Sessions toast; inline inspection is for skipped or failed jobs.
   const toast = {title: t('helperFlow.applyingStarted'), body: result?.message, target: {view: 'sessions'}, tone: 'good'};
   if (result?.ok && result.outcomes?.length && result.outcomes.every(item => item.status === 'started')) return {close: true, toast};
-  if (result?.outcomes?.length) return {close: false, error: result.ok ? result.message : result.error || t('helperFlow.applyStartFallback'), outcomes: result.outcomes, ...(result.code === 'BACKGROUND_BROWSER_MISSING' ? {browserOffer: true} : {})};
+  if (result?.outcomes?.length) return {close: false, outcomes: result.outcomes, ...(result.code === 'BACKGROUND_BROWSER_MISSING' ? {browserOffer: true} : {})};
   if (result?.ok) return {close: true, toast};
   return {close: false, error: result?.error || t('helperFlow.applyStartFallback'), ...(result?.code === 'BACKGROUND_BROWSER_MISSING' ? {browserOffer: true} : {})};
 }

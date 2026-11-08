@@ -214,15 +214,6 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 #apply-progress { grid-column: 1 / -1; position: static; height: var(--sp-2); margin: 0; border-radius: var(--r-pill); }
 #apply-message:empty { display: none; }
 #apply-dialog legend { padding: 0; color: var(--label); }   /* Jobs' Apply to jobs (pages/jobs-apply.js): the cards' heading reads like the count's label above it */
-.apply-outcomes { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0; }
-.apply-outcome { display: grid; gap: var(--sp-1); padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
-.apply-outcome-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
-.apply-outcome-head .ui-pill .icon { width: 12px; height: 12px; margin-right: var(--sp-1); }
-#apply-dialog.apply-result #apply-form > :is(.inline-field, fieldset, p.muted),
-#apply-dialog.apply-result #apply-go { display: none; }
-.apply-outcome-title { overflow-wrap: anywhere; font-weight: 600; text-align: left; }
-.apply-outcome-reason { grid-column: 1 / -1; margin: 0; }
-.apply-outcome .link { justify-self: start; padding: 0; }
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
