@@ -79,9 +79,10 @@ test('the board cards kept are those waiting on the owner, tagged by their Sessi
 test('the session\'s own words decide a picture: demo words, a person\'s approval, a refusal that always wins', () => {
   assert.ok(saysDemo('Our render (demo data)') && saysDemo('a fictional candidate') && !saysDemo("the owner's screenshot"));
   const png = {file: new URL(import.meta.url).pathname, name: 'sc-a.png'};
-  const ctx = {checked: {}, refused: {}, notes: '', prs: [{number: 7, body: 'Shots: sc-a.png is rendered with demo data.'}]};
+  const ctx = {checked: {}, refused: {}, notes: '', tokens: ['sc'], prs: [{number: 7, tags: ['sc'], body: 'Shots: sc-a.png is rendered with demo data.'}]};
   assert.equal(demoWhy(png, ctx), 'PR #7 says demo data');
-  assert.equal(demoWhy(png, {...ctx, prs: [{number: 8, body: 'demo data everywhere. Other shot: sc-b.png'}]}), '', 'a PR that says demo data but does not name this picture unlocks nothing');
+  assert.equal(demoWhy(png, {...ctx, prs: [{number: 8, tags: ['sc'], body: 'demo data everywhere. Other shot: sc-b.png'}]}), '', 'a PR that says demo data but does not name this picture unlocks nothing');
+  assert.equal(demoWhy(png, {...ctx, prs: [{number: 9, tags: ['zz'], body: 'sc-a.png is demo data'}]}), '', 'another session\'s PR naming a same-named file unlocks nothing');
   assert.match(demoWhy(png, {...ctx, notes: 'brief.md'}), /brief\.md/);
   assert.equal(demoWhy(png, {...ctx, refused: new Proxy({}, {get: () => 'real'})}), '');
 });

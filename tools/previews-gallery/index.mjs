@@ -66,7 +66,7 @@ for (const png of pngs) {
   if (!parsed) continue;
   const tokens = nameTokens(png.name);
   const session = tokens.find(t => tags.has(t)) || tokens[0] || parsed.workspace;
-  const why = demoWhy(png, {checked, refused, notes: demoNote(png.pad, png), prs: all, transcript: marks.get(`${png.project}/${png.sessionId}`).has(png.name)});
+  const why = demoWhy(png, {checked, refused, notes: demoNote(png.pad, png), prs: all, tokens: [session, ...tokens], transcript: marks.get(`${png.project}/${png.sessionId}`).has(png.name)});
   if (!why) { notShown.push(`${png.name} (nothing marks it as demo data)`); continue; }
   const key = `${png.sessionId}/${parsed.stem}`;
   const group = groups.get(key) || {session, stem: parsed.stem, why, mtime: 0, pics: [], png};

@@ -146,13 +146,14 @@ export function mark(files, note, {refuse = false, file} = {}) {
  * Why a scratchpad picture may be shown, or '' (kept out). Order: refused (never) → a person approved it → the session's own notes say demo data → a PR tagged with the session says demo data.
  * Why (8 Nov 2026, coordinator): hiding everything not hand-approved hid 211 pictures, many from demo fixtures; the session's words decide, the refused list is the person's veto.
  */
-export function demoWhy(png, {checked, refused, notes, prs, transcript = false}) {
+export function demoWhy(png, {checked, refused, notes, prs, tokens = [], transcript = false}) {
   const hash = fileHash(png.file);
   if (refused[hash]) return '';
   if (checked[hash]) return 'a person looked at it';
   if (notes) return `session notes (${notes}) say demo data`;
   // Why (review, 8 Nov 2026): a PR that says demo data anywhere unlocked every shot with its short name; its body must name this picture's file (its table hosts it under the same name) in a sentence with the words.
-  const pr = prs.find(p => sentenceClaimsDemo(p.body, png.name));
+  // Why (run 4, 8 Nov 2026): other PRs' bodies also name generic files (before.png, after.png): the PR must be tagged with the picture's own short name too.
+  const pr = prs.find(p => p.tags.some(tag => tokens.includes(tag)) && sentenceClaimsDemo(p.body, png.name));
   if (pr) return `PR #${pr.number} says demo data`;
   return transcript ? 'the session\'s log says demo data and names this picture' : '';
 }
