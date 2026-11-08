@@ -15,6 +15,13 @@ NOW = datetime(2026, 11, 8, 12, 0, tzinfo=timezone.utc)
 SAVED = '2026-11-08T11:00:00+00:00'
 
 
+class _AtNow(datetime):
+    """datetime whose now() is NOW, for the code that reads the clock itself."""
+    @classmethod
+    def now(cls, tz=None):
+        return NOW
+
+
 def _left(**counts):
     return {step: {'left': n, 'saved_at': SAVED} for step, n in counts.items()}
 
@@ -148,9 +155,9 @@ class TheCardsNextLine(Isolated):
         resume.ran('employer sites')
         resume.save()
         with store.connect(self.data / 'jobs.sqlite') as db, contextlib.redirect_stdout(io.StringIO()):
-            made = plan.run(db, datetime.now(timezone.utc), head='Next plan')
+            made = plan.run(db, NOW, head='Next plan')
         self.assertIn('employer_sites', [item['step'] for item in made['done']])
-        self.assertNotIn('employer_sites', [step['step'] for step in plan.next_steps()['steps']])
+        self.assertNotIn('employer_sites', [step['step'] for step in plan.next_steps(NOW)['steps']])
 
     def test_search_makes_the_end_plan_after_resume_save(self):   # the real order inside daily_search.search, played through the search characterization test
         import unittest
@@ -174,10 +181,11 @@ class TheCardsNextLine(Isolated):
         with store.connect(self.data / 'jobs.sqlite') as db, mock.patch.object(resume, 'load_left', return_value=_left(web_search=0, job_boards=0, employer_sites=561)):
             said = io.StringIO()
             with contextlib.redirect_stdout(said):
-                plan.run(db, datetime.now(timezone.utc), head='Next plan')
+                plan.run(db, NOW, head='Next plan')
         self.assertTrue(said.getvalue().startswith('Next plan (logged, not applied yet): 1 employer sites'), said.getvalue())
         from src import desktop
-        answer, _ = desktop._next_step(None, None)
+        with mock.patch.object(plan, 'datetime', _AtNow):   # the app command reads the clock itself; pinned so the plan (made at NOW) does not age out of MAX_AGE_DAYS
+            answer, _ = desktop._next_step(None, None)
         self.assertEqual((answer['ok'], answer['steps'][0]), (True, {'step': 'employer_sites', 'left': 561}))
         plan._write({'order': [], 'done': [], 'planned_at': NOW.isoformat(), 'applied': False})
         self.assertEqual(desktop._next_step(None, None)[0], {'ok': True, 'steps': []})
