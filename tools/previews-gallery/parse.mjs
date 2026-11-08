@@ -75,7 +75,7 @@ export function parseShotName(file) {
   if (!/\.png$/i.test(name)) return null;
   // Why (8 Nov 2026): a picture is a preview when its name says so; whether it may be SHOWN is decided elsewhere (collect.mjs demoWhy: the session's own words say demo data, or a person approved it).
   if (!/(side|before|after|dialog|preview|mock|narrow|light|dark|card|menu|state|page|screen)/i.test(name)) return null;
-  const folder = /\/-Users-mac-jobadabra(?:-web)?(?:--claude-worktrees-)?([^/]*)\//.exec(file);
+  const folder = /\/-Users-[^/-]+-jobadabra(?:-web)?(?:--claude-worktrees-)?([^/]*)\//.exec(file);
   const workspace = folder && folder[1] ? folder[1] : 'main';
   const prefix = /^([0-9a-z]{1,3})-/.exec(name);
   const theme = /(?:^|[-_])(light|dark)(?=[-_.])/i.exec(name);
@@ -96,7 +96,7 @@ export function groupShots(shots) {
   return [...byKey.values()].sort((a, b) => b.mtime - a.mtime);
 }
 
-const DEMO = /demo[- ]data|demo fixture|fictional|fake data|example data|mock data/gi;
+const DEMO = /demo[- ]data|demo fixture|fictional|fake data|example data|mock data|--demo\b|JOBADABRA_DEMO|demo mode/gi;
 const NEGATED = /\b(not|no|never|isn't|aren't|without|non|real)\b[^.\n]{0,24}$/i;
 
 /**
@@ -109,9 +109,20 @@ export function saysDemo(text) {
   return false;
 }
 
+/** True when `name` appears in `text` as a whole file name (not inside a longer one: "fa-split-light.png" is not in "fa-split-light-narrow.png"). */
+export function namesFile(text, name) {
+  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\w.-])${escaped}(?![\\w-])`).test(String(text || ''));
+}
+
+/** True when ONE line or sentence of `text` holds both the exact file name and (non-negated) demo words: "a.png is real; b.png uses fictional data" counts for b.png only. */
+export function sentenceClaimsDemo(text, name) {
+  return String(text || '').split(/\r?\n|;|(?<=[.!?])\s+/).some(part => namesFile(part, name) && saysDemo(part));
+}
+
 /**
- * Names (of `names`) a session's own transcript calls demo: one assistant message, or one command it ran, that holds both the file name and demo words (`--demo`, demo mode, fictional data...).
- * Why (review, 8 Nov 2026): the first version took any demo word anywhere in the log (system prompt and skill text included: 40 of 40 logs) plus a name seen in an `ls`; now the words and the name must sit in one thing the session itself wrote.
+ * Names (of `names`) a session's own transcript calls demo: one assistant message, or one command it ran, with a sentence that holds both the file name and demo words (`--demo`, demo mode, fictional data...).
+ * Why (review, 8 Nov 2026): the first version took any demo word anywhere in the log (system prompt and skill text included: 40 of 40 logs) plus a name seen in an `ls`; Gitar then showed "a.png is real data; b.png uses fictional data" unlocked both: the words and the name must sit in one sentence the session itself wrote.
  */
 export function demoClaims(jsonl, names) {
   const found = new Set();
@@ -123,9 +134,9 @@ export function demoClaims(jsonl, names) {
     const content = entry.message && entry.message.content;
     if (!Array.isArray(content)) continue;
     for (const part of content) {
-      const text = part.type === 'text' ? part.text : part.type === 'tool_use' ? JSON.stringify(part.input || {}) : '';
-      if (!text || !(saysDemo(text) || /--demo\b|JOBADABRA_DEMO|demo mode/i.test(text))) continue;
-      for (const name of wanted) if (text.includes(name)) found.add(name);
+      const text = part.type === 'text' ? part.text : part.type === 'tool_use' ? Object.values(part.input || {}).map(String).join('\n') : '';
+      if (!text) continue;
+      for (const name of wanted) if (sentenceClaimsDemo(text, name)) found.add(name);
     }
   }
   return found;

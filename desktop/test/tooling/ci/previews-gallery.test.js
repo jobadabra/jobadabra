@@ -78,10 +78,10 @@ test('the board cards kept are those waiting on the owner, tagged by their Sessi
 
 test('the session\'s own words decide a picture: demo words, a person\'s approval, a refusal that always wins', () => {
   assert.ok(saysDemo('Our render (demo data)') && saysDemo('a fictional candidate') && !saysDemo("the owner's screenshot"));
-  const png = {file: new URL(import.meta.url).pathname};
-  const ctx = {checked: {}, refused: {}, notes: '', prs: [{number: 7, demo: true, tags: ['sc']}], tokens: ['sc']};
+  const png = {file: new URL(import.meta.url).pathname, name: 'sc-a.png'};
+  const ctx = {checked: {}, refused: {}, notes: '', prs: [{number: 7, body: 'Shots: sc-a.png is rendered with demo data.'}]};
   assert.equal(demoWhy(png, ctx), 'PR #7 says demo data');
-  assert.equal(demoWhy(png, {...ctx, prs: [], tokens: ['zz']}), '');
+  assert.equal(demoWhy(png, {...ctx, prs: [{number: 8, body: 'demo data everywhere. Other shot: sc-b.png'}]}), '', 'a PR that says demo data but does not name this picture unlocks nothing');
   assert.match(demoWhy(png, {...ctx, notes: 'brief.md'}), /brief\.md/);
   assert.equal(demoWhy(png, {...ctx, refused: new Proxy({}, {get: () => 'real'})}), '');
 });
@@ -121,6 +121,8 @@ test('a transcript calls a picture demo only in the session\'s own message that 
     line('assistant', [{type: 'tool_use', input: {command: 'npm run shot --demo -- --out viewed.png'}}]),
   ].join('\n');
   assert.deepEqual([...demoClaims(log, ['real-one.png', 'shown.png', 'viewed.png'])].sort(), ['shown.png', 'viewed.png']);
+  const mixed = line('assistant', [{type: 'text', text: 'a.png shows the owner list; b.png uses fictional data. c.png was taken without --demo.'}]);
+  assert.deepEqual([...demoClaims(mixed, ['a.png', 'b.png', 'c.png'])], ['b.png']);
 });
 
 test('a table row with a backtick in a cell keeps its pictures', () => {
@@ -146,9 +148,10 @@ test('only the owner\'s own PRs are read, and only our repos\' pr-assets tags ar
 
 test('a scratchpad note unlocks only the pictures it names', () => {
   const pad = fs.mkdtempSync(path.join(os.tmpdir(), 'pg-pad-'));
-  fs.writeFileSync(path.join(pad, 'body.md'), 'Shots use fictional data: shown-after.png');
+  fs.writeFileSync(path.join(pad, 'body.md'), 'real-job-list.png holds the owner\'s list.\nshown-after.png uses fictional data.\nlong-name-narrow.png is demo data');
   assert.equal(demoNote(pad, {name: 'shown-after.png'}), 'body.md');
-  assert.equal(demoNote(pad, {name: 'real-job-list.png'}), '');
+  assert.equal(demoNote(pad, {name: 'real-job-list.png'}), '', 'a name in another sentence than the demo words is not demo');
+  assert.equal(demoNote(pad, {name: 'long-name.png'}), '', 'a longer file name does not unlock its prefix');
   fs.rmSync(pad, {recursive: true});
 });
 

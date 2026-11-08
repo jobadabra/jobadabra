@@ -5,11 +5,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, saysDemo, titleTags, verdictLine} from './parse.mjs';
+import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, namesFile, parsePrBody, parseShotName, saysDemo, sentenceClaimsDemo, titleTags, verdictLine} from './parse.mjs';
 
 export const REPOS = ['jobadabra/jobadabra', 'jobadabra/jobadabra-web'];
 export const OWNER = 'GarryOne';
-export const SCRATCH_ROOT = '/private/tmp/claude-502';
+// Why (review, 8 Nov 2026): the scratch root holds the account's uid; a fixed 502 found nothing on another account.
+export const SCRATCH_ROOT = `/private/tmp/claude-${typeof process.getuid === 'function' ? process.getuid() : 502}`;
 const DAY = 86400000;
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
@@ -36,7 +37,7 @@ export function prCards(run = gh, days = 3, now = Date.now()) {
         const rows = parsePrBody(pr.body);
         if (!rows.length) continue;
         const state = pr.state === 'OPEN' ? 'waiting' : pr.mergedAt ? 'approved' : 'changes';
-        cards.push({kind: 'pr', repo, number: pr.number, title: pr.title, url: pr.url, tags: titleTags(pr.title), verdict: verdictLine(pr.body), demo: saysDemo(pr.body), state, mtime: Date.parse(pr.updatedAt), rows});
+        cards.push({kind: 'pr', repo, number: pr.number, title: pr.title, url: pr.url, tags: titleTags(pr.title), verdict: verdictLine(pr.body), body: String(pr.body || ''), state, mtime: Date.parse(pr.updatedAt), rows});
       }
     }
   }
@@ -64,17 +65,13 @@ export function scratchPngs(root = SCRATCH_ROOT, days = 3, now = Date.now()) {
 }
 
 /**
- * First note (.md / .txt) in a scratchpad that calls the picture demo / fictional data AND names it (its file name or its stem): the note's name, or ''.
- * Why (review, 8 Nov 2026): one note saying "fictional" anywhere in a pad unlocked every picture there, real-data ones too.
+ * First note (.md / .txt) in a scratchpad with a line that holds the picture's exact file name AND demo / fictional-data words: the note's name, or ''.
+ * Why (review, 8 Nov 2026): "fictional" anywhere in a pad unlocked every picture; then "real.png is real; the others use fictional data: x.png" unlocked real.png; the name and the words must share a sentence.
  */
 export function demoNote(pad, png) {
-  const stem = png.name.replace(/\.png$/i, '');
   for (const name of fs.readdirSync(pad)) {
     if (!/\.(md|txt)$/i.test(name)) continue;
-    try {
-      const text = fs.readFileSync(path.join(pad, name), 'utf8').slice(0, 400000);
-      if (saysDemo(text) && (text.includes(png.name) || text.includes(stem))) return name;
-    } catch { /* unreadable note: no mark */ }
+    try { if (sentenceClaimsDemo(fs.readFileSync(path.join(pad, name), 'utf8').slice(0, 400000), png.name)) return name; } catch { /* unreadable note: no mark */ }
   }
   return '';
 }
@@ -149,12 +146,13 @@ export function mark(files, note, {refuse = false, file} = {}) {
  * Why a scratchpad picture may be shown, or '' (kept out). Order: refused (never) → a person approved it → the session's own notes say demo data → a PR tagged with the session says demo data.
  * Why (8 Nov 2026, coordinator): hiding everything not hand-approved hid 211 pictures, many from demo fixtures; the session's words decide, the refused list is the person's veto.
  */
-export function demoWhy(png, {checked, refused, notes, prs, tokens, transcript = false}) {
+export function demoWhy(png, {checked, refused, notes, prs, transcript = false}) {
   const hash = fileHash(png.file);
   if (refused[hash]) return '';
   if (checked[hash]) return 'a person looked at it';
   if (notes) return `session notes (${notes}) say demo data`;
-  const pr = prs.find(p => p.demo && p.tags.some(tag => tokens.includes(tag)));
+  // Why (review, 8 Nov 2026): a PR that says demo data anywhere unlocked every shot with its short name; its body must name this picture's file (its table hosts it under the same name) in a sentence with the words.
+  const pr = prs.find(p => sentenceClaimsDemo(p.body, png.name));
   if (pr) return `PR #${pr.number} says demo data`;
   return transcript ? 'the session\'s log says demo data and names this picture' : '';
 }
