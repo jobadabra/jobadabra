@@ -29,7 +29,7 @@ The split (`desktop/renderer/apply-split.js`, the same pure function in the app 
 ## Progress
 - [x] 1/2 app holds the batch, split, Confirm/Cancel (proof: desktop/test/unit/main/apply-check-first.test.js @fd0f52bc), merged as #3564
 - [ ] 2/2 the dialog: every Full automation batch from Apply to jobs shows the live check, then the split (owner's yes on the side-by-side, 8 Nov 2026: "Ship it")
-- [ ] 2b/2 wire the check prepared with the kit (step a) once ac's R1 (#3573, `desktop/lib/apply-readiness.js` `storedCheck(storage, job)`) merges; until then every job is read live
+- Step a (the check prepared with the kit shows at once) landed with ac's R1, #3573: `apply-handlers.js` hands `readiness.storedCheck` to the held batch
 
 ## Plan
 

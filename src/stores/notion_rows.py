@@ -21,7 +21,7 @@ APPLICATION_COLUMNS = (
     ('fit', 'Fit score', 'number'), ('next_step', 'Next step', 'rich_text'), ('next_interview', 'Next interview', 'date'),
     ('applied_on', 'Applied on', 'date'), ('via', 'Via', 'rich_text'), ('contact', 'Contact', 'rich_text'),
     ('origin', 'Origin', 'select'), ('source', 'Source', 'select'), ('notes', 'Notes', 'rich_text'),
-    ('kit_inputs', 'Kit inputs', 'rich_text'), ('rejection', 'Rejection reason', 'select'),
+    ('kit_inputs', 'Kit inputs', 'rich_text'), ('apply_readiness', 'Apply readiness', 'rich_text'), ('rejection', 'Rejection reason', 'select'),
     ('rejection_lesson', 'Rejection lesson', 'rich_text'), ('feedback_status', 'Feedback status', 'select'),
     ('employer_feedback', 'Employer feedback', 'rich_text'), ('salary', 'Salary', 'rich_text'),
     ('contract', 'Contract', 'select'), ('call_facts', 'Call facts', 'rich_text'), ('created_at', 'Created', 'created'),

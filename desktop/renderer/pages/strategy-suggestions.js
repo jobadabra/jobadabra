@@ -3,6 +3,7 @@
 import {number as displayNumber} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {copyField} from '../../i18n/display-copy.js';
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -103,7 +104,7 @@ export function drawImprove() {
   if (!countOf(SUGGESTIONS)) { box.replaceChildren(); show(box, false); return; }
   const {top} = improveWords(briefs[kinds[0]]);
   const words = el('div', 'notice-words'), title = el('b'), count = el('span');
-  Object.assign(count.dataset, {countOf: SUGGESTIONS, countOne: 'suggestion'});
+  Object.assign(count.dataset, {countOf: SUGGESTIONS, countKey: 'pagesCountNouns.suggestion'});
   title.append(count, t('pagesAuditThird.a207'));
   words.append(title);
   if (top) box.title = t('pagesShortSettings.m350', {"top": top});   // the line stays one count and one action (mockup 03); the top one on hover, in full on Suggestions
@@ -188,13 +189,14 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
 // Not true in your store. Shown only while your results support a change; drawn again only when that changes (a Focus read with the same
 // changes leaves the rows alone).
 function tuneRow(entry) {
-  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: t('pagesCommon.review')};
+  const title = copyField(entry, 'title'), detail = copyField(entry, 'detail');
+  briefs.tune = {glyph: 'sliders', title, text: detail, cta: t('pagesCommon.review')};
   const row = el('section', `suggestion-card tone-${TONE.tune}`);
   Object.assign(row, {id: 'strategy-tune'});
   row.dataset.key = entry.key;
   const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
-  name.append(el('h3', '', entry.title));
-  words.append(name, emphasize(entry.detail));
+  name.append(el('h3', '', title));
+  words.append(name, emphasize(detail));
   const review = el('button', 'secondary', t('pagesCommon.review'));
   review.type = 'button';
   review.addEventListener('click', () => RUN.tune());
@@ -217,8 +219,8 @@ const rowKeys = () => [...Object.values(strategyState.shownVerdict?.keys || {}),
 const answeredKeys = () => rowKeys().filter(answered).join('\n');
 let answeredShown = '';
 const repaint = () => (strategyState.shownVerdict ? paintCoverage(strategyState.shownVerdict) : shownIdeas && paintIdeas(shownIdeas));
-const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', t('pagesAuditThird.a208')],
-  ['close', 'Not true', t('pagesAuditThird.a209')]].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
+const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', t('pagesAuditThird.a208'), t('pagesCommon.notNow')],
+  ['close', 'Not true', t('pagesAuditThird.a209'), t('pagesCommon.notTrue')]].map(([glyph, state, hint, label]) => ({icon: glyph, label, title: hint,
   run: () => { adviceEvent('dismissed', advice, 'strategy'); answerEntry({key, title, aside}, state); repaint(); }})) : []);
 // One option done, from Strategy or from Focus's one press (where): a change to your search (a role word, a place, a filter removed) is saved to
 // Search settings, said, and both pages read again; a site opens in your Chrome. action: {kind, value, note?} (coverage-actions.js runAction).

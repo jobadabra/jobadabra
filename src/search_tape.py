@@ -29,9 +29,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from . import tape_items
+
 _lock = threading.Lock()
 _index = {}      # (kind, key) -> record, the tape read once per process
-counts = {'web_tape': 0, 'web_missing': 0, 'ai_tape': 0, 'ai_live': 0, 'ai_missing': 0}
+counts = {'web_tape': 0, 'web_missing': 0, 'ai_tape': 0, 'ai_live': 0, 'ai_missing': 0, 'ai_rebuilt': 0}
+DATE = re.compile(r'\b20\d\d-\d\d-\d\d(T[\d:.]+Z?)?\b')   # a prompt that names today's date is the same question on a later replay day
 
 
 def folder():
@@ -56,7 +59,7 @@ def _key(*parts):
 def _load():
     if _index:
         return _index
-    for kind in ('web', 'ai', 'dns'):
+    for kind in ('web', 'ai', 'dns', 'item'):
         file = folder() / f'{kind}.jsonl'
         for line in file.read_text().splitlines() if file.exists() else []:
             try:
@@ -270,13 +273,16 @@ class _Messages:
         self.live = live
 
     def create(self, **params):
-        # a prompt that names today's date (job ages, "posted 3 days ago") is the same question on a later replay day
-        key = _key('ai', re.sub(r'\b20\d\d-\d\d-\d\d(T[\d:.]+Z?)?\b', 'DATE', json.dumps(params, sort_keys=True, default=str)))
+        key = _key('ai', DATE.sub('DATE', json.dumps(params, sort_keys=True, default=str)))
         record = _load().get(('ai', key)) if mode() == 'replay' else None
         if record is not None:
             counts['ai_tape'] += 1
             _wait(record.get('seconds'))
             return _response(record)
+        rebuilt = _rebuilt(params) if mode() == 'replay' and tape_items.on() else None
+        if rebuilt is not None:
+            counts['ai_rebuilt'] += 1
+            return rebuilt
         if mode() == 'replay' and os.getenv('JOBADABRA_TAPE_LIVE') == '0':
             counts['ai_missing'] += 1
             _keep_missing(key, params)
@@ -291,7 +297,41 @@ class _Messages:
                      'texts': [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'],
                      'usage': {k: getattr(usage, k) for k in ('input_tokens', 'output_tokens', 'cache_read_input_tokens',
                                                               'cache_creation_input_tokens', 'billing', 'provider', 'model') if hasattr(usage, k)}})
+        if getattr(answer, 'stop_reason', 'end_turn') != 'max_tokens':   # an answer cut off by its cap is no item's whole answer
+            _keep_items(params, [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'], time.monotonic() - started)
         return answer
+
+
+def _batch(params):
+    """A batched question -> (its context, [its items]), dates as DATE; None for a question that is not one numbered list."""
+    last = (params.get('messages') or [{}])[-1]
+    found = tape_items.split(last.get('content')) if last.get('role') == 'user' else None
+    if not found:
+        return None
+    return DATE.sub('DATE', tape_items.context(params, found[0])), [DATE.sub('DATE', item) for item in found[1]]
+
+
+def _keep_items(params, texts, seconds):
+    """Each item's part of a batched answer, in items.jsonl, with its share of the call's time (src/tape_items.py)."""
+    batch = _batch(params)
+    split = tape_items.parts(texts[0], len(batch[1])) if batch and len(texts) == 1 else None
+    if not split:
+        return
+    for n, item in enumerate(batch[1], 1):
+        _keep('item', {'key': _key('item', batch[0], item), 'field': split[0], 'part': split[1][n], 'seconds': round(seconds / len(batch[1]), 3)})
+
+
+def _rebuilt(params):
+    """A missed batch answered from its items' recorded parts, renumbered, after their summed time; None unless every item is on the tape."""
+    batch = _batch(params)
+    found = [_load().get(('item', _key('item', batch[0], item))) for item in batch[1]] if batch else [None]
+    if not all(found) or len({record['field'] for record in found}) != 1:
+        return None
+    text = tape_items.join(found[0]['field'], [record['part'] for record in found])
+    if text is None:
+        return None
+    _wait(sum(record.get('seconds') or 0 for record in found))
+    return _response({'texts': [text], 'model': params.get('model') or ''})
 
 
 class _Client:

@@ -138,7 +138,8 @@ test('Free AI setup callback projects only failures and keeps registration, succ
 test('setup catalogs keep all six translated diagnostic maps and the two UI-only English instructions with exact variables', async () => {
   const en = (await import('../../../i18n/catalogs/setup-notices/en.js')).default;
   const keys = ['anthropicRejected', 'badCharacter', 'browserOpenFailed', 'freeNotRegular', 'freeStartFailed', 'notionMissingToken', 'notionTimeout', 'openaiRejected'];
-  assert.deepEqual(Object.keys(en).sort(), ['anthropicRejected', 'browserOpenFailed', 'openaiRejected']);
+  assert.deepEqual(Object.keys(en).sort(), keys);
+  assert.deepEqual(Object.keys(en).filter(key => en[key] !== null).sort(), ['anthropicRejected', 'browserOpenFailed', 'openaiRejected']);
   const parameters = value => [...new Set([...value.matchAll(/\{([a-zA-Z][\w]*)\}/g)].map(match => match[1]))].sort();
   for (const locale of SUPPORTED_LOCALES.filter(l => l !== 'en')) {
     const catalog = (await import(`../../../i18n/catalogs/setup-notices/${locale}.js`)).default;

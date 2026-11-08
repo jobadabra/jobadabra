@@ -207,16 +207,11 @@ export const messages = {
   "insightDisclaimer": "Questi spunti sono suggerimenti basati su pochi colloqui e potrebbero non essere definitivi.",
   "interview": "Colloquio",
   "noInsights": "Ancora nessuno spunto",
-  "reviewedBasis": {
-    "other": "Colloqui valutati: {count} · Aggiorna per leggerli insieme"
-  },
+  "reviewedBasis": "Colloqui valutati: {count} · Aggiorna per leggerli insieme",
   "basedInterviews": "Basato su: {interviews}",
   "updatedLower": "aggiornato {when}",
   "updatedUpper": "Aggiornato {when}",
-  "newReviewsPending": {
-    "one": "{count} nuova valutazione non ancora inclusa",
-    "other": "{count} nuove valutazioni non ancora incluse"
-  },
+  "newReviewsPending": {"one":"{count} nuova valutazione non ancora inclusa","other":"{count} nuove valutazioni non ancora incluse","many":"{count} nuove valutazioni non ancora incluse"},
   "patternsAcross": "Schemi da {count} · {round}",
   "reviewChanged": "Una valutazione è cambiata · Aggiorna",
   "insightOldVersion": "Scritto da una versione precedente · Aggiorna",
@@ -370,32 +365,11 @@ export const messages = {
   "applicationsUsed": "{used} candidature su {limit} usate",
   "freeEndedTip": "Piano gratuito: {used} candidature su {limit} usate e giorni gratuiti terminati. Nuove candidature e ricerche in pausa. {tracking} Una chiave di licenza rimuove il limite. Pro è un {promise}.",
   "freeActiveTip": "Piano gratuito: {used} candidature su {limit} usate · {days}. Gratis fino a {limit} candidature e 60 giorni trascorsi, il più lungo dei due; poi Pro, un {promise} (in arrivo). (L’obiettivo giornaliero Focus è separato.)",
-  "interviewsCount": {
-    "one": "{count} colloquio",
-    "other": "{count} colloqui"
-  },
-  "quoteCount": {
-    "one": "{count} citazione",
-    "other": "{count} citazioni"
-  },
-  "jobsCount": {
-    "one": "{count} offerta",
-    "other": "{count} offerte"
-  },
-  "scoresOld": {
-    "one": "{jobs} è stata valutata con le impostazioni di ricerca precedenti.",
-    "other": "{jobs} sono state valutate con le impostazioni di ricerca precedenti."
-  },
-  "applyCount": {
-    "one": "Candidati a {count} offerta",
-    "other": "Candidati a {count} offerte"
-  },
-  "requiredLeft": {
-    "one": "{count} campo obbligatorio rimasto",
-    "other": "{count} campi obbligatori rimasti"
-  },
-  "licenseDays": {
-    "one": "{count} giorno rimasto",
-    "other": "{count} giorni rimasti"
-  }
+  "interviewsCount": {"one":"{count} colloquio","other":"{count} colloqui","many":"{count} colloqui"},
+  "quoteCount": {"one":"{count} citazione","other":"{count} citazioni","many":"{count} citazioni"},
+  "jobsCount": {"one":"{count} offerta","other":"{count} offerte","many":"{count} offerte"},
+  "scoresOld": {"one":"{jobs} è stata valutata con le impostazioni di ricerca precedenti.","other":"{jobs} sono state valutate con le impostazioni di ricerca precedenti.","many":"{jobs} sono state valutate con le impostazioni di ricerca precedenti."},
+  "applyCount": {"one":"Candidati a {count} offerta","other":"Candidati a {count} offerte","many":"Candidati a {count} offerte"},
+  "requiredLeft": {"one":"{count} campo obbligatorio rimasto","other":"{count} campi obbligatori rimasti","many":"{count} campi obbligatori rimasti"},
+  "licenseDays": {"one":"{count} giorno rimasto","other":"{count} giorni rimasti","many":"{count} giorni rimasti"}
 };

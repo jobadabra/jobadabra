@@ -107,6 +107,14 @@ class StoreContract(RunsContract):
         with self.assertRaises(KeyError):
             self.s.applications.update('missing', {'notes': 'x'})
 
+    def test_apply_readiness_is_kept_on_the_application_and_read_back_whole(self):
+        """Apply readiness (desktop/lib/apply-readiness.js): the stored form check is one text field of the record in every store, up to the Notion text limit."""
+        row = self.s.applications.create(JOB, 'Saved')
+        self.assertEqual(row['apply_readiness'], '')
+        text = '{"v":1,"at":"2026-11-07T10:00:00Z","posted":"2026-11-01","read":{"simple":true}}' + ' ' * 1700
+        self.s.applications.update(row['id'], {'apply_readiness': text})
+        self.assertEqual(self.s.applications.get(JOB['url'])['apply_readiness'], text)
+
     def test_updated_at_is_stamped_on_every_change_and_never_taken_from_the_caller(self):
         row = self.s.applications.create(JOB, 'Saved')
         self.assertTrue(row['updated_at'] >= row['created_at'][:19], row)

@@ -43,9 +43,6 @@ export const messages = {
   "putBack": "{skill} : remettre",
   "reviewedCount": "Vérifié · {count}",
   "profileNotes": "Notes de votre profil · {count}",
-  "splitParagraph": {
-    "one": "Un paragraphe divisé en une liste. ",
-    "other": "Un paragraphe divisé en {count} listes. "
-  },
+  "splitParagraph": {"one":"Un paragraphe divisé en une liste. ","other":"Un paragraphe divisé en {count} listes. ","many":"Un paragraphe divisé en {count} listes. "},
   "putGapsBack": "Rétablir le paragraphe des compétences à vérifier"
 };

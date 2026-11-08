@@ -43,9 +43,6 @@ export const messages = {
   "putBack": "{skill}: restaurar",
   "reviewedCount": "Revisado · {count}",
   "profileNotes": "Notas de tu perfil · {count}",
-  "splitParagraph": {
-    "one": "Un párrafo dividido en una lista. ",
-    "other": "Un párrafo dividido en {count} listas. "
-  },
+  "splitParagraph": {"one":"Un párrafo dividido en una lista. ","other":"Un párrafo dividido en {count} listas. ","many":"Un párrafo dividido en {count} listas. "},
   "putGapsBack": "Restaurar el párrafo de habilidades por verificar"
 };

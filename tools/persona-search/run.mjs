@@ -5,7 +5,8 @@
 // Keychain, Notion or Telegram; telemetry and pool sharing are off.
 //   python3 tools/persona-search/personas.py <out>            (the CVs: <out>/<name>/cv.pdf)
 //   node tools/persona-search/run.mjs <name> <out> [--presses 5] [--tag before] [--fresh] [--draft <draft.json>]
-//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
+//        [--tape <folder> --record [--ceiling <seconds>] | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
+// --ceiling: a recording's press lasts <whole seconds> instead of 3 minutes, every engine share scaled (time_budget.part; the employer finder keeps its 45 s, desktop/lib/search-steps.js): the press's yardstick ceiling (plan 2026-11-07-the-press 2/6).
 // --note: the wizard's "What should the AI know?" text (e.g. "First Officer jobs anywhere in Europe"), given to the strategy draft as a person types it.
 // --change-field: a JSON list of role titles; before press 2 they replace the roles through the Strategy page's own edit (lib/strategy-edit.js editLists,
 //   which redrafts the old field's words), and the search is marked changed: the owner's path, a field change on an existing install then Find jobs again (26 Oct 2026).
@@ -42,6 +43,10 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
   if (process.argv.includes('--record') === process.argv.includes('--replay')) { console.error('--tape needs --record or --replay'); process.exit(2); }
   Object.assign(process.env, {JOBADABRA_SEARCH_TAPE: path.resolve(tape), JOBADABRA_SEARCH_TAPE_MODE: process.argv.includes('--record') ? 'record' : 'replay',
     JOBADABRA_TAPE_WAIT_SCALE: waitScale});
+  if (option('--ceiling', '')) {
+    if (!process.argv.includes('--record') || !/^\d+$/.test(option('--ceiling', ''))) { console.error('--ceiling needs --record and whole seconds'); process.exit(2); }
+    process.env.JOBADABRA_PRESS_SECONDS = option('--ceiling', '');
+  }
   if (process.argv.includes('--no-live')) process.env.JOBADABRA_TAPE_LIVE = '0';   // CI has no AI account: a question the tape lacks is counted and raises (src/search_tape.py)
 }
 

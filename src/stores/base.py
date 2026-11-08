@@ -31,7 +31,7 @@ CLOUD = 'cloud'      # reachable from GitHub runners and the Telegram worker (Al
 FILES = 'files'      # attach() keeps the bytes in the store itself (else a path on this Mac)
 
 APPLICATION_FIELDS = ('id', 'url', 'title', 'company', 'location', 'work_mode', 'stage', 'fit', 'next_step',
-                      'next_interview', 'applied_on', 'via', 'contact', 'origin', 'source', 'notes', 'kit_inputs',
+                      'next_interview', 'applied_on', 'via', 'contact', 'origin', 'source', 'notes', 'kit_inputs', 'apply_readiness',
                       'rejection', 'rejection_lesson', 'feedback_status', 'employer_feedback', 'salary', 'contract',
                       'call_facts', 'created_at',
                       # When the row last changed, by anyone (Notion: the page's last edit, a hand edit too). Read-only:

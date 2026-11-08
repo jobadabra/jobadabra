@@ -16,12 +16,6 @@ export const messages = {
   "onlyMac": " Solo en este Mac: guarda la oferta (☆) para conservarlo en Notion.",
   "onlyPC": " Solo en este PC: guarda la oferta (☆) para conservarlo en Notion.",
   "cvFailedTitle": "CV no adaptado",
-  "changesCount": {
-    "one": "{count} cambio",
-    "other": "{count} cambios"
-  },
-  "warningsSuffix": {
-    "one": ", {count} por revisar",
-    "other": ", {count} por revisar"
-  }
+  "changesCount": {"one":"{count} cambio","other":"{count} cambios","many":"{count} cambios"},
+  "warningsSuffix": {"one":", {count} por revisar","other":", {count} por revisar","many":", {count} por revisar"}
 };

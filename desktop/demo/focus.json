@@ -1,626 +1,257 @@
 {
   "items": [
-    {
-      "priority": 1,
-      "kind": "reply",
-      "icon": "chat",
-      "badge": "Reply today",
-      "tone": "bad",
-      "headline": "Reply to Northwind Robotics recruiter",
-      "meta": [
-        "SRE",
-        "LinkedIn",
-        "€120k–220k",
-        "Remote"
-      ],
-      "title": "Reply on LinkedIn: Northwind Robotics — SRE",
-      "detail": "Recruiter pitch today (LinkedIn). €120k–220k · Remote · Jordan Lee",
-      "link": "https://www.linkedin.com/messaging/",
-      "link_label": "Open LinkedIn",
-      "done": true,
-      "page_id": "demo-1",
-      "notion_url": "",
-      "company": "Northwind Robotics",
-      "job": "SRE",
-      "job_url": "",
-      "place": "up_next",
-      "topic": "applying"
-    },
-    {
-      "priority": 1,
-      "kind": "reply",
-      "icon": "mail",
-      "badge": "Reply today",
-      "tone": "bad",
-      "headline": "Reply to Example Talent recruiter",
-      "meta": [
-        "Senior DevOps Engineer",
-        "Email",
-        "€70k–90k",
-        "Remote Europe"
-      ],
-      "title": "Reply by email: Example Talent — Senior DevOps Engineer",
-      "detail": "Recruiter pitch today (Email). €70k–90k + equity · Remote (Europe) · Alex Morgan",
-      "link": "https://mail.google.com/",
-      "link_label": "Open email",
-      "done": true,
-      "page_id": "demo-2",
-      "notion_url": "",
-      "company": "",
-      "job": "Senior DevOps Engineer",
-      "job_url": "",
-      "place": "up_next",
-      "topic": "applying"
-    },
-    {
-      "priority": 1,
-      "kind": "happened",
-      "icon": "calendar",
-      "badge": "Did it happen?",
-      "tone": "warn",
-      "headline": "Interview with Harbor Staffing",
-      "meta": [
-        "Principal SRE",
-        "Tue 29 Sep 08:30"
-      ],
-      "title": "Did the interview happen? Harbor Staffing — Principal SRE",
-      "detail": "It was Tue 29 Sep, 08:30. Yes: note how it went (salary, next steps, people, questions) and it moves on. No: say if it moved or was cancelled.",
-      "link": "",
-      "link_label": "",
-      "done": false,
-      "page_id": "demo-happened",
-      "notion_url": "",
-      "company": "Harbor Staffing",
-      "job": "Principal SRE",
-      "job_url": "",
-      "stage": "Interview scheduled",
-      "at": "2026-09-29T06:30:00+00:00",
-      "place": "suggestions",
-      "topic": "interviews"
-    },
-    {
-      "priority": 1,
-      "kind": "prepare",
-      "icon": "mic",
-      "badge": "Interview Thu 08:30",
-      "tone": "bad",
-      "headline": "Prepare for Lumen Data",
-      "meta": [
-        "Senior SRE",
-        "Kit from 29 Sep · your call on 30 Sep was reviewed since"
-      ],
-      "title": "Prepare: Lumen Data — Senior SRE",
-      "detail": "Interview Thu 01 Oct, 08:30. Read the posting and your kit, and practise the topics you answered weakly before. Kit from 29 Sep · your call on 30 Sep was reviewed since: build a new kit for this round (about $0.04); the earlier one stays on the job's page.",
-      "link": "",
-      "link_label": "",
-      "done": false,
-      "page_id": "demo-prepare",
-      "notion_url": "https://www.notion.so/demo-prepare",
-      "company": "Lumen Data",
-      "job": "Senior SRE",
-      "job_url": "",
-      "stage": "Interviewing",
-      "at": "2026-10-01T06:30:00+00:00",
-      "prep_at": "2026-09-29",
-      "prep_stale": true,
-      "prep_reason": "Kit from 29 Sep · your call on 30 Sep was reviewed since",
-      "prep_since": "2026-09-30",
-      "prep_why": "reviewed",
-      "place": "up_next",
-      "topic": "applying"
-    },
-    {
-      "priority": 2,
-      "kind": "feedback",
-      "icon": "chat",
-      "badge": "Learn from it",
-      "tone": "info",
-      "headline": "Ask Acme Observability for feedback",
-      "meta": [
-        "Staff SRE",
-        "One specific point can improve your next interview"
-      ],
-      "title": "Ask for feedback",
-      "detail": "You reached Screening or later. One useful point can improve your next interview.",
-      "company": "Acme Observability",
-      "job": "Staff SRE",
-      "page_id": "demo-feedback",
-      "draft": "Thank you for your time and consideration.\n\nCould you share what mainly influenced the decision? Compensation expectations, technical fit, communication, or something else?\n\nEven a few words would be really helpful.",
-      "link": "https://mail.google.com/",
-      "notion_url": "",
-      "job_url": "",
-      "place": "suggestions",
-      "topic": "interviews"
-    },
-    {
-      "priority": 2,
-      "kind": "follow_up",
-      "icon": "send",
-      "badge": "Follow up",
-      "tone": "warn",
-      "headline": "Follow up with Lumen Robotics",
-      "meta": [
-        "Platform Engineer",
-        "you wrote Sat 26 Sep",
-        "4 days, no reply"
-      ],
-      "title": "Follow up with Lumen Robotics",
-      "detail": "You wrote Sat 26 Sep (4 days ago), no reply yet.",
-      "link": "https://www.linkedin.com/messaging/",
-      "link_label": "Open chat",
-      "done": true,
-      "page_id": "demo-follow-up",
-      "notion_url": "",
-      "company": "Lumen Robotics",
-      "job": "Platform Engineer",
-      "job_url": "",
-      "stage": "Screening",
-      "reached": "LinkedIn",
-      "at": "2026-09-26T10:05:00+02:00",
-      "quiet": 4,
-      "place": "up_next",
-      "topic": "applying"
-    },
-    {
-      "priority": 3,
-      "kind": "apply",
-      "icon": "briefcase",
-      "badge": "Next step",
-      "tone": "info",
-      "headline": "Apply to your next role",
-      "meta": [
-        "Your best: Lakeside Payments, Glacier Labs",
-        "11 of 30 today"
-      ],
-      "title": "Apply to 19 more jobs today",
-      "detail": "11 of 30 today. Your best: Lakeside Payments, Glacier Labs.",
-      "link": "",
-      "done": false,
-      "page_id": "",
-      "notion_url": "",
-      "company": "",
-      "job": "",
-      "job_url": "",
-      "place": "suggestions",
-      "topic": "applying"
-    },
-    {
-      "priority": 4,
-      "kind": "waiting",
-      "icon": "pulse",
-      "badge": "Waiting",
-      "tone": "neutral",
-      "headline": "Waiting for Globex Cloud's next step",
-      "meta": [
-        "Platform Engineer",
-        "Call with the CTO next week"
-      ],
-      "title": "Waiting for Globex Cloud's next step",
-      "detail": "Interview reviewed. Next: Call with the CTO next week. Nothing to do yet; follow up if there is no news in 2 days.",
-      "link": "",
-      "link_label": "",
-      "done": false,
-      "page_id": "demo-waiting",
-      "notion_url": "",
-      "company": "Globex Cloud",
-      "job": "Platform Engineer",
-      "job_url": "",
-      "stage": "Interviewing",
-      "after_interview": true,
-      "next_step": "Call with the CTO next week",
-      "place": null,
-      "topic": "applying"
-    },
-    {
-      "priority": 1,
-      "kind": "which_job",
-      "emoji": "❓",
-      "title": "Re: Technical interview invitation",
-      "detail": "Confirming our call for 9 Oct. Looking forward!",
-      "company": "Northwind Robotics",
-      "job": "Platform Engineer, Developer Experience",
-      "via": "",
-      "stage": "Screening",
-      "salary": "",
-      "location": "Zurich",
-      "reached": "Email",
-      "job_url": "",
-      "page_id": "",
-      "notion_url": "",
-      "link": "",
-      "link_label": "",
-      "done": false,
-      "event_id": "demo-ev-q1",
-      "event_kind": "Reply",
-      "note": "Confirming our call for 9 Oct. Looking forward!",
-      "suggested_url": "https://example.com/jobs/2",
-      "place": "suggestions",
-      "topic": "applying"
-    }
+    {"priority": 1, "kind": "reply", "icon": "chat", "badge": "Reply today", "tone": "bad", "headline": "Reply to Northwind Robotics recruiter", "meta": ["SRE", "LinkedIn", "€120k–220k", "Remote"], "title": "Reply on LinkedIn: Northwind Robotics — SRE", "detail": "Recruiter pitch today (LinkedIn). €120k–220k · Remote · Jordan Lee", "link": "https://www.linkedin.com/messaging/", "link_label": "Open LinkedIn", "done": true, "page_id": "demo-1", "notion_url": "", "company": "Northwind Robotics", "job": "SRE", "job_url": "", "place": "up_next", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m005", "fallback": "Reply today", "values": {}}, "headline": {"key": "focusCards.items.m008", "fallback": "Reply to Northwind Robotics recruiter", "values": {"who": {"value": "Northwind Robotics"}}}, "link_label": {"key": "focusCards.build.m027", "fallback": "Open LinkedIn", "values": {}}, "detail": {"key": "focusCards.build.m022", "fallback": "Recruiter pitch today (LinkedIn). €120k–220k · Remote · Jordan Lee", "values": {"when": {"key": "focusCards.items.m001", "fallback": "today", "values": {}}, "value": {"join": [{"value": " ("}, {"value": "LinkedIn"}, {"value": ")"}], "separator": ""}, "facts": {"value": "€120k–220k · Remote · Jordan Lee"}}}}},
+    {"priority": 1, "kind": "reply", "icon": "mail", "badge": "Reply today", "tone": "bad", "headline": "Reply to Example Talent recruiter", "meta": ["Senior DevOps Engineer", "Email", "€70k–90k", "Remote Europe"], "title": "Reply by email: Example Talent — Senior DevOps Engineer", "detail": "Recruiter pitch today (Email). €70k–90k + equity · Remote (Europe) · Alex Morgan", "link": "https://mail.google.com/", "link_label": "Open email", "done": true, "page_id": "demo-2", "notion_url": "", "company": "", "job": "Senior DevOps Engineer", "job_url": "", "place": "up_next", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m005", "fallback": "Reply today", "values": {}}, "headline": {"key": "focusCards.items.m008", "fallback": "Reply to Example Talent recruiter", "values": {"who": {"value": "Example Talent"}}}, "meta": {"list": [{"value": "Senior DevOps Engineer"}, {"key": "focusCards.enum.17", "fallback": "Email", "values": {}}, {"value": "€70k–90k"}, {"value": "Remote Europe"}]}, "link_label": {"key": "focusCards.build.m007", "fallback": "Open email", "values": {}}, "detail": {"key": "focusCards.build.m022", "fallback": "Recruiter pitch today (Email). €70k–90k + equity · Remote (Europe) · Alex Morgan", "values": {"when": {"key": "focusCards.items.m001", "fallback": "today", "values": {}}, "value": {"join": [{"value": " ("}, {"key": "focusCards.enum.17", "fallback": "Email", "values": {}}, {"value": ")"}], "separator": ""}, "facts": {"value": "€70k–90k + equity · Remote (Europe) · Alex Morgan"}}}}},
+    {"priority": 1, "kind": "happened", "icon": "calendar", "badge": "Did it happen?", "tone": "warn", "headline": "Interview with Harbor Staffing", "meta": ["Principal SRE", "Tue 29 Sep 08:30"], "title": "Did the interview happen? Harbor Staffing — Principal SRE", "detail": "It was Tue 29 Sep, 08:30. Yes: note how it went (salary, next steps, people, questions) and it moves on. No: say if it moved or was cancelled.", "link": "", "link_label": "", "done": false, "page_id": "demo-happened", "notion_url": "", "company": "Harbor Staffing", "job": "Principal SRE", "job_url": "", "stage": "Interview scheduled", "at": "2026-09-29T06:30:00+00:00", "place": "suggestions", "topic": "interviews", "displayCopy": {"badge": {"key": "focusCards.items.m048", "fallback": "Did it happen?", "values": {}}, "headline": {"key": "focusCards.items.m049", "fallback": "Interview with Harbor Staffing", "values": {"who": {"value": "Harbor Staffing"}}}}},
+    {"priority": 1, "kind": "prepare", "icon": "mic", "badge": "Interview Thu 08:30", "tone": "bad", "headline": "Prepare for Lumen Data", "meta": ["Senior SRE", "Kit from 29 Sep · your call on 30 Sep was reviewed since"], "title": "Prepare: Lumen Data — Senior SRE", "detail": "Interview Thu 01 Oct, 08:30. Read the posting and your kit, and practise the topics you answered weakly before. Kit from 29 Sep · your call on 30 Sep was reviewed since: build a new kit for this round (about $0.04); the earlier one stays on the job's page.", "link": "", "link_label": "", "done": false, "page_id": "demo-prepare", "notion_url": "https://www.notion.so/demo-prepare", "company": "Lumen Data", "job": "Senior SRE", "job_url": "", "stage": "Interviewing", "at": "2026-10-01T06:30:00+00:00", "prep_at": "2026-09-29", "prep_stale": true, "prep_reason": "Kit from 29 Sep · your call on 30 Sep was reviewed since", "prep_since": "2026-09-30", "prep_why": "reviewed", "place": "up_next", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m012", "fallback": "Interview Thu 08:30", "values": {"value": {"date": "2026-10-01T08:30:00+02:00", "options": {"timeZone": "Europe/Zurich", "weekday": "short", "hour": "2-digit", "minute": "2-digit", "hour12": false}, "fallback": "Thu 08:30"}}}, "headline": {"key": "focusCards.items.m014", "fallback": "Prepare for Lumen Data", "values": {"who": {"value": "Lumen Data"}}}, "detail": {"join": [{"key": "focusCards.build.m028", "fallback": "Interview Thu 01 Oct, 06:30. Read the posting and your kit, and practise the topics you answered weakly before.", "values": {"value": {"date": "2026-10-01T06:30:00+00:00", "options": {"timeZone": "Europe/Zurich", "weekday": "short", "month": "short", "day": "2-digit", "hour": "2-digit", "minute": "2-digit", "hour12": false}, "fallback": "Thu 01 Oct, 06:30"}}}, {"key": "focusCards.build.m029", "fallback": " Kit from 29 Sep · your call on 30 Sep was reviewed since: build a new kit for this round; the earlier one stays on the job's page.", "values": {"reason": {"key": "focusCards.state.m001", "fallback": "Kit from 29 Sep · your call on 30 Sep was reviewed since", "values": {"value": {"date": "2026-09-29T00:00:00", "options": {"timeZone": "Europe/Zurich", "month": "short", "day": "2-digit"}, "fallback": "29 Sep"}, "value2": {"date": "2026-09-30T00:00:00", "options": {"timeZone": "Europe/Zurich", "month": "short", "day": "2-digit"}, "fallback": "30 Sep"}}}}}], "separator": ""}}},
+    {"priority": 2, "kind": "feedback", "icon": "chat", "badge": "Learn from it", "tone": "info", "headline": "Ask Acme Observability for feedback", "meta": ["Staff SRE", "One specific point can improve your next interview"], "title": "Ask for feedback", "detail": "You reached Screening or later. One useful point can improve your next interview.", "company": "Acme Observability", "job": "Staff SRE", "page_id": "demo-feedback", "draft": "Thank you for your time and consideration.\n\nCould you share what mainly influenced the decision? Compensation expectations, technical fit, communication, or something else?\n\nEven a few words would be really helpful.", "link": "https://mail.google.com/", "notion_url": "", "job_url": "", "place": "suggestions", "topic": "interviews", "displayCopy": {"badge": {"key": "focusCards.items.m027", "fallback": "Learn from it", "values": {}}, "headline": {"key": "focusCards.items.m030", "fallback": "Ask Acme Observability for feedback", "values": {"who": {"value": "Acme Observability"}}}, "meta": {"list": [{"value": "Staff SRE"}, {"key": "focusCards.items.m033", "fallback": "One specific point can improve your next interview", "values": {}}]}}},
+    {"priority": 2, "kind": "follow_up", "icon": "send", "badge": "Follow up", "tone": "warn", "headline": "Follow up with Lumen Robotics", "meta": ["Platform Engineer", "you wrote Sat 26 Sep", "4 days, no reply"], "title": "Follow up with Lumen Robotics", "detail": "You wrote Sat 26 Sep (4 days ago), no reply yet.", "link": "https://www.linkedin.com/messaging/", "link_label": "Open chat", "done": true, "page_id": "demo-follow-up", "notion_url": "", "company": "Lumen Robotics", "job": "Platform Engineer", "job_url": "", "stage": "Screening", "reached": "LinkedIn", "at": "2026-09-26T10:05:00+02:00", "quiet": 4, "place": "up_next", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m020", "fallback": "Follow up", "values": {}}, "headline": {"key": "focusCards.items.m021", "fallback": "Follow up with Lumen Robotics", "values": {"who": {"value": "Lumen Robotics"}}}, "meta": {"list": [{"value": "Platform Engineer"}, {"key": "focusCards.items.m022", "fallback": "you wrote Sat 26 Sep", "values": {"value": {"date": "2026-09-26T10:05:00+02:00", "options": {"timeZone": "Europe/Zurich", "weekday": "short", "month": "short", "day": "2-digit"}, "fallback": "Sat 26 Sep"}}}, {"key": "focusCards.items.m023", "fallback": "4 days, no reply", "values": {"value": {"key": "focusCards.items.daysOther", "fallback": "4 days", "values": {"count": {"value": 4}}}}}]}, "link_label": {"key": "focusCards.state.m010", "fallback": "Open chat", "values": {}}, "detail": {"key": "focusCards.state.m008", "fallback": "You wrote Sat 26 Sep (4 days ago), no reply yet.", "values": {"said": {"date": "2026-09-26T10:05:00+02:00", "options": {"timeZone": "Europe/Zurich", "weekday": "short", "month": "short", "day": "2-digit"}, "fallback": "Sat 26 Sep"}, "value": {"key": "focusCards.items.m003", "fallback": "4 days ago", "values": {"days": {"value": 4}, "count": {"value": 4}}}}}}},
+    {"priority": 3, "kind": "apply", "icon": "briefcase", "badge": "Next step", "tone": "info", "headline": "Apply to your next role", "meta": ["Your best: Lakeside Payments, Glacier Labs", "11 of 30 today"], "title": "Apply to 19 more jobs today", "detail": "11 of 30 today. Your best: Lakeside Payments, Glacier Labs.", "link": "", "done": false, "page_id": "", "notion_url": "", "company": "", "job": "", "job_url": "", "place": "suggestions", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m042", "fallback": "Next step", "values": {}}, "headline": {"key": "focusCards.items.m043", "fallback": "Apply to your next role", "values": {}}}},
+    {"priority": 4, "kind": "waiting", "icon": "pulse", "badge": "Waiting", "tone": "neutral", "headline": "Waiting for Globex Cloud's next step", "meta": ["Platform Engineer", "Call with the CTO next week"], "title": "Waiting for Globex Cloud's next step", "detail": "Interview reviewed. Next: Call with the CTO next week. Nothing to do yet; follow up if there is no news in 2 days.", "link": "", "link_label": "", "done": false, "page_id": "demo-waiting", "notion_url": "", "company": "Globex Cloud", "job": "Platform Engineer", "job_url": "", "stage": "Interviewing", "after_interview": true, "next_step": "Call with the CTO next week", "place": null, "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m050", "fallback": "Waiting", "values": {}}, "headline": {"key": "focusCards.items.m051", "fallback": "Waiting for Globex Cloud's next step", "values": {"who": {"value": "Globex Cloud"}}}}},
+    {"priority": 1, "kind": "which_job", "emoji": "❓", "title": "Re: Technical interview invitation", "detail": "Confirming our call for 9 Oct. Looking forward!", "company": "Northwind Robotics", "job": "Platform Engineer, Developer Experience", "via": "", "stage": "Screening", "salary": "", "location": "Zurich", "reached": "Email", "job_url": "", "page_id": "", "notion_url": "", "link": "", "link_label": "", "done": false, "event_id": "demo-ev-q1", "event_kind": "Reply", "note": "Confirming our call for 9 Oct. Looking forward!", "suggested_url": "https://example.com/jobs/2", "place": "suggestions", "topic": "applying", "displayCopy": {"badge": {"key": "focusCards.items.m037", "fallback": "Which job?", "values": {}}}}
   ],
   "today": {
-    "applied": 11,
-    "target": 30,
-    "history": [
-      {
-        "day": "2026-09-15",
-        "applied": 4
-      },
-      {
-        "day": "2026-09-16",
-        "applied": 7
-      },
-      {
-        "day": "2026-09-17",
-        "applied": 12
-      },
-      {
-        "day": "2026-09-18",
-        "applied": 9
-      },
-      {
-        "day": "2026-09-19",
-        "applied": 0
-      },
-      {
-        "day": "2026-09-20",
-        "applied": 0
-      },
-      {
-        "day": "2026-09-21",
-        "applied": 14
-      },
-      {
-        "day": "2026-09-22",
-        "applied": 18
-      },
-      {
-        "day": "2026-09-23",
-        "applied": 22
-      },
-      {
-        "day": "2026-09-24",
-        "applied": 31
-      },
-      {
-        "day": "2026-09-25",
-        "applied": 16
-      },
-      {
-        "day": "2026-09-26",
-        "applied": 0
-      },
-      {
-        "day": "2026-09-27",
-        "applied": 3
-      },
-      {
-        "day": "2026-09-28",
-        "applied": 11
-      }
-    ]
-  },
-  "suggestions": [
+  "applied": 11,
+  "target": 30,
+  "history": [
     {
-      "kind": "insight",
-      "home": "focus",
-      "topic": "applying",
-      "strength": 100,
-      "source": "Issue detected",
-      "title": "Make your database failover answers more concrete",
-      "detail": "Practise one incident story: failure, trade-offs, recovery and verification.",
-      "evidence": [
-        "Demo evidence: three applications, two employers, interview reviews and employer feedback.",
-        "Fictional data."
-      ],
-      "actions": [
-        {
-          "label": "Review evidence",
-          "do": "open_insight",
-          "link": "https://www.notion.so/example"
-        }
-      ],
-      "key": "row:demo-insight",
-      "row_id": "demo-insight",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-15",
+      "applied": 4
     },
     {
-      "kind": "week",
-      "home": "focus",
-      "topic": "search",
-      "strength": 90,
-      "source": "Your week",
-      "title": "4 of your 5 replies came from jobs you applied to within 3 days of posting",
-      "detail": "Apply within 3 days of posting",
-      "evidence": [
-        "You sent 14 applications and got 5 replies this week (fictional)."
-      ],
-      "actions": [
-        {
-          "label": "Find jobs now",
-          "do": "find_jobs"
-        },
-        {
-          "label": "Read the week",
-          "do": "read_week",
-          "link": ""
-        }
-      ],
-      "key": "row:demo-week",
-      "row_id": "demo-week",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-16",
+      "applied": 7
     },
     {
-      "kind": "tune",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 70,
-      "source": "Search strategy · Tune",
-      "title": "2 changes your results support",
-      "detail": "Leave out \"Junior\" titles, drop Paris",
-      "evidence": [
-        "\"Junior\" is in 9 job titles you dismissed and in none you kept",
-        "12 Paris jobs dismissed, none kept or applied to"
-      ],
-      "actions": [
-        {
-          "label": "Review",
-          "do": "tune"
-        }
-      ],
-      "key": "tune:drop_place:abroad:Paris|exclude_title:title_exclude_keywords:\\bjunior\\b",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-17",
+      "applied": 12
     },
     {
-      "kind": "places",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 60,
-      "source": "Search strategy",
-      "title": "Add France to your places",
-      "detail": "5 matching roles outside your places",
-      "evidence": [
-        "France: 5 open roles, e.g. Vendeur, Annemasse"
-      ],
-      "actions": [
-        {
-          "label": "Add France",
-          "kind": "place",
-          "value": "France",
-          "do": "change_search"
-        }
-      ],
-      "key": "places:france",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-18",
+      "applied": 9
     },
     {
-      "kind": "ideas",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 58,
-      "source": "Search strategy",
-      "title": "Add Cashier to your roles",
-      "detail": "6 openings now in your places · and 2 more roles",
-      "evidence": [
-        "Cashier: Retail sales experience in a camera shop (6 openings)",
-        "Visual merchandiser: Eye for images plus retail experience (3 openings)",
-        "Image retoucher: Strong Photoshop and Lightroom retouching (2 openings)",
-        "Photo lab assistant: Camera shop background (0 openings)"
-      ],
-      "actions": [
-        {
-          "label": "Add role",
-          "kind": "role",
-          "value": "caissier",
-          "do": "change_search"
-        },
-        {
-          "label": "See all 4",
-          "do": "see_all",
-          "row": "ideas"
-        }
-      ],
-      "key": "ideas:demo",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ],
-      "aside": [
-        "caissier",
-        "merchandiser",
-        "retouche",
-        "laboratoire photo"
-      ]
+      "day": "2026-09-19",
+      "applied": 0
     },
     {
-      "kind": "filters",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 54,
-      "source": "Search strategy",
-      "title": "2 of your filters hide 13 matching jobs",
-      "detail": "Titles with \"senior\" · jobs requiring English",
-      "evidence": [
-        "Titles with \"senior\": 4 jobs",
-        "jobs requiring English: 9 jobs"
-      ],
-      "actions": [
-        {
-          "label": "Remove \"senior\"",
-          "kind": "exclude",
-          "value": "\\bsenior\\b",
-          "do": "change_search"
-        },
-        {
-          "label": "See both",
-          "do": "see_all",
-          "row": "filters"
-        }
-      ],
-      "key": "filters:\\bsenior\\b",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-20",
+      "applied": 0
     },
     {
-      "kind": "pay",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 52,
-      "source": "Search strategy",
-      "title": "5 jobs match you but pay keeps them under High fit",
-      "detail": "They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).",
-      "evidence": [
-        "Senior Platform Engineer at Helvetia Cloud",
-        "SRE Lead at Alpine Labs",
-        "DevOps Engineer at Matterhorn Bank",
-        "and 2 more"
-      ],
-      "actions": [
-        {
-          "label": "Show these 5 jobs",
-          "do": "show_jobs",
-          "urls": [
-            "https://jobs.example.ch/0",
-            "https://jobs.example.ch/1",
-            "https://jobs.example.ch/2",
-            "https://jobs.example.ch/3",
-            "https://jobs.example.ch/4"
-          ]
-        },
-        {
-          "label": "Review minimum salary",
-          "do": "edit_minimum"
-        }
-      ],
-      "key": "pay:minimum",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-21",
+      "applied": 14
     },
     {
-      "kind": "visits",
-      "home": "strategy",
-      "topic": "search",
-      "strength": 50,
-      "source": "Search strategy",
-      "title": "3 sites only you can open",
-      "detail": "Coop · Indeed · LinkedIn",
-      "evidence": [
-        "Coop: refuses automated visitors",
-        "Indeed: no way in but your own visit",
-        "LinkedIn: no way in but your own visit"
-      ],
-      "actions": [
-        {
-          "label": "Read Coop",
-          "kind": "visit",
-          "value": "https://jobs.coop.ch",
-          "do": "read_site"
-        },
-        {
-          "label": "See all 3",
-          "do": "see_all",
-          "row": "visits"
-        }
-      ],
-      "key": "visits:https://jobs.coop.ch",
-      "row_id": "",
-      "answers": [
-        "Not now",
-        "Not true"
-      ]
+      "day": "2026-09-22",
+      "applied": 18
+    },
+    {
+      "day": "2026-09-23",
+      "applied": 22
+    },
+    {
+      "day": "2026-09-24",
+      "applied": 31
+    },
+    {
+      "day": "2026-09-25",
+      "applied": 16
+    },
+    {
+      "day": "2026-09-26",
+      "applied": 0
+    },
+    {
+      "day": "2026-09-27",
+      "applied": 3
+    },
+    {
+      "day": "2026-09-28",
+      "applied": 11
     }
+  ]
+},
+  "suggestions": [
+    {"kind": "insight", "home": "focus", "topic": "applying", "strength": 100, "source": "Issue detected", "title": "Make your database failover answers more concrete", "detail": "Practise one incident story: failure, trade-offs, recovery and verification.", "evidence": ["Demo evidence: three applications, two employers, interview reviews and employer feedback.", "Fictional data."], "actions": [{"label": "Review evidence", "do": "open_insight", "link": "https://www.notion.so/example", "displayCopy": {"label": {"key": "focusCards.suggestions.m002", "fallback": "Review evidence", "values": {}}}}], "key": "row:demo-insight", "row_id": "demo-insight", "answers": ["Not now", "Not true"], "displayCopy": {"source": {"key": "focusCards.suggestions.m001", "fallback": "Issue detected", "values": {}}}},
+    {"kind": "week", "home": "focus", "topic": "search", "strength": 90, "source": "Your week", "title": "4 of your 5 replies came from jobs you applied to within 3 days of posting", "detail": "Apply within 3 days of posting", "evidence": ["You sent 14 applications and got 5 replies this week (fictional)."], "actions": [{"label": "Find jobs now", "do": "find_jobs"}, {"label": "Read the week", "do": "read_week", "link": ""}], "key": "row:demo-week", "row_id": "demo-week", "answers": ["Not now", "Not true"]},
+    {"kind": "tune", "home": "strategy", "topic": "search", "strength": 70, "source": "Search strategy · Tune", "title": "2 changes your results support", "detail": "Leave out \"Junior\" titles, drop Paris", "evidence": ["\"Junior\" is in 9 job titles you dismissed and in none you kept", "12 Paris jobs dismissed, none kept or applied to"], "actions": [{"label": "Review", "do": "tune"}], "key": "tune:drop_place:abroad:Paris|exclude_title:title_exclude_keywords:\\bjunior\\b", "row_id": "", "answers": ["Not now", "Not true"], "displayCopy": {"source": {"key": "focusCards.suggestions.m018", "fallback": "Search strategy · Tune", "values": {}}, "title": {"key": "focusCards.tune.other", "fallback": "2 changes your results support", "values": {"count": {"value": 2}}}, "detail": {"join": [{"key": "focusCards.tune.start.exclude_title", "fallback": "Leave out \"Junior\" titles", "values": {"label": {"value": "Junior"}}}, {"key": "focusCards.tune.next.drop_place", "fallback": "drop Paris", "values": {"label": {"value": "Paris"}}}], "separator": ", "}}},
+    {"kind": "places", "home": "strategy", "topic": "search", "strength": 60, "source": "Search strategy", "title": "Add France to your places", "detail": "5 matching roles outside your places", "evidence": ["France: 5 open roles, e.g. Vendeur, Annemasse"], "actions": [{"label": "Add France", "kind": "place", "value": "France", "do": "change_search"}], "key": "places:france", "row_id": "", "answers": ["Not now", "Not true"]},
+    {"kind": "ideas", "home": "strategy", "topic": "search", "strength": 58, "source": "Search strategy", "title": "Add Cashier to your roles", "detail": "6 openings now in your places · and 2 more roles", "evidence": ["Cashier: Retail sales experience in a camera shop (6 openings)", "Visual merchandiser: Eye for images plus retail experience (3 openings)", "Image retoucher: Strong Photoshop and Lightroom retouching (2 openings)", "Photo lab assistant: Camera shop background (0 openings)"], "actions": [{"label": "Add role", "kind": "role", "value": "caissier", "do": "change_search"}, {"label": "See all 4", "do": "see_all", "row": "ideas"}], "key": "ideas:demo", "row_id": "", "answers": ["Not now", "Not true"], "aside": ["caissier", "merchandiser", "retouche", "laboratoire photo"]},
+    {"kind": "filters", "home": "strategy", "topic": "search", "strength": 54, "source": "Search strategy", "title": "2 of your filters hide 13 matching jobs", "detail": "Titles with \"senior\" · jobs requiring English", "evidence": ["Titles with \"senior\": 4 jobs", "jobs requiring English: 9 jobs"], "actions": [{"label": "Remove \"senior\"", "kind": "exclude", "value": "\\bsenior\\b", "do": "change_search"}, {"label": "See both", "do": "see_all", "row": "filters"}], "key": "filters:\\bsenior\\b", "row_id": "", "answers": ["Not now", "Not true"]},
+    {"kind": "pay", "home": "strategy", "topic": "search", "strength": 52, "source": "Search strategy", "title": "5 jobs match you but pay keeps them under High fit", "detail": "They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).", "evidence": ["Senior Platform Engineer at Helvetia Cloud", "SRE Lead at Alpine Labs", "DevOps Engineer at Matterhorn Bank", "and 2 more"], "actions": [{"label": "Show these 5 jobs", "do": "show_jobs", "urls": ["https://jobs.example.ch/0", "https://jobs.example.ch/1", "https://jobs.example.ch/2", "https://jobs.example.ch/3", "https://jobs.example.ch/4"]}, {"label": "Review minimum salary", "do": "edit_minimum"}], "key": "pay:minimum", "row_id": "", "answers": ["Not now", "Not true"]},
+    {"kind": "visits", "home": "strategy", "topic": "search", "strength": 50, "source": "Search strategy", "title": "3 sites only you can open", "detail": "Coop · Indeed · LinkedIn", "evidence": ["Coop: refuses automated visitors", "Indeed: no way in but your own visit", "LinkedIn: no way in but your own visit"], "actions": [{"label": "Read Coop", "kind": "visit", "value": "https://jobs.coop.ch", "do": "read_site"}, {"label": "See all 3", "do": "see_all", "row": "visits"}], "key": "visits:https://jobs.coop.ch", "row_id": "", "answers": ["Not now", "Not true"]}
   ],
   "summary": "Reply to recruiters first, then review ready applications.",
   "funnel": {
+  "steps": [
+    {
+      "step": "📝 Prepared",
+      "reached": 41,
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step0",
+          "fallback": "📝 Prepared",
+          "values": {}
+        }
+      }
+    },
+    {
+      "step": "📨 Applied",
+      "reached": 10,
+      "urls": [
+        "https://example.com/jobs/3"
+      ],
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step1",
+          "fallback": "📨 Applied",
+          "values": {}
+        }
+      }
+    },
+    {
+      "step": "💬 Human reply",
+      "reached": 7,
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step2",
+          "fallback": "💬 Human reply",
+          "values": {}
+        }
+      }
+    },
+    {
+      "step": "📞 Screening",
+      "reached": 2,
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step3",
+          "fallback": "📞 Screening",
+          "values": {}
+        }
+      }
+    },
+    {
+      "step": "🧑‍💻 Interviews",
+      "reached": 0,
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step4",
+          "fallback": "🧑‍💻 Interviews",
+          "values": {}
+        }
+      }
+    },
+    {
+      "step": "🏆 Offer",
+      "reached": 0,
+      "displayCopy": {
+        "step": {
+          "key": "focusCards.funnel.step5",
+          "fallback": "🏆 Offer",
+          "values": {}
+        }
+      }
+    }
+  ],
+  "improve": {
+    "step": "📞 Screening",
+    "advice": "Replies are mostly rejections. Check seniority, location and language requirements before applying.",
+    "displayCopy": {
+      "step": {
+        "key": "focusCards.funnel.step3",
+        "fallback": "📞 Screening",
+        "values": {}
+      },
+      "advice": {
+        "key": "focusCards.funnel.advice3",
+        "fallback": "Replies are mostly rejections. Check seniority, location and language requirements before applying.",
+        "values": {}
+      }
+    }
+  },
+  "notion_url": "",
+  "inbound": {
+    "contacted": 3,
+    "screening": 2,
+    "interviews": 1,
+    "offers": 0,
     "steps": [
       {
-        "step": "📝 Prepared",
-        "reached": 41
-      },
-      {
-        "step": "📨 Applied",
-        "reached": 10,
+        "step": "📥 Contacted you",
+        "reached": 3,
+        "of_contacted": 1,
         "urls": [
-          "https://example.com/jobs/3"
-        ]
-      },
-      {
-        "step": "💬 Human reply",
-        "reached": 7
+          "https://example.com/lead/9"
+        ],
+        "displayCopy": {
+          "step": {
+            "key": "focusCards.funnel.inbound0",
+            "fallback": "📥 Contacted you",
+            "values": {}
+          }
+        }
       },
       {
         "step": "📞 Screening",
-        "reached": 2
+        "reached": 2,
+        "of_contacted": 0.67,
+        "urls": [],
+        "displayCopy": {
+          "step": {
+            "key": "focusCards.funnel.inbound1",
+            "fallback": "📞 Screening",
+            "values": {}
+          }
+        }
       },
       {
         "step": "🧑‍💻 Interviews",
-        "reached": 0
+        "reached": 1,
+        "of_contacted": 0.33,
+        "urls": [],
+        "displayCopy": {
+          "step": {
+            "key": "focusCards.funnel.inbound2",
+            "fallback": "🧑‍💻 Interviews",
+            "values": {}
+          }
+        }
       },
       {
-        "step": "🏆 Offer",
-        "reached": 0
-      }
-    ],
-    "improve": {
-      "step": "📞 Screening",
-      "advice": "Replies are mostly rejections. Check seniority, location and language requirements before applying."
-    },
-    "notion_url": "",
-    "inbound": {
-      "contacted": 3,
-      "screening": 2,
-      "interviews": 1,
-      "offers": 0,
-      "steps": [
-        {
-          "step": "📥 Contacted you",
-          "reached": 3,
-          "of_contacted": 1,
-          "urls": [
-            "https://example.com/lead/9"
-          ]
-        },
-        {
-          "step": "📞 Screening",
-          "reached": 2,
-          "of_contacted": 0.67,
-          "urls": []
-        },
-        {
-          "step": "🧑‍💻 Interviews",
-          "reached": 1,
-          "of_contacted": 0.33,
-          "urls": []
-        },
-        {
-          "step": "🏆 Offers",
-          "reached": 0,
-          "of_contacted": 0,
-          "urls": []
+        "step": "🏆 Offers",
+        "reached": 0,
+        "of_contacted": 0,
+        "urls": [],
+        "displayCopy": {
+          "step": {
+            "key": "focusCards.funnel.inbound3",
+            "fallback": "🏆 Offers",
+            "values": {}
+          }
         }
-      ]
+      }
+    ]
+  }
+},
+  "suggestions_hidden": [],
+  "displayCopy": {
+  "summary": {
+    "key": "focusCards.summary.two",
+    "fallback": "Reply to recruiters first, then confirm your last interview happened.",
+    "values": {
+      "first": {
+        "key": "focusCards.summary.start.reply",
+        "fallback": "Reply to recruiters",
+        "values": {}
+      },
+      "second": {
+        "key": "focusCards.summary.next.happened",
+        "fallback": "confirm your last interview happened",
+        "values": {}
+      }
     }
-  },
-  "suggestions_hidden": []
+  }
+}
 }

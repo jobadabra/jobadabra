@@ -13,9 +13,7 @@ export default {
     "cancelApplication": "Cancel application",
     "keepIt": "Keep it",
     "cancelOne": "Cancel this application?",
-    "cancelMany": {
-      "other": "Cancel all {count} applications?"
-    },
+    "cancelMany": "Cancel all {count} applications?",
     "cancelAllDetail": "Applying stops and their forms close. Nothing is submitted.",
     "cancelAll": "Cancel all applications",
     "keepThem": "Keep them",
@@ -24,9 +22,7 @@ export default {
     "afterHidden": "The hidden browser closes with the app. Applications it was filling start again next time.",
     "hiddenBrowser": "The hidden browser",
     "sessionsOne": "{who} is still filling an application",
-    "sessionsMany": {
-      "other": "{who} is still filling {count} applications"
-    },
+    "sessionsMany": "{who} is still filling {count} applications",
     "stoppingOne": "Quitting stops it where it is. {after}",
     "stoppingMany": "Quitting stops them where they are. {after}",
     "keepWorking": "Keep working",
@@ -35,13 +31,9 @@ export default {
     "importantQuit": "•  {what}: quitting now can leave it half done",
     "busyQuit": "•  {task} is running",
     "queueOne": "•  {count} task waiting: {tasks}",
-    "queueMany": {
-      "other": "•  {count} tasks waiting: {tasks}"
-    },
+    "queueMany": "•  {count} tasks waiting: {tasks}",
     "claudeOne": "•  Claude is filling {count} application: {names}",
-    "claudeMany": {
-      "other": "•  Claude is filling {count} applications: {names}"
-    },
+    "claudeMany": "•  Claude is filling {count} applications: {names}",
     "quitDone": "Quit when done",
     "quitNow": "Quit now",
     "finishImportant": "Quit when done: closes by itself once it finishes.\nQuit now: it stops where it is; start it again after.",
@@ -60,9 +52,7 @@ export default {
     "cancelApplication": "Bewerbung abbrechen",
     "keepIt": "Behalten",
     "cancelOne": "Diese Bewerbung abbrechen?",
-    "cancelMany": {
-      "other": "Alle {count} Bewerbungen abbrechen?"
-    },
+    "cancelMany": "Alle {count} Bewerbungen abbrechen?",
     "cancelAllDetail": "Die Bewerbungen werden gestoppt und ihre Formulare geschlossen. Nichts wird abgeschickt.",
     "cancelAll": "Alle Bewerbungen abbrechen",
     "keepThem": "Behalten",
@@ -71,9 +61,7 @@ export default {
     "afterHidden": "Der ausgeblendete Browser wird mit der App geschlossen. Die begonnenen Bewerbungen starten beim nächsten Mal erneut.",
     "hiddenBrowser": "Der ausgeblendete Browser",
     "sessionsOne": "{who} füllt noch eine Bewerbung aus",
-    "sessionsMany": {
-      "other": "{who} füllt noch {count} Bewerbungen aus"
-    },
+    "sessionsMany": "{who} füllt noch {count} Bewerbungen aus",
     "stoppingOne": "Beim Beenden wird sie an dieser Stelle gestoppt. {after}",
     "stoppingMany": "Beim Beenden werden sie an dieser Stelle gestoppt. {after}",
     "keepWorking": "Weiterarbeiten",
@@ -82,13 +70,9 @@ export default {
     "importantQuit": "•  {what}: Beim Beenden kann dies unvollständig bleiben",
     "busyQuit": "•  {task} läuft",
     "queueOne": "•  {count} Aufgabe wartet: {tasks}",
-    "queueMany": {
-      "other": "•  {count} Aufgaben warten: {tasks}"
-    },
+    "queueMany": "•  {count} Aufgaben warten: {tasks}",
     "claudeOne": "•  Claude füllt {count} Bewerbung aus: {names}",
-    "claudeMany": {
-      "other": "•  Claude füllt {count} Bewerbungen aus: {names}"
-    },
+    "claudeMany": "•  Claude füllt {count} Bewerbungen aus: {names}",
     "quitDone": "Nach Abschluss beenden",
     "quitNow": "Jetzt beenden",
     "finishImportant": "Nach Abschluss beenden: Die App schließt sich nach Abschluss automatisch.\nJetzt beenden: Der Vorgang wird gestoppt und muss später neu gestartet werden.",
@@ -107,9 +91,7 @@ export default {
     "cancelApplication": "Annuler la candidature",
     "keepIt": "Conserver",
     "cancelOne": "Annuler cette candidature ?",
-    "cancelMany": {
-      "other": "Annuler les {count} candidatures ?"
-    },
+    "cancelMany": "Annuler les {count} candidatures ?",
     "cancelAllDetail": "Les candidatures s’arrêtent et leurs formulaires se ferment. Rien n’est envoyé.",
     "cancelAll": "Annuler toutes les candidatures",
     "keepThem": "Conserver",
@@ -118,9 +100,7 @@ export default {
     "afterHidden": "Le navigateur masqué se ferme avec l’application. Les candidatures en cours reprendront la prochaine fois.",
     "hiddenBrowser": "Le navigateur masqué",
     "sessionsOne": "{who} remplit encore une candidature",
-    "sessionsMany": {
-      "other": "{who} remplit encore {count} candidatures"
-    },
+    "sessionsMany": "{who} remplit encore {count} candidatures",
     "stoppingOne": "Quitter l’arrête là où elle en est. {after}",
     "stoppingMany": "Quitter les arrête là où elles en sont. {after}",
     "keepWorking": "Continuer",
@@ -129,13 +109,9 @@ export default {
     "importantQuit": "•  {what} : quitter maintenant peut laisser l’opération inachevée",
     "busyQuit": "•  {task} est en cours",
     "queueOne": "•  {count} tâche en attente : {tasks}",
-    "queueMany": {
-      "other": "•  {count} tâches en attente : {tasks}"
-    },
+    "queueMany": "•  {count} tâches en attente : {tasks}",
     "claudeOne": "•  Claude remplit {count} candidature : {names}",
-    "claudeMany": {
-      "other": "•  Claude remplit {count} candidatures : {names}"
-    },
+    "claudeMany": "•  Claude remplit {count} candidatures : {names}",
     "quitDone": "Quitter une fois terminé",
     "quitNow": "Quitter maintenant",
     "finishImportant": "Quitter une fois terminé : l’application se ferme automatiquement à la fin.\nQuitter maintenant : l’opération s’arrête ; relancez-la ensuite.",
@@ -154,9 +130,7 @@ export default {
     "cancelApplication": "Annulla candidatura",
     "keepIt": "Mantieni",
     "cancelOne": "Annullare questa candidatura?",
-    "cancelMany": {
-      "other": "Annullare tutte le {count} candidature?"
-    },
+    "cancelMany": "Annullare tutte le {count} candidature?",
     "cancelAllDetail": "Le candidature si interrompono e i moduli si chiudono. Non viene inviato nulla.",
     "cancelAll": "Annulla tutte le candidature",
     "keepThem": "Mantieni",
@@ -165,9 +139,7 @@ export default {
     "afterHidden": "Il browser nascosto si chiude con l’app. Le candidature in corso ripartiranno la prossima volta.",
     "hiddenBrowser": "Il browser nascosto",
     "sessionsOne": "{who} sta ancora compilando una candidatura",
-    "sessionsMany": {
-      "other": "{who} sta ancora compilando {count} candidature"
-    },
+    "sessionsMany": "{who} sta ancora compilando {count} candidature",
     "stoppingOne": "Uscendo, si interrompe al punto attuale. {after}",
     "stoppingMany": "Uscendo, si interrompono al punto attuale. {after}",
     "keepWorking": "Continua a lavorare",
@@ -176,13 +148,9 @@ export default {
     "importantQuit": "•  {what}: uscendo ora, l’operazione potrebbe restare incompleta",
     "busyQuit": "•  {task} è in corso",
     "queueOne": "•  {count} attività in attesa: {tasks}",
-    "queueMany": {
-      "other": "•  {count} attività in attesa: {tasks}"
-    },
+    "queueMany": "•  {count} attività in attesa: {tasks}",
     "claudeOne": "•  Claude sta compilando {count} candidatura: {names}",
-    "claudeMany": {
-      "other": "•  Claude sta compilando {count} candidature: {names}"
-    },
+    "claudeMany": "•  Claude sta compilando {count} candidature: {names}",
     "quitDone": "Esci al termine",
     "quitNow": "Esci ora",
     "finishImportant": "Esci al termine: l’app si chiude da sola al termine.\nEsci ora: l’operazione si interrompe; riavviala in seguito.",
@@ -201,9 +169,7 @@ export default {
     "cancelApplication": "Cancelar solicitud",
     "keepIt": "Conservar",
     "cancelOne": "¿Cancelar esta solicitud?",
-    "cancelMany": {
-      "other": "¿Cancelar las {count} solicitudes?"
-    },
+    "cancelMany": "¿Cancelar las {count} solicitudes?",
     "cancelAllDetail": "Las solicitudes se detienen y sus formularios se cierran. No se envía nada.",
     "cancelAll": "Cancelar todas las solicitudes",
     "keepThem": "Conservar",
@@ -212,9 +178,7 @@ export default {
     "afterHidden": "El navegador oculto se cierra con la aplicación. Las solicitudes en curso volverán a iniciarse la próxima vez.",
     "hiddenBrowser": "El navegador oculto",
     "sessionsOne": "{who} sigue rellenando una solicitud",
-    "sessionsMany": {
-      "other": "{who} sigue rellenando {count} solicitudes"
-    },
+    "sessionsMany": "{who} sigue rellenando {count} solicitudes",
     "stoppingOne": "Al salir se detiene donde está. {after}",
     "stoppingMany": "Al salir se detienen donde están. {after}",
     "keepWorking": "Seguir trabajando",
@@ -223,13 +187,9 @@ export default {
     "importantQuit": "•  {what}: salir ahora puede dejar la operación incompleta",
     "busyQuit": "•  {task} está en curso",
     "queueOne": "•  {count} tarea en espera: {tasks}",
-    "queueMany": {
-      "other": "•  {count} tareas en espera: {tasks}"
-    },
+    "queueMany": "•  {count} tareas en espera: {tasks}",
     "claudeOne": "•  Claude está rellenando {count} solicitud: {names}",
-    "claudeMany": {
-      "other": "•  Claude está rellenando {count} solicitudes: {names}"
-    },
+    "claudeMany": "•  Claude está rellenando {count} solicitudes: {names}",
     "quitDone": "Salir al terminar",
     "quitNow": "Salir ahora",
     "finishImportant": "Salir al terminar: se cierra automáticamente al finalizar.\nSalir ahora: la operación se detiene; vuelve a iniciarla después.",
@@ -261,10 +221,7 @@ export default {
     "afterHidden": "Browserul ascuns se închide odată cu aplicația. Candidaturile în curs vor reporni data viitoare.",
     "hiddenBrowser": "Browserul ascuns",
     "sessionsOne": "{who} încă completează o candidatură",
-    "sessionsMany": {
-      "few": "{who} încă completează {count} candidaturi",
-      "other": "{who} încă completează {count} de candidaturi"
-    },
+    "sessionsMany": {"few":"{who} încă completează {count} candidaturi","other":"{who} încă completează {count} de candidaturi","one":"{who} încă completează {count} de candidaturi"},
     "stoppingOne": "Închiderea o oprește în starea actuală. {after}",
     "stoppingMany": "Închiderea le oprește în starea actuală. {after}",
     "keepWorking": "Continuă lucrul",
@@ -273,15 +230,9 @@ export default {
     "importantQuit": "•  {what}: închiderea acum poate lăsa operația neterminată",
     "busyQuit": "•  {task} rulează",
     "queueOne": "•  {count} activitate în așteptare: {tasks}",
-    "queueMany": {
-      "few": "•  {count} activități în așteptare: {tasks}",
-      "other": "•  {count} de activități în așteptare: {tasks}"
-    },
+    "queueMany": {"few":"•  {count} activități în așteptare: {tasks}","other":"•  {count} de activități în așteptare: {tasks}","one":"•  {count} de activități în așteptare: {tasks}"},
     "claudeOne": "•  Claude completează {count} candidatură: {names}",
-    "claudeMany": {
-      "few": "•  Claude completează {count} candidaturi: {names}",
-      "other": "•  Claude completează {count} de candidaturi: {names}"
-    },
+    "claudeMany": {"few":"•  Claude completează {count} candidaturi: {names}","other":"•  Claude completează {count} de candidaturi: {names}","one":"•  Claude completează {count} de candidaturi: {names}"},
     "quitDone": "Închide la final",
     "quitNow": "Închide acum",
     "finishImportant": "Închide la final: aplicația se închide singură după terminare.\nÎnchide acum: operația se oprește; repornește-o mai târziu.",

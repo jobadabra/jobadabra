@@ -1,2 +1,8 @@
-// English report replies use their canonical source error as fallback, without duplicating diagnostic templates.
-export default {};
+// English null entries explicitly inherit canonical source diagnostics; translated catalogs keep the same key contract.
+export default {
+  "notRegular": null,
+  "tooLarge": null,
+  "dailyLimit": null,
+  "notAccepted": null,
+  "noToken": null
+};

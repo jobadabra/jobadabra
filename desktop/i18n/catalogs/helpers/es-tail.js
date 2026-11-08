@@ -161,72 +161,21 @@ export const messages = {
   "notMyTech": "No son mis tecnologías",
   "notMyRole": "No es mi tipo de puesto",
   "company": "Empresa",
-  "aboutMinutes": {
-    "one": "aproximadamente {count} minuto",
-    "other": "aproximadamente {count} minutos"
-  },
-  "cancelling": {
-    "one": "Cancelando {count} candidatura…",
-    "other": "Cancelando {count} candidaturas…"
-  },
-  "emailsReviewed": {
-    "one": "{count} correo revisado.",
-    "other": "{count} correos revisados."
-  },
-  "recordsChanged": {
-    "one": "{count} registro modificado.",
-    "other": "{count} registros modificados."
-  },
-  "updateLabel": {
-    "one": "actualización registrada",
-    "other": "actualizaciones registradas"
-  },
-  "newEmailLabel": {
-    "one": "correo nuevo",
-    "other": "correos nuevos"
-  },
-  "emailLabel": {
-    "one": "correo revisado",
-    "other": "correos revisados"
-  },
-  "unlistedUpdates": {
-    "one": "{count} actualización registrada, sin detalles guardados.",
-    "other": "{count} actualizaciones registradas, sin detalles guardados."
-  },
-  "formFills": {
-    "one": "{count} rellenado",
-    "other": "{count} rellenados"
-  },
-  "needsInput": {
-    "one": "{count} requiere respuesta",
-    "other": "{count} requieren respuesta"
-  },
-  "fields": {
-    "one": "{count} campos",
-    "other": "{count} campos"
-  },
-  "suggestionsForSearch": {
-    "one": "{count} sugerencia para tu búsqueda",
-    "other": "{count} sugerencias para tu búsqueda"
-  },
-  "urgentCount": {
-    "one": "{count} urgente",
-    "other": "{count} urgentes"
-  },
-  "warningCount": {
-    "one": "{count} advertencia",
-    "other": "{count} advertencias"
-  },
-  "infoCount": {
-    "one": "{count} información",
-    "other": "{count} informaciones"
-  },
-  "oldScoreCount": {
-    "one": "{count} puntuación antigua",
-    "other": "{count} puntuaciones antiguas"
-  },
-  "foldItems": {
-    "one": "{count} elemento",
-    "other": "{count} elementos"
-  }
+  "aboutMinutes": {"one":"aproximadamente {count} minuto","other":"aproximadamente {count} minutos","many":"aproximadamente {count} minutos"},
+  "cancelling": {"one":"Cancelando {count} candidatura…","other":"Cancelando {count} candidaturas…","many":"Cancelando {count} candidaturas…"},
+  "emailsReviewed": {"one":"{count} correo revisado.","other":"{count} correos revisados.","many":"{count} correos revisados."},
+  "recordsChanged": {"one":"{count} registro modificado.","other":"{count} registros modificados.","many":"{count} registros modificados."},
+  "updateLabel": {"one":"actualización registrada","other":"actualizaciones registradas","many":"actualizaciones registradas"},
+  "newEmailLabel": {"one":"correo nuevo","other":"correos nuevos","many":"correos nuevos"},
+  "emailLabel": {"one":"correo revisado","other":"correos revisados","many":"correos revisados"},
+  "unlistedUpdates": {"one":"{count} actualización registrada, sin detalles guardados.","other":"{count} actualizaciones registradas, sin detalles guardados.","many":"{count} actualizaciones registradas, sin detalles guardados."},
+  "formFills": {"one":"{count} rellenado","other":"{count} rellenados","many":"{count} rellenados"},
+  "needsInput": {"one":"{count} requiere respuesta","other":"{count} requieren respuesta","many":"{count} requieren respuesta"},
+  "fields": {"one":"{count} campos","other":"{count} campos","many":"{count} campos"},
+  "suggestionsForSearch": {"one":"{count} sugerencia para tu búsqueda","other":"{count} sugerencias para tu búsqueda","many":"{count} sugerencias para tu búsqueda"},
+  "urgentCount": {"one":"{count} urgente","other":"{count} urgentes","many":"{count} urgentes"},
+  "warningCount": {"one":"{count} advertencia","other":"{count} advertencias","many":"{count} advertencias"},
+  "infoCount": {"one":"{count} información","other":"{count} informaciones","many":"{count} informaciones"},
+  "oldScoreCount": {"one":"{count} puntuación antigua","other":"{count} puntuaciones antiguas","many":"{count} puntuaciones antiguas"},
+  "foldItems": {"one":"{count} elemento","other":"{count} elementos","many":"{count} elementos"}
 };

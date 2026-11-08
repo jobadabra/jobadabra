@@ -27,7 +27,7 @@ test('one line names how many suggestions and the top one; Review opens the list
   assert.doesNotMatch(draw, /item-rows|improveRow/, 'one line, not a row per kind');
   // One count, two places (shared-counts.js): the tab's badge and the line are painted from it, never counted apart.
   assert.match(page, /id="suggestions-count" data-count-of="strategy-suggestions"/);
-  assert.match(draw, /countOf: SUGGESTIONS, countOne: 'suggestion'/);
+  assert.match(draw, /countOf: SUGGESTIONS, countKey: 'pagesCountNouns.suggestion'/);
   assert.match(suggestions, /defineCount\(SUGGESTIONS, /);
   assert.doesNotMatch(suggestions, /\$\('suggestions-count'\)/, 'the badge is painted by paintCount only');
 });

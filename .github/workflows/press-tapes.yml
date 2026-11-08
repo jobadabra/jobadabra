@@ -1,0 +1,98 @@
+name: Press tapes
+# The press's yardstick (plan docs/superpowers/plans/2026-11-07-the-press.md 2b): each night persona's first and repeat press recorded once with a longer
+# press (the ceiling, tools/persona-search/run.mjs --ceiling), every web and AI answer kept (src/search_tape.py, per item: src/tape_items.py), then
+# published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
+# Not while the broker's scheduled lane is past its share of the week: its calls then fall to another AI and the tape is no measure (gi, 7 Nov 2026).
+on:
+  workflow_dispatch:
+    inputs:
+      personas:
+        description: 'JSON list of personas (empty = all 18)'
+        type: string
+        default: ''
+      ceiling:
+        description: 'Seconds of the recorded press (180 = a normal press)'
+        type: string
+        default: '540'   # Why (7 Nov 2026, owner: "3× press, one at a time (Recommended)"): ~6 h for the 18, off the night check's broker time
+
+permissions:
+  contents: read
+
+concurrency:   # the night check's group: a recording never shares the broker with it (its refusals would be recorded into the tape)
+  group: search-personas
+  cancel-in-progress: false
+
+env:
+  CI_AI_PROVIDER: codex
+  E2E_AI_PROVIDER: codex
+  JOBADABRA_AI_CALL_LOG: '1'
+  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5
+
+jobs:
+  record:
+    name: Tape ${{ matrix.persona }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write   # the Codex broker: GitHub OIDC, no stored secret
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # one at a time: the broker refuses calls under load, and a refusal recorded in a tape skews its times (owner, 7 Nov 2026)
+      matrix:
+        persona: ${{ fromJSON(inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v5
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
+      - name: The engine, the app's libraries and a browser
+        run: |
+          pip install --quiet -r requirements.txt
+          (cd desktop && npm ci && node scripts/stage.mjs --files-only)
+          (cd desktop/e2e && (npm ci || npm install))
+      - uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: Record a first and a repeat press
+        env:
+          JOBADABRA_TAPE_ITEMS: '1'
+          CEILING: ${{ inputs.ceiling }}
+        run: |
+          set -o pipefail
+          case "$CEILING" in ''|*[!0-9]*) echo "::error::ceiling must be whole seconds, got '$CEILING'"; exit 1;; esac
+          python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 2 --fresh --engine api --tag tape \
+            --tape "$GITHUB_WORKSPACE/tape" --record --ceiling "$CEILING" 2>&1 | tee out/run.log
+          cp out/draw/draft.json tape/draft.json
+      - name: Is the records App's key set
+        id: records_app_key
+        env:
+          CI_APP_PRIVATE_KEY: ${{ secrets.CI_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CI_APP_PRIVATE_KEY" ]; then echo "set=true" >> "$GITHUB_OUTPUT"
+          else echo "set=false" >> "$GITHUB_OUTPUT"; echo "::notice::records App key not set, the old write token is used (it shares the owner's GitHub API limit)"; fi
+      - name: The records token from the GitHub App (its own API limit, not the owner's account's)
+        id: records_app
+        if: steps.records_app_key.outputs.set == 'true'
+        continue-on-error: true   # a failed mint falls back to the old secret, never a red job
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
+          repositories: jobadabra-lab
+      - name: Publish the tape (encrypted)
+        env:
+          GH_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_WRITE_TOKEN }}
+        run: node tools/persona-search/tape-store.mjs publish "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: press-tape-log-p${{ matrix.persona }}
+          retention-days: 14
+          path: |
+            out/run.log
+            out/draw/presses.jsonl
+            out/draw/run-*.log

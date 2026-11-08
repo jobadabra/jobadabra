@@ -8,6 +8,20 @@ const locales = ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru'];
 const catalog = locale => import(new URL(`i18n/catalogs/helpers/${locale}.js`, root));
 const parameters = text => [...String(text).matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
+test('helper plural maps explicitly cover every category of their display locale', async () => {
+  const folder = new URL('i18n/catalogs/helpers/', root);
+  for (const file of fs.readdirSync(folder).filter(file => file.endsWith('.js'))) {
+    const locale = file.slice(0, 2);
+    const {messages} = await import(new URL(file, folder));
+    for (const [key, value] of Object.entries(messages)) {
+      if (typeof value !== 'object') continue;
+      for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
+        assert.ok(Object.hasOwn(value, category), `${file}/${key}: missing ${category}`);
+      }
+    }
+  }
+});
+
 test('helper messages have seven complete catalogs with matching named parameters', async () => {
   const {messages: english} = await catalog('en');
   assert.ok(Object.keys(english).length >= 50);

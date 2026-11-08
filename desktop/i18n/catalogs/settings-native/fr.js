@@ -84,14 +84,8 @@ export default {
   "impactsearch": "La prochaine recherche les utilisera pour explorer et classer. Les offres déjà trouvées restent jusqu’à 7 jours sans être revues.",
   "impactfilters": "Les offres correspondantes sont masquées immédiatement.",
   "impactanswers": "Utilisé pour les prochaines candidatures et formulaires. Aucun score n’est recalculé.",
-  "impactProfile": {
-    "one": "Marque {count} offre évaluée comme ancienne ; Recalculer les scores en actualise jusqu’à 60 à la fois",
-    "other": "Marque {count} offres évaluées comme anciennes ; Recalculer les scores en actualise jusqu’à 60 à la fois"
-  },
-  "impactKits": {
-    "one": " ; {count} candidature non envoyée a été préparée avec l’ancien profil (préparez à nouveau celles souhaitées)",
-    "other": " ; {count} candidatures non envoyées ont été préparées avec l’ancien profil (préparez à nouveau celles souhaitées)"
-  },
+  "impactProfile": {"one":"Marque {count} offre évaluée comme ancienne ; Recalculer les scores en actualise jusqu’à 60 à la fois","other":"Marque {count} offres évaluées comme anciennes ; Recalculer les scores en actualise jusqu’à 60 à la fois","many":"Marque {count} offres évaluées comme anciennes ; Recalculer les scores en actualise jusqu’à 60 à la fois"},
+  "impactKits": {"one":" ; {count} candidature non envoyée a été préparée avec l’ancien profil (préparez à nouveau celles souhaitées)","other":" ; {count} candidatures non envoyées ont été préparées avec l’ancien profil (préparez à nouveau celles souhaitées)","many":" ; {count} candidatures non envoyées ont été préparées avec l’ancien profil (préparez à nouveau celles souhaitées)"},
   "noteProfileWritten": "Profil rédigé",
   "noteAnswersWritten": "Réponses types rédigées",
   "updateGithubAnswered": "GitHub a répondu {status}",

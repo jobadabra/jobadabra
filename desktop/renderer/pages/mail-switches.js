@@ -3,6 +3,7 @@
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {mailLabel, mailDescription} from '../../i18n/mail-labels.js';
 import {$} from './core.js';
 import {el} from '../components.js';
 import {plainError} from '../run-warnings.js';
@@ -21,17 +22,18 @@ const sentence = text => (text ? text[0].toUpperCase() + text.slice(1) : '');
 
 /** One switch row: a switch, the mail's name, and the one line saying when it goes out. `note`: the refused save's words (a warning line). */
 export function switchRow(row, where, note = '', press = () => {}) {
+  const name = mailLabel(row.id, row.name);
   const wrap = el('div', 'mail-row');
   wrap.dataset.mailRow = row.id;
   const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.on});
-  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {"name": row.name}));
+  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {name}));
   box.addEventListener('change', () => press(row.id, box.checked));
   const track = el('span', 'switch');
   track.append(box, el('span'));
   const words = el('span');
-  const title = el('span', '', row.name);
+  const title = el('span', '', name);
   if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', t('pagesStrategy.suggested')));   // e-mail is not on yet: the row is off, and this is what the mode would start with
-  words.append(title, el('span', 'muted small', [WHEN[row.id] || sentence(row.when), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
+  words.append(title, el('span', 'muted small', [WHEN[row.id] || mailDescription(row.id, sentence(row.when)), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
   const label = el('label', 'switch-row');
   label.append(track, words);
   wrap.append(label);
@@ -51,7 +53,7 @@ function drawCard(state, shown) {
   $('mail-message').textContent = plainError(state && !state.ok ? state.error || '' : state?.note || '');
 }
 
-// "News from Jobadabra": the site's two news mails, with the site's own words. A press is the same as a row's; hidden with the other card (MAIL_SWITCHES_SHOWN) and never drawn beside an automation.
+// "News from Jobadabra": the site's two news preferences, with localized labels for fixed IDs. A press is the same as a row's; hidden with the other card (MAIL_SWITCHES_SHOWN) and never drawn beside an automation.
 function drawNews(state, shown) {
   const panel = $('setting-news'), list = $('news-rows');
   if (!panel || !list) return;
