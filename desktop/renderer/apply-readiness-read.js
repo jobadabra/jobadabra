@@ -9,5 +9,5 @@ export async function readThroughStep(pilot, job) {
   if (job.code && done?.kit?.ok) job.kit = true;
   if (done?.check) return {...done.check, stored: done.stored === true};
   if (done?.cancelled) return null;   // Why (8 Nov 2026, review of #3578): a Stop leaves the job "Not checked", even when its kit had failed
-  return done?.kit?.ok === false ? {unreadable: true, why: 'kit', kitError: String(done.kit.error || done.kit.reason || '')} : null;   // nothing read: the chip says the kit could not be prepared
+  return done?.kit?.ok === false ? {unreadable: true, why: 'kit'} : null;   // nothing read: the chip says the kit could not be prepared, in the person's language; the kit's own (English) reason is in app.log
 }
