@@ -164,7 +164,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/fbt"
           cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs tools/fixer/sources/*.mjs tools/context/lib.mjs tools/context/sources/linear.mjs \
-            desktop/e2e/lib/agent-ask.mjs desktop/e2e/lib/broker-client.mjs desktop/e2e/lib/broker-job.mjs desktop/e2e/lib/ai-cap.mjs "$RUNNER_TEMP/fbt/"
+            desktop/e2e/lib/agent-ask.mjs desktop/e2e/lib/broker-client.mjs desktop/e2e/lib/broker-job.mjs desktop/e2e/lib/ai-cap.mjs desktop/e2e/lib/broker-reason.mjs "$RUNNER_TEMP/fbt/"
           { echo "FBT=$RUNNER_TEMP/fbt"; echo "OUT=$RUNNER_TEMP/fx"; echo "BOX=$RUNNER_TEMP/box"; echo "PYDEPS=$RUNNER_TEMP/pydeps"; } >> "$GITHUB_ENV"
       # A round works on the PR's own tree; our scripts stay the snapshot above (main's), so nothing on the branch can change what runs.
       - name: Take the pull request's branch and the event (a round)
