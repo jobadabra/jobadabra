@@ -3,6 +3,7 @@ import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {kitThroughStep} from '../apply-readiness-read.js';
+import {createRowApply} from './jobs-apply-row.js';
 import '../../i18n/focus-cards.js';
 import {copyField} from '../../i18n/display-copy.js';
 import {ai} from '../ai-name.js';
@@ -21,7 +22,6 @@ import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
-import {applyDialogOutcome} from '../apply-dialog-model.js';
 import {rowApply} from '../apply-settings-model.js';
 import {jobPlace} from '../targets.js';
 import {openFeedback} from './feedback.js';
@@ -194,21 +194,7 @@ export function renderJobs() {
       renderJobs();
       if (next === 'dismissed') askWhy(job);   // one optional tap: why (counted with the score band only)
     };
-    // Same words as the batch's toast (applyDialogOutcome); a refusal (browser missing, not confirmed) is said, never "No link".
-    const queuedInBackground = result => {
-      const outcome = applyDialogOutcome(result);
-      if (!outcome.close) { toastMessage('Apply did not start', outcome.error, jobPlace(job), 'warn'); return; }
-      startedApplying(job); renderJobs();
-      toastMessage(outcome.toast.title, outcome.toast.body, outcome.toast.target, outcome.toast.tone);
-    };
-    // Chrome opens the job's form and the extension fills it at once from the kit.
-    const fillInChrome = async button => {
-      const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
-      if (result.background) return queuedInBackground(result);   // a saved hidden-browser mode queued the job: no tab opened, so the row does not read "Opened"
-      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); if (result.extensionNote) toastMessage(t('pagesFinalCopy.olderExtension'), result.extensionNote, jobPlace(job), 'warn'); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
-      else if (sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = t('pagesJobs.noLink');
-      else toastMessage(t('pagesJobs.openJobFailed'), t('pagesJobs.hasNoLink'), jobPlace(job), 'bad');
-    };
+    const applier = createRowApply(job, {rerender: renderJobs}), modes = [];   // modes: the ⋯ menu's per-job Apply modes, listed after the job's own pages   // the row's Apply and the ⋯ menu's per-job modes, through Apply readiness (pages/jobs-apply-row.js)
     // Why (2026-11-05, owner screenshots): queued and filling sessions must open their existing work, never offer another Apply, regardless of AI provider.
     if (job.status !== 'applied' && job.url && live) {
       const open = el('button', `row-main ${live.status === 'input' ? 'state-apply' : 'state-opened'}`, live.status === 'input' ? t('pagesCommon.continue') : t('pagesJobs.viewSession'));
@@ -225,12 +211,13 @@ export function renderJobs() {
       const fill = Object.assign(el('button', `row-main ${opened && !job.ready ? 'state-opened' : 'state-apply'}`, job.ready ? t('pagesJobs.reviewSubmit') : opened ? t('pagesJobs.opened') : rowApply(shared.state?.settings).label), {
         title: job.ready ? t('pagesJobsHelp.serverFilled') : opened ? t('pagesJobsHelp.openedChromeHelp') : rowApply(shared.state?.settings).tip});
       fill.addEventListener('click', async () => {
-        if (!job.ready) return fillInChrome(fill);
+        if (!job.ready) return applier.start(fill);
         const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
         if (result.cancelled) return;
         if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else toastMessage(t('pagesJobs.filledOpenFailed'), result.error || t('pagesJobsHelp.tryReady'), jobPlace(job), 'bad');
       });
       box.append(fill);
+      modes.push(...applier.modeItems());
       if (jobsState.claudeReady && resumeOffered()) {
         const started = claudeStarted.has(pageKey(job.url));
         menu.push({icon: 'bot', label: started ? t('pagesJobs.claudeApplying') : t('pagesJobs.applyClaude'), disabled: started,
@@ -258,11 +245,12 @@ export function renderJobs() {
         preparing.set(job.code, 'local');
         renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
         const result = await kitThroughStep(window.pilot, job);
-        if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
+        if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await applier.start(null, {ready: true}); return; }
         else { preparing.set(job.code, 'failed'); sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
       box.append(prepare);
+      modes.push(...applier.modeItems());
     }
 
     // Long work started from the menu: a note on the row until it's done.
@@ -277,6 +265,7 @@ export function renderJobs() {
     if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: t('pagesCommon.openNotion'), run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
       title: t('pagesJobsHelp.jobNotion')});   // about Notion
     menu.push({icon: 'external', label: isInbound(job) ? t('pagesJobs.openMessage') : t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? t('pagesJobsHelp.messageOrigin') : t('pagesJobs.jobPosting')});
+    menu.push(...modes);
     if (job.page_id) menu.push({icon: 'chat', label: t('pagesProfile.addFeedback'), run: () => openFeedback({...job, job: job.title}, 'receive')});
     if (job.employer_feedback && job.page_id) menu.push({icon: 'chat', label: t('pagesJobs.readFeedback'), run: () => openFeedback({...job, job: job.title}, 'review')});
     // The saved review is a tag on the row; the menu says it in words too, as the tag alone did not read as clickable.

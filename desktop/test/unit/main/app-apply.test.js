@@ -79,7 +79,7 @@ test('an Apply batch drafts the missing kits for the best jobs first, quietly, a
     {code: 'b', url: 'https://b/2', status: 'unreviewed', fit: 85, title: 'Ops', company: 'B'},
     {code: 'c', url: 'https://c/3', status: 'unreviewed', fit: 70, title: 'Dev', company: 'C'}];
   const prepared = [];
-  const prepare = async code => { prepared.push(code); jobs.find(job => job.code === code).kit = true; return {ok: true}; };
+  const prepare = async ({code}) => { prepared.push(code); jobs.find(job => job.code === code).kit = true; return {ok: true}; };
   const result = await apply.start(storage, {n: 2, mode: 'chrome'}, fakeSpawn, async () => ({jobs}), undefined, undefined, prepare);
   assert.deepEqual(prepared, ['b']);  // only the shortfall, best fit first
   assert.match(result.message, /^Prepared 1 application first\. Opened 2 job/);
@@ -91,7 +91,7 @@ test('a background batch keeps mixed eligibility and preparation failures beside
   const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
   const prepared = [], enqueued = [];
   const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => {
+    async ({code}) => {
       prepared.push(code);
       const job = jobs.find(row => row.code === code);
       if (code === '2') { job.kit = true; job.ineligible = 'Required aviation credential missing.'; return {ok: true, ineligible: job.ineligible}; }
@@ -118,7 +118,7 @@ test('a drafted job the store then holds back says why, never "Kit prepared" as 
   const jobs = [1, 2, 3].map(number => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - number}));
   const queued = [];
   const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => { const job = jobs.find(row => row.code === code); job.kit = code !== '3'; if (code === '1') job.ineligible = 'Required aviation credential missing.'; if (code === '2') job.stage = 'Recruiter lead'; return {ok: true}; },
+    async ({code}) => { const job = jobs.find(row => row.code === code); job.kit = code !== '3'; if (code === '1') job.ineligible = 'Required aviation credential missing.'; if (code === '2') job.stage = 'Recruiter lead'; return {ok: true}; },
     undefined, {enqueue: async selected => { queued.push(...selected); return {ok: true, outcomes: []}; }});
   assert.deepEqual(queued, [], 'nothing reaches the queue');
   assert.equal(result.ok, false);
@@ -140,7 +140,7 @@ test('a batch of 3 whose top matches turn out not eligible drafts further down a
   const jobs = [1, 2, 3, 4, 5, 6, 7].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index}));
   const prepared = [], queued = [];
   const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; if (verdict[code]) job.ineligible = verdict[code]; return {ok: true, ...(verdict[code] ? {ineligible: `Not eligible: ${verdict[code]}`} : {})}; },
+    async ({code}) => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; if (verdict[code]) job.ineligible = verdict[code]; return {ok: true, ...(verdict[code] ? {ineligible: `Not eligible: ${verdict[code]}`} : {})}; },
     undefined, {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
   assert.deepEqual(queued, ['4', '5', '6'], 'the three eligible jobs start');
   assert.deepEqual(prepared, ['1', '2', '3', '4', '5', '6'], 'seven was never drafted: no more than needed');
@@ -152,7 +152,7 @@ test('when the engine\'s verdict is not in the prepare answer, the re-read list 
   const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index}));
   const queued = [];
   const result = await apply.start(tempStorage(), {n: 2, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => { const job = jobs.find(row => row.code === code); job.kit = true; if (code <= '2') job.ineligible = 'Needs a work permit.'; return {ok: true}; },
+    async ({code}) => { const job = jobs.find(row => row.code === code); job.kit = true; if (code <= '2') job.ineligible = 'Needs a work permit.'; return {ok: true}; },
     undefined, {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
   assert.deepEqual(queued, ['3', '4']);
   assert.deepEqual(result.outcomes.filter(item => item.status === 'ineligible').map(item => item.reason), ['Needs a work permit.', 'Needs a work permit.']);
@@ -162,7 +162,7 @@ test('drafting stops at the extra-attempt cap when every job is not eligible, an
   const jobs = Array.from({length: 20}, (_, index) => ({code: `c${index}`, url: `https://jobs.example.test/${index}`, title: `Role ${index}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
   const prepared = [];
   const result = await apply.start(tempStorage(), {n: 2, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; job.ineligible = 'Needs a work permit.'; return {ok: true, ineligible: 'Not eligible: Needs a work permit.'}; },
+    async ({code}) => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; job.ineligible = 'Needs a work permit.'; return {ok: true, ineligible: 'Not eligible: Needs a work permit.'}; },
     undefined, {enqueue: async () => ({ok: true})});
   assert.equal(prepared.length, 8, 'N + 6 drafts at most');
   assert.equal(result.ok, false);
@@ -196,7 +196,7 @@ test('the engine\'s not-eligible verdict stands when the re-read row is missing 
   const jobs = [1, 2, 3].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
   let reads = 0;
   const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: reads++ === 0 ? jobs : jobs.filter(job => job.code !== '1').map(job => ({...job, kit: true}))}), undefined, undefined,
-    async code => ({ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}), line => lines.push(line),
+    async ({code}) => ({ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}), line => lines.push(line),
     {enqueue: async selected => ({ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))})});
   assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status, item.reason]), [['2', 'started', ''], ['1', 'ineligible', 'Needs a work permit.']]);
   assert.match(lines.at(-1), /1 of 1: Role 2 .*1 not eligible so far/);
@@ -207,7 +207,7 @@ test('a job the engine refused never starts, even when the re-read row carries n
   const jobs = [1, 2].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index * 10}));
   const queued = [];
   const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
-    async code => { jobs.find(row => row.code === code).kit = true; return {ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}; }, undefined,
+    async ({code}) => { jobs.find(row => row.code === code).kit = true; return {ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}; }, undefined,
     {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
   assert.deepEqual(queued, ['2'], 'the refused job has the better fit and an unflagged row, and still does not start');
   assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status]), [['2', 'started'], ['1', 'ineligible']]);
@@ -234,7 +234,7 @@ test('the opt-in stays consistent through missing-kit drafting, reread and backg
   const job = {code: 'not-eligible', url: 'https://jobs.example.test/ineligible', status: 'saved', stage: 'Kit ready', fit: 90, ineligible: 'needs a work permit'};
   const queued = [], prepared = [], policies = [];
   const result = await apply.start(storage, {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
-    async code => { prepared.push(code); job.kit = true; storage.saveSettings({apply: {allowIneligible: false}}); return {ok: true}; }, undefined,
+    async ({code}) => { prepared.push(code); job.kit = true; storage.saveSettings({apply: {allowIneligible: false}}); return {ok: true}; }, undefined,
     {enqueue: async (chosen, mode, policy) => { queued.push(...chosen); policies.push([mode, policy]); return {ok: true}; }});
   assert.equal(result.ok, true);
   assert.deepEqual(prepared, ['not-eligible']);

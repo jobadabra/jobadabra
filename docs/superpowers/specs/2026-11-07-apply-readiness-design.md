@@ -31,6 +31,7 @@ Verdict: **approved by the owner on 7 Nov 2026** ("Yes, build it (Recommended)";
 ## The owner's answers (7 Nov 2026, relayed by the coordinator)
 1. Design: "Yes, build it (Recommended)": 3 PRs, R1 the step and the store, R2 the callers and the guard, then L2c/L2d (the names sweep rides with R2).
 2. Prepare top matches: "There should be no difference between Mac only and Always on. We should support "Apply readiness on the top matches" for Alwyas on, as well." One step and one result in both; no separate engine kit mode that skips the check. **Open, before R2 touches it:** how Always on with no Mac runs the check (the cloud run's own browser, or the Mac's hidden browser when it comes online), what it costs, one recommendation to the owner. R1 does not wait on this.
+   **Answered (8 Nov 2026, owner):** "Why not using our solution on CloudFlare? … Cloud/Server Browser on CloudFlare", then "Yes, use the cloud browser (Recommended)" and "Let's make that code reusable … One time for Apply Readiness. Another one for Form filling up to Ready to submit. Another time for fully automated applying". Always on's check runs in Ready to send's Cloudflare container, made one runner with a task kind (its own spec). Until it lands, Always on's Prepare top matches keeps the engine's kits mode (no form check) and keeps that name; on this Mac it is Apply readiness on the top matches (R2).
 3. Ready's night: "Yes, kit + check (Recommended)".
 4. Reposted posting is read again; a fill that finds a different form writes the new read (decision 3 of the sketch, unchanged).
 
@@ -53,7 +54,7 @@ The desktop never opens the tracker; it calls the engine's store CLI (`desktop/l
 - [x] L1 light read (#3548) and L2a three statuses (#3556) (proof: desktop/lib/triage-reader.js @f0b711f)
 - [x] L2b match (#3563, merged 7 Nov 2026) (proof: desktop/lib/triage-match.js @30ff290)
 - [x] Owner's yes on the sketch (proof: none: the owner's answers are quoted above, relayed by the coordinator 7 Nov 2026)
-- [x] R1 the step and the store (#3573, merged 7 Nov 2026) (proof: desktop/lib/apply-readiness.js @3b7fc5e6) · [ ] R2 the paths become callers + the guard (held: the hang below) · [ ] L2c · [ ] L2d
+- [x] R1 the step and the store (#3573, merged 7 Nov 2026) (proof: desktop/lib/apply-readiness.js @3b7fc5e6) · [ ] R2 the paths become callers + the guard + the names + the ⋯ menu's per-job modes (this PR; owner, 8 Nov 2026: "One big PR", modes "Yes, as drawn") · [ ] L2c · [ ] L2d · [ ] Always on runs the check in the cloud browser runner (spec to come: `2026-11-08-cloud-browser-runner-design.md`)
 - Plan: `docs/superpowers/plans/2026-11-07-apply-readiness.md`. `fa`'s Full automation hold (`2026-11-07-full-automation-check-first.md`) consumes `storedCheck(job)` from R1.
 
 ### Handoff (session ac, 8 Nov 2026 ~06:45 UTC)

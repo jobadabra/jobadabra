@@ -14,7 +14,7 @@ export async function readThroughStep(pilot, job) {
 
 /**
  * One press on one job (Apply on a row, Redraft on the Profile page) through Apply readiness: its kit, then its form check, with the kit's own notices shown (`say`).
- * → the kit's answer ({ok, error?, ineligible?}), or the gate the step lifted to the top (Notion, a move) for the caller's refusal line. `redraft` drafts a kit even when the job has one.
+ * → the kit's answer ({ok, error?, ineligible?}), or the gate the step lifted to the top (the store, a move) for the caller's refusal line. `redraft` drafts a kit even when the job has one.
  * Why (8 Nov 2026, owner, R2: "every Apply goes through Apply readiness"): the row's Apply drafted the kit on its own path (the old prepareKit call) and never read the form first.
  */
 export async function kitThroughStep(pilot, job, {redraft = false} = {}) {

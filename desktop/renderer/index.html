@@ -349,7 +349,7 @@
           <option value="best" data-i18n="screenStaticMain.text40">Best match</option><option value="newest" data-i18n="screenStaticMain.text41">Newest</option><option value="company" data-i18n="screenStaticMain.text42">Company A–Z</option>
         </select></label>
         <button type="button" class="secondary add-button" id="add-open" title="Add a job, an application you sent elsewhere, or a message or update about a job" data-i18n-title="screenStaticAttributes.text22"><i data-icon="plus"></i> <span data-i18n="screenCommon.add" data-i18n-slot>Add</span></button>
-        <button type="button" class="secondary" id="triage-open" title="Reads each job's application form once and shows which jobs can apply automatically. Nothing is filled or sent." data-i18n-title="screenStaticAttributes.text23"><i data-icon="zap"></i> <span data-i18n="screenStaticMain.text43" data-i18n-slot>See which jobs can apply automatically</span></button>
+        <button type="button" class="secondary" id="triage-open" title="Gets each job ready to apply: its application kit when missing, then one read of its form. Nothing is filled or sent." data-i18n-title="screenStaticAttributes.text23"><i data-icon="zap"></i> <span data-i18n="screenStaticMain.text43" data-i18n-slot>Check apply readiness</span></button>
         <!-- The three flows' own openers: the Add dialog (pages/jobs-add.js) presses them, openLogFor too; out of sight, so only "+ Add" shows. -->
         <span hidden>
           <button type="button" class="secondary" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found" data-i18n-title="screenStaticAttributes.text24"><i data-icon="plus"></i> <span data-i18n="screenStaticMain.text44" data-i18n-slot>Add job</span></button>
@@ -2328,8 +2328,8 @@
 </dialog>
 <dialog id="triage-dialog" class="panel-dialog triage-dialog">
   <form method="dialog">
-    <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span><h2 data-i18n="screenStaticMain.text43">See which jobs can apply automatically</h2></div>
-    <p class="dialog-lead" data-i18n="screenStaticDialogsTwo.text795">Reads each application form once in the hidden browser. Nothing is filled or sent.</p>
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span><h2 data-i18n="screenStaticMain.text43">Check apply readiness</h2></div>
+    <p class="dialog-lead" data-i18n="screenStaticDialogsTwo.text795">Each job gets its application kit when missing, then its form is read once in the hidden browser. Nothing is filled or sent.</p>
     <label class="triage-n inline-label"><span data-i18n="screenStaticDialogsTwo.text796" data-i18n-slot>First</span> <input id="triage-n" type="number" min="1" max="50" step="1" value="10"> <span data-i18n="screenStaticDialogsTwo.text797" data-i18n-slot>best matching jobs</span></label>
     <p class="muted small" id="triage-count"></p>
     <div id="triage-progress" class="triage-progress" hidden>

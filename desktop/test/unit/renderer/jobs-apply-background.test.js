@@ -21,6 +21,7 @@ doc.getElementById = id => {
 let reply, reads = 0;
 const calls = [], views = [];
 globalThis.window.pilot = new Proxy({
+  applyReadiness: async (job, options) => { calls.push(['applyReadiness', job.url, options]); return {kit: {ok: true}, check: null}; },   // R2 (8 Nov 2026): every row Apply gets the job ready first
   applyOne: async (...args) => { calls.push(args); return reply; },
   jobs: async () => { reads++; return null; },
   pageView: async view => { views.push(view); },
@@ -45,7 +46,7 @@ function draw(result) {
 test('pressing Apply on a row queued in Background mode marks Applying, rereads jobs and links its success toast to Sessions without marking Chrome opened', async () => {
   const {job, button} = draw({background: true, ok: true, message: '1 application queued in the background.'});
   await button.listeners.click[0]({});
-  assert.deepEqual(calls, [[job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode}]]);
+  assert.deepEqual(calls, [['applyReadiness', job.url, {say: true}], [job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode}, null]], 'Apply readiness first, then the start in the saved mode (no pick)');
   assert.equal(job.stage, 'Applying', 'startedApplying patches the real row');
   assert.equal(reads, 1, 'and rereads the stored jobs');
   assert.equal(shared.openedInChrome.size, 0, 'hidden-browser success never marks a visible tab opened');

@@ -1,5 +1,5 @@
 /* global document, window */
-// "See which jobs can apply automatically" while it runs, layer 2 (#3519): the demo window on fictional jobs whose form read is held by the test, so every press follows a state, never a delay.
+// "Check apply readiness" (once "See which jobs can apply automatically") while it runs, layer 2 (#3519): the demo window on fictional jobs whose form read is held by the test, so every press follows a state, never a delay.
 // The owner's scenario (7 Nov 2026, two screenshots): press Check 10 jobs -> an empty grey bar, no words, an inline Cancel AND Close AND a greyed Check, the number still an input.
 // Expected: at once "Checking 1 of N · <title> · <company>" and its step with that step's seconds (8 Nov 2026, owner chose "A: fix the end + steps"), a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
 // The read is the page's own `runTriage` fed a held read (the preload bridge is frozen, so a test cannot replace window.pilot.triageRead); Stop is the real wired button.

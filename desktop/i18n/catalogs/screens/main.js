@@ -33,7 +33,7 @@ export default {namespace: "screenStaticMain", messages: {
   "text40": ["Best match", "Beste Passung", "Meilleure adéquation", "Migliore compatibilità", "Mejor compatibilidad", "Cea mai bună potrivire", "Лучшее соответствие"],
   "text41": ["Newest", "Neueste", "Plus récentes", "Più recenti", "Más recientes", "Cele mai noi", "Новые"],
   "text42": ["Company A–Z", "Unternehmen A–Z", "Entreprise A–Z", "Azienda A–Z", "Empresa A–Z", "Companie A–Z", "Компания А–Я"],
-  "text43": ["See which jobs can apply automatically", "Automatisch bewerbbare Stellen anzeigen", "Voir les offres à candidature automatique", "Vedi i lavori con candidatura automatica", "Ver empleos con solicitud automática", "Vezi joburile cu aplicare automată", "Посмотреть вакансии с автооткликом"],
+  "text43": ["Check apply readiness", "Bewerbungsbereitschaft prüfen", "Vérifier la préparation des candidatures", "Verifica la preparazione alla candidatura", "Comprobar la preparación para postular", "Verifică pregătirea pentru aplicare", "Проверить готовность к отклику"],
   "text44": ["Add job", "Stelle hinzufügen", "Ajouter une offre", "Aggiungi lavoro", "Añadir empleo", "Adaugă job", "Добавить вакансию"],
   "text45": ["Add application", "Bewerbung hinzufügen", "Ajouter une candidature", "Aggiungi candidatura", "Añadir solicitud", "Adaugă candidatură", "Добавить отклик"],
   "text46": ["Add message or update", "Nachricht oder Update hinzufügen", "Ajouter un message ou une mise à jour", "Aggiungi messaggio o aggiornamento", "Añadir mensaje o actualización", "Adaugă mesaj sau actualizare", "Добавить сообщение или обновление"],

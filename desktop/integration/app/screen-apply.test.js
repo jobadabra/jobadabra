@@ -1,5 +1,5 @@
 /* global document, window */
-// Applying screens, layer 2: the Jobs popup of "See which jobs can apply automatically", the session page's "Before you submit" strip, and a queued hidden-browser job whose link to the app
+// Applying screens, layer 2: the Jobs popup of "Check apply readiness", the session page's "Before you submit" strip, and a queued hidden-browser job whose link to the app
 // is off. Moved from the e2e `apply` suite (1 Nov 2026) to the app's demo window on fictional jobs and sessions: nothing opens, fills or sends. What STAYS in e2e: every step that needs the
 // extension on a form, the real read of a form, a tailored CV, a stage change or the hidden browser, and every safety step (Stop, bot checks, queues, Full automation, the quit). The
 // Standard-automation silent card (link up, Chrome silent) is screen-apply-silent.test.js.
@@ -67,7 +67,10 @@ before(() => {
     const first = kitless[0];
     first.querySelector('[aria-label="More actions"]').click();
     const items = await kit.until(() => [...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent.trim()).filter(Boolean), 'the ⋯ menu');
-    return {rows: all.length, kitless: kitless.length, buttons: kitless.map(row => ({label: row.querySelector('.row-main')?.textContent.trim(), cls: row.querySelector('.row-main')?.className || '', prepare: /Prepare/.test(row.textContent)})), items};
+    const heading = [...document.querySelectorAll('.ui-menu-heading')].map(item => item.textContent.trim());
+    const current = [...document.querySelectorAll('[role="menuitem"][aria-current="true"]')].map(item => item.querySelector('.ui-menu-label')?.textContent.trim());
+    return {rows: all.length, kitless: kitless.length, buttons: kitless.map(row => ({label: row.querySelector('.row-main')?.textContent.trim(), cls: row.querySelector('.row-main')?.className || '', prepare: /Prepare/.test(row.textContent)})), items, heading, current,
+      modes: [...document.querySelectorAll('[role="menuitem"] .ui-menu-label')].map(item => item.textContent.trim())};
   }});
   // Apply on a saved job without a kit prepares first; the demo refuses the draft (lib/apply-handlers.js demoPress: Apply readiness's kit, blocked in the demo), so the kit "cannot be drafted": the button says Retry apply and applyOne is never called.
   retry = probeWindow({files: {'jobs.json': {jobs: JOBS.map(job => ({...job, stage: null, status: 'unreviewed'})), total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
@@ -149,6 +152,14 @@ test('Apply on a saved job without a kit prepares first, and when the kit cannot
   assert.equal(retry.result.after, 'Retry apply');
   const called = retry.log.filter(line => line.includes('a blocked action was called')).map(line => /"name":"(\w+)"/.exec(line)?.[1]);
   assert.deepEqual(called, ['applyReadiness'], 'the press must get the kit through Apply readiness once and open no form (applyOne)');
+});
+
+// Owner, 8 Nov 2026 (R2, "Yes, as drawn"): a job's ⋯ menu offers each built Apply mode for this job only, under one heading, the saved mode marked (the pick never writes Settings: test/unit/main/apply-one-follows-mode.test.js).
+test("a job's ⋯ menu offers the Apply modes for this job, the saved one marked", live, () => {
+  const {heading, current, modes} = rows.result;
+  assert.deepEqual(heading, ['Apply to this job with']);
+  assert.deepEqual(modes.slice(0, 3), ['Background automation', 'Standard automation', 'Full automation'], 'the hidden browser first, then Chrome, then Full automation');
+  assert.equal(current.length, 1, `one mode is the saved one: ${current}`);
 });
 
 test('a scored job without a kit offers Apply and keeps preparation out of its menu', live, () => {

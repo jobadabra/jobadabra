@@ -121,11 +121,14 @@ export function registerApplyHandlers(ctx) {
       job => readiness.applyReadiness(jobOf(job)).then(done => done.kit), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => (which === 'auto' && options?.checkFirst === true ? holdForCheck(jobs, batch, eligibility) : background.enqueue(jobs, which, batch, eligibility))});
     return hidden ? started : withNote(started);
   });
-  ipcMain.handle('applyOne', async (_, url, details) => {
+  ipcMain.handle('applyOne', async (_, url, details, pick) => {
     const gate = needsNotion('apply');
     if (gate) return gate;
     // Why (7 Nov 2026, owner): one job follows the saved mode and eligibility preference; its hidden queue item carries that captured setting.
-    const applySettings = applyOf(storage.settings()), applyMode = applySettings.mode, hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, null, {allowIneligible: applySettings.allowIneligible})} : null;
+    // Why (8 Nov 2026, owner, R2: "Yes, as drawn"): a mode picked in the job's ⋯ menu (`pick`) is that job's only and writes nothing to Settings; a Full automation pick carries its own confirmation (batchConfirmation), as a Jobs-dialog pick does.
+    const settings = storage.settings(), applySettings = applyOf(settings), picked = modeBuilt(pick?.mode) ? pick.mode : '';
+    const applyMode = picked || applySettings.mode, batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(pick.autoConfirmedAt, settings, clock()) : ''};
+    const hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, batch, {allowIneligible: applySettings.allowIneligible})} : null;
     const blocked = await allowanceBlock() || (hidden ? null : needExtension());
     if (blocked) return blocked;
     const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}, {...(hidden ? {hidden} : {})}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)
