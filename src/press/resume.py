@@ -6,15 +6,14 @@ COUNTS ONLY, never read back by the engine: the items themselves stay in their o
 found_boards.json, the jobs store), so the next run resumes from those and this file can be wrong or missing without losing a job. A write that fails
 (read-only folder, full disk) is said on stderr and ignored: it never stops a run. Its reader is the planner (`load_left`); nobody else hard-codes the path.
 Writes: `note` as each step says it (a run stopped at 175 s still leaves what it said), `save` once at the end of a search process (daily_search.search):
-the process's own view wins, so a step it said nothing about is 0 left. One exception: the job boards' discover process (`src discover`, its own process
-on a first run, between two search processes) writes JOB_BOARDS_STEPS and never saves, so a search process that said nothing about those keeps what discover
-wrote in this run. A run that is stopped leaves the older entries, with their older `saved_at`, for the planner to see as stale. Only a timed run writes
-(a CLI run, a test without a budget: nothing). Tests: tests/unit/press/test_resume.py."""
+a step this process RAN (`ran`, called where the step starts) and that said no "Time is up" has nothing left: 0 with a new `saved_at`. A step this process never
+started (kits off, no alert e-mails, the job boards' discover step inside a search process) keeps its older entry and its older `saved_at`: stale is not empty,
+and the planner reads the date. A run that is stopped leaves the older entries the same way. Only a timed run writes (a CLI run, a test without a budget: nothing).
+Tests: tests/unit/press/test_resume.py."""
 import json
 import os
 import sys
 import threading
-import time
 from datetime import datetime, timezone
 
 from .. import paths
@@ -24,18 +23,29 @@ STEPS = {'web search': 'web_search', 'job boards': 'job_boards', 'employer sites
          'Google Jobs': 'google_jobs', 'job-alert emails': 'job_alert_emails', 'descriptions': 'descriptions', 'places': 'places',
          'title sorting': 'title_sorting', 'scoring': 'scoring', 'job facts': 'job_facts', 'kits': 'kits', 'employer names': 'employer_names'}   # = time_budget.STAGES, pinned by the test
 LEFT_LINES = {'titles': 'title sorting', 'score': 'scoring', 'enrich': 'job facts'}   # time_budget.left_line's step names -> their stage
-JOB_BOARDS_STEPS = ('job_boards', 'employer_names')   # what `src discover` (src/sources/boards.py, board_employers.py) says in its own process
 _lock = threading.Lock()
-_said = set()   # the steps this process said (note), so its save() does not zero them
+_said = set()   # the steps this process said (note): its save() leaves them
+_ran = set()   # the steps this process started (ran): its save() zeroes those that said nothing
 
 
 def begin():
-    """A new search starts in this process (time_budget.start): nothing is said yet."""
+    """A new search starts in this process (time_budget.start): nothing has run or been said yet."""
     _said.clear()
+    _ran.clear()
 
 
 def _file():
     return paths.DATA / FILE
+
+
+def _well_formed(entry):
+    """{'left': int, 'saved_at': a timezone-aware ISO time}: what every reader of the file may rely on."""
+    if not (isinstance(entry, dict) and type(entry.get('left')) is int and isinstance(entry.get('saved_at'), str)):
+        return False
+    try:
+        return datetime.fromisoformat(entry['saved_at']).tzinfo is not None
+    except ValueError:
+        return False
 
 
 def load_left():
@@ -46,8 +56,7 @@ def load_left():
         return {}
     if not isinstance(data, dict):
         return {}
-    return {step: entry for step, entry in data.items()
-            if isinstance(entry, dict) and type(entry.get('left')) is int and isinstance(entry.get('saved_at'), str)}
+    return {step: entry for step, entry in data.items() if _well_formed(entry)}
 
 
 def _write(data):
@@ -63,12 +72,6 @@ def _timed():
     return time_budget.DEADLINE is not None
 
 
-def _run_start():
-    """When this run began, as a UTC time: its press (SEARCH_AT) when the app started it, else this process's start."""
-    from .. import time_budget
-    return datetime.fromtimestamp(time.time() - (time.monotonic() - time_budget.BEGAN), timezone.utc)
-
-
 def _stamp(at):
     return (at or datetime.now(timezone.utc)).isoformat(timespec='seconds')
 
@@ -81,7 +84,12 @@ def _keep(change):
             change(data)
             _write(data)
     except OSError as error:
-        print(f'Warning: press_left.json not written ({type(error).__name__}); the next run resumes from the queues\' own files', file=sys.stderr, flush=True)
+        print(f'Warning: what is left for the next search could not be saved ({type(error).__name__}); the next search carries on from its own lists', file=sys.stderr, flush=True)
+
+
+def ran(stage):
+    """This process started a step (a time_budget.STAGES name), where its work begins: called once per step entry, it only marks, never writes. KeyError for an unknown stage."""
+    _ran.add(STEPS[stage])
 
 
 def note(stage, left, at=None):
@@ -93,17 +101,12 @@ def note(stage, left, at=None):
     _keep(lambda data: data.__setitem__(key, {'left': int(left), 'saved_at': _stamp(at)}))
 
 
-def save(now=None, began=None):
-    """The end of a search process: a step it said nothing about has nothing left, except the job boards' discover steps written since `began` (this
-    run's start, a UTC time: the process's own start by default) by the discover process."""
+def save(now=None):
+    """The end of a search process: every step it ran and that said nothing has 0 left; the other steps keep their entries as they are."""
     if not _timed():
         return
-    began = (began or _run_start()).replace(microsecond=0)   # saved_at has whole seconds
 
     def fill(data):
-        for key in STEPS.values():
-            wrote = data.get(key)
-            discovered = key in JOB_BOARDS_STEPS and wrote and datetime.fromisoformat(wrote['saved_at']) >= began
-            if key not in _said and not discovered:
-                data[key] = {'left': 0, 'saved_at': _stamp(now)}
+        for key in _ran - _said:
+            data[key] = {'left': 0, 'saved_at': _stamp(now)}
     _keep(fill)

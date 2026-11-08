@@ -44,61 +44,87 @@ class WhatEachStepSaysIsSaved(Isolated):
         with self.assertRaises(KeyError):
             resume.note('tea breaks', 1)
 
+    def test_every_stage_marks_itself_ran_where_it_starts(self):
+        # a stage without `resume.ran('<stage>')` would never be zeroed at a run's end: its old count would stay "40 left" for ever
+        source = '\n'.join(path.read_text() for path in (Path(__file__).resolve().parents[3] / 'src').rglob('*.py') if path.name != 'resume.py')
+        self.assertEqual([stage for stage in resume.STEPS if f"resume.ran('{stage}')" not in source], [])
+
     def test_every_time_budget_stage_has_a_step(self):
         self.assertEqual(set(resume.STEPS), set(time_budget.STAGES))
 
 
 class TheRunsEndFillsTheRest(Isolated):
-    def test_a_stage_that_said_nothing_is_saved_as_zero_left_and_a_said_one_keeps_its_count(self):
+    OLD = '2026-11-07T12:00:00+00:00'
+
+    def seed(self, **left):
+        (self.data / 'press_left.json').write_text(json.dumps({k: {'left': n, 'saved_at': self.OLD} for k, n in left.items()}))
+
+    def test_a_step_that_ran_and_said_nothing_is_zero_left_and_a_said_one_keeps_its_count(self):
+        resume.ran('employer sites')
+        resume.ran('scoring')
         time_budget.later('employer sites', 7, 'sites')
         resume.save(NOW)
         saved = resume.load_left()
-        self.assertEqual(sorted(saved), sorted(resume.STEPS.values()))
-        self.assertEqual(saved['employer_sites']['left'], 7)
-        self.assertEqual({k: v['left'] for k, v in saved.items() if k != 'employer_sites'}, {k: 0 for k in saved if k != 'employer_sites'})
+        self.assertEqual({k: v['left'] for k, v in saved.items()}, {'employer_sites': 7, 'scoring': 0})
+        self.assertEqual(saved['scoring']['saved_at'], NOW.isoformat(timespec='seconds'))
 
-    def test_a_first_runs_three_processes_each_search_process_has_the_last_word_on_its_steps(self):
+    def test_a_step_that_never_started_keeps_its_older_entry_and_date(self):
+        # contract with the planner: stale is not empty (gi, 8 Nov 2026): kits off, no alert e-mails: no fresh 0 for them
+        self.seed(kits=2, job_alert_emails=1, scoring=40)
+        resume.ran('scoring')
+        resume.save(NOW)
+        saved = resume.load_left()
+        self.assertEqual(saved['kits'], {'left': 2, 'saved_at': self.OLD})
+        self.assertEqual(saved['job_alert_emails'], {'left': 1, 'saved_at': self.OLD})
+        self.assertEqual(saved['scoring']['left'], 0, 'the step that ran and said nothing is done')
+
+    def test_a_first_runs_three_processes_a_step_one_never_started_keeps_its_date(self):
         # desktop/lib/search-steps.js: a first run is the search (firstJobs), then `src discover`, then the search again (mode today), one SEARCH_AT.
         # A process is a time_budget.start(): its own notes start empty; the file is all they share (review of E2b: the order is not "boards, then search").
-        began = datetime.now(timezone.utc) - timedelta(seconds=30)
-        time_budget.start(180)
-        time_budget.left_line('score', 40, 'jobs')   # process 1: the first jobs' search left 40 jobs unscored
-        resume.save(began=began)
-        time_budget.start(180)
-        time_budget.later('job boards', 3, 'boards')   # process 2: discover says its count and never saves
-        time_budget.start(180)
-        resume.save(began=began)   # process 3: the search that scores what discover found: it scored all 40, said nothing about the boards
+        self.seed(kits=2)
+        time_budget.start(180)   # process 1: the search; it ran scoring and the boards, left 40 jobs unscored
+        resume.ran('scoring')
+        resume.ran('job boards')
+        time_budget.left_line('score', 40, 'jobs')
+        resume.save(NOW)
+        time_budget.start(180)   # process 2: discover; it ran the boards, said 3 left, never saves
+        resume.ran('job boards')
+        time_budget.later('job boards', 3, 'boards')
+        boards_at = resume.load_left()['job_boards']['saved_at']
+        time_budget.start(180)   # process 3: the search that scores what discover found; it never started the boards
+        resume.ran('scoring')
+        resume.save(NOW + timedelta(seconds=90))
         saved = resume.load_left()
         self.assertEqual(saved['scoring']['left'], 0, 'process 1 left 40, process 3 finished them: not "40 left"')
-        self.assertEqual(saved['job_boards']['left'], 3, "discover's count in this run stays: process 3 did not say anything about the boards")
+        self.assertEqual(saved['job_boards'], {'left': 3, 'saved_at': boards_at}, "process 3 never started the boards: discover's count and date stay")
+        self.assertEqual(saved['kits'], {'left': 2, 'saved_at': self.OLD}, 'a step no process of this run started keeps its older date')
 
-    def test_a_search_process_that_says_something_about_the_boards_replaces_discovers_count(self):
-        began = datetime.now(timezone.utc) - timedelta(seconds=30)
+    def test_a_search_process_that_ran_the_boards_and_said_nothing_zeroes_discovers_count(self):
         time_budget.start(180)
-        time_budget.later('job boards', 3, 'boards')
+        resume.ran('job boards')
+        time_budget.later('job boards', 3, 'boards')   # discover
         time_budget.start(180)
-        time_budget.later('job boards', 1, 'board')
-        resume.save(began=began)
-        self.assertEqual(resume.load_left()['job_boards']['left'], 1)
-
-    def test_a_count_from_an_earlier_run_is_replaced_by_this_runs_zero(self):
-        old = {'scoring': {'left': 40, 'saved_at': (NOW - timedelta(days=1)).isoformat(timespec='seconds')}}
-        (self.data / 'press_left.json').write_text(json.dumps(old))
-        resume.save(NOW, began=NOW - timedelta(seconds=170))
-        self.assertEqual(resume.load_left()['scoring']['left'], 0)
+        resume.ran('job boards')   # a later search process read the found boards to the end
+        resume.save(NOW)
+        self.assertEqual(resume.load_left()['job_boards']['left'], 0)
 
     def test_a_run_that_did_not_reach_its_end_leaves_the_older_counts_with_their_older_dates(self):
-        old = {'scoring': {'left': 40, 'saved_at': '2026-11-07T12:00:00+00:00'}}
-        (self.data / 'press_left.json').write_text(json.dumps(old))
+        self.seed(scoring=40)
+        resume.ran('employer sites')
         time_budget.later('employer sites', 2, 'sites')   # the run is stopped here: save() is never called
         saved = resume.load_left()
-        self.assertEqual(saved['scoring'], old['scoring'])
+        self.assertEqual(saved['scoring'], {'left': 40, 'saved_at': self.OLD})
         self.assertEqual(saved['employer_sites']['left'], 2)
+
+    def test_a_step_name_the_table_lacks_is_a_loud_mistake_for_ran_too(self):
+        with self.assertRaises(KeyError):
+            resume.ran('tea breaks')
 
 
 class OnlyATimedRunWrites(Isolated):
     def test_a_run_without_a_budget_writes_nothing(self):
         time_budget.start(0)
+        resume.ran('scoring')
         time_budget.later('employer sites', 7, 'sites')
         resume.save(NOW)
         self.assertFalse((self.data / 'press_left.json').exists())
@@ -110,7 +136,7 @@ class AWriteThatFailsNeverStopsTheRun(Isolated):
         with mock.patch('src.press.resume._write', side_effect=PermissionError('read-only')), contextlib.redirect_stderr(err):
             self.assertIsNone(resume.note('kits', 2))   # the caller's line (time_budget.later, left_line) is still said
             resume.save(NOW)
-        self.assertIn('press_left.json not written', err.getvalue())
+        self.assertIn('could not be saved', err.getvalue())
 
 
 class TheReader(Isolated):
@@ -122,7 +148,8 @@ class TheReader(Isolated):
             (self.data / 'press_left.json').write_text(text)
             self.assertEqual(resume.load_left(), {}, text)
         good = {'left': 4, 'saved_at': '2026-11-08T12:00:00+00:00'}
-        (self.data / 'press_left.json').write_text(json.dumps({'scoring': 5, 'kits': {'left': 'many', 'saved_at': 'x'}, 'places': {'left': True, 'saved_at': 'x'}, 'job_facts': good}))
+        (self.data / 'press_left.json').write_text(json.dumps({'scoring': 5, 'kits': {'left': 'many', 'saved_at': 'x'}, 'places': {'left': True, 'saved_at': 'x'}, 'job_facts': good,
+                                                          'places': {'left': 1, 'saved_at': '2026-11-08T12:00:00'}}))   # no timezone: not an entry
         self.assertEqual(resume.load_left(), {'job_facts': good})
 
     def test_the_file_is_replaced_whole_and_leaves_no_part_file(self):

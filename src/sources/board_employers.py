@@ -8,6 +8,7 @@ import urllib.error
 from datetime import datetime, timezone
 
 from . import careers
+from ..press import resume
 
 PLACEHOLDERS = ('Unknown employer', 'via ')   # what the readers put when the page names nobody
 MAX_LOOKUPS = 20      # job pages fetched per run for jobs without an employer
@@ -71,6 +72,7 @@ def candidates():
 
 def fill_missing(jobs, fetch=None):
     """Set the company of jobs that have none from their job page's hiringOrganization; at most MAX_LOOKUPS pages, refusals left alone."""
+    resume.ran('employer names')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     fetch = fetch or globals()['fetch']
     from . import read_budget
     if read_budget.past_cut():   # past the search's read cut no page is read: the next search names them (tests/unit/sources/test_three_minutes.py)

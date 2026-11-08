@@ -21,6 +21,7 @@ from .seniority import settle
 from ..role_kinds import KINDS, WORK
 from .models import SMALL_MODEL
 from .providers.contract import detail, reason
+from ..press import resume
 
 # Bump when the prompt or schema changes so every job is re-extracted once.
 EXTRACTOR_VERSION = 4   # 4: responsibilities; 3: contract, deadline, posted (a bump re-reads every job on the next search, newest and best first: the backfill)
@@ -267,6 +268,7 @@ def run(db, model, max_jobs, client=None, workers=5, stats=None, only_ids=None):
     API calls run in parallel threads; results are saved from this thread only,
     because the SQLite connection must not be shared across threads.
     """
+    resume.ran('job facts')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from .. import time_budget as budget
     if only_ids is not None:   # the refresh's batch, read and then scored end to end (src/daily.py)
         queue = [job for job in pending_jobs(db, 10_000) if job['id'] in only_ids]
