@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "le formulaire est dans un cadre",
   "triageUnknown": "impossible de dire ce qu'est cette page",
   "triageTimeout": "trop long",
+  "triageKit": "le dossier de candidature n’a pas pu être préparé",
   "triageFacts": "chaque réponse est un fait enregistré",
   "triageCaptcha": "une vérification que vous êtes humain",
   "triageCheck": "le formulaire contient peut-être une vérification",

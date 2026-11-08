@@ -113,7 +113,7 @@ test('a Stop while the kit drafts ends the check before the browser opens; a kit
   const pending = slow.applyReadiness(JOB);
   slow.cancel();
   release();
-  assert.equal((await pending).check, null);
+  assert.deepEqual([(await pending).check, (await pending).cancelled], [null, true]);
   assert.equal(calls.read, 0);
   const failed = createReadiness({storage: {}, prepareKit: async () => ({ok: false, error: 'no posting'}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
   const done = await failed.applyReadiness(JOB);
@@ -121,13 +121,23 @@ test('a Stop while the kit drafts ends the check before the browser opens; a kit
   const gated = createReadiness({storage: {}, prepareKit: async () => ({ok: false, refused: true, needsNotion: true}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
   assert.equal((await gated.applyReadiness(JOB)).check, null);
   assert.equal(calls.read, 1, 'a gate (Notion, allowance, no AI) opens no browser (Gitar on #3578)');
+  let stop;
+  const held = createReadiness({storage: {}, prepareKit: async () => ({ok: false, stopped: true, error: 'no posting'}), readForm: () => new Promise(done => { stop = () => done(null); }), call: async () => null});
+  const cut = held.applyReadiness(JOB);
+  await new Promise(setImmediate);
+  held.cancel(); stop();
+  assert.equal((await cut).cancelled, true, 'a Stop during the read of a job whose kit failed is a Stop, not "Couldn\'t read"');
 });
 
 test('the Jobs page shows why a kit could not be drafted, passes the Notion gate up, and marks a drafted kit', async () => {
   const {readThroughStep} = await import('../../../renderer/apply-readiness-read.js');
   const via = done => ({applyReadiness: async () => done});
-  assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'needs AI'}, check: null}), JOB), {unreadable: true, why: 'needs AI'});
-  assert.equal((await readThroughStep(via({kit: {ok: false, needsNotion: true, reason: 'connect Notion'}}), JOB)).why, 'connect Notion');
+  assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'needs AI'}, check: null}), JOB), {unreadable: true, why: 'kit', kitError: 'needs AI'});
+  assert.equal((await readThroughStep(via({kit: {ok: false, needsNotion: true, reason: 'connect Notion'}}), JOB)).kitError, 'connect Notion');
+  assert.equal(await readThroughStep(via({kit: {ok: false, error: 'no posting'}, check: null, cancelled: true}), JOB), null, 'a Stop leaves the job Not checked (review of #3578)');
+  const {chipOf} = await import('../../../renderer/apply-triage-pick.js');
+  const {t} = await import('../../../i18n/index.js');
+  assert.equal(chipOf({unreadable: true, why: 'kit'}).detail, t('helperTail.triageKit'), 'the chip says the kit could not be prepared, not that the page did not load');
   assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'no posting'}, check: SIMPLE, stored: false}), {...JOB}), {...SIMPLE, stored: false}, 'a read made despite the kit shows the read');
   const job = {...JOB};
   assert.deepEqual(await readThroughStep(via({kit: {ok: true}, check: SIMPLE, stored: true}), job), {...SIMPLE, stored: true});

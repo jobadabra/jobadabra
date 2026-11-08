@@ -8,5 +8,6 @@ export async function readThroughStep(pilot, job) {
   const done = await pilot.applyReadiness({url: job.url, code: job.code, title: job.title, kit: job.kit === true, posted_at: job.posted_at});
   if (job.code && done?.kit?.ok) job.kit = true;
   if (done?.check) return {...done.check, stored: done.stored === true};
-  return done?.kit?.ok === false ? {unreadable: true, why: String(done.kit.error || done.kit.reason || '')} : null;   // nothing read: the kit's reason, if it failed, is what the person is told
+  if (done?.cancelled) return null;   // Why (8 Nov 2026, review of #3578): a Stop leaves the job "Not checked", even when its kit had failed
+  return done?.kit?.ok === false ? {unreadable: true, why: 'kit', kitError: String(done.kit.error || done.kit.reason || '')} : null;   // nothing read: the chip says the kit could not be prepared
 }
