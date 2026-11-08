@@ -1,4 +1,4 @@
-// Sends the "Nightly skipped" notice for a red main: node nightly-skipped.mjs <the gate's log file>. Called by the redmain step of .github/workflows/desktop.yml; prints the job-log lines, never throws.
+// Sends the "Nightly skipped" notice for a red main: node nightly-skipped.mjs <the gate's log file>. Called by the redmain step of .github/workflows/desktop.yml; prints the job-log lines; send() itself never throws (the workflow adds `|| echo` for a bug in the builders).
 // Job: report health
 import fs from 'node:fs';
 import {send} from './ci-alert.mjs';

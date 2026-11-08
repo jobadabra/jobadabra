@@ -17,7 +17,7 @@ export const STORE_KINDS = Object.keys(KINDS);
 /** Takes a kind (STORE_KINDS) and env {TAG?, RUN, GITHUB_REPOSITORY}; returns {message, event, level?} or null for an unknown kind. */
 export function storeNotice(kind, env = process.env) {
   const one = KINDS[kind];
-  if (!one) return null;
+  if (!one || !env.GITHUB_REPOSITORY || (one.tagged && !env.TAG)) return null;   // a fix command with "undefined" in it is worse than no notice (the CLI says so in the log)
   const fix = `gh workflow run ${one.workflow} -R ${env.GITHUB_REPOSITORY} --ref main${one.tagged ? ` -f tag=${env.TAG}` : ''}`;
   return {event: one.event, ...(one.level ? {level: one.level} : {}),
     message: notice({title: one.title, verdict: one.verdict(env.TAG), bullets: [`${one.tagged ? 'Once its cause is fixed' : 'By hand'}: ${fix}`], run: env.RUN})};

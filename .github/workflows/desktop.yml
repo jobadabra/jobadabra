@@ -169,7 +169,7 @@ jobs:
             exit 0
           fi
           echo "red=true" >> "$GITHUB_OUTPUT"
-          node desktop/e2e/nightly-skipped.mjs "$RUNNER_TEMP/red-main-gate.log"   # reads the gate's machine lines (Red suites / Red step / Stops the beta / Re-check), sends one notice
+          node desktop/e2e/nightly-skipped.mjs "$RUNNER_TEMP/red-main-gate.log" || echo "(nightly-skipped alert not sent)"   # reads the gate's machine lines (Red suites / Red step / Stops the beta / Re-check), sends one notice
       # Something to build: the release both lanes add their files to, here so each lane starts straight from this job (owner, 7 Oct 2026: "Anything new should
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5

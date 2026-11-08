@@ -36,11 +36,13 @@ Re-check: ${RECHECK}
 Re-check failure: main is still red (${RECHECK}).
   Flaky: “saves the kit” passed on the same commit abcdef0 (https://github.com/o/r/actions/runs/71): fix the non-deterministic input it depends on, not the step
 Red step: flaky | saves the kit | https://github.com/o/r/actions/runs/71
-Stops the beta: employers · results could not be read
+`;
+// The same, with a reason that stops the beta on a suite whose results could not be read: that is not "flaky, not a regression".
+const FLAKY_BUT_STOPPED = `${FLAKY_ONLY}Stops the beta: employers · results could not be read
 `;
 const UNREADABLE = "Could not read main's e2e state: unknown, not green.\nNo beta. Re-run, or --force \"<why>\".\n";
 
-const NIGHTLY = [['changed steps and one flaky', CHANGED_AND_FLAKY], ['flaky only', FLAKY_ONLY], ['state unreadable', UNREADABLE]];
+const NIGHTLY = [['changed steps and one flaky', CHANGED_AND_FLAKY], ['flaky only', FLAKY_ONLY], ['flaky but stopped', FLAKY_BUT_STOPPED], ['all four kinds', `${CHANGED_AND_FLAKY}Red step: unknown | a step | -\nRed step: broken | x | y | z\n`], ['state unreadable', UNREADABLE]];
 const STORES = STORE_KINDS.map(kind => [kind, storeNotice(kind, {...env, TAG: 'v1.2.3', RUN: 'https://github.com/o/r/actions/runs/5'}).message]);
 
 test('every CI notice has the one shape: bold title, a one-line verdict, at most 3 bullets, a named link, no raw URL', () => {
@@ -71,6 +73,8 @@ test('a flaky step is told as flaky with the run that was green, never as "still
   assert.match(message.text, /flaky, not a regression/);
   assert.match(message.text, /Flaky: saves the kit: the same code was green in run 71/);
   assert.doesNotMatch(message.text, /still red/);
+  assert.doesNotMatch(nightlyNotice(FLAKY_BUT_STOPPED, env).message.text, /not a regression/, 'a stop reason means it is not only flaky');
+  assert.match(nightlyNotice(FLAKY_BUT_STOPPED, env).message.text, /Stops it: employers · results could not be read/);
   assert.match(nightlyNotice(CHANGED_AND_FLAKY, env).message.text, /Changed: fills the form/);
 });
 
@@ -81,6 +85,15 @@ test('many steps and reasons are counted in one bullet per kind, not one row eac
   assert.match(text, /• Flaky: saves the kit: the same code was green in run 71\n/, text);
   assert.equal(notice({title: 't', bullets: ['a', 'b', 'c']}).text.includes('more'), false, 'exactly 3 bullets are all shown');
   assert.match(notice({title: 't', bullets: ['a', 'b', 'c', 'd']}).text, /• \+2 more/, 'a 4th kind is counted');
+});
+
+test('a step name with " | " and an unknown step keep the notice at 3 bullets and are not garbled', () => {
+  const log = `Red suites: apply\nRed step: changed | a | b step | https://github.com/o/r/actions/runs/70\nRed step: unknown | c step | -\nRed step: half a row\nStops the beta: apply · x\n`;
+  const {steps} = parseGate(log);
+  assert.deepEqual(steps.map(one => [one.verdict, one.step, one.green]), [['changed', 'a | b step', 'https://github.com/o/r/actions/runs/70'], ['unknown', 'c step', '']]);
+  const text = nightlyNotice(log, env).message.text;
+  assert.equal(text.split('\n').filter(line => line.startsWith('• ')).length, 2, text);   // stops + (changed/unknown merged: first + 1 more)
+  assert.match(text, /Changed: a \| b step[^\n]* \+1 more/);
 });
 
 test('an unreadable state says so and links the run', () => {
