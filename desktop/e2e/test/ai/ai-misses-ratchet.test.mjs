@@ -122,7 +122,7 @@ test('the existing suite finalizer fails after teardown and keeps the AI failure
   const dir = artifacts(t), messages = [], key = Symbol.for('ai-misses-ratchet-test');
   t.mock.method(console, 'log', () => {});
   t.mock.method(console, 'error', message => messages.push(message));
-  const ctx = {ARTIFACTS: dir, runner: {results: [], summary() { return this.results.some(result => result.status === 'failed'); }},
+  const ctx = {ARTIFACTS: dir, runner: {results: [], recordLostPicks() { return []; }, summary() { return this.results.some(result => result.status === 'failed'); }},
     close: async () => miss(dir, 'late', {messages: [{role: 'user', content: 'ask during teardown'}]})};
   globalThis[key] = ctx;
   t.after(() => { delete globalThis[key]; });

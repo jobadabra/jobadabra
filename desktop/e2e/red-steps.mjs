@@ -2,7 +2,7 @@
 // Job: pick the suites
 // Usage (e2e.yml, e2e-windows.yml): node red-steps.mjs --renamed-only <suite-failures.json>   exit 0 when the only red is a picked name that matched no step.
 // E2E_FALLBACK_SUITES reserves the first three distinct picked suites; E2E_FALLBACK_SUITE identifies this leg. The CLI exits 2 beyond that cap.
-// There is no retry of red steps any more (31 Oct 2026, owner: "And why should we accept/allow that?"). Guard: test/red-steps.test.mjs, tests/tooling/ci/test_renamed_pick_fallback.py.
+// There is no retry of red steps any more (31 Oct 2026, owner: "And why should we accept/allow that?"). Guards: test/harness/renamed-pick-order.test.mjs (plays the real order of writes: the file must hold the runner's record when the suite closes), tests/tooling/ci/test_renamed_pick_fallback.py (workflow text only).
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 

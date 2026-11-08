@@ -210,10 +210,18 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       throw error;
     } finally { setStep(''); await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }   // an ask after the step (teardown, the next setup) names no step
   }
-  const summary = () => {
+  // The runner's own record of a picked step that matched none (renamed since the coverage map): once, whoever closes first (suite-main.mjs finishSuite writes suite-failures.json before summary()).
+  let lostRecorded = false;
+  const recordLostPicks = () => {
     const lost = picked.filter(name => name !== PICK_SETUP && !found.has(name));
-    if (lost.length) { results.push({name: 'steps picked for this PR', status: 'failed', note: `no step is named ${lost.map(name => `"${name}"`).join(', ')} (renamed since the coverage map was recorded): the whole suite runs next`}); console.log(`✗ picked step(s) not found: ${lost.join('; ')}`); }
-    else if (picked.length) console.log(`(ran only the ${picked.filter(name => name !== PICK_SETUP).length} step(s) this PR's changes reach, their needs and the setup: E2E_STEP_NAMES)`);
+    if (lostRecorded || !lost.length) return lost;
+    lostRecorded = true;
+    results.push({name: 'steps picked for this PR', status: 'failed', note: `no step is named ${lost.map(name => `"${name}"`).join(', ')} (renamed since the coverage map was recorded): the whole suite runs next`});
+    console.log(`✗ picked step(s) not found: ${lost.join('; ')}`);
+    return lost;
+  };
+  const summary = () => {
+    if (!recordLostPicks().length && picked.length) console.log(`(ran only the ${picked.filter(name => name !== PICK_SETUP).length} step(s) this PR's changes reach, their needs and the setup: E2E_STEP_NAMES)`);
     const count = status => results.filter(result => result.status === status).length;
     console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped${count('suspended') ? `, ${count('suspended')} suspended (flaky, not blocking)` : ''}`);
     const unsafe = results.filter(result => result.status === 'failed' && result.safety);
@@ -221,5 +229,5 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
     for (const line of sharedCauseLines(results)) console.log(line);   // gate G3: six reds on one locator read as one cause, not six bugs
     return count('failed') ? 1 : 0;
   };
-  return {run, results, summary, ARTIFACTS};
+  return {run, results, summary, recordLostPicks, ARTIFACTS};
 }

@@ -49,6 +49,15 @@ export function writeFinalFailures(suite, ctx, env) {
   return missing || !ceiling.ok;
 }
 
+/** The suite's last word, in this order: late guards and the runner's own closing records (a picked step that matched none) reach suite-failures.json, then the summary prints and decides.
+ * Why (8 Nov 2026, apply red after #3579, run 42451945200): the file was written before summary() pushed the lost-pick record, so it held `[]` and e2e.yml's renamed-pick fallback never ran the whole suite. -> 1 when the suite failed. */
+export function finishSuite(name, ctx, env) {
+  ctx.runner.recordLostPicks();
+  const guards = writeFinalFailures(name, ctx, env);
+  const failed = ctx.runner.summary();
+  return guards || failed ? 1 : 0;
+}
+
 /** The exit code of a suite stopped by an error: 1, except a suspended step that hung or left the app closed (lib/runner.mjs suspendedStop), which ends the suite without failing it.
  * Why (31 Oct 2026, spec row 33): the steps after that step did not run and say so; the hang itself is on the suspended step's owner issue. */
 export function stopCode(error, name, ctx) {
@@ -151,8 +160,7 @@ export async function runSuite(name, report = null) {
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
       // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784).
-      if (writeFinalFailures(name, ctx, process.env)) code = 1;
-      if (ctx.runner.summary()) code = 1;
+      code = finishSuite(name, ctx, process.env) || code;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).
       try { fs.writeFileSync(path.join(ctx.ARTIFACTS, 'steps.json'), JSON.stringify({v: 1, suite: name, results: ctx.runner.results, traces: traceFiles()}, null, 1)); } catch (error) { console.log(`  (steps.json not written: ${error.message})`); }
