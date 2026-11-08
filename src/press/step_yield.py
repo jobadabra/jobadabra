@@ -9,7 +9,6 @@ Counts only, nothing about the person. Not measured here: EURES (inside free API
 The yardstick's numbers are unusable until the replay-fidelity card lands: this is a measurement, not a proof of speed.
 Tests: tests/unit/press/test_step_yield.py."""
 import contextlib
-import json
 import threading
 import time
 
