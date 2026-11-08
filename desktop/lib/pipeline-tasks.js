@@ -13,6 +13,7 @@ import {run} from './pipeline-run.js';
 import {searchSteps} from './search-steps.js';
 import {searchDone} from './search-report.js';
 import {offer as offerBrowserReads} from './refused-offer.js';
+import {save as saveNextStep} from './next-step.js';
 import {besideSteps} from './search-beside.js';
 
 // What a search-kind row says when it ends: the digest problem, and the counts of the run's own summary (data/reports/last-run.json) when it is this run's.
@@ -108,6 +109,7 @@ function searchOnce(storage, onLine, mode, trigger = 'you', {employers = false, 
     storage.saveSettings({lastSearchAt: new Date().toISOString(), lastSearchStartedAt: startedAt, lastSearchOk: code === 0});
     searchDone({startedAt, ok: code === 0, stopped: code === null, trigger, endedByTime: !!endedByTime});
     if (code !== null) offerBrowserReads(storage, run).catch(() => {});   // the run offers "Find jobs using your browser" for the sites that refused it; it never reads them (lib/refused-offer.js)   // the search report (lib/search-report.js), when Technical reports are on
+    if (code !== null) saveNextStep(storage, run).catch(() => {});   // the finished run's card says what comes next, from the engine's saved plan (lib/next-step.js, plan P3)
     return {ok: code === 0, result, endedByTime: !!endedByTime};
   })();
 }
