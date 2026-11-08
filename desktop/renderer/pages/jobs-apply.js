@@ -44,8 +44,9 @@ function showOutcomes(outcomes = [], openJob) {
     row.setAttribute('role', 'listitem');
     const heading = el('div', 'apply-outcome-head');
     const name = outcome.title || outcome.company || 'Job';
-    const open = Object.assign(el('button', 'link apply-outcome-title', name), {type: 'button', title: 'Open this job'});   // the title opens the job, as in the Jobs list (no separate "Inspect" button)
-    open.addEventListener('click', () => {
+    const open = Object.assign(el('a', 'link apply-outcome-title', name), {href: '#', title: 'Open this job'});   // the title is a link that opens the job, as in the Jobs list (no "Inspect" button, and no text-only button: buttons are solid)
+    open.addEventListener('click', event => {
+      event.preventDefault();
       $('apply-dialog').close();
       openJob({url: outcome.url, title: outcome.title || '', company: outcome.company || ''}, 'application');
     });

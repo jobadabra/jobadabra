@@ -217,7 +217,7 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 .apply-outcomes { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0; }
 .apply-outcome { display: grid; gap: var(--sp-1); padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
 .apply-outcome-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
-.apply-outcome-head .ui-pill .icon { width: 12px; height: 12px; margin-right: 4px; }
+.apply-outcome-head .ui-pill .icon { width: 12px; height: 12px; margin-right: var(--sp-1); }
 #apply-dialog.apply-result #apply-form > :is(.inline-field, fieldset, p.muted),
 #apply-dialog.apply-result #apply-go { display: none; }
 .apply-outcome-title { overflow-wrap: anywhere; font-weight: 600; text-align: left; }

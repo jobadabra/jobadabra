@@ -100,7 +100,7 @@ test('a start whose call fails says so and gives the button back', () => {
 // Why (8 Nov 2026, owner: "bad UI" on the three full-width Inspect buttons): the job's title is the link that opens the Jobs drawer, as in the Jobs list; no button per row.
 test('batch outcome inspection is the title link and the Jobs page drawer callback', () => {
   const page = read('renderer/pages/jobs-apply.js');
-  assert.match(page, /el\('button', 'link apply-outcome-title', name\)/);
+  assert.match(page, /el\('a', 'link apply-outcome-title', name\)/);
   assert.doesNotMatch(page, /Inspect job/);
   assert.match(page, /openJob\(\{url: outcome\.url, title: outcome\.title \|\| '', company: outcome\.company \|\| ''\}, 'application'\)/);
   assert.doesNotMatch(page, /from '\.\/job-panel\.js'/, 'Jobs injects the drawer opener to avoid a page dependency cycle');
