@@ -2,16 +2,14 @@
 // post only counts to the Worker after each (it can answer "stop": the night's cost cap), and keep every filled tab open for the morning. Never presses Submit or an account button (extension-copy.mjs, no-submit.mjs).
 // Counts only leave this file: no field value, no address in a log. Guard: desktop/test/unit/ready-fill/ready-fill.test.js; the one-night image check is hosted/ready-fill/image-check.mjs in jobadabra-web.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {fillJob} from './fill-job.mjs';
 import {discard} from './fill-video.mjs';
 import {handoff as handoffOf} from './live.mjs';
-import {answererFor} from './night-ai.mjs';
+import {answererFor, siteClient} from './night-ai.mjs';
 import {openNightBrowser} from './night-browser.mjs';
 import {net} from './no-submit.mjs';
-import {readAll} from './read-night.mjs';
 import {createStandIn} from './stand-in.mjs';
 
 export const EXTENSION_DIR = process.env.EXTENSION_DIR || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
@@ -67,8 +65,11 @@ export async function runNight({chromium, site, token, task = 'fill', fetchImpl 
   if (!batch.ok || batch.stop || !batch.jobs?.length) { log('nothing to do', {stop: !!batch.stop}); return {held, close: async () => {}}; }
   try {
     if (task === 'readiness') {
-      const tell = {result: body => post(fetchImpl, site, token, 'result', body), stepper: job => stepper({fetchImpl, site, token, job}), costMicro: ms => costMicro(ms)};
-      const {results} = await readAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, told, log, extraArgs, launchOptions, readerOptions});
+      // Why (8 Nov 2026, code review of cloud runner 1/4): loaded only for a read, so the fill night's image runs without the read's files (lib/triage-reader.js, ladder/rung2-sketch.js) until web 2/4 adds them.
+      const {readAll} = await import('./read-night.mjs');
+      const over = async () => { const again = await post(fetchImpl, site, token, 'batch').catch(() => ({})); return again.ok === false || !!again.error || !!again.stop; };
+      const tell = {result: body => post(fetchImpl, site, token, 'result', body), stepper: job => stepper({fetchImpl, site, token, job}), costMicro: ms => costMicro(ms), over};
+      const {results} = await readAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, told, log, extraArgs, launchOptions, readerOptions, client: siteClient({site, token, fetchImpl})});
       return {held, results, close: async () => {}};
     }
     return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs});
