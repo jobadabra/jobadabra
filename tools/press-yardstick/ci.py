@@ -82,6 +82,8 @@ def newest_band():
 
 
 def pr(art, out):
+    """mode=pr: the replays in <art> (this ref and main) -> the markdown summary on stdout and <out>/numbers.json; returns 0. No recording yet or
+    no band yet is said in the summary ("not measured"), never an error; a missing band artifact reads as no band (newest_band)."""
     sides = lay_out(art, out)
     recordings = Path(out) / 'recordings'
     band = newest_band()
@@ -111,6 +113,8 @@ def pr(art, out):
 
 
 def band_mode(art, out):
+    """mode=band: main's 5 replays per persona in <art> -> <out>/band.json ({run: {number: [low, high] or None}}) and a short summary; returns 0.
+    A number fewer than 2 replays measured has no band (None)."""
     sides = lay_out(art, out)
     recordings = Path(out) / 'recordings'
     band = {}
