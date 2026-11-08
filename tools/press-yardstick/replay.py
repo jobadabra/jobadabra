@@ -5,7 +5,8 @@ each a first and a repeat Find jobs run at the recorded pace, offline (no AI, no
 <recordings>/p<N>/ holds each recording (fetched by main's tape-store.mjs); <sides> is a JSON object {side: checkout folder}, e.g.
 {"main": "sides/main", "pr": "sides/pr"} or main-1..5 for the band. Each run gets its own copy of the recording (a replay appends its report there)
 and its own TMPDIR (run.mjs keeps its state under the temp folder). A persona's main and PR replays start together, so a busy machine slows both alike;
-the machine's lowest free memory and highest load are printed for the summary (the owner's rule: overloaded → 6 personas per PR, said here first)."""
+the machine's lowest free memory and highest load are printed for the summary: reported only; if they show it overloaded, the persona list
+goes to 6 per PR by hand (the owner's option, 8 Nov 2026). Each side runs with its own packages (<checkout>/.venv first on PATH)."""
 import json
 import os
 import shutil
@@ -17,6 +18,7 @@ from pathlib import Path
 
 AT_ONCE = 36       # one PR's 18 personas x 2 sides; the band's 18 x 5 runs in waves of this size
 HANG_S = 15 * 60   # a replay still running after this is killed and counted as crashed (two 180 s runs take ~6 min)
+DEADLINE_S = 30 * 60   # every wave together: past it, what is still running is killed, so ci.py always gets to run (Gitar on #3598)
 
 
 def runs(recordings, sides):
@@ -35,7 +37,8 @@ def start(recordings, art, persona, side, checkout):
     script = (f'python3 tools/persona-search/gate.py cv {persona[1:]} "{out}" && '
               f'node tools/persona-search/run.mjs draw "{out}" --presses 2 --fresh --engine api --tag replay --draft "{work}/tape/draft.json" '
               f'--tape "{work}/tape" --replay --no-live --wait-scale 1')
-    env = {**os.environ, 'TMPDIR': str(work / 'tmp'), 'JOBADABRA_TAPE_ITEMS': '1', 'JOBADABRA_TAPE_BUDGET': '0'}
+    venv = (Path(checkout) / '.venv' / 'bin').resolve()
+    env = {**os.environ, 'PATH': f"{venv}{os.pathsep}{os.environ.get('PATH', '')}", 'TMPDIR': str(work / 'tmp'), 'JOBADABRA_TAPE_ITEMS': '1', 'JOBADABRA_TAPE_BUDGET': '0'}
     log = open(work / 'run.log', 'w', encoding='utf-8')
     return subprocess.Popen(['bash', '-c', 'set -o pipefail; ' + script], cwd=checkout, env=env, stdout=log, stderr=subprocess.STDOUT), log
 
@@ -83,11 +86,12 @@ def main(argv):
         print('No persona has a Find jobs recording yet: not measured.')
         return 0
     machine, crashed, started = Machine(), [], time.monotonic()
+    deadline = started + DEADLINE_S
     for wave in range(0, len(todo), AT_ONCE):
         live = [(persona, side, *start(recordings, art, persona, side, checkout)) for persona, side, checkout in todo[wave:wave + AT_ONCE]]
         for persona, side, process, log in live:
             try:
-                process.wait(timeout=max(1, HANG_S - (time.monotonic() - started)))
+                process.wait(timeout=max(1, min(HANG_S - (time.monotonic() - started), deadline - time.monotonic())))
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
@@ -96,6 +100,9 @@ def main(argv):
             if process.returncode != 0 or not ended_with_jobs:
                 crashed.append(f'{persona} {side}')
         started = time.monotonic()
+        if started >= deadline:
+            crashed += [f'{persona} {side}' for persona, side, _ in todo[wave + AT_ONCE:]]   # never started: past the deadline
+            break
     machine.stop.set()
     print(f'Replayed {len(todo)} Find jobs recordings x sides ({len(todo) - len(crashed)} ended with jobs); '
           f'the machine: lowest free memory {machine.free_mb} MB, highest load {machine.load}')

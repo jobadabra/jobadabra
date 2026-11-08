@@ -62,7 +62,7 @@ jobs:
     # a bot's fixer branch never gets the recording's key (tests/tooling/ci/test_workflow_ai_secret_jobs.py)
     if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 40   # a hang guard: setup ~5 min, 36 replays side by side ~7 min; the band's 90 run in 3 waves
+    timeout-minutes: 50   # a hang guard: setup ~5 min, 36 replays side by side ~7 min; replay.py's own deadline (30 min, every wave) ends first
     permissions:
       contents: read
       actions: read   # main's newest band, from its own run's artifact
@@ -121,13 +121,17 @@ jobs:
         if: steps.rec.outputs.count != '0'
         run: |
           for side in sides/*; do
-            pip install --quiet -r "$side/requirements.txt"
+            python3 -m venv "$side/.venv"   # each side replays with its own packages (Gitar on #3598); replay.py puts it first on PATH
+            "$side/.venv/bin/pip" install --quiet -r "$side/requirements.txt"
             (cd "$side/desktop" && npm ci && node scripts/stage.mjs --files-only)
             (cd "$side/desktop/e2e" && (npm ci || npm install))
           done
       - uses: ./.github/actions/playwright-browser
         if: steps.rec.outputs.count != '0'
         with: {working-directory: sides/main/desktop/e2e, mode: both}
+      - uses: ./.github/actions/playwright-browser   # the PR's own Playwright version, if it changed it
+        if: steps.rec.outputs.count != '0' && (inputs.mode || 'pr') == 'pr'
+        with: {working-directory: sides/pr/desktop/e2e, mode: both}
       - name: Every recording replayed by every side at once (offline, no AI)
         if: steps.rec.outputs.count != '0'
         continue-on-error: true   # a measurement, never a red PR: a replay that crashed is named in the summary
