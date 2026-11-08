@@ -5,7 +5,7 @@ Every message src/telegram.py sends goes through here too, so each Telegram mess
 Cadence (owner, 17 Oct 2026): new matches (kind 'matches') go as ONE e-mail per run, sent when the process ends or at flush(); an urgent message (an interview) goes at once, alone;
 everything else (kind 'activity': mail-check results, insights, finished jobs) is handed to the site as ONE message per run, which holds it for the person's daily or weekly digest (site/src/mail-held.js).
 Each mail names its row (`mail`, jobadabra-web shared/mail-registry.js APP_ROWS) so the person's switch for it (Settings → Notifications and Automation) can hold it; a message that fits no row sends none.
-Rows this engine can name: app-matches (a run's new matches), app-weekly (the weekly report), app-stopped (a failed GitHub run, `python -m src.notify`). Rows it cannot send yet: app-needs-you and app-applied (the
+Rows this engine can name: app-matches (a run's new matches), app-weekly (the weekly report), app-stopped (a failed GitHub run, `python -m src.notify`), app-reminder (an interview reminder from the Gmail & Calendar check, sent at once). Rows it cannot send yet: app-needs-you and app-applied (the
 app sends those), app-nothing (nothing writes it yet). The app tells the run which rows the person has off in JOBADABRA_MAIL_OFF (a comma list); such a mail is not sent at all, and the site holds it too.
 The run identifies as the install (JOBADABRA_TRIAL_KEY,
 or the Free AI key JPF1.<install>.<token>), never an SMTP secret. Guarded by tests/unit/engine/test_notify.py.

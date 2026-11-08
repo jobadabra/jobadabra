@@ -233,6 +233,15 @@ class MailRowTests(unittest.TestCase):
         run_with({**EMAIL, 'JOBADABRA_MAIL_OFF': 'app-matches,app-weekly,app-stopped'}, site, lambda: telegram.send('<b>Interview reviewed</b>', None, None, urgent=True))
         self.assertEqual(len(site.sent), 1)
 
+    def test_an_interview_reminder_goes_at_once_under_its_row_and_its_switch_holds_it(self):
+        # Why (8 Nov 2026, owner: "an e-mail for every automation"): it was held for the digest with no row, so no switch could stop it and it could arrive after the interview.
+        site = Site()
+        run_with(EMAIL, site, lambda: telegram.send('<b>Interview tomorrow</b>', None, None, urgent=True, mail='app-reminder'))
+        self.assertEqual([(m['body']['subject'], m['body'].get('mail'), m['body'].get('kind')) for m in site.sent], [('Interview tomorrow', 'app-reminder', None)])
+        off = Site()
+        self.assertTrue(run_with({**EMAIL, 'JOBADABRA_MAIL_OFF': 'app-reminder'}, off, lambda: telegram.send('<b>Interview tomorrow</b>', None, None, urgent=True, mail='app-reminder')))
+        self.assertEqual(off.sent, [])
+
     def test_the_weekly_mode_sends_its_report_as_the_weekly_kind_and_the_daily_insight_as_activity(self):
         from types import SimpleNamespace
         from src import daily_modes
