@@ -18,7 +18,7 @@ let settings = {};   // the saved settings the dialog opened on
 let picked = '', confirmedAt = '';   // the card the person clicked in THIS dialog (empty: none, the batch follows Settings) and, for Full automation, the confirmation given for it; both start over each time it opens
 let saving = false;   // a pick is being confirmed
 let batchFinished = false;
-// Why (7 Nov 2026, #3424): each attempted job needs a clear status and an inspection path in the batch dialog.
+// Why (7 Nov 2026, #3424; 8 Nov 2026, owner): each attempted job needs a clear status and a way to open it (its title) in the batch dialog.
 // Why (8 Nov 2026, owner: "bad UI"; the two reds were one colour for two different things): a status is icon + word; a verdict about the job (not eligible, not started) is a warning, only a failure is red.
 const OUTCOMES = {
   started: ['Started', 'good', 'tick'], prepared: ['Ready', 'info', 'tick'], ineligible: ['Not eligible', 'warn', 'flag'],
@@ -120,7 +120,7 @@ export function wireApplyDialog({startedApplying, openJob}) {
           // Why (7 Nov 2026, #3424, review): showing job rows must not make a fully refused batch's error look neutral.
           message('apply-message', outcome.error, result.ok ? undefined : 'error');
           batchFinished = !!result.ok;   // before showOutcomes: it hides "Change and try again" for a batch that started something
-          showOutcomes(outcome.outcomes, openJob);   // Why (7 Nov 2026, #3424): keep partial success inspectable and block a duplicate batch from the finished dialog.
+          showOutcomes(outcome.outcomes, openJob);   // Why (7 Nov 2026, #3424; 8 Nov 2026, owner): partial success stays listed with its rows (the title opens the job) and a duplicate batch is blocked from the finished dialog: no "Change and try again" after jobs started.
           return;
         }
         if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }

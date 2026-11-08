@@ -78,7 +78,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
     if (result.ok) done++;
     else why ||= result.error || '';
     const refused = result.ok && result.ineligible && !options.allowIneligible;   // with the opt-in on, a not-eligible kit still starts: it is just "prepared"
-    // Why (7 Nov 2026, #3424): drafting can succeed while eligibility prevents a job from starting; preserve that result for the batch summary.
+    // Why (7 Nov 2026, #3424; 8 Nov 2026, owner): drafting can succeed while the kit's eligibility prevents a job from starting; keep that verdict and its reason for the batch summary. With the opt-in on it is not a refusal: the job still starts.
     outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: refused ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: String(result.ineligible || '').replace(/^\s*Not eligible:\s*/i, '') || result.error || ''});
     codes.push(job.code);
     if (!result.stopped && !refused) tries++;
