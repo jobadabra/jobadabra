@@ -18,10 +18,10 @@ doc.getElementById = id => {
   }
   return node;
 };
-let reply, reads = 0;
+let reply, reads = 0, held = Promise.resolve();   // held: a readiness answer the test releases
 const calls = [], views = [];
 globalThis.window.pilot = new Proxy({
-  applyReadiness: async (job, options) => { calls.push(['applyReadiness', job.url, options]); return {kit: {ok: true}, check: null}; },   // R2 (8 Nov 2026): every row Apply gets the job ready first
+  applyReadiness: async (job, options) => { calls.push(['applyReadiness', job.url, options]); await held; return {kit: {ok: true}, check: null}; },   // R2 (8 Nov 2026): every row Apply gets the job ready first
   applyOne: async (...args) => { calls.push(args); return reply; },
   jobs: async () => { reads++; return null; },
   pageView: async view => { views.push(view); },
@@ -94,4 +94,38 @@ test('saving a new Apply mode in Settings redraws the rows with its label', () =
     applySaved({apply: {mode: 'fill', chosenAt: '2026-11-07T00:00:00Z'}});
     assert.equal($('jobs-body').querySelector('button.row-main').textContent, 'Apply in background');
   } finally { shared.state = was; }
+});
+
+// Code review of R2 (8 Nov 2026): a ⋯ menu pick closed the menu and said nothing for the 20-40 s of Apply readiness, and a second pick drafted and queued the same job twice.
+test("a ⋯ menu pick says the check runs, and a second pick on the same job while it runs starts nothing", async () => {
+  const {createRowApply} = await import('../../../renderer/pages/jobs-apply-row.js');
+  const {job} = draw({background: true, ok: true, message: '1 application queued in the background.'});
+  let release;
+  held = new Promise(done => { release = done; });
+  const pick = createRowApply(job, {rerender: () => {}}).modeItems().find(item => item.label === 'Background automation');
+  const first = pick.run(), second = pick.run();
+  await second;
+  assert.match($('toasts').textContent, /Checking apply readiness/, 'the pick says the check runs');
+  release();
+  await first;
+  held = Promise.resolve();
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start');
+  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the pick goes with the start');
+});
+
+// Code review of R2 (8 Nov 2026): a form filled on the server opens its hand-off (Review and submit); the ⋯ menu's per-job modes would start it afresh and skip those answers.
+test("a job filled on the server offers no per-job Apply modes; a job with a kit does", async () => {
+  const menuOf = more => {
+    const row = $('jobs-body').querySelector('article.job-row');
+    const button = [...row.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === more);
+    button.listeners.click[0]({stopPropagation() {}, preventDefault() {}});
+    return [...doc.querySelectorAll('.ui-menu-heading')].map(item => item.textContent);
+  };
+  const {job} = draw({ok: true});
+  const more = [...$('jobs-body').querySelectorAll('button')].map(item => item.getAttribute('aria-label')).find(Boolean);
+  assert.deepEqual(menuOf(more), ['Apply to this job with'], `the ⋯ menu (${more}) of a job with a kit offers the modes`);
+  job.ready = true;
+  (await import('../../../renderer/components.js')).closeMenu();
+  renderJobs();
+  assert.deepEqual(menuOf(more), [], 'a server-filled job offers none');
 });

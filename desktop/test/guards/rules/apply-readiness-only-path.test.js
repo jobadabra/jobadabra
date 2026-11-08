@@ -35,7 +35,7 @@ test('nothing but the Apply readiness step drafts a kit or reads a form', () => 
 });
 
 test('the batch, Ready to send and Prepare top matches reach the step, not a kit draft', () => {
-  assert.match(read('lib/apply-handlers.js'), /job => readiness\.applyReadiness\(jobOf\(job\)\)\.then\(done => done\.kit\)/, 'the Apply batch drafts through the step');
+  assert.match(read('lib/apply-handlers.js'), /job => readiness\.applyReadiness\(\{\.\.\.jobOf\(job\)[^\n]*\.then\(done => done\.kit\)/, 'the Apply batch drafts through the step');
   assert.match(read('lib/kit-handlers.js'), /prepare: \{kit: job => readyThroughStep\(storage, job\)/, "Ready to send's night drafts through the step");
   assert.match(read('lib/job-actions-handlers.js'), /readiness\.applyReadiness\(/, 'Prepare top matches goes through the step on this Mac');
 });

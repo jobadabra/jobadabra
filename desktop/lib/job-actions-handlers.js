@@ -13,9 +13,9 @@ import {log as appLog} from './log.js';
 
 // Apply readiness on the top matches (spec 2026-11-07-apply-readiness-design.md, owner's answer 2): the best-scored open jobs without a kit, as many as the engine's kits mode drafted (KITS_DEFAULT).
 const TOP_MATCHES = 3;
-/** Each top match through the one step, one after the other, each saying its own kit's notice (`say`). */
+/** Each top match through the one step, one after the other, each saying its own kit's notices. */
 async function readyTop(readiness, jobs) {
-  for (const job of jobs) await readiness.applyReadiness({url: job.url, code: job.code, title: `${job.title} · ${job.company}`, kit: false, posted_at: job.posted_at || ''}, {say: true});
+  for (const job of jobs) await readiness.applyReadiness({url: job.url, code: job.code, title: `${job.title} · ${job.company}`, kit: false, posted_at: job.posted_at || ''}, {notices: 'all'});
 }
 
 export function registerJobActionsHandlers(ctx) {
@@ -34,11 +34,15 @@ export function registerJobActionsHandlers(ctx) {
     }
     const readiness = readinessOf(storage);
     if (!readiness) return {text: '⚠️ Apply readiness is not ready yet. Try again in a moment.'};
-    const jobs = (await jobsList(storage)).jobs || [], codes = new Set(pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => job.code));
-    if (!codes.size) return {text: 'Your top matches are ready to apply: nothing to prepare.'};
-    readyTop(readiness, jobs.filter(job => codes.has(job.code))).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`));
-    return {text: `Checking apply readiness on your top ${codes.size === 1 ? 'match' : `${codes.size} matches`}.`};
+    // Why (8 Nov 2026, code review of R2): one run at a time, as the engine task's lock did: a second press while it runs would draft the same kits again and spend the AI twice.
+    if (topRun) return {text: 'Apply readiness on your top matches is already running.'};
+    const jobs = (await jobsList(storage)).jobs || [], byCode = new Map(jobs.map(job => [job.code, job]));
+    const top = pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => byCode.get(job.code));   // best first, as pickTop orders them
+    if (!top.length) return {text: 'Your top matches are ready to apply: nothing to prepare.'};
+    topRun = readyTop(readiness, top).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`)).finally(() => { topRun = null; });
+    return {text: `Checking apply readiness on your top ${top.length === 1 ? 'match' : `${top.length} matches`}.`};
   };
+  let topRun = null;   // the run of Apply readiness on the top matches in progress, or null
   // Every Telegram command, from the app (the answer also goes to Telegram when connected).
   const COMMANDS = ['check', 'employers', 'run', 'today', 'applied', 'saved', 'insight', 'weekly', 'mail', 'scout', 'status', 'add', 'help'];
   ipcMain.handle('command', async (_, name, arg = '') => {

@@ -194,7 +194,8 @@ export function renderJobs() {
       renderJobs();
       if (next === 'dismissed') askWhy(job);   // one optional tap: why (counted with the score band only)
     };
-    const applier = createRowApply(job, {rerender: renderJobs}), modes = [];   // modes: the ⋯ menu's per-job Apply modes, listed after the job's own pages   // the row's Apply and the ⋯ menu's per-job modes, through Apply readiness (pages/jobs-apply-row.js)
+    // The row's Apply and the ⋯ menu's per-job modes, through Apply readiness (pages/jobs-apply-row.js); `modes` are listed after the job's own pages.
+    const applier = createRowApply(job, {rerender: renderJobs}), modes = [];
     // Why (2026-11-05, owner screenshots): queued and filling sessions must open their existing work, never offer another Apply, regardless of AI provider.
     if (job.status !== 'applied' && job.url && live) {
       const open = el('button', `row-main ${live.status === 'input' ? 'state-apply' : 'state-opened'}`, live.status === 'input' ? t('pagesCommon.continue') : t('pagesJobs.viewSession'));
@@ -217,7 +218,7 @@ export function renderJobs() {
         if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else toastMessage(t('pagesJobs.filledOpenFailed'), result.error || t('pagesJobsHelp.tryReady'), jobPlace(job), 'bad');
       });
       box.append(fill);
-      modes.push(...applier.modeItems());
+      if (!job.ready) modes.push(...applier.modeItems());   // Why (8 Nov 2026, code review of R2): a form filled on the server opens its hand-off; a fresh start would skip those answers
       if (jobsState.claudeReady && resumeOffered()) {
         const started = claudeStarted.has(pageKey(job.url));
         menu.push({icon: 'bot', label: started ? t('pagesJobs.claudeApplying') : t('pagesJobs.applyClaude'), disabled: started,

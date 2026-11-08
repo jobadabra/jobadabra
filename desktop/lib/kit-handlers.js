@@ -29,7 +29,7 @@ const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
 const readyThroughStep = async (storage, job) => {
   const readiness = readinessOf(storage);
   if (!readiness) return {ok: false, error: 'Apply readiness is not ready yet.'};
-  return (await readiness.applyReadiness(job)).kit;
+  return (await readiness.applyReadiness({...job, title: [job.title, job.company].filter(Boolean).join(' · ')}, {notices: 'failures'})).kit;   // a failure is said, as the night's old direct draft did
 };
 // Why (#3463): quiet errors feed Apply/pipeline output, so only UI calls resolve display wording while canonical flow values stay unchanged.
 const displayError = (quiet,key,canonical) => quiet ? canonical : t(key);

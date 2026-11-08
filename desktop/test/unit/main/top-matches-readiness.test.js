@@ -18,12 +18,13 @@ function rig(jobs) {
 }
 
 test('the three best open jobs without a kit each go through Apply readiness, with their notices', async () => {
-  const {press, asked, done} = rig([row('low', 40), row('a', 95), row('kitted', 99, {kit: true}), row('b', 90), row('gone', 97, {status: 'applied'}), row('c', 80), row('d', 70)]);
+  const {press, asked, done} = rig([row('low', 40), row('c', 80), row('a', 95), row('kitted', 99, {kit: true}), row('b', 90), row('gone', 97, {status: 'applied'}), row('d', 70)]);
   const answer = await press();
   assert.match(answer.text, /apply readiness on your top 3 matches/i);
+  assert.match((await press()).text, /already running/, 'a second press while it runs starts nothing (code review of R2: it drafted the same kits twice)');
   await done;
-  assert.deepEqual(asked.map(([code]) => code), ['a', 'b', 'c'], 'best fit first; a job with a kit, an applied one and a low fit are left out');
-  assert.ok(asked.every(([, options]) => options?.say === true), 'each says its own kit notice');
+  assert.deepEqual(asked.map(([code]) => code), ['a', 'b', 'c'], 'best fit first, whatever the list order; a job with a kit, an applied one and a low fit are left out');
+  assert.ok(asked.every(([, options]) => options?.notices === 'all'), 'each says its own kit notices');
 });
 
 test('no top match lacks a kit: nothing runs and the answer says so', async () => {

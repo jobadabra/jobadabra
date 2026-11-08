@@ -15,6 +15,7 @@ import {sayRefused, toastMessage} from './startup.js';
 
 // The menu's order: the hidden browser first (the mode most people pick), then Chrome, then Full automation (owner's picture, 8 Nov 2026).
 const MENU_ORDER = ['fill', 'check', 'auto'];
+const STARTING = new Set();   // job links whose ⋯ menu pick is getting ready or starting: the rows are redrawn often, so this outlives one row
 
 /**
  * The row's Apply for one job. `rerender` redraws the Jobs list. -> {start(button, {pick, ready}), modeItems()}: `start` gets the job ready through Apply readiness (unless `ready`: the
@@ -48,10 +49,19 @@ export function createRowApply(job, {rerender}) {
     else if (sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = t('pagesJobs.noLink');
     else toastMessage(t('pagesJobs.openJobFailed'), t('pagesJobs.hasNoLink'), jobPlace(job), 'bad');
   };
-  /** A ⋯ menu pick: Full automation's confirmation first (none when Settings holds it), then this job only, in that mode. */
+  /**
+   * A ⋯ menu pick: Full automation's confirmation first (none when Settings holds it), then this job only, in that mode. The menu has closed, so a pop-up says the check runs,
+   * and a second pick on the same job while it runs starts nothing (code review of R2, 8 Nov 2026: a silent 20-40 s, and a second pick drafted the kit and queued the job twice).
+   */
   const startIn = async mode => {
-    const picked = await applyDialogPick({mode, settings: shared.state?.settings, confirm: askFullAutomation});
-    if (picked.ok) await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt}});
+    if (STARTING.has(job.url)) { toastMessage(t('pagesJobs.checkingReadiness'), details.title || '', jobPlace(job)); return; }
+    STARTING.add(job.url);   // before the first await: two quick picks must not both pass the check above
+    try {
+      const picked = await applyDialogPick({mode, settings: shared.state?.settings, confirm: askFullAutomation});
+      if (!picked.ok) return;
+      toastMessage(t('pagesJobs.checkingReadiness'), [job.title, job.company].filter(Boolean).join(' · '), jobPlace(job));
+      await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt}});
+    } finally { STARTING.delete(job.url); }
   };
   const modeItems = () => {
     const saved = applyOf(shared.state?.settings).mode;
