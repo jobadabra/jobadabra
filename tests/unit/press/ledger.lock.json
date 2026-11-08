@@ -9,7 +9,7 @@
  },
  "L03": {
   "gets": "every stage counts from the press, so a press ends in 3 minutes",
-  "hash": "2578df94d06ea142"
+  "hash": "ae6c5730ee4dcbf4"
  },
  "L04": {
   "gets": "no AI call starts in the last seconds of the press",
@@ -130,5 +130,9 @@
  "L33": {
   "gets": "the first press keeps scoring until a 70+ job, up to 10",
   "hash": "a8b8bf55c97302a6"
+ },
+ "L34": {
+  "gets": "a press after the first is one search: waiting jobs scored first, the job boards read inside it beside the employer sites",
+  "hash": "d5f84241849ae4f1"
  }
 }

@@ -70,7 +70,7 @@ jobs:
         timeout-minutes: 10
         env:
           E2E_TRY_MINUTES: 10   # = this step's timeout-minutes (tests/test_e2e_try_minutes.py): the suite stops itself before it, with its evidence
-        run: xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs settings
+        run: xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node suite.mjs settings
       - name: Screenshots and the suite's steps
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6

@@ -138,6 +138,12 @@ FIXES = (
     Fix('L33', '18 Oct 2026 801ed53d (Cluj)', 'the first press keeps scoring until a 70+ job, up to 10',
         ('tests/unit/sources/test_first_jobs.py::test_scoring_goes_on_three_at_a_time_until_a_job_fits_70',
          'tests/unit/sources/test_first_jobs.py::test_the_slice_scores_at_most_ten_while_none_fits')),
+    Fix('L34', '8 Nov 2026 (ps E, run 42411469318 p7)', 'a press after the first is one search: waiting jobs scored first, the job boards read inside it beside the employer sites',
+        ('desktop/test/unit/main/search-steps-beside.test.js::a later press starts the search at once and discovers employers from the job boards inside it',
+         'tests/unit/sources/test_boards_beside.py::test_a_later_press_discovers_the_boards_employers_beside_the_employer_sites'),
+        owner='One process, discovery inside (Recommended)',
+        notes=('a separate boards step held the run lock to ~60 s, so employer sites got ~4 s and places none',
+               'owner, 8 Nov 2026: "If there are jobs waiting to be scored, that should be the first new thing a repeated press does"')),
 )
 
 
