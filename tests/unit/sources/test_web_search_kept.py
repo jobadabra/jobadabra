@@ -1,0 +1,120 @@
+"""The web search a Find jobs run left open at its cut is kept for the next run (owner, 26 Oct 2026: "next one to continue/start properly without
+redoing the same job"; E2b, 8 Nov 2026: on persona 18's chain replay run 1's web search was still searching at the cut, run 2 asked it again from
+second 0 and waited ~116 s for it, 70% of that run).
+Design: states of the web search across a cut: ASKED (board_web.early at second 0, its future in board_web._early with its own copy of
+found_boards.json) -> TAKEN (the boards stage calls start/finish, or the run's end leaves it: daily_search.leave_early_reads -> board_web.leave) -> ANSWERED LATE (its done
+callback keeps the stamp and the boards in the saved found_boards.json: _keep_late) -> KEPT -> READ NEXT RUN (asked_for says it is not due, no new
+question). One owner: board_web; the run's end hands it whatever no stage took (the stage is skipped at the cut by more than one path).
+Real web search function, a model that answers only when the test lets it; no real time enters a result."""
+import io
+import json
+import sqlite3
+import tempfile
+import threading
+import time
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+from src import daily_search, time_budget
+from src.ai import board_ideas
+from src.sources import board_web, careers, found_boards
+
+SEARCH = {'role_keywords': ['civil engineer'], 'locations': {'top_tier': ['copenhagen']}}
+ASKED = ('k-civil', ['Denmark'], ['civil engineer'], ['any'], ['copenhagen'])
+FOUND = {'boards': [{'name': 'englishjobs.dk', 'search_url': 'https://englishjobs.dk/in/kobenhavn/{role}', 'countries': ['Denmark'], 'kinds': ['any'],
+                     'source_kind': 'sector'}]}
+BUDGET = 3
+_READER = careers.READER
+
+
+def setUpModule():   # no page read reaches a real model here (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
+
+class Gated:
+    """The web search's model: answers only when the test sets `gate` (a hang guard of 30 s, not a measure of speed); counts the questions."""
+    def __init__(self, gate):
+        self.gate, self.asked = gate, []
+        self.messages = self
+
+    def create(self, **kwargs):
+        self.asked.append(kwargs)
+        assert self.gate.wait(30), 'the test never let the web search answer'
+        return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(FOUND))], usage=None)
+
+
+def wait_for(condition, seconds=6.0):
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        if condition():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+class AWebSearchOpenAtTheCut(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.data = Path(tmp.name)
+        self.gate = threading.Event()
+        self.addCleanup(self.gate.set)   # no search thread outlives its test
+        self.client = Gated(self.gate)
+        for patch in (mock.patch('src.paths.DATA', self.data), mock.patch('src.ai.board_ideas.asked_for', return_value=ASKED),
+                      mock.patch.object(board_web, 'careers', SimpleNamespace(READER=object(), get_text=lambda url: '')),
+                      mock.patch.object(board_web, 'disabled', return_value=False), mock.patch('src.ai.cost.side'),
+                      mock.patch.object(board_web, '_searcher', return_value=self.client),
+                      mock.patch.object(board_web, '_judged', side_effect=lambda found, roles, fetch: found),
+                      mock.patch.object(found_boards.board_employers, 'note')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        board_web._early.clear()
+        self.addCleanup(board_web._early.clear)
+        self.addCleanup(time_budget.start, 0)
+
+    def stamped(self):
+        return bool((board_ideas.load().get('web') or {}).get('k-civil'))
+
+    def test_the_next_run_reads_what_the_open_search_found_and_does_not_ask_again(self):
+        time_budget.start(BUDGET)   # run 1
+        board_web.early(SEARCH)   # at second 0
+        # the run ends past its read cut: no stage took the search (found_boards.read returns at the cut; aggregators skips the boards' reader)
+        time_budget.start(BUDGET, now=time.monotonic() - BUDGET)
+        with redirect_stdout(io.StringIO()) as log, mock.patch.object(daily_search, 'load_search_config', return_value=SEARCH):
+            daily_search.leave_early_reads(SimpleNamespace(mode='run', only_visits=False))
+        self.assertEqual(board_web._early, {}, 'the open web search was never handed on: nobody will keep its answer')
+        self.gate.set()   # the answer comes after the cut
+        self.assertTrue(wait_for(self.stamped), 'the late answer of the web search was lost: run 2 will ask it again')
+        self.assertIn('englishjobs.dk', json.dumps(board_ideas.load().get('ideas')), 'the boards it found are kept for the next run')
+        self.assertIn('did not answer in the search', log.getvalue())
+        time_budget.start(BUDGET)   # run 2
+        with redirect_stdout(io.StringIO()):
+            board_web.early(SEARCH)
+        self.assertEqual(len(self.client.asked), 1, 'run 2 asked the web search again')
+
+    def test_a_search_a_stage_took_is_not_handed_on_twice(self):
+        time_budget.start(BUDGET)
+        board_web.early(SEARCH)
+        with redirect_stdout(io.StringIO()):
+            started = board_web.start(SEARCH, board_ideas.load())   # the job boards' stage took it
+            with mock.patch.object(daily_search, 'load_search_config', return_value=SEARCH):
+                daily_search.leave_early_reads(SimpleNamespace(mode='run', only_visits=False))
+        self.assertIsNotNone(started)
+        self.assertEqual(board_web._early, {})
+        self.assertFalse(started[0].done(), 'the stage still owns the search: the run end did not touch it')
+
+    def test_modes_that_start_no_search_hand_nothing_on(self):
+        board_web.early(SEARCH)
+        with mock.patch.object(daily_search, 'load_search_config', return_value=SEARCH):
+            daily_search.leave_early_reads(SimpleNamespace(mode='more', only_visits=False))
+        self.assertEqual(len(board_web._early), 1)
+
+if __name__ == '__main__':
+    unittest.main()

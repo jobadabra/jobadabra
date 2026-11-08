@@ -63,6 +63,7 @@ def search(args, stores=None):
                 report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
             except Exception:   # an error waits for the scores in flight; a Stop (SystemExit) ends at once, the daemon thread with it
                 scored()
+                leave_early_reads(args)
                 raise
             scored()   # before the import: run['score'] is whole
             imported = import_sources(db, report, so_far, run)
@@ -78,6 +79,7 @@ def search(args, stores=None):
         messages, new_count, keyboards = digest.build_digest(db, args.limit, hidden_urls=hidden, page=args.page,
                                                       seed=seed, shown_ids=shown_ids, saved_urls=saved,
                                                       hide_unscored=ai_ready())
+    leave_early_reads(args)
     resume.save()   # what each step left for the next run, as counts for the planner (src/press/resume.py); the items stay in their own files
     try:   # the plan after this run, which its card says as "Next: ..." (src/press/plan.py next_steps): AFTER resume.save, which zeroes the steps that finished (review, #P3); log only
         if args.mode != 'more':   # a '➕ Next' page plans nothing at its start either
@@ -113,6 +115,17 @@ def start_sources(args, read_profile):
         board_web.early(load_search_config())
         from .sources import eures   # Why (27 Oct 2026, benchmark 40504636029): the free-API stage starts at 72-107 s and queued EURES in every persona; read from second 0, it only takes the result
         eures.start_early(load_search_config())
+
+
+# The run is over: what started at second 0 and no stage took is handed on, so its answer is kept for the next run (not asked again).
+def leave_early_reads(args):
+    """Why (E2b, 8 Nov 2026, product bug on persona 18's chain: run 2 waited ~116 s, ~70% of the run, for a web search run 1 had paid for): the web search
+    started at second 0 (start_sources) is taken by the job boards' stage, which is skipped at the read cut by more than one path (found_boards.read,
+    aggregators past_cut) or never reached after an error; the run's end is the one place that sees all of them (board_web.leave). EURES needs no hand-over:
+    its stage always takes it (aggregators.CHEAP_PAST_CUT); the early board proposal's AI answers are cached."""
+    if args.mode in ('scheduled', 'run') and not args.only_visits:
+        from .sources import board_web
+        board_web.leave(load_search_config())
 
 
 # Ask the first press's board proposal once the pool has named the employers (see first_jobs.propose_early for the why).

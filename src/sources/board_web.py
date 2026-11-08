@@ -222,14 +222,31 @@ def finish(started, proposed, timeout=None, data=None):
     except Exception:  # noqa: BLE001 — the proposal's boards stand
         return []
     if found is read_budget.LEFT:   # not killed: when it answers, its boards are kept for the next search, not asked again (_keep_late)
-        print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
-        future.add_done_callback(lambda done: _keep_late(done, copy, data))
+        _leave_open(future, copy, data)
         return []
     found = found or []
     if data is not None and copy is not None and copy is not data:
         _merge(data, copy)
     hosts = {board['host'] for board in proposed}
     return [{**board, 'origin': 'web'} for board in found if board['host'] not in hosts]
+
+
+def _leave_open(future, copy, data):
+    """The one place a search still open at the cut is handed on: its answer, when it comes, is kept for the next search (_keep_late)."""
+    print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
+    future.add_done_callback(lambda done: _keep_late(done, copy, data))
+
+
+def leave(search_config):
+    """The job boards' step is skipped at the search's read cut (found_boards.read): the web search started with the run (early), still open,
+    is handed on here so its late answer is kept for the next search, not lost and asked again from second 0 (E2b, 8 Nov 2026: persona 18's
+    chain, run 2 waited ~116 s, ~70% of the run, for a search run 1 had paid for). Nothing is read or asked; no-op when none is open."""
+    from ..ai import board_ideas
+    asked = board_ideas.asked_for(search_config)
+    with _lock:
+        taken = _early.pop(asked[0], None) if asked else None
+    if taken is not None:
+        _leave_open(taken[0], taken[1], None)
 
 
 def _keep_late(done, copy, data):
@@ -353,7 +370,8 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     found = _judged(found, roles, fetch)
     if found:
         data = board_ideas.load() if own else data
-        data.setdefault('ideas', {})[key] = (data['ideas'].get(key) or []) + [{**board, 'origin': 'web'} for board in found]
+        ideas = data.setdefault('ideas', {})   # Why (E2b, 8 Nov 2026): data['ideas'] read before setdefault made a store with no ideas yet raise KeyError after the paid call
+        ideas[key] = (ideas.get(key) or []) + [{**board, 'origin': 'web'} for board in found]
         if own:
             board_ideas.save(data)
     print(f"Job boards: a web search found {', '.join(board['name'] for board in found) or 'no trade or local board'}", flush=True)
