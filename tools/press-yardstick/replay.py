@@ -27,6 +27,24 @@ def runs(recordings, sides):
     return [(persona, side, Path(checkout)) for persona in personas for side, checkout in sides.items()]
 
 
+# Why (rf, 8 Nov 2026, gi): the value is press-tapes.yml:38 (`JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5`, since #3572). Every recording made so far used it but none says so (recorded.json is written from this PR on);
+# a replay without it asks Sonnet for every main-tier step and misses every one. A tape without the file is a press-tapes recording of that time. Both sides get it here, because main's
+# own run.mjs does not read recorded.json yet.
+LEGACY_OVERRIDE = 'claude-haiku-5-5'
+
+
+def recorded_override(tape):
+    """The model override a recording was made with (its recorded.json), LEGACY_OVERRIDE for a recording made before the file existed; '' = none."""
+    try:
+        found = json.loads(Path(tape, 'recorded.json').read_text(encoding='utf-8'))['model_override']
+    except FileNotFoundError:
+        print(f'recording has no recorded.json: using {LEGACY_OVERRIDE}, the override press-tapes.yml recorded with ({tape})', flush=True)   # a change of that env shows up here, not as misses
+        return LEGACY_OVERRIDE
+    if not isinstance(found, str):
+        raise ValueError(f'{tape}/recorded.json has no model_override: the recording does not say which model it was made with')
+    return found
+
+
 def start(recordings, art, persona, side, checkout):
     """Starts one replay in its own folder; returns (Popen, its log file)."""
     work = Path(art, f'yardstick-{persona}-{side}').resolve()
@@ -39,6 +57,10 @@ def start(recordings, art, persona, side, checkout):
               f'--tape "{work}/tape" --replay --no-live --wait-scale 1')
     venv = (Path(checkout) / '.venv' / 'bin').resolve()
     env = {**os.environ, 'PATH': f"{venv}{os.pathsep}{os.environ.get('PATH', '')}", 'TMPDIR': str(work / 'tmp'), 'JOBADABRA_TAPE_ITEMS': '1', 'JOBADABRA_TAPE_BUDGET': '0'}
+    override = recorded_override(work / 'tape')
+    env.pop('JOBADABRA_MODEL_OVERRIDE', None)
+    if override:
+        env['JOBADABRA_MODEL_OVERRIDE'] = override
     log = open(work / 'run.log', 'w', encoding='utf-8')
     return subprocess.Popen(['bash', '-c', 'set -o pipefail; ' + script], cwd=checkout, env=env, stdout=log, stderr=subprocess.STDOUT), log
 

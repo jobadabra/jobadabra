@@ -49,6 +49,18 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
     process.env.JOBADABRA_PRESS_SECONDS = option('--ceiling', '');
   }
   if (process.argv.includes('--no-live')) process.env.JOBADABRA_TAPE_LIVE = '0';   // CI has no AI account: a question the tape lacks is counted and raises (src/search_tape.py)
+  // Why (rf, 8 Nov 2026, gi: "a replay then cannot drift from its recording's model"): the model is part of every AI question's key (src/search_tape.py), and press-tapes.yml records with
+  // JOBADABRA_MODEL_OVERRIDE=claude-haiku-5-5 (every main-tier step on Haiku); a replay without it asked Sonnet and missed 23 AI answers of 50 (p11, 8 Nov). The recording says how it was recorded.
+  const recordedFile = path.join(tape, 'recorded.json');
+  if (process.argv.includes('--record')) {
+    fs.mkdirSync(tape, {recursive: true});
+    fs.writeFileSync(recordedFile, JSON.stringify({model_override: process.env.JOBADABRA_MODEL_OVERRIDE || ''}) + '\n');
+  } else if (fs.existsSync(recordedFile)) {
+    const {model_override: recorded} = JSON.parse(fs.readFileSync(recordedFile, 'utf8'));
+    if (typeof recorded !== 'string') { console.error(`${recordedFile} has no model_override: the tape does not say which model it was recorded with`); process.exit(2); }
+    if (recorded) process.env.JOBADABRA_MODEL_OVERRIDE = recorded; else delete process.env.JOBADABRA_MODEL_OVERRIDE;
+    console.log(`tape: recorded with model override ${recorded || '(none)'}, replayed with it`);
+  } else console.log('tape: no recorded.json (recorded before it existed): the model override is the environment\'s');
 }
 
 const lib = file => import(path.join(ROOT, 'desktop', 'lib', file));
