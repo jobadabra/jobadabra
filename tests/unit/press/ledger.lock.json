@@ -9,19 +9,19 @@
  },
  "L03": {
   "gets": "every stage counts from the press, so a press ends in 3 minutes",
-  "hash": "ae6c5730ee4dcbf4"
+  "hash": "92c924eb3b5e0cc5"
  },
  "L04": {
   "gets": "no AI call starts in the last seconds of the press",
-  "hash": "7d6ecadd99184c50"
+  "hash": "e6ef3faee69d6705"
  },
  "L05": {
   "gets": "the job boards step ends at its share of the press",
-  "hash": "00ac012d17058c18"
+  "hash": "37de01fe2f4b672e"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
-  "hash": "6b1142c600b2dfb0"
+  "hash": "9e3be558f203a666"
  },
  "L07": {
   "gets": "a press that scores first still keeps time to read the jobs' facts",
@@ -41,7 +41,7 @@
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
-  "hash": "4b1592eae4d90b36"
+  "hash": "005b19d9ce9fa79d"
  },
  "L12": {
   "gets": "calls that failed do not shrink the next batch",
@@ -141,7 +141,7 @@
  },
  "L36": {
   "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",
-  "hash": "a9023b0ccf6f51c8"
+  "hash": "6cf3fc10a26e5484"
  },
  "L37": {
   "gets": "each Find jobs run saves what every step left for the next one, as counts the planner reads",

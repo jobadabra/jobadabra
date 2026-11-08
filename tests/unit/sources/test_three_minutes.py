@@ -1,14 +1,16 @@
 """A Find jobs run takes at most its time budget, wall clock (owner, 26 Oct 2026: "A find jobs session should take at most 3min"; runs with
 --budget 180 took 12-23 min: the budget stopped only the AI steps, the job boards' extra ways ran one by one after the cut, and the AI steps got
 fresh minutes after the crawl). One run of slow fake stages ends inside its budget and lists what is left; then one loop over every stage
-(src/time_budget.py STAGES): past the run's time, each only queues its work."""
+(src/time_budget.py STAGES): past the run's time, each only queues its work.
+Design (E2b, 8 Nov 2026; the three tests that measured `took` on the wall clock failed on a loaded runner with the code unchanged): the run's time and its
+slow stages are scripted (tests/unit/sources/scripted_read.py): a stage that takes a second spends a second on the clock, a board that never answers is a
+future that never ends. What is asserted is what the code decides at its deadline, on those seconds; no sleep, thread or load enters a result."""
 import io
 import json
 import os
 import sqlite3
 import sys
 import tempfile
-import threading
 import time
 import unittest
 from contextlib import redirect_stdout
@@ -17,6 +19,8 @@ from unittest import mock
 
 from src import time_budget
 from src.sources import aggregators, board_web, board_yield, boards, boards_ahead, careers, feeds, found_boards, read_budget
+from tests.unit.sources import scripted_read
+from tests.unit.sources.scripted_read import Hangs
 
 BUDGET = 3        # seconds: the app's 180 s, scaled (time_budget.part)
 SLACK = 0.6       # a call already running when a stage stops may finish
@@ -57,18 +61,29 @@ class Isolated(unittest.TestCase):
         self.addCleanup(self.db.close)
 
 
-class ARunEndsInItsBudget(Isolated):
+class Scripted(Isolated):
+    """The run's clock and pools are scripted; `self.clock.wall` is the epoch second of the press."""
+    def setUp(self):
+        super().setUp()
+        self.clock = scripted_read.Clock(wall=5000.0)
+        self.pool = scripted_read.install(self, self.clock)
+        patch = mock.patch.object(boards_ahead, 'ThreadPoolExecutor', scripted_read.Pool)   # the web search's boards are read in the caller's thread
+        patch.start()
+        self.addCleanup(patch.stop)
+
+
+class ARunEndsInItsBudget(Scripted):
     def test_slow_boards_employers_and_apis_end_inside_the_budget_and_what_is_left_is_listed(self):
-        def slow_site(source):   # 200 employer sites, a quarter second each, 8 at a time: ~6 s in all
-            time.sleep(0.25)
+        def slow_site(source):   # 200 employer sites, a quarter second each: 50 s if all were read
+            self.clock.spend(0.25)
             return [job(source['slug'])]
 
         def another_way(board, entry, proposed, search, fetch, judge, before, show=None):   # a board's extra ladder: a second each
-            time.sleep(1)
+            self.clock.spend(1)
             return before
 
         def slow_api(search):
-            time.sleep(1)
+            self.clock.spend(1)
             return []
         more = iter([[board(i) for i in range(6, 9)]])   # the web search's boards, found late
         log = io.StringIO()
@@ -77,15 +92,15 @@ class ARunEndsInItsBudget(Isolated):
                 mock.patch.object(board_web, 'start', return_value=None), \
                 mock.patch.object(board_web, 'finish', side_effect=lambda *a, **k: next(more, [])), redirect_stdout(log):
             time_budget.start(BUDGET)
-            began = time.monotonic()
+            began = self.clock.now
             ahead = boards_ahead.Ahead({'role_keywords': ['first officer']}, lambda search: found_boards.read(
                 search, [board(i) for i in range(6)], fetch=lambda url: '', is_relevant=lambda found: [], dead=set()))
             feeds.scan([{'company': f'Co{i}', 'ats': 'lever', 'slug': f's{i}'} for i in range(200)], self.db, fetcher=slow_site, details={})
             ahead.wait()
             aggregators.scan(self.db, {}, readers=[(f'API {i}', slow_api) for i in range(3)])
             while not time_budget.over('score'):   # the AI steps take what the clock gives them
-                time.sleep(0.05)
-            took = time.monotonic() - began
+                self.clock.spend(0.05)
+            took = self.clock.now - began
         said = log.getvalue()
         self.assertLess(took, BUDGET + SLACK, f'the run took {took:.1f} s of its {BUDGET} s budget')
         left = json.loads((self.data / read_budget.FILE).read_text())['keys']
@@ -227,36 +242,33 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
                     self.assertTrue(self.work(stage), stage)
 
 
-class OnePressOneDeadline(Isolated):
+class OnePressOneDeadline(Scripted):
     """A Find jobs press runs the job boards' step (src discover) before daily: one deadline from the press for both (owner's 06:21 press,
     26 Oct 2026: 269 s, discover 177 s of it with no clock, then daily's own 3 minutes). Each step counts from the press (the app's
     JOBADABRA_SEARCH_AT), and discover ends at its share of it (desktop/test/unit/main/search-steps.test.js gives every step the press)."""
 
     def test_a_step_counts_from_the_press_not_from_its_own_start(self):
-        with mock.patch.dict(os.environ, {time_budget.SEARCH_AT: str(time.time() - 1)}):
+        with mock.patch.dict(os.environ, {time_budget.SEARCH_AT: str(self.clock.wall - 1)}):   # the press began one scripted second ago
             time_budget.start(BUDGET)
-        self.assertAlmostEqual(time_budget.DEADLINE - time.monotonic(), BUDGET - 1, delta=0.2)
-        self.assertAlmostEqual(read_budget.cut_at() - time.monotonic(), time_budget.part(90) - 1, delta=0.2, msg='the read cut too')
+        self.assertAlmostEqual(time_budget.DEADLINE - self.clock.now, BUDGET - 1)
+        self.assertAlmostEqual(read_budget.cut_at() - self.clock.now, time_budget.part(90) - 1, msg='the read cut too')
 
     def test_slow_boards_end_at_discovers_share_and_wait_for_the_next_search(self):
-        release = threading.Event()
-        self.addCleanup(release.set)
-
-        def slow(board_, *a, **k):   # a board still open long after the cut; a failed late read keeps nothing (late_reads.when_done)
-            release.wait(10)
-            raise OSError('the test is over')
+        def slow(board_, *a, **k):   # a board still open long after the cut; it never answers in this test, so a late read keeps nothing (late_reads.when_done)
+            raise Hangs()
         argv = ['python -m src discover', '--pages', '5', '--max-companies', '40', '--budget', str(BUDGET)]
         env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_FIXTURE_DIR'}
-        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time())}, clear=True), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(self.clock.wall)}, clear=True), \
                 mock.patch.object(boards, 'boards', return_value=[]), mock.patch('src.ai.board_ideas.ideas', return_value=[board(i) for i in range(6)]), \
                 mock.patch.object(found_boards, 'read_board', side_effect=slow), mock.patch.object(board_web, 'start', return_value=None), \
                 mock.patch.object(board_web, 'finish', return_value=[]), mock.patch.object(board_yield, '_read_since', return_value=None), \
                 redirect_stdout(io.StringIO()) as log:
-            began = time.monotonic()
+            began = self.clock.now
             boards.main()
-            took = time.monotonic() - began
+            took = self.clock.now - began
         share = time_budget.part(boards.SHARE_S)
-        self.assertLess(took, share, f'discover took {took:.2f} s of its {share:.2f} s share of the press')
+        self.assertLessEqual(took, share, f'discover took {took:.2f} s of its {share:.2f} s share of the press')
+        self.assertNotIn(True, self.pool.waited, 'the pool of open boards was waited for')
         self.assertRegex(log.getvalue(), r'⏱ Time is up \(\d+ min \d\d s\) for job boards: 6 boards wait for the next search')
 
     def test_past_its_share_the_fixed_boards_read_nothing_and_follow_no_employer(self):
@@ -265,7 +277,7 @@ class OnePressOneDeadline(Isolated):
         asked = []
         argv = ['python -m src discover', '--budget', str(BUDGET)]
         env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_FIXTURE_DIR'}
-        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time() - BUDGET)}, clear=True), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(self.clock.wall - BUDGET)}, clear=True), \
                 mock.patch.object(boards, 'boards', return_value=['jobs.ch', 'SwissDevJobs', 'TechTree']), \
                 mock.patch.object(boards, 'jobsch_terms', return_value=['pilot']), mock.patch.object(boards, 'jobsch_places', return_value=['Zurich']), \
                 mock.patch.object(boards, 'rotation', side_effect=lambda pairs: (pairs, lambda taken: None)), \
