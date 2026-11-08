@@ -10,7 +10,6 @@ The search after it is unchanged; scored jobs are skipped by their hash, so the 
 The employer sites' jobs are imported and scored without waiting for the boards; a boards step still running joins when it finishes (#2913).
 Tests: tests/unit/sources/test_first_jobs.py, tests/unit/sources/test_first_jobs_slow_boards.py, tests/unit/sources/test_proven_boards.py."""
 import os
-import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from . import store
@@ -151,8 +150,9 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     queue, nearest place first (src/ai/title_queue.py), and the jobs of each batch that fits reach scoring as it lands, from any reader, so the first job waits
     for one batch, not for a reader's whole sort, and a Toulouse press scores the jobs near Toulouse instead of 6 in Paris while EURES's rows wait.
     Threads: this one is the hub (it owns the job store); the other readers only read, then it sorts and imports what they read, in `join`."""
-    started = time.monotonic()
+    from . import time_budget
     from .sources import aggregators
+    started = time_budget.now()
     aggregators.TAKEN.clear()   # this press's own takings only
     scan, scorer, model, fits = scan or feeds.scan, scorer or score.run, model or score.DEFAULT_MODEL, fits or scored_fits
     imports = _Imports(import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
@@ -187,7 +187,7 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
         say(f'First jobs: {imports.count} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the readers joined
         return 0
     said = f', one fits {FIT}+' if scoring.strong else ''
-    say(f'First jobs: {scoring.done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
+    say(f'First jobs: {scoring.done} scored in {round(time_budget.now() - started)} s{said}; the full search goes on')
     return scoring.done
 
 

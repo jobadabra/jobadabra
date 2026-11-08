@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from src import time_budget
+from src.press import clock
 from src.sources import feed_scan, feeds, read_budget
 
 TABLE = 'CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))'
@@ -74,8 +75,7 @@ class Base(unittest.TestCase):
         self.clock = Clock()
         scripted = SimpleNamespace(monotonic=self.clock.monotonic, time=lambda: 0.0)   # wall time 0: no SEARCH_AT, the run starts now
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(read_budget, 'READ_SECONDS', READ_S),
-                      mock.patch.object(read_budget, 'time', scripted), mock.patch.object(time_budget, 'time', scripted),
-                      mock.patch.object(feed_scan, 'time', scripted), mock.patch.object(feed_scan, 'ThreadPoolExecutor', Inline)):
+                      mock.patch.object(clock, 'time', scripted), mock.patch.object(feed_scan, 'ThreadPoolExecutor', Inline)):   # the one clock reads time (src/press/clock.py), the stage files do not
             patch.start()
             self.addCleanup(patch.stop)
         self.addCleanup(time_budget.start, 0)
