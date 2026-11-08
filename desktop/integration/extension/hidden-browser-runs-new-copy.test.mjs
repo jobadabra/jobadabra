@@ -36,47 +36,76 @@ function evaluate(socketUrl, expression) {
   });
 }
 
-test('after an update the hidden browser runs the new extension, on the profile it kept', {timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, async () => {
+/** One app home with a kept hidden-browser profile; `release` ships an edition of the real extension, `app()` is one app process's start, `edition()` what its worker runs. */
+function home() {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-hidden-new-copy-'));
   const root = path.join(folder, 'root'), source = path.join(root, 'extension');
   fs.mkdirSync(root);
   fs.symlinkSync(DESKTOP, path.join(root, 'desktop'), 'junction');   // the app imports its copy and storage helpers from <root>/desktop/ready-fill
-  const release = edition => {   // the extension as one app build ships it: the real extension, marked with its edition at the top of its worker
-    fs.rmSync(source, {recursive: true, force: true});
-    fs.cpSync(EXTENSION, source, {recursive: true});
-    const worker = path.join(source, 'background.js');
-    fs.writeFileSync(worker, `globalThis.__testEdition = '${edition}';\n${fs.readFileSync(worker, 'utf8')}`);
-  };
   const storage = {path: name => path.join(folder, 'home', name)};
   const profile = storage.path(path.join('background-browser', 'profile'));
-  // A CI runner may not allow the sandbox for a plain spawn: the app's own e2e allowance passes it (lib/background-browser.js e2eArguments), nothing else.
-  const env = {JOBADABRA_E2E: process.env.JOBADABRA_E2E, JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS};
-  process.env.JOBADABRA_E2E = '1'; process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS = JSON.stringify(['--no-sandbox']);
   const children = [];
-  const app = () => createBackgroundBrowser(storage, {root, find: () => chromium.executablePath(), reaper: () => {},
-    spawn: (file, args, options) => { const child = spawn(file, args, options); children.push(child); return child; }});
   const close = () => endBrowser({profile, launched: true});
-  onHang(close);
-  const editionRunning = async () => {
-    const port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
-    const worker = (await json(`http://127.0.0.1:${port}/json/list`)).find(target => target.type === 'service_worker' && target.url.endsWith('/background-owned.js'));
-    return evaluate(worker.webSocketDebuggerUrl, 'globalThis.__testEdition');
+  return {
+    release(edition) {   // the extension as one app build ships it: the real extension, marked with its edition at the top of its worker
+      fs.rmSync(source, {recursive: true, force: true});
+      fs.cpSync(EXTENSION, source, {recursive: true});
+      const worker = path.join(source, 'background.js');
+      fs.writeFileSync(worker, `globalThis.__testEdition = '${edition}';\n${fs.readFileSync(worker, 'utf8')}`);
+    },
+    // A CI runner may not allow the sandbox for a plain spawn: the app's own e2e allowance passes it (lib/background-browser.js e2eArguments), nothing else.
+    app: () => createBackgroundBrowser(storage, {root, find: () => chromium.executablePath(), reaper: () => {},
+      spawn: (file, args, options) => { const child = spawn(file, args, {...options, env: {...process.env, ...E2E_ENV}}); children.push(child); return child; }}),
+    async edition() {
+      const port = Number(fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+      const worker = (await json(`http://127.0.0.1:${port}/json/list`)).find(target => target.type === 'service_worker' && target.url.endsWith('/background-owned.js'));
+      return evaluate(worker.webSocketDebuggerUrl, 'globalThis.__testEdition');
+    },
+    close,
+    async end() {
+      await close();
+      for (const child of children) if (child.exitCode === null) child.kill();
+      fs.rmSync(folder, {recursive: true, force: true});
+    },
   };
+}
+const E2E_ENV = {JOBADABRA_E2E: '1', JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(['--no-sandbox'])};
+/** Runs `body` with the app's e2e launch allowance set (browserArguments reads process.env), restoring the variables after. */
+async function withE2eEnv(body) {
+  const kept = Object.fromEntries(Object.keys(E2E_ENV).map(key => [key, process.env[key]]));
+  Object.assign(process.env, E2E_ENV);
+  try { return await body(); } finally { for (const [key, value] of Object.entries(kept)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
+}
+const START = {port: 51999, token: 'stand-in-token'};   // nothing listens there: the worker only has to load
+
+test('after an update the hidden browser runs the new extension, on the profile it kept', {timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, () => withE2eEnv(async () => {
+  const each = home();
+  onHang(each.close);
   try {
     at('the first start, on a fresh profile');
-    release('first');
-    await app().start({port: 51999, token: 'stand-in-token'});
-    assert.equal(await editionRunning(), 'first', 'positive control: a fresh profile runs the copy it was given');
-    await close();
+    each.release('first');
+    await each.app().start(START);
+    assert.equal(await each.edition(), 'first', 'positive control: a fresh profile runs the copy it was given');
+    await each.close();
     at('the start after an update, on the profile it kept');
-    release('second');
-    await app().start({port: 51999, token: 'stand-in-token'});
-    assert.equal(await editionRunning(), 'second', 'the hidden browser still runs the extension its profile first registered: every update since misses it');
-  } finally {
-    await close();
-    if (env.JOBADABRA_E2E === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = env.JOBADABRA_E2E;
-    if (env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS === undefined) delete process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS; else process.env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS = env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS;
-    for (const child of children) if (child.exitCode === null) child.kill();
-    fs.rmSync(folder, {recursive: true, force: true});
-  }
-}));
+    each.release('second');
+    await each.app().start(START);
+    assert.equal(await each.edition(), 'second', 'the hidden browser still runs the extension its profile first registered: every update since misses it');
+  } finally { await each.end(); }
+})));
+
+// The reaper normally ends the hidden browser with its app; when it did not, the updated app connects to the old browser, whose worker runs the old copy.
+test('an updated app that finds an older app\'s hidden browser still running closes it and runs the new extension', {timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, () => withE2eEnv(async () => {
+  const each = home();
+  onHang(each.close);
+  try {
+    at('the older app\'s start, left running');
+    each.release('first');
+    await each.app().start(START);
+    assert.equal(await each.edition(), 'first', 'positive control');
+    at('the updated app\'s start, beside the running browser');
+    each.release('second');
+    await each.app().start(START);
+    assert.equal(await each.edition(), 'second', 'the updated app handed its token to the older app\'s worker');
+  } finally { await each.end(); }
+})));

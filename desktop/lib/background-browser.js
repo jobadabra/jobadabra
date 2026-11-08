@@ -44,7 +44,9 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
   if (url.protocol !== 'ws:' || !['127.0.0.1', 'localhost'].includes(url.hostname)) return Promise.reject(new Error('Browser debugging address is not loopback.'));
   return new Promise((resolve, reject) => {
     const socket = new WebSocketClass(socketUrl);
-    const done = (error, result) => { clearTimeout(timer); socket.close(); error ? reject(error) : resolve(result); };
+    // Settles once: closing a socket whose browser is going away (Browser.close) fires its error event again, which looped here until the stack ran out (8 Nov 2026).
+    let settled = false;
+    const done = (error, result) => { if (settled) return; settled = true; clearTimeout(timer); socket.close(); error ? reject(error) : resolve(result); };
     const timer = setTimeout(() => done(new Error('Owned browser did not answer.')), timeout);
     socket.addEventListener('open', () => socket.send(JSON.stringify({id: 1, method, params})));
     socket.addEventListener('error', () => done(new Error('Owned browser connection failed.')));
@@ -74,65 +76,98 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     if (!verifiedDebugPort(text, args.arguments, profile)) throw new Error('This browser belongs to another profile.');
     return {port, socket: info.webSocketDebuggerUrl};
   };
+  const copyModule = () => import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
+  // Copies the app's extension, launches the browser on the kept profile and waits for its debugging port.
+  async function launch(appPort) {
+    const executable = find(storage.path('background-browser-runtime'));
+    if (!executable) throw Object.assign(new Error('Download the optional background browser first.'), {code: 'BACKGROUND_BROWSER_MISSING'});
+    const {copyForNight} = await copyModule();
+    fs.rmSync(extension, {recursive: true, force: true});
+    copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true});
+    fs.mkdirSync(profile, {recursive: true, mode: 0o700});
+    // Why (8 Nov 2026, owner: "how we can prevent this ?"): Chrome keeps the extension worker a kept profile first registered, even when the folder is rewritten
+    // in place (measured: starts 2 and 3 ran start 1's code; a new manifest version did not help), so the twin ran its 28 Oct worker on 8 Nov and no fix reached it.
+    // The folder holds every site's service workers and Cache Storage (first loads after a launch are slower); cookies, sign-ins and the extension's own storage stay.
+    // The twin once (8 Oct 2026, twin.mjs) saw no worker at all after clearing worker state: the stamp check in start() relaunches once and then names it.
+    fs.rmSync(path.join(profile, 'Default', 'Service Worker'), {recursive: true, force: true});
+    fs.rmSync(portFile, {force: true});
+    // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
+    const log = process.env.JOBADABRA_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
+    ownChild = spawn(executable, browserArguments(profile, extension), {detached: true, stdio: ['ignore', log, log], windowsHide: true});
+    if (log !== 'ignore') fs.closeSync(log);
+    let spawnError = null, live = null;
+    ownChild.on('error', error => { spawnError = error; });
+    ownChild.unref();
+    if (ownChild.pid) reaper(process.pid, ownChild.pid);   // Why (2026-10-28, owner: "Always close it"): the browser dies with the app, however the app ends; it is detached only so the supervisor, not the OS, decides when
+    const until = Date.now() + 20000;
+    while (!live && Date.now() < until) {
+      if (spawnError) throw new Error('The background browser could not start.');
+      await pause(100);
+      live = await connect().catch(() => null);
+    }
+    if (!live) { ownChild.kill(); throw new Error('The background browser did not start; its own process was stopped.'); }
+    return live;
+  }
+  // The owned extension's worker target, or null when it does not show within the hang guard.
+  async function workerOf(live) {
+    const until = Date.now() + 15000;
+    while (Date.now() < until) {
+      const worker = (await get(live.port, '/json/list')).find(target => target.type === 'service_worker' && /^chrome-extension:\/\//.test(target.url) && target.url.endsWith('/background-owned.js'));
+      if (worker) return worker;
+      await pause(100);
+    }
+    return null;
+  }
+  const evaluator = worker => async (fn, value) => {
+    const expression = `(${fn.toString()})(${JSON.stringify(value) || 'undefined'})`;
+    const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
+    if (result.exceptionDetails) throw new Error('The owned extension is not ready.');
+    return result.result?.value;
+  };
+  // The stamp the worker runs ('' for none). A worker is listed before its module has run and may not answer yet, so it is read until it matches, for 5 s.
+  async function runningStamp(worker, expected) {
+    const evaluate = evaluator(worker), until = Date.now() + 5000;
+    let running = '';
+    do {
+      try { running = await evaluate(() => globalThis.__jobadabraOwnedCopy || ''); } catch { running = ''; }   // not answering yet: read again until the 5 s end
+      if (running === expected) return running;
+      await pause(100);
+    } while (Date.now() < until);
+    return running;
+  }
+  // Ends a verified browser of this profile and waits until its port is gone.
+  async function end(live) {
+    await command(live.socket, 'Browser.close').catch(() => {});   // a browser already closing may drop the socket first; the wait below is the check
+    const until = Date.now() + 10000;
+    while (Date.now() < until) { if (!(await connect().catch(() => null))) return; await pause(100); }
+    throw new Error('The background browser runs an old copy of the extension and did not close.');
+  }
   async function start({port: appPort, token}) {
     if (!Number.isInteger(appPort) || !token) throw new Error('The app server is not ready.');
     pending ||= (async () => {
       fs.mkdirSync(folder, {recursive: true, mode: 0o700});
       let owner; try { owner = JSON.parse(fs.readFileSync(ownerFile, 'utf8')).owner; } catch { /* first use */ }
       if (!owner) { owner = randomUUID(); writePrivate(ownerFile, JSON.stringify({owner})); }
-      let live = await connect().catch(() => null);
-      if (!live) {
-        const executable = find(storage.path('background-browser-runtime'));
-        if (!executable) throw Object.assign(new Error('Download the optional background browser first.'), {code: 'BACKGROUND_BROWSER_MISSING'});
-        const {copyForNight} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
-        fs.rmSync(extension, {recursive: true, force: true});
-        copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true, stamp: randomUUID()});
-        fs.mkdirSync(profile, {recursive: true, mode: 0o700});
-        // Why (8 Nov 2026, owner: "how we can prevent this ?"): Chrome keeps the extension worker a kept profile first registered, even when the folder is rewritten
-        // in place (measured: starts 2 and 3 ran start 1's code; a new manifest version did not help), so the twin ran its 28 Oct worker on 8 Nov and no fix reached it.
-        // Only the worker cache goes: sign-ins, cookies and the extension's storage stay. Test: integration/extension/hidden-browser-runs-new-copy.test.mjs.
-        fs.rmSync(path.join(profile, 'Default', 'Service Worker'), {recursive: true, force: true});
-        fs.rmSync(portFile, {force: true});
-        // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
-        const log = process.env.JOBADABRA_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
-        ownChild = spawn(executable, browserArguments(profile, extension), {detached: true, stdio: ['ignore', log, log], windowsHide: true});
-        if (log !== 'ignore') fs.closeSync(log);
-        let spawnError = null;
-        ownChild.on('error', error => { spawnError = error; });
-        ownChild.unref();
-        if (ownChild.pid) reaper(process.pid, ownChild.pid);   // Why (2026-10-28, owner: "Always close it"): the browser dies with the app, however the app ends; it is detached only so the supervisor, not the OS, decides when
-        const until = Date.now() + 20000;
-        while (!live && Date.now() < until) {
-          if (spawnError) throw new Error('The background browser could not start.');
-          await pause(100);
-          live = await connect().catch(() => null);
+      // Why (8 Nov 2026, owner: "how we can prevent this ?"): an old worker carries old Submit and hand-off rules, so the token goes only to a worker running the
+      // extension this app ships (its stamp: extension-copy.mjs extensionStamp). Any other (a kept worker, a browser an older app left running) is closed and the
+      // browser launched once more; a second miss is refused with its code. Test: integration/extension/hidden-browser-runs-new-copy.test.mjs.
+      const expected = (await copyModule()).extensionStamp(path.join(root, 'extension'), appPort);
+      let live = await connect().catch(() => null), running = '';
+      for (let launches = 0; ; ) {
+        if (!live) { live = await launch(appPort); launches += 1; }
+        const worker = await workerOf(live);
+        if (!worker) throw new Error('The owned browser extension did not start.');
+        running = await runningStamp(worker, expected);
+        if (running === expected) {
+          const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
+          await setExtensionStorage({evaluate: evaluator(worker)}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
+          return {owner, port: live.port};
         }
-        if (!live) { ownChild.kill(); throw new Error('The background browser did not start; its own process was stopped.'); }
+        if (launches >= 2) break;
+        await end(live);
+        live = null;
       }
-      // Only after proving profile ownership may the app token enter this browser's extension storage.
-      const until = Date.now() + 15000;
-      let worker;
-      while (!worker && Date.now() < until) {
-        worker = (await get(live.port, '/json/list')).find(target => target.type === 'service_worker' && /^chrome-extension:\/\//.test(target.url) && target.url.endsWith('/background-owned.js'));
-        if (!worker) await pause(100);
-      }
-      if (!worker) throw new Error('The owned browser extension did not start.');
-      const evaluate = async (fn, value) => {
-        const expression = `(${fn.toString()})(${JSON.stringify(value) || 'undefined'})`;
-        const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
-        if (result.exceptionDetails) throw new Error('The owned extension is not ready.');
-        return result.result?.value;
-      };
-      // Why (8 Nov 2026, owner: "how we can prevent this ?"): an old worker would carry old Submit and hand-off rules, so the token goes only to the worker that runs the copy on disk.
-      const {ownedStamp} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
-      // The worker target is listed before its module has run, so the stamp is read until it matches, on the worker's own deadline; an old worker never matches.
-      const expected = ownedStamp(extension);
-      let running = await evaluate(() => globalThis.__jobadabraOwnedCopy || '');
-      while (expected && running !== expected && Date.now() < until) { await pause(100); running = await evaluate(() => globalThis.__jobadabraOwnedCopy || ''); }
-      if (!expected || running !== expected) throw Object.assign(new Error(`The background browser runs an old copy of the extension (running ${running || 'none'}, copied ${expected || 'none'}); quit and reopen Jobadabra.`), {code: 'BACKGROUND_EXTENSION_STALE'});
-      const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
-      await setExtensionStorage({evaluate}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
-      return {owner, port: live.port};
+      throw Object.assign(new Error(`The background browser still runs another copy of the extension after a relaunch (running ${running || 'none'}, expected ${expected}).`), {code: 'BACKGROUND_EXTENSION_STALE'});
     })().finally(() => { pending = null; });
     return pending;
   }

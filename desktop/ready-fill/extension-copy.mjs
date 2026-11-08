@@ -1,5 +1,6 @@
 // The night's copy of extension/ for Ready to send (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md, floors): its app address is the stand-in's port, any site is allowed (a fresh Chromium has not pressed Allow),
 // and the account form's button is never pressed (phase 1 makes no account on the server). extension/ itself is never edited. Guard: desktop/test/unit/ready-fill/ready-fill.test.js (fails when a patched line moved).
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,13 +20,16 @@ export function pointAtStandIn(text, port) {
   return text.replaceAll(APP_ADDRESS, `http://127.0.0.1:${port}`);
 }
 
-/** The stamp an owned copy carries (`stamp` of copyForNight), read back from its folder; '' when it has none. */
-export function ownedStamp(dir) {
-  try { return /__jobadabraOwnedCopy = '([\w-]+)'/.exec(fs.readFileSync(path.join(dir, 'owned-bootstrap.js'), 'utf8'))?.[1] || ''; } catch { return ''; }   // no copy yet: no stamp
+/** The stamp of an owned copy: a hash of the extension it is copied from and the app port it points at; equal stamps = the same code (lib/background-browser.js). */
+export function extensionStamp(from, port) {
+  const hash = createHash('sha256').update(`port ${Number(port)}\n`);
+  const walk = dir => { for (const name of fs.readdirSync(dir).sort()) { const file = path.join(dir, name); if (fs.statSync(file).isDirectory()) walk(file); else hash.update(`${path.relative(from, file).replaceAll('\\', '/')}\n`).update(fs.readFileSync(file)); } };
+  walk(from);
+  return hash.digest('hex').slice(0, 32);
 }
 
-// -> the folder of the copy. `stamp` (owned only) marks this copy, so the app can tell the worker that runs it from one a kept profile kept (lib/background-browser.js).
-export function copyForNight(port, from, into = '', {owned = false, stamp = ''} = {}) {
+// -> the folder of the copy.
+export function copyForNight(port, from, into = '', {owned = false} = {}) {
   const dir = into || path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-night-ext-')), 'extension');
   fs.cpSync(from, dir, {recursive: true});
   const edit = (file, change) => { const target = path.join(dir, file); fs.writeFileSync(target, change(fs.readFileSync(target, 'utf8'))); };
@@ -33,8 +37,7 @@ export function copyForNight(port, from, into = '', {owned = false, stamp = ''} 
   edit('account-step.js', holdAccountPress);
   edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])]; return JSON.stringify(manifest, null, 2); });
   if (owned) {
-    if (stamp && !/^[\w-]+$/.test(stamp)) throw new Error('an owned copy stamp is letters, digits and dashes only');
-    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), `// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobadabraBackgroundOwned = true;\n${stamp ? `globalThis.__jobadabraOwnedCopy = '${stamp}';\n` : ''}`);
+    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), `// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobadabraBackgroundOwned = true;\nglobalThis.__jobadabraOwnedCopy = '${extensionStamp(from, port)}';\n`);
     fs.writeFileSync(path.join(dir, 'background-owned.js'), "// Reuse the actual extension worker after the owned-browser flag is installed.\nimport './owned-bootstrap.js';\nimport './background.js';\n");
     edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.background.service_worker = 'background-owned.js'; return JSON.stringify(manifest, null, 2); });
   }
