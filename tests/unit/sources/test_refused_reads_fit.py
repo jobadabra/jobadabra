@@ -34,7 +34,9 @@ class Judge:
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
-        mine = visits.RELEVANT_SYSTEM in kwargs['system'][0]['text'] and 'The sites:\n' in kwargs['messages'][0]['content']
+        system, messages = kwargs.get('system') or [{}], kwargs.get('messages') or [{}]   # any call shape reaches the stray branch below, never a KeyError first (Gitar, #3623)
+        text = system if isinstance(system, str) else str(system[0].get('text', ''))
+        mine = visits.RELEVANT_SYSTEM in text and 'The sites:\n' in str(messages[0].get('content', ''))
         if not mine:
             thread = threading.current_thread().name
             stack = ''.join(traceback.format_stack(limit=12))
@@ -96,8 +98,10 @@ class RefusedReadsFitTest(unittest.TestCase):
     def test_a_stray_ai_caller_is_not_counted_and_is_named(self):
         """The polluter's pattern: another thread asks the AI (decide) while the judge is patched in. Before 8 Nov 2026 its call was counted (3 != 1)."""
         from src.ai import decide
-        for state in (decide.WAITING, decide._calls, decide._own, decide.STOPPED):   # the stray ask must leave no counter behind for the next module
-            patch = mock.patch.dict(state, {**state, **({'calls': {}} if 'calls' in state else {})})
+        fresh = ((decide.WAITING, {'n': 0, 'said': False, 'calls': {}}), (decide._calls, {'n': 0}), (decide._own, {}),
+                 (decide.STOPPED, {'why': '', 'key': False, 'cause': ''}), (decide.CACHE_ONLY, {'on': False}), (decide.SCOPE, {'name': None, 'n': 0}))
+        for state, values in fresh:   # a fresh run: whatever earlier modules left (a spent cap, a stopped AI), the stray reaches the judge, and leaves nothing behind (first try failed in the shard: #3623 run 42496847818)
+            patch = mock.patch.dict(state, values, clear=True)
             patch.start()
             self.addCleanup(patch.stop)
         failed = decide.FAILED[0]
@@ -110,6 +114,13 @@ class RefusedReadsFitTest(unittest.TestCase):
         self.assertEqual([s['thread'] for s in self.judge.strays], ['stray-worker'])
         self.assertIn('decide', self.judge.strays[0]['stack'], 'the stack names who asked')
 
+
+    def test_a_stray_call_without_a_system_prompt_is_recorded_not_a_crash(self):
+        """src/connection_test.py and src/ai/prep.py ask with no `system`: the stub names them like any other stray (Gitar, #3623)."""
+        with self.assertRaises(RuntimeError):
+            self.judge.create(model='m', messages=[{'role': 'user', 'content': 'ping'}])
+        self.assertEqual(len(self.judge.strays), 1)
+        self.assertEqual(self.judge.asked, [])
 
 if __name__ == '__main__':
     unittest.main()
