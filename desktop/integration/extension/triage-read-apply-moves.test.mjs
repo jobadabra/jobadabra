@@ -16,7 +16,7 @@ import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {CHAIN, LATE, SCRIPTED, hostRules, startForms} from '../../e2e/lib/forms.mjs';
 import {EXTENSION_DIR} from '../../e2e/lib/extension.mjs';
 import {OWNED_WORKER} from '../../e2e/lib/own-worker.mjs';
-import {at, capOf, clocked} from '../../e2e/lib/test-clock.mjs';
+import {at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 import {copyForNight} from '../../ready-fill/extension-copy.mjs';
 import {setExtensionStorage} from '../../ready-fill/extension-storage.mjs';
 import {POST_CORS} from '../../lib/server-http.js';
@@ -85,8 +85,18 @@ after(async () => {
   if (dir) fs.rmSync(dir, {recursive: true, force: true});
 });
 
+// A hang closes what the file opened, so the red names the stage instead of node's bare timeout (e2e-harness rule 1/7; Gitar on #3615).
+const closeOnHang = () => { onHang(() => context?.close()); onHang(() => app?.close()); onHang(() => forms?.close()); };
+/** The report of a read, or null at the cap; the cap's timer is cleared when the race settles so a passed test leaves nothing running (Gitar on #3615). */
+async function reportOf(reported) {
+  let cap;
+  const none = new Promise(resolve => { cap = setTimeout(() => resolve(null), capOf(READ_MS)); });
+  try { return await Promise.race([reported, none]); } finally { clearTimeout(cap); }
+}
+
 for (const [index, shape] of SHAPES.entries()) {
   test(`a read where ${shape.name} ends in a report`, {timeout: READ_MS + 30000}, clocked(READ_MS + 15000, async () => {
+    closeOnHang();
     const session = `tr0000000${index}`;   // the reader's own id shape (lib/triage-reader.js: tr + 8)
     const reported = new Promise(resolve => waiters.set(session, resolve));
     pending.push({session, url: sessionTabUrl(shape.url, session), mode: 'read'});
@@ -94,7 +104,7 @@ for (const [index, shape] of SHAPES.entries()) {
     await worker.evaluate(() => globalThis.__jobPilottoBackgroundSessions.poll());
     at('the read\'s report');
     const from = asked.length;
-    const report = await Promise.race([reported, new Promise(resolve => setTimeout(() => resolve(null), capOf(READ_MS)))]);
+    const report = await reportOf(reported);
     assert.ok(report, `no report within ${READ_MS / 1000} s (the owner's hang). Steps told: ${JSON.stringify(steps.get(session) || [])}. The extension asked the app: ${JSON.stringify(asked.slice(from - 2))}`);
     assert.equal(report.unreadable === true ? report.why : 'read', 'read', `the read ended unreadable (${report.why}); steps ${JSON.stringify(steps.get(session) || [])}`);
     assert.equal(report.look?.role, 'form', `the report is not the form Apply opened: ${JSON.stringify(report)}`);
@@ -103,6 +113,7 @@ for (const [index, shape] of SHAPES.entries()) {
 
 // The twin's hidden browser on 8 Nov 2026 held 4 old sessions handed to the person (28 Oct, 5 Nov: modes fill and auto, manualRequired, their tabs long gone) and none of its 11 reads opened a window.
 test('a read still opens beside old sessions handed to the person', {timeout: READ_MS + 30000}, clocked(READ_MS + 15000, async () => {
+  closeOnHang();
   await worker.evaluate(rows => globalThis.chrome.storage.local.set({backgroundApplySessions: rows}), Object.fromEntries(['a1b2c3d4-0001', 'a1b2c3d4-0002', 'a1b2c3d4-0003', 'a1b2c3d4-0004'].map((id, i) => [id,
     {session: id, mode: i < 2 ? 'auto' : 'fill', window: 900 + i, tab: 175744000 + i, url: sessionTabUrl(LATE.url, id), manualRequired: true, manualReason: 'needs_user', startedAt: Date.UTC(2026, 10, 5) + i}])));
   const session = 'tr0000000s';
@@ -112,7 +123,7 @@ test('a read still opens beside old sessions handed to the person', {timeout: RE
   await worker.evaluate(() => globalThis.__jobPilottoBackgroundSessions.poll());
   at('the read\'s report');
   const from = asked.length;
-  const report = await Promise.race([reported, new Promise(resolve => setTimeout(() => resolve(null), capOf(READ_MS)))]);
+  const report = await reportOf(reported);
   assert.ok(report, `no report within ${READ_MS / 1000} s beside old sessions. Steps told: ${JSON.stringify(steps.get(session) || [])}. The extension asked the app: ${JSON.stringify(asked.slice(from - 2))}`);
   assert.equal(report.look?.role, 'form', `the report is not the form Apply opened: ${JSON.stringify(report)}`);
 }));
