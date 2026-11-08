@@ -1,6 +1,6 @@
 # Cloud browser runner: one Cloudflare browser for three tasks
 
-Verdict: **draft, waiting on the owner's yes on the safety lines below** (8 Nov 2026). Ready to send's Cloudflare container becomes ONE runner that takes a task kind: `readiness` (Apply readiness, read only), `fill` (fill up to ready to submit, today's night) and `auto` (Full automation, Submit included). No second runner is built.
+Verdict: **approved** (owner, 8 Nov 2026, relayed by the coordinator: "Approve the 5 lines (Recommended)" and "Site holds it, encrypted (Recommended)"); `auto` stays last. Ready to send's Cloudflare container becomes ONE runner that takes a task kind: `readiness` (Apply readiness, read only), `fill` (fill up to ready to submit, today's night) and `auto` (Full automation, Submit included). No second runner is built.
 
 ## The owner's words (8 Nov 2026, relayed by the coordinator)
 - On R2's Always-on question: "Why not using our solution on CloudFlare? We have already implemented. Basically CLoud/Server Browser on CLoudFlare", then "Yes, use the cloud browser (Recommended)".
@@ -22,7 +22,7 @@ Verdict: **draft, waiting on the owner's yes on the safety lines below** (8 Nov 
   | `fill` | Ready to send (today) | yes | yes, held for the person | never | held tabs, hand-off (today) |
   | `auto` | Full automation with Always on (later) | yes | yes | only through the one gate below | the job's outcome and the page's own proof |
 
-- **Where the result lands:** a `readiness` read goes to the job's `apply_readiness` field through the store the person chose (Always on + Notion: the Applications row). With the default store (this Mac) and the Mac off, the site keeps it encrypted with the account's hosted state until the app reads it. **Open for the owner:** is that hold acceptable, or does `readiness` in the cloud need Notion?
+- **Where the result lands:** a `readiness` read goes to the job's `apply_readiness` field through the store the person chose (Always on + Notion: the Applications row). With the default store (this Mac) and the Mac off, the site keeps it encrypted with the account's hosted state (where Ready to send's cloud state already lives), and it is removed on the site once the app has read it (owner, 8 Nov 2026: "Site holds it, encrypted (Recommended)").
 - **The app's seam:** `lib/apply-readiness.js` `readForm(job)` is the one place a read happens; R2 (PR "[ac] Every Apply goes through Apply readiness") routes every caller through it. The cloud runner becomes a second `readForm` used only when Always on runs without the Mac.
 
 ## Safety (CLAUDE.md "Safety" applied to a new place; for the owner's yes before any Submit code)
@@ -39,5 +39,7 @@ Verdict: **draft, waiting on the owner's yes on the safety lines below** (8 Nov 
 4. Later, after the owner's yes on the safety lines: `auto` (its own spec section and guard).
 
 ## Progress
-- [ ] Owner's yes on the safety lines and the open question
-- [ ] 1/4 · [ ] 2/4 · [ ] 3/4 · [ ] 4/4
+- [x] Owner's yes on the safety lines and the open question (8 Nov 2026: "Approve the 5 lines (Recommended)"; "Site holds it, encrypted (Recommended)")
+- [x] 1/4 `desktop/ready-fill` takes `task` (`fill` default, `readiness`; any other refused): `read-night.mjs` reads each form through the extension's background poll and `lib/triage-reader.js` (`read-commands.mjs`), tells the site `{job, task, state: read | unreadable, read, why, ms, costMicro}`, holds nothing; the browser start is shared (`night-browser.mjs`). Guard `desktop/test/unit/ready-fill/ready-read.test.js`.
+- [ ] 2/4 (jobadabra-web): `/run` passes the task; the image carries `desktop/lib/triage-reader.js`, `triage-read.js` and `session-tab.js` beside `form-address.js`; the site keeps a read encrypted and removes it once the app has read it; the image check runs a `readiness` night.
+- [ ] 3/4 · [ ] 4/4
