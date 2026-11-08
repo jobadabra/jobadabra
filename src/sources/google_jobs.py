@@ -42,6 +42,7 @@ def places(config):
 
 # SerpApi's canonical names for the countries src/sources/aggregators.py can tell from the user's places.
 from .aggregators import ADZUNA_COUNTRIES as COUNTRY_NAMES   # code -> English name
+from ..press import resume
 
 
 def settings(search_config):
@@ -121,6 +122,7 @@ def next_searches(db, pairs, count):
 
 def scan(db, api_key, config, opener=urllib.request.urlopen, now=None):
     """Run this turn's searches; return a feeds.scan-style report ({'jobs', 'sources'})."""
+    resume.ran('Google Jobs')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     now = now or datetime.now(timezone.utc).isoformat(timespec='seconds')
     report = {'jobs': [], 'sources': []}
     from . import read_budget

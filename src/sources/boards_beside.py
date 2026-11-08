@@ -28,6 +28,8 @@ class Beside:
         from . import read_budget
         try:
             if read_budget.result(self.future, read_budget.cut_at()) is read_budget.LEFT:
+                from .. import time_budget
+                time_budget.later('job boards', 1, 'board discovery')   # still running at the cut: not "0 left" in press_left.json (Gitar on #3605)
                 print("Job boards: finding employers goes on past the read's time; the employers it finds are read by the next search", flush=True)
         except Exception as error:  # noqa: BLE001 — an add-on to the search, as the separate step was
             print(f'Warning: job boards employer discovery stopped ({type(error).__name__}: {error}): the next search tries again', flush=True)

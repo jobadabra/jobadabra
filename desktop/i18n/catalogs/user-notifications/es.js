@@ -9,6 +9,14 @@ export default {
   "atCompany": "{title} en {company}",
   "open": "Abrir en Jobadabra",
   "finish": "Abre Jobadabra para terminar.",
+  "applied": {
+    "one": "Postulado por ti: {shown} solicitud enviada",
+    "other": "Postulado por ti: {shown} solicitudes enviadas",
+    "many": "Postulado por ti: {shown} solicitudes enviadas"
+  },
+  "appliedIntro": "La automatización completa envió esto mientras no estabas:",
+  "appliedSaved": "Cada respuesta se guarda con la oferta, así puedes leer lo que se envió.",
+  "appliedButton": "Ver lo que se envió",
   "fewTitle": "Pocas ofertas nuevas: cómo encontrar más",
   "fewBody": {
     "one": "La última búsqueda encontró {shown} oferta nueva. Descubre cómo encontrar más, empezando por lo más sencillo.",

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from .. import read_methods
 from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
+from ..press import resume
 
 SPACING_HOURS = 6
 PAGES = 2
@@ -289,6 +290,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     on_jobs(jobs): each reader's jobs as soon as it is read (owner, 18 Oct 2026: jobs shown as quickly as possible). ahead: the found boards
     already read beside the employer sites (src/sources/boards_ahead.py), taken instead of read again. early: the first-jobs slice takes `readers` now (TAKEN).
     shown: {url: item} of the jobs the slice handed early (kept)."""
+    resume.ran('free job APIs')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     report = {'jobs': [], 'sources': []}
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
     # (3 Oct 2026: jobicy rows in the quality suite). `readers` given = a test of this function itself.

@@ -158,7 +158,13 @@ FIXES = (
          'tests/unit/sources/test_boards_early.py::test_the_full_board_read_starts_after_the_boards_first_pages'),
         owner='Both: no waits + background (Recommended)',
         notes=('one board (Nurse Jobs Ireland) read 55-165 s in front of the employer sites',
-               'the option kept "the boards still start first" (L10): they start first, the employer sites no longer wait for them'))
+               'the option kept "the boards still start first" (L10): they start first, the employer sites no longer wait for them')),
+    Fix('L37', '8 Nov 2026 (ps E2b)', 'each Find jobs run saves what every step left for the next one, as counts the planner reads',
+        ('tests/unit/press/test_resume.py::test_a_stage_that_says_time_is_up_saves_its_count_under_its_stage_name',
+         'tests/unit/press/test_resume.py::test_a_first_runs_three_processes_a_step_one_never_started_keeps_its_date',
+         'tests/unit/press/test_resume_run.py::test_a_timed_search_saves_what_each_step_left_for_the_planner'),
+        owner='When 3 mins stops, the next run nows where to continue and what are the left things to do and the next goals',
+        notes=('counts only (press_left.json): the items stay in their owners\' files, so the next run resumes from those',)),
 )
 
 

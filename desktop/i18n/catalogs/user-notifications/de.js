@@ -8,6 +8,13 @@ export default {
   "atCompany": "{title} bei {company}",
   "open": "In Jobadabra öffnen",
   "finish": "Öffnen Sie Jobadabra, um sie abzuschließen.",
+  "applied": {
+    "one": "Für Sie beworben: {shown} Bewerbung gesendet",
+    "other": "Für Sie beworben: {shown} Bewerbungen gesendet"
+  },
+  "appliedIntro": "Die Vollautomatik hat diese gesendet, während Sie weg waren:",
+  "appliedSaved": "Jede Antwort ist bei der Stelle gespeichert, Sie können nachlesen, was gesendet wurde.",
+  "appliedButton": "Gesendetes ansehen",
   "fewTitle": "Wenige neue Stellen: So finden Sie mehr",
   "fewBody": {
     "one": "Die letzte Suche fand {shown} neue Stelle. Sehen Sie, was mehr bringen würde, die einfachsten Schritte zuerst.",

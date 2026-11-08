@@ -23,6 +23,7 @@ from ..stores.notion_blocks import to_markdown
 from .models import MAIN_MODEL
 from .writing_floors import kit_floors
 from .writing_rules import RULES as WRITING_RULES
+from ..press import resume
 
 DEFAULT_MODEL = os.getenv('JOBADABRA_KIT_MODEL', MAIN_MODEL)
 KIT_VERSION = 1
@@ -329,6 +330,7 @@ def auto_run(db, candidates, stores, model, max_jobs, min_score, client=None, op
 
     Returns (summary line, list of (job, page) for jobs drafted this run) for the digest to mention.
     Runs after AI stage 2; a job never in `candidates` (ineligible) is never auto-kitted."""
+    resume.ran('kits')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     pending = pending_for_auto(db, candidates, min_score, max_jobs)
     if not pending:
         return '0 kit(s) auto-drafted', []

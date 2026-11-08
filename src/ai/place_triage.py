@@ -16,6 +16,7 @@ from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots
 from .providers.contract import detail, reason
+from ..press import resume
 
 MODEL = SMALL_MODEL
 BATCH = 30   # one line of reasoning per location: 30 a call (7 Oct 2026: 60 at once misfiled Swiss towns)
@@ -109,6 +110,7 @@ def _keep(key, decided):
 
 def decide(locations, search, client=None):
     """Ask about the locations not decided yet for these places (a batch this refresh can finish), keep the answers; returns all known."""
+    resume.ran('places')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from . import cost, engine
     from .. import time_budget as budget
     key, decided = _key(search), dict(known(search))

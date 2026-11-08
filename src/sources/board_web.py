@@ -18,6 +18,7 @@ from pathlib import Path
 from ..features import disabled
 from . import careers
 from ..ai import slots
+from ..press import resume
 
 WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
@@ -184,6 +185,7 @@ def start(search_config, data, fetch=None, now=None):
     """The web search beside the board proposal and the reads: the one started with the run (early) for this search, else one started now,
     in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish().
     None past the search's read cut: a new search is asked by the next one (tests/unit/sources/test_three_minutes.py)."""
+    resume.ran('web search')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from ..ai import board_ideas
     from . import read_budget
     asked = board_ideas.asked_for(search_config)
