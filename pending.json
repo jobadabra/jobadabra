@@ -1,9 +1,5 @@
 [
  {
-  "group": "Settings",
-  "label": "Developer options: Save"
- },
- {
   "group": "Profile",
   "label": "Build a CV with the AI"
  },
@@ -16,7 +12,15 @@
   "label": "Experience sources: Add another CV version"
  },
  {
+  "group": "Jobs",
+  "label": "Open job page"
+ },
+ {
   "group": "Actions",
-  "label": "Read this board"
+  "label": "Tailor CV + cover letter for top matches"
+ },
+ {
+  "group": "Strategy",
+  "label": "Tune my strategy"
  }
 ]

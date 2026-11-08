@@ -40,5 +40,12 @@
    "Jobs: Jobs filter: Inbound → Strategy: Job preferences",
    "Strategy: Job preferences → Actions: Read this board"
   ]
+ },
+ {
+  "seed": 20261108,
+  "pairs": [
+   "start → Settings: Developer options: Save",
+   "Settings: Developer options: Save → App: Read the app in another language"
+  ]
  }
 ]
