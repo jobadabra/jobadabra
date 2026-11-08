@@ -24,7 +24,7 @@ def store_jobs(stores):
                                    'location': match.get('location') or '', 'work_mode': match.get('work_mode') or '',
                                    'fit': _score(match.get('fit')), 'reason': match.get('reason') or '', 'technologies': match.get('technologies') or '',
                                    'fit_detail': match.get('fit_detail') or {'strengths': '', 'gaps': '', 'parts': {}},
-                                   'match_status': match.get('status'), 'first_seen': match.get('first_seen') or ''}
+                                   'match_status': match.get('status'), 'first_seen': match.get('first_seen') or '', 'posted': match.get('posted') or ''}
     for app in stores.applications.list():
         url = (app.get('url') or '').strip()
         if not url:
@@ -32,7 +32,7 @@ def store_jobs(stores):
         row = found.setdefault(url_key(url), {'url': url, 'title': app.get('title') or '', 'company': app.get('company') or '',
                                               'location': app.get('location') or '', 'work_mode': app.get('work_mode') or '',
                                               'fit': _score(app.get('fit')), 'reason': '', 'match_status': None,
-                                              'first_seen': app.get('created_at') or ''})
+                                              'first_seen': app.get('created_at') or '', 'posted': app.get('posted') or ''})
         row.update(stage=app.get('stage'), next_step=app.get('next_step') or '', notion_url='',   # no page elsewhere: the app's own job page
                    rejection=app.get('rejection') or '', rejection_lesson=app.get('rejection_lesson') or '',
                    feedback_status=app.get('feedback_status') or '', employer_feedback=app.get('employer_feedback') or '',

@@ -222,7 +222,8 @@ class Tracker:
                                                      ('role_fit', 'Role fit'), ('location', 'Location fit'),
                                                      ('compensation', 'Compensation fit'), ('growth', 'Growth'), ('risk', 'Risk'))}},
                                   'match_status': select(props.get('Status')),
-                                  'first_seen': ((props.get('First seen') or {}).get('date') or {}).get('start') or page.get('created_time', '')}
+                                  'first_seen': ((props.get('First seen') or {}).get('date') or {}).get('start') or page.get('created_time', ''),
+                                  'posted': ((props.get('Posted') or {}).get('date') or {}).get('start') or ''}
         for page in applications:
             props = page['properties']
             url = ((props.get('Job URL') or {}).get('url') or '').strip()
@@ -231,7 +232,8 @@ class Tracker:
             row = found.setdefault(normalize_url(url), {'url': url, 'title': text(props.get('Job')), 'company': text(props.get('Company')),
                                          'location': text(props.get('Location')), 'work_mode': select(props.get('Work mode')) or '',
                                          'fit': (props.get('Fit score') or {}).get('number'), 'reason': '',
-                                         'match_status': None, 'first_seen': page.get('created_time', '')})
+                                         'match_status': None, 'first_seen': page.get('created_time', ''),
+                                         'posted': ((props.get('Posted') or {}).get('date') or {}).get('start') or ''})
             row.update(stage=select(props.get('Stage')), next_step=text(props.get('Next step')), notion_url=page.get('url') or '',
                        rejection=select(props.get('Rejection reason')) or '', rejection_lesson=text(props.get('Rejection lesson')),
                        feedback_status=select(props.get('Feedback status')) or '', employer_feedback=text(props.get('Employer feedback')),

@@ -78,7 +78,7 @@ function paint() {
 
 // One match for the whole check (L2b): the simple forms' required questions, asked of `match` once; a form it names gets its missing details on its read, and its line in the dialog is drawn again.
 async function matchChecked(jobs, match, rows) {
-  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length).map(({url, read}) => ({url, questions: read.questions}));
+  const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length && !read.match).map(({url, read}) => ({url, questions: read.questions}));
   if (!asked.length) return;
   Object.assign(state, {matching: true, job: null});
   paint();
@@ -109,7 +109,7 @@ export async function runTriage(jobs, read, match = null) {
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
-      if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
+      if (result) { setRead(job.url, result); if (result.unreadable === true) failed += 1; else { if (!result.stored) rememberTiming((Date.now() - started) / 1000); done += 1; } }   // only a real read counts as read, and as a timing; one that could not be made is listed, with its reason
       if (cancelled && !result) break;   // a read Stop cut short is not a result
       state.seen += 1;
       const row = resultRow(job, result);

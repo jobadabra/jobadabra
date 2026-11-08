@@ -28,7 +28,7 @@ test('a read that throws before its promise is still caught; a read that answers
   assert.deepEqual(lines, [['apply', 'triage: the form read failed', {url: 'x', error: 'bad url'}]]);
 });
 
-test('the triageRead IPC hands no logger of its own, so the read logs to app.log', () => {
+test('the Apply readiness IPC hands the read no logger of its own, so the read logs to app.log', () => {
   const source = fs.readFileSync(new URL('../../../lib/apply-handlers.js', import.meta.url), 'utf8');
-  assert.match(source, /triageReadOrNull\(background\.triageRead, String\(job\?\.url \|\| ''\)\)\)\)/);
+  assert.match(source, /readForm: job => triageReadOrNull\(background\.triageRead, job\.url\)/);
 });

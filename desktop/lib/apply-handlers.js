@@ -41,6 +41,7 @@ import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
 import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead} from './demo.js';
 import {matchReads} from './triage-match.js';
+import {createReadiness} from './apply-readiness.js';
 import {applyOf, batchConfirmation, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 
 /** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
@@ -51,22 +52,26 @@ export function triageReadOrNull(read, url, log = appLog) {
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
 
 export function registerApplyHandlers(ctx) {
-  const {DEMO, applyRunner = apply, background: givenBackground = null, storedCheck = async () => null, clock = Date.now, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
+  const {DEMO, applyRunner = apply, background: givenBackground = null, storedCheck: givenStoredCheck = null, clock = Date.now, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
   // Why (7 Nov 2026, owner's 0.9.13 retest): old extension code filled the forms and nothing said so; a press that opens Chrome says it ('' when the copy is current or unknown). Not for the hidden browser: it carries its own copy.
   const withNote = result => (result?.ok ? {...result, extensionNote: staleNote()} : result);
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
-  // Apply triage (PR C2a): one form read in the hidden browser; the answer is the mode table's flags, or null when nothing was read. The demo has no hidden browser: it reads what settings.demoTriageReads names (lib/demo.js).
-  ipcMain.handle('triageRead', (_, job) => (DEMO ? demoTriageRead(storage.settings(), String(job?.url || '')) : triageReadOrNull(background.triageRead, String(job?.url || ''))));   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
-  // L2b: the check's simple forms' required questions matched against Your details in one go: {url: {missing, unjudged}}. The demo names its answer in settings.demoTriageMatch (lib/demo.js).
-  ipcMain.handle('triageMatch', (_, reads) => {
+  // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
+  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true}), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
+    match: asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; })});
+  const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
+  const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
+  ipcMain.handle('applyReadiness', async (_, job) => (DEMO ? {kit: {ok: true}, check: await demoTriageRead(storage.settings(), String(job?.url || '')), stored: false} : readiness.applyReadiness(jobOf(job)).then(done => (done.kit?.needsNotion || done.kit?.needsMove ? {...done, ...done.kit} : done))));   // Why (#3573 review): the Notion / move gate is lifted to the top, where preload opens its dialog and runs the call again   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
+  // L2b: the check's simple forms' required questions matched against Your details in one go: {url: {missing, unjudged}}; each matched form is then stored. The demo names its answer in settings.demoTriageMatch (lib/demo.js).
+  ipcMain.handle('applyReadinessMatch', (_, reads) => {
     const asked = (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
-    return DEMO ? demoTriageMatch(storage.settings(), asked) : matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });
+    return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
-  ipcMain.handle('triageCancel', () => background.cancelTriage());
+  ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
-  // storedCheck(job): the check prepared with the job's kit, fresh, or null ([fa] 2/2 wires the kit's own reader).
+  // storedCheck(job): the check prepared with the job's kit, fresh, or null: Apply readiness's own reader (lib/apply-readiness.js), unless a test hands one in.
   const checkFirst = createCheckFirst({stored: storedCheck, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
     enqueue: (jobs, mode, batch, eligibility) => background.enqueue(jobs, mode, batch, eligibility), openInChrome: jobs => applyRunner.openInChrome(storage, jobs), chromeBlocked: needExtension});
   const holdForCheck = async (jobs, batch, eligibility) => {

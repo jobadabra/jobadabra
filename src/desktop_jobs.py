@@ -111,7 +111,9 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                 store.set_application_status(db, cached['id'], status)
             # Only Notion's fields: a field the list needs is a Notion column (config/notion_schema.json), never cache-only.
             job = {'url': url, 'title': item.get('title'), 'company': item.get('company'), 'location': item.get('location'),
-                   'work_mode': item.get('work_mode'), 'first_seen_at': item.get('first_seen', '')}
+                   'work_mode': item.get('work_mode'), 'first_seen_at': item.get('first_seen', ''),
+                   # Why (7 Nov 2026, Apply readiness R1 review): a stored form check is valid while this posting date holds (desktop/lib/apply-readiness.js isFresh), so the row carries the store's Posted column (a Match or Application field, never cache-only) or the check never goes stale.
+                   'posted_at': item.get('posted') or ''}
             # A kit's inputs vs today's: current, earlier (drafted before the CV, Profile or answers changed), unknown.
             kit_state = provenance.kit_state(item.get('kit_inputs'), kit_inputs) if has_kit(stage, item.get('next_step') or '') else ''
             rows.append(row(job, item.get('fit'), item.get('reason'), status, stage, item.get('next_step'), item.get('notion_url'),
