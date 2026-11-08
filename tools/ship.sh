@@ -47,6 +47,12 @@ config_once() { [ "$(git config --get "$1" 2>/dev/null)" = "$2" ] || git config 
 # `git branch --show-current` prints nothing there, mid-rebase too, and never a tag-qualified name.
 branch="$(git branch --show-current)"
 main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
+# Another repo's log carries its name (26 Oct 2026: node24-actions shipped from jobadabra and jobadabra-web at once shared one log, and their events mixed).
+repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
+log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
+# Why (8 Nov 2026, ac's R1): a refusal before the background run starts (a bad --body, uncommitted files) wrote nothing to the log, so the
+# caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there.
+[ "$background" != 1 ] || trap 'code=$?; [ "$code" -eq 0 ] || echo "ship: FAILED (exit $code) refused before starting, nothing was pushed: see its message" >> "$log"' EXIT
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
 [ -n "$branch" ] || { echo "ship: no branch is checked out (detached HEAD). Finish or abort a rebase or merge in progress, else name one: git switch -c <topic>; then run this again." >&2; exit 2; }
 if ! git diff --quiet || ! git diff --cached --quiet; then echo "ship: uncommitted changes in tracked files: commit them first" >&2; exit 2; fi
@@ -63,9 +69,6 @@ if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools
     echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
   export SHIP_BODY_CHECKED=1
 fi
-# Another repo's log carries its name (26 Oct 2026: node24-actions shipped from jobadabra and jobadabra-web at once shared one log, and their events mixed).
-repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
-log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 [ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || { session_name() { echo "${JOBADABRA_SESSION:-?}"; }; session_short() { echo "${JOBADABRA_SESSION_SHORT:-?}"; }; }
 if [ "$background" = 1 ]; then
   export JOBADABRA_SESSION="$(session_name)" JOBADABRA_SESSION_SHORT="$(session_short)"   # the detached run has no Claude session among its parents any more
