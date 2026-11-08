@@ -3,7 +3,7 @@
 // or say `// clock: relative <why>` when the read only compares two readings of the same clock.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ALLOWED, allowedText, countLines, readAllowed, scan, worse} from '../../../../tools/unpinned-clock.mjs';
+import {ALLOWED, allowedText, countLines, ledgerProblems, readAllowed, scan, worse} from '../../../../tools/unpinned-clock.mjs';
 import fs from 'node:fs';
 
 test('no test file reads the real clock more often than its recorded debt, and fixed files leave the list', () => {
@@ -33,4 +33,13 @@ test('what the ratchet counts: a calendar read in an unpinned file; not duration
   assert.equal(countLines('// uses new Date() to ...\n# datetime.now() in a comment'), 0);
   assert.equal(countLines('const now = new Date();   // clock: relative the rows and the call share this one reading'), 0);
   assert.equal(countLines("test('x', t => { t.mock.timers.enable({apis: ['Date'], now: 0}); return new Date().getDate(); });"), 0, 'the file pins the clock');
+});
+
+test('--check (what a Python-only PR runs) fails on a new read AND on a paid-off ledger line, like the test above', () => {
+  const ledger = '2\ta.py\n1\tb.py\n';
+  assert.deepEqual(ledgerProblems({'a.py': 2, 'b.py': 1}, ledger), {found: [], stale: false}, 'the ledger is exactly what the scan finds');
+  assert.deepEqual(ledgerProblems({'a.py': 3, 'b.py': 1}, ledger).found, ['a.py: 3 (allowed 2)'], 'a new read');
+  assert.equal(ledgerProblems({'b.py': 1}, ledger).stale, true, 'a file paid off to 0 (#3629): its line must leave');
+  assert.equal(ledgerProblems({'a.py': 1, 'b.py': 1}, ledger).stale, true, 'a debt that went down: the count must follow');
+  assert.equal(ledgerProblems({'a.py': 2, 'b.py': 1}, '1\tb.py\n2\ta.py\n').stale, true, 'one sorted line per file');
 });
