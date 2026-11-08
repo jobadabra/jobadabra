@@ -378,6 +378,7 @@ jobs:
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: blob-windows-${{ matrix.key }}
@@ -403,6 +404,7 @@ jobs:
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_2.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-windows-${{ matrix.key }}
@@ -428,6 +430,7 @@ jobs:
       - name: Screenshots and logs
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-windows-${{ matrix.key }}
@@ -451,6 +454,7 @@ jobs:
       - name: The Edge pass's screenshots and logs
         if: (always() && matrix.suite == 'apply') && steps.artifact_scan_4.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-windows-${{ matrix.key }}-edge
@@ -662,6 +666,7 @@ jobs:
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: ai-credit-alert-${{ github.run_id }}

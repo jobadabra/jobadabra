@@ -531,6 +531,7 @@ jobs:
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
         if: (success() && steps.suite_run.outputs.tolerant_failed != '1' && inputs.pr_suites != '' && inputs.after_merge == '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: ai-answers-${{ matrix.key }}
@@ -554,6 +555,7 @@ jobs:
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_2.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: blob-${{ matrix.key }}
@@ -579,6 +581,7 @@ jobs:
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-${{ matrix.key }}
@@ -604,6 +607,7 @@ jobs:
       - name: Which app lines the suite ran (the code → suite map)
         if: (always() && env.E2E_COVERAGE == '1') && steps.artifact_scan_4.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-coverage-${{ matrix.key }}
@@ -627,6 +631,7 @@ jobs:
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-${{ matrix.key }}
@@ -728,6 +733,7 @@ jobs:
       - name: The pictures, for the review job
         if: always() && steps.shots_scan.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: integration-shots
@@ -1148,6 +1154,7 @@ jobs:
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: ai-credit-alert-${{ github.run_id }}

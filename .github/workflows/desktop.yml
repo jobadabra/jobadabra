@@ -435,6 +435,7 @@ jobs:
       - name: Keep the Mac screenshot
         if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: mac-screens-${{ needs.changes.outputs.version }}
@@ -563,6 +564,7 @@ jobs:
       - name: Keep the Windows screenshots
         if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_2.outcome == 'success'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           name: windows-screens-${{ needs.changes.outputs.version }}
@@ -869,6 +871,7 @@ jobs:
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_3.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -895,6 +898,7 @@ jobs:
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_4.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -921,6 +925,7 @@ jobs:
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1186,6 +1191,7 @@ jobs:
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_7.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1212,6 +1218,7 @@ jobs:
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_8.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1238,6 +1245,7 @@ jobs:
       - name: Screenshots and logs
         if: (always()) && steps.artifact_scan_9.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1262,6 +1270,7 @@ jobs:
       - name: The Edge pass's screenshots and logs
         if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
