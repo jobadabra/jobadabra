@@ -3,8 +3,8 @@ name: Press tapes
 # press (the ceiling, tools/persona-search/run.mjs --ceiling), every web and AI answer kept (src/search_tape.py, per item: src/tape_items.py), then
 # published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
 # Its calls ride the broker's by-hand lane (jobadabra-web lib/lanes.mjs: the PR reserve to 100% of the week, never Claude), so a spent scheduled share (70%) no longer turns a tape into another AI's answers.
-# That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona takes ~45+ calls (2 presses at the ceiling and the judge),
-# so record in batches of about 6 personas a UTC day (owner, 8 Nov 2026: "~3 days of recording"), on a day no by-hand Search check ran; the batch job refuses an empty list or more than 6.
+# That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona's two 180 s presses took 87-91 calls (8 Nov 2026);
+# at the 540 s ceiling it is not measured yet, so each persona starts only with room for 300 calls left today, and a tape with any refused or Free AI call is not published.
 on:
   workflow_dispatch:
     inputs:
@@ -62,6 +62,16 @@ jobs:
       matrix:
         persona: ${{ fromJSON(inputs.personas) }}
     steps:
+      # Why (8 Nov 2026, coordinator mac-9d: "A tape with a refused call must fail its own recording, never be kept"): a 540 s recording's call count is not measured yet (two 180 s presses: 87-91 calls,
+      # run 42451932088), so a persona starts only while the by-hand lane has room for 3x that today; one that does not fit stops here, red, before any AI call, and is recorded another day.
+      - name: The by-hand lane has room for this recording today
+        env:
+          NEED: '300'   # 3 x 91 calls of two 180 s presses, plus the judge
+          DAY_CAP: '800'   # jobadabra-web workers/ai-broker/lib/budget.mjs DAILY.byhand
+        run: |
+          used=$(curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | node -e 'let t="";process.stdin.on("data",d=>t+=d).on("end",()=>{const n=JSON.parse(t).daily?.byhand;if(!Number.isInteger(n))process.exit(2);console.log(n)})') || { echo "::error::the broker's day count could not be read: no recording without it"; exit 1; }
+          echo "by-hand calls today: $used of $DAY_CAP; this recording needs about $NEED"
+          if [ $((DAY_CAP - used)) -lt "$NEED" ]; then echo "::error::only $((DAY_CAP - used)) by-hand calls left today (UTC): record persona ${{ matrix.persona }} another day"; exit 1; fi
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
       - uses: actions/setup-node@v5
@@ -94,6 +104,15 @@ jobs:
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-tape/data/jobs.sqlite" out/jobs.json
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json tape/judged.json 2>&1 | tee out/judge.log
           cp out/draw/jobs-*.json tape/
+      # Why (8 Nov 2026, coordinator mac-9d: "A tape with a refused call must fail its own recording, never be kept"): a refused call (429 past the day cap, a 503) or a Free AI answer is
+      # another clock and another model in the tape, so the yardstick would count it as the press's own.
+      - name: Every AI call was answered by Codex (else the tape is not kept)
+        run: |
+          calls=$(cat out/run.log out/judge.log | grep -c 'relay: ' || true)
+          refused=$(cat out/run.log out/judge.log | grep 'relay: ' | grep -vc ' status 200 ' || true)
+          other=$(cat out/run.log out/judge.log | grep -ciE 'free-ai|budget:' || true)
+          echo "AI calls: $calls, not answered: $refused, Free AI or budget lines: $other"
+          if [ "$calls" -eq 0 ] || [ "$refused" -ne 0 ] || [ "$other" -ne 0 ]; then echo "::error::persona ${{ matrix.persona }}'s tape has refused or other-AI calls: not published"; exit 1; fi
       - name: Is the records App's key set
         id: records_app_key
         env:
