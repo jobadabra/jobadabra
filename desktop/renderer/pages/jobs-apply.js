@@ -33,7 +33,7 @@ function draw() {
 // Shows a batch's result (a resultView of the app's answer), or clears it for no outcomes; `result` is what pilot.apply answered.
 function showOutcomes(result, openJob) {
   const view = resultView(result);
-  $('apply-dialog').classList.toggle('apply-result', view.rows.length > 0);   // Why (8 Nov 2026, owner: "bad UI"): one state at a time: while the results show, the form (count, modes, Apply) is hidden
+  $('apply-dialog').classList.toggle('apply-result', view.rows.length > 0);   // Why (8 Nov 2026, owner: "bad UI"; [ad] try 3): one state at a time: while the results show, the form (count, modes, Apply) is hidden; the CSS for it is in apply-result.css
   drawResult({summary: $('apply-summary'), counts: $('apply-counts'), hint: $('apply-hint'), list: $('apply-outcomes')}, view, job => { $('apply-dialog').close(); openJob(job, 'application'); });   // the title is a link that opens the job, as in the Jobs list
   message('apply-message', view.note?.text || '', view.note?.tone === 'error' ? 'error' : undefined);
   const again = $('apply-again');
@@ -96,7 +96,7 @@ export function wireApplyDialog({startedApplying, openJob}) {
         if (!outcome.close) offerBrowser($('apply-browser'), outcome.browserOffer);
         if (outcome.outcomes?.length) {
           batchFinished = !!result.ok;   // before showOutcomes: it hides "Change and try again" for a batch that started something
-          showOutcomes(result, openJob);   // Why (7 Nov 2026, #3424; 8 Nov 2026, owner): partial success stays listed with its rows (the title opens the job) and a duplicate batch is blocked from the finished dialog: no "Change and try again" after jobs started.
+          showOutcomes(result, openJob);   // Why (7 Nov 2026, #3424; 8 Nov 2026, owner; [ad] try 3): a partial batch stays listed as one row per job (the title opens it) with counts above, and a duplicate batch is blocked from the finished dialog: no "Change and try again" after jobs started.
           return;
         }
         if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }
