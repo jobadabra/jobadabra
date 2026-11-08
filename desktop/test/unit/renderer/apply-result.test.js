@@ -50,6 +50,24 @@ test('a reason shared by several rows of a batch that went on is said once, mute
   assert.deepEqual(shared.rows.map(row => row.reason), ['', '', '']);
 });
 
+test('a refusal with no words of its own still says something (the old dialog\'s fallback)', () => {
+  const view = resultView({ok: false, outcomes: [job(1, 'not-started')]});
+  assert.equal(view.note.tone, 'error');
+  assert.ok(view.note.text && !view.note.text.includes('helperFlow'), view.note.text);
+});
+
+test('every reason shared by several rows is said once, not only the first one', () => {
+  const view = resultView({ok: true, outcomes: [job(1, 'ineligible', 'X.'), job(2, 'ineligible', 'X.'), job(3, 'failed', 'Y.'), job(4, 'failed', 'Y.')]});
+  assert.deepEqual(view.rows.map(row => row.reason), ['', '', '', '']);
+  assert.deepEqual(view.note, {text: 'X. Y.', tone: 'muted'});
+});
+
+test('a batch opened in Chrome tabs keeps the app\'s "submit yourself" sentence, not "Follow them in Sessions"', () => {
+  const message = 'Opened 2 job(s) in Chrome; each fills itself in a few seconds. Review every tab and submit yourself.';
+  const view = resultView({ok: true, jobs: ['a', 'b'], message, outcomes: [job(1, 'started'), job(2, 'started'), job(3, 'ineligible', 'Needs a work permit.')]});
+  assert.equal(view.hint, message);
+});
+
 test('a job with no title shows its company, then "Job"; the title is never empty', () => {
   const view = resultView({ok: true, outcomes: [{url: 'u1', company: 'Acme', status: 'started'}, {url: 'u2', status: 'started'}]});
   assert.deepEqual(view.rows.map(row => [row.title, row.company]), [['Acme', ''], ['Job', '']]);

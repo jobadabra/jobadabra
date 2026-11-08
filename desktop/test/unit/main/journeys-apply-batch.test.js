@@ -5,6 +5,7 @@ import * as apply from '../../../lib/apply.js';
 import * as terminals from '../../../lib/terminals.js';
 import {sharedRead} from '../../../lib/shared-read.js';
 import {applyDialogOutcome} from '../../../renderer/apply-dialog-model.js';
+import {resultView} from '../../../renderer/apply-result-model.js';
 
 test('scenario: a prepared Apply job refused by the background browser stays visible as not started', async () => {
   const jobs = [{code: '1', url: 'https://jobs.example.test/1', title: 'Fictional role', company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90}];
@@ -12,7 +13,9 @@ test('scenario: a prepared Apply job refused by the background browser stays vis
     async () => { jobs[0].kit = true; return {ok: true}; }, undefined, {enqueue: async () => ({ok: false, error: 'Download Jobadabra\'s browser first.', outcomes: [{...jobs[0], status: 'not-started', reason: 'Download Jobadabra\'s browser first.'}]})});
   const dialog = applyDialogOutcome(result);
   assert.equal(dialog.close, false, 'the refusal keeps the outcome visible');
-  assert.equal(dialog.error, 'Download Jobadabra\'s browser first.');
+  const view = resultView(result);   // what the person reads: the refusal once, no per-row repeat
+  assert.deepEqual(view.note, {text: 'Download Jobadabra\'s browser first.', tone: 'error'});
+  assert.deepEqual(view.rows.map(row => row.reason), ['']);
   assert.deepEqual(dialog.outcomes.map(({status, reason}) => [status, reason]), [['not-started', 'Download Jobadabra\'s browser first.']]);
 });
 

@@ -209,8 +209,8 @@ test('a partial batch with per-job outcomes stays open so skipped and failed job
     {url: 'https://jobs.example.test/2', title: 'Fictional First Officer', company: 'Example Air', status: 'ineligible', reason: 'Required credential missing.'},
     {url: 'https://jobs.example.test/3', title: 'Fictional Captain', company: 'Example Air', status: 'failed', reason: 'The application kit could not be saved.'},
   ];
-  assert.deepEqual(applyDialogOutcome({ok: true, message: '1 application queued.', outcomes}), {close: false, error: '1 application queued.', outcomes});
-  assert.deepEqual(applyDialogOutcome({ok: false, error: 'No applications were started.', outcomes}), {close: false, error: 'No applications were started.', outcomes});
+  assert.deepEqual(applyDialogOutcome({ok: true, message: '1 application queued.', outcomes}), {close: false, outcomes});
+  assert.deepEqual(applyDialogOutcome({ok: false, error: 'No applications were started.', outcomes}), {close: false, outcomes});
   assert.equal(applyDialogOutcome({ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: 'Download Jobadabra\'s browser first.', outcomes}).browserOffer, true, 'the download offer survives when failed rows are shown');
 });
 
