@@ -119,3 +119,14 @@ test('a Stop while the kit drafts ends the check before the browser opens; a kit
   assert.equal((await failed.applyReadiness(JOB)).kit.ok, false);
   assert.equal(calls.read, 0, 'no kit, no row to keep a check on');
 });
+
+test('the Jobs page shows why a kit could not be drafted, passes the Notion gate up, and marks a drafted kit', async () => {
+  const {readThroughStep} = await import('../../../renderer/apply-readiness-read.js');
+  const via = done => ({applyReadiness: async () => done});
+  assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'needs AI'}, check: null}), JOB), {unreadable: true, why: 'needs AI'});
+  assert.equal((await readThroughStep(via({kit: {ok: false, needsNotion: true, reason: 'connect Notion'}}), JOB)).why, 'connect Notion');
+  const job = {...JOB};
+  assert.deepEqual(await readThroughStep(via({kit: {ok: true}, check: SIMPLE, stored: true}), job), {...SIMPLE, stored: true});
+  assert.equal(job.kit, true, 'the next check does not draft it again');
+  assert.equal(await readThroughStep(via({kit: {ok: true}, check: null}), {...JOB, code: ''}), null);
+});

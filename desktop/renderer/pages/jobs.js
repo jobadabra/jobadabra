@@ -42,6 +42,7 @@ import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
 import {wireApplyDialog} from './jobs-apply.js';
+import {readThroughStep} from '../apply-readiness-read.js';
 import {wireTriage} from './jobs-triage.js';
 import {plainError} from '../run-warnings.js';
 import {isOutdated} from '../errors.js';
@@ -378,6 +379,6 @@ export async function init() {
   wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying, openJob: openJobPanel});
-  wireTriage({read: job => window.pilot.applyReadiness({url: job.url, code: job.code, title: job.title, kit: job.kit === true, posted_at: job.posted_at}).then(done => (done?.check ? {...done.check, stored: done.stored === true} : null)), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
+  wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
 }
 

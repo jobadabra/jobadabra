@@ -10,7 +10,7 @@ import {matchReads} from './triage-match.js';
 export const VERSION = 1;
 /** Notion's text column holds 2000 characters: a stored check stays under this (the questions go first, then the match's names). */
 export const MAX_CHARS = 1800;
-const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];
+const CORE = ['eligible', 'captcha', 'login', 'accountCreation', 'allFactsSaved', 'simple', 'why'];   // words-ok: the field names of our own read (lib/triage-reader.js), not page words
 
 /** A read worth keeping: not unreadable, and a simple form either has no question to match or has its match with every question judged (a form the AI never judged is "answers not checked", never stored as done). Pure. */
 export const storable = read => !!read && read.unreadable !== true && !(read.simple === true && read.questions?.length && (!read.match || read.match.unjudged !== 0));
