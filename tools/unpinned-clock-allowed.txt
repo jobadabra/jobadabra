@@ -58,6 +58,5 @@
 2	tests/unit/sources/test_host_pace.py
 1	tests/unit/sources/test_places_strict.py
 5	tests/unit/sources/test_read_routes.py
-2	tests/unit/sources/test_three_minutes.py
 2	tests/unit/stores/test_apply_run.py
 1	tests/unit/stores/test_focus_store.py
