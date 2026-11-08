@@ -55,6 +55,7 @@ def _beside(path, stores, work):
     def run():
         try:
             own_db = store.connect(path)
+            own_db.execute('PRAGMA busy_timeout = 10000')   # Why (ps E2a-1 review): two writers in one process now; the tracker's own connect waits 10 s too
             try:
                 with slots.priority(slots.LATER), own_db, here() as own_stores:   # `with own_db` commits what is left, as the search's own does
                     work(own_db, own_stores)
