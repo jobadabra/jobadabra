@@ -54,7 +54,8 @@ const MATCHERS = [
     assert.equal(terminals.get('c1').stage || '', '', 'the read tab\'s sign-in page moved the person\'s Claude session to the account step');
     assert.equal(flow.stuck({...read, boot: 'run-a', session: '', tab: 8, why: 'account'}), 'offered', 'positive control: the person\'s own browser still reaches the sessions');
     assert.equal(terminals.get('c1').stage, 'account', 'positive control: Claude session stage');
-    assert.equal(flow.stuck({...read, boot: 'run-a', session: '', tab: 7, why: 'no-form'}), 'noted', 'positive control: the person\'s own browser still reaches the session');
+    // 8 Nov 2026 (review of the hidden dead-end hand-off): the session is reached; its account step (set just above) stays, and stuck says so.
+    assert.equal(flow.stuck({...read, boot: 'run-a', session: '', tab: 7, why: 'no-form'}), 'account-stays', 'positive control: the person\'s own browser still reaches the session');
     await settle();
   }],
 ];

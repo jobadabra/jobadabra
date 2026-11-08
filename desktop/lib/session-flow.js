@@ -42,7 +42,10 @@ export function createSessionFlow({terminals, review, apply, appLog, toWindow = 
     const claudes = carried ? (carried.kind === 'claude' ? [carried] : []) : terminals.list().filter(session => session.kind === 'claude' && !session.outcome && apply.isFormOf(event.url, session.url) && !review.heldElsewhere?.(session.id, String(event.boot || '')));
     if (why === 'account') for (const other of claudes) terminals.setStage(other.id, 'account', event.host);
     if (!match) return 'no-session';
-    if (!terminals.noteStuck(match.id, why, event.host, event.needs, event.accountStep) && match.stuck === 'account' && why === 'no-form') appLog('extension', 'no-form from an earlier tab: the account step stays', {host: event.host, id: match.id});
+    if (!terminals.noteStuck(match.id, why, event.host, event.needs, event.accountStep) && match.stuck === 'account' && why === 'no-form') {
+      appLog('extension', 'no-form from an earlier tab: the account step stays', {host: event.host, id: match.id});
+      return 'account-stays';   // not a dead end of this session: a hidden run is not handed over for it (lib/ext-server-handlers.js)
+    }
     if (why !== 'account') return 'noted';
     // Claude is OFFERED here, never started by this function (extension first; the person's press, or claudeAuto's 5 s countdown in the panel, starts it: takeOverHandler). The extension reports
     // an account page only when it could not finish it (its account AI was unsure, a bot check, something only the person can give): the session says what is needed.

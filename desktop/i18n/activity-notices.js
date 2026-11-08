@@ -13,7 +13,7 @@ for (const [locale, messages] of Object.entries({en, de, fr, it, es, ro, ru})) r
 export function activityText(key, variables) { return t(`activityNotice.${key}`, variables); }
 
 const handoffKeys = {captcha_preflight: 'captchaPreflight', captcha_runtime: 'captchaRuntime', stopped: 'stopped',
-  submission_outcome_unknown: 'outcomeUnknown', app_closed: 'appClosed', app_updated: 'appUpdated'};
+  submission_outcome_unknown: 'outcomeUnknown', app_closed: 'appClosed', app_updated: 'appUpdated', no_form: 'noForm'};
 
 /** Resolve native handoff display copy from an unchanged reason ID; control/journal/email text stays with callers. */
 export function activityHandoff(reason, fallback = 'reviewSelf') {

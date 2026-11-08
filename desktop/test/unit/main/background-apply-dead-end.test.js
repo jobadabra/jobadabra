@@ -34,11 +34,15 @@ test('the owner\'s scenario: a hidden application at a dead end before its form 
   assert.deepEqual((await poll()).handoffs.map(each => each.session), ['a']);
 });
 
-test('a dead end leaves alone a job past its form, one already handed over, an account page and an unknown session', async () => {
-  const {controller, handed} = rig({r: job('r', 'ready_for_review'), s: job('s', 'submitting'), h: job('h', 'needs_user_handoff', {manualOverride: true, reason: 'stopped'}), q: job('q', 'queued')});
-  for (const id of ['r', 's', 'h', 'nobody']) assert.equal(await controller.deadEnd(id, 'no-form'), null, id);
-  assert.equal(await controller.deadEnd('q', 'account'), null, 'an account page is the extension\'s own hand-off (sign_in_required)');
+// Code review of this fix: every other report the extension sends ("incomplete", a bot check sent as no-form with its need, an email or told outcome)
+// keeps its own path; handed over as a finished no_form, the next Apply would drop a half-filled form or a check the person was meant to solve.
+test('only a true no-form before any form is a dead end: other reports, a run past its form, one already handed over and an unknown session are left alone', async () => {
+  const {controller, handed} = rig({f: job('f', 'filling'), r: job('r', 'ready_for_review'), s: job('s', 'submitting'), h: job('h', 'needs_user_handoff', {manualOverride: true, reason: 'stopped'}), q: job('q', 'queued')});
+  for (const id of ['f', 'r', 's', 'h', 'nobody']) assert.equal(await controller.deadEnd(id, 'no-form'), null, id);
+  for (const why of ['account', 'incomplete', 'email', 'told', 'other', 'site_broken']) assert.equal(await controller.deadEnd('q', why), null, why);
+  assert.equal(await controller.deadEnd('q', 'no-form', "This site wants a quick check: solve it, then I'll continue"), null, 'a bot check sent as no-form with its need');
   assert.deepEqual(handed, []);
+  assert.equal((await controller.deadEnd('q', 'no-form'))?.reason, 'no_form', 'positive control: the same queued job at a true dead end is handed over');
 });
 
 test('nothing was pressed at a dead end, so applying again starts a new run', () => {

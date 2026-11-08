@@ -20,7 +20,8 @@ const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
 const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.',
   app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.',
-  app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.',
+  no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 // What an Apply batch says about the jobs it did not start: not eligible (the store refused), busy (the person already has the job open in Chrome) and live (still queued for Full automation, Gitar on #3409: skipped and said, never a refusal after earlier jobs of the batch were queued).
@@ -419,13 +420,15 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   /** The extension's dead end on a hidden application before its form (lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
    * Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): the twin's Lufthansa run said "can't reach the form" and kept "Filling" with Stop. */
-  async function deadEnd(id, why) {
-    if (why === 'account') return null;   // an account page is the extension's own hand-off (sign_in_required, extension/background-session.mjs observe)
+  async function deadEnd(id, why, needs = '') {
+    // Only a page with no form and nothing the person must do: an account page is the extension's own hand-off (sign_in_required), and a bot check,
+    // an incomplete form or a told outcome keeps its own path (the form judge, extension/background-session.mjs observe) and stays with the person.
+    if (why !== 'no-form' || needs) return null;
     return serial(async () => {
       const item = itemFor(id);
       if (!item) return null;
       const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // as stopOne: an unreadable store hands nothing over
-      if (!state || state.session !== item.id || state.manualOverride || !['queued', 'preflight', 'filling'].includes(state.state)) return null;
+      if (!state || state.session !== item.id || state.manualOverride || !['queued', 'preflight'].includes(state.state)) return null;   // filling: a form was reached, its steps stay the person's
       const handed = await markManual(item, 'no_form');
       return handed?.ok === false ? null : handed;
     });
