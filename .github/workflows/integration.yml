@@ -153,7 +153,9 @@ jobs:
           # One command string, not an exported shell function: `export -f` does not reach the shell xvfb-run starts (exit 127 "run: command not found" on the first run).
           TESTS: node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --error-file "$RUNNER_TEMP/xvfb-app.log" --server-args='-screen 0 1440x900x24' bash -c "$TESTS"; else bash -c "$TESTS"; fi
+          # Why (8 Nov 2026, xv; app (Linux) runs 42334336670, 42345066531, 42386437125, 42404365732, 42448508447 died with "Missing X server or $DISPLAY" while Xvfb was alive): Xvfb resets after its last client leaves, and a launch that connects during that reset is refused;
+          # -noreset removes the state (plain Xvfb, 6 workers x 1000 connects: default 50/7200 and 2/6000 refused, -noreset 0/12000). Every xvfb-run in .github/workflows carries it.
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --error-file "$RUNNER_TEMP/xvfb-app.log" --server-args='-screen 0 1440x900x24 -noreset' bash -c "$TESTS"; else bash -c "$TESTS"; fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
