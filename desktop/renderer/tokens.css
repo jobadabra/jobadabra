@@ -96,6 +96,7 @@
   --fold-title-w: 20rem;   /* the title block of a folded Profile card, so every card's summary starts at one x */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
   --control-h: 33px;   /* a toolbar control's height (search box, select) and anything beside it (Jobs' saved-view chips) */
+  --stack-gap: var(--sp-3);   /* between parts stacked in a dialog or form (components.css, .panel-dialog) */
   /* Roomy cards (owner's mockups, 18 Oct 2026: "Look at the cards with chips how roomier they are"): Strategy and Profile cards (card-shell.css). */
   --card-pad: var(--sp-5);   /* inside a card */
   --tile-lg: 40px;           /* a card header's icon tile */

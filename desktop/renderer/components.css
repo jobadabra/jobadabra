@@ -49,6 +49,8 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 /* Why (30 Oct 2026, owner: "alignment is not really ok", #2616; Gitar #2628): clear stacked-field margins at the default label specificity so row components retain their spacing and layout. */
 /* The existing task-count-field is also an inline label; its markup is guarded by task-count-labels.test.js. */
 :where(.panel-dialog) label.inline-label, :where(.panel-dialog) label.task-count-field { margin: 0; }
+/* Why (8 Nov 2026, owner: "we're missing spacing. Let's add this to design system and to rules"; Log job activity had its checkbox flush under the text box): parts stacked in a dialog (a text box, a list, a check row) sit one --stack-gap apart. The row above zeroes its own label margin, so the gap comes from the part BEFORE it, never from a one-off margin on the form. */
+:where(.panel-dialog) :not(.feedback-attach) > * + label.inline-label.check-row { margin-top: var(--stack-gap); }   /* a container that already has its own grid gap (.feedback-attach) keeps it: the first picture stacked a second gap there and pushed Send off the window */
 /* The top-up dialog (pages/topup-dialog.js): its pill above the title, the packs and the promo field in the dialog's own spacing. */
 .topup-dialog .dialog-head { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
 .topup-dialog .topup-packs, .topup-dialog .topup-promo { margin-top: var(--sp-4); }
@@ -103,7 +105,7 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
   padding: var(--sp-3) var(--sp-4); box-sizing: border-box; }
 .composer-tools { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-3); }
 .composer-tools .tool + .tool { border-left: 1px solid var(--line); padding-left: var(--sp-3); }
-.tool { display: inline-flex; align-items: center; gap: var(--sp-2); background: none; border: 0; color: var(--ink-2);
+.tool { display: inline-flex; align-items: center; gap: var(--sp-2); background: none; border: 0; border-radius: 0; color: var(--ink-2);   /* Why (8 Nov 2026, owner's Log job activity shot): the global button radius curved the divider border-left of `.tool + .tool` into a stray fragment; a divider is straight */
   font-size: var(--fs-md); cursor: pointer; padding: var(--sp-1) 0; }
 .tool:hover { color: var(--signal-ink); }
 .tool svg { width: 18px; height: 18px; }

@@ -124,17 +124,17 @@ section('Item rows', '.item-rows: one item per row (bold title, muted line) with
     <li><div class="item-words"><b><a class="link" href="#">Staff Platform Engineer</a></b><span class="muted">Nango</span></div><button class="secondary item-action">View CV</button></li></ul>`;
   return box;
 })());
-section('Dialog parts', '.panel-dialog with .dialog-head / .dialog-lead / .dialog-foot; .composer + .tool; .attachment + .soft-button; .select-search; .check-row; .choice-list; .segmented.is-fill', (() => {
+section('Dialog parts', 'A .check-row.inline-label that follows another part inside the form or section of a .panel-dialog sits one var(--stack-gap) (12) below it: the gap comes from the rule, never a one-off margin (these demo rows use the token directly, outside a dialog). .panel-dialog with .dialog-head / .dialog-lead / .dialog-foot; .composer + .tool; .attachment + .soft-button; .select-search; .check-row; .choice-list; .segmented.is-fill', (() => {
   const box = el('div');
   box.innerHTML = `<div class="composer"><textarea rows="2" placeholder="Paste a message here…"></textarea>
     <div class="composer-tools"><button class="tool"><i data-icon="paperclip"></i>Add screenshot</button>
     <button class="tool"><i data-icon="image"></i>Paste image</button></div></div>
     <div class="attachment"><img src="logo.png" alt=""><span class="attachment-name">screenshot.png</span><button class="soft-button">Remove</button></div>
-    <div class="select-search" style="margin-top: var(--sp-3)"><i data-icon="search"></i><select><option>Find the right job automatically</option></select></div>
+    <div class="select-search" style="margin-top: var(--stack-gap)"><i data-icon="search"></i><select><option>Find the right job automatically</option></select></div>
     <div class="choice-list"><label><input type="radio" name="g-choice" checked><span><b>A new job</b><span class="muted">Create a job from this email.</span></span></label><label><input type="radio" name="g-choice"><span><b>Not about a job</b><span class="muted">Keep this email out of your applications.</span></span></label></div>
-    <label class="check-row" style="margin-top: var(--sp-3)"><input type="checkbox"><span><span>I agreed to speak with the recruiter</span>
+    <label class="check-row" style="margin-top: var(--stack-gap)"><input type="checkbox"><span><span>I agreed to speak with the recruiter</span>
     <span class="muted small">Move the job to Screening</span></span></label>
-    <div class="segmented is-fill" style="margin-top: var(--sp-3)"><button class="is-active">LinkedIn</button><button>Email</button>
+    <div class="segmented is-fill" style="margin-top: var(--stack-gap)"><button class="is-active">LinkedIn</button><button>Email</button>
     <button>Phone / call</button><button>Other</button></div>`;
   fillIcons(box);
   return box;
