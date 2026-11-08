@@ -152,3 +152,6 @@ jobs:
           path: |
             out/
             art/*/run.log
+            art/*/tape-report.jsonl
+            art/*/out/draw/run-*.log
+            art/*/out/draw/presses.jsonl

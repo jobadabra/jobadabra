@@ -54,6 +54,8 @@ def collect(art, persona, side):
     found = list((work / 'out' / 'draw').glob('jobs-*.json'))
     for jobs in found:
         shutil.copy(jobs, result)
+    if (work / 'tape' / 'report.jsonl').exists():   # what the replay found on the recording and what it lacked: why a replay finds few jobs
+        shutil.copy(work / 'tape' / 'report.jsonl', work / 'tape-report.jsonl')
     shutil.rmtree(work / 'tape', ignore_errors=True)
     shutil.rmtree(work / 'tmp', ignore_errors=True)
     return bool(found)
