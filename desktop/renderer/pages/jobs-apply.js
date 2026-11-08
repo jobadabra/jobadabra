@@ -11,8 +11,9 @@ import {drawResult} from './apply-result.js';
 import {resultView} from '../apply-result-model.js';
 import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate, mergeHeld} from '../apply-dialog-model.js';
 import {askFullAutomation, modeCards} from './apply-settings.js';
+import {wireRowApply} from './jobs-apply-row.js';
 import {runCheck, wireApplyCheck} from './apply-check.js';
-import {toastMessage} from './startup.js';
+import {sayRefused, toastMessage} from './startup.js';
 
 const gate = createApplyStartGate();
 let settings = {};   // the saved settings the dialog opened on
@@ -55,6 +56,7 @@ async function pick(mode) {
 
 /** Wires the dialog once; startedApplying(): the Jobs list reads marked jobs; openJob: the Jobs page's drawer opener, injected to keep this dialog out of page dependency cycles. */
 export function wireApplyDialog({startedApplying, openJob}) {
+  wireRowApply({startedApplying, confirm: askFullAutomation, toastMessage, sayRefused});   // a Jobs row's ⋯ menu pick asks the same confirmation as this dialog
   $('apply-open').addEventListener('click', async () => {
     message('apply-message', '');
     settings = (await window.pilot.state().catch(() => null))?.settings || {};
