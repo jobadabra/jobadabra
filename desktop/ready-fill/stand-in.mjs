@@ -8,8 +8,9 @@ import {isFormOf} from '../../desktop/lib/form-address.js';
 const HEADERS = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json'};
 const file = (name, base64) => (base64 ? {data: base64, name, type: 'application/pdf'} : null);
 
-// batch: {contact, jobs: [{id, url, title, company, kit, cv, letterPdf}]}. -> {port, close, outcome(url), asked}
-export async function createStandIn(batch, {answer = null} = {}) {
+// batch: {contact, jobs: [{id, url, title, company, kit, cv, letterPdf}]}. The read task (read-night.mjs) adds `background(body)`, its answer to the extension's background poll, and `pageKind(body)`, the AI's page kind;
+// a fill night passes neither and both routes answer as before (a refused poll, no kind). -> {port, close, outcome(url), asked}
+export async function createStandIn(batch, {answer = null, background = null, pageKind = null} = {}) {
   // A page the extension reports belongs to the job whose form it is (the posting, its form address, or a page below it, the way the app matches):
   // every lookup and every count is kept under that job's address, so a press on Apply or a next step stays on the same job.
   const key = address => { const page = String(address || '').split('#')[0]; return batch.jobs.find(job => isFormOf(page, job.url))?.url.split('#')[0] ?? page; };
@@ -29,6 +30,8 @@ export async function createStandIn(batch, {answer = null} = {}) {
       const job = jobs.get(key(url));
       return {contact: batch.contact || {}, contactSource: 'night', ...(file('CV.pdf', job?.cv) ? {resume: file('CV.pdf', job.cv)} : {}), ...(file('Cover letter.pdf', job?.letterPdf) ? {coverLetterFile: file('Cover letter.pdf', job.letterPdf)} : {})};
     },
+    '/extension/background-apply': (port, url, body) => (background ? background(body) : {ok: false}),
+    '/extension/page-kind': (port, url, body) => (pageKind ? pageKind(body) : {}),
     '/extension/kit': (port, url) => { const job = jobs.get(key(url)); return job ? {job: {title: job.title, company: job.company, url: job.url}, kit: job.kit || null} : {error: 'not tracked'}; },
   };
   // The night's answers for a job, each with its question's id and label (the morning matches a field by them): only answers it typed or proposed, never an empty one.

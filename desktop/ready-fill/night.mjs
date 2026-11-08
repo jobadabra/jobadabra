@@ -2,15 +2,13 @@
 // post only counts to the Worker after each (it can answer "stop": the night's cost cap), and keep every filled tab open for the morning. Never presses Submit or an account button (extension-copy.mjs, no-submit.mjs).
 // Counts only leave this file: no field value, no address in a log. Guard: desktop/test/unit/ready-fill/ready-fill.test.js; the one-night image check is hosted/ready-fill/image-check.mjs in jobadabra-web.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {copyForNight} from './extension-copy.mjs';
-import {setExtensionStorage} from './extension-storage.mjs';
 import {fillJob} from './fill-job.mjs';
 import {discard} from './fill-video.mjs';
 import {handoff as handoffOf} from './live.mjs';
-import {answererFor} from './night-ai.mjs';
+import {answererFor, siteClient} from './night-ai.mjs';
+import {openNightBrowser} from './night-browser.mjs';
 import {net} from './no-submit.mjs';
 import {createStandIn} from './stand-in.mjs';
 
@@ -54,14 +52,30 @@ async function post(fetchImpl, site, token, route, body) {
   return response.json().catch(() => ({}));
 }
 
-// chromium: Playwright's (main.mjs passes `playwright`'s; the fixture proof passes the desktop's), so this file loads without a browser package. -> {held: Map(jobId -> page), context, close()} once every job has been tried (the pages stay open).
-export async function runNight({chromium, site, token, fetchImpl = fetch, log = () => {}, fillSeconds = 120, extraArgs = [], launchOptions = {}, record = null, settleMs = 3000}) {   // extraArgs/launchOptions: the fixture proof's host rules and certificate (proof.mjs)
+// The cloud runner's tasks (spec docs/superpowers/specs/2026-11-08-cloud-browser-runner-design.md): `fill` is Ready to send's night (the default, so a run that names none is unchanged), `readiness` reads each form only.
+// Why (8 Nov 2026, owner approved the spec's safety lines): `auto` (Full automation, Submit) is not a task until its own PR brings its one gate and guard test; any other name is refused before the batch is read.
+export const TASKS = ['fill', 'readiness'];
+
+// chromium: Playwright's (main.mjs passes `playwright`'s; the fixture proof passes the desktop's), so this file loads without a browser package. task: one of TASKS.
+// -> {held: Map(jobId -> page), context, close()} once every job has been tried (a fill's pages stay open); a read holds no page and also returns {results}.
+export async function runNight({chromium, site, token, task = 'fill', fetchImpl = fetch, log = () => {}, fillSeconds = 120, extraArgs = [], launchOptions = {}, record = null, settleMs = 3000, readerOptions = {}}) {   // extraArgs/launchOptions: the fixture proof's host rules and certificate (proof.mjs)
+  if (!TASKS.includes(task)) throw new Error(`unknown night task: ${String(task).slice(0, 20)}`);
   const batch = await post(fetchImpl, site, token, 'batch');
   const held = new Map(), told = new Set();   // told: the jobs whose result the site already has
   if (!batch.ok || batch.stop || !batch.jobs?.length) { log('nothing to do', {stop: !!batch.stop}); return {held, close: async () => {}}; }
-  try { return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs}); }
-  catch (error) {   // the night could not start or stopped: each job not yet told is told, so the card says so at once instead of "waiting" until the night's end
-    for (const job of batch.jobs.filter(job => !held.has(job.id) && !told.has(job.id))) await post(fetchImpl, site, token, 'result', {job: job.id, state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0}).catch(() => {});
+  try {
+    if (task === 'readiness') {
+      // Why (8 Nov 2026, code review of cloud runner 1/4): loaded only for a read, so the fill night's image runs without the read's files (lib/triage-reader.js, ladder/rung2-sketch.js) until web 2/4 adds them.
+      const {readAll} = await import('./read-night.mjs');
+      const over = async () => { const again = await post(fetchImpl, site, token, 'batch').catch(() => ({})); return again.ok === false || !!again.error || !!again.stop; };
+      const tell = {result: body => post(fetchImpl, site, token, 'result', body), stepper: job => stepper({fetchImpl, site, token, job}), costMicro: ms => costMicro(ms), over};
+      const {results} = await readAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, told, log, extraArgs, launchOptions, readerOptions, client: siteClient({site, token, fetchImpl})});
+      return {held, results, close: async () => {}};
+    }
+    return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs});
+  } catch (error) {   // the night could not start or stopped: each job not yet told is told, so the card says so at once instead of "waiting" until the night's end
+    const failed = task === 'readiness' ? {task, state: 'failed', read: null, why: NIGHT_FAILED, ms: 0, costMicro: 0} : {state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0};
+    for (const job of batch.jobs.filter(job => !held.has(job.id) && !told.has(job.id))) await post(fetchImpl, site, token, 'result', {job: job.id, ...failed}).catch(() => {});
     throw error;
   }
 }
@@ -74,17 +88,8 @@ export const NIGHT_FAILED = 'the night could not start';   // the word the card 
 async function fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs}) {
   const standIn = await createStandIn(batch, {answer: await answererFor({batch, site, token, fetchImpl})});
   let profile = '', context = null;
-  try {   // a setup that fails closes what it opened (the stand-in's server, the browser, the profile folder), so the process can end
-    const copy = copyForNight(standIn.port, EXTENSION_DIR);
-    profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-night-'));
-    context = await chromium.launchPersistentContext(profile, {headless: false, locale: 'en-US', ignoreDefaultArgs: ['--disable-extensions', '--disable-popup-blocking'], timeout: 90000, ...launchOptions,
-      args: ['--headless=new', '--no-sandbox', `--disable-extensions-except=${copy}`, `--load-extension=${copy}`, '--no-first-run', '--no-default-browser-check', ...extraArgs]});
-    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
-    await setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${standIn.port}`, token: 'night'});  
-  } catch (error) {
-    await context?.close().catch(() => {}); await standIn.close().catch(() => {}); if (profile) fs.rmSync(profile, {recursive: true, force: true});
-    throw error;
-  }
+  try { ({context, profile} = await openNightBrowser({chromium, standIn, extensionDir: EXTENSION_DIR, extraArgs, launchOptions})); }
+  catch (error) { await standIn.close().catch(() => {}); throw error; }   // a setup that fails closes what it opened (the browser and profile: night-browser.mjs; the stand-in here), so the process can end
   const guard = await net(context);
   const close = async () => { await context.close().catch(() => {}); await standIn.close().catch(() => {}); fs.rmSync(profile, {recursive: true, force: true}); };
   // The night's forms in a line (owner, 18 Oct 2026): after each form the night is read again, and a form a Fill again added since joins the end of the line.
