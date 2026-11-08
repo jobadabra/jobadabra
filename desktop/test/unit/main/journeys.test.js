@@ -17,7 +17,6 @@ import '../../journeys-reopen.js';
 import '../../journeys-background-queue.js';
 import * as terminals from '../../../lib/terminals.js';
 import * as apply from '../../../lib/apply.js';
-import * as review from '../../../lib/review.js';
 import {createSessionFlow} from '../../../lib/session-flow.js';
 import {createAccountCheck} from '../../../lib/account-check.js';
 import {STOPPED, journeyStep} from '../../../lib/application-journey.js';
