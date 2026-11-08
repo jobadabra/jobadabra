@@ -16,7 +16,18 @@ from src.ai import enrich, score, slots, title_queue, title_triage
 from src.press import rank
 import re
 
-from src.sources import feed_order, feeds, read_budget
+from src.sources import careers, feed_order, feeds, read_budget
+
+_READER = careers.READER
+
+
+def setUpModule():   # no page read reaches a real model here (guard: tests/unit/sources/test_found_boards_ai.py); first_jobs.pick is pure but the guard reads the call
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
 
 SEARCH = {'role_keywords': ['software engineer'], 'title_exclude_keywords': []}
 
