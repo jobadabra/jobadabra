@@ -20,7 +20,7 @@
 # From the moment the PR opens a detached watcher (tools/ship-watch.sh, no AI, ~2 min looks, longer while GitHub refuses, 48 h cap) adds to the same log: `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`,
 # `ship: RED #n <check>`, `ship: GREEN #n`, `ship: READY #n <sha>` or `ship: WATCH ENDED #n (still open)`. SHIP_WATCH=0 starts none.
 set -euo pipefail
-flags=""; keep=1; background=0; args=()
+flags=""; keep=1; background=0; args=(); arg_err=""
 for arg in "$@"; do
   case "$arg" in
     --full) flags="PUSH_FULL=1 $flags"; args+=("$arg") ;;
@@ -29,9 +29,9 @@ for arg in "$@"; do
     --remove) keep=0; args+=("$arg") ;;
     --background) background=1 ;;
     --draft) export SHIP_PR_DRAFT=1; args+=("$arg") ;;   # a draft until green: tools/ship-pr.sh marks it ready at REVIEW
-    --body=*) SHIP_PR_BODY="$(cd "$(dirname "${arg#--body=}")" && pwd)/$(basename "${arg#--body=}")"; export SHIP_PR_BODY; [ -s "$SHIP_PR_BODY" ] || { echo "ship: --body file is empty or missing: ${arg#--body=}" >&2; exit 2; }; args+=("$arg") ;;   # the PR's 5-second summary (tools/pr-body.sh)
-    --title=*) SHIP_PR_TITLE="${arg#--title=}"; export SHIP_PR_TITLE; [ -n "$SHIP_PR_TITLE" ] || { echo "ship: --title is empty" >&2; exit 2; }; args+=("$arg") ;;   # the PR's title (default: tools/pr-title.sh)
-    *) echo "usage: tools/ship.sh [--full] [--fix] [--keep|--remove] [--background] [--draft] [--body=<file>] [--title=<text>]" >&2; exit 2 ;;
+    --body=*) SHIP_PR_BODY="$(cd "$(dirname "${arg#--body=}")" && pwd)/$(basename "${arg#--body=}")"; export SHIP_PR_BODY; [ -s "$SHIP_PR_BODY" ] || arg_err="ship: --body file is empty or missing: ${arg#--body=}"; args+=("$arg") ;;   # the PR's 5-second summary (tools/pr-body.sh)
+    --title=*) SHIP_PR_TITLE="${arg#--title=}"; export SHIP_PR_TITLE; [ -n "$SHIP_PR_TITLE" ] || arg_err="ship: --title is empty"; args+=("$arg") ;;   # the PR's title (default: tools/pr-title.sh)
+    *) arg_err="usage: tools/ship.sh [--full] [--fix] [--keep|--remove] [--background] [--draft] [--body=<file>] [--title=<text>]" ;;
   esac
 done
 
@@ -53,6 +53,7 @@ log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 # Why (8 Nov 2026, ac's R1): a refusal before the background run starts (a bad --body, uncommitted files) wrote nothing to the log, so the
 # caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there.
 [ "$background" != 1 ] || trap 'code=$?; [ "$code" -eq 0 ] || echo "ship: FAILED (exit $code) refused before starting, nothing was pushed: see its message" >> "$log"' EXIT
+[ -z "$arg_err" ] || { echo "$arg_err" >&2; exit 2; }   # an argument refusal waits for the trap (Gitar on #3575)
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
 [ -n "$branch" ] || { echo "ship: no branch is checked out (detached HEAD). Finish or abort a rebase or merge in progress, else name one: git switch -c <topic>; then run this again." >&2; exit 2; }
 if ! git diff --quiet || ! git diff --cached --quiet; then echo "ship: uncommitted changes in tracked files: commit them first" >&2; exit 2; fi
