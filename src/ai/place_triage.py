@@ -10,7 +10,6 @@ without AI or with JOBADABRA_DISABLE=place_triage, and for a location not decide
 import hashlib
 import json
 import threading
-import time
 
 from ..paths import DATA
 from .models import SMALL_MODEL
@@ -162,7 +161,7 @@ def decide(locations, search, client=None):
                     countries[batch[n - 1]] = str(item['country']).strip()[:40]
             sorted_[0] += len(batch)
             ticker.tick(sorted_[0])
-    began = time.monotonic()
+    began = budget.now()
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     rights = words.get('work_rights') or []
@@ -180,7 +179,7 @@ def decide(locations, search, client=None):
         except Exception as error:  # noqa: BLE001 — placed without the visa answer; asked with the next new places
             print(f'Warning: visa needs were not checked ({reason(error)}); they are asked again with the next new places', flush=True)
             detail('visa needs', error)
-    budget.record('place_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_rounds', budget.now() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
     _keep(key, decided)
     asked = [loc for loc in ask if loc in decided]
     print(f'Places: {providers.who()} placed {len(asked)} location(s); {sum(1 for loc in asked if decided[loc] != "out")} are in your places', flush=True)
@@ -253,11 +252,11 @@ def vague(locations, search, client=None):
             for n, location in enumerate(batch, 1):
                 decided[location] = 'out:vague' if n in numbers else 'out:clear'
             done[0] += len(batch)
-    began = time.monotonic()
+    began = budget.now()
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
-    budget.record('place_vague', time.monotonic() - began, -(-done[0] // (VAGUE_BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_vague', budget.now() - began, -(-done[0] // (VAGUE_BATCH * max(1, engine.PARALLEL))))
     _save(key, decided)
     found = [loc for loc in ask if decided.get(loc) == 'out:vague']
     if found:
@@ -344,11 +343,11 @@ def read(jobs, search, client=None):
                 place = {'best': 'best', 'inside': 'in', 'out': 'out'}.get(item.get('answer'), 'unclear')
                 found[batch[n - 1]['url']] = {'hash': _text_hash(batch[n - 1]), 'place': place, 'where': str(item.get('where') or '')[:80]}
             done[0] += len(batch)
-    began = time.monotonic()
+    began = budget.now()
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
-    budget.record('place_reading', time.monotonic() - began, -(-done[0] // (READ_BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_reading', budget.now() - began, -(-done[0] // (READ_BATCH * max(1, engine.PARALLEL))))
     with LOCK:
         data = _load_read()
         data[key] = {**(data.get(key) or {}), **found}
