@@ -2,8 +2,9 @@
 the replay jobs' artifacts (art/yardstick-p<N>-<side>/result/: jobs-<run>.json, judged.json, ceiling/jobs-<run>.json) laid out the way
 three_numbers.py reads them, then one markdown summary on stdout (the job summary) and the numbers as JSON in <out>.
   python3 tools/press-yardstick/ci.py pr <art> <out>     this ref and main, each Find jobs run (1 = first, 2 = repeat) against main's newest band
-  python3 tools/press-yardstick/ci.py band <art> <out>   main's 5 replays per persona -> <out>/band.json (what the pr mode compares with)
+  python3 tools/press-yardstick/ci.py band <art> <out>   main's 5 replays per persona -> <out>/band.json: the recordings it used, the personas, {run: {number: [low, high]}}
 A persona with no recording has no artifact and is left out ("not measured"); a missing band reads "not measured" on every number, never red."""
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -66,8 +67,31 @@ def by_minute(recordings, run, minutes=(3, 5, 9)):
     return counts
 
 
+def stamps(recordings):
+    """{persona: sha256 of its recording's files}: which recordings a band or a replay was measured on."""
+    found = {}
+    for persona in sorted(Path(recordings).glob('p*')):
+        digest = hashlib.sha256()
+        for file in sorted(persona.iterdir()):
+            digest.update(file.name.encode() + b'\0' + file.read_bytes())
+        found[persona.name] = digest.hexdigest()
+    return found
+
+
+def comparable(band, recordings, run, personas):
+    """(main's band for this run, or {} with the reason): a band counts only when it was built on these same recordings and personas
+    (Gitar on #3594: a band of 2 personas compared with a mean of 5, or of recordings re-made since, reads as a change)."""
+    if not band:
+        return {}, None
+    if band.get('recordings') != stamps(recordings):
+        return {}, "main's band was built on other recordings (a recording was made or re-made since): not measured; dispatch mode=band again"
+    if sorted(band.get('personas', {}).get(run, [])) != sorted(personas):
+        return {}, f"main's band measured {band.get('personas', {}).get(run, [])}, this replay {sorted(personas)}: not measured"
+    return band['runs'].get(run, {}), None
+
+
 def newest_band():
-    """main's newest band ({run: {number: [low, high]}}), from the last successful mode=band run on main; {} when there is none yet."""
+    """main's newest band (band_mode's band.json), from the last successful mode=band run on main; {} when there is none yet."""
     try:
         runs = json.loads(subprocess.run(['gh', 'run', 'list', '--workflow', 'press-yardstick.yml', '--branch', 'main', '--status', 'success',
                                           '--json', 'databaseId,displayTitle', '-L', '30'], capture_output=True, text=True, check=True).stdout)
@@ -100,7 +124,15 @@ def pr(art, out):
         theirs = rows(recordings, sides['main'], run) if 'main' in sides else []
         found[run] = {'pr': {'personas': mine, 'summary': numbers.summary(mine) if mine else {}},
                       'main': {'personas': theirs, 'summary': numbers.summary(theirs) if theirs else {}}}
-        lines += ['', f'### The {label} ({len(mine)} personas)', '', numbers.table(band.get(run, {}), found[run]['pr']['summary'] or {'unjudged': 0}), '']
+        measured = [row['persona'] for row in mine]
+        against, why = comparable(band, recordings, run, measured)
+        lines += ['', f'### The {label} ({len(mine)} personas)', '']
+        if why:
+            lines += [why, '']
+        crashed = sorted(p.name for p in recordings.glob('p*') if (p / f'jobs-{run}.json').exists() and p.name not in measured)
+        if crashed:
+            lines += [f"replay crashed or missing on this ref (left out, see its job's log): {', '.join(crashed)}", '']
+        lines += [numbers.table(against, found[run]['pr']['summary'] or {'unjudged': 0}), '']
         if theirs:
             main_said = found[run]['main']['summary']
             shown = ', '.join(f"{name} {'—' if main_said.get(name) is None else round(main_said[name], 2)}" for name in numbers.NUMBERS)
@@ -113,18 +145,21 @@ def pr(art, out):
 
 
 def band_mode(art, out):
-    """mode=band: main's 5 replays per persona in <art> -> <out>/band.json ({run: {number: [low, high] or None}}) and a short summary; returns 0.
-    A number fewer than 2 replays measured has no band (None)."""
+    """mode=band: main's 5 replays per persona in <art> -> <out>/band.json ({'recordings': stamps, 'personas': {run: [...]}, 'runs': {run:
+    {number: [low, high] or None}}}) and a short summary; returns 0. A number fewer than 2 replays measured has no band (None)."""
     sides = lay_out(art, out)
     recordings = Path(out) / 'recordings'
-    band = {}
+    band = {'recordings': stamps(recordings), 'personas': {}, 'runs': {}}
     for run in RUNS:
-        summaries = [numbers.summary(found) for side, folder in sorted(sides.items()) if side.startswith('main-') and (found := rows(recordings, folder, run))]
-        band[run] = numbers.band(summaries)
+        replays = [found for side, folder in sorted(sides.items()) if side.startswith('main-') and (found := rows(recordings, folder, run))]
+        # A persona counts in the band only when every replay of main measured it, so each replay's mean is over the same personas.
+        common = set.intersection(*({row['persona'] for row in found} for found in replays)) if replays else set()
+        band['personas'][run] = sorted(common)
+        band['runs'][run] = numbers.band([numbers.summary([row for row in found if row['persona'] in common]) for found in replays if common])
     Path(out, 'band.json').write_text(json.dumps(band), encoding='utf-8')
     print('## Find jobs pipeline yardstick: main\'s noise band\n')
     for run, label in RUNS.items():
-        print(f'- {label}: ' + ', '.join(f'{name} {band[run].get(name)}' for name in numbers.NUMBERS))
+        print(f"- {label} ({len(band['personas'][run])} personas): " + ', '.join(f"{name} {band['runs'][run].get(name)}" for name in numbers.NUMBERS))
     return 0
 
 

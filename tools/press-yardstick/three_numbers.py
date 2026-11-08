@@ -10,7 +10,7 @@ of main's own replays); inside it reads "no change".
   python3 tools/press-yardstick/three_numbers.py summary <tapes dir> <replay dir> [--press N]   per-persona numbers and their summary (JSON)
   python3 tools/press-yardstick/three_numbers.py band <summary.json>...                          main's band from its replays' summaries (JSON)
   python3 tools/press-yardstick/three_numbers.py compare <band.json> <summary.json>             one markdown table
-A folder holds p<N>/jobs-<press>.json; the tapes folder also p<N>/judged.json. Tests: tests/unit/press/test_three_numbers.py."""
+A folder holds p<N>/jobs-<press>.json; the tapes folder also p<N>/judged.json. Tests: tests/unit/press/test_numbers.py."""
 import json
 import statistics
 import sys

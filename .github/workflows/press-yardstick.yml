@@ -3,7 +3,7 @@ run-name: Find jobs pipeline yardstick ${{ inputs.mode || 'pr' }}
 # The Find jobs pipeline's yardstick (plan docs/superpowers/plans/2026-11-07-the-press.md 2c-2; owner, 7 Nov 2026: "We aim quality, speed and coverage"):
 # a pipeline PR and main replay the same Find jobs recordings (press-tapes.yml: each night persona's first and repeat Find jobs run at the 540 s
 # ceiling, every web and AI answer kept), at the recorded pace with the 180 s run, offline: no AI (--no-live: a question the recording lacks is
-# counted and fails), no site visit, no broker. tools/press-yardstick/numbers.py turns each side's jobs into coverage, quality and speed, and the
+# counted and fails), no site visit, no broker. tools/press-yardstick/three_numbers.py turns each side's jobs into coverage, quality and speed, and the
 # job summary shows them against main's noise band (mean +- 2 sd of 5 replays of main: workflow_dispatch mode=band). A persona with no recording
 # yet is "not measured", never red. The PR's number is better or worse only outside the band.
 on:
@@ -92,15 +92,44 @@ jobs:
         with: {node-version: '22'}
       - uses: actions/setup-python@v6
         with: {python-version: '3.12'}
+      # Why (#3594, Gitar): the recording's key and token are held only by main's own fetch code (tools/persona-search/tape-store.mjs at the
+      # base), never by a step that runs this PR's code; the fetch removes its key file before the step ends.
+      - name: main's recording fetcher
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: base
+          sparse-checkout: |
+            tools/persona-search
+            desktop/e2e/lib
+      - name: The records App key is set
+        id: records_app_key
+        env:
+          CI_APP_PRIVATE_KEY: ${{ secrets.CI_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CI_APP_PRIVATE_KEY" ]; then echo "set=true" >> "$GITHUB_OUTPUT"
+          else echo "set=false" >> "$GITHUB_OUTPUT"; echo "::notice::records App key not set, the old read token is used (it shares the owner's GitHub API limit)"; fi
+      - name: The records token from the GitHub App (its own API limit, not the owner's account's)
+        id: records_app
+        if: steps.records_app_key.outputs.set == 'true'
+        continue-on-error: true   # a failed mint falls back to the old secret, never a red job
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
+          repositories: jobadabra-lab
       - name: The Find jobs recording
         id: rec
         env:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
-          NET_RECORDS_READ_TOKEN: ${{ secrets.NET_RECORDS_READ_TOKEN }}
+          NET_RECORDS_READ_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_READ_TOKEN }}
         run: |
           mkdir -p out/result
-          if node tools/persona-search/tape-store.mjs fetch "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"; then echo "ok=yes" >> "$GITHUB_OUTPUT"
+          if node base/tools/persona-search/tape-store.mjs fetch "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"; then echo "ok=yes" >> "$GITHUB_OUTPUT"
           else echo "::notice::p${{ matrix.persona }} has no Find jobs recording yet: not measured"; echo "ok=no" >> "$GITHUB_OUTPUT"; fi
+          rm -rf base
       - name: The engine, the app's libraries and a browser
         if: steps.rec.outputs.ok == 'yes'
         run: |
@@ -112,6 +141,7 @@ jobs:
         with: {working-directory: desktop/e2e, mode: both}
       - name: Replay a first and a repeat Find jobs run (offline, no AI)
         if: steps.rec.outputs.ok == 'yes'
+        continue-on-error: true   # a measurement, never a red PR: a replay that crashed is listed in the summary as crashed (ci.py)
         env:
           JOBADABRA_TAPE_ITEMS: '1'    # a re-ordered batch is rebuilt from the recording's items (src/tape_items.py)
           JOBADABRA_TAPE_BUDGET: '0'   # the code under test decides when its time is up, not the recording's clock (src/budget_tape.py)
