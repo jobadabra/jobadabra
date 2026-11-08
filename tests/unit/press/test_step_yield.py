@@ -111,6 +111,29 @@ class StepYieldTests(unittest.TestCase):
         self.assertEqual((row['step'], row['jobs'], row['local'], row['seconds']), ('employer_sites', 2, 2, 12.0))
         self.assertIsNone(ahead)
 
+    def test_boards_that_end_after_the_last_employer_site_are_credited_to_job_boards(self):   # Gitar, #3616: their jobs went to free_job_apis while their seconds went to job_boards
+        import threading
+        from src.sources import aggregators, boards_ahead
+        ended = threading.Event()
+
+        def read(_search):
+            ended.wait(5)
+            return [{'url': 'https://x.test/3'}, {'url': 'https://x.test/4'}]
+
+        def scan(sources, db, on_jobs=None, **_):
+            on_jobs([{'url': 'https://x.test/1'}])   # the boards are still reading: nothing to show yet
+            ended.set()
+            return {'jobs': []}
+        with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, \
+                mock.patch.object(jobs_so_far.store, 'import_watch_report', side_effect=lambda _db, report: ['new'] * len(report['jobs'])), \
+                mock.patch.object(aggregators, 'kept', side_effect=lambda _db, _name, found, now=None, shown=None: found), \
+                mock.patch.object(boards_ahead, 'start', side_effect=lambda *a, **k: boards_ahead.Ahead({}, read)):
+            report, ahead = boards_ahead.scan_beside([], db, {}, jobs_so_far.SoFar(db, say=lambda _: None), due=True, scan=scan)
+            rows = {row['step']: row for row in step_yield.measure(db, in_my_place=_here)}
+        self.assertTrue(ahead.shown, 'aggregators.scan then skips its own on_jobs for them')
+        self.assertEqual({step: row['jobs'] for step, row in rows.items()}, {'job_boards': 2, 'employer_sites': 1})
+        self.assertNotIn('free_job_apis', rows)
+
     def test_soFar_credits_the_step_of_its_label_or_the_one_the_caller_names(self):
         with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, mock.patch.object(jobs_so_far.store, 'import_watch_report', return_value=['new']):
             sofar = jobs_so_far.SoFar(db, say=lambda _: None)

@@ -93,4 +93,5 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None):
             report = scan(sources, db, on_jobs=on_site, **after_site)
         if ahead is not None:
             ahead.wait()
+            ahead.deliver(db, boards)   # Why (Gitar, #3616): boards that end after the last employer site are shown here as 'job boards', else aggregators.scan hands them to free_job_apis
     return report, ahead

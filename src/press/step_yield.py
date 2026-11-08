@@ -15,7 +15,7 @@ import time
 from ..source_yield import FIT, _fits   # one reader of the scores and one "fit 70+" for both reports (Gitar, #3603)
 
 STEPS = ('scoring', 'job_boards', 'employer_sites', 'free_job_apis')   # time_budget.STAGES' names (e2b's contract, 8 Nov 2026), the engine's order today; P2 owns the order from here on.
-# 'scoring' here is the waiting jobs' pass; the boards read first, beside the employer sites and by the full read are ONE step, job_boards (time_budget.STAGES)
+# 'scoring' here is the waiting jobs' pass; job_boards is the boards read first and beside the employer sites (jobs and seconds); a full found-boards read with nothing ahead runs inside aggregators.scan and counts, jobs and seconds, under free_job_apis
 TABLE = '''CREATE TABLE IF NOT EXISTS step_yield (
     run_at TEXT NOT NULL, step TEXT NOT NULL, seconds REAL, jobs INTEGER NOT NULL, local INTEGER NOT NULL,
     scored INTEGER NOT NULL, fit70 INTEGER NOT NULL, local_fit70 INTEGER NOT NULL, PRIMARY KEY (run_at, step))'''
