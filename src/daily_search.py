@@ -153,14 +153,16 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         from .sources import boards_first
         if slice_first:
             try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
-                first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
-                    db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
-                                import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
+                with step_yield.span('employer_sites'):   # the slice also scores the first 3 jobs: its seconds are the read's and those scores' (step_yield.py)
+                    first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
+                        db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
+                                   import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
             except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
                 print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
             if full_read:
                 try:
-                    first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
+                    with step_yield.span('job_boards'):
+                        first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
                 except Exception as error:  # noqa: BLE001 — the full board read reads them
                     print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         from .ai import batch_scope

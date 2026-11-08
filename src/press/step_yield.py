@@ -3,7 +3,7 @@ Today only a source has a rate (src/source_yield.py, src/source_rank.py); no ste
 REPORT, kept per run in the job cache (table step_yield) and said in one line. P2 (src/press/plan.py) reads these rows.
 A step is a way a run grows the list (named as time_budget.STAGES, said with spaces): the finders (job_boards, employer_sites, free_job_apis) bring NEW jobs, counted when they land (SoFar.add(..., step=)); the
 scoring step (the waiting jobs' pass) brings SCORES for jobs found earlier. Per step: jobs (new, or scored), local (located in your places, never worldwide remote), scored, fit70,
-local_fit70 (the right local jobs), seconds. A finder is credited with its jobs' fit even when a later step scored them; the seconds of that scoring are not charged to it.
+local_fit70 (the right local jobs), seconds. A finder is credited with its jobs' fit even when a later step scored them; the seconds of that scoring are not charged to it. The first-jobs slice of a first run is one span of employer_sites that includes its 3 first scores.
 Seconds are the step's wall time (overlapping spans of one step count once). Steps run beside each other, so rates are per step-minute and never add up to the run.
 Counts only, nothing about the person. Not measured here: EURES (inside free APIs), titles and places (they sort, they bring no job), the employer finder.
 The yardstick's numbers are unusable until the replay-fidelity card lands: this is a measurement, not a proof of speed.
@@ -15,7 +15,7 @@ import time
 from ..source_yield import FIT, _fits   # one reader of the scores and one "fit 70+" for both reports (Gitar, #3603)
 
 STEPS = ('scoring', 'job_boards', 'employer_sites', 'free_job_apis')   # time_budget.STAGES' names (e2b's contract, 8 Nov 2026), the engine's order today; P2 owns the order from here on.
-# 'scoring' here is the waiting jobs' pass; the boards read first and beside the employer sites are ONE step until E2a-2 splits them
+# 'scoring' here is the waiting jobs' pass; the boards read first, beside the employer sites and by the full read are ONE step, job_boards (time_budget.STAGES)
 TABLE = '''CREATE TABLE IF NOT EXISTS step_yield (
     run_at TEXT NOT NULL, step TEXT NOT NULL, seconds REAL, jobs INTEGER NOT NULL, local INTEGER NOT NULL,
     scored INTEGER NOT NULL, fit70 INTEGER NOT NULL, local_fit70 INTEGER NOT NULL, PRIMARY KEY (run_at, step))'''

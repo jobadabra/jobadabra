@@ -7,6 +7,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, wait as wait_for
 
 from ..ai import slots
+from ..press import step_yield
 
 NAME = 'Job boards found'   # aggregators.sources' name for found_boards.read
 
@@ -18,7 +19,7 @@ class Ahead:
         def run():
             if after is not None:   # the boards first's pages: this read takes them (found_boards._early), so it starts once they are in
                 after()
-            with batch_scope.reader('boards'):
+            with batch_scope.reader('boards'), step_yield.span('job_boards'):
                 return read(search)
         self.pool = ThreadPoolExecutor(max_workers=1)
         self.future = self.pool.submit(slots.carry(run))
@@ -79,7 +80,8 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None):
     sites, boards = so_far.listener('employer sites'), so_far.listener('job boards')
     after_site = {} if first is None else {'on_read': lambda: first.deliver(db, boards)}
     if not due:
-        return scan(sources, db, on_jobs=sites, **after_site), None
+        with step_yield.span('employer_sites'):
+            return scan(sources, db, on_jobs=sites, **after_site), None
     with batch_scope.concurrent():
         ahead = start(db, search, after=first.wait if first is not None else None)
 
@@ -87,7 +89,7 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None):
             sites(jobs)
             if ahead is not None:
                 ahead.deliver(db, boards)
-        with batch_scope.reader('employer sites') if ahead is not None else contextlib.nullcontext():
+        with batch_scope.reader('employer sites') if ahead is not None else contextlib.nullcontext(), step_yield.span('employer_sites'):
             report = scan(sources, db, on_jobs=on_site, **after_site)
         if ahead is not None:
             ahead.wait()

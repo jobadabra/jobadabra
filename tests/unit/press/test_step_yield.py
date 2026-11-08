@@ -97,15 +97,29 @@ class StepYieldTests(unittest.TestCase):
             row, = step_yield.measure(db, in_my_place=read_by_url_and_text)
         self.assertEqual(row['local'], 1)
 
-    def test_soFar_credits_a_step_only_when_the_caller_names_one(self):
+    def test_the_employer_read_is_credited_and_timed_through_scan_beside(self):   # P1 follow-up, after E2a-2: the seconds of employer_sites and job_boards
+        from src.sources import boards_ahead
+        ticks = iter([0.0, 12.0])
+
+        def scan(sources, db, on_jobs=None, **_):
+            on_jobs([{'url': 'https://x.test/1'}, {'url': 'https://x.test/4'}])
+            return {'jobs': []}
+        with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, mock.patch.object(jobs_so_far.store, 'import_watch_report', return_value=['new', 'new']), \
+                mock.patch.object(step_yield.time, 'monotonic', side_effect=lambda: next(ticks)):
+            report, ahead = boards_ahead.scan_beside([], db, {}, jobs_so_far.SoFar(db, say=lambda _: None), due=False, scan=scan)
+            row, = step_yield.measure(db, in_my_place=_here)
+        self.assertEqual((row['step'], row['jobs'], row['local'], row['seconds']), ('employer_sites', 2, 2, 12.0))
+        self.assertIsNone(ahead)
+
+    def test_soFar_credits_the_step_of_its_label_or_the_one_the_caller_names(self):
         with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, mock.patch.object(jobs_so_far.store, 'import_watch_report', return_value=['new']):
             sofar = jobs_so_far.SoFar(db, say=lambda _: None)
-            sofar.add([{'url': 'https://x.test/1'}], 'job boards')
-            sofar.listener('job boards', 'free_job_apis')([{'url': 'https://x.test/4'}])
+            sofar.add([{'url': 'https://x.test/1'}], 'employer sites')
+            sofar.add([{'url': 'https://x.test/3'}], 'job boards')
+            sofar.listener('job boards', 'free_job_apis')([{'url': 'https://x.test/4'}])   # the aggregators' label covers more than the free APIs: the caller names the step
+            sofar.add([{'url': 'https://x.test/2'}], 'something else')   # a label with no step is unmeasured
             rows = {row['step']: row for row in step_yield.measure(db, in_my_place=_here)}
-        self.assertEqual(list(rows), ['free_job_apis'], 'an add with no step is the older callers, unmeasured')
-        self.assertEqual(rows['free_job_apis']['jobs'], 1)
-
+        self.assertEqual({step: row['jobs'] for step, row in rows.items()}, {'job_boards': 1, 'employer_sites': 1, 'free_job_apis': 1})
 
 if __name__ == '__main__':
     unittest.main()
