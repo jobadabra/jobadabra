@@ -70,8 +70,8 @@ test('a read ended without a report (Cancel, a timeout) is handed back once, to 
   await Promise.all([out, waiting]);
   assert.deepEqual(r.takeEnded(), [taken.id], 'only the read the extension holds has a page to close');
   assert.deepEqual(r.takeEnded(), [], 'each is returned once');
-  const timed = r.read('https://jobs.example/k'), {id} = r.take();
-  time.timers[time.timers.length - 1]();
+  const timed = r.read('https://jobs.example/k'), deadline = time.timers.length - 1, {id} = r.take();
+  time.timers[deadline]();
   assert.deepEqual(await timed, {unreadable: true, why: 'timeout'});
   assert.deepEqual(r.takeEnded(), [id], 'a timeout leaves its page open too');
   const answered = r.read('https://jobs.example/l'), next = r.take();
@@ -111,7 +111,7 @@ test('a read says where its time went: queue, open, judge, plan, and the dialog 
   r.report(id, {botCheck: false, loginWall: false, accountCreation: false, allFactsSaved: true});
   await pending;
   assert.deepEqual(steps.map(item => item.step), ['opening', 'judging', 'planning']);
-  assert.deepEqual(done, [{url: 'https://jobs.example/t1', outcome: 'read', totalMs: 74000, queueMs: 2000, openMs: 8000, judgeMs: 49000, planMs: 15000}]);
+  assert.deepEqual(done, [{url: 'https://jobs.example/t1', outcome: 'read', last: 'planning', totalMs: 74000, queueMs: 2000, openMs: 8000, judgeMs: 49000, planMs: 15000, quietMs: 15000}]);
 });
 
 test('a read that never reached a step, or was cut short, says so and counts only the steps it started', async () => {
@@ -156,7 +156,7 @@ test('a lost judging report never makes two steps count the same time, and the a
   clock.at(9000);
   r.report(id, {botCheck: false, loginWall: false, accountCreation: false});
   await pending;
-  assert.deepEqual(done, [{url: 'https://jobs.example/t5', outcome: 'read', totalMs: 8000, queueMs: 0, openMs: 3000, judgeMs: 0, planMs: 5000}]);
+  assert.deepEqual(done, [{url: 'https://jobs.example/t5', outcome: 'read', last: 'planning', totalMs: 8000, queueMs: 0, openMs: 3000, judgeMs: 0, planMs: 5000, quietMs: 5000}]);
 });
 
 test('the light look\'s verdict reaches the window as the mode table flags, and a look that could not see the form reads as nothing', async () => {
@@ -169,4 +169,54 @@ test('the light look\'s verdict reaches the window as the mode table flags, and 
   const framed = r.read('https://jobs.example/frame');
   r.report(r.take().id, {unreadable: true, why: 'frame', look: {role: 'form', fields: 0, files: 0, frames: 1}});
   assert.deepEqual(await framed, {unreadable: true, why: 'frame'});
+});
+
+// 8 Nov 2026 (owner: "still slow, still almost no live updates"): 4 of 4 reads on the owner's run sat out the whole 150 s after their Apply press, and nothing said where.
+const timersOf = () => { const timers = []; return {timers, set: (fn, ms) => { timers.push({fn, ms}); return timers.length - 1; }, clear: id => { if (timers[id]) timers[id].fn = null; }, live: ms => timers.filter(item => item.fn && item.ms === ms)}; };
+
+test('the light look\'s steps reach the dialog in order, and the look of the page Apply brought is its own step', async () => {
+  const steps = [], r = reader({onStep: step => steps.push(step.step)}), pending = r.read('https://jobs.example/posting');
+  const {id} = r.take();
+  assert.equal(r.step(id, 'looking'), true);
+  assert.equal(r.step(id, 'pressing'), true);
+  assert.equal(r.step(id, 'looking'), true, 'the page Apply brought is looked at too');
+  assert.equal(r.step(id, 'looking'), false, 'a third look is not a new step');
+  assert.equal(r.step(id, 'landed'), false, 'only the app names the landed page');
+  r.report(id, {look: {role: 'form', fields: 3, files: 0, frames: 0}, simple: true, why: ''});
+  await pending;
+  assert.deepEqual(steps, ['opening', 'looking', 'pressing', 'landed']);
+});
+
+for (const [steps, why, last] of [[[], 'unreadable', 'opening'], [['looking'], 'timeout', 'looking'], [['looking', 'pressing'], 'afterApply', 'pressing'], [['looking', 'pressing', 'looking'], 'timeout', 'landed']]) {
+  test(`a read quiet for 30 s after "${last}" ends at once as "${why}", names the step, and closes its page`, async () => {
+    const time = timersOf(), done = [], r = reader({set: time.set, clear: time.clear, onDone: summary => done.push(summary)});
+    const pending = r.read('https://jobs.example/quiet'), {id} = r.take();
+    for (const step of steps) r.step(id, step);
+    const quiet = time.live(30000);
+    assert.equal(quiet.length, 1, 'one quiet guard at a time: each step restarts it');
+    quiet[0].fn();
+    assert.deepEqual(await pending, {unreadable: true, why});
+    assert.equal(done[0].last, last);
+    assert.equal(done[0].outcome, 'ended-without-report');
+    assert.deepEqual(r.takeEnded(), [id], 'its page is closed');
+    assert.equal(time.live(150000).length, 0, 'the whole deadline is cleared with it');
+  });
+}
+
+test('the judge of an older extension is never cut by the quiet guard: from judging on only the whole deadline holds', async () => {
+  const time = timersOf(), r = reader({set: time.set, clear: time.clear}), pending = r.read('https://jobs.example/judged'), {id} = r.take();
+  r.step(id, 'judging');
+  assert.equal(time.live(30000).length, 0);
+  assert.equal(time.live(150000).length, 1);
+  r.cancelAll();
+  assert.equal(await pending, null);
+});
+
+test('a read still waiting for the browser has no quiet guard: the queue is held only by the whole deadline', async () => {
+  const time = timersOf(), r = reader({set: time.set, clear: time.clear});
+  const first = r.read('https://jobs.example/out'), second = r.read('https://jobs.example/queued');
+  r.take();
+  assert.equal(time.live(30000).length, 1, 'only the read that is out');
+  r.cancelAll();
+  await Promise.all([first, second]);
 });

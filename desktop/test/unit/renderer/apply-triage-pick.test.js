@@ -104,6 +104,7 @@ test('three statuses: Simple form, Needs you, Couldn\'t read, each with a sub-st
   assert.deepEqual(chipOf({...look, captcha: true, simple: false, why: 'captcha'}), {label: 'Needs you', tone: 'warn', detail: 'a check that you are human'});
   assert.deepEqual(chipOf({unreadable: true, why: 'timeout'}), {label: "Couldn't read", tone: 'neutral', detail: 'took too long'});
   assert.deepEqual(chipOf({unreadable: true, why: 'frame'}).detail, 'the form is in a frame');
+  assert.equal(chipOf({unreadable: true, why: 'afterApply'}).detail, "the page Apply opened didn't answer", 'a read that went quiet after its Apply press says so (8 Nov 2026)');
   assert.equal(chipOf({unreadable: true, why: 'something new'}).detail, "the page didn't load or couldn't be read", 'an unknown reason never shows its raw id');
   assert.equal(chipOf(null).label, 'Not checked', 'positive control: no read is still Not checked');
 });

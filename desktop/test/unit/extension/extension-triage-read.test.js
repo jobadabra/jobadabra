@@ -179,10 +179,19 @@ test('a read tab reports the look\'s verdict and is closed; a look that throws i
   const {posted, removed} = install(t);
   const {backgroundLook} = await import('../../../../extension/background-apply.js');
   assert.equal(await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async () => ({look: {role: 'form'}, simple: true, why: ''})), true);
-  assert.deepEqual(posted.map(call => [call.body.action, call.body.simple, call.body.why]), [['triage-read', true, '']]);
+  assert.deepEqual(posted.filter(call => call.body.action === 'triage-read').map(call => [call.body.simple, call.body.why]), [[true, '']]);
   assert.equal(await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async () => { throw new Error('the page broke the look'); }), true);
-  assert.equal(posted[1].body.unreadable, true, 'the app never waits out its timeout for a look that failed');
+  assert.equal(posted.filter(call => call.body.action === 'triage-read')[1].body.unreadable, true, 'the app never waits out its timeout for a look that failed');
   assert.deepEqual(removed, [7, 7]);
+});
+
+// 8 Nov 2026 (owner: "almost no live updates"): the dialog and app.log hear each page a read looks at and its Apply press, so a read that goes quiet names where.
+test('a read tab tells the app it is looking before the look runs, and the look\'s own steps (its Apply press) reach the app too', async t => {
+  const {posted} = install(t);
+  const {backgroundLook} = await import('../../../../extension/background-apply.js');
+  await backgroundLook({id: 7, url: 'https://jobs.example.test/a'}, async told => { told('pressing'); return null; });
+  await new Promise(resolve => setImmediate(resolve));   // the steps are never waited for: let their posts land
+  assert.deepEqual(posted.map(call => [call.body.action, call.body.step]), [['triage-step', 'looking'], ['triage-step', 'pressing']], 'a look whose tab moved on reports no verdict, only its steps');
 });
 
 test('a tab that is not a read never runs the look', async t => {

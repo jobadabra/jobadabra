@@ -29,12 +29,23 @@ const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_
 
 // Design (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates of what's going on"): the dialog has ONE owner of what it shows, `state`, and ONE painter, `paint()`.
 //   idle     -> the count is editable, its line says how many and how long, the footer is Close + "Check N jobs".
-//   running  -> the count is read-only, the line is replaced by the job being read (its number, company and a seconds counter that ticks) and the jobs finished so far with their chips,
+//   running  -> the count is read-only, the line is replaced by the job being read (its number, title and company, the step it is on and that step's own seconds) and the jobs finished so far with their chips,
+//               (8 Nov 2026, owner chose "A: fix the end + steps"): a job starts at "Getting ready" (its kit, the hidden browser); the read's steps (lib/triage-reader.js STEPS) move it on,
 //               the footer is Close + Stop (no Check, no second Cancel). Close hides the dialog and the run goes on; opening it again shows the same state.
 //   stopping -> Stop is pressed: the same view says "Stopping…" and Stop is disabled until the read in flight has ended.
 //   matching -> every read is in: the simple forms' required questions are matched against Your details in ONE call (L2b); the words say so, Stop is gone (a call cannot be stopped), then done.
 //   done     -> back to idle; the rows' chips and the toast say what was read.
-const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0};
+const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0, step: 'ready', stepAt: 0};
+// The words of each step of a read; a step the dialog does not know keeps the one before it.
+const STEP_WORDS = {ready: 'triageStepReady', opening: 'triageStepOpening', looking: 'triageStepLooking', pressing: 'triageStepPressing', landed: 'triageStepLanded', judging: 'triageStepLooking', planning: 'triageStepLooking'};
+const sameJob = (a, b) => String(a || '').split(/[?#]/)[0] === String(b || '').split(/[?#]/)[0];
+/** The read's step for the job in flight ({url, step} from the app): its words and its own seconds start now. Another job's step, or one the dialog does not know, changes nothing. */
+export function heardStep({url, step} = {}) {
+  if (!state.running || !state.job || !sameJob(url, state.job.url) || !STEP_WORDS[step] || step === state.step) return false;
+  Object.assign(state, {step, stepAt: Date.now()});
+  paint();
+  return true;
+}
 let cancelled = false, ticker = null;   // one run at a time: a second Start while one runs does nothing
 
 // The popup's one choice: the first N best matching jobs not checked before (owner, 30 Oct 2026), N from the one field.
@@ -69,9 +80,10 @@ function paint() {
     set('triage-start', el => { el.textContent = t('pagesShortJobs.m202', {"length": picked.length, count: picked.length}); el.disabled = picked.length === 0 || on; });
     return;
   }
-  const words = state.matching ? t('helperTail.triageMatching') : state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.company].filter(Boolean).join(' · ');
+  const words = state.matching ? t('helperTail.triageMatching') : state.stopping ? t('pagesControlStatus.stoppingDots') : [t('pagesShortJobs.m203', {"seen": Math.min(state.seen + 1, state.total), "length": state.total}), state.job?.title, state.job?.company].filter(Boolean).join(' · ');
   set('triage-progress-text', el => { el.textContent = words; el.title = state.job?.title || ''; });
-  set('triage-elapsed', el => { el.textContent = state.stopping ? '' : clock(Date.now() - state.startedAt); });
+  const stepWords = state.matching || state.stopping ? '' : t(`helperTail.${STEP_WORDS[state.step]}`);
+  set('triage-elapsed', el => { el.textContent = state.stopping ? '' : [stepWords, clock(Date.now() - (state.matching ? state.startedAt : state.stepAt))].filter(Boolean).join(' · '); });
   set('triage-track', el => el.classList.toggle('is-sliding', state.seen === 0 || state.matching));
   set('triage-bar', el => { el.style.width = state.seen === 0 || state.matching ? '' : `${Math.round((state.seen / state.total) * 100)}%`; });
 }
@@ -80,7 +92,7 @@ function paint() {
 async function matchChecked(jobs, match, rows) {
   const asked = jobs.map(job => ({url: job.url, read: readOf(job.url)})).filter(({read}) => read?.simple === true && read.questions?.length && !read.match).map(({url, read}) => ({url, questions: read.questions}));
   if (!asked.length) return;
-  Object.assign(state, {matching: true, job: null});
+  Object.assign(state, {matching: true, job: null, startedAt: Date.now()});
   paint();
   const found = await match(asked).catch(() => ({}));   // a failed match leaves every form as it was read, never a guess
   for (const {url} of asked) {
@@ -105,7 +117,7 @@ export async function runTriage(jobs, read, match = null) {
   try {
     for (const job of jobs) {
       if (cancelled) break;
-      Object.assign(state, {job, startedAt: Date.now()});
+      Object.assign(state, {job, startedAt: Date.now(), step: 'ready', stepAt: Date.now()});
       paint();
       const started = Date.now();
       const result = await read(job).catch(() => null);
@@ -131,9 +143,10 @@ export async function runTriage(jobs, read, match = null) {
 const notYetRead = async () => null;
 
 /** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended. Takes the callbacks; a missing dialog wires nothing. */
-export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}} = {}) {
+export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
+  onStep(heardStep);
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());
   $('triage-n').addEventListener('input', paint);

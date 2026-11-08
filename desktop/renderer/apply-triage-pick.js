@@ -31,7 +31,7 @@ export const CHIPS = {
 // "Couldn't read" is not a verdict of modeOfRead (a read that gave nothing has no mode), so it stays out of CHIPS.
 const UNREADABLE_CHIP = {label: t('helperTail.couldntRead'), tone: 'neutral'};
 // Why a read could not be made (the reader's `why`): the sub-status of "Couldn't read", never the raw id.
-const UNREAD_REASONS = {unreadable: 'triageNoLoad', frame: 'triageFrame', unknown: 'triageUnknown', timeout: 'triageTimeout'};
+const UNREAD_REASONS = {unreadable: 'triageNoLoad', frame: 'triageFrame', unknown: 'triageUnknown', timeout: 'triageTimeout', afterApply: 'triageAfterApply'};
 
 // The first three missing details or questions, the rest as "+N": a chip's tooltip stays one line (the whole list is the suggestion's job, L2c).
 const namesOf = missing => { const labels = [...new Set([...missing.filter(item => item.kind === 'detail'), ...missing.filter(item => item.kind !== 'detail')].map(item => item.label))]; return labels.slice(0, 3).join(', ') + (labels.length > 3 ? ` +${labels.length - 3}` : ''); };

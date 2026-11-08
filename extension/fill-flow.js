@@ -286,7 +286,7 @@ export async function consider(tab, jobUrl) {
    * lookAfterPress: pressPosting, routeAfterApply (initial null and the fresh post-press answer). Some assignments carry an unchanged value onward. */
   const step = {tab, jobUrl, key, live, gen, flow: fillFlowParts};
   // Why (7 Nov 2026, owner, #3519): a triage read is not an application: it loads the page, reads its controls and reports (extension/triage-look.js), skipping the Apply press, the watch, the judge and the plan.
-  if (await ownSpan(tab.id, `consider ${tab.id}/${gen} backgroundLook`, () => backgroundLook(tab, () => lookAtForm(step, {prepare: preparePage, press: pressPosting})))) return;
+  if (await ownSpan(tab.id, `consider ${tab.id}/${gen} backgroundLook`, () => backgroundLook(tab, told => lookAtForm(step, {prepare: preparePage, press: pressPosting, told})))) return;
   await ownSpan(tab.id, `consider ${tab.id}/${gen} preparePage`, () => preparePage(step));
   if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} readPage`, () => readPage(step))) return;
   if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} askPage`, () => askPage(step))) return;
