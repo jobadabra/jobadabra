@@ -114,11 +114,12 @@ def record(db, run_at, rows):
                        [(run_at, *(row[field] for field in FIELDS)) for row in rows])
 
 
-def latest(db):
-    """The last measured run's rows in STEPS order, or []."""
+def latest(db, since=''):
+    """The last measured run's rows in STEPS order, or []. `since` (ISO, UTC): only a run started then or later (the nightly check reads the press it just ran,
+    tools/persona-search/funnel.py; Gitar, #3611: one reader of the table)."""
     db.execute(TABLE)
     names = ('run_at', *FIELDS)
-    found = [dict(zip(names, row)) for row in db.execute(f"SELECT {', '.join(names)} FROM step_yield WHERE run_at = (SELECT MAX(run_at) FROM step_yield)")]
+    found = [dict(zip(names, row)) for row in db.execute(f"SELECT {', '.join(names)} FROM step_yield WHERE run_at = (SELECT MAX(run_at) FROM step_yield WHERE run_at >= ?)", (since,))]
     return [row for step in STEPS for row in found if row['step'] == step]
 
 

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'tools' / 'persona-search'))
 import funnel  # noqa: E402
 import gate  # noqa: E402
+from src.press import step_yield  # noqa: E402   (the writer of the table funnel.step_yield reads)
 
 P1 = ['[23s] Places: 1 place words placed', '[62s] ⏳ Reading employer job sites: 0 of 11', '[68s] Titles: asking Claude about 29 job title(s) in your places, in 1 batch(es) of up to 30',
       '[73s] EURES: 146 vacancies in your places read', '[112s] Titles: Claude sorted 29 new title(s) in your places; 9 could fit your search', '[136s] ⏳ Reading employer job sites: 0 of 3']   # p1's real lines (no "AI decide calls": it is printed at exit)
@@ -70,6 +71,44 @@ class TheRow(unittest.TestCase):
         rows = gate.compare(pr, [])['rows']
         self.assertEqual(rows[0]['counters'], counters)
         self.assertIsNone(gate.compare({}, [])['rows'][0]['counters'], 'a persona with no result claims no counters')
+
+
+class TheStepYield(unittest.TestCase):
+    """8 Nov 2026, owner: "Can I get in Admin these stats as well?": each press row carries the step yield the engine saved in the persona's own job cache (src/press/step_yield.py)."""
+    ROWS = [{'step': 'scoring', 'seconds': 31.5, 'jobs': 50, 'local': 40, 'scored': 50, 'fit70': 18, 'local_fit70': 15},
+            {'step': 'employer_sites', 'seconds': None, 'jobs': 12, 'local': 9, 'scored': 7, 'fit70': 3, 'local_fit70': 2}]   # STEPS order: scoring first; alphabetical would put employer_sites first
+
+    def cache(self, runs):
+        import sqlite3
+        path = Path(tempfile.mkdtemp()) / 'jobs.sqlite'
+        db = sqlite3.connect(path)
+        for run_at, rows in runs:
+            step_yield.record(db, run_at, rows)
+        db.close()
+        return path
+
+    def test_the_newest_run_since_the_press_started_is_read_back_as_the_writer_saved_it(self):
+        path = self.cache([('2026-11-08T09:00:00+00:00', [{**self.ROWS[0], 'jobs': 1}]), ('2026-11-08T10:05:00+00:00', self.ROWS)])
+        self.assertEqual(funnel.step_yield('2026-11-08T10:00:00', db=path), self.ROWS, 'an earlier night run is not this press')
+        self.assertEqual([row['step'] for row in funnel.step_yield('2026-11-08T10:00:00', db=path)], ['scoring', 'employer_sites'], 'the engine\'s step order, not the table\'s key order')
+        self.assertIsNone(funnel.step_yield('2026-11-08T11:00:00', db=path), 'no run since: nothing is claimed')
+
+    def test_no_table_no_cache_or_a_build_before_the_table_claims_nothing_never_zeros(self):
+        self.assertIsNone(funnel.step_yield('2026-11-08T10:00:00', db=Path(tempfile.mkdtemp()) / 'none.sqlite'))
+        import sqlite3
+        path = Path(tempfile.mkdtemp()) / 'old.sqlite'
+        sqlite3.connect(path).close()
+        self.assertIsNone(funnel.step_yield('2026-11-08T10:00:00', db=path))
+
+    def test_the_step_yield_reaches_the_verdict_rows_the_site_reads(self):
+        out = Path(tempfile.mkdtemp())
+        (out / 'draw').mkdir()
+        (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'billing': 'subscription', 'seconds': 159, 'scored_in_places': 3, 'funnel': {**funnel.funnel(P1), 'step_yield': self.ROWS}, 'ttfr': {}}) + '\n')
+        row = gate.result(1, out)
+        self.assertEqual(row['step_yield'], self.ROWS)
+        rows = gate.compare({n: {**row, 'persona': n} for n in range(1, len(gate.PERSONAS) + 1)}, [])['rows']
+        self.assertEqual(rows[0]['step_yield'], self.ROWS)
+        self.assertIsNone(gate.compare({}, [])['rows'][0]['step_yield'], 'a persona with no result claims no step yield')
 
 
 if __name__ == '__main__':

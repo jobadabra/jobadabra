@@ -196,7 +196,7 @@ def result(n, out):
         if note:
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
-        row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press))
+        row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press), step_yield=(press.get('funnel') or {}).get('step_yield'))
         if press.get('scored_in_places') is not None:   # a missing count stays unknown (read_of falls back to the judge's), never 0
             row['scored'] = int(press['scored_in_places'])
         cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
@@ -379,7 +379,7 @@ def compare(pr, main_runs):
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
-                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters')})
+                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield')})
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
