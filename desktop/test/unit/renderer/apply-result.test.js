@@ -73,6 +73,11 @@ test('a job with no title shows its company, then "Job"; the title is never empt
   assert.deepEqual(view.rows.map(row => [row.title, row.company]), [['Acme', ''], ['Job', '']]);
 });
 
+test('a click opens the job as the engine named it: the company is never passed as the title', () => {
+  const view = resultView({ok: true, outcomes: [{url: 'u1', company: 'Acme', status: 'started'}, {url: 'u2', title: 'Pilot', company: 'Example Air', status: 'started'}]});
+  assert.deepEqual(view.rows.map(row => row.job), [{url: 'u1', title: '', company: 'Acme'}, {url: 'u2', title: 'Pilot', company: 'Example Air'}]);
+});
+
 test('no outcomes: nothing to show', () => {
   assert.deepEqual(resultView(null), {rows: [], counts: [], hint: '', note: null});
 });

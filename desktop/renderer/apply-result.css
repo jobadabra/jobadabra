@@ -13,5 +13,5 @@
 .apply-outcome-title:hover, .apply-outcome-title:focus-visible { color: var(--signal); text-decoration: underline; }
 .apply-outcome-company { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .apply-outcome > .ui-pill { justify-self: end; }
-.apply-outcome-head .icon, .apply-outcome > .ui-pill .icon { width: 12px; height: 12px; margin-right: var(--sp-1); }
+.apply-outcome > .ui-pill .icon { width: 12px; height: 12px; margin-right: var(--sp-1); }
 .apply-outcome-reason { grid-column: 1 / -1; margin: 0; }

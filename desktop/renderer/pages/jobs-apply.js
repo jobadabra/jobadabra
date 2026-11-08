@@ -94,13 +94,10 @@ export function wireApplyDialog({startedApplying, openJob}) {
         // Why (2026-10-28, owner screenshot): the green "queued" line kept the dialog open with nothing left to do; a toast says it and the dialog closes (a click on it opens Sessions).
         const outcome = applyDialogOutcome(result);
         if (!outcome.close) offerBrowser($('apply-browser'), outcome.browserOffer);
-        if (outcome.outcomes?.length) {
-          batchFinished = !!result.ok;   // before showOutcomes: it hides "Change and try again" for a batch that started something
-          showOutcomes(result, openJob);   // Why (7 Nov 2026, #3424; 8 Nov 2026, owner; [ad] try 3): a partial batch stays listed as one row per job (the title opens it) with counts above, and a duplicate batch is blocked from the finished dialog: no "Change and try again" after jobs started.
-          return;
-        }
         if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }
-        message('apply-message', outcome.error, 'error');
+        if (!outcome.outcomes?.length) { message('apply-message', outcome.error, 'error'); return; }   // refused with no job rows: its words (the guard start-refusals reads this)
+        batchFinished = !!result.ok;   // before showOutcomes: it hides "Change and try again" for a batch that started something
+        showOutcomes(result, openJob);   // Why (7 Nov 2026, #3424; 8 Nov 2026, owner; [ad] try 3): a partial batch stays listed as one row per job (the title opens it) with counts above, and a duplicate batch is blocked from the finished dialog: no "Change and try again" after jobs started.
       } catch (error) {   // the call itself failed (e.g. the app updated while open): say so, the button comes back below
         message('apply-message', t('pagesDynamicJobs.m215', {"message": error.message}), 'error');
       } finally {

@@ -1,5 +1,5 @@
 // What the Apply to jobs dialog says about a finished batch, pure: one row per job, a counts line, and each reason said once ([ad] try 3, owner 8 Nov 2026: "bad Looking UI").
-// Design: a job is in exactly one of five states (started, ready, skipped, failed, plus the chip's own word); the engine's status decides it, the dialog never re-judges.
+// Design: the engine's status decides a job's chip (eight statuses); the counts line has four groups (started, ready, skipped, failed); the dialog never re-judges.
 // A row shows its chip and, only when the chip alone does not say why, one muted reason; a reason the whole batch shares (or the batch's own error) is said once under the counts.
 import {t} from '../i18n/index.js';
 import '../i18n/screens-helpers.js';
@@ -15,7 +15,7 @@ const COUNT_ORDER = ['started', 'ready', 'skipped', 'failed'];
 const SELF_EXPLAINING = new Set(['started', 'prepared', 'busy']);   // the chip says it all; the engine's sentence ("This job already has an application session open.") only repeats it
 
 /**
- * -> {rows: [{url, title, company, label, tone, icon, reason, detail}], counts: [{group, count, text}], hint, note: {text, tone} | null}
+ * -> {rows: [{url, job: {url, title, company} as the engine gave them (what a click opens), title, company, label, tone, icon, reason, detail}], counts: [{group, count, text}], hint, note: {text, tone} | null}
  * `result` is the app's answer ({ok, error, outcomes}). `reason` is what the row shows, `detail` the engine's sentence kept as the chip's tooltip.
  * Invariants: every outcome is one row, in order; the counts add up to the rows; a reason appears once on the screen (every reason shared by several rows, and the batch's error, in one note).
  */
@@ -29,7 +29,7 @@ export function resultView(result) {
   const rows = outcomes.map(item => {
     const [label, tone, glyph] = STATES[item.status] || STATES.skipped;
     const own = item.reason && !SELF_EXPLAINING.has(item.status) && !said.has(item.reason) ? item.reason : '';
-    return {url: item.url, title: item.title || item.company || t('pagesApplyResult.job'), company: item.title ? item.company || '' : '', label: t(`pagesApplyResult.${label}`), tone, icon: glyph, reason: own, detail: item.reason || ''};
+    return {url: item.url, job: {url: item.url, title: item.title || '', company: item.company || ''}, title: item.title || item.company || t('pagesApplyResult.job'), company: item.title ? item.company || '' : '', label: t(`pagesApplyResult.${label}`), tone, icon: glyph, reason: own, detail: item.reason || ''};
   });
   const tally = {};
   for (const item of outcomes) { const group = (STATES[item.status] || STATES.skipped)[3]; tally[group] = (tally[group] || 0) + 1; }

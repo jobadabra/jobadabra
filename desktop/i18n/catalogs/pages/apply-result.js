@@ -29,7 +29,7 @@ export const messages = {
     sessionsHint: 'Síguelas en Sesiones.',
   },
   ro: {
-    job: 'Job', started: 'Pornită', ready: 'Pregătită', notEligible: 'Neeligibil', failed: 'Nu s-a putut pregăti', notStarted: 'Nepornită', alreadyOpen: 'Deja deschisă', alreadyQueued: 'Deja în coadă', skipped: 'Omisă',
+    job: 'Loc de muncă', started: 'Pornită', ready: 'Pregătită', notEligible: 'Neeligibil', failed: 'Nu s-a putut pregăti', notStarted: 'Nepornită', alreadyOpen: 'Deja deschisă', alreadyQueued: 'Deja în coadă', skipped: 'Omisă',
     startedCount: {one: '{count} pornită', few: '{count} pornite', other: '{count} pornite'}, readyCount: {one: '{count} pregătită', few: '{count} pregătite', other: '{count} pregătite'},
     skippedCount: {one: '{count} omisă', few: '{count} omise', other: '{count} omise'}, failedCount: {one: '{count} nu s-a putut pregăti', few: '{count} nu s-au putut pregăti', other: '{count} nu s-au putut pregăti'},
     sessionsHint: 'Urmărește-le în Sesiuni.',
