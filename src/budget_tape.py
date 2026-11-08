@@ -23,7 +23,12 @@ def _folder():
 
 
 def active():
-    return _folder() is not None
+    """True when a search tape is on and its clock decisions count. JOBADABRA_TAPE_BUDGET=0 on a replay turns them off: the press's yardstick
+    replays a tape recorded with a longer press (plan docs/superpowers/plans/2026-11-07-the-press.md 2c), so its clock must be the code under test's,
+    never the recording's. The web and AI answers still come from the tape (src/search_tape.py)."""
+    if _folder() is None:
+        return False
+    return not (_mode() == 'replay' and os.getenv('JOBADABRA_TAPE_BUDGET') == '0')
 
 
 def _mode():

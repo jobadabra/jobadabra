@@ -56,6 +56,17 @@ class BudgetTapeTest(Base):
             plain = search(0.01)
         self.assertEqual(self.run_mode('replay', 0.01), plain)
 
+    def test_the_yardstick_replays_on_its_own_clock(self):
+        # The press's yardstick (plan 2026-11-07-the-press 2c) replays a tape recorded with a longer press: JOBADABRA_TAPE_BUDGET=0 keeps the
+        # recording's clock out, so the code under test decides when its time is up.
+        recorded = self.run_mode('record', 20.0)
+        with contextlib_quiet():
+            plain = search(0.01)
+        self.assertNotEqual(recorded, plain, 'the two clocks decide differently, so the test shows whose clock a replay used')
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_BUDGET': '0'}):
+            self.assertEqual(self.run_mode('replay', 0.01), plain)
+            self.assertEqual(self.run_mode('record', 0.01), plain, 'a recording keeps its own decisions either way')
+
     def test_without_a_tape_nothing_is_written(self):
         with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': ''}), contextlib_quiet():
             search(1.0)
