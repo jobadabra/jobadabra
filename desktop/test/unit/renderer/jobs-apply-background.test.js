@@ -127,11 +127,14 @@ test("the row's Apply pressed while a ⋯ menu pick on the same job gets ready s
   held = new Promise(done => { release = done; });
   const applier = createRowApply(job, {rerender: () => {}});
   const pick = applier.modeItems().find(item => item.label === 'Background automation').run();
+  for (let turn = 0; turn < 50 && !calls.length; turn++) await Promise.resolve();   // the pick's readiness check is out (held): the press comes while it gets ready
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness'], 'the pick is getting ready before the press');
   const press = applier.start(null);
   release();
   await Promise.all([pick, press]);
   held = Promise.resolve();
-  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start: the pick\'s');
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start');
+  assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the start is the pick\'s, in the picked mode (Gitar on #3630)');
 });
 
 // Code review of R2 (8 Nov 2026): a form filled on the server opens its hand-off (Review and submit); the ⋯ menu's per-job modes would start it afresh and skip those answers.
