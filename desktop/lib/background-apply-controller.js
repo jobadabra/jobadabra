@@ -75,7 +75,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  waiting = null,   // the waiting-application message sender, injectable for tests (lib/waiting-message.js)
  log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
-  // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"): each read's step goes to the Jobs window, and where its time went is one app.log line, so the next real run names the slow step.
+  // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"; 8 Nov 2026, "almost no live updates"): each read's step goes to the Jobs window and to its own app.log line as it starts, and where its time went is one line at its end, so the next real run names the step it stopped at.
   reader = createTriageReader({onStep: step => { tellWindow('triageStep', step); log('apply', 'triage: read step', {url: String(step.url).split(/[?#]/)[0], step: step.step}); }, onDone: summary => log('apply', 'triage: read finished', summary)}),
   port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
