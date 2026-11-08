@@ -129,9 +129,25 @@ def ai_usd(since):
     return round(sum(spent), 3) if spent else None
 
 
+def step_yield(since, db=None):
+    """What each step of the Find jobs run started since `since` (ISO, UTC) brought, for the Night search tab (owner, 8 Nov 2026: "Can I get in Admin these stats as well?"): [{step, seconds, jobs, local,
+    scored, fit70, local_fit70}] read from the persona's own job cache (table step_yield, src/press/step_yield.py, written at the run's end), or None when there is none (a build before 8 Nov, or a run that
+    died first): nothing is claimed, never zeros. Read-only. The newest run since `since` is the press just ended (the CLI runs right after each press, so a later press is not there yet)."""
+    import sqlite3
+    from contextlib import closing
+    try:
+        if db is None:
+            from src.paths import JOBS_DB as db
+        with closing(sqlite3.connect(f'file:{db}?mode=ro', uri=True)) as conn:
+            rows = conn.execute('SELECT step, seconds, jobs, local, scored, fit70, local_fit70 FROM step_yield WHERE run_at = (SELECT MAX(run_at) FROM step_yield WHERE run_at >= ?)', (since,)).fetchall()
+    except Exception:   # a funnel line never fails the press
+        return None
+    return [dict(zip(('step', 'seconds', 'jobs', 'local', 'scored', 'fit70', 'local_fit70'), row)) for row in rows] or None
+
+
 if __name__ == '__main__':
     if len(sys.argv) not in (2, 4) or (len(sys.argv) == 4 and sys.argv[2] != '--since'):
         sys.exit(__doc__)
     with open(sys.argv[1], encoding='utf-8', errors='replace') as log:
         out = {**funnel(log), 'kinds': kinds()}
-    print(json.dumps({**out, 'ai_usd': ai_usd(sys.argv[3])} if len(sys.argv) == 4 else out))
+    print(json.dumps({**out, 'ai_usd': ai_usd(sys.argv[3]), 'step_yield': step_yield(sys.argv[3])} if len(sys.argv) == 4 else out))
