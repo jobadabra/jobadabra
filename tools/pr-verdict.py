@@ -60,7 +60,9 @@ def counted(runs):
     """Newest per workflow (its id: names repeat); PR e2e runs keep each workflow/title's newest attempt."""
     mine = [r for r in runs if r.get('event') == 'pull_request' or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
     newest = {}
-    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0, r.get('attempt') or 0)):
+    # Why (#3594 red, 8 Nov 2026): a push, a body refresh and a retitle start one workflow 3 times in one second; GitHub cancels a twin whatever its id,
+    # so within one second a cancelled run never outranks one that ran.
+    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('conclusion') != 'cancelled', r.get('databaseId') or 0, r.get('attempt') or 0)):
         # Why (31 Oct 2026, owner: "Fix: count each run"): keep each E2E title's red per workflow; ordinary PR title edits replace that workflow's older gate.
         # A workflow is its id, not its name, since 5 Nov 2026 (owner: "Yes, rename + fold"): a name is a layer several files share ("Unit"); a run without an id keeps its name.
         workflow = r.get('workflowDatabaseId') or r['workflowName']
