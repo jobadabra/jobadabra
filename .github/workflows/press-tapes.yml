@@ -4,14 +4,21 @@ name: Press tapes
 # published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
 # Its calls ride the broker's by-hand lane (jobadabra-web lib/lanes.mjs: the PR reserve to 100% of the week, never Claude), so a spent scheduled share (70%) no longer turns a tape into another AI's answers.
 # That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona's two 180 s presses took 87-91 calls (8 Nov 2026);
-# at the 540 s ceiling it is not measured yet, so each persona starts only with room for 300 calls left today, and a tape with any refused or Free AI call is not published.
+# at the 540 s ceiling it is not measured yet, so each persona starts only with room on its lane (by hand: 300 calls left today; scheduled, from 11 Nov: the week under 66%), and a tape with any refused or Free AI call is not published.
 on:
   workflow_dispatch:
     inputs:
       personas:
-        description: 'JSON list of 1 to 6 personas, such as [10, 11, 12, 15, 17, 7] (the by-hand lane fits about 6 a UTC day)'
+        description: 'JSON list of personas, such as [10, 11] (by-hand lane: 1 to 4; scheduled: 1 to 12)'
         type: string
         required: true
+      # Why (8 Nov 2026, owner: "By hand until 11 Nov, rest after reset (Recommended)": "2-4 a day now… then the remaining ~10 in one go on the scheduled share right after 11 Nov 09:41"):
+      # by-hand rides the PR reserve under 800 calls a UTC day; scheduled names no environment, so the broker puts it on the scheduled lane (70% of a fresh Codex week).
+      lane:
+        description: 'Broker lane: byhand (until the Codex week resets, 800 calls a UTC day) or scheduled (after the reset)'
+        type: choice
+        options: ['byhand', 'scheduled']
+        default: 'byhand'
       ceiling:
         description: 'Seconds of the recorded press (180 = a normal press)'
         type: string
@@ -39,9 +46,10 @@ jobs:
     steps:
       - env:
           PERSONAS: ${{ inputs.personas }}
+          MAX: ${{ inputs.lane == 'scheduled' && '12' || '4' }}
         run: |
           n=$(node -e 'const v = JSON.parse(process.env.PERSONAS || "[]"); if (!Array.isArray(v) || !v.every(Number.isInteger)) process.exit(2); console.log(v.length)') || { echo "::error::personas must be a JSON list of numbers"; exit 1; }
-          if [ "$n" -lt 1 ] || [ "$n" -gt 6 ]; then echo "::error::name 1 to 6 personas (the by-hand lane has 800 calls a UTC day, a tape persona ~45+), got $n"; exit 1; fi
+          if [ "$n" -lt 1 ] || [ "$n" -gt "$MAX" ]; then echo "::error::name 1 to $MAX personas on the ${{ inputs.lane }} lane (a recording takes ~300 calls), got $n"; exit 1; fi
 
   record:
     name: Tape ${{ matrix.persona }}
@@ -51,7 +59,7 @@ jobs:
     # Why (8 Nov 2026, owner: "Yes, tapes use it too (Recommended)": "gi adds the same environment to press-tapes.yml plus one name in lanes.mjs"): the run token's environment puts these calls
     # on the broker's by-hand lane (jobadabra-web lib/lanes.mjs); without it a recording lands on the scheduled lane, spent this week (7 Nov: 503s to Free AI). No deployment record: it deploys nothing.
     environment:
-      name: search-check-by-hand
+      name: ${{ inputs.lane != 'scheduled' && 'search-check-by-hand' || '' }}
       deployment: false
     permissions:
       contents: read
@@ -64,14 +72,21 @@ jobs:
     steps:
       # Why (8 Nov 2026, coordinator mac-9d: "A tape with a refused call must fail its own recording, never be kept"): a 540 s recording's call count is not measured yet (two 180 s presses: 87-91 calls,
       # run 42451932088), so a persona starts only while the by-hand lane has room for 3x that today; one that does not fit stops here, red, before any AI call, and is recorded another day.
-      - name: The by-hand lane has room for this recording today
+      - name: The broker lane has room for this recording
         env:
+          LANE: ${{ inputs.lane }}
           NEED: '300'   # 3 x 91 calls of two 180 s presses, plus the judge
           DAY_CAP: '800'   # jobadabra-web workers/ai-broker/lib/budget.mjs DAILY.byhand
+          WEEK_MAX: '66'   # the scheduled lane stops at 70% of the Codex week (budget.mjs RESERVE_PCT); ~300 calls is ~4% of it
         run: |
-          used=$(curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | node -e 'let t="";process.stdin.on("data",d=>t+=d).on("end",()=>{const n=JSON.parse(t).daily?.byhand;if(!Number.isInteger(n))process.exit(2);console.log(n)})') || { echo "::error::the broker's day count could not be read: no recording without it"; exit 1; }
-          echo "by-hand calls today: $used of $DAY_CAP; this recording needs about $NEED"
-          if [ $((DAY_CAP - used)) -lt "$NEED" ]; then echo "::error::only $((DAY_CAP - used)) by-hand calls left today (UTC): record persona ${{ matrix.persona }} another day"; exit 1; fi
+          read -r used week < <(curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | node -e 'let t="";process.stdin.on("data",d=>t+=d).on("end",()=>{const h=JSON.parse(t),n=h.daily?.byhand,w=h.limits?.usedPercent;if(!Number.isInteger(n))process.exit(2);console.log(n,Number.isFinite(w)?Math.round(w):-1)})') || { echo "::error::the broker's counts could not be read: no recording without them"; exit 1; }
+          if [ "$LANE" = scheduled ]; then
+            echo "Codex week used: $week% (scheduled stops at 70%); this recording needs about 4%"
+            if [ "$week" -lt 0 ] || [ "$week" -gt "$WEEK_MAX" ]; then echo "::error::the Codex week reads $week%: no room on the scheduled lane for persona ${{ matrix.persona }}"; exit 1; fi
+          else
+            echo "by-hand calls today: $used of $DAY_CAP; this recording needs about $NEED"
+            if [ $((DAY_CAP - used)) -lt "$NEED" ]; then echo "::error::only $((DAY_CAP - used)) by-hand calls left today (UTC): record persona ${{ matrix.persona }} another day"; exit 1; fi
+          fi
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
       - uses: actions/setup-node@v5
