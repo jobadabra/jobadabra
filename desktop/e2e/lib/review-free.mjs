@@ -4,11 +4,11 @@
 // Its cost comes from the answer's own token counts at Cloudflare's list price. Guarded by test/review-free.test.mjs.
 // Job: report health
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
-import {PROMPT_JSON_MODELS, SMALL} from '../../lib/free-ai-models.js';
+import {PROMPT_JSON_MODELS, SMALL, costUsd} from '../../lib/free-ai-models.js';
 
 export const FREE_MODEL = process.env.E2E_REVIEW_FREE_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';
 // USD per million tokens (Cloudflare Workers AI pricing, Oct 2026: neurons per million tokens x $0.011 per 1000 neurons).
-export const FREE_PRICES = {'@cf/meta/llama-4-scout-17b-16e-instruct': {input: 0.27, output: 0.85}, '@cf/mistralai/mistral-small-3.1-24b-instruct': {input: 0.351, output: 0.555}, [SMALL]: {input: 0.1, output: 0.3}};
+export const FREE_PRICES = {'@cf/meta/llama-4-scout-17b-16e-instruct': {input: 0.27, output: 0.85}, '@cf/mistralai/mistral-small-3.1-24b-instruct': {input: 0.351, output: 0.555}};
 const API = process.env.E2E_REVIEW_FREE_URL || 'https://api.cloudflare.com/client/v4';   // a test points this at a fake
 const MAX_TOKENS = 1500;   // no thinking on these models: the JSON answer alone (at most 3 findings) fits
 
@@ -23,7 +23,9 @@ export function toWorkersAi(request, model = FREE_MODEL) {
     ...(PROMPT_JSON_MODELS.has(model) ? {chat_template_kwargs: {enable_thinking: false}} : {})};
 }
 
+// Why (8 Nov 2026, Gitar on #3634): the price of the app's small model is owned by desktop/lib/free-ai-models.js; typing it again here would go stale when it is repriced or SMALL moves.
 export function freeCost(model, usage = {}) {
+  if (model === SMALL) return costUsd(SMALL, {input_tokens: Number(usage.prompt_tokens) || 0, output_tokens: Number(usage.completion_tokens) || 0});
   const price = FREE_PRICES[model];
   return price ? ((Number(usage.prompt_tokens) || 0) * price.input + (Number(usage.completion_tokens) || 0) * price.output) / 1e6 : null;
 }
