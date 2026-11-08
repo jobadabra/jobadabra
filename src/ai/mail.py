@@ -63,7 +63,7 @@ from .mail_sent import (  # noqa: F401 — re-exported: callers and tests use `m
     EMAIL, SENT_MAX, contacts, review_rejections, sent_pass, sent_query,
 )
 from .mail_calendar import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`
-    calendar_pass, prep_message, reminders, reviewed_since,
+    PrepNote, calendar_pass, prep_message, reminders, reviewed_since,
 )
 from .mail_failure import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`
     NOT_CHECKED, NOT_CHECKED_OPENAI, failure_cause, failure_warning, not_checked,
@@ -82,7 +82,7 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
     dispatches for "Check Gmail now": a quiet check says so in the app and on its ⏱️ Search runs row, and a
     Telegram message for every check someone started is noise (1 Oct 2026).
     stores: the active store (src/stores); by default the one open_stores() picks, on `tracker` when one is given.
-    send_reminder: how an interview reminder goes (the CLI: at once, under the person's "Interview reminder" switch, owner 8 Nov 2026); by default `send`."""
+    send_reminder: how the interview prep message goes (the CLI: at once, under the person's "Interview reminder" switch, owner 8 Nov 2026); by default `send`."""
     stores = stores or open_stores(tracker=tracker)
     state = load_state(state_path, ledger_key(stores))
     apps = applications(stores)
@@ -128,7 +128,7 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
                          [cards.words('mail.noChanges')] if count else [], emoji='📧'))
     for note in notes:
         if send:
-            (send_reminder or send)(note)
+            (send_reminder if send_reminder and isinstance(note, PrepNote) else send)(note)   # only the prep message is the reminder; the after-call nudge stays an ordinary message
     if (stats or {}).get('updates') and not dry_run:  # one short line each, for the desktop app's activity panel
         print('Updates:')
         for line in stats['updates']:
@@ -171,7 +171,7 @@ def main(argv=None):
     if args.send and not disabled('telegram'):
         token, chat_id = telegram.credentials()
         sender = lambda text: telegram.deliver(text, token, chat_id, **cards.delivery(text))
-        # Why (8 Nov 2026, owner: "an e-mail for every automation"): a reminder (the evening before, the morning of) was e-mailed as 'activity', held for the digest and under no switch, so it could arrive after the interview.
+        # Why (8 Nov 2026, owner: "an e-mail for every automation"): a prep reminder (the evening before, the morning of) was e-mailed as 'activity', held for the digest and under no switch, so it could arrive after the interview.
         # Now it goes at once under `app-reminder`, which the person's Interview reminder switch holds (src/notify.py mail_off).
         reminder_sender = lambda text: telegram.deliver(text, token, chat_id, urgent=True, mail='app-reminder', **cards.delivery(text))
     stats = {}

@@ -47,6 +47,16 @@ class MailCalendarTests(MailCase):
         self.assertEqual(len([m for m in reminders if m.startswith('🗓 <b>Interview tomorrow')]), 1)
         self.assertFalse([m for m in sent if m.startswith('🗓')], 'the reminder is not also sent as an ordinary message')
 
+    def test_the_after_call_nudge_stays_on_the_ordinary_sender(self):
+        # Why (review of mw 4/5): "Interview reminder" is the prep message; its switch must not also hold the nudge that asks for the transcript.
+        start = NOW - timedelta(hours=3)
+        event = {'id': 'e8', 'summary': 'Zephyr AI technical interview', 'start': {'dateTime': start.isoformat()}, 'end': {'dateTime': (start + timedelta(hours=1)).isoformat()}}
+        apps = [app('p1', 'Zephyr AI', 'Infrastructure Engineer')]
+        reminders = []
+        _, sent = self.run_mail(FakeTracker(apps), FakeGoogle(events=[event]), [], calendar=True, reminders=reminders)
+        self.assertEqual(reminders, [])
+        self.assertTrue(any('How did' in m and 'transcript' in m for m in sent))
+
     def test_after_the_interview_asks_for_the_transcript(self):
         start = NOW - timedelta(hours=3)
         event = {'id': 'e2', 'summary': 'Zephyr AI technical interview', 'start': {'dateTime': start.isoformat()},

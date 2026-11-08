@@ -57,6 +57,10 @@ def calendar_pass(stores, google, client, model, apps, index, state, stats, now=
     return lines, notes
 
 
+class PrepNote(str):
+    """The interview prep message (evening before / morning of): the one note that is the person's "Interview reminder" mail. The after-call nudge is a plain str and stays on the ordinary sender (review of mw 4/5)."""
+
+
 def reminders(stores, row, event, start, end, state, now):
     """Prep message the evening before / the morning of, and a nudge for the transcript after."""
     local, messages = now.astimezone(TZ), []
@@ -65,7 +69,7 @@ def reminders(stores, row, event, start, end, state, now):
     today = start.astimezone(TZ).date() == local.date() and start > now
     if (tomorrow or today) and key_before not in state['notified']:
         state['notified'].append(key_before)
-        messages.append(prep_message(stores, row, event, start, 'Tomorrow' if tomorrow else 'Today'))
+        messages.append(PrepNote(prep_message(stores, row, event, start, 'Tomorrow' if tomorrow else 'Today')))
     if end < now < end + timedelta(hours=18) and 8 <= local.hour <= 22 and key_after not in state['notified']:
         state['notified'].append(key_after)
         # Already reviewed (a recording or notes saved from the app, Telegram or /interview on or after the call's day): don't ask.
