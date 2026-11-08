@@ -21,7 +21,8 @@ mkdir -p "$log_dir"
 exec >>"$log_dir/wait-and-mark-applied.log" 2>&1
 say() { echo "$(date '+%F %T') [$id] $*"; }
 # One watcher per job: a relaunch of the same job doesn't start a second one.
-others="$(pgrep -f "wait-and-mark-applied.sh $url\$" || true)"
+# Why (8 Nov 2026, sp, Gitar on #3626): pgrep stays the only command in the substitution, so bash runs it directly; with an or-true list a forked bash carrying this script's argv stays alive and pgrep -f counts it as another watcher. No set -e here, so pgrep's exit 1 (none found) needs no guard.
+others="$(pgrep -f "wait-and-mark-applied.sh $url\$")"
 if [ -n "$others" ] && grep -vqx "$$" <<<"$others"; then
   say "already watched by another process; exiting"
   exit 0
