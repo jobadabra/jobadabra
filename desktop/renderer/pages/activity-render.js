@@ -92,6 +92,9 @@ function removeLink(run) {
   return link;
 }
 
+/** The one "Next: ..." line of a finished run's card (plan P3), or '' ; own function so renderActivity's complexity does not grow (Gitar, #3631). */
+const nextLineOf = run => nextStepLine(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, nextStep: lastActivity?.nextStep});
+
 export function renderActivity(fresh) {
   if (!$('activity-panel').hidden) remembered(PANEL_KEY, panelMemory(true, shared.selectedRun));   // another run picked in the open panel
   const data = withKept(fresh);
@@ -369,7 +372,7 @@ export function renderActivity(fresh) {
   // Warnings (Notion busy, a step skipped…) and a failed run's reason: the top of the run's result (pages/activity-result-top.js).
   const warnings = partial || onStep ? split.rest : detailWarnings;
   const added = kindOf(run) === 'visits' ? Number(run?.new) || 0 : found;
-  const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added, asks, summary: summary || nextStepLine(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, nextStep: lastActivity?.nextStep}), links: jobLinks, hasLog: lines.length > 0,
+  const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added, asks, summary: summary || nextLineOf(run), links: jobLinks, hasLog: lines.length > 0,
     step: kindOf(run) === 'search' ? searchPhase(run?.step) : run?.step, count: tabs ? {done: shownTabs.done, total: shownTabs.total, percent: shownTabs.percent} : null,
     title: title || resultWords(outcome(run || {}), kind?.name)});
   // The top says the result: the header does not repeat it, nor the finding's card its headline (owner, 25 Oct 2026: one fact, said once).
