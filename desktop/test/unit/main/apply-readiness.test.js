@@ -105,7 +105,7 @@ test('a stored form that needed details is matched again from its questions, so 
   assert.equal((await readiness.storedCheck({...JOB, kit: true})).match.missing.length, 0, 'and the new match is what is stored');
 });
 
-test('a Stop while the kit drafts ends the check before the browser opens; a kit that failed reads nothing', async () => {
+test('a Stop while the kit drafts ends the check before the browser opens; a kit that failed still reads the form', async () => {
   let release;
   const calls = {read: 0};
   const slow = createReadiness({storage: {}, prepareKit: () => new Promise(done => { release = () => done({ok: true}); }), readForm: async () => { calls.read += 1; return SIMPLE; },
@@ -116,8 +116,8 @@ test('a Stop while the kit drafts ends the check before the browser opens; a kit
   assert.equal((await pending).check, null);
   assert.equal(calls.read, 0);
   const failed = createReadiness({storage: {}, prepareKit: async () => ({ok: false, error: 'no posting'}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
-  assert.equal((await failed.applyReadiness(JOB)).kit.ok, false);
-  assert.equal(calls.read, 0, 'no kit, no row to keep a check on');
+  const done = await failed.applyReadiness(JOB);
+  assert.deepEqual([done.kit.ok, done.check.simple, calls.read], [false, true, 1], 'a kit that failed still lets the form be read (red main after #3573)');
 });
 
 test('the Jobs page shows why a kit could not be drafted, passes the Notion gate up, and marks a drafted kit', async () => {
@@ -125,6 +125,7 @@ test('the Jobs page shows why a kit could not be drafted, passes the Notion gate
   const via = done => ({applyReadiness: async () => done});
   assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'needs AI'}, check: null}), JOB), {unreadable: true, why: 'needs AI'});
   assert.equal((await readThroughStep(via({kit: {ok: false, needsNotion: true, reason: 'connect Notion'}}), JOB)).why, 'connect Notion');
+  assert.deepEqual(await readThroughStep(via({kit: {ok: false, error: 'no posting'}, check: SIMPLE, stored: false}), {...JOB}), {...SIMPLE, stored: false}, 'a read made despite the kit shows the read');
   const job = {...JOB};
   assert.deepEqual(await readThroughStep(via({kit: {ok: true}, check: SIMPLE, stored: true}), job), {...SIMPLE, stored: true});
   assert.equal(job.kit, true, 'the next check does not draft it again');

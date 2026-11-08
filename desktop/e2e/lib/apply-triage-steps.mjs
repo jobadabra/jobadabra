@@ -36,7 +36,8 @@ export async function runTriageSteps(ctx) {
   const urls = JOBS.map(job => job.url);
   try {
     // The Jobs popup's one field, and how many jobs it says it will check: integration/app/screen-apply.test.js (moved 1 Nov 2026).
-    await ctx.run('checking jobs before the form read exists reads nothing: every chip says "Not checked", no session starts, nothing is filled or sent', async () => {
+    // Why (8 Nov 2026, #3573 Apply readiness, owner 7 Nov 2026: "One step does all 3 of them"): the check drafts a missing kit first; these fixtures' postings cannot be reached, so the kit fails and the person is told why on each row, never a guessed mode.
+    await ctx.run("checking jobs before the form read exists guesses no mode: a job whose kit cannot be drafted says \"Couldn't read\" with its reason, no session starts, nothing is filled or sent", async () => {
       await removeJobsByUrl(ctx, urls);
       for (const job of JOBS) await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: null, fit: job.fit, stage: 'Saved', nextStep: ''});
       await openJobs(ctx);
@@ -49,12 +50,12 @@ export async function runTriageSteps(ctx) {
       await page.click('#triage-start');
       await page.waitForSelector('.toast', {timeout: 15000}).catch(() => { throw new Error('pressing "Check jobs" told the person nothing'); });
       const told = (await page.locator('.toast').last().innerText()).replace(/\s+/g, ' ');
-      if (!/Nothing was checked/i.test(told)) throw new Error(`with no form read yet the toast should say nothing was checked, it says "${told}"`);
+      if (!/couldn't be read/i.test(told)) throw new Error(`with no form read and no kit the toast should say the jobs couldn't be read, it says "${told}"`);
       if (await page.locator('#triage-progress:visible').count()) throw new Error('the progress bar is still showing after the run');
       await page.click('#triage-close').catch(() => {});
       const chips = await page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
       if (!chips.length) throw new Error('no job row shows a triage chip (.role > .chip-tag, renderer/pages/jobs-render.js)');
-      const odd = chips.filter(text => text !== 'Not checked');
+      const odd = chips.filter(text => text !== 'Not checked' && text !== "Couldn't read");
       if (odd.length) throw new Error(`${odd.length} chip(s) guessed a mode without a read: ${[...new Set(odd)].join(', ')}`);
       if (sessionsNow(ctx) !== before) throw new Error('checking jobs started or changed a session; nothing may open, fill or send before the form read exists');
     }, {safety: true});

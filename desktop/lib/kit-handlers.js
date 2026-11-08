@@ -40,7 +40,7 @@ export function registerKitHandlers(ctx) {
   const {makeFor: makeJobLetter} = registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage});   // the job's own cover letter, made after its CV
   // The application kit: the form's questions (read from the ATS), an answer for each and a cover letter,
   // saved on the job's Notion Applications row (Stage Kit ready). Apply needs one.
-  const prepareKitFor = async (code, name = 'this job', {quiet = false} = {}) => {
+  const prepareKitFor = async (code, name = 'this job', {quiet = false, silent = false} = {}) => {
     const gate = needsNotion('prepare');
     if (gate) return gate;
     const blocked = await allowanceBlock();
@@ -56,7 +56,7 @@ export function registerKitHandlers(ctx) {
       pipeline.triggerEnv('you'));
     const stopped = stoppedWith(exit, lines);
     if (stopped) {
-      if (quiet) notify(t('kitNotice.prepareFailedTitle'), t('kitNotice.nameReason',{name,reason:stopped}), {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it
+      if (quiet && !silent) notify(t('kitNotice.prepareFailedTitle'), t('kitNotice.nameReason',{name,reason:stopped}), {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it; Apply readiness (silent) says it on the job's own line
       return {ok: false, stopped: true, error: `${name}: ${stopped}`};
     }
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));

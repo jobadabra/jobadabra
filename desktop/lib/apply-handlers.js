@@ -59,7 +59,7 @@ export function registerApplyHandlers(ctx) {
   const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
-  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true}), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
+  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true, silent: true}), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
     match: asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; })});
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
