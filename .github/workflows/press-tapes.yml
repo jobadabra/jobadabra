@@ -72,26 +72,13 @@ jobs:
     steps:
       # Why (8 Nov 2026, coordinator mac-9d: "A tape with a refused call must fail its own recording, never be kept"): a 540 s recording's call count is not measured yet (two 180 s presses: 87-91 calls,
       # run 42451932088), so a persona starts only while the by-hand lane has room for 3x that today; one that does not fit stops here, red, before any AI call, and is recorded another day.
-      # Why (8 Nov 2026, mac-9d: read the lane's line from the broker, so the owner's new limits ("codex up to 100%, Claude up to 90%") apply without editing this file): the broker's
-      # /health names each lane's week line and day cap (`lines`); a broker from before that field has byhand at 100% and 800 a day, and refuses the scheduled lane here.
-      - name: The broker lane has room for this recording
-        env:
-          LANE: ${{ inputs.lane }}
-          NEED_CALLS: '300'   # 3 x 91 calls of two 180 s presses, plus the judge
-          NEED_PCT: '4'   # ~300 calls of ~18-22k tokens is ~4% of a Codex week
-        run: |
-          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health > health.json || { echo "::error::the broker's counts could not be read: no recording without them"; exit 1; }
-          node - <<'JS'
-            const h = JSON.parse(require("fs").readFileSync("health.json", "utf8")), lane = process.env.LANE;
-            const old = !h.lines, week = old ? (lane === "byhand" ? 100 : null) : h.lines.week?.[lane], cap = old ? (lane === "byhand" ? 800 : null) : h.lines.daily?.[lane] ?? null;
-            const used = h.limits?.usedPercent, today = h.daily?.[lane] ?? 0, needPct = Number(process.env.NEED_PCT), needCalls = Number(process.env.NEED_CALLS);
-            console.log(`lane ${lane}: Codex week ${used ?? "unread"}% of its ${week ?? "unknown"}% line; calls today ${today}${cap === null ? " (no day cap)" : ` of ${cap}`}; this recording needs ~${needPct}% and ~${needCalls} calls`);
-            if (!Number.isFinite(week)) { console.log("::error::the broker does not say the " + lane + " lane line: no recording on it"); process.exit(1); }
-            if (Number.isFinite(used) && used + needPct > week) { console.log(`::error::the Codex week reads ${used}%, over ${week - needPct}%: no room on the ${lane} lane today`); process.exit(1); }
-            if (cap !== null && cap - today < needCalls) { console.log(`::error::only ${cap - today} ${lane} calls left today (UTC): record this persona another day`); process.exit(1); }
-          JS
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
+      # Why (8 Nov 2026, mac-9d; Gitar on #3589): a recording starts only when the broker says its lane has room, and an unread count is no room (tools/persona-search/recording_room.py).
+      - name: The broker lane has room for this recording
+        run: |
+          set -o pipefail
+          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py "${{ inputs.lane }}" 4 300
       - uses: actions/setup-node@v5
         with: {node-version: '22'}
       - uses: actions/setup-python@v6
