@@ -39,7 +39,7 @@ def calendar_pass(stores, google, client, model, apps, index, state, stats, now=
         for i, result in unmatched_results.items():
             if result['relevant'] and 0 <= result['application'] < len(apps):
                 matched.append((unmatched[i], apps[result['application']]))
-    lines, notes = [], []
+    lines, notes = [], Notes()
     for event, row in matched:
         start, end = _when(event['start']['dateTime']), _when(event['end']['dateTime'])
         if dry_run:
@@ -53,19 +53,35 @@ def calendar_pass(stores, google, client, model, apps, index, state, stats, now=
                 lines.append(cards.block(_head(row, 'Interview'), f"{start.astimezone(TZ):%a %d %b · %H:%M}",
                                           cards.fact(cards.words('calendar.event'), event.get('summary', '')[:80]), cards.fact(cards.words('calendar.source'), 'Google Calendar')))
                 _short(stats, 'Interview scheduled', row, f" · {start.astimezone(TZ):%a %d %b %H:%M}")
-        notes += reminders(stores, row, event, start, end, state, now)
+        found = reminders(stores, row, event, start, end, state, now)
+        notes.extend(found)
+        notes.prep.extend(found.prep)
     return lines, notes
+
+
+class Notes(list):
+    """The calendar pass's messages, with `prep`: the interview prep messages among them (the person's "Interview reminder" mail). Why (Gitar on jobadabra #3609): a note is a localized
+    `_NotificationText`; wrapping it in another type dropped its language, so the prep message is marked here, by identity, and the note itself is left untouched."""
+
+    def __init__(self, items=()):
+        super().__init__(items)
+        self.prep = []
+
+    def is_prep(self, note):
+        return any(note is each for each in self.prep)
 
 
 def reminders(stores, row, event, start, end, state, now):
     """Prep message the evening before / the morning of, and a nudge for the transcript after."""
-    local, messages = now.astimezone(TZ), []
+    local, messages = now.astimezone(TZ), Notes()
     key_before, key_after = f"prep:{event['id']}", f"after:{event['id']}"
     tomorrow = start.astimezone(TZ).date() == (local + timedelta(days=1)).date() and local.hour >= 17
     today = start.astimezone(TZ).date() == local.date() and start > now
     if (tomorrow or today) and key_before not in state['notified']:
         state['notified'].append(key_before)
-        messages.append(prep_message(stores, row, event, start, 'Tomorrow' if tomorrow else 'Today'))
+        note = prep_message(stores, row, event, start, 'Tomorrow' if tomorrow else 'Today')
+        messages.append(note)
+        messages.prep.append(note)
     if end < now < end + timedelta(hours=18) and 8 <= local.hour <= 22 and key_after not in state['notified']:
         state['notified'].append(key_after)
         # Already reviewed (a recording or notes saved from the app, Telegram or /interview on or after the call's day): don't ask.
