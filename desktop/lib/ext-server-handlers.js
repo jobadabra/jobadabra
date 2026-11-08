@@ -13,6 +13,7 @@ import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 import {noteReport, observe, pageKeyOf} from './ladder/rung5-takeover-teach.js';
 import * as aliasLibrary from './aliases.js';
 import * as applyLib from './apply.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import * as contactDetails from './contact.js';
 import * as controlEvents from './control-events.js';
 import * as credentials from './credentials.js';
@@ -250,7 +251,10 @@ export function registerExtServerHandlers(ctx) {
   });
   server.setStoppedHandler(event => appLog('extension', 'the extension stopped', {reason: String(event?.reason || '').slice(0, 80), marked: stopLiveForms(terminals, event?.source || 'unknown')}));   // stop still holds globally; only an explicit user trigger attributes it to the person (#3410)
   server.setStartedHandler(event => { const id = startForm(terminals, review.sessionOfTab, event?.tab); if (id) appLog('extension', 'started again on its tab: the session is no longer stopped', {id, who: String(event?.who || '').slice(0, 40)}); });
-  server.setStuckHandler(event => { flow().stuck(event); });   // tier 3: the extension can't reach a form (lib/session-flow.js)
+  server.setStuckHandler(event => {   // tier 3: the extension can't reach a form (lib/session-flow.js)
+    // Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): a hidden application's own run is handed over too, or its card kept "Filling" with Stop.
+    if (flow().stuck(event) === 'noted' && event?.session) backgroundApplyFor(storage).deadEnd(String(event.session), String(event.why || '')).catch(error => appLog('apply', `dead end not handed over: ${error.message}`, {session: String(event.session)}));
+  });
   review.onBind(({id, tab, before, by, host, newRun}) => appLog('review', `tab ${tab} is session ${id}'s now`, {before, by, host, ...(newRun ? {newRun} : {})}));   // which tab a session follows, and why
   review.setReporter(state => flow().reported(state));   // the step each form report puts its session at (lib/session-flow.js)
   const readReported = new Set();

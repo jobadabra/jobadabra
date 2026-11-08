@@ -417,6 +417,19 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return handed?.ok === false ? null : handed;
     });
   }
+  /** The extension's dead end on a hidden application before its form (lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
+   * Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): the twin's Lufthansa run said "can't reach the form" and kept "Filling" with Stop. */
+  async function deadEnd(id, why) {
+    if (why === 'account') return null;   // an account page is the extension's own hand-off (sign_in_required, extension/background-session.mjs observe)
+    return serial(async () => {
+      const item = itemFor(id);
+      if (!item) return null;
+      const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // as stopOne: an unreadable store hands nothing over
+      if (!state || state.session !== item.id || state.manualOverride || !['queued', 'preflight', 'filling'].includes(state.state)) return null;
+      const handed = await markManual(item, 'no_form');
+      return handed?.ok === false ? null : handed;
+    });
+  }
   async function page(id) { return itemFor(id) ? browserOf().pageSocket(id) : null; }
   // The page's own sending button for the app's Submit (the person's press): only while the form judge's ready stands, never after a hand-off.
   async function submitControl(id) {
@@ -437,5 +450,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  return {enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, deadEnd, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }
