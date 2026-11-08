@@ -20,6 +20,7 @@ from .. import pool_served
 from . import ats, boards, host_pace, read_routes
 from ..ai import slots
 from .careers_parse import registrable
+from ..press import resume
 
 SMARTRECRUITERS = re.compile(r'jobs\.smartrecruiters\.com/([^/?#]+)/(\d+)')
 
@@ -181,6 +182,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     """Fill in up to `limit` open jobs (seen in the last `days`) that have no description, from any posting page (page_text), 4 at a time.
     A site that refuses is not asked again for a week; it and sign-in sites are said as "readable in your browser". A site that asks us to
     slow down (host_pace.Busy) keeps its jobs for a later run, not refused. Returns a log line."""
+    resume.ran('descriptions')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from . import read_budget
     if read_budget.past_cut():   # the run's read time is up: the postings stay without a description until the next search
         from .. import time_budget

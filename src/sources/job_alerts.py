@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 from . import ats, feeds
 from ..ai.models import SMALL_MODEL
+from ..press import resume
 
 MODEL = SMALL_MODEL
 MAX_EMAILS = 20
@@ -116,6 +117,7 @@ def extract(client, email_text, pairs, site):
 
 def scan(db, google, client, now=None):
     """A feeds.scan-style report ({'jobs', 'sources'}) from the alert emails not read yet; your roles and places only."""
+    resume.ran('job-alert emails')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     now = now or datetime.now(timezone.utc)
     report = {'jobs': [], 'sources': []}
     from . import read_budget

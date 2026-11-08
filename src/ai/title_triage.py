@@ -12,7 +12,7 @@ import time
 import threading
 
 from ..paths import DATA
-from ..press import budget as press_budget
+from ..press import budget as press_budget, resume
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots, title_queue
 from ..press import rank
@@ -107,6 +107,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     local: True (all of `titles` are of jobs in the user's own places) or the titles that are: asked first in the same call, and the search's first few of them are sorted whatever the clock says (src/time_budget.py).
     nearness: title -> a comparable key, the nearest smallest (src/sources/feeds.py): the batches are cut from the nearest titles first and src/ai/title_queue.py asks
     them nearest first across every reader. land(fit titles, batch): called in this thread as each batch lands (a job can reach scoring after one batch)."""
+    resume.ran('title sorting')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     from . import engine
     from .. import time_budget as budget
     key, decided = _key(search), dict(known(search))

@@ -16,7 +16,7 @@ import threading
 import time
 
 from . import budget_tape
-from .press import budget
+from .press import budget, resume
 
 DEADLINE = None
 STAGE_END = None   # this process's own end on the search's clock (the job boards' step: its share), before DEADLINE; None: DEADLINE
@@ -64,6 +64,7 @@ def start(seconds, now=None, stage=None, name=None):
         budget_tape.new_search(name)
     score_first(False)
     _said.clear()
+    resume.begin()
     _scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock
     _local[0] = 0
 
@@ -92,6 +93,7 @@ def later(stage, n, noun):
     it, desktop/renderer/human-log.js). Returns True, so a stage can `return` on it."""
     if stage not in _said and n:
         _said.add(stage)
+        resume.note(stage, n)   # the planner's counts (src/press/resume.py), saved as the line is said
         spent = int(time.monotonic() - BEGAN) if BEGAN is not None else 0
         print(f'⏱ Time is up ({spent // 60} min {spent % 60:02d} s) for {stage}: {n} {noun} {"waits" if n == 1 else "wait"} for the next search', flush=True)
     return True
@@ -323,6 +325,7 @@ def record(step, seconds, done, lost=0.0):
 
 def left_line(step, left, noun='job(s)'):
     """The run's line for work left over: said once per step, so the user knows nothing was dropped."""
+    resume.note(resume.LEFT_LINES[step], left)   # said once per step by its caller: the planner's counts (src/press/resume.py)
     return f'⏱ Time is up for this refresh: {left} {noun} left for the next one (it stops at {round((DEADLINE - STARTED) / 60, 1):g} min)'
 
 
