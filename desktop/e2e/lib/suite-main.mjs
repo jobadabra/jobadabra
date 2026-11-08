@@ -162,7 +162,7 @@ export async function runSuite(name, report = null) {
       };
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
-      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784).
+      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784); finishSuite also records a stale pick before the file is written (8 Nov 2026, run 42451945200).
       code = finishSuite(name, ctx, process.env, ranToEnd) || code;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).
