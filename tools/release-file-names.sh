@@ -29,7 +29,7 @@ case $mode in
     have=$(gh release view "$third" --json assets -q '.assets[].name')
     missing=0
     for name in $(names "${third#desktop-v}"); do
-      printf '%s\n' "$have" | grep -qx "$name" || { echo "release $third lacks $name" >&2; missing=1; }
+      grep -qx "$name" <<<"$have" || { echo "release $third lacks $name" >&2; missing=1; }
     done
     [ "$missing" = 0 ] && echo "release $third has all its $platform file names" ;;
   *) echo "usage: $0 make|check ..." >&2; exit 2 ;;

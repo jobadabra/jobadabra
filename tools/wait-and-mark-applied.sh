@@ -21,7 +21,8 @@ mkdir -p "$log_dir"
 exec >>"$log_dir/wait-and-mark-applied.log" 2>&1
 say() { echo "$(date '+%F %T') [$id] $*"; }
 # One watcher per job: a relaunch of the same job doesn't start a second one.
-if pgrep -f "wait-and-mark-applied.sh $url\$" | grep -vqx "$$"; then
+others="$(pgrep -f "wait-and-mark-applied.sh $url\$" || true)"
+if [ -n "$others" ] && grep -vqx "$$" <<<"$others"; then
   say "already watched by another process; exiting"
   exit 0
 fi

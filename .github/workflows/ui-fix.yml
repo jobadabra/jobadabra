@@ -238,12 +238,12 @@ jobs:
             files=$(git show --name-only --format= HEAD | grep -v '^CODEMAP.md$' || true)
             lines=$(git show --numstat --format= HEAD -- . ':!CODEMAP.md' | awk '{s+=$1+$2} END{print s+0}')
             kind=""
-            if [ -n "$files" ] && [ "${AUTOMERGE:-}" = on ] && ! echo "$files" | grep -qvE '^desktop/(renderer|test)/' && [ "$lines" -le 80 ]; then kind="window-only"; fi
+            if [ -n "$files" ] && [ "${AUTOMERGE:-}" = on ] && ! grep -qvE '^desktop/(renderer|test)/' <<<"$files" && [ "$lines" -le 80 ]; then kind="window-only"; fi
             # Level 2 (owner, 4 Oct 2026): an engine or app-logic fix merges itself only when a person or the verdict pass confirmed the bug, it stays in src/ and
             # desktop/lib/ with its tests, it brings a test of its own, and it is small (40 lines). It already passed the whole Python suite, the desktop suite and the lint.
             if [ -z "$kind" ] && [ -n "$files" ] && [ "${AUTOMERGE_ENGINE:-}" = on ] && [ "$lines" -le 40 ] \
-               && ! echo "$files" | grep -qvE '^(src/|desktop/lib/|tests/|desktop/test/)' && echo "$files" | grep -qE '^(tests/|desktop/test/)' \
-               && gh issue view "$number" --repo "$REPO" --json labels --jq '.labels[].name' | grep -qx confirmed; then kind="engine"; fi
+               && ! grep -qvE '^(src/|desktop/lib/|tests/|desktop/test/)' <<<"$files" && grep -qE '^(tests/|desktop/test/)' <<<"$files" \
+               && grep -qx confirmed <<<"$(gh issue view "$number" --repo "$REPO" --json labels --jq '.labels[].name')"; then kind="engine"; fi
             if [ -n "$kind" ]; then
               # Fixes merge in parallel: one that now conflicts with a fix merged meanwhile stays open for a person.
               if ! gh pr merge "$url" --repo "$REPO" --squash --delete-branch; then

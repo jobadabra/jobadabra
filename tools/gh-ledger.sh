@@ -33,7 +33,7 @@ SHIM
     echo "ledger: job $job: $total gh calls"
     # key = "<command> <subcommand>", or "api <endpoint>" with long numbers and the query string removed
     awk '{ if ($1 == "api") { key = "api"; for (i = 2; i <= NF; i++) if ($i !~ /^-/) { key = "api " $i; break } } else key = $1 " " $2; print key }' "$dir/calls.log" \
-      | sed -E 's/\?.*$//; s/[0-9]{2,}/N/g' | sort | uniq -c | sort -rn | head -8 | sed 's/^ *\([0-9]*\) /ledger:   \1 /'
+      | sed -E 's/\?.*$//; s/[0-9]{2,}/N/g' | sort | uniq -c | sort -rn | awk 'NR <= 8' | sed 's/^ *\([0-9]*\) /ledger:   \1 /'
     fi
     left="$("$(cat "$dir/real")" api rate_limit --jq .resources.core.remaining 2>/dev/null || true)"
     echo "ledger: REST left in the budget: ${left:-not readable}"

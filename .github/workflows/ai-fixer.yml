@@ -433,7 +433,7 @@ jobs:
           else
           [ "$(cat .fb/change.patch .fb/title.txt .fb/summary.txt .fb/body.md | sha256sum | cut -d' ' -f1)" = "$PATCH_SHA" ] || stop "the patch is not the one that was scanned"
           # The patch again, as if it were a stranger's: only the allowed folders, no link, no mode change, no rename.
-          if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | grep -q -v ' 100644$'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
+          if grep -q -E '^(old mode|new mode|rename |similarity |deleted file mode)' .fb/change.patch || grep -E '^new file mode ' .fb/change.patch | awk '!/ 100644$/ {odd = 1} END {exit !odd}'; then stop "the patch renames or deletes a file, changes a mode, or adds a link"; fi
           if [ -n "$PR" ]; then git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/fixer/round.mjs" paths || stop "the patch touches files a fix may not touch"
           else git apply --numstat .fb/change.patch | awk '{print $3}' | node desktop/e2e/check-change.mjs || stop "the patch touches files a fix may not touch, or has no test"; fi
           git apply --numstat .fb/change.patch | awk '{print $3}' | node "$FBT/tools/feedback-ai.mjs" gate --bytes "$(wc -c < .fb/change.patch)" || stop "the patch touches files a fix may never touch, or is too big (8 files, 60 KB)"
