@@ -66,6 +66,14 @@ jobs:
           node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 2 --fresh --engine api --tag tape \
             --tape "$GITHUB_WORKSPACE/tape" --record --ceiling "$CEILING" 2>&1 | tee out/run.log
           cp out/draw/draft.json tape/draft.json
+      - name: Judge the ceiling's jobs (kept with the tape)
+        # The yardstick's PR job runs no AI (plan docs/superpowers/plans/2026-11-07-the-press.md 2c): the blind judge's verdicts on every job the ceiling
+        # found, and each press's jobs in the places (run.mjs --tape: jobs-<press>.json), travel with the tape for tools/press-yardstick/numbers.py.
+        run: |
+          set -o pipefail
+          python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-tape/data/jobs.sqlite" out/jobs.json
+          node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json tape/judged.json 2>&1 | tee out/judge.log
+          cp out/draw/jobs-*.json tape/
       - name: Is the records App's key set
         id: records_app_key
         env:
@@ -94,5 +102,6 @@ jobs:
           retention-days: 14
           path: |
             out/run.log
+            out/judge.log
             out/draw/presses.jsonl
             out/draw/run-*.log

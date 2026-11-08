@@ -94,7 +94,7 @@ The gi coordinator holds read-order PRs until PR 5/6 (the ranker) merges; a fix 
 ## Progress
 - [x] Sketch + owner's yes (7 Nov 2026: "Yes, build it (Recommended)"; order "Ledger, yardstick, then moves (Recommended)"; "Yes, record the 18 (Recommended)"; a drop below the band "Waits for your yes (Recommended)") (proof: none: the owner's answers in the ps session, 7 Nov 2026)
 - [x] 1/6 The fix ledger on today's code, all green, with its append-only guard, merged #3561 (proof: tests/unit/press/test_ledger.py @93f7086)
-- [ ] 2/6 Yardstick: exhaustive recordings of the 18, per-item AI replay, PR vs main job, noise band (in three PRs: 2a #3565 merged, the check's inputs and per-item replay; 2b the ceiling and the 18 recorded (540 s, one at a time, after the broker's week resets); 2c replay, numbers, band, PR job; the repeat press measured once, above)
+- [ ] 2/6 Yardstick: exhaustive recordings of the 18, per-item AI replay, PR vs main job, noise band (in three PRs: 2a #3565 merged, the check's inputs and per-item replay; 2b the ceiling and the 18 recorded (540 s, one at a time, after the broker's week resets); 2b #3572 merged; 2c-1 the three numbers; 2c-2 the PR job and band, after the 18 tapes; the repeat press measured once, above; E1 #3576 merged, a press after the first is one process)
 - [ ] 3/6 Budget table: every clock number to `budget.json` (Python and app), values unchanged, guard
 - [ ] 4/6 Press module: `clock.py` + `stages.py`, stages take the clock, pure moves one stage group at a time
 - [ ] 5/6 Ranker: today's keys moved into `rank.py` unchanged, priority-sort guard
