@@ -11,12 +11,18 @@ function outputTokens(counted) {
   try { return JSON.parse(counted)?.usage?.output_tokens ?? null; } catch { return null; }
 }
 
+/** The broker's reason in a refused call's error body, on one line, or '' (no prompt text: the body carries only the broker's reason). */
+// Why (8 Nov 2026, run 42457460368): persona 12's recording lost 3 scout calls to 503 after 50-60 s and the line said only "status 503"; the reason is the cause to fix.
+function refusalOf(body) {
+  try { return String(JSON.parse(String(body))?.error?.message || '').replace(/\s+/g, ' ').trim().slice(0, 200); } catch { return ''; }
+}
+
 /** Measure each relay call without changing its answer. `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
 export function timedRelay({env = process.env, ask = askBroker, now = Date.now, log = line => console.error(line)} = {}) {
   let inFlight = 0;
   return async (body, kind = 'unlabelled') => {
     const started = now(), call = toBrokerCall(body);
-    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null;
+    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null, why = '';
     inFlight++;
     try {
       const answer = await answerViaBroker(body, {env, ask: async (wire, options) => {
@@ -28,11 +34,12 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
       }});
       status = answer.status;
       outTokens = outputTokens(answer.counted);
+      if (status !== 200) why = refusalOf(answer.body);
       return answer;
     } finally {
       const total = now() - started;
       const label = String(kind).replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 64);
-      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0} out-tokens ${outTokens ?? 'na'}`);
+      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0} out-tokens ${outTokens ?? 'na'}${why ? ` why ${why}` : ''}`);
       inFlight--;
     }
   };

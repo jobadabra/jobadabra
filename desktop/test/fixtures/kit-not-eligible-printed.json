@@ -1,0 +1,17 @@
+{
+ "note": "Required aviation licence missing.",
+ "lines": [
+  "📝 <b>Your application</b>",
+  "No form read; likely questions · tap a block to copy it · nothing was sent",
+  "<b>Job</b>",
+  "<a href=\"https://jobs.example.test/1\"><b>Captain A320neo</b></a> — Example Air",
+  "<b>Not eligible</b>",
+  "Required aviation licence missing.",
+  "<b>Check before sending</b>",
+  "• Check the dates",
+  "<b>Lead with</b>",
+  "• Led a fleet",
+  "<b>Cover letter</b>",
+  "<pre>Dear team</pre>"
+ ]
+}

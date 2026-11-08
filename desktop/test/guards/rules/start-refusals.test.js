@@ -12,7 +12,7 @@ const walk = dir => fs.readdirSync(new URL(dir, root), {withFileTypes: true}).fl
 
 // The channels a start button calls that can answer {ok: false, error} before anything runs -> how the window calls each (preload.cjs).
 const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'prepareKit', 'applyOne', 'apply', 'applyCheckConfirm', 'applyWithClaude', 'command', 'tailorTop', 'visitsRun',
-  'visitWithClaude', 'visitsWithClaude', 'rescoreOutdated', 'refreshLocations'].map(name => [name, new RegExp(`window\\.pilot\\.${name}\\(`)]));
+  'visitWithClaude', 'visitsWithClaude', 'rescoreOutdated', 'refreshLocations'].map(name => [name, new RegExp(`\\bpilot\\.${name}\\(`)]));   // `window.pilot.x(` or an injected `pilot.x(` (pages/apply-check.js, 8 Nov 2026)
 RUN_STARTS.ivReview = /(?:pilot\.interviews|\biv)\.review\(/;
 
 test('a refusal is read from the answer; a started or merely failed run is not one', () => {

@@ -222,9 +222,10 @@ class MailCase(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_mail(self, tracker, google, results, calendar=False):
+    def run_mail(self, tracker, google, results, calendar=False, reminders=None):
+        """reminders: a list that receives the interview reminders instead of `sent` (the CLI sends them at once, under their own switch)."""
         sent = []
         with mock.patch('src.ai.mail_calendar.interview_stats', lambda s: {'topics_answered_weakly': {'Postgres': 2}}):
             summary = mail.run(tracker, google, client=FakeClient(results), days=2, send=sent.append, calendar=calendar,
-                               now=NOW, state_path=self.state, stats={})
+                               now=NOW, state_path=self.state, stats={}, send_reminder=None if reminders is None else reminders.append)
         return summary, sent

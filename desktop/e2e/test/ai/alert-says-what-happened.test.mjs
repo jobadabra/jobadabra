@@ -8,18 +8,18 @@ import {outcomeOf} from '../../broker-relay-run.mjs';
 import {causeOf} from '../../lib/ai-failure-words.mjs';
 import {startRelay} from '../../lib/broker-relay-serve.mjs';
 import {alertCappedSteps} from '../../credit-alert.mjs';
-import {noteSkipped} from '../../lib/broker-job.mjs';
+import {askOrSkip, noteSkipped} from '../../lib/broker-job.mjs';
+import {aiFailureCauses} from '../../lib/ai-miss-cause.mjs';
 import {AiRefused, describe, kindOf, reportRefusal} from '../../../../tools/ci-intel/lib/ai-refusal.mjs';
 
 const env = {CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '1', GITHUB_WORKFLOW: 'Central scout'};
-const REFUSED = 'Codex refused the AI jobs of this run; they are skipped (grey), nothing is paid';
 
 // One note through the real writer, then the real alert; returns the Telegram text and the log lines.
 async function alertOf(note) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), lines = [], sent = [], print = console.log;
   console.log = () => {};
   try { noteSkipped({job: 'central-scout', ...note, dir, env: {}}); } finally { console.log = print; }
-  await alertCappedSteps({artifacts: dir, verdict: REFUSED, env, log: line => lines.push(line), fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{"ok":true}'); }});
+  await alertCappedSteps({artifacts: dir, env, log: line => lines.push(line), fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{"ok":true}'); }});
   fs.rmSync(dir, {recursive: true, force: true});
   return {text: sent.map(body => JSON.parse(body).text).join(''), lines};
 }
@@ -36,13 +36,66 @@ test('one failed call of forty is told as what it was, with the count, never as 
   assert.ok(lines.every(line => line.startsWith('::warning title=AI calls failed::')), lines.join());
 });
 
-test('the broker\'s budget reason and the neuron cap are still told as credit', async () => {
-  const stats = {calls: 12, ok: 11, refused: 3, capHit: 0, latched: 'the AI broker said no (broker: budget:own-share 66.0% of 60%)', reasons: []};
-  for (const why of [outcomeOf(stats, 'central-scout').why, '100400 of 100000 neurons; 2 skipped step(s)']) {
-    const {text} = await alertOf({why});
-    assert.match(text, /AI credit ran out/);
-    assert.match(text, /Codex refused the AI jobs/);
+// The owner's alert of 8 Nov 2026, raw: his Telegram shot said "AI credit ran out · Codex refused the AI jobs of this run" over this very cause line.
+const OWNER_NOTE = 'broker: budget:own-share 70.0% of 70% (scheduled)';
+
+// One loop over every state the AI broker can refuse on (workers/ai-broker/lib/budget.mjs `allow`, worker.js fallback-day) and the other words that mean money: each says its OWN cause, and only
+// `week` and a provider's credit are "ran out"; no state claims "Codex refused" (a caller used to pass that sentence for all of them).
+const STATES = [
+  {name: 'own-share (the owner\'s alert)', job: 'judge prejudge', why: OWNER_NOTE, images: true,
+    title: 'Scheduled AI used its 70% share of this week', has: ['judge prejudge skipped', 'Codex keeps the rest for you and PRs', 'resets with the Codex week', 'Screenshots have no free fallback']},
+  {name: 'daily', job: 'bench run', why: 'broker: budget:daily 20 of 20 calls (bench)', title: 'Benchmark AI used its 20 calls for today', has: ['bench run skipped', 'runs again tomorrow']},
+  {name: 'week (the PR lane: really used up)', job: 'central-scout', why: 'broker: budget:week 100% of 100% (pr)', title: "Codex's week is used up", has: ['central-scout skipped', 'weekly reset']},
+  {name: 'week at the scheduled line', job: 'central-scout', why: 'broker: budget:week 72% of 70% (scheduled)', title: "Scheduled AI stopped at 70% of Codex's week", has: ['Codex keeps the rest for you and PRs', 'weekly reset']},
+  {name: 'Codex usage limit (its own words)', job: 'central-scout', why: 'codex-failed:1 usage_limit_reached', title: "Codex's week is used up", has: ['weekly reset']},
+  {name: 'own-share through the relay (no lane)', job: 'central-scout', why: 'AI skipped/failed: 3 AI calls were refused (the AI broker said no (broker: budget:own-share 66.0% of 60%)); their items stay unjudged', title: 'Background AI used its 60% share of this week', has: ['Codex keeps the rest for you and PRs']},
+  {name: 'fallback-day', job: 'central-scout', why: 'broker: budget:fallback-day $1.00 Free AI (UTC)', title: "Free AI's day cap is used", has: ['Free AI is back tomorrow']},
+  {name: 'neuron cap', why: '100400 of 100000 neurons; 2 skipped step(s)', title: "Free AI's day cap is used", has: ['central-scout skipped']},
+  {name: 'provider credit', job: 'fixer', why: 'Credit balance is too low', title: 'AI credit ran out', has: ['the provider says its credit is gone']},
+];
+
+test('each broker budget reason is told as its own cause: the owner\'s own-share note is never "AI credit ran out" or "Codex refused"', async () => {
+  for (const {name, job, why, images, title, has} of STATES) {
+    const {text, lines} = await alertOf({why, ...(job ? {job} : {}), ...(images ? {images} : {})});
+    assert.ok(text.includes(`<b>${title}</b>`), `${name}: title ${title}\n${text}`);
+    for (const piece of has) assert.ok(text.includes(piece), `${name}: ${piece}\n${text}`);
+    assert.doesNotMatch(text, /Codex refused/i, name);
+    if (!/PR lane|usage limit|credit/i.test(name)) assert.doesNotMatch(text, /ran out|used up/i, `${name} is not an empty plan`);
+    if (!images) assert.doesNotMatch(text, /Screenshots/, `${name}: only a call that carried screenshots says so`);
+    assert.ok(lines.every(line => line.startsWith(`::warning title=${title}::`)), `${name}: the log annotation carries the same title\n${lines.join('\n')}`);
   }
+});
+
+test('the owner\'s own-share note goes through the real writer: askOrSkip records that the request carried screenshots', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), print = console.log;
+  console.log = () => {};
+  try {
+    const body = {model: 'claude-sonnet-5-5', max_tokens: 10, messages: [{role: 'user', content: [{type: 'text', text: 'judge'}, {type: 'image', source: {type: 'base64', media_type: 'image/png', data: 'AA=='}}]}]};
+    const answer = await askOrSkip(body, {job: 'judge prejudge', dir, env: {}, ask: async () => ({ok: false, status: 'capped', detail: OWNER_NOTE})});
+    assert.equal(answer.ok, false);
+    await askOrSkip({...body, messages: [{role: 'user', content: 'text only'}]}, {job: 'edit', dir: path.join(dir, 'edit'), env: {}, ask: async () => ({ok: false, status: 'capped', detail: OWNER_NOTE})});
+  } finally { console.log = print; }
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json'), 'utf8')).images, true);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'edit', 'ai-capped.json'), 'utf8')).images, undefined);
+  fs.rmSync(dir, {recursive: true, force: true});
+});
+
+test('the failure alert\'s own reader (aiFailureCauses) tells the owner\'s note by the same title, never "credit 70.0% of 70%"', () => {
+  const said = aiFailureCauses(`the AI was refused: ${OWNER_NOTE}; the step then failed: x`).map(one => one.text);
+  assert.deepEqual(said, ['AI refused: Scheduled AI used its 70% share of this week']);
+  assert.deepEqual(aiFailureCauses('the AI was refused: 400 invalid_request_error').map(one => one.text), ['AI refused: 400 invalid_request_error'], 'a refusal that is no budget keeps its own words');
+});
+
+test('two different budget states in one run: the most severe leads, the other is an "Also" row', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), sent = [], print = console.log;
+  console.log = () => {};
+  try {
+    noteSkipped({job: 'a', why: OWNER_NOTE, dir: path.join(dir, 'a'), env: {}});
+    noteSkipped({job: 'b', why: 'broker: budget:week 100% of 100% (scheduled)', dir: path.join(dir, 'b'), env: {}});
+  } finally { console.log = print; }
+  await alertCappedSteps({artifacts: dir, env, log: () => {}, fetcher: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
+  fs.rmSync(dir, {recursive: true, force: true});
+  assert.ok(sent[0].includes("<b>Codex's week is used up</b>") && /Also: Scheduled AI used its 70% share of this week/.test(sent[0]), sent[0]);
 });
 
 test('a 503 about one bad reply, a lost login or a 401 is no credit, though the client files them under capped', async () => {
@@ -62,9 +115,9 @@ test('a limit among many failed notes is the one the alert keeps', async () => {
   try {
     for (const [job, why] of [['a', 'broker: 500'], ['b', 'broker: 502'], ['c', 'broker: 503'], ['d', 'broker: 504'], ['e', 'broker: budget:week 100% of 100%']]) noteSkipped({job, why, dir: path.join(dir, job), env: {}});
   } finally { console.log = print; }
-  await alertCappedSteps({artifacts: dir, verdict: REFUSED, env, log: () => {}, fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{}'); }});
+  await alertCappedSteps({artifacts: dir, env, log: () => {}, fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{}'); }});
   fs.rmSync(dir, {recursive: true, force: true});
-  assert.match(sent.join(''), /budget:week/);
+  assert.match(sent.join(''), /Codex&#39;s week is used up|Codex's week is used up/);
 });
 
 test('a failed connection is its own kind and its words name no limit; a broker 5xx is not called unreachable', () => {
@@ -130,7 +183,7 @@ test('a note from an ai-capped-<job> artifact folder is told by its real cause: 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alert-')), sent = [], print = console.log;
   console.log = () => {};
   try { noteSkipped({job: 'fixer', why: 'broker: login-lost', dir: path.join(root, 'ai-capped-fixer'), env: {}}); } finally { console.log = print; }
-  await alertCappedSteps({artifacts: root, verdict: REFUSED, env, log: () => {}, fetcher: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
+  await alertCappedSteps({artifacts: root, env, log: () => {}, fetcher: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
   fs.rmSync(root, {recursive: true, force: true});
   assert.ok(sent[0].includes('🔑 The AI service did not accept our login'), sent[0]);
   assert.doesNotMatch(sent[0], /allowance|ran out|credit/i);
@@ -164,7 +217,7 @@ test('a note without counts (another producer) is told by cause with no number, 
     noteSkipped({job: 'a', why: 'w1', summary: {calls: 10, ok: 9, failed: 1, causes: [{key: 'timeout', icon: '⏱', label: 'The AI took too long (over 100 s)', count: 1}]}, dir: path.join(dir, 'a'), env: {}});
     noteSkipped({job: 'b', why: 'w2', summary: {calls: 30, ok: 28, failed: 2, causes: [{key: 'timeout', icon: '⏱', label: 'The AI took too long (over 100 s)', count: 2}]}, dir: path.join(dir, 'b'), env: {}});
   } finally { console.log = print; }
-  await alertCappedSteps({artifacts: dir, verdict: REFUSED, env, log: () => {}, fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{}'); }});
+  await alertCappedSteps({artifacts: dir, env, log: () => {}, fetcher: async (url, init) => { sent.push(String(init.body)); return new Response('{}'); }});
   fs.rmSync(dir, {recursive: true, force: true});
   const said = sent.map(body => JSON.parse(body).text).join('');
   assert.ok(said.includes('Central scout: 3 of 40 AI calls failed') && said.includes('⏱ 3  The AI took too long'), said);

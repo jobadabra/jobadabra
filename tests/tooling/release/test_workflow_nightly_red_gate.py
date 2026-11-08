@@ -50,10 +50,10 @@ class NightlyRedGate(unittest.TestCase):
 
     def test_the_skip_is_named_once_through_the_existing_telegram_sender(self):
         gate = step('id: redmain')
-        self.assertIn('::notice title=Nightly skipped::', gate)
-        self.assertIn("Nightly skipped: $what (re-check $recheck)", gate)
-        self.assertIn("import {send} from './desktop/e2e/ci-alert.mjs'", gate)
+        self.assertIn('node desktop/e2e/nightly-skipped.mjs "$RUNNER_TEMP/red-main-gate.log"', gate)
+        self.assertNotIn('awk', gate, "the suites come from the gate's `Red suites:` line, never from scraping its indentation (8 Nov 2026: 'apply,Changed:,Changed:')")
         self.assertNotIn('api.telegram.org', gate, 'no second sender')
+        self.assertIn("import {send} from './ci-alert.mjs'", (ROOT / 'desktop/e2e/nightly-skipped.mjs').read_text())
         self.assertIn('set -o pipefail', gate)
         self.assertIn('${PIPESTATUS[0]}', gate, "the gate's own exit code, not tee's")
 
@@ -61,6 +61,7 @@ class NightlyRedGate(unittest.TestCase):
 RED_OUTPUT = """Main's e2e is red:
   apply (since 1234567, https://example.test/runs/1)
   employers (since 1234567, https://example.test/runs/1)
+Red suites: apply,employers
 Commits landed since: re-checking apply,employers on main abcdef0 before the beta (about 10-15 min)...
 Re-check: https://example.test/runs/99
 Re-check failure: main is still red (https://example.test/runs/99). No beta: fix the suite.
@@ -82,7 +83,9 @@ def run_step(gate_exit, gate_output):
         (tmp / 'desktop/e2e').mkdir(parents=True)
         (tmp / 'tools/red-main-gate.sh').write_text(f"#!/bin/sh\ncat <<'EOF'\n{gate_output}EOF\nexit {gate_exit}\n")
         (tmp / 'tools/red-main-gate.sh').chmod(0o755)
-        (tmp / 'desktop/e2e/ci-alert.mjs').write_text("import fs from 'node:fs';\nexport const send = async m => { fs.writeFileSync('sent.txt', m); return 'sent'; };\n")
+        (tmp / 'desktop/e2e/ci-alert.mjs').write_text("import fs from 'node:fs';\nexport const send = async m => { fs.writeFileSync('sent.txt', m.text); return 'sent'; };\n")
+        shutil.copytree(ROOT / 'desktop/e2e/lib', tmp / 'desktop/e2e/lib')
+        shutil.copy(ROOT / 'desktop/e2e/nightly-skipped.mjs', tmp / 'desktop/e2e/nightly-skipped.mjs')
         env = {**os.environ, 'GITHUB_OUTPUT': str(tmp / 'out'), 'RUNNER_TEMP': str(tmp), 'GITHUB_REPOSITORY': 'o/r', 'GITHUB_RUN_ID': '5', 'GITHUB_SERVER_URL': 'https://example.test'}
         done = subprocess.run(['bash', '-e', '-c', script], cwd=tmp, env=env, capture_output=True, text=True)
         out = (tmp / 'out').read_text() if (tmp / 'out').exists() else ''
@@ -100,8 +103,9 @@ class NightlyRedGateRuns(unittest.TestCase):
         code, out, sent, stdout = run_step(1, RED_OUTPUT)
         self.assertEqual(code, 0, 'the job itself stays green: the night was skipped on purpose')
         self.assertEqual(out.strip(), 'red=true')
-        self.assertEqual(sent, "Nightly skipped: main's e2e still red on apply,employers (re-check https://example.test/runs/99)")
-        self.assertIn('::notice title=Nightly skipped::' + sent, stdout)
+        self.assertIn("<b>Nightly skipped</b> Main's e2e is red on apply, employers", sent.replace('&#39;', "'"))
+        self.assertIn('<a href="https://example.test/runs/99">Open the re-check</a>', sent)
+        self.assertIn("::notice title=Nightly skipped::Nightly skipped: Main's e2e is red on apply, employers", stdout)
 
     def test_a_red_that_is_not_safety_or_data_goes_on_and_its_line_reaches_the_release_notes(self):
         # Owner, 1 Nov 2026: "Safety strict, rest tolerant". The gate exits 0 with one line; the night builds, and the line rides the `changes` job output to both release jobs.
@@ -118,14 +122,15 @@ class NightlyRedGateRuns(unittest.TestCase):
         self.assertIn('-f red_not_blocking="$red_note"', (ROOT / 'tools/beta-release.sh').read_text())
 
     def test_a_skipped_night_says_which_safety_or_data_step_stopped_it(self):
-        output = RED_OUTPUT.replace('Re-check failure', 'Stops the beta: apply · Stop halts the fill: a safety step failed\nRe-check failure')
+        output = RED_OUTPUT.replace('Re-check failure', 'Stops the beta: apply · Stop halts the fill: a safety step failed\nRe-check failure')   # the gate's indented Changed:/Flaky: lines never become suites (notice-shape.test.mjs)
         _, _, sent, _ = run_step(1, output)
-        self.assertEqual(sent, "Nightly skipped: main's e2e still red on apply,employers — apply · Stop halts the fill: a safety step failed (re-check https://example.test/runs/99)")
+        self.assertIn('• Stops it: apply · Stop halts the fill: a safety step failed', sent)
 
     def test_an_unreadable_main_is_not_green_either(self):
         code, out, sent, _ = run_step(1, 'Could not read main\'s e2e state: unknown, not green.\n')
         self.assertEqual((code, out.strip()), (0, 'red=true'))
-        self.assertIn("main's e2e state could not be read (re-check https://example.test/o/r/actions/runs/5)", sent)
+        self.assertIn("Main's e2e state could not be read", sent)
+        self.assertIn('<a href="https://example.test/o/r/actions/runs/5">Open the run</a>', sent)
 
 
 if __name__ == '__main__':

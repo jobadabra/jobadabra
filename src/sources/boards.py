@@ -21,13 +21,14 @@ from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
 from ..ai.providers.contract import detail, reason
+from ..press import budget
 _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
 CAREER = meanings_pack.matcher('page-words', 'board_careers_link')   # the meanings pack: the old list (seed) + rows the site adds
 ATS = {'greenhouse.io':'Greenhouse','lever.co':'Lever','ashbyhq.com':'Ashby','smartrecruiters.com':'SmartRecruiters','myworkdayjobs.com':'Workday','successfactors.com':'SAP SuccessFactors','successfactors.eu':'SAP SuccessFactors','teamtailor.com':'Teamtailor','personio.de':'Personio','personio.com':'Personio','recruitee.com':'Recruitee','apply.workable.com':'Workable','hr4you.com':'HR4YOU'}
 # Of the press's 180 s (src/time_budget.py PLANNED, scaled to the run's budget): the job boards' step ends here and the search gets the rest
 # (owner's 06:21 press, 26 Oct 2026: this step took 177 s of 269 with no clock; earlier presses 52-56 s). Tests: tests/unit/sources/test_three_minutes.py.
-SHARE_S = 60
+SHARE_S = budget.value('boards.SHARE_S')
 CITIES = {'zurich':['zürich','zurich','zuerich'], 'geneva':['genève','geneva','genf'], 'lausanne':['lausanne'], 'basel':['basel','bâle'], 'bern':['bern','berne'], 'zug':['zug'], 'winterthur':['winterthur'], 'lucerne':['luzern','lucerne'], 'st. gallen':['st. gallen','st.gallen'], 'lugano':['lugano']}
 
 

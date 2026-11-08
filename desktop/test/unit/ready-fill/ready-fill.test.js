@@ -3,9 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ACCOUNT_PRESS, copyForNight, holdAccountPress} from '../../../ready-fill/extension-copy.mjs';
+import {ACCOUNT_PRESS, copyForNight, extensionStamp, holdAccountPress} from '../../../ready-fill/extension-copy.mjs';
 import {CLOSED_NEED, classify, fillJob} from '../../../ready-fill/fill-job.mjs';
 import {formUrl} from '../../../lib/form-address.js';
 import {inputToCdp} from '../../../ready-fill/live.mjs';
@@ -39,6 +40,24 @@ test('an app on the default port 47111 gets its copy too, owned or not (owner, 2
       assert.equal(fs.existsSync(path.join(copy, 'owned-bootstrap.js')), owned);
     } finally { fs.rmSync(path.dirname(copy), {recursive: true, force: true}); }
   }
+});
+
+// Why (8 Nov 2026, owner: "how we can prevent this ?"): the app hands its token only to a worker whose stamp is the extension it ships (lib/background-browser.js start).
+test('an owned copy carries the stamp of its source and port: a changed file or another port is another stamp', () => {
+  const from = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-stamp-'));
+  fs.cpSync(EXTENSION, path.join(from, 'extension'), {recursive: true});
+  const source = path.join(from, 'extension');
+  try {
+    const stamp = extensionStamp(source, 47111);
+    assert.match(stamp, /^[0-9a-f]{32}$/);
+    assert.equal(extensionStamp(source, 47111), stamp, 'the same code reads as the same stamp');
+    assert.notEqual(extensionStamp(source, 47112), stamp, 'a copy pointed at another app port is other code');
+    const copy = copyForNight(47111, source, path.join(from, 'copy'), {owned: true});
+    assert.ok(fs.readFileSync(path.join(copy, 'owned-bootstrap.js'), 'utf8').includes(`globalThis.__jobadabraOwnedCopy = '${stamp}';`));
+    assert.ok(fs.readFileSync(path.join(copy, 'owned-bootstrap.js'), 'utf8').includes('__jobadabraBackgroundOwned = true'), 'the owned flag stays');
+    fs.appendFileSync(path.join(source, 'background.js'), '\n// a fix\n');
+    assert.notEqual(extensionStamp(source, 47111), stamp, 'an updated extension is another stamp');
+  } finally { fs.rmSync(from, {recursive: true, force: true}); }
 });
 
 test('a submit is refused and an upload is not', () => {

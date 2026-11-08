@@ -1,0 +1,17 @@
+/* Apply to jobs → the result of a batch (renderer/pages/apply-result.js, [ad] try 3): a counts line, then one row per job: title | one status chip in a fixed column. Tokens only, so both themes follow. */
+/* Why (8 Nov 2026, owner: "bad UI", twice): one state at a time: while the results show, the form (count, modes, Apply) is hidden. */
+#apply-dialog.apply-result #apply-form > :is(.inline-field, fieldset, p.muted),
+#apply-dialog.apply-result #apply-go { display: none; }
+.apply-summary { display: grid; gap: var(--sp-1); margin: var(--sp-2) 0 var(--sp-1); }
+.apply-summary p { margin: 0; }
+.apply-counts { font-size: var(--fs-lg); font-weight: 600; }
+.apply-outcomes { display: grid; margin: var(--sp-2) 0 var(--sp-3); }
+/* Why (8 Nov 2026, owner: "bad Looking UI"): the chip had moved (beside a short title, under a long one); it now has its own column, so every row reads the same. */
+.apply-outcome { display: grid; grid-template-columns: minmax(0, 1fr) 9.5rem; align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-1); padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.apply-outcome-who { display: grid; min-width: 0; }
+.apply-outcome-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; text-align: left; color: var(--ink); text-decoration: none; }
+.apply-outcome-title:hover, .apply-outcome-title:focus-visible { color: var(--signal); text-decoration: underline; }
+.apply-outcome-company { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apply-outcome > .ui-pill { justify-self: end; }
+.apply-outcome > .ui-pill .icon { width: 12px; height: 12px; margin-right: var(--sp-1); }
+.apply-outcome-reason { grid-column: 1 / -1; margin: 0; }

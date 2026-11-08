@@ -168,17 +168,8 @@ jobs:
             [ -z "$note" ] || echo "note=$note" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          suites=$(awk '/^Main.s e2e is red:/ { found = 1; next } found && /^  / { print $1 }' "$RUNNER_TEMP/red-main-gate.log" | paste -sd, -)
-          why=$(sed -n 's/^Stops the beta: //p' "$RUNNER_TEMP/red-main-gate.log" | paste -sd';' -)   # why a safety or data step, or unreadable results, stopped it
-          recheck=$(sed -n 's/^Re-check: //p' "$RUNNER_TEMP/red-main-gate.log" | tail -1)
-          [ -n "$recheck" ] || recheck="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          if [ -n "$suites" ]; then what="main's e2e still red on $suites"; else what="main's e2e state could not be read"; fi
-          [ -z "$why" ] || what="$what — $why"
-          message="Nightly skipped: $what (re-check $recheck)"
-          echo "::notice title=Nightly skipped::$message"
-          echo "No build tonight: $what. Nothing is built or tested; the next beta re-checks the red suites first."
           echo "red=true" >> "$GITHUB_OUTPUT"
-          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'nightly-skipped'}))"
+          node desktop/e2e/nightly-skipped.mjs "$RUNNER_TEMP/red-main-gate.log" || echo "(nightly-skipped alert not sent)"   # reads the gate's machine lines (Red suites / Red step / Stops the beta / Re-check), sends one notice
       # Something to build: the release both lanes add their files to, here so each lane starts straight from this job (owner, 7 Oct 2026: "Anything new should
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5

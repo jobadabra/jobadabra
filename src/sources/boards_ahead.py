@@ -12,10 +12,12 @@ NAME = 'Job boards found'   # aggregators.sources' name for found_boards.read
 
 
 class Ahead:
-    def __init__(self, search, read):
+    def __init__(self, search, read, after=None):
         from ..ai import batch_scope
 
         def run():
+            if after is not None:   # the boards first's pages: this read takes them (found_boards._early), so it starts once they are in
+                after()
             with batch_scope.reader('boards'):
                 return read(search)
         self.pool = ThreadPoolExecutor(max_workers=1)
@@ -49,8 +51,9 @@ class Ahead:
             on_jobs(matched)
 
 
-def start(db, search, env=None, now=None):
-    """An Ahead reading the found boards now (within the scan's spacing, those not read since), when aggregators.scan would read them; else None."""
+def start(db, search, env=None, now=None, after=None):
+    """An Ahead reading the found boards now (within the scan's spacing, those not read since), when aggregators.scan would read them; else None.
+    after: called in its thread before it reads (boards_first.Beside.wait)."""
     from . import aggregators
     if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return None
@@ -62,29 +65,30 @@ def start(db, search, env=None, now=None):
         from datetime import datetime, timedelta, timezone
         since = (now or datetime.now(timezone.utc)) - timedelta(hours=aggregators.SPACING_HOURS)
         read = functools.partial(read, since=since)
-    return Ahead(search, read)
+    return Ahead(search, read, after)
 
 
-def scan_beside(sources, db, search, so_far, due, scan=None):
+def scan_beside(sources, db, search, so_far, due, scan=None, first=None):
     """The employer sites' read (feeds.scan), with the found boards read beside it when this search reads them (`due`): (report, Ahead or
-    None). Each side's jobs go to the list as soon as they are read (src/jobs_so_far.py)."""
+    None). Each side's jobs go to the list as soon as they are read (src/jobs_so_far.py). first: a boards_first.Beside already reading; its jobs
+    are kept and shown after each employer site read, jobs or not (on_read), in this thread (the caller takes the rest when this ends)."""
     import contextlib
     from ..ai import batch_scope
     from . import feeds
     scan = scan or feeds.scan
-    sites = so_far.listener('employer sites')
+    sites, boards = so_far.listener('employer sites'), so_far.listener('job boards')
+    after_site = {} if first is None else {'on_read': lambda: first.deliver(db, boards)}
     if not due:
-        return scan(sources, db, on_jobs=sites), None
-    boards = so_far.listener('job boards')
+        return scan(sources, db, on_jobs=sites, **after_site), None
     with batch_scope.concurrent():
-        ahead = start(db, search)
+        ahead = start(db, search, after=first.wait if first is not None else None)
 
         def on_site(jobs):
             sites(jobs)
             if ahead is not None:
                 ahead.deliver(db, boards)
         with batch_scope.reader('employer sites') if ahead is not None else contextlib.nullcontext():
-            report = scan(sources, db, on_jobs=on_site)
+            report = scan(sources, db, on_jobs=on_site, **after_site)
         if ahead is not None:
             ahead.wait()
     return report, ahead

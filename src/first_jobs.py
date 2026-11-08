@@ -14,14 +14,15 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from . import store
+from .press import budget, rank
 from .ai import score, slots, title_queue
 from .sources import ats, feeds
 
-SLICE = 15     # feeds read first
-FIRST_JOBS = 3  # jobs scored first, at once
-MAX_FIRST = 10  # scored at most in the slice while none fits FIT+ yet: the full search would score these same best-ranked jobs anyway
+SLICE = budget.value('first_jobs.SLICE')     # feeds read first
+FIRST_JOBS = budget.value('first_jobs.FIRST_JOBS')  # jobs scored first, at once
+MAX_FIRST = budget.value('first_jobs.MAX_FIRST')  # scored at most in the slice while none fits FIT+ yet: the full search would score these same best-ranked jobs anyway
 FIT = 70        # a strong match ends the slice's scoring (src/source_yield.py FIT)
-SLICE_BOARDS = 6   # read at once (owner, 19 Oct 2026: music's only paying board, XING, was 7th of the proposal and read at 351 s; up to
+SLICE_BOARDS = budget.value('first_jobs.SLICE_BOARDS')   # read at once (owner, 19 Oct 2026: music's only paying board, XING, was 7th of the proposal and read at 351 s; up to
                    # board_yield.MAX_UNTRIED, the untried boards one read takes); a board that refuses is replaced by the next proposed one, once
 FAST = ('greenhouse', 'lever', 'ashby', 'smartrecruiters', 'workable', 'recruitee', 'personio', 'teamtailor', 'join')   # a JSON list in one request
 
@@ -30,8 +31,7 @@ def pick(sources, size=SLICE):
     """The feeds read first: the ones that answer in one request (fast kinds), then the others; each group in the list's own order
     (the index ranks it). A page read in Chrome belongs to one install's visits, not to this slice."""
     usable = [source for source in sources if source.get('ats', 'greenhouse') in ats.FETCHERS and source.get('ats') != 'visit']
-    fast = [source for source in usable if source.get('ats', 'greenhouse') in FAST]
-    return (fast + [source for source in usable if source not in fast])[:size]
+    return rank.sources(usable, rank.fast_to_read(FAST))[:size]
 
 
 def to_score(db, hidden):

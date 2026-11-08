@@ -23,6 +23,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
+from .press import step_yield
 from .daily_search_scoring import score_jobs, score_waiting_first
 from .daily_search_reporting import finish_search, scheduled_updates
 
@@ -37,6 +38,7 @@ def ai_ready():
 def search(args, stores=None):
     stores = stores or open_run()
     run_counts.reset()   # this search's own counts start at 0
+    step_yield.reset()   # and its steps' yield (src/press/step_yield.py)
     read_methods.reset(datetime.now(timezone.utc).isoformat(timespec='seconds'))   # and how its sources are read (src/read_methods.py)
     run = new_cron_run(args.mode)
     started = datetime.now(timezone.utc).isoformat(timespec='seconds')   # a job first seen from now on is new (src/source_yield.py)
@@ -50,10 +52,15 @@ def search(args, stores=None):
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
         if args.mode != 'more':
-            score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget)   # the jobs found earlier first, then the search (#3058)
-            feed_list = plan_sources(args, stores, db, sources, run)
-            start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
-            report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+            scored = score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget)   # the jobs found earlier, beside the search (#3058, ps E2a-1)
+            try:
+                feed_list = plan_sources(args, stores, db, sources, run)
+                start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
+                report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+            except Exception:   # an error waits for the scores in flight; a Stop (SystemExit) ends at once, the daemon thread with it
+                scored()
+                raise
+            scored()   # before the import: run['score'] is whole
             imported = import_sources(db, report, so_far, run)
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
@@ -143,11 +150,6 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
         from .sources import boards_first
-        if full_read and not slice_first:   # the web search's boards read before any employer site (src/sources/boards_first.py); a first
-            try:   # press reads its slice first and the web search's boards after it, never waiting in front of it (27 Oct 2026, benchmark)
-                first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
-            except Exception as error:  # noqa: BLE001 — the full board read reads them
-                print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         if slice_first:
             try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
                 first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
@@ -165,13 +167,17 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
         # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
         beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
-        with batch_scope.concurrent() if beside else contextlib.nullcontext():   # one scope for every reader beside the employer sites
+        first = None   # the web search's boards on a repeat run: started first, read beside the employer sites (a first press read them after its slice)
+        with batch_scope.concurrent() if beside or (full_read and not slice_first) else contextlib.nullcontext():   # one scope for every reader beside the employer sites
+            if full_read and not slice_first:
+                first = start_boards_first()
             discovery = boards_beside.start() if beside else None
             try:
-                report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'))
+                report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'), first=first)
             finally:   # inside the scope: its answers join the shared copies before the scope ends
                 if discovery is not None:
                     discovery.finish()
+            first_boards = take_boards_first(first, feed_db, so_far) or first_boards
         report['jobs'] += first_boards
         crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
         if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
@@ -182,8 +188,38 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
     return report, so_far
 
 
+# Start the web search's boards before the employer sites, read beside them.
+def start_boards_first():
+    """The web search's boards, started first and read beside the employer sites (src/sources/boards_first.py Beside); None when they cannot start.
+    Why (ps E2a-2, owner, 8 Nov 2026: "Both: no waits + background (Recommended)", whose option kept "the boards still start first"): read before
+    the employer sites, one board held them to 165 s (run 42451932088, p7: 0 of 13 employer sites read)."""
+    from .sources import boards_first
+    try:
+        return boards_first.Beside(load_search_config())
+    except Exception as error:  # noqa: BLE001 — the full board read reads them
+        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+        return None
+
+
+# Keep and show what the boards first read and the employer sites' callbacks did not take yet.
+def take_boards_first(first, feed_db, so_far):
+    """Their jobs (the report's shape), [] when they did not start or failed: the full board read reads them."""
+    if first is None:
+        return []
+    try:
+        return first.take(feed_db, so_far.listener('job boards'))
+    except Exception as error:  # noqa: BLE001 — the full board read reads them
+        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+        return []
+
+
 # Append paid and free API results in their original order.
 def gather_apis(args, feed_db, report, so_far, ahead):
+    with step_yield.span('free_job_apis'):
+        _gather_apis(args, feed_db, report, so_far, ahead)
+
+
+def _gather_apis(args, feed_db, report, so_far, ahead):
     # Paid per search, so only full crawls use it; off without SERPAPI_API_KEY.
     if args.mode in ('scheduled', 'run') and google_jobs.api_key():
         google = google_jobs.scan(feed_db, google_jobs.api_key(),
@@ -193,7 +229,7 @@ def gather_apis(args, feed_db, report, so_far, ahead):
     # Aggregators with public APIs (src/sources/aggregators.py): free ones always, keyed ones with their keys; each at most every 6 hours.
     if args.mode in ('scheduled', 'run'):
         from .sources import aggregators
-        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards'), ahead=ahead)
+        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards', 'free_job_apis'), ahead=ahead)
         report['jobs'] += found['jobs']
         report['sources'] += found['sources']
         gather_alerts(feed_db, report)
@@ -318,4 +354,8 @@ def save_matches(args, stores, db, run, report, hidden, dismissed, started):
             source_yield.run(db, started, read=found_boards.read_since(started))   # every board read keeps a row: its history (board_yield.dead)
         except Exception as error:  # noqa: BLE001
             print(f'Warning: source yield not measured: {type(error).__name__}: {error}')
+        try:   # what each step brought and how long it ran, kept per run (src/press/step_yield.py, report only); never stops a search
+            step_yield.run(db, started)
+        except Exception as error:  # noqa: BLE001
+            print(f'Warning: step yield not measured: {type(error).__name__}: {error}')
     return open_urls

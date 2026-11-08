@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Say, for each failed step of a red e2e run, whether it is flaky (it passed on code unchanged since), changed (a likely regression) or unknown (no green to compare).
 // Used by tools/red-main-gate.sh and tools/pr-verdict.py (via tools/pr_flaky.py); the Telegram alert calls the same library (desktop/e2e/ci-alert.mjs).
-// Usage: node tools/flaky-verdict.mjs --run <red e2e run id> [--repo owner/repo] [--window <runs>] [--deadline <seconds>] [--json]        exit 0 always (it informs, never blocks); 2 on bad usage
+// Usage: node tools/flaky-verdict.mjs --run <red e2e run id> [--repo owner/repo] [--window <runs>] [--deadline <seconds>] [--json | --machine]        exit 0 always (it informs, never blocks); 2 on bad usage
 // Progress goes to stderr (a first line at once, "reading N runs…" within seconds); the verdict lines go to stdout. One hang guard (--deadline, DEADLINE_S) ends the whole read: "unknown: read cut at N of M runs".
 // Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): the tools say "flaky" on the red so no person has to.
 // Job: report health
@@ -36,7 +36,11 @@ async function main(argv) {
   const deadlineAt = Date.now() + (Number(value('--deadline')) || Number(process.env.DEADLINE_S) || DEADLINE_S) * 1000;
   const out = await verdictsOfRun({runId, repo, window, deadlineAt, say: line => console.error(`flaky-verdict: ${line}`)});
   if (argv.includes('--json')) console.log(JSON.stringify(out, null, 1));
-  else for (const item of out) console.log(item.line);
+  else {
+    for (const item of out) console.log(item.line);
+    // --machine: one parseable line per step after the human ones (tools/red-main-gate.sh → desktop/e2e/lib/nightly-alert.mjs); the human lines are for people, these for code.
+    if (argv.includes('--machine')) for (const item of out) console.log(`Red step: ${item.verdict} | ${item.step} | ${item.green?.url || '-'}`);
+  }
   return 0;
 }
 

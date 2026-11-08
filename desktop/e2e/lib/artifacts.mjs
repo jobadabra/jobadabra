@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {nameAiFailure} from './ai-miss-cause.mjs';
+import {NOT_A_STEP} from '../red-steps.mjs';
 
 // The layout findings collected so far (a suite that stops early used to leave none, hiding that night's findings).
 export function writeFindings(ctx) {
@@ -92,7 +93,8 @@ export function fitItems(text, max = 300) {
   return `${items[0].slice(0, max - rest.length - 1).replace(/\s+\S*$/, '')}…${rest}`;
 }
 
-export const annotationLines = records => records.slice(0, 3)
+// Why (8 Nov 2026, code review): the stale-pick record is no annotation: e2e.yml's fallback runs the whole suite and prints its own ::notice, so a ::error here would sit on a green job.
+export const annotationLines = records => records.filter(record => record.step !== NOT_A_STEP).slice(0, 3)
   .map(record => `::error title=${escapeProperty(`${record.suite} · ${record.step}`)}::${escapeData(fitItems(String(record.message || '').split('\n')[0]) || 'failed')}`);
 
 // suite-failures.json, every run: the failed steps, or an empty list; on GitHub also one annotation per failed step.

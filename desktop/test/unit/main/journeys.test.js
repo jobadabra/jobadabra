@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import './journeys-letter-fallback.test.js';
 import './journeys-apply-batch.test.js';
+import './journeys-fill-twice.test.js';
 import './journeys-email-buttons.test.js';
 import '../../journeys-profile.js';
 import '../../journeys-cover-letter-notice.js';
@@ -16,7 +17,6 @@ import '../../journeys-reopen.js';
 import '../../journeys-background-queue.js';
 import * as terminals from '../../../lib/terminals.js';
 import * as apply from '../../../lib/apply.js';
-import * as review from '../../../lib/review.js';
 import {createSessionFlow} from '../../../lib/session-flow.js';
 import {createAccountCheck} from '../../../lib/account-check.js';
 import {STOPPED, journeyStep} from '../../../lib/application-journey.js';
@@ -472,18 +472,10 @@ test('scenario: a DOB reported as a generic text field is reviewed with the cale
   assert.equal(format.control, 'date', 'the shared Application questions and Profile editors receive a calendar control');
 });
 
-test('scenario: Fill in Chrome pressed twice on one job with its tab open: one tab, the session keeps it, the open tab refills (22 Oct 2026, beta run 8)', async () => {
-  terminals._reset(); review._reset();
-  const opened = [], focused = [];
-  const options = {open: (...args) => { opened.push(args); return {unref() {}}; }, focus: async arg => { focused.push(arg.id); return 'tab'; }, run: async () => {}, id: () => 'f1'};
-  const first = await apply.applyOne({}, FORM, {company: 'A'}, options);
-  assert.equal(opened.length, 1);
-  review.noteTabs({ids: [5], boot: 'b1', sessions: {5: first.session.id}}, new Set([first.session.id]));   // the extension reports the tab open and carrying the session
-  await apply.applyOne({}, FORM, {company: 'A'}, options);
-  assert.equal(opened.length, 1, 'the second press opens no second tab');
-  assert.deepEqual(focused, [first.session.id]);
-  const reply = review.report([{id: first.session.id, url: FORM, kind: 'form'}], {url: FORM, session: first.session.id, tab: 5, boot: 'b1', total: 9, left: 0});
-  assert.ok(reply.commands.some(command => command.reload), 'the open tab reloads, so its mark fills the form again');
-  assert.equal(review.tabOf(first.session.id), 5, 'the session stays on its one tab');
+test('scenario: Apply to 3 jobs, the top 3 kits come back not eligible: the next 3 eligible jobs start (8 Nov 2026, owner screenshot)', async () => {
+  const jobs = [1, 2, 3, 4, 5, 6].map(number => ({code: `j${number}`, url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 99 - number}));
+  const queued = [], prepare = async code => { const job = jobs.find(row => row.code === code); job.kit = true; if (+code.slice(1) <= 3) job.ineligible = 'Needs a work permit.'; return {ok: true}; };   // the verdict reaches the app through the re-read list
+  const result = await apply.start({}, {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined, prepare, undefined, {enqueue: async chosen => { queued.push(...chosen.map(job => job.code)); return {ok: true}; }});
+  assert.deepEqual(queued, ['j4', 'j5', 'j6']); assert.equal(result.ok, true);
+  assert.deepEqual(result.outcomes.filter(item => item.status === 'ineligible').map(item => item.reason), ['Needs a work permit.', 'Needs a work permit.', 'Needs a work permit.']);
 });
-

@@ -55,14 +55,16 @@ def _hander(db, sources, downloads, shown, now, on_sorted):
     return hand
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):  # noqa: C901 (Why (6 Nov 2026): far over the limit before this change; the hand-over only moved to _hander, no new branch; splitting scan is its own change)
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, on_read=None):  # noqa: C901 (Why (6 Nov 2026): far over the limit before this change; the hand-over only moved to _hander, no new branch; splitting scan is its own change)
     """Fetch every source, keep SRE-type titles in preferred locations, record seen history. report['funnel'] counts what the
     crawl saw and what the role keywords caught (src/coverage.py), so a search that is too narrow can be said out loud.
     on_jobs(jobs): called with each site's sure jobs as soon as that site is read (owner, 18 Oct 2026: jobs shown as quickly as possible;
     the driver's 133 of 134 sites were read by 61 s and the last held every job until 156 s). A job the AI later places outside your
     places leaves the list at the search's end (store.close_elsewhere).
     on_sorted(jobs): called, in this thread, with the jobs of each batch of titles the AI sorts as it lands (#2918): recorded as the sure ones are, kept in `shown`,
-    so the pass after the whole sort takes them as they are."""
+    so the pass after the whole sort takes them as they are.
+    on_read(): called, in this thread, after each site is read, jobs or not: what another reader beside it handed meanwhile is shown then
+    (src/sources/boards_first.py Beside)."""
     fetcher = fetcher or feeds.fetch
     now = feed_facts._now().isoformat(timespec="seconds")
     key = lambda source: f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
@@ -127,6 +129,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None):
                 if on_jobs and (found := _sure(index, sources[index], downloads[index], db, now, shown)):
                     feeds.run_counts.matched(found)   # counted as each site is read; the full pass after the AI sort adds the rest, never takes one back
                     on_jobs(found)
+                if on_read:
+                    on_read()
                 submit()
     finally:
         pool.shutdown(wait=not cut_off[0], cancel_futures=True)

@@ -90,7 +90,7 @@ class PromoteGuardTests(unittest.TestCase):
             binary.chmod(0o755)
             # The alert goes out through desktop/e2e/ci-alert.mjs (node): a stand-in node writes the message it was given, so nothing reaches Telegram.
             node = Path(folder) / 'node'
-            node.write_text('#!/usr/bin/env bash\n[ -n "${FAKE_NODE_FAILS:-}" ] && exit 1\ncase "$1" in *release-alert.mjs) echo "$*" >> "$FAKE_RELEASE_ALERT"; exit 0;; esac\nprintf %s "$MESSAGE" > "$FAKE_ALERT"\n')
+            node.write_text('#!/usr/bin/env bash\n[ -n "${FAKE_NODE_FAILS:-}" ] && exit 1\ncase "$1" in *release-alert.mjs) echo "$*" >> "$FAKE_RELEASE_ALERT"; exit 0;; esac\nprintf "%s\\n%s\\n%s" "$NOTICE_TITLE" "$NOTICE_VERDICT" "$NOTICE_BULLETS" > "$FAKE_ALERT"\n')
             node.chmod(0o755)
             self.log = Path(folder) / 'gh.log'
             env = {**{name: value for name, value in os.environ.items() if name not in OWN_SWITCHES and not name.startswith('E2E_')},
@@ -283,7 +283,7 @@ class PromoteGuardTests(unittest.TestCase):
                             self.assertNotIn(store, text, f'{where} names only the store that failed')
                 self.assertIn('::error', done.stdout, 'a GitHub annotation on the run')
                 self.assertIn(TAG, self.alert)
-                self.assertEqual(self.alert.count('Start it by hand'), 1, 'one alert for the release, not one per store')
+                self.assertEqual(self.alert.count('is stable, but the publish to the'), 1, 'one alert for the release, not one per store')
 
     def test_an_alert_that_cannot_be_sent_does_not_hide_the_failure(self):
         done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'extension-store-publish.yml', 'FAKE_NODE_FAILS': '1'})

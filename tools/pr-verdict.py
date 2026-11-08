@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 CONTEXT = 'All checks passed'
 E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-e2e-steps.yml started
 BUDGET_MIN = 10
+TWIN_S = 10   # #3594's dropped twin ended 1 s after it was created; its green twin ran 40 s
 STEP = "Write the PR's verdict"   # the old per-job writer, gone 30 Oct 2026 (one writer); a branch not yet rebased still has it: job_state reads it as ending
 # TODO(AI): drop STEP, job_state's 'finishing' and verdict()'s me/my_status once no open PR predates the one-writer change (30 Oct 2026)
 # Jobs that only report (an HTML report, a results upload) never hold or turn the verdict: on #2044 the settings suite was green at 04:36 and the PR waited on
@@ -43,7 +44,7 @@ CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suite
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/tooling/ci/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
 PR_WORKFLOWS = {'beta-approve.yml', 'clock-moved.yml', 'coverage-report.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'feedback-ai-closed.yml', 'pr-labels.yml', 'harness.yml',
-                'integration.yml', 'key-org-proof.yml', 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-e2e-steps.yml', 'pr-gate.yml', 'prompt-cases-night.yml', 
+                'integration.yml', 'key-org-proof.yml', 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-e2e-steps.yml', 'pr-gate.yml', 'press-yardstick.yml', 'prompt-cases-night.yml', 
                 'smoke.yml', 'tests-desktop-windows.yml', 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 
@@ -56,11 +57,21 @@ def _at(text):
     return datetime.fromisoformat(str(text).replace('Z', '+00:00'))
 
 
+def _dropped_twin(run):
+    """A run cancelled within TWIN_S of being created: a duplicate GitHub's concurrency dropped before it did any work."""
+    if run.get('conclusion') != 'cancelled' or not run.get('createdAt') or not run.get('updatedAt'):
+        return False
+    return (_at(run['updatedAt']) - _at(run['createdAt'])).total_seconds() <= TWIN_S
+
+
 def counted(runs):
     """Newest per workflow (its id: names repeat); PR e2e runs keep each workflow/title's newest attempt."""
     mine = [r for r in runs if r.get('event') == 'pull_request' or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
     newest = {}
-    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0, r.get('attempt') or 0)):
+    # Why (#3594 red, 8 Nov 2026): a push, a body refresh and a retitle start one workflow 3 times in one second; GitHub drops a twin whatever its id
+    # (42456650156: cancelled 1 s after it was created), so within one second a dropped twin never outranks a run that ran. A run cancelled after it
+    # worked (by hand, a hang guard) still counts (Gitar on #3596).
+    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', not _dropped_twin(r), r.get('databaseId') or 0, r.get('attempt') or 0)):
         # Why (31 Oct 2026, owner: "Fix: count each run"): keep each E2E title's red per workflow; ordinary PR title edits replace that workflow's older gate.
         # A workflow is its id, not its name, since 5 Nov 2026 (owner: "Yes, rename + fold"): a name is a layer several files share ("Unit"); a run without an id keeps its name.
         workflow = r.get('workflowDatabaseId') or r['workflowName']

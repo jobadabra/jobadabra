@@ -34,6 +34,19 @@ export function stoppedWith(exit, lines) {
   return (lines.filter(line => line?.startsWith('⚠️')).at(-1) || '').replace(/^⚠️\s*/, '');
 }
 
+/**
+ * The kit's "Not eligible" verdict in the engine's printed lines, as `Not eligible: <reason>`, or undefined.
+ * Why (8 Nov 2026, owner screenshot: three drafted jobs all ended "Kit prepared", nothing started): the engine prints a bold "Not eligible" header with the reason on the next line (src/ai/kit.py telegram_messages), no colon, since 5 Oct 2026 (8ef8e935); looking only for "Not eligible:" never matched, so an ineligible kit was reported as prepared.
+ */
+export function notEligibleIn(lines) {
+  const plain = lines.map(line => String(line ?? '').replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot|#x27);/g, (_, name) => ({amp: '&', lt: '<', gt: '>', quot: '"', '#x27': "'"})[name]).trim());   // the engine escapes the note (kit.py html.escape)
+  const at = plain.findIndex(line => line === 'Not eligible');
+  if (at < 0) return undefined;
+  const next = plain.slice(at + 1).find(Boolean) || '';
+  return KIT_HEADINGS.includes(next) ? 'Not eligible:' : `Not eligible: ${next}`;   // an empty note: the next kept line is the next section's heading, not a reason
+}
+const KIT_HEADINGS = ['Check before sending', 'Lead with', 'Cover letter'];
+
 export function registerKitHandlers(ctx) {
   const {DEMO, aiReady, allowanceBlock, app, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, syncJobs = github.syncDatabase, engineRun = pipeline.run, track} = ctx;
   registerReadyHandlers({ipcMain, notify, shell, storage, app, powerMonitor, prepare: {kit: (code, name) => prepareKitFor(code, name, {quiet: true}), cv: (code, name) => tailorCv(code, name, {show: false, quiet: true})}});   // Ready to send (the owner's install only): the card beside Tailor on Actions, its calls in lib/ready-handlers.js
@@ -59,7 +72,7 @@ export function registerKitHandlers(ctx) {
       if (quiet && !silent) notify(t('kitNotice.prepareFailedTitle'), t('kitNotice.nameReason',{name,reason:stopped}), {view: 'jobs', job: code}, 'bad');   // a batch that started other jobs still says it; Apply readiness (silent) says it on the job's own line
       return {ok: false, stopped: true, error: `${name}: ${stopped}`};
     }
-    const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
+    const ineligible = notEligibleIn(lines);
     if (quiet) {
       if (exit === 0) track('kit_prepared', {});
       return {ok: exit === 0, ineligible: ineligible || '', ...(exit !== 0 ? {error: lines.filter(Boolean).slice(-1)[0] || 'Application kit could not be prepared.'} : {})};

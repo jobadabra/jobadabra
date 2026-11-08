@@ -20,6 +20,7 @@ export default {
   "appClosed": "La app se cerró mientras mantenía esta solicitud abierta, así que no se envió nada. Ábrela, revisa el formulario y envíalo tú mismo.",
   "appUpdated": "Jobadabra se actualizó y reinició mientras mantenía esta solicitud abierta, así que no se envió nada. Ábrela de nuevo para continuar.",
   "reviewSelf": "Revisa y envía esta solicitud tú mismo.",
+  "noForm": "Jobadabra no encontró el formulario de esta solicitud, así que no se rellenó ni se envió nada. Abre la oferta y postúlate tú mismo en el sitio.",
   "remembered": {
     "one": "{count} respuesta recordada",
     "many": "{count} respuestas recordadas",

@@ -20,6 +20,7 @@ export default {
   "appClosed": "L’app è stata chiusa mentre teneva aperta questa candidatura, quindi non è stato inviato nulla. Aprila, controlla il modulo e invialo personalmente.",
   "appUpdated": "Jobadabra si è aggiornato e riavviato mentre teneva aperta questa candidatura, quindi non è stato inviato nulla. Riaprila per continuare.",
   "reviewSelf": "Controlla e invia questa candidatura personalmente.",
+  "noForm": "Jobadabra non ha trovato il modulo di questa candidatura, quindi non è stato compilato né inviato nulla. Apri l’offerta e candidati tu stesso sul sito.",
   "remembered": {
     "one": "{count} risposta memorizzata",
     "many": "{count} risposte memorizzate",

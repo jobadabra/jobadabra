@@ -19,18 +19,21 @@ const annotation = text => String(text).replace(/%/g, '%25').replace(/\r/g, '%0D
 
 /**
  * Records the skip: a warning line, ai-capped.json in `dir` (the shape credit-alert.mjs reads), and the step output skipped=true for the steps after it.
- * Takes {job, why, summary, dir, env}; returns the why. `summary` ({calls, ok, failed, causes}, from the relay) is the real count the alert is built from; without it the alert shows no numbers. Never throws on a file that cannot be written (a note never breaks a run).
+ * Takes {job, why, summary, images, dir, env}; returns the why. `images: true` = the skipped request carried screenshots (the alert then says Free AI takes none). `summary` ({calls, ok, failed, causes}, from the relay) is the real count the alert is built from; without it the alert shows no numbers. Never throws on a file that cannot be written (a note never breaks a run).
  */
-export function noteSkipped({job, why, summary, env = process.env, dir = cappedDir(env)}) {
+export function noteSkipped({job, why, summary, images, env = process.env, dir = cappedDir(env)}) {
   // Why (1 Nov 2026, owner saw a fixture skip as a warning on a green harness job, #2787): a GitHub annotation only where env sets GITHUB_ACTIONS; a test passes its own env, so its fixture skips print a plain line.
   console.log(env.GITHUB_ACTIONS ? `::warning title=AI skipped (${annotation(job)})::${annotation(why)}` : `AI skipped (${job}): ${why}`);
   try {
     fs.mkdirSync(dir, {recursive: true});
-    fs.writeFileSync(path.join(dir, 'ai-capped.json'), JSON.stringify({why: `${job}: ${why}`, provider: 'AI broker', job, ...(summary ? {summary} : {}), at: new Date().toISOString()}));
+    fs.writeFileSync(path.join(dir, 'ai-capped.json'), JSON.stringify({why: `${job}: ${why}`, provider: 'AI broker', job, ...(images ? {images: true} : {}), ...(summary ? {summary} : {}), at: new Date().toISOString()}));
     if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, 'skipped=true\n');
   } catch { /* a note never breaks the run */ }
   return why;
 }
+
+// Whether the request carries screenshots: past the scheduled line Free AI takes none, so the alert says so (jobadabra-web workers/ai-broker/worker.js freeAiCannot).
+const hasImages = body => (body?.messages || []).some(message => Array.isArray(message.content) && message.content.some(part => part?.type === 'image'));
 
 /**
  * Asks the broker one Messages-shaped question (lib/broker-client.mjs). Takes the body and {job, dir, env, ask}.
@@ -39,6 +42,6 @@ export function noteSkipped({job, why, summary, env = process.env, dir = cappedD
 export async function askOrSkip(body, {job, dir, env = process.env, ask = askBroker} = {}) {
   const answer = await ask(body, {env});
   if (answer.ok) return {ok: true, text: answer.message.content[0].text, model: answer.model, tier: answer.tier, ...(answer.engine ? {engine: answer.engine} : {}), ...(answer.fellBack ? {fellBack: answer.fellBack} : {}), ms: answer.ms, usage: answer.message.usage};
-  if (SKIPPED.includes(answer.status)) return {ok: false, why: noteSkipped({job, why: answer.detail || answer.status, ...(dir ? {dir} : {}), env})};
+  if (SKIPPED.includes(answer.status)) return {ok: false, why: noteSkipped({job, why: answer.detail || answer.status, images: hasImages(body), ...(dir ? {dir} : {}), env})};
   throw new Error(`the AI broker failed (${answer.status}): ${answer.detail}`);
 }

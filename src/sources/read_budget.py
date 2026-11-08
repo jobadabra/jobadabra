@@ -13,10 +13,11 @@ from concurrent.futures import TimeoutError as Late
 from datetime import datetime, timezone
 
 from .. import paths, time_budget
+from ..press import budget, rank
 
-READ_SECONDS = 75    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
-READ_FLOOR = 40      # sites read whatever the read's clock says, before the cut: the best ones of every search
-READ_GRACE = 15      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
+READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
+READ_GRACE = budget.value('read_budget.READ_GRACE')      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
 LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
 FILE = 'employers_left.json'
@@ -82,10 +83,12 @@ def over(at, index, now=None):
         return False
     if index < READ_FLOOR:   # the floor beats the read's time, never the cut
         return past_cut(now)
+    # Why (ps E2a-2, 8 Nov 2026): the boards first now read beside the employer sites, so "they gave enough" (short) may come after the read took
+    # its deadline: from then no new site past the floor. Inside the tape's decision, so a replay reads the sites its recording read.
     if now is not None:
-        return now >= at
+        return _short[0] or now >= at
     from .. import budget_tape
-    return budget_tape.decide('read_over', [index], lambda: time.monotonic() >= at)
+    return budget_tape.decide('read_over', [index], lambda: _short[0] or time.monotonic() >= at)
 
 
 def _left(now=None):
@@ -122,7 +125,7 @@ def left_first(sources, key, now=None):
     if not left:
         return list(sources)
     head, tail = list(sources[:READ_FLOOR]), list(sources[READ_FLOOR:])
-    waited = sorted((s for s in tail if key(s) in left), key=lambda s: left[key(s)])
+    waited = rank.sources([s for s in tail if key(s) in left], rank.left_last_time(left, key))
     return head + waited + [s for s in tail if key(s) not in left]
 
 

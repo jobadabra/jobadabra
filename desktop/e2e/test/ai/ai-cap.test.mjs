@@ -102,7 +102,7 @@ test("the owner's beta case: the broker refuses on its own-share budget inside a
     assert.equal(runner.results[0].aiCapped, true);
     assert.match(runner.results[0].note, /budget:own-share 66\.0% of 60% \(scheduled\)/);
     assert.equal(runner.summary(), 0, 'a refused AI never makes the suite red');
-    assert.ok(lines.some(line => line.startsWith('::warning title=AI credit ran out::')), 'it is said as a warning, not an error');
+    assert.ok(lines.some(line => line.startsWith('::warning title=Scheduled AI used its 60% share of this week::')), 'it is said as a warning, not an error, under the cause the broker gave');
   } finally { console.log = quiet; delete process.env.E2E_SUITE; }
 });
 

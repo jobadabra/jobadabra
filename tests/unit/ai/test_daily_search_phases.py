@@ -14,7 +14,7 @@ from src import daily_helpers, daily_search, store, time_budget
 from src.ai import engine, score
 from src.daily_args import build_parser
 from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_facts, feeds, found_boards
-from src.stores import memory
+from src.stores import memory, sqlite as sqlite_store
 
 
 JOB = {'id': 'one', 'url': 'https://example.test/jobs/one', 'title': 'SRE', 'company': 'Example',
@@ -32,8 +32,10 @@ class SearchCharacterization(unittest.TestCase):
         self.failed = self.expire = self.late_jobs = False
         self.stores = memory.open_store()
         self.stores.texts.set('profile', 'Fictional SRE in Zurich')
-        self.db = store.connect(':memory:')
-        self.addCleanup(self.db.close)
+        # A file, as the app's: each store.connect is a connection of its own, bound to the thread that opened it (sqlite3's check_same_thread), so a
+        # step that hands the search's connection to another thread fails here as it would on a person's Mac (ps E2a-1, 8 Nov 2026).
+        self.connect = store.connect
+        self.db = self.own_connection()
         self.addCleanup(time_budget.start, 0)
         time_budget.start(0)
         self.args = build_parser('test').parse_args(['--mode', 'run', '--score-max', '4', '--enrich-max', '4',
@@ -59,6 +61,7 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(board_web, 'early', side_effect=lambda *a: self.event('web')),
             mock.patch.object(eures, 'start_early', side_effect=lambda *a: self.event('eures')),
             mock.patch.object(boards_first, 'run', side_effect=lambda *a: self.event('boards first', [])),
+            mock.patch.object(boards_first, 'Beside', side_effect=self.boards_beside),
             mock.patch.object(daily_search.first_jobs, 'propose_early', side_effect=lambda: self.event('proposal')),
             mock.patch.object(daily_search.first_jobs, 'run', side_effect=lambda *a, **k: self.event('slice')),
             mock.patch.object(boards_ahead, 'scan_beside', side_effect=self.gather),
@@ -67,7 +70,7 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(daily_search.coverage, 'save', side_effect=lambda *a: self.event('coverage')),
             mock.patch.object(daily_search.contribute, 'maybe_send', side_effect=lambda *a, **k: self.event('contribute')),
             mock.patch.object(feed_facts, 'keep_seen', side_effect=lambda *a: self.event('keep seen')),
-            mock.patch.object(store, 'connect', side_effect=lambda *a: contextlib.nullcontext(self.db)),
+            mock.patch.object(store, 'connect', side_effect=lambda *a: self.own_connection()),
             mock.patch.object(store, 'import_watch_report', side_effect=self.import_jobs),
             mock.patch.object(store, 'close_stale', side_effect=lambda *a, **k: self.event('stale', 0)),
             mock.patch.object(store, 'close_dropped', side_effect=lambda *a: self.event('dropped', 0)),
@@ -103,6 +106,12 @@ class SearchCharacterization(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
+    def own_connection(self):
+        db = self.connect(self.root / 'jobs.sqlite')
+        if __import__('threading').current_thread() is __import__('threading').main_thread():   # a thread's own: that thread closes it
+            self.addCleanup(db.close)
+        return db
+
     def event(self, name, result=None):
         self.calls.append(name)
         return result
@@ -111,8 +120,9 @@ class SearchCharacterization(unittest.TestCase):
         self.event('plan')
         return (lambda: 'Fictional profile') if args.score_max else None
 
-    def gather(self, sources, db, search, so_far, due):
+    def gather(self, sources, db, search, so_far, due, first=None):
         self.event('gather')
+        self.first_given = first
         jobs = [dict(j) for j in self.jobs] if sources else []
         if self.expire:
             jobs = jobs[:1]
@@ -123,6 +133,11 @@ class SearchCharacterization(unittest.TestCase):
         if not self.late_jobs:
             so_far.add(jobs, 'employer sites')
         return {'jobs': jobs, 'sources': source_rows}, None
+
+    def boards_beside(self, search):
+        """A repeat run's boards first (src/sources/boards_first.py Beside), read by nothing here."""
+        self.event('boards beside')
+        return mock.Mock(take=lambda feed_db, on_jobs: [])
 
     def import_jobs(self, db, report):
         self.event('import')
@@ -186,7 +201,7 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual([r['fit'] for r in self.stores.matches.list()], [81])
         self.assertEqual(self.report['jobs'], [JOB])
         self.assertEqual(len(self.stores.cron_runs.list()), 1)
-        self.assert_order('plan', 'web', 'eures', 'sources', 'boards first', 'gather', 'import', 'coverage', 'apis',
+        self.assert_order('plan', 'web', 'eures', 'sources', 'boards beside', 'gather', 'import', 'coverage', 'apis',
                           'keep seen', 'contribute', 'stale', 'dropped', 'places', 'elsewhere', 'prune', 'descriptions',
                           'enrich', 'score', 'partial', 'matches', 'yield', 'digest', 'app', 'save', 'log')
 
@@ -215,17 +230,56 @@ class SearchCharacterization(unittest.TestCase):
         store.import_watch_report(self.db, {'jobs': [{'company': 'Old', 'id': f'old{i}', 'title': f'Old SRE {i}', 'location': 'Zurich',
                                                       'url': f'https://example.test/old/{i}', 'description': 'A fictional job.'} for i in range(n)]})
 
-    def test_a_refresh_scores_the_jobs_waiting_before_it_searches_for_new_ones(self):
+    def test_a_refresh_scores_the_jobs_waiting_with_its_search_before_the_import(self):
         # Design (3 Nov 2026, owner): Find jobs grows the scored list; a waiting job is the cheapest growth (one score, no search), so it goes first.
         self.waiting_jobs(5)
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             out = self.run_search(limit=100)
         self.assertEqual(self.calls.count('score'), 2, 'the waiting jobs, then the new job found with the time left')
-        self.assertLess(self.calls.index('score'), self.calls.index('sources'), 'the first score starts before any source is planned or read')
-        self.assertLess(self.calls.index('score'), self.calls.index('gather'))
+        self.assertEqual(len(self.score_calls[0]), 5, 'the first pass is the 5 waiting jobs, started with the search (beside it: ps E2a-1)')
+        self.assertLess(self.calls.index('score'), self.calls.index('keep seen'), 'scored before the search imports what it found (import_sources)')
         self.assertEqual(len(self.stores.matches.list()), 6, '5 waiting + 1 new, all scored')
         self.assertNotIn('job(s) waiting, none scored', out)
+
+    def test_the_employer_sites_read_while_the_waiting_jobs_are_scored(self):
+        # L35 · ps E2a-1 (owner, 8 Nov 2026: "Both: no waits + background (Recommended)", then "3 min, then Find more"): a repeat Find jobs run scored
+        # its waiting jobs before naming any employer (p10: scoring 0-144 s, employers named at 128 s, the read's cut at 67.5 s: 0 of 561 sites read).
+        # 50 wait and the scorer is slow: it ends only once the employer sites have started reading, or after the hang guard if they never do.
+        self.waiting_jobs(50)
+        self.stores = sqlite_store.open_store({'JOBADABRA_DATA_DIR': str(self.root / 'store')})   # this Mac's store: its connection is the run's thread's
+        self.addCleanup(self.stores.matches.db.close)
+        time_budget.start(180)
+        reading, seen, real, threads = __import__('threading').Event(), [], self.score, []
+        gather = self.gather
+
+        def slow_score(db, *a, **k):
+            if not threads:
+                threads.append(__import__('threading').get_ident())
+                seen.append(reading.wait(10))   # a hang guard, not a pace: the read starts at once beside it
+            try:
+                return real(db, *a, **k)
+            finally:
+                self.event('scored')
+
+        def read(*a, **k):
+            reading.set()
+            return gather(*a, **k)
+        output = io.StringIO()   # not run_search: its digest check counts 10 rows a page, and 51 jobs are listed here
+        every = lambda db, *a, **k: (store.digest_jobs(db, limit=10_000, only_new=False), [])   # the fixture's lists a page of 10
+        with mock.patch.object(time_budget, 'record'), mock.patch.object(score, 'run', side_effect=slow_score), \
+                mock.patch.object(boards_ahead, 'scan_beside', side_effect=read), mock.patch.object(daily_search.digest, 'eligible_jobs', side_effect=every), \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(daily_search.search(self.args, self.stores), 0)
+        out = output.getvalue()
+        self.assertEqual(seen, [True], 'the employer sites started reading while the waiting jobs were still being scored')
+        self.assertNotEqual(threads[0], __import__('threading').get_ident(), 'the waiting jobs are scored beside the search, in a thread of their own')
+        self.assertEqual(len(self.score_calls[0]), 50, 'all 50 waiting jobs in the first pass: all of scoring\'s time is still theirs (L13)')
+        self.assertLess(self.calls.index('scored'), self.calls.index('keep seen'), 'joined before the import: nothing reads their numbers half-written')
+        self.assertNotIn('scoring skipped', out, 'its own connection: the search\'s never crosses a thread (a ProgrammingError would land here)')
+        self.assertIn('(so far)', out)
+        self.assertNotIn('not updated yet', out, 'Job Matches written as they are scored, on the thread\'s own connection to the store')
+        self.assertEqual(len(self.stores.matches.list()), 51, '50 waiting + 1 new, all scored')
 
     def test_a_refresh_with_nothing_waiting_keeps_its_order(self):
         time_budget.start(180)
@@ -280,7 +334,7 @@ class SearchCharacterization(unittest.TestCase):
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
         self.assertEqual(len(self.score_calls[0]), 8)
-        self.assertLess(self.calls.index('score'), self.calls.index('gather'))
+        self.assertLess(self.calls.index('score'), self.calls.index('keep seen'))
 
     def test_find_jobs_only_ever_asks_for_the_jobs_that_were_never_scored(self):
         # Owner, 3 Nov 2026: "if those jobs are already in the jobs list ... that should not be handled by find jobs at all": every scoring call a
@@ -369,12 +423,21 @@ class SearchCharacterization(unittest.TestCase):
     def test_first_slice_precedes_boards_and_full_gather(self):
         self.run_search(first_jobs=True)
         self.assert_order('plan', 'web', 'sources', 'proposal', 'slice', 'boards first', 'gather')
+        self.assertNotIn('boards beside', self.calls, 'a first run reads its boards after its slice, not beside the employer sites')
+
+    def test_the_found_boards_start_before_the_employer_sites_and_are_read_beside_them(self):
+        """L10 (owner, 26 Oct 2026: "START A JOB SEARCH WITH SEARCHING ON GOOGLE!"; ps E2a-2, owner, 8 Nov 2026, option "the boards still
+        start first"): a repeat run starts the web search's boards before the employer sites and hands them to that read, never in front of it."""
+        self.run_search()
+        self.assert_order('web', 'sources', 'boards beside', 'gather')
+        self.assertNotIn('boards first', self.calls, 'nothing reads the boards in front of the employer sites')
+        self.assertIsNotNone(self.first_given, 'the employer read is given the boards to show beside it')
 
     def test_only_visits_does_not_start_web_or_close_jobs(self):
         self.sources.append({'company': 'Browser', 'ats': 'visit', 'slug': 'browser'})
         out = self.run_search(mode='today', only_visits=True)
         self.assertIn('Reading only the 1 page(s) read in Chrome on this Mac', out)
-        for name in ('web', 'boards first', 'apis', 'stale', 'dropped', 'places'):
+        for name in ('web', 'boards first', 'boards beside', 'apis', 'stale', 'dropped', 'places'):
             self.assertNotIn(name, self.calls)
         self.assertEqual([s['company'] for s in self.report['sources']], ['Browser'])
 

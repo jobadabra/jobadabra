@@ -16,28 +16,29 @@ import threading
 import time
 
 from . import budget_tape
+from .press import budget
 
 DEADLINE = None
 STAGE_END = None   # this process's own end on the search's clock (the job boards' step: its share), before DEADLINE; None: DEADLINE
 SEARCH_AT = 'JOBADABRA_SEARCH_AT'   # epoch seconds of the Find jobs press, the same for each of its processes (desktop/lib/search-steps.js)
 STARTED = None
 BEGAN = None   # when the search started (src/sources/read_budget.py cut_at)
-PLANNED = 180   # the app's budget, which the seconds below are planned for (part)
-RESERVE = {'titles': 70, 'enrich': 40, 'score': 0}   # seconds kept for the AI steps that come after this one
-FACTS = 25   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
-TAIL = 15    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
-SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
+PLANNED = budget.value('time_budget.PLANNED')   # the app's budget, which the seconds below are planned for (part)
+RESERVE = budget.group('time_budget.RESERVE')   # seconds kept for the AI steps that come after this one
+FACTS = budget.value('time_budget.FACTS')   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
+TAIL = budget.value('time_budget.TAIL')    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
+SCORING = budget.value('time_budget.SCORING')   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
 #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
 SCORE_FIRST = False
 # Every stage that reads or calls the AI after the budget starts (tests/unit/sources/test_three_minutes.py loops over them; a new one goes here and there).
 STAGES = ('web search', 'job boards', 'employer sites', 'free job APIs', 'Google Jobs', 'job-alert emails', 'descriptions', 'places',
           'title sorting', 'scoring', 'job facts', 'kits', 'employer names')
 _said = set()   # the stages that said their time-up line in this search (later)
-FLOOR = 3     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
+FLOOR = budget.value('time_budget.FLOOR')     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
 _scored = [0]  # scores started in this search (may_score)
-LOCAL_TITLES = 300  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
+LOCAL_TITLES = budget.value('time_budget.LOCAL_TITLES')  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
 _local = [0]
-FEED = 30   # local titles a call still sorts in scoring's share while the jobs waiting for a score keep their time: one batch feeds scoring (local_titles)
+FEED = budget.value('time_budget.FEED')   # local titles a call still sorts in scoring's share while the jobs waiting for a score keep their time: one batch feeds scoring (local_titles)
 _lock = threading.Lock()
 
 
@@ -198,8 +199,8 @@ def _over(step, now):
 # Each step's share of the time left when it starts: title sorting least (a backlog that shrinks to a few dozen titles a day), scoring all
 # that remains (it puts jobs in your list with a fit). Default paces (seconds of wall time per item, Claude Code taking 2 calls at a time):
 # measured on the owner's Mac, 7 Oct 2026; replaced by this computer's own after one refresh.
-SHARE = {'place_rounds': 0.15, 'place_vague': 0.05, 'place_reading': 0.1, 'title_rounds': 0.2, 'enrich': 0.45, 'score': 1.0, 'job': 1.0}
-PACE = {'place_rounds': 10.0, 'place_vague': 6.0, 'place_reading': 15.0, 'title_rounds': 10.0, 'enrich': 12.0, 'score': 3.0, 'job': 15.0}   # job: read and scored, end to end; *_rounds: per round of calls
+SHARE = budget.group('time_budget.SHARE')
+PACE = budget.group('time_budget.PACE')   # job: read and scored, end to end; *_rounds: per round of calls
 NOUN = {'place_rounds': 'round(s) of place calls', 'place_vague': 'round(s) of vague-location calls', 'place_reading': 'round(s) of postings read for their place', 'title_rounds': 'round(s) of title calls', 'enrich': 'job(s) to read', 'score': 'job(s) to score', 'job': 'new job(s)'}
 WORDS = {'place_rounds': 'places {n} of {total} job locations', 'place_vague': 'checks {n} of {total} locations for a town', 'place_reading': 'reads {n} of {total} postings for their place', 'title_rounds': 'sorts {n} of {total} job titles', 'enrich': 'reads {n} of {total} new jobs', 'score': 'scores {n} of {total} jobs',
          'job': 'reads and scores {n} of {total} new jobs'}
@@ -332,15 +333,16 @@ def best_first(jobs):
     "in"; geo's stored place answers can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
     from .paths import load_search_config, place_regex
     from .job_rank import ranker
+    from .press import rank
     search = load_search_config()
     tops = (search.get('locations') or {}).get('top_tier') or []
     best = place_regex(tops or [r'(?!x)x'])
     closeness, near = ranker(search), near_best(tops)
     from .sources import feeds
-    def first(job):   # Claude's answer when it placed the location (src/ai/place_triage.py), else the best places' words
+    def in_best_place(job):   # Claude's answer when it placed the location (src/ai/place_triage.py), else the best places' words
         verdict = feeds.place_of(job)
-        return (0 if (verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')) else 1, near(job.get('location')), -closeness(job))
-    return sorted(jobs, key=first)
+        return verdict == 'best' if verdict is not None else feeds.mentions(best, job.get('location') or '')
+    return rank.jobs(jobs, rank.in_your_places(in_best_place), rank.km_to_best_place(lambda job: near(job.get('location'))), rank.role_closeness(closeness))
 
 
 def near_best(tops):
