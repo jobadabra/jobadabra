@@ -140,14 +140,14 @@ jobs:
           set -o pipefail
           mkdir -p "$RECORD_REPORTS"
           echo "watch: rows matching \"$ONLY\", at most $MAX_ROWS, AI cap \$$MAX_USD; CI's site limit $JOBADABRA_SITE_LIMIT a host a day"
-          RECORD_MAX_ROWS=$MAX_ROWS RECORD_MAX_USD=$MAX_USD xvfb-run -a --server-args='-screen 0 1440x900x24' node record-sites.mjs --only "$ONLY" 2>&1 | tee "$GITHUB_WORKSPACE/record-sites-out/smoke.log"
+          RECORD_MAX_ROWS=$MAX_ROWS RECORD_MAX_USD=$MAX_USD xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node record-sites.mjs --only "$ONLY" 2>&1 | tee "$GITHUB_WORKSPACE/record-sites-out/smoke.log"
       - name: The journey check on each fresh recording (the card and the panel at every step; the report says what failed)
         if: always()
         working-directory: desktop/e2e
         run: |
           set -o pipefail
           [ -d "$JP_NET_RECORD_DIR" ] || { echo "journey-run: no recording"; exit 0; }
-          xvfb-run -a --server-args='-screen 0 1440x900x24' node journey-run.mjs "$JP_NET_RECORD_DIR" "$GITHUB_WORKSPACE/journey-out" --watch 2>&1 | tee "$GITHUB_WORKSPACE/journey.log" || true
+          xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node journey-run.mjs "$JP_NET_RECORD_DIR" "$GITHUB_WORKSPACE/journey-out" --watch 2>&1 | tee "$GITHUB_WORKSPACE/journey.log" || true
       - name: Encrypt the network records (the public key is in the repo; the private key only in the owner's Keychain)
         if: always()
         run: |

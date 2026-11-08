@@ -58,7 +58,7 @@ jobs:
         env:
           ELECTRON_DISABLE_SANDBOX: '1'   # Ubuntu 24.04 runners refuse Chromium's sandbox (integration.yml)
           DESKTOP_RENDER_REQUIRED: '1'    # no electron or display is a red baseline (unknown), never a green skip
-        run: xvfb-run -a --server-args='-screen 0 1440x900x24' node desktop/e2e/mutate-tests.mjs runs.json
+        run: xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node desktop/e2e/mutate-tests.mjs runs.json
       - name: Run each baseline and mutant that names a suite, one at a time
         run: |
           set -uo pipefail

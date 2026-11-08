@@ -464,7 +464,7 @@ jobs:
         run: |
           # A run on an older commit (target_ref: the stable canary, a release candidate) plans with main's suite list; a suite added since does not exist in that build.
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
-          once() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
+          once() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           # Only a reserved suite may fall back on a renamed pick (red-steps.mjs).
           once ${{ matrix.suite }} || { [ -n "${E2E_STEP_NAMES:-}" ] && node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json" \
               && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.key }} suite runs now" && unset E2E_STEP_NAMES && once ${{ matrix.suite }}; } \
@@ -714,7 +714,7 @@ jobs:
           DESKTOP_RENDER_REQUIRED: '1'
         run: |
           mkdir -p "$E2E_SHOTS_DIR"
-          xvfb-run -a --server-args='-screen 0 1440x900x24' node --import ./test/no-live-site.mjs --test integration/app/night-shots.test.js
+          xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' node --import ./test/no-live-site.mjs --test integration/app/night-shots.test.js
       - name: Say what was taken
         if: always()
         timeout-minutes: 5

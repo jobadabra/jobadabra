@@ -206,7 +206,7 @@ jobs:
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
-      - run: xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop ${{ github.event_name == 'pull_request' && '--affected-from HEAD^1' || '' }}
+      - run: xvfb-run -a --server-args='-screen 0 1440x900x24 -noreset' bash tools/check.sh --area desktop ${{ github.event_name == 'pull_request' && '--affected-from HEAD^1' || '' }}
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
           DESKTOP_RENDER_REQUIRED: '1'   # test/needs-electron.js: no electron or display is a red job here, never a green skip
