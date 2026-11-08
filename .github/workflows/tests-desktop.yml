@@ -94,9 +94,9 @@ on:
       - 'tools/fixer/**'   # the walls, proof and leak scan feedback-ai.test.js drives through tools/feedback-ai.mjs
       - 'tools/feedback-ai-sandbox.sh'   # desktop/test/tooling/ci/feedback-ai.test.js reads its flags
       - 'tools/harness-stats.mjs'   # desktop/test/tooling/ci/harness-stats.test.js
-      - 'tools/previews-gallery/collect.mjs'   # desktop/test/tooling/previews-gallery.test.js
-      - 'tools/previews-gallery/parse.mjs'   # desktop/test/tooling/previews-gallery.test.js
-      - 'tools/previews-gallery/render.mjs'   # desktop/test/tooling/previews-gallery.test.js
+      - 'tools/previews-gallery/collect.mjs'   # desktop/test/tooling/ci/previews-gallery.test.js
+      - 'tools/previews-gallery/parse.mjs'   # desktop/test/tooling/ci/previews-gallery.test.js
+      - 'tools/previews-gallery/render.mjs'   # desktop/test/tooling/ci/previews-gallery.test.js
       - '.github/workflows/harness-stats.yml'   # the same test: the site key sits in the store step only
       - 'tools/sdlc-stats.mjs'   # desktop/test/sdlc-stats.test.js
       - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js

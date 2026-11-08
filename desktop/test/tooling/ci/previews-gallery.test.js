@@ -5,9 +5,9 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {boardWaiting, demoNote, demoWhy, downloadHosted, prCards} from '../../../tools/previews-gallery/collect.mjs';
-import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, saysDemo, titleTags, verdictLine} from '../../../tools/previews-gallery/parse.mjs';
-import {renderPage, STATES} from '../../../tools/previews-gallery/render.mjs';
+import {boardWaiting, demoNote, demoWhy, downloadHosted, prCards} from '../../../../tools/previews-gallery/collect.mjs';
+import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, saysDemo, titleTags, verdictLine} from '../../../../tools/previews-gallery/parse.mjs';
+import {renderPage, STATES} from '../../../../tools/previews-gallery/render.mjs';
 
 const BODY = `## 🟢 Batch result says why a job did not start
 
