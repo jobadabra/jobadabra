@@ -192,6 +192,7 @@ class Clock:
         return self.DEADLINE is not None and (now if now is not None else time.monotonic()) >= self.DEADLINE - self.reserve('score') - self.part(self.SCORING)
 
     def may_score(self, now=None):
+        """True when one more job's score may start (and is counted); on a search tape the recorded answer."""
         if now is None:
             return budget_tape.decide('may_score', [], lambda: self._may_score(None))
         return self._may_score(now)
