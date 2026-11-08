@@ -61,6 +61,7 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(board_web, 'early', side_effect=lambda *a: self.event('web')),
             mock.patch.object(eures, 'start_early', side_effect=lambda *a: self.event('eures')),
             mock.patch.object(boards_first, 'run', side_effect=lambda *a: self.event('boards first', [])),
+            mock.patch.object(boards_first, 'Beside', side_effect=self.boards_beside),
             mock.patch.object(daily_search.first_jobs, 'propose_early', side_effect=lambda: self.event('proposal')),
             mock.patch.object(daily_search.first_jobs, 'run', side_effect=lambda *a, **k: self.event('slice')),
             mock.patch.object(boards_ahead, 'scan_beside', side_effect=self.gather),
@@ -119,7 +120,7 @@ class SearchCharacterization(unittest.TestCase):
         self.event('plan')
         return (lambda: 'Fictional profile') if args.score_max else None
 
-    def gather(self, sources, db, search, so_far, due):
+    def gather(self, sources, db, search, so_far, due, first=None):
         self.event('gather')
         jobs = [dict(j) for j in self.jobs] if sources else []
         if self.expire:
@@ -131,6 +132,11 @@ class SearchCharacterization(unittest.TestCase):
         if not self.late_jobs:
             so_far.add(jobs, 'employer sites')
         return {'jobs': jobs, 'sources': source_rows}, None
+
+    def boards_beside(self, search):
+        """A repeat run's boards first (src/sources/boards_first.py Beside), read by nothing here."""
+        self.event('boards first')
+        return mock.Mock(take=lambda feed_db, on_jobs: [])
 
     def import_jobs(self, db, report):
         self.event('import')

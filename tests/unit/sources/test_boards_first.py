@@ -223,6 +223,42 @@ class OldState(unittest.TestCase):
         self.assertEqual(len(matched), 14, out.getvalue())
         self.assertTrue(shown)
 
+    def test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read(self):
+        """L36 · ps E2a-2 (owner, 8 Nov 2026: "Both: no waits + background (Recommended)", "the boards still start first"): run 42451932088, p7, one
+        board read 55-165 s in front of the employer sites and 0 of 13 were read. The boards start first; the employer sites read while the web
+        search still answers (2 s here); their jobs are kept and shown in the thread that owns the job cache."""
+        from src.ai import batch_scope
+        from src.jobs_so_far import SoFar
+        shown, at_sites, during, owner = [], [], [], threading.get_ident()
+
+        class Shown(SoFar):   # the job cache: what the boards' jobs reach, in which thread
+            def listener(self, where):
+                return lambda jobs: shown.append((where, threading.get_ident(), len(jobs)))
+
+        def employer_sites(sources, db, on_jobs, on_read):   # as feed_scan: on_jobs only for a site with sure jobs, on_read after every site
+            at_sites.append(first.done.is_set())
+            for _ in range(200):   # sites with no sure job read one after another while the boards are read (10 s hang guard)
+                if first.done.wait(0.05):
+                    break
+                on_read()
+            on_read()   # the next site: the boards' jobs reach the list now, while the employer read still runs
+            during.extend(shown)
+            return {'jobs': [], 'sources': []}
+        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(2.0, None)), redirect_stdout(io.StringIO()) as out:
+            searching = board_web.early(SEARCH, fetch=fetch)
+            with batch_scope.concurrent():
+                first = boards_first.Beside(SEARCH)
+                boards_ahead.scan_beside([], self.db, SEARCH, Shown(self.db), due=False, scan=employer_sites, first=first)
+                matched = first.take(self.db, Shown(self.db).listener('job boards'))
+            searching.exception(timeout=10)
+        self.assertEqual(at_sites, [False], 'the employer sites were read while the boards were still being read')
+        self.assertEqual(len(matched), 14, out.getvalue())
+        self.assertTrue(shown and all(thread == owner for _, thread, _ in shown), 'kept and shown in the thread that owns the job cache')
+        self.assertEqual(sum(count for _, _, count in during), 14, 'shown during the employer read, though no employer site had a sure job')
+        self.assertIn('Job boards first: reading the 3 the web search found, beside the employer sites', out.getvalue())
+        self.assertEqual(read_budget.over(at=10**9, index=read_budget.READ_FLOOR, now=0.0), True,
+                         'they gave enough: from now no employer site past the floor, though the read took its deadline before')
+
     def test_a_board_that_worked_for_another_field_is_not_read_first(self):
         self.run_first()
         self.search_again()
@@ -232,12 +268,16 @@ class OldState(unittest.TestCase):
 
 
 class RunOrder(unittest.TestCase):
-    def test_the_found_boards_come_before_the_first_jobs_slice_and_the_employer_sites(self):
+    def test_the_found_boards_start_before_the_employer_sites_and_after_a_first_runs_slice(self):
+        # ps E2a-2 (owner, 8 Nov 2026, option "the boards still start first"): a repeat run STARTS the boards before the employer sites and reads
+        # them beside (test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read); a first run reads its slice, then the boards.
         source = (Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py').read_text()
-        early, first, slice_, sites = (source.index(text) for text in ('board_web.early(', 'boards_first.run(', 'first_jobs.run(', 'boards_ahead.scan_beside('))
-        self.assertLess(early, first)
-        self.assertLess(first, slice_)
-        self.assertLess(slice_, sites)
+        early, slice_, after_slice, first, sites = (source.index(text) for text in (
+            'board_web.early(', 'first_jobs.run(', 'boards_first.run(', 'first = start_boards_first()\n', 'boards_ahead.scan_beside('))
+        self.assertLess(early, slice_)
+        self.assertLess(slice_, after_slice)
+        self.assertLess(after_slice, first)
+        self.assertLess(first, sites)
 
 
 if __name__ == '__main__':

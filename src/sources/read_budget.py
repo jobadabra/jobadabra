@@ -83,10 +83,12 @@ def over(at, index, now=None):
         return False
     if index < READ_FLOOR:   # the floor beats the read's time, never the cut
         return past_cut(now)
+    # Why (ps E2a-2, 8 Nov 2026): the boards first now read beside the employer sites, so "they gave enough" (short) may come after the read took
+    # its deadline: from then no new site past the floor. Inside the tape's decision, so a replay reads the sites its recording read.
     if now is not None:
-        return now >= at
+        return _short[0] or now >= at
     from .. import budget_tape
-    return budget_tape.decide('read_over', [index], lambda: time.monotonic() >= at)
+    return budget_tape.decide('read_over', [index], lambda: _short[0] or time.monotonic() >= at)
 
 
 def _left(now=None):
