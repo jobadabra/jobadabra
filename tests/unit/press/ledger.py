@@ -144,6 +144,13 @@ FIXES = (
         owner='One process, discovery inside (Recommended)',
         notes=('a separate boards step held the run lock to ~60 s, so employer sites got ~4 s and places none',
                'owner, 8 Nov 2026: "If there are jobs waiting to be scored, that should be the first new thing a repeated press does"')),
+    Fix('L35', '8 Nov 2026 (ps E2a-1, gi run 42451932088: p10 0/561, p12 0/94, p17 0/114 employer sites read)',
+        'a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored',
+        ('tests/unit/ai/test_daily_search_phases.py::test_the_employer_sites_read_while_the_waiting_jobs_are_scored',
+         'tests/unit/stores/test_store_beside.py::test_a_thread_beside_the_run_writes_job_matches_on_its_own_connection'),
+        owner='Both: no waits + background (Recommended)',
+        notes=('scoring the waiting jobs before naming any employer held the search past the read\'s cut (p10: scoring 0-144 s, employers named at 128 s, cut at 67.5 s)',
+               'owner, 8 Nov 2026, via mac-9d: "3 min, then Find more"; the waiting jobs keep all of scoring\'s time (L13)')),
 )
 
 

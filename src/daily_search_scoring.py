@@ -3,7 +3,7 @@ from .ai import enrich, score
 from .daily_helpers import for_job_matches, left_out, no_profile, none_scored, time_budget_on, to_score
 
 
-# Score the jobs that already wait for a score before this refresh searches for new ones.
+# Score the jobs that already wait for a score, beside the search for new ones.
 def score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget):
     """Design (3 Nov 2026, owner, #3058, quoted in full in the PR): Find jobs grows the person's list of scored jobs. A job found and never scored is
     the cheapest growth (one score, no search), so a pressed or scheduled refresh scores ALL of those it has time for, best places and closest jobs
@@ -11,23 +11,60 @@ def score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, 
     Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score action's
     (daily_modes.rescore_mode), not Find jobs' (scope='new'). One deadline for both: the run's 3 minutes (time_budget).
     Not on a first press (its slice scores the first jobs with the floor), and not the jobs the cleanup after the crawl closes as outside your
-    places (feeds.keep_open, a cache read): after a change of places most of the waiting jobs would be those."""
+    places (feeds.keep_open, a cache read): after a change of places most of the waiting jobs would be those.
+    Beside the search (ps E2a-1, owner, 8 Nov 2026: "Both: no waits + background (Recommended)"): the batch is picked here, in the run's thread, and
+    scored in a thread of its own while the search names and reads the employer sites. Returns the call that waits for it (a no-op when nothing
+    waits); the search calls it before it imports what it found, so nothing reads run['score'] half-written."""
     if args.mode not in ('scheduled', 'run') or args.first_jobs or not (time_budget_on() and args.score_max and read_profile):
-        return
+        return _nothing
     try:
         from .sources import feeds
         stay = [job for job in to_score(db, hidden) if feeds.keep_open({**job, 'remote': 'remote' in (job.get('work_mode') or '').lower()})]
         waiting = score.queue(db, stay, read_profile(), scope='new')
         if not waiting:
-            return
+            return _nothing
         taken = time_budget.batch('score', len(waiting))
     except Exception as error:  # noqa: BLE001 — the search goes on and scores them after it, as before
         print(f'Warning: waiting jobs not scored first ({type(error).__name__}): they are scored after the search')
-        return
+        return _nothing
     run['waiting'] = len(waiting) - taken
-    if taken:
-        score_candidates(args, stores, db, run, read_profile, hidden, dismissed, {job['id'] for job in waiting[:taken]},
-                         __import__('time').monotonic(), time_budget, final=False)
+    if not taken:
+        return _nothing
+    batch, began = {job['id'] for job in waiting[:taken]}, __import__('time').monotonic()
+    return _beside(args.db, stores, lambda own_db, own_stores: score_candidates(
+        args, own_stores, own_db, run, read_profile, hidden, dismissed, batch, began, time_budget, final=False))
+
+
+def _nothing():
+    """The wait for a waiting pass that did not start."""
+
+
+def _beside(path, stores, work):
+    """work(db, stores) in a thread of its own; returns the call that waits for it. A SQLite connection belongs to the thread that opened it, so
+    the thread opens its own to the jobs file and to this Mac's Job Matches (src/stores/beside.py), never the search's.
+    Why (ps E2a-1, 8 Nov 2026): its AI calls queue after the search's (slots.LATER, as the board web search): the employer naming's rounds must
+    not wait behind five scoring calls (Codex has 2 slots), the very wait that left p10, p12 and p17 0 employer sites read.
+    Why no batch_scope reader (ps E2a-1): its batch is picked before it starts and it decides no place or title; a scope opened here would hold
+    until the join and freeze the employer read's world before plan_sources names the employers (boards_ahead's own scope would nest in it)."""
+    import threading
+    from . import store
+    from .ai import slots
+    from .stores import beside
+    here = beside.opener(stores)
+
+    def run():
+        try:
+            own_db = store.connect(path)
+            try:
+                with slots.priority(slots.LATER), own_db, here() as own_stores:   # `with own_db` commits what is left, as the search's own does
+                    work(own_db, own_stores)
+            finally:
+                own_db.close()
+        except Exception as error:  # noqa: BLE001 — the search's own pass scores them after it, as before
+            print(f'Warning: waiting jobs not scored beside the search ({type(error).__name__}): they are scored after it', flush=True)
+    thread = threading.Thread(target=run, name='waiting scores', daemon=True)
+    thread.start()
+    return thread.join
 
 
 # Read and score jobs in their existing batch order on the run clock.
