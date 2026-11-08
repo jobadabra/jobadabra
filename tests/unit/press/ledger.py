@@ -63,7 +63,8 @@ FIXES = (
         ('tests/unit/ai/test_first_press_boards_early.py::test_the_search_starts_it_once_the_employers_are_named_not_inside_the_slice',
          'tests/unit/ai/test_first_press_boards_early.py::test_the_slice_asks_the_ai_nothing_twice_and_keeps_the_shared_boards')),
     Fix('L10', '26 Oct 2026 b314e715, then #2928 (2 Nov 2026)', 'a press reads the job boards first; a first press reads its slice first and scores employer jobs without waiting for the boards',
-        ('tests/unit/sources/test_boards_first.py::test_the_found_boards_come_before_the_first_jobs_slice_and_the_employer_sites',
+        ('tests/unit/ai/test_daily_search_phases.py::test_the_found_boards_start_before_the_employer_sites_and_are_read_beside_them',
+         'tests/unit/ai/test_daily_search_phases.py::test_first_slice_precedes_boards_and_full_gather',
          'tests/unit/sources/test_first_press_order.py::test_a_first_press_reads_its_slice_then_the_known_and_web_searchs_boards',
          'tests/unit/sources/test_first_jobs_slow_boards.py::test_the_employer_jobs_are_scored_before_a_slow_boards_step_ends'),
         owner='START A JOB SEARCH WITH SEARCHING ON GOOGLE!'),
@@ -151,6 +152,13 @@ FIXES = (
         owner='Both: no waits + background (Recommended)',
         notes=('scoring the waiting jobs before naming any employer held the search past the read\'s cut (p10: scoring 0-144 s, employers named at 128 s, cut at 67.5 s)',
                'owner, 8 Nov 2026, via mac-9d: "3 min, then Find more"; the waiting jobs keep all of scoring\'s time (L13)')),
+    Fix('L36', '8 Nov 2026 (ps E2a-2, gi run 42451932088: p7 0/13 employer sites read)',
+        'a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them',
+        ('tests/unit/sources/test_boards_first.py::test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read',
+         'tests/unit/sources/test_boards_early.py::test_the_full_board_read_starts_after_the_boards_first_pages'),
+        owner='Both: no waits + background (Recommended)',
+        notes=('one board (Nurse Jobs Ireland) read 55-165 s in front of the employer sites',
+               'the option kept "the boards still start first" (L10): they start first, the employer sites no longer wait for them'))
 )
 
 

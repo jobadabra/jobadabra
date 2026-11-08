@@ -61,6 +61,7 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(board_web, 'early', side_effect=lambda *a: self.event('web')),
             mock.patch.object(eures, 'start_early', side_effect=lambda *a: self.event('eures')),
             mock.patch.object(boards_first, 'run', side_effect=lambda *a: self.event('boards first', [])),
+            mock.patch.object(boards_first, 'Beside', side_effect=self.boards_beside),
             mock.patch.object(daily_search.first_jobs, 'propose_early', side_effect=lambda: self.event('proposal')),
             mock.patch.object(daily_search.first_jobs, 'run', side_effect=lambda *a, **k: self.event('slice')),
             mock.patch.object(boards_ahead, 'scan_beside', side_effect=self.gather),
@@ -119,8 +120,9 @@ class SearchCharacterization(unittest.TestCase):
         self.event('plan')
         return (lambda: 'Fictional profile') if args.score_max else None
 
-    def gather(self, sources, db, search, so_far, due):
+    def gather(self, sources, db, search, so_far, due, first=None):
         self.event('gather')
+        self.first_given = first
         jobs = [dict(j) for j in self.jobs] if sources else []
         if self.expire:
             jobs = jobs[:1]
@@ -131,6 +133,11 @@ class SearchCharacterization(unittest.TestCase):
         if not self.late_jobs:
             so_far.add(jobs, 'employer sites')
         return {'jobs': jobs, 'sources': source_rows}, None
+
+    def boards_beside(self, search):
+        """A repeat run's boards first (src/sources/boards_first.py Beside), read by nothing here."""
+        self.event('boards beside')
+        return mock.Mock(take=lambda feed_db, on_jobs: [])
 
     def import_jobs(self, db, report):
         self.event('import')
@@ -194,7 +201,7 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual([r['fit'] for r in self.stores.matches.list()], [81])
         self.assertEqual(self.report['jobs'], [JOB])
         self.assertEqual(len(self.stores.cron_runs.list()), 1)
-        self.assert_order('plan', 'web', 'eures', 'sources', 'boards first', 'gather', 'import', 'coverage', 'apis',
+        self.assert_order('plan', 'web', 'eures', 'sources', 'boards beside', 'gather', 'import', 'coverage', 'apis',
                           'keep seen', 'contribute', 'stale', 'dropped', 'places', 'elsewhere', 'prune', 'descriptions',
                           'enrich', 'score', 'partial', 'matches', 'yield', 'digest', 'app', 'save', 'log')
 
@@ -416,12 +423,21 @@ class SearchCharacterization(unittest.TestCase):
     def test_first_slice_precedes_boards_and_full_gather(self):
         self.run_search(first_jobs=True)
         self.assert_order('plan', 'web', 'sources', 'proposal', 'slice', 'boards first', 'gather')
+        self.assertNotIn('boards beside', self.calls, 'a first run reads its boards after its slice, not beside the employer sites')
+
+    def test_the_found_boards_start_before_the_employer_sites_and_are_read_beside_them(self):
+        """L10 (owner, 26 Oct 2026: "START A JOB SEARCH WITH SEARCHING ON GOOGLE!"; ps E2a-2, owner, 8 Nov 2026, option "the boards still
+        start first"): a repeat run starts the web search's boards before the employer sites and hands them to that read, never in front of it."""
+        self.run_search()
+        self.assert_order('web', 'sources', 'boards beside', 'gather')
+        self.assertNotIn('boards first', self.calls, 'nothing reads the boards in front of the employer sites')
+        self.assertIsNotNone(self.first_given, 'the employer read is given the boards to show beside it')
 
     def test_only_visits_does_not_start_web_or_close_jobs(self):
         self.sources.append({'company': 'Browser', 'ats': 'visit', 'slug': 'browser'})
         out = self.run_search(mode='today', only_visits=True)
         self.assertIn('Reading only the 1 page(s) read in Chrome on this Mac', out)
-        for name in ('web', 'boards first', 'apis', 'stale', 'dropped', 'places'):
+        for name in ('web', 'boards first', 'boards beside', 'apis', 'stale', 'dropped', 'places'):
             self.assertNotIn(name, self.calls)
         self.assertEqual([s['company'] for s in self.report['sources']], ['Browser'])
 
