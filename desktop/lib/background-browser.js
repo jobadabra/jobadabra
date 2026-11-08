@@ -88,7 +88,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     // Why (8 Nov 2026, owner: "how we can prevent this ?"): Chrome keeps the extension worker a kept profile first registered, even when the folder is rewritten
     // in place (measured: starts 2 and 3 ran start 1's code; a new manifest version did not help), so the twin ran its 28 Oct worker on 8 Nov and no fix reached it.
     // The folder holds every site's service workers and Cache Storage (first loads after a launch are slower); cookies, sign-ins and the extension's own storage stay.
-    // The twin once (8 Oct 2026, twin.mjs) saw no worker at all after clearing worker state: the stamp check in start() relaunches once and then names it.
+    // The twin once (8 Oct 2026, twin.mjs) saw no worker at all after clearing worker state: start() counts that as a miss, relaunches once and then names it.
     fs.rmSync(path.join(profile, 'Default', 'Service Worker'), {recursive: true, force: true});
     fs.rmSync(portFile, {force: true});
     // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
@@ -150,23 +150,24 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
       if (!owner) { owner = randomUUID(); writePrivate(ownerFile, JSON.stringify({owner})); }
       // Why (8 Nov 2026, owner: "how we can prevent this ?"): an old worker carries old Submit and hand-off rules, so the token goes only to a worker running the
       // extension this app ships (its stamp: extension-copy.mjs extensionStamp). Any other (a kept worker, a browser an older app left running) is closed and the
-      // browser launched once more; a second miss is refused with its code. Test: integration/extension/hidden-browser-runs-new-copy.test.mjs.
+      // browser launched once more; a worker that never shows counts the same; a second miss is refused with its code. Test: integration/extension/hidden-browser-runs-new-copy.test.mjs.
       const expected = (await copyModule()).extensionStamp(path.join(root, 'extension'), appPort);
-      let live = await connect().catch(() => null), running = '';
-      for (let launches = 0; ; ) {
-        if (!live) { live = await launch(appPort); launches += 1; }
-        const worker = await workerOf(live);
-        if (!worker) throw new Error('The owned browser extension did not start.');
-        running = await runningStamp(worker, expected);
-        if (running === expected) {
+      let live = await connect().catch(() => null), worker = null, running = '';
+      for (let misses = 0; ; ) {
+        live ||= await launch(appPort);
+        worker = await workerOf(live);
+        running = worker ? await runningStamp(worker, expected) : '';
+        if (worker && running === expected) {
           const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
           await setExtensionStorage({evaluate: evaluator(worker)}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
           return {owner, port: live.port};
         }
-        if (launches >= 2) break;
+        misses += 1;
+        if (misses >= 2) break;
         await end(live);
         live = null;
       }
+      if (!worker) throw Object.assign(new Error('The owned browser extension did not start, also after a relaunch.'), {code: 'BACKGROUND_EXTENSION_NOT_STARTED'});
       throw Object.assign(new Error(`The background browser still runs another copy of the extension after a relaunch (running ${running || 'none'}, expected ${expected}).`), {code: 'BACKGROUND_EXTENSION_STALE'});
     })().finally(() => { pending = null; });
     return pending;
