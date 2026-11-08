@@ -78,6 +78,8 @@ jobs:
     name: Replay p${{ matrix.persona }} ${{ matrix.side }}
     needs: plan
     runs-on: ubuntu-24.04
+    # a bot's fixer branch never gets the recording's key (tests/tooling/ci/test_workflow_ai_secret_jobs.py)
+    if: success() && !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]'))
     timeout-minutes: 15   # a hang guard: two 180 s Find jobs runs and the setup take ~8 min
     strategy:
       fail-fast: false
@@ -136,7 +138,15 @@ jobs:
           pip install --quiet -r requirements.txt
           (cd desktop && npm ci && node scripts/stage.mjs --files-only)
           (cd desktop/e2e && (npm ci || npm install))
-      - uses: ./.github/actions/playwright-browser
+      - name: This workflow's own actions (the side under test may predate them)
+        if: steps.rec.outputs.ok == 'yes'
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: own
+          sparse-checkout: .github/actions
+      - uses: ./own/.github/actions/playwright-browser
         if: steps.rec.outputs.ok == 'yes'
         with: {working-directory: desktop/e2e, mode: both}
       - name: Replay a first and a repeat Find jobs run (offline, no AI)
