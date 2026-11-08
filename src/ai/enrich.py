@@ -7,10 +7,8 @@ model never has to invent a salary, language rule or employer.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
 import hashlib
 import json
-import time
 import os
 from pathlib import Path
 
@@ -247,12 +245,13 @@ def _role_schema():
 
 
 def save(db, job, model, data):
+    from .. import time_budget
     db.execute("""INSERT INTO enrichments (job_id, extractor_version, description_hash, model, created_at, data_json)
         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(job_id) DO UPDATE SET extractor_version=excluded.extractor_version,
         description_hash=excluded.description_hash, model=excluded.model, created_at=excluded.created_at,
         data_json=excluded.data_json""",
                (job['id'], EXTRACTOR_VERSION, description_hash(job), model,
-                datetime.now(timezone.utc).isoformat(timespec='seconds'), json.dumps(data, ensure_ascii=False)))
+                time_budget.wall().isoformat(timespec='seconds'), json.dumps(data, ensure_ascii=False)))
     db.commit()
 
 
@@ -341,10 +340,10 @@ def run(db, model, max_jobs, client=None, workers=5, stats=None, only_ids=None):
         return False
 
     while jobs:
-        began, before = time.monotonic(), enriched
+        began, before = budget.now(), enriched
         calls.worked = calls.failed = 0.0
         stopped = read(jobs)
-        budget.record('enrich', time.monotonic() - began, enriched - before, calls.lost)   # this computer's pace: the next batch is sized from it
+        budget.record('enrich', budget.now() - began, enriched - before, calls.lost)   # this computer's pace: the next batch is sized from it
         taken += len(jobs)
         if stopped or late:
             break

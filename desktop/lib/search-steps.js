@@ -4,6 +4,7 @@
 import * as claudeCode from './claude-code.js';
 import {dailyArgs, SEARCH_BUDGET_S, deliveryReady, triggerEnv} from './pipeline-args.js';
 import {run} from './pipeline-run.js';
+import {APP_STEPS} from './press-stages.js';
 
 const SCOUT_COOLDOWN_MS = 24 * 3600 * 1000;   // a press of Find jobs grows the sources at most once a day
 
@@ -24,6 +25,7 @@ export const searchTrigger = settings => (settings.lastSearchAt ? 'you' : 'first
 // from it (src/time_budget.py): on the first press the job boards' step ends at its share (src/sources/boards.py SHARE_S), the search at the press's end, minus
 // the finder's share when it is due; the finder gets what is left. A step with no time left waits for the next search and says so.
 export const SCOUT_SHARE_S = 45;   // the employer finder's seconds at the press's end, when it is due
+const {discover: DISCOVER, search: SEARCH, scoreBoards: SCORE_BOARDS, scout: SCOUT} = APP_STEPS;   // the steps' wording: src/press/stages.py's rows, mirrored in press-stages.js
 const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the next search (an engine step needs a few to start)
 
 // Why (27 Oct 2026, Gitar on #2285): the SIGTERM handler writes the row (a Notion call) and may wait EXIT_GRACE_S (3 s); the stop starts this long before 180 s
@@ -55,9 +57,9 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   });
   const timeUp = (what, partial = true) => { if (partial) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`); };   // partial=false: the employer finder is an add-on, the search itself was whole
   const discover = async () => {
-    if (budget - spent() < STEP_MIN_S) return timeUp('job boards');
+    if (budget - spent() < STEP_MIN_S) return timeUp(DISCOVER.what, DISCOVER.counts);
     onLine('Searching job boards…');
-    await step(['src', 'discover', '--pages', '5', '--max-companies', '40', '--budget', String(budget)], 'job boards');
+    await step(['src', 'discover', '--pages', '5', '--max-companies', '40', '--budget', String(budget)], DISCOVER.what, DISCOVER.counts);
   };
   let code;
   let result;
@@ -65,10 +67,10 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     // The first run: jobs in seconds. The engine reads a slice of fast feeds and scores 3 jobs first (src/first_jobs.py), then does the full search;
     // the job boards come after it, and the jobs they find are scored by a light run (mode today), so nothing in front of the first job waits for them.
     onLine('Finding your first jobs…');
-    ({code, result} = await step(dailyArgs(storage, {mode, firstJobs: true, budget}), 'the search'));
+    ({code, result} = await step(dailyArgs(storage, {mode, firstJobs: true, budget}), SEARCH.what, SEARCH.counts));
     await discover();
-    if (budget - spent() < STEP_MIN_S) timeUp('scoring the job boards\' jobs');
-    else await step(dailyArgs(storage, {mode: 'today', budget}), 'scoring the job boards\' jobs');
+    if (budget - spent() < STEP_MIN_S) timeUp(SCORE_BOARDS.what, SCORE_BOARDS.counts);
+    else await step(dailyArgs(storage, {mode: 'today', budget}), SCORE_BOARDS.what, SCORE_BOARDS.counts);
   } else {
     // Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"; "If there are jobs waiting to be scored, that should be the first new thing a
     // repeated press does"): the job boards' own step in front of the search held the run lock (src/paths.py) to ~60 s while the employer read stops
@@ -77,13 +79,13 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     // SEARCH WITH SEARCHING ON GOOGLE!"; src/sources/boards_first.py, boards_ahead.py) and discovers the fixed boards' employers beside them.
     onLine('Searching job boards…');   // the same two lines as before: the live log, its chips and the pill read them (renderer/find-card-model.js, run-status.js)
     onLine('Checking employer career pages' + (ai ? ', then reading and scoring new jobs…' : '…'));
-    ({code, result} = await step(dailyArgs(storage, {mode, budget, discoverBeside: true}), 'the search'));
+    ({code, result} = await step(dailyArgs(storage, {mode, budget, discoverBeside: true}), SEARCH.what, SEARCH.counts));
   }
-  if (scout && left() < STEP_MIN_S) timeUp('searching wider', false);   // still due: the next press runs it
+  if (scout && left() < STEP_MIN_S) timeUp(SCOUT.what, SCOUT.counts);   // still due: the next press runs it
   else if (scout) {
     onLine('Searching wider…');
     storage.saveSettings({lastScoutAt: new Date().toISOString()});
-    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'searching wider', false);
+    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], SCOUT.what, SCOUT.counts);
   }
   return {code, result, endedByTime};
 }

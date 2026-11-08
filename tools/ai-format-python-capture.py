@@ -276,7 +276,7 @@ def capture_engine(prompts=False):
     engine.PARALLEL = 1
     slots = NS(carry=lambda function: function, priority=lambda level: __import__('contextlib').nullcontext(), NORMAL=1)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
-                   time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None),
+                   time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None, now=time.monotonic),
                    keyword_regex=paths.keyword_regex, geo=NS(verdicts=lambda *a, **k: {}))
     geo = load('src/geo.py', ['BATCH', 'KINDS', 'MAX_RADIUS', 'SCHEMA', 'SYSTEM', 'valid', '_ask'], slots=slots)
     strings = ['zurich, switzerland', 'remote']

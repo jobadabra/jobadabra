@@ -8,7 +8,6 @@ JOBADABRA_DISABLE=title_triage: the exact role words only, as before.
 """
 import hashlib
 import json
-import time
 import threading
 
 from ..paths import DATA
@@ -149,13 +148,13 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
                 late[0] += len(batch)
             return None
         listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
-        asked_at = time.monotonic()
+        asked_at = budget.now()
         response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],
                                           messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
                                           output_config=engine.structured(SCHEMA, MODEL, 'low'))
         cost.side(MODEL, response.usage)
         with lock:
-            spent[0] += time.monotonic() - asked_at
+            spent[0] += budget.now() - asked_at
         return {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
 
     def landed(batch, fit):

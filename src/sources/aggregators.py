@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-from .. import read_methods
+from .. import read_methods, time_budget
 from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
 from ..press import resume
 
@@ -228,7 +228,7 @@ def read_lately(db, name, now=None, search=None):
     db.execute(SEARCH_TABLE)
     last = db.execute('SELECT at FROM aggregator_runs WHERE source = ?', (name,)).fetchone()
     at = datetime.fromisoformat(last[0]) if last else None
-    if not at or at <= (now or datetime.now(timezone.utc)) - timedelta(hours=SPACING_HOURS):
+    if not at or at <= (now or time_budget.wall()) - timedelta(hours=SPACING_HOURS):
         return None
     kept_for = db.execute('SELECT search FROM aggregator_searches WHERE source = ?', (name,)).fetchone()
     return None if search is not None and kept_for and kept_for[0] != search_key(search) else at
@@ -256,7 +256,7 @@ def early_items(db, name, jobs, shown, now=None):
     """The jobs the AI's title sort just said fit (feeds.triage hands them batch by batch, src/ai/title_queue.py) that are in your places, in the report's shape,
     recorded once and kept in `shown` ({url: item}) -> the new ones; `kept` then takes them as they are. Why (#2918, owner 6 Nov 2026: "Score from the nearest
     batches as they land"): the first job no longer waits for a whole sort."""
-    now, items = now or datetime.now(timezone.utc), []
+    now, items = now or time_budget.wall(), []
     with db:
         for job in jobs:
             if job.get('url') and job['url'] not in shown:
@@ -271,7 +271,7 @@ def kept(db, name, found, now=None, shown=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
     (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py). shown: {url: item} of the jobs handed early (early_items),
     taken as they are, not recorded again."""
-    now, matched, fresh, shown = now or datetime.now(timezone.utc), [], [], shown if shown is not None else {}
+    now, matched, fresh, shown = now or time_budget.wall(), [], [], shown if shown is not None else {}
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
     with db:
         for job in found:
@@ -296,9 +296,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     # (3 Oct 2026: jobicy rows in the quality suite). `readers` given = a test of this function itself.
     if readers is None and os.getenv('JOBADABRA_FIXTURE_DIR'):
         return _done(report)
-    now = now or datetime.now(timezone.utc)
+    now = now or time_budget.wall()
     db.execute(TABLE)
-    from .. import time_budget
     from . import read_budget
     late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/unit/sources/test_three_minutes.py)
     key = search_key(search)

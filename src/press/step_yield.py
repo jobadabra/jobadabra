@@ -123,6 +123,16 @@ def latest(db, since=''):
     return [row for step in STEPS for row in found if row['step'] == step]
 
 
+def history(db, runs):
+    """The rows of the last `runs` measured runs, newest run first, each run's rows in STEPS order (the planner's reader, src/press/plan.py); [] when none."""
+    db.execute(TABLE)
+    names = ('run_at', *FIELDS)
+    found = [dict(zip(names, row)) for row in db.execute(
+        f"SELECT {', '.join(names)} FROM step_yield WHERE run_at IN (SELECT DISTINCT run_at FROM step_yield ORDER BY run_at DESC LIMIT ?)", (runs,))]
+    found.sort(key=lambda row: STEPS.index(row['step']) if row['step'] in STEPS else len(STEPS))
+    return sorted(found, key=lambda row: row['run_at'], reverse=True)   # stable: each run keeps STEPS order
+
+
 def per_minute(row, field='local'):
     """`field` per minute of the step's wall time (local jobs by default; 'local_fit70' for the right ones); None when the step has no seconds."""
     return round(row[field] * 60 / row['seconds'], 1) if row.get('seconds') else None
