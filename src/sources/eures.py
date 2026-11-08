@@ -20,16 +20,17 @@ import urllib.parse
 from . import nuts_names
 from .. import geo
 from ..paths import DATA
+from ..press import budget
 
 URL = 'https://europa.eu/eures/api/jv-searchengine/public/jv-search/search'
 DETAIL = 'https://europa.eu/eures/portal/jv-se/jv-details/'
 COUNTRIES = frozenset('AT BE BG HR CY CZ DK EE FI FR DE HU IS IE IT LV LI LT LU MT NL NO PL PT RO SK SI ES SE CH'.split())   # the portal's member countries
 PAGE_SIZE = 50
 MAX_PAGES = 6   # per role word and area: the best matches first, the rest waits for another search
-KEEP = 100   # per area: enough near home, the next place gets its turn
-MOST = 200   # per read: a read returned 173-234 jobs before areas (#2918), so the AI steps after it keep their load
-LAST_PAGE = 3   # seconds a page asked just before the stop time still gets
-SECONDS = 25   # with no run deadline, a read stops asking for more pages this long after its first page may go
+KEEP = budget.value('eures.KEEP')   # per area: enough near home, the next place gets its turn
+MOST = budget.value('eures.MOST')   # per read: a read returned 173-234 jobs before areas (#2918), so the AI steps after it keep their load
+LAST_PAGE = budget.value('eures.LAST_PAGE')   # seconds a page asked just before the stop time still gets
+SECONDS = budget.value('eures.SECONDS')   # with no run deadline, a read stops asking for more pages this long after its first page may go
 
 
 CUT = [False]   # the last read ended on its clock, not on its pages: src/sources/aggregators.py scan queues it instead of marking it read

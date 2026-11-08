@@ -13,10 +13,11 @@ from concurrent.futures import TimeoutError as Late
 from datetime import datetime, timezone
 
 from .. import paths, time_budget
+from ..press import budget
 
-READ_SECONDS = 75    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
-READ_FLOOR = 40      # sites read whatever the read's clock says, before the cut: the best ones of every search
-READ_GRACE = 15      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
+READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
+READ_GRACE = budget.value('read_budget.READ_GRACE')      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
 LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
 FILE = 'employers_left.json'
