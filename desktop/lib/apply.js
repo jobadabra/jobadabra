@@ -73,7 +73,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
     if (tries >= shortfall) break;
     const skipped = (options.skipped || 0) + outcomes.filter(item => item.status === 'ineligible').length;
     report(`Preparing application ${Math.min(tries + 1, wanted)} of ${wanted}: ${job.title} · ${job.company} (about 20 s each${skipped ? `; ${skipped} not eligible so far, replaced` : ''})…`);
-    // Why (7 Nov 2026, #3424): a rejected prepare is still one job's failure; keep its message with that outcome.
+    // Why (7 Nov 2026, #3424; R2, 8 Nov 2026): when Apply readiness rejects for one job, that job alone failed; its message stays with its outcome.
     const result = await prepare(job).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
     if (result.ok) done++;
     else why ||= result.error || '';
