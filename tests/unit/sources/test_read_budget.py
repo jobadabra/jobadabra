@@ -49,10 +49,13 @@ class Clock:
 
 class Inline:
     """Stands in for the thread pool: runs each fetch at once in the caller's thread, so the read is a script, not a race."""
+    handed = []   # the order the code hands sites to the pool: what it guarantees (set by Base.scan)
+
     def __init__(self, *args, **kwargs):
         pass
 
     def submit(self, fn, *args, **kwargs):
+        Inline.handed.append(int(args[0]['slug'][1:]))
         future = Future()
         try:
             future.set_result(fn(*args, **kwargs))
@@ -78,13 +81,13 @@ class Base(unittest.TestCase):
         self.addCleanup(time_budget.start, 0)
 
     def scan(self, sources, slow_from=60):
-        read, db, self.handed = [], sqlite3.connect(':memory:'), []
+        read, db = [], sqlite3.connect(':memory:')
+        self.handed = Inline.handed = []
         db.execute(TABLE)
-        handed, clock = self.handed, self.clock
+        clock = self.clock
 
         def fetcher(source):   # the first sites answer fast, the long tail slowly (the pilot run's 1,123 sites)
             n = int(source['slug'][1:])
-            handed.append(n)
             read.append(n)
             clock.spend(FAST_S if n < slow_from else SLOW_S)
             return [job(n)]
@@ -154,8 +157,8 @@ class RankedFirst(Base):
         with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
                 mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
             _, read, _, log = self.scan(given, slow_from=50)
-        # Why (#3342, 6 Nov 2026): this asserted the order the first wave's threads START fetching (`read`); on a loaded runner site 3 started after 10 ('2 started
-        # before 9 on #2187' was the same). The code guarantees the order it hands the sites to the pool, so that is what is asserted.
+        # Why (E2b, 8 Nov 2026; was #3342): asserts the order the code hands sites to the pool, which `Inline` records on submit: the pool is scripted, so no thread
+        # start order (the OS's, not the ranking's) can enter the result.
         self.assertEqual(self.handed[:3], [7, 3, 9], 'the proven best are handed to the pool first, in the ranking\'s order')
         self.assertLessEqual({7, 3, 9}, set(read), 'and all three were read')
         self.assertNotIn(0, read)
