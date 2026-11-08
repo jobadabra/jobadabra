@@ -181,5 +181,4 @@ jobs:
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
-          message="⚠️ $TAG is stable, but its Microsoft Store publish failed."$'\n'"Run: $RUN"$'\n'"Once its cause is fixed: gh workflow run msix-store.yml -R $GITHUB_REPOSITORY --ref main -f tag=$TAG"
-          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'msstore-status'}))"
+          node desktop/e2e/store-alert.mjs msix-store

@@ -41,7 +41,7 @@ test('accepted: one "live" message and nothing is submitted; a second hour chang
   const w = world();
   await tell(w.env('live'), w);
   assert.equal(w.messages.length, 1);
-  assert.match(w.messages[0], /0\.8\.86 is live in the Microsoft Store/);
+  assert.match(w.messages[0].text, /Jobadabra 0\.8\.86 is live/);
   assert.deepEqual(w.dispatched, [], 'the newest stable waits for the weekly run (7 Nov 2026), it is not sent on at once');
   await tell(w.env('live'), w);   // the next hourly run: 0.8.86 is announced, nothing is pending
   assert.equal(w.messages.length, 1, 'exactly once');
@@ -52,7 +52,7 @@ test('refused: the owner hears the reason and nothing is started', async () => {
   const w = world();
   await tell(w.env('failed'), w);
   assert.equal(w.messages.length, 1);
-  assert.match(w.messages[0], /did not accept Jobadabra 0\.8\.86.*bad capability.*not sent again by itself/s);
+  assert.match(w.messages[0].text, /Jobadabra 0\.8\.86 was not accepted.*bad capability.*not sent again by itself/s);
   assert.deepEqual(w.dispatched, []);
 });
 
@@ -60,8 +60,8 @@ test('an older pending version is told it left review, not given a verdict it ne
   const w = world({submitted: ['0.8.86', '0.9.6']});
   await tell(w.env('live', '0.9.6'), w);   // 0.9.6 is the version the status was read for
   assert.deepEqual(w.dispatched, []);
-  assert.match(w.messages[0], /0\.8\.86 left Microsoft's review before I could read its verdict/);
-  assert.match(w.messages[1], /0\.9\.6 is live/);
+  assert.match(w.messages[0].text, /Jobadabra 0\.8\.86 left Microsoft&#39;s review|Jobadabra 0\.8\.86 left Microsoft's review/);
+  assert.match(w.messages[1].text, /0\.9\.6 is live/);
   assert.ok(w.tags.has('msstore-followed-0.8.86') && w.tags.has('msstore-followed-0.9.6'));
 });
 
@@ -78,13 +78,13 @@ test('still in review or nothing pending: no message and no submit', async () =>
   const none = world({submitted: []});
   await tell(none.env('live'), none);
   assert.deepEqual([none.messages, none.dispatched], [[], []]);
-  assert.match(messageOf('failed', {version: '0.8.86', reason: 'x', repo: 'o/r', run: 'u'}), /gh workflow run msix-store\.yml -R o\/r --ref main -f tag=desktop-v0\.8\.86/);
+  assert.match(messageOf('failed', {version: '0.8.86', reason: 'x', repo: 'o/r', run: 'u'}).text, /gh workflow run msix-store\.yml -R o\/r --ref main -f tag=desktop-v0\.8\.86/);
 });
 
 test('the verdict is for the version the status was read for: a version that is not pending, or a newer one submitted since, is not announced as it', async () => {
   const w = world({submitted: ['0.9.4', '0.9.5']});
   await tell(w.env('live', '0.9.4'), w);   // 0.9.5 was submitted while the Windows job read 0.9.4's status
-  assert.match(w.messages[0], /0\.9\.4 is live/);
+  assert.match(w.messages[0].text, /0\.9\.4 is live/);
   assert.ok(!w.tags.has('msstore-announced-0.9.5') && !w.tags.has('msstore-followed-0.9.5'), '0.9.5 stays pending for its own look');
   assert.deepEqual(await tell(w.env('live', '0.9.7'), w), ['nothing to tell: 0.9.7 is not pending']);
 });
@@ -114,7 +114,7 @@ test('a failing check tells the owner once per broken streak; a green check ends
   await broken(env, w);
   await broken(env, w);   // the next hour, still broken
   assert.equal(w.messages.length, 1, 'once per streak');
-  assert.match(w.messages[0], /Store watcher is failing/);
+  assert.match(w.messages[0].text, /Store watcher is failing/);
   await recovered(env, w);
   await broken(env, w);
   assert.equal(w.messages.length, 2, 'a new streak tells again');

@@ -13,6 +13,7 @@
 // Invariants: a refused version is never sent again by this tool; nothing here submits or starts anything.
 import fs from 'node:fs';
 import {delivered, send as sendAlert} from '../desktop/e2e/ci-alert.mjs';
+import {notice} from '../desktop/e2e/lib/notice.mjs';
 
 // Why (5 Nov 2026, nt 3/4c): the owner's switchboard may hold this alert (switched off): that is done, not a failed send, so the claim stays and nothing is retried hourly.
 const send = (text, env) => sendAlert(text, env, fetch, {event: 'msstore-status'});
@@ -54,12 +55,15 @@ export function reasonOf(getText, status = '') {
   return `Microsoft gave no reason in the API (status ${status || 'unknown'}); read it in Partner Center`;
 }
 
-/** The Telegram text: `kind` live | failed. */
+/** The Telegram notice (lib/notice.mjs): `kind` live | failed | ended | broken. */
 export function messageOf(kind, {version, reason = '', run = '', repo = ''}) {
-  if (kind === 'live') return `✅ Jobadabra ${version} is live in the Microsoft Store.\n${STORE_PAGE}`;
+  if (kind === 'live') return notice({icon: '✅', title: 'Microsoft Store', verdict: `Jobadabra ${version} is live`, run: STORE_PAGE, linkText: 'Open the Store page'});
   if (kind === 'failed') {
-    return `⚠️ Microsoft did not accept Jobadabra ${version}.\nWhy: ${reason}\nIt is not sent again by itself; the weekly run sends the next newer stable that passes. To retry this one once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}\nRun: ${run}`;
+    return notice({title: 'Microsoft did not accept a version', verdict: `Jobadabra ${version} was not accepted`, run,
+      bullets: [`Why: ${reason}`, 'It is not sent again by itself; the weekly run sends the next newer stable that passes', `To retry once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}`]});
   }
+  if (kind === 'ended') return notice({icon: 'ℹ️', title: 'Microsoft Store review ended', verdict: `Jobadabra ${version} left Microsoft's review before its verdict was read`, bullets: [`${reason} was submitted after it`, 'Check Partner Center to see whether it was accepted']});
+  if (kind === 'broken') return notice({title: 'Microsoft Store watcher is failing', verdict: 'No "accepted" message will come until it is fixed', bullets: ['It tells you once; it is quiet again after a green check'], run});
   throw new Error(`unknown message kind ${kind}`);
 }
 
@@ -134,7 +138,7 @@ export async function tell(env, deps = {}) {
   if (!version || !pending.includes(version)) return [`nothing to tell: ${version || 'no version'} is not pending`];
   const older = pending.filter(v => compareVersions(v, version) < 0);
   for (const old of older) {
-    if (await announce(gh, old, `ℹ️ Jobadabra ${old} left Microsoft's review before I could read its verdict (${version} was submitted after it). Check Partner Center if you need to know whether it was accepted.`, env, sender, 'review-ended')) out.push(`told the owner: ${old} left review, verdict not read`);
+    if (await announce(gh, old, messageOf('ended', {version: old, reason: version}), env, sender, 'review-ended')) out.push(`told the owner: ${old} left review, verdict not read`);
   }
   if (await announce(gh, version, messageOf(verdict === 'live' ? 'live' : 'failed', {version, reason, run, repo: env.GITHUB_REPOSITORY}), env, sender, verdict)) out.push(`told the owner: ${version} ${verdict}`);
   else out.push(`${version} was already announced`);
@@ -152,7 +156,7 @@ export async function broken(env, deps = {}) {
   const gh = deps.gh || github(env), sender = deps.sender || send;
   if (!await gh.claim(BROKEN)) return ['already told: the Store watcher is still failing'];
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
-  try { await tellOwner(`⚠️ The Microsoft Store watcher is failing, so no "accepted" message will come until it is fixed.\nRun: ${run}\nIt tells you once; it is quiet again after a green check.`, env, sender); }
+  try { await tellOwner(messageOf('broken', {run}), env, sender); }
   catch (error) { await gh.release(BROKEN); throw new Error(`the watcher-broken message did not reach Telegram (${error.message}); it is tried again next hour`); }
   return ['told the owner: the Store watcher is failing'];
 }

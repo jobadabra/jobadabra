@@ -49,6 +49,7 @@ for s in json.load(sys.stdin)["red"]:
 ' <<<"$state_json")"
 if [ -z "$reds" ]; then echo "Main's e2e: no suite red."; exit 0; fi
 echo "Main's e2e is red:"; awk -F'\t' '{ printf "  %s (since %s, %s)\n", $1, $2, $4 }' <<<"$reds"
+echo "Red suites: $(cut -f1 <<<"$reds" | paste -sd, -)"   # the machine line (desktop/e2e/lib/nightly-alert.mjs reads it; never the indentation above)
 if [ -n "$status" ]; then exit 1; fi
 if [ -n "$force" ]; then echo "Starting the beta anyway (--force): $force"; exit 0; fi
 
@@ -102,7 +103,7 @@ if [ "${st#completed }" = success ]; then
 fi
 echo "Re-check ${st#completed }: main is still red (${url})."
 # Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): say whether each red step is flaky (it passed on code unchanged since) or changed (a likely regression), with the green run, so no person has to notice. Information only: a failed read prints nothing.
-if [ -f "$here/flaky-verdict.mjs" ]; then GITHUB_REPOSITORY="$repo" node "$here/flaky-verdict.mjs" --run "$id" --repo "$repo" 2>/dev/null | sed 's/^/  /'; fi
+if [ -f "$here/flaky-verdict.mjs" ]; then GITHUB_REPOSITORY="$repo" node "$here/flaky-verdict.mjs" --run "$id" --repo "$repo" --machine 2>/dev/null | sed '/^Red step: /!s/^/  /'; fi
 # Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): the nightly of 1 Nov (run 41267448030) built nothing over one flaky sign-up step (re-check run 41267492981); only a safety or data step stops a beta.
 if verdict="$(judge_reds "$(tr ',' '\n' <<<"$suites" | awk -v r="$id" '{ print $0 "\t" r }')")"; then
   echo "No red step is a safety or data step: the beta goes on, and its own e2e (with the one retry) decides."

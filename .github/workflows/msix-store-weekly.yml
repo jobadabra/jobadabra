@@ -59,5 +59,4 @@ jobs:
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: |
-          message="⚠️ This week's Microsoft Store submission did not start."$'\n'"Run: $RUN"$'\n'"By hand: gh workflow run msix-store-weekly.yml -R $GITHUB_REPOSITORY --ref main"
-          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE, process.env, fetch, {event: 'msstore-status'}))"
+          node desktop/e2e/store-alert.mjs msix-store-weekly
