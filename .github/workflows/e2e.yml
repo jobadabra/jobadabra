@@ -382,9 +382,19 @@ jobs:
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ inputs.target_ref || github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
+      # The action comes from this workflow's own commit, like the relay above: a bisect or a soak checks out an older commit that may not have it
+      # (tests/tooling/ci/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit). It reads the tested commit's desktop/package-lock.json.
+      - name: The Electron cache action from this workflow's own commit
+        timeout-minutes: 5
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-electron
+          sparse-checkout: .github/actions/electron-cache
+          persist-credentials: false
       - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
         timeout-minutes: 5
-        uses: ./.github/actions/electron-cache
+        uses: ./.ci-electron/.github/actions/electron-cache
       - name: Install the app
         timeout-minutes: 5
         working-directory: desktop
