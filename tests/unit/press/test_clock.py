@@ -57,9 +57,11 @@ class ClockIsTheShimTest(unittest.TestCase):
         self.assertEqual(shim.local_titles(100), clock.local_titles(100))
 
     def test_without_a_budget_every_step_takes_all_it_has(self):
-        clock, shim = Clock(), Clock()
+        time_budget.start(0)   # a CLI run, a cloud run, a test: no budget
+        shim = time_budget
         self.assertEqual((shim.batch('score', 7), shim.in_calls('place_rounds', 90, 30, 2), shim.over(), shim.ended()), (7, 90, False, False))
-        self.assertEqual(shim.part(5), clock.part(5))
+        self.assertEqual(shim.part(5), 5)
+        self.assertEqual(Clock().part(5), shim.part(5))
 
     def test_the_press_in_search_at_is_where_the_clock_counts_from(self):
         press = Clock(search_at=1_000_000.0)
