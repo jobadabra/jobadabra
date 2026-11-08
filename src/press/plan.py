@@ -7,7 +7,6 @@ recordings PR against main. rank.py keeps the order INSIDE a step (employers, ti
 The yardstick's numbers are unusable until the replay-fidelity card lands: the rates here are a measurement of real runs, not a proof of speed. Counts only, nothing about the person.
 Only a timed run saves (as resume.py). Tests: tests/unit/press/test_plan.py."""
 import json
-import os
 import sys
 from datetime import datetime, timezone
 
@@ -65,12 +64,9 @@ def load():
 
 
 def _write(data):
-    """Whole or not at all (a temp file of this process, then a rename), as resume._write."""
-    target = paths.DATA / FILE
-    target.parent.mkdir(parents=True, exist_ok=True)
-    part = target.with_suffix(f'.{os.getpid()}.part')
-    part.write_text(json.dumps(data, indent=1) + '\n')
-    os.replace(part, target)
+    """Whole or not at all, through the one atomic writer (Gitar, #3621: paths.write_whole fsyncs, keeps the file this user's only, and its temp file is left out of an export)."""
+    paths.DATA.mkdir(parents=True, exist_ok=True)
+    paths.write_whole(paths.DATA / FILE, json.dumps(data, indent=1) + '\n')
 
 
 def run(db, now=None):
