@@ -40,14 +40,19 @@ export function scan(root = ROOT) {
 
 export const ALLOWED = path.join(ROOT, 'tools/unpinned-clock-allowed.txt');
 
-/** The recorded debt as `{path: count}`. */
-export function readAllowed(file = ALLOWED) {
+/** The ledger's text as `{path: count}`: one `<count><TAB><path>` line per file. */
+function parseAllowed(text) {
   const debt = {};
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+  for (const line of text.split('\n')) {
     const [count, name] = line.split('\t');
     if (name) debt[name] = Number(count);
   }
   return debt;
+}
+
+/** The recorded debt as `{path: count}`. */
+export function readAllowed(file = ALLOWED) {
+  return parseAllowed(fs.readFileSync(file, 'utf8'));
 }
 
 /** The debt file's text for `found`: one sorted line per file. */
@@ -65,9 +70,7 @@ export function worse(found, allowed) {
  * Why (8 Nov 2026, fr; #3629): `--check` is what a tests/*.py-only PR runs (tests/guards/rules/test_unpinned_clock.py; the desktop workflow does not start for it) and it only failed on NEW reads, so a PR that paid a file's debt off merged with its ledger line left and main went red. It now holds the same line as desktop/test/tooling/ci/unpinned-clock.test.js.
  */
 export function ledgerProblems(read, ledgerText) {
-  const allowed = {};
-  for (const line of ledgerText.split('\n')) { const [count, name] = line.split('\t'); if (name) allowed[name] = Number(count); }
-  const found = worse(read, allowed);
+  const found = worse(read, parseAllowed(ledgerText));
   return {found, stale: !found.length && ledgerText !== allowedText(read)};
 }
 
