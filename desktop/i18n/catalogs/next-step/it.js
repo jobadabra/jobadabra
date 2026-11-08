@@ -3,7 +3,7 @@ export default {
   "step_webSearch": "ricerca web",
   "step_jobBoards": "portali di lavoro",
   "step_employerSites": "siti dei datori di lavoro",
-  "step_freeJobApis": "siti di lavoro",
+  "step_freeJobApis": "fonti di annunci gratuite",
   "step_googleJobs": "Google Jobs",
   "step_jobAlertEmails": "e-mail di avviso lavoro",
   "step_descriptions": "descrizioni delle offerte",

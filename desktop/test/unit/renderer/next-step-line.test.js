@@ -16,6 +16,13 @@ test('the line as the owner drew it: the next step with its count, then the one 
   assert.equal(line([{step: 'employer_sites', left: 561}, {step: 'job_boards', left: 4}]), 'Next: employer sites (561 left to read), then job boards');
 });
 
+test('the free job APIs step is said "free job sources" (asked via AskUserQuestion, 8 Nov 2026: "free job sources (Recommended)", all languages)', async () => {
+  assert.equal(line([{step: 'job_boards', left: null}, {step: 'free_job_apis', left: null}]), 'Next: job boards, then free job sources');
+  for (const [locale, word] of [['de', 'freie Jobquellen'], ['fr', "sources d'emploi gratuites"], ['it', 'fonti di annunci gratuite'], ['es', 'fuentes de ofertas gratuitas'], ['ro', 'surse gratuite de joburi'], ['ru', 'бесплатные источники вакансий']]) {
+    assert.equal((await import(`../../../i18n/catalogs/next-step/${locale}.js`)).default.step_freeJobApis, word, locale);
+  }
+});
+
 test('a count of 0, none or nonsense is left out, and one step has no "then"', () => {
   for (const left of [0, null, undefined, -3, 2.5, '561']) assert.equal(line([{step: 'employer_sites', left}, {step: 'job_boards'}]), 'Next: employer sites, then job boards', String(left));
   assert.equal(line([{step: 'employer_sites', left: 7}]), 'Next: employer sites (7 left to read)');
