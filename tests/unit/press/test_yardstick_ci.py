@@ -63,6 +63,20 @@ class YardstickCi(unittest.TestCase):
             self.assertIn('crashed or missing on this ref (left out', out.getvalue())
             self.assertIn(': p2', out.getvalue())
 
+    def test_a_stale_recording_is_named_main_decides_and_a_pr_only_report_stands(self):
+        with tempfile.TemporaryDirectory() as root:
+            art = Path(root)
+
+            def report(name, **counts):
+                (art / name).mkdir()
+                (art / name / 'tape-report.jsonl').write_text(json.dumps({'mode': 'replay', **counts}) + '\n')
+            report('yardstick-p11-main', web_tape=209, web_missing=551)      # stale: 72 % of the pages missing
+            report('yardstick-p17-pr', web_tape=100, web_missing=40)         # a PR-only report: its gap stands
+            report('yardstick-p17-main', web_tape=100, web_missing=1)        # ... until main, under the bounds, says otherwise
+            report('yardstick-p18-pr', web_tape=164, web_missing=1, ai_tape=28, ai_missing=1)   # fresh: under both bounds
+            report('yardstick-p5-pr', web_tape=10, web_missing=5)            # only the PR replayed it
+            self.assertEqual(ci.recording_gaps(art), {'p11': (551, 760, 0, 0), 'p5': (5, 15, 0, 0)})
+
 
 if __name__ == '__main__':
     unittest.main()

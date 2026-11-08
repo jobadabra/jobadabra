@@ -41,6 +41,38 @@ def lay_out(art, out):
     return sides
 
 
+# Why (rf3, 8 Nov 2026, gi: "recording gap: re-record pN" instead of crediting it): a replay that asks for pages its recording lacks measured a path the recording never took (p11 after #3606: 551 of
+# ~760 pages), so its coverage is not the pipeline's. The bounds are tools/persona-search/tape-store.mjs staleNote's (2 % of the web requests: "a few odd ones are noise"), measured on recordings made
+# at the replayed commit: p18 (recorded after #3606), 3 replays at wait scale 1: 1 of 165 pages (0.6 %), 1 of ~35 AI answers (3 %), every run; p11 (recorded before): 551 of 760 pages, 13 of 77 AI answers (17 %).
+# 10 % of the AI answers sits between the two. Report only: the numbers are shown as before, the persona is named.
+GAP_WEB_SHARE = 0.02
+GAP_AI_SHARE = 0.10
+
+
+def recording_gaps(art):
+    """{persona: (web missing, web asked, AI missing, AI asked)} for each persona whose replay on main (else on this ref) asked more than the bounds for what its recording lacks.
+    Read from art/yardstick-<persona>-<side>/tape-report.jsonl (src/search_tape.py writes one 'replay' line per process)."""
+    gaps = {}
+    for side in ('pr', 'main'):   # main last: the recording against main's code is the better witness of a stale recording
+        for report in sorted(Path(art).glob(f'yardstick-p*-{side}/tape-report.jsonl')):
+            total = dict.fromkeys(('web_tape', 'web_missing', 'ai_tape', 'ai_missing', 'ai_rebuilt'), 0)
+            for line in report.read_text(encoding='utf-8').splitlines():
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if entry.get('mode') == 'replay':
+                    for name in total:
+                        total[name] += entry.get(name) or 0
+            web, ai = total['web_tape'] + total['web_missing'], total['ai_tape'] + total['ai_missing'] + total['ai_rebuilt']
+            persona = report.parent.name[len('yardstick-'):].split('-', 1)[0]
+            if (web and total['web_missing'] / web > GAP_WEB_SHARE) or (ai and total['ai_missing'] / ai > GAP_AI_SHARE):
+                gaps[persona] = (total['web_missing'], web, total['ai_missing'], ai)
+            elif side == 'main':
+                gaps.pop(persona, None)
+    return gaps
+
+
 def rows(recordings, folder, run):
     """numbers.persona_rows for the personas this side replayed that run (one whose replay crashed before that run is left out)."""
     kept = Path(folder).parent / f'.run{run}-{Path(folder).name}'
@@ -119,6 +151,10 @@ def pr(art, out):
     if not band:
         lines.append("main's noise band is not measured yet (dispatch this workflow with mode=band on main): every verdict reads \"not measured\".")
     found = {}
+    gaps = recording_gaps(art)
+    if gaps:
+        lines += ['', '**Recording gap, re-record (their numbers below are not the pipeline\'s): ' + '; '.join(
+            f'{persona} ({web_missing} of {web} pages and {ai_missing} of {ai} AI answers missing)' for persona, (web_missing, web, ai_missing, ai) in sorted(gaps.items(), key=lambda item: int(item[0][1:]))) + '**']
     for run, label in RUNS.items():
         mine = rows(recordings, sides['pr'], run)
         theirs = rows(recordings, sides['main'], run) if 'main' in sides else []
