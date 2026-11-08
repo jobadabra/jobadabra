@@ -81,7 +81,7 @@ class Beside:
         from ..ai import slots
         from . import read_budget
         read_budget.short(False)   # in the caller's thread, before the employer read takes its deadline
-        self.search, self.groups, self.matched, self.done, self.shortened = search, queue.SimpleQueue(), [], threading.Event(), False
+        self.search, self.groups, self.matched, self.done, self.shortened, self.failed = search, queue.SimpleQueue(), [], threading.Event(), False, False
         self.thread = threading.Thread(target=slots.carry(self._read_all), args=(wait,), name='boards-first', daemon=True)
         self.thread.start()
 
@@ -105,7 +105,18 @@ class Beside:
         self.done.wait()
 
     def deliver(self, feed_db, on_jobs):
-        """In the thread that owns the job cache: the groups read so far kept and shown; the employer read shortened once they give ENOUGH."""
+        """In the thread that owns the job cache: the groups read so far kept and shown; the employer read shortened once they give ENOUGH.
+        Called from the employer read (feeds.scan on_read): a failure here warns and stops the boards, never that read (the full board read
+        reads them, as when boards_first.run failed in front of it)."""
+        if self.failed:
+            return
+        try:
+            self._deliver(feed_db, on_jobs)
+        except Exception as error:  # noqa: BLE001 — the full board read reads them; the employer read goes on
+            print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+            self.failed = True
+
+    def _deliver(self, feed_db, on_jobs):
         import queue
         from ..ai import batch_scope
         from . import aggregators, boards_ahead

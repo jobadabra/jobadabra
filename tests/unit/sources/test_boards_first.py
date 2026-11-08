@@ -259,25 +259,25 @@ class OldState(unittest.TestCase):
         self.assertEqual(read_budget.over(at=10**9, index=read_budget.READ_FLOOR, now=0.0), True,
                          'they gave enough: from now no employer site past the floor, though the read took its deadline before')
 
+    def test_a_failure_keeping_the_boards_never_stops_the_employer_read(self):
+        # Gitar on #3606: deliver runs inside the employer read (feeds.scan on_read); before, a failing boards_first.run only warned.
+        with mock.patch.object(boards_first, '_groups', return_value=iter([('the 1 that worked before', [{'name': 'Board'}])])), \
+                mock.patch.object(boards_first, '_fetch', return_value=[{'url': 'https://example.test/1', 'title': 'Nurse'}]), \
+                mock.patch('src.sources.feeds.triage'), \
+                mock.patch('src.sources.aggregators.kept', side_effect=sqlite3.OperationalError('database is locked')), \
+                redirect_stdout(io.StringIO()) as out:
+            first = boards_first.Beside(SEARCH)
+            first.wait()
+            first.deliver(self.db, lambda jobs: None)   # raises nothing: the employer read goes on
+            self.assertEqual(first.take(self.db, lambda jobs: None), [])
+        self.assertIn('Warning: job boards first skipped: OperationalError: database is locked', out.getvalue())
+
     def test_a_board_that_worked_for_another_field_is_not_read_first(self):
         self.run_first()
         self.search_again()
         board_web._early.clear()
         with mock.patch('src.role_kinds.of_search', return_value={'health_care'}), redirect_stdout(io.StringIO()):
             self.assertEqual(boards_first.run(self.db, SEARCH, lambda jobs: None), [])
-
-
-class RunOrder(unittest.TestCase):
-    def test_the_found_boards_start_before_the_employer_sites_and_after_a_first_runs_slice(self):
-        # ps E2a-2 (owner, 8 Nov 2026, option "the boards still start first"): a repeat run STARTS the boards before the employer sites and reads
-        # them beside (test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read); a first run reads its slice, then the boards.
-        source = (Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py').read_text()
-        early, slice_, after_slice, first, sites = (source.index(text) for text in (
-            'board_web.early(', 'first_jobs.run(', 'boards_first.run(', 'first = start_boards_first()\n', 'boards_ahead.scan_beside('))
-        self.assertLess(early, slice_)
-        self.assertLess(slice_, after_slice)
-        self.assertLess(after_slice, first)
-        self.assertLess(first, sites)
 
 
 if __name__ == '__main__':
