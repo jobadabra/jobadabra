@@ -124,7 +124,7 @@ section('Item rows', '.item-rows: one item per row (bold title, muted line) with
     <li><div class="item-words"><b><a class="link" href="#">Staff Platform Engineer</a></b><span class="muted">Nango</span></div><button class="secondary item-action">View CV</button></li></ul>`;
   return box;
 })());
-section('Dialog parts', 'A .check-row.inline-label that follows another part inside a .panel-dialog's form or section sits one var(--stack-gap) (12) below it: the gap comes from the rule, never a one-off margin (these demo rows use the token directly, outside a dialog). .panel-dialog with .dialog-head / .dialog-lead / .dialog-foot; .composer + .tool; .attachment + .soft-button; .select-search; .check-row; .choice-list; .segmented.is-fill', (() => {
+section('Dialog parts', 'A .check-row.inline-label that follows another part inside the form or section of a .panel-dialog sits one var(--stack-gap) (12) below it: the gap comes from the rule, never a one-off margin (these demo rows use the token directly, outside a dialog). .panel-dialog with .dialog-head / .dialog-lead / .dialog-foot; .composer + .tool; .attachment + .soft-button; .select-search; .check-row; .choice-list; .segmented.is-fill', (() => {
   const box = el('div');
   box.innerHTML = `<div class="composer"><textarea rows="2" placeholder="Paste a message here…"></textarea>
     <div class="composer-tools"><button class="tool"><i data-icon="paperclip"></i>Add screenshot</button>
