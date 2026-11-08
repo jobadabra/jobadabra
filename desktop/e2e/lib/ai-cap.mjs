@@ -5,6 +5,7 @@
 // Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
+import {reasonOf} from './broker-reason.mjs';
 
 // 10,000 neurons a day are free, then $0.011 per 1,000: $1 over the free part is about 100,900 neurons, so the cap is 100,000 on the account's day.
 export const CAP_NEURONS = 100000;
@@ -75,7 +76,7 @@ export function skipStepForCap(name, refusal, env = process.env) {
   skipped.push(name);
   console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`);
   const cause = capMessage(refusal.neurons, env, refusal.why, refusal.provider).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-  console.log(`::warning title=${refusal.provider ? 'AI refused' : 'AI credit ran out'}::${cause}`);
+  console.log(`::warning title=${refusal.provider ? 'AI refused' : reasonOf(refusal.why || `${refusal.neurons} of ${capOf(env)} neurons`)?.title || 'AI refused'}::${cause}`);
   writeNote(refusal, env);
 }
 

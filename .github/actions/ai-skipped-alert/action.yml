@@ -39,4 +39,4 @@ runs:
         notes="${NOTES_DIR:-ai-capped-notes}"
         mkdir -p "$notes"
         if [ -z "$NOTES_DIR" ]; then gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ai-capped-*' --dir "$notes" 2>/dev/null || echo "No AI job was refused in this run."; fi
-        node desktop/e2e/credit-alert.mjs --artifacts "$notes" --verdict "Codex refused the AI jobs of this run; they are skipped (grey), nothing is paid"
+        node desktop/e2e/credit-alert.mjs --artifacts "$notes"
