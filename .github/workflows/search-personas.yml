@@ -49,6 +49,12 @@ jobs:
     name: Persona ${{ matrix.persona }}
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.presses == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
+    # Why (8 Nov 2026, owner: "Fix Free AI + PR lane now (Recommended)": "by-hand Search checks may use the 30% PR reserve (about 1 run a day)"): the run token's environment is the only signed
+    # sign of a by-hand run (the Worker's nightly is workflow_dispatch by the same account); the broker puts this one environment of this workflow on its PR lane (jobadabra-web lib/lanes.mjs).
+    # The nightly names no environment and stays on the scheduled lane. No deployment record: it deploys nothing.
+    environment:
+      name: ${{ !inputs.scheduled && 'search-check-by-hand' || '' }}
+      deployment: false
     permissions:
       contents: read
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.

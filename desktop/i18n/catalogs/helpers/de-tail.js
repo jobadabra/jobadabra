@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "das Formular liegt in einem Frame",
   "triageUnknown": "die Seite ließ sich nicht einordnen",
   "triageTimeout": "hat zu lange gedauert",
+  "triageKit": "das Bewerbungspaket konnte nicht vorbereitet werden",
   "triageFacts": "jede Antwort ist eine gespeicherte Angabe",
   "triageCaptcha": "eine Prüfung, ob Sie ein Mensch sind",
   "triageCheck": "das Formular enthält womöglich eine Prüfung",

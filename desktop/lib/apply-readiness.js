@@ -76,11 +76,14 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
   async function applyReadiness(job) {
     const asked = cancels;
     const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job').catch(error => ({ok: false, error: String(error?.message || error)}));
-    if (kit.ok === false) { log('apply', 'readiness: the kit was not drafted, so the form was not read', {error: String(kit.error || '').slice(0, 200)}); return {kit, check: null, stored: false}; }   // no kit, no Applications row to keep a check on
-    if (cancels !== asked) return {kit, check: null, stored: false};
+    // Why (8 Nov 2026, red main after #3573): a kit draft that ran and failed no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
+    if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200), refused: kit.refused === true});
+    if (kit.refused === true) return {kit, check: null, stored: false};   // Why (8 Nov 2026, Gitar on #3578): a gate (Notion, move, allowance, no AI) starts nothing, neither the browser nor the match
+    if (cancels !== asked) return {kit, check: null, stored: false, cancelled: true};
     const stored = await storedCheck(job);
     if (stored) return {kit, check: stored, stored: true};
     const read = await readForm(job);
+    if (!read && cancels !== asked) return {kit, check: null, stored: false, cancelled: true};   // a read Stop cut short is not a result (jobs-triage.js)
     if (storable(read)) await save(job, read);
     else if (read && read.unreadable !== true) waiting.set(job.url, {job, read});
     return {kit, check: read, stored: false};
