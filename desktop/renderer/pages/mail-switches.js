@@ -1,4 +1,4 @@
-// The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows; the news mails, #news-rows) and beside an automation (`[data-mail-slot="<row>"]`: Automation's Find jobs, Apply).
+// The person's switch for each e-mail, drawn in every place that shows one: Settings → Notifications (all rows, #mail-rows; the news mails, #news-rows) and beside an automation (`[data-mail-slot="<row>"]`: Apply's rows; in Automation → Schedules the "E-mail me" column cell of Find jobs, a plain switch).
 // Why (owner, 5-6 Nov 2026: "from both Automations and Notifications", "Only the person"): every place draws from ONE state read from the website (lib/mail-choices.js), so two switches for a row never disagree.
 // A press is one tap with no confirm; a failed save puts the switch back and says so beside it. Hidden only when the main process says so (MAIL_SWITCHES_SHOWN). Guard: test/unit/renderer/mail-switch-state.test.js.
 import '../../i18n/screens-pages.js';
@@ -20,25 +20,42 @@ const WHEN = {'app-matches': t('pagesExtraLabels.newJobsNotify'), 'app-needs-you
 const FROM_MAC = ['app-needs-you', 'app-applied'];
 const sentence = text => (text ? text[0].toUpperCase() + text.slice(1) : '');
 
+/** The one line saying when a mail goes out, in the person's words (the website's `when` is Admin's wording). */
+const mailLine = row => WHEN[row.id] || mailDescription(row.id, sentence(row.when));
+
+/** The switch itself: a checkbox named for the mail, pressed through `press(id, on)`. Every place draws it with this, so the aria wording never drifts. */
+function switchTrack(row, press) {
+  const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.on});
+  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {name: mailLabel(row.id, row.name)}));
+  box.addEventListener('change', () => press(row.id, box.checked));
+  const track = el('span', 'switch');
+  track.append(box, el('span'));
+  return track;
+}
+
 /** One switch row: a switch, the mail's name, and the one line saying when it goes out. `note`: the refused save's words (a warning line). */
 export function switchRow(row, where, note = '', press = () => {}) {
   const name = mailLabel(row.id, row.name);
   const wrap = el('div', 'mail-row');
   wrap.dataset.mailRow = row.id;
-  const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!row.on});
-  box.setAttribute('aria-label', t('pagesDynamicProfileReady.m270', {name}));
-  box.addEventListener('change', () => press(row.id, box.checked));
-  const track = el('span', 'switch');
-  track.append(box, el('span'));
+  const track = switchTrack(row, press);
   const words = el('span');
   const title = el('span', '', name);
   if (row.suggested) title.append(' ', el('span', 'ui-pill tone-info', t('pagesStrategy.suggested')));   // e-mail is not on yet: the row is off, and this is what the mode would start with
-  words.append(title, el('span', 'muted small', [WHEN[row.id] || mailDescription(row.id, sentence(row.when)), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
+  words.append(title, el('span', 'muted small', [mailLine(row), where].filter(Boolean).join('. ').replace(/\.?$/, '.')));
   const label = el('label', 'switch-row');
   label.append(track, words);
   wrap.append(label);
   if (note) wrap.append(el('p', 'message mail-note', plainError(note)));
   return wrap;
+}
+
+/** The "E-mail me" cell of a Schedules row: only the switch, no words (the column head and a tooltip say what it is). `title`: the mail's one line plus where it comes from. */
+export function switchCell(row, title, press = () => {}) {
+  const track = switchTrack(row, press);   // a span, not a label: the global label margin (style.css) would push the switch off the row's centre line and make the row taller
+  track.title = title;
+  const label = $('setting-schedule')?.querySelector('.is-head .mail-cell')?.textContent || '';   // the column's own (translated) head, shown beside the switch when the table stacks
+  return [track, el('span', 'mail-cell-label', label)];
 }
 
 // Notifications' card: every row, where they come from once under the title, and the read's own words when it failed.
@@ -62,13 +79,34 @@ function drawNews(state, shown) {
   list.replaceChildren(...news.map(row => switchRow(row, '', mail.note(row.id), mail.press)));
 }
 
-// The rows beside an automation (`data-mail-slot`), the Apply card's one "where" line, and the cards of slots that have none to show.
+// A Schedules `.mail-cell`: the plain switch for its row (or nothing). A cell is never `hidden`: it would leave the grid and shift Status left.
+function drawCell(slot, row, state) {
+  slot.replaceChildren();
+  if (row) slot.append(...switchCell(row, cellTitle(row, state.where), mail.press));
+}
+
+/** The cell switch's tooltip: the mail's one line, then where it comes from. */
+function cellTitle(row, where) {
+  return [mailLine(row), where].filter(Boolean).join('. ');
+}
+
+// The refused save's words under the Schedules table (a cell has no room for words), or nothing.
+function drawScheduleNote(notes) {
+  const note = $('schedule-mail-note');
+  if (note) { note.textContent = notes.length ? plainError(notes[0]) : ''; note.hidden = !notes.length; }
+}
+
+// The rows beside an automation (`data-mail-slot`), the Apply card's one "where" line, and the cards of slots that have none to show. A slot that is a Schedules `.mail-cell` gets the plain switch; the table grows its "E-mail me" column only while one has a row (`has-mail`), so a hidden or unread mail state leaves the old three columns.
 function drawSlots(state, shown) {
+  const cells = [];
   for (const slot of document.querySelectorAll('[data-mail-slot]')) {
     const row = shown && state.rows.find(entry => entry.id === slot.dataset.mailSlot);
+    if (slot.classList.contains('mail-cell')) { drawCell(slot, row, state); if (row) cells.push(row.id); continue; }
     slot.hidden = !row;
     slot.replaceChildren(...(row ? [switchRow(row, slot.closest('[data-mail-group]') ? '' : state.where, mail.note(row.id), mail.press)] : []));   // a card of several rows says where once, in its lead; a row under one automation says it itself
   }
+  $('setting-schedule')?.classList.toggle('has-mail', cells.length > 0);
+  drawScheduleNote(cells.map(id => mail.note(id)).filter(Boolean));
   const applyWhere = $('apply-mail-where');
   if (applyWhere) applyWhere.textContent = shown ? state.macWhere || state.where : '';   // applying runs on the Mac in every mode
   for (const group of document.querySelectorAll('[data-mail-group]')) group.hidden = ![...group.querySelectorAll('[data-mail-slot]')].some(slot => !slot.hidden);

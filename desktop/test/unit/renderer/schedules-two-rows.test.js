@@ -87,3 +87,26 @@ test('Schedules redraws its place and time when the servers\' state arrives or G
   const cloud = read('pages/connections.js');
   assert.match(cloud.slice(cloud.indexOf('export function showCloud')), /drawChoice\(\);\s*showScheduleState\(\);/);
 });
+
+test('Schedules has an "E-mail me" column (owner, 8 Nov 2026: V1): every row has the same cells as the head, Find jobs carries the one switch slot, and no row has a mail line of its own', () => {
+  const html = read('index.html');
+  const block = html.slice(html.indexOf('id="setting-schedule"'), html.indexOf('id="setting-focus"'));
+  const rows = [...block.matchAll(/<(?:div|label) class="task-row[^"]*">([\s\S]*?)<\/(?:div|label)>(?=\s*(?:<!--[\s\S]*?-->\s*)?(?:<(?:div|label) class="task-row|<\/div>))/g)].map(m => m[1]);
+  assert.equal(rows.length, 5, 'head, Find jobs, Gmail, Ready to send, Apply for me');
+  const head = rows[0];
+  assert.match(head, /class="mail-cell"[^>]*>E-mail me</);
+  assert.equal([...block.matchAll(/data-mail-slot="app-matches"/g)].length, 1, 'one switch slot, on Find jobs');
+  assert.match(block, /<span class="mail-cell" data-mail-slot="app-matches"><\/span>/, 'a slot is never hidden: a hidden cell leaves the grid and shifts Status left');
+  assert.doesNotMatch(block, /is-mail/);
+  for (const row of rows.slice(1)) assert.match(row, /class="mail-cell"/, 'every row keeps its cell, empty where it has no mail (Gmail: no new mail kind; Ready to send, Apply for me: Coming soon)');
+});
+
+test('every dropdown has the arrow 14 px in from the edge through one shared rule, a row\'s own `background` cannot erase it, and the language select does not get a second arrow (owner, 8 Nov 2026)', () => {
+  const style = read('style.css');
+  const rule = style.match(/select:not\(\[multiple\]\):not\(\[size\]\) \{([^}]*)\}/)?.[1] || '';
+  assert.match(rule, /appearance: none/);
+  assert.match(rule, /background-position: right 14px center/);
+  assert.match(rule, /padding-inline-end: calc\(var\(--sp-6\) \+ var\(--sp-2\)\)/);   // 40 px, from the spacing tokens (the design-spacing ratchet counts a raw 40px)
+  assert.match(style, /prefers-color-scheme: dark\) \{ select:not\(\[multiple\]\):not\(\[size\]\) \{ background-image/, 'the arrow is readable in dark too');
+  assert.match(read('magic.css'), /\.language-select select:not\(\[multiple\]\):not\(\[size\]\) \{ background-image: none; \}/);
+});

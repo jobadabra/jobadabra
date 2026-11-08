@@ -29,6 +29,10 @@ label { display: block; font-weight: 600; font-size: var(--fs-md); margin: 12px 
 input, select, textarea { width: 100%; accent-color: var(--signal); font: var(--fs-base) var(--font-sans); color: var(--ink); background: var(--field);
   border: 1px solid var(--field-line); border-radius: var(--r-md); padding: 8px 10px; }
 textarea { font: var(--fs-md)/1.5 var(--font-sans); resize: vertical; }
+/* Every dropdown: the arrow sits 14 px in from the rounded edge and the text never runs under it (owner, 8 Nov 2026: "the dropdowns and their arrows looks bad"; shared rule picked: "Yes, one shared rule"). The native arrow hugs the corner and cannot be moved, so it is drawn here. A list box (multiple/size) keeps the native look. Specificity (0,2,1) beats a `.x select { background: ... }` shorthand, which would otherwise erase the arrow. */
+select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-inline-end: calc(var(--sp-6) + var(--sp-2)); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; }
+@media (prefers-color-scheme: dark) { select:not([multiple]):not([size]) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); } }
+
 /* Three tones (owner, 17 Oct 2026): the label is muted, the typed value is ink, a placeholder is fainter than both. */
 ::placeholder { color: var(--muted); opacity: .6; }
 /* Mono only where the content is code or a transcript. */

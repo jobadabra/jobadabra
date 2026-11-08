@@ -3,5 +3,5 @@
 .mail-row .ui-pill { margin-left: var(--sp-1); vertical-align: middle; }
 .mail-note { margin: var(--sp-1) 0 0 44px; color: var(--warn); }
 .mail-pitch { margin-top: var(--sp-3); }
-/* Under an automation: a slim row of the task table, with no rule above it, the switch under the task's name (the Find jobs label owns the select, so the switch sits outside it). */
-#setting-schedule .task-row.is-mail { display: block; border-top: 0; padding-top: 0; }
+/* Schedules: the failed-save words sit under the table, in a plain line. */
+#schedule-mail-note { margin: var(--sp-2) 0 0; }
