@@ -13,8 +13,9 @@ import {LINE, FAILED} from '../renderer/email-consent-words.js';
 // Demo mode's rows: the real views over the built-in rows, never the website. JOBADABRA_DEMO_MAIL picks the state a preview shows: `off` = switches hidden, `suggested` = e-mail not on yet (all off, with the Suggested tag), else e-mail on.
 // Fictional rows for demo mode only (the real ones come from the website, never a copy in the app).
 const DEMO_ROWS = [
-  {id: 'app-matches', name: 'New matches', when: 'a search finds new jobs', suggested: {mac: 'digest', always: 'digest'}}, {id: 'app-needs-you', name: 'An application needs you', when: 'an application waits', suggested: {mac: 'no', always: 'mail'}},
-  {id: 'app-applied', name: 'Applied for you', when: 'Full automation sent an application', suggested: {mac: 'no', always: 'no'}}, {id: 'app-weekly', name: 'Weekly summary', when: 'Mondays', suggested: {mac: 'mail', always: 'mail'}},
+  {id: 'app-matches', name: 'New matches', when: 'a search finds new jobs', suggested: {mac: 'digest', always: 'digest'}}, {id: 'app-needs-you', name: 'An application needs you', when: 'an application waits', suggested: {mac: 'mail', always: 'mail'}},
+  {id: 'app-applied', name: 'Applied for you', when: 'Full automation sent an application', suggested: {mac: 'mail', always: 'mail'}},
+  {id: 'app-reminder', name: 'Interview reminder', when: 'the evening before an interview', suggested: {mac: 'mail', always: 'mail'}}, {id: 'app-ready', name: 'Forms ready to check', when: 'a night ends with forms ready', suggested: {mac: 'mail', always: 'mail'}}, {id: 'app-weekly', name: 'Weekly summary', when: 'Mondays', suggested: {mac: 'mail', always: 'mail'}},
   {id: 'app-stopped', name: 'Always on stopped working', when: 'a run fails', suggested: {mac: 'hidden', always: 'mail'}}, {id: 'app-nothing', name: 'Nothing found for days', when: 'days with no new match', suggested: {mac: 'hidden', always: 'mail'}},
 ].map(row => ({...row, choice: ''}));
 // The two news mails, fictional like the rows; both start off (owner, 6 Nov 2026: nobody is signed up before saying yes).
@@ -29,7 +30,7 @@ const MOMENTS = ['day3', 'day10', 'stopped', 'waited', 'lost', 'match', 'reply',
 
 export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   const moments = createNotifyMoments(storage);
-  if (!DEMO) setTimeout(() => mail.settle(storage).catch(() => {}), 20000).unref?.();   // once, for someone who already has e-mail on (lib/mail-choices.js settle); after start-up has made the install key
+  if (!DEMO) setTimeout(() => mail.settle(storage).then(() => mail.automationOn(storage)).catch(() => {}), 20000).unref?.();   // once, for someone who already has e-mail on (lib/mail-choices.js settle); after start-up has made the install key
   ipcMain.handle('notifyState', async () => {
     if (DEMO && process.env.JOBADABRA_DEMO_MAIL === 'suggested') return {by: ['app'], chosen: ['app'], telegram: channel.telegramReady(storage), email: '', confirmed: false, cadence: 'daily', reached: true};   // a preview of the first run: e-mail is not on yet, no address on our site
     if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, cadence: 'daily', reached: true};

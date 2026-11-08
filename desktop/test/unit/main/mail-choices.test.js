@@ -2,7 +2,7 @@
 // shows the suggested default of the mode and a chosen one is never reset by a mode change, the engine's env is told only the rows that are off (and nothing while the screens are hidden by the gate).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {MAIL_SWITCHES_SHOWN, allowed, alwaysOnTurnedOn, choose, emailing, mailOff, modeOf, read, set, settle, turnOn, turnOnSuggested} from '../../../lib/mail-choices.js';
+import {MAIL_SWITCHES_SHOWN, allowed, alwaysOnTurnedOn, automationOn, choose, emailing, mailOff, modeOf, read, set, settle, turnOn, turnOnSuggested} from '../../../lib/mail-choices.js';
 
 const KEY = 'JPF1.install-0001.tok';
 const ON = {notifyBy: ['email', 'app'], notifyEmail: 'a@b.co', emailConsent: {at: '2026-11-05T10:00:00.000Z', wording: 'x', where: 'cv'}};   // e-mail is on: an address and the person's yes
@@ -203,17 +203,17 @@ test('the app\'s own offs are the only ones Always on turns on: a Mac-only first
   const fetcher = async (url, init) => {
     const body = init?.body ? JSON.parse(init.body) : null;
     if (body) { stored.set(body.mail, body.on ? 'on' : 'off'); applied.push([body.mail, body.on]); }
-    return {json: async () => (body ? {ok: true} : {ok: true, rows: ROWS.map(row => ({...row, choice: stored.get(row.id) || ''}))})};
+    return {json: async () => (body ? {ok: true} : {ok: true, rows: ROWS.map(row => (row.id === 'app-needs-you' ? {...row, id: 'app-weekly', name: 'Weekly summary'} : row)).map(row => ({...row, choice: stored.get(row.id) || ''}))})};
   };
   const mac = storage({settings: {notifyBy: ['app']}});
   await turnOn(mac, 'app-matches', {address: 'a@b.co', save: async choice => { mac.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher});
-  assert.equal(stored.get('app-needs-you'), 'off', 'positive control: the first turn-on of a Mac-only person stored the other row off');
-  assert.deepEqual(mac.settings().mailRowsAppOff, ['app-needs-you'], 'this install remembers it wrote that off');
+  assert.equal(stored.get('app-weekly'), 'off', 'positive control: the first turn-on of a Mac-only person stored the other row off');
+  assert.deepEqual(mac.settings().mailRowsAppOff, ['app-weekly'], 'this install remembers it wrote that off');
   const other = storage({settings: ON});
   assert.deepEqual((await alwaysOnTurnedOn(other, fetcher, true)).written, ['app-stopped'], 'a second install writes only the row nobody chose; it cannot tell the other off from the person\'s, so that stays off');
-  assert.equal(stored.get('app-needs-you'), 'off');
-  assert.deepEqual((await alwaysOnTurnedOn(mac, fetcher, true)).written, ['app-needs-you'], 'the install that wrote it off turns it on (the hr plan\'s first turn-on)');
-  assert.equal(stored.get('app-needs-you'), 'on');
+  assert.equal(stored.get('app-weekly'), 'off');
+  assert.deepEqual((await alwaysOnTurnedOn(mac, fetcher, true)).written, ['app-weekly'], 'the install that wrote it off turns it on (the hr plan\'s first turn-on)');
+  assert.equal(stored.get('app-weekly'), 'on');
   assert.deepEqual(mac.settings().mailRowsAppOff, [], 'a row written on is no longer one the app holds off');
 });
 
@@ -253,12 +253,12 @@ test('a press is remembered: off adds the row to the pressed list, on takes it o
   assert.deepEqual(person.settings().mailRowsPressed, []);
 });
 
-test('Always on: a first row press with e-mail off turns every other unchosen row on (Mac only: off)', async () => {
+test('Always on: a first row press with e-mail off turns every other unchosen row on (Mac only: off, except the four automation mails, on everywhere)', async () => {
   const rows = [{id: 'app-matches', suggested: {mac: 'digest', always: 'digest'}, choice: ''}, {id: 'app-needs-you', suggested: {mac: 'no', always: 'mail'}, choice: ''}, {id: 'app-weekly', suggested: {mac: 'mail', always: 'mail'}, choice: ''}];
   for (const [settings, expected] of [[{notifyBy: ['app']}, false], [{notifyBy: ['app'], cloud: {repo: 'me/j'}}, true]]) {
     const asked = [], person = storage({settings});
     await turnOn(person, 'app-matches', {address: 'a@b.co', save: async choice => { person.saveSettings({notifyBy: choice.by, notifyEmail: choice.email, emailConsent: ON.emailConsent}); return {ok: true}; }, fetcher: site([{ok: true, rows}, {ok: true}, {ok: true}, {ok: true}], asked)});
-    assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]).sort(), [['app-matches', true], ['app-needs-you', expected], ['app-weekly', expected]]);
+    assert.deepEqual(asked.filter(call => call.method === 'POST').map(call => [call.body.mail, call.body.on]).sort(), [['app-matches', true], ['app-needs-you', true], ['app-weekly', expected]]);
   }
 });
 
@@ -339,4 +339,34 @@ test('the first news press with e-mail off sends only the address and the news a
   assert.equal((await choose(refused, 'tips', true, {address: 'a@b.co', fetcher: site([{ok: false, error: 'taken'}], calls)})).ok, false);
   assert.equal(calls.length, 1, 'a refused address stores no news answer');
   assert.deepEqual((await choose(storage({settings: {notifyBy: ['app']}}), 'tips', true, {fetcher: site([])})), {ok: false, error: 'Add your e-mail address in Settings → Notifications first, then turn it on.'}, 'no address anywhere: no call, the switch goes back');
+});
+
+// Owner, 8 Nov 2026 ("On everywhere"): the four automation mails start on in both modes; an 'off' this install wrote under the old Mac-only default is moved once, a person's own never.
+test('automationOn: once, the app-written offs of the four automation mails go on; the person\'s own press and an off from another install stay', async () => {
+  const stored = new Map([['app-needs-you', 'off'], ['app-applied', 'off'], ['app-reminder', 'off']]), posts = [];
+  const fetcher = async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    if (body) { stored.set(body.mail, body.on ? 'on' : 'off'); posts.push([body.mail, body.on]); }
+    const rows = ['app-needs-you', 'app-applied', 'app-reminder'].map(id => ({id, suggested: {mac: 'mail', always: 'mail'}, choice: stored.get(id) || ''}));
+    return {json: async () => (body ? {ok: true} : {ok: true, rows})};
+  };
+  const person = storage({settings: {...ON, notifyBy: ['email'], mailRowsAppOff: ['app-needs-you', 'app-applied'], mailRowsPressed: ['app-applied']}});
+  assert.equal(await automationOn(person, fetcher, true), true);
+  assert.deepEqual(posts, [['app-needs-you', true]], 'only the off this install wrote and the person never pressed');
+  assert.equal(stored.get('app-applied'), 'off', 'the person turned it off here: theirs');
+  assert.equal(stored.get('app-reminder'), 'off', 'an off this install did not write may be the person\'s on another install');
+  assert.deepEqual(person.settings().mailRowsAppOff, ['app-applied']);
+  assert.ok(person.settings().mailAutomationOnAt, 'done once');
+  assert.equal(await automationOn(person, fetcher, true), false, 'a second start does nothing');
+  assert.equal(posts.length, 1);
+});
+
+test('automationOn: nothing while the switches are hidden or e-mail is off, and a failed write leaves the flag unset so the next start tries again', async () => {
+  const fetcher = async () => ({json: async () => ({ok: false, reason: 'not_saved'})});
+  const off = storage({settings: {mailRowsAppOff: ['app-needs-you']}});
+  assert.equal(await automationOn(off, fetcher, true), false, 'e-mail is not on');
+  const person = storage({settings: {...ON, notifyBy: ['email'], mailRowsAppOff: ['app-needs-you']}});
+  assert.equal(await automationOn(person, fetcher, false), false, 'switches hidden');
+  assert.equal(await automationOn(person, fetcher, true), false);
+  assert.equal(person.settings().mailAutomationOnAt, undefined);
 });

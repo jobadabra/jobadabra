@@ -3,6 +3,8 @@ export const rows = {
   'app-matches': ['New matches', 'Neue Treffer', 'Nouvelles offres', 'Nuove corrispondenze', 'Nuevas coincidencias', 'Potriviri noi', 'Новые совпадения'],
   'app-needs-you': ['An application needs you', 'Eine Bewerbung braucht dich', 'Une candidature a besoin de vous', 'Una candidatura richiede il tuo intervento', 'Una solicitud necesita tu intervención', 'O candidatură are nevoie de tine', 'Отклик требует вашего ввода'],
   'app-applied': ['Applied for you', 'Für dich beworben', 'Candidature envoyée pour vous', 'Candidatura inviata per te', 'Solicitud enviada por ti', 'Candidatură trimisă pentru tine', 'Отклик отправлен за вас'],
+  'app-reminder': ["Interview reminder","Interview-Erinnerung","Rappel d’entretien","Promemoria del colloquio","Recordatorio de entrevista","Memento pentru interviu","Напоминание об интервью"],
+  'app-ready': ["Forms ready to check","Formulare zur Prüfung bereit","Formulaires prêts à vérifier","Moduli pronti da controllare","Formularios listos para revisar","Formulare gata de verificat","Формы готовы к проверке"],
   'app-weekly': ['Weekly summary', 'Wochenübersicht', 'Bilan hebdomadaire', 'Riepilogo settimanale', 'Resumen semanal', 'Rezumat săptămânal', 'Итоги недели'],
   'app-stopped': ['Always on stopped working', 'Dauerbetrieb funktioniert nicht mehr', 'Le mode permanent ne fonctionne plus', 'La modalità sempre attiva non funziona più', 'El modo siempre activo dejó de funcionar', 'Modul mereu activ nu mai funcționează', 'Постоянная работа остановилась'],
   'app-nothing': ['Nothing found for days', 'Seit Tagen keine Treffer', 'Aucune offre depuis plusieurs jours', 'Nessun risultato da giorni', 'Sin resultados durante días', 'Niciun rezultat de câteva zile', 'Несколько дней без новых совпадений'],
