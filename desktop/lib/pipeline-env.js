@@ -56,12 +56,15 @@ export function ensureConfig(storage) {
 const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SSL_CERT_FILE',
   'SystemRoot', 'SYSTEMROOT', 'windir', 'USERPROFILE', 'USERNAME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'ComSpec', 'PATHEXT',
   'JOBADABRA_FIXTURE_DIR', 'JOBADABRA_LOCATIONS_FILE',   // these two: the end-to-end journey's fixture feeds and fictional candidate (desktop/e2e), never set for a user
-  'JOBADABRA_SEARCH_TAPE', 'JOBADABRA_SEARCH_TAPE_MODE', 'JOBADABRA_TAPE_WAIT_SCALE', 'JOBADABRA_TAPE_LIVE',   // the persona search check's tape (src/search_tape.py, tools/persona-search), never set for a user
   'JOBADABRA_AI_CALL_LOG',   // Why (7 Nov 2026, #2920, Gitar on #3535): the Search check's per-AI-call run-log lines (src/ai/call_log.py); left out, the engine never saw the flag and printed nothing. Never set for a user
   // Claude Code's own headless sign-in (`claude setup-token`): where there is no Keychain sign-in (Linux, a CI runner) it is the only way
   // the user's Claude Code answers. It goes to the engine only to reach the user's own `claude -p` (27 Oct 2026: on a runner every AI step
   // of a search failed as "signed out" because this was left out).
   'CLAUDE_CODE_OAUTH_TOKEN'];
+
+// The persona search check's tape (src/search_tape.py, src/tape_items.py, tools/persona-search), never set for a user.
+// Why (#3565 review, 7 Nov 2026): a new tape flag, JOBADABRA_TAPE_ITEMS, was set and dropped by the list above (as JOBADABRA_AI_CALL_LOG was, #3535), so every tape flag passes by its prefix.
+const TAPE = /^JOBADABRA_(SEARCH_TAPE|TAPE_)/;
 
 // Crash reports from the engine: the app sets this (main.js) only for an installed build with Technical reports on; the engine reports
 // unhandled errors to it (src/crash_reporting.py). The install id and version ride along as tags.
@@ -73,6 +76,7 @@ export function pipelineEnv(storage, parent = process.env) {
   const settings = storage.settings();
   const env = {
     ...Object.fromEntries(SYSTEM.filter(name => parent[name]).map(name => [name, parent[name]])),
+    ...Object.fromEntries(Object.entries(parent).filter(([name, value]) => TAPE.test(name) && value)),
     PYTHONUNBUFFERED: '1',
     PYTHONUTF8: '1',  // files and pipes in UTF-8 on Windows too (its default is the ANSI code page)
     JOBADABRA_NO_DOTENV: '1',

@@ -183,7 +183,8 @@ test('the end-to-end journey\'s fixture feeds and its fictional candidate reach 
 });
 
 test('the persona search check\'s tape reaches the engine (src/search_tape.py)', () => {
-  const tape = {JOBADABRA_SEARCH_TAPE: '/tape', JOBADABRA_SEARCH_TAPE_MODE: 'replay', JOBADABRA_TAPE_WAIT_SCALE: '0', JOBADABRA_TAPE_LIVE: '0'};
+  // Why (#3565 review, 7 Nov 2026): JOBADABRA_TAPE_ITEMS was set and dropped here, so a replay never rebuilt a batch; every tape flag passes by its prefix.
+  const tape = {JOBADABRA_SEARCH_TAPE: '/tape', JOBADABRA_SEARCH_TAPE_MODE: 'replay', JOBADABRA_TAPE_WAIT_SCALE: '0', JOBADABRA_TAPE_LIVE: '0', JOBADABRA_TAPE_ITEMS: '1', JOBADABRA_TAPE_NEXT_FLAG: 'x'};
   const env = pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', ...tape});
   for (const [name, value] of Object.entries(tape)) assert.equal(env[name], value);
   assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_SEARCH_TAPE, undefined);

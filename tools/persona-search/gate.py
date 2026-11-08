@@ -168,6 +168,16 @@ def funnel_note(funnel):
     return '; '.join(parts)
 
 
+def after_repeat(out):
+    """A by-hand presses=2 check (search-personas.yml): the numbers after the repeat press, or None (#3565 review). The counts are running totals:
+    metrics.py reads the whole jobs.sqlite."""
+    try:
+        again = json.loads((Path(out) / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[1])
+    except (OSError, IndexError, ValueError):
+        return None
+    return {k: again.get(k) for k in ('seconds', 'code', 'local_jobs', 'in_places', 'scored_in_places', 'fit70_in_places')} if isinstance(again, dict) else None
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
@@ -195,6 +205,7 @@ def result(n, out):
         starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
+    row['after_repeat'] = after_repeat(out)   # None on a one-press night
     engine = engines_of(out / 'run.log')
     if engine:
         row['engine'] = engine

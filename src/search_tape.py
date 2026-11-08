@@ -297,7 +297,8 @@ class _Messages:
                      'texts': [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'],
                      'usage': {k: getattr(usage, k) for k in ('input_tokens', 'output_tokens', 'cache_read_input_tokens',
                                                               'cache_creation_input_tokens', 'billing', 'provider', 'model') if hasattr(usage, k)}})
-        _keep_items(params, [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'], time.monotonic() - started)
+        if getattr(answer, 'stop_reason', 'end_turn') != 'max_tokens':   # an answer cut off by its cap is no item's whole answer
+            _keep_items(params, [block.text for block in answer.content if getattr(block, 'type', 'text') == 'text'], time.monotonic() - started)
         return answer
 
 
