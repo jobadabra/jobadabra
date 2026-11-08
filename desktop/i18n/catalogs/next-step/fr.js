@@ -1,7 +1,7 @@
 // What a finished Find jobs run's card says comes next (plan P3, src/press/plan.py next_steps): the steps in the words a person uses (never "scoring", result-panels-basic.test.js).
 export default {
   "step_webSearch": "recherche web",
-  "step_jobBoards": "sources d'emploi gratuites",
+  "step_jobBoards": "sites d'emploi",
   "step_employerSites": "sites d'employeurs",
   "step_freeJobApis": "sources d'emploi gratuites",
   "step_googleJobs": "Google Jobs",

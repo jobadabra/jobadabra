@@ -81,6 +81,8 @@ test('every language has every word and every sentence, with the same blanks (cl
       assert.equal(blanks(text), blanks(catalogs.en[key]), `${locale}.${key} keeps the blanks of English`);
       if (key.startsWith('step_')) assert.doesNotMatch(text, /scor|score/i, `${locale}.${key}`);
     }
+    const steps = Object.entries(catalogs[locale]).filter(([key]) => key.startsWith('step_')).map(([, text]) => text);
+    assert.equal(new Set(steps).size, steps.length, `${locale}: two steps say the same words (job boards and free job sources must differ; Gitar, #3631)`);
   }
   setLocale('de');
   assert.equal(line([{step: 'employer_sites', left: 1234}, {step: 'job_boards'}]), 'Als Nächstes: Arbeitgeber-Seiten (noch 1.234 zu lesen), dann Jobbörsen');
