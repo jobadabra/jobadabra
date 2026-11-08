@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "the form is in a frame",
   "triageUnknown": "couldn't tell what this page is",
   "triageTimeout": "took too long",
+  "triageKit": "its application kit could not be prepared",
   "triageFacts": "every answer is a saved fact",
   "triageCaptcha": "a check that you are human",
   "triageCheck": "a check may be in the form",
