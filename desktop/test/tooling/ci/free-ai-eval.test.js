@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {evaluate, mock, rest} from '../../../../tools/free-ai-eval.mjs';
 import {schemaProblems, spearman, summarize, table, topOverlap} from '../../../../tools/free-ai-eval-metrics.mjs';
-import {SMALL, STRONG} from '../../../lib/free-ai-models.js';
+import {OSS, SMALL} from '../../../lib/free-ai-models.js';
 
 const schema = {type: 'object', required: ['score', 'tier'], properties: {score: {type: 'integer'}, tier: {type: 'string', enum: ['A', 'B', 'C']}, tags: {type: 'array', items: {type: 'string'}}}};
 const cases = Array.from({length: 8}, (_, i) => ({id: `job-${i}`, baseline: 10 + i * 10, params: {max_tokens: 100, output_config: {format: {type: 'json_schema', schema}},
@@ -40,9 +40,9 @@ test('an answer that is not JSON, or an error from the backend, is a failed row,
 });
 
 test('the table has one row per model with the rank columns, and says n/a without a baseline', () => {
-  const rows = [summarize(SMALL, await0(), {k: 3}), summarize(STRONG, [], {k: 3})];
+  const rows = [summarize(SMALL, await0(), {k: 3}), summarize(OSS, [], {k: 3})];   // 8 Nov 2026: STRONG is SMALL now, so the second row is another model
   const text = table(rows, {[SMALL]: 0.0123});
-  assert.match(text, /\| @cf\/qwen\/qwen3-30b-a3b-fp8 \| 1 \|/);
+  assert.ok(text.includes(`| ${SMALL} | 1 |`));
   assert.match(text, /\$0\.0123/);
   assert.match(text, /n\/a/);
   function await0() { return [{id: 'x', valid: true, schemaOk: true, score: 50, baseline: undefined, usage: {}, ms: 5}]; }
