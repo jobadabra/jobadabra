@@ -1402,6 +1402,7 @@ jobs:
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_11.outcome == 'success'
         timeout-minutes: 5
         with:
@@ -1571,6 +1572,7 @@ jobs:
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
+        continue-on-error: true   # Why (8 Nov 2026, run 42435765170): a lost upload (runner DNS) is evidence missing, not the suite's verdict
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_12.outcome == 'success'
         timeout-minutes: 5
         with:

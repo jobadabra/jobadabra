@@ -183,6 +183,10 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 "split the suite" advice, the second classifier. Each step keeps main's green suites green.
 Guard: none: an inventory, done once per step; each step keeps main green.
 
+**M · The suite decides, never its uploads.** Every `actions/upload-artifact` step in e2e.yml, e2e-windows.yml and desktop.yml continues on error: a lost upload
+(runner DNS, 8 Nov 2026, run 42435765170) is missing evidence, never a red job, a skipped nightly or a skipped release gate.
+Guard: `tests/tooling/ci/test_e2e_upload_not_verdict.py`.
+
 ## Constraints and non-goals
 - No retry that hides a symptom; suspension says plainly "this check does not protect you now" and has an owner. **A suite's single try is the verdict** (owner, 31 Oct 2026,
   on a job whose step said "Error: the suite's 11-minute budget ran out" under a green tick: "And why should we accept/allow that?"): a red try is a red job; the cost is more

@@ -1,4 +1,6 @@
-"""An e2e job's verdict is its suite, never an artifact upload after it.
+"""Guard: release — a lost artifact upload would turn a passed e2e suite red and skip the nightly beta or a release gate.
+
+An e2e job's verdict is its suite, never an artifact upload after it (rule M of docs/superpowers/specs/2026-10-28-e2e-reliability-design.md).
 
 Why (8 Nov 2026, runs 42435765170 and 5 Nov applyflows-1of3): the suite passed, the runner lost DNS while uploading its report
 (Failed to CreateArtifact: ENOTFOUND), the job went red and the nightly was skipped as "main's e2e still red".
@@ -13,8 +15,8 @@ WORKFLOWS = ['e2e.yml', 'e2e-windows.yml', 'desktop.yml']
 
 def upload_steps(text):
     """Yields (step name, step block) for every actions/upload-artifact step, by YAML indentation."""
-    for block in re.split(r'(?m)^(?=\s*- name: )', text):
-        if re.search(r'(?m)^\s*uses: actions/upload-artifact@', block):
+    for block in re.split(r'(?m)^(?=\s*- [\w-]+:)', text):   # every step start, named or not (Gitar on #3574)
+        if re.search(r'(?m)^\s*(?:- )?uses: actions/upload-artifact@', block):
             yield block.splitlines()[0].strip(), block
 
 
