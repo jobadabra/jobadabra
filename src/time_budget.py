@@ -5,8 +5,7 @@ still reach it, and the clock's own calls (over -> _over) see the patch. A calle
 Still here, not clock: the jobs' order (`best_first`, `near_best`), moving to src/press/rank.py's callers in 5/6."""
 import time   # noqa: F401  (tests read time_budget.time.monotonic)
 
-from .press import clock as _clock
-from .press.clock import Calls, Clock   # noqa: F401
+from .press.clock import Calls, Clock   # noqa: F401  (Calls: score and enrich use time_budget.Calls)
 
 CLOCK = Clock.__new__(Clock)
 CLOCK.__dict__ = globals()   # Why (ps 4/6, 8 Nov 2026): the ~57 places that patch or set `time_budget.<name>` keep working, and the clock's calls read the patched name
