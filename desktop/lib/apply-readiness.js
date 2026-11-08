@@ -76,8 +76,9 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
   async function applyReadiness(job) {
     const asked = cancels;
     const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job').catch(error => ({ok: false, error: String(error?.message || error)}));
-    // Why (8 Nov 2026, red main after #3573): a kit that could not be drafted no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
-    if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200)});
+    // Why (8 Nov 2026, red main after #3573): a kit draft that ran and failed no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
+    if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200), refused: kit.refused === true});
+    if (kit.refused === true) return {kit, check: null, stored: false};   // Why (8 Nov 2026, Gitar on #3578): a gate (Notion, move, allowance, no AI) starts nothing, neither the browser nor the match
     if (cancels !== asked) return {kit, check: null, stored: false};
     const stored = await storedCheck(job);
     if (stored) return {kit, check: stored, stored: true};

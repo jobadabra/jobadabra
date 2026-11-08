@@ -118,6 +118,9 @@ test('a Stop while the kit drafts ends the check before the browser opens; a kit
   const failed = createReadiness({storage: {}, prepareKit: async () => ({ok: false, error: 'no posting'}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
   const done = await failed.applyReadiness(JOB);
   assert.deepEqual([done.kit.ok, done.check.simple, calls.read], [false, true, 1], 'a kit that failed still lets the form be read (red main after #3573)');
+  const gated = createReadiness({storage: {}, prepareKit: async () => ({ok: false, refused: true, needsNotion: true}), readForm: async () => { calls.read += 1; return SIMPLE; }, call: async () => null});
+  assert.equal((await gated.applyReadiness(JOB)).check, null);
+  assert.equal(calls.read, 1, 'a gate (Notion, allowance, no AI) opens no browser (Gitar on #3578)');
 });
 
 test('the Jobs page shows why a kit could not be drafted, passes the Notion gate up, and marks a drafted kit', async () => {
