@@ -20,6 +20,7 @@ export default {
   "appClosed": "The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.",
   "appUpdated": "Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.",
   "reviewSelf": "Review and submit this application yourself.",
+  "noForm": "Jobadabra could not find this application's form, so nothing was filled or sent. Open the job and apply on the site yourself.",
   "remembered": {
     "one": "Remembered {count} answer",
     "other": "Remembered {count} answers"

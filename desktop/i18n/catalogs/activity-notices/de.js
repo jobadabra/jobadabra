@@ -20,6 +20,7 @@ export default {
   "appClosed": "Die App wurde geschlossen, während sie diese Bewerbung offen hielt. Deshalb wurde nichts gesendet. Öffne sie, prüfe das Formular und sende es selbst ab.",
   "appUpdated": "Jobadabra wurde aktualisiert und neu gestartet, während es diese Bewerbung offen hielt. Deshalb wurde nichts gesendet. Öffne sie erneut, um fortzufahren.",
   "reviewSelf": "Prüfe diese Bewerbung und sende sie selbst ab.",
+  "noForm": "Jobadabra hat das Formular dieser Bewerbung nicht gefunden, daher wurde nichts ausgefüllt oder gesendet. Öffne die Stelle und bewirb dich selbst auf der Website.",
   "remembered": {
     "one": "{count} Antwort gemerkt",
     "other": "{count} Antworten gemerkt"

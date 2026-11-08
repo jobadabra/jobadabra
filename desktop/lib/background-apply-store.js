@@ -10,9 +10,9 @@ export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
 const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'receipt_confirmed', 'submitting']);
 const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // a job still on its way to a press: a quit hands it over (interrupted)
-// The hand-offs that end a run with nothing left to settle: the person's Stop or Cancel, a quit before the press, a mode change. Applying again starts a new run.
+// The hand-offs that end a run with nothing left to settle: the person's Stop or Cancel, a quit before the press, a mode change, a page with no form to reach (8 Nov 2026). Applying again starts a new run.
 // Every other reason stays with the person (a bot check, an unknown or reserved press, a form taken to their own browser, where they may have submitted it).
-const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'app_updated', 'mode_changed']);   // words-ok: our own hand-off reason ids, not page knowledge
+const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'app_updated', 'mode_changed', 'no_form']);   // words-ok: our own hand-off reason ids, not page knowledge
 /** Pure: true when `state` is a hand-off that ended its run with nothing left to settle and no press reserved, so applying again starts a new run. */
 export const finishedHandoff = state => state?.state === 'needs_user_handoff' && !state.attempt && FINISHED_REASONS.has(state.reason);
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };

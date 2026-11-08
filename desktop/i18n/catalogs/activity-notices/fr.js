@@ -20,6 +20,7 @@ export default {
   "appClosed": "L’app a été fermée alors qu’elle gardait cette candidature ouverte ; rien n’a donc été envoyé. Ouvrez-la, vérifiez le formulaire et envoyez-le vous-même.",
   "appUpdated": "Jobadabra a été mis à jour et a redémarré alors qu’il gardait cette candidature ouverte ; rien n’a donc été envoyé. Rouvrez-la pour continuer.",
   "reviewSelf": "Vérifiez et envoyez vous-même cette candidature.",
+  "noForm": "Jobadabra n’a pas trouvé le formulaire de cette candidature : rien n’a été rempli ni envoyé. Ouvrez l’offre et postulez vous-même sur le site.",
   "remembered": {
     "one": "{count} réponse mémorisée",
     "many": "{count} réponses mémorisées",

@@ -20,6 +20,7 @@ export default {
   "appClosed": "Aplicația desktop a fost închisă în timp ce ținea această candidatură deschisă, deci nu s-a trimis nimic. Deschide-o, verifică formularul și trimite-l personal.",
   "appUpdated": "Jobadabra s-a actualizat și a repornit în timp ce ținea această candidatură deschisă, deci nu s-a trimis nimic. Deschide-o din nou pentru a continua.",
   "reviewSelf": "Verifică și trimite personal această candidatură.",
+  "noForm": "Jobadabra nu a găsit formularul acestei candidaturi, așa că nu s-a completat și nu s-a trimis nimic. Deschide anunțul și aplică singur pe site.",
   "remembered": {
     "one": "{count} răspuns memorat",
     "few": "{count} răspunsuri memorate",
