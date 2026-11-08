@@ -13,7 +13,7 @@ from concurrent.futures import TimeoutError as Late
 from datetime import datetime, timezone
 
 from .. import paths, time_budget
-from ..press import budget, rank
+from ..press import budget, rank, resume
 
 READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
 READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
@@ -131,6 +131,7 @@ def left_first(sources, key, now=None):
 
 def keep_left(unread, key, read, total, now=None):
     """Remember the sites not reached for the next run (none: the file goes) and say it in the log."""
+    resume.ran('employer sites')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     try:
         if unread:
             _file().parent.mkdir(parents=True, exist_ok=True)

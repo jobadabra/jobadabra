@@ -21,7 +21,7 @@ from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
 from ..ai.providers.contract import detail, reason
-from ..press import budget
+from ..press import budget, resume
 _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
 CAREER = meanings_pack.matcher('page-words', 'board_careers_link')   # the meanings pack: the old list (seed) + rows the site adds
@@ -448,6 +448,7 @@ def main():
 def discover(pages,max_companies,refresh=False,beside=False):
     """The step's work on whatever clock this process runs (main's own, or the search's when beside: src/sources/boards_beside.py). beside: the
     search reads the found boards itself (src/sources/boards_ahead.py), so only the fixed boards' employers are discovered here."""
+    resume.ran('job boards')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     client=Client(refresh);jobs=[];sources=[]
     used=boards(_SEARCH)
     if not used and beside:return 0

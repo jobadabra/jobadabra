@@ -23,6 +23,7 @@ from .. import run_counts, store
 from . import cost, engine, hints, locations, schema_notes, score_agree, score_bands, score_not_a_job, score_search, slots
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
+from ..press import resume
 
 # Bump when the prompt or schema changes so every job is re-scored once.
 SCORER_VERSION = 2
@@ -375,6 +376,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
     """Score up to max_jobs pending candidates; returns a one-line summary. profile: the whole Profile text (the
     scoring part is taken here). With a first_pass model (default: JOBADABRA_SCORE_FIRST_PASS_MODEL) every job gets the
     cheap model first and only those scoring at least escalate_min are scored again by `model`; the rest keep the quick score. scope: as pending_jobs."""
+    resume.ran('scoring')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     first_pass = FIRST_PASS_MODEL if first_pass is None else first_pass
     escalate_min = ESCALATE_MIN if escalate_min is None else escalate_min
     cascade = bool(first_pass) and first_pass != model

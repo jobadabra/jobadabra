@@ -22,6 +22,7 @@ from ..ai import slots
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
+from ..press import resume
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -342,6 +343,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
     since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
     Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/unit/sources/test_three_minutes.py)."""
+    resume.ran('job boards')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     if read_budget.past_cut():
         time_budget.later('job boards', len(boards) if boards is not None else 1, 'boards' if boards is not None and len(boards) != 1 else 'board read')
         return []

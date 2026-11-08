@@ -302,7 +302,7 @@ def capture_engine(prompts=False):
     with tempfile.TemporaryDirectory(prefix='.ai-format-') as temporary:
         temporary = Path(temporary)
         scope = NS(view=lambda *a: {}, active=lambda: False)
-        bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time,
+        bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time, resume=NS(ran=lambda stage: None),
                         title_queue=NS(serve=lambda batches, ask, land, parallel, rank=None: [land(titles, ask(titles)) for _, titles in batches]), LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'),
                         press_budget=NS(value={row['name']: row['value'] for row in json.loads(read('src/press/budget.json'))}.get))
         place_search = {'locations': {'top_tier': ['zurich'], 'country_wide': ['switzerland']}, 'remote_jobs': ['yes']}

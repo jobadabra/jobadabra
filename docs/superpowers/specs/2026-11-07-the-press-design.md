@@ -26,6 +26,7 @@ A PR that moves one number up and another below its noise band does not merge wi
 | Every second of the 180 | `src/press/budget.json` (data: one row per stage or knob, value, Why, PR) | only a PR whose body carries the yardstick table |
 | What is read, asked, scored first | `src/press/rank.py` (named weights; three entry points: sources, titles, jobs) | only a PR that adds or changes a weight, with a ledger scenario and the yardstick |
 | Which stage runs, in what order, beside what | `src/press/stages.py` (declared list: name, owner file, inputs, outputs, budget row, runs-beside) | a stage added or moved |
+| What each step left for the next Find jobs run | `src/press/resume.py` (`press_left.json`: one count per step, `load_left()` for the planner; counts only, the items stay in their owners' files) | a step says its "Time is up" line; a run that reached its end fills the steps that said nothing with 0 |
 | What a past fix guarantees | `tests/unit/press/test_ledger.py` (one named scenario per fix) | a new fix adds one; changing or removing one needs the owner's yes quoted in the PR (`Ledger-change:`) |
 Stage files fetch, read, ask the AI and save. They do not sort for priority, read the clock or hold a number of seconds.
 
@@ -101,3 +102,4 @@ The gi coordinator holds read-order PRs until PR 5/6 (the ranker) merges; a fix 
 - [ ] 4/6 Pipeline module: `clock.py` + `stages.py`, stages take the clock, pure moves one stage group at a time
 - [ ] 5/6 Ranker: today's keys moved into `rank.py` unchanged, priority-sort guard
 - [ ] 6/6 `docs/press.md` = module header, search hub link, the hold lifted
+- [ ] E2b Each Find jobs run continues where the last one stopped: `press_left.json` + `load_left()` (ledger L36); item-level resume already held (`tests/unit/ai/test_three_minutes_resume.py`, redone 0 on 13 stages); the equality test on a Find jobs recording and the overhead number wait for rf (the yardstick's numbers are unusable until then)
