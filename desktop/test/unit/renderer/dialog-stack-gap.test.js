@@ -1,7 +1,9 @@
 // A check row below another part of a dialog sits one --stack-gap under it (owner 8 Nov 2026: "we're missing spacing. Let's add this to design system and to rules"): Log job activity's checkbox was flush under the text box, and its two composer tools had a curved divider fragment.
 // Reads the real markup and CSS text: no browser here, so this plays the owner's dialog structure against the rule's selector, not a rendered pixel.
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -37,4 +39,9 @@ test('a divider between composer tools is straight: .tool has no radius', () => 
 test('the design system says so: the gallery and the rules name the token', () => {
   assert.match(read('../../../renderer/gallery.js'), /var\(--stack-gap\)/);
   assert.match(read('../../../../docs/rules/desktop-ui.md'), /`--stack-gap` \(12\)/);
+});
+
+test('the gallery still parses: a quote inside its section note once broke the whole design-system page', () => {
+  const parsed = spawnSync(process.execPath, ['--check', fileURLToPath(new URL('../../../renderer/gallery.js', import.meta.url))], {encoding: 'utf8'});
+  assert.equal(parsed.status, 0, parsed.stderr);
 });
