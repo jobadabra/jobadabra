@@ -23,7 +23,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
-from .press import resume, step_yield
+from .press import plan, resume, step_yield
 from .daily_search_scoring import score_jobs, score_waiting_first
 from .daily_search_reporting import finish_search, scheduled_updates
 
@@ -52,6 +52,10 @@ def search(args, stores=None):
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
         if args.mode != 'more':
+            try:   # the whole plan of the steps, said at each press start (src/press/plan.py; log only, the engine's order is unchanged)
+                plan.run(db)
+            except Exception as error:  # noqa: BLE001
+                print(f'Warning: Find jobs plan not made: {type(error).__name__}: {error}')
             scored = score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget)   # the jobs found earlier, beside the search (#3058, ps E2a-1)
             try:
                 feed_list = plan_sources(args, stores, db, sources, run)
