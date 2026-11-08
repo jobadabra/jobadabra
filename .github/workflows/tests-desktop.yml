@@ -196,6 +196,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       # Install exactly what a developer (and the release workflow) has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild.
       # Electron's binary too, and a virtual display: the tests that render the demo app (card-grid-layout, palette-*, rail-badges, report-grid-layout, shot-mark)
       # run here, not only on a Mac (Why (31 Oct 2026, owner: "How did it endup in main ?"): they skipped on CI, so palette-one-row-per-card went red on main unseen).

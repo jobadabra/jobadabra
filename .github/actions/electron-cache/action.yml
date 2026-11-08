@@ -1,0 +1,25 @@
+name: Electron download cache
+description: >-
+  Electron's zip comes from the GitHub cache (keyed by OS, CPU and the Electron version in desktop/package-lock.json), so a 504 from
+  github.com/electron/electron/releases only hits a cold cache. Put it before the step that runs `npm ci` in desktop/.
+  Why (ec, 8 Nov 2026): Electron 44 has no install script, so the zip is fetched at the first launch (or by node_modules/electron/install.js),
+  straight from GitHub's release host; a 504 there reddened main's e2e (run 42464599603) and #3613 with no change to our code.
+runs:
+  using: composite
+  steps:
+    - name: Which Electron
+      id: which
+      shell: bash
+      run: |
+        # The lock file is what `npm ci` installs, so the key moves exactly when the downloaded zip does.
+        v=$(node -p "require('./desktop/package-lock.json').packages['node_modules/electron'].version")
+        [ -n "$v" ] || { echo "electron-cache: no electron version in desktop/package-lock.json" >&2; exit 1; }
+        echo "version=$v" >> "$GITHUB_OUTPUT"
+        # `electron_config_cache` is the variable node_modules/electron/install.js passes to @electron/get as its cache folder
+        # (ELECTRON_CACHE is not read by Electron 44); later steps of the job inherit it.
+        echo "electron_config_cache=$RUNNER_TEMP/electron-cache" >> "$GITHUB_ENV"
+    - name: Cached Electron zip
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/electron-cache
+        key: electron-zip-${{ runner.os }}-${{ runner.arch }}-v${{ steps.which.outputs.version }}

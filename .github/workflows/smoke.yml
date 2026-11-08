@@ -24,6 +24,7 @@ on:
       - 'desktop/e2e/suites/settings.mjs'
       - 'desktop/e2e/lib/**'
       - '.github/workflows/smoke.yml'
+      - '.github/actions/electron-cache/**'
 
 permissions:
   contents: read
@@ -54,6 +55,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the app
         working-directory: desktop
         run: npm ci

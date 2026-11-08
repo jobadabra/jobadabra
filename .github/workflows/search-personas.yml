@@ -87,6 +87,9 @@ jobs:
       - uses: actions/setup-python@v6
         if: steps.token.outputs.ok == 'yes'
         with: {python-version: '3.12'}
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: The engine, the app's libraries and a browser
         if: steps.token.outputs.ok == 'yes'
         run: |

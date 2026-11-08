@@ -37,6 +37,7 @@ on:
       - 'tools/persona-search/run.mjs'
       - 'tools/persona-search/ttfr.py'
       - '.github/workflows/press-yardstick.yml'
+      - '.github/actions/electron-cache/**'
   workflow_dispatch:
     inputs:
       mode:
@@ -117,6 +118,9 @@ jobs:
             node sides/main/tools/persona-search/tape-store.mjs fetch "night-p$n" "recordings/p$n" || { rm -rf "recordings/p$n"; echo "p$n has no Find jobs recording yet: not measured"; }
           done
           echo "count=$(ls recordings | wc -l)" >> "$GITHUB_OUTPUT"
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: The engine, the app's libraries and a browser for each side
         if: steps.rec.outputs.count != '0'
         run: |

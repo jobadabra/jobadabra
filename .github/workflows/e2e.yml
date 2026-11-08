@@ -382,6 +382,9 @@ jobs:
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ inputs.target_ref || github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the app
         timeout-minutes: 5
         working-directory: desktop
@@ -692,6 +695,9 @@ jobs:
         timeout-minutes: 5
         with:
           node-version: '22'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: The app's packages and Electron
         timeout-minutes: 8
         working-directory: desktop

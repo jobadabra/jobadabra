@@ -45,6 +45,10 @@ jobs:
       - name: The engine's packages
         if: matrix.area == 'python'
         run: pip install --quiet -r requirements.txt
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        if: matrix.area == 'desktop'
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       # desktop: as tests-desktop.yml (dev packages, Electron's binary: the tests that render the demo app run here too)
       - name: The desktop tests' packages and Electron
         if: matrix.area == 'desktop'

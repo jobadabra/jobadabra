@@ -184,6 +184,9 @@ jobs:
         with:
           name: fixer-item
           path: ${{ runner.temp }}/fx/item
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       # The box's dependencies come from main's own files BEFORE the loop edits anything, so an edit cannot change what is installed.
       - name: Install the app's and the engine's dependencies, build the box
         if: inputs.kind != 'conflict'
@@ -303,6 +306,9 @@ jobs:
           cp --parents tools/feedback-ai.mjs tools/feedback-ai-sandbox.sh tools/feedback-ai.Dockerfile desktop/lib/feedback-bundle.js tools/fixer/*.mjs "$RUNNER_TEMP/fbt/"
           echo "FBT=$RUNNER_TEMP/fbt" >> "$GITHUB_ENV"
           echo "PYDEPS=$RUNNER_TEMP/pydeps" >> "$GITHUB_ENV"
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       # The dependencies are installed from main's own files BEFORE the patch is applied.
       - name: Install the app's dependencies (for its tests)
         working-directory: desktop

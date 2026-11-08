@@ -148,6 +148,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the app and the tests
         run: |
           (cd desktop && npm ci) && (cd desktop/e2e && (npm ci || npm install))
@@ -287,6 +290,9 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the app and the tests
         run: |
           (cd desktop && npm ci) && (cd desktop/e2e && (npm ci || npm install))
