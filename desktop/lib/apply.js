@@ -56,31 +56,66 @@ export function pickUntailored(jobs, n) {
 
 // Why (5 Nov 2026, review): a job stopped for its posting stays the best missing one, so without spare tries every batch would stop on it.
 const SPARE_TRIES = 3;
+// Why (8 Nov 2026): the most kits a batch drafts beyond its N when jobs come back not eligible or stopped; each is about 20 s, spends AI credit and leaves a "Kit ready" row on a job the batch then skips.
+const EXTRA_DRAFTS = 6;
 
 // Draft missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
-// A job the engine stopped uses no try, up to SPARE_TRIES. Returns the prepared count, the first preparation error and one outcome per attempted job.
+// Why (8 Nov 2026, owner: a batch of 3 drafted 3 kits, all marked not eligible, started nothing; "ineligible jobs never fill a slot"): a kit's eligibility is known only once it is drafted, so a job the kit
+// marks not eligible (unless the batch may include those) or the engine stopped uses no try, within the spare attempts; the next missing job takes its place.
+// Returns the prepared count, the first preparation error, the attempted jobs' codes and one outcome per attempted job.
 export async function draftMissing(jobs, shortfall, prepare, report = () => {}, options = {}) {
   let done = 0, why = '', tries = 0;
-  const outcomes = [];
-  const missing = pickMissing(jobs, shortfall + SPARE_TRIES, options);
+  const outcomes = [], codes = [];
+  const attempts = options.maxAttempts ?? shortfall + SPARE_TRIES;
+  const missing = pickMissing(jobs, attempts, options);
   const wanted = Math.min(shortfall, missing.length);
   for (const job of missing) {
     if (tries >= shortfall) break;
-    report(`Preparing application ${tries + 1} of ${wanted}: ${job.title} · ${job.company} (about 20 s each)…`);
+    const skipped = (options.skipped || 0) + outcomes.filter(item => item.status === 'ineligible').length;
+    report(`Preparing application ${Math.min(tries + 1, wanted)} of ${wanted}: ${job.title} · ${job.company} (about 20 s each${skipped ? `; ${skipped} not eligible so far, replaced` : ''})…`);
     // Why (7 Nov 2026, #3424): a rejected prepare is still one job's failure; keep its message with that outcome.
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
     if (result.ok) done++;
     else why ||= result.error || '';
-    // Why (7 Nov 2026, #3424): drafting can succeed while eligibility prevents a job from starting; preserve that result for the batch summary.
-    outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: result.ineligible ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: result.ineligible || result.error || ''});
-    if (!result.stopped) tries++;
+    const refused = result.ok && result.ineligible && !options.allowIneligible;   // with the opt-in on, a not-eligible kit still starts: it is just "prepared"
+    // Why (7 Nov 2026, #3424; 8 Nov 2026, owner): drafting can succeed while the kit's eligibility prevents a job from starting; keep that verdict and its reason for the batch summary. With the opt-in on it is not a refusal: the job still starts.
+    outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: refused ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: String(result.ineligible || '').replace(/^\s*Not eligible:\s*/i, '') || result.error || ''});
+    codes.push(job.code);
+    if (!result.stopped && !refused) tries++;
   }
-  return {done, why, outcomes};
+  return {done, why, outcomes, codes};
 }
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
 const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
-const nothingStarted = (jobs, options) => (jobs.some(job => startable(job, options)) ? NO_KITS : NO_JOBS);
+// Why (8 Nov 2026, owner: "they were not eligible… it should be stated more clearly"): "Press Find jobs first" was said for any list with nothing startable, also when jobs were listed but all marked not eligible.
+const nothingStarted = (jobs, options) => {
+  if (jobs.some(job => startable(job, options))) return NO_KITS;
+  const waiting = jobs.filter(job => open(job) && canStart(job.stage));
+  const held = waiting.filter(job => job.ineligible).length;
+  if (held && !options.allowIneligible) return `${held === 1 ? '1 of your open jobs is' : `${held} of your open jobs are`} marked not eligible, so none was started. To apply anyway, turn on Settings → Apply → "Apply to jobs marked not eligible".`;
+  if (jobs.length) return 'None of your open jobs can start an application right now: they are already in progress or past that stage. Press Find jobs for new ones.';
+  return NO_JOBS;
+};
+
+// Why (8 Nov 2026, owner screenshot): a drafted job the re-read list cannot start must say why on its row; "prepared" is only true while the job is startable. The store is the truth, not the prepare call's answer.
+// A row is found by its code too: the re-read list may spell a job's link differently (a slash, tracking parameters; src/desktop_jobs.py url_key), and the outcome then takes the re-read link so the queue's rows replace it.
+function settleDrafted(outcomes, codes, jobs, chosen, options) {
+  const codeOf = url => codes.get(url) || '';
+  const same = (job, item) => job.url === item.url || (!!job.code && job.code === codeOf(item.url));
+  return outcomes.map(item => {
+    const row = jobs.find(job => same(job, item));
+    if (row && chosen.some(job => job.url === row.url)) return {...item, url: row.url};
+    if (item.status !== 'prepared' && item.status !== 'ineligible') return item;
+    if (item.status === 'ineligible') return row ? {...item, url: row.url} : item;   // the engine's own verdict and reason stand, also when the re-read row is missing or not flagged yet
+    if (!row) return {...item, status: 'not-started', reason: 'This job is no longer in your list.'};
+    const base = {...item, url: row.url};
+    if (row.ineligible && !options.allowIneligible) return {...base, status: 'ineligible', reason: row.ineligible};
+    if (!row.kit) return {...base, status: 'not-started', reason: 'Its application is not ready yet. Open the job and press Apply to try again.'};
+    if (!startable(row, options)) return {...base, status: 'not-started', reason: `Already moved on${row.stage ? ` (${row.stage})` : ''}, so there is nothing to start.`};
+    return {...base, status: 'prepared'};   // startable but beyond the N best: stays ready
+  });
+}
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -296,13 +331,24 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   let {jobs} = await list(storage);
   let chosen = pick(jobs, n, eligibility);
   let drafted = 0, why = '', outcomes = [];
-  if (chosen.length < n && prepare) {
-    const result = await draftMissing(jobs, n - chosen.length, prepare, report, eligibility);
-    drafted = result.done;
-    why = result.why;
-    outcomes = result.outcomes;
-    if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n, eligibility); }
+  const codes = new Map(jobs.map(job => [job.url, job.code]));
+  const tried = new Set(), refused = new Set();   // refused: jobs whose kit the engine marked not eligible; the re-read may not show it yet, so it never decides the pick (Gitar, #3595)
+  // Why (8 Nov 2026, owner: 3 jobs drafted, all marked not eligible, nothing started): a kit's eligibility shows only after it is drafted, so the batch keeps drafting the next missing jobs until N can start (or none are left, or the extra-attempt cap).
+  while (prepare && chosen.length < n && outcomes.length < n + EXTRA_DRAFTS) {
+    const result = await draftMissing(jobs.filter(job => !tried.has(job.code)), n - chosen.length, prepare, report, {...eligibility, maxAttempts: n + EXTRA_DRAFTS - outcomes.length, skipped: outcomes.filter(item => item.status === 'ineligible').length});
+    if (!result.outcomes.length) break;
+    result.codes.forEach(code => tried.add(code));
+    result.outcomes.forEach((item, at) => { if (item.status === 'ineligible') refused.add(result.codes[at]); });
+    drafted += result.done;
+    why ||= result.why;
+    outcomes.push(...result.outcomes);
+    if (!result.done) break;   // nothing drafted: asking again would only repeat the failure
+    readsChanged();   // the kit was written by the engine, not an app write: a list read already running may not hold it
+    ({jobs} = await list(storage));
+    jobs.forEach(job => codes.set(job.url, job.code));
+    chosen = pick(jobs.filter(job => !refused.has(job.code)), n, eligibility);
   }
+  if (outcomes.length) outcomes = settleDrafted(outcomes, codes, jobs, chosen, eligibility);
   if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs, eligibility)), ...(outcomes.length ? {outcomes} : {})};
   // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue carries this batch’s captured eligibility choice and its outcomes join kit-preparation results for the dialog.
   if (mode === 'background') {
@@ -313,7 +359,8 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   }
   await releaseEndedRuns(release, chosen.map(job => job.url));   // ended hidden-browser runs leave the list first, as in applyOne (7 Nov 2026, review of the owner's HYPE fix)
   const result = openBatchInChrome(chosen, drafted, {open, focus});
-  if (result.ok) outcomes = outcomes.map(item => item.status === 'prepared' ? {...item, status: 'started'} : item);
+  const opened = new Set(chosen.map(job => job.url));
+  if (result.ok) outcomes = outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, status: 'started'} : item);
   return outcomes.length ? {...result, outcomes} : result;
 }
 

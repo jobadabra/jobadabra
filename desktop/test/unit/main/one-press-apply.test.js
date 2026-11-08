@@ -92,7 +92,7 @@ test('in a batch the stopped job is also notified, so a batch that started other
 });
 
 test('quiet kit preparation preserves the engine eligibility reason for an Apply batch summary', async () => {
-  const engineRun = async (_storage, _args, onLine) => { onLine('Not eligible: required credential missing.'); return {code: 0}; };
+  const engineRun = async (_storage, _args, onLine) => { onLine('Not eligible'); onLine('required credential missing.'); return {code: 0}; };
   const {handed} = prepareKit({engineRun});
   assert.deepEqual(await handed.prepareKitFor('ab12cd34', 'Analyst · Birch', {quiet: true}), {ok: true, ineligible: 'Not eligible: required credential missing.'});
 });
@@ -121,7 +121,7 @@ test('a stopped job does not hold a batch: the next best job is tried in its pla
   const prepare = async code => { asked.push(code); return code === 'a' ? {ok: false, stopped: true, error: 'a: unread'} : {ok: true}; };
   const result = await draftMissing(openJobs(['a', 'b', 'c']), 1, prepare, line => lines.push(line));
   assert.deepEqual(asked, ['a', 'b']);
-  assert.deepEqual(result, {done: 1, why: 'a: unread', outcomes: [
+  assert.deepEqual(result, {done: 1, why: 'a: unread', codes: ['a', 'b'], outcomes: [
     {url: 'https://jobs.example/a', title: 'Analyst', company: 'Birch', status: 'failed', reason: 'a: unread'},
     {url: 'https://jobs.example/b', title: 'Analyst', company: 'Birch', status: 'prepared', reason: ''},
   ]});

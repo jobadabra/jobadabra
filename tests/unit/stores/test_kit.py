@@ -234,6 +234,15 @@ class EligibilityTests(unittest.TestCase):
         self.assertEqual(kit_module.next_step({**kit, 'eligible': True}), '📝 Kit ready: review it, then Apply')
         job = {'title': 'SRE', 'company': 'Acme', 'url': 'https://x.test/1'}
         self.assertIn('Not eligible', kit_module.telegram_messages(job, kit, [])[0])
+        # Contract with desktop/lib/kit-handlers.js notEligibleIn (8 Nov 2026): the app reads the kit's verdict from these printed lines. The JS test feeds the same recorded lines
+        # (desktop/test/fixtures/kit-not-eligible-printed.json); this one fails when the writer's output stops matching the record, so the two cannot drift apart again.
+        import json, re
+        from pathlib import Path
+        fixture = json.loads((Path(__file__).resolve().parents[3] / 'desktop/test/fixtures/kit-not-eligible-printed.json').read_text(encoding='utf-8'))
+        written = {**kit, 'eligibility_note': fixture['note'], 'check_before_sending': ['Check the dates'], 'highlights': ['Led a fleet'], 'cover_letter': 'Dear team'}
+        job_in_fixture = {'url': 'https://jobs.example.test/1', 'title': 'Captain A320neo', 'company': 'Example Air'}
+        printed = '\n\n'.join(kit_module.telegram_messages(job_in_fixture, written, []))
+        self.assertEqual([line for line in re.split(r'\r?\n', printed) if line], fixture['lines'], 'the engine\'s printed kit changed: re-record the fixture and check notEligibleIn')
         self.assertIn('eligible', kit_module.SCHEMA['required'])
 
 
