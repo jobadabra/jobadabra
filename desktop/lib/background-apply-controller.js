@@ -30,6 +30,7 @@ const OUTCOME_STATUS = {NOT_ELIGIBLE: 'ineligible', LIVE_AUTO: 'already-queued'}
 const plural = (n, why) => `${n} job${n === 1 ? ' was' : 's were'} skipped: ${why}`;
 // A batch refused before any queue row: every job 'not-started' with the refusal as its reason (the one shape enqueue and canQueue answer with).
 const refusedFor = (jobs, error, extra = {}) => ({ok: false, ...extra, error, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: 'not-started', reason: error}))});
+const HELD = {opened_in_browser: 'Already open in your browser: finish it there.', other: 'This application already needs you in Sessions: finish it there.'};   // words-ok: our own hand-off reason ids
 const BROWSER_MISSING = "Download Jobadabra's browser first: about 200 MB, only once.";
 const skippedWords = ({skipped, busy, live}) => (skipped ? ` ${plural(skipped, 'not eligible to start another application.')}` : '')
   + (busy ? ` ${plural(busy, busy === 1 ? 'it already has an application session open.' : 'they already have an application session open.')}` : '')
@@ -181,6 +182,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
           const reason = String(error?.message || 'Could not start this application.');
           if (!kind) { outcomes.push({...details, status: 'failed', reason}); return {ok: false, error: reason, outcomes}; }
           tally[kind]++; outcomes.push({...details, status: OUTCOME_STATUS[error?.code] || 'skipped', reason}); continue;
+        }
+        // Why (8 Nov 2026, owner: "Yes, build it (Recommended)"; the twin's GLOCK said "queued" while its run was open in the person's browser): the store returns a run the person
+        // holds (opened in their browser, a CAPTCHA, an unknown submit) instead of a new one; it is theirs to finish, never counted as started.
+        // Its card stays, or comes back when the person removed it (Gitar on #3612: else the run the store holds has no way back into Sessions).
+        if (state.manualOverride) {
+          if (old?.id !== state.session) { await dropFinished(old, state); begin(terminals.startForm({id: state.session, url: job.url, title: details.title, company: details.company, location: job.location || '', workMode: job.workMode || ''}), state); }
+          tally.busy++; outcomes.push({...details, status: 'busy', reason: HELD[state.reason] || HELD.other}); continue;
         }
         await dropFinished(old, state);
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});

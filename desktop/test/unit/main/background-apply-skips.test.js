@@ -45,3 +45,21 @@ test('a batch of one job open in Chrome and one the store refuses starts nothing
   ]);
   assert.deepEqual(touched, []);
 });
+
+// Why (8 Nov 2026, owner: "Yes, build it (Recommended)"): the twin's GLOCK run was handed to the person's browser (opened_in_browser, kept by the store), yet Apply counted it as queued.
+test('a job whose run the person already holds is not started again: open in your browser, or waiting in Sessions', async () => {
+  touched.length = 0;
+  const held = {opened: {session: 'g1', state: 'needs_user_handoff', reason: 'opened_in_browser', manualOverride: true}, captcha: {session: 'c1', state: 'manual_submit_required', reason: 'captcha_runtime', manualOverride: true}};
+  // GLOCK's card is still in Sessions; the CAPTCHA one's card was removed by the person (Gitar on #3612: the store still holds its run).
+  const terminals = {list: () => [], byUrl: url => (url.endsWith('/opened') ? {id: 'g1', url, background: {}} : null), record: () => null, startForm: ({id}) => { touched.push(`startForm ${id}`); return {id}; }};
+  const store = {queue: async (url, session) => held[url.split('/').pop()] || {session, state: 'queued', manualOverride: false}};
+  const controller = make({store, terminals, token: () => 't', log: () => {}, browser: {ready: () => true, start: async () => { touched.push('browser.start'); return {owner: 'o1'}; }}});
+  const result = await controller.enqueue(['opened', 'captcha', 'fresh'].map(id => ({url: `https://jobs.example.test/${id}`})), 'fill');
+  assert.deepEqual(result.outcomes.map(item => [item.status, item.reason]), [['busy', 'Already open in your browser: finish it there.'],
+    ['busy', 'This application already needs you in Sessions: finish it there.'], ['started', '']]);
+  assert.equal(result.sessions.length, 1, 'only the fresh job is queued');
+  assert.match(result.message, /^1 application queued in the background\..* 2 jobs were skipped/);
+  // The fresh job's session id is random (the controller's uuid), so the two lines are compared as a set, never by their order.
+  assert.deepEqual(touched.filter(line => line.startsWith('startForm')).sort(), ['startForm c1', `startForm ${result.sessions[0]}`].sort(),
+    'a held run keeps its card, or gets it back when the person removed it; only the fresh job starts');
+});

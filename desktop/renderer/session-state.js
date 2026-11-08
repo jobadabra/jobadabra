@@ -57,6 +57,17 @@ export const sessionState = (item, formReady = false) => (item?.outcome === 'sub
   : sessionReview(item, formReady) ? (formReady ? SESSION_STATE.submit : SESSION_STATE.done)
     // Claude ended without saying the form is ready: what it left for you if it listed something, else just ended (never "ready").
     : item.status === 'done' ? (leftForYou(item) ? [t('helperState.needsYou'), 'warn'] : SESSION_STATE.ended) : SESSION_STATE[item.status] || SESSION_STATE.ended);
+/** Whether a session ended on its own facts: submitted, or a Chrome form's Stop, dead end, account or e-mail step. Its label then outranks whatever its tab says. */
+export const sessionEnded = item => (item?.outcome === 'submitted' && !isLive(item)) || (item?.kind === 'form' && (!!item.stuck || ['confirm', 'refused'].includes(item.accountState)));
+/**
+ * The one label of a session for every screen: the Sessions list, its log header, the live card's pill and the dock's bucket. -> [text, tone]
+ * `tab`: what the session's Chrome tab says ([text, tone]: checking, lost, Form closed; pages/session-needs.js), null when it says nothing; `formReady`: the form judge's ready;
+ * `linkOff`, `ready`, `fields`: the hidden run's facts (background-status.js).
+ * Design (8 Nov 2026, owner: "Yes, build it (Recommended)", sketch https://claude.ai/artifact/GvEcS5F6Z5Q5Zh7NPM8nZj): one state per session, read in one order: Cancelling, a hidden
+ * run's own state (its one owner, lib/background-apply-controller.js), a Chrome session's ending, what its tab says, then its running state. An ending always outranks the tab.
+ */
+export const sessionLabel = (item, {tab = null, formReady = false, linkOff = false, ready = false, fields = null} = {}) =>
+  cancellingState(item) || backgroundStatus(item, {linkOff, ready, fields}) || (sessionEnded(item) ? sessionState(item) : null) || tab || sessionState(item, formReady);
 // The dock's pills (dockBucket below) and its card order, from the same state the sessions list shows: a form whose Chrome tab was closed (`gone`) is not active, is counted
 // as waiting, and sorts last, so an open form is never hidden behind closed ones (2 Oct 2026: the dock said "Form open" for two closed forms and left out the one that was open).
 const WORKING = [t('helpers.stageApplying'), t('helperState.formOpen'), t('helperState.readySubmit'), t('helperState.filling'), t('helperState.submittingSoon'), t('helperState.submitting')];   // a queued hidden-browser job ("Queued") only waits: not active
@@ -74,7 +85,7 @@ const BACKGROUND_NEEDS_YOU = new Set(['ready_for_review', 'needs_user_handoff', 
  */
 export function dockBucket(item, gone = () => false) {
   if (isSubmitted(item) || item.background?.state === 'receipt_confirmed' || (item.endedAt && !['done', 'input'].includes(item.status))) return null;
-  if (gone(item)) return 'waiting';
+  if (gone(item) && !sessionEnded(item)) return 'waiting';   // an ending is the person's whatever the tab did (sessionLabel)
   if (item.status === 'input' || BACKGROUND_NEEDS_YOU.has(item.background?.state)) return 'needs';
   if (item.background?.state === 'queued') return 'waiting';
   // What is left reads its own label's tone, the one the list shows (a session's state, never a word list): amber is the person's, blue or a working word is in progress, the rest (ended, closed) is in none.
@@ -124,7 +135,8 @@ export function sessionsFoot(needs, working, ready, all) {
   return {text: t(`sessionCounts.${key}`, {count, shown: number(count)}), tone};
 }
 const DOCK_ORDER = {input: 0, running: 1, done: 2, failed: 3, ended: 4};
-export const dockOrder = (item, gone = () => false) => gone(item) ? 9 : (DOCK_ORDER[item.status] ?? 5);
+/** A dock card's sort key (lower first): by its session status; a form whose tab was closed (`gone`) last, unless it ended (an ending is the person's, sessionLabel). */
+export const dockOrder = (item, gone = () => false) => gone(item) && !sessionEnded(item) ? 9 : (DOCK_ORDER[item.status] ?? 5);
 // Did the form page's panel answer the app (what "Open filled form" returns)? Only when it didn't is the "Reload the
 // tab" repair offered: reloading a form page loses what was typed in it since the last save, so it must not be a
 // button to press by habit next to Open filled form (1 Oct 2026).

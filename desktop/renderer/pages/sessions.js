@@ -4,8 +4,7 @@ import {t} from '../../i18n/index.js';
 import {badgeLabel} from '../badge-label.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
-import {backgroundStatus} from '../background-status.js';
-import {applyingBadge, dockEmptyView, dockCounts, dockOrder, firstLine, isLive, isSubmitted, sessionDuration, tickSessionClocks, sessionReview, sessionState, sessionUrgency, sessionsFoot} from '../session-state.js';
+import {applyingBadge, dockEmptyView, dockCounts, dockOrder, firstLine, isLive, isSubmitted, sessionDuration, tickSessionClocks, sessionLabel, sessionReview, sessionUrgency, sessionsFoot} from '../session-state.js';
 import {shared} from './shared.js';
 import {resumeOffered} from '../claude-help.js';
 import {hasSessionCache, rememberSessions, rememberedSessions} from '../sessions-cache.js';
@@ -20,7 +19,9 @@ export {cancelSession, removeSession, restartSession, resumeSession, skipSession
 // Other pages import these from here.
 // The state other pages show uses the form page's state too: ready to submit once the form says so.
 const closedForm = item => formGone(item);  // its Chrome tab was closed (a form or a Claude session's)
-const sessionStatus = item => backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (closedForm(item) ? [t('pagesFinalLabels.formClosed'), 'neutral'] : sessionState(item, formReady(item)));
+// What the session's Chrome tab says, Form closed included; the order it is read in is session-state.js sessionLabel's (an ending outranks it).
+const tabSays = item => tabStatus(item) || (closedForm(item) ? [t('pagesFinalLabels.formClosed'), 'neutral'] : null);
+const sessionStatus = item => sessionLabel(item, {linkOff: !!shared.formsOpen?.linkOff, tab: tabSays(item), formReady: formReady(item)});
 export {firstLine, isLive, sessionDuration, sessionReview, sessionStatus as sessionState};
 export const SESSION_PILL = {running: {label: t('pagesFinalLabels.applying'), tone: 'info'}, input: {label: t('pagesSessionStates.needsInput'), tone: 'warn'}, done: {label: t('pagesSessionStates.formFilled'), tone: 'good'}};
 export let sessionList = [], logChoice = {};
