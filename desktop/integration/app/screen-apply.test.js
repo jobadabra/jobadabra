@@ -69,7 +69,7 @@ before(() => {
     const items = await kit.until(() => [...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent.trim()).filter(Boolean), 'the ⋯ menu');
     return {rows: all.length, kitless: kitless.length, buttons: kitless.map(row => ({label: row.querySelector('.row-main')?.textContent.trim(), cls: row.querySelector('.row-main')?.className || '', prepare: /Prepare/.test(row.textContent)})), items};
   }});
-  // Apply on a saved job without a kit prepares first; the demo refuses the draft (lib/demo.js BLOCKED prepareKit), so the kit "cannot be drafted": the button says Retry apply and applyOne is never called.
+  // Apply on a saved job without a kit prepares first; the demo refuses the draft (lib/apply-handlers.js demoPress: Apply readiness's kit, blocked in the demo), so the kit "cannot be drafted": the button says Retry apply and applyOne is never called.
   retry = probeWindow({files: {'jobs.json': {jobs: JOBS.map(job => ({...job, stage: null, status: 'unreviewed'})), total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.go('jobs');
@@ -148,7 +148,7 @@ test('Apply on a saved job without a kit prepares first, and when the kit cannot
   assert.equal(retry.result.before, 'Apply in Chrome');
   assert.equal(retry.result.after, 'Retry apply');
   const called = retry.log.filter(line => line.includes('a blocked action was called')).map(line => /"name":"(\w+)"/.exec(line)?.[1]);
-  assert.deepEqual(called, ['prepareKit'], 'the press must draft the kit once and open no form (applyOne)');
+  assert.deepEqual(called, ['applyReadiness'], 'the press must get the kit through Apply readiness once and open no form (applyOne)');
 });
 
 test('a scored job without a kit offers Apply and keeps preparation out of its menu', live, () => {

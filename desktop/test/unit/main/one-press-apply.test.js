@@ -28,7 +28,7 @@ function prepareKit({settings = {}, aiReady = () => true, syncJobs = async () =>
   const handed = registerKitHandlers({DEMO: true, aiReady, allowanceBlock: async () => null, app: {on: () => {}}, cloud: () => true, ipcMain: {handle: (name, run) => handlers.set(name, run)}, log: () => {}, needsNotion: () => null,
     notify: title => notes.push(title), powerMonitor: {on: () => {}}, shell: {}, storage, syncJobs, track: () => {}, ...(engineRun ? {engineRun} : {}),
     dispatchCloud: () => { throw new Error('a kit never goes to GitHub'); }});
-  return {press: () => handlers.get('prepareKit')({}, 'ab12cd34', 'Analyst · Birch'), notes, handed};
+  return {press: () => handed.prepareKitFor('ab12cd34', 'Analyst · Birch'), notes, handed};
 }
 
 test('with Always on, Apply prepares here: nothing sends a kit to GitHub', async () => {
@@ -118,7 +118,7 @@ const openJobs = codes => codes.map((code, index) => ({code, url: `https://jobs.
 
 test('a stopped job does not hold a batch: the next best job is tried in its place', async () => {
   const asked = [], lines = [];
-  const prepare = async code => { asked.push(code); return code === 'a' ? {ok: false, stopped: true, error: 'a: unread'} : {ok: true}; };
+  const prepare = async ({code}) => { asked.push(code); return code === 'a' ? {ok: false, stopped: true, error: 'a: unread'} : {ok: true}; };
   const result = await draftMissing(openJobs(['a', 'b', 'c']), 1, prepare, line => lines.push(line));
   assert.deepEqual(asked, ['a', 'b']);
   assert.deepEqual(result, {done: 1, why: 'a: unread', codes: ['a', 'b'], outcomes: [
@@ -130,11 +130,11 @@ test('a stopped job does not hold a batch: the next best job is tried in its pla
 
 test('a batch of stopped jobs ends after three spare tries, and a job that failed uses its try', async () => {
   const asked = [];
-  const stopping = async code => { asked.push(code); return {ok: false, stopped: true, error: `${code}: unread`}; };
+  const stopping = async ({code}) => { asked.push(code); return {ok: false, stopped: true, error: `${code}: unread`}; };
   assert.equal((await draftMissing(openJobs(['a', 'b', 'c', 'd', 'e', 'f']), 1, stopping)).done, 0);
   assert.deepEqual(asked, ['a', 'b', 'c', 'd']);
   asked.length = 0;
-  await draftMissing(openJobs(['a', 'b']), 1, async code => { asked.push(code); return {ok: false}; });
+  await draftMissing(openJobs(['a', 'b']), 1, async ({code}) => { asked.push(code); return {ok: false}; });
   assert.deepEqual(asked, ['a']);
 });
 

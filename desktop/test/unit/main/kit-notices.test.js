@@ -27,6 +27,7 @@ const modules={
   'notion-gate.js':{notionInUse:()=>root().notion},
   'job-letter-handlers.js':{registerJobLetterHandlers:()=>({makeFor:async()=>root().letter})},
   'ready-handlers.js':{registerReadyHandlers:ctx=>{root().ready=ctx;}},
+  'apply-readiness-registry.js':{readinessOf:()=>null},
   'strategy.js':{profileTexts:async()=>({profile:'Canonical profile'})},
   'log.js':{log:record('diagnostic')},
   'cv-docx.js':{currentDocx:forbidden('read DOCX')},'cv-docx-tailor.js':{makeDocx:forbidden('edit DOCX')},'office.js':{findOffice:forbidden('Office')},
@@ -60,7 +61,7 @@ function rig(t,options={}) {
 }
 test('real prepare callback uses selected language and preserves non-English personal names',async t=>{
   const p=rig(t);setLocale('ru');const name='工程師 · Müller {count} <keep>';
-  const result=await p.handlers.get('prepareKit')({},'J1',name);
+  const result=await p.prepareKitFor('J1',name);
   assert.deepEqual(result,{ok:true,ineligible:''});assert.match(p.state.notes[0][0],/подготов/);
   assert.ok(p.state.notes[0][1].includes(name));assert.deepEqual(p.state.notes[0].slice(2),[{view:'jobs',job:'J1'},'good']);
   assert.deepEqual(p.state.tracked,[['kit_prepared',{}]]);assert.deepEqual(p.state.calls.find(call=>call[0]==='fake-engine').slice(1),[['prepare','J1'],{TRIGGER:'you'}]);

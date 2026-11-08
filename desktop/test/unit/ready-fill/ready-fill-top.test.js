@@ -23,7 +23,7 @@ test('readyTop lists the best jobs and their cost; readyRun({top}) prepares what
     return answer({ok: true});
   };
   const prepare = {
-    kit: async code => { made.push(['kit', code]); list = list.map(job => job.code === code ? {...job, kit: true} : job); return {ok: code !== 'd'}; },
+    kit: async ({code}) => { made.push(['kit', code]); list = list.map(job => job.code === code ? {...job, kit: true} : job); return {ok: code !== 'd'}; },
     cv: async code => { made.push(['cv', code]); list = list.map(job => job.code === code ? {...job, tailored: true, letter: true} : job); return {ok: true}; }};
   const handlers = {}, ipcMain = {handle: (name, fn) => { handlers[name] = fn; }};
   const storage = {secret: name => (/TRIAL/.test(name) ? 'JPF1.install.token' : ''), settings: () => kept, saveSettings: patch => Object.assign(kept, patch), path: name => `/nowhere/${name}`};

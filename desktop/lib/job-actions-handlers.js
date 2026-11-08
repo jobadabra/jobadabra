@@ -4,15 +4,24 @@
 import * as applicationOutcomes from './outcomes.js';
 import * as controlEvents from './control-events.js';
 import * as pipeline from './pipeline.js';
+import {readinessOf} from './apply-readiness-registry.js';
+import {pickTop} from './ready-top.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
 import * as telegram from './telegram.js';
 import {log as appLog} from './log.js';
 
+// Apply readiness on the top matches (spec 2026-11-07-apply-readiness-design.md, owner's answer 2): the best-scored open jobs without a kit, as many as the engine's kits mode drafted (KITS_DEFAULT).
+const TOP_MATCHES = 3;
+/** Each top match through the one step, one after the other, each saying its own kit's notice (`say`). */
+async function readyTop(readiness, jobs) {
+  for (const job of jobs) await readiness.applyReadiness({url: job.url, code: job.code, title: `${job.title} · ${job.company}`, kit: false, posted_at: job.posted_at || ''}, {say: true});
+}
+
 export function registerJobActionsHandlers(ctx) {
-  const {DEMO, allowanceBlock, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter, storage} = ctx;
-  // Prepare top matches (Actions): kits for the best-scored matches without one, tracked like the other tasks. Not a Telegram
-  // command; with Always on it runs in the user's GitHub repo like every background job.
+  const {DEMO, allowanceBlock, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter, storage, jobsList = pipeline.jobs} = ctx;   // jobsList: a test hands in its own list
+  // Prepare top matches (Actions), now Apply readiness on the top matches: on this Mac each one goes through the one step (its kit, then its form check). Not a Telegram command.
+  // TODO(AI): with Always on it still runs the engine's kits mode in the user's GitHub repo, with no form check, until the cloud browser runner takes the check (8 Nov 2026).
   const prepareTopMatches = async () => {
     const gate = needsNotion('kits');
     if (gate) return gate;
@@ -23,8 +32,12 @@ export function registerJobActionsHandlers(ctx) {
       const started = await dispatchCloud('Prepare top matches', {mode: 'kits'});
       return {text: started.ok ? 'Preparing applications for your top matches on GitHub.' : `⚠️ ${started.error}`};
     }
-    pipeline.task(storage, 'kits', pipeline.dailyArgs(storage, {mode: 'kits'}), log).catch(error => log(`Prepare top matches failed: ${error.message}`));
-    return {text: 'Preparing applications for your top matches.'};
+    const readiness = readinessOf(storage);
+    if (!readiness) return {text: '⚠️ Apply readiness is not ready yet. Try again in a moment.'};
+    const jobs = (await jobsList(storage)).jobs || [], codes = new Set(pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => job.code));
+    if (!codes.size) return {text: 'Your top matches are ready to apply: nothing to prepare.'};
+    readyTop(readiness, jobs.filter(job => codes.has(job.code))).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`));
+    return {text: `Checking apply readiness on your top ${codes.size === 1 ? 'match' : `${codes.size} matches`}.`};
   };
   // Every Telegram command, from the app (the answer also goes to Telegram when connected).
   const COMMANDS = ['check', 'employers', 'run', 'today', 'applied', 'saved', 'insight', 'weekly', 'mail', 'scout', 'status', 'add', 'help'];

@@ -2,6 +2,7 @@
 import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {kitThroughStep} from '../apply-readiness-read.js';
 import '../../i18n/focus-cards.js';
 import {copyField} from '../../i18n/display-copy.js';
 import {ai} from '../ai-name.js';
@@ -256,7 +257,7 @@ export function renderJobs() {
       prepare.addEventListener('click', async () => {
         preparing.set(job.code, 'local');
         renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
-        const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
+        const result = await kitThroughStep(window.pilot, job);
         if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
         else { preparing.set(job.code, 'failed'); sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();

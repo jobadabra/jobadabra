@@ -2,7 +2,7 @@
 // Every read verdict gives its own chip on Jobs after Check, layer 2: the app's demo window on fictional jobs whose "form read" is named per job (settings.demoTriageReads, lib/demo.js; the real
 // read is the hidden browser's). Moved from the apply e2e step "each read verdict gives its own chip on Jobs after Check, with no fill, session or hidden page left" (R3, 1 Nov 2026).
 // The five reads are what lib/triage-read.js readFromJudge makes of the judge's answers (plain form with every answer saved, with an unsaved one, bot check, login wall, account to create);
-// each must show ITS chip (label and reason from renderer/apply-triage-pick.js) after one Check, the dialog must list all five results, and the demo logs no blocked action (no applyOne, prepareKit or sessionReopen) during the Check.
+// each must show ITS chip (label and reason from renderer/apply-triage-pick.js) after one Check, the dialog must list all five results, and the demo logs no blocked action (no applyOne, kit press through Apply readiness or sessionReopen) during the Check.
 // The coverage of ALL verdicts (every combination of the reader's flags reaches a chip mode) is the first test, the pure half of the old step. The real read in the hidden browser
 // (nothing filled or sent, the tab closed) is NOT here: it stays in e2e (apply-read-steps.mjs), a safety step.
 // Job: serve stored answers
