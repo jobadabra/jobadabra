@@ -30,7 +30,7 @@ const MOMENTS = ['day3', 'day10', 'stopped', 'waited', 'lost', 'match', 'reply',
 
 export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   const moments = createNotifyMoments(storage);
-  if (!DEMO) setTimeout(() => mail.settle(storage).then(() => mail.automationOn(storage)).catch(() => {}), 20000).unref?.();   // once, for someone who already has e-mail on (lib/mail-choices.js settle); after start-up has made the install key
+  if (!DEMO) setTimeout(() => mail.settle(storage).then(() => mail.automationOn(storage)).catch(() => {}), 20000).unref?.();   // once, for someone who already has e-mail on: settle (unchosen rows written), then automationOn (the app-written offs of the four automation mails go on; lib/mail-choices.js); after start-up has made the install key
   ipcMain.handle('notifyState', async () => {
     if (DEMO && process.env.JOBADABRA_DEMO_MAIL === 'suggested') return {by: ['app'], chosen: ['app'], telegram: channel.telegramReady(storage), email: '', confirmed: false, cadence: 'daily', reached: true};   // a preview of the first run: e-mail is not on yet, no address on our site
     if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, cadence: 'daily', reached: true};
