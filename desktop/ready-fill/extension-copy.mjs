@@ -19,8 +19,13 @@ export function pointAtStandIn(text, port) {
   return text.replaceAll(APP_ADDRESS, `http://127.0.0.1:${port}`);
 }
 
-// -> the folder of the copy.
-export function copyForNight(port, from, into = '', {owned = false} = {}) {
+/** The stamp an owned copy carries (`stamp` of copyForNight), read back from its folder; '' when it has none. */
+export function ownedStamp(dir) {
+  try { return /__jobadabraOwnedCopy = '([\w-]+)'/.exec(fs.readFileSync(path.join(dir, 'owned-bootstrap.js'), 'utf8'))?.[1] || ''; } catch { return ''; }   // no copy yet: no stamp
+}
+
+// -> the folder of the copy. `stamp` (owned only) marks this copy, so the app can tell the worker that runs it from one a kept profile kept (lib/background-browser.js).
+export function copyForNight(port, from, into = '', {owned = false, stamp = ''} = {}) {
   const dir = into || path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-night-ext-')), 'extension');
   fs.cpSync(from, dir, {recursive: true});
   const edit = (file, change) => { const target = path.join(dir, file); fs.writeFileSync(target, change(fs.readFileSync(target, 'utf8'))); };
@@ -28,7 +33,8 @@ export function copyForNight(port, from, into = '', {owned = false} = {}) {
   edit('account-step.js', holdAccountPress);
   edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])]; return JSON.stringify(manifest, null, 2); });
   if (owned) {
-    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), '// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobadabraBackgroundOwned = true;\n');
+    if (stamp && !/^[\w-]+$/.test(stamp)) throw new Error('an owned copy stamp is letters, digits and dashes only');
+    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), `// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobadabraBackgroundOwned = true;\n${stamp ? `globalThis.__jobadabraOwnedCopy = '${stamp}';\n` : ''}`);
     fs.writeFileSync(path.join(dir, 'background-owned.js'), "// Reuse the actual extension worker after the owned-browser flag is installed.\nimport './owned-bootstrap.js';\nimport './background.js';\n");
     edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.background.service_worker = 'background-owned.js'; return JSON.stringify(manifest, null, 2); });
   }

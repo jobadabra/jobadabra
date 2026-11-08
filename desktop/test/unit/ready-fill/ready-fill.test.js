@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ACCOUNT_PRESS, copyForNight, holdAccountPress} from '../../../ready-fill/extension-copy.mjs';
+import {ACCOUNT_PRESS, copyForNight, holdAccountPress, ownedStamp} from '../../../ready-fill/extension-copy.mjs';
 import {CLOSED_NEED, classify, fillJob} from '../../../ready-fill/fill-job.mjs';
 import {formUrl} from '../../../lib/form-address.js';
 import {inputToCdp} from '../../../ready-fill/live.mjs';
@@ -39,6 +39,19 @@ test('an app on the default port 47111 gets its copy too, owned or not (owner, 2
       assert.equal(fs.existsSync(path.join(copy, 'owned-bootstrap.js')), owned);
     } finally { fs.rmSync(path.dirname(copy), {recursive: true, force: true}); }
   }
+});
+
+// Why (8 Nov 2026, owner: "how we can prevent this ?"): the app hands its token only to the worker whose stamp matches the copy on disk (lib/background-browser.js start).
+test('an owned copy carries its own stamp, read back from its folder; a copy without one reads as none', () => {
+  const copy = copyForNight(47111, EXTENSION, '', {owned: true, stamp: '5f0c-a1'});
+  const plain = copyForNight(47111, EXTENSION, '', {owned: true});
+  try {
+    assert.equal(ownedStamp(copy), '5f0c-a1');
+    assert.equal(ownedStamp(plain), '');
+    assert.equal(ownedStamp(path.join(path.dirname(copy), 'missing')), '');
+    assert.ok(fs.readFileSync(path.join(copy, 'owned-bootstrap.js'), 'utf8').includes('__jobadabraBackgroundOwned = true'), 'the owned flag stays');
+    assert.throws(() => copyForNight(47111, EXTENSION, path.join(path.dirname(copy), 'bad'), {owned: true, stamp: "x';alert(1);'"}), /letters, digits and dashes/);
+  } finally { for (const each of [copy, plain]) fs.rmSync(path.dirname(each), {recursive: true, force: true}); }
 });
 
 test('a submit is refused and an upload is not', () => {

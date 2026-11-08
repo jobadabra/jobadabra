@@ -86,8 +86,12 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         if (!executable) throw Object.assign(new Error('Download the optional background browser first.'), {code: 'BACKGROUND_BROWSER_MISSING'});
         const {copyForNight} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
         fs.rmSync(extension, {recursive: true, force: true});
-        copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true});
+        copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true, stamp: randomUUID()});
         fs.mkdirSync(profile, {recursive: true, mode: 0o700});
+        // Why (8 Nov 2026, owner: "how we can prevent this ?"): Chrome keeps the extension worker a kept profile first registered, even when the folder is rewritten
+        // in place (measured: starts 2 and 3 ran start 1's code; a new manifest version did not help), so the twin ran its 28 Oct worker on 8 Nov and no fix reached it.
+        // Only the worker cache goes: sign-ins, cookies and the extension's storage stay. Test: integration/extension/hidden-browser-runs-new-copy.test.mjs.
+        fs.rmSync(path.join(profile, 'Default', 'Service Worker'), {recursive: true, force: true});
         fs.rmSync(portFile, {force: true});
         // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
         const log = process.env.JOBADABRA_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
@@ -113,13 +117,21 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         if (!worker) await pause(100);
       }
       if (!worker) throw new Error('The owned browser extension did not start.');
-      const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
-      await setExtensionStorage({evaluate: async (fn, value) => {
+      const evaluate = async (fn, value) => {
         const expression = `(${fn.toString()})(${JSON.stringify(value) || 'undefined'})`;
         const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
         if (result.exceptionDetails) throw new Error('The owned extension is not ready.');
         return result.result?.value;
-      }}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
+      };
+      // Why (8 Nov 2026, owner: "how we can prevent this ?"): an old worker would carry old Submit and hand-off rules, so the token goes only to the worker that runs the copy on disk.
+      const {ownedStamp} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
+      // The worker target is listed before its module has run, so the stamp is read until it matches, on the worker's own deadline; an old worker never matches.
+      const expected = ownedStamp(extension);
+      let running = await evaluate(() => globalThis.__jobadabraOwnedCopy || '');
+      while (expected && running !== expected && Date.now() < until) { await pause(100); running = await evaluate(() => globalThis.__jobadabraOwnedCopy || ''); }
+      if (!expected || running !== expected) throw Object.assign(new Error(`The background browser runs an old copy of the extension (running ${running || 'none'}, copied ${expected || 'none'}); quit and reopen Jobadabra.`), {code: 'BACKGROUND_EXTENSION_STALE'});
+      const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
+      await setExtensionStorage({evaluate}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
       return {owner, port: live.port};
     })().finally(() => { pending = null; });
     return pending;
