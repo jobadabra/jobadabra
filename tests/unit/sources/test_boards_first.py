@@ -86,6 +86,7 @@ class FakeClient:
     against a 0.2 s wait; a loaded runner moves a sleep and a bound by seconds, an event does not move."""
     def __init__(self, gate=None, answer=None):
         self.gate, self.answer = gate, answer or ANSWER
+        self.answered = threading.Event()   # set when the model's answer is given: what the code could have seen, not what the test allowed
 
     @property
     def messages(self):
@@ -94,6 +95,7 @@ class FakeClient:
     def create(self, **kwargs):
         if self.gate is not None:
             assert self.gate.wait(30), 'the test never let the web search answer'   # a hang guard, not a measure of speed
+        self.answered.set()
         return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(self.answer))], usage=None)
 
 
@@ -144,14 +146,15 @@ class OldState(unittest.TestCase):
 
     def run_first(self, gate=None, release_after_show=False, wait=boards_first.WEB_WAIT, answer=None):
         """gate: the web search answers when it is set (release_after_show: as soon as the first boards are on screen; else when the run has left it).
-        `shown` holds (seconds, jobs, whether the web search had already answered when they were shown)."""
+        `shown` holds (seconds, jobs, whether the web search had already ANSWERED when they were shown: its answer given, not the gate opened)."""
         shown = []
 
         def on_jobs(jobs):
-            shown.append((time.monotonic() - began, jobs, gate is None or gate.is_set()))
+            shown.append((time.monotonic() - began, jobs, client.answered.is_set()))
             if release_after_show:
                 gate.set()
-        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(gate, answer)):
+        client = FakeClient(gate, answer)
+        with mock.patch.object(board_web, '_searcher', return_value=client):
             began = time.monotonic()
             with redirect_stdout(io.StringIO()) as out:
                 searching = board_web.early(SEARCH, fetch=fetch)
@@ -191,6 +194,7 @@ class OldState(unittest.TestCase):
         self.search_again()
         matched, shown, log = self.run_first(gate=threading.Event(), release_after_show=True, answer=BAD)
         self.assertTrue(shown and not shown[0][2], 'the boards that worked were shown only after the web search answered')
+        self.assertIn('a web search found', log, 'the web search never answered inside the run: the boards that worked were not shown before it')
         self.assertLess(log.index('that gave you jobs in this field before'), log.index('a web search found'))
 
     def test_a_web_search_still_searching_is_left_to_the_full_read(self):
