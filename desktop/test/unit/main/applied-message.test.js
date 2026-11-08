@@ -3,7 +3,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createAppliedMessage, WINDOW_MS} from '../../../lib/applied-message.js';
-import {allowed} from '../../../lib/mail-choices.js';
 import {createBackgroundApplyController} from '../../../lib/background-apply-controller.js';
 
 const AT = Date.parse('2026-11-08T09:12:00Z');
@@ -65,18 +64,28 @@ test('Full automation\'s confirmed receipt queues the mail; the person\'s own pr
   const queued = [], done = {ok: true, state: 'receipt_confirmed', mode: 'auto'};
   assert.deepEqual(await controller(done, queued).outcome({session: 's1', owner: 'o1', attempt: 'att1'}, true), {ok: true});
   assert.deepEqual(queued.map(item => [item.id, item.title, item.company, item.at]), [['s1', 'Nurse', 'Demo Klinik', AT]]);
-  await controller(done, queued).outcome({session: 's1', owner: 'o1', humanAt: Date.now()}, true);   // the person's own Submit press: they know
+  await controller(done, queued).outcome({session: 's1', owner: 'o1', humanAt: AT}, true);   // the person's own Submit press: they know
   await controller({ok: true, state: 'needs_user_handoff', mode: 'auto'}, queued).outcome({session: 's1', owner: 'o1', attempt: 'att1'}, false);   // no confirmation came back
   assert.equal(queued.length, 1);
   const broken = controller(done, queued, {applied: {add: () => { throw new Error('boom'); }}});
   assert.deepEqual(await broken.outcome({session: 's1', owner: 'o1', attempt: 'att2'}, true), {ok: true});
 });
 
-test('the sender asks the person\'s switch for `app-applied` first: off holds the mail, on lets it go', () => {
-  const rows = choice => ({settings: () => ({mailRows: [{id: 'app-applied', choice, suggested: {mac: 'mail', always: 'mail'}}]}), secret: () => ''});
-  assert.equal(allowed(rows('off'), 'app-applied'), false);
-  assert.equal(allowed(rows('on'), 'app-applied'), true);
-  assert.equal(allowed({settings: () => ({}), secret: () => ''}, 'app-applied'), true, 'never read: today\'s behaviour holds');
+// The real defaults (the gate on the person's switch and the call to the site), with a fake site: only the request is seen, never a mail.
+function realWorld(choice) {
+  const timers = [], asked = [], kept = {notifyEmail: 'a@b.co', mailRows: choice ? [{id: 'app-applied', choice, suggested: {mac: 'mail', always: 'mail'}}] : []};
+  const storage = {settings: () => kept, saveSettings: patch => Object.assign(kept, patch), secret: name => (name === 'JOBADABRA_TRIAL_KEY' ? 'JPF1.install-0001.tok' : '')};
+  const fetcher = async (url, init) => { asked.push({url, body: init?.body ? JSON.parse(init.body) : null}); return {json: async () => ({ok: true, language: 'en'})}; };
+  const message = createAppliedMessage(storage, {now: () => AT, setTimer: fn => { timers.push(fn); return {}; }, fetcher, log: () => {}});
+  return {message, asked: () => asked.filter(call => call.url.endsWith('/api/notify/email')), fire: async () => { while (timers.length) await timers.shift()(); }};
+}
+test('the real sender asks the person\'s switch for `app-applied`: off sends no request, on sends one under that row, never chosen sends too', async () => {
+  for (const [choice, goes] of [['off', 0], ['on', 1], ['', 1]]) {
+    const {message, asked, fire} = realWorld(choice);
+    message.add(job('a')); await fire();
+    assert.equal(asked().length, goes, `choice "${choice}"`);
+    if (goes) assert.deepEqual([asked()[0].body.mail, asked()[0].body.kind], ['app-applied', 'urgent'], 'the row, and at once');
+  }
 });
 
 test('a sender that throws at once never escapes the timer', async () => {
