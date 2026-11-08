@@ -35,7 +35,7 @@ One Find jobs run is 180 s (`desktop/lib/search-steps.js SEARCH_BUDGET_S`) over 
 |---|---|---|---|---|
 | 0 | Job boards step (discover) | `src/sources/boards.py` | – (own process, first on a normal Find jobs run) | `SHARE_S` 60 → 45 s |
 | 1 | Board web search, EURES early | `board_web.early`, `eures.start_early` | everything, from second 0 | read cut |
-| 2 | Waiting jobs scored first (#3074) | `daily_search_scoring.score_waiting_first` | – | scoring's stop |
+| 2 | Waiting jobs scored first (#3074; beside the search since E2a-1, 8 Nov 2026) | `daily_search_scoring.score_waiting_first` (own thread, own SQLite connections, AI slots `LATER`) | 3, 5, 6 (joined before the import) | scoring's stop |
 | 3 | Employer pick | `employer_index.relevant` → `scout.active_sources` → `source_rank` → `read_budget` kept-left → `first_jobs.pick` | 1 | – |
 | 4 | First-jobs slice (first Find jobs run only) | `first_jobs.run` (hub: `_Readers`, `_Scoring`) | 1, 5 | `MAX_FIRST` scores or the read cut |
 | 5 | Boards first / boards beside | `boards_first.run`, `boards_ahead.scan_beside` | 3, 6 | read cut |
