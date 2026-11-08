@@ -11,8 +11,13 @@ TABLE = Path(__file__).with_name('budget.json')
 
 @functools.lru_cache(maxsize=1)
 def rows():
-    """{name: row}, read once per process."""
-    return {row['name']: row for row in json.loads(TABLE.read_text(encoding='utf-8'))}
+    """{name: row}, read once per process; a name written twice raises (review of ps 3/6)."""
+    table = json.loads(TABLE.read_text(encoding='utf-8'))
+    named = {row['name']: row for row in table}
+    if len(named) != len(table):   # two PRs that each add or change a row, merged with both lines: the later row would win unseen
+        seen = [row['name'] for row in table]
+        raise ValueError(f'budget.json names a knob twice: {sorted({n for n in seen if seen.count(n) > 1})}')
+    return named
 
 
 def value(name):

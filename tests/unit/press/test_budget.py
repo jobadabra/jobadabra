@@ -38,7 +38,8 @@ class BudgetTableTest(unittest.TestCase):
                 module, attr, key = where(name)
                 held = getattr(module, attr)
                 self.assertEqual(held[key] if key else held, budget.value(name))
-        self.assertEqual({where(n)[1] for n in engine} >= {'PLANNED', 'SHARE', 'PACE', 'READ_SECONDS', 'SLICE', 'MAX_NEW'}, True)
+        missing = {'PLANNED', 'SHARE', 'PACE', 'READ_SECONDS', 'SLICE', 'MAX_NEW'} - {where(n)[1] for n in engine}
+        self.assertEqual(missing, set())
 
     def test_the_numbers_fit_in_the_run(self):
         planned = budget.value('time_budget.PLANNED')
@@ -61,9 +62,33 @@ class BudgetTableTest(unittest.TestCase):
         for name, path in APP.items():
             with self.subTest(name):
                 text = (ROOT / path).read_text(encoding='utf-8')
-                held = re.search(rf'^(?:export )?const {name} = (?:.*\? CEILING : )?(\d+);', text, re.M)
+                held = re.search(rf'^(?:export )?const {name} = (?:.*CEILING > (\d+) \? CEILING : )?(\d+);', text, re.M)
                 self.assertIsNotNone(held, f'{name} in {path}')
-                self.assertEqual(int(held.group(1)), budget.value(f'app.{name}'))
+                self.assertEqual({int(n) for n in held.groups() if n}, {budget.value(f'app.{name}')}, 'every number on the line, the ceiling\'s floor too')
+
+    def test_each_step_has_a_share_a_pace_and_its_words(self):
+        # A PACE row without its SHARE row (or its words) would raise KeyError in a Find jobs run, not in a test (review of ps 3/6).
+        from src import time_budget
+        self.assertEqual(set(time_budget.SHARE), set(time_budget.PACE))
+        self.assertEqual(set(time_budget.SHARE), set(time_budget.NOUN))
+        self.assertEqual(set(time_budget.SHARE), set(time_budget.WORDS))
+
+    def test_a_knob_written_twice_is_an_error(self):
+        # Two PRs that each change eures.MOST, merged with both rows: the later would win unseen (review of ps 3/6).
+        import json
+        import tempfile
+        from pathlib import Path as P
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as folder:
+            table = P(folder, 'budget.json')
+            table.write_text(json.dumps([{'name': 'eures.MOST', 'value': 200}, {'name': 'eures.MOST', 'value': 300}]))
+            with mock.patch.object(budget, 'TABLE', table):
+                budget.rows.cache_clear()
+                try:
+                    with self.assertRaisesRegex(ValueError, 'eures.MOST'):
+                        budget.rows()
+                finally:
+                    budget.rows.cache_clear()
 
     def test_a_name_the_table_lacks_is_an_error_not_a_guess(self):
         with self.assertRaises(KeyError):
