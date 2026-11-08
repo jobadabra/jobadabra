@@ -18,10 +18,10 @@ test('the first run reads the slice and scores 3 jobs before the job boards, the
   assert.equal(seen.at(-1), 'src scout');
 });
 
-test('a later press searches the job boards first, and runs the finder only when none ran today', async () => {
+test('a later press is one search, and runs the finder only when none ran today', async () => {
   const now = Date.now();
   const stale = await commands({lastScoutAt: new Date(now - 2 * 86400000).toISOString()}, 'you');
-  assert.deepEqual(stale.slice(0, 2), ['src discover', 'src daily']);
+  assert.deepEqual(stale, ['src daily', 'src scout'], 'the job boards are read inside the search (search-steps-beside.test.js)');
   assert.equal(stale.at(-1), 'src scout');
   const fresh = await commands({lastScoutAt: new Date(now - 3600000).toISOString()}, 'you');
   assert.ok(!fresh.includes('src scout'));
@@ -61,13 +61,13 @@ test('every step of one press counts from the press: one 3-minute deadline', asy
 });
 
 test('the scout keeps its share when due, gets what is left, and waits (still due) when nothing is left', async () => {
-  const {calls} = await press({lastScoutAt: stale()}, 'you', {discover: 50, daily: 90});
+  const {calls} = await press({lastScoutAt: stale()}, 'you', {daily: 140});
   assert.equal(flag(calls.find(c => c.step === 'daily').args, '--budget'), SEARCH_BUDGET_S - SCOUT_SHARE_S, 'daily leaves the scout its share');
   assert.equal(flag(calls.find(c => c.step === 'scout').args, '--budget'), 40, 'the scout gets what is left of the 3 minutes');
   const fresh = await press({lastScoutAt: new Date().toISOString()}, 'you');
   assert.equal(flag(fresh.calls.find(c => c.step === 'daily').args, '--budget'), SEARCH_BUDGET_S, 'no scout due: daily has the whole press');
   const before = stale();
-  const late = await press({lastScoutAt: before}, 'you', {discover: 60, daily: 115});
+  const late = await press({lastScoutAt: before}, 'you', {daily: 175});
   assert.ok(!late.calls.some(c => c.step === 'scout'), 'no scout with 5 s left');
   assert.equal(late.settings.lastScoutAt, before, 'still due: the next press runs it');
   assert.match(late.lines, /^⏱ Time is up \(2 min 55 s\) for searching wider: it waits for the next search$/m);
@@ -87,12 +87,12 @@ test('every step is ended at the press\'s 180 s, whatever the engine does with i
   const lines = [];
   await searchSteps(storage({lastScoutAt: stale()}), line => lines.push(line), 'run', 'you', async (_storage, args, _onLine, _env, opts = {}) => {
     seen.push({step: args[1], stopAfterMs: opts.stopAfterMs});
-    clock += args[1] === 'discover' ? 50000 : 0;
+    clock += args[1] === 'daily' ? 50000 : 0;
     return {code: 0, result: {}, endedByTime: args[1] === 'daily'};
   }, {now: () => clock});
-  assert.deepEqual(seen.map(s => s.step), ['discover', 'daily', 'scout']);
-  assert.equal(seen[0].stopAfterMs, 175000, 'discover may run until the press\'s end, less the stop margin');
-  assert.equal(seen[1].stopAfterMs, 125000, 'daily has what is left: 180 s minus the 5 s stop margin and the 50 s gone');
+  assert.deepEqual(seen.map(s => s.step), ['daily', 'scout']);
+  assert.equal(seen[0].stopAfterMs, 175000, 'the search may run until the press\'s end, less the stop margin');
+  assert.equal(seen[1].stopAfterMs, 125000, 'the scout has what is left: 180 s minus the 5 s stop margin and the 50 s gone');
   assert.match(lines.join('\n'), /^⏱ Time is up \(.*\) for the search: what it has not reached waits for the next search$/m);
 });
 
