@@ -39,6 +39,9 @@ jobs:
       # The install of integration.yml's app job: the engine's packages (the Python tests), the app with its dev packages (scripts/stage.mjs needs esbuild),
       # the Electron binary and a virtual display (the app-integration tests open a window), and the tests' own packages (the store-integration tests).
       - run: pip install --quiet -r requirements.txt
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - run: npm ci
         working-directory: desktop
       - name: The Electron binary

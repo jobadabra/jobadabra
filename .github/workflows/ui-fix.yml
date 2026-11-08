@@ -83,6 +83,9 @@ jobs:
         run: |
           shot=$(jq -r '.screenshot // ""' .heal/candidate.json)
           if [ -n "$shot" ]; then curl -fsSL -o .heal/screenshot.png "$shot" || echo "screenshot not downloaded"; else echo "the issue has no screenshot"; fi
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the app's dependencies (for its tests)
         id: deps
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'

@@ -55,6 +55,9 @@ jobs:
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         with:
           python-version: '3.12'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       - name: Install the dependencies (for the tests)
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         run: |

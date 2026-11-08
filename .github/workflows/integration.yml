@@ -55,6 +55,7 @@ on:
       - 'requirements*.txt'
       - '.github/workflows/integration.yml'
       - '.github/actions/playwright-browser/**'
+      - '.github/actions/electron-cache/**'
 
 permissions:
   contents: read
@@ -125,6 +126,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
       # The same install as the unit jobs (tests-desktop.yml, tests-desktop-windows.yml): dev dependencies included (scripts/stage.mjs needs esbuild); on Linux the Electron binary and a virtual
       # display, so the window tests run; on Windows only the packages (the window tests skip there, as they did in the unit job).
       - run: npm ci
