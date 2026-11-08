@@ -15,7 +15,7 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   # what it unblocks, which category it improves"). Template: tools/pr-body-template.md. Required: a verdict line starting with an emoji, an "**Unblocks:**" line,
   # and the impact table: one row per area, rated 🟢 High · 🟡 Medium · ⚪ Low · — None, with how. Missing a part: refused, naming it.
   head1="$(grep -m1 -vE '^\s*$' "$summary")"
-  printf '%s' "$head1" | LC_ALL=C grep -q '^[[:print:]]' && ! printf '%s' "$head1" | grep -qE '^#+ [^[:alnum:][:space:]]' && { echo 'pr-body: the first line must start with an emoji verdict (e.g. "🟢 The form AI now …"): see tools/pr-body-template.md' >&2; exit 2; }
+  LC_ALL=C grep -q '^[[:print:]]' <<<"$head1" && ! grep -qE '^#+ [^[:alnum:][:space:]]' <<<"$head1" && { echo 'pr-body: the first line must start with an emoji verdict (e.g. "🟢 The form AI now …"): see tools/pr-body-template.md' >&2; exit 2; }
   grep -qiE '\*\*unblocks\b' "$summary" || { echo 'pr-body: the summary has no "**Unblocks:**" line: say exactly what this solves or unblocks (a PR, a session, a number, a person): see tools/pr-body-template.md' >&2; exit 2; }
   for area in 'Real users' 'Form filling' 'Admin data accuracy' 'Offline replays' 'Tests & harness' 'Development speed' 'Cost'; do
     grep -qE "^\|[^|]*${area}[^|]*\|[^|]*(🟢|🟡|⚪|—)[^|]*(High|Medium|Low|None)" "$summary" || { echo "pr-body: the impact table has no rated row for \"$area\": | $area | 🟢 High / 🟡 Medium / ⚪ Low / — None | how | (tools/pr-body-template.md)" >&2; exit 2; }
@@ -40,7 +40,7 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   python3 "$(dirname "$0")/pr-screens.py" < "$summary" || { echo 'pr-body: the screens are not in the | What changed | Before | After | table (tools/pr-body-template.md)' >&2; exit 2; }
   # A change to the desktop window carries the measured Design system table of `npm run design-check` (owner, 7 Nov 2026: "this Design checks on the PR seems stale and inefficient";
   # chosen "Measured check (Recommended)"), replacing the 6 ticks this line used to count: tools/design-table-check.py. "No screenshots/No visible change: <why>" needs none.
-  if git diff --name-only "$base"..HEAD | grep -q '^desktop/renderer/' && ! grep -qE '^No (screenshots|visible change): ' "$summary"; then
+  if grep -q '^desktop/renderer/' <<<"$(git diff --name-only "$base"..HEAD)" && ! grep -qE '^No (screenshots|visible change): ' "$summary"; then
     design_err="$(python3 "$(dirname "$0")/design-table-check.py" "$base" "$summary" 2>&1)" || { echo "pr-body: $design_err" >&2; exit 2; }
   fi
   # At most 5 before/after pairs, usually 1-2 (owner, 17 Oct 2026): more than 10 images is refused.

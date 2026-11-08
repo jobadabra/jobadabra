@@ -82,9 +82,9 @@ esac
 untested=""
 for sha in $(git -C "$repo" log origin/main..HEAD --no-merges --format='%H' 2>/dev/null); do
   message="$(git -C "$repo" log -1 --format='%B' "$sha")"
-  echo "$message" | grep -qiE '\b(fix(es|ed)?|close[sd]?|resolve[sd]?)\b:?[[:space:]]+#[0-9]+' || continue
-  echo "$message" | grep -qiE '^No-test:[[:space:]]*[^[:space:]]' && continue
-  git -C "$repo" show --name-only --format='' "$sha" | grep -qE '^(tests/|desktop/test/|desktop/integration/|desktop/e2e/test/|desktop/e2e/suites/)' && continue
+  grep -qiE '\b(fix(es|ed)?|close[sd]?|resolve[sd]?)\b:?[[:space:]]+#[0-9]+' <<<"$message" || continue
+  grep -qiE '^No-test:[[:space:]]*[^[:space:]]' <<<"$message" && continue
+  grep -qE '^(tests/|desktop/test/|desktop/integration/|desktop/e2e/test/|desktop/e2e/suites/)' <<<"$(git -C "$repo" show --name-only --format='' "$sha")" && continue
   untested="$untested$(git -C "$repo" log -1 --format='%h %s' "$sha")"$'\n'
 done
 if [ -n "$untested" ]; then
@@ -141,7 +141,7 @@ fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/tooling/ci/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/guards/rules/card-system.test.js test/guards/rules/no-question-mark.test.js test/guards/rules/text-fields.test.js test/guards/rules/solid-buttons.test.js test/unit/renderer/roomy-cards.test.js test/guards/rules/mac-words.test.js test/guards/rules/design.test.js"
-if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$' <<<"$(git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null)"; then
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || block "a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)"
 fi
@@ -179,7 +179,7 @@ fi
 # recorded-page replays run in CI on the PR (.github/workflows/pr-gate.yml, build.yml, page-cases.yml), in parallel, not on this Mac behind the heavy lock.
 # CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check). Only the workflow lint stays local.
 case "$command" in *SHIP_PR=1*|*CI_GATES=1*)
-  if git -C "$repo" diff --name-only origin/main..HEAD 2>/dev/null | grep -q '^\.github/workflows/' && command -v actionlint >/dev/null; then
+  if grep -q '^\.github/workflows/' <<<"$(git -C "$repo" diff --name-only origin/main..HEAD 2>/dev/null)" && command -v actionlint >/dev/null; then
     lint="$(cd "$repo" && timed "workflow files (actionlint)" workflows_lint 2>&1)" || block "$lint"
   fi
   report_blocks

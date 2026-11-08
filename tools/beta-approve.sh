@@ -12,7 +12,7 @@ windows=''; if [ "${1:-}" = --windows ]; then windows=1; shift; fi
 tag=${1:?usage: tools/beta-approve.sh [--windows] <tag>}
 marker='Beta-approved:'; [ -n "$windows" ] && marker='Beta-approved (Windows):'
 body=$(gh release view "$tag" -R "$repo" --json body -q .body)
-if printf '%s\n' "$body" | grep -qF -- "$marker"; then echo "$tag is already approved ($marker)."; exit 0; fi
+if grep -qF -- "$marker" <<<"$body"; then echo "$tag is already approved ($marker)."; exit 0; fi
 sha=$(gh api "repos/$repo/commits/$tag" -q '.sha[0:7]')
 line="$marker unit suites and every end-to-end suite passed on commit $sha ($(date -u +%Y-%m-%d))"
 [ -n "$windows" ] && line="$marker unit suites and every Windows end-to-end suite passed on commit $sha ($(date -u +%Y-%m-%d))"

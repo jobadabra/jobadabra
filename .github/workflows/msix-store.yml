@@ -134,7 +134,7 @@ jobs:
         run: |
           status=$(msstore submission status 9NW1JJ7Z90MP 2>&1 || true)
           echo "$status" | tail -5
-          if echo "$status" | grep -qE 'CommitStarted|PreProcessing|Certification|Release|PendingPublication|Publishing' && ! echo "$status" | grep -qE 'Failed'; then
+          if grep -qE 'CommitStarted|PreProcessing|Certification|Release|PendingPublication|Publishing' <<<"$status" && ! grep -qE 'Failed' <<<"$status"; then
             echo "::notice::A submission is still in Microsoft's review: ${{ needs.msix.outputs.version }} waits: the weekly run sends the next one."
             echo "busy=true" >> "$GITHUB_OUTPUT"
           fi

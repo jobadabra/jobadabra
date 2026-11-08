@@ -170,9 +170,9 @@ step "updating $branch from origin/main"
 before_rebase="$(git rev-parse HEAD)"
 rebase
 if [ "$(git rev-list --count origin/main..HEAD)" -eq 0 ]; then
-  # Why (26 Oct 2026, jobadabra-web #160; 27 Oct 2026, Gitar #2308): a rebase can lose an amended merge edit or skip a linear patch already upstream even after main later reverts it.
+  # Why (26 Oct 2026, jobadabra-web #160; 27 Oct 2026, Gitar #2308; 8 Nov 2026, sp): a rebase can lose an amended merge edit or skip a linear patch already upstream even after main later reverts it; the file list is cut with awk, not head, which would kill its writer with SIGPIPE under pipefail.
   # The guard compares the branch's pre-update file values with main before reporting "nothing to push"; tests/test_ship_dropped.py covers both histories.
-  git merge-base --is-ancestor "$before_rebase" origin/main && lost="" || lost="$(git diff --name-only "$(git merge-base "$before_rebase" origin/main)" "$before_rebase" | while read -r file; do git diff --quiet "$before_rebase" origin/main -- "$file" || echo "$file"; done | head -5 | paste -sd ' ' -)"
+  git merge-base --is-ancestor "$before_rebase" origin/main && lost="" || lost="$(git diff --name-only "$(git merge-base "$before_rebase" origin/main)" "$before_rebase" | while read -r file; do git diff --quiet "$before_rebase" origin/main -- "$file" || echo "$file"; done | awk 'NR <= 5' | paste -sd ' ' -)"
   [ -z "$lost" ] || { fail_reason="the rebase left $branch with no commits, but main lacks its change to: $lost. It is still in $before_rebase (git reflog): put it on a new branch from origin/main (git diff origin/main $before_rebase -- <file> | git apply)"; echo "ship: $fail_reason" >&2; exit 1; }
   echo "ship: nothing to push, $branch has no commits beyond origin/main"; finished=1; exit 0
 fi

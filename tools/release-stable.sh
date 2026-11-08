@@ -28,7 +28,9 @@ tag=${1:-$(python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" latest-beta "$re
 # nothing; the versioned installer beside it, the same bytes, does.
 version=${tag#desktop-v}
 assets=$(gh release view "$tag" -R "$repo" --json assets -q '.assets[] | "\(.name)\t\(.size)"')
-size_of() { printf '%s\n' "$assets" | awk -F'\t' -v want="$1" '$1 == want {print $2; exit}'; }
+# Why (8 Nov 2026, sp): a pipe into a reader that exits early (awk exit, grep -q, head) makes the writer die of SIGPIPE, and pipefail turns that into 141 (it reddened
+# test_a_release_alert_that_fails_does_not_undo_the_promotion on #3621 with the code unchanged). A here-string has no writer process to kill.
+size_of() { awk -F'\t' -v want="$1" '$1 == want {print $2; exit}' <<<"$assets"; }
 # Jobadabra-* are the names since 25 Oct 2026; a build before that (a rollback to 0.8.27) has only the Job-Pilotto-* ones, which is then the brand compared.
 brand=Job-Pilotto; [ -z "$(size_of "Jobadabra-${version}-x64.exe")" ] || brand=Jobadabra
 generic=$(size_of "${brand}-windows-x64.exe")

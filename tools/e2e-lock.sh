@@ -41,7 +41,7 @@ acquire() {
     if [ -z "$held" ]; then   # nobody holds it, yet creating it failed: that is an error to read, not a lock to wait for (beta 16, 24 Oct 2026)
       fails=$((fails + 1)); echo "e2e-lock: could not create refs/${ref} (try ${fails}): ${made}" >&2
       if [ "$fails" -ge 3 ]; then
-        if printf '%s' "$made" | grep -q 'Resource not accessible by integration'; then
+        if grep -q 'Resource not accessible by integration' <<<"$made"; then
           echo "e2e-lock: WARNING: the token may not create refs on this attempt (run attempt ${GITHUB_RUN_ATTEMPT:-?}); ${key} runs WITHOUT its lock" >&2
           echo "::warning::${key}: ran without the suite lock (the token cannot create refs on this attempt: ${me})"
           return 0
@@ -50,11 +50,11 @@ acquire() {
       fi
       sleep "$poll"; continue
     fi
-    msg="$(holder_msg "$held")"; run="$(printf '%s' "$msg" | sed -n 's/^run=\([0-9]*\).*/\1/p' | head -n1)"
+    msg="$(holder_msg "$held")"; run="$(sed -n 's/^run=\([0-9]*\).*/\1/p' <<<"$msg" | awk 'NR == 1')"
     status=gone
     if [ -n "$run" ]; then   # gh prints the error body on stdout: a 404 is a run that is gone, any other failure is "unknown" and keeps waiting
       out="$(gh api "repos/${repo}/actions/runs/${run}" --jq .status 2>&1)"; rc=$?
-      if [ $rc -eq 0 ] && printf '%s' "$out" | grep -qE '^[a-z_]+$'; then status="$out"; elif printf '%s' "$out" | grep -q 'Not Found'; then status=gone; else status=unknown; fi
+      if [ $rc -eq 0 ] && grep -qE '^[a-z_]+$' <<<"$out"; then status="$out"; elif grep -q 'Not Found' <<<"$out"; then status=gone; else status=unknown; fi
     fi
     if [ "$status" = "completed" ] || [ "$status" = "gone" ]; then
       echo "e2e-lock: ${key} was held by ${msg} (run ${status}): taking it over"
