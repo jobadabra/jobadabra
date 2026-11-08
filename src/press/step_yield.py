@@ -13,7 +13,8 @@ import json
 import threading
 import time
 
-FIT = 70   # "fit 70+", as src/source_yield.py
+from ..source_yield import FIT, _fits   # one reader of the scores and one "fit 70+" for both reports (Gitar, #3603)
+
 STEPS = ('scoring', 'job_boards', 'employer_sites', 'free_job_apis')   # time_budget.STAGES' names (e2b's contract, 8 Nov 2026), the engine's order today; P2 owns the order from here on.
 # 'scoring' here is the waiting jobs' pass; the boards read first and beside the employer sites are ONE step until E2a-2 splits them
 TABLE = '''CREATE TABLE IF NOT EXISTS step_yield (
@@ -73,18 +74,13 @@ def _seconds(spans):
 
 
 def _facts(db):
-    """({url: id}, {id: (title, location)}, {id: fit}) of the cache's jobs and scores; scores {} before the first one."""
-    ids, where, fits = {}, {}, {}
-    for job_id, url, title, location in db.execute('SELECT id, url, title, location FROM jobs'):
+    """({url: id}, {id: job as the place check reads it}, {id: fit}) of the cache's jobs and scores. Why (Gitar, #3603): the check of a country-only place looks the
+    posting's own read up by its url and a hash of title + location + description, so the job carries all four."""
+    ids, jobs = {}, {}
+    for job_id, url, title, location, description in db.execute('SELECT id, url, title, location, description FROM jobs'):
         ids[url] = job_id
-        where[job_id] = (title, location or '')
-    if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'scores'").fetchone():
-        for job_id, data in db.execute('SELECT job_id, data_json FROM scores'):
-            try:
-                fits[job_id] = int(json.loads(data or '{}').get('score') or 0)
-            except (ValueError, TypeError):
-                continue
-    return ids, where, fits
+        jobs[job_id] = {'url': url, 'title': title, 'location': location or '', 'description': description}
+    return ids, jobs, _fits(db)
 
 
 def measure(db, in_my_place=None):
@@ -101,8 +97,7 @@ def measure(db, in_my_place=None):
             continue
         row = dict.fromkeys(FIELDS, 0) | {'step': step, 'seconds': _seconds(spans.get(step, [])), 'jobs': len(landed_by.get(step, ())) + len(scored_by.get(step, ()))}
         for job_id in taken:
-            title, location = where[job_id]
-            here = in_my_place({'title': title, 'location': location})
+            here = in_my_place(where[job_id])
             row['local'] += here
             if job_id in fits:
                 row['scored'] += 1

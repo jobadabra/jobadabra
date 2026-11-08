@@ -89,6 +89,14 @@ class StepYieldTests(unittest.TestCase):
         self.assertIsNone(step_yield.per_minute(row))
         self.assertEqual(step_yield.line([row]), 'Step yield: job boards 2 local')
 
+    def test_the_place_check_gets_the_url_and_description_it_reads_a_posting_by(self):   # Gitar, #3603: a country-only place is decided by the posting's own read
+        def read_by_url_and_text(job):
+            return job.get('url') == 'https://x.test/4' and 'description' in job and job['location'] == 'Fürth'
+        step_yield.landed('employer_sites', [{'url': 'https://x.test/4'}], ['new'])
+        with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db:
+            row, = step_yield.measure(db, in_my_place=read_by_url_and_text)
+        self.assertEqual(row['local'], 1)
+
     def test_soFar_credits_a_step_only_when_the_caller_names_one(self):
         with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, mock.patch.object(jobs_so_far.store, 'import_watch_report', return_value=['new']):
             sofar = jobs_so_far.SoFar(db, say=lambda _: None)
