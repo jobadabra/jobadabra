@@ -4,14 +4,14 @@ name: Press tapes
 # published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
 # Its calls ride the broker's by-hand lane (jobadabra-web lib/lanes.mjs: the PR reserve to 100% of the week, never Claude), so a spent scheduled share (70%) no longer turns a tape into another AI's answers.
 # That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona takes ~45+ calls (2 presses at the ceiling and the judge),
-# so record in batches of about 6 personas a UTC day (owner, 8 Nov 2026: "~3 days of recording"), on a day no by-hand Search check ran, never all 18 at once.
+# so record in batches of about 6 personas a UTC day (owner, 8 Nov 2026: "~3 days of recording"), on a day no by-hand Search check ran; the batch job refuses an empty list or more than 6.
 on:
   workflow_dispatch:
     inputs:
       personas:
-        description: 'JSON list of personas (empty = all 18)'
+        description: 'JSON list of 1 to 6 personas, such as [10, 11, 12, 15, 17, 7] (the by-hand lane fits about 6 a UTC day)'
         type: string
-        default: ''
+        required: true
       ceiling:
         description: 'Seconds of the recorded press (180 = a normal press)'
         type: string
@@ -31,8 +31,21 @@ env:
   JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5
 
 jobs:
+  # Why (8 Nov 2026, Gitar on #3586): a comment did not stop a dispatch of all 18 (~810+ calls) running into the lane's 800 a day, where every later call is refused and recorded into a tape.
+  batch:
+    name: The batch fits the by-hand lane's day
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          PERSONAS: ${{ inputs.personas }}
+        run: |
+          n=$(node -e 'const v = JSON.parse(process.env.PERSONAS || "[]"); if (!Array.isArray(v) || !v.every(Number.isInteger)) process.exit(2); console.log(v.length)') || { echo "::error::personas must be a JSON list of numbers"; exit 1; }
+          if [ "$n" -lt 1 ] || [ "$n" -gt 6 ]; then echo "::error::name 1 to 6 personas (the by-hand lane has 800 calls a UTC day, a tape persona ~45+), got $n"; exit 1; fi
+
   record:
     name: Tape ${{ matrix.persona }}
+    needs: batch
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # Why (8 Nov 2026, owner: "Yes, tapes use it too (Recommended)": "gi adds the same environment to press-tapes.yml plus one name in lanes.mjs"): the run token's environment puts these calls
@@ -47,7 +60,7 @@ jobs:
       fail-fast: false
       max-parallel: 1   # one at a time: the broker refuses calls under load, and a refusal recorded in a tape skews its times (owner, 7 Nov 2026)
       matrix:
-        persona: ${{ fromJSON(inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]') }}
+        persona: ${{ fromJSON(inputs.personas) }}
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
