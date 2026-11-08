@@ -253,7 +253,7 @@ export function registerExtServerHandlers(ctx) {
   server.setStartedHandler(event => { const id = startForm(terminals, review.sessionOfTab, event?.tab); if (id) appLog('extension', 'started again on its tab: the session is no longer stopped', {id, who: String(event?.who || '').slice(0, 40)}); });
   server.setStuckHandler(event => {   // tier 3: the extension can't reach a form (lib/session-flow.js)
     // Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): a hidden application's own run is handed over too, or its card kept "Filling" with Stop.
-    if (flow().stuck(event) === 'noted' && event?.session) backgroundApplyFor(storage).deadEnd(String(event.session), String(event.why || ''), String(event.needs || '')).catch(error => appLog('apply', `dead end not handed over: ${error.message}`, {session: String(event.session)}));
+    if (flow().stuck(event) === 'noted' && event?.session) backgroundApplyFor(storage).deadEnd(event).catch(error => appLog('apply', `dead end not handed over: ${error.message}`, {session: String(event.session)}));
   });
   review.onBind(({id, tab, before, by, host, newRun}) => appLog('review', `tab ${tab} is session ${id}'s now`, {before, by, host, ...(newRun ? {newRun} : {})}));   // which tab a session follows, and why
   review.setReporter(state => flow().reported(state));   // the step each form report puts its session at (lib/session-flow.js)

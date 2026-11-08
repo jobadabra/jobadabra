@@ -29,7 +29,7 @@ test('the owner\'s scenario: a hidden application at a dead end before its form 
   assert.deepEqual((await control.poll()).handoffs || [], [], 'positive control: without the dead end, the run stays the app\'s');
   const {controller, handed, poll} = rig({a: job('a', 'preflight'), b: job('b', 'filling')});
   await poll();
-  assert.equal((await controller.deadEnd('a', 'no-form'))?.reason, 'no_form');
+  assert.equal((await controller.deadEnd({session: 'a', why: 'no-form'}))?.reason, 'no_form');
   assert.deepEqual(handed, ['a:no_form'], 'only the job at the dead end, the other untouched');
   assert.deepEqual((await poll()).handoffs.map(each => each.session), ['a']);
 });
@@ -38,11 +38,11 @@ test('the owner\'s scenario: a hidden application at a dead end before its form 
 // keeps its own path; handed over as a finished no_form, the next Apply would drop a half-filled form or a check the person was meant to solve.
 test('only a true no-form before any form is a dead end: other reports, a run past its form, one already handed over and an unknown session are left alone', async () => {
   const {controller, handed} = rig({f: job('f', 'filling'), r: job('r', 'ready_for_review'), s: job('s', 'submitting'), h: job('h', 'needs_user_handoff', {manualOverride: true, reason: 'stopped'}), q: job('q', 'queued')});
-  for (const id of ['f', 'r', 's', 'h', 'nobody']) assert.equal(await controller.deadEnd(id, 'no-form'), null, id);
-  for (const why of ['account', 'incomplete', 'email', 'told', 'other', 'site_broken']) assert.equal(await controller.deadEnd('q', why), null, why);
-  assert.equal(await controller.deadEnd('q', 'no-form', "This site wants a quick check: solve it, then I'll continue"), null, 'a bot check sent as no-form with its need');
+  for (const id of ['f', 'r', 's', 'h', 'nobody']) assert.equal(await controller.deadEnd({session: id, why: 'no-form'}), null, id);
+  for (const why of ['account', 'incomplete', 'email', 'told', 'other', 'site_broken']) assert.equal(await controller.deadEnd({session: 'q', why}), null, why);
+  assert.equal(await controller.deadEnd({session: 'q', why: 'no-form', needs: "This site wants a quick check: solve it, then I'll continue"}), null, 'a bot check sent as no-form with its need');
   assert.deepEqual(handed, []);
-  assert.equal((await controller.deadEnd('q', 'no-form'))?.reason, 'no_form', 'positive control: the same queued job at a true dead end is handed over');
+  assert.equal((await controller.deadEnd({session: 'q', why: 'no-form'}))?.reason, 'no_form', 'positive control: the same queued job at a true dead end is handed over');
 });
 
 test('nothing was pressed at a dead end, so applying again starts a new run', () => {

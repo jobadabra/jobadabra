@@ -408,30 +408,23 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    * Why (5 Nov 2026, review of [ap] 6/7): the Stop was only a mark on the session that the next poll read, and the job's own fill report cleared it first
    * (session-flow.js reported → clearStuck), so the job went on to Ready and, in Full automation, to its press. A job being sent is left alone, as Cancel does.
    */
-  async function stopOne(id) {
-    return serial(async () => {
-      const item = itemFor(id);
-      if (!item) return null;
-      const state = latest.get(item.id) || await store.read(item.url).catch(() => null);
-      if (!state || state.session !== item.id || state.manualOverride || ['submitting', 'receipt_confirmed'].includes(state.state)) return null;
-      const handed = await markManual(item, 'stopped');
-      return handed?.ok === false ? null : handed;
-    });
-  }
-  /** The extension's dead end on a hidden application before its form (lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
+  // The one guarded hand-over of a hidden run (Stop, a dead end): this item's own run, not already handed over, in a state `allowed` accepts. -> the saved state, or null.
+  const handOverIf = (id, allowed, reason) => serial(async () => {
+    const item = itemFor(id);
+    if (!item) return null;
+    const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // an unreadable store hands nothing over
+    if (!state || state.session !== item.id || state.manualOverride || !allowed(state.state)) return null;
+    const handed = await markManual(item, reason);
+    return handed?.ok === false ? null : handed;
+  });
+  async function stopOne(id) { return handOverIf(id, state => !['submitting', 'receipt_confirmed'].includes(state), 'stopped'); }
+  /** The extension's dead end on a hidden application before its form (the stuck event, lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
    * Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): the twin's Lufthansa run said "can't reach the form" and kept "Filling" with Stop. */
-  async function deadEnd(id, why, needs = '') {
+  async function deadEnd(event) {
     // Only a page with no form and nothing the person must do: an account page is the extension's own hand-off (sign_in_required), and a bot check,
     // an incomplete form or a told outcome keeps its own path (the form judge, extension/background-session.mjs observe) and stays with the person.
-    if (why !== 'no-form' || needs) return null;
-    return serial(async () => {
-      const item = itemFor(id);
-      if (!item) return null;
-      const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // as stopOne: an unreadable store hands nothing over
-      if (!state || state.session !== item.id || state.manualOverride || !['queued', 'preflight'].includes(state.state)) return null;   // filling: a form was reached, its steps stay the person's
-      const handed = await markManual(item, 'no_form');
-      return handed?.ok === false ? null : handed;
-    });
+    if (!event?.session || event.why !== 'no-form' || event.needs) return null;
+    return handOverIf(String(event.session), state => ['queued', 'preflight'].includes(state), 'no_form');   // filling: a form was reached, its steps stay the person's
   }
   async function page(id) { return itemFor(id) ? browserOf().pageSocket(id) : null; }
   // The page's own sending button for the app's Submit (the person's press): only while the form judge's ready stands, never after a hand-off.
