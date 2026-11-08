@@ -3,12 +3,11 @@ roles and places, record their seen history. Moved out of feeds.py (500-line rul
 tests patch feeds.* as before. A timed search reads best first and stops at its time (src/sources/read_budget.py). Tests: tests/unit/sources/test_read_budget.py, tests/unit/sources/test_feed_scan_parallel.py, tests/unit/sources/test_coverage.py, tests/unit/sources/test_non_it_crawl.py."""
 import os
 import threading
-import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from . import ats, feed_facts, feed_places, feeds, late_reads, read_budget
 from ..ai import slots, title_queue
-from .. import read_methods, source_yield
+from .. import read_methods, source_yield, time_budget
 
 
 def _item(source, job, status):
@@ -86,7 +85,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
     took, asked, taken = {}, {}, []   # seconds per site read (source_yield.timed); each read's "changed since?" state; sites read after the last cut (late_reads)
 
     def fetch(source):
-        started = time.monotonic()
+        started = time_budget.now()
         with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
             with ats.conditional(feed_facts.ask(facts.get(key(source)))) as asked[key(source)]:   # a 304 comes back as ats.Unchanged
                 late = late_reads.take('employer', key(source))   # read after the last search's cut: its answer, not a second read
@@ -95,7 +94,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
                     taken.append(key(source))
             counted.failed = got[1] is not None   # a failed read is not a source read
             counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
-        took[key(source)] = round(time.monotonic() - started, 1)
+        took[key(source)] = round(time_budget.now() - started, 1)
         source_yield.timed('employer feed', source['company'], took[key(source)])
         if cut_off[0]:   # read after the cut: left for the next run, not counted in this one
             return got

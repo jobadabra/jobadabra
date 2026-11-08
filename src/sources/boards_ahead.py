@@ -6,6 +6,7 @@ Tests: tests/test_boards_ahead.py."""
 import os
 from concurrent.futures import ThreadPoolExecutor, wait as wait_for
 
+from .. import time_budget
 from ..ai import slots
 from ..press import step_yield
 
@@ -63,8 +64,8 @@ def start(db, search, env=None, now=None, after=None):
         return None
     if aggregators.read_lately(db, NAME, now, search):   # the same search within the spacing: only the boards not read since (owner's pilot run, 26 Oct 2026)
         import functools
-        from datetime import datetime, timedelta, timezone
-        since = (now or datetime.now(timezone.utc)) - timedelta(hours=aggregators.SPACING_HOURS)
+        from datetime import timedelta
+        since = (now or time_budget.wall()) - timedelta(hours=aggregators.SPACING_HOURS)
         read = functools.partial(read, since=since)
     return Ahead(search, read, after)
 

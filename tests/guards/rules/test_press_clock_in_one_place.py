@@ -3,20 +3,20 @@ owner, 7 Nov 2026: "one agent fixes an issue, then comes another agent and tries
 it, knobs were added straight into the stage files at least 9 times (boards SHARE_S, boards_first WEB_WAIT, read_budget READ_SECONDS/FLOOR/GRACE
 26 Oct; time_budget FEED 27 Oct; eures LAST_PAGE, MOST #3305; KEEP 27 Oct). Fails when a stage file assigns a number at module level that is not
 in the table and not one of today's other constants below, or when it reads the wall clock more often than today (the clock moves into
-src/press in 4/6). Both allow-lists only shrink: an entry that no longer exists fails too."""
+src/press/clock.py since 4/6). Both allow-lists only shrink: an entry that no longer exists fails too."""
 import ast
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-STAGES = ('src/time_budget.py', 'src/sources/read_budget.py', 'src/sources/boards.py', 'src/sources/boards_first.py', 'src/sources/eures.py',
+STAGES = ('src/time_budget.py', 'src/press/clock.py', 'src/sources/read_budget.py', 'src/sources/boards.py', 'src/sources/boards_first.py', 'src/sources/eures.py',
           'src/first_jobs.py', 'src/ai/title_triage.py')
 # Numbers that are not a run's seconds or counts (sizes of a request, a fit line, a file's age, a JSON schema's limits, a counter's start).
-OTHER = {'src/time_budget.py': {'_local', '_scored'}, 'src/sources/read_budget.py': {'LEFT_DAYS'},
+OTHER = {'src/sources/read_budget.py': {'LEFT_DAYS'},
          'src/sources/boards.py': {'PAGE_SIZE', 'MAX_TERMS', 'MAX_REQUESTS', 'QUERIES_SCHEMA'}, 'src/sources/eures.py': {'PAGE_SIZE', 'MAX_PAGES'},
          'src/first_jobs.py': {'FIT'}}
-# Wall-clock reads today per stage file (time_budget is the clock itself until 4/6 moves it).
-CLOCK_READS = {'src/sources/read_budget.py': 6, 'src/sources/boards.py': 3, 'src/sources/boards_first.py': 0, 'src/sources/eures.py': 6,
+# Wall-clock reads today per stage file (src/press/clock.py is the clock itself: its reads are the clock's, so it is not listed; 4/6 moves the stage files' reads into it).
+CLOCK_READS = {'src/sources/read_budget.py': 0, 'src/sources/feed_scan.py': 0, 'src/sources/aggregators.py': 0, 'src/sources/boards_ahead.py': 0, 'src/sources/boards.py': 3, 'src/sources/boards_first.py': 0, 'src/sources/eures.py': 6,
                'src/first_jobs.py': 2, 'src/ai/title_triage.py': 2}
 CLOCKS = {('time', 'monotonic'), ('time', 'time'), ('time', 'perf_counter'), ('datetime', 'now')}
 
@@ -64,7 +64,7 @@ class ClockInOnePlaceTest(unittest.TestCase):
         for path, most in CLOCK_READS.items():
             with self.subTest(path):
                 held = clock_reads(path)
-                self.assertLessEqual(held, most, 'a new deadline on the wall clock: take it from time_budget (src/press in 4/6)')
+                self.assertLessEqual(held, most, 'a new deadline on the wall clock: take it from the clock (src/press/clock.py: Clock.now, Clock.wall)')
                 self.assertEqual(held, most, f'{path} reads the clock {held} times now: lower CLOCK_READS to it')
 
 

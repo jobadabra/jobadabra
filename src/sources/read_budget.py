@@ -8,9 +8,8 @@ Every read of the run ends at its cut, half the budget (owner, 26 Oct 2026: "A f
 and scores of what was read get the other half of the same deadline (src/time_budget.py); a read stage past the cut only queues (past_cut).
 Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py."""
 import json
-import time
 from concurrent.futures import TimeoutError as Late
-from datetime import datetime, timezone
+from datetime import datetime
 
 from .. import paths, time_budget
 from ..press import budget, rank, resume
@@ -39,7 +38,7 @@ def deadline(now=None):
     """The monotonic time after which no new site starts, or None when the search has no budget."""
     if time_budget.DEADLINE is None:
         return None
-    started = now if now is not None else time.monotonic()
+    started = now if now is not None else time_budget.now()
     if _short[0]:
         return started
     return min(started + time_budget.part(READ_SECONDS), max(cut_at() - time_budget.part(READ_GRACE), started))
@@ -60,12 +59,12 @@ def cut_at():
 def past_cut(now=None):
     """A timed search is past its read cut: a read stage starts nothing more and queues it (time_budget.later)."""
     at = cut_at()
-    return at is not None and (now if now is not None else time.monotonic()) >= at
+    return at is not None and (now if now is not None else time_budget.now()) >= at
 
 
 def seconds_left(at):
     """How long to wait for an open site before the cut (None: no cut, wait for it)."""
-    return None if at is None else max(0.0, at - time.monotonic())
+    return None if at is None else max(0.0, at - time_budget.now())
 
 
 def result(future, at):
@@ -88,7 +87,7 @@ def over(at, index, now=None):
     if now is not None:
         return _short[0] or now >= at
     from .. import budget_tape
-    return budget_tape.decide('read_over', [index], lambda: _short[0] or time.monotonic() >= at)
+    return budget_tape.decide('read_over', [index], lambda: _short[0] or time_budget.now() >= at)
 
 
 def _left(now=None):
@@ -97,7 +96,7 @@ def _left(now=None):
         at = datetime.fromisoformat(kept['at'])
     except (OSError, ValueError, KeyError, TypeError):
         return []
-    if ((now or datetime.now(timezone.utc)) - at).days >= LEFT_DAYS:
+    if ((now or time_budget.wall()) - at).days >= LEFT_DAYS:
         return []
     return [key for key in kept.get('keys') or [] if isinstance(key, str)]
 
@@ -135,7 +134,7 @@ def keep_left(unread, key, read, total, now=None):
     try:
         if unread:
             _file().parent.mkdir(parents=True, exist_ok=True)
-            _file().write_text(json.dumps({'at': (now or datetime.now(timezone.utc)).isoformat(timespec='seconds'), 'keys': [key(s) for s in unread]}) + '\n')
+            _file().write_text(json.dumps({'at': (now or time_budget.wall()).isoformat(timespec='seconds'), 'keys': [key(s) for s in unread]}) + '\n')
         elif _file().exists():
             _file().unlink()
     except OSError:
