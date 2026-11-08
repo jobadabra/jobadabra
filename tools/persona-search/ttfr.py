@@ -22,7 +22,7 @@ def ts(text):
 def jobs_in_places(since=None):
     """One row per open job in the user's places: {title, company, location, seen_s, fit, scored_s}, seconds from the first press's start (fit and
     scored_s None while unscored); since: an ISO time, the press's own start (a later press: a job scored before it has negative seconds); [] when the press was cut before any step opened the stores. The press's yardstick joins them with the judge's
-    verdicts (tools/press-yardstick/numbers.py, plan docs/superpowers/plans/2026-11-07-the-press.md 2c).
+    verdicts (tools/press-yardstick/three_numbers.py, plan docs/superpowers/plans/2026-11-07-the-press.md 2c).
     Why (PR 3130, run 41807509648, 4 Nov 2026): the 3-minute stop came before the first step, the tables were missing and this died, so the row went red
     "wrote no numbers" and the persona's row was lost."""
     tracker, db = sqlite3.connect(DATA / 'tracker.sqlite'), sqlite3.connect(JOBS_DB)

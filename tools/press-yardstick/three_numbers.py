@@ -7,10 +7,10 @@ and the blind judge's verdicts kept with its tape (tools/persona-search/gate_jud
 A job the judge never saw is unjudged: never right, counted apart, so a change that finds new jobs shows them (the next recording judges them).
 Across personas coverage and quality are means and speed the median. A PR's number is better or worse only outside main's noise band (mean +- 2 sd
 of main's own replays); inside it reads "no change".
-  python3 tools/press-yardstick/numbers.py summary <tapes dir> <replay dir> [--press N]   per-persona numbers and their summary (JSON)
-  python3 tools/press-yardstick/numbers.py band <summary.json>...                          main's band from its replays' summaries (JSON)
-  python3 tools/press-yardstick/numbers.py compare <band.json> <summary.json>             one markdown table
-A folder holds p<N>/jobs-<press>.json; the tapes folder also p<N>/judged.json. Tests: tests/unit/press/test_numbers.py."""
+  python3 tools/press-yardstick/three_numbers.py summary <tapes dir> <replay dir> [--press N]   per-persona numbers and their summary (JSON)
+  python3 tools/press-yardstick/three_numbers.py band <summary.json>...                          main's band from its replays' summaries (JSON)
+  python3 tools/press-yardstick/three_numbers.py compare <band.json> <summary.json>             one markdown table
+A folder holds p<N>/jobs-<press>.json; the tapes folder also p<N>/judged.json. Tests: tests/unit/press/test_three_numbers.py."""
 import json
 import statistics
 import sys

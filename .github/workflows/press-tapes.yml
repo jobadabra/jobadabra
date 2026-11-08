@@ -103,7 +103,7 @@ jobs:
           cp out/draw/draft.json tape/draft.json
       - name: Judge the ceiling's jobs (kept with the tape)
         # The yardstick's PR job runs no AI (plan docs/superpowers/plans/2026-11-07-the-press.md 2c): the blind judge's verdicts on every job the ceiling
-        # found, and each press's jobs in the places (run.mjs --tape: jobs-<press>.json), travel with the tape for tools/press-yardstick/numbers.py.
+        # found, and each press's jobs in the places (run.mjs --tape: jobs-<press>.json), travel with the tape for tools/press-yardstick/three_numbers.py.
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-tape/data/jobs.sqlite" out/jobs.json

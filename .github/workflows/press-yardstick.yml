@@ -1,0 +1,162 @@
+name: Find jobs pipeline yardstick
+run-name: Find jobs pipeline yardstick ${{ inputs.mode || 'pr' }}
+# The Find jobs pipeline's yardstick (plan docs/superpowers/plans/2026-11-07-the-press.md 2c-2; owner, 7 Nov 2026: "We aim quality, speed and coverage"):
+# a pipeline PR and main replay the same Find jobs recordings (press-tapes.yml: each night persona's first and repeat Find jobs run at the 540 s
+# ceiling, every web and AI answer kept), at the recorded pace with the 180 s run, offline: no AI (--no-live: a question the recording lacks is
+# counted and fails), no site visit, no broker. tools/press-yardstick/numbers.py turns each side's jobs into coverage, quality and speed, and the
+# job summary shows them against main's noise band (mean +- 2 sd of 5 replays of main: workflow_dispatch mode=band). A persona with no recording
+# yet is "not measured", never red. The PR's number is better or worse only outside the band.
+on:
+  pull_request:
+    # The Find jobs run's stage files (plan 2c-2: "on PRs whose files are the pipeline's"): their order, clock or budget decides the three numbers.
+    paths:
+      - 'src/press/**'
+      - 'src/time_budget.py'
+      - 'src/daily_search*.py'
+      - 'src/first_jobs.py'
+      - 'src/employer_index.py'
+      - 'src/source_rank.py'
+      - 'src/sources/read_budget.py'
+      - 'src/sources/boards*.py'
+      - 'src/sources/board_*.py'
+      - 'src/sources/found_boards.py'
+      - 'src/sources/feed_*.py'
+      - 'src/sources/eures.py'
+      - 'src/ai/title_triage.py'
+      - 'src/ai/title_queue.py'
+      - 'src/ai/place_triage.py'
+      - 'src/ai/score.py'
+      - 'src/ai/slots.py'
+      - 'src/ai/batch_scope.py'
+      - 'desktop/lib/search-steps.js'
+      - 'desktop/lib/pipeline-args.js'
+      - 'desktop/lib/pipeline-env.js'
+      - 'tools/press-yardstick/**'
+      - 'tools/persona-search/run.mjs'
+      - 'tools/persona-search/ttfr.py'
+      - '.github/workflows/press-yardstick.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'pr = this ref against main; band = 5 replays of main per persona (the noise band the PR runs compare with)'
+        type: choice
+        options: [pr, band]
+        default: pr
+      personas:
+        description: 'JSON list of night personas (default all 18)'
+        type: string
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: press-yardstick-${{ github.event.pull_request.number || github.ref }}-${{ inputs.mode || 'pr' }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Which replays
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          MODE: ${{ inputs.mode || 'pr' }}
+          PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
+        run: |
+          node -e '
+            const personas = JSON.parse(process.env.PERSONAS);
+            if (!Array.isArray(personas) || !personas.length || !personas.every(Number.isInteger)) { console.error("personas must be a JSON list of numbers"); process.exit(1); }
+            const sides = process.env.MODE === "band" ? [1, 2, 3, 4, 5].map(n => `main-${n}`) : ["main", "pr"];
+            const include = personas.flatMap(persona => sides.map(side => ({persona, side})));
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({include})}\n`);'
+
+  replay:
+    name: Replay p${{ matrix.persona }} ${{ matrix.side }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15   # a hang guard: two 180 s Find jobs runs and the setup take ~8 min
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # main = the PR's base (what it would merge into); pr = the PR's head; a dispatch replays its own ref against main's tip
+          ref: ${{ startsWith(matrix.side, 'main') && (github.event.pull_request.base.sha || 'main') || github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
+      - name: The Find jobs recording
+        id: rec
+        env:
+          NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
+          NET_RECORDS_READ_TOKEN: ${{ secrets.NET_RECORDS_READ_TOKEN }}
+        run: |
+          mkdir -p out/result
+          if node tools/persona-search/tape-store.mjs fetch "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"; then echo "ok=yes" >> "$GITHUB_OUTPUT"
+          else echo "::notice::p${{ matrix.persona }} has no Find jobs recording yet: not measured"; echo "ok=no" >> "$GITHUB_OUTPUT"; fi
+      - name: The engine, the app's libraries and a browser
+        if: steps.rec.outputs.ok == 'yes'
+        run: |
+          pip install --quiet -r requirements.txt
+          (cd desktop && npm ci && node scripts/stage.mjs --files-only)
+          (cd desktop/e2e && (npm ci || npm install))
+      - uses: ./.github/actions/playwright-browser
+        if: steps.rec.outputs.ok == 'yes'
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: Replay a first and a repeat Find jobs run (offline, no AI)
+        if: steps.rec.outputs.ok == 'yes'
+        env:
+          JOBADABRA_TAPE_ITEMS: '1'    # a re-ordered batch is rebuilt from the recording's items (src/tape_items.py)
+          JOBADABRA_TAPE_BUDGET: '0'   # the code under test decides when its time is up, not the recording's clock (src/budget_tape.py)
+        run: |
+          set -o pipefail
+          python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
+          node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 2 --fresh --engine api --tag replay --draft tape/draft.json \
+            --tape "$GITHUB_WORKSPACE/tape" --replay --no-live --wait-scale 1 2>&1 | tee out/run.log
+          cp out/draw/jobs-*.json out/result/
+          cp tape/judged.json out/result/
+          mkdir -p out/result/ceiling && cp tape/jobs-*.json out/result/ceiling/
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: yardstick-p${{ matrix.persona }}-${{ matrix.side }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            out/result/
+            out/run.log
+            out/draw/run-*.log
+
+  numbers:
+    name: Coverage, quality and speed
+    needs: replay
+    if: always() && needs.replay.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read   # main's newest band, from its own run's artifact
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v7
+        with: {pattern: 'yardstick-*', path: art}
+      - name: The three numbers against main's band
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode || 'pr' }}
+        run: python3 tools/press-yardstick/ci.py "$MODE" art out >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ${{ (inputs.mode || 'pr') == 'band' && 'press-yardstick-band' || 'press-yardstick-numbers' }}
+          retention-days: 90
+          if-no-files-found: ignore
+          path: out/
