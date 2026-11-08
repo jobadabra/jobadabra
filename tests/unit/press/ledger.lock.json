@@ -138,5 +138,9 @@
  "L35": {
   "gets": "a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored",
   "hash": "ab09b1aaef0de5c5"
+ },
+ "L36": {
+  "gets": "each Find jobs run saves what every step left for the next one, as counts the planner reads",
+  "hash": "bcacb0e6d4be6d5a"
  }
 }

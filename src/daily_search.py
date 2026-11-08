@@ -23,7 +23,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
-from .press import step_yield
+from .press import resume, step_yield
 from .daily_search_scoring import score_jobs, score_waiting_first
 from .daily_search_reporting import finish_search, scheduled_updates
 
@@ -74,6 +74,7 @@ def search(args, stores=None):
         messages, new_count, keyboards = digest.build_digest(db, args.limit, hidden_urls=hidden, page=args.page,
                                                       seed=seed, shown_ids=shown_ids, saved_urls=saved,
                                                       hide_unscored=ai_ready())
+    resume.save()   # what each step left for the next run, as counts for the planner (src/press/resume.py); the items stay in their own files
     return finish_search(args, stores, run, spend, report, imported, messages, new_count, keyboards, shown_ids, seed,
                          REPORTS, datetime, save_run, log_crawl)
 

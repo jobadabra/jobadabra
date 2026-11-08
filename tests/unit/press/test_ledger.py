@@ -12,7 +12,7 @@ from tests.unit.ai import (test_boards_asked_together, test_daily_search_phases,
                            test_search_budget, test_step_pace_failures, test_title_one_pass, test_title_queue, test_title_triage_local,
                            test_titles_with_places)
 from tests.unit.engine import test_score_first_from_start, test_scout_carry  # noqa: F401
-from tests.unit.press import test_ledger_scenarios  # noqa: F401
+from tests.unit.press import test_ledger_scenarios, test_resume, test_resume_run  # noqa: F401
 from tests.unit.stores import test_store_beside  # noqa: F401
 from tests.unit.sources import (test_aggregators, test_boards_beside, test_boards_first, test_eures, test_eures_place_fragments, test_eures_titles_in_time,  # noqa: F401
                                 test_first_jobs, test_first_jobs_hub, test_first_jobs_slow_boards, test_first_press_order, test_index_place_rank,
