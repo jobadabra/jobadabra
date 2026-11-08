@@ -223,7 +223,7 @@ class SearchCharacterization(unittest.TestCase):
         store.import_watch_report(self.db, {'jobs': [{'company': 'Old', 'id': f'old{i}', 'title': f'Old SRE {i}', 'location': 'Zurich',
                                                       'url': f'https://example.test/old/{i}', 'description': 'A fictional job.'} for i in range(n)]})
 
-    def test_a_refresh_scores_the_jobs_waiting_before_it_searches_for_new_ones(self):
+    def test_a_refresh_scores_the_jobs_waiting_with_its_search_before_the_import(self):
         # Design (3 Nov 2026, owner): Find jobs grows the scored list; a waiting job is the cheapest growth (one score, no search), so it goes first.
         self.waiting_jobs(5)
         time_budget.start(180)

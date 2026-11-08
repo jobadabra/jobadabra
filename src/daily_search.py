@@ -51,10 +51,14 @@ def search(args, stores=None):
         # as seen and reorder the list between pages.
         if args.mode != 'more':
             scored = score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, time_budget)   # the jobs found earlier, beside the search (#3058, ps E2a-1)
-            feed_list = plan_sources(args, stores, db, sources, run)
-            start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
-            report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
-            scored()   # before the import: run['score'] is whole. Not in a finally: a Stop (SystemExit) ends at once, the daemon thread with it
+            try:
+                feed_list = plan_sources(args, stores, db, sources, run)
+                start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
+                report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+            except Exception:   # an error waits for the scores in flight; a Stop (SystemExit) ends at once, the daemon thread with it
+                scored()
+                raise
+            scored()   # before the import: run['score'] is whole
             imported = import_sources(db, report, so_far, run)
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
