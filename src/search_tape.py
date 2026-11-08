@@ -23,6 +23,7 @@ import json
 import os
 import re
 import socket
+import statistics
 import threading
 import time
 import urllib.error
@@ -32,6 +33,8 @@ from pathlib import Path
 from . import tape_items
 
 _lock = threading.Lock()
+_seconds_lock = threading.Lock()
+_seconds = {}    # host -> recorded seconds of its pages, read once (_miss_seconds)
 _index = {}      # (kind, key) -> record, the tape read once per process
 counts = {'web_tape': 0, 'web_missing': 0, 'ai_tape': 0, 'ai_live': 0, 'ai_missing': 0, 'ai_rebuilt': 0}
 DATE = re.compile(r'\b20\d\d-\d\d-\d\d(T[\d:.]+Z?)?\b')   # a prompt that names today's date is the same question on a later replay day
@@ -160,6 +163,23 @@ def _install_norm(method, url, body):
     return _key('install-post', url, _INSTALL.sub('"install": ""', text))
 
 
+def _miss_seconds(url):
+    """What a page the tape lacks costs a replay: the median seconds the recording's pages of that host took, else of all its pages. Why (rf, 8 Nov 2026): a miss used to cost
+    0 s, so the replay's clock never reached the recording's cut and it read sites down its list long past where the recording stopped (p11: the recording read ashby slugs
+    up to 'easygenerator', the replay went on to 'eightsleep' and 540 more pages, all missing)."""
+    host = re.sub(r'^\w+://([^/:]+).*$', r'\1', url)
+    with _seconds_lock:   # built whole, then published: a thread that asks meanwhile waits, never sees half of it (review of rf)
+        if not _seconds:
+            built = {}
+            for (kind, _), record in _load().items():
+                if kind == 'web' and record.get('url') and record.get('seconds') is not None:   # a page once: not its 'norm'/'post' aliases
+                    built.setdefault(re.sub(r'^\w+://([^/:]+).*$', r'\1', record['url']), []).append(record['seconds'])
+            built[''] = [seconds for hosts in built.values() for seconds in hosts] or [0.5]
+            _seconds.update(built)
+        found = _seconds.get(host) or _seconds['']
+    return statistics.median(found)
+
+
 def _error(record):
     """The failure a recorded request ended in, as the same kind (a timeout stays a timeout, a refusal a refusal), not always a URLError: the search tells them apart."""
     kind = getattr(builtins, record.get('exc') or '', None)
@@ -179,6 +199,7 @@ def _web(real):
             if record is None:
                 counts['web_missing'] += 1
                 _keep_missing_web(method, url, request, data)
+                _wait(_miss_seconds(url))
                 raise urllib.error.URLError(f'not on the search tape: {url}')
             counts['web_tape'] += 1
             _wait(record.get('seconds'))

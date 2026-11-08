@@ -42,6 +42,7 @@ class TapeTest(unittest.TestCase):
 
     def mode(self, mode):
         search_tape._index.clear()   # a new process reads the tape again
+        search_tape._seconds.clear()
         return mock.patch.dict(os.environ, {**self.env, 'JOBADABRA_SEARCH_TAPE_MODE': mode})
 
 
@@ -121,6 +122,20 @@ class WebTest(TapeTest):
         self.assertEqual((search_tape.counts['web_tape'], search_tape.counts['web_missing']), (2, 1))
         missing = [json.loads(line) for line in (Path(self.env['JOBADABRA_SEARCH_TAPE']) / 'missing.jsonl').read_text().splitlines()]
         self.assertEqual([(item['web'], item['method'], item['url']) for item in missing], [(True, 'GET', 'https://jobs.test/never-seen')], 'the page the tape lacked is kept: method and address')
+
+    def test_a_page_the_tape_lacks_costs_what_its_hosts_recorded_pages_took(self):
+        # Why (rf, 8 Nov 2026): a miss cost 0 s, so a replay's clock never reached the recording's cut and it read on down its list: p11 asked 540 pages the recording never reached.
+        tape = Path(self.env['JOBADABRA_SEARCH_TAPE'])
+        rows = [{'key': f'k{n}', 'url': f'https://{host}/{n}', 'method': 'GET', 'status': 200, 'seconds': seconds}
+                for n, (host, seconds) in enumerate([('slow.test', 4.0), ('slow.test', 6.0), ('slow.test', 8.0), ('fast.test', 0.5)])]
+        tape.joinpath('web.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        urlopen = search_tape._web(lambda *a, **k: self.fail('replay never reaches the web'))
+        with self.mode('replay'), mock.patch.object(search_tape, '_skipped', [0.0]), mock.patch.object(search_tape.time, 'sleep'):
+            for url, cost in (('https://slow.test/never', 6.0), ('https://fast.test/never', 0.5), ('https://other.test/never', 5.0)):   # an unrecorded host: the median of all pages
+                before = search_tape.virtual_now()
+                with self.assertRaises(urllib.error.URLError):
+                    urlopen(url)
+                self.assertAlmostEqual(search_tape.virtual_now() - before, cost, delta=0.3, msg=url)
 
     def test_a_post_with_the_installs_own_id_is_answered_whatever_the_id_but_a_changed_purpose_misses(self):
         real = lambda request, data=None, *a, **k: FakeReply(b'{"token": "t"}', request.full_url)
