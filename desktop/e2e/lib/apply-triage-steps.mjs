@@ -48,8 +48,14 @@ export async function runTriageSteps(ctx) {
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
       await page.click('#triage-start');
-      await page.waitForSelector('.toast', {timeout: 15000}).catch(() => { throw new Error('pressing "Check jobs" told the person nothing'); });
-      const told = (await page.locator('.toast').last().innerText()).replace(/\s+/g, ' ');
+      // Why (8 Nov 2026, flaky on e26df24 vs a35ac61, run 42451539978): the check's own kit drafts end in their own run toasts ("Application preparation had problems"), which land
+      // whenever each draft's posting fetch fails; the step read the last toast as soon as any appeared. It now waits for the check's own toast, by its end titles, which only its end shows (jobs-triage.js).
+      const toasts = page.locator('.toast').filter({hasText: /Nothing was checked|Checked your jobs/});   // the check's own end titles (pagesControlStatus.nothingChecked, checkedJobs); "Gmail check not checked" is another toast
+      await stepWait('the check\'s own toast', timeout => toasts.first().waitFor({state: 'visible', timeout})).catch(async error => {
+        const seen = await page.locator('.toast').allInnerTexts();
+        throw new Error(`pressing "Check jobs" told the person nothing about the check (toasts seen: ${JSON.stringify(seen)}): ${error.message}`);
+      });
+      const told = (await toasts.last().innerText()).replace(/\s+/g, ' ');
       if (!/couldn't be read/i.test(told)) throw new Error(`with no form read and no kit the toast should say the jobs couldn't be read, it says "${told}"`);
       if (await page.locator('#triage-progress:visible').count()) throw new Error('the progress bar is still showing after the run');
       await page.click('#triage-close').catch(() => {});
