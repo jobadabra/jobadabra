@@ -14,7 +14,9 @@ import * as hosted from './hosted-search.js';
  *  deployed). They are shown now; this stays the one line that hides the screens and keeps the engine's off-list and the automatic writes inert. */
 export const MAIL_SWITCHES_SHOWN = true;
 
-export const ROWS = ['app-matches', 'app-needs-you', 'app-applied', 'app-weekly', 'app-stopped', 'app-nothing'];
+export const ROWS = ['app-matches', 'app-needs-you', 'app-applied', 'app-reminder', 'app-ready', 'app-weekly', 'app-stopped', 'app-nothing'];
+/** The four automation mails (owner, 8 Nov 2026, "On everywhere"): they start on in both modes once e-mail is on; the website's registry suggests `mail` for them in each. */
+export const AUTOMATION = ['app-needs-you', 'app-applied', 'app-reminder', 'app-ready'];
 /** The two mails from Jobadabra itself ("News from Jobadabra" card): the site keeps each as its own list, never as part of an app row, and sends its `name`/`when` words. Owner, 6 Nov 2026: "I like the 2 switches". */
 export const NEWS = ['releases', 'tips'];
 const WHERE = {
@@ -193,8 +195,8 @@ async function turnOnNow(storage, row, {address = '', name = '', save, fetcher =
     const saved = await save({by: [...new Set([...channelsOf(storage), 'email'])], email: address, consentVia: 'settings', consentGiven: 'switched', consentWording: rowLine(name || row)});
     if (!saved.ok) return passedFailure(saved, {ok: false, error: saved.error || WORDS.not_saved});
     addressSaved = true;
-    // Why (6 Nov 2026, owner): without Always on the other rows start off; with it everything starts on.
-    const others = await writeUnchosen(storage, (_, mode) => mode === 'always', fetcher, row);
+    // Why (6 Nov 2026, owner; 8 Nov 2026, owner: "On everywhere"): without Always on the other rows start off; with it everything starts on, and the four automation mails (AUTOMATION) start on in both.
+    const others = await writeUnchosen(storage, (other, mode) => mode === 'always' || AUTOMATION.includes(other.id), fetcher, row);   // Why (8 Nov 2026, owner: "On everywhere"): the four automation mails start on in Mac only too
     if (!others.ok) {   // Why (6 Nov 2026, review): a press that fails must leave nothing half-done: e-mail goes back off (and its consent is withdrawn), so a retry starts the whole block again
       await save({by: channelsOf(storage).filter(name => name !== 'email')}).catch(() => {});
       return passedFailure(others, {ok: false, error: others.error || WORDS.not_saved});
@@ -222,3 +224,27 @@ export async function settle(storage, fetcher = globalThis.fetch, shown = MAIL_S
     return (await writeUnchosen(storage, likelyOn, fetcher)).ok;
   } catch { return false; }
 }
+
+/**
+ * Once, for someone who turned e-mail on before 8 Nov 2026: the four automation mails now start on in Mac only too (owner, "On everywhere"), but this install wrote `app-needs-you` and `app-applied` OFF under the old
+ * default (writeUnchosen). Those app-written offs, and only those (never one the person pressed here: `mailRowsPressed`; never an 'off' this install did not write: it may be theirs from another install), are written on.
+ * Needs the switches shown, an install key and e-mail on; a failure leaves the flag unset and the next start tries again. -> true when it ran to the end. Never throws.
+ */
+export const automationOn = (storage, fetcher = globalThis.fetch, shown = MAIL_SWITCHES_SHOWN) => queued(async () => {
+  try {
+    if (!shown || !emailing(storage) || storage.settings().mailAutomationOnAt || !/^JPF1\./.test(installKey(storage))) return false;
+    const appOff = storage.settings().mailRowsAppOff || [], pressed = storage.settings().mailRowsPressed || [];
+    const mine = appOff.filter(id => AUTOMATION.includes(id) && !pressed.includes(id));
+    if (mine.length) {
+      const answer = await call(storage, 'GET', '/api/mail/choices', null, fetcher);
+      if (!answer.ok) return false;
+      const rows = Array.isArray(answer.rows) ? answer.rows : [];
+      const todo = mine.filter(id => rows.find(row => row.id === id)?.choice === 'off');   // a row the site no longer holds off is already not an off the app holds
+      const done = await writeRows(storage, todo.map(id => [id, true]), fetcher);
+      storage.saveSettings({mailRowsAppOff: (storage.settings().mailRowsAppOff || []).filter(id => !done.written.includes(id) && (todo.includes(id) || !mine.includes(id)))});
+      if (!done.ok) return false;
+    }
+    storage.saveSettings({mailAutomationOnAt: new Date().toISOString()});
+    return true;
+  } catch { return false; }
+});
