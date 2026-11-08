@@ -6,6 +6,8 @@ run-name: Find jobs pipeline yardstick ${{ inputs.mode || 'pr' }}
 # counted and fails), no site visit, no broker. tools/press-yardstick/three_numbers.py turns each side's jobs into coverage, quality and speed, and the
 # job summary shows them against main's noise band (mean +- 2 sd of 5 replays of main: workflow_dispatch mode=band). A persona with no recording
 # yet is "not measured", never red. The PR's number is better or worse only outside the band.
+# One check, every replay side by side in it (owner, 8 Nov 2026: "are we going to have so many checks at PR, or group them in 5-10 most?" →
+# "1 check, all 36 at once (Recommended)"; tools/press-yardstick/replay.py). Was 38 checks (plan, 18 x 2 replays, numbers).
 on:
   pull_request:
     # The Find jobs run's stage files (plan 2c-2: "on PRs whose files are the pipeline's"): their order, clock or budget decides the three numbers.
@@ -55,56 +57,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  plan:
-    name: Which replays
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    outputs:
-      matrix: ${{ steps.m.outputs.matrix }}
-    steps:
-      - id: m
-        env:
-          MODE: ${{ inputs.mode || 'pr' }}
-          PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
-        run: |
-          node -e '
-            const personas = JSON.parse(process.env.PERSONAS);
-            if (!Array.isArray(personas) || !personas.length || !personas.every(Number.isInteger)) { console.error("personas must be a JSON list of numbers"); process.exit(1); }
-            const sides = process.env.MODE === "band" ? [1, 2, 3, 4, 5].map(n => `main-${n}`) : ["main", "pr"];
-            const include = personas.flatMap(persona => sides.map(side => ({persona, side})));
-            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({include})}\n`);'
-
   replay:
-    name: Replay p${{ matrix.persona }} ${{ matrix.side }}
-    needs: plan
-    runs-on: ubuntu-24.04
+    name: ${{ (inputs.mode || 'pr') == 'band' && 'Find jobs replay · main band' || 'Find jobs replay · PR vs main' }}
     # a bot's fixer branch never gets the recording's key (tests/tooling/ci/test_workflow_ai_secret_jobs.py)
-    if: success() && !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]'))
-    timeout-minutes: 15   # a hang guard: two 180 s Find jobs runs and the setup take ~8 min
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40   # a hang guard: setup ~5 min, 36 replays side by side ~7 min; the band's 90 run in 3 waves
+    permissions:
+      contents: read
+      actions: read   # main's newest band, from its own run's artifact
     steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-          # main = the PR's base (what it would merge into); pr = the PR's head; a dispatch replays its own ref against main's tip
-          ref: ${{ startsWith(matrix.side, 'main') && (github.event.pull_request.base.sha || 'main') || github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v5
-        with: {node-version: '22'}
-      - uses: actions/setup-python@v6
-        with: {python-version: '3.12'}
-      # Why (#3594, Gitar): the recording's key and token are held only by main's own fetch code (tools/persona-search/tape-store.mjs at the
-      # base), never by a step that runs this PR's code; the fetch removes its key file before the step ends.
-      - name: main's recording fetcher
+      - uses: actions/checkout@v5   # this run's own commit: its actions and the yardstick's scripts
+        with: {persist-credentials: false}
+      - name: main, the side every replay is compared with
         uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.sha || 'main' }}
-          path: base
-          sparse-checkout: |
-            tools/persona-search
-            desktop/e2e/lib
+          path: sides/main
+      - name: This pull request's side
+        if: (inputs.mode || 'pr') == 'pr'
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: sides/pr
+      - uses: actions/setup-node@v5
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
       - name: The records App key is set
         id: records_app_key
         env:
@@ -122,72 +103,37 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
-      - name: The Find jobs recording
+      # Why (#3594, Gitar): the recording's key and token are held only by main's own fetch code (sides/main's tape-store.mjs), before any step
+      # runs this PR's code; the fetch removes its key file before the step ends.
+      - name: The Find jobs recordings
         id: rec
         env:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
           NET_RECORDS_READ_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_READ_TOKEN }}
+          PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
         run: |
-          mkdir -p out/result
-          if node base/tools/persona-search/tape-store.mjs fetch "night-p${{ matrix.persona }}" "$GITHUB_WORKSPACE/tape"; then echo "ok=yes" >> "$GITHUB_OUTPUT"
-          else echo "::notice::p${{ matrix.persona }} has no Find jobs recording yet: not measured"; echo "ok=no" >> "$GITHUB_OUTPUT"; fi
-          rm -rf base
-      - name: The engine, the app's libraries and a browser
-        if: steps.rec.outputs.ok == 'yes'
+          mkdir -p recordings
+          for n in $(node -e 'const p = JSON.parse(process.env.PERSONAS); if (!Array.isArray(p) || !p.every(Number.isInteger)) process.exit(1); console.log(p.join(" "))'); do
+            node sides/main/tools/persona-search/tape-store.mjs fetch "night-p$n" "recordings/p$n" || { rm -rf "recordings/p$n"; echo "p$n has no Find jobs recording yet: not measured"; }
+          done
+          echo "count=$(ls recordings | wc -l)" >> "$GITHUB_OUTPUT"
+      - name: The engine, the app's libraries and a browser for each side
+        if: steps.rec.outputs.count != '0'
         run: |
-          pip install --quiet -r requirements.txt
-          (cd desktop && npm ci && node scripts/stage.mjs --files-only)
-          (cd desktop/e2e && (npm ci || npm install))
-      - name: This workflow's own actions (the side under test may predate them)
-        if: steps.rec.outputs.ok == 'yes'
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-          path: own
-          sparse-checkout: .github/actions
-      - uses: ./own/.github/actions/playwright-browser
-        if: steps.rec.outputs.ok == 'yes'
-        with: {working-directory: desktop/e2e, mode: both}
-      - name: Replay a first and a repeat Find jobs run (offline, no AI)
-        if: steps.rec.outputs.ok == 'yes'
-        continue-on-error: true   # a measurement, never a red PR: a replay that crashed is listed in the summary as crashed (ci.py)
+          for side in sides/*; do
+            pip install --quiet -r "$side/requirements.txt"
+            (cd "$side/desktop" && npm ci && node scripts/stage.mjs --files-only)
+            (cd "$side/desktop/e2e" && (npm ci || npm install))
+          done
+      - uses: ./.github/actions/playwright-browser
+        if: steps.rec.outputs.count != '0'
+        with: {working-directory: sides/main/desktop/e2e, mode: both}
+      - name: Every recording replayed by every side at once (offline, no AI)
+        if: steps.rec.outputs.count != '0'
+        continue-on-error: true   # a measurement, never a red PR: a replay that crashed is named in the summary
         env:
-          JOBADABRA_TAPE_ITEMS: '1'    # a re-ordered batch is rebuilt from the recording's items (src/tape_items.py)
-          JOBADABRA_TAPE_BUDGET: '0'   # the code under test decides when its time is up, not the recording's clock (src/budget_tape.py)
-        run: |
-          set -o pipefail
-          python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 2 --fresh --engine api --tag replay --draft tape/draft.json \
-            --tape "$GITHUB_WORKSPACE/tape" --replay --no-live --wait-scale 1 2>&1 | tee out/run.log
-          cp out/draw/jobs-*.json out/result/
-          cp tape/judged.json out/result/
-          mkdir -p out/result/ceiling && cp tape/jobs-*.json out/result/ceiling/
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: yardstick-p${{ matrix.persona }}-${{ matrix.side }}
-          retention-days: 14
-          if-no-files-found: ignore
-          path: |
-            out/result/
-            out/run.log
-            out/draw/run-*.log
-
-  numbers:
-    name: Coverage, quality and speed
-    needs: replay
-    if: always() && needs.replay.result != 'cancelled'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read   # main's newest band, from its own run's artifact
-    steps:
-      - uses: actions/checkout@v5
-        with: {persist-credentials: false}
-      - uses: actions/download-artifact@v7
-        with: {pattern: 'yardstick-*', path: art}
+          SIDES: ${{ (inputs.mode || 'pr') == 'band' && '{"main-1":"sides/main","main-2":"sides/main","main-3":"sides/main","main-4":"sides/main","main-5":"sides/main"}' || '{"main":"sides/main","pr":"sides/pr"}' }}
+        run: python3 tools/press-yardstick/replay.py recordings "$SIDES" art | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The three numbers against main's band
         env:
           GH_TOKEN: ${{ github.token }}
@@ -199,4 +145,6 @@ jobs:
           name: ${{ (inputs.mode || 'pr') == 'band' && 'press-yardstick-band' || 'press-yardstick-numbers' }}
           retention-days: 90
           if-no-files-found: ignore
-          path: out/
+          path: |
+            out/
+            art/*/run.log
