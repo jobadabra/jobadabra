@@ -27,3 +27,11 @@ class RefusalLeavesAnEvent(ShipFixture):
         self.assertEqual(wait.returncode, 0, wait.stdout)
         self.assertRegex(wait.stdout, r'^ship: FAILED \(exit 2\) refused before starting')
         self.assertEqual(git(self.origin, 'branch', '--list', 'topic'), '', 'nothing may be pushed')
+
+    def test_a_started_run_read_through_head_is_no_refusal(self):
+        """`ship.sh --background | head -1` closes the pipe after the fork: the parent's next echo fails, and that is not a refusal."""
+        self.change(self.tree, 'b.txt', 'b\n', 'Add b')
+        env = {**os.environ, 'TMPDIR': str(self.tmp)}
+        subprocess.run(['bash', '-c', f'bash {self.tree / "tools" / "ship.sh"} --background | head -1'], cwd=self.tree, env=env,
+                       capture_output=True, text=True, timeout=60)
+        self.assertNotIn('refused before starting', (self.tmp / 'ship-topic.log').read_text())
