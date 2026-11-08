@@ -12,13 +12,14 @@ import time
 import threading
 
 from ..paths import DATA
+from ..press import budget as press_budget
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots, title_queue
 from ..press import rank
 
 MODEL = SMALL_MODEL
-BATCH = 30   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
-MAX_NEW = 600       # titles asked about in one run at most, of each kind: your own places' titles and the others (a first run on a big list is spread over the next ones)
+BATCH = press_budget.value('title_triage.BATCH')   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
+MAX_NEW = press_budget.value('title_triage.MAX_NEW')       # titles asked about in one run at most, of each kind: your own places' titles and the others (a first run on a big list is spread over the next ones)
 STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit'],
