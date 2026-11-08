@@ -57,7 +57,7 @@ def send(text, token, chat_id, reply_markup=None, urgent=False, kind='activity',
     # Why (7 Nov 2026, end-user language design): only an explicit producer projection localizes delivery; stored messages and unprojected operational calls stay canonical.
     outbound_text = text if display_text is None else display_text
     outbound_markup = reply_markup if display_reply_markup is None else display_reply_markup
-    notify.queue(outbound_text, outbound_markup, urgent, kind, mail=mail)   # mail: the person's switch for this urgent message (src/notify.py ROW_OF); '' = none
+    notify.queue(outbound_text, outbound_markup, urgent, kind, **({'mail': mail} if mail else {}))   # mail: the person's switch for this urgent message (src/notify.py ROW_OF); named only when set, so every other caller keeps its call shape
     if not (token and chat_id) or not notify.wants_telegram():
         return {'ok': True, 'channel': 'email'}
     endpoint = f"{api_base()}/bot{token}/sendMessage"

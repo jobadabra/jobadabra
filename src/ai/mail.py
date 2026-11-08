@@ -63,7 +63,7 @@ from .mail_sent import (  # noqa: F401 — re-exported: callers and tests use `m
     EMAIL, SENT_MAX, contacts, review_rejections, sent_pass, sent_query,
 )
 from .mail_calendar import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`
-    PrepNote, calendar_pass, prep_message, reminders, reviewed_since,
+    Notes, calendar_pass, prep_message, reminders, reviewed_since,
 )
 from .mail_failure import (  # noqa: F401 — re-exported: callers and tests use `mail.<name>`
     NOT_CHECKED, NOT_CHECKED_OPENAI, failure_cause, failure_warning, not_checked,
@@ -128,7 +128,7 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
                          [cards.words('mail.noChanges')] if count else [], emoji='📧'))
     for note in notes:
         if send:
-            (send_reminder if send_reminder and isinstance(note, PrepNote) else send)(note)   # only the prep message is the reminder; the after-call nudge stays an ordinary message
+            (send_reminder if send_reminder and getattr(notes, 'is_prep', lambda _: False)(note) else send)(note)   # only the prep message is the reminder; the after-call nudge stays an ordinary message
     if (stats or {}).get('updates') and not dry_run:  # one short line each, for the desktop app's activity panel
         print('Updates:')
         for line in stats['updates']:

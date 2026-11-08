@@ -46,6 +46,8 @@ class MailCalendarTests(MailCase):
         _, sent = self.run_mail(FakeTracker(apps), FakeGoogle(events=[event]), [], calendar=True, reminders=reminders)
         self.assertEqual(len([m for m in reminders if m.startswith('🗓 <b>Interview tomorrow')]), 1)
         self.assertFalse([m for m in sent if m.startswith('🗓')], 'the reminder is not also sent as an ordinary message')
+        from src import notification_language
+        self.assertTrue(all(isinstance(m, notification_language._NotificationText) for m in reminders), 'the note keeps its type, so its language projection survives (Gitar on #3609)')
 
     def test_the_after_call_nudge_stays_on_the_ordinary_sender(self):
         # Why (review of mw 4/5): "Interview reminder" is the prep message; its switch must not also hold the nudge that asks for the transcript.
