@@ -1,6 +1,7 @@
 """The Find jobs stage table (src/press/stages.py, plan docs/superpowers/plans/2026-11-07-the-press.md 4/6) stays true: each owner file exists,
 each budget row is in src/press/budget.json, runs-beside is symmetric, each stage the clock names in its "Time is up" lines is in one row, and
-the table has no stage twice."""
+the app's step keys are in desktop/lib/press-stages.js."""
+import re
 import unittest
 from pathlib import Path
 
@@ -36,6 +37,11 @@ class StageTableTest(unittest.TestCase):
     def test_every_clock_stage_is_in_exactly_one_row(self):
         said = [name for stage in stages.TABLE for name in stage.clock]
         self.assertEqual(sorted(said), sorted(Clock.STAGES))
+
+    def test_the_apps_step_keys_are_declared_in_the_apps_mirror(self):
+        keys = set(re.findall(r"^\s{2}(\w+): \{what:", (ROOT / 'desktop/lib/press-stages.js').read_text(encoding='utf-8'), re.M))
+        self.assertLessEqual({stage.app for stage in stages.TABLE if stage.app}, keys, 'a stage row names an app step the mirror lacks')
+        self.assertIn('search', keys)
 
 
 if __name__ == '__main__':
