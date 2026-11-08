@@ -39,6 +39,12 @@ const tape = option('--tape', '');
 const how = (() => { try { return tape && process.argv.includes('--replay') ? JSON.parse(fs.readFileSync(path.join(tape, 'replay.json'), 'utf8')) : {}; } catch { return {}; } })();
 const waitScale = option('--wait-scale', String(how.wait_scale ?? (process.argv.includes('--no-live') ? 0 : 1)));
 const engineName = option('--engine', how.engine || 'cli');
+// Why (rf2, 8 Nov 2026; measured on p11 and p17, 5 runs each): at wait scale 0 no thread sleeps, so the recorded waits of calls that ran side by side are added up instead of overlapping (src/search_tape.py _wait), and with JOBADABRA_TAPE_BUDGET=0 the code's own clock then cuts
+// every stage somewhere else each run: the same replay gave 5 to 196 web pages missing (p17) and 148 to 183 (p11); at wait scale 1 five runs gave the same number every time (p17 0, p11 551). A replay of the code's own clock needs scale 1.
+if (tape && process.argv.includes('--replay') && Number(waitScale) === 0 && process.env.JOBADABRA_TAPE_BUDGET === '0') {
+  console.error('--wait-scale 0 with JOBADABRA_TAPE_BUDGET=0: the replay\'s own clock would cut each stage at another place every run. Use --wait-scale 1, or drop JOBADABRA_TAPE_BUDGET=0 to replay the recording\'s clock decisions.');
+  process.exit(2);
+}
 if (process.argv.includes('--speed')) { console.error('--speed is gone (it multiplied the waits, so 20 meant 20x slower): use --wait-scale, 0 = no wait'); process.exit(2); }
 if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these three on)
   if (process.argv.includes('--record') === process.argv.includes('--replay')) { console.error('--tape needs --record or --replay'); process.exit(2); }
