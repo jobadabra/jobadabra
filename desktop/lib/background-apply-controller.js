@@ -11,6 +11,7 @@ import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
 import {notify as notifyDefault, stopAsked, tellWindow} from './server-hooks.js';
 import {log as appLog} from './log.js';
+import {appliedMessageFor} from './applied-message.js';
 import {waitingMessageFor} from './waiting-message.js';
 import * as journal from './session-journal.js';
 
@@ -76,6 +77,7 @@ export function backgroundApplyFor(storage) {
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  waiting = null,   // the waiting-application message sender, injectable for tests (lib/waiting-message.js)
+ applied = null,   // the applied-application mail sender, injectable for tests (lib/applied-message.js)
  log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"): each read's step goes to the Jobs window, and where its time went is one app.log line, so the next real run names the slow step.
   reader = createTriageReader({onStep: step => tellWindow('triageStep', step), onDone: summary => log('apply', 'triage: read finished', summary)}),
@@ -400,6 +402,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const state = !context.attempt && confirmed === true ? await store.humanReceipt(item.url, item.id, owner, context.humanAt) : await store.receipt(item.url, item.id, context.attempt, confirmed);
     if (state.ok === false) return state;
     cache(item, state);
+    // Why (8 Nov 2026, owner: "an e-mail for every automation"): only an attempt the app itself pressed (context.attempt) and the site confirmed is Full automation sending; the person's own press never is.
+    if (context.attempt && confirmed === true && state.state === 'receipt_confirmed') { try { (applied ||= appliedMessageFor(storage)).add({id: item.id, title: item.title, company: item.company, at: now()}); } catch (error) { log('apply', `applied message not queued: ${error.message}`); } }   // a mail that cannot be queued never undoes the receipt
     return {ok: true};
   }
   async function cancel(id) {
