@@ -102,7 +102,7 @@ if [ "${st#completed }" = success ]; then
   exit 0
 fi
 echo "Re-check ${st#completed }: main is still red (${url})."
-# Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): say whether each red step is flaky (it passed on code unchanged since) or changed (a likely regression), with the green run, so no person has to notice. Information only: a failed read prints nothing.
+# Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): say whether each red step is flaky (it passed on code unchanged since) or changed (a likely regression), with the green run, so no person has to notice; `--machine` adds one `Red step:` line per step for the nightly notice (8 Nov 2026, owner: "improve the text formatting/style"). Information only: a failed read prints nothing.
 if [ -f "$here/flaky-verdict.mjs" ]; then GITHUB_REPOSITORY="$repo" node "$here/flaky-verdict.mjs" --run "$id" --repo "$repo" --machine 2>/dev/null | sed '/^Red step: /!s/^/  /'; fi
 # Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): the nightly of 1 Nov (run 41267448030) built nothing over one flaky sign-up step (re-check run 41267492981); only a safety or data step stops a beta.
 if verdict="$(judge_reds "$(tr ',' '\n' <<<"$suites" | awk -v r="$id" '{ print $0 "\t" r }')")"; then
