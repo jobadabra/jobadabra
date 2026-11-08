@@ -38,6 +38,7 @@ before(() => {
     let release;
     const {jobs, calls, sent} = kit.stage(new Promise(resolve => { release = resolve; }));
     const {runCheck} = await import('./pages/apply-check.js');
+    const settled = {};   // the panel's answer, read by a state wait (its hang guard names a panel that never answers)
     const answer = runCheck({plan: 'p1', allowIneligible: false, jobs: jobs.map((job, i) => (i === 0 ? {...job, read: {eligible: true, captcha: false, login: false, accountCreation: false, simple: true, why: '', questions: []}} : job))}, calls);
     const busy = await kit.until(() => document.getElementById('apply-check-now').textContent.includes('Corvid') && document.querySelector('#apply-check-list .apply-check-busy') && {
       now: document.getElementById('apply-check-now').textContent, rows: [...document.querySelectorAll('#apply-check-list li')].map(li => li.textContent),
@@ -47,7 +48,8 @@ before(() => {
     const split = {title: document.getElementById('apply-check-title').textContent, groups: [...document.querySelectorAll('.apply-check-group')].map(group => [group.className.match(/tone-(\w+)/)[1], group.querySelectorAll('li').length]),
       go: document.getElementById('apply-check-go').textContent, mix: document.querySelectorAll('#apply-check-mix > span').length};
     document.getElementById('apply-check-go').click();
-    const result = await answer;
+    answer.then(value => { settled.p1 = value; });
+    const result = await kit.until(() => settled.p1, 'the answer to Confirm');
     return {busy, split, sent, result, panelHidden: document.getElementById('apply-check').hidden};
   }});
   cancelled = probeWindow({use: [kitOf], timeout: 180000, script: async kit => {
@@ -57,14 +59,17 @@ before(() => {
     await kit.until(() => document.getElementById('apply-dialog').open, 'the Apply to jobs dialog');
     const {jobs, calls, sent} = kit.stage(new Promise(() => {}));   // the third read never ends: the person cancels while it runs
     const {runCheck} = await import('./pages/apply-check.js');
+    const settled = {};
     const answer = runCheck({plan: 'p2', allowIneligible: false, jobs}, calls);
     await kit.until(() => document.getElementById('apply-check-now').textContent.includes('Corvid'), 'the third form in flight');
     document.getElementById('apply-check-cancel').click();
-    const result = await answer;
+    answer.then(value => { settled.p2 = value; });
+    const result = await kit.until(() => settled.p2, 'the answer to Cancel while a read runs');
     const second = runCheck({plan: 'p3', allowIneligible: false, jobs: jobs.slice(0, 2)}, calls);
     await kit.until(() => !document.getElementById('apply-check-go').hidden, 'a second batch at its split');
     document.getElementById('apply-dialog').close();   // Esc or the window's close: the same as Cancel
-    return {sent, result, closed: await second, formBack: getComputedStyle(document.getElementById('apply-n')).display !== 'none'};
+    second.then(value => { settled.p3 = value; });
+    return {sent, result, closed: await kit.until(() => settled.p3, 'the answer to closing the dialog'), formBack: getComputedStyle(document.getElementById('apply-n')).display !== 'none'};
   }});
 });
 

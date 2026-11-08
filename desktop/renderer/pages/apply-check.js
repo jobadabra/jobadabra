@@ -106,36 +106,42 @@ async function confirmCheck() {
   end(result?.ok || result?.outcomes?.length ? result : {ok: false, error: result?.error || t('helperFlow.applyStartFallback')});   // a refusal's .error is said by the dialog (jobs-apply.js)
 }
 
-/**
- * Shows the check of a held Full automation batch and resolves with the app's answer: Confirm's result ({ok, outcomes, message} | {ok: false, error}) or {cancelled: true}.
- * Takes the hold answer's `check` ({plan, allowIneligible, jobs: [{url, title, company, read}]}) and the app's calls (`window.pilot` in the app: applyCheckRead, applyCheckMatch, applyCheckConfirm, applyCheckCancel).
- * A job whose check came with its kit is shown at once; only the others are read live, one at a time.
- */
-export async function runCheck(check, calls = window.pilot) {
-  if (state.phase) await cancelCheck();   // one held batch per dialog
-  pilot = calls;
-  Object.assign(state, {phase: 'checking', check, current: null, reads: new Map((check?.jobs || []).filter(job => job.read).map(job => [job.url, job.read]))});
-  const answered = new Promise(resolve => { settle = resolve; });
-  ticker = setInterval(paintClock, 1000);   // a read takes up to a minute: the seconds are the proof it is alive
-  paint();
-  for (const job of check?.jobs || []) {
-    if (state.check !== check) return answered;
+// The check itself: each job without a read, one at a time, then the app's one match, then the split. It stops at once when the batch ended (Cancel, close, a newer batch).
+async function checkEach(check) {
+  for (const job of check.jobs || []) {
+    if (state.check !== check) return;
     if (state.reads.has(job.url)) continue;
     Object.assign(state, {current: job, startedAt: Date.now()});
     paint();
     const read = await pilot.applyCheckRead(check.plan, job.url).catch(() => null);
-    if (state.check !== check) return answered;   // cancelled meanwhile: a late read is not shown
+    if (state.check !== check) return;   // cancelled meanwhile: a late read is not shown
     state.reads.set(job.url, read || null);
     paint();
   }
   Object.assign(state, {phase: 'matching', current: null});
   paint();
   const matched = await pilot.applyCheckMatch(check.plan).catch(() => null);
-  if (state.check !== check) return answered;
+  if (state.check !== check) return;
   if (matched?.reads) state.reads = new Map(Object.entries(matched.reads));   // the app's own reads, so the split shown is the one Confirm is checked against
   clearInterval(ticker);
   state.phase = 'split';
   paint();
+}
+
+/**
+ * Shows the check of a held Full automation batch and resolves with the app's answer: Confirm's result ({ok, outcomes, message} | {ok: false, error}) or {cancelled: true}.
+ * Takes the hold answer's `check` ({plan, allowIneligible, jobs: [{url, title, company, read}]}) and the app's calls (`window.pilot` in the app: applyCheckRead, applyCheckMatch, applyCheckConfirm, applyCheckCancel).
+ * A job whose check came with its kit is shown at once; only the others are read live, one at a time.
+ * Why (8 Nov 2026, the window test): the answer settles the moment the person answers, never after the read in flight, so a stuck read cannot hold the dialog on "Starting…".
+ */
+export function runCheck(check, calls = window.pilot) {
+  if (state.phase) cancelCheck();   // one held batch per dialog
+  pilot = calls;
+  Object.assign(state, {phase: 'checking', check, current: null, reads: new Map((check?.jobs || []).filter(job => job.read).map(job => [job.url, job.read]))});
+  const answered = new Promise(resolve => { settle = resolve; });
+  ticker = setInterval(paintClock, 1000);   // a read takes up to a minute: the seconds are the proof it is alive
+  paint();
+  checkEach(check).catch(() => {});   // a call that throws leaves the panel where it is: Cancel still ends the batch
   return answered;
 }
 
