@@ -17,9 +17,10 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /**
  * The held batches of this app. `read(job)` is one quick form check in the hidden browser (null when nothing was read; never throws), `stored(job)` the job's check prepared with its kit
  * when still fresh (null otherwise; the kit's owner decides freshness), `enqueue(jobs, mode, batch, eligibility)` the hidden browser's queue (lib/background-apply-controller.js),
- * `openInChrome(jobs)` the Standard batch opener (lib/apply.js), `chromeBlocked()` the extension gate (null when Chrome may open).
+ * `openInChrome(jobs)` the Standard batch opener (lib/apply.js), `chromeBlocked()` the extension gate (null when Chrome may open), `match(asked)` the check's one question match (L2b, lib/triage-match.js:
+ * [{url, questions}] -> {url: {missing, unjudged, unnamed}}).
  */
-export function createCheckFirst({read, stored = async () => null, enqueue, openInChrome, chromeBlocked = () => null, now = Date.now, uuid = () => randomUUID().slice(0, 8)}) {
+export function createCheckFirst({read, stored = async () => null, match = async () => ({}), enqueue, openInChrome, chromeBlocked = () => null, now = Date.now, uuid = () => randomUUID().slice(0, 8)}) {
   const plans = new Map();
   const live = id => {
     const plan = plans.get(String(id || ''));
@@ -39,7 +40,7 @@ export function createCheckFirst({read, stored = async () => null, enqueue, open
     for (const job of held) { const ready = await Promise.resolve(stored(job)).catch(() => null); if (ready) reads.set(job.url, ready); }
     plans.set(id, {id, at: now(), jobs: held, batch, eligibility, reads});
     const left = held.filter(job => !reads.has(job.url)).length;
-    return {ok: true, mode: 'auto', check: {plan: id, jobs: held.map(job => ({...details(job), read: reads.get(job.url) || null}))},
+    return {ok: true, mode: 'auto', check: {plan: id, allowIneligible: eligibility?.allowIneligible === true, jobs: held.map(job => ({...details(job), read: reads.get(job.url) || null}))},
       message: left ? `Checking ${plural(left, 'form')} before anything is sent.` : 'Every form was checked with its application kit.'};
   }
 
@@ -50,6 +51,19 @@ export function createCheckFirst({read, stored = async () => null, enqueue, open
     const result = (await read(job)) || null;
     if (live(id) === plan) plan.reads.set(job.url, result);
     return result;
+  }
+
+  /**
+   * The check's one match of the simple forms' required questions against Your details (L2b), run on the app's own reads, so the split the window shows and the one Confirm checks judge the same answers.
+   * A read that already carries its match (a stored check) is not asked again; a failed match leaves each read as it was ("answers not checked", never a guess). -> {reads: {url: read | null}} | null (no such batch).
+   */
+  async function matchAll(id) {
+    const plan = live(id);
+    if (!plan) return null;
+    const asked = [...plan.reads].filter(([, item]) => item?.simple === true && item.questions?.length && !item.match).map(([url, item]) => ({url, questions: item.questions}));
+    const found = asked.length ? await Promise.resolve(match(asked)).catch(() => ({})) : {};
+    if (live(id) === plan) for (const {url} of asked) if (found?.[url]) plan.reads.set(url, {...plan.reads.get(url), match: found[url]});
+    return {reads: Object.fromEntries(plan.jobs.map(job => [job.url, plan.reads.get(job.url) || null]))};
   }
 
   /**
@@ -82,5 +96,5 @@ export function createCheckFirst({read, stored = async () => null, enqueue, open
   /** Ends a held batch with nothing queued (Cancel, the dialog closed). -> {ok: true, held}: `held` says a live batch was ended, so its reads in flight may be stopped. */
   function cancel(id) { const held = !!live(id); plans.delete(String(id || '')); return {ok: true, held}; }
 
-  return {hold, readOne, confirm, cancel, splitOf: id => { const plan = live(id); return plan ? splitOf(plan) : null; }};
+  return {hold, readOne, matchAll, confirm, cancel, splitOf: id => { const plan = live(id); return plan ? splitOf(plan) : null; }};
 }

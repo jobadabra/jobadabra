@@ -28,7 +28,8 @@ The split (`desktop/renderer/apply-split.js`, the same pure function in the app 
 
 ## Progress
 - [x] 1/2 app holds the batch, split, Confirm/Cancel (proof: desktop/test/unit/main/apply-check-first.test.js @fd0f52bc), merged as #3564
-- [ ] 2/2 the dialog. Waits on: ac's stored check (`desktop/lib/form-checks.js`, not merged yet) and the owner's yes on the rendered side-by-side
+- [ ] 2/2 the dialog: every Full automation batch from Apply to jobs shows the live check, then the split (owner's yes on the side-by-side, 8 Nov 2026: "Ship it")
+- [ ] 2b/2 wire the check prepared with the kit (step a) once ac's R1 (#3573, `desktop/lib/apply-readiness.js` `storedCheck(storage, job)`) merges; until then every job is read live
 
 ## Plan
 
@@ -37,12 +38,13 @@ The split (`desktop/renderer/apply-split.js`, the same pure function in the app 
 
 | Step | File | What |
 |---|---|---|
-| a | `desktop/main.js` (499 lines: edit the existing `registerApplyHandlers({...})` line, add no line) | pass `storedCheck: job => storedCheck(storage, job)` from ac's `desktop/lib/form-checks.js` (`storedCheck(storage, job) → read \| null`; null = none, stale, kit changed or unreadable; the read already has ac's `match` merged, so `modeOfRead` takes it as is) |
+| a | `desktop/main.js` (499 lines: edit the existing `registerApplyHandlers({...})` line, add no line) | pass `storedCheck: job => storedCheck(storage, job)` from ac's `desktop/lib/apply-readiness.js` (R1, #3573) (`storedCheck(storage, job) → read \| null`; null = none, stale, kit changed or unreadable; the read already has ac's `match` merged, so `modeOfRead` takes it as is) |
 | b | `desktop/lib/apply-handlers.js` | the hold runs for every Full automation batch: drop the `options?.checkFirst === true` condition in the `apply` handler's `enqueue` (keep `which === 'auto'`) |
 | c | `desktop/renderer/apply-dialog-model.js` | pure: `applyDialogStart` passes a `check` answer through; a new `checkView(check, readsByUrl)` gives the dialog's groups from `splitBatch` (the same function the app uses), the headline counts ("We can apply to N jobs automatically", "The other M need another way", "K could not be read") and the Full automation urls Confirm sends |
 | d | new `desktop/renderer/pages/apply-check.js` | the dialog's check and split states, one owner `state` + one `paint()` (as `jobs-triage.js`): running (Checking i of n · company, seconds, rows as they land, Cancel) → split (groups Full automation / Background · you submit / In Chrome · you submit / Not applied, each row the job and its reason, Cancel + "Apply to N jobs") |
 | e | `desktop/renderer/pages/jobs-apply.js` | after Start: a result with `check` goes to `apply-check.js` before `applyDialogOutcome`. Live-read only jobs whose `read` is null, through `window.pilot.applyCheckRead(plan, url)`. Confirm calls `window.pilot.applyCheckConfirm(plan, autoUrls)`, then the result goes to the existing `applyDialogOutcome`; its caller handles `{cancelled}` and says `.error` (both class guards read the next lines). Cancel or closing the dialog calls `applyCheckCancel(plan)` |
-| f | read loop shared with ac | `runTriage` in `desktop/renderer/pages/jobs-triage.js` paints into the form-check dialog's own elements: agree with ac (session jobadabra-78) to move its loop into a pure `readEach(jobs, read, {onStart, onResult, isCancelled})` both dialogs call (a pure move in ac's file), never a copy |
+| f′ | `desktop/lib/apply-check-first.js` `matchAll`, IPC `applyCheckMatch` | the app runs the check's one question match (L2b) on its own reads, through the same `matchAsked` as the form-check dialog, so the split shown and the one Confirm checks agree (a window-side match would make Confirm refuse every simple form) |
+| f | read loop shared with ac | not done: the panel's loop reads through the held plan (`applyCheckRead`, the app keeps each read and skips the kit's ones) and the app matches, while `runTriage` reads and matches in the window; the shared part is ~10 lines. Revisit if a third reader appears |
 | g | `desktop/renderer/index.html`, `desktop/renderer/style.css` | inside `#apply-dialog`: a check panel (bar, now-line, results list) and a split panel (groups); reuse the triage dialog's `.triage-progress` / `.triage-results` classes and the app's `chip`; new CSS only scoped under the new root |
 | h | `desktop/i18n/catalogs/pages/*.js` (7 languages) | every new word; the reasons from `chipOf` (L2a) are reused, not reworded |
 | i | tests | `desktop/integration/app/screen-apply-check-first.test.js` (probeWindow, demo `settings.demoTriageReads` for 5 jobs, as `screen-apply-triage.test.js`): Start in Full automation → rows land → split 3 / 1 / 1 → Confirm → outcomes; Cancel → nothing queued. Update `desktop/test/unit/main/apply-check-first.test.js` test "without checkFirst" (now every Full automation batch holds) and `desktop/test/unit/renderer/apply-dialog-mode.test.js` for the `check` answer. Unit test of `checkView`. |

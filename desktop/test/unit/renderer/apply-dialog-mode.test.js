@@ -49,11 +49,11 @@ test('a pick in the dialog is that batch\'s mode only: Start carries it, Setting
   const pick = await applyDialogPick({mode: 'check', settings: {apply: {mode: 'fill'}}, confirm: async () => assert.fail('Standard automation asks nothing')});
   assert.deepEqual(pick, {ok: true, mode: 'check', autoConfirmedAt: ''});
   assert.equal((await applyDialogStart({count: '2', pick: pick.mode, autoConfirmedAt: pick.autoConfirmedAt, chosen: true, start: args => registered.handles.get('apply')({}, args)})).ok, true);
-  assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check', pick: 'check'}], 'the batch ran in the pick, not in Settings\' Background mode');
+  assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check', checkFirst: true, pick: 'check'}], 'the batch ran in the pick, not in Settings\' Background mode');
   assert.deepEqual(registered.saves, [], 'nothing was written to Settings');
   const next = await applyDialogStart({count: '1', start: args => registered.handles.get('apply')({}, args)});   // the next dialog: no click, no pick
   assert.equal(next.ok, true);
-  assert.deepEqual(registered.starts[1], {n: 1, mode: 'background', applyMode: 'fill'}, 'with no pick the batch follows Settings, which never changed');
+  assert.deepEqual(registered.starts[1], {n: 1, mode: 'background', applyMode: 'fill', checkFirst: true}, 'with no pick the batch follows Settings, which never changed');
   const page = read('renderer/pages/jobs-apply.js');
   assert.doesNotMatch(page, /saveSettings\(|save as saveApplySettings/, 'the dialog has no writer of settings.apply');
   assert.match(page, /picked = ''; confirmedAt = '';/, 'every open starts on Settings\' mode');
@@ -114,14 +114,14 @@ test('Start sends the validated count; the main process runs the saved mode\'s o
   const registered = register('check');
   const result = await applyDialogStart({count: '3', start: args => registered.handles.get('apply')({}, args)});
   assert.equal(result.ok, true);
-  assert.deepEqual(registered.starts, [{n: 3, mode: 'chrome', applyMode: 'check'}]);
+  assert.deepEqual(registered.starts, [{n: 3, mode: 'chrome', applyMode: 'check', checkFirst: true}]);
 });
 
 test('a saved Background automation starts the hidden browser\'s runner (no extension needed: it carries its own copy)', async () => {
   const registered = register('fill');
   const result = await applyDialogStart({count: '2', start: args => registered.handles.get('apply')({}, args)});
   assert.equal(result.ok, true);
-  assert.deepEqual(registered.starts, [{n: 2, mode: 'background', applyMode: 'fill'}]);
+  assert.deepEqual(registered.starts, [{n: 2, mode: 'background', applyMode: 'fill', checkFirst: true}]);
 });
 
 test('the first-choice gate holds Start, then the main process reads the mode chosen in it', async () => {
@@ -167,7 +167,10 @@ test('the dialog: count, the shared mode cards, a native Close, one primary butt
   assert.match(dialog, /<button class="secondary" value="cancel">Close<\/button>/);
   assert.match(dialog, /id="apply-n" type="number" min="1" max="10"/);
   assert.match(dialog, /id="apply-mode-cards"/);
-  assert.equal((dialog.match(/class="primary"/g) || []).length, 1);
+  // Why (8 Nov 2026, [fa] 2/2): a Full automation batch's check panel replaces the form while it shows (apply-check.css), so each view has one primary button.
+  const panelAt = dialog.indexOf('id="apply-check"'), panel = dialog.slice(panelAt, dialog.indexOf('id="apply-start-banner"'));
+  assert.equal((dialog.replace(panel, '').match(/class="primary"/g) || []).length, 1);
+  assert.equal((panel.match(/class="primary"/g) || []).length, 1, 'the check panel: Cancel and one "Apply to N jobs"');
   assert.ok(dialog.indexOf('id="apply-n"') < dialog.indexOf('id="apply-mode-cards"'), 'how many jobs first: the dialog is about applying');
   assert.doesNotMatch(dialog + read('renderer/components.css'), /apply-mode-description|is-apply-saved-badge|apply-mode-summary/);
   assert.match(read('renderer/pages/jobs-apply.js'), /modeCards\(picked \|\| applyOf\(settings\)\.mode/, 'the preselected card is this batch\'s pick, else Settings\' mode');
@@ -230,6 +233,6 @@ test('drafting progress has its own wrapping status; it never becomes the primar
 test('before Settings → Apply was ever chosen the pick is not sent: the batch follows what the person chooses in the first-choice gate', async () => {
   const sent = [];
   for (const chosen of [false, true]) await applyDialogStart({count: '1', pick: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z', chosen, start: async args => { sent.push(args); return {ok: true}; }});
-  assert.deepEqual(sent, [{n: 1, mode: 'settings'}, {n: 1, mode: 'settings', pick: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z'}]);
+  assert.deepEqual(sent, [{n: 1, mode: 'settings', checkFirst: true}, {n: 1, mode: 'settings', checkFirst: true, pick: 'auto', autoConfirmedAt: '2026-11-07T10:00:00.000Z'}], 'every Start asks for the check first');
   assert.match(read('renderer/pages/jobs-apply.js'), /chosen: applyChosen\(settings\)/, 'the page tells the model whether Settings was chosen');
 });
