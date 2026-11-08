@@ -234,6 +234,11 @@ class EligibilityTests(unittest.TestCase):
         self.assertEqual(kit_module.next_step({**kit, 'eligible': True}), '📝 Kit ready: review it, then Apply')
         job = {'title': 'SRE', 'company': 'Acme', 'url': 'https://x.test/1'}
         self.assertIn('Not eligible', kit_module.telegram_messages(job, kit, [])[0])
+        # Contract with desktop/lib/kit-handlers.js notEligibleIn: the printed kit has a "Not eligible" header line, the reason on the very next line (no colon).
+        import re
+        printed = [re.sub(r'<[^>]+>', '', line).strip() for line in kit_module.telegram_messages(job, kit, [])[0].split('\n')]
+        at = printed.index('Not eligible')
+        self.assertEqual(printed[at + 1], 'UK residents only')
         self.assertIn('eligible', kit_module.SCHEMA['required'])
 
 

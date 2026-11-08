@@ -102,11 +102,12 @@ test('a background batch keeps mixed eligibility and preparation failures beside
       enqueued.push(...selected.map(job => job.url));
       return {ok: true, sessions: ['fictional-session'], outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))};
     }});
-  assert.deepEqual(prepared, ['1', '2', '3']);
-  assert.deepEqual(enqueued, ['https://jobs.example.test/1'], 'the ineligible job and failed preparation never reach the queue');
+  assert.deepEqual(prepared, ['1', '2', '3', '4'], 'the not-eligible kit used no slot: job 4 was drafted to fill it');
+  assert.deepEqual(enqueued, ['https://jobs.example.test/1', 'https://jobs.example.test/4'], 'the ineligible job and failed preparation never reach the queue');
   assert.equal(result.ok, true, 'the eligible job still starts');
   assert.deepEqual(result.outcomes, [
     {url: jobs[0].url, title: jobs[0].title, company: jobs[0].company, status: 'started', reason: ''},
+    {url: jobs[3].url, title: jobs[3].title, company: jobs[3].company, status: 'started', reason: ''},
     {url: jobs[1].url, title: jobs[1].title, company: jobs[1].company, status: 'ineligible', reason: 'Required aviation credential missing.'},
     {url: jobs[2].url, title: jobs[2].title, company: jobs[2].company, status: 'failed', reason: 'The application kit could not be saved.'},
   ]);
@@ -131,6 +132,63 @@ test('a kit verdict from the engine shows its reason once, under the Not eligibl
   const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
     async () => { job.kit = true; job.ineligible = 'Needs an EU work permit.'; return {ok: true, ineligible: 'Not eligible: Needs an EU work permit.'}; }, undefined, {enqueue: async () => ({ok: true})});
   assert.deepEqual(result.outcomes.map(item => [item.status, item.reason]), [['ineligible', 'Needs an EU work permit.']]);
+});
+
+// Why (8 Nov 2026, owner via the coordinator: "A batch should pick only jobs it can start and fill the count from the next eligible ones"): the top 3 matches have no kit yet; their kits come back not eligible; three eligible jobs further down must start.
+test('a batch of 3 whose top matches turn out not eligible drafts further down and starts 3 eligible jobs', async () => {
+  const verdict = {1: 'Required aviation licence missing.', 2: 'Needs an EU work permit.', 3: 'Needs a security clearance.'};
+  const jobs = [1, 2, 3, 4, 5, 6, 7].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index}));
+  const prepared = [], queued = [];
+  const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; if (verdict[code]) job.ineligible = verdict[code]; return {ok: true, ...(verdict[code] ? {ineligible: `Not eligible: ${verdict[code]}`} : {})}; },
+    undefined, {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
+  assert.deepEqual(queued, ['4', '5', '6'], 'the three eligible jobs start');
+  assert.deepEqual(prepared, ['1', '2', '3', '4', '5', '6'], 'seven was never drafted: no more than needed');
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.outcomes.map(item => item.status), ['started', 'started', 'started', 'ineligible', 'ineligible', 'ineligible']);
+});
+
+test('when the engine\'s verdict is not in the prepare answer, the re-read list still sends the batch on to the next jobs', async () => {
+  const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index}));
+  const queued = [];
+  const result = await apply.start(tempStorage(), {n: 2, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => { const job = jobs.find(row => row.code === code); job.kit = true; if (code <= '2') job.ineligible = 'Needs a work permit.'; return {ok: true}; },
+    undefined, {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
+  assert.deepEqual(queued, ['3', '4']);
+  assert.deepEqual(result.outcomes.filter(item => item.status === 'ineligible').map(item => item.reason), ['Needs a work permit.', 'Needs a work permit.']);
+});
+
+test('drafting stops at the extra-attempt cap when every job is not eligible, and says so row by row', async () => {
+  const jobs = Array.from({length: 20}, (_, index) => ({code: `c${index}`, url: `https://jobs.example.test/${index}`, title: `Role ${index}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
+  const prepared = [];
+  const result = await apply.start(tempStorage(), {n: 2, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => { prepared.push(code); const job = jobs.find(row => row.code === code); job.kit = true; job.ineligible = 'Needs a work permit.'; return {ok: true, ineligible: 'Not eligible: Needs a work permit.'}; },
+    undefined, {enqueue: async () => ({ok: true})});
+  assert.equal(prepared.length, 8, 'N + 6 drafts at most');
+  assert.equal(result.ok, false);
+  assert.ok(result.outcomes.every(item => item.status === 'ineligible' && item.reason));
+});
+
+test('with the opt-in on, a drafted not-eligible kit is picked and reported as started, not as not eligible', async () => {
+  for (const mode of ['chrome', 'background']) {
+    const storage = tempStorage();
+    storage.saveSettings({apply: {allowIneligible: true}});
+    const job = {code: 'x', url: 'https://jobs.example.test/x', title: 'Fictional role', company: 'Example Air', status: 'saved', stage: 'Saved', fit: 80};
+    const result = await apply.start(storage, {n: 1, mode, applyMode: 'fill'}, () => ({unref() {}}), async () => ({jobs: [job]}), undefined, undefined,
+      async () => { job.kit = true; job.ineligible = 'Needs a work permit.'; return {ok: true, ineligible: 'Not eligible: Needs a work permit.'}; }, undefined,
+      {enqueue: async selected => ({ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))})});
+    assert.equal(result.ok, true, mode);
+    assert.deepEqual(result.outcomes.map(item => item.status), ['started'], mode);
+  }
+});
+
+test('a re-read list that spells a job\'s link differently still matches its row, once', async () => {
+  const before = [{code: 'x', url: 'https://Jobs.example.test/x/?utm=1', title: 'Fictional role', company: 'Example Air', status: 'saved', stage: 'Saved', fit: 80}];
+  const after = [{...before[0], url: 'https://jobs.example.test/x', kit: true}];
+  let reads = 0;
+  const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: reads++ ? after : before}), undefined, undefined,
+    async () => ({ok: true}), undefined, {enqueue: async selected => ({ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))})});
+  assert.deepEqual(result.outcomes.map(item => [item.url, item.status]), [['https://jobs.example.test/x', 'started']], 'one row, no false "no longer in your list"');
 });
 
 test('the words for a batch that finds nothing say what is true of the jobs listed', async () => {
