@@ -30,5 +30,5 @@ test('an error reply or a process failure is an error for that case, not an empt
   await assert.rejects(bad('claude:opus', input), /rate limited/);
   const dead = claudeRun({exec: async () => { throw new Error('claude exited 1'); }, env: {}, cwd: '/e'});
   await assert.rejects(dead('claude:opus', input), /exited 1/);
-  assert.ok(isClaude('claude:sonnet') && !isClaude('@cf/qwen/qwen3-30b-a3b-fp8'));
+  assert.ok(isClaude('claude:sonnet') && !isClaude('@cf/google/gemma-4-26b-a4b-it'));
 });
