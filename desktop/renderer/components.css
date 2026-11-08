@@ -332,9 +332,12 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 .task-row > span:first-child { display: flex; flex-direction: column; gap: 2px; }
 .task-row small { color: var(--muted); font-size: var(--fs-sm); }
 .task-row select { width: 100%; }
-/* Schedules: the status names where the job runs ("Our servers, your Mac can be off"), so its column is wider than the credentials table's (owner, 5 Nov 2026: "say where"). */
+/* Schedules: the status names where the job runs ("Our servers, your Mac can be off"), so its column is wider than the credentials table's (owner, 5 Nov 2026: "say where"). The "E-mail me" column exists only while a row has a mail switch (`has-mail`, pages/mail-switches.js; owner, 8 Nov 2026: V1). */
 #setting-schedule .task-row { grid-template-columns: minmax(0, 1fr) 220px 330px; }
-@media (max-width: 1240px) { #setting-schedule .task-row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); } #setting-schedule .task-row.is-head, #setting-schedule .task-row.is-soon > span:empty { display: none; } }   /* the row needs ~850 px for its three columns (the window is at least 950 wide, its content 569 there): below that the name, choice and status stack; the column heads have no columns to head */
+#setting-schedule.has-mail .task-row { grid-template-columns: minmax(0, 1fr) 236px 80px 268px; }   /* Why (8 Nov 2026, review): 236 px so the longest option ("Una volta al giorno (07:30)", 7 languages) fits beside the shared select arrow's 40 px; 268 px so Status keeps its place and time on one line; the task column keeps its longest hint (Ready to send) on one line */
+#setting-schedule:not(.has-mail) .mail-cell { display: none; }
+#setting-schedule .mail-cell-label { display: none; }
+@media (max-width: 1240px) { #setting-schedule .task-row, #setting-schedule.has-mail .task-row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); } #setting-schedule .task-row.is-head, #setting-schedule .task-row.is-soon > span:empty, #setting-schedule .mail-cell:empty { display: none; } #setting-schedule .mail-cell { display: flex; align-items: center; gap: var(--sp-2); } #setting-schedule .mail-cell-label { display: inline; color: var(--muted); font-size: var(--fs-sm); } }   /* the row needs ~850 px for its three (four with E-mail me) columns (the window is at least 950 wide, its content 569 there): below that the name, choice and status stack; the column heads have no columns to head */
 
 /* Focus & reminders: three columns split by rules; time chips. */
 .focus-settings { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-5); align-items: start; }
