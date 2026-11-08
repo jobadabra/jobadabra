@@ -6,11 +6,12 @@
 // is the plain "The AI service failed", never the raw text. Counts are the relay's real per-cause counts (broker-relay-serve.mjs), never estimated.
 // Job: report health
 import {alertHtml} from './telegram-html.mjs';
+import {reasonOf} from './broker-reason.mjs';
 
 const UNKNOWN = {key: 'failed', icon: '⚠️', label: 'The AI service failed'};
-// First match wins. Money is named only on the broker's `budget:`, a counted neuron cap or a provider's credit words, never on the bare word "capped" (a folder name, an old status): a8 rule, credit-alert.mjs saidLimit. The patterns are the broker's and Codex's own failure words, not a site's or a model's.
+// First match wins. Money is named only on the broker's `budget:`, a counted neuron cap or a provider's credit words, never on the bare word "capped" (a folder name, an old status): a8 rule, lib/broker-reason.mjs reasonOf. The patterns are the broker's and Codex's own failure words, not a site's or a model's.
 const CAUSES = [
-  [/budget:|credit balance|insufficient[_ ]quota|exceeded your current quota|usage limit|\d+ of \d+ neurons/i, () => ({key: 'allowance', icon: '💳', label: "The AI plan's allowance is used up"})],
+  [/budget:|credit balance|insufficient[_ ]quota|exceeded your current quota|usage limit|\d+ of \d+ neurons/i, (_, text) => ({key: 'allowance', icon: '💳', label: reasonOf(text)?.row || 'The AI budget is used up'})],
   [/killed after (\d+) s|did not finish|timed? ?out/i, match => ({key: 'timeout', icon: '⏱', label: `The AI took too long${match[1] ? ` (over ${match[1]} s)` : ''}`})],
   [/no answer from the broker|cut off|fetch failed|ECONNRESET|UND_ERR|socket|unreachable|no run token/i, () => ({key: 'connection', icon: '📡', label: 'The connection to the AI service dropped'})],
   // Status codes count only as a status ("HTTP 400", "status 401", "broker: 429", a reason that starts with one), never as digits inside other words ("fetch failed after 401 s").
@@ -24,7 +25,7 @@ export function causeOf(reason) {
   const text = String(reason ?? '');
   for (const [pattern, make] of CAUSES) {
     const match = text.match(pattern);
-    if (match) return make(match);
+    if (match) return make(match, text);
   }
   return {...UNKNOWN};
 }
