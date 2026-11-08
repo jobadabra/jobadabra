@@ -42,7 +42,7 @@ def numbers(path):
 
 
 def clock_reads(path):
-    """Calls of the wall clock in a module's code (comments and strings do not count): time.monotonic(), time.time(), perf_counter, datetime.now."""
+    """Calls of the wall clock in a module's code (comments and strings do not count): the names in CLOCKS (module time: monotonic, time, perf_counter; datetime: now)."""
     calls = 0
     for node in ast.walk(ast.parse((ROOT / path).read_text(encoding='utf-8'))):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
