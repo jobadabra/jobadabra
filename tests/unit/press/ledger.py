@@ -153,7 +153,7 @@ FIXES = (
                'owner, 8 Nov 2026, via mac-9d: "3 min, then Find more"; the waiting jobs keep all of scoring\'s time (L13)')),
     Fix('L36', '8 Nov 2026 (ps E2b)', 'each Find jobs run saves what every step left for the next one, as counts the planner reads',
         ('tests/unit/press/test_resume.py::test_a_stage_that_says_time_is_up_saves_its_count_under_its_stage_name',
-         'tests/unit/press/test_resume.py::test_another_process_of_the_same_run_does_not_zero_what_this_run_already_saved',
+         'tests/unit/press/test_resume.py::test_a_first_runs_three_processes_each_search_process_has_the_last_word_on_its_steps',
          'tests/unit/press/test_resume_run.py::test_a_timed_search_saves_what_each_step_left_for_the_planner'),
         owner='When 3 mins stops, the next run nows where to continue and what are the left things to do and the next goals',
         notes=('counts only (press_left.json): the items stay in their owners\' files, so the next run resumes from those',)),

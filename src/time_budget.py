@@ -64,6 +64,7 @@ def start(seconds, now=None, stage=None, name=None):
         budget_tape.new_search(name)
     score_first(False)
     _said.clear()
+    resume.begin()
     _scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock
     _local[0] = 0
 
