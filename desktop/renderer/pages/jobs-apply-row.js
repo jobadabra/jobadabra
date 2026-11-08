@@ -15,7 +15,7 @@ const MENU_ORDER = ['fill', 'check', 'auto'];
 // The page functions a row's Apply needs, handed in by wireRowApply: importing them (pages/jobs.js, apply-settings.js, startup.js) closed import cycles (arch check, #3630).
 // Unwired, a Full automation pick is refused, never started unconfirmed.
 let wired = {startedApplying: () => {}, confirm: async () => false, toastMessage: () => {}, sayRefused: () => false};
-const STARTING = new Set();   // job links whose ⋯ menu pick is getting ready or starting: the rows are redrawn often, so this outlives one row
+const STARTING = new Set();   // job links whose Apply (the row's button, a ⋯ menu pick) is getting ready or starting: the rows are redrawn often, so this outlives one row
 
 /**
  * Hands in what a row's Apply needs from the pages: `startedApplying(job)` marks the row, `confirm()` is Full automation's one confirmation, `toastMessage` and `sayRefused` are
@@ -30,6 +30,7 @@ export function wireRowApply({startedApplying, confirm, toastMessage, sayRefused
 export function createRowApply(job, {rerender}) {
   const details = {title: job.title, company: job.company, location: job.location, workMode: job.work_mode};
   // Same words as the batch's toast (applyDialogOutcome); a refusal (browser missing, not confirmed) is said, never "No link".
+  const sayChecking = () => wired.toastMessage(t('pagesJobs.checkingReadiness'), [job.title, job.company].filter(Boolean).join(' · '), jobPlace(job), 'info');
   const queuedInBackground = result => {
     const outcome = applyDialogOutcome(result);
     if (!outcome.close) { wired.toastMessage('Apply did not start', outcome.error, jobPlace(job), 'warn'); return; }
@@ -47,7 +48,13 @@ export function createRowApply(job, {rerender}) {
     return false;
   };
   // Chrome opens the job's form and the extension fills it at once from the kit; a hidden-browser mode queues it instead.
+  // Every way in (the row's Apply, a ⋯ menu pick, the kitless path) takes the job's one lock before its first await: a second press while one gets ready starts nothing (Gitar on #3630).
   const start = async (button, {pick = null, ready = false} = {}) => {
+    if (STARTING.has(job.url)) { sayChecking(); return; }
+    STARTING.add(job.url);
+    try { await startNow(button, {pick, ready}); } finally { STARTING.delete(job.url); }
+  };
+  const startNow = async (button, {pick, ready}) => {
     if (!ready && !(await getReady(button))) return;
     const result = await window.pilot.applyOne(job.url, details, pick);
     if (result.background) return queuedInBackground(result);   // a hidden-browser mode queued the job: no tab opened, so the row does not read "Opened"
@@ -60,14 +67,11 @@ export function createRowApply(job, {rerender}) {
    * and a second pick on the same job while it runs starts nothing (code review of R2, 8 Nov 2026: a silent 20-40 s, and a second pick drafted the kit and queued the job twice).
    */
   const startIn = async mode => {
-    if (STARTING.has(job.url)) { wired.toastMessage(t('pagesJobs.checkingReadiness'), details.title || '', jobPlace(job)); return; }
-    STARTING.add(job.url);   // before the first await: two quick picks must not both pass the check above
-    try {
-      const picked = await applyDialogPick({mode, settings: shared.state?.settings, confirm: wired.confirm});
-      if (!picked.ok) return;
-      wired.toastMessage(t('pagesJobs.checkingReadiness'), [job.title, job.company].filter(Boolean).join(' · '), jobPlace(job));
-      await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt}});
-    } finally { STARTING.delete(job.url); }
+    if (STARTING.has(job.url)) { sayChecking(); return; }
+    const picked = await applyDialogPick({mode, settings: shared.state?.settings, confirm: wired.confirm});   // the confirmation is a modal dialog: no other press reaches the row meanwhile
+    if (!picked.ok) return;
+    if (!STARTING.has(job.url)) sayChecking();
+    await start(null, {pick: {mode: picked.mode, autoConfirmedAt: picked.autoConfirmedAt}});
   };
   const modeItems = () => {
     const saved = applyOf(shared.state?.settings).mode;

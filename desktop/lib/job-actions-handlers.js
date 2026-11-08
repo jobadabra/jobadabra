@@ -35,14 +35,19 @@ export function registerJobActionsHandlers(ctx) {
     const readiness = readinessOf(storage);
     if (!readiness) return {text: '⚠️ Apply readiness is not ready yet. Try again in a moment.'};
     // Why (8 Nov 2026, code review of R2): one run at a time, as the engine task's lock did: a second press while it runs would draft the same kits again and spend the AI twice.
-    if (topRun) return {text: 'Apply readiness on your top matches is already running.'};
-    const jobs = (await jobsList(storage)).jobs || [], byCode = new Map(jobs.map(job => [job.code, job]));
-    const top = pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => byCode.get(job.code));   // best first, as pickTop orders them
+    // Taken before the jobs list's read (Gitar on #3630): a second press during that read must find it too.
+    if (topRunning) return {text: 'Apply readiness on your top matches is already running.'};
+    topRunning = true;
+    let top = [];
+    try {
+      const jobs = (await jobsList(storage)).jobs || [], byCode = new Map(jobs.map(job => [job.code, job]));
+      top = pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => byCode.get(job.code));   // best first, as pickTop orders them
+    } finally { if (!top.length) topRunning = false; }
     if (!top.length) return {text: 'Your top matches are ready to apply: nothing to prepare.'};
-    topRun = readyTop(readiness, top).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`)).finally(() => { topRun = null; });
+    readyTop(readiness, top).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`)).finally(() => { topRunning = false; });
     return {text: `Checking apply readiness on your top ${top.length === 1 ? 'match' : `${top.length} matches`}.`};
   };
-  let topRun = null;   // the run of Apply readiness on the top matches in progress, or null
+  let topRunning = false;   // Apply readiness on the top matches is running (from the press's list read to its last job)
   // Every Telegram command, from the app (the answer also goes to Telegram when connected).
   const COMMANDS = ['check', 'employers', 'run', 'today', 'applied', 'saved', 'insight', 'weekly', 'mail', 'scout', 'status', 'add', 'help'];
   ipcMain.handle('command', async (_, name, arg = '') => {

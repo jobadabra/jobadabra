@@ -1,7 +1,7 @@
 /* global document, window */
 // "Check apply readiness" (once "See which jobs can apply automatically") while it runs, layer 2 (#3519): the demo window on fictional jobs whose form read is held by the test, so every press follows a state, never a delay.
 // The owner's scenario (7 Nov 2026, two screenshots): press Check 10 jobs -> an empty grey bar, no words, an inline Cancel AND Close AND a greyed Check, the number still an input.
-// Expected: at once "Checking 1 of N · <title> · <company>" and its step with that step's seconds (8 Nov 2026, owner chose "A: fix the end + steps"), a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
+// Expected: at once "Checking apply readiness · 1 of N · <title> · <company>" (R2, 8 Nov 2026: the check is named) and its step with that step's seconds (8 Nov 2026, owner chose "A: fix the end + steps"), a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
 // The read is the page's own `runTriage` fed a held read (the preload bridge is frozen, so a test cannot replace window.pilot.triageRead); Stop is the real wired button.
 // Every wait has a cap (hang guard, named by what it waited for): eleven of 15 s and two of 5 s (a step redraws the line at once) stay inside the window's 180 s timeout, so a stall is reported by stage, not by a killed launch.
 // Job: serve stored answers
@@ -84,7 +84,7 @@ before(() => {
 
 test('the moment a check starts the dialog says which job it is reading, with a bar that is moving', live, () => {
   const {first} = screen.result;
-  assert.match(first.words, /^Checking 1 of 3 · Running Engineer 1 · Alder Works$/, 'the job\'s title and company, never the company alone');
+  assert.match(first.words, /^Checking apply readiness · 1 of 3 · Running Engineer 1 · Alder Works$/, 'the job\'s title and company, never the company alone');
   assert.equal(first.sliding, true, 'before the first read ends the bar slides, so a running check never looks still');
 });
 
@@ -102,12 +102,12 @@ test('the read\'s steps change the line at once, each with its own seconds; anot
   assert.match(steps.opening.elapsed, /^Opening the page · 0:0\d$/);
   assert.deepEqual([steps.foreign, steps.unknown, steps.otherQuery], [false, false, false]);
   assert.match(steps.pressing.elapsed, /^Pressing Apply · 0:0\d$/);
-  assert.match(steps.pressing.words, /^Checking 1 of 3 · Running Engineer 1 · Alder Works$/);
+  assert.match(steps.pressing.words, /^Checking apply readiness · 1 of 3 · Running Engineer 1 · Alder Works$/);
 });
 
 test('after one read the bar shows its share and names the next job', live, () => {
   const {second} = screen.result;
-  assert.match(second.words, /^Checking 2 of 3 · Running Engineer 2 · Birch Labs$/);
+  assert.match(second.words, /^Checking apply readiness · 2 of 3 · Running Engineer 2 · Birch Labs$/);
   assert.match(second.elapsed, /^Getting ready · 0:0\d$/, 'each job starts at its first step, with its own seconds');
   assert.equal(second.width, '33%');
   assert.equal(second.sliding, false);

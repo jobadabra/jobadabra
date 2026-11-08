@@ -29,6 +29,12 @@ globalThis.window.pilot = new Proxy({
 const {shared} = await import('../../../renderer/pages/shared.js');
 const {jobsState} = await import('../../../renderer/pages/jobs-state.js');
 const {renderJobs, applySaved} = await import('../../../renderer/pages/jobs-render.js');
+// The Jobs page's start-up hands the rows its functions (pages/jobs-apply.js wireApplyDialog); this test draws rows without that start-up, so it hands the same ones in.
+const {wireRowApply} = await import('../../../renderer/pages/jobs-apply-row.js');
+const {startedApplying} = await import('../../../renderer/pages/jobs.js');
+const {askFullAutomation} = await import('../../../renderer/pages/apply-settings.js');
+const {sayRefused, toastMessage} = await import('../../../renderer/pages/startup.js');
+wireRowApply({startedApplying, confirm: askFullAutomation, toastMessage, sayRefused});
 const $ = id => doc.getElementById(id);
 
 function draw(result) {
@@ -111,6 +117,21 @@ test("a ⋯ menu pick says the check runs, and a second pick on the same job whi
   held = Promise.resolve();
   assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start');
   assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the pick goes with the start');
+});
+
+// Gitar on #3630 (8 Nov 2026): only the menu pick took the job's lock, so the row's Apply pressed while a pick was getting ready started the same job a second time.
+test("the row's Apply pressed while a ⋯ menu pick on the same job gets ready starts nothing more", async () => {
+  const {createRowApply} = await import('../../../renderer/pages/jobs-apply-row.js');
+  const {job} = draw({background: true, ok: true, message: '1 application queued in the background.'});
+  let release;
+  held = new Promise(done => { release = done; });
+  const applier = createRowApply(job, {rerender: () => {}});
+  const pick = applier.modeItems().find(item => item.label === 'Background automation').run();
+  const press = applier.start(null);
+  release();
+  await Promise.all([pick, press]);
+  held = Promise.resolve();
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness, one start: the pick\'s');
 });
 
 // Code review of R2 (8 Nov 2026): a form filled on the server opens its hand-off (Review and submit); the ⋯ menu's per-job modes would start it afresh and skip those answers.

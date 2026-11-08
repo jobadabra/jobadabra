@@ -27,6 +27,15 @@ test('the three best open jobs without a kit each go through Apply readiness, wi
   assert.ok(asked.every(([, options]) => options?.notices === 'all'), 'each says its own kit notices');
 });
 
+// Gitar on #3630 (8 Nov 2026): the run was marked only after the jobs list was read, so two presses during that read both started it.
+test('two presses at once start one run: the second, arriving while the first reads the jobs list, says it is already running', async () => {
+  const {press, asked, done} = rig([row('a', 95), row('b', 90), row('c', 80)]);
+  const answers = await Promise.all([press(), press()]);
+  await done;
+  assert.equal(answers.filter(answer => /already running/.test(answer.text)).length, 1, answers.map(answer => answer.text).join(' | '));
+  assert.deepEqual(asked.map(([code]) => code), ['a', 'b', 'c'], 'each job once');
+});
+
 test('no top match lacks a kit: nothing runs and the answer says so', async () => {
   const {press, asked} = rig([row('a', 95, {kit: true})]);
   assert.match((await press()).text, /nothing to prepare/);
