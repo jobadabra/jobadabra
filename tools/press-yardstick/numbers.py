@@ -31,13 +31,23 @@ def verdicts(rows):
     return {key(row): row.get('role') == 'yes' and row.get('place') == 'yes' for row in rows}
 
 
+def distinct(jobs):
+    """One row per job, as the judge counts them (Gitar on #3582: a posting read from two sources is one job): the one scored first."""
+    out = {}
+    for job in sorted(jobs, key=lambda j: (j.get('scored_s') is None, j.get('scored_s') or 0)):
+        out.setdefault(key(job), job)
+    return list(out.values())
+
+
 def three(jobs, judged, ceiling):
-    """One press's numbers. jobs, ceiling: ttfr.py --jobs rows (this press, the tape's ceiling press); judged: verdicts(). None = not measurable
+    """One press's numbers. jobs, ceiling: ttfr.py --jobs rows (this press, the tape's ceiling press), seconds from the press's own start;
+    judged: verdicts(). Speed counts a job scored in this press only (a later press's earlier scores are negative seconds). None = not measurable
     (nothing right at the ceiling, nothing scored, no right 70+)."""
+    jobs, ceiling = distinct(jobs), distinct(ceiling)
     right = [job for job in jobs if judged.get(key(job)) is True]
     most = sum(1 for job in ceiling if judged.get(key(job)) is True)
     scored = [job for job in jobs if job.get('fit') is not None]
-    fast = sorted(job['scored_s'] for job in right if job.get('scored_s') is not None and (job.get('fit') or 0) >= 70)
+    fast = sorted(job['scored_s'] for job in right if (job.get('scored_s') is not None and job['scored_s'] >= 0) and (job.get('fit') or 0) >= 70)
     return {'coverage': len(right) / most if most else None,
             'quality': sum(1 for job in scored if judged.get(key(job)) is True) / len(scored) if scored else None,
             'speed': fast[0] if fast else None,

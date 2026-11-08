@@ -129,7 +129,7 @@ for (let press = done + 1; press <= presses; press++) {
     ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);
-  if (tape) metrics('ttfr.py', '--jobs', path.join(out, `jobs-${press}.json`));   // each job in the places, for the press's yardstick (tools/press-yardstick/numbers.py)
+  if (tape) metrics('ttfr.py', '--jobs', path.join(out, `jobs-${press}.json`), '--since', new Date(started).toISOString());   // each job in the places, for the press's yardstick (tools/press-yardstick/numbers.py)
   const verdict = process.argv.includes('--judge') && !api ? judged() : null;   // its own AI call, off the tape: a replay neither records nor needs it
   if (verdict) fs.writeFileSync(path.join(out, `judge-${press}.json`), JSON.stringify(verdict, null, 2));
   const first = row.ttfr ? `; 1st/10th relevant at ${row.ttfr.first_in_places_s ?? '—'}/${row.ttfr.tenth_in_places_s ?? '—'} s, 1st 70+ at ${row.ttfr.first_fit70_s ?? '—'} s` : '';

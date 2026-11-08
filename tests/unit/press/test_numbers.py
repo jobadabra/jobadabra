@@ -41,6 +41,20 @@ class ThreeNumbersTest(unittest.TestCase):
         judged = numbers.verdicts(JUDGED)
         self.assertEqual(numbers.three([job(' nurse ', 'ST MARY', 'dublin', 5)], judged, CEILING)['right'], 1)
 
+    def test_a_job_read_from_two_sources_is_one_job(self):
+        # Gitar on #3582: the judge keeps one verdict per job; two rows of it would put coverage past 100% and read as better.
+        judged = numbers.verdicts(JUDGED)
+        twice = MAIN + [job('Nurse', 'St Mary', 'Dublin', 15, 82, 25)]
+        out = numbers.three(twice, judged, CEILING + [CEILING[0]])
+        self.assertEqual((out['coverage'], out['right'], out['speed']), (0.5, 1, 25), 'one job, scored first at 25 s')
+
+    def test_a_later_press_is_timed_from_its_own_start(self):
+        # Gitar on #3582: press 2's file holds press 1's jobs too; one press 1 scored has negative seconds and is not press 2's speed.
+        judged = numbers.verdicts(JUDGED)
+        press2 = [job('Nurse', 'St Mary', 'Dublin', -170, 82, -140), job('Night nurse', 'Beacon', 'Dublin', 12, 75, 33)]
+        out = numbers.three(press2, judged, CEILING)
+        self.assertEqual((out['coverage'], out['speed']), (1.0, 33), 'both are found by now; the first right 70+ of this press is at 33 s')
+
     def test_nothing_to_measure_is_none_never_zero(self):
         out = numbers.three([], {}, [])
         self.assertEqual((out['coverage'], out['quality'], out['speed']), (None, None, None))
