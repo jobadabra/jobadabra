@@ -53,7 +53,7 @@ The desktop never opens the tracker; it calls the engine's store CLI (`desktop/l
 - [x] L1 light read (#3548) and L2a three statuses (#3556) (proof: desktop/lib/triage-reader.js @f0b711f)
 - [x] L2b match (#3563, merged 7 Nov 2026) (proof: desktop/lib/triage-match.js @30ff290)
 - [x] Owner's yes on the sketch (proof: none: the owner's answers are quoted above, relayed by the coordinator 7 Nov 2026)
-- [x] R1 the step and the store (#3573, merged 7 Nov 2026) · [ ] R2 the paths become callers + the guard (held: the hang below) · [ ] L2c · [ ] L2d
+- [x] R1 the step and the store (#3573, merged 7 Nov 2026) (proof: desktop/lib/apply-readiness.js @3b7fc5e6) · [ ] R2 the paths become callers + the guard (held: the hang below) · [ ] L2c · [ ] L2d
 - Plan: `docs/superpowers/plans/2026-11-07-apply-readiness.md`. `fa`'s Full automation hold (`2026-11-07-full-automation-check-first.md`) consumes `storedCheck(job)` from R1.
 
 ### Handoff (session ac, 8 Nov 2026 ~06:45 UTC)
