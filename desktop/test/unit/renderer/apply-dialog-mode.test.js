@@ -100,18 +100,18 @@ test('a start whose call fails says so and gives the button back', () => {
 // Why (8 Nov 2026, owner: "bad UI" on the three full-width Inspect buttons): the job's title is the link that opens the Jobs drawer, as in the Jobs list; no button per row.
 test('batch outcome inspection is the title link and the Jobs page drawer callback', () => {
   const page = read('renderer/pages/jobs-apply.js');
-  assert.match(page, /el\('a', 'link apply-outcome-title', name\)/);
-  assert.doesNotMatch(page, /Inspect job/);
-  assert.match(page, /openJob\(\{url: outcome\.url, title: outcome\.title \|\| '', company: outcome\.company \|\| ''\}, 'application'\)/);
+  assert.match(read('renderer/pages/apply-result.js'), /el\('a', 'apply-outcome-title', row\.title\)/);
+  assert.doesNotMatch(page + read('renderer/pages/apply-result.js'), /Inspect job/);
+  assert.match(page, /openJob\(job, 'application'\)/);
   assert.doesNotMatch(page, /from '\.\/job-panel\.js'/, 'Jobs injects the drawer opener to avoid a page dependency cycle');
   assert.match(read('renderer/pages/jobs.js'), /wireApplyDialog\(\{startedApplying, openJob: openJobPanel\}\)/);
 });
 
 test('fully refused batches keep the error tone when they also have per-job outcomes', () => {
-  assert.match(read('renderer/pages/jobs-apply.js'), /message\('apply-message', outcome\.error, result\.ok \? undefined : 'error'\)/);
-  assert.match(read('renderer/pages/jobs-apply.js'), /'not-started': \['Not started', 'warn', 'clock'\]/, 'a verdict about the job is a warning with an icon; only a failure is red');
+  assert.match(read('renderer/pages/jobs-apply.js'), /view\.note\?\.tone === 'error' \? 'error' : undefined/);
+  assert.match(read('renderer/apply-result-model.js'), /'not-started': \['notStarted', 'warn', 'clock', 'skipped'\]/, 'a verdict about the job is a warning with an icon; only a failure is red');
   assert.match(read('renderer/pages/jobs-apply.js'), /classList\.toggle\('apply-result'/, 'one state at a time: results hide the form');
-  assert.match(read('renderer/pages/jobs-apply.js'), /batchFinished = !!result\.ok;[^\n]*\n\s*showOutcomes\(outcome\.outcomes/, 'batchFinished is set before showOutcomes: no "Change and try again" over a batch that started jobs');
+  assert.match(read('renderer/pages/jobs-apply.js'), /batchFinished = !!result\.ok;[^\n]*\n\s*showOutcomes\(result/, 'batchFinished is set before showOutcomes: no "Change and try again" over a batch that started jobs');
 });
 
 test('Start sends the validated count; the main process runs the saved mode\'s own runner', async () => {
