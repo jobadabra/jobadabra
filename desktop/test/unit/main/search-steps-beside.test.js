@@ -16,7 +16,8 @@ test('a later press starts the search at once and discovers employers from the j
     return {code: 0, result: {}};
   };
   const lines = [];
-  await searchSteps(storage({lastScoutAt: new Date().toISOString()}), line => lines.push(line), 'run', 'you', exec, {now: () => clock});
+  const scoutRan = new Date().toISOString();   // clock: relative the scout ran just now, so it is not due
+  await searchSteps(storage({lastScoutAt: scoutRan}), line => lines.push(line), 'run', 'you', exec, {now: () => clock});
   assert.deepEqual(steps.map(s => s.step), ['daily'], 'one engine process: nothing holds the run lock in front of the search');
   assert.equal(steps[0].at, 0, 'the search starts at the press, so it scores the waiting jobs first (src/daily_search_scoring.py)');
   assert.ok(steps[0].args.includes('--discover-beside'), 'the job boards\' employers are discovered inside the search (src/sources/boards_beside.py)');

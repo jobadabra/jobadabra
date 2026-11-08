@@ -16,7 +16,7 @@ import os
 from urllib.request import Request
 
 from ..paths import DATA, REPORTS, keyword_regex, load_search_config
-from . import posting_text
+from . import posting_text, read_budget
 from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
@@ -382,7 +382,6 @@ def _jobsch_pages(client,used,pages,sources):
     seen_urls=set();pages_found=[];asked=0
     pairs=[[query,place] for query in (jobsch_terms(_SEARCH) if 'jobs.ch' in used else []) for place in jobsch_places(_SEARCH)]
     ordered,done=rotation(pairs);taken=0
-    from . import read_budget
     for query,place in ordered:   # every role x every place, MAX_REQUESTS pages a refresh, the next refresh going on from here
         if asked>=MAX_REQUESTS or read_budget.past_cut():break   # past this step's share of the press: the next refresh goes on from here
         taken+=1
@@ -423,7 +422,6 @@ def _fit_jobs(pages_found,jobs,sources):
 
 def _dev_boards(client,used,jobs,sources):
     """SwissDevJobs and TechTree, when used and before the read's cut: their matching listings added to jobs."""
-    from . import read_budget
     for label,url in [('SwissDevJobs','https://swissdevjobs.ch/api/jobsLight'),('TechTree','https://jobs.techtree.dev/')]:
         if label not in used or read_budget.past_cut():continue
         try:
