@@ -186,6 +186,15 @@ class RedMainGate(unittest.TestCase):
         failure = next(i for i, line in enumerate(lines) if line.startswith('Re-check failure: main is still red'))
         self.assertEqual(lines[failure + 1:failure + 3], ['  Flaky: “a step” passed on the same commit (run 99)', '  Changed: “b step” differs in src/x.py'])
 
+    def test_the_gate_prints_machine_lines_the_nightly_notice_reads_never_its_indentation(self):
+        # Why (8 Nov 2026, owner: nightly alert named suites "apply,Changed:,Changed:"): the workflow scraped every indented line; `Red suites:` and `Red step:` are the contract (desktop/e2e/lib/nightly-alert.mjs).
+        tool = "if (process.argv.includes('--machine')) console.log('Red step: flaky | a step | https://github.com/o/r/actions/runs/7'); else console.log('Flaky: a step');\n"
+        code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'}, verdict_tool=tool)
+        self.assertEqual(code, 1, out)
+        lines = out.splitlines()
+        self.assertTrue(any(line.startswith('Red suites: ') and not line.startswith(' ') for line in lines), out)
+        self.assertIn('Red step: flaky | a step | https://github.com/o/r/actions/runs/7', lines, 'a machine line is not indented')
+
     def test_a_verdict_tool_that_breaks_never_changes_the_gate(self):
         code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'}, verdict_tool="throw new Error('no network');\n")
         self.assertEqual(code, 1, out)

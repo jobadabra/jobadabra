@@ -21,9 +21,9 @@ class StorePublishOnStable(unittest.TestCase):
     def test_a_store_publish_that_did_not_start_alerts_as_a_failure_not_as_the_stable_announcement(self):
         # Gitar on #3298: under 'stable-promoted' without a level, an owner who switched announcements off or set problems-only never heard it.
         script = (ROOT / 'tools' / 'release-stable.sh').read_text()
-        failure = next(line for line in script.splitlines() if 'ci-alert.mjs' in line and 'did not start' not in line and 'MESSAGE=' in line)
-        self.assertIn("event: 'release-failed'", failure)
-        self.assertIn("level: 'problem'", failure)
+        failure = next(line for line in script.splitlines() if 'notify.mjs' in line and 'NOTICE_TITLE="Store publish did not start"' in line)
+        self.assertIn('NOTICE_EVENT=release-failed', failure)
+        self.assertIn('NOTICE_LEVEL=problem', failure)
         self.assertNotIn('stable-promoted', failure)
 
     def test_no_switch_sits_between_the_promotion_and_the_store_starts(self):
@@ -177,9 +177,9 @@ class StorePublishFailureReachesTheOwner(unittest.TestCase):
                 needs = set(re.search(r'needs: \[([^\]]+)\]', alert).group(1).replace(' ', '').split(','))
                 self.assertEqual(needs, jobs, 'it waits for every job that publishes, so a failure in any of them reaches it')
                 self.assertIn("if: ${{ failure() && inputs.tag != '' }}", alert, 'only a real publish (a tag), never the PR check')
-                self.assertIn("import {send} from './desktop/e2e/ci-alert.mjs'", alert, 'the one alert path')
+                self.assertIn('node desktop/e2e/store-alert.mjs', alert, 'the one alert path: the shared notice shape (lib/notice.mjs), not a plain string')
                 self.assertIn('actions/runs/${{ github.run_id }}', alert, 'the message links the run')
-                self.assertIn(store, alert)
+                self.assertIn(store, (ROOT / 'desktop/e2e/lib/store-notices.mjs').read_text())
                 for secret in ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'):
                     self.assertIn(f'{secret}: ${{{{ secrets.{secret} }}}}', alert)
 

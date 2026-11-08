@@ -71,7 +71,7 @@ async function main(argv) {
   const repo = argv.includes('--repo') ? argv[argv.indexOf('--repo') + 1] : process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
   const verdict = await verdictOfReds(reds, ghStepsIo(repo));
   if (verdict.block) {
-    for (const reason of verdict.reasons) console.log(`Stops the beta: ${reason}`);   // no leading spaces: desktop.yml's nightly reads the indented lines after "Main's e2e is red:" as suite names
+    for (const reason of verdict.reasons) console.log(`Stops the beta: ${reason}`);   // no leading spaces: a human-indented line is for people; the nightly notice reads only the gate's unindented machine lines (desktop/e2e/lib/nightly-alert.mjs)
     if (verdict.line) console.log(verdict.line);
     return 1;
   }
