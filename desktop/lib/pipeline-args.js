@@ -26,6 +26,7 @@ export function dailyArgs(storage, inputs = {}) {
   if (inputs.talking) args.push('--action', 'talking');
   for (const [name, flag] of PASSED_INPUTS) if (inputs[name]) args.push(flag, String(inputs[name]));
   if (inputs.firstJobs) args.push('--first-jobs');   // a small slice of fast feeds is read and 3 jobs scored first (src/first_jobs.py)
+  if (inputs.discoverBeside) args.push('--discover-beside');   // the job boards' employers discovered beside the employer sites (src/sources/boards_beside.py)
   if (ai && AI_MODES.includes(mode)) args.push('--enrich-max', '100', '--score-max', '60');
   if (ai && mode === 'rescore') args.push('--score-max', '60');   // Re-score: new scores for the jobs that have an old one, nothing else (src/daily_modes.py rescore_mode)
   // A search's AI steps stop at 3 minutes (owner, 7 Oct 2026: "never more than 2-3 minutes"); what is left waits for the next search (src/budget.py).

@@ -4,9 +4,8 @@ include Switzerland, they list nothing elsewhere), then follow career links."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from html import escape, unescape
+from html import unescape
 from html.parser import HTMLParser
-import csv
 import hashlib
 import json
 from pathlib import Path
@@ -17,7 +16,7 @@ import os
 from urllib.request import Request
 
 from ..paths import DATA, REPORTS, keyword_regex, load_search_config
-from . import posting_text
+from . import posting_text, read_budget
 from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
@@ -252,19 +251,6 @@ def enrich(pair,client):
     return c
 
 
-def render(report):
-    cards=[]
-    for c in report['companies']:
-        locations=sorted({j['city'] for j in c['jobs']});modes=sorted({j['work_mode'] for j in c['jobs']})
-        links=([('Website',c['website'])] if c['website'] else [])+[(f'Careers {i+1}',u) for i,u in enumerate(c['career_pages'])]+[(a['platform'],a['url']) for a in c['platforms']]
-        linkhtml=' · '.join(f'<a href="{escape(u,quote=True)}" target="_blank" rel="noopener">{escape(label)}</a>' for label,u in links)
-        jobhtml=''.join(f'<li><a href="{escape(j["url"],quote=True)}">{escape(j["title"])}</a> — {escape(j["location"])} · {escape(j["work_mode"])} · {escape(j["source"])}</li>' for j in c['jobs'])
-        hay=' '.join([c['company']]+locations+modes+[j['title'] for j in c['jobs']])
-        cards.append(f'<article data-search="{escape(hay.lower(),quote=True)}"><h2>{escape(c["company"])}</h2><p>{escape(", ".join(locations))} · Size: {escape(c["size"])}</p><p>{linkhtml}</p><ul>{jobhtml}</ul><small>{escape("; ".join(c["notes"]))}</small></article>')
-    status=''.join(f'<li>{escape(s["source"])}: {escape(s["status"])}</li>' for s in report['sources'])
-    return '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Swiss software employers</title><style>body{font:16px system-ui;max-width:1000px;margin:32px auto;padding:0 20px;background:#f4f6fa;color:#182537}article{background:white;padding:20px;margin:16px 0;border:1px solid #dbe1e8;border-radius:12px}a{color:#165bba}li{margin:10px 0}input{font:inherit;padding:12px;width:90%}small{color:#576579}button{padding:8px;margin:8px 4px} [hidden]{display:none}</style><h1>Swiss software employers</h1>'''+f'<p>{len(cards)} companies · Checked {escape(report["checked_at"])}</p><p>Board-listed vacancies; official job availability is not independently confirmed. City refers to the job, not headquarters. Remote eligibility must be checked. Company size is retained when published; unknown sizes are included. No applicant-count or competition claims.</p><input id="q" aria-label="Filter companies" placeholder="City, company, remote, SRE…"><div>'+''.join(f'<button type="button" data-value="{v}">{v or "All"}</button>' for v in ['', 'Zurich','Geneva','Lausanne','Remote','Hybrid','SRE'])+'</div><p id="count"></p>'+''.join(cards)+'<h2>Discovery coverage</h2><ul>'+status+'</ul><script>const q=document.querySelector("#q");function filter(){let n=0;document.querySelectorAll("article").forEach(a=>{a.hidden=!a.dataset.search.includes(q.value.toLowerCase());if(!a.hidden)n++});document.querySelector("#count").textContent=n+" companies shown"}q.addEventListener("input",filter);document.querySelectorAll("button").forEach(b=>b.onclick=()=>{q.value=b.dataset.value;filter()});filter()</script></html>'
-
-
 # Each job board, with the kind of role it lists (src/role_kinds.py; 'any' = every trade) and whether it lists Swiss employers only.
 BOARDS = {'jobs.ch': {'kind': 'any', 'swiss': True}, 'SwissDevJobs': {'kind': 'software', 'swiss': True}, 'TechTree': {'kind': 'software', 'swiss': False}}
 
@@ -391,32 +377,15 @@ def _board_label(url):
     host = (parts.hostname or '').removeprefix('www.')
     return ' · '.join([host] + [w for w in words if w]) if query.get('term') else url
 
-def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--pages',type=int,default=1);p.add_argument('--max-companies',type=int,default=30);p.add_argument('--refresh',action='store_true');p.add_argument('--budget',type=int,default=0,help='seconds of the Find jobs press (src/time_budget.py): this step ends at its share of them; 0 = none');args=p.parse_args()
-    if not 1<=args.pages<=10 or not 1<=args.max_companies<=200:p.error('pages: 1–10; max-companies: 1–200')
-    from ..features import disabled
-    if disabled('discover'):
-        print('job board discovery is off (JOBADABRA_DISABLE includes discover).');return 0
-    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end journey (desktop/e2e): only its fixture feeds, no live crawl
-        print('job board discovery is off (fixture feeds only).');return 0
-    if args.budget:   # one Find jobs press, one deadline: this step counts from the press and ends at its share; the boards left wait for the next search
-        from .. import time_budget
-        time_budget.start(args.budget,stage=SHARE_S,name='discover')
-    client=Client(args.refresh);jobs=[];sources=[]
-    used=boards(_SEARCH)
-    if not used:   # nothing fixed for these roles and places: the boards found for them (any country)
-        from . import board_yield
-        for item in board_yield.step(_SEARCH):print(f"Job board: {item['source']} · {item['status']}")
-        return 0
-    print('Job boards: '+', '.join(used)+('' if 'TechTree' in used else '; developer boards left out: your roles are outside IT'),flush=True)   # the app's activity list shows these names as they are, so the line says only the boards (the regex that made the search Swiss is no line for a person)
+def _jobsch_pages(client,used,pages,sources):
+    """jobs.ch's pages for every role x every place this refresh (the rotation goes on from here next time): [(url, listed, found, fresh)]."""
     seen_urls=set();pages_found=[];asked=0
     pairs=[[query,place] for query in (jobsch_terms(_SEARCH) if 'jobs.ch' in used else []) for place in jobsch_places(_SEARCH)]
     ordered,done=rotation(pairs);taken=0
-    from . import read_budget
     for query,place in ordered:   # every role x every place, MAX_REQUESTS pages a refresh, the next refresh going on from here
         if asked>=MAX_REQUESTS or read_budget.past_cut():break   # past this step's share of the press: the next refresh goes on from here
         taken+=1
-        for page in range(1,args.pages+1):   # --pages is the most read: a short page or one with nothing new ends the search
+        for page in range(1,pages+1):   # pages is the most read: a short page or one with nothing new ends the search
             if asked>=MAX_REQUESTS or read_budget.past_cut():break
             url='https://www.jobs.ch/en/vacancies/?'+urlencode({'term':query,**({'location':place} if place else {}),'page':page})
             try:
@@ -434,6 +403,11 @@ def main():
         time_budget.later('job boards',len(pairs)-taken,'searches')
     elif pairs and taken<len(pairs):
         print(f'Job boards: {taken} of {len(pairs)} searches this refresh (your roles x your places); the next refresh goes on from there',flush=True)
+    return pages_found
+
+
+def _fit_jobs(pages_found,jobs,sources):
+    """jobs.ch's titles judged (the AI title check), the fitting fresh ones added to jobs and one line per page to sources."""
     # Which titles are your kind of job: the AI title check, as for every source (7 Oct 2026: a word match dropped most titles here)
     from . import feed_places, feeds
     board_jobs=[job for _,_,_,fresh in pages_found for job in fresh]
@@ -444,6 +418,10 @@ def main():
     for url,listed,found,fresh in pages_found:
         fit=[job for job in found if feeds.wanted_title(job['title'])];fit_fresh=[job for job in fresh if feeds.wanted_title(job['title'])]
         jobs.extend(fit_fresh);sources.append({'source':url,'status':jobsch_status(listed,len(fit),len(fit_fresh))})
+
+
+def _dev_boards(client,used,jobs,sources):
+    """SwissDevJobs and TechTree, when used and before the read's cut: their matching listings added to jobs."""
     for label,url in [('SwissDevJobs','https://swissdevjobs.ch/api/jobsLight'),('TechTree','https://jobs.techtree.dev/')]:
         if label not in used or read_budget.past_cut():continue
         try:
@@ -451,25 +429,50 @@ def main():
             found=parse_tree(page) if label=='TechTree' else parse_swissdevjobs(json.loads(page),wanted_title);jobs.extend(found)
             sources.append({'source':label,'status':f'{len(found)} matching listings on fetched page' if found else 'No compatible listings parsed; requires another adapter'})
         except Exception as e:sources.append({'source':label,'status':f'Unavailable: {e}'})
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--pages',type=int,default=1);p.add_argument('--max-companies',type=int,default=30);p.add_argument('--refresh',action='store_true');p.add_argument('--budget',type=int,default=0,help='seconds of the Find jobs press (src/time_budget.py): this step ends at its share of them; 0 = none');args=p.parse_args()
+    if not 1<=args.pages<=10 or not 1<=args.max_companies<=200:p.error('pages: 1–10; max-companies: 1–200')
+    from ..features import disabled
+    if disabled('discover'):
+        print('job board discovery is off (JOBADABRA_DISABLE includes discover).');return 0
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end journey (desktop/e2e): only its fixture feeds, no live crawl
+        print('job board discovery is off (fixture feeds only).');return 0
+    if args.budget:   # one Find jobs press, one deadline: this step counts from the press and ends at its share; the boards left wait for the next search
+        from .. import time_budget
+        time_budget.start(args.budget,stage=SHARE_S,name='discover')
+    return discover(args.pages,args.max_companies,args.refresh)
+
+
+def discover(pages,max_companies,refresh=False,beside=False):
+    """The step's work on whatever clock this process runs (main's own, or the search's when beside: src/sources/boards_beside.py). beside: the
+    search reads the found boards itself (src/sources/boards_ahead.py), so only the fixed boards' employers are discovered here."""
+    client=Client(refresh);jobs=[];sources=[]
+    used=boards(_SEARCH)
+    if not used and beside:return 0
+    if not used:   # nothing fixed for these roles and places: the boards found for them (any country)
+        from . import board_yield
+        for item in board_yield.step(_SEARCH):print(f"Job board: {item['source']} · {item['status']}")
+        return 0
+    print('Job boards: '+', '.join(used)+('' if 'TechTree' in used else '; developer boards left out: your roles are outside IT'),flush=True)   # the app's activity list shows these names as they are, so the line says only the boards (the regex that made the search Swiss is no line for a person)
+    pages_found=_jobsch_pages(client,used,pages,sources)
+    _fit_jobs(pages_found,jobs,sources)
+    _dev_boards(client,used,jobs,sources)
     groups={};seen=set()
     for job in jobs:
         if job['url'] in seen:continue
         seen.add(job['url']);groups.setdefault(job['company'],[]).append(job)
     report={'checked_at':datetime.now(timezone.utc).isoformat(timespec='seconds'),'sources':sources,'discovered_companies':len(groups),'companies':[]}
     with ThreadPoolExecutor(max_workers=3) as pool:   # an employer's career links not followed by the cut: the next search finds it on the board again
-        for company in pool.map(slots.carry(lambda pair:None if read_budget.past_cut() else enrich(pair,client)),list(groups.items())[:args.max_companies]):
+        for company in pool.map(slots.carry(lambda pair:None if read_budget.past_cut() else enrich(pair,client)),list(groups.items())[:max_companies]):
             if company is None:continue
             report['companies'].append(company);print('Checked:',company['company'],flush=True)
-    if (unchecked:=min(len(groups),args.max_companies)-len(report['companies'])):
+    if (unchecked:=min(len(groups),max_companies)-len(report['companies'])):
         from .. import time_budget
         time_budget.later('job boards',unchecked,'employers')
     report['companies'].sort(key=lambda c:(not bool(c['career_pages']),-(c['min_employees'] or 0),c['company']))
-    out=REPORTS;out.mkdir(exist_ok=True)
-    (out/'companies.html').write_text(render(report))
-    (out/'companies.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
-    with (out/'companies.csv').open('w',newline='') as f:
-        w=csv.writer(f);w.writerow(['company','size','cities','work_modes','website','career_pages','platforms','evidence_urls','notes'])
-        for c in report['companies']:w.writerow([c['company'],c['size'],'; '.join(sorted({j['city'] for j in c['jobs']})),'; '.join(sorted({j['work_mode'] for j in c['jobs']})),c['website'],'; '.join(c['career_pages']),'; '.join(sorted({a['platform'] for a in c['platforms']})),'; '.join(j['url'] for j in c['jobs']),'; '.join(c['notes'])])
+    from . import boards_report
+    boards_report.write(report,REPORTS)
     # Readable lines, not a JSON dump: the app shows this output live (owner, 7 Oct 2026: "remove that json, it's not readable").
     for item in sources:
         print(f"Job board: {_board_label(item['source'])} · {item['status']}")

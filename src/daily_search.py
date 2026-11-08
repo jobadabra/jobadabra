@@ -4,6 +4,7 @@ active store's (src/stores: open once, passed down), on every store; this Mac's 
 Tests: tests/unit/engine/test_daily.py, tests/unit/ai/test_refresh_batch.py, tests/unit/ai/test_search_budget.py, tests/unit/sources/test_places_strict.py, tests/unit/ai/test_place_triage.py,
 tests/unit/sources/test_contribute.py, tests/unit/sources/test_watch.py, tests/unit/ai/test_score.py, tests/unit/sources/test_source_yield.py.
 """
+import contextlib
 import json
 import random
 from collections import Counter
@@ -159,8 +160,18 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                     first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
                 except Exception as error:  # noqa: BLE001 — the full board read reads them
                     print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
-        from .sources import boards_ahead   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
-        report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'))
+        from .ai import batch_scope
+        from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
+        # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
+        # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
+        beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
+        with batch_scope.concurrent() if beside else contextlib.nullcontext():   # one scope for every reader beside the employer sites
+            discovery = boards_beside.start() if beside else None
+            try:
+                report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'))
+            finally:   # inside the scope: its answers join the shared copies before the scope ends
+                if discovery is not None:
+                    discovery.finish()
         report['jobs'] += first_boards
         crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
         if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
