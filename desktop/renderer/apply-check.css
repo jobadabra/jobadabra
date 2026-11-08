@@ -11,7 +11,7 @@
 .apply-check-busy { color: var(--info); font-weight: 600; }
 
 /* The split bar: one part per group, its share of the batch; the same tone as its group below. */
-.apply-check-mix { display: flex; gap: 2px; height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--line); }
+.apply-check-mix { display: flex; gap: var(--sp-1); height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--line); }
 .apply-check-mix > span { flex-basis: 0; min-width: 6px; }
 .apply-check-mix > .tone-good, .apply-check-group.tone-good .apply-check-dot { background: var(--good); }
 .apply-check-mix > .tone-info, .apply-check-group.tone-info .apply-check-dot { background: var(--info); }
