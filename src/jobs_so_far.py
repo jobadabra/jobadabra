@@ -8,6 +8,7 @@ reads ~200 employer sites one by one: one line each flooded the activity log); s
 import time
 
 from . import store
+from .press import step_yield
 
 EVERY = 5
 
@@ -21,9 +22,11 @@ class SoFar:
         self.db, self.say, self.first = db, say, {}
         self.every, self.clock, self.said_at, self.pending = every, clock, None, {}
 
-    def add(self, jobs, where):
-        """Import these jobs now; the first status each one got is kept for the end."""
+    def add(self, jobs, where, step=None):
+        """Import these jobs now; the first status each one got is kept for the end. `step`: the Find jobs step that brought them (src/press/step_yield.py)."""
         statuses = store.import_watch_report(self.db, {'jobs': jobs})
+        if step:
+            step_yield.landed(step, jobs, statuses)
         for job, status in zip(jobs, statuses):
             self.first.setdefault(_key(job), status)
         new = sum(status == 'new' for status in statuses)
@@ -40,11 +43,11 @@ class SoFar:
             self.said_at = self.clock()
         self.pending = {}
 
-    def listener(self, where):
+    def listener(self, where, step=None):
         """on_jobs for feeds.scan / aggregators.scan; a failure here never stops the search (the final import does it all)."""
         def on_jobs(jobs):
             try:
-                self.add(jobs, where)
+                self.add(jobs, where, step)
             except Exception as error:  # noqa: BLE001
                 self.say(f'Warning: jobs not shown early: {type(error).__name__}: {error}')
         return on_jobs
