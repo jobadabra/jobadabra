@@ -56,7 +56,7 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
     fs.mkdirSync(tape, {recursive: true});
     fs.writeFileSync(recordedFile, JSON.stringify({model_override: process.env.JOBADABRA_MODEL_OVERRIDE || ''}) + '\n');
   } else if (fs.existsSync(recordedFile)) {
-    const {model_override: recorded} = JSON.parse(fs.readFileSync(recordedFile, 'utf8'));
+    const {model_override: recorded} = JSON.parse(fs.readFileSync(recordedFile, 'utf8')) || {};
     if (typeof recorded !== 'string') { console.error(`${recordedFile} has no model_override: the tape does not say which model it was recorded with`); process.exit(2); }
     if (recorded) process.env.JOBADABRA_MODEL_OVERRIDE = recorded; else delete process.env.JOBADABRA_MODEL_OVERRIDE;
     console.log(`tape: recorded with model override ${recorded || '(none)'}, replayed with it`);

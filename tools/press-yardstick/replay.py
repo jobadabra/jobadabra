@@ -36,7 +36,8 @@ LEGACY_OVERRIDE = 'claude-haiku-5-5'
 def recorded_override(tape):
     """The model override a recording was made with (its recorded.json), LEGACY_OVERRIDE for a recording made before the file existed; '' = none."""
     try:
-        found = json.loads(Path(tape, 'recorded.json').read_text(encoding='utf-8'))['model_override']
+        recorded = json.loads(Path(tape, 'recorded.json').read_text(encoding='utf-8'))
+        found = recorded.get('model_override') if isinstance(recorded, dict) else None
     except FileNotFoundError:
         print(f'recording has no recorded.json: using {LEGACY_OVERRIDE}, the override press-tapes.yml recorded with ({tape})', flush=True)   # a change of that env shows up here, not as misses
         return LEGACY_OVERRIDE

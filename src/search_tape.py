@@ -33,6 +33,7 @@ from pathlib import Path
 from . import tape_items
 
 _lock = threading.Lock()
+_seconds_lock = threading.Lock()
 _seconds = {}    # host -> recorded seconds of its pages, read once (_miss_seconds)
 _index = {}      # (kind, key) -> record, the tape read once per process
 counts = {'web_tape': 0, 'web_missing': 0, 'ai_tape': 0, 'ai_live': 0, 'ai_missing': 0, 'ai_rebuilt': 0}
@@ -167,12 +168,16 @@ def _miss_seconds(url):
     0 s, so the replay's clock never reached the recording's cut and it read sites down its list long past where the recording stopped (p11: the recording read ashby slugs
     up to 'easygenerator', the replay went on to 'eightsleep' and 540 more pages, all missing)."""
     host = re.sub(r'^\w+://([^/:]+).*$', r'\1', url)
-    if not _seconds:
-        for record in _load().values():
-            if record.get('url') and record.get('method') and record.get('seconds') is not None:   # a web record (not a norm/post alias twice: setdefault keeps one list per host)
-                _seconds.setdefault(re.sub(r'^\w+://([^/:]+).*$', r'\1', record['url']), []).append(record.get('seconds') or 0)
-        _seconds[''] = [s for hosts in _seconds.values() for s in hosts] or [0.5]
-    return statistics.median(_seconds.get(host) or _seconds[''])
+    with _seconds_lock:   # built whole, then published: a thread that asks meanwhile waits, never sees half of it (review of rf)
+        if not _seconds:
+            built = {}
+            for (kind, _), record in _load().items():
+                if kind == 'web' and record.get('url') and record.get('seconds') is not None:   # a page once: not its 'norm'/'post' aliases
+                    built.setdefault(re.sub(r'^\w+://([^/:]+).*$', r'\1', record['url']), []).append(record['seconds'])
+            built[''] = [seconds for hosts in built.values() for seconds in hosts] or [0.5]
+            _seconds.update(built)
+        found = _seconds.get(host) or _seconds['']
+    return statistics.median(found)
 
 
 def _error(record):
