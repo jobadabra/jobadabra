@@ -144,7 +144,7 @@ class BesideTests(unittest.TestCase):
         self.board_reads = 0
         self.board_read = threading.Event()
 
-        self.since = []
+        self.since, self.events = [], []
 
         def read(search, since=None):
             self.since.append(since)
@@ -170,8 +170,8 @@ class BesideTests(unittest.TestCase):
         self.ahead_box = None
         real_start = boards_ahead.start
 
-        def start(db, search, env=None, now=None):
-            self.ahead_box = real_start(db, search, env, now)
+        def start(db, search, env=None, now=None, after=None):
+            self.ahead_box = real_start(db, search, env, now, after)
             return self.ahead_box
         with mock.patch.object(boards_ahead, 'start', start):
             report, ahead = boards_ahead.scan_beside([], self.db, SEARCH, so_far, due=True, scan=self.scan)
@@ -183,6 +183,16 @@ class BesideTests(unittest.TestCase):
         self.assertEqual(self.board_reads, 1, 'taken, not read again')
         self.assertEqual([job['title'] for job in found['jobs']], ['Tontechniker'])
         self.assertEqual(shown, [], 'shown once')
+
+    def test_the_full_board_read_starts_after_the_boards_first_pages(self):
+        # ps E2a-2: it takes the pages the boards first fetched (found_boards._early); begun before them it would fetch page 1 again.
+        first_done = threading.Event()
+        ahead = boards_ahead.start(self.db, SEARCH, after=lambda: self.assertTrue(first_done.wait(5)) or self.events.append('first pages in'))
+        self.events.append('first pages read')
+        first_done.set()
+        ahead.wait()
+        self.assertEqual(self.events, ['first pages read', 'first pages in'])
+        self.assertEqual(self.board_reads, 1)
 
     def test_a_search_that_reads_no_boards_starts_none(self):
         report, ahead = boards_ahead.scan_beside([], self.db, SEARCH, SoFar(), due=False, scan=lambda sources, db, on_jobs=None: {'jobs': []})

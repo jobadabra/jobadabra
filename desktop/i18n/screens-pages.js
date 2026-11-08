@@ -2,6 +2,7 @@
 import {messages as stages} from './catalogs/pages/stages.js';
 import {registerMessages} from './index.js';
 import {messages as applyCheck} from './catalogs/pages/apply-check.js';
+import {messages as applyResult} from './catalogs/pages/apply-result.js';
 import {messages as details} from './catalogs/pages/details.js';
 import {messages as status} from './catalogs/pages/status.js';
 import {messages as counts} from './catalogs/pages/counts.js';
@@ -57,6 +58,7 @@ import {messages as common} from './catalogs/pages/common.js';
 
 for (const [locale, messages] of Object.entries(common)) registerMessages(locale, 'pagesCommon', messages);
 for (const [locale, messages] of Object.entries(applyCheck)) registerMessages(locale, 'pagesApplyCheck', messages);
+for (const [locale, messages] of Object.entries(applyResult)) registerMessages(locale, 'pagesApplyResult', messages);
 for (const [locale, messages] of Object.entries(details)) registerMessages(locale, 'pagesDetails', messages);
 for (const [locale, messages] of Object.entries(status)) registerMessages(locale, 'pagesStatus', messages);
 for (const [locale, messages] of Object.entries(counts)) registerMessages(locale, 'pagesCounts', messages);
