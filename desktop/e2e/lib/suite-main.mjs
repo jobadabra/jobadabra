@@ -52,7 +52,7 @@ export function writeFinalFailures(suite, ctx, env) {
 /** The suite's last word, in this order: late guards and the runner's own closing records (a picked step that matched none) reach suite-failures.json, then the summary prints and decides.
  * Why (8 Nov 2026, apply red after #3579, run 42451945200): the file was written before summary() pushed the lost-pick record, so it held `[]` and e2e.yml's renamed-pick fallback never ran the whole suite.
  * `ranToEnd`: only a suite that reached its last step can say a picked name matches no step; one that stopped early (a thrown error, a quiet stop) did not reach the rest, so its record stays
- * summary()'s, after the file, and the leg stays red (code review of #3585-to-be: a hang must not read as a rename). -> 1 when the suite failed. */
+ * summary()'s, after the file, and the leg stays red (code review of #3587, 8 Nov 2026: a hang must not read as a rename). -> 1 when the suite failed. */
 export function finishSuite(name, ctx, env, ranToEnd) {
   if (ranToEnd) ctx.runner.recordLostPicks();
   const guards = writeFinalFailures(name, ctx, env);
