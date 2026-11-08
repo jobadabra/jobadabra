@@ -80,8 +80,9 @@ test('with the connection off a queued job says so in its pill and card; no othe
 test('every place that words a hidden-browser job tells backgroundStatus whether the connection is off', async () => {
   const fs = await import('node:fs'), path = await import('node:path'), {fileURLToPath} = await import('node:url');
   const renderer = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../renderer');
-  const files = ['pages/sessions.js', 'pages/session-log.js'];   // the list's and the page header's pill; session-state.js dockCounts only counts, by the state's label
-  for (const file of files) assert.match(fs.readFileSync(path.join(renderer, file), 'utf8'), /backgroundStatus\(item, \{linkOff:/, `${file} words the job with the connection`);
+  // Why (8 Nov 2026, owner: "Yes, build it (Recommended)"): the list's pill is the one label (session-state.js sessionLabel), told the connection; the page header reads the list's own label.
+  assert.match(fs.readFileSync(path.join(renderer, 'pages/sessions.js'), 'utf8'), /sessionLabel\(item, \{linkOff:/, 'the list words the job with the connection');
+  assert.match(fs.readFileSync(path.join(renderer, 'pages/session-log.js'), 'utf8'), /const stateOf = item => sessionState\(item\)/, 'the page header reads the list\'s label');
   assert.match(fs.readFileSync(path.join(renderer, 'pages/session-live.js'), 'utf8'), /liveCard\([^)]*linkOff:/, 'the live card is told too');
 });
 

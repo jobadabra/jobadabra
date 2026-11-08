@@ -169,8 +169,8 @@ test('a new session opened after the app has been up for minutes gets its own fi
 });
 
 test('every view of the tab state (list, dock, session title, next-step card) draws "Tab not found" from the one function', () => {
-  // The list and the log header take the tab part of their pill from tabStatus in session-needs.js (one ladder, 30 Oct 2026), which is where tabLost is drawn.
-  for (const [file, drawn] of [['sessions.js', /tabStatus\(item\)/], ['session-log.js', /tabStatus\(item\)/], ['session-needs.js', /tabLost\(item\)/], ['session-next-step.js', /tabLost\(item\)/]]) {
+  // The list takes the tab part of its pill from tabStatus in session-needs.js (one ladder, 30 Oct 2026), which is where tabLost is drawn; the log header reads the list's label (8 Nov 2026, sessionLabel).
+  for (const [file, drawn] of [['sessions.js', /tabStatus\(item\)/], ['session-log.js', /sessionState\(item\)/], ['session-needs.js', /tabLost\(item\)/], ['session-next-step.js', /tabLost\(item\)/]]) {
     const source = readScreenSource(new URL(`../../../renderer/pages/${file}`, import.meta.url), 'utf8');
     assert.match(source, drawn, `${file} draws the state without tabLost`);
   }
