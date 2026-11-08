@@ -126,6 +126,13 @@ test('a drafted job the store then holds back says why, never "Kit prepared" as 
   assert.ok(result.outcomes.every(item => item.reason), 'every row carries its real reason');
 });
 
+test('a kit verdict from the engine shows its reason once, under the Not eligible pill', async () => {
+  const job = {code: '1', url: 'https://jobs.example.test/1', title: 'Fictional role', company: 'Example Air', status: 'saved', stage: 'Saved', fit: 80};
+  const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: [job]}), undefined, undefined,
+    async () => { job.kit = true; job.ineligible = 'Needs an EU work permit.'; return {ok: true, ineligible: 'Not eligible: Needs an EU work permit.'}; }, undefined, {enqueue: async () => ({ok: true})});
+  assert.deepEqual(result.outcomes.map(item => [item.status, item.reason]), [['ineligible', 'Needs an EU work permit.']]);
+});
+
 test('the words for a batch that finds nothing say what is true of the jobs listed', async () => {
   const stage = {status: 'saved', stage: 'Saved', url: 'https://jobs.example.test/x', kit: true};
   const say = async (jobs, settings) => {

@@ -72,7 +72,7 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
     if (result.ok) done++;
     else why ||= result.error || '';
     // Why (7 Nov 2026, #3424): drafting can succeed while eligibility prevents a job from starting; preserve that result for the batch summary.
-    outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: result.ineligible ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: result.ineligible || result.error || ''});
+    outcomes.push({url: job.url, title: job.title || '', company: job.company || '', status: result.ineligible ? 'ineligible' : result.ok ? 'prepared' : 'failed', reason: String(result.ineligible || '').replace(/^\s*Not eligible:\s*/i, '') || result.error || ''});   // the row's pill already says "Not eligible" (8 Nov 2026)
     if (!result.stopped) tries++;
   }
   return {done, why, outcomes};
