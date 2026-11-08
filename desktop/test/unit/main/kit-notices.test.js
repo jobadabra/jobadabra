@@ -87,8 +87,9 @@ test('quiet errors and stopped/eligibility parsing remain canonical',async t=>{
 // Why (8 Nov 2026, owner screenshot: three drafted jobs each ended "Kit prepared", nothing started): the lines are the engine's real printed kit (src/ai/kit.py telegram_messages: a bold "Not eligible" header, the reason on the next line, no colon); the old test fed "Not eligible: ..." which the engine stopped printing on 5 Oct 2026.
 test('a kit the engine marks not eligible is reported as ineligible, from the lines it really prints',async t=>{
   const p=rig(t);p.state.exit=0;
-  p.state.lines=['\ud83d\udcdd <b>Your application</b>','<b>Job</b>','<b>Not eligible</b>','Required aviation credential missing.','','<b>Cover letter</b>'];
-  assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:'Not eligible: Required aviation credential missing.'});
+  const recorded=JSON.parse(fs.readFileSync(new URL('../../fixtures/kit-not-eligible-printed.json',import.meta.url),'utf8'));   // recorded from src/ai/kit.py telegram_messages; tests/unit/stores/test_kit.py keeps it equal to the writer
+  p.state.lines=recorded.lines;
+  assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:`Not eligible: ${recorded.note}`});
   p.state.lines=['\ud83d\udcdd <b>Your application</b>','<b>Job</b>','<b>Cover letter</b>'];
   assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:''},'an eligible kit stays unmarked');
   p.state.lines=['<b>Job</b>','<b>Not eligible</b>','<b>Check before sending</b>','• one'];
