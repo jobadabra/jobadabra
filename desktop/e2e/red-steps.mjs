@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 // The runner's own record when a picked name matched no step (renamed): only the whole suite can tell what that step was.
-const NOT_A_STEP = 'steps picked for this PR';
+export const NOT_A_STEP = 'steps picked for this PR';
 // Why (29 Oct 2026, a8, #2484): nineteen stale picks launched whole suites together; reserve only three fallback suites per run.
 const MAX_RENAMED_FALLBACK_SUITES = 3;
 
