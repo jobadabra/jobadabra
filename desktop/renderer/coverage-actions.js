@@ -87,7 +87,7 @@ export async function readSiteInChrome(pilot, url) {
   const run = await pilot.visitsRun({urls: [url], atOnce: 1, filter: true}).catch(error => ({text: error.message}));
   if (run?.started) return {ok: true, started: true};
   const opened = await pilot.openVisit(url).catch(error => ({ok: false, error: error.message}));
-  return {...opened, started: false, why: run?.text || ''};
+  return {...opened, started: false, why: run?.text || run?.error || ''};   // a refused read still opens the site; its reason goes with it
 }
 
 // One action, done: the same calls the Strategy cards make (lib/strategy.js through main.js), or the source's panel in Settings.

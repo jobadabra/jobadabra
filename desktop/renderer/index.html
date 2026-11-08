@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="activity-drawer.css">
 <link rel="stylesheet" href="runs-tab.css">
 <link rel="stylesheet" href="run-banner.css">
+<link rel="stylesheet" href="apply-check.css">
 <link rel="stylesheet" href="run-result.css">
 <link rel="stylesheet" href="session-live.css">
 <link rel="stylesheet" href="setup-steps.css">
@@ -2656,6 +2657,14 @@
     <div class="apply-outcomes" id="apply-outcomes" role="list" aria-label="Application results" hidden></div>
     <div id="apply-browser" data-browser-progress="quiet" hidden></div>
     <div class="actions"><button class="secondary" value="cancel" data-i18n="screenCommon.close">Close</button><button class="primary" id="apply-go" value="default" data-i18n="screenStaticDialogsTwo.text899">Apply to 3 jobs</button></div>
+    <!-- A Full automation batch: its forms checked live, then the split to confirm (renderer/pages/apply-check.js); while it shows, the form above is hidden. -->
+    <div class="apply-check" id="apply-check" hidden>
+      <div class="apply-check-head"><span class="dialog-icon"><i data-icon="zap"></i></span><div><h3 id="apply-check-title"></h3><p class="muted small" id="apply-check-lead"></p></div></div>
+      <div class="triage-progress" id="apply-check-progress"><div class="bar is-sliding" id="apply-check-track"><span id="apply-check-bar"></span></div><p class="triage-now"><span id="apply-check-now"></span> <span class="muted" id="apply-check-elapsed"></span></p></div>
+      <div class="apply-check-mix" id="apply-check-mix" role="img" hidden></div>
+      <div class="apply-check-list" id="apply-check-list" role="status" aria-live="polite"></div>
+      <div class="actions"><button type="button" class="secondary" id="apply-check-cancel"></button><button type="button" class="primary" id="apply-check-go" hidden></button></div>
+    </div>
     <div class="alert tone-info" id="apply-start-banner" hidden>
       <i data-icon="layers"></i>
       <div><strong data-i18n="screenStaticDialogsTwo.text900">Preparing your applications</strong><p id="apply-start-status" role="status"></p></div>

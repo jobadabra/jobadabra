@@ -101,7 +101,8 @@ test('every window caller of an apply action stays quiet on Not now ({cancelled}
   const calls = [];
   for (const file of files) {
     const source = readScreenSource(path.join(here, 'renderer', file), 'utf8');
-    for (const match of source.matchAll(new RegExp(`window\\.pilot\\.(${APPLY_ACTIONS.join('|')})\\(`, 'g'))) {
+    // Why (8 Nov 2026, [fa] 2/2): a page may take the app's calls as an argument (`pilot.x(`, pages/apply-check.js), so the scan reads both spellings.
+    for (const match of source.matchAll(new RegExp(`\\bpilot\\.(${APPLY_ACTIONS.join('|')})\\(`, 'g'))) {
       calls.push(`${file}:${match[1]}`);
       const after = source.slice(match.index, match.index + 600).split('\n').slice(0, 4).join('\n');
       assert.match(after, /cancelled/, `${file}: window.pilot.${match[1]}(…) handles {cancelled} within its next lines`);

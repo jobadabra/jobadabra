@@ -157,12 +157,32 @@ test('the existing Full automation confirmation still decides first: an unconfir
   assert.deepEqual(asked, []);
 });
 
-test('without checkFirst the batch queues as before (today\'s window), so the dialog keeps working until it shows the check', async () => {
-  const {ipc, store} = app();
-  const answer = await ipc('apply', {n: 5, mode: 'settings'});
-  assert.equal(answer.ok, true);
-  assert.equal(answer.check, undefined);
-  assert.equal((await store.read(JOBS[3].url)).mode, 'auto');
+test('the dialog\'s Full automation batch is held for its check; a Background batch, or a call without checkFirst (the e2e runner proofs), queues at once as before', async () => {
+  const auto = await app().ipc('apply', {n: 5, mode: 'settings', checkFirst: true});
+  assert.deepEqual(auto.check.jobs.map(item => item.url), JOBS.map(item => item.url), 'Full automation: held, nothing queued yet');
+  const direct = app();
+  assert.equal((await direct.ipc('apply', {n: 5, mode: 'settings'})).check, undefined);
+  assert.equal((await direct.store.read(JOBS[3].url)).mode, 'auto', 'the runner\'s own proofs still start Full automation directly, under its confirmation');
+  const {ipc, store} = app({settings: {apply: {mode: 'fill', chosenAt: 'c1', autoConfirmedAt: ''}}});
+  assert.equal((await ipc('apply', {n: 5, mode: 'settings', checkFirst: true})).check, undefined);
+  assert.equal((await store.read(JOBS[3].url)).mode, 'fill');
+});
+
+test('the app matches its own reads once (L2b), so a simple form missing a detail is lowered in the split Confirm checks; a stored match is not asked again', async () => {
+  const asked = [], queued = [];
+  const withQuestions = {...simple, questions: ['Phone']};
+  const check = createCheckFirst({read: async () => withQuestions, stored: async item => (item.url === JOBS[2].url ? {...withQuestions, match: {missing: [], unjudged: 0}} : null),
+    match: async items => { asked.push(...items.map(item => item.url)); return {[JOBS[0].url]: {missing: [], unjudged: 0}, [JOBS[1].url]: {missing: [{kind: 'detail', label: 'Phone'}], unjudged: 0}}; },
+    enqueue: async (jobs, mode, batch) => { queued.push([mode, jobs.map(item => item.url), batch?.autoConfirmedAt || '']); return {ok: true, outcomes: jobs.map(item => ({url: item.url, status: 'started'}))}; }, openInChrome: async () => ({ok: true, outcomes: []})});
+  const {check: held} = await check.hold(JOBS.slice(0, 3), {batch: {autoConfirmedAt: STAMP}});
+  for (const item of JOBS.slice(0, 2)) await check.readOne(held.plan, item.url);
+  const {reads} = await check.matchAll(held.plan);
+  assert.deepEqual(asked, [JOBS[0].url, JOBS[1].url], 'one call, only reads without a match');
+  assert.deepEqual(reads[JOBS[1].url].match.missing.map(item => item.label), ['Phone'], 'the window paints from the app\'s matched reads');
+  assert.deepEqual(check.splitOf(held.plan).fill.map(entry => entry.job.url), [JOBS[1].url]);
+  assert.equal((await check.confirm(held.plan, [JOBS[0].url, JOBS[2].url])).ok, true);
+  assert.deepEqual(queued, [['auto', [JOBS[0].url, JOBS[2].url], STAMP], ['fill', [JOBS[1].url], '']]);
+  assert.equal(await check.matchAll(held.plan), null, 'an answered batch has nothing to match');
 });
 
 test('the split only lowers a job: no read, an unreadable read or not eligible is "none"; nothing reaches auto without a simple-form read', () => {

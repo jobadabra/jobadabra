@@ -1,7 +1,10 @@
 // The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/unit/renderer/apply-dialog-mode.test.js.
 import '../i18n/screens-helpers.js';
+import '../i18n/screens-pages.js';
 import {t} from '../i18n/index.js';
 import {dialogNeedsConfirm, modeBuilt} from './apply-settings-model.js';
+import {GROUPS, splitBatch, urlsOf} from './apply-split.js';
+import {chipOf} from './apply-triage-pick.js';
 
 /** The count as a whole number of jobs from 1 to 10, or null for anything else (empty, 0, 11, 1.5). */
 export function validCount(value) {
@@ -35,7 +38,8 @@ export async function applyDialogStart({count, pick = '', autoConfirmedAt = '', 
   if (cancelled) return {cancelled: true};
   const n = validCount(count);
   if (!n) return {ok: false, error: t('helperFlow.applyCountBounds')};
-  try { return await start({n, mode: 'settings', ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {})}); } catch (error) {
+  // Why (8 Nov 2026, [fa] 2/2): `checkFirst` asks the app to hold a Full automation batch for its form check and the person's answer to the split (pages/apply-check.js); other modes ignore it.
+  try { return await start({n, mode: 'settings', checkFirst: true, ...(pick && chosen ? {pick} : {}), ...(autoConfirmedAt && chosen ? {autoConfirmedAt} : {})}); } catch (error) {
     // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
     const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
     return {ok: false, error: t('helperFlow.applyStartFailed', {reason: `${reason || t('helperFlow.somethingWrong')}${reason.endsWith('.') || !reason ? '' : '.'}`})};
@@ -67,4 +71,42 @@ export function createApplyStartGate() {
       finally { starting = false; }
     },
   };
+}
+
+const GROUP_LOOK = {auto: ['groupAuto', 'good'], fill: ['groupFill', 'info'], check: ['groupCheck', 'warn'], none: ['groupNone', 'neutral']};
+const who = job => [job.company, job.title].filter(Boolean).join(' · ') || job.url;
+// A job the check could not read is "Couldn't read" with its reason; any other read is its own chip (the same words as the form-check dialog, apply-triage-pick.js).
+const chipFor = (read, reason) => chipOf(!read || read.unreadable ? {unreadable: true, why: read?.why || reason} : read);
+
+/**
+ * The check panel of a held Full automation batch ([fa] 2/2, spec 2026-11-07-full-automation-check-first), pure. `check` is the app's hold answer ({plan, allowIneligible, jobs: [{url, title, company, read}]}),
+ * `reads` a Map of the jobs checked so far (url -> read; a job that gave nothing maps to null; a job not checked yet is absent).
+ * -> {seen, total, done, rows, groups, title, lines, autoUrls, startable, confirmLabel}: `rows` every job in order with its chip (null = not checked yet), `groups` the split's four groups from
+ * splitBatch, the same function Confirm is checked with in the app, `autoUrls` the Full automation jobs Confirm sends.
+ * Invariant: a job is under Full automation here only when the app's split puts it there; a job still unchecked is never counted as one.
+ */
+export function checkView(check, reads = new Map()) {
+  const jobs = check?.jobs || [], allowIneligible = check?.allowIneligible === true;
+  const shown = read => (read && allowIneligible ? {...read, eligible: true} : read);   // the batch's own eligibility choice, as the app splits it
+  const rows = jobs.map(job => ({url: job.url, who: who(job), chip: reads.has(job.url) ? chipFor(shown(reads.get(job.url)), 'unreadable') : null}));
+  const seen = rows.filter(row => row.chip).length;
+  const split = splitBatch(jobs, url => reads.get(url) || null, {allowIneligible});
+  const groups = GROUPS.map(key => ({key, title: t(`pagesApplyCheck.${GROUP_LOOK[key][0]}`), tone: GROUP_LOOK[key][1],
+    rows: split[key].map(({job, reason}) => ({url: job.url, who: who(job), chip: chipFor(shown(reads.get(job.url) || null), reason)}))}));
+  const count = key => split[key].length, auto = count('auto'), other = count('fill') + count('check'), none = count('none'), startable = auto + other;
+  const title = auto === jobs.length ? t('pagesApplyCheck.allAuto', {count: auto}) : auto ? t('pagesApplyCheck.autoTitle', {count: auto}) : t('pagesApplyCheck.noneAuto');
+  const lines = [other ? t(auto ? 'pagesApplyCheck.otherLead' : 'pagesApplyCheck.needLead', {count: other}) : '', none ? t('pagesApplyCheck.unreadLead', {count: none}) : '', startable ? t('pagesApplyCheck.nothingQueued') : t('pagesApplyCheck.nothingToApply')].filter(Boolean);
+  return {seen, total: jobs.length, done: seen === jobs.length, rows, groups, title, lines, autoUrls: urlsOf(split.auto), startable, confirmLabel: t('pagesApplyCheck.confirm', {count: startable})};
+}
+
+/**
+ * The dialog's answer for a held batch: Confirm's (or Cancel's) answer with the outcomes Start already had (a kit that could not be prepared, a job already open) for jobs Confirm does not name.
+ * -> {cancelled: true, outcomes} | Confirm's answer with those outcomes first. Why (8 Nov 2026, [fa] 2/2 code review): the check's answer replaced Start's, so a kit that failed was never shown.
+ */
+export function mergeHeld(held, result) {
+  const earlier = held?.outcomes || [];
+  if (result?.cancelled) return {cancelled: true, outcomes: earlier};   // the list refreshes (rows may have left New), then the dialog closes
+  const named = new Set((result?.outcomes || []).map(item => item.url));
+  const outcomes = [...earlier.filter(item => !named.has(item.url)), ...(result?.outcomes || [])];
+  return outcomes.length ? {...result, outcomes} : result;
 }

@@ -63,26 +63,31 @@ export function registerApplyHandlers(ctx) {
   const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
+  const matchLogged = asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });   // one matcher and one log line for every caller
   const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true, silent: true}).then(refusedOrDrafted), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
-    match: asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; })});
+    match: asked => matchLogged(asked)});
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
   ipcMain.handle('applyReadiness', async (_, job) => (DEMO ? {kit: {ok: true}, check: await demoTriageRead(storage.settings(), String(job?.url || '')), stored: false} : readiness.applyReadiness(jobOf(job)).then(done => (done.kit?.needsNotion || done.kit?.needsMove ? {...done, ...done.kit} : done))));   // Why (#3573 review): the Notion / move gate is lifted to the top, where preload opens its dialog and runs the call again   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
   // L2b: the check's simple forms' required questions matched against Your details in one go: {url: {missing, unjudged}}; each matched form is then stored. The demo names its answer in settings.demoTriageMatch (lib/demo.js).
+  const askedOf = reads => (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
   ipcMain.handle('applyReadinessMatch', (_, reads) => {
-    const asked = (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
+    const asked = askedOf(reads);
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
+  // The held batch's own match (lib/apply-check-first.js matchAll): the same call, without readiness's store step, so it never clears the form-check dialog's waiting reads.
+  const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchLogged(asked); };
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
   // storedCheck(job): the check prepared with the job's kit, fresh, or null: Apply readiness's own reader (lib/apply-readiness.js), unless a test hands one in.
-  const checkFirst = createCheckFirst({stored: storedCheck, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
+  const checkFirst = createCheckFirst({stored: storedCheck, match: matchHeld, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
     enqueue: (jobs, mode, batch, eligibility) => background.enqueue(jobs, mode, batch, eligibility), openInChrome: jobs => applyRunner.openInChrome(storage, jobs), chromeBlocked: needExtension});
   const holdForCheck = async (jobs, batch, eligibility) => {
     const can = background.canQueue('auto', batch, jobs);   // the batch's own Full automation confirmation and the browser, refused before the check with enqueue's own answer
     return can.ok ? await checkFirst.hold(jobs, {batch, eligibility}) : can;
   };
   ipcMain.handle('applyCheckRead', (_, plan, url) => checkFirst.readOne(plan, url));
+  ipcMain.handle('applyCheckMatch', (_, plan) => checkFirst.matchAll(plan));
   ipcMain.handle('applyCheckConfirm', async (_, plan, autoUrls) => {
     const blocked = needsNotion('apply') || await allowanceBlock();   // checked again: the answer may come many minutes after Start
     if (blocked) { checkFirst.cancel(plan); return blocked; }

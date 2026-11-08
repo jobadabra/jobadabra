@@ -7,8 +7,9 @@ import {offerBrowser} from './browser-progress.js';
 import {el, pill} from '../components.js';
 import {$, message} from './core.js';
 import {applyChosen, applyOf} from '../apply-settings-model.js';
-import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogPick, applyDialogStart, createApplyStartGate, mergeHeld} from '../apply-dialog-model.js';
 import {askFullAutomation, modeCards} from './apply-settings.js';
+import {runCheck, wireApplyCheck} from './apply-check.js';
 import {toastMessage} from './startup.js';
 
 const gate = createApplyStartGate();
@@ -80,6 +81,7 @@ export function wireApplyDialog({startedApplying, openJob}) {
     $('apply-dialog').showModal();
   });
   $('apply-n').addEventListener('input', draw);
+  wireApplyCheck();
   // Long job titles wrap in the status line; the action buttons keep their short labels.
   window.pilot.onApplyProgress(text => { if (gate.isStarting()) $('apply-start-status').textContent = text; });
   $('apply-go').addEventListener('click', async event => {
@@ -97,7 +99,8 @@ export function wireApplyDialog({startedApplying, openJob}) {
       $('apply-progress').hidden = false;   // the banner's progress bar stays below the action buttons
       draw();
       try {
-        const result = await applyDialogStart({count: n, pick: picked, autoConfirmedAt: confirmedAt, chosen: applyChosen(settings), start: options => window.pilot.apply(options)});
+        // Why (7 Nov 2026, owner, fa: "the practice should go first ... and letting him confirm one more time"): a Full automation batch is held by the app; its check and the person's answer to the split (apply-check.js) are its result.
+        const result = await applyDialogStart({count: n, pick: picked, autoConfirmedAt: confirmedAt, chosen: applyChosen(settings), start: options => window.pilot.apply(options).then(answer => (answer?.check ? runCheck(answer.check).then(answered => mergeHeld(answer, answered)) : answer))});
         if (result.ok || result.outcomes?.length) await Promise.resolve(startedApplying()).catch(() => {});   // a prepared row may leave New even when it never queued: refresh before leaving an Inspect action in the dialog
         if (result.ok && result.extensionNote) toastMessage('Chrome has an older extension', result.extensionNote, {view: 'settings'}, 'warn');
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
