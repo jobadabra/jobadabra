@@ -45,6 +45,7 @@ export async function lookAtForm(step, parts = {}) {
     if (!await press(step)) return null;   // false: the press moved the tab to another page, which gets its own look
     if (gone('triage apply press')) return null;
     if (step.pressed) {
+      told('looking');   // the form Apply brought in this tab is read now (the app names it the landed page)
       counts = await countsOf(tab.id, {shape, still, now, wait});
       if (!counts) return {unreadable: true, why: 'unreadable'};
       kind = await askKind(tab);   // the page the press brought: its kept answer is keyed by its own shape, so a form seen before costs nothing

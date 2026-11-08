@@ -65,6 +65,7 @@ test('a posting gets its Apply pressed once, then the form that came is read and
   assert.equal(calls.filter(call => call === 'press').length, 1);
   assert.equal(calls.filter(call => call === 'askKind').length, 2);
   assert.equal(calls[calls.indexOf('press') - 1], 'told pressing', 'the app hears the press before it happens (8 Nov 2026: a read that went quiet after Apply named no step)');
+  assert.equal(calls[calls.indexOf('press') + 1], 'told looking', 'and hears that the form Apply brought in this tab is being read');
 });
 
 test('a posting is not pressed when its answer is an e-mail application, and a form is never pressed', async () => {

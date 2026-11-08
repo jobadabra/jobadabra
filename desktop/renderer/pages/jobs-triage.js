@@ -38,10 +38,9 @@ const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_
 const state = {picking: false, running: false, stopping: false, matching: false, total: 0, seen: 0, job: null, startedAt: 0, step: 'ready', stepAt: 0};
 // The words of each step of a read; a step the dialog does not know keeps the one before it.
 const STEP_WORDS = {ready: 'triageStepReady', opening: 'triageStepOpening', looking: 'triageStepLooking', pressing: 'triageStepPressing', landed: 'triageStepLanded', judging: 'triageStepLooking', planning: 'triageStepLooking'};
-const sameJob = (a, b) => String(a || '').split(/[?#]/)[0] === String(b || '').split(/[?#]/)[0];
-/** The read's step for the job in flight ({url, step} from the app): its words and its own seconds start now. Another job's step, or one the dialog does not know, changes nothing. */
+/** The read's step for the job in flight ({url, step} from the app, which sends the job's address back unchanged): its words and its own seconds start now. Another job's step, or one the dialog does not know, changes nothing. */
 export function heardStep({url, step} = {}) {
-  if (!state.running || !state.job || !sameJob(url, state.job.url) || !STEP_WORDS[step] || step === state.step) return false;
+  if (!state.running || !state.job || url !== state.job.url || !STEP_WORDS[step] || step === state.step) return false;
   Object.assign(state, {step, stepAt: Date.now()});
   paint();
   return true;
@@ -142,7 +141,7 @@ export async function runTriage(jobs, read, match = null) {
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
 
-/** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended. Takes the callbacks; a missing dialog wires nothing. */
+/** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended, `onStep(fn)` hands the read's steps to the dialog. Takes the callbacks; a missing dialog wires nothing. */
 export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;

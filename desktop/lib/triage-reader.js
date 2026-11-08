@@ -13,7 +13,7 @@ const REPORTED = new Set(['looking', 'pressing', 'judging', 'planning']);
 // Apply press. A look that goes quiet now ends 30 s after its last step, with that step named; 30 s is ≥ 3× the slowest measured step (a new page shape's AI kind ~8 s, a page load ~10 s,
 // #3548). The judge of an older extension (~49 s) is never cut by it: from `judging` on, only the read's whole deadline holds.
 export const SILENT_MS = 30000;
-const SILENT_WHY = {opening: 'unreadable', pressing: 'afterApply'};   // the page never loaded; the page Apply opened never answered; any other quiet step "took too long"
+const SILENT_WHY = {opening: 'unreadable', pressing: 'afterApply', landed: 'afterApply'};   // the page never loaded; the page Apply opened never answered; any other quiet step "took too long"
 
 // Why (30 Oct 2026, owner): the measured plan adds 15 s to a 49 s judge; allow 150 s for both steps.
 export const READ_TIMEOUT_MS = 150000;
@@ -21,7 +21,7 @@ export const READ_TIMEOUT_MS = 150000;
 /**
  * One reader per app. `read(url)` queues a job's form read and resolves with the mode table's flags ({eligible, captcha, login, accountCreation, allFactsSaved}) or null when nothing was read.
  * Takes the extension's polls (`take`) and reports (`report`); `set`, `clear` and `uuid` are injectable so a test never waits for a clock.
- * `onStep({url, step})` hears each step as it starts (the Jobs dialog shows it); `onDone({url, outcome, totalMs, queueMs, openMs, judgeMs, planMs})` hears each read's end and where its time went
+ * `onStep({url, step})` hears each step as it starts (the Jobs dialog shows it); `onDone({url, outcome, last, totalMs, queueMs, openMs, judgeMs, planMs, quietMs})` hears each read's end and where its time went
  * (app.log; #3519: ten jobs took about ten minutes and nothing said which step cost it). Invariants: at most one read is handed to the extension at a time; a read ended without a report is reported once by `takeEnded` so its page is closed; a report for an id that is not the active one is refused; a read that gets no report in `timeoutMs`, or no step in `silentMs` before its judge, resolves {unreadable: true, why}.
  */
 export function createTriageReader({uuid = randomUUID, set = setTimeout, clear = clearTimeout, timeoutMs = READ_TIMEOUT_MS, silentMs = SILENT_MS, now = Date.now, onStep = () => {}, onDone = () => {}} = {}) {
@@ -45,11 +45,12 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
   function mark(id, given) {
     const row = waiting.get(id);
     const step = given === 'looking' && row?.marks.pressing !== undefined ? 'landed' : given;
-    if (!row || row.marks[step] !== undefined) return false;
+    if (!row) return false;
+    clear(row.quiet);   // a step heard again (a redirect, a second look) is still progress: the quiet guard starts over, but no new step is marked or told
+    row.quiet = row.marks.judging === undefined && row.marks.planning === undefined && step !== 'judging' && step !== 'planning' ? set(() => finish(id, {unreadable: true, why: SILENT_WHY[row.last] || 'timeout'}), silentMs) : null;
+    if (row.marks[step] !== undefined) return false;
     row.marks[step] = now();
     row.last = step;
-    clear(row.quiet);
-    row.quiet = row.marks.judging === undefined && row.marks.planning === undefined ? set(() => finish(id, {unreadable: true, why: SILENT_WHY[step] || 'timeout'}), silentMs) : null;
     heardStep({url: row.url, step});
     return true;
   }

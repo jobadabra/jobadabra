@@ -3,7 +3,7 @@
 // The owner's scenario (7 Nov 2026, two screenshots): press Check 10 jobs -> an empty grey bar, no words, an inline Cancel AND Close AND a greyed Check, the number still an input.
 // Expected: at once "Checking 1 of N · <title> · <company>" and its step with that step's seconds (8 Nov 2026, owner chose "A: fix the end + steps"), a bar that moves, ONE footer (Close + Stop), the count read-only; Stop says it is stopping; afterwards the idle dialog is back.
 // The read is the page's own `runTriage` fed a held read (the preload bridge is frozen, so a test cannot replace window.pilot.triageRead); Stop is the real wired button.
-// Every wait has a 15 s cap (hang guard, named by what it waited for): nine of them stay inside the window's 180 s timeout, so a stall is reported by stage, not by a killed launch.
+// Every wait has a cap (hang guard, named by what it waited for): eleven of 15 s and two of 5 s (a step redraws the line at once) stay inside the window's 180 s timeout, so a stall is reported by stage, not by a killed launch.
 // Job: serve stored answers
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
@@ -48,11 +48,12 @@ before(() => {
     const ticked = await kit.until(() => { const now = look(); return now.elapsed !== first.elapsed ? now : ''; }, 'the seconds to move while the first read is held', 15000);
     // The read's steps as the app sends them (lib/triage-reader.js onStep): each one changes the line at once and restarts its seconds; another job's step changes nothing.
     const opened = heardStep({url: jobs[0].url, step: 'opening'});
-    const opening = await kit.until(() => { const now = look(); return now.elapsed.startsWith('Opening the page') ? now : ''; }, 'the opening step on the line', 15000);
+    const opening = await kit.until(() => { const now = look(); return now.elapsed.startsWith('Opening the page') ? now : ''; }, 'the opening step on the line', 5000);
     const foreign = heardStep({url: jobs[1].url, step: 'looking'}), unknown = heardStep({url: jobs[0].url, step: 'dancing'});
-    heardStep({url: `${jobs[0].url}?utm=x`, step: 'pressing'});
-    const pressing = await kit.until(() => { const now = look(); return now.elapsed.startsWith('Pressing Apply') ? now : ''; }, 'the Apply press on the line', 15000);
-    const steps = {opened, opening, foreign, unknown, pressing};
+    const otherQuery = heardStep({url: `${jobs[0].url}?id=2`, step: 'pressing'});   // another address is another job, even on the same path
+    heardStep({url: jobs[0].url, step: 'pressing'});
+    const pressing = await kit.until(() => { const now = look(); return now.elapsed.startsWith('Pressing Apply') ? now : ''; }, 'the Apply press on the line', 5000);
+    const steps = {opened, opening, foreign, unknown, otherQuery, pressing};
     gates.get(jobs[0].url)({eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true});
     const second = await kit.until(() => { const now = look(); return /2 of 3/.test(now.words) ? now : ''; }, 'the second job to be named while its read is held', 15000);
     document.getElementById('triage-cancel').click();
@@ -99,8 +100,8 @@ test('the read\'s steps change the line at once, each with its own seconds; anot
   const {steps} = screen.result;
   assert.equal(steps.opened, true);
   assert.match(steps.opening.elapsed, /^Opening the page · 0:0\d$/);
-  assert.deepEqual([steps.foreign, steps.unknown], [false, false]);
-  assert.match(steps.pressing.elapsed, /^Pressing Apply · 0:0\d$/, 'the address\'s query never hides the job');
+  assert.deepEqual([steps.foreign, steps.unknown, steps.otherQuery], [false, false, false]);
+  assert.match(steps.pressing.elapsed, /^Pressing Apply · 0:0\d$/);
   assert.match(steps.pressing.words, /^Checking 1 of 3 · Running Engineer 1 · Alder Works$/);
 });
 

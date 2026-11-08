@@ -187,7 +187,7 @@ test('the light look\'s steps reach the dialog in order, and the look of the pag
   assert.deepEqual(steps, ['opening', 'looking', 'pressing', 'landed']);
 });
 
-for (const [steps, why, last] of [[[], 'unreadable', 'opening'], [['looking'], 'timeout', 'looking'], [['looking', 'pressing'], 'afterApply', 'pressing'], [['looking', 'pressing', 'looking'], 'timeout', 'landed']]) {
+for (const [steps, why, last] of [[[], 'unreadable', 'opening'], [['looking'], 'timeout', 'looking'], [['looking', 'pressing'], 'afterApply', 'pressing'], [['looking', 'pressing', 'looking'], 'afterApply', 'landed']]) {
   test(`a read quiet for 30 s after "${last}" ends at once as "${why}", names the step, and closes its page`, async () => {
     const time = timersOf(), done = [], r = reader({set: time.set, clear: time.clear, onDone: summary => done.push(summary)});
     const pending = r.read('https://jobs.example/quiet'), {id} = r.take();
@@ -219,4 +219,17 @@ test('a read still waiting for the browser has no quiet guard: the queue is held
   assert.equal(time.live(30000).length, 1, 'only the read that is out');
   r.cancelAll();
   await Promise.all([first, second]);
+});
+
+test('a step heard again (a redirect, a second look) is progress: the quiet guard starts over without a new step', async () => {
+  const time = timersOf(), steps = [], r = reader({set: time.set, clear: time.clear, onStep: step => steps.push(step.step)});
+  const pending = r.read('https://jobs.example/hops'), {id} = r.take();
+  r.step(id, 'looking');
+  const first = time.live(30000)[0];
+  assert.equal(r.step(id, 'looking'), false, 'not a new step');
+  assert.equal(first.fn, null, 'the earlier quiet guard is gone');
+  assert.equal(time.live(30000).length, 1, 'a fresh one runs');
+  assert.deepEqual(steps, ['opening', 'looking']);
+  r.cancelAll();
+  await pending;
 });
