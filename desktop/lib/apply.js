@@ -80,7 +80,29 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
 
 const NO_KITS = 'Could not prepare any applications. Press Apply on one job to try again.';
 const NO_JOBS = 'No job to apply to yet. Press Find jobs first.';
-const nothingStarted = (jobs, options) => (jobs.some(job => startable(job, options)) ? NO_KITS : NO_JOBS);
+// Why (8 Nov 2026, owner: "they were not eligible… it should be stated more clearly"): "Press Find jobs first" was said for any list with nothing startable, also when jobs were listed but all marked not eligible.
+const nothingStarted = (jobs, options) => {
+  if (jobs.some(job => startable(job, options))) return NO_KITS;
+  const waiting = jobs.filter(job => open(job) && canStart(job.stage));
+  const held = waiting.filter(job => job.ineligible).length;
+  if (held && !options.allowIneligible) return `${held === 1 ? '1 of your open jobs is' : `${held} of your open jobs are`} marked not eligible, so none was started. To apply anyway, turn on Settings → Apply → "Apply to jobs marked not eligible".`;
+  if (jobs.length) return 'None of your jobs can be started right now: each is already applied to, in progress, dismissed or closed. Press Find jobs for new ones.';
+  return NO_JOBS;
+};
+
+// Why (8 Nov 2026, owner screenshot): a drafted job the re-read list cannot start must say why on its row; "prepared" is only true while the job is startable. The store is the truth, not the prepare call's answer.
+function settleDrafted(outcomes, jobs, chosen, options) {
+  const picked = new Set(chosen.map(job => job.url));
+  return outcomes.map(item => {
+    if (item.status !== 'prepared' || picked.has(item.url)) return item;
+    const row = jobs.find(job => job.url === item.url);
+    if (!row) return {...item, status: 'not-started', reason: 'This job is no longer in your list.'};
+    if (row.ineligible && !options.allowIneligible) return {...item, status: 'ineligible', reason: row.ineligible};
+    if (!row.kit) return {...item, status: 'not-started', reason: 'Its application is not saved on the job yet. Press Apply on the job to try again.'};
+    if (!startable(row, options)) return {...item, status: 'not-started', reason: `Its stage${row.stage ? ` "${row.stage}"` : ''} does not allow starting an application.`};
+    return item;   // startable but beyond the N best: stays ready
+  });
+}
 
 import {formUrl, isFormOf} from './form-address.js';
 import {browserData} from './browser-profile.js';
@@ -301,7 +323,7 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
     drafted = result.done;
     why = result.why;
     outcomes = result.outcomes;
-    if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n, eligibility); }
+    if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n, eligibility); outcomes = settleDrafted(outcomes, jobs, chosen, eligibility); }
   }
   if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs, eligibility)), ...(outcomes.length ? {outcomes} : {})};
   // Why (2026-10-28, Background apply B; 7 Nov 2026, #3424): hidden-browser mode never falls through to visible Chrome; its queue carries this batch’s captured eligibility choice and its outcomes join kit-preparation results for the dialog.

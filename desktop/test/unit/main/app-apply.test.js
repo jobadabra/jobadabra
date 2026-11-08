@@ -112,6 +112,35 @@ test('a background batch keeps mixed eligibility and preparation failures beside
   ]);
 });
 
+// Why (8 Nov 2026, owner screenshot): Background with 3 jobs whose kits are drafted ended "No applications were started" and three "Kit prepared" rows. The drafted kits were marked not eligible in the store; the prepare answer carried no verdict, so each row said "prepared" while the re-read dropped it. The store is the truth: a row that cannot start says why.
+test('a drafted job the store then holds back says why, never "Kit prepared" as the end of the story', async () => {
+  const jobs = [1, 2, 3].map(number => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - number}));
+  const queued = [];
+  const result = await apply.start(tempStorage(), {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => { const job = jobs.find(row => row.code === code); job.kit = code !== '3'; if (code === '1') job.ineligible = 'Required aviation credential missing.'; if (code === '2') job.stage = 'Recruiter lead'; return {ok: true}; },
+    undefined, {enqueue: async selected => { queued.push(...selected); return {ok: true, outcomes: []}; }});
+  assert.deepEqual(queued, [], 'nothing reaches the queue');
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status]), [['1', 'ineligible'], ['2', 'not-started'], ['3', 'not-started']]);
+  assert.equal(result.outcomes[0].reason, 'Required aviation credential missing.');
+  assert.ok(result.outcomes.every(item => item.reason), 'every row carries its real reason');
+});
+
+test('the words for a batch that finds nothing say what is true of the jobs listed', async () => {
+  const stage = {status: 'saved', stage: 'Saved', url: 'https://jobs.example.test/x', kit: true};
+  const say = async (jobs, settings) => {
+    const storage = tempStorage();
+    if (settings) storage.saveSettings(settings);
+    return (await apply.start(storage, {n: 3, mode: 'background', applyMode: 'auto'}, undefined, async () => ({jobs}), undefined, undefined, undefined, undefined, {enqueue: async () => ({ok: true})})).error;
+  };
+  assert.equal(await say([]), 'No job to apply to yet. Press Find jobs first.');
+  const notEligible = await say([{...stage, ineligible: 'needs a work permit'}, {...stage, ineligible: 'no licence'}]);
+  assert.match(notEligible, /2 .*not eligible/i);
+  assert.match(notEligible, /Settings → Apply → "Apply to jobs marked not eligible"/);
+  assert.doesNotMatch(notEligible, /Find jobs/);
+  assert.doesNotMatch(await say([{...stage, status: 'applied'}]), /Press Find jobs first/);
+});
+
 test('the opt-in stays consistent through missing-kit drafting, reread and background enqueue', async () => {
   const storage = tempStorage();
   storage.saveSettings({apply: {allowIneligible: true}});
