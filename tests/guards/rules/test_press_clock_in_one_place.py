@@ -17,7 +17,7 @@ OTHER = {'src/sources/read_budget.py': {'LEFT_DAYS'},
          'src/first_jobs.py': {'FIT'}}
 # Wall-clock reads today per stage file (src/press/clock.py is the clock itself: its reads are the clock's, so it is not listed; 4/6 moves the stage files' reads into it).
 CLOCK_READS = {'src/sources/read_budget.py': 0, 'src/sources/feed_scan.py': 0, 'src/sources/aggregators.py': 0, 'src/sources/boards_ahead.py': 0, 'src/sources/boards.py': 3, 'src/sources/boards_first.py': 0, 'src/sources/eures.py': 6,
-               'src/first_jobs.py': 2, 'src/ai/title_triage.py': 0, 'src/ai/place_triage.py': 0, 'src/ai/title_queue.py': 0, 'src/sources/feed_order.py': 0}
+               'src/first_jobs.py': 0, 'src/ai/score.py': 0, 'src/ai/enrich.py': 0, 'src/daily_search_scoring.py': 0, 'src/ai/title_triage.py': 0, 'src/ai/place_triage.py': 0, 'src/ai/title_queue.py': 0, 'src/sources/feed_order.py': 0}
 CLOCKS = {('time', 'monotonic'), ('time', 'time'), ('time', 'perf_counter'), ('datetime', 'now')}
 
 

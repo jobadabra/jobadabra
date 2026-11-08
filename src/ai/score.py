@@ -7,11 +7,9 @@ re-scores every open job on the next run. Scores are advisory: they order the
 digest and never apply to anything.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
 import copy
 import hashlib
 import json
-import time
 import re
 from pathlib import Path
 import os
@@ -333,13 +331,14 @@ def _ask(client, model, job, profile, effort, note, schema):
 
 
 def save(db, job, model, data, profile):
+    from .. import time_budget
     db.executescript(SCORES_TABLE)
     db.execute("""INSERT INTO scores (job_id, scorer_version, input_hash, model, created_at, data_json)
         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(job_id) DO UPDATE SET scorer_version=excluded.scorer_version,
         input_hash=excluded.input_hash, model=excluded.model, created_at=excluded.created_at,
         data_json=excluded.data_json""",
                (job['id'], SCORER_VERSION, input_hash(job, job.get('ai'), profile), model,
-                datetime.now(timezone.utc).isoformat(timespec='seconds'),
+                time_budget.wall().isoformat(timespec='seconds'),
                 json.dumps({**data, 'method': CURRENT_METHOD, 'scorer_version': SCORER_VERSION,
                             'inputs': input_hash(job, job.get('ai'), profile)[:12], 'job_hash': job_hash(job, job.get('ai')),
                             'locations': locations.fingerprint_now()}, ensure_ascii=False)))
@@ -393,7 +392,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
         jobs = jobs[:planner.batch('score', len(jobs))]   # a batch this refresh can finish (src/time_budget.py), best places first
     if not jobs:
         return f'0 job(s) to score with {model}'
-    began = time.monotonic()
+    began = planner.now()
     from . import engine
     # Whatever the engine: down or busy (the next run continues), or a refusal of this one call (the job is skipped).
     transient, permanent = engine.transient_errors(), engine.permanent_errors()
@@ -486,7 +485,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
         batch(jobs, model)
     if late[0]:
         print(budget.left_line('score', late[0]), flush=True)
-    budget.record('score', time.monotonic() - began, scored, calls.lost)
+    budget.record('score', budget.now() - began, scored, calls.lost)
     if stats is not None:
         stats.update(pending=len(jobs), done=scored, failed=failures, late=late[0], lost=calls.lost)
     return (f'Scored {scored} of {len(jobs)} job(s) with {said.get(model, model)}{f" (first pass {said.get(first_pass, first_pass)})" if cascade else ""}; {failures} failed; tokens in '
