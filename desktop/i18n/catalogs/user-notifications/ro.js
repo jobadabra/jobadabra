@@ -9,6 +9,14 @@ export default {
   "atCompany": "{title} la {company}",
   "open": "Deschide în Jobadabra",
   "finish": "Deschide Jobadabra pentru a termina.",
+  "applied": {
+    "one": "Aplicat pentru tine: {shown} candidatură trimisă",
+    "other": "Aplicat pentru tine: {shown} de candidaturi trimise",
+    "few": "Aplicat pentru tine: {shown} candidaturi trimise"
+  },
+  "appliedIntro": "Automatizarea completă a trimis acestea cât ai fost plecat:",
+  "appliedSaved": "Fiecare răspuns este salvat împreună cu postul, ca să poți citi ce s-a trimis.",
+  "appliedButton": "Vezi ce s-a trimis",
   "fewTitle": "Puține locuri de muncă noi: cum găsești mai multe",
   "fewBody": {
     "one": "Ultima căutare a găsit {shown} loc de muncă nou. Vezi cum ai putea găsi mai multe, începând cu pașii cei mai simpli.",

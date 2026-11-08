@@ -13,9 +13,9 @@ import {clockTime} from './activity.js';
 import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
-import {cancelAllButton, cancellingState, isSubmitted, stopShown, tabAddress} from '../session-state.js';
-import {backgroundStatus, sessionModeChip} from '../background-status.js';
-import {checkingTab, tabLost, tabStatus, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
+import {cancelAllButton, isSubmitted, stopShown, tabAddress} from '../session-state.js';
+import {sessionModeChip} from '../background-status.js';
+import {checkingTab, tabLost, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
 import {sessionPanels} from '../sessions-cache.js';
 import {cancelSession, isLive, logChoice, openLog, refreshSessions, renderNextStep, restartSession, resumeSession, sessionCompany, sessionDuration, sessionJob, sessionList, sessionLogo, sessionMenu, sessionReview, sessionState, sessionTail, sessionTitle, sessionsFromCache, sessionsLoaded, ticking} from './sessions.js';
@@ -47,8 +47,8 @@ function clearHeader() {
   $('ss-status').replaceChildren();
   $('ss-more').replaceChildren();
 }
-// A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
-const stateOf = item => cancellingState(item) || backgroundStatus(item, {linkOff: !!shared.formsOpen?.linkOff}) || tabStatus(item) || (formGone(item) ? [t('pagesFinalLabels.formClosed'), 'neutral'] : sessionState(item));
+// The header says what the list says: the one label (session-state.js sessionLabel through sessions.js), so the two can no longer drift.
+const stateOf = item => sessionState(item);
 // The header's way out of every unfinished application at once (session-state.js cancellable). While it works the button says how many are closing (owner, 7 Nov 2026: a greyed button and the old list showed nothing).
 function paintCancelAll(button, list) {
   const {closing, ...paint} = cancelAllButton(list);

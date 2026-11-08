@@ -8,6 +8,13 @@ export default {
   "atCompany": "{title} at {company}",
   "open": "Open in Jobadabra",
   "finish": "Open Jobadabra to finish it.",
+  "applied": {
+    "one": "Applied for you: {shown} application sent",
+    "other": "Applied for you: {shown} applications sent"
+  },
+  "appliedIntro": "Full automation sent these while you were away:",
+  "appliedSaved": "Each answer is saved with the job, so you can read what was sent.",
+  "appliedButton": "See what was sent",
   "fewTitle": "Few new jobs: ways to find more",
   "fewBody": {
     "one": "The last check found {shown} new job. See what would bring more, easiest first.",

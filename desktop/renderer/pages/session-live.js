@@ -171,7 +171,7 @@ onLeaveView('sessions', closeLive);   // Why (2026-10-28, B follow-up 1): going 
 const button = actionButton;
 // The header, picture marks, note and actions for the current state; `actions` are the session's own (Open in my browser, Skip, Stop).
 function drawCard(item) {
-  const v = viewFor(item), card = liveCard(item.background || {}, v.facts, {note: item.note || '', linkOff: shared.formsOpen?.linkOff});
+  const v = viewFor(item), card = liveCard(item.background || {}, v.facts, {note: item.note || '', linkOff: shared.formsOpen?.linkOff, cancelling: !!item.cancelling});
   v.card = card; v.item = item;
   $('ss-decision').className = `ss-next tone-${card.tone}`;
   $('ss-next-title').textContent = card.title;
