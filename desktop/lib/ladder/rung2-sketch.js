@@ -9,6 +9,8 @@
 //   other         none of these (an error, a list of jobs, a cookie wall)
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
 //  1. The kind is one of the fixed kinds, decided by the AI; the structure rule answers only without AI (desktop/test/unit/main/page-kind.test.js).
+//  2. A kept Apply button is pressed only on a page that shows it; a page showing none of the shape's kept buttons is asked, and an answer naming no Apply never erases them
+//     (desktop/test/unit/main/page-kind-kept-button.test.js).
 import {model, priceOf} from '../ai/models.js';
 import {validateAlias} from '../../shared/alias-schema.js';
 import {kindKey} from './rung1-kept.js';
@@ -174,67 +176,104 @@ async function pageKindOnce(client, raw, cache, {now = Date.now(), fresh = false
   // What a higher rung decided and the page confirmed (lib/ladder/learning.js) answers like a kept answer, for free; an email outcome is a hint to ask again, never an answer.
   const taught = fresh || !learned ? null : learned(shape);   // `learned`: shape -> the kept entry of lib/ladder/learning.js (injected, so this rung imports nothing of the learning store)
   if (taught && !taught.askAgain && KINDS.includes(taught.kind)) return {kind: taught.kind, role: ROLE[taught.kind], confidence: 1, by: 'learned', rung: 1, signal: 'confident', shape, learnedBy: taught.by, outcome: taught.outcome, applyButton: '', accountStep: '', registerControl: '', signinControl: '', accountButton: ''};
-  const stored = fresh ? null : cache?.get(shape);
+  const stored = fresh ? null : cache?.get(shape), page = pageSketch(raw), buttons = keptButtons(stored);
   // A kept posting (or other page) is asked again when this page carries an address: a later posting of the shape may apply by email (one AI call, only on pages with an address). A kept form is final.
-  const kept = !sureToKeep(stored) || (pageSketch(raw).mails.length && !['form', 'account-form', 'account'].includes(stored.kind)) ? null : stored;   // a weak kept answer (older build) is asked again
-  if (kept && KINDS.includes(kept.kind)) return {kind: kept.kind, role: ROLE[kept.kind], confidence: kept.confidence, by: 'remembered', rung: 1, signal: 'confident', shape, applyButton: kept.applyButton || '', accountStep: kept.accountStep || '', registerControl: kept.registerControl || '', accountButton: kept.accountButton || '', signinControl: kept.signinControl || ''};
+  const usable = sureToKeep(stored) && KINDS.includes(stored.kind) && !(page.mails.length && !['form', 'account-form', 'account'].includes(stored.kind));   // a weak kept answer (older build) is asked again
+  // Why (8 Nov 2026, owner: "please debug all the applying sessions, find the bugs"): the kind is the shape's, an Apply button one page's (the twin's XING shape kept "easy apply";
+  // a posting showing only "Visit employer website" pressed nothing). The kept button this page shows is the one pressed; showing none, the page is asked, and an answer that names
+  // no other Apply leaves the kept answer as it was (the button may sit past the sketch's 20, or the page is still drawing).
+  const phrases = page.buttons.map(text => applyButtonOf(text, [text])).filter(Boolean);   // the page's buttons cleaned as a kept phrase was (Gitar on #3607: "Easy apply!" is "easy apply")
+  const shown = buttons.find(button => phrases.includes(button)) || '';
+  if (usable && (shown || !buttons.length)) return remembered(stored, shape, shown);
+  const asked = await askSketch(client, page, shape, cache, now);
+  const namedNone = !!asked.error || (asked.kind === 'posting' && !asked.applyButton && !asked.applyRoute && asked.applyBy !== 'email' && !asked.botCheck && !asked.stillDrawing);
+  return usable && namedNone ? {...remembered(stored, shape, buttons[0]), ...(asked.usd ? {usd: asked.usd} : {})} : asked;
+}
+
+// The kept answer of a shape, with the Apply button to press on this page.
+const remembered = (kept, shape, applyButton) => ({kind: kept.kind, role: ROLE[kept.kind], confidence: kept.confidence, by: 'remembered', rung: 1, signal: 'confident', shape, applyButton,
+  accountStep: kept.accountStep || '', registerControl: kept.registerControl || '', accountButton: kept.accountButton || '', signinControl: kept.signinControl || ''});
+// The Apply buttons confirmed for a shape, newest first (an entry kept before 8 Nov 2026 has one `applyButton`); a posting answer adds its own, a page of another kind keeps none.
+const KEEP_BUTTONS = 6;
+const keptButtons = entry => [...new Set([...(entry?.applyButtons || []), ...(entry?.applyButton ? [entry.applyButton] : [])])];
+const buttonsToKeep = (before, kind, button) => {
+  const list = kind !== 'posting' ? [] : [...new Set([button, ...(before?.kind === 'posting' ? keptButtons(before) : [])].filter(Boolean))].slice(0, KEEP_BUTTONS);
+  return list.length ? {applyButtons: list} : {};
+};
+
+// The sketch as the ask's one user message.
+const sketchPrompt = page => [
+  `Address path: ${page.path || '(none)'}`,
+  `Title: ${page.title || '(none)'}`,
+  `Headings: ${page.headings.join(' | ') || '(none)'}`,
+  `Controls (type · label · required):\n${page.controls.map(item => `- ${item.type} · ${item.label || '(no label)'}${item.required ? ' · required' : ''}`).join('\n') || '(none)'}`,
+  `Buttons: ${page.buttons.join(' | ') || '(none)'}`,
+  `Addresses (sentences or links on the page that carry an email address):\n${page.mails.map(text => `- ${text}`).join('\n') || '(none)'}`,
+  `Frames: ${page.frames.join(' | ') || '(none)'}${formCheckShape(page) ? `\n${FORM_CHECK_RULE}` : ''}`,
+  `Frame candidates (index · host · path · size; a posting whose application form is inside one of them names its index in form_frame):\n${page.frameCandidates.map((item, index) => `${index} · ${item.host} · ${item.path} · ${item.width}x${item.height}`).join('\n') || '(none)'}${page.frameCandidates.length ? `\n${FRAME_RULE}` : ''}`,
+  ...(page.onTop ? [layerLine(page.onTop)] : []),
+  ...(page.noEffect.length ? [noEffectLine(page.noEffect)] : []),
+].join('\n');
+const usdOf = (usage = {}) => (usage.billing === 'subscription' ? 0
+  : Math.round(((usage.input_tokens || 0) * priceOf(usage, PRICE).input + (usage.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
+// A passing state of the page (still drawing, a bot check): this answer only, never kept for the shape and nothing pressed.
+const passing = (answer, confidence, shape, usd, flag) => ({kind: answer.kind, role: ROLE[answer.kind], confidence, by: 'ai', shape, usd, [flag]: true, applyButton: '', accountStep: '', registerControl: '', signinControl: '', accountButton: '', applyRoute: ''});
+
+// A posting's floors on what the AI named. -> {applyRoute, applyButton, applyBy, applyEmail, dropped, formFrame}
+function postingFloors(answer, page) {
+  const posting = answer.kind === 'posting';
+  const applyRoute = posting && ROUTES.includes(answer.apply_route) ? answer.apply_route : '';
+  // Floor: the named button is kept only for an ordinary Apply or the manual route; reuse and a third-party sign-in are never pressed, whatever the AI names.
+  // AND with the AI's judgment of what the button does: a sign-in, a sign-up or a third-party control named as the Apply button is dropped, whatever its words (the word floor only knows some English).
+  const namedButton = posting && answer.apply_button_kind === 'apply' && (!applyRoute || applyRoute === 'manual') ? applyButtonOf(answer.apply_button, page.buttons) : '';
+  const applyButton = pressedBefore(page.noEffect, namedButton) ? '' : namedButton;   // a control already pressed with no effect is dropped whatever the AI names, so the climb takes over
+  // Floors: an email outcome only for a posting; it never replaces the Apply button (the extension presses that first, and reports the email only when no form came); the address must literally stand in the page's own sentences or links, else it is dropped (reported as `dropped`) and the outcome is 'other'.
+  const asked = posting && APPLY_BY.includes(answer.apply_by) ? answer.apply_by : '';
+  const applyEmail = asked === 'email' ? addressOf(answer.apply_email, page.mails) : '';
+  const lost = asked === 'email' && !applyEmail;
+  const formFrame = posting && Number.isInteger(answer.form_frame) && answer.form_frame >= 0 && answer.form_frame < page.frameCandidates.length ? answer.form_frame : -1;   // only an index into the listed frames
+  return {applyRoute, applyButton, applyBy: lost ? 'other' : asked, applyEmail, dropped: lost ? 'apply_email' : '', formFrame};
+}
+// An account page's floors: the account step is asked of the AI for an account page only; the code never reads its words. -> {accountStep, registerControl, signinControl, accountButton}
+function accountFloors(answer, page) {
+  const onAccount = answer.kind === 'account';
+  const accountStep = onAccount && ['sign_in', 'sign_up', 'choose'].includes(answer.account_step) ? answer.account_step : '';
+  return {accountStep, registerControl: accountStep === 'sign_in' ? listedControl(answer.register_control, page.buttons) : '',
+    signinControl: ['sign_up', 'choose'].includes(accountStep) ? listedControl(answer.signin_control, page.buttons) : '', accountButton: onAccount ? listedControl(answer.account_button, page.buttons) : ''};
+}
+// A sure answer is kept for the shape; an email outcome is about this posting (its address) and a start step a passing state of it: neither is kept (the next visit starts from the plain Apply).
+function keepFor(cache, shape, answer, confidence, floors, now) {
+  if (floors.applyRoute || floors.applyBy === 'email' || !sureToKeep({kind: answer.kind, confidence, accountStep: floors.accountStep})) return;
+  const kept = Object.fromEntries(['accountStep', 'registerControl', 'signinControl', 'accountButton'].filter(key => floors[key]).map(key => [key, floors[key]]));
+  cache?.set(shape, {kind: answer.kind, confidence, at: new Date(now).toISOString(), ...buttonsToKeep(cache.get(shape), answer.kind, floors.applyButton), ...kept});
+}
+
+// Rung 2 itself: one ask of the sketch, kept for the shape when sure. -> pageKind's answer.
+async function askSketch(client, page, shape, cache, now) {
   if (!client) return {error: 'no AI', shape};
-  const page = pageSketch(raw);
   if (!page.controls.length && !page.buttons.length && !page.headings.length && !page.frames.length) return {error: 'empty page', shape};
   try {
     const response = await client.messages.create({
       // 1000, low effort: Haiku 5.5 may think first, and its thinking counts here (as in confirmation.js).
       model: MODEL, max_tokens: 1000, system: INSTRUCTIONS,
-      messages: [{role: 'user', content: [
-        `Address path: ${page.path || '(none)'}`,
-        `Title: ${page.title || '(none)'}`,
-        `Headings: ${page.headings.join(' | ') || '(none)'}`,
-        `Controls (type · label · required):\n${page.controls.map(item => `- ${item.type} · ${item.label || '(no label)'}${item.required ? ' · required' : ''}`).join('\n') || '(none)'}`,
-        `Buttons: ${page.buttons.join(' | ') || '(none)'}`,
-        `Addresses (sentences or links on the page that carry an email address):\n${page.mails.map(text => `- ${text}`).join('\n') || '(none)'}`,
-        `Frames: ${page.frames.join(' | ') || '(none)'}${formCheckShape(page) ? `\n${FORM_CHECK_RULE}` : ''}`,
-        `Frame candidates (index · host · path · size; a posting whose application form is inside one of them names its index in form_frame):\n${page.frameCandidates.map((item, index) => `${index} · ${item.host} · ${item.path} · ${item.width}x${item.height}`).join('\n') || '(none)'}${page.frameCandidates.length ? `\n${FRAME_RULE}` : ''}`,
-        ...(page.onTop ? [layerLine(page.onTop)] : []),
-        ...(page.noEffect.length ? [noEffectLine(page.noEffect)] : []),
-      ].join('\n')}],
+      messages: [{role: 'user', content: sketchPrompt(page)}],
       output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
     });
     if (response.stop_reason === 'max_tokens') return {error: 'cut off', shape};
     const text = response.content?.find(block => block.type === 'text')?.text || '';
     let answer = null;
     try { answer = JSON.parse(text); } catch { return {error: 'not JSON', shape}; }
-    const usage = response.usage || {};
-    const usd = usage.billing === 'subscription' ? 0
-      : Math.round(((usage.input_tokens || 0) * priceOf(usage, PRICE).input + (usage.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100;
-    const confidence = Math.max(0, Math.min(1, Number(answer?.confidence) || 0));
+    const usd = usdOf(response.usage), confidence = Math.max(0, Math.min(1, Number(answer?.confidence) || 0));
     if (!KINDS.includes(answer?.kind)) return {error: 'not a kind', shape, usd};
     // A page still being drawn is a passing state, said before the confidence gate (a placeholder is rarely a sure kind): read again by the extension (extension/ladder/still-drawing.js), never kept for the shape.
-    if (answer.still_drawing === true) return {kind: answer.kind, role: ROLE[answer.kind], confidence, by: 'ai', shape, usd, stillDrawing: true, applyButton: '', accountStep: '', registerControl: '', signinControl: '', accountButton: '', applyRoute: ''};
+    if (answer.still_drawing === true) return passing(answer, confidence, shape, usd, 'stillDrawing');
     if (confidence < MIN_CONFIDENCE) return {error: `unsure (${confidence})`, kind: answer.kind, shape, usd, rung: 2, signal: 'unsure'};   // the extension climbs (extension/ladder/core.js), it does not fall down to the structure rule
-    const applyRoute = answer.kind === 'posting' && ROUTES.includes(answer.apply_route) ? answer.apply_route : '';
-    // Floor: the named button is kept only for an ordinary Apply or the manual route; reuse and a third-party sign-in are never pressed, whatever the AI names.
-    // AND with the AI's judgment of what the button does: a sign-in, a sign-up or a third-party control named as the Apply button is dropped, whatever its words (the word floor only knows some English).
-    const namedButton = answer.kind === 'posting' && answer.apply_button_kind === 'apply' && (!applyRoute || applyRoute === 'manual') ? applyButtonOf(answer.apply_button, page.buttons) : '';
-    const applyButton = pressedBefore(page.noEffect, namedButton) ? '' : namedButton;   // a control already pressed with no effect is dropped whatever the AI names, so the climb takes over
-    // Floors: an email outcome only for a posting; it never replaces the Apply button (the extension presses that first, and reports the email only when no form came); the address must literally stand in the page's own sentences or links, else it is dropped (reported as `dropped`) and the outcome is 'other'.
-    let applyBy = answer.kind === 'posting' && APPLY_BY.includes(answer.apply_by) ? answer.apply_by : '', applyEmail = '', dropped = '';
-    if (applyBy === 'email') {
-      applyEmail = addressOf(answer.apply_email, page.mails);
-      if (!applyEmail) { applyBy = 'other'; dropped = 'apply_email'; }
-    }
-    const formFrame = answer.kind === 'posting' && Number.isInteger(answer.form_frame) && answer.form_frame >= 0 && answer.form_frame < page.frameCandidates.length ? answer.form_frame : -1;   // only an index into the listed frames
-    const onAccount = answer.kind === 'account';   // the account step is asked of the AI for an account page only; the code never reads its words
-    const accountStep = onAccount && ['sign_in', 'sign_up', 'choose'].includes(answer.account_step) ? answer.account_step : '';
-    const registerControl = accountStep === 'sign_in' ? listedControl(answer.register_control, page.buttons) : '';
-    const signinControl = ['sign_up', 'choose'].includes(accountStep) ? listedControl(answer.signin_control, page.buttons) : '';
-    const accountButton = onAccount ? listedControl(answer.account_button, page.buttons) : '';
+    const floors = {...postingFloors(answer, page), ...accountFloors(answer, page)};
     // A check in front of the page is a passing state, not its kind: never kept for the shape (the form behind it is judged fresh once solved).
-    if (answer.bot_check === true) return {kind: answer.kind, role: ROLE[answer.kind], confidence, by: 'ai', shape, usd, botCheck: true, applyButton: '', accountStep: '', registerControl: '', signinControl: '', accountButton: '', applyRoute: ''};
-    // An email outcome is about this posting (its address), a start step a passing state: neither is kept for the shape.
-    // A start step is a passing state of the posting, never kept for its shape (the next visit starts from the plain Apply, as a bot check does).
-    if (!applyRoute && applyBy !== 'email' && sureToKeep({kind: answer.kind, confidence, accountStep})) cache?.set(shape, {kind: answer.kind, confidence, at: new Date(now).toISOString(), ...(applyButton ? {applyButton} : {}),
-      ...(accountStep ? {accountStep} : {}), ...(registerControl ? {registerControl} : {}), ...(signinControl ? {signinControl} : {}), ...(accountButton ? {accountButton} : {})});
-    return {kind: answer.kind, role: ROLE[answer.kind], confidence, by: 'ai', rung: 2, signal: 'confident', shape, usd, applyButton, applyRoute, applyBy, applyEmail, formFrame, ...(dropped ? {dropped} : {}), accountStep, registerControl, signinControl, accountButton};
+    if (answer.bot_check === true) return passing(answer, confidence, shape, usd, 'botCheck');
+    keepFor(cache, shape, answer, confidence, floors, now);
+    const {dropped, ...said} = floors;
+    return {kind: answer.kind, role: ROLE[answer.kind], confidence, by: 'ai', rung: 2, signal: 'confident', shape, usd, ...said, ...(dropped ? {dropped} : {})};
   } catch (error) {
     return {error: clean(error?.message || 'AI failed', 120), shape};
   }
