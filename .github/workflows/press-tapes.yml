@@ -2,7 +2,9 @@ name: Press tapes
 # The press's yardstick (plan docs/superpowers/plans/2026-11-07-the-press.md 2b): each night persona's first and repeat press recorded once with a longer
 # press (the ceiling, tools/persona-search/run.mjs --ceiling), every web and AI answer kept (src/search_tape.py, per item: src/tape_items.py), then
 # published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
-# Not while the broker's scheduled lane is past its share of the week: its calls then fall to another AI and the tape is no measure (gi, 7 Nov 2026).
+# Its calls ride the broker's by-hand lane (jobadabra-web lib/lanes.mjs: the PR reserve to 100% of the week, never Claude), so a spent scheduled share (70%) no longer turns a tape into another AI's answers.
+# That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona takes ~45+ calls (2 presses at the ceiling and the judge),
+# so record in batches of about 6 personas a UTC day (owner, 8 Nov 2026: "~3 days of recording"), on a day no by-hand Search check ran, never all 18 at once.
 on:
   workflow_dispatch:
     inputs:
@@ -33,6 +35,11 @@ jobs:
     name: Tape ${{ matrix.persona }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # Why (8 Nov 2026, owner: "Yes, tapes use it too (Recommended)": "gi adds the same environment to press-tapes.yml plus one name in lanes.mjs"): the run token's environment puts these calls
+    # on the broker's by-hand lane (jobadabra-web lib/lanes.mjs); without it a recording lands on the scheduled lane, spent this week (7 Nov: 503s to Free AI). No deployment record: it deploys nothing.
+    environment:
+      name: search-check-by-hand
+      deployment: false
     permissions:
       contents: read
       id-token: write   # the Codex broker: GitHub OIDC, no stored secret
