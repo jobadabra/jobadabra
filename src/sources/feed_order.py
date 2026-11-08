@@ -1,6 +1,8 @@
 """The two keys the title sort gets from feeds.triage (#2918): how near each title's job is, for the one queue's order (src/ai/title_queue.py), and where the jobs of
 a landed batch go (scoring, as the batch lands). Moved out of feeds.py for the 500-line rule; both take what they need from it, so this file imports nothing of it."""
 
+from ..press import rank
+
 
 class _Nearness:
     """One reader's title jobs; initial sorting uses one map snapshot, waiting batch ranks take a fresh snapshot."""
@@ -16,7 +18,7 @@ class _Nearness:
             self.by_title.setdefault(_norm(job['title']), []).append(job)
 
     def _key(self, title, near):
-        return min(((0 if self.in_my_place(job) else 1, near(job.get('location'))) for job in self.by_title.get(title, ())), default=(1, float('inf')))
+        return rank.title_nearness(self.by_title.get(title, ()), self.in_my_place, near)
 
     def __call__(self, title):
         return self._key(title, self.current)
@@ -37,7 +39,7 @@ class _Nearness:
         stamp = self._store_stamp()
         if stamp != self.stamp:
             self.current, self.stamp = near_best(self.tops), stamp
-        return min(self._key(title, self.current) for title in titles)
+        return rank.batch_nearest(self._key(title, self.current) for title in titles)
 
 
 def nearness(asked, search, in_my_place):

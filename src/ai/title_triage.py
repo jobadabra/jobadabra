@@ -14,6 +14,7 @@ import threading
 from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots, title_queue
+from ..press import rank
 
 MODEL = SMALL_MODEL
 BATCH = 30   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
@@ -117,7 +118,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     nearest_mine = sum(1 for t in ask if t in mine)
     forced = budget.local_titles(nearest_mine - taken) if taken < nearest_mine else 0   # past the clock: the titles of your own places only
     if nearness:
-        ask.sort(key=lambda title: (title not in mine, nearness(title)))   # stable: your places first, then the nearest; the caller's order within the same nearness
+        ask = rank.titles(ask, rank.in_your_places(lambda title: title in mine), rank.km_to_best_place(nearness))   # stable: your places first, then the nearest; the caller's order within the same nearness
     ask = ask[:taken + forced]
     if not ask:
         return decided
@@ -130,7 +131,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     from . import cost
     from ..progress import Ticker
     batches = [ask[start:start + BATCH] for start in range(0, len(ask), BATCH)]
-    nearest = [(min(map(nearness, batch)) if nearness else (1, 0.0), batch) for batch in batches]
+    nearest = [(rank.batch_nearest(map(nearness, batch)) if nearness else (1, 0.0), batch) for batch in batches]
     # Said before the first answer, then after each batch with the time left (owner, 7 Oct 2026: 6 batches ran ~2 min each with only
     # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.PARALLEL at a time.
     print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
@@ -164,7 +165,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         ticker.tick(sorted_[0])
         if land:
             land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
-    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: min(map(nearness, batch))) if nearness else None)
+    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
     budget.record('title_rounds', spent[0] / max(1, engine.PARALLEL), -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
     with slots.priority(slots.NORMAL):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
         _second_look(client, ask, decided, search, words, mine, forced)

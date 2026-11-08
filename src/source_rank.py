@@ -7,6 +7,8 @@ no AI call, no network (the index is already downloaded). The kind is a fixed-li
 calls ranked_sources / order. Tests: tests/unit/sources/test_source_rank.py."""
 import json
 
+from .press import rank
+
 EXPLORE_EVERY = 5   # owner, 26 Oct 2026: 1 slot in 5, in every run (not 1 whole run in 5)
 _FIELDS = {'installs': int, 'local': int, 'fit70': int, 'seconds': float, 'per_run': float, 'per_min': float}
 
@@ -69,7 +71,7 @@ def ranked_sources(search, countries, kinds=None, cache=None):
     for item in proven.values():
         out.append({'kind': item['kind'], 'source': item['source'], 'state': 'proven', 'installs': item['installs'], 'fit70': item['fit70'],
                     'per_run': round(item['local'] / item['installs'], 1) if item['installs'] else 0, 'per_min': item['per_min'], 'why': 'pool'})
-    out.sort(key=lambda s: (-(s['per_min'] if s['per_min'] is not None else -1), -s['fit70'], -s['per_run'], s['source']))
+    out = rank.sources(out, rank.yield_history)
     out += [{'kind': kind, 'source': source, 'state': 'dead', 'installs': None, 'fit70': 0, 'per_run': 0, 'per_min': 0, 'why': 'pool'}
             for kind, source in sorted(dead - set(proven))]
     return out
@@ -91,7 +93,7 @@ def order(candidates, search, countries, kinds=None, cache=None, key=key_of):
         return list(candidates), []
     place = {(s['kind'], s['source']): n for n, s in enumerate(ranked) if s['state'] == 'proven'}
     dead = {(s['kind'], s['source']) for s in ranked if s['state'] == 'dead'}
-    proven = sorted((c for c in candidates if key(c) in place), key=lambda c: place[key(c)])
+    proven = rank.sources([c for c in candidates if key(c) in place], rank.yield_place(place, key))
     untried = [c for c in candidates if key(c) not in place and key(c) not in dead]
     skipped = [c for c in candidates if key(c) in dead]
     ordered = []

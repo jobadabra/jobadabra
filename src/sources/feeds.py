@@ -266,11 +266,12 @@ def triage_places(jobs):
         # order, Warsaw and Dallas first, and "Genève, Switzerland" with 6 jobs waited behind 1,400 others), each job counted by how close
         # it is to your search (src/job_rank.py; 18 Oct 2026: a first search in Cluj placed 1,313 locations for 10 minutes before scoring)
         from ..job_rank import ranker
+        from ..press import rank
         closeness, count = ranker(), Counter()
         for job in jobs:
             if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title']):
                 count[place_triage.norm(job['location'])] += 1 + closeness(job)
-        ordered = sorted(count, key=lambda location: (not mentions(PLACE, location), -count[location]))
+        ordered = rank.titles(list(count), rank.in_your_places(lambda location: mentions(PLACE, location)), lambda location: -count[location])
         placed().update(place_triage.decide(ordered, _SEARCH))
         placed().update(place_triage.vague(ordered, _SEARCH))   # of the ones outside: which name no town of their own
     except Exception as error:  # noqa: BLE001 — not placed this run: the place words decide, said
