@@ -8,6 +8,11 @@ import path from 'node:path';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {showFilter} from './jobs-filter.mjs';
 import {stepWait} from './wait-on-state.mjs';
+import {messages as controlStatus} from '../../i18n/catalogs/pages/control-status.js';
+
+// The check's own end titles, from the catalog that owns them (the step's app runs in English): only the check's end shows them (renderer/pages/jobs-triage.js).
+const escaped = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CHECK_END = new RegExp([controlStatus.en.nothingChecked, controlStatus.en.checkedJobs].map(escaped).join('|'));
 
 // Twelve jobs with fits the popup must order: more than the 10 it takes, every one with a distinct fit.
 const FITS = [96, 93, 90, 88, 86, 84, 82, 80, 78, 76, 74, 72];
@@ -47,10 +52,12 @@ export async function runTriageSteps(ctx) {
       const before = sessionsNow(ctx);
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
+      // The flake's input, forced every run (Gitar on #3585): a run toast of another task is on screen while the check runs, as a failed kit draft's is; the old `.toast:last` read judged it.
+      await page.evaluate(async () => { const {toastMessage} = await import('./pages/startup.js'); toastMessage('Application preparation had problems', 'A stray run toast the step puts up on purpose.', null, 'bad'); });
       await page.click('#triage-start');
       // Why (8 Nov 2026, flaky on e26df24 vs a35ac61, run 42451539978): the check's own kit drafts end in their own run toasts ("Application preparation had problems"), which land
       // whenever each draft's posting fetch fails; the step read the last toast as soon as any appeared. It now waits for the check's own toast, by its end titles, which only its end shows (jobs-triage.js).
-      const toasts = page.locator('.toast').filter({hasText: /Nothing was checked|Checked your jobs/});   // the check's own end titles (pagesControlStatus.nothingChecked, checkedJobs); "Gmail check not checked" is another toast
+      const toasts = page.locator('.toast').filter({hasText: CHECK_END});   // "Gmail check not checked" or a kit's run toast is another task's
       await stepWait('the check\'s own toast', timeout => toasts.first().waitFor({state: 'visible', timeout})).catch(async error => {
         const seen = await page.locator('.toast').allInnerTexts();
         throw new Error(`pressing "Check jobs" told the person nothing about the check (toasts seen: ${JSON.stringify(seen)}): ${error.message}`);
