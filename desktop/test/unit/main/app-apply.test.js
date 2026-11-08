@@ -202,6 +202,17 @@ test('the engine\'s not-eligible verdict stands when the re-read row is missing 
   assert.match(lines.at(-1), /1 of 1: Role 2 .*1 not eligible so far/);
 });
 
+// Why (8 Nov 2026, Gitar on #3595): the engine said not eligible, but the re-read row carries the kit and no verdict (the Next step write failed or the read is stale): that job must not start, and its replacement does.
+test('a job the engine refused never starts, even when the re-read row carries no verdict', async () => {
+  const jobs = [1, 2].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 95 - index * 10}));
+  const queued = [];
+  const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined,
+    async code => { jobs.find(row => row.code === code).kit = true; return {ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}; }, undefined,
+    {enqueue: async selected => { queued.push(...selected.map(job => job.code)); return {ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))}; }});
+  assert.deepEqual(queued, ['2'], 'the refused job has the better fit and an unflagged row, and still does not start');
+  assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status]), [['2', 'started'], ['1', 'ineligible']]);
+});
+
 test('the words for a batch that finds nothing say what is true of the jobs listed', async () => {
   const stage = {status: 'saved', stage: 'Saved', url: 'https://jobs.example.test/x', kit: true};
   const say = async (jobs, settings) => {

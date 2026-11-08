@@ -105,7 +105,7 @@ function settleDrafted(outcomes, codes, jobs, chosen, options) {
   const same = (job, item) => job.url === item.url || (!!job.code && job.code === codeOf(item.url));
   return outcomes.map(item => {
     const row = jobs.find(job => same(job, item));
-    if (row && chosen.some(job => job.url === row.url)) return {...item, url: row.url, ...(item.status === 'ineligible' ? {status: 'prepared'} : {})};
+    if (row && chosen.some(job => job.url === row.url)) return {...item, url: row.url};
     if (item.status !== 'prepared' && item.status !== 'ineligible') return item;
     if (item.status === 'ineligible') return row ? {...item, url: row.url} : item;   // the engine's own verdict and reason stand, also when the re-read row is missing or not flagged yet
     if (!row) return {...item, status: 'not-started', reason: 'This job is no longer in your list.'};
@@ -332,12 +332,13 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   let chosen = pick(jobs, n, eligibility);
   let drafted = 0, why = '', outcomes = [];
   const codes = new Map(jobs.map(job => [job.url, job.code]));
-  const tried = new Set();
+  const tried = new Set(), refused = new Set();   // refused: jobs whose kit the engine marked not eligible; the re-read may not show it yet, so it never decides the pick (Gitar, #3595)
   // Why (8 Nov 2026, owner: 3 jobs drafted, all marked not eligible, nothing started): a kit's eligibility shows only after it is drafted, so the batch keeps drafting the next missing jobs until N can start (or none are left, or the extra-attempt cap).
   while (prepare && chosen.length < n && outcomes.length < n + EXTRA_DRAFTS) {
     const result = await draftMissing(jobs.filter(job => !tried.has(job.code)), n - chosen.length, prepare, report, {...eligibility, maxAttempts: n + EXTRA_DRAFTS - outcomes.length, skipped: outcomes.filter(item => item.status === 'ineligible').length});
     if (!result.outcomes.length) break;
     result.codes.forEach(code => tried.add(code));
+    result.outcomes.forEach((item, at) => { if (item.status === 'ineligible') refused.add(result.codes[at]); });
     drafted += result.done;
     why ||= result.why;
     outcomes.push(...result.outcomes);
@@ -345,7 +346,7 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
     readsChanged();   // the kit was written by the engine, not an app write: a list read already running may not hold it
     ({jobs} = await list(storage));
     jobs.forEach(job => codes.set(job.url, job.code));
-    chosen = pick(jobs, n, eligibility);
+    chosen = pick(jobs.filter(job => !refused.has(job.code)), n, eligibility);
   }
   if (outcomes.length) outcomes = settleDrafted(outcomes, codes, jobs, chosen, eligibility);
   if (!chosen.length) return {ok: false, error: outcomes.length ? (why || 'No applications were started. Review the outcomes for each job.') : (why || nothingStarted(jobs, eligibility)), ...(outcomes.length ? {outcomes} : {})};
