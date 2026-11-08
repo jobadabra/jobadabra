@@ -125,9 +125,12 @@ jobs:
         run: |
           calls=$(cat out/run.log out/judge.log | grep -c 'relay: ' || true)
           refused=$(cat out/run.log out/judge.log | grep 'relay: ' | grep -vc ' status 200 ' || true)
-          other=$(cat out/run.log out/judge.log | grep -ciE 'free-ai|budget:' || true)
-          echo "AI calls: $calls, not answered: $refused, Free AI or budget lines: $other"
-          if [ "$calls" -eq 0 ] || [ "$refused" -ne 0 ] || [ "$other" -ne 0 ]; then echo "::error::persona ${{ matrix.persona }}'s tape has refused or other-AI calls: not published"; exit 1; fi
+          # Why (8 Nov 2026, Gitar on #3589): a fallback answer is still status 200; only the broker client's "AI: <engine> / <model> (<fell back from>)" line, printed once per distinct
+          # engine (desktop/e2e/lib/broker-client.mjs aiLine), names who answered, so every such line must be Codex with no fallback.
+          other=$(cat out/run.log out/judge.log | grep -E '^AI: ' | grep -vcE '^AI: codex( / [^(]*)?$' || true)
+          seen=$(cat out/run.log out/judge.log | grep -cE '^AI: codex' || true)
+          echo "AI calls: $calls, not answered: $refused, answer lines from another AI or a fallback: $other"
+          if [ "$calls" -eq 0 ] || [ "$seen" -eq 0 ] || [ "$refused" -ne 0 ] || [ "$other" -ne 0 ]; then echo "::error::persona ${{ matrix.persona }}'s tape has refused or other-AI calls: not published"; exit 1; fi
       - name: Is the records App's key set
         id: records_app_key
         env:
