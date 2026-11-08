@@ -1,13 +1,16 @@
-"""Guard: release — the press's yardstick says whether a PR changed coverage, quality or speed (tools/press-yardstick/numbers.py); a wrong number lets a
+"""Guard: release — the press's yardstick says whether a PR changed coverage, quality or speed (tools/press-yardstick/three_numbers.py); a wrong number lets a
 change that loses jobs merge as "no change", the circle the owner named (7 Nov 2026: "we overwrite one another and we never get it right")."""
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-SPEC = importlib.util.spec_from_file_location('press_numbers', ROOT / 'tools' / 'press-yardstick' / 'numbers.py')
+SCRIPT = ROOT / 'tools' / 'press-yardstick' / 'three_numbers.py'
+SPEC = importlib.util.spec_from_file_location('press_numbers', SCRIPT)
 numbers = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(numbers)
 
@@ -80,6 +83,20 @@ class ThreeNumbersTest(unittest.TestCase):
             rows = numbers.persona_rows(Path(root, 'tapes'), Path(root, 'replay'), '1')
         self.assertEqual([(r['persona'], r['coverage']) for r in rows], [('p7', 0.5)])
         self.assertIn('| coverage | 50% |', numbers.table({'coverage': [0.4, 0.6], 'quality': None, 'speed': None}, numbers.summary(rows)))
+
+    def test_the_command_runs_as_ci_starts_it(self):
+        # 2c-2 found the file named numbers.py: Python puts the script's folder first, so `import statistics` found it in place of the standard
+        # numbers module and the command never ran; the tests above load it by path and never saw that.
+        with tempfile.TemporaryDirectory() as root:
+            tapes, replay = Path(root, 'tapes', 'p7'), Path(root, 'replay', 'p7')
+            tapes.mkdir(parents=True)
+            replay.mkdir(parents=True)
+            (tapes / 'judged.json').write_text(json.dumps({'rows': JUDGED}))
+            (tapes / 'jobs-1.json').write_text(json.dumps(CEILING))
+            (replay / 'jobs-1.json').write_text(json.dumps(MAIN))
+            ran = subprocess.run([sys.executable, str(SCRIPT), 'summary', str(Path(root, 'tapes')), str(Path(root, 'replay'))], capture_output=True, text=True)
+        self.assertEqual(ran.returncode, 0, ran.stderr[-300:])
+        self.assertEqual(json.loads(ran.stdout)['summary']['coverage'], 0.5)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ on:
       - 'Tooling'
       - 'CI · End-to-end on Mac + Linux'
       - 'CI · Control tests (measure, not required)'
+      - 'Find jobs pipeline yardstick'
       - 'CI · Hosted Always on cost probe (one-off)'
       - 'Proof · Codex subscription broker'
       - 'Extension · Chrome Web Store publish'
