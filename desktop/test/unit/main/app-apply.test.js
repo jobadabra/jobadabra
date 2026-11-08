@@ -191,6 +191,17 @@ test('a re-read list that spells a job\'s link differently still matches its row
   assert.deepEqual(result.outcomes.map(item => [item.url, item.status]), [['https://jobs.example.test/x', 'started']], 'one row, no false "no longer in your list"');
 });
 
+test('the engine\'s not-eligible verdict stands when the re-read row is missing or not flagged, and the progress line counts the replacements', async () => {
+  const lines = [];
+  const jobs = [1, 2, 3].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
+  let reads = 0;
+  const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs: reads++ === 0 ? jobs : jobs.filter(job => job.code !== '1').map(job => ({...job, kit: true}))}), undefined, undefined,
+    async code => ({ok: true, ...(code === '1' ? {ineligible: 'Not eligible: Needs a work permit.'} : {})}), line => lines.push(line),
+    {enqueue: async selected => ({ok: true, outcomes: selected.map(({url, title, company}) => ({url, title, company, status: 'started', reason: ''}))})});
+  assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status, item.reason]), [['2', 'started', ''], ['1', 'ineligible', 'Needs a work permit.']]);
+  assert.match(lines.at(-1), /1 of 1: Role 2 .*1 not eligible so far/);
+});
+
 test('the words for a batch that finds nothing say what is true of the jobs listed', async () => {
   const stage = {status: 'saved', stage: 'Saved', url: 'https://jobs.example.test/x', kit: true};
   const say = async (jobs, settings) => {

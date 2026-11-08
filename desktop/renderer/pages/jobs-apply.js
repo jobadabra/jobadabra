@@ -21,7 +21,7 @@ let batchFinished = false;
 // Why (7 Nov 2026, #3424): each attempted job needs a clear status and an inspection path in the batch dialog.
 // Why (8 Nov 2026, owner: "bad UI"; the two reds were one colour for two different things): a status is icon + word; a verdict about the job (not eligible, not started) is a warning, only a failure is red.
 const OUTCOMES = {
-  started: ['Started', 'good', 'tick'], prepared: ['Ready to start', 'info', 'tick'], ineligible: ['Not eligible', 'warn', 'flag'],
+  started: ['Started', 'good', 'tick'], prepared: ['Ready', 'info', 'tick'], ineligible: ['Not eligible', 'warn', 'flag'],
   failed: ['Could not prepare', 'bad', 'close'], 'not-started': ['Not started', 'warn', 'clock'], busy: ['Already open', 'neutral', 'info'], 'already-queued': ['Already queued', 'warn', 'clock'], skipped: ['Skipped', 'warn', 'info'],
 };
 
@@ -119,8 +119,8 @@ export function wireApplyDialog({startedApplying, openJob}) {
         if (outcome.outcomes?.length) {
           // Why (7 Nov 2026, #3424, review): showing job rows must not make a fully refused batch's error look neutral.
           message('apply-message', outcome.error, result.ok ? undefined : 'error');
-          showOutcomes(outcome.outcomes, openJob);
-          batchFinished = !!result.ok;   // Why (7 Nov 2026, #3424): keep partial success inspectable and block a duplicate batch from the finished dialog.
+          batchFinished = !!result.ok;   // before showOutcomes: it hides "Change and try again" for a batch that started something
+          showOutcomes(outcome.outcomes, openJob);   // Why (7 Nov 2026, #3424): keep partial success inspectable and block a duplicate batch from the finished dialog.
           return;
         }
         if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }

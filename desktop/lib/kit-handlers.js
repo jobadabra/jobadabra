@@ -39,7 +39,7 @@ export function stoppedWith(exit, lines) {
  * Why (8 Nov 2026, owner screenshot: three drafted jobs all ended "Kit prepared", nothing started): the engine prints a bold "Not eligible" header with the reason on the next line (src/ai/kit.py telegram_messages), no colon, since 5 Oct 2026 (8ef8e935); looking only for "Not eligible:" never matched, so an ineligible kit was reported as prepared.
  */
 export function notEligibleIn(lines) {
-  const plain = lines.map(line => String(line ?? '').replace(/<[^>]+>/g, '').trim());
+  const plain = lines.map(line => String(line ?? '').replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot|#x27);/g, (_, name) => ({amp: '&', lt: '<', gt: '>', quot: '"', '#x27': "'"})[name]).trim());   // the engine escapes the note (kit.py html.escape)
   const at = plain.findIndex(line => line === 'Not eligible');
   if (at < 0) return undefined;
   const next = plain.slice(at + 1).find(Boolean) || '';

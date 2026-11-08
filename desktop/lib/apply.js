@@ -56,7 +56,7 @@ export function pickUntailored(jobs, n) {
 
 // Why (5 Nov 2026, review): a job stopped for its posting stays the best missing one, so without spare tries every batch would stop on it.
 const SPARE_TRIES = 3;
-// Why (8 Nov 2026): the most kits a batch drafts beyond its N when jobs come back not eligible or stopped; each is about 20 s.
+// Why (8 Nov 2026): the most kits a batch drafts beyond its N when jobs come back not eligible or stopped; each is about 20 s, spends AI credit and leaves a "Kit ready" row on a job the batch then skips.
 const EXTRA_DRAFTS = 6;
 
 // Draft missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
@@ -71,7 +71,8 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
   const wanted = Math.min(shortfall, missing.length);
   for (const job of missing) {
     if (tries >= shortfall) break;
-    report(`Preparing application ${Math.min(tries + 1, wanted)} of ${wanted}: ${job.title} · ${job.company} (about 20 s each)…`);
+    const skipped = (options.skipped || 0) + outcomes.filter(item => item.status === 'ineligible').length;
+    report(`Preparing application ${Math.min(tries + 1, wanted)} of ${wanted}: ${job.title} · ${job.company} (about 20 s each${skipped ? `; ${skipped} not eligible so far, replaced` : ''})…`);
     // Why (7 Nov 2026, #3424): a rejected prepare is still one job's failure; keep its message with that outcome.
     const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
     if (result.ok) done++;
@@ -106,6 +107,7 @@ function settleDrafted(outcomes, codes, jobs, chosen, options) {
     const row = jobs.find(job => same(job, item));
     if (row && chosen.some(job => job.url === row.url)) return {...item, url: row.url, ...(item.status === 'ineligible' ? {status: 'prepared'} : {})};
     if (item.status !== 'prepared' && item.status !== 'ineligible') return item;
+    if (item.status === 'ineligible') return row ? {...item, url: row.url} : item;   // the engine's own verdict and reason stand, also when the re-read row is missing or not flagged yet
     if (!row) return {...item, status: 'not-started', reason: 'This job is no longer in your list.'};
     const base = {...item, url: row.url};
     if (row.ineligible && !options.allowIneligible) return {...base, status: 'ineligible', reason: row.ineligible};
@@ -333,7 +335,7 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   const tried = new Set();
   // Why (8 Nov 2026, owner: 3 jobs drafted, all marked not eligible, nothing started): a kit's eligibility shows only after it is drafted, so the batch keeps drafting the next missing jobs until N can start (or none are left, or the extra-attempt cap).
   while (prepare && chosen.length < n && outcomes.length < n + EXTRA_DRAFTS) {
-    const result = await draftMissing(jobs.filter(job => !tried.has(job.code)), n - chosen.length, prepare, report, {...eligibility, maxAttempts: n + EXTRA_DRAFTS - outcomes.length});
+    const result = await draftMissing(jobs.filter(job => !tried.has(job.code)), n - chosen.length, prepare, report, {...eligibility, maxAttempts: n + EXTRA_DRAFTS - outcomes.length, skipped: outcomes.filter(item => item.status === 'ineligible').length});
     if (!result.outcomes.length) break;
     result.codes.forEach(code => tried.add(code));
     drafted += result.done;

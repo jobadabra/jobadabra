@@ -111,6 +111,7 @@ test('fully refused batches keep the error tone when they also have per-job outc
   assert.match(read('renderer/pages/jobs-apply.js'), /message\('apply-message', outcome\.error, result\.ok \? undefined : 'error'\)/);
   assert.match(read('renderer/pages/jobs-apply.js'), /'not-started': \['Not started', 'warn', 'clock'\]/, 'a verdict about the job is a warning with an icon; only a failure is red');
   assert.match(read('renderer/pages/jobs-apply.js'), /classList\.toggle\('apply-result'/, 'one state at a time: results hide the form');
+  assert.match(read('renderer/pages/jobs-apply.js'), /batchFinished = !!result\.ok;[^\n]*\n\s*showOutcomes\(outcome\.outcomes/, 'batchFinished is set before showOutcomes: no "Change and try again" over a batch that started jobs');
 });
 
 test('Start sends the validated count; the main process runs the saved mode\'s own runner', async () => {

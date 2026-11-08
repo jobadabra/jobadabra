@@ -92,6 +92,8 @@ test('a kit the engine marks not eligible is reported as ineligible, from the li
   assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:`Not eligible: ${recorded.note}`});
   p.state.lines=['\ud83d\udcdd <b>Your application</b>','<b>Job</b>','<b>Cover letter</b>'];
   assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:''},'an eligible kit stays unmarked');
+  p.state.lines=['<b>Not eligible</b>','visa &amp; permit &lt;EU&gt;'];
+  assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:'Not eligible: visa & permit <EU>'},'the engine escapes the note; the app decodes it');
   p.state.lines=['<b>Job</b>','<b>Not eligible</b>','<b>Check before sending</b>','• one'];
   assert.deepEqual(await p.prepareKitFor('J1','Raw',{quiet:true}),{ok:true,ineligible:'Not eligible:'},'an empty note never takes the next heading as its reason');
 });
