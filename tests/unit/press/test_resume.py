@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import tempfile
+import time  # clock: relative, a hang guard
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -119,6 +120,21 @@ class TheRunsEndFillsTheRest(Isolated):
     def test_a_step_name_the_table_lacks_is_a_loud_mistake_for_ran_too(self):
         with self.assertRaises(KeyError):
             resume.ran('tea breaks')
+
+
+class AStepStillRunningAtTheCutIsNotZero(Isolated):
+    def test_the_boards_discovery_beside_the_search_that_is_past_the_cut_says_it_waits(self):
+        # Gitar on #3605: boards.discover marks itself ran, but inside a search it is a thread that may not end by the cut: save() must not zero it
+        import threading
+        from src.sources import boards_beside, read_budget
+        release = threading.Event()
+        beside = boards_beside.Beside(lambda: release.wait(10))
+        self.addCleanup(release.set)
+        resume.ran('job boards')
+        with mock.patch.object(read_budget, 'cut_at', return_value=time.monotonic() + 0.05), contextlib.redirect_stdout(io.StringIO()):   # clock: relative, a hang guard
+            beside.finish()
+        resume.save(NOW)
+        self.assertEqual(resume.load_left()['job_boards']['left'], 1)
 
 
 class OnlyATimedRunWrites(Isolated):
