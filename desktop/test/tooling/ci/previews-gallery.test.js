@@ -124,6 +124,8 @@ test('a transcript calls a picture demo only in the session\'s own message that 
   assert.deepEqual([...demoClaims(log, ['real-one.png', 'shown.png', 'viewed.png'])].sort(), ['shown.png', 'viewed.png']);
   const mixed = line('assistant', [{type: 'text', text: 'a.png shows the owner list; b.png uses fictional data. c.png was taken without --demo.'}]);
   assert.deepEqual([...demoClaims(mixed, ['a.png', 'b.png', 'c.png'])], ['b.png']);
+  const comma = line('assistant', [{type: 'text', text: 'a.png shows the owner list, b.png uses fictional data. d.png and e.png: e.png uses demo data'}]);
+  assert.deepEqual([...demoClaims(comma, ['a.png', 'b.png', 'd.png', 'e.png'])].sort(), ['b.png', 'e.png']);
 });
 
 test('a table row with a backtick in a cell keeps its pictures', () => {

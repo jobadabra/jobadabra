@@ -99,14 +99,18 @@ export function groupShots(shots) {
 const DEMO = /demo[- ]data|demo fixture|fictional|fake data|example data|mock data|--demo\b|JOBADABRA_DEMO|demo mode/gi;
 const NEGATED = /\b(not|no|never|isn't|aren't|without|non|real)\b[^.\n]{0,24}$/i;
 
+/** Positions of the non-negated demo / fictional-data words in `text` ("not demo data" and "real, not fictional" give none). */
+export function demoMatches(text) {
+  const t = String(text || '');
+  return [...t.matchAll(DEMO)].filter(m => !NEGATED.test(t.slice(Math.max(0, m.index - 40), m.index))).map(m => m.index);
+}
+
 /**
  * True when a text says its pictures show demo, fictional or fake data (the session's own words, e.g. "Our render (demo data)"); "not demo data" and "real, not fictional" do not count.
  * Why (review, 8 Nov 2026): "this is not demo data" unlocked a real-data picture.
  */
 export function saysDemo(text) {
-  const t = String(text || '');
-  for (const m of t.matchAll(DEMO)) if (!NEGATED.test(t.slice(Math.max(0, m.index - 40), m.index))) return true;
-  return false;
+  return demoMatches(text).length > 0;
 }
 
 /** True when `name` appears in `text` as a whole file name (not inside a longer one: "fa-split-light.png" is not in "fa-split-light-narrow.png"). */
@@ -115,9 +119,19 @@ export function namesFile(text, name) {
   return new RegExp(`(^|[^\\w.-])${escaped}(?![\\w-])`).test(String(text || ''));
 }
 
-/** True when ONE line or sentence of `text` holds both the exact file name and (non-negated) demo words: "a.png is real; b.png uses fictional data" counts for b.png only. */
+/**
+ * True when a sentence of `text` has demo words whose NEAREST picture name is `name`: "a.png shows the list, b.png uses fictional data" counts for b.png only, "shown.png, rendered with demo data" for shown.png.
+ * Why (review, Gitar 8 Nov 2026): two picture names in one sentence ("a.png is real, b.png is fictional") unlocked the real one; each demo word now belongs to one name.
+ */
 export function sentenceClaimsDemo(text, name) {
-  return String(text || '').split(/\r?\n|;|(?<=[.!?])\s+/).some(part => namesFile(part, name) && saysDemo(part));
+  return String(text || '').split(/\r?\n|;|(?<=[.!?])\s+/).some(part => {
+    const names = [...part.matchAll(/[\w.-]+\.png\b/gi)].map(m => ({name: m[0], at: m.index}));
+    if (!names.some(n => n.name === name) || !namesFile(part, name)) return false;
+    return demoMatches(part).some(at => {
+      const nearest = names.reduce((best, n) => (Math.abs(n.at - at) < Math.abs(best.at - at) ? n : best), names[0]);
+      return nearest.name === name;
+    });
+  });
 }
 
 /**

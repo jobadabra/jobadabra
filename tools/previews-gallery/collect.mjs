@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, namesFile, parsePrBody, parseShotName, saysDemo, sentenceClaimsDemo, titleTags, verdictLine} from './parse.mjs';
+import {demoClaims, hostedImage, lastOwnerAnswer, nameTokens, parsePrBody, parseShotName, sentenceClaimsDemo, titleTags, verdictLine} from './parse.mjs';
 
 export const REPOS = ['jobadabra/jobadabra', 'jobadabra/jobadabra-web'];
 export const OWNER = 'GarryOne';
