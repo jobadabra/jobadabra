@@ -6,7 +6,7 @@ first pages are read in parallel and their jobs put on screen at once. When they
 keeps only its best sites (src/sources/read_budget.py short). The full board read reads their next pages later, from the pages fetched here. Without a web search in this
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. A repeat Find jobs run starts them
 first and reads the employer sites beside them (Beside, ps E2a-2). Tests: tests/unit/sources/test_boards_first.py."""
-from ..press import budget
+from ..press import budget, step_yield
 
 WEB_WAIT = budget.value('boards_first.WEB_WAIT')   # seconds the run waits for its web search before any employer site (the pilot search's answered at 37 s on the plan)
 
@@ -90,7 +90,7 @@ class Beside:
         from ..ai import batch_scope
         from . import feeds
         try:
-            with batch_scope.reader(self.NAME):
+            with batch_scope.reader(self.NAME), step_yield.span('job_boards'):
                 for said, boards in _groups(self.search, wait):
                     found = _fetch(self.search, boards, said, 'beside')
                     feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)

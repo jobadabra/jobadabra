@@ -11,6 +11,8 @@ from . import store
 from .press import step_yield
 
 EVERY = 5
+# The Find jobs step each label of a landing batch is credited to (src/press/step_yield.py); a caller whose label covers other steps too names its own (free_job_apis).
+STEP_OF = {'employer sites': 'employer_sites', 'job boards': 'job_boards'}
 
 
 def _key(job):
@@ -25,8 +27,8 @@ class SoFar:
     def add(self, jobs, where, step=None):
         """Import these jobs now; the first status each one got is kept for the end. `step`: the Find jobs step that brought them (src/press/step_yield.py)."""
         statuses = store.import_watch_report(self.db, {'jobs': jobs})
-        if step:
-            step_yield.landed(step, jobs, statuses)
+        if step or where in STEP_OF:
+            step_yield.landed(step or STEP_OF[where], jobs, statuses)
         for job, status in zip(jobs, statuses):
             self.first.setdefault(_key(job), status)
         new = sum(status == 'new' for status in statuses)
