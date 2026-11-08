@@ -1,21 +1,29 @@
 """The employer read inside the search's time (src/sources/read_budget.py; owner, 26 Oct 2026, of a pilot search that read 1,123 employers for
 5 minutes: "it shouldn't just go brute force and check all the employers" / "Stop at 3 minutes and tell you what's left for the next run"),
 and the board web search started with the run, before the first jobs (src/sources/board_web.py early; the 26 Oct pilot check started it at
-265 s). Fake sites and fake AI only; the clock is real but short."""
+265 s). Fake sites and fake AI only.
+Design (E2b, 8 Nov 2026; the slow tail test failed again on unchanged code after #3346 fixed its thread start order): what these tests prove is the
+READ BUDGET RULE: no new site starts once READ_SECONDS of the read are used, the best READ_FLOOR sites are read whatever the clock says, the sites go to
+the reader best first, and the sites not reached are kept for the next run. That rule is a function of the order sites are handed out and the clock, so
+its one source of truth here is a scripted clock: `Clock` advances only when a fetch says how long it takes, and `Inline` runs each fetch in the caller's
+thread. No real sleep, no thread start order, no machine load enters a result; the same 1,123 sites give the same 62 reads on every run. What
+real threads add (a site still open at the cut is left for the next run, answers that land late) is asserted in test_read_cut.py and
+test_three_minutes_resume.py, not here."""
 import io
 import sqlite3
 import tempfile
-import time
 import unittest
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from src import time_budget
 from src.sources import feed_scan, feeds, read_budget
 
 TABLE = 'CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))'
+FAST_S, SLOW_S, READ_S = 0.01, 0.3, 1.0   # a fast site, a slow one, and the read's time in this file (scripted seconds, never waited)
 
 
 def job(i):
@@ -27,53 +35,86 @@ def sites(n=1123):
     return [{'company': f'Co{i}', 'ats': 'lever', 'slug': f's{i}'} for i in range(n)]
 
 
+class Clock:
+    """The scripted clock: `monotonic` is where it stands, a fetch moves it with `spend`; nothing else does."""
+    def __init__(self):
+        self.now = 1000.0
+
+    def monotonic(self):
+        return self.now
+
+    def spend(self, seconds):
+        self.now += seconds
+
+
+class Inline:
+    """Stands in for the thread pool: runs each fetch at once in the caller's thread, so the read is a script, not a race."""
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        future = Future()
+        try:
+            future.set_result(fn(*args, **kwargs))
+        except BaseException as error:  # noqa: BLE001 — what the pool would have held for the caller
+            future.set_exception(error)
+        return future
+
+    def shutdown(self, wait=True, cancel_futures=False):
+        pass
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(read_budget, 'READ_SECONDS', 0.4)):
+        self.clock = Clock()
+        scripted = SimpleNamespace(monotonic=self.clock.monotonic, time=lambda: 0.0)   # wall time 0: no SEARCH_AT, the run starts now
+        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(read_budget, 'READ_SECONDS', READ_S),
+                      mock.patch.object(read_budget, 'time', scripted), mock.patch.object(time_budget, 'time', scripted),
+                      mock.patch.object(feed_scan, 'time', scripted), mock.patch.object(feed_scan, 'ThreadPoolExecutor', Inline)):
             patch.start()
             self.addCleanup(patch.stop)
         self.addCleanup(time_budget.start, 0)
 
-    def scan(self, sources, slow_from=60, late=()):
+    def scan(self, sources, slow_from=60):
         read, db, self.handed = [], sqlite3.connect(':memory:'), []
         db.execute(TABLE)
-        handed = self.handed
-
-        class Recording(ThreadPoolExecutor):   # the order the sites are handed to the pool: what the code guarantees (the threads' own start order is the OS's)
-            def submit(self, fn, *args, **kwargs):
-                handed.append(int(args[0]['slug'][1:]))
-                return super().submit(fn, *args, **kwargs)
+        handed, clock = self.handed, self.clock
 
         def fetcher(source):   # the first sites answer fast, the long tail slowly (the pilot run's 1,123 sites)
             n = int(source['slug'][1:])
-            if n in late:
-                time.sleep(0.05)   # Why (#3342, #3346): forces the late thread start a loaded runner showed; the OS's start order is not the ranking's
+            handed.append(n)
             read.append(n)
-            time.sleep(0.01 if n < slow_from else 0.3)
+            clock.spend(FAST_S if n < slow_from else SLOW_S)
             return [job(n)]
         out = io.StringIO()
-        began = time.monotonic()
+        began = clock.now
         with redirect_stdout(out):
-            with mock.patch.object(feed_scan, 'ThreadPoolExecutor', Recording):
-                report = feeds.scan(sources, db, fetcher=fetcher, details={})
-        return report, read, time.monotonic() - began, out.getvalue()
+            report = feeds.scan(sources, db, fetcher=fetcher, details={})
+        return report, read, clock.now - began, out.getvalue()
 
 
 class ReadInTime(Base):
     def test_a_1123_site_list_with_a_slow_tail_ends_in_its_time_best_first_and_keeps_the_rest(self):
         time_budget.start(180)
         report, read, took, log = self.scan(sites())
-        self.assertLess(took, 3, 'started no new site past its time: not 1,123 sites')
+        # 60 fast sites end at 0.6 s; the slow ones start at 0.6 and 0.9 s and the third would start at 1.2 s, past READ_S: 62 reads, every run
+        self.assertEqual(len(read), 62, 'no new site started once the read\'s time was used: not 1,123 sites')
+        self.assertLessEqual(took, READ_S + SLOW_S, 'the last site started before the cut and ended within one slow read')
         self.assertGreaterEqual(len(read), read_budget.READ_FLOOR, 'the best READ_FLOOR whatever the clock')
-        self.assertLess(len(read), 400)
         self.assertEqual(sorted(read), list(range(len(read))), 'read in the order given (best first), no site skipped ahead')
         self.assertEqual(len(report['sources']), len(read), 'the report holds the sites read')
         self.assertIn(f'the other {1123 - len(read)} are read first next time', log)
         kept = read_budget._left()
         self.assertEqual(kept[0], f'lever:s{len(read)}')
         self.assertEqual(len(kept), 1123 - len(read))
+
+    def test_the_best_floor_sites_are_read_even_when_the_read_time_is_already_used(self):
+        time_budget.start(180)
+        with mock.patch.object(read_budget, 'READ_SECONDS', 0.05):   # used up by the first slow site
+            _, read, _, _ = self.scan(sites(), slow_from=0)
+        self.assertEqual(len(read), read_budget.READ_FLOOR, 'the floor and no more')
 
     def test_the_next_run_reads_the_best_then_what_was_left_then_the_rest(self):
         key = lambda s: f"lever:{s['slug']}"
@@ -112,7 +153,7 @@ class RankedFirst(Base):
         time_budget.start(180)
         with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
                 mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
-            _, read, _, log = self.scan(given, slow_from=50, late={3})
+            _, read, _, log = self.scan(given, slow_from=50)
         # Why (#3342, 6 Nov 2026): this asserted the order the first wave's threads START fetching (`read`); on a loaded runner site 3 started after 10 ('2 started
         # before 9 on #2187' was the same). The code guarantees the order it hands the sites to the pool, so that is what is asserted.
         self.assertEqual(self.handed[:3], [7, 3, 9], 'the proven best are handed to the pool first, in the ranking\'s order')
