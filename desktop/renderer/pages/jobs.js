@@ -379,6 +379,6 @@ export async function init() {
   wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying, openJob: openJobPanel});
-  wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
+  wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage, onStep: fn => window.pilot.onTriageStep?.(fn)});
 }
 

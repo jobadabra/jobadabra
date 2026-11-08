@@ -15,7 +15,7 @@ function run({shapes, kind, kinds = [kind], ms = 0, pressed = true, navigates = 
   const step = {tab: {id: 7, url: 'https://jobs.example.test/apply'}, gen: 3, flow: {askKind: async () => { calls.push('askKind'); return kinds[Math.min(asked++, kinds.length - 1)]; }, late: () => ++lates === lateAt}};
   const parts = {prepare: async () => { calls.push('prepare'); }, shape: async () => { calls.push('shape'); return shapes[Math.min(shown++, shapes.length - 1)]; },
     still: async (_tab, {maxMs}) => { calls.push(`still ${maxMs}`); at += ms; }, now: () => at, wait: async () => { calls.push('wait'); },
-    press: async s => { calls.push('press'); s.pressed = pressed; return !navigates; }, labels: async () => {}, sketch: sketch || (async () => ({controls}))};
+    press: async s => { calls.push('press'); s.pressed = pressed; return !navigates; }, told: step => calls.push(`told ${step}`), labels: async () => {}, sketch: sketch || (async () => ({controls}))};
   return lookAtForm(step, parts).then(report => ({report, calls}));
 }
 
@@ -64,6 +64,8 @@ test('a posting gets its Apply pressed once, then the form that came is read and
   assert.deepEqual(report, {look: {role: 'form', fields: 5, files: 1, frames: 0}, simple: true, why: '', questions: []});
   assert.equal(calls.filter(call => call === 'press').length, 1);
   assert.equal(calls.filter(call => call === 'askKind').length, 2);
+  assert.equal(calls[calls.indexOf('press') - 1], 'told pressing', 'the app hears the press before it happens (8 Nov 2026: a read that went quiet after Apply named no step)');
+  assert.equal(calls[calls.indexOf('press') + 1], 'told looking', 'and hears that the form Apply brought in this tab is being read');
 });
 
 test('a posting is not pressed when its answer is an e-mail application, and a form is never pressed', async () => {

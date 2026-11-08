@@ -55,7 +55,7 @@ export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {  
   if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   return true;
 }
-/** Tells the app which step a triage read is on (judging, planning) so the Jobs dialog and the app log can say where the time goes; never waited for and never fails the read. */
+/** Tells the app which step a triage read is on (looking, pressing; judging, planning) so the Jobs dialog and the app log can say where the time goes; never waited for and never fails the read. */
 const readStep = (context, step) => { request(context, {action: 'triage-step', step}).catch(() => null); };
 /** Tell the app what a triage read saw, then close its tab: the page is never typed into and never shown to the person. */
 async function reportRead(context, found) {
@@ -69,7 +69,8 @@ async function reportRead(context, found) {
 export async function backgroundLook(tab, look) {
   const context = await backgroundContext(tab.id);
   if (context?.mode !== 'read') return false;
-  const found = await Promise.resolve().then(look).catch(() => ({unreadable: true, why: 'unreadable'}));
+  readStep(context, 'looking');   // Why (8 Nov 2026, owner: "almost no live updates"): each page a read looks at, and its Apply press (`told`), reach the dialog and app.log
+  const found = await Promise.resolve().then(() => look(step => readStep(context, step))).catch(() => ({unreadable: true, why: 'unreadable'}));
   if (found) await reportRead(context, found);   // null: the tab moved on, the page it moved to reports (extension/triage-look.js)
   return true;
 }

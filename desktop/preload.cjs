@@ -56,7 +56,7 @@ contextBridge.exposeInMainWorld('pilot', {
   notionConnect: call('notionConnect'), telegramConnect: call('telegramConnect'), telegramDisconnect: call('telegramDisconnect'), setAutomation: call('setAutomation'), setTheme: call('setTheme'),
   onExperienceStep: callback => ipcRenderer.on('experienceStep', (_, step) => callback(step)),
   onAllowanceChanged: callback => ipcRenderer.on('allowanceChanged', () => callback()),
-  onCloudStep: callback => ipcRenderer.on('cloudStep', (_, step) => callback(step)),
+  onCloudStep: callback => ipcRenderer.on('cloudStep', (_, step) => callback(step)), onTriageStep: callback => ipcRenderer.on('triageStep', (_, step) => callback(step)),
   officeState: call('officeState'), officeStart: call('officeStart'), officeCancel: call('officeCancel'), onOfficeProgress: callback => ipcRenderer.on('officeProgress', (_, step) => callback(step)),
   livePage: call('livePage'), liveOpen: call('liveOpen'), liveInput: call('liveInput'), liveClose: call('liveClose'), liveSubmit: call('liveSubmit'), liveStop: call('liveStop'), onLiveEvent: callback => ipcRenderer.on('liveEvent', (_, event) => callback(event)),
   backgroundBrowserState: call('backgroundBrowserState'), backgroundBrowserStart: call('backgroundBrowserStart'), backgroundBrowserCancel: call('backgroundBrowserCancel'), onBackgroundBrowserProgress: callback => ipcRenderer.on('backgroundBrowserProgress', (_, step) => callback(step)),

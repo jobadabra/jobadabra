@@ -27,11 +27,11 @@ async function countsOf(tabId, {shape, still, now, wait}) {
 /**
  * What the read tab shows, for the app: {look, simple, why}, {unreadable: true, why}, or null when this look must not report (the tab moved on: the page it moved to is read by its own look).
  * `step` is the flow's step ({tab, gen, flow}); the page-kind ask is the flow's own askKind. A posting whose application is a form behind its Apply button gets that button pressed once (owner, 7 Nov 2026: "Press Apply
- * once, then read", because most of his jobs open a posting first); nothing else is pressed, filled or typed. `parts` = {prepare, press} (the flow's preparePage and pressPosting, passed in by fill-flow.js: importing them here would make a cycle through account-step.js) and, in a test, {shape, still, now, wait}.
+ * once, then read", because most of his jobs open a posting first); nothing else is pressed, filled or typed. `parts` = {prepare, press, told} (the flow's preparePage and pressPosting, passed in by fill-flow.js: importing them here would make a cycle through account-step.js; `told(step)` tells the app the read's step) and, in a test, {shape, still, now, wait}.
  */
 export async function lookAtForm(step, parts = {}) {
   const {tab} = step, {askKind, late} = step.flow;
-  const {prepare, press, shape = pageShape, still = pageStill, now = Date.now, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = parts;
+  const {prepare, press, told = () => {}, shape = pageShape, still = pageStill, now = Date.now, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = parts;
   const gone = what => late(tab, step.gen, what);
   await prepare(step);   // a cookie popup closed and collapsed sections opened, as a person would, before the controls are counted
   let counts = await countsOf(tab.id, {shape, still, now, wait});
@@ -41,9 +41,11 @@ export async function lookAtForm(step, parts = {}) {
   let verdict = verdictOf(kind, counts);
   if (verdict.why === 'posting') {
     Object.assign(step, {kind, role: kind.role, counts, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
+    told('pressing');
     if (!await press(step)) return null;   // false: the press moved the tab to another page, which gets its own look
     if (gone('triage apply press')) return null;
     if (step.pressed) {
+      told('looking');   // the form Apply brought in this tab is read now (the app names it the landed page)
       counts = await countsOf(tab.id, {shape, still, now, wait});
       if (!counts) return {unreadable: true, why: 'unreadable'};
       kind = await askKind(tab);   // the page the press brought: its kept answer is keyed by its own shape, so a form seen before costs nothing
