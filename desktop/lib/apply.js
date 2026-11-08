@@ -109,8 +109,8 @@ function settleDrafted(outcomes, codes, jobs, chosen, options) {
     if (!row) return {...item, status: 'not-started', reason: 'This job is no longer in your list.'};
     const base = {...item, url: row.url};
     if (row.ineligible && !options.allowIneligible) return {...base, status: 'ineligible', reason: row.ineligible};
-    if (!row.kit) return {...base, status: 'not-started', reason: 'Its application is not saved on the job yet. Press Apply on the job to try again.'};
-    if (!startable(row, options)) return {...base, status: 'not-started', reason: `Its stage${row.stage ? ` "${row.stage}"` : ''} does not allow starting an application.`};
+    if (!row.kit) return {...base, status: 'not-started', reason: 'Its application is not ready yet. Open the job and press Apply to try again.'};
+    if (!startable(row, options)) return {...base, status: 'not-started', reason: `Already moved on${row.stage ? ` (${row.stage})` : ''}, so there is nothing to start.`};
     return {...base, status: 'prepared'};   // startable but beyond the N best: stays ready
   });
 }
