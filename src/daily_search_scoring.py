@@ -1,5 +1,6 @@
 # Search scoring phases: shared timed batches, enrichment and incremental match writes.
 from .ai import enrich, score
+from .press import step_yield
 from .daily_helpers import for_job_matches, left_out, no_profile, none_scored, time_budget_on, to_score
 
 
@@ -31,8 +32,12 @@ def score_waiting_first(args, stores, db, run, read_profile, hidden, dismissed, 
     if not taken:
         return _nothing
     batch, began = {job['id'] for job in waiting[:taken]}, __import__('time').monotonic()
-    return _beside(args.db, stores, lambda own_db, own_stores: score_candidates(
-        args, own_stores, own_db, run, read_profile, hidden, dismissed, batch, began, time_budget, final=False))
+    step_yield.scored('scoring', batch)   # report only (src/press/step_yield.py): what the step took in hand and how long it ran
+
+    def work(own_db, own_stores):
+        with step_yield.span('scoring'):
+            score_candidates(args, own_stores, own_db, run, read_profile, hidden, dismissed, batch, began, time_budget, final=False)
+    return _beside(args.db, stores, work)
 
 
 def _nothing():

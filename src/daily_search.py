@@ -23,6 +23,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
+from .press import step_yield
 from .daily_search_scoring import score_jobs, score_waiting_first
 from .daily_search_reporting import finish_search, scheduled_updates
 
@@ -37,6 +38,7 @@ def ai_ready():
 def search(args, stores=None):
     stores = stores or open_run()
     run_counts.reset()   # this search's own counts start at 0
+    step_yield.reset()   # and its steps' yield (src/press/step_yield.py)
     read_methods.reset(datetime.now(timezone.utc).isoformat(timespec='seconds'))   # and how its sources are read (src/read_methods.py)
     run = new_cron_run(args.mode)
     started = datetime.now(timezone.utc).isoformat(timespec='seconds')   # a job first seen from now on is new (src/source_yield.py)
@@ -189,6 +191,11 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
 
 # Append paid and free API results in their original order.
 def gather_apis(args, feed_db, report, so_far, ahead):
+    with step_yield.span('free_job_apis'):
+        _gather_apis(args, feed_db, report, so_far, ahead)
+
+
+def _gather_apis(args, feed_db, report, so_far, ahead):
     # Paid per search, so only full crawls use it; off without SERPAPI_API_KEY.
     if args.mode in ('scheduled', 'run') and google_jobs.api_key():
         google = google_jobs.scan(feed_db, google_jobs.api_key(),
@@ -198,7 +205,7 @@ def gather_apis(args, feed_db, report, so_far, ahead):
     # Aggregators with public APIs (src/sources/aggregators.py): free ones always, keyed ones with their keys; each at most every 6 hours.
     if args.mode in ('scheduled', 'run'):
         from .sources import aggregators
-        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards'), ahead=ahead)
+        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards', 'free_job_apis'), ahead=ahead)
         report['jobs'] += found['jobs']
         report['sources'] += found['sources']
         gather_alerts(feed_db, report)
@@ -323,4 +330,8 @@ def save_matches(args, stores, db, run, report, hidden, dismissed, started):
             source_yield.run(db, started, read=found_boards.read_since(started))   # every board read keeps a row: its history (board_yield.dead)
         except Exception as error:  # noqa: BLE001
             print(f'Warning: source yield not measured: {type(error).__name__}: {error}')
+        try:   # what each step brought and how long it ran, kept per run (src/press/step_yield.py, report only); never stops a search
+            step_yield.run(db, started)
+        except Exception as error:  # noqa: BLE001
+            print(f'Warning: step yield not measured: {type(error).__name__}: {error}')
     return open_urls
