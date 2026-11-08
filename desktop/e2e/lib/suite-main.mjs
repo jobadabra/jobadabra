@@ -49,6 +49,17 @@ export function writeFinalFailures(suite, ctx, env) {
   return missing || !ceiling.ok;
 }
 
+/** The suite's last word, in this order: late guards and the runner's own closing records (a picked step that matched none) reach suite-failures.json, then the summary prints and decides.
+ * Why (8 Nov 2026, apply red after #3579, run 42451945200): the file was written before summary() pushed the lost-pick record, so it held `[]` and e2e.yml's renamed-pick fallback never ran the whole suite.
+ * `ranToEnd`: only a suite that reached its last step can say a picked name matches no step; one that stopped early (a thrown error, a quiet stop) did not reach the rest, so its record stays
+ * summary()'s, after the file, and the leg stays red (code review of #3587, 8 Nov 2026: a hang must not read as a rename). -> 1 when the suite failed. */
+export function finishSuite(name, ctx, env, ranToEnd) {
+  if (ranToEnd) ctx.runner.recordLostPicks();
+  const guards = writeFinalFailures(name, ctx, env);
+  const failed = ctx.runner.summary();
+  return guards || failed ? 1 : 0;
+}
+
 /** The exit code of a suite stopped by an error: 1, except a suspended step that hung or left the app closed (lib/runner.mjs suspendedStop), which ends the suite without failing it.
  * Why (31 Oct 2026, spec row 33): the steps after that step did not run and say so; the hang itself is on the suspended step's owner issue. */
 export function stopCode(error, name, ctx) {
@@ -106,7 +117,7 @@ export async function runSuite(name, report = null) {
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));   // a suite may import app code that needs desktop/shared/ (apply.mjs: rung2-sketch), which a CI job never staged (21 Oct 2026)
   const suite = await import(`../suites/${name}.mjs`);
   process.env.E2E_AI_ANSWERS = suiteAnswersMode(suite, process.env);   // before openContext: the stand-in reads it
-  let ctx, code = 0;
+  let ctx, code = 0, ranToEnd = false;
   try {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.
     const {keychainChanges, snapshot} = await import('./keychain-guard.mjs');
@@ -124,6 +135,7 @@ export async function runSuite(name, report = null) {
     const quiet = await runSteps(suite, ctx);
     await suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued});
     code = afterQuietStop(quiet, name, ctx, code);
+    ranToEnd = !quiet;
   } catch (error) {
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
     code = stopCode(error, name, ctx);
@@ -150,9 +162,8 @@ export async function runSuite(name, report = null) {
       };
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
-      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784).
-      if (writeFinalFailures(name, ctx, process.env)) code = 1;
-      if (ctx.runner.summary()) code = 1;
+      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784); finishSuite also records a stale pick before the file is written (8 Nov 2026, run 42451945200).
+      code = finishSuite(name, ctx, process.env, ranToEnd) || code;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).
       try { fs.writeFileSync(path.join(ctx.ARTIFACTS, 'steps.json'), JSON.stringify({v: 1, suite: name, results: ctx.runner.results, traces: traceFiles()}, null, 1)); } catch (error) { console.log(`  (steps.json not written: ${error.message})`); }
