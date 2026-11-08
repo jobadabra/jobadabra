@@ -9,6 +9,7 @@ import {causeOf} from '../../lib/ai-failure-words.mjs';
 import {startRelay} from '../../lib/broker-relay-serve.mjs';
 import {alertCappedSteps} from '../../credit-alert.mjs';
 import {askOrSkip, noteSkipped} from '../../lib/broker-job.mjs';
+import {aiFailureCauses} from '../../lib/ai-miss-cause.mjs';
 import {AiRefused, describe, kindOf, reportRefusal} from '../../../../tools/ci-intel/lib/ai-refusal.mjs';
 
 const env = {CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '1', GITHUB_WORKFLOW: 'Central scout'};
@@ -77,6 +78,12 @@ test('the owner\'s own-share note goes through the real writer: askOrSkip record
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json'), 'utf8')).images, true);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'edit', 'ai-capped.json'), 'utf8')).images, undefined);
   fs.rmSync(dir, {recursive: true, force: true});
+});
+
+test('the failure alert\'s own reader (aiFailureCauses) tells the owner\'s note by the same title, never "credit 70.0% of 70%"', () => {
+  const said = aiFailureCauses(`the AI was refused: ${OWNER_NOTE}; the step then failed: x`).map(one => one.text);
+  assert.deepEqual(said, ['AI refused: Scheduled AI used its 70% share of this week']);
+  assert.deepEqual(aiFailureCauses('the AI was refused: 400 invalid_request_error').map(one => one.text), ['AI refused: 400 invalid_request_error'], 'a refusal that is no budget keeps its own words');
 });
 
 test('two different budget states in one run: the most severe leads, the other is an "Also" row', async () => {

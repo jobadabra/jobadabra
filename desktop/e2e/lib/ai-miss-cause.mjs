@@ -1,5 +1,6 @@
 // Put unstored AI asks and their recorded refusal before the symptom in failure and alert messages.
 // Job: report health
+import {reasonOf} from './broker-reason.mjs';
 const PREFIX = 'AI asks with no stored answer: ';
 const oneLine = value => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -27,7 +28,8 @@ export function aiFailureCauses(message) {
   const missing = items[0].startsWith(PREFIX) ? Number.parseInt(items[0].slice(PREFIX.length), 10)
     : Number(/^(\d+) AI question\(s\) had no recorded answer/.exec(items[0])?.[1] || 0);
   const refusal = items.find(item => item.toLowerCase().startsWith('the ai was refused: '))?.slice('the AI was refused: '.length);
-  const credit = /^broker: budget:own-share ([\d.]+% of [\d.]+%)/.exec(refusal || '')?.[1];
-  return [...(refusal ? [{icon: '🤖', text: `AI refused: ${credit ? `credit ${credit}` : refusal}`}] : []),
+  // Why (8 Nov 2026, Gitar on #3583): this was a second reader of the broker's reason that called own-share "credit"; lib/broker-reason.mjs is the one reader.
+  const said = reasonOf(refusal)?.title;
+  return [...(refusal ? [{icon: '🤖', text: `AI refused: ${said || refusal}`}] : []),
     ...(missing ? [{icon: '📭', text: `${missing} ${missing === 1 ? 'ask' : 'asks'} with no stored answer`}] : [])];
 }
