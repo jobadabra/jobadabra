@@ -11,9 +11,11 @@ const walk = dir => fs.readdirSync(new URL(dir, root), {withFileTypes: true}).fl
   entry.isDirectory() ? walk(`${dir}${entry.name}/`) : entry.name.endsWith('.js') ? [`${dir}${entry.name}`] : []);
 
 // The channels a start button calls that can answer {ok: false, error} before anything runs -> how the window calls each (preload.cjs).
-const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'prepareKit', 'applyOne', 'apply', 'applyCheckConfirm', 'applyWithClaude', 'command', 'tailorTop', 'visitsRun',
+const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'applyOne', 'apply', 'applyCheckConfirm', 'applyWithClaude', 'command', 'tailorTop', 'visitsRun',
   'visitWithClaude', 'visitsWithClaude', 'rescoreOutdated', 'refreshLocations'].map(name => [name, new RegExp(`\\bpilot\\.${name}\\(`)]));   // `window.pilot.x(` or an injected `pilot.x(` (pages/apply-check.js, 8 Nov 2026)
 RUN_STARTS.ivReview = /(?:pilot\.interviews|\biv)\.review\(/;
+// A press on one job's Apply or Redraft drafts its kit through Apply readiness (renderer/apply-readiness-read.js kitThroughStep, R2, 8 Nov 2026): the press says the kit's refusal.
+RUN_STARTS.applyReadiness = /(?<!function )\bkitThroughStep\(/;   // its calls, not its definition
 
 test('a refusal is read from the answer; a started or merely failed run is not one', () => {
   const credit = {ok: false, credit: true, error: 'Our AI needs AI credit. Top up, or use your own AI key.'};

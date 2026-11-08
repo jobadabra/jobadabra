@@ -39,9 +39,10 @@ import {ownSecretHints} from './secrets.js';
 import {withAccounts, withCompanies, withoutHost} from './site-accounts.js';
 import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
-import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead} from './demo.js';
+import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead, blocked} from './demo.js';
 import {matchReads} from './triage-match.js';
 import {createReadiness} from './apply-readiness.js';
+import {keepReadiness} from './apply-readiness-registry.js';
 import {applyOf, batchConfirmation, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 
 /** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
@@ -55,6 +56,9 @@ export const extensionGate = installedGate;   // what main.js hands to every han
 // Why (8 Nov 2026, Gitar on #3578): Apply readiness reads the form after a draft that failed, never after a gate, which must start nothing.
 const refusedOrDrafted = kit => (kit?.ok === false && kit.stopped !== true && !('ineligible' in kit) ? {...kit, refused: true} : kit);
 
+// Which of a kit draft's notices show (prepareKitFor's options), by who asked Apply readiness: a press on one job says all; a batch or Ready's night says a failure only, as their
+// old direct draft did (code review of R2, 8 Nov 2026: the batch's "could not be prepared" notice was lost); the Jobs check says nothing (each job's line does).
+const KIT_NOTICES = {all: {}, failures: {quiet: true}, none: {quiet: true, silent: true}};
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, background: givenBackground = null, storedCheck: givenStoredCheck = null, clock = Date.now, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
   // Why (7 Nov 2026, owner's 0.9.13 retest): old extension code filled the forms and nothing said so; a press that opens Chrome says it ('' when the copy is current or unknown). Not for the hidden browser: it carries its own copy.
@@ -64,11 +68,14 @@ export function registerApplyHandlers(ctx) {
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
   const matchLogged = asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });   // one matcher and one log line for every caller
-  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true, silent: true}).then(refusedOrDrafted), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
-    match: asked => matchLogged(asked)});
+  const readiness = keepReadiness(storage, createReadiness({storage, prepareKit: (code, name, {notices = 'none'} = {}) => prepareKitFor(code, name, KIT_NOTICES[notices] || KIT_NOTICES.none).then(refusedOrDrafted), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
+    match: asked => matchLogged(asked)}));
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
+  const named = job => [job?.title, job?.company].filter(Boolean).join(' · ');   // the kit's notices name the job as "Role · Employer", as the old draft did
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
-  ipcMain.handle('applyReadiness', async (_, job) => (DEMO ? {kit: {ok: true}, check: await demoTriageRead(storage.settings(), String(job?.url || '')), stored: false} : readiness.applyReadiness(jobOf(job)).then(done => (done.kit?.needsNotion || done.kit?.needsMove ? {...done, ...done.kit} : done))));   // Why (#3573 review): the Notion / move gate is lifted to the top, where preload opens its dialog and runs the call again   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
+  // Why (8 Nov 2026, R2): the demo has no engine to draft a kit, so a press on one job (`say`) answers as a blocked action, the way its old prepareKit call did; the demo's check still reads its named forms.
+  const demoPress = () => { appLog('demo', 'a blocked action was called', {name: 'applyReadiness'}); return {kit: blocked('applyReadiness'), check: null, stored: false}; };
+  ipcMain.handle('applyReadiness', async (_, job, options) => (DEMO && options?.say === true ? demoPress() : DEMO ? {kit: {ok: true}, check: await demoTriageRead(storage.settings(), String(job?.url || '')), stored: false} : readiness.applyReadiness(jobOf(job), {notices: options?.say === true ? 'all' : 'none'}).then(done => (done.kit?.needsNotion || done.kit?.needsMove ? {...done, ...done.kit} : done))));   // Why (#3573 review; R2, 8 Nov 2026): a store or move gate rises to the answer's top, where preload opens its dialog and repeats the call; `say` marks one job's press, whose kit notices all show   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
   // L2b: the check's simple forms' required questions matched against Your details in one go: {url: {missing, unjudged}}; each matched form is then stored. The demo names its answer in settings.demoTriageMatch (lib/demo.js).
   const askedOf = reads => (Array.isArray(reads) ? reads : []).map(read => ({url: String(read?.url || ''), questions: (Array.isArray(read?.questions) ? read.questions : []).map(String).slice(0, 30)})).filter(read => read.url).slice(0, 50);
   ipcMain.handle('applyReadinessMatch', (_, reads) => {
@@ -80,7 +87,7 @@ export function registerApplyHandlers(ctx) {
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
   // storedCheck(job): the check prepared with the job's kit, fresh, or null: Apply readiness's own reader (lib/apply-readiness.js), unless a test hands one in.
-  const checkFirst = createCheckFirst({stored: storedCheck, match: matchHeld, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : triageReadOrNull(background.triageRead, job.url)),
+  const checkFirst = createCheckFirst({stored: storedCheck, match: matchHeld, read: job => (DEMO ? demoTriageRead(storage.settings(), job.url) : readiness.applyReadiness(jobOf(job)).then(done => done.check, error => { appLog('apply', 'readiness: the held batch read failed', {error: String(error?.message || error).slice(0, 200)}); return null; })),   // Why (8 Nov 2026, R2): the held batch's read goes through the same step, so a stored check is reused instead of a second form read (a fresh simple form is stored only once a question match judged it)
     enqueue: (jobs, mode, batch, eligibility) => background.enqueue(jobs, mode, batch, eligibility), openInChrome: jobs => applyRunner.openInChrome(storage, jobs), chromeBlocked: needExtension});
   const holdForCheck = async (jobs, batch, eligibility) => {
     const can = background.canQueue('auto', batch, jobs);   // the batch's own Full automation confirmation and the browser, refused before the check with enqueue's own answer
@@ -115,14 +122,17 @@ export function registerApplyHandlers(ctx) {
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
     const started = await applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
-      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => (which === 'auto' && options?.checkFirst === true ? holdForCheck(jobs, batch, eligibility) : background.enqueue(jobs, which, batch, eligibility))});
+      job => readiness.applyReadiness({...jobOf(job), title: named(job)}, {notices: 'failures'}).then(done => done.kit), text => toWindow('applyProgress', text), {enqueue: (jobs, which, eligibility) => (which === 'auto' && options?.checkFirst === true ? holdForCheck(jobs, batch, eligibility) : background.enqueue(jobs, which, batch, eligibility))});
     return hidden ? started : withNote(started);
   });
-  ipcMain.handle('applyOne', async (_, url, details) => {
+  ipcMain.handle('applyOne', async (_, url, details, pick) => {
     const gate = needsNotion('apply');
     if (gate) return gate;
-    // Why (7 Nov 2026, owner): one job follows the saved mode and eligibility preference; its hidden queue item carries that captured setting.
-    const applySettings = applyOf(storage.settings()), applyMode = applySettings.mode, hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, null, {allowIneligible: applySettings.allowIneligible})} : null;
+    // Why (7 Nov 2026, owner; R2, 8 Nov 2026): one job runs in the saved mode unless its ⋯ menu picked one (below), always with the saved eligibility preference, captured on its hidden queue item.
+    // Why (8 Nov 2026, owner, R2: "Yes, as drawn"): a mode picked in the job's ⋯ menu (`pick`) is that job's only and writes nothing to Settings; a Full automation pick carries its own confirmation (batchConfirmation), as a Jobs-dialog pick does.
+    const settings = storage.settings(), applySettings = applyOf(settings), picked = modeBuilt(pick?.mode) ? pick.mode : '';
+    const applyMode = picked || applySettings.mode, batch = !picked ? null : {autoConfirmedAt: picked === 'auto' ? batchConfirmation(pick.autoConfirmedAt, settings, clock()) : ''};
+    const hidden = modeRunner(applyMode) === 'background' ? {applyMode, enqueue: (jobs, which) => background.enqueue(jobs, which, batch, {allowIneligible: applySettings.allowIneligible})} : null;
     const blocked = await allowanceBlock() || (hidden ? null : needExtension());
     if (blocked) return blocked;
     const result = await (DEMO ? applyRunner.openOne(url, {session: 'demo'}) : applyRunner.applyOne(storage, url, details || {}, {...(hidden ? {hidden} : {})}));   // applyRunner is lib/apply.js unless a test hands in its own; a direct `apply.` call here ignored the fake (7 Nov 2026: 3 real tabs)

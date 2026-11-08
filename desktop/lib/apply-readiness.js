@@ -39,7 +39,7 @@ export function unpack(text) {
 export const isFresh = (entry, job) => !!entry && entry.posted === String(job?.posted_at || '');
 
 /**
- * Builds the step. `prepareKit(code, name)` drafts a kit ({ok, error?}); `readForm(job)` reads the form in the hidden browser (the L1 read, null when nothing was read);
+ * Builds the step. `prepareKit(code, name, {notices})` drafts a kit ({ok, error?}; `notices`: which of its notices show); `readForm(job)` reads the form in the hidden browser (the L1 read, null when nothing was read);
  * `match(asked)` is the one question match of a check; `call` is the store call (lib/store/engine.js).
  */
 export function createReadiness({storage, prepareKit, readForm, match = asked => matchReads(storage, asked), call = engine.call, clock = () => new Date(), log = () => {}}) {
@@ -72,10 +72,13 @@ export function createReadiness({storage, prepareKit, readForm, match = asked =>
     return true;
   }
 
-  /** One job: its kit when missing, then its stored check or a fresh read. → {kit, check, stored}. */
-  async function applyReadiness(job) {
+  /**
+   * One job: its kit when missing, then its stored check or a fresh read. `notices` says which of the kit's notices show: 'all' for a press on this one job (Apply, Redraft, a top match),
+   * 'failures' for a batch or Ready's night (a job that could not be prepared is said; the rest is the batch's summary), 'none' for the Jobs check (each job's line says it). → {kit, check, stored}.
+   */
+  async function applyReadiness(job, {notices = 'none'} = {}) {
     const asked = cancels;
-    const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job').catch(error => ({ok: false, error: String(error?.message || error)}));
+    const kit = job.kit || !job.code ? {ok: true} : await prepareKit(job.code, job.title || 'this job', {notices}).catch(error => ({ok: false, error: String(error?.message || error)}));
     // Why (8 Nov 2026, red main after #3573): a kit draft that ran and failed no longer blocks the form read; the read is still worth showing (kept only once a row exists), and the kit's reason travels with the result.
     if (kit.ok === false) log('apply', 'readiness: the kit was not drafted', {error: String(kit.error || kit.reason || '').slice(0, 200), refused: kit.refused === true});
     if (kit.refused === true) return {kit, check: null, stored: false};   // Why (8 Nov 2026, Gitar on #3578): a gate (Notion, move, allowance, no AI) starts nothing, neither the browser nor the match

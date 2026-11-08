@@ -474,7 +474,7 @@ test('scenario: a DOB reported as a generic text field is reviewed with the cale
 
 test('scenario: Apply to 3 jobs, the top 3 kits come back not eligible: the next 3 eligible jobs start (8 Nov 2026, owner screenshot)', async () => {
   const jobs = [1, 2, 3, 4, 5, 6].map(number => ({code: `j${number}`, url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 99 - number}));
-  const queued = [], prepare = async code => { const job = jobs.find(row => row.code === code); job.kit = true; if (+code.slice(1) <= 3) job.ineligible = 'Needs a work permit.'; return {ok: true}; };   // the verdict reaches the app through the re-read list
+  const queued = [], prepare = async ({code}) => { const job = jobs.find(row => row.code === code); job.kit = true; if (+code.slice(1) <= 3) job.ineligible = 'Needs a work permit.'; return {ok: true}; };   // the verdict reaches the app through the re-read list
   const result = await apply.start({}, {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined, prepare, undefined, {enqueue: async chosen => { queued.push(...chosen.map(job => job.code)); return {ok: true}; }});
   assert.deepEqual(queued, ['j4', 'j5', 'j6']); assert.equal(result.ok, true);
   assert.deepEqual(result.outcomes.filter(item => item.status === 'ineligible').map(item => item.reason), ['Needs a work permit.', 'Needs a work permit.', 'Needs a work permit.']);

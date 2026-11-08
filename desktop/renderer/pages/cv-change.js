@@ -2,6 +2,7 @@
 import {date as displayDate} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
+import {kitThroughStep} from '../apply-readiness-read.js';
 import {ai} from '../ai-name.js';
 import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
@@ -76,7 +77,7 @@ export async function openCvChange() {
       redraft.addEventListener('click', async () => {
         redraft.disabled = true;
         redraft.textContent = t('pagesProfile.redrafting');
-        const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
+        const result = await kitThroughStep(window.pilot, job, {redraft: true});
         redraft.textContent = result.ok ? t('pagesProfile.redrafted') : t('pagesCommon.retry');
         sayRefused(t('pagesFieldsStatus.redraftNotStarted'), result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;

@@ -15,6 +15,7 @@ import * as notionGate from './notion-gate.js';
 import {registerJobLetterHandlers} from './job-letter-handlers.js';
 import * as pipeline from './pipeline.js';
 import {registerReadyHandlers} from './ready-handlers.js';
+import {readinessOf} from './apply-readiness-registry.js';
 import * as strategy from './strategy.js';
 import fs from 'node:fs';
 import {log as appLog} from './log.js';
@@ -23,6 +24,13 @@ import {makeDocx} from './cv-docx-tailor.js';
 import {findOffice} from './office.js';
 
 const NEEDS_AI = 'Choose your AI in Settings → Connections → AI first.';
+// Ready's night gets a job's kit through the app's one Apply readiness step (its kit, then its form check; spec 2026-11-07-apply-readiness-design.md, decision 3 "kit + check").
+// The step is looked up when the night runs: apply-handlers.js registers it after this group. → the kit's answer, {ok, error?}.
+const readyThroughStep = async (storage, job) => {
+  const readiness = readinessOf(storage);
+  if (!readiness) return {ok: false, error: 'Apply readiness is not ready yet.'};
+  return (await readiness.applyReadiness({...job, title: [job.title, job.company].filter(Boolean).join(' · ')}, {notices: 'failures'})).kit;   // a failure is said, as the night's old direct draft did
+};
 // Why (#3463): quiet errors feed Apply/pipeline output, so only UI calls resolve display wording while canonical flow values stay unchanged.
 const displayError = (quiet,key,canonical) => quiet ? canonical : t(key);
 // Why (#3463): select trusted Mac/PC wording before interpolation so personal/provider values are never rewritten.
@@ -49,7 +57,7 @@ const KIT_HEADINGS = ['Check before sending', 'Lead with', 'Cover letter'];
 
 export function registerKitHandlers(ctx) {
   const {DEMO, aiReady, allowanceBlock, app, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, syncJobs = github.syncDatabase, engineRun = pipeline.run, track} = ctx;
-  registerReadyHandlers({ipcMain, notify, shell, storage, app, powerMonitor, prepare: {kit: (code, name) => prepareKitFor(code, name, {quiet: true}), cv: (code, name) => tailorCv(code, name, {show: false, quiet: true})}});   // Ready to send (the owner's install only): the card beside Tailor on Actions, its calls in lib/ready-handlers.js
+  registerReadyHandlers({ipcMain, notify, shell, storage, app, powerMonitor, prepare: {kit: job => readyThroughStep(storage, job), cv: (code, name) => tailorCv(code, name, {show: false, quiet: true})}});   // Ready to send (the owner's install only): the card beside Tailor on Actions, its calls in lib/ready-handlers.js
   const {makeFor: makeJobLetter} = registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage});   // the job's own cover letter, made after its CV
   // The application kit: the form's questions (read from the ATS), an answer for each and a cover letter,
   // saved on the job's Notion Applications row (Stage Kit ready). Apply needs one.
@@ -82,7 +90,6 @@ export function registerKitHandlers(ctx) {
     if (exit === 0) track('kit_prepared', {});
     return {ok: exit === 0, ineligible: ineligible || ''};
   };
-  ipcMain.handle('prepareKit', (_, code, name) => prepareKitFor(code, name));
   // Tailored CV for one job: base CV (imported from the CV PDF the first time) + the posting -> Claude ->
   // checked -> PDF. A fixed-page design that overflows gets one second try with that feedback.
   const tailorCv = async (code, name = 'this job', {show = true, quiet = false} = {}) => {

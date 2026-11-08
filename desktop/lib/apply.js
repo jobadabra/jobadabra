@@ -59,7 +59,7 @@ const SPARE_TRIES = 3;
 // Why (8 Nov 2026): the most kits a batch drafts beyond its N when jobs come back not eligible or stopped; each is about 20 s, spends AI credit and leaves a "Kit ready" row on a job the batch then skips.
 const EXTRA_DRAFTS = 6;
 
-// Draft missing kits one after the other (about 20 s each). `prepare(code, name)` is the app's prepareKit.
+// Draft missing kits one after the other (about 20 s each). `prepare(job)` is the app's Apply readiness for that job (its kit, then its form check; lib/apply-readiness.js) and answers the kit: {ok, error?, ineligible?, stopped?}.
 // Why (8 Nov 2026, owner: a batch of 3 drafted 3 kits, all marked not eligible, started nothing; "ineligible jobs never fill a slot"): a kit's eligibility is known only once it is drafted, so a job the kit
 // marks not eligible (unless the batch may include those) or the engine stopped uses no try, within the spare attempts; the next missing job takes its place.
 // Returns the prepared count, the first preparation error, the attempted jobs' codes and one outcome per attempted job.
@@ -73,8 +73,8 @@ export async function draftMissing(jobs, shortfall, prepare, report = () => {}, 
     if (tries >= shortfall) break;
     const skipped = (options.skipped || 0) + outcomes.filter(item => item.status === 'ineligible').length;
     report(`Preparing application ${Math.min(tries + 1, wanted)} of ${wanted}: ${job.title} · ${job.company} (about 20 s each${skipped ? `; ${skipped} not eligible so far, replaced` : ''})…`);
-    // Why (7 Nov 2026, #3424): a rejected prepare is still one job's failure; keep its message with that outcome.
-    const result = await prepare(job.code, `${job.title} · ${job.company}`).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
+    // Why (7 Nov 2026, #3424; R2, 8 Nov 2026): when Apply readiness rejects for one job, that job alone failed; its message stays with its outcome.
+    const result = await prepare(job).catch(error => ({ok: false, error: String(error?.message || 'Application kit could not be prepared.')}));
     if (result.ok) done++;
     else why ||= result.error || '';
     const refused = result.ok && result.ineligible && !options.allowIneligible;   // with the opt-in on, a not-eligible kit still starts: it is just "prepared"
@@ -321,7 +321,7 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
   return session.resumeInApp(storage, id, {claude: binary()});
 }
 
-// `prepare` drafts a missing kit (the app's prepareKit): with it, a batch with fewer than N ready jobs drafts the rest first.
+// `prepare` gets a missing kit ready through Apply readiness (the app's step, one job at a time): with it, a batch with fewer than N ready jobs drafts the rest first.
 // mode 'background' (Background or Full automation, applyMode 'fill'/'auto'): the chosen jobs go to `enqueue` (the hidden browser's queue, lib/background-apply-controller.js).
 export async function start(storage, {n, mode, applyMode}, open = openBrowser, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null, release = job => backgroundApplyFor(storage).releaseEnded(job)} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));

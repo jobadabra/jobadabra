@@ -143,7 +143,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     const failed = [];
     for (const job of chosen.filter(each => !complete(each))) {
       const name = `${job.title} · ${job.company}`;
-      if (!job.kit) { const made = await prepare.kit(job.code, name); if (!made.ok) { failed.push(made.error || activityText('applicationNotPrepared', {name})); continue; } }
+      if (!job.kit) { const made = await prepare.kit(job); if (!made.ok) { failed.push(made.error || activityText('applicationNotPrepared', {name})); continue; } }
       if (!job.tailored || !job.letter) { const made = await prepare.cv(job.code, name); if (!made.ok) failed.push(made.error || activityText('noCv', {name})); }
     }
     const fresh = await jobs(), mine = new Set(codes), list = fresh.filter(job => mine.has(job.code) && complete(job));

@@ -72,6 +72,8 @@ const rows = {
   prepareFailed: ["Could not prepare the application","Bewerbung konnte nicht vorbereitet werden","Impossible de préparer la candidature","Impossibile preparare la candidatura","No se pudo preparar la solicitud","Candidatura nu a putut fi pregătită","Не удалось подготовить отклик"],
   pressApply: ["Press Apply to try again.","Zum Wiederholen auf Bewerben drücken.","Appuyez sur Postuler pour réessayer.","Premi Candidati per riprovare.","Pulsa Postularse para reintentar.","Apasă Aplică pentru a reîncerca.","Нажмите «Откликнуться», чтобы повторить."],
   claudeFailed: ["Claude could not start","Claude konnte nicht starten","Claude n’a pas pu démarrer","Impossibile avviare Claude","Claude no pudo iniciarse","Claude nu a putut porni","Не удалось запустить Claude"],
+  applyThisJobWith: ["Apply to this job with","Auf diese Stelle bewerben mit","Postuler à cette offre avec","Candidati a questo lavoro con","Postular a este empleo con","Aplică la acest job cu","Откликнуться на эту вакансию через"],
+  checkingReadiness: ["Checking apply readiness…","Bewerbungsbereitschaft wird geprüft…","Vérification de la préparation…","Verifica della preparazione…","Comprobando la preparación…","Se verifică pregătirea…","Проверка готовности…"],
   retryApply: ["Retry apply","Bewerbung erneut versuchen","Réessayer la candidature","Riprova candidatura","Reintentar solicitud","Reîncearcă aplicarea","Повторить отклик"],
   preparing: ["Preparing","Wird vorbereitet","Préparation","Preparazione","Preparando","Se pregătește","Подготовка"],
   openJobPage: ["Open job page","Stellenseite öffnen","Ouvrir la page de l’offre","Apri pagina dell’offerta","Abrir página del empleo","Deschide pagina jobului","Открыть страницу вакансии"],
