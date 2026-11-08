@@ -81,15 +81,19 @@ def fetch(url):
 
 
 class FakeClient:
-    def __init__(self, delay=0.0, answer=None):
-        self.delay, self.answer = delay, answer or ANSWER
+    """The web search's model. With a `gate`, it answers only when the test lets it (an event), never after a time: Why (E2b, 8 Nov 2026): the
+    order "boards on screen before the web search answers" was asserted with a 2 s sleep against a 1.5 s bound, and "still searching" with a 1 s sleep
+    against a 0.2 s wait; a loaded runner moves a sleep and a bound by seconds, an event does not move."""
+    def __init__(self, gate=None, answer=None):
+        self.gate, self.answer = gate, answer or ANSWER
 
     @property
     def messages(self):
         return self
 
     def create(self, **kwargs):
-        time.sleep(self.delay)
+        if self.gate is not None:
+            assert self.gate.wait(30), 'the test never let the web search answer'   # a hang guard, not a measure of speed
         return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(self.answer))], usage=None)
 
 
@@ -138,13 +142,22 @@ class OldState(unittest.TestCase):
         left = [thread.name for thread in threading.enumerate() if thread.name.startswith('board-web') and thread.is_alive()]
         self.assertEqual(left, [], 'a web search thread outlived its test')
 
-    def run_first(self, delay=0.0, wait=boards_first.WEB_WAIT, answer=None):
+    def run_first(self, gate=None, release_after_show=False, wait=boards_first.WEB_WAIT, answer=None):
+        """gate: the web search answers when it is set (release_after_show: as soon as the first boards are on screen; else when the run has left it).
+        `shown` holds (seconds, jobs, whether the web search had already answered when they were shown)."""
         shown = []
-        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(delay, answer)):
+
+        def on_jobs(jobs):
+            shown.append((time.monotonic() - began, jobs, gate is None or gate.is_set()))
+            if release_after_show:
+                gate.set()
+        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(gate, answer)):
             began = time.monotonic()
             with redirect_stdout(io.StringIO()) as out:
                 searching = board_web.early(SEARCH, fetch=fetch)
-                matched = boards_first.run(self.db, SEARCH, lambda jobs: shown.append((time.monotonic() - began, jobs)), wait=wait)
+                matched = boards_first.run(self.db, SEARCH, on_jobs, wait=wait)
+            if gate is not None:
+                gate.set()   # a web search still searching answers now, inside this test
             with redirect_stdout(io.StringIO()):   # a web search still searching ends inside this test: its line never lands in another test's output
                 searching.exception(timeout=10)
         return matched, shown, out.getvalue()
@@ -176,12 +189,12 @@ class OldState(unittest.TestCase):
     def test_the_boards_that_worked_are_on_screen_before_the_web_search_answers(self):
         self.run_first()
         self.search_again()
-        matched, shown, log = self.run_first(delay=2.0, answer=BAD)
-        self.assertTrue(shown and shown[0][0] < 1.5, f'shown at {shown and shown[0][0]} s, the web search answers at 2 s')
+        matched, shown, log = self.run_first(gate=threading.Event(), release_after_show=True, answer=BAD)
+        self.assertTrue(shown and not shown[0][2], 'the boards that worked were shown only after the web search answered')
         self.assertLess(log.index('that gave you jobs in this field before'), log.index('a web search found'))
 
     def test_a_web_search_still_searching_is_left_to_the_full_read(self):
-        matched, shown, log = self.run_first(delay=1.0, wait=0.2)
+        matched, shown, log = self.run_first(gate=threading.Event(), wait=0.2)
         self.assertEqual(matched, [])
         self.assertIn('the web search is still searching', log)
         self.assertEqual(len(board_web._early), 1, 'the full read takes it')
@@ -226,10 +239,10 @@ class OldState(unittest.TestCase):
     def test_a_repeat_run_reads_the_employer_sites_while_a_slow_board_is_read(self):
         """L36 · ps E2a-2 (owner, 8 Nov 2026: "Both: no waits + background (Recommended)", "the boards still start first"): run 42451932088, p7, one
         board read 55-165 s in front of the employer sites and 0 of 13 were read. The boards start first; the employer sites read while the web
-        search still answers (2 s here); their jobs are kept and shown in the thread that owns the job cache."""
+        search is still answering (held by an event until the employer read has begun); their jobs are kept and shown in the thread that owns the job cache."""
         from src.ai import batch_scope
         from src.jobs_so_far import SoFar
-        shown, at_sites, during, owner = [], [], [], threading.get_ident()
+        shown, at_sites, during, owner, gate = [], [], [], threading.get_ident(), threading.Event()
 
         class Shown(SoFar):   # the job cache: what the boards' jobs reach, in which thread
             def listener(self, where):
@@ -237,6 +250,7 @@ class OldState(unittest.TestCase):
 
         def employer_sites(sources, db, on_jobs, on_read):   # as feed_scan: on_jobs only for a site with sure jobs, on_read after every site
             at_sites.append(first.done.is_set())
+            gate.set()   # the web search answers now: the boards can be read, while this read goes on
             for _ in range(200):   # sites with no sure job read one after another while the boards are read (10 s hang guard)
                 if first.done.wait(0.05):
                     break
@@ -244,7 +258,7 @@ class OldState(unittest.TestCase):
             on_read()   # the next site: the boards' jobs reach the list now, while the employer read still runs
             during.extend(shown)
             return {'jobs': [], 'sources': []}
-        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(2.0, None)), redirect_stdout(io.StringIO()) as out:
+        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(gate, None)), redirect_stdout(io.StringIO()) as out:
             searching = board_web.early(SEARCH, fetch=fetch)
             with batch_scope.concurrent():
                 first = boards_first.Beside(SEARCH)
