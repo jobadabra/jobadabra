@@ -35,7 +35,7 @@ test('Jobs uses each background state, opens the existing session, and labels it
       fits: status.scrollWidth <= status.clientWidth,
       barHeight: Math.round(document.getElementById('apply-progress').getBoundingClientRect().height),
       barBelowButtons: document.getElementById('apply-progress').getBoundingClientRect().top > dialog.querySelector('.actions').getBoundingClientRect().bottom,
-      buttonsInside: [...dialog.querySelectorAll('.actions button')].every(button => {
+      buttonsInside: [...dialog.querySelectorAll('.actions button')].filter(button => button.checkVisibility()).every(button => {   // the shown buttons: a hidden panel's measure 0,0 ([fa] 2/2, 8 Nov 2026)
         const box = button.getBoundingClientRect();
         return box.left >= bounds.left && box.right <= bounds.right;
       })

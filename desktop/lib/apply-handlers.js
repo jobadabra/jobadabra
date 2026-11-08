@@ -59,8 +59,9 @@ export function registerApplyHandlers(ctx) {
   const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
+  const matchLogged = asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });   // one matcher and one log line for every caller
   const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true}), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
-    match: asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; })});
+    match: asked => matchLogged(asked)});
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});
   ipcMain.handle('applyReadiness', async (_, job) => (DEMO ? {kit: {ok: true}, check: await demoTriageRead(storage.settings(), String(job?.url || '')), stored: false} : readiness.applyReadiness(jobOf(job)).then(done => (done.kit?.needsNotion || done.kit?.needsMove ? {...done, ...done.kit} : done))));   // Why (#3573 review): the Notion / move gate is lifted to the top, where preload opens its dialog and runs the call again   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
@@ -71,7 +72,7 @@ export function registerApplyHandlers(ctx) {
     return DEMO ? demoTriageMatch(storage.settings(), asked) : readiness.settle(asked);
   });
   // The held batch's own match (lib/apply-check-first.js matchAll): the same call, without readiness's store step, so it never clears the form-check dialog's waiting reads.
-  const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; }); };
+  const matchHeld = reads => { const asked = askedOf(reads); return DEMO ? demoTriageMatch(storage.settings(), asked) : matchLogged(asked); };
   ipcMain.handle('triageCancel', () => { readiness.cancel(); return background.cancelTriage(); });
   // A Full automation batch checks its forms first, then the person confirms the split (spec 2026-11-07-full-automation-check-first; owner, 7 Nov 2026): the held batches and their reads live in the app (lib/apply-check-first.js).
   // storedCheck(job): the check prepared with the job's kit, fresh, or null: Apply readiness's own reader (lib/apply-readiness.js), unless a test hands one in.
