@@ -51,6 +51,10 @@ export function triageReadOrNull(read, url, log = appLog) {
 }
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
 
+// A kit answer from prepareKitFor that came from a gate (Notion, move, allowance, no AI) and not from a draft that ran: a draft that ran always answers `stopped` or `ineligible`.
+// Why (8 Nov 2026, Gitar on #3578): Apply readiness reads the form after a draft that failed, never after a gate, which must start nothing.
+const refusedOrDrafted = kit => (kit?.ok === false && kit.stopped !== true && !('ineligible' in kit) ? {...kit, refused: true} : kit);
+
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, background: givenBackground = null, storedCheck: givenStoredCheck = null, clock = Date.now, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track, staleNote = () => staleExtensionNote(server.extensionSeen(), server.latestExtension())} = ctx;
   // Why (7 Nov 2026, owner's 0.9.13 retest): old extension code filled the forms and nothing said so; a press that opens Chrome says it ('' when the copy is current or unknown). Not for the hidden browser: it carries its own copy.
@@ -59,7 +63,7 @@ export function registerApplyHandlers(ctx) {
   const background = givenBackground || backgroundApplyFor(storage);   // a test hands in a controller over a fake store and browser
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
-  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true}), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
+  const readiness = createReadiness({storage, prepareKit: (code, name) => prepareKitFor(code, name, {quiet: true, silent: true}).then(refusedOrDrafted), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
     match: asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; })});
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const jobOf = job => ({url: String(job?.url || ''), code: String(job?.code || ''), title: String(job?.title || ''), kit: job?.kit === true, posted_at: String(job?.posted_at || '')});

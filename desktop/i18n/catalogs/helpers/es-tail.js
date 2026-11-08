@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "el formulario está en un marco",
   "triageUnknown": "no se pudo saber qué página es",
   "triageTimeout": "tardó demasiado",
+  "triageKit": "no se pudo preparar el kit de solicitud",
   "triageFacts": "cada respuesta es un dato guardado",
   "triageCaptcha": "una verificación de que eres humano",
   "triageCheck": "el formulario puede tener una verificación",

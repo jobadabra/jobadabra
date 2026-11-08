@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "formularul este într-un cadru",
   "triageUnknown": "nu s-a putut stabili ce pagină este",
   "triageTimeout": "a durat prea mult",
+  "triageKit": "pachetul de candidatură nu a putut fi pregătit",
   "triageFacts": "fiecare răspuns este un fapt salvat",
   "triageCaptcha": "o verificare că ești om",
   "triageCheck": "formularul poate conține o verificare",

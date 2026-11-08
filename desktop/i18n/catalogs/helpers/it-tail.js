@@ -143,6 +143,7 @@ export const messages = {
   "triageFrame": "il modulo è in un frame",
   "triageUnknown": "non è chiaro che pagina sia",
   "triageTimeout": "ha impiegato troppo",
+  "triageKit": "il kit di candidatura non è stato preparato",
   "triageFacts": "ogni risposta è un fatto salvato",
   "triageCaptcha": "una verifica che sei una persona",
   "triageCheck": "il modulo potrebbe contenere una verifica",
