@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ..features import disabled
-from . import careers
+from . import careers, web_answers
 from ..ai import slots
 from ..press import resume
 
@@ -24,63 +24,11 @@ WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
 RECENT = 7      # the longest rest of a search still thin after TRIES tries in a row: 1, 2, 4, then this many days (_rest)
 TRIES = 3       # thin searches in a row, each on the next run, before the weekly rest (owner, 26 Oct 2026: search again while it found too little)
-RAW_HOURS = 24  # the web search's answer, saved before it is judged, waits this long for a search to judge it (a day: no judged stamp rests less, bar the very next run)
 ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI through the site's lane; OpenAI's API: not here, a signed-in plan beside it can)
 LOCAL_KINDS = ('sector', 'regional')
 # The instruction, search cap and answer form, shared with the site relay that runs this search for Free AI without a plan (one text, public).
 PROMPT = json.loads((Path(__file__).resolve().parents[2] / 'config' / 'board_web_search.json').read_text())
 SYSTEM, MAX_USES, MAX_TOKENS, MAX_FOUND = PROMPT['system'], PROMPT['max_uses'], PROMPT['max_tokens'], PROMPT['max_found']   # MAX_FOUND: boards kept from one search
-
-
-_raw_lock = threading.Lock()
-
-
-def _raw_file():
-    from ..paths import DATA
-    return DATA / 'web_raw.json'
-
-
-def _raw_all():
-    try:
-        return json.loads(_raw_file().read_text())
-    except (OSError, ValueError):
-        return {}
-
-
-def _raw_keep(key, now, boards):
-    """The boards the web search named, saved the moment its call returns, before they are judged. Why (E2b, 8 Nov 2026, persona 18's chain: the call
-    returned at 115 s, judging needed ~30 s more, the run ended at 135 s and the answer was lost; run 2 paid ~116 s for it again): ASKED -> ANSWERED
-    (here) -> JUDGED (search: the ideas and the stamp). Its own file, board_web the only writer: found_boards.read saves its copy of found_boards.json
-    whole and would drop it. Keyed by what the search asked (src/ai/board_ideas.py asked_for: countries, roles, kinds, places), so another strategy
-    never takes it."""
-    from ..paths import write_whole
-    with _raw_lock:
-        everything = {name: entry for name, entry in _raw_all().items() if _fresh(entry, now)}
-        everything[key] = {'at': now.isoformat(timespec='seconds'), 'boards': boards}
-        _raw_file().parent.mkdir(parents=True, exist_ok=True)
-        write_whole(_raw_file(), json.dumps(everything, ensure_ascii=False))
-
-
-def _fresh(entry, now):
-    try:
-        return now - datetime.fromisoformat(entry['at']) < timedelta(hours=RAW_HOURS)
-    except (KeyError, TypeError, ValueError):
-        return False
-
-
-def _raw_take(key, now):
-    """The saved answer of an earlier web search for this key still waiting to be judged, or None."""
-    entry = _raw_all().get(key)
-    return entry['boards'] if entry and _fresh(entry, now) and isinstance(entry.get('boards'), list) else None
-
-
-def _raw_drop(key):
-    """The answer is judged: it has been used."""
-    from ..paths import write_whole
-    with _raw_lock:
-        everything = _raw_all()
-        if everything.pop(key, None) is not None:
-            write_whole(_raw_file(), json.dumps(everything, ensure_ascii=False))
 
 
 def _searcher():
@@ -256,6 +204,7 @@ def _merge(into, copy):
     """What a search run on its own copy recorded (when it searched, the boards it found), into the read's found_boards.json."""
     into.setdefault('web', {}).update(copy.get('web') or {})
     into.setdefault('web_thin', {}).update(copy.get('web_thin') or {})
+    into.setdefault('web_used', {}).update(copy.get('web_used') or {})
     for key, boards in (copy.get('ideas') or {}).items():
         have = into.setdefault('ideas', {}).setdefault(key, [])
         hosts = {board['host'] for board in have}
@@ -285,7 +234,8 @@ def finish(started, proposed, timeout=None, data=None):
 
 def _leave_open(future, copy, data):
     """The one place a search still open at the cut is handed on: its answer, when it comes, is kept for the next search (_keep_late)."""
-    print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
+    if not future.done():
+        print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
     future.add_done_callback(lambda done: _keep_late(done, copy, data))
 
 
@@ -386,8 +336,8 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     if again:   # the first-jobs search and the full read are one run: its thin tries are one per run (tests/unit/sources/test_board_web_thin.py)
         print('Job boards: no web search: searched in this run', flush=True)
         return []
-    raw = _raw_take(key, now)   # an earlier search's answer, saved before it was judged: judged now, not asked again (_raw_keep)
     kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)
+    raw = web_answers.take(web_answers.name(key, places), now, (data.get('web_used') or {}).get(key))   # an earlier search's answer, saved before it was judged: judged now, not asked again
     if raw is None and due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
         print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
               'its boards are kept', flush=True)
@@ -415,13 +365,12 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     if raw is not None:
         print('Job boards: the web search answered in the last run; judging the boards it named, no new search', flush=True)
     try:
-        answer = raw if raw is not None else _ask(client, {'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds,
-                                                          'known boards': [board['name'] for board in known], **before})
-        if raw is None:
-            _raw_keep(key, now, answer)
+        question = {'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds, 'known boards': [board['name'] for board in known], **before}
+        answer = raw[0] if raw is not None else _ask(client, question)
     except Exception as error:  # noqa: BLE001 — the proposal's boards stand
         print(f'Job boards: the web search for trade and local boards did not answer ({type(error).__name__})', flush=True)
         return []
+    answered = raw[1] if raw is not None else web_answers.keep(web_answers.name(key, places), answer, now)
     hosts = {board['host'] for board in known}
     fetch = fetch or careers.get_text
     found = []
@@ -431,12 +380,12 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
             hosts.add(board['host'])
             found.append(board)
     found = _judged(found, roles, fetch)
-    _raw_drop(key)   # JUDGED: the ideas and the stamp below carry it from here
+    data = board_ideas.load() if own else data
     if found:
-        data = board_ideas.load() if own else data
         ideas = data.setdefault('ideas', {})   # Why (E2b, 8 Nov 2026): data['ideas'] read before setdefault made a store with no ideas yet raise KeyError after the paid call
         ideas[key] = (ideas.get(key) or []) + [{**board, 'origin': 'web'} for board in found]
-        if own:
-            board_ideas.save(data)
+    data.setdefault('web_used', {})[key] = answered.isoformat(timespec='seconds')   # JUDGED: the saved answer of this time is used (web_answers.take)
+    if own:
+        board_ideas.save(data)
     print(f"Job boards: a web search found {', '.join(board['name'] for board in found) or 'no trade or local board'}", flush=True)
     return found

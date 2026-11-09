@@ -124,8 +124,11 @@ def leave_early_reads(args):
     aggregators past_cut) or never reached after an error; the run's end is the one place that sees all of them (board_web.leave). EURES needs no hand-over:
     its stage always takes it (aggregators.CHEAP_PAST_CUT); the early board proposal's AI answers are cached."""
     if args.mode in ('scheduled', 'run') and not args.only_visits:
-        from .sources import board_web
-        board_web.leave(load_search_config())
+        try:   # never replaces the run's own error or ends a finished run
+            from .sources import board_web
+            board_web.leave(load_search_config())
+        except Exception as error:  # noqa: BLE001
+            print(f'Warning: the open web search was not handed on: {type(error).__name__}: {error}', flush=True)
 
 
 # Ask the first press's board proposal once the pool has named the employers (see first_jobs.propose_early for the why).

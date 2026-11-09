@@ -2,13 +2,12 @@
 redoing the same job"; E2b, 8 Nov 2026: on persona 18's chain replay run 1's web search was still searching at the cut, run 2 asked it again from
 second 0 and waited ~116 s for it, 70% of that run).
 Design: states of one web search: ASKED (board_web.early at second 0, its future in board_web._early) -> ANSWERED (the call returned: the raw boards are
-saved at once in data/web_raw.json, keyed by what was asked, 24 h) -> JUDGED (the boards are checked, then ideas + stamp in found_boards.json; the raw
-answer is used up) -> READ NEXT RUN. A search that finds its raw answer judges it and does not ask again. If the run ends while the call is open, the run's
+saved at once in data/web_raw.json, keyed by what was asked with its place words, 24 h) -> JUDGED (the boards are checked, then ideas + a stamp equal to the
+answer's time in found_boards.json: that stamp is what marks the answer used, nothing is dropped before it is on disk) -> READ NEXT RUN. A search that finds its raw answer judges it and does not ask again. If the run ends while the call is open, the run's
 end hands the future on (daily_search.leave_early_reads -> board_web.leave) and its answer is kept when it lands before the exit. One owner: board_web.
 Real web search function, a model that answers only when the test lets it; no real time enters a result."""
 import io
 import json
-import sqlite3
 import tempfile
 import threading
 import time
@@ -21,9 +20,10 @@ from unittest import mock
 
 from src import daily_search, time_budget
 from src.ai import board_ideas
-from src.sources import board_web, careers, found_boards
+from src.sources import board_web, careers, found_boards, web_answers
 
 SEARCH = {'role_keywords': ['civil engineer'], 'locations': {'top_tier': ['copenhagen']}}
+RAW_NAME = web_answers.name('k-civil', ['copenhagen'])
 ASKED = ('k-civil', ['Denmark'], ['civil engineer'], ['any'], ['copenhagen'])
 FOUND = {'boards': [{'name': 'englishjobs.dk', 'search_url': 'https://englishjobs.dk/in/kobenhavn/{role}', 'countries': ['Denmark'], 'kinds': ['any'],
                      'source_kind': 'sector'}]}
@@ -108,6 +108,7 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
         self.gate.set()   # the answer comes after the cut
         self.assertTrue(wait_for(self.stamped), 'the late answer of the web search was lost: run 2 will ask it again')
         self.assertIn('englishjobs.dk', json.dumps(board_ideas.load().get('ideas')), 'the boards it found are kept for the next run')
+        self.assertIn('k-civil', board_ideas.load().get('web_used') or {}, 'the saved answer is not marked used: the next run would judge it again')
         self.assertIn('did not answer in the search', log.getvalue())
         time_budget.start(BUDGET)   # run 2
         with redirect_stdout(io.StringIO()):
@@ -137,35 +138,64 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
         self.gate.set()
         time_budget.start(BUDGET)
         threading.Thread(target=lambda: board_web.search(SEARCH, [], client=self.client, data={}), daemon=True).start()
-        self.assertTrue(wait_for(lambda: self.raw().get('k-civil')), 'the answer was not saved when the call returned: a run that ends now loses it')
+        self.assertTrue(wait_for(lambda: self.raw().get(RAW_NAME)), 'the answer was not saved when the call returned: a run that ends now loses it')
         self.assertEqual(len(self.client.asked), 1)
         self.assertFalse(self.stamped(), 'nothing is judged yet: no stamp, no ideas')
         # Run 2, a new process: the model must not be asked, the saved answer is judged.
         board_web._searched.clear()
         time_budget.start(BUDGET)
         self.judging.set()
-        again = Gated(self.gate)
+        again, stored = Gated(self.gate), {}
         with redirect_stdout(io.StringIO()) as log:
-            found = board_web.search(SEARCH, [], client=again, data={})
+            found = board_web.search(SEARCH, [], client=again, data=stored)
         self.assertEqual(again.asked, [], 'run 2 asked the web search again')
         self.assertEqual([board['name'] for board in found], ['englishjobs.dk'])
         self.assertIn('answered in the last run', log.getvalue())
-        self.assertEqual(self.raw(), {}, 'a judged answer is used up')
+        # Run 3 on the same stored state: the stamp is on disk, so the answer is used. The search was thin (under 2 working boards), so run 3 searches
+        # afresh by the existing rule; it must not judge the used answer a second time.
+        board_web._searched.clear()
+        time_budget.start(BUDGET)
+        third = Gated(self.gate)
+        with redirect_stdout(io.StringIO()) as log:
+            board_web.search(SEARCH, [], client=third, data=stored)
+        self.assertNotIn('answered in the last run', log.getvalue(), 'a used answer was judged again')
+        self.assertEqual(len(third.asked), 1)
+
+    def test_an_answer_judged_in_a_run_that_ended_before_the_stamp_was_saved_is_taken_again(self):
+        # The run judged the boards (in memory) and ended before the ideas and the stamp reached the disk: nothing durable says it is used.
+        web_answers.keep(RAW_NAME, FOUND['boards'], datetime.now(timezone.utc))
+        with redirect_stdout(io.StringIO()):
+            board_web.search(SEARCH, [], client=self.client, data={})   # its ideas and stamp live in this dict only, then the process is gone
+        board_web._searched.clear()   # a new process: no search yet in its run
+        with redirect_stdout(io.StringIO()):
+            found = board_web.search(SEARCH, [], client=Gated(self.gate), data={})
+        self.assertEqual([board['name'] for board in found], ['englishjobs.dk'], 'the answer was dropped before its stamp was saved')
+        self.assertEqual(self.client.asked, [])
+
+    def test_a_failed_save_never_discards_the_answer(self):
+        self.gate.set()
+        with redirect_stdout(io.StringIO()) as log, mock.patch('src.paths.write_whole', side_effect=OSError('read-only')):
+            found = board_web.search(SEARCH, [], client=self.client, data={})
+        self.assertEqual([board['name'] for board in found], ['englishjobs.dk'])
+        self.assertIn('could not be saved', log.getvalue())
 
     def test_another_strategy_never_takes_the_saved_answer(self):
-        board_web._raw_keep('k-civil', datetime.now(timezone.utc), FOUND['boards'])
+        web_answers.keep(RAW_NAME, FOUND['boards'], datetime.now(timezone.utc))
         other = ('k-nurse', ['Denmark'], ['nurse'], ['any'], ['copenhagen'])
-        with redirect_stdout(io.StringIO()), mock.patch('src.ai.board_ideas.asked_for', return_value=other):
-            self.gate.set()
-            board_web.search({'role_keywords': ['nurse'], 'locations': {'top_tier': ['copenhagen']}}, [], client=self.client, data={})
-        self.assertEqual(len(self.client.asked), 1, 'a strategy change reused another search\'s answer')
+        elsewhere = ('k-civil', ['Denmark'], ['civil engineer'], ['any'], ['aarhus'])   # the same key, other place words
+        for change in (other, elsewhere):
+            with redirect_stdout(io.StringIO()), mock.patch('src.ai.board_ideas.asked_for', return_value=change):
+                self.gate.set()
+                board_web._searched.clear()
+                board_web.search(SEARCH, [], client=self.client, data={})
+        self.assertEqual(len(self.client.asked), 2, 'a strategy change reused another search\'s answer')
 
     def test_a_saved_answer_older_than_a_day_is_asked_again(self):
         then = datetime.now(timezone.utc)
-        board_web._raw_keep('k-civil', then, FOUND['boards'])
+        web_answers.keep(RAW_NAME, FOUND['boards'], at=then)
         self.gate.set()
         with redirect_stdout(io.StringIO()):
-            board_web.search(SEARCH, [], client=self.client, now=then + timedelta(hours=board_web.RAW_HOURS, minutes=1), data={})
+            board_web.search(SEARCH, [], client=self.client, now=then + timedelta(hours=web_answers.RAW_HOURS, minutes=1), data={})
         self.assertEqual(len(self.client.asked), 1, 'an answer past its day was judged as if new')
 
 
