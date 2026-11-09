@@ -12,3 +12,4 @@
 - Developer options: Save: I could not reach Developer options: Advanced is visible in Settings, but the available controls do not let me open it. | seen 1× | first 2026-11-07 | last 2026-11-07 | commit f48821c | session 2026-11-07-20261107
 - Experience sources: Add another CV version: I started Read my CV PDF, but it was still reading when I returned, so Add another CV version remained disabled and I could not add one. | seen 1× | first 2026-11-07 | last 2026-11-07 | commit fb11444 | session 2026-11-07-20261107
 - Developer options: Save: Developer options: Save not accessible from Settings | seen 1× | first 2026-11-08 | last 2026-11-08 | commit 2e11918 | session 2026-11-08-20261108
+- Experience sources: Add another CV version: Add another CV version opened “Waiting for your file…”, but no file picker or upload control was available, so I could not complete the addition. | seen 1× | first 2026-11-09 | last 2026-11-09 | commit 802f75d | session 2026-11-09-20261109

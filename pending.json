@@ -1,26 +1,18 @@
 [
  {
-  "group": "Profile",
-  "label": "Build a CV with the AI"
+  "group": "Strategy",
+  "label": "Tune my strategy"
  },
  {
-  "group": "Focus",
-  "label": "Suggestions"
+  "group": "Jobs",
+  "label": "Show jobs as a list"
  },
  {
   "group": "Settings",
   "label": "Experience sources: Add another CV version"
  },
  {
-  "group": "Jobs",
-  "label": "Open job page"
- },
- {
   "group": "Actions",
   "label": "Tailor CV + cover letter for top matches"
- },
- {
-  "group": "Strategy",
-  "label": "Tune my strategy"
  }
 ]

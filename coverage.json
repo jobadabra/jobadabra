@@ -47,5 +47,14 @@
    "start → Settings: Developer options: Save",
    "Settings: Developer options: Save → App: Read the app in another language"
   ]
+ },
+ {
+  "seed": 20261109,
+  "pairs": [
+   "start → Profile: Build a CV with the AI",
+   "Profile: Build a CV with the AI → Focus: Suggestions",
+   "Focus: Suggestions → Settings: Experience sources: Add another CV version",
+   "Settings: Experience sources: Add another CV version → Actions: Tailor CV + cover letter for top matches"
+  ]
  }
 ]
