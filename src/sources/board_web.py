@@ -24,11 +24,63 @@ WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
 RECENT = 7      # the longest rest of a search still thin after TRIES tries in a row: 1, 2, 4, then this many days (_rest)
 TRIES = 3       # thin searches in a row, each on the next run, before the weekly rest (owner, 26 Oct 2026: search again while it found too little)
+RAW_HOURS = 24  # the web search's answer, saved before it is judged, waits this long for a search to judge it (a day: no judged stamp rests less, bar the very next run)
 ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI through the site's lane; OpenAI's API: not here, a signed-in plan beside it can)
 LOCAL_KINDS = ('sector', 'regional')
 # The instruction, search cap and answer form, shared with the site relay that runs this search for Free AI without a plan (one text, public).
 PROMPT = json.loads((Path(__file__).resolve().parents[2] / 'config' / 'board_web_search.json').read_text())
 SYSTEM, MAX_USES, MAX_TOKENS, MAX_FOUND = PROMPT['system'], PROMPT['max_uses'], PROMPT['max_tokens'], PROMPT['max_found']   # MAX_FOUND: boards kept from one search
+
+
+_raw_lock = threading.Lock()
+
+
+def _raw_file():
+    from ..paths import DATA
+    return DATA / 'web_raw.json'
+
+
+def _raw_all():
+    try:
+        return json.loads(_raw_file().read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _raw_keep(key, now, boards):
+    """The boards the web search named, saved the moment its call returns, before they are judged. Why (E2b, 8 Nov 2026, persona 18's chain: the call
+    returned at 115 s, judging needed ~30 s more, the run ended at 135 s and the answer was lost; run 2 paid ~116 s for it again): ASKED -> ANSWERED
+    (here) -> JUDGED (search: the ideas and the stamp). Its own file, board_web the only writer: found_boards.read saves its copy of found_boards.json
+    whole and would drop it. Keyed by what the search asked (src/ai/board_ideas.py asked_for: countries, roles, kinds, places), so another strategy
+    never takes it."""
+    from ..paths import write_whole
+    with _raw_lock:
+        everything = {name: entry for name, entry in _raw_all().items() if _fresh(entry, now)}
+        everything[key] = {'at': now.isoformat(timespec='seconds'), 'boards': boards}
+        _raw_file().parent.mkdir(parents=True, exist_ok=True)
+        write_whole(_raw_file(), json.dumps(everything, ensure_ascii=False))
+
+
+def _fresh(entry, now):
+    try:
+        return now - datetime.fromisoformat(entry['at']) < timedelta(hours=RAW_HOURS)
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _raw_take(key, now):
+    """The saved answer of an earlier web search for this key still waiting to be judged, or None."""
+    entry = _raw_all().get(key)
+    return entry['boards'] if entry and _fresh(entry, now) and isinstance(entry.get('boards'), list) else None
+
+
+def _raw_drop(key):
+    """The answer is judged: it has been used."""
+    from ..paths import write_whole
+    with _raw_lock:
+        everything = _raw_all()
+        if everything.pop(key, None) is not None:
+            write_whole(_raw_file(), json.dumps(everything, ensure_ascii=False))
 
 
 def _searcher():
@@ -302,13 +354,25 @@ def _judged(found, roles, fetch):
     return kept
 
 
+def _ask(client, question):
+    """One web search call: the boards it names, as the AI gave them (not yet validated or judged)."""
+    from ..ai import board_ideas, cost, engine
+    from ..ai.models import SMALL_MODEL
+    response = client.messages.create(
+        model=SMALL_MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
+        messages=[{'role': 'user', 'content': json.dumps(question, ensure_ascii=False)}],
+        tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}],
+        output_config=engine.structured(board_ideas.SCHEMA, SMALL_MODEL, 'low'))
+    cost.side(SMALL_MODEL, response.usage)
+    return json.loads(next(block.text for block in response.content if getattr(block, 'type', '') == 'text')).get('boards') or []
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
     if careers.READER is None or disabled('web_search') or os.getenv('JOBADABRA_FIXTURE_DIR'):
         return []
-    from ..ai import board_ideas, cost, engine
-    from ..ai.models import SMALL_MODEL
+    from ..ai import board_ideas
     now = now or datetime.now(timezone.utc)
     asked = board_ideas.asked_for(search_config)
     own, data = data is None, board_ideas.load() if data is None else data
@@ -322,20 +386,21 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     if again:   # the first-jobs search and the full read are one run: its thin tries are one per run (tests/unit/sources/test_board_web_thin.py)
         print('Job boards: no web search: searched in this run', flush=True)
         return []
+    raw = _raw_take(key, now)   # an earlier search's answer, saved before it was judged: judged now, not asked again (_raw_keep)
     kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)
-    if due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
+    if raw is None and due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
         print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
               'its boards are kept', flush=True)
         return []
     # judged only after a search (a first one asks no AI for the role's kind; it counts as thin: nothing it found works yet)
     working, tries = (_working(kept, search_config) if last is not None else []), int((data.get('web_thin') or {}).get(key) or 0)
     before = {}
-    if last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
+    if raw is None and last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
         print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
               f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
         before = {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
                                                                             (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
-    if client is None:
+    if client is None and raw is None:
         client = _searcher()
         if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
             print('Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)', flush=True)
@@ -347,15 +412,13 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     data.setdefault('web_thin', {})[key] = tries + 1 if len(working) < WANT else 0   # thin searches in a row (TRIES, then weekly)
     if own:
         board_ideas.save(data)
+    if raw is not None:
+        print('Job boards: the web search answered in the last run; judging the boards it named, no new search', flush=True)
     try:
-        response = client.messages.create(
-            model=SMALL_MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
-            messages=[{'role': 'user', 'content': json.dumps({'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds,
-                                                              'known boards': [board['name'] for board in known], **before}, ensure_ascii=False)}],
-            tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}],
-            output_config=engine.structured(board_ideas.SCHEMA, SMALL_MODEL, 'low'))
-        cost.side(SMALL_MODEL, response.usage)
-        answer = json.loads(next(block.text for block in response.content if getattr(block, 'type', '') == 'text')).get('boards') or []
+        answer = raw if raw is not None else _ask(client, {'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds,
+                                                          'known boards': [board['name'] for board in known], **before})
+        if raw is None:
+            _raw_keep(key, now, answer)
     except Exception as error:  # noqa: BLE001 — the proposal's boards stand
         print(f'Job boards: the web search for trade and local boards did not answer ({type(error).__name__})', flush=True)
         return []
@@ -368,6 +431,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
             hosts.add(board['host'])
             found.append(board)
     found = _judged(found, roles, fetch)
+    _raw_drop(key)   # JUDGED: the ideas and the stamp below carry it from here
     if found:
         data = board_ideas.load() if own else data
         ideas = data.setdefault('ideas', {})   # Why (E2b, 8 Nov 2026): data['ideas'] read before setdefault made a store with no ideas yet raise KeyError after the paid call
