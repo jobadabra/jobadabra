@@ -3,15 +3,14 @@
 // or say `// clock: relative <why>` when the read only compares two readings of the same clock.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ALLOWED, allowedText, countLines, readAllowed, scan, worse} from '../../../../tools/unpinned-clock.mjs';
+import {ALLOWED, countLines, ledgerProblems, scan} from '../../../../tools/unpinned-clock.mjs';
 import fs from 'node:fs';
 
+// Why (8 Nov 2026, fr; Gitar on #3636): the rule lives once, in ledgerProblems; `--check` (the Python-only PR's twin test) and this test both ask it, so they cannot disagree again (#3629).
 test('no test file reads the real clock more often than its recorded debt, and fixed files leave the list', () => {
-  const allowed = readAllowed(), found = scan();
-  assert.deepEqual(worse(found, allowed), [], 'a new unpinned clock read: pin the clock in that test, or say `// clock: relative <why>` on the line');
-  const paid = Object.entries(allowed).filter(([file, count]) => count > (found[file] || 0)).map(([file]) => file);
-  assert.deepEqual(paid, [], `fixed: run \`node tools/unpinned-clock.mjs --write\` so ${ALLOWED} drops these (the debt only shrinks)`);
-  assert.equal(fs.readFileSync(ALLOWED, 'utf8'), allowedText(allowed), 'one sorted `<count><TAB><path>` line per file, so two PRs fixing different files never conflict');
+  const {found, stale} = ledgerProblems(scan(), fs.readFileSync(ALLOWED, 'utf8'));
+  assert.deepEqual(found, [], 'a new unpinned clock read: pin the clock in that test, or say `// clock: relative <why>` on the line');
+  assert.equal(stale, false, `fixed: run \`node tools/unpinned-clock.mjs --write\` so ${ALLOWED} is exactly what the scan finds: one sorted \`<count><TAB><path>\` line per file, a paid-off file leaves (the debt only shrinks)`);
 });
 
 test('what the ratchet counts: a calendar read in an unpinned file; not durations, comments, marked lines or a file that pins', () => {

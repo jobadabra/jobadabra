@@ -40,14 +40,19 @@ export function scan(root = ROOT) {
 
 export const ALLOWED = path.join(ROOT, 'tools/unpinned-clock-allowed.txt');
 
-/** The recorded debt as `{path: count}`. */
-export function readAllowed(file = ALLOWED) {
+/** The ledger's text as `{path: count}`: one `<count><TAB><path>` line per file. */
+function parseAllowed(text) {
   const debt = {};
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+  for (const line of text.split('\n')) {
     const [count, name] = line.split('\t');
     if (name) debt[name] = Number(count);
   }
   return debt;
+}
+
+/** The recorded debt as `{path: count}`. */
+export function readAllowed(file = ALLOWED) {
+  return parseAllowed(fs.readFileSync(file, 'utf8'));
 }
 
 /** The debt file's text for `found`: one sorted line per file. */
@@ -60,11 +65,21 @@ export function worse(found, allowed) {
   return Object.entries(found).filter(([file, count]) => count > (allowed[file] || 0)).map(([file, count]) => `${file}: ${count} (allowed ${allowed[file] || 0})`);
 }
 
+/**
+ * What `--check` fails on, given the scan (`{path: count}`) and the ledger's text: `found` = files that read the clock more than recorded (new reads), `stale` = true when the ledger is not exactly what the scan finds (a debt paid off, or a different layout).
+ * Why (8 Nov 2026, fr; #3629): `--check` is what a tests/*.py-only PR runs (tests/guards/rules/test_unpinned_clock.py; the desktop workflow does not start for it) and it only failed on NEW reads, so a PR that paid a file's debt off merged with its ledger line left and main went red. It now holds the same line as desktop/test/tooling/ci/unpinned-clock.test.js.
+ */
+export function ledgerProblems(read, ledgerText) {
+  const found = worse(read, parseAllowed(ledgerText));
+  return {found, stale: !found.length && ledgerText !== allowedText(read)};
+}
+
 if (process.argv[1] === import.meta.filename && process.argv.includes('--write')) {
   fs.writeFileSync(ALLOWED, allowedText(scan()));
   console.log(`wrote ${ALLOWED}`);
 } else if (process.argv[1] === import.meta.filename && process.argv.includes('--check')) {
-  const found = worse(scan(), readAllowed());
+  const {found, stale} = ledgerProblems(scan(), fs.readFileSync(ALLOWED, 'utf8'));
   if (found.length) console.error(`unpinned-clock: a test reads the real clock: pin it, or say \`clock: relative <why>\` on the line\n  ${found.join('\n  ')}`);
-  process.exitCode = found.length ? 1 : 0;
+  if (stale) console.error(`unpinned-clock: fixed: run \`node tools/unpinned-clock.mjs --write\` so ${ALLOWED} drops what is paid off (the debt only shrinks)`);
+  process.exitCode = found.length || stale ? 1 : 0;
 }
