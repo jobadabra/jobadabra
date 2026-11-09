@@ -16,13 +16,15 @@ import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 import {PUBLIC_REPO} from './lib/repos.mjs';
 import {askBroker} from './lib/broker-client.mjs';
 import {textOfTitle} from './lib/finder-prefix.mjs';
+import {SMALL} from '../lib/free-ai-models.js';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
 if (!OUT) { console.error('usage: node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]'); process.exit(2); }
 const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may carry its effort and the checklist prompt: claude-haiku-5-5:high, claude-haiku-5-5+checklist
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
-const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
+// Why (8 Nov 2026, fr; mac-9d): Qwen3-30B stops on 20 Nov 2026; the judge is the model the app's Free AI uses (desktop/lib/free-ai-models.js), so the next retirement is one edit there.
+const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || SMALL;
 const REPO = process.env.GITHUB_REPOSITORY || PUBLIC_REPO;
 // A claude-* model is asked through the AI broker (the model id picks its tier: haiku = small), in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}. usd is 0: the Codex plan, no per-call money.
 // Why (owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): this was the Anthropic API on E2E_ANTHROPIC_KEY; the table's model name is the tier asked (the broker's engine behind it is not shown).

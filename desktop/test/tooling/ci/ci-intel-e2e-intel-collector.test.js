@@ -3,7 +3,7 @@
 // (jobadabra-web#259: the replay rode inside the quality night, and those nights lost it). Played offline with fake job logs. Site half: jobadabra-web#424 (`promptNights`).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {liveNights, nightFromJobs, storedNights, promptNightFromJobs, readNight} from '../../../../tools/ci-intel/jobs/e2e-intel.mjs';
+import {causeBody, liveNights, nightFromJobs, storedNights, promptNightFromJobs, readNight} from '../../../../tools/ci-intel/jobs/e2e-intel.mjs';
 
 const SCORES = ['2026-11-04T21:10:00.1Z   scores: 3001=95 3002=85', '2026-11-04T21:11:00.1Z   second scores: 3001=92 3002=75', '2026-11-04T21:12:00.1Z   judged 18 score texts: 16 grounded, 18 useful, 2 with invented facts',
   '2026-11-04T21:13:00.1Z quality: 63/63 facts exact, ranking ok, 0 invented facts, scores stable within ±25'].join('\n');
@@ -42,4 +42,12 @@ test('a run is stored once the site lists it as a quality night or as a replay: 
   assert.deepEqual(liveNights(listed, storedNights(site), now).map(item => item.databaseId), [103], 'a replay-only run (102) is stored with the quality night (101)');
   assert.deepEqual(liveNights(listed, storedNights({quality: site.quality}), now).map(item => item.databaseId), [102, 103], 'an answer without replay ids would read and send 102 again');
   assert.deepEqual([...storedNights({})], [], 'an older site that sends no `prompts` key still works');
+});
+
+// Why (8 Nov 2026, fr; mac-9d): Qwen3-30B stops on 20 Nov; Gemma 4 thinks by default (150 tokens for a 6-token answer, measured), so a cause is asked with thinking off and without the old suffix.
+test('the cause reader asks Gemma 4 with thinking off and no Qwen3 suffix on the red line', () => {
+  const body = causeBody({system: 'Name the cause.', user: 'The red line.'});
+  assert.deepEqual(body.chat_template_kwargs, {enable_thinking: false});
+  assert.equal(body.messages[1].content, 'The red line.');
+  assert.deepEqual([body.max_tokens, body.temperature], [800, 0]);
 });

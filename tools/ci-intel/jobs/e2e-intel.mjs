@@ -16,13 +16,14 @@ import {CAUSES, DIFF_MAX, RULES_VERSION} from '../lib/e2e-causes.mjs';
 import {answerText, betaRunRow, betaRunsToRead, kindOf, namedToRedo, rateJobs, redJobs, rowsOf, runsToRead, nightRunsToRead} from './e2e-intel-rows.mjs';
 import {WORK_IDS, parseLog, workRows, weekOf} from '../lib/e2e-work.mjs';
 import {cleanLanes} from '../lib/e2e-grey.mjs';
+import {SMALL} from '../../../desktop/lib/free-ai-models.js';
 
 const repo = process.env.REPO || process.env.GITHUB_REPOSITORY || 'jobadabra/jobadabra';
 const base = process.env.E2E_INTEL_URL || 'https://www.jobpilotto.top/e2e/data';
 const execAsync = promisify(execFile);
 const WORKFLOWS = ['desktop.yml', 'e2e.yml', 'e2e-windows.yml', 'harness-daily.yml'];
 const MAX_RUNS = 200, MAX_LOGS = 150, MAX_AI = 60;   // per pass (hourly): the newest first; the rest the next pass. A red with no log read stays "unknown" and is read again.
-const MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';   // the small Workers AI model CI already uses
+const MODEL = SMALL;   // Why (8 Nov 2026, fr; mac-9d): the app's small Free AI model (desktop/lib/free-ai-models.js); Qwen3-30B, used here until now, stops on 20 Nov 2026
 const gh = (...args) => JSON.parse(execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 1 << 28}) || 'null');
 const ghAsync = async (...args) => { try { return JSON.parse((await execAsync('gh', args, {maxBuffer: 1 << 28, timeout: 60000})).stdout || 'null'); } catch { return null; } };
 async function eight(items, work) { for (let at = 0; at < items.length; at += 8) await Promise.all(items.slice(at, at + 8).map(work)); }   // eight GitHub calls at a time
@@ -144,6 +145,9 @@ export async function readLanes(read = ghAsync) {
   return lanes || undefined;
 }
 
+/** The request for one red's cause: thinking off (Gemma 4 thinks by default: 150 tokens for a 6-token answer, measured 8 Nov 2026; the Qwen3 `/no_think` suffix of 27 Oct is gone with Qwen3). */
+export const causeBody = ({system, user}) => ({messages: [{role: 'system', content: system}, {role: 'user', content: user}], max_tokens: 800, temperature: 0, chat_template_kwargs: {enable_thinking: false}});
+
 let aiCalls = 0, aiNeurons = 0;
 async function ask({system, user}) {
   const token = process.env.E2E_CAUSE_CF_TOKEN, account = process.env.E2E_CAUSE_CF_ACCOUNT;
@@ -151,7 +155,7 @@ async function ask({system, user}) {
   aiCalls += 1;
   try {
     const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${MODEL}`, {method: 'POST', headers: {Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'},
-      body: JSON.stringify({messages: [{role: 'system', content: system}, {role: 'user', content: `${user}\n/no_think`}], max_tokens: 800, temperature: 0}), signal: AbortSignal.timeout(60000)});   // /no_think: qwen3 spent the whole answer on its reasoning (27 Oct 2026)
+      body: JSON.stringify(causeBody({system, user})), signal: AbortSignal.timeout(60000)});
     const data = await response.json();
     aiNeurons += Number(data?.result?.usage?.total_tokens) || 0;
     return answerText(data);

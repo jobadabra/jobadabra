@@ -10,7 +10,7 @@ from src.ai import cost  # noqa: E402
 from src.ai.providers.anthropic_api import AnthropicApi  # noqa: E402
 from src.notion import cron_report  # noqa: E402
 
-OPEN = '@cf/qwen/qwen3-30b-a3b-fp8'
+OPEN = '@cf/google/gemma-4-26b-a4b-it'
 
 
 def answer(model):
