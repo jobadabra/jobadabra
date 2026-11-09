@@ -64,6 +64,7 @@ export function createAppNotify(ctx) {
     const settings = getStorage().settings();
     const cloud = cloudNextAt(settings);  // Always on: GitHub's schedule (the Mac's own is off then)
     return {runs, running: pipeline.running() || cloudStop(live), queued: pipeline.queued(), lastSearchAt: settings.lastSearchAt || null,
+      nextStep: settings.nextStep || null,   // what the newest Find jobs run's card says comes next (plan P3; read fresh at each redraw, renderer/pages/next-step-line.js)
       nextSearchAt: serversNextAt() ?? nextAt(settings) ?? cloud.search, nextMailAt: nextMailAt(settings) ?? cloud.mail, nextScoutAt: cloud.scout,
       cloud: !!settings.cloud?.repo, historyLoaded: !!runState.notionRuns,  // false until the run history was read from Notion
       busy: critical.labels()};  // the app's own work under way (the start-up move into Notion…): its engine steps take the run lock too

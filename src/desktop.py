@@ -106,6 +106,7 @@ def _parse_args(argv):
     sub.add_parser('visit-understand').add_argument('file')   # a page outline the extension could not read: Claude's recipe, kept per site
     sub.add_parser('visit-recipe').add_argument('file')   # the recipe kept for a site (JSON: url, forget), or null   # a page the extension sent (JSON: url, html, cards, title, session): its jobs, kept as a feed
     sub.add_parser('role-ideas')   # roles suggested from the Profile, counted in the places' titles; the words set aside come from the store
+    sub.add_parser('next-step')   # what a finished Find jobs run's card says comes next (src/press/plan.py next_steps)
     sub.add_parser('coverage')   # how much of the market the role keywords catch, and what adding a term would add (src/coverage.py)
     return parser.parse_args(argv)
 
@@ -134,6 +135,12 @@ def _explain_coverage(db, args):
     if said is not None:
         said['languages'] = coverage.language_drops()
     return few_jobs.explain(said, search), False
+
+
+# -> what the finished run's card says comes next (plan P3), or no steps.
+def _next_step(db, args):
+    from .press import plan
+    return {'ok': True, **(plan.next_steps() or {'steps': []})}, False
 
 
 # -> the shared coverage rows for Strategy and Focus.
@@ -350,6 +357,7 @@ _COMMANDS = {
     'visit-recipe': _visit_recipe,
     'role-ideas': _role_ideas,
     'coverage': _coverage,
+    'next-step': _next_step,
 }
 
 # These commands printed after the database context exited; all others printed inside it.

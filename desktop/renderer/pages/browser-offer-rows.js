@@ -8,7 +8,8 @@ export const LABEL = t('pagesActivity.browserFind');
 export const ALLOW = t('pagesAuditFirst.a35');
 const plural = (n, word) => countedLabel(word, n);
 const isSearch = run => run?.kind === 'search';
-const newestSearch = (runs = []) => runs.filter(run => isSearch(run) && !run.live).sort((a, b) => Number(b.id) - Number(a.id))[0] || null;
+/** The newest finished search run of `runs` (by id), or null; a live run is not finished. */
+export const newestSearch = (runs = []) => runs.filter(run => isSearch(run) && !run.live).sort((a, b) => Number(b.id) - Number(a.id))[0] || null;
 
 // The offer on this run's card, or null: only the newest finished Find jobs run, and only while refused sites are due.
 export function browserOffer(run, {runs = [], settings = {}} = {}) {

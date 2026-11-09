@@ -79,6 +79,12 @@ def search(args, stores=None):
                                                       seed=seed, shown_ids=shown_ids, saved_urls=saved,
                                                       hide_unscored=ai_ready())
     resume.save()   # what each step left for the next run, as counts for the planner (src/press/resume.py); the items stay in their own files
+    try:   # the plan after this run, which its card says as "Next: ..." (src/press/plan.py next_steps): AFTER resume.save, which zeroes the steps that finished (review, #P3); log only
+        if args.mode != 'more':   # a '➕ Next' page plans nothing at its start either
+            with store.connect(args.db) as db:
+                plan.run(db, head='Next plan')
+    except Exception as error:  # noqa: BLE001
+        print(f'Warning: the next Find jobs plan was not made: {type(error).__name__}: {error}')
     return finish_search(args, stores, run, spend, report, imported, messages, new_count, keyboards, shown_ids, seed,
                          REPORTS, datetime, save_run, log_crawl)
 

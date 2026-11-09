@@ -17,7 +17,7 @@ from src import desktop
 COMMANDS = ('jobs delete status unapply not-submitted posting calendar clear-jobs strategy rescore-outdated '
             'refresh-locations places-now tune explain-coverage visit-outcome visit-hide stuck-jobs stuck-dismiss '
             'set-description visit-list linkedin-searches visit-unblock visit-filters visit-context visit-session visit-jobpages '
-            'visit-jobpage visit-read refused-queue refused-judge refused-outcome visit-understand visit-recipe role-ideas coverage').split()
+            'visit-jobpage visit-read refused-queue refused-judge refused-outcome visit-understand visit-recipe role-ideas next-step coverage').split()
 URL = 'https://example.test/jobs'
 VALUE = {'text': 'Zürich'}
 ERROR = 'Your job tracker could not be updated (OSError); nothing changed. Try again.'
