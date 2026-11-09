@@ -6,6 +6,13 @@ import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, hiddenTargets, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
 import {CHIP_VALUE} from './apply-triage-steps.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {messages as shortJobs} from '../../i18n/catalogs/pages/short-jobs.js';
+
+/**
+ * True when the dialog's progress line names job `n` of `total` by its title. The words come from the catalog line the dialog paints (m203), so a renamed check keeps this step's intent.
+ * Why (#3630, 8 Nov 2026): R2 renamed the progress line on purpose (spec 2026-11-07-apply-readiness-design.md, UI names) and a hand-typed prefix here turned main red.
+ */
+export const namesJob = (text, n, total, title) => text.startsWith(shortJobs.en.m203.replace('{seen}', n).replace('{length}', total)) && text.includes(title);
 
 /** Waits on a state for as long as the step's hang cap leaves (stepTimeLeft: no clock of its own); throws what it waited for and last read. */
 async function waitOn(seen, what, read, accepts) {
@@ -56,7 +63,7 @@ export async function runTriageCancelSteps(ctx, {urls}) {
 
       for (const completed of [1, 2]) {
         held.release(addresses[completed - 1]);
-        const state = await waitOn(seen, `the dialog never named job ${completed + 1} of ${jobs.length} while its read was held`, async () => ({screen: await screenOf(page, addresses), reads: [...held.reads]}), state => state.screen.text.startsWith(`Checking ${completed + 1} of ${jobs.length}`) && state.reads.includes(addresses[completed]));
+        const state = await waitOn(seen, `the dialog never named job ${completed + 1} of ${jobs.length} while its read was held`, async () => ({screen: await screenOf(page, addresses), reads: [...held.reads]}), state => namesJob(state.screen.text, completed + 1, jobs.length, jobs[completed].title) && state.reads.includes(addresses[completed]));
         const width = `${Math.round(completed / jobs.length * 100)}%`;
         if (!state.screen.shown || state.screen.width !== width) throw new Error(`after ${completed} real reads the bar should show ${width}: ${JSON.stringify(state)}`);
         console.log(`  triage progress: ${state.screen.text}, bar ${state.screen.width}`);
