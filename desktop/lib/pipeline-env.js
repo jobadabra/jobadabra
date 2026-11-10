@@ -73,10 +73,12 @@ let crashReports = null;
 export const setCrashReports = value => { crashReports = value; };
 // An installed build (Electron's app.isPackaged), set once at start (lib/telemetry-handlers.js): EURES is one of its sources (lib/eures-on.js). Unset in node tools and tests.
 let installedBuild = false;
-/** Tells this module whether the app is an installed build (Electron's app.isPackaged, not demo); called once at start (lib/telemetry-handlers.js). Takes a boolean, returns nothing; never called = false (node tools, tests). */
-export const setInstalledBuild = value => { installedBuild = !!value; };
+/** Tells this module whether the app is an installed build: Electron's app.isPackaged, and not demo mode; called once at start (lib/telemetry-handlers.js). Returns nothing; never called = false (node tools, tests). */
+export const setInstalledBuild = (packaged, demo = false) => { installedBuild = !!packaged && !demo; };
 /** Whether EURES is one of this app's sources now (lib/eures-on.js): the app's own runs (pipelineEnv) and Always on's variable (lib/github.js) read the same answer. */
 export const euresIsOn = (env = process.env) => euresOn(env, {packaged: installedBuild});
+/** The engine's EURES switch for one run, `{JOBADABRA_EURES: '1'}` or nothing: kept out of pipelineEnv, whose complexity may not grow (clean-code gate). */
+const euresEnv = parent => (euresIsOn(parent) ? {JOBADABRA_EURES: '1'} : {});
 /** The env protocol number the app sends; src/paths.py ENV_VERSION is the engine's minimum. Bump both together (test/unit/main/env-version.test.js). */
 export const ENV_VERSION = 1;
 export function pipelineEnv(storage, parent = process.env) {
@@ -101,7 +103,7 @@ export function pipelineEnv(storage, parent = process.env) {
     ...(requestLog.logPath() ? {JOBADABRA_NOTION_LOG: requestLog.logPath()} : {}),  // Python's Notion requests: same file
     // Pages that only exist after their scripts run, rendered in the app's own Chromium (lib/page-render.js, src/sources/render.py).
     ...(pageRender.address() ? {JOBADABRA_RENDER_URL: pageRender.address(), JOBADABRA_RENDER_TOKEN: pageRender.TOKEN} : {}),
-    ...(euresIsOn(parent) ? {JOBADABRA_EURES: '1'} : {}),   // EURES only in an installed beta or stable build, never from source or on CI (lib/eures-on.js)
+    ...euresEnv(parent),   // EURES only in an installed beta or stable build, never from source or on CI (lib/eures-on.js)
     ...(crashReports?.enabled() ? {JOBADABRA_SENTRY_DSN: crashReports.dsn, JOBADABRA_APP_VERSION: crashReports.version, JOBADABRA_INSTALL_ID: crashReports.installId} : {}),
   };
   // The Profile and standard answers are read from Notion; before it is connected (Trying) from this Mac's files

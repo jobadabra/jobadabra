@@ -30,7 +30,7 @@ export function registerTelemetryHandlers(ctx) {
   let telemetry = null, analytics = null, staleWarned = '';   // main.js keeps telemetry, trail and analytics too (track() reads them): set through the setters
   let trail = null;
   const quiet = DEMO ? 'demo mode' : telemetryLib.reportingOff(process.env, {packaged: app.isPackaged});
-  pipeline.setInstalledBuild(app.isPackaged && !DEMO);   // EURES is a source of an installed build only (lib/eures-on.js)
+  pipeline.setInstalledBuild(app.isPackaged, DEMO);   // EURES is a source of an installed build only (lib/eures-on.js)
   // The recipe/meanings exchange (lib/recipes.js) follows learningOff: the same as `quiet`, except a live-test twin learns and shares (telemetry.js).
   const learning = DEMO ? 'demo mode' : telemetryLib.learningOff(process.env, {packaged: app.isPackaged});
   recipesLib.setSiteOff(learning);

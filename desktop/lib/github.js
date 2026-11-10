@@ -196,6 +196,11 @@ export async function setVariables(api, repo, variables) {
   }
 }
 
+/** Sets the repo variable JOBADABRA_EURES to '1' when this app has EURES on, else lists it to be removed (kept out of payload, whose complexity may not grow). */
+function euresVariable(variables, removed) {
+  if (euresIsOn()) variables.JOBADABRA_EURES = '1'; else removed.push('JOBADABRA_EURES');
+}
+
 // What goes to the repo: the scheduled workflows, the user's search settings, keys and Notion IDs.
 export function payload(storage, templatesDir = path.join(REPO, 'templates', 'github-actions')) {
   const files = {};
@@ -228,7 +233,7 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
   if (notify.includes('email') || telegramOff) variables.JOBADABRA_NOTIFY = notify.join(','); else removed.push('JOBADABRA_NOTIFY');
   variables.JOBADABRA_NOTIFICATION_LANGUAGE = notificationLanguage(storage);
   // Why (10 Nov 2026, owner: "In the beta/stable releases it should be on"; review of oe 1/3): the cloud run (daily.yml) is the installed app's search too, and a GitHub run is a CI run to the engine, so it is told like the app's own runs.
-  if (euresIsOn()) variables.JOBADABRA_EURES = '1'; else removed.push('JOBADABRA_EURES');
+  euresVariable(variables, removed);
   if (settings.firstRunAt) variables.JOBADABRA_FIRST_RUN = settings.firstRunAt; else removed.push('JOBADABRA_FIRST_RUN');
   // The engine GitHub runs use (never a CLI there): the chosen family's API engine, on its own key (lib/ai/index.js alwaysOnEngine).
   // 'api' is the workflows' default, so it is only set for OpenAI (and removed otherwise, so a switch back to Claude takes effect).
