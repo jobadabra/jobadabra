@@ -95,7 +95,7 @@ test('two different budget states in one run: the most severe leads, the other i
   } finally { console.log = print; }
   await alertCappedSteps({artifacts: dir, env, log: () => {}, fetcher: async (url, init) => { sent.push(JSON.parse(init.body).text); return new Response('{}'); }});
   fs.rmSync(dir, {recursive: true, force: true});
-  assert.ok(sent[0].includes("<b>Codex's week is used up</b>") && /Also: Scheduled AI used its 70% share of this week/.test(sent[0]), sent[0]);
+  assert.ok(sent[0].includes("<b>Codex's week is used up</b>") && /Also\n• Scheduled AI used its 70% share of this week/.test(sent[0]), sent[0]);
 });
 
 test('a 503 about one bad reply, a lost login or a 401 is no credit, though the client files them under capped', async () => {

@@ -57,13 +57,14 @@ export function reasonOf(getText, status = '') {
 
 /** The Telegram notice (lib/notice.mjs): `kind` live | failed | ended | broken. */
 export function messageOf(kind, {version, reason = '', run = '', repo = ''}) {
-  if (kind === 'live') return notice({icon: '✅', title: 'Microsoft Store', verdict: `Jobadabra ${version} is live`, run: STORE_PAGE, linkText: 'Open the Store page'});
+  // Why (10 Nov 2026, owner: every message reads like the Central scout one): the headline names the version and what happened, the one verdict line says what it means for the owner.
+  if (kind === 'live') return notice({icon: '✅', title: `Jobadabra ${version} is live on the Microsoft Store`, verdict: 'Microsoft accepted it.', run: STORE_PAGE, linkText: 'Open the Store page'});
   if (kind === 'failed') {
-    return notice({title: 'Microsoft did not accept a version', verdict: `Jobadabra ${version} was not accepted`, run,
-      bullets: [`Why: ${reason}`, 'It is not sent again by itself; the weekly run sends the next newer stable that passes', `To retry once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}`]});
+    return notice({title: `Microsoft did not accept Jobadabra ${version}`, verdict: 'It is not sent again by itself: the weekly run sends the next newer stable that passes.', run,
+      bullets: [`Why: ${reason}`, `To retry once fixed: gh workflow run msix-store.yml -R ${repo} --ref main -f tag=desktop-v${version}`]});
   }
-  if (kind === 'ended') return notice({icon: 'ℹ️', title: 'Microsoft Store review ended', verdict: `Jobadabra ${version} left Microsoft's review before its verdict was read`, bullets: [`${reason} was submitted after it`, 'Check Partner Center to see whether it was accepted']});
-  if (kind === 'broken') return notice({title: 'Microsoft Store watcher is failing', verdict: 'No "accepted" message will come until it is fixed', bullets: ['It tells you once; it is quiet again after a green check'], run});
+  if (kind === 'ended') return notice({icon: 'ℹ️', title: `Microsoft Store review of ${version} ended`, verdict: 'Check Partner Center to see whether it was accepted.', bullets: [`It left Microsoft's review before its verdict was read; ${reason} was submitted after it`]});
+  if (kind === 'broken') return notice({title: 'Microsoft Store watcher is failing', verdict: 'No "accepted" message will come until it is fixed. It tells you once; it is quiet again after a green check.', run});
   throw new Error(`unknown message kind ${kind}`);
 }
 

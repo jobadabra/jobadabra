@@ -52,6 +52,12 @@ test('credit-alert: a held alert is delivered for its marker; a switchboard that
   assert.equal(down.bot().length, 1);
 });
 
+test('send: the old bot reports its alert\'s state to the switchboard, so a repeat is held after the channel is back (8 Nov 2026: "red on main" told twice)', async () => {
+  const down = net({status: 503, body: {ok: false, why: 'channel-not-connected'}});
+  assert.equal(await send('x', KEY, down.fetcher, {event: 'main-red', state: 'red:abc:2026-11-08'}), 'ci-alert: sent');
+  assert.deepEqual(down.site().at(-1).body, {event: 'main-red', fallback: true, state: 'red:abc:2026-11-08'});
+});
+
 test('telegram-post (the Build Log bot): the switchboard first when it has an event, the Build Log bot when it cannot deliver, and no event is the old path exactly', async () => {
   const ok = net({status: 200, body: {ok: true, sent: true}});
   assert.equal(await postTelegram('hello', {env: KEY, fetcher: ok.fetcher, event: 'record-sites'}), 'telegram: sent');

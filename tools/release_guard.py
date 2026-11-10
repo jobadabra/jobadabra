@@ -72,15 +72,22 @@ def _post_switchboard(body):
         return None
 
 
+def _card(headline, rows, verdict):
+    """The owner's Telegram card (the shape of desktop/e2e/lib/tg-card.mjs): dot + bold headline, "What it did" rows (top 3 + N more), one ⚠️ verdict line."""
+    esc = lambda t: str(t).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    shown = rows if len(rows) <= 4 else rows[:3] + [f'+{len(rows) - 3} more']
+    return f"🟠 <b>{esc(headline)}</b>\n\n<b>What it did</b>\n" + '\n'.join('• ' + esc(r) for r in shown) + f"\n\n⚠️ {esc(verdict)}"
+
+
 def _tell(text):
-    """Tells the owner: the switchboard first (event release-guard: the owner's on/off, "when" and bot), the CI-alerts bot when it cannot deliver; always prints it."""
-    print(text)
-    answer = _post_switchboard({'event': 'release-guard', 'text': text, 'level': 'problem'})
+    """Tells the owner: the switchboard first (event release-guard: the owner's on/off, "when" and bot), the CI-alerts bot when it cannot deliver; always prints it. `text` is the card's HTML."""
+    print(re.sub(r'<[^>]+>', '', text))
+    answer = _post_switchboard({'event': 'release-guard', 'text': text, 'html': True, 'level': 'problem'})
     if answer and (answer.get('sent') is True or (answer.get('sent') is False and answer.get('why'))):
         return   # sent, or held on purpose by the owner's switch: done
     token, chat = os.environ.get('TELEGRAM_BOT_TOKEN'), os.environ.get('TELEGRAM_CHAT_ID')
     if token and chat:
-        data = urllib.parse.urlencode({'chat_id': chat, 'text': text}).encode()
+        data = urllib.parse.urlencode({'chat_id': chat, 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': 'true'}).encode()
         urllib.request.urlopen(f'https://api.telegram.org/bot{token}/sendMessage', data, timeout=20).read()
         _post_switchboard({'event': 'release-guard', 'fallback': True})   # Admin shows "sent without switchboard"
 
@@ -103,7 +110,8 @@ def main(argv):
             _gh('release', 'edit', tag, '-R', REPO, '--prerelease', '--latest=false')
     if found['strangers']:   # 24 Oct 2026: "it should be only desktop app releases"; the guard names them, the owner deletes them
         notes.append('not desktop releases, to be deleted by the owner (keep the tag): ' + ', '.join(found['strangers']))
-    _tell('⚠️ Release guard: ' + '; '.join(notes))
+    # Why (10 Nov 2026, owner: every message reads like the Central scout one): was one plain "⚠️ Release guard: a; b; c" line.
+    _tell(_card(f'Release guard stopped {len(notes)} problem' + ('' if len(notes) == 1 else 's') + ' with the Latest release', notes, 'Check the Releases page: the guard fixes what it safely can and lists the rest.'))
     return 0 if found['repoint'] or is_desktop(found['latest']) else 1
 
 

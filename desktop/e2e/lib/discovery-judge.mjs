@@ -7,6 +7,8 @@
 //   stopped-early  the run ended before the form with no reason the person is told
 //   not-measured   the test's own hold, a bot wall on a CI address, a gone posting, a refused AI, a run that did not finish: never a failure
 // A failure is new when its row is new (the picker never picks a recorded host), so every failing row of the batch is listed. Guard: e2e/test/discovery-judge.test.mjs.
+import {card} from './tg-card.mjs';
+
 export const VERDICTS = ['fields-left', 'wrong', 'stopped-early', 'fine', 'not-measured'];
 export const FAILURES = ['fields-left', 'wrong', 'stopped-early'];
 const FIELD_CAUSES = new Set(['field-missed', 'ai-miss', 'control-unseen']);
@@ -40,20 +42,20 @@ export function judgeBatch(report = {}, picked = []) {
 }
 const hostOf = url => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
-// Telegram: ONE message a run, only when something new failed. -> '' when nothing did.
+// Telegram: ONE message a run, only when something new failed (a card, lib/tg-card.mjs). -> '' when nothing did.
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): headline with the number, a fine/failed bar, one row per failed site (top 3 + N more), the money as the one verdict line.
 export function telegramText({day, judged = [], usd = 0, weekSpent = 0, weekCap = 3, labUrl = 'https://www.jobadabra.top/admin/form-filling/lab'}) {
   const failed = judged.filter(item => FAILURES.includes(item.verdict));
   if (!failed.length) return '';
-  const fine = judged.filter(item => item.verdict === 'fine'), unmeasured = judged.filter(item => item.verdict === 'not-measured');
-  return [`🔎 Discovery ${day}: ${judged.length} sites recorded, ${failed.length} failed`,
-    ...failed.map(item => `• ${item.host || item.shape}: ${verdictWord(item.verdict)}${item.detail ? ` (${item.detail})` : ''}`),
-    ...(fine.length ? [`✅ ${fine.length} fine: ${fine.map(item => item.host).join(', ')}`] : []),
-    ...(unmeasured.length ? [`⚪ ${unmeasured.length} not measured`] : []),
-    `Spent $${usd.toFixed(2)} (week $${weekSpent.toFixed(2)} of $${weekCap.toFixed(2)}). Needs a fix: ${labUrl}`].join('\n');
+  const unmeasured = judged.filter(item => item.verdict === 'not-measured');
+  return card({level: 'orange', headline: `Discovery ${day}: ${failed.length} of ${judged.length} sites failed`, bar: {done: judged.length - failed.length, total: judged.length, doneWord: 'recorded fine', restWord: 'failed'},
+    why: failed.map(item => ({icon: '✗', text: `${item.host || item.shape}: ${verdictWord(item.verdict)}${item.detail ? ` (${item.detail})` : ''}`})), whyTitle: 'Needs a fix',
+    facts: unmeasured.length ? [`⚪ ${unmeasured.length} not measured`] : [],
+    verdict: {ok: false, text: `Spent $${usd.toFixed(2)} (week $${weekSpent.toFixed(2)} of $${weekCap.toFixed(2)}).`}, link: {text: 'Open the lab', url: labUrl}});
 }
 
 // The message when the week's cap stops the batch: once a week (alerted: the week an earlier run already told).
-export const capText = ({week, spent, cap}) => `⛔ Discovery batch paused: $${spent.toFixed(2)} of the $${cap.toFixed(2)} week cap (week of ${week}) is spent. It resumes on Monday.`;
+export const capText = ({week, spent, cap}) => card({level: 'grey', headline: `Discovery batch paused: $${spent.toFixed(2)} of $${cap.toFixed(2)} spent`, verdict: {ok: true, text: `The week cap (week of ${week}) is used. It resumes on Monday.`}});
 
 // Rows that reached a flow shape the pool does not have yet join the pool by a PR: not-measured and unclear rows never do (a recording that taught nothing).
 export function poolAdditions(judged, known = new Set()) {

@@ -4,11 +4,12 @@
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): the weekly GitHub issue is gone; its tables are the Admin page PAGE.
 import {GROUPS} from './e2e-causes.mjs';
 import {greySummary} from './e2e-grey.mjs';
-import {speedLines, speedSummary} from './e2e-speed.mjs';
+import {PR_SPLIT_SECONDS, speedSummary} from './e2e-speed.mjs';
 import {windowOf} from './e2e-window.mjs';
 import {scoreRows, workWeeks} from './e2e-scorecard.mjs';
 import {summary as topSummary} from './e2e-top.mjs';
 import {PLUMBING_TARGET, weekOf} from './e2e-work.mjs';
+import {card, plural} from '../../../desktop/e2e/lib/tg-card.mjs';
 
 export const PAGE = 'https://www.jobadabra.top/admin/testing/e2e';
 const DAY = 86400000;
@@ -44,21 +45,26 @@ const plumbingLine = s => (s.work.total
   ? `Plumbing ${pct(s.work.counts.plumbing || 0, s.work.total)} of ${s.work.total} commits in the week of ${dayWords(s.work.week)} (${(s.work.plumbing < PLUMBING_TARGET ? 'under' : 'over')} the ${pct(PLUMBING_TARGET, 1)} target)`
   : `No commit read for the week of ${dayWords(s.work.week)}`);
 
-/** One Telegram message under 4096 characters: compact Grey rows, bounded suite lists, the decision and the page link always retained. */
-export function telegramText(s) {
-  const groups = GROUPS.filter(group => s.byGroup[group.id]).map(group => `${group.label} ${s.byGroup[group.id]}`).join(' · ');
-  const grey = s.grey;
-  const render = limit => [`🧪 E2E week to ${dayWords(s.day)}: ${s.redRuns} of ${s.runs} runs red (${pct(s.redRuns, s.runs)})`,
-    s.reds ? `${s.reds} red suites: ${groups}` : 'No red suite this week',
-    s.caught.length ? `Caught a bug: ${list(s.caught, row => row.suite, limit)}` : 'No red suite caught a bug',
-    ...(s.idle.length ? [`Red, caught nothing: ${list(s.idle, row => `${row.suite} (${row.noise + row.ours + row.unnamed})`, limit)}`] : []),
-    ...speedLines(s.speed, Math.max(1, limit)), plumbingLine(s), 'Grey', ...(!grey.read ? ['lane registry not read yet'] : !grey.rows.length ? ['No tolerant or suspended suites.'] : [
-      ...grey.rows.slice(0, limit).map(row => `${row.suite} (${row.lane}, ${row.ageText}, ${row.nights.filter(night => night.green === false).length}/${row.nights.length} red)`),
-      ...(grey.rows.length > limit ? [`…and ${grey.rows.length - limit} more`] : [])]),
-    decision(s, limit) ? `Your call: ${decision(s, limit)}` : 'No decision for you this week.', PAGE].join('\n');
-  // Shrink every suite list together: a large scorecard or decision must not crowd out the decision line and links.
-  let limit = Math.max(s.caught.length, s.idle.length, s.prune.length, grey.rows.length, s.speed?.slowPr.length || 0), text = render(limit);
-  while (text.length >= 4096 && limit > 0) text = render(--limit);
-  return text;
-}
+const GROUP_ICON = {ours: '🤖', tests: '🧪', app: '📱', none: '❔'};
+// "qualityai, calendar, recorded +13": the first three names and how many more, never the whole list (the page keeps it).
+const names = (rows, pick = row => row.suite, shown = 3) => `${rows.slice(0, shown).map(pick).join(', ')}${rows.length > shown ? ` +${rows.length - shown}` : ''}`;
 
+/**
+ * The week as one owner card (tools/lib tg-card shape, owner 10 Nov 2026: "let's make this telegram message have a better readability… ASCII. Colors"): headline with the number, a green/red bar,
+ * the red suites by cause (icon + count), up to three one-line facts, ONE decision line, ONE link. The full lists (slowest, grey, every suite) stay on the page it links.
+ * Why (10 Nov 2026): the 17-line wall of comma lists is gone; the same numbers are on the page, never counted twice.
+ */
+export function telegramText(s) {
+  const why = GROUPS.filter(group => s.byGroup[group.id]).map(group => ({icon: GROUP_ICON[group.id], count: s.byGroup[group.id], text: group.label}));
+  const grey = s.grey?.rows || [], slow = s.speed?.slowPr || [];
+  const facts = [s.caught.length ? `🐛 Caught a bug: ${names(s.caught)}` : '🐛 No red suite caught a bug',
+    s.work.total ? `🧱 Plumbing ${pct(s.work.counts.plumbing || 0, s.work.total)} of ${s.work.total} commits (${s.work.plumbing < PLUMBING_TARGET ? 'under' : 'over'} the ${pct(PLUMBING_TARGET, 1)} target)` : `🧱 No commit read for the week of ${dayWords(s.work.week)}`,
+    `⚪ ${grey.length ? plural(grey.length, 'grey suite') : 'No grey suite'} · ${slow.length ? `${plural(slow.length, 'PR suite')} over ${PR_SPLIT_SECONDS / 60} min` : 'no PR suite over 8 min'}`];
+  const expired = grey.filter(row => row.expired || row.below);
+  const call = [s.prune.length ? `${plural(s.prune.length, 'suite')} red in 30 days without catching a bug (${names(s.prune)}): keep, move to a tolerant lane, or retire?` : '',
+    expired.length ? `Grey: ${names(expired)} past their limit: keep, fix or retire?` : ''].filter(Boolean).join(' ');
+  const level = !s.runs ? 'grey' : call || s.redRuns / s.runs > 0.1 ? 'orange' : 'green';
+  return card({level, headline: `E2E week to ${dayWords(s.day)}: ${s.redRuns} of ${s.runs} runs red (${pct(s.redRuns, s.runs)})`,
+    bar: {done: s.runs - s.redRuns, total: s.runs, doneWord: 'green', restWord: 'red'}, why, whyTitle: s.reds ? `${s.reds} red suites` : 'No red suite this week', facts,
+    verdict: call ? {ok: false, text: `Your call: ${call}`} : {ok: true, text: 'No decision for you this week.'}, link: {text: 'Open the page', url: PAGE}});
+}

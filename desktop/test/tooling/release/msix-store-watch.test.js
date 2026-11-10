@@ -52,7 +52,7 @@ test('refused: the owner hears the reason and nothing is started', async () => {
   const w = world();
   await tell(w.env('failed'), w);
   assert.equal(w.messages.length, 1);
-  assert.match(w.messages[0].text, /Jobadabra 0\.8\.86 was not accepted.*bad capability.*not sent again by itself/s);
+  assert.match(w.messages[0].text, /Microsoft did not accept Jobadabra 0\.8\.86.*Why: bad capability.*not sent again by itself/s);
   assert.deepEqual(w.dispatched, []);
 });
 
@@ -60,7 +60,7 @@ test('an older pending version is told it left review, not given a verdict it ne
   const w = world({submitted: ['0.8.86', '0.9.6']});
   await tell(w.env('live', '0.9.6'), w);   // 0.9.6 is the version the status was read for
   assert.deepEqual(w.dispatched, []);
-  assert.match(w.messages[0].text, /Jobadabra 0\.8\.86 left Microsoft&#39;s review|Jobadabra 0\.8\.86 left Microsoft's review/);
+  assert.match(w.messages[0].text, /Microsoft Store review of 0\.8\.86 ended.*left Microsoft(&#39;|')s review/s);
   assert.match(w.messages[1].text, /0\.9\.6 is live/);
   assert.ok(w.tags.has('msstore-followed-0.8.86') && w.tags.has('msstore-followed-0.9.6'));
 });
@@ -121,4 +121,21 @@ test('a failing check tells the owner once per broken streak; a green check ends
   const down = world({down: true});
   await assert.rejects(broken(down.env('live'), down), /did not reach Telegram/);
   assert.ok(!down.tags.has('msstore-watch-broken'), 'claim released so the next hour retries');
+});
+
+// The owner's scenario of 8 Nov 2026 ("It tells you once" came twice, runs 42466803520 and 42471046179): Telegram delivered it, the request timed out, the claim was released, the next hour told again.
+test('a send that timed out may have arrived: the claim stays, the next hour does not tell again; a real refusal still releases it', async () => {
+  const {send} = await import('../../../e2e/ci-alert.mjs');
+  const env = {CI_ALERTS_TELEGRAM_BOT_TOKEN: 't', CI_ALERTS_TELEGRAM_CHAT_ID: 'c'};
+  const timedOut = async () => { throw Object.assign(new Error('The operation was aborted due to timeout'), {name: 'TimeoutError'}); };
+  assert.match(await send('x', env, timedOut), /^ci-alert: unsure \(TimeoutError/);
+  assert.match(await send('x', env, async () => ({ok: false, status: 502})), /^ci-alert: not sent \(Telegram 502\)/, 'positive control: a refusal is still not delivered');
+  const w = world();
+  let calls = 0;
+  w.sender = async (text, e) => { calls++; return send(text, {...env, ...e}, timedOut); };
+  const run = w.env('live');
+  await broken(run, w);
+  await broken(run, w);   // the next hour, still broken
+  assert.equal(calls, 1, 'told once although the first send timed out');
+  assert.ok(w.tags.has('msstore-watch-broken'), 'the claim stays');
 });

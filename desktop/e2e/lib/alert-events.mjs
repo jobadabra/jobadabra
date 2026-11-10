@@ -16,10 +16,16 @@ export const WORKFLOW_EVENTS = {
 export const eventOfWorkflow = (env = process.env) => WORKFLOW_EVENTS[path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0])] || '';
 
 /**
- * level: what "only problems" compares (a failure is a problem, a recovery is an all-clear).
- * No `state` on purpose (code review of 3/4c, 5 Nov 2026): "changes only" holds an alert whose state equals the last SENT one, but a green run after a merge sends nothing, so "green" is never recorded and
- * a later identical red would be held for good. The CLI already sends one alert per failure (isRepeat: once per commit and set of failed jobs), which is the old behaviour; `changes` therefore acts as "every
- * time" for these alerts.
- * TODO(AI): record the green runs on the switchboard so "changes only" can hold a repeat (5 Nov 2026)
+ * What the switchboard's "when" modes read: `level` (a failure is a problem, a recovery an all-clear) and, for a failure, `state` = the red steps (or failed jobs) + the UTC day.
+ * Why (10 Nov 2026, owner's shot of 8 Nov: "apply · red on main" sent at 18:25 and 23:01 for two commits with the same failed step): state was left out (5 Nov, code review of 3/4c) because a green run
+ * after a merge sends nothing, so "green" is never recorded and a later identical red would be held for good. Adding the day bounds that: the same red set is told once per UTC day (a "still red"
+ * reminder), a different set or the next day tells again, and a fix then a regression the same day is the only thing held.
+ * A recovery carries no state: it is its own message each time.
  */
-export const stateOf = status => ({level: status === 'failure' ? 'problem' : 'ok'});
+export const stateOf = (status, {causes = [], jobs = [], now = new Date()} = {}) => {
+  if (status !== 'failure') return {level: 'ok'};
+  const keys = (causes.length ? causes.map(cause => `${cause.suite} · ${cause.step}`) : jobs.map(job => job.name || job)).sort().join('|');
+  let hash = 5381;
+  for (const char of keys) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0;
+  return {level: 'problem', ...(keys ? {state: `red:${hash.toString(36)}:${now.toISOString().slice(0, 10)}`} : {})};
+};

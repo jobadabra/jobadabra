@@ -6,7 +6,7 @@
 // bounded (20 s, 3 tries on a network error or a 5xx), and a failure is one log line, one Telegram note and a red run of THIS workflow (retry by hand: the site tells each reporter once).
 // The pull requests are the "(#123)" at the end of the commit subjects between the previous stable release and this tag; no previous stable is found: an empty list (the site then matches only by version or by time).
 import path from 'node:path';
-import {alertHtml} from '../desktop/e2e/lib/telegram-html.mjs';
+import {card} from '../desktop/e2e/lib/tg-card.mjs';
 import {send} from '../desktop/e2e/ci-alert.mjs';
 import {commitOf} from '../desktop/e2e/release-alert.mjs';
 
@@ -119,8 +119,9 @@ export async function post(url, key, body, {fetcher = fetch, tries = 3, wait = 5
   return last;
 }
 
-const note = (title, verdict, tag, env) => alertHtml({icon: '⚠️', title, verdict, bullets: [{label: 'Release', parts: [tag]}],
-  links: env.GITHUB_RUN_ID ? [{text: 'Open the run', url: `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`}] : []});
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): the headline names the release, the cause is the one verdict line.
+export const note = (title, verdict, tag, env) => card({level: 'orange', headline: `${title} · ${tag}`, verdict: {ok: false, text: verdict},
+  link: env.GITHUB_RUN_ID ? {text: 'Open the run', url: `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`} : null});
 
 /**
  * Tells the site this stable release's pull requests. Never throws. -> {ok, line}: `line` is what to print; a failure has also been sent to Telegram (a send that fails changes nothing).

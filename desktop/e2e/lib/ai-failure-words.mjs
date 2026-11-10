@@ -5,7 +5,7 @@
 // words (codex-failed:1 {...Invalid schema for response_format...}). Raw detail stays in the run log (the ::warning lines); the message carries a cause the owner can act on, and an unknown reason
 // is the plain "The AI service failed", never the raw text. Counts are the relay's real per-cause counts (broker-relay-serve.mjs), never estimated.
 // Job: report health
-import {alertHtml} from './telegram-html.mjs';
+import {card, bar as cardBar} from './tg-card.mjs';
 import {reasonOf} from './broker-reason.mjs';
 
 const UNKNOWN = {key: 'failed', icon: '⚠️', label: 'The AI service failed'};
@@ -40,14 +40,8 @@ export function tally(causes, reason) {
 /** A tally as the list the note keeps: [{key, icon, label, count}], most frequent first. */
 export const causeList = causes => Object.entries(causes || {}).map(([key, one]) => ({key, ...one})).sort((a, b) => b.count - a.count);
 
-/** Ten blocks: filled for the calls that worked, empty for the rest; one failure always leaves one empty block, one answer always one filled. */
-export function bar(worked, total, width = 10) {
-  if (!total) return '░'.repeat(width);
-  let filled = Math.round((worked / total) * width);
-  if (worked < total) filled = Math.min(filled, width - 1);
-  if (worked > 0) filled = Math.max(filled, 1);
-  return '▓'.repeat(filled) + '░'.repeat(width - filled);
-}
+/** Ten blocks (lib/tg-card.mjs bar): filled for the calls that worked, empty for the rest. */
+export const bar = cardBar;
 
 const named = job => { const text = String(job || '').replace(/[-_]+/g, ' ').trim(); return text ? text[0].toUpperCase() + text.slice(1) : ''; };
 
@@ -60,16 +54,15 @@ export function failureAlert({jobs = [], summaries = null, notes = [], run = '',
   const name = names.length === 1 ? names[0] : workflow;
   const sums = summaries && summaries.length ? summaries : null;
   const rows = new Map();
-  let title = `${name}: AI calls failed`, bars = [];
+  let title = `${name}: AI calls failed`;
   if (sums) {
     const calls = sums.reduce((n, one) => n + one.calls, 0), failed = sums.reduce((n, one) => n + one.failed, 0), ok = sums.reduce((n, one) => n + one.ok, 0);
     for (const one of sums) for (const cause of one.causes) rows.set(cause.key, {...cause, count: (rows.get(cause.key)?.count || 0) + cause.count});
     title = `${name}: ${failed} of ${calls} AI calls failed`;
-    bars = [[{parts: [`${bar(ok, calls)}  ${ok} worked · ${failed} failed`]}]];
   } else {
     for (const note of notes) { const {key, icon, label} = causeOf(note); rows.set(key, {key, icon, label, count: 0}); }
   }
-  const why = [...rows.values()].sort((a, b) => b.count - a.count).map(one => ({parts: [`${one.icon} ${sums ? `${one.count}  ` : ''}${one.label}`]}));
-  return alertHtml({icon: '🟠', title, blocks: [...bars, [{parts: ['Why']}, ...why], [{parts: ['✅ Nothing is lost: those jobs are judged on a later run.']}],
-    ...(run ? [[{parts: [{text: 'Open the run', url: run}]}]] : [])]});
+  const why = [...rows.values()].sort((a, b) => b.count - a.count).map(one => ({icon: one.icon, count: sums ? one.count : undefined, text: one.label}));
+  const counts = sums ? {done: sums.reduce((n, one) => n + one.ok, 0), total: sums.reduce((n, one) => n + one.calls, 0), doneWord: 'worked', restWord: 'failed'} : null;
+  return card({level: 'orange', headline: title, bar: counts, why, verdict: {ok: true, text: 'Nothing is lost: those jobs are judged on a later run.'}, link: run ? {text: 'Open the run', url: run} : null});
 }

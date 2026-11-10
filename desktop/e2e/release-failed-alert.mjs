@@ -6,7 +6,7 @@
 // A lane that WAS offered is not told here: release-alert.mjs says "offered on Mac only; Windows was not". A cancelled run says nothing. A failed alert never fails the release.
 // Job: report health
 import path from 'node:path';
-import {alertHtml} from './lib/telegram-html.mjs';
+import {card} from './lib/tg-card.mjs';
 import {send} from './ci-alert.mjs';
 
 const EVENT = 'release-failed';
@@ -37,8 +37,8 @@ export function failedMessage({kind, version, lanes, env = process.env}) {
   const server = env.GITHUB_SERVER_URL || 'https://github.com', repo = env.GITHUB_REPOSITORY || '';
   const run = env.GITHUB_RUN_ID && repo ? `${server}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : '';
   const word = kind === 'stable' ? 'Stable' : 'Beta';
-  return alertHtml({icon: '🔴', title: `${word} ${version} did not ship`, verdict: kind === 'stable' ? 'It was not promoted to stable' : 'No lane was offered to beta testers',
-    bullets: lanes.map(({lane, step, result}) => ({label: lane, parts: [`${step} ${said(result)}`]})), links: run ? [{text: 'Open the run', url: run}] : []});
+  return card({level: 'red', headline: `${word} ${version} did not ship`, why: lanes.map(({lane, step, result}) => ({icon: '✗', text: `${lane}: ${step} ${said(result)}`})), whyTitle: 'Where it stopped',
+    verdict: {ok: false, text: kind === 'stable' ? 'It was not promoted to stable.' : 'No lane was offered to beta testers.'}, link: run ? {text: 'Open the run', url: run} : null});
 }
 
 /** Decides and sends; returns the line to print. Never throws, never prints a token. */

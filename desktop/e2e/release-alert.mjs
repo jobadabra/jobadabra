@@ -4,7 +4,7 @@
 // tools/release-stable.sh (every way a build becomes stable) call this once per release. A lookup or a send that fails prints one line and never fails the release.
 // Job: report health
 import path from 'node:path';
-import {alertHtml} from './lib/telegram-html.mjs';
+import {card} from './lib/tg-card.mjs';
 import {send} from './ci-alert.mjs';
 
 const KINDS = {
@@ -39,19 +39,18 @@ export async function isPrerelease(tag, env = process.env, fetcher = fetch) {
 
 /** The Telegram message: what was released (kind, version), its release page, the commit, and for a beta which lanes released. */
 export function releaseMessage({kind, tag, commit = null, lanes = [], env = process.env}) {
-  const {icon, word, verdict} = KINDS[kind];
+  const {word, verdict} = KINDS[kind];
   const server = env.GITHUB_SERVER_URL || 'https://github.com', repo = env.GITHUB_REPOSITORY || '';
   const version = String(tag).replace(/^desktop-v/, '');
   const run = env.GITHUB_RUN_ID && repo ? `${server}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : '';
   const released = lanes.filter(([, result]) => result === 'success').map(([name]) => name), missed = lanes.filter(([, result]) => result !== 'success').map(([name]) => name);
   const said = kind === 'beta' && lanes.length ? (missed.length ? `Offered on ${released.join(' and ')} only; ${missed.join(' and ')} was not offered` : `${verdict} on ${released.join(' and ')}`) : verdict;
   const when = commit?.date ? new Date(commit.date).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '';
-  return alertHtml({icon: missed.length ? '⚠️' : icon, title: `${word} ${version} released`, verdict: said,
-    bullets: [
-      {label: 'Release', parts: [repo ? {text: tag, url: `${server}/${repo}/releases/tag/${tag}`} : tag]},
-      ...(commit ? [{label: 'Commit', parts: [{text: commit.sha.slice(0, 7), url: `${server}/${repo}/commit/${commit.sha}`}, ` ${commit.subject}`]}] : []),
-      ...(when ? [{label: 'Committed', parts: [when]}] : [])],
-    links: run ? [{text: 'Open the run', url: run}] : []});
+  const commitLine = commit ? `Commit ${commit.sha.slice(0, 7)} ${commit.subject}${when ? ` · ${when}` : ''}` : '';
+  // Why (10 Nov 2026, owner: every message reads like the Central scout one): one headline with the version, the lanes as a bar, the commit as text, ONE link (the release page; the run is in Actions).
+  return card({level: missed.length ? 'orange' : 'green', headline: `${word} ${version} released`, facts: commitLine ? [commitLine] : [],
+    bar: kind === 'beta' && lanes.length ? {done: released.length, total: lanes.length, doneWord: 'offered', restWord: 'not offered'} : null,
+    verdict: {ok: !missed.length, text: said}, link: {text: repo ? 'Open the release' : 'Open the run', url: repo ? `${server}/${repo}/releases/tag/${tag}` : run}});
 }
 
 /** Looks the commit up, sends the alert; returns the line to print. Never throws, never prints the token. */

@@ -9,7 +9,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {failureAlert} from './lib/ai-failure-words.mjs';
 import {CREDIT_OUT, reasonOf, reasonsOf} from './lib/broker-reason.mjs';
-import {alertHtml} from './lib/telegram-html.mjs';
+import {card} from './lib/tg-card.mjs';
 import {delivered, send} from './ci-alert.mjs';
 
 // -> true when the text is one of those wordings; false for anything else, including an empty text.
@@ -24,9 +24,9 @@ const ADVICE = {
 /** The Telegram message: which provider, which workflow and run, the one next action. */
 export function creditMessage({provider, text = '', env = process.env}) {
   const run = env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : '';
-  return alertHtml({icon: '🔴', title: 'AI credit is 0', verdict: `${provider}: jobs that use it fail until it is back`,
-    bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'unknown']}, {label: 'It said', parts: [String(text).slice(0, 200)]}, {label: 'Do', parts: [ADVICE[provider] || ADVICE.anthropic]}],
-    links: run ? [{text: 'Open the run', url: run}] : []});
+  // Why (10 Nov 2026, owner: every message reads like the Central scout one): the provider's own words ("It said") stay in the run log; the message says what to do.
+  return card({level: 'red', headline: `AI credit is 0 on ${provider}`, facts: [`Workflow: ${env.GITHUB_WORKFLOW || 'unknown'}`], why: [{icon: '🔧', text: ADVICE[provider] || ADVICE.anthropic}], whyTitle: 'Do',
+    verdict: {ok: false, text: 'Jobs that use it fail until it is back.'}, link: run ? {text: 'Open the run', url: run} : null});
 }
 
 /** Sends the alert when `text` is a credit message (or the caller says the provider is capped: always = true). Returns the line to print; never throws, never prints the token. */
@@ -70,9 +70,9 @@ export async function alertCappedSteps({artifacts, marker, env = process.env, fe
   // Why (6 Nov 2026, owner: "this is not very readable"): a failed (not budget) alert is told in plain causes with the relay's real counts, never the broker's raw words (those stay in the log lines above).
   const counted = found.length && found.every(one => one.summary) ? found.map(one => one.summary) : null;
   const [lead, ...others] = reasons;
-  const message = lead ? alertHtml({icon: '🩶', title: lead.title, verdict: lead.said(lead.what, lead.images),
-    bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, ...others.slice(0, 2).map(one => ({label: 'Also', parts: [`${one.title}: ${one.said(one.what, one.images)}`]}))],
-    links: [{text: 'Open the run', url: run}]})
+  const message = lead ? card({level: 'grey', headline: lead.title, facts: [`Workflow: ${env.GITHUB_WORKFLOW || 'CI'}`],
+    why: others.slice(0, 2).map(one => ({icon: '•', text: `${one.title}: ${one.said(one.what, one.images)}`})), whyTitle: others.length ? 'Also' : '',
+    verdict: {ok: false, text: lead.said(lead.what, lead.images)}, link: {text: 'Open the run', url: run}})
     : failureAlert({jobs: found.map(one => one.job), summaries: counted, notes, run, workflow: env.GITHUB_WORKFLOW || 'CI'});
   const result = await send(message, env, fetcher, {event: 'ai-credit'});
   if (marker && delivered(result)) {

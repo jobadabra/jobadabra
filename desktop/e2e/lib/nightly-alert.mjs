@@ -34,8 +34,10 @@ export function nightlyNotice(log, env = process.env) {
   const run = recheck || `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
   const flakyOnly = !stops.length && steps.length > 0 && steps.every(one => one.verdict === 'flaky');   // a stop reason means something real stopped the beta: never "not a regression"
   const verdict = !suites.length ? "Main's e2e state could not be read" : `Main's e2e is red on ${suites.join(', ')}${flakyOnly ? ': flaky, not a regression' : ''}`;
+  // Why (10 Nov 2026, owner: every message reads like the Central scout one): the headline carries the cause, the one verdict line says what happened to the nightly.
+  const headline = !suites.length ? 'Nightly skipped: main could not be read' : `Nightly skipped: main is red on ${suites.join(', ')}`;
   const bullets = [...(stops.length ? [more(stops.length, `Stops it: ${stops[0]}`)] : []),
     ...Object.keys(WORDS).flatMap(kind => { const same = steps.filter(one => (kind === 'changed' ? one.verdict !== 'flaky' : one.verdict === kind)); return same.length ? [more(same.length, WORDS[kind](same[0]))] : []; })];
   const summary = `Nightly skipped: ${verdict}${stops.length ? ` — ${stops.join(' · ')}` : ''}`;
-  return {message: notice({title: 'Nightly skipped', verdict, bullets, run, linkText: recheck ? 'Open the re-check' : 'Open the run'}), summary};
+  return {message: notice({title: headline, verdict: flakyOnly ? 'Flaky, not a regression: the nightly did not run.' : 'The nightly did not run.', bullets, run, linkText: recheck ? 'Open the re-check' : 'Open the run'}), summary};
 }

@@ -3,6 +3,7 @@
 // say "AI skipped", tell the owner on Telegram (once per outage, not every hour), never print a token.
 // Guard: desktop/test/ci-intel-ai-refusal.test.js. The Telegram bot is the CI alerts one when this repo has it, else the Build Log bot (the secrets this repo holds).
 import {causeOf} from '../../../desktop/e2e/lib/ai-failure-words.mjs';
+import {card} from '../../../desktop/e2e/lib/tg-card.mjs';
 
 export class AiRefused extends Error {
   constructor(status, reason) { super(`broker answered ${status}: ${reason}`); this.name = 'AiRefused'; this.status = status; this.reason = reason; this.kind = kindOf(status, reason); }
@@ -50,11 +51,13 @@ export function previousConclusion(workflow, {env = process.env, run}) {
 }
 
 // Never throws: a Telegram failure must not hide the real one. -> {sent} | {skipped: why}
-export async function tellOwner(text, {env = process.env, fetch: doFetch = fetch} = {}) {
+export async function tellOwner(message, {env = process.env, fetch: doFetch = fetch} = {}) {
+  // A card payload ({text, parse_mode, ...}, desktop/e2e/lib/tg-card.mjs) or a plain string.
+  const payload = typeof message === 'string' ? {text: message, disable_web_page_preview: true} : message;
   const token = env.CI_ALERTS_TELEGRAM_BOT_TOKEN || env.BUILDLOG_TELEGRAM_TOKEN, chat = env.CI_ALERTS_TELEGRAM_CHAT_ID || env.BUILDLOG_TELEGRAM_CHAT;
   if (!token || !chat) return {skipped: 'no Telegram bot token / chat in this run'};
   try {
-    const response = await doFetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({chat_id: chat, text, disable_web_page_preview: true})});
+    const response = await doFetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({chat_id: chat, ...payload})});
     return response.ok ? {sent: true} : {skipped: `Telegram answered ${response.status}`};
   } catch (error) { return {skipped: `Telegram unreachable (${error.name})`}; }
 }
@@ -66,7 +69,10 @@ export async function reportRefusal(error, {job, effect, workflow, zurichHour, e
   if (!shouldTell({previous, zurichHour})) return {skipped: 'already told in the run before'};
   // Why (6 Nov 2026, owner: "make it human readable"): Telegram gets the plain cause, never the broker's raw words; the ::error:: line above keeps them for the log.
   const cause = causeOf(`${error.status} ${error.reason}`);
-  const result = await tellOwner(`⚠️ ${job}: ${cause.icon} ${cause.label}${effect ? `\n${effect}` : ''}`, {env, fetch: doFetch});
+  const runUrl = env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : '';
+  // Why (10 Nov 2026, owner: every message reads like the Central scout one): the job in the headline, the plain cause as the one row, what the owner will see as the verdict.
+  const result = await tellOwner(card({level: 'orange', headline: `${job}: AI refused a job`, why: [{icon: cause.icon, text: cause.label}], whyTitle: 'Why',
+    verdict: effect ? {ok: false, text: effect} : null, link: runUrl ? {text: 'Open the run', url: runUrl} : null}), {env, fetch: doFetch});
   console.log(`Telegram: ${JSON.stringify(result)}`);
   return result;
 }

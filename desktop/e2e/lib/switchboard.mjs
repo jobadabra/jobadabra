@@ -21,8 +21,8 @@ export async function viaSwitchboard({event, text, html = false, state, level}, 
 }
 
 /** Tells the switchboard the sender posted with its old bot (Admin shows "sent without switchboard"). Never throws. */
-export async function reportFallback(event, env = process.env, fetcher = fetch) {
+export async function reportFallback(event, env = process.env, fetcher = fetch, state = '') {
   if (!env.SELFHEAL_PUBLISH_KEY) return;
-  // Why (5 Nov 2026, nt 3/4b): the alert was already delivered by the old bot; a report that fails only leaves Admin's "sent without switchboard" count one short, and must never fail the release.
-  try { await post({event, fallback: true}, env, fetcher); } catch { /* see Why above */ }
+  // Why (5 Nov 2026, nt 3/4b; 10 Nov 2026, owner: the same alert came twice while Engineering was not connected): the alert was already delivered by the old bot; the report carries its state so "changes only" and "daily" hold a repeat; a report that fails only leaves Admin's "sent without switchboard" count one short, and must never fail the release.
+  try { await post({event, fallback: true, ...(state ? {state: String(state).slice(0, 60)} : {})}, env, fetcher); } catch { /* see Why above */ }
 }

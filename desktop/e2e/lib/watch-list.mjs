@@ -6,6 +6,7 @@
 // Guard: e2e/test/watch-list.test.mjs.
 import {compare} from './record-sites.mjs';
 import {judgeRow, verdictWord} from './discovery-judge.mjs';
+import {card} from './tg-card.mjs';
 
 export const MONTH_CAP_USD = 25, ROW_USD = 0.06, MAX_ROWS = 12;
 const SEVERITY = {fine: 0, 'fields-left': 1, 'stopped-early': 2, wrong: 2};
@@ -52,13 +53,14 @@ export function judgeWatch(report = {}, picked = [], previous = {}, failedJourne
   return {rows, held, worse: list, measured: done};
 }
 
-// ONE message a run, only when a flow got worse than its previous live run. '' otherwise (day 1 sends nothing).
+// ONE message a run, only when a flow got worse than its previous live run (a card, lib/tg-card.mjs). '' otherwise (day 1 sends nothing).
 export function telegramText({day, judged, usd = 0, monthSpent = 0, monthCap = MONTH_CAP_USD, labUrl = 'https://www.jobadabra.top/admin/form-filling/lab'}) {
   if (!judged.worse.length) return '';
-  return [`📉 Daily watch ${day}: ${judged.worse.length} of ${judged.measured.length} flows worse than the last live run`,
-    ...judged.worse.map(item => `• ${item.shape}: ${item.why}`),
-    ...(judged.held.length ? [`⚪ ${judged.held.length} held (no account, bot wall or posting gone)`] : []),
-    `Spent $${usd.toFixed(2)} (month $${monthSpent.toFixed(2)} of $${monthCap.toFixed(2)}). ${labUrl}`].join('\n');
+  return card({level: 'orange', headline: `Daily watch ${day}: ${judged.worse.length} of ${judged.measured.length} flows worse`, bar: {done: judged.measured.length - judged.worse.length, total: judged.measured.length, doneWord: 'held up', restWord: 'worse'},
+    why: judged.worse.map(item => ({icon: '📉', text: `${item.shape}: ${item.why}`})), whyTitle: 'Worse than the last live run',
+    facts: judged.held.length ? [`⚪ ${judged.held.length} held (no account, bot wall or posting gone)`] : [],
+    verdict: {ok: false, text: `Spent $${usd.toFixed(2)} (month $${monthSpent.toFixed(2)} of $${monthCap.toFixed(2)}).`}, link: {text: 'Open the lab', url: labUrl}});
 }
 
-export const capText = ({month, spent, cap}) => `⛔ Daily watch paused: $${spent.toFixed(2)} of the $${cap.toFixed(2)} month cap (${month}) is spent. It resumes on the 1st.`;
+/** The card told when the daily watch stops at its month cap: {month, spent, cap} (USD) -> an alertHtml payload; pure, never fails. */
+export const capText = ({month, spent, cap}) => card({level: 'grey', headline: `Daily watch paused: $${spent.toFixed(2)} of $${cap.toFixed(2)} spent`, verdict: {ok: true, text: `The month cap (${month}) is used. It resumes on the 1st.`}});

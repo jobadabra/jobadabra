@@ -5,7 +5,7 @@
 // Job: report health
 import path from 'node:path';
 import fs from 'node:fs';
-import {alertHtml} from './lib/telegram-html.mjs';
+import {card, plural} from './lib/tg-card.mjs';
 import {TIMEOUT_FAILURE} from './lib/triage-match.mjs';
 import {aiFailureCauses} from './lib/ai-miss-cause.mjs';
 import {ghIo, verdictsForCauses} from './lib/flaky-evidence.mjs';
@@ -172,44 +172,35 @@ function groupedCauses(causes, fallback) {
   return groups.size ? [...groups.values()] : [{icon: '🔌', text: short(plain(fallback), 160), steps: []}];
 }
 
-function causeBlock(group, run) {
-  const lines = [{parts: [`${group.icon}  ${group.text}`]}];
-  if (group.detail) lines.push({parts: [`     ${group.detail}`]});
-  if (group.green) lines.push({parts: [`     passed on ${group.same ? 'this same commit' : 'code the step does not touch'}: `, {text: String(group.green.sha).slice(0, 7), url: group.green.url}, ' (fix its input, not the step)']});
-  group.steps.forEach((step, i) => lines.push({step: true, expandable: group.steps.length > 3 && i >= 2,
-    parts: [`     ${step.skipped ? '⏭' : '✗'} `, {text: stepName(step.step), url: step.url || run}, step.skipped ? ' (not run)' : step.cut ? ' ← cut here' : '']}));
-  if (group.more) lines.push({expandable: true, count: group.more, parts: [`+${group.more} more`]});
-  return lines;
-}
+// One Why row per cause: its icon, how many steps it hit, the plain cause. A step's raw payload (a JSON read, a stack) is cut: the run keeps it, the message never shows it.
+const cleaned = text => String(text).replace(/\s*\(?last read:?\s*[{[].*$/si, '').replace(/\s*[{[]\s*["'][\w-]+["']\s*:.*$/s, '').replace(/[\s:(]+$/, '');
+const causeRow = (group, prefix = '') => ({icon: group.icon, count: group.steps.length || undefined, text: `${prefix}${short(cleaned(group.text), 90)}${group.green ? ' (fix its input, not the step)' : ''}`});
 
-// Invariant: suites and their job links remain separate; counts refer to annotations, not repeated cause memberships.
-function redSection(suite, jobs, causes, what, next, since, where) {
-  const own = (where.e2e ? causes.filter(cause => cause.suite === suite) : causes).map(cause => ({...cause,
-    url: cause.url || jobs.find(job => job.name === cause.job)?.url || jobs[0]?.url || where.run}));
-  const fallback = what || `Failed job: ${jobs.map(job => job.name).join(', ') || 'see the run'}`;
-  const groups = groupedCauses(own, fallback);
-  const keys = jobs.map(job => job.name).join(', ') || suite;
-  const subtitle = `${keys} · ${own.length} ${own.length === 1 ? 'step' : 'steps'} · ${groups.length} ${groups.length === 1 ? 'cause' : 'causes'}`;
-  return {icon: '🔴 ', title: suite, verdict: `· red on ${where.branch}`, subtitle,
-    blocks: [...groups.map(group => causeBlock(group, where.run)), ...(next ? [[{label: 'Next', parts: [short(next, 240)]}]] : []), footer(since, where, jobs)]};
-}
+// "After #3630 · #3629 +4 more": the PRs that landed since the last green, as plain text (the one link of the message is the run).
+const sinceText = since => (since.prs.length ? `after ${since.prs.slice(0, 3).map(number => `#${number}`).join(' · ')}${since.prs.length > 3 || since.more ? ` +${Math.max(0, since.prs.length - 3) + since.more} more` : ''}` : '');
+const factsOf = (since, where) => [`🕐 ${[where.time, sinceText(since)].filter(Boolean).join(' · ')}`];
 
-/** Build a pure Telegram payload: one block per red suite, or the first recovery after red; non-backbone reds stay silent. */
-// Why (31 Oct 2026, owner selected grouped-by-cause): each suite has its own causes, steps and links; evidence stays in job logs.
+/** Build a pure Telegram payload (lib/tg-card.mjs): one card for the red suites, or the first recovery after red; non-backbone reds stay silent. */
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): the per-suite sections, job links, PR links and commit link are one headline, the Why rows, one verdict and the run link.
 export function messageOf({status, what = '', causes = [], next = '', previous = '', recovered = [], since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
   if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
   const where = placeOf(env, now);
   const named = names => [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes));
+  const link = {text: 'Open the run', url: where.run};
   if (status === 'failure') {
     const suites = where.e2e ? named([...blocking.map(job => job.name), ...causes.map(cause => cause.suite)]) : [];
-    const sections = (suites.length ? suites : [where.workflow]).map(suite => redSection(suite,
-      where.e2e ? blocking.filter(job => suiteOfKey(job.name) === suite) : blocking, causes, what, next, since, where));
-    return alertHtml({sections});
+    const own = suite => (where.e2e ? causes.filter(cause => cause.suite === suite) : causes);
+    const fallback = what || `Failed job: ${blocking.map(job => job.name).join(', ') || 'see the run'}`;
+    const names = suites.length ? suites : [where.workflow];
+    const why = names.flatMap(suite => groupedCauses(own(suite), fallback).map(group => causeRow(group, names.length > 1 ? `${suite} · ` : '')));
+    const steps = causes.filter(cause => !where.e2e || names.includes(cause.suite)).length;
+    const headline = names.length === 1 ? `${names[0]}: ${steps ? `${plural(steps, 'step')} red` : 'failed'} on ${where.branch}` : `${plural(names.length, 'suite')} red on ${where.branch}: ${short(names.join(', '), 60)}`;
+    return card({level: 'red', headline, why, facts: factsOf(since, where), verdict: {ok: false, text: next ? `Next: ${short(next, 160)}` : 'Main stays red until the failing step passes.'}, link});
   }
   if (status === 'success' && ['failure', 'timed_out'].includes(previous)) {
     const back = where.e2e ? named(recovered) : [];
-    return alertHtml({icon: '🟢 ', title: back.join(', ') || where.workflow, verdict: `${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, blocks: [footer(since, where, [])]});
+    return card({level: 'green', headline: `${back.join(', ') || where.workflow} ${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, facts: factsOf(since, where), verdict: {ok: true, text: 'It passed on the latest run.'}, link});
   }
   return '';
 }
@@ -222,17 +213,12 @@ function placeOf(env, now) {
     time: new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now)};
 }
 
-// Footer links are shared by red and recovery messages; no raw URLs or evidence tails.
-function footer(since, where, jobs) {
-  const prs = since.prs, more = since.more;
-  const after = prs.length ? ['🔀  After ', ...prs.flatMap((number, i) => [i ? ' · ' : '', {text: `#${number}`, url: `${where.repo}/pull/${number}`}]), more ? ` +${more} more` : ''] : [];
-  return [...(after.length ? [{parts: after}] : []), {parts: [`🕐  ${where.time}`]}, {parts: ['🔗  ',
-    ...jobs.flatMap(job => [{text: `Open ${job.name}`, url: job.url || where.run}, ' · ']), {text: 'Run', url: where.run},
-    ...(where.sha ? [' · ', {text: where.sha.slice(0, 7), url: `${where.repo}/commit/${where.sha}`}] : [])]}];
-}
-
-/** True when a send() line means the alert is DONE: delivered, or held on purpose by the owner's switch (a hold is final: no retry, no claim to release). */
-export const delivered = line => /^ci-alert: (sent|held)\b/.test(String(line));
+/**
+ * True when a send() line means the alert is DONE: delivered, held on purpose by the owner's switch (a hold is final: no retry, no claim to release), or `unsure` (the request timed out, Telegram may have delivered it).
+ * Why (10 Nov 2026, owner: "It tells you once" came twice, 8 Nov 10:24 and 11:22; runs 42466803520, 42471046179): a timeout was read as "not sent", the claim was released and the next hour sent it again.
+ * A message lost to a timeout is told by the run that is still red; a message told twice is noise the owner saw. At most once.
+ */
+export const delivered = line => /^ci-alert: (sent|held|unsure)\b/.test(String(line));
 
 // text: a message from messageOf (or a plain string) -> the line to print.
 // With `event` (an id of shared/notify-registry.js in jobadabra-web) the alert goes through the owner's switchboard first (Admin → Operations → Notifications: on/off, when, which bot);
@@ -247,9 +233,12 @@ export async function send(message, env = process.env, fetcher = fetch, {event =
   try {
     const answer = await fetcher(`https://api.telegram.org/bot${env.CI_ALERTS_TELEGRAM_BOT_TOKEN}/sendMessage`, {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chat_id: env.CI_ALERTS_TELEGRAM_CHAT_ID, ...payload}), signal: AbortSignal.timeout(15000)});
-    if (answer.ok && event) await reportFallback(event, env, fetcher);
+    if (answer.ok && event) await reportFallback(event, env, fetcher, state);
     return answer.ok ? 'ci-alert: sent' : `ci-alert: not sent (Telegram ${answer.status})`;
-  } catch (error) { return `ci-alert: not sent (${String(error?.name || 'error')})`; }   // never the error text: it can carry the URL with the token
+  } catch (error) {
+    const name = String(error?.name || 'error');
+    return ['TimeoutError', 'AbortError'].includes(name) ? `ci-alert: unsure (${name}: it may have arrived)` : `ci-alert: not sent (${name})`;
+  }   // never the error text: it can carry the URL with the token
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
@@ -263,6 +252,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     const seen = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
     const causes = failure && placeOf(process.env, new Date()).e2e ? await flakyCauses(seen, process.env.GITHUB_RUN_ID) : seen;
     const recovered = red && previousId ? await failedJobs(previousId).catch(() => []) : [];
-    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status)}));
+    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status, {causes, jobs})}));
   }
 }
