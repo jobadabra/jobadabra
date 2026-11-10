@@ -307,7 +307,7 @@ jobs:
           node plan-run.mjs | { if [ "$OVER" = true ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"
           # windows_matrix (from plan-run.mjs): its suites less those the same on every OS (quality), a sharded one as one entry per slice (lib/suite-shards.mjs)
           echo "gate=true" >> "$GITHUB_OUTPUT"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -454,7 +454,7 @@ jobs:
           gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -597,7 +597,7 @@ jobs:
           else
             echo "::warning::Windows build failed and no earlier release has a Windows installer."
           fi
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -946,7 +946,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1294,7 +1294,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1327,7 +1327,7 @@ jobs:
         timeout-minutes: 65
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --wait-ci "$TAG" "$REF"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1449,7 +1449,7 @@ jobs:
           JOBADABRA_SOAK: ${{ vars.JOBADABRA_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1506,7 +1506,7 @@ jobs:
             tools/release-stable.sh "$TAG"
             echo "Stable: $TAG (all required suites passed on its commit)"
           fi
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1619,7 +1619,7 @@ jobs:
           JOBADABRA_SOAK: ${{ vars.JOBADABRA_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1670,7 +1670,7 @@ jobs:
           if [ -n "$RETRY" ]; then printf '%s\n' "$RETRY" > "$RUNNER_TEMP/passed-on-retry.txt"; export PASSED_ON_RETRY_FILE="$RUNNER_TEMP/passed-on-retry.txt"; fi
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           tools/beta-approve.sh --windows "$TAG"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -1839,7 +1839,7 @@ jobs:
           echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?."
           echo "::error::The E2E gate was skipped after a green build."
           exit 1
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

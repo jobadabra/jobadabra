@@ -53,7 +53,7 @@ jobs:
         env:
           ISSUES: ${{ inputs.issues }}
         run: node desktop/e2e/pick.mjs --out .heal --verdict-list 5 --issues "$ISSUES"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
           # Comment, severity, labels, close: one script, shared with the triage-github-open-issues skill (desktop/e2e/apply-verdict.sh).
           desktop/e2e/apply-verdict.sh "$NUMBER" .heal/verdict.md "$REPO"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -143,7 +143,7 @@ jobs:
           chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           switchboard-key: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           github-token: ${{ github.token }}
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

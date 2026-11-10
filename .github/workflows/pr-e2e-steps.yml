@@ -109,7 +109,7 @@ jobs:
             sleep 5
           done
           echo "::error::no \"E2E for PR\" run of e2e.yml for $HEAD_SHA after 2 min: this branch's e2e.yml is older than main's (its runs are titled otherwise). Rebase on main (tools/ship.sh does it) and push again."; exit 1
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

@@ -83,7 +83,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sweep-heads
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -153,7 +153,7 @@ jobs:
           SHA: ${{ matrix.sha }}
           REVALIDATE_HEAD: ${{ github.event_name != 'workflow_run' && '--revalidate-head' || '' }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
