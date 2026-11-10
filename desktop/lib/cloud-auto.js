@@ -69,10 +69,21 @@ export function createCloudAuto({storage, eligible, side, jobs, build, kitInfo, 
     let built;
     try { built = await build(held.map(entry => byUrl.get(entry.url))); } catch (error) { await rollBack(newly); throw error; }   // nothing was posted: back where they were
     const {batch, skipped} = built, byCode = new Map(held.map(entry => [byUrl.get(entry.url).code, entry])), ready = batch.jobs.filter(job => byCode.has(job.id));
-    await rollBack(newly.filter(session => !ready.some(job => byCode.get(job.id).session === session)));   // no kit or CV file: never sent half-made
+    const posted = new Set(ready.map(job => byCode.get(job.id).session)), left = held.filter(entry => !posted.has(entry.session));
+    await rollBack(newly.filter(session => !posted.has(session)));   // no kit or CV file: never sent half-made
+    // Why (retro review of #3697, Gitar + code review, 10 Nov 2026): an item left in 'cloud' by an earlier send whose answer was lost may be queued, running or pressed on the site, and the site's Stop cannot tell "never had it" from
+    // "finished" (both 404). Only a Stop the site confirms puts it back to the Mac; any other answer keeps it out and flagged started, so the ordinary wait ends it as "check" (never pressed twice, never stranded in 'cloud').
+    const kept = {...(mine().sent || {})};
+    let unsure = false;
+    for (const entry of left.filter(each => !newly.includes(each.session))) {
+      const code = byUrl.get(entry.url).code, dropped = await site.stop(storage, code).catch(() => ({ok: false}));
+      if (dropped?.ok && await side.unsend(entry.session)) delete kept[code];
+      else { unsure = true; kept[code] = {url: entry.url, session: entry.session, at: now().getTime(), ...kept[code], started: true}; log('cloud Full automation: an item without a kit is kept out, the site may hold it', {}); }
+    }
+    if (left.length) save({sent: kept, ...(unsure && !ready.length ? {night: today, started: true} : {})});
     if (!ready.length) return {skipped: 'nothing complete to send', details: skipped};
     const items = await Promise.all(ready.map(job => stamped(job, byCode.get(job.id))));
-    const before = state.sent || {}, sentNow = {...before, ...Object.fromEntries(ready.map(job => [job.id, {url: job.url, session: byCode.get(job.id).session, at: at.getTime()}]))};
+    const before = kept, sentNow = {...before, ...Object.fromEntries(ready.map(job => [job.id, {url: job.url, session: byCode.get(job.id).session, at: at.getTime()}]))};
     // Why (code review of cs 4/4): the item is recorded BEFORE the site hears of it, so a quit that cuts this short (the 15 s wait) or a crash after the post never strands an outcome the Mac cannot map back.
     save({night: today, started: false, sent: sentNow});
     const done = await deliver({...batch, night: today, fillAt: undefined, jobs: items}, why);
