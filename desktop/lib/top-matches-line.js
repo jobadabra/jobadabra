@@ -7,8 +7,9 @@ import {modeOfRead} from '../renderer/apply-triage-mode.js';
 
 /** The count of each state over the step's results ({check} is the read, null when nothing was read). -> {checked, simple, needs, unread}. */
 export function classify(results) {
-  const counts = {checked: results.length, simple: 0, needs: 0, unread: 0};
-  for (const {check} of results) {
+  const done = results.filter(result => result.kit?.refused !== true && result.cancelled !== true);   // a gate that started nothing (no Notion, no allowance, no AI) or a Stop is not a job that was checked
+  const counts = {checked: done.length, simple: 0, needs: 0, unread: 0};
+  for (const {check} of done) {
     if (!check || check.unreadable === true) { counts.unread += 1; continue; }
     const {mode} = modeOfRead(check);
     if (mode === 'none') continue;

@@ -14,6 +14,11 @@ test('each checked job is counted once as simple, needs you or could not be read
   assert.deepEqual(classify(results), {checked: 7, simple: 2, needs: 2, unread: 2}, 'a simple form behind a captcha is Needs you, as its chip says');
 });
 
+test('a job a gate refused (no Notion, no allowance, no AI) or a Stop cut short was not checked, so it is not counted at all (code review of 3/4)', () => {
+  const results = [{kit: {ok: true}, check: SIMPLE}, {kit: {ok: false, refused: true}, check: null}, {kit: {ok: true}, check: null, cancelled: true}, {kit: {ok: true}, check: null}];
+  assert.deepEqual(classify(results), {checked: 2, simple: 1, needs: 0, unread: 1});
+});
+
 test('the owner\'s example in English, a state with no job left out, and the singular', () => {
   assert.equal(resultLine({checked: 3, simple: 2, needs: 1, unread: 0}, 'en'), '3 jobs checked: 2 simple, 1 needs you');
   assert.equal(resultLine({checked: 3, simple: 0, needs: 3, unread: 0}, 'en'), '3 jobs checked: 3 need you');
