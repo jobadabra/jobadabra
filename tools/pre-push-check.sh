@@ -321,10 +321,10 @@ verify_area() {  # area [extra check.sh flags]
   # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/tooling/hooks/test_pre_push_check.py.
   for dir in desktop desktop/e2e app-core; do
     [ -L "$tree/$dir/node_modules" ] && rm "$tree/$dir/node_modules"
-    [ -e "$repo/$dir/node_modules" ] && ln -s "$repo/$dir/node_modules" "$tree/$dir/node_modules"
+    [ -e "$repo/$dir/node_modules" ] && ln -sn "$repo/$dir/node_modules" "$tree/$dir/node_modules"   # -n: never write a link inside a folder the destination already links to (#3423)
   done
   [ -L "$tree/.venv" ] && rm "$tree/.venv"
-  [ -e "$repo/.venv" ] && ln -s "$repo/.venv" "$tree/.venv"
+  [ -e "$repo/.venv" ] && ln -sn "$repo/.venv" "$tree/.venv"
   (cd "$tree" && gate_cache_run "$repo" "$area" "flag=$affected_flag args=$* pick=$picks" bash tools/check.sh --area "$area" $affected_flag "$@")
 }
 source "$repo/tools/check-slot.sh" 2>/dev/null || { slot_acquire() { :; }; slot_release() { :; }; }
