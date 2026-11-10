@@ -9,7 +9,7 @@ function stand() {
   const chrome = {
     runtime: {onMessage: {addListener() {}}, getManifest: () => ({version: '1'}), sendMessage: async () => ({})},
     storage: {local: {get: async () => ({workerUrl: 'http://app.test', token: 't'}), set: async () => {}}, session: {get: async () => ({}), set: async () => {}, remove: async () => {}}, onChanged: {addListener() {}}},
-    webNavigation: {onBeforeNavigate: {addListener: fn => listeners.navigate.push(fn)}, onCommitted: {addListener: fn => listeners.committed.push(fn)}},
+    webNavigation: {onBeforeNavigate: {addListener: fn => listeners.navigate.push(fn)}, onCommitted: {addListener: fn => listeners.committed.push(fn)}, onDOMContentLoaded: {addListener() {}}},
     tabs: {onRemoved: {addListener: fn => listeners.removed.push(fn)}, query: async () => [], get: async () => ({id: TAB, url: URL_A}), sendMessage: async () => {}},
     debugger: {onDetach: {addListener() {}}, onEvent: {addListener: fn => listeners.debugger.push(fn)}, getTargets: async () => [], attach: async () => {}, detach: async () => {},
       sendCommand: async (target, method) => (method === 'Page.getFrameTree' ? {frameTree: {frame: {id: 'top'}}} : method === 'Network.getResponseBody' ? {body: '<form></form>', base64Encoded: false} : {})},

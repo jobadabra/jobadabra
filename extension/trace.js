@@ -16,6 +16,7 @@ const HOLD_MS = 500;   // a paused reply is let go after at most this long, body
 export function createTrace({chrome, attach = attachDebugger, detach = detachDebugger, stopped = isStopped, now = Date.now, hasPassword = async () => false, enabled = async () => true,
   setTimer = setTimeout, clearTimer = clearTimeout, buffer = createBuffer({now}), onChange = () => {}}) {
   const runs = new Map();   // tab id -> the live capture of that tab
+  const starting = new Map();   // tab id -> the start still waiting (the app's answer, the attach)
 
   const send = (tabId, method, params) => chrome.debugger.sendCommand({tabId}, method, params);
   const pick = headers => Object.fromEntries(Object.entries(headers || {}).filter(([name]) => KEEP_HEADER.test(name)).map(([name, value]) => [name.toLowerCase(), String(value)]));
@@ -64,17 +65,31 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
     if (runs.get(run.tabId) === run && !run.paused) finish(run, request, false);
   }
 
+  // The next page of the application; the run's own first page (base) while it is still empty, so a run never leaves an empty page that takes a kept slot (trace-buffer.js `pinned`).
+  function nextPage(run) {
+    const base = run.base;
+    run.base = null;
+    return base && !base.entries.length && buffer.current(run.tabId) === base ? base : buffer.page(run.tabId);
+  }
+
   function onEvent(source, method, params) {
     if (method === 'Fetch.requestPaused') { holdReply(source.tabId, params); return; }   // always answered: a paused reply is never left waiting, whether a trace runs on the tab or not
     const run = runs.get(source.tabId);
     if (!run || run.paused) return;
-    if (method === 'Page.frameNavigated') { if (!params.frame.parentId) { run.top = params.frame.id; run.shown = buffer.current(run.tabId); } return; }
+    if (method === 'Page.frameNavigated') {
+      if (params.frame.parentId) return;
+      run.top = params.frame.id;
+      if (!run.docSeen) run.missed = {page: nextPage(run), at: now() - run.t0};   // committed, but its request went out before the trace listened: loaded() reads it back
+      run.shown = buffer.current(run.tabId);
+      return;
+    }
     if (method === 'Network.requestWillBeSent') {
       if (!/^https?:/i.test(params.request.url)) return;
       const old = run.requests.get(params.requestId);
       if (params.redirectResponse && old) { old.status = params.redirectResponse.status; old.headers = pick(params.redirectResponse.headers); finish(run, old, false); }
       // A top-level navigation (not a redirect, not a frame inside the page) starts the next page of the application.
-      else if (params.type === 'Document' && params.requestId === params.loaderId && (!run.top || params.frameId === run.top)) buffer.page(run.tabId);
+      else if (params.type === 'Document' && params.requestId === params.loaderId && (!run.top || params.frameId === run.top)) { run.docSeen = true; run.missed = null; nextPage(run); }
+      run.seen.add(params.request.url);
       run.requests.set(params.requestId, {id: params.requestId, method: params.request.method, url: params.request.url, type: TYPES[params.type] || 'other', mode: fetchMode(params.request.headers),
         began: now(), status: 0, headers: {}});
       run.pending.add(params.requestId);
@@ -91,6 +106,34 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
   }
   chrome.debugger.onEvent.addListener(onEvent);
 
+  // Why (10 Nov 2026, rr): the trace attaches only once the app has said the switch is on, and the page does not wait for that answer: the 27 Oct report began after its form had loaded, held
+  // no document and could not replay. So when a page's document is complete (DOMContentLoaded) and the trace never saw its request, the page is read back from Chrome (Page.getResourceContent):
+  // its document, and when the trace began after the commit also the code and styles it loaded before, never an image or a reply to a call (method and status unknown). Kept flagged `recovered`
+  // (status and timing were not seen; a text Chrome no longer has is `bodyLost`, never an empty reply). Never on a page with a password field; dropped when a navigation began meanwhile.
+  const READ_BACK = new Set(['script', 'stylesheet', 'font']);
+  const bare = url => String(url || '').split('#')[0];
+  async function readBack(run, url) {
+    const missed = run.missed;
+    run.missed = null;
+    if (await hasPassword(run.tabId).catch(() => true)) return;   // a sign-in page: the watch pauses the trace; nothing is read
+    const tree = (await send(run.tabId, 'Page.getResourceTree').catch(() => null))?.frameTree, frame = tree?.frame;
+    if (!frame || frame.parentId || !/^https?:/i.test(frame.url || '') || bare(frame.url) !== bare(url)) return;   // not the page whose document just completed
+    const items = [{url: frame.url, type: 'document', mimeType: frame.mimeType},
+      ...(missed ? [] : (tree.resources || []).filter(item => !item.failed && !item.canceled && READ_BACK.has(TYPES[item.type]) && !run.seen.has(item.url)).map(item => ({...item, type: TYPES[item.type]})))];
+    const entries = [];
+    for (const [index, item] of items.entries()) {
+      let body = null;
+      try { const got = await send(run.tabId, 'Page.getResourceContent', {frameId: frame.id, url: item.url}); body = got.base64Encoded ? got.content : btoa(unescape(encodeURIComponent(got.content))); } catch { /* Chrome no longer has it */ }
+      entries.push({method: 'GET', url: item.url, type: item.type, mode: index ? '' : 'navigate', startMs: missed ? missed.at - 1 : index ? -1 : -2, waitMs: 0, bodyKey: '', status: 200, failed: false,
+        headers: item.mimeType ? {'content-type': String(item.mimeType)} : {}, hadCookie: false, body, size: body ? Math.floor(body.length * 3 / 4) : 0, recovered: true, ...(body ? {} : {bodyLost: true})});
+    }
+    if (runs.get(run.tabId) !== run || run.paused || run.docSeen || run.missed) return;   // a navigation began while reading: that page is no longer the one shown
+    const page = missed?.page || run.base;
+    if (!page || buffer.current(run.tabId) !== page) return;
+    run.shown = page;
+    for (const entry of entries) buffer.add(run.tabId, entry, entry.body ? entry.body.length : 0);
+  }
+
   // A sign-in page is never kept: it and everything after its navigation are dropped, the debugger is let go of (no bar on the page), the gap is marked.
   function pause(run) {
     buffer.dropFrom(run.tabId, run.shown);
@@ -103,7 +146,7 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
     run.held = true;
     try { await send(run.tabId, 'Network.enable'); await send(run.tabId, 'Page.enable'); } catch { return end(run.tabId); }
     await send(run.tabId, 'Fetch.enable', INTERCEPT).catch(() => {});   // not fatal: without it a body is read later, and flagged when lost
-    run.paused = false; run.shown = null;
+    run.paused = false; run.shown = null; run.docSeen = false; run.missed = null; run.base = buffer.page(run.tabId);
   }
   const watch = run => {
     run.watch = setTimer(async () => {
@@ -131,29 +174,44 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
     halt(tabId);
   }
 
+  async function begin(tabId) {
+    if (stopped() || !(await enabled().catch(() => false)) || runs.has(tabId)) return runs.has(tabId);
+    const run = {tabId, t0: now(), requests: new Map(), pending: new Set(), top: null, shown: null, paused: false, held: false, bodies: new Map(), seen: new Set(), docSeen: false, missed: null};
+    runs.set(tabId, run);
+    run.base = buffer.page(tabId);   // this run's first page: replies caught before a navigation of its own; a read-back of the page it began on joins it (readBack), one page, not two
+    try {
+      await attach(tabId);   // the one place the debugger is attached (stop-state.js): never while the person pressed Stop, and only on a tab the app opened
+      run.held = true;
+      await send(tabId, 'Network.enable');
+      await send(tabId, 'Page.enable');
+      await send(tabId, 'Fetch.enable', INTERCEPT).catch(() => {});   // not fatal: without it a body is read later, and flagged when lost
+      run.top = (await send(tabId, 'Page.getFrameTree').catch(() => null))?.frameTree?.frame?.id || null;
+    } catch { run.held = false; end(tabId); return false; }
+    if (await hasPassword(tabId).catch(() => false)) pause(run);
+    watch(run);
+    onChange(tabId);
+    return true;
+  }
+
   return {
     isTracing: tabId => runs.has(tabId),
     has: tabId => buffer.has(tabId),
     pageCount: tabId => buffer.pageCount(tabId),
     bytes: tabId => buffer.bytes(tabId),
-    // The tab is (about to be) an application's page: start keeping its trace once. -> whether it is tracing
-    async start(tabId) {
-      if (runs.has(tabId)) return true;
-      if (stopped() || !(await enabled().catch(() => false)) || runs.has(tabId)) return runs.has(tabId);
-      const run = {tabId, t0: now(), requests: new Map(), pending: new Set(), top: null, shown: null, paused: false, held: false, bodies: new Map()};
-      runs.set(tabId, run);
-      try {
-        await attach(tabId);   // the one place the debugger is attached (stop-state.js): never while the person pressed Stop, and only on a tab the app opened
-        run.held = true;
-        await send(tabId, 'Network.enable');
-        await send(tabId, 'Page.enable');
-        await send(tabId, 'Fetch.enable', INTERCEPT).catch(() => {});   // not fatal: without it a body is read later, and flagged when lost
-        run.top = (await send(tabId, 'Page.getFrameTree').catch(() => null))?.frameTree?.frame?.id || null;
-      } catch { run.held = false; end(tabId); return false; }
-      if (await hasPassword(tabId).catch(() => false)) pause(run);
-      watch(run);
-      onChange(tabId);
-      return true;
+    // The tab is (about to be) an application's page: start keeping its trace once; a second call while the first waits joins it (never a second run). -> whether it is tracing
+    start(tabId) {
+      if (runs.has(tabId)) return Promise.resolve(true);
+      if (!starting.has(tabId)) starting.set(tabId, begin(tabId).finally(() => starting.delete(tabId)));
+      return starting.get(tabId);
+    },
+    // The page's document is complete (webNavigation DOMContentLoaded, top frame, url = its address): read it back when the trace never saw its request (readBack). Once per document.
+    async loaded(tabId, url) {
+      await starting.get(tabId)?.catch(() => false);   // a start still waiting for the app's answer: the page may be complete before it attaches (the 27 Oct report)
+      const run = runs.get(tabId);
+      if (!run || run.paused) return;
+      const seen = run.docSeen;
+      run.docSeen = false;
+      if (!seen) await readBack(run, url);
     },
     // A navigation began on the tab: a trace paused on a sign-in page picks up again before the next page's first request.
     async navigating(tabId) { const run = runs.get(tabId); if (run?.paused) { if (await hasPassword(tabId).catch(() => true)) return; await resume(run); } },
