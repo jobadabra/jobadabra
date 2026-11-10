@@ -29,6 +29,17 @@ def NO_BOARD(n, words):
     return {'source': 'public_board', 'board': None, 'status': 'none (no board)', 'rows': []}
 
 
+def NO_WEB(persona):
+    """A web search outside the relay: never an AI call in these tests."""
+    return {'source': 'web_search', 'status': 'not counted: ValueError', 'rows': []}
+
+
+def setUpModule():
+    patcher = mock.patch.object(reference.market_web, 'read', NO_WEB)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+
+
 def right_if(word):
     """A fake blind judge: role yes when the title holds `word`, place yes for a Brussels location."""
     def asker(profile, jobs):
@@ -84,8 +95,8 @@ class Counting(unittest.TestCase):
                 {'title': 'menuisier h/f', 'company': 'BOIS SA', 'location': 'Brussels, Belgium', 'role': 'yes', 'place': 'yes'},
                 {'title': 'Comptable', 'company': 'Z', 'location': 'Brussels', 'role': 'no', 'place': 'yes'},
                 {'title': 'Menuisier', 'company': 'Y', 'location': 'Liege', 'role': 'yes', 'place': 'no'}]
-        self.assertEqual(reference.tally(rows), {'total': 1, 'reachable': 1, 'eures': 1, 'public_board': None, 'market': 1})
-        self.assertEqual(reference.tally([]), {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'market': 0})
+        self.assertEqual(reference.tally(rows), {'total': 1, 'reachable': 1, 'eures': 1, 'public_board': None, 'web_search': None, 'market': 1})
+        self.assertEqual(reference.tally([]), {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'web_search': None, 'market': 0})
 
 
 class TheWeek(unittest.TestCase):
@@ -102,15 +113,15 @@ class TheWeek(unittest.TestCase):
         record = reference.run(self.post, right_if('menuisier'), boards=NO_BOARD)
         self.assertEqual(sorted(record['personas'], key=int), [str(n) for n in range(1, 19)])
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'market': 2})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'market'})
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'market': 2})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'web_search', 'market'})
 
     def test_the_right_jobs_keys_stay_beside_the_record_and_are_never_part_of_it(self):
         """WP3 (10 Nov 2026): a night's loss is matched job by job, so the artifact keeps each right job's title, employer and link; the record (the only thing sent) is unchanged."""
         jobs = {}
         record = reference.run(self.post, right_if('menuisier'), jobs, boards=NO_BOARD)
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'market'})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'web_search', 'market'})
         self.assertEqual(len(jobs['3']), record['personas']['3']['total'], 'one key per right job, a posting listed twice once')
         self.assertTrue(all(set(j) == {'title', 'company', 'url', 'sources'} and j['url'].startswith(eures.DETAIL) and j['sources'] == ['eures'] for j in jobs['3']))
         self.assertTrue(all('menuisier' in j['title'].lower() for j in jobs['3']), 'only the jobs the judge called right')
@@ -165,7 +176,7 @@ class TheMarket(unittest.TestCase):
     def test_a_job_two_sources_show_counts_once_and_each_source_keeps_its_own_count(self):
         jobs, details = {}, {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=self.board(), details=details)
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'market': 3}, 'total keeps meaning EURES: Admin labels it so')
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': None, 'market': 3}, 'total keeps meaning EURES: Admin labels it so')
         self.assertEqual({j['title']: j['sources'] for j in jobs['3']}, {'Menuisier 0': ['eures', 'public_board'], 'Menuisier 1': ['eures'], 'Menuisier 9': ['public_board']})
         self.assertEqual(details['3']['public_board'], {'status': 'counted', 'read': 2, 'board': 'board.example', 'pages': 0, 'right': 2, 'only': 1})
         self.assertEqual((details['3']['eures']['right'], details['3']['eures']['only']), (2, 1))
@@ -173,10 +184,35 @@ class TheMarket(unittest.TestCase):
         self.assertEqual(details['3']['free_job_apis'], {'status': 'none (no query)'})
         self.assertEqual(details['3']['linkedin'], {'status': 'by hand'})
 
+    def test_a_web_search_is_judged_in_the_same_pass_and_a_job_it_shares_counts_once(self):
+        """[mc] 3/5: the web search's postings go to the one blind judge pass; one it shares with the board is one job in the market and adds to neither's `only`."""
+        def web(persona):
+            rows = [{'title': t, 'company': 'ACME', 'location': loc, 'url': f'https://web.example/{i}'} for i, (t, loc) in enumerate((('Menuisier 9', 'Brussels'), ('Menuisier 7', 'Brussels'), ('Menuisier 8', 'Ghent')))]
+            return {'source': 'web_search', 'status': 'counted', 'rows': rows if persona is P3 else []}
+        jobs, details = {}, {}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=self.board(), details=details, web=web)
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': 2, 'market': 4}, 'Ghent is the wrong place')
+        self.assertEqual({j['title']: j['sources'] for j in jobs['3']}['Menuisier 9'], ['public_board', 'web_search'])
+        self.assertEqual(details['3']['web_search'], {'status': 'counted', 'read': 3, 'right': 2, 'only': 1})
+        self.assertEqual(details['3']['public_board']['only'], 0, 'the job the web search also found is no longer the board alone')
+
+    def test_a_web_search_that_failed_or_raised_is_not_counted_and_ends_nothing_else(self):
+        def failed(persona):
+            return {'source': 'web_search', 'status': 'not counted: HTTPError', 'rows': []}
+
+        def raised(persona):
+            raise RuntimeError('relay gone')
+        for web, status in ((failed, 'not counted: HTTPError'), (raised, 'not counted: RuntimeError')):
+            details = {}
+            record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board(), details=details, web=web)
+            self.assertEqual(len(record['personas']), 18)
+            self.assertEqual((record['personas']['3']['web_search'], record['personas']['3']['market']), (None, 3), 'not counted is None, never 0')
+            self.assertEqual(details['3']['web_search'], {'status': status, 'read': 0})
+
     def test_a_refused_board_is_not_counted_and_the_market_is_eures_alone(self):
         details = {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board('not counted: refused 403'), details=details)
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'market': 2})
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'market': 2})
         self.assertNotIn('right', details['3']['public_board'])
 
     def test_a_board_that_raises_is_not_counted_and_ends_nothing_else(self):
@@ -248,7 +284,7 @@ class TheCommandLine(unittest.TestCase):
             return {'jvs': []}
         with mock.patch('src.sources.nuts_names.names', return_value=NUTS):
             record = reference.run(post, right_if('menuisier'), boards=NO_BOARD)
-        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'market': 0})
+        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'web_search': None, 'market': 0})
         self.assertEqual(len(record['personas']), 18)
 
 
