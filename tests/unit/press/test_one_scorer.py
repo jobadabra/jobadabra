@@ -284,6 +284,35 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         self.assertEqual(run['score'], {'done': 1, 'pending': 1}, 'the late round neither doubled nor popped the closing pass\'s count')
         self.assertEqual(run['warnings'], [], 'nor added to the run\'s warnings')
 
+    def test_at_the_first_import_the_rounds_in_flight_start_together_from_the_head_of_the_list(self):
+        """sa's Mac runs (10 Nov 2026, main vs the first build of sf 2/8): one round at a time scored 27 jobs where main's two scorers scored 43 (p9, p5, p13).
+        IN_FLIGHT rounds start in the same tick, each the next BATCH of the one ranked list, no job in two rounds."""
+        from types import SimpleNamespace
+        ranked = [{'id': n} for n in range(1, 4 * scoring.BATCH + 1)]
+        together, rounds = threading.Barrier(scoring.IN_FLIGHT, timeout=5), []
+
+        def a_round(args, stores, db, round_run, profile, hidden, dismissed, ids, *rest, **kw):
+            rounds.append(sorted(ids))
+            together.wait()   # broken (BrokenBarrierError) unless every round in flight started before any ended
+            round_run['score'] = {'done': len(ids), 'pending': 0}
+        args = SimpleNamespace(mode='run', score_max=len(ranked), db=self.path)
+        clock = mock.Mock(batch=lambda *a, **k: 0, end=lambda: None, now=lambda: 1.0, ended=lambda: False)
+        with mock.patch.object(scoring, 'score_candidates', side_effect=a_round), mock.patch.object(scoring, 'sync_partial'), \
+                mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring.score, 'queue', return_value=ranked), \
+                mock.patch.object(scoring, 'to_score', return_value=[]), mock.patch.object(scoring, '_stay', return_value=[]), mock.patch('builtins.print'):
+            finish = scoring.score_beside(args, self.stores, mock.Mock(), {'warnings': []}, lambda: 'Profile v1', frozenset(), frozenset(), clock)
+            for _ in range(100):
+                if together.broken or len(rounds) == len(ranked) // scoring.BATCH:
+                    break
+                threading.Event().wait(0.05)
+            finish()
+        self.assertGreaterEqual(scoring.IN_FLIGHT, 2, 'the budget row keeps more than one round in flight')
+        self.assertFalse(together.broken, 'every round in flight started before any ended')
+        ids = [job['id'] for job in ranked]
+        heads = [ids[i * scoring.BATCH:(i + 1) * scoring.BATCH] for i in range(scoring.IN_FLIGHT)]
+        self.assertEqual(sorted(rounds[:scoring.IN_FLIGHT]), heads, 'the first rounds are the head of the list, BATCH each')
+        self.assertEqual(sorted(job_id for one in rounds for job_id in one), ids, 'every job scored once, none in two rounds')
+
     def test_a_scorer_that_died_leaves_the_slice_no_one_to_defer_to(self):
         scorer.begin()
         def work(db, stores):

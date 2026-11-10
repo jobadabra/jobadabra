@@ -2,12 +2,13 @@
 import threading
 
 from .ai import enrich, score, slots
-from .press import scorer, step_yield
+from .press import budget, scorer, step_yield
 from .daily_helpers import for_job_matches, left_out, no_profile, none_scored, time_budget_on, to_score
 
 
 # Score jobs beside the search: the ones that already wait, then every job the search lands, until the run's end.
 BATCH = 4   # jobs a round takes at once: Claude Code's slots (src/ai/providers/claude_code.py PARALLEL); the next round is picked after it, from what has landed since
+IN_FLIGHT = budget.value('daily_search_scoring.IN_FLIGHT')   # score rounds in flight at once, each from the head of the one list (src/press/budget.json)
 POLL = 2.0  # seconds the scorer waits when no job has landed (the search lands jobs source by source, src/jobs_so_far.py)
 
 
@@ -38,7 +39,13 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         return _nothing
     run['waiting'] = len(waiting) - taken
     scorer.begin()   # from here the slice of a first press scores nothing itself: this scorer takes every job (src/first_jobs.py _Scoring)
-    total, stop, lock, closed = {}, threading.Event(), threading.Lock(), [False]
+    total, stop, lock, closed, owed = {}, threading.Event(), threading.Lock(), [False], [taken]   # owed: one count for every round in flight (IN_FLIGHT)
+    syncing = threading.Lock()
+
+    def synced(*given):
+        """sync_partial, one at a time: the Notion store is shared by the rounds in flight (src/stores/beside.py); two writes at once could add a job twice."""
+        with syncing:
+            sync_partial(*given)
 
     def score_batch(own_db, own_stores, ids, level):
         """One round, -> False when it scored nothing (a paused Profile, the AI down, a spent limit): the next would score nothing either, and the claims are not given back.
@@ -46,14 +53,14 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         (`closed`, the join gave up at the run's end) is dropped from the card, its scores are saved all the same."""
         own_run = {'warnings': [], 'waiting': 0}
         with step_yield.span('scoring'), slots.priority(level):
-            score_candidates(args, own_stores, own_db, own_run, read_profile, hidden, dismissed, set(ids), __import__('time').monotonic(), time_budget, final=False)
+            score_candidates(args, own_stores, own_db, own_run, read_profile, hidden, dismissed, set(ids), __import__('time').monotonic(), time_budget, final=False, sync=synced)
             stats = own_run.get('score') or {}
             with lock:
                 if not closed[0]:
                     add_stats(total, stats)
                     run['warnings'] += own_run['warnings']
             if not closed[0]:
-                sync_partial(args, own_stores, own_db, hidden, dismissed)   # score.run syncs every 10 scored in one call, and a round has 4: the app's list has these now (code review, ts)
+                synced(args, own_stores, own_db, hidden, dismissed)   # score.run syncs every 10 scored in one call, and a round has 4: the app's list has these now (code review, ts)
             return bool(stats.get('done'))
 
     def work(own_db, own_stores):
@@ -61,11 +68,10 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         # and the ones this run finds are one list, ranked by one key (your places, distance, closeness) at every pick, so a near new job is never scored after a far
         # old one. The `taken` waiting jobs the clock allowed at the start are owed to this run (L13): once the search stops or the clock ends, the scorer goes on with
         # waiting jobs only until they are paid; they no longer take a first round of their own.
-        owed = [taken]
-
         def pick(only_waiting):
             ids, level = next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + taken, only_waiting)
-            owed[0] -= sum(1 for job_id in ids if job_id in earlier)
+            with lock:
+                owed[0] -= sum(1 for job_id in ids if job_id in earlier)
             return ids, level
         drain(stop, pick, lambda ids, level: score_batch(own_db, own_stores, ids, level), time_budget.ended, owing=lambda: owed[0] > 0)
 
@@ -78,7 +84,7 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         with lock:
             closed[0] = True
             run['score'] = dict(total)   # whole, whether the thread ended or is still in its last round (the closing pass adds to it)
-    return _beside(args.db, stores, work, stop, wait, counts)
+    return _beside(args.db, stores, work, stop, wait, counts, IN_FLIGHT)
 
 
 def _nothing():
@@ -129,8 +135,8 @@ def drain(stop, next_batch, score_batch, ended, pause=None, owing=lambda: False)
             stop.wait(POLL)
 
 
-def _beside(path, stores, work, stop, wait=lambda: None, counts=lambda: None):
-    """work(db, stores) in a thread of its own; returns the call that stops it after the round in flight, waits for it up to `wait()` seconds (None: as long as it takes: the
+def _beside(path, stores, work, stop, wait=lambda: None, counts=lambda: None, n=1):
+    """work(db, stores) in `n` threads of their own (n rounds in flight, each thread picking from the one list; claims keep a job in one round only); returns the call that stops it after the round in flight, waits for it up to `wait()` seconds (None: as long as it takes: the
     run's end when it has a budget, so a round slow behind the AI slots never holds the search past its 3 minutes, code review of ts) and then says the counts (`counts()`). A SQLite connection belongs to the thread that opened
     it, so the thread opens its own to the jobs file and to this Mac's Job Matches (src/stores/beside.py), never the search's.
     Why (ps E2a-1, 8 Nov 2026): the waiting jobs' calls queue after the search's (slots.LATER, as the board web search): the employer naming's rounds
@@ -140,6 +146,7 @@ def _beside(path, stores, work, stop, wait=lambda: None, counts=lambda: None):
     from . import store
     from .stores import beside
     here = beside.opener(stores)
+    alive, gone = [n], threading.Lock()
 
     def run():
         try:
@@ -153,13 +160,18 @@ def _beside(path, stores, work, stop, wait=lambda: None, counts=lambda: None):
         except Exception as error:  # noqa: BLE001 — the search's own pass scores them after it, as before
             print(f'Warning: jobs not scored beside the search ({type(error).__name__}): they are scored after it', flush=True)
         finally:
-            scorer.end()   # a scorer that died leaves nothing for the slice to defer to
-    thread = threading.Thread(target=run, name='scorer', daemon=True)
-    thread.start()
+            with gone:
+                alive[0] -= 1
+                if not alive[0]:
+                    scorer.end()   # the last one out: scorers that died leave nothing for the slice to defer to
+    threads = [threading.Thread(target=run, name='scorer', daemon=True) for _ in range(n)]
+    for thread in threads:
+        thread.start()
 
     def finish():
         stop.set()
-        thread.join(wait())
+        for thread in threads:
+            thread.join(wait())   # the seconds left on the run's clock, read again for each: all of them end by the run's end
         scorer.end()   # not left on for the next search of this process (a test, the app's long process)
         counts()
     return finish
@@ -204,7 +216,8 @@ def read_jobs(args, db, run, only_ids=None):
 
 
 # Score candidates and preserve the scoring warning boundary.
-def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, batch, batch_started, time_budget, final=True):
+def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, batch, batch_started, time_budget, final=True, sync=None):
+    """Score the jobs left (`batch`: these ids only); `sync`: the partial Job Matches write (sync_partial; the scorer beside the search passes one that waits its turn)."""
     earlier = run.pop('score', None) or {}   # the scorer beside the search (score_beside) counts in this run's totals, once, whatever happens below
     # Scores only jobs that survive the hard filters; the Profile is re-read every run
     # (the desktop app's local Profile file when set, else the Notion page).
@@ -215,7 +228,7 @@ def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, bat
 
         # Write scored matches now, keeping the same callback and exception boundary.
         def to_notion():
-            sync_partial(args, stores, db, hidden, dismissed)
+            (sync or sync_partial)(args, stores, db, hidden, dismissed)
         print(score.run(db, candidates, profile, score.DEFAULT_MODEL, args.score_max, stats=run['score'], on_scored=to_notion, only_ids=batch, scope='new'))
         if not final:   # the waiting jobs' pass: one batch, its numbers kept for the search's last pass, which says the warnings once from both
             return
