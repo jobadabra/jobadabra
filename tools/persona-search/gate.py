@@ -11,6 +11,7 @@ import json
 import re
 import sqlite3
 import sys
+from urllib.parse import urlparse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -179,6 +180,19 @@ def after_repeat(out):
     return {k: again.get(k) for k in ('seconds', 'code', 'local_jobs', 'in_places', 'scored_in_places', 'fit70_in_places')} if isinstance(again, dict) else None
 
 
+def source_kind(row):
+    """Fixed provenance category for counts: reader name or public EURES URL; never returns employer/source text."""
+    if str(row.get('provider') or '').casefold() == 'eures':
+        return 'eures'
+    try:
+        host = (urlparse(row.get('url') or '').hostname or '').lower()
+    except ValueError:
+        host = ''
+    if host == 'eures.europa.eu' or (host == 'europa.eu' and '/eures/' in str(row.get('url') or '')):
+        return 'eures'
+    return 'other' if row.get('provider') else 'unknown'
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
@@ -223,7 +237,7 @@ def result(n, out):
         relevant = [r for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes']
         row.update(found=len(judged), local=len(relevant))
         # Fixed categories only: source names can be employer names; no such text belongs in the central night record.
-        row['relevant_sources'] = {kind: sum(1 for r in relevant if ('eures' if str(r.get('provider') or '').casefold() == 'eures' else 'other' if r.get('provider') else 'unknown') == kind)
+        row['relevant_sources'] = {kind: sum(1 for r in relevant if source_kind(r) == kind)
                                    for kind in ('eures', 'other', 'unknown')}
     except (OSError, ValueError, KeyError):
         row.setdefault('error', 'the judge wrote no verdicts (see judge.log)')
@@ -438,7 +452,7 @@ def main(argv):
     if kind == 'cv':
         print(json.dumps(make_cv(argv[1], argv[2]), ensure_ascii=False))
     elif kind == 'extract':
-        print(len(extract(argv[1], argv[2])), 'open jobs')
+        print(len(extract(argv[1], argv[2], include_urls='--urls' in argv[3:])), 'open jobs')
     elif kind == 'result':
         print(json.dumps(result(argv[1], argv[2]), ensure_ascii=False))
     elif kind == 'compare':

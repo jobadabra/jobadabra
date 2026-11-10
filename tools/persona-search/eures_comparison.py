@@ -1,4 +1,4 @@
-"""Paired fresh Search checks, with and without the EURES reader; counts-only report, separate from nightly history."""
+"""Paired fresh Search checks, with and without the EURES reader; counts-only report, separate from nightly history. Privacy guard: tests/guards/privacy/test_search_comparison.py."""
 import collections
 import json
 import os
@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from urllib.parse import urlparse
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -29,8 +28,7 @@ def right(rows):
 
 def eures_row(row):
     """Whether provenance identifies an EURES reader or portal result, including one found through another reader."""
-    host = (urlparse(row.get('url') or '').hostname or '').lower()
-    return str(row.get('provider') or '').casefold() == 'eures' or host == 'eures.europa.eu' or (host == 'europa.eu' and '/eures/' in str(row.get('url') or ''))
+    return gate.source_kind(row) == 'eures'
 
 
 def summarize(pools, presses):

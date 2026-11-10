@@ -17,4 +17,6 @@
 2. `[ec] 2/2 Compare searches with and without EURES` — public harness, optional workflow, source producer.
 
 ## Verification evidence
-43 EURES reader tests pass on Python 3.12. Offline paired-run fixtures pass for both arm orders, shared draft, duplicates, missing identity, timing, contamination and failures. Workflow parsed with Ruby YAML; search map check passes. The site half passes 50 focused tests and has desktop/mobile previews. No live AI run started.
+43 EURES reader tests pass on Python 3.12. A one-off offline fixture invocation (not a committed tooling test) passes for both arm orders, shared draft, duplicates, missing identity, timing, contamination and failures. Workflow parsed with Ruby YAML; search map check passes. The site half passes 50 focused tests and has desktop/mobile previews. No live AI run started.
+
+The owner’s 3 Nov rule prohibits new tests of reporting tools except safety/data/money/privacy/release guards. The committed privacy guard is `tests/guards/privacy/test_search_comparison.py`; it checks both nightly and paired published counts contain no job, employer, location, URL or source text. Shared `gate.source_kind()` classifies EURES reader and portal URLs identically in both reports.

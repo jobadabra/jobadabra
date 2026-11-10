@@ -19,4 +19,4 @@ Two PRs, site first: 1/2 correct the Night tab labels and accept fixed source co
 - [x] Paired runner and explicit reader switch (proof: tools/persona-search/run.mjs)
 - [x] Counts, source attribution, conservative overlap and honest failure report (proof: tools/persona-search/eures_comparison.py)
 - [x] Optional workflow input, docs and offline verification (proof: .github/workflows/search-personas.yml)
-- [ ] PR opened for owner review
+- [x] PR opened: site #513 merged; public #3663 (proof: docs/superpowers/plans/2026-11-10-eures-comparison.md)
