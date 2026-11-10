@@ -42,7 +42,7 @@ def in_your_places(is_mine):
 
 def km_to_best_place(km):
     """The km from the item to the nearest of your best places: `km(item)`, inf when it is not placed (so an unplaced one sorts after the placed, as before). Reproduces:
-    time_budget.best_first's second key (geo's stored answers, near_best) and title_triage.decide's `nearness(title)` (#2918)."""
+    time_budget.best_first's second key (geo's stored answers, else Eurostat's point of a EURES area: near_best, #3670) and title_triage.decide's `nearness(title)` (#2918)."""
     return km
 
 

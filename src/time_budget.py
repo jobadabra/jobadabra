@@ -21,7 +21,7 @@ def best_first(jobs):
     """Jobs in your best places first (Search settings "Best places"), then the nearest to them, then the closest to your search (src/job_rank.py:
     your role words, level and skills), the order kept otherwise: a short search spends its time on them.
     Why (#2918, owner 5 Nov 2026: "One clear order first"): a place word cannot tell "Haute-Garonne, France" (Toulouse's own area) from Paris, both
-    "in"; geo's stored place answers can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
+    "in"; geo's stored place answers, or Eurostat's point of a EURES area, can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
     from .paths import load_search_config, place_regex
     from .job_rank import ranker
     from .press import rank
@@ -37,13 +37,16 @@ def best_first(jobs):
 
 
 def near_best(tops):
-    """location -> km from it to the nearest of these best places, from geo's stored answers only (src/geo.py: no call here); inf when either is not
-    placed or has no point (a country, remote), so an unplaced location keeps today's order."""
+    """location -> km from it to the nearest of these best places, from geo's stored answers, else Eurostat's point of the EURES area it names
+    (src/sources/nuts_points.py); no call here. inf when either has no point (a country, remote, not placed yet), so such a location keeps today's order.
+    Why (#3670): EURES areas were placed by AI calls that answered after the run had picked its titles and scores."""
     from . import geo
+    from .sources import nuts_points
     data = geo.load()
     points = [entry for entry in (data.get(geo.norm(word)) for word in tops) if entry and 'lat' in entry]
 
     def km(location):
         entry = data.get(geo.norm(location))
-        return min((geo.km(entry, point) for point in points), default=float('inf')) if entry and 'lat' in entry else float('inf')
+        entry = entry if entry and 'lat' in entry else nuts_points.point(location)
+        return min((geo.km(entry, point) for point in points), default=float('inf')) if entry else float('inf')
     return km

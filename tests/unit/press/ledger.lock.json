@@ -150,5 +150,9 @@
  "L38": {
   "gets": "a Find jobs run scores each job as it lands, beside the readers, to the run's end: no seconds are kept for the job facts and no job is paid for twice",
   "hash": "5e3a69cba09ff7dd"
+ },
+ "L39": {
+  "gets": "jobs from the EU portal are placed on the map the moment they are read, so the jobs in your own area are sorted and scored first",
+  "hash": "b75ee77fc6d0c3ac"
  }
 }
