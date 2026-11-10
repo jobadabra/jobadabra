@@ -22,9 +22,12 @@ def triage_with_places(jobs):
     from . import feeds   # read at call time: tests patch feeds.* as before
     from ..ai import place_triage
     if feeds.placing():   # what is known without a model call: the kept answers and the map's cache (no AI), so those jobs need not wait
-        feeds.placed().update(place_triage.known_now([job.get('location') for job in jobs if (job.get('location') or '').strip()], feeds._SEARCH))
+        locations = [job.get('location') for job in jobs if (job.get('location') or '').strip()]
+        feeds.placed().update(_guarded(lambda: place_triage.known_now(locations, feeds._SEARCH),
+                                       lambda why: f'the map of places was not read ({why}): these jobs wait for the place call') or {})
     chosen = [job for job in jobs if to_place(job)]   # before any sort below sets feeds.ASKED (the #3512 race)
-    asked = {place_triage.norm(job['location']) for job in chosen if feeds.place_of(job) is None}
+    # Asked: not placed, or a plain 'out' whose "names no town" question this run may still turn into 'out:vague' (code review of sf place PR a)
+    asked = {where for where in (place_triage.norm(job['location']) for job in chosen) if feeds.placed().get(where) in (None, 'out')}
     placing, views = Future(), batch_scope.current()
 
     def place():
@@ -66,20 +69,34 @@ def place_jobs(jobs, chosen=False):
     locations = [job.get('location') for job in jobs if pick(job)]
     if not locations or features.disabled('place_triage') or not engine.ready():
         return
+    _guarded(lambda: _place(jobs, pick), lambda why: f'job locations not placed by {providers.who()} ({why}): the place words decide this run (remote jobs wait)')
+
+
+def _place(jobs, pick):
+    """The place call for the jobs `pick` keeps: the locations nobody placed yet, best first, then which of the ones outside name no town."""
+    from . import feeds
+    from ..ai import place_triage
+    # A refresh places a batch: the ones your place words name first, then the ones most jobs share (7 Oct 2026: it asked in feed
+    # order, Warsaw and Dallas first, and "Genève, Switzerland" with 6 jobs waited behind 1,400 others), each job counted by how close
+    # it is to your search (src/job_rank.py; 18 Oct 2026: a first search in Cluj placed 1,313 locations for 10 minutes before scoring)
+    from ..job_rank import ranker
+    from ..press import rank
+    closeness, count = ranker(), Counter()
+    for job in jobs:
+        if pick(job):
+            count[place_triage.norm(job['location'])] += 1 + closeness(job)
+    ordered = rank.titles(list(count), rank.in_your_places(lambda location: feeds.mentions(feeds.PLACE, location)), lambda location: -count[location])
+    # Only what nobody placed yet: a place the map's cache gave (known_now) is never answered again after its jobs were handed (code review of sf place PR a)
+    feeds.placed().update(place_triage.decide([where for where in ordered if feeds.placed().get(where) is None], feeds._SEARCH))
+    feeds.placed().update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
+
+
+def _guarded(work, said):
+    """work() -> its result; a failure is said (`said(reason)`) and gives None, so a reader goes on with the place words: the one catch of the place steps here.
+    Why (code review of sf place PR a): the map read now runs in the reader's thread, and feed_scan calls triage_with_places without a try."""
     try:
-        from ..ai import place_triage
-        # A refresh places a batch: the ones your place words name first, then the ones most jobs share (7 Oct 2026: it asked in feed
-        # order, Warsaw and Dallas first, and "Genève, Switzerland" with 6 jobs waited behind 1,400 others), each job counted by how close
-        # it is to your search (src/job_rank.py; 18 Oct 2026: a first search in Cluj placed 1,313 locations for 10 minutes before scoring)
-        from ..job_rank import ranker
-        from ..press import rank
-        closeness, count = ranker(), Counter()
-        for job in jobs:
-            if pick(job):
-                count[place_triage.norm(job['location'])] += 1 + closeness(job)
-        ordered = rank.titles(list(count), rank.in_your_places(lambda location: feeds.mentions(feeds.PLACE, location)), lambda location: -count[location])
-        feeds.placed().update(place_triage.decide(ordered, feeds._SEARCH))
-        feeds.placed().update(place_triage.vague(ordered, feeds._SEARCH))   # of the ones outside: which name no town of their own
+        return work()
     except Exception as error:  # noqa: BLE001 — not placed this run: the place words decide, said
-        print(f'Warning: job locations not placed by {providers.who()} ({reason(error)}): the place words decide this run (remote jobs wait)')
+        print(f'Warning: {said(reason(error))}', flush=True)
         detail('sources', error)
+        return None

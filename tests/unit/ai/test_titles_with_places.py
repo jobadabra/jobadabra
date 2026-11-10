@@ -13,7 +13,7 @@ from src import geo, store
 from src.ai import batch_scope, engine, place_triage, title_queue, title_triage
 from src.sources import feed_places, feed_scan, feeds
 
-KNOWN = [f'Known role {n}' for n in range(3)]   # jobs in a town Claude placed on an earlier press: in your places at once
+KNOWN = [f'Known role {n}' for n in range(3)]   # jobs in a town the place words name: in your places by the words, its place asked like any other unless a test places it
 LATE = [f'Late role {n}' for n in range(3)]     # jobs in a town only this press's place call places "in": in your places once its answer lands
 EURES = [f'Eures role {n}' for n in range(3)]   # another reader, handed over to the hub while the place call runs
 
@@ -22,12 +22,15 @@ class Model:
     """A fake model: a place call waits for `gate` (a slow answer); a title call answers at once; records every call in order."""
 
     def __init__(self):
-        self.gate, self.log, self.lock = threading.Event(), [], threading.Lock()
+        self.gate, self.log, self.lock, self.vague = threading.Event(), [], threading.Lock(), False
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
         content = kwargs['messages'][0]['content']
-        if 'The job locations:' in content:
+        if kwargs['system'][0]['text'] == place_triage.VAGUE_SYSTEM:   # which of these name no town: none, unless a test says all
+            listed = content.split('The job locations:\n', 1)[-1].split('\n') if self.vague else []
+            answer = {'vague': list(range(1, len(listed) + 1))}
+        elif 'The job locations:' in content:
             with self.lock:
                 self.log.append('place asked')
             self.gate.wait(timeout=30)   # a hang guard, never the clock the test depends on
@@ -36,7 +39,7 @@ class Model:
             lines = content.split(':\n', 1)[1].split('\n')
             answer = {'locations': [{'n': int(line.split('.', 1)[0]), 'where': '', 'country': 'France', 'nearest': 'none', 'km': -1, 'answer': 'inside'} for line in lines]}
         elif 'The titles:' not in content:
-            answer = {'vague': [], 'visa': [], 'places': []}   # the other place questions (outside locations, work rights): nothing to say
+            answer = {'vague': [], 'visa': [], 'places': []}   # the other place questions (work rights): nothing to say
         else:
             lines = content.split('The titles:\n', 1)[1].split('\n')
             with self.lock:
@@ -108,7 +111,7 @@ class PlaceCallBesideTitles(unittest.TestCase):
         self.assertEqual(eures_ran, [True], 'EURES\'s hand-over ran in the hub while the place call was held')
         self.assertEqual(late_verdict, 'in', 'a place answer that arrives late is applied to the reader')
         placed_at = self.model.index('place answered')
-        for title in KNOWN + LATE:   # the reader's own sort starts when the answers are in: no title of a job a late answer might put outside your places is handed on a guess
+        for title in KNOWN + LATE:   # both towns are asked about: no title of a job a late answer might put outside your places is handed on the words (Paris, Texas)
             asked = self.model.asked(title)
             self.assertEqual(len(asked), 1, f'{title}: asked once')
             self.assertGreater(self.model.index(asked[0]), placed_at, f'{title}: asked after the place answer')
@@ -119,28 +122,60 @@ class PlaceCallBesideTitles(unittest.TestCase):
         answered at 73 s) and the reader's ~100 jobs at Lyon, placed on earlier presses, waited behind it: first job 66 s instead of 20 s."""
         place_triage._keep(place_triage._key(feeds._SEARCH), {place_triage.norm('Known town'): 'in'})   # placed on an earlier press
         feeds.PLACED = None
-        employer = self.jobs(KNOWN, 'Known town') + self.jobs(LATE, 'Late town')
-        log_at_answer = []
+        mapped = [f'Mapped role {n}' for n in range(2)]   # a town only the map's cache knows (geo.resolve ask=False): no model call for it either
+        employer = self.jobs(KNOWN, 'Known town') + self.jobs(LATE, 'Late town') + self.jobs(mapped, 'Map town')
+        log_at_answer, handed, handed_at_answer = [], [], []
+        map_asked = []
+
+        def the_map(locations, words, client=None, ask=True):
+            map_asked.append((sorted(locations), ask))
+            return {place_triage.norm('Map town'): 'in'} if place_triage.norm('Map town') in locations else {}
 
         def release_when_known_titles_are_asked():
             for _ in range(2000):   # 5 s of 2.5 ms polls: a hang guard
-                if all(self.model.asked(title) for title in KNOWN) and self.model.asked('place asked'):
+                if len(handed) >= len(KNOWN + mapped) and self.model.asked('place asked'):
                     break
                 threading.Event().wait(0.0025)
             log_at_answer.extend(self.model.log)
+            handed_at_answer.extend(handed)
             self.model.gate.set()
         releaser = threading.Thread(target=release_when_known_titles_are_asked)
-        with title_queue.hub(), batch_scope.concurrent():
+        with title_queue.hub(), batch_scope.concurrent(), mock.patch.object(geo, 'verdicts', the_map):
             releaser.start()
-            with batch_scope.reader('employer sites'):
+            with batch_scope.reader('employer sites'), title_queue.handing_to(lambda jobs: handed.extend(job['title'] for job in jobs)):
                 feed_places.triage_with_places(employer)
         releaser.join(30)
-        self.assertEqual(sorted(entry for entry in log_at_answer if entry.startswith('titles')), sorted(f'titles {t.lower()}' for t in KNOWN),
+        self.assertEqual(sorted(handed_at_answer), sorted(KNOWN + mapped), 'the jobs at known places reached the list while the place call was held, and only they')
+        self.assertNotIn(place_triage.norm('Map town'), [where for locations, ask in map_asked if ask for where in locations], 'the map\'s answer is not asked again')
+        self.assertEqual(sorted(entry for entry in log_at_answer if entry.startswith('titles')), sorted(f'titles {t.lower()}' for t in KNOWN + mapped),
                          f'the known place\'s titles were asked while the place call was held, the asked place\'s were not: {log_at_answer}')
         placed_at = self.model.index('place answered')
         for title in LATE:
             self.assertGreater(self.model.index(self.model.asked(title)[0]), placed_at, f'{title}: its place was asked, so its title waits for the answer')
         self.assertEqual(self.model.asked('place asked'), ['place asked'], 'one place call, for the asked place only')
+
+    def test_a_kept_plain_out_this_run_finds_names_no_town_is_still_sorted(self):
+        """Code review of sf place PR a: a place kept as plain 'out' (its "names no town" question not asked yet) was taken as known, its jobs sorted at once and
+        skipped; this run's answer made it 'out:vague' (its postings are read) and the job was never sorted: dropped for the run, where main sorted it."""
+        place_triage._keep(place_triage._key(feeds._SEARCH), {'switzerland': 'out'})
+        feeds.PLACED = None
+        self.model.gate.set()
+        job = {'title': 'Vague role 1', 'location': 'Switzerland'}
+        self.model.vague = True
+        with mock.patch.object(place_triage, 'cannot_hold_places', lambda *a: False), mock.patch.object(place_triage, 'excluded_remote', lambda *a: False), \
+                mock.patch.object(geo, 'cannot_hold', lambda *a: False), mock.patch.object(feeds, 'wanted_location', lambda job: feeds.place_of(job) not in (None, 'out')), \
+                title_queue.hub(), batch_scope.concurrent(), batch_scope.reader('employer sites'):
+            feed_places.triage_with_places([job])
+        self.assertEqual(len(self.model.asked('vague role 1')), 1, f'its title is sorted after the answer: {self.model.log}')
+
+    def test_a_map_that_cannot_be_read_leaves_its_jobs_waiting_and_the_read_goes_on(self):
+        """Code review of sf place PR a: the map read moved into the reader's thread, and feed_scan calls triage_with_places without a try."""
+        self.model.gate.set()
+        with mock.patch.object(place_triage, 'known_now', side_effect=AttributeError('a map entry of an old shape')), title_queue.hub(), batch_scope.concurrent(), \
+                batch_scope.reader('employer sites'):
+            feed_places.triage_with_places(self.jobs(LATE, 'Late town'))
+        self.assertEqual(len(self.model.asked('place asked')), 1, 'the place call still asked')
+        self.assertTrue(all(len(self.model.asked(title)) == 1 for title in LATE), 'and the titles sorted after it')
 
 class RealTitleWordsStillSeeTheNewLocations(unittest.TestCase):
     """Review of #3512: beside the sort, the place call raced feeds.ASKED (after it `wanted_title` stops using the role words) and, on a few thousand jobs, placed nothing."""
