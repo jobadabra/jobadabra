@@ -17,6 +17,8 @@ _spec = importlib.util.spec_from_file_location('press_numbers', HERE / 'three_nu
 numbers = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(numbers)
 RUNS = {'1': 'first Find jobs run', '2': 'repeat Find jobs run'}
+ALL_PEOPLE = [f'p{n}' for n in range(1, 19)]   # the night personas (press-tapes.yml): every one is a row of the per-person table, measured or not
+PACE_NOTE = ("The recordings carry CI's slow AI pace (a Mac baseline scored 15 jobs a run against 2 here): read speed as a change between main and this PR, not as the product's speed.")
 BAND_RUN = 'Find jobs pipeline yardstick band'   # the run-name of a mode=band dispatch
 
 
@@ -122,6 +124,23 @@ def comparable(band, recordings, run, personas):
     return band['runs'].get(run, {}), None
 
 
+def either_run(noises):
+    """{persona: {number: widest half-width of the runs}}: a person is noisy for the headline when main's replays of either Find jobs run did not repeat."""
+    out = {}
+    for noise in noises.values():
+        for persona, widths in noise.items():
+            into = out.setdefault(persona, {})
+            for name, half in widths.items():
+                into[name] = max(half, into.get(name, 0))
+    return out
+
+
+def noise_for(band, recordings, run):
+    """{persona: {number: half-width}} from main's band for the personas whose recording is the one the band was measured on (a re-made recording has no noise yet: the one-job step alone)."""
+    now = stamps(recordings)
+    return {persona: noise for persona, noise in (band.get('people') or {}).get(run, {}).items() if (band.get('recordings') or {}).get(persona) == now.get(persona)}
+
+
 def newest_band():
     """main's newest band (band_mode's band.json), from the last successful mode=band run on main; {} when there is none yet."""
     try:
@@ -150,7 +169,7 @@ def pr(art, out):
         return 0
     if not band:
         lines.append("main's noise band is not measured yet (dispatch this workflow with mode=band on main): every verdict reads \"not measured\".")
-    found = {}
+    found, everyone, noises = {}, {}, {}
     gaps = recording_gaps(art)
     if gaps:
         lines += ['', '**Recording gap, re-record (their numbers below are not the pipeline\'s): ' + '; '.join(
@@ -161,8 +180,13 @@ def pr(art, out):
         found[run] = {'pr': {'personas': mine, 'summary': numbers.summary(mine) if mine else {}},
                       'main': {'personas': theirs, 'summary': numbers.summary(theirs) if theirs else {}}}
         measured = [row['persona'] for row in mine]
+        noise = noises[run] = noise_for(band, recordings, run)
+        seen = numbers.people(theirs, mine, noise)
+        everyone[run] = seen
         against, why = comparable(band, recordings, run, measured)
         lines += ['', f'### The {label} ({len(mine)} personas)', '']
+        lines += (['No replay measured this run.', ''] if not seen else
+                  [numbers.people_line(seen, ALL_PEOPLE), '', numbers.repeat_line(seen, noise), '', numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run), noise), ''])
         if why:
             lines += [why, '']
         crashed = sorted(p.name for p in recordings.glob('p*') if (p / f'jobs-{run}.json').exists() and p.name not in measured)
@@ -176,8 +200,30 @@ def pr(art, out):
         curve = by_minute(recordings, run)
         lines.append('right local jobs the recordings found by minute ' + ', '.join(f'{m}: {n}' for m, n in curve.items()))
     Path(out, 'numbers.json').write_text(json.dumps(found, ensure_ascii=False), encoding='utf-8')
-    print('\n'.join(lines))
+    wrong = numbers.wrong_place_line(next((seen for seen in everyone.values() if seen), {}))   # the first run's: the repeat run lists the same jobs again
+    head = ['## Find jobs pipeline yardstick', '', '**' + numbers.people_line(worst_of(everyone), ALL_PEOPLE, 'People, both runs: ') + '**'] + ['', numbers.repeat_line({persona: one for seen in everyone.values() for persona, one in seen.items()}, either_run(noises))] + (['', wrong] if wrong else []) + ['', PACE_NOTE]
+    text = '\n'.join(head + lines[1:])
+    Path(out, 'summary.md').write_text(text + '\n', encoding='utf-8')   # the PR comment's body (the workflow's comment job posts it)
+    print(text)
     return 0
+
+
+def missing_why(recordings, run):
+    """{persona: reason} for the night personas a run's table has no row for: no recording, or a recording whose replay left no jobs on a side."""
+    return {persona: 'replay crashed or missing on a side' if (Path(recordings) / persona / f'jobs-{run}.json').exists() else 'no recording' for persona in ALL_PEOPLE}
+
+
+def worst_of(everyone):
+    """{persona: {'overall', 'verdict'}} over both runs: each number's worst verdict of the two, so the headline names anyone who got worse in either."""
+    merged = {}
+    for seen in everyone.values():
+        for persona, one in seen.items():
+            into = merged.setdefault(persona, {'verdict': {}})['verdict']
+            for name, verdict in one['verdict'].items():
+                into[name] = min(verdict, into.get(name, verdict), key=numbers.WORSE_FIRST.index)
+    for one in merged.values():
+        one['overall'] = next(v for v in numbers.WORSE_FIRST if v in one['verdict'].values())
+    return merged
 
 
 def band_mode(art, out):
@@ -191,6 +237,7 @@ def band_mode(art, out):
         # A persona counts in the band only when every replay of main measured it, so each replay's mean is over the same personas.
         common = set.intersection(*({row['persona'] for row in found} for found in replays)) if replays else set()
         band['personas'][run] = sorted(common)
+        band.setdefault('people', {})[run] = numbers.person_noise([[row for row in found if row['persona'] in common] for found in replays]) if common else {}
         band['runs'][run] = numbers.band([numbers.summary([row for row in found if row['persona'] in common]) for found in replays if common])
     Path(out, 'band.json').write_text(json.dumps(band), encoding='utf-8')
     print('## Find jobs pipeline yardstick: main\'s noise band\n')
