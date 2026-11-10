@@ -466,7 +466,7 @@ class ParallelReadsTests(unittest.TestCase):
         from src.notion.client import together
         # Two reads at a time (workers=2, Notion's limit): each read waits at the barrier for a second one, so one at a
         # time would time out (BrokenBarrierError). No wall-clock limit, so a slow CI runner can't fail it.
-        barrier = threading.Barrier(2, timeout=5)
+        barrier = threading.Barrier(2, timeout=60)   # Why (10 Nov 2026, a 5 s barrier broke 1 in 40 on a loaded runner in a sibling test): a hang guard, never the verdict
         results = together(*[lambda n=n: (barrier.wait(), n)[1] for n in range(4)])
         self.assertEqual(results, [0, 1, 2, 3])
 
