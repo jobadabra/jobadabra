@@ -38,6 +38,11 @@ class Cards(unittest.TestCase):
         self.assertEqual([(r['title'], r['company']) for r in mb.cards(markup, shape, 'https://b.example/')], [('Nurse 0', ''), ('Nurse 1', 'Clinic 1'), ('Nurse 2', 'Clinic 2')],
                          'a card without an employer never borrows the next card\'s')
 
+    def test_a_block_closes_an_open_paragraph_through_inline_elements(self):
+        markup = '<div class="job"><h2>Nurse</h2><p class="co"><span>Clinic<div class="pl">Dublin</div></div>'
+        shape = {'card': {'class': 'job'}, 'title': {'in': {'tag': 'h2'}}, 'company': {'in': {'class': 'co'}}, 'location': {'in': {'class': 'pl'}}}
+        self.assertEqual(mb.cards(markup, shape, 'https://b.example/')[0], {'title': 'Nurse', 'company': 'Clinic', 'location': 'Dublin', 'url': ''})
+
     def test_a_selector_path_a_field_index_and_a_script_link(self):
         markup = ('<div class="job"><div class="title"><a href="/j/1">Driver</a></div><a href="javascript:void(0)">save</a><div class="logo"><img alt="Acme"></div>'
                   '<p class="c">2 days ago</p><p class="c">Sofia</p><p class="c">Full time</p></div>')
@@ -64,6 +69,11 @@ class Cards(unittest.TestCase):
             self.assertTrue(set(board['people']) <= {str(n) for n in range(1, len(PERSONAS) + 1)}, board['board'])
             self.assertIn('{role', board['search'])
             self.assertTrue(board['shape'].get('state') or board['shape'].get('card'), board['board'])
+            self.assertTrue('{page}' in board['search'] or board.get('next') or board.get('max_pages') == 1,
+                            f"{board['board']}: a row that cannot reach page 2 says max_pages 1 (review of [mc] 2/5: a first page read as the whole count)")
+            for field in ('title', 'company', 'location', 'url'):
+                spec = board['shape'].get(field)
+                self.assertTrue(not isinstance(spec, dict) or isinstance(spec.get('index', 0), int), f"{board['board']} {field}: index is a number")
 
 
 class Reading(unittest.TestCase):
@@ -116,10 +126,14 @@ class Reading(unittest.TestCase):
         got, calls = self.run_with([(200, page(card(1), card(2)))])
         self.assertEqual((len(got['rows']), len(calls)), (2, 3), 'page 2 repeats page 1: next word, which repeats too')
 
-    def test_a_search_answered_in_one_request_is_read_once_per_word(self):
-        self.BOARD = {**self.BOARD, 'search': 'https://board.example/jobs?q={role}&in={place}'}
-        got, calls = self.run_with([(200, page(card(1), card(2)))])
-        self.assertEqual((got['status'], len(calls)), ('counted', 2), 'one request for each of the two words, no page 2')
+    def test_a_one_page_row_is_read_once_per_word_and_its_note_goes_with_the_count(self):
+        self.BOARD = {**self.BOARD, 'search': 'https://board.example/jobs?q={role}&in={place}', 'max_pages': 1, 'note': 'first page only'}
+        got, calls = self.run_with([(200, page(card(1), card(2))), (200, page(card(3)))])
+        self.assertEqual((got['status'], len(calls), got['note']), ('counted', 2, 'first page only'), 'one request for each of the two words, no page 2')
+
+    def test_later_pages_use_the_next_form_when_the_row_has_one(self):
+        board = {'search': 'https://b.example/s-{role_slug},{place}.html', 'next': 'https://b.example/s-{role_slug},{place}_{page}.html'}
+        self.assertEqual([mb.address(board, 'kucharz', 'krakow', p) for p in (0, 1)], ['https://b.example/s-kucharz,krakow.html', 'https://b.example/s-kucharz,krakow_2.html'])
 
     def test_a_person_with_no_board_is_none_not_zero(self):
         self.assertEqual(mb.read(3, ['menuisier'], fetch=lambda url: self.fail('no board, no request'))['status'], 'none (no board)')

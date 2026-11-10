@@ -1,7 +1,8 @@
 """The market count's national job boards: for one fictional candidate, the jobs the country's largest public, no-login board lists for the role in the city, read the way a person
 reads them (the board's own search, page by page), as rows the blind judge reads (title, employer, place, link). Only fetching and reading here: no judging, no keeping, no ranking.
 Why (owner, 10 Nov 2026, via sa: "summing all the jobs I found (that's what a normal person would do without Jobadabra)… should be the number what Jobadabra finds"; the six people EURES
-has nothing for: asked via AskUserQuestion, "One public board each (Recommended)"): EURES lists 0 right jobs for Zagreb, Dublin, Lisbon, Budapest, Vienna and Copenhagen.
+has nothing for: asked via AskUserQuestion, "One public board each (Recommended)"): EURES lists 0 right jobs for Zagreb, Dublin, Lisbon, Budapest, Vienna and Copenhagen; sa's default extends it to every country of the 18 ([mc] 2/5: 16 of 18; Belgium and the
+Netherlands "none (no board)": every public board refused or needs a browser, listed in market-boards.json `_refused` so no session tries them again).
 Why data rows with each board's card shape, never code per site (sa, 10 Nov 2026, decision B): the referee must give the same number on the same page every run, so no AI reads the
 page; a board is one row of market-boards.json (country, search address, the people it serves, where a job card's fields are), and a page whose cards are no longer where the row
 says is "not counted: no cards", visible, never a guess. The product's own readers stay universal (src/sources): this file is the referee's, outside the pipeline.
@@ -67,8 +68,12 @@ class _Tree(html.parser.HTMLParser):
         self.at = self.root
 
     def handle_starttag(self, tag, attrs):
-        if tag in CLOSES_P and self.at.tag == 'p':   # HTML's implied ends: a block closes an open paragraph, a list item closes the open item of its list (pages that leave them open)
-            self.at = self.at.parent
+        if tag in CLOSES_P:   # HTML's implied ends, as browsers apply them: a block closes an open paragraph (through inline elements, not past a table cell or button),
+            node = self.at     # a list item closes the open item of its list (pages that leave them open: infoempleo's cards nested and borrowed the next card's employer)
+            while node is not self.root and node.tag not in ('p', 'td', 'th', 'table', 'button'):
+                node = node.parent
+            if node.tag == 'p':
+                self.at = node.parent
         if tag == 'li':
             node = self.at
             while node is not self.root and node.tag not in ('li', 'ul', 'ol'):
@@ -190,10 +195,11 @@ def slug(text):
 
 
 def address(board, word, place, page):
-    """The board's own search address for one role word, the person's place token and a page number."""
-    first = board.get('first_page', 1)
-    fill = {'role': urllib.parse.quote_plus(word), 'role_slug': urllib.parse.quote(slug(word)), 'place': urllib.parse.quote_plus(place), 'page': str(first + page)}
-    return re.sub(r'\{(\w+)\}', lambda m: fill[m.group(1)], board['search'])
+    """The board's own search address for one role word, the person's place token and a page (0 = the first): `search`, or `next` for later pages when the board's
+    later pages have another form (its own rel=next link: praca.pl's "_2.html")."""
+    fill = {'role': urllib.parse.quote_plus(word), 'role_slug': urllib.parse.quote(slug(word)), 'place': urllib.parse.quote_plus(place), 'page': str(1 + page)}
+    form = board.get('next') if page and board.get('next') else board['search']
+    return re.sub(r'\{(\w+)\}', lambda m: fill[m.group(1)], form)
 
 
 def board_for(n):
@@ -203,7 +209,7 @@ def board_for(n):
 
 def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
     """-> {"source": "public_board", "board", "status", "rows"}: the first `cap` rows the board's own search lists for the role words in the person's place, in the board's order,
-    one row per link (else per title + employer + place). Status: "counted"; "not counted: refused <code>" (that board ends for this run); "not counted: no answer"; "not counted: no cards"
+    one row per link (else per title + employer + place); a row's `note` (e.g. "first page only") goes with the result, so a short read is never shown as whole. Status: "counted"; "not counted: refused <code>" (that board ends for this run); "not counted: no answer"; "not counted: no cards"
     (page 1 of every word had none: the board changed its page, or listed nothing; never read as 0 jobs); "not counted: page answered <code>" (any page failed: a short read is
     no count); "none (no board)" for a country with no row."""
     board = board_for(n)
@@ -211,7 +217,7 @@ def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
         return {'source': 'public_board', 'board': None, 'status': 'none (no board)', 'rows': []}
     place, rows, seen, pages, carded = board['people'][str(n)], [], set(), 0, False
     for word in words:
-        for page in range(MAX_PAGES):
+        for page in range(board.get('max_pages', MAX_PAGES)):   # Why (review of [mc] 2/5): a row says it reads one page (an API's single answer, or a board whose later pages load by script)
             if len(rows) >= cap:
                 break
             if pages:
@@ -233,10 +239,10 @@ def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
                 seen.add(key)
                 rows.append(row)
                 new += 1
-            if not new or '{page}' not in board['search']:   # a search answered in one request (an API's 100 rows) has no next page
+            if not new:
                 break
     status = 'counted' if carded else 'not counted: no cards'
-    return {'source': 'public_board', 'board': board['board'], 'status': status, 'rows': rows if carded else [], 'pages': pages}
+    return {'source': 'public_board', 'board': board['board'], 'status': status, 'rows': rows if carded else [], 'pages': pages, **({'note': board['note']} if board.get('note') else {})}
 
 
 if __name__ == '__main__':

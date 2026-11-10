@@ -1,5 +1,5 @@
 {
- "_why": "The market count's national job boards (tools/persona-search/market_boards.py): one row per country, the largest public, no-login, server-rendered board (sa, 10 Nov 2026). The referee's data, never the product's site list (src/ stays universal). people: persona number -> the place as the board's search spells it. shape: where a job card's title, employer, place and link are on the board's result page.",
+ "_why": "The market count's national job boards (tools/persona-search/market_boards.py): one row per country, the largest public, no-login board whose own search page lists jobs without a browser (sa, 10 Nov 2026). The referee's data, never the product's site list (src/ stays universal). people: persona number -> the place as the board's search spells it. search (and next, for later pages of another form): the board's own address. max_pages + note: a row that reads fewer pages says so. shape: where a job card's title, employer, place and link are.",
  "boards": [
   {
    "country": "BG",
@@ -7,7 +7,7 @@
    "people": {
     "1": "sofia"
    },
-   "search": "https://www.zaplata.bg/{place}/?q={role}",
+   "search": "https://www.zaplata.bg/{place}/?q={role}&page={page}",
    "shape": {
     "card": {
      "tag": "div",
@@ -79,13 +79,13 @@
     "url": {
      "in": {
       "tag": "a",
-      "attr": {
-       "href": ""
-      }
+      "class": "inset-0"
      },
      "take": "@href"
     }
-   }
+   },
+   "max_pages": 1,
+   "note": "first page only: its later jobs load by script"
   },
   {
    "country": "CH",
@@ -165,7 +165,8 @@
      },
      "take": "@href"
     }
-   }
+   },
+   "next": "https://www.praca.pl/s-{role_slug},{place}_{page}.html"
   },
   {
    "country": "HR",
@@ -199,8 +200,10 @@
     "url": {
      "in": {
       "tag": "a",
-      "attr": {
-       "href": ""
+      "has": {
+       "attr": {
+        "data-test": "job-card-content-title"
+       }
       }
      },
      "take": "@href"
@@ -460,7 +463,8 @@
     "company": "employer.name",
     "location": "workplace_address.municipality",
     "url": "webpage_url"
-   }
+   },
+   "max_pages": 1
   },
   {
    "country": "HU",
@@ -585,7 +589,9 @@
      ],
      "take": "@href"
     }
-   }
+   },
+   "max_pages": 1,
+   "note": "first page only: its later pages are built by script"
   },
   {
    "country": "DK",
@@ -605,5 +611,34 @@
     "url": "url"
    }
   }
- ]
+ ],
+ "_refused": {
+  "_why": "Tried 10 Nov 2026 (mc) and not used: a refusal is never retried (CLAUDE.md), a browser-only page is not read here. sa: no further hunting for BE and NL.",
+  "403 or bot check": [
+   "jobs.bg",
+   "ejobs.ro",
+   "stepstone.be",
+   "jobat.be",
+   "pracuj.pl",
+   "nationalevacaturebank.nl",
+   "werkzoeken.nl",
+   "infojobs.net",
+   "bakeca.it"
+  ],
+  "browser only (no list in the page)": [
+   "actiris.brussels",
+   "leforem.be",
+   "vdab.be",
+   "werk.nl (redirects)",
+   "jobs.ams.at",
+   "job.jobnet.dk",
+   "jobsireland.ie"
+  ],
+  "role ignored by the page": [
+   "jobbird.com"
+  ],
+  "closed": [
+   "infojobs.it"
+  ]
+ }
 }
