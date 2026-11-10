@@ -8,7 +8,7 @@ from unittest import mock
 
 from src import employer_index, regions
 from src.paths import keyword_regex
-from src.sources import feed_facts, feeds
+from src.sources import feed_facts, feed_places, feeds
 
 DUBLIN = keyword_regex(regions.expand(['Dublin', 'Ireland']))
 # The 25 jobs the Dublin nurse's run kept (Mac plan run, main 4ca439a5): every location as it was, the titles as the AI had kept them.
@@ -64,6 +64,19 @@ class RemoteIsJudgedTest(unittest.TestCase):
         job = {'location': 'Remote, Ireland', 'title': 'Staff Nurse'}
         with mock.patch.object(feeds, 'wanted_title', return_value=True), mock.patch.object(feeds, 'judged_title', return_value=True):
             self.assertTrue(feeds.keep_open(job), 'waits for its place (place_open_jobs), is not closed as outside your places')
+
+    def test_an_unplaced_remote_job_whose_title_the_role_words_miss_stays_open_until_placed(self):
+        """Retro review of #3676 (Gitar, 10 Nov 2026): keep_open closed the job to_place asked about and settled kept pending, before the AI answered."""
+        job = {'location': 'Remote, Poland', 'title': 'Senior Clinical Research Associate'}   # a nurse's search: the role words miss it
+        with mock.patch.object(feeds, 'wanted_title', return_value=False), mock.patch.object(feeds, 'judged_title', return_value=None):
+            self.assertTrue(feeds.keep_open(job), 'waiting for its place: not closed')
+            self.assertTrue(feed_places.to_place(job), 'asked about')
+            with mock.patch.object(feeds, '_triaged', return_value={}), mock.patch.object(feed_facts, '_triage_on', return_value=True):
+                self.assertFalse(feed_facts.settled(job), 'its site is read again')
+        with mock.patch.object(feeds, 'wanted_title', return_value=False), mock.patch.object(feeds, 'judged_title', return_value=False):
+            self.assertFalse(feeds.keep_open(job), 'a title the AI judged not this search\'s leaves the list')
+        with mock.patch.object(feeds, 'wanted_title', return_value=False), mock.patch.object(feeds, 'judged_title', return_value=None), mock.patch.object(feeds, 'place_of', return_value='out'):
+            self.assertFalse(feeds.keep_open(job), 'placed outside: closed')
 
     def test_an_employer_hiring_remote_is_still_read(self):
         index = [{'company': 'remote-first', 'places': ['Remote - EMEA']}, {'company': 'elsewhere', 'places': ['Austin, Texas']}]

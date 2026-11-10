@@ -11,12 +11,6 @@ test('latestExtension answers at once in a development copy while git is slow, a
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-slowgit-'));
   fs.writeFileSync(path.join(bin, 'git'), '#!/bin/sh\nsleep 0.7\ncase "$*" in *--is-shallow-repository*) echo false;; *rev-parse*) echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;; *log*) for n in 1 2 3; do echo "${n}aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 2026-10-16T14:02:00Z"; done;; *) ;; esac\n', {mode: 0o755});
 
-// A copy that reloaded for the stamped version is newer than the bare manifest version a development copy reports before git answers: never "older" (review of the same change).
-test('a reloaded development copy is not called older while the app still reports the bare manifest version', async () => {
-  const {staleExtension} = await import('../../../lib/server-env.js');
-  assert.equal(staleExtension('0.9.150', '0.9'), '');
-  assert.match(staleExtension('0.9', '0.9.150'), /older than this app's 0\.9\.150/);
-});
   const kept = process.env.PATH;
   process.env.PATH = `${bin}${path.delimiter}${kept}`;
   try {
@@ -30,4 +24,12 @@ test('a reloaded development copy is not called older while the app still report
     await whenCheckoutCommits(path.resolve(import.meta.dirname, '..', '..', '..', '..'));
     assert.match(latestExtension(), /^\d+\.\d+\.3$/, 'when git has answered, the stamped version is the manifest base and the count of commits that changed extension/');
   } finally { process.env.PATH = kept; fs.rmSync(bin, {recursive: true, force: true}); }
+});
+
+// Why (retro review of #3681, 10 Nov 2026): this test sat INSIDE the one above, so it was only a subtest of it and was skipped with it on Windows (the stand-in git is a shell script); it needs no git.
+// A copy that reloaded for the stamped version is newer than the bare manifest version a development copy reports before git answers: never "older" (review of the same change).
+test('a reloaded development copy is not called older while the app still reports the bare manifest version', async () => {
+  const {staleExtension} = await import('../../../lib/server-env.js');
+  assert.equal(staleExtension('0.9.150', '0.9'), '');
+  assert.match(staleExtension('0.9', '0.9.150'), /older than this app's 0\.9\.150/);
 });
