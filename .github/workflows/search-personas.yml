@@ -373,10 +373,11 @@ jobs:
         if: always() && hashFiles('result/verdict.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}   # a run without the night's floors-state.json reads the open causes from refs/tags/search-floors (read only)
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
         run: |
           set +e
           mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
-          python3 tools/persona-search/lost.py check result/verdict.json --state result/floors-state.json --logs results "${mains[@]}" | tee -a result/table.md
+          python3 tools/persona-search/lost.py check result/verdict.json --state result/floors-state.json --logs results ${NIGHT:+--night} "${mains[@]}" | tee -a result/table.md
           [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a source lost; a crash reads "not checked", never red
           exit 0
       - uses: actions/upload-artifact@v6

@@ -2,11 +2,12 @@
 Engineering channel"). Reads the night's verdict (after gate.py compare and floors.py check) and the earlier main runs' verdicts, and stores `lost` on the verdict:
 {causes, red, open, tell, back, merges}. tools/persona-search/search-alert.mjs turns `tell` and `back` into the one Telegram card; the "Red when" step reads the exit
 code. Causes ({kind, red, what, people, detail}), one per kind and what:
-- gone: a source word of `sources` (sources_count.py) whose right jobs, summed over the 18, were above 0 on each of the last 3 runs that carried it, and are 0 now
-  (arms by itself once 3 runs carry `sources`; EURES only from persons whose row read EURES); red;
+- gone: a source word of `sources` (sources_count.py) whose right jobs, summed over the 18, were above 0 on each of the last 3 runs that carried it, and are 0
+  (or left out) now; only runs where at least MIN_READ persons carry `sources` count, so a partly blind night is no evidence (arms by itself once 3 runs carry
+  `sources`; EURES only from persons whose row read EURES; a {status} word is not measured, never gone); red;
 - unread: a finder step (step_yield: employer_sites, job_boards, free_job_apis) that brought no job for any measured person, when at least MIN_READ persons were
-  measured (a refused, crashed or timed-out reader for everyone); red; "time was up before its turn" when the persons' run.log says the clock stopped it (sf, #3754);
-- floor: a number under its floor two nights in a row (floors.py's `floors.red`, already red there; told here, with the merges since the last green run);
+  measured (a refused, crashed or timed-out reader for everyone); red; "time was up before its turn" when the persons' press logs say the clock stopped it (sf, #3754);
+- floor: a number under its floor two nights in a row (floors.py's `floors.red`, red on a scheduled night only, as there; told with the merges since the last green);
 - not-run: persons no AI answered (gate.py kind 'not-run'): told, never red (a blind night is not a lost source, #3714).
 Told on a change only (sa, 10 Nov 2026: "never the same alert every night"; the night itself stays red while a cause lasts): `open` = the causes now; `tell` = the
 causes not open before; `back` = the causes open before and gone now. A blind night keeps the open causes (it saw no source) and backs none.
@@ -14,7 +15,7 @@ Where `open` lives between nights (sa, 10 Nov 2026): in the floors' state (refs/
 the floors-save job (contents: write, compare-and-set, shape checked by floors.validate). The night's compare writes it into result/floors-state.json (--state); a run
 without that file (by hand, or floors not checked) reads the open causes from the ref and never writes them.
 
-  python3 tools/persona-search/lost.py check <verdict.json> [--state <floors-state.json>] [--logs <results dir>] [<earlier run dir>...]   (newest first)
+  python3 tools/persona-search/lost.py check <verdict.json> [--state <floors-state.json>] [--logs <results dir>] [--night] [<earlier run dir>...]   (newest first)
   adds `lost`; exit 3 when a cause is red"""
 import re
 import json
@@ -42,19 +43,22 @@ def measured(row):
 
 
 def totals(verdict):
-    """{word: right jobs over the run's measured persons} for the words every counted person measured (a {status} word is left out); {} when no row carries `sources`."""
-    out, seen = {}, False
+    """{word: right jobs over the run's measured persons, or None when the word only said a {status}}; {} when fewer than MIN_READ measured rows carry `sources`
+    (a partly blind night is no evidence: the missing persons' jobs would read as lost). A word a row leaves out (linkedin with none) counts as 0 where it is read."""
+    out, seen = {}, 0
     for row in personas(verdict):
         sources = row.get('sources') if measured(row) else None
         if not isinstance(sources, dict):
             continue
-        seen = True
+        seen += 1
         for word, value in sources.items():
             if word == 'eures' and row.get('eures') != 'on':
-                continue   # sa, 10 Nov 2026: EURES counts only where the row read EURES
-            if isinstance(value, dict) and isinstance(value.get('right'), int):
-                out[word] = out.get(word, 0) + value['right']
-    return out if seen else {}
+                out.setdefault(word, None)   # sa, 10 Nov 2026: EURES counts only where the row read EURES; off is not measured, never gone
+            elif isinstance(value, dict) and isinstance(value.get('right'), int):
+                out[word] = (out.get(word) or 0) + value['right']
+            else:
+                out.setdefault(word, None)
+    return out if seen >= MIN_READ else {}
 
 
 def gone(verdict, earlier):
@@ -63,8 +67,9 @@ def gone(verdict, earlier):
     past = [t for t in (totals(v) for v in earlier) if t][:NIGHTS]
     if not now or len(past) < NIGHTS:
         return []
-    return [{'kind': 'gone', 'red': True, 'what': word, 'people': [], 'detail': f'{now.get(word, 0)} right now, {" / ".join(str(t[word]) for t in past)} on the last {NIGHTS} runs'}
-            for word in sorted(set.intersection(*(set(t) for t in past))) if all(t[word] > 0 for t in past) and now.get(word, 0) == 0 and word in now]
+    return [{'kind': 'gone', 'red': True, 'what': word, 'people': [], 'detail': f'0 right now, {" / ".join(str(t[word]) for t in past)} on the last {NIGHTS} runs'}
+            for word in sorted(set.intersection(*(set(t) for t in past)))
+            if all((t[word] or 0) > 0 for t in past) and (word not in now or now[word] == 0)]   # None now = a {status}: not measured, never "gone"
 
 
 TIME_UP = re.compile(r'Time is up \([^)]*\) for (job boards|employer sites|free job APIs):')   # src/press clock's line when a step's share ran out before it read
@@ -72,16 +77,18 @@ STEP_OF = {'job boards': 'job_boards', 'employer sites': 'employer_sites', 'free
 
 
 def timeups(results):
-    """{step: persons whose run.log says the clock stopped that step} under a results folder (the persons' artifacts), {} without one."""
-    found = {}
-    for log in sorted(Path(results).rglob('run.log')) if results else []:
+    """{step: persons whose press log (draw/run-*.log, the engine's own lines) says the clock stopped that step} under a results folder (one folder per
+    person's artifact), {} without one."""
+    stopped = {}
+    for log in sorted(Path(results).rglob('run-*.log')) if results else []:
         try:
             steps = {STEP_OF[m] for m in TIME_UP.findall(log.read_text(encoding='utf-8', errors='replace'))}
         except OSError:
             continue
+        person = log.relative_to(results).parts[0]
         for step in steps:
-            found[step] = found.get(step, 0) + 1
-    return found
+            stopped.setdefault(step, set()).add(person)
+    return {step: len(people) for step, people in stopped.items()}
 
 
 def unread(verdict, clock=None):
@@ -100,10 +107,10 @@ def unread(verdict, clock=None):
     return [{'kind': 'unread', 'red': True, 'what': step, 'people': [], 'detail': detail(step)} for step, n in jobs.items() if n == 0]
 
 
-def floor(verdict):
-    """floors.py's red numbers, one cause per number."""
+def floor(verdict, night):
+    """floors.py's red numbers, one cause per number; red only on a scheduled night, as floors.py's own exit (a by-hand run tells them, never reds on them)."""
     floors = (verdict or {}).get('floors') or {}
-    return [{'kind': 'floor', 'red': True, 'what': f"p{red['persona']} {red['number']}", 'people': [red['persona']], 'detail': f"{red['now']} under its floor {red['floor']} two nights in a row"}
+    return [{'kind': 'floor', 'red': night, 'what': f"p{red['persona']} {red['number']}", 'people': [red['persona']], 'detail': f"{red['now']} under its floor {red['floor']} two nights in a row"}
             for red in floors.get('red') or [] if isinstance(red, dict)]
 
 
@@ -148,7 +155,7 @@ def open_before(state_file):
         return None, []
 
 
-def check(verdict_path, earlier_dirs, logs=None, state_file=None):
+def check(verdict_path, earlier_dirs, logs=None, state_file=None, night=False):
     """Add `lost` to the verdict (and, on a night, its open causes to the floors' state file) -> RED when a cause is red, else 0."""
     verdict = json.loads(Path(verdict_path).read_text(encoding='utf-8'))
     earlier = []
@@ -158,7 +165,7 @@ def check(verdict_path, earlier_dirs, logs=None, state_file=None):
         except (OSError, ValueError):
             continue
     blind = verdict.get('state') == 'not-run'
-    causes = ([] if blind else gone(verdict, earlier) + unread(verdict, timeups(logs)) + floor(verdict)) + not_run(verdict)
+    causes = ([] if blind else gone(verdict, earlier) + unread(verdict, timeups(logs)) + floor(verdict, night)) + not_run(verdict)
     red = any(c['red'] for c in causes)
     data, opened = open_before(state_file)
     was = set(opened)
@@ -179,6 +186,6 @@ if __name__ == '__main__':
     if len(sys.argv) < 3 or sys.argv[1] != 'check':
         sys.exit(__doc__)
     rest, flags = sys.argv[3:], {}
-    while rest[:1] and rest[0] in ('--logs', '--state'):
-        flags[rest[0]], rest = rest[1], rest[2:]
-    sys.exit(check(sys.argv[2], rest, flags.get('--logs'), flags.get('--state')))
+    while rest[:1] and rest[0] in ('--logs', '--state', '--night'):
+        flags[rest[0]], rest = (True, rest[1:]) if rest[0] == '--night' else (rest[1], rest[2:])
+    sys.exit(check(sys.argv[2], rest, flags.get('--logs'), flags.get('--state'), bool(flags.get('--night'))))
