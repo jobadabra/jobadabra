@@ -2,6 +2,8 @@ name: gh call ledger
 description: >
   First step (phase start) puts a counting gh in front of the real one; last step (phase end, if: always()) prints the job's gh calls by endpoint and how far the repo's
   GitHub API budget fell while it ran (tools/gh-ledger.sh). Linux and Mac runners only. Why (31 Oct 2026, a8): the budget ran out at 18:01 UTC and no job counted its own calls.
+  Callers guard the end step with hashFiles('.github/actions/gh-ledger/action.yml') != ''. Why (10 Nov 2026, owner: "LET'S FIX THESE WARNINGS"): a job cancelled
+  before its checkout still ran the end step, and GitHub posted "Can't find 'action.yml'" as a failure on the PR verdict.
 inputs:
   phase:
     description: start or end

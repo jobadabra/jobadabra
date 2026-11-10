@@ -143,7 +143,7 @@ jobs:
           REVIEW: ${{ inputs.review }}
           GATE_TAG: ${{ inputs.tag }}   # the release run's Windows gate: planned as the Mac + Linux gate (plan-run.mjs), not after it
         run: node plan-windows.mjs >> "$GITHUB_OUTPUT"
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -535,7 +535,7 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -600,7 +600,7 @@ jobs:
           name: e2e-report-windows   # its own name: in the release run it sits beside the Mac + Linux gate's e2e-report (admin/e2e-report.js reads both)
           path: e2e-report
           compression-level: 0
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
@@ -686,7 +686,7 @@ jobs:
           name: ai-credit-alert-${{ github.run_id }}
           path: ai-credit-alert/alert-sent.txt
           overwrite: true
-      - if: always()
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

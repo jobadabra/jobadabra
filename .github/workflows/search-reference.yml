@@ -77,7 +77,7 @@ jobs:
           path: |
             out/reference.json
             out/reference.log
-      - if: always() && steps.token.outputs.ok == 'yes'
+      - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != '' && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

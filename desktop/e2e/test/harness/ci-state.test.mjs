@@ -46,7 +46,10 @@ test('the key rides in a config file, never in the arguments, and the body goes 
   assert.equal(fs.existsSync(call.args[call.args.indexOf('-K') + 1]), false, 'the config file is deleted at once');
 });
 
-test('a site that is down or refuses is "not read", never an empty store; no key is "not read" too', () => {
+test('a site that is down or refuses is "not read", never an empty store; no key is "not read" too', t => {
+  // Why (10 Nov 2026, owner: "LET'S FIX THESE WARNINGS"): the warnings these cases print reached the real job log, and GitHub showed 4 false warnings on every main run.
+  const stderr = [];
+  t.mock.method(console, 'error', (...args) => stderr.push(args.join(' ')));
   process.env.SELFHEAL_PUBLISH_KEY = KEY;
   assert.deepEqual(tryRead('noise-register', {run: fakeCurl({status: 7}).run}), {ok: false, value: null});
   assert.deepEqual(tryRead('noise-register', {run: fakeCurl({stdout: 'no\n404'}).run}), {ok: false, value: null});
@@ -56,6 +59,8 @@ test('a site that is down or refuses is "not read", never an empty store; no key
   const none = fakeCurl({});
   assert.equal(appendNoise([{id: 'a'}], {run: none.run}), false);
   assert.equal(none.seen.length, 0, 'without a key nothing is sent');
+  assert.equal(stderr.length, 4, 'each failed read or write says so once');
+  assert.ok(stderr.every(line => line.startsWith('::warning::ci-state noise-register not ')));
 });
 
 test('the snapshot\'s ranking has the fields the Top issues card draws (jobadabra-web admin/selfheal-cards.js)', () => {
