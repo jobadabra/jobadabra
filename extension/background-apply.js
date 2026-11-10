@@ -11,7 +11,8 @@ import {allFactsSavedOf} from './triage-facts.js';
 let runner = null, watcher = () => {}, polling = null;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
 globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session),
-  // The owned browser can request the alarm's ordinary poll after its app's e2e clock moved; the poll still checks ownership and every submit guard.
+  // The app asks for the alarm's ordinary poll now: a Jobs-check read it queued (lib/background-browser.js wake, 10 Nov 2026: reads waited 24-27 s for the 30 s report), and after its e2e clock moved.
+  // The poll still checks ownership and every submit guard. Never gate it to e2e: every read would wait for the report again.
   poll: async () => {
     const config = await settings();
     if (polling) await polling;   // the alarm may already be running; its reply cannot acknowledge a new poll after the clock move

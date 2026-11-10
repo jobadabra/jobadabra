@@ -197,5 +197,6 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return (await get(live.port, '/json/list')).find(target => target.type === 'page' && target.id === targetId)?.webSocketDebuggerUrl || null;
   }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
+  // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read; true when the app acknowledged that poll.
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), wake: () => sessionAction(null, 'poll'), close};
 }

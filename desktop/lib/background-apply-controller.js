@@ -85,6 +85,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
+  // A read that can be handed out wakes the owned worker's poll (lib/triage-reader.js onReady); a wake that fails is logged and leaves the read to the 30 s tab report, never ends it.
+  reader.onReady?.(() => Promise.resolve(browserOf().wake?.()).then(ok => { if (ok === false) log('apply', 'triage: the hidden browser did not take the wake', {}); },
+    error => log('apply', 'triage: the hidden browser could not be woken', {error: String(error?.message || error).slice(0, 120)})));
   const judgments = new Map();
   const latest = new Map();   // session id -> the background state this controller last wrote or read (cache, stateForPoll)
   let owner = '', pending = Promise.resolve();

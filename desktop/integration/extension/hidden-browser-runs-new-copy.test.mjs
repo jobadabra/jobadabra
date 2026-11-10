@@ -6,17 +6,20 @@
 // version did not help). Every other test starts on a fresh profile, so none could see it. Real: the app's own start (lib/background-browser.js createBackgroundBrowser:
 // copy, launch, worker, storage) on a real headless Chromium, twice on one profile. Stood in: the app's port (nothing listens; the worker only has to load).
 // Nothing here reaches the owner's app, profile or a real site.
+// Also (10 Nov 2026, /code-review of the read wake): wake() reaches the real worker's poll, so a queued Jobs-check read is taken at once, not at the 30 s tab report.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
+import http from 'node:http';
 import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {endBrowser} from '../../e2e/lib/browser-end.mjs';
 import {CLOSE_MS, at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 import {createBackgroundBrowser} from '../../lib/background-browser.js';
+import {POST_CORS, jsonBody, jsonHeaders, jsonPayload, preflight} from '../../lib/server-http.js';
 
 const TEST_MS = 90000;   // a hang guard: each start takes ~1-3 s
 const DESKTOP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -108,4 +111,30 @@ test('an updated app that finds an older app\'s hidden browser still running clo
     await each.app().start(START);
     assert.equal(await each.edition(), 'second', 'the updated app handed its token to the older app\'s worker');
   } finally { await each.end(); }
+})));
+
+test('wake() makes the real extension poll the app at once, and the app\'s answer reaches it', {timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, () => withE2eEnv(async () => {
+  const each = home(), polls = [], seen = [];
+  // A stand-in for the app's own server, on a free loopback port, answering with the app's own preflight and headers (lib/server-http.js): it records the extension's polls and acknowledges them with nothing to do.
+  const server = http.createServer((request, response) => {
+    if (preflight(request, response, POST_CORS)) return;
+    let body = '';
+    request.on('data', chunk => { body += chunk; });
+    request.on('end', () => {
+      const action = String(jsonPayload(body).action || '');   // the app's own parse: a malformed body is {}
+      seen.push(`${request.method} ${request.url.split('?')[0]} ${action}`);
+      if (request.url.startsWith('/extension/background-apply') && action === 'poll') polls.push(action);
+      jsonHeaders(response, 200, POST_CORS); jsonBody(response, {ok: true, jobs: []});
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  onHang(each.close);
+  try {
+    each.release('wake');
+    const app = each.app();
+    await app.start({port: server.address().port, token: 'stand-in-token'});
+    const before = polls.length;
+    assert.equal(await app.wake(), true, `the worker ran its poll and the app acknowledged it (the app saw: ${seen.join(' | ') || 'nothing'})`);
+    assert.ok(polls.length > before, `the wake reached the app as a poll (${before} before, ${polls.length} after)`);
+  } finally { await each.end(); await new Promise(resolve => server.close(resolve)); }
 })));
