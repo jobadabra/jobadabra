@@ -11,5 +11,5 @@
 - Two repeats fixed at the cause, not by a retry: (1) a send that timed out may have arrived, so it is `unsure` and keeps its claim (the Store watcher told "once" twice on 8 Nov: runs 42466803520, 42471046179); (2) a red main sends `state` = the red steps + the UTC day, and the old-bot fallback reports that state, so "changes only" holds a new commit with the same failed step (8 Nov, 18:25 and 23:01).
 
 ## Progress
-- [x] 1/2 `jobadabra`: the card, the CI / AI / release / Store / test messages, the two repeat fixes (this PR)
+- [x] 1/2 `jobadabra`: the card, the CI / AI / release / Store / test messages, the two repeat fixes (this PR) (proof: desktop/e2e/test/harness/tg-card-shape.test.mjs)
 - [ ] 2/2 `jobadabra-web`: the Worker messages (Sentry, probes, night search, employer list, Free AI, feedback, forms, e-mail, Build Log) on the same card; the switchboard records the fallback's state
