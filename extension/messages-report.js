@@ -38,6 +38,11 @@ export function createReportMessages() {
     if (details.frameId !== 0 || trace.isTracing(details.tabId) || isStopped()) return;
     if (await armedOrMarked(details.tabId, details.url)) trace.start(details.tabId).catch(() => {});
   });
+  // Why (10 Nov 2026, rr): the page's document is complete; a trace that started too late for the page's own request reads it back (trace.js loaded), so a report always begins at a page.
+  chrome.webNavigation.onDOMContentLoaded.addListener(async details => {
+    if (details.frameId !== 0 || isStopped()) return;
+    if (await armedOrMarked(details.tabId, details.url)) { await trace.start(details.tabId).catch(() => false); await trace.loaded(details.tabId, details.url).catch(() => {}); }
+  });
   chrome.tabs.onRemoved.addListener(tabId => { trace.end(tabId); });
   chrome.debugger.onDetach.addListener(source => { if (source.tabId !== undefined) trace.detached(source.tabId); });
 

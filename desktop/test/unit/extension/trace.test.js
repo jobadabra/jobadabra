@@ -217,3 +217,78 @@ test('Stop keeps the pages recorded so far: the recording ends, the debugger is 
   trace.end(7);
   assert.equal(trace.has(7), false, 'the tab closing still drops it');
 });
+
+// Chrome already shows a page: its resource tree and the texts Chrome keeps of it (Page.getResourceTree / getResourceContent).
+const showing = (fake, {url = 'https://apply.example.test/form', resources = [], contents = {}} = {}) => {
+  const base = fake.chrome.debugger.sendCommand, shown = {url, resources, contents};
+  fake.chrome.debugger.sendCommand = async (target, method, params) => {
+    if (method === 'Page.getResourceTree') { fake.calls.push([method, params]); return {frameTree: {frame: {id: 'top', url: shown.url, mimeType: 'text/html'}, resources: shown.resources}}; }
+    if (method === 'Page.getResourceContent') { fake.calls.push([method, params]); if (!(params.url in shown.contents)) throw new Error('No resource with given URL found'); return {content: shown.contents[params.url], base64Encoded: false}; }
+    return base(target, method, params);
+  };
+  return shown;
+};
+const text = entry => Buffer.from(entry.body || '', 'base64').toString('utf8');
+const reads = fake => fake.calls.filter(call => call[0] === 'Page.getResourceContent').length;
+const FORM = 'https://apply.example.test/form';
+
+// Why (10 Nov 2026, rr): the 27 Oct report held no document. The trace attached only after the app answered about the switch, the page was complete by then, and a report with no page cannot replay.
+test('a trace that attaches after its page loaded reads the page back when its document is complete: the document first, the code and styles it missed, never an image or a call', async () => {
+  const fake = fakeChrome();
+  showing(fake, {resources: [{url: 'https://apply.example.test/app.js', type: 'Script', mimeType: 'application/javascript'}, {url: 'https://apply.example.test/seen.js', type: 'Script'},
+    {url: 'https://apply.example.test/logo.png', type: 'Image'}, {url: 'https://apply.example.test/api', type: 'XHR'}, {url: 'https://apply.example.test/gone.css', type: 'Stylesheet', mimeType: 'text/css'},
+    {url: 'https://apply.example.test/x.js', type: 'Script', failed: true}],
+  contents: {[FORM]: '<form>apply</form>', 'https://apply.example.test/app.js': 'boot()', 'https://apply.example.test/logo.png': 'PNG', 'https://apply.example.test/api': '{}'}});
+  let answer;
+  const {trace, log} = make(fake, {enabled: () => new Promise(resolve => { answer = resolve; })});
+  const started = trace.start(7), again = trace.start(7);   // onBeforeNavigate and onCommitted both start it while the app has not answered
+  page(fake, 7, 'D', FORM);   // the page loads meanwhile: no run yet, unseen
+  const done = trace.loaded(7, `${FORM}#jobpilotto-fill`);   // DOMContentLoaded comes before the answer: it waits for the start
+  answer(true); await started; await again;
+  sub(fake, 7, 'S', 'https://apply.example.test/seen.js'); sub(fake, 7, 'L', 'https://apply.example.test/locale.json', 'Fetch', {'Content-Type': 'application/json'}); await tick();
+  await done; await tick();
+  assert.deepEqual(log, [['attach', 7]], 'one run, attached once');
+  const entries = trace.snapshot(7).entries;
+  assert.deepEqual(entries.map(entry => [entry.type, entry.url]), [['document', FORM], ['script', 'https://apply.example.test/app.js'], ['stylesheet', 'https://apply.example.test/gone.css'],
+    ['script', 'https://apply.example.test/seen.js'], ['fetch', 'https://apply.example.test/locale.json']], 'the page first, then what the trace saw; seen.js once');
+  assert.equal(text(entries[0]), '<form>apply</form>');
+  assert.deepEqual([entries[0].status, entries[0].mode, entries[0].headers, entries[0].recovered], [200, 'navigate', {'content-type': 'text/html'}, true]);
+  assert.deepEqual([entries[2].body, entries[2].bodyLost], [null, true], 'a text Chrome no longer has is flagged lost, never an empty reply');
+  assert.equal(trace.pageCount(7), 1, 'one page: the read-back joins the replies caught before it (the panel would say the person moved on)');
+  assert.ok(trace.snapshot(7, 'page').entries.some(entry => /locale\.json/.test(entry.url)), '"only this page" keeps them');
+});
+
+test('a navigation whose request went out before the trace listened: its commit opens the page, and only its document is read back, ahead of what it loaded', async () => {
+  const fake = fakeChrome(), shown = showing(fake, {url: 'https://jobs.example.test/posting', contents: {[FORM]: '<form>new</form>', 'https://jobs.example.test/posting': '<p>old</p>'}});
+  let clock = 1000;
+  const {trace} = make(fake, {now: () => clock});
+  page(fake, 7, 'P', 'https://jobs.example.test/posting');   // before the trace: the old page
+  await trace.start(7);
+  clock = 1500; await trace.loaded(7, FORM);   // the new page's DOMContentLoaded while Chrome still shows the old one (not the page that completed): nothing read
+  assert.equal(reads(fake), 0);
+  fake.emit(7, 'Page.frameNavigated', {frame: {id: 'top'}});   // the new page commits; its request was never seen
+  clock = 1600; sub(fake, 7, 'F1', 'https://apply.example.test/app.js'); await tick();
+  shown.url = FORM; shown.resources = [{url: 'https://apply.example.test/app.js', type: 'Script'}];
+  await trace.loaded(7, FORM); await tick();
+  assert.deepEqual(trace.snapshot(7).entries.map(entry => [entry.url, entry.startMs]), [[FORM, 499], ['https://apply.example.test/app.js', 600]], 'the new page only, its document first; app.js was seen, not read');
+  assert.equal(text(trace.snapshot(7).entries[0]), '<form>new</form>');
+});
+
+test('nothing is read back when the trace saw the page\'s request, the page asks for a password, or another navigation began while reading', async () => {
+  const seen = fakeChrome();
+  showing(seen, {contents: {[FORM]: '<form>x</form>'}});
+  const first = make(seen);
+  await first.trace.start(7); page(seen, 7, 'F', FORM); await tick(); await first.trace.loaded(7, FORM);
+  assert.deepEqual([reads(seen), first.trace.snapshot(7).entries.length], [0, 1], 'seen: one document, nothing read');
+  const signin = fakeChrome();
+  showing(signin, {contents: {[FORM]: '<input type=password>'}});
+  const second = make(signin, {hasPassword: async () => true});
+  await second.trace.start(7); await second.trace.loaded(7, FORM);
+  assert.deepEqual([reads(signin), second.trace.has(7)], [0, false], 'a sign-in page is neither read nor kept');
+  const moving = fakeChrome();
+  showing(moving, {contents: {[FORM]: '<form>old</form>'}});
+  const third = make(moving), read = moving.chrome.debugger.sendCommand;
+  moving.chrome.debugger.sendCommand = async (target, method, params) => { if (method === 'Page.getResourceContent') page(moving, 7, 'N', 'https://apply.example.test/next'); return read(target, method, params); };
+  await third.trace.start(7); await third.trace.loaded(7, FORM); await tick();
+  assert.deepEqual(third.trace.snapshot(7).entries.map(entry => entry.url), ['https://apply.example.test/next'], 'the old page is not kept');
+});
