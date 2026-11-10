@@ -79,6 +79,10 @@ class TheRows(unittest.TestCase):
             got = market_web.read(P6, lambda persona, text=text: market_web.ask(persona, replying(text), RELAY))
             self.assertEqual((got['status'], got['rows']), ('not counted: ValueError', []), text)
 
+    def test_the_list_is_found_after_prose_with_braces(self):
+        text = 'I searched {three times} and found:\n```json\n' + json.dumps({'jobs': [posting(1)]}) + '\n```'
+        self.assertEqual([r['url'] for r in market_web.ask(P6, replying(text), RELAY)], ['https://jobs.example/1'])
+
     def test_an_empty_list_is_a_count_of_zero(self):
         got = market_web.read(P6, lambda persona: market_web.ask(persona, replying('{"jobs": []}'), RELAY))
         self.assertEqual((got['status'], got['rows']), ('counted', []))

@@ -5,7 +5,7 @@ jobs a source's own search shows (the reference, tools/persona-search/reference.
 JOBADABRA_STAGE_LOG=1). Stage words (fixed list v2, sa, 10 Nov 2026): not_read, never_asked, ai_no, placed_out, double, after_kept; listed is `out`.
 `double` is sent only for a job proven merged with another source's copy, which the run does not log yet, so it is 0. Counts only leave: no title or link.
 Limit: the employer sites' own filter (src/sources/feeds.py scan) logs no stages yet, so a job only they read reads as not_read.
-Sources: eures only, until the market count (session mc) adds others to the reference. Tests: tests/tooling/ci/test_search_inout.py."""
+Sources: eures only; the reference's other sources' right jobs (`sources` without eures: board, web search) are left out of it until their own in = out ([mc] 5/5). Tests: tests/tooling/ci/test_search_inout.py."""
 import json
 import re
 from pathlib import Path
@@ -46,6 +46,8 @@ def of(right, listed_rows, logged, listed_urls=()):
     """-> {'eures': {in, out, lost: {stage: n}}} for one persona: right = the reference's [{title, company, url}], listed_rows = judged.json's rows,
     logged = stages(...) of its press, listed_urls = the listed jobs' links (jobs.json). A job is listed when its link or its title + employer is.
     Why (review, 10 Nov 2026): the store may name the employer from the job's page (board_employers.fill_missing), so title + employer alone missed some."""
+    # Why (review of [mc] 3/5): the reference also holds the board's and the web search's right jobs; EURES's in = out reads only the jobs EURES listed (an older reference has no `sources`: EURES alone)
+    right = [job for job in right if 'eures' in job.get('sources', ['eures'])]
     listed, links = {same_job(row) for row in listed_rows}, set(listed_urls)
     lost = dict.fromkeys(LOST, 0)
     out = 0

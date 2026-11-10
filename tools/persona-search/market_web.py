@@ -21,6 +21,7 @@ from gate_judge import MODEL  # noqa: E402   the judge's small tier: one tier fo
 
 CAP = 30        # postings per person (sa's design, 10 Nov 2026): a person reads the first results, not every page
 MAX_USES = 3    # web searches the AI may run for one person
+CALL_S = 180    # one call's limit: a hung call is that person's search not counted, never the reference job's 20 minutes (review of [mc] 3/5)
 SYSTEM = ('You search the web the way a job seeker does, to find job postings that are open now. Use web search. List single job postings (one job each) for the role in the city given; '
           'never a list page, a search page, a category page or a company\'s home page. For each posting give its title, the employer, the place it names and the link to the posting. '
           f'At most {CAP} postings. Answer with JSON only: {{"jobs":[{{"title":"...","company":"...","location":"...","url":"..."}}]}}; an empty list when you found none.')
@@ -35,6 +36,19 @@ def _relay(env):
     return base
 
 
+def jobs_in(text):
+    """The `jobs` list of the first JSON object in an answer that has one (prose or a stray brace before it is skipped), or ValueError."""
+    decoder = json.JSONDecoder()
+    for at in (m.start() for m in re.finditer(r'\{', text)):
+        try:
+            got, _ = decoder.raw_decode(text, at)
+        except ValueError:
+            continue
+        if isinstance(got, dict) and isinstance(got.get('jobs'), list):
+            return got['jobs']
+    raise ValueError('the web search answered without a job list')
+
+
 def ask(persona, open_url=urlopen, env=None):
     """One web-search call for the persona -> the postings the AI listed, each {title, company, location, url} (at most CAP); raises on a refused call or an answer that is not the JSON."""
     base = _relay(os.environ if env is None else env)
@@ -43,15 +57,10 @@ def ask(persona, open_url=urlopen, env=None):
     body = {'model': MODEL, 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}],
             'tools': [{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}]}
     request = Request(base + '/v1/messages', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
-    with open_url(request, timeout=600) as response:
+    with open_url(request, timeout=CALL_S) as response:
         reply = json.loads(response.read())
     text = ''.join(part.get('text', '') for part in reply.get('content', []) if part.get('type') == 'text')
-    found = re.search(r'\{.*\}', text, re.S)
-    if not found:
-        raise ValueError('the web search answered without the JSON')
-    listed = json.loads(found.group(0)).get('jobs')
-    if not isinstance(listed, list):
-        raise ValueError('the web search answered without a job list')
+    listed = jobs_in(text)
     rows = []
     for job in listed:
         row = {k: ' '.join(str(job.get(k) or '').split()) for k in ('title', 'company', 'location', 'url')} if isinstance(job, dict) else {}

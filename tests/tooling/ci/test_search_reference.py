@@ -5,6 +5,7 @@ import json
 import re
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -208,6 +209,23 @@ class TheMarket(unittest.TestCase):
             self.assertEqual(len(record['personas']), 18)
             self.assertEqual((record['personas']['3']['web_search'], record['personas']['3']['market']), (None, 3), 'not counted is None, never 0')
             self.assertEqual(details['3']['web_search'], {'status': status, 'read': 0})
+
+    def test_a_web_search_not_back_by_the_deadline_is_not_counted_and_the_run_still_ends(self):
+        """Review of [mc] 3/5: a hung search must not hold the job past its 20 minutes; the clock is a fake, the search waits on an event released at the end."""
+        release = threading.Event()
+        self.addCleanup(release.set)
+
+        def web(persona):
+            if persona is P3:
+                release.wait(30)
+            return {'source': 'web_search', 'status': 'counted', 'rows': []}
+        ticks = iter([0.0])
+        details = {}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board(), details=details, web=web,
+                               clock=lambda: next(ticks, reference.WEB_BUDGET_S + 1.0))
+        self.assertEqual(len(record['personas']), 18)
+        self.assertEqual(details['3']['web_search'], {'status': 'not counted: time', 'read': 0})
+        self.assertIsNone(record['personas']['3']['web_search'])
 
     def test_a_refused_board_is_not_counted_and_the_market_is_eures_alone(self):
         details = {}

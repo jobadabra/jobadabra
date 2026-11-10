@@ -13,11 +13,13 @@ per stage, which needs the reference's jobs, not only their count.
 Record: {"personas": {"<n>": {total, reachable, eures, public_board, web_search, market}}}; total = reachable = the EURES count (Admin labels it "EURES reference"); public_board = the board's own
 count, None when not counted (refused, a page failed, its cards moved, or no board for the country), never 0; web_search likewise (None when the search failed or ran outside the relay); market = distinct right jobs (title + employer) of every counted source.
 A persona whose EURES was not read, or whose judge failed, is left out of the record (Admin then says "no reference"); its board count and jobs still go to reference-jobs.json. Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
+import concurrent.futures
 import datetime
 import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -122,7 +124,9 @@ def pool(n, persona, post, boards, web):
     rows += [{**r, 'source': 'public_board'} for r in board['rows']]
     sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0), **({'note': board['note']} if board.get('note') else {})}
     try:
-        searched = web(persona)
+        searched = web()
+    except concurrent.futures.TimeoutError:
+        searched = {'status': 'not counted: time', 'rows': []}
     except Exception as error:   # noqa: BLE001 - a search that raised is that source not counted, never the end of the others
         searched = {'status': f'not counted: {type(error).__name__}', 'rows': []}
     rows += [{**r, 'source': 'web_search'} for r in searched['rows']]
@@ -132,15 +136,24 @@ def pool(n, persona, post, boards, web):
     return rows, sources
 
 
-def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None):
+WEB_AT_ONCE = 6        # web searches in flight at once (the broker serves the night's six presses at once too)
+WEB_BUDGET_S = 600     # every person's web search is back within 10 minutes of the run's start, or not counted (the EURES reads alone take ~6)
+
+
+def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None, clock=time.monotonic):
     """The record for every persona with at least one counted source whose judge worked (a persona with none, or whose judge failed, is left out, never 0: the tab then
     says "no reference"). All sources' rows are judged in one blind pass, so every source is read by the same eyes and a job two sources show costs one verdict.
     `jobs`, when given, is filled with {"<n>": right_jobs(...)}; `details` with {"<n>": per-source status, rows read and right jobs}: the artifact's, never part of the record that is sent."""
     boards = boards or market_boards.read
     web = web or market_web.read
     record = {}
+    # Why (review of [mc] 3/5): 18 searches one after another (up to a minute each) would push the job past its 20 minutes and lose every person's EURES count;
+    # they run WEB_AT_ONCE at a time beside the EURES and board reads, and a search not back by the deadline is "not counted: time".
+    searches = concurrent.futures.ThreadPoolExecutor(max_workers=WEB_AT_ONCE)
+    futures = [searches.submit(web, persona) for persona in PERSONAS]
+    deadline = clock() + WEB_BUDGET_S
     for n, persona in enumerate(PERSONAS, 1):
-        rows, sources = pool(n, persona, post, boards, web)
+        rows, sources = pool(n, persona, post, boards, lambda future=futures[n - 1]: future.result(timeout=max(0.0, deadline - clock())))
         counted = tuple(s for s in SOURCES if sources[s]['status'] == 'counted')
         if not counted:
             print(f'reference: p{n} no source counted', flush=True)
@@ -161,6 +174,7 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
             only = {s: sum(job['sources'] == [s] for job in found) for s in counted}
             details[str(n)] = {'market': counts['market'], **{s: {**v, **({'right': counts[s], 'only': only[s]} if s in counted else {})} for s, v in sources.items()}}
         print(f'reference: p{n} {counts} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
+    searches.shutdown(wait=False, cancel_futures=True)
     return {'personas': record}
 
 
