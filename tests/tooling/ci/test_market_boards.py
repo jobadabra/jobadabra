@@ -74,6 +74,18 @@ class Reading(unittest.TestCase):
         got, _ = self.run_with([(200, '<html><body>a changed page</body></html>')])
         self.assertEqual((got['status'], got['rows']), ('not counted: no cards', []))
 
+    def test_a_page_that_fails_after_others_were_read_makes_the_board_not_counted_never_a_short_count(self):
+        for code, why in ((500, 'page answered 500'), (404, 'page answered 404'), (0, 'no answer')):
+            got, calls = self.run_with([(200, page(card(1))), (code, '')])
+            self.assertEqual((got['status'], got['rows'], len(calls)), (f'not counted: {why}', [], 2))
+
+    def test_a_connection_cut_mid_page_is_no_answer_not_an_exception(self):
+        import http.client
+
+        def opener(request, timeout):
+            raise http.client.IncompleteRead(b'<html>')
+        self.assertEqual(mb.fetch('https://board.example/', opener=opener), (0, ''))
+
     def test_no_answer_is_not_counted(self):
         got, calls = self.run_with([(0, '')])
         self.assertEqual((got['status'], len(calls)), ('not counted: no answer', 1))

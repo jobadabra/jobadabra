@@ -10,9 +10,9 @@ Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, 
 artifact only: it is never sent (send reads the counts file).
 Why (10 Nov 2026, sa's finish-line plan WP3, owner: "our search results should always be what EURES gives + some additional sources"): a night's loss is counted per job and
 per stage, which needs the reference's jobs, not only their count.
-Record: {"personas": {"<n>": {total, reachable, eures, public_board}}}; total = the market: distinct right jobs (title + employer) of every counted source; eures, public_board = each
-source's own count, None when not counted (refused, unread, or no board for the country), never 0; reachable = total: every posting counted opens on its public page without signing in.
-A persona with no counted source, or whose judge failed, is left out (Admin then says "no reference"). Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
+Record: {"personas": {"<n>": {total, reachable, eures, public_board, market}}}; total = reachable = the EURES count (Admin labels it "EURES reference"); public_board = the board's own
+count, None when not counted (refused, a page failed, its cards moved, or no board for the country), never 0; market = distinct right jobs (title + employer) of every counted source.
+A persona whose EURES was not read, or whose judge failed, is left out of the record (Admin then says "no reference"); its board count and jobs still go to reference-jobs.json. Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
 import datetime
 import json
 import os
@@ -81,12 +81,14 @@ def right(row):
 
 
 def tally(rows, counted=('eures',)):
-    """-> {total, reachable, eures, public_board} from judged rows (each row's `source`, EURES when unnamed): per source, the distinct right jobs it listed; total = the market,
-    the distinct right jobs of every counted source (one job shown by two sources counts once); a source not counted is None, never 0; reachable = total (every listed posting
-    opens without signing in, see the module docstring)."""
+    """-> {total, reachable, eures, public_board, market} from judged rows (each row's `source`, EURES when unnamed): per source, the distinct right jobs it listed, None when not
+    counted (never 0); market = the distinct right jobs of every counted source (one job two sources show counts once). total = reachable = the EURES count, as before.
+    Why total stays EURES (review, 10 Nov 2026): Admin prints `total` as "EURES reference: N" (jobadabra-web admin/search-night-page.js) and keeps only total, reachable, eures
+    and google; the market reaches Admin with the row shape agreed with oe ([mc] 5/5), never by changing what total means under a label that says EURES."""
     keys = {source: {same_job(r) for r in rows if right(r) and r.get('source', 'eures') == source} for source in SOURCES}
     market = set().union(*(keys[s] for s in SOURCES if s in counted))
-    return {'total': len(market), 'reachable': len(market), **{s: len(keys[s]) if s in counted else None for s in SOURCES}}
+    own = {s: len(keys[s]) if s in counted else None for s in SOURCES}
+    return {'total': own['eures'], 'reachable': own['eures'], **own, 'market': len(market)}
 
 
 def right_jobs(rows):
@@ -112,7 +114,10 @@ def pool(n, persona, post, boards):
     except Exception as error:   # noqa: BLE001 - one unreadable region must not end the board or the other 17
         sources['eures'] = {'status': f'not counted: {type(error).__name__}', 'read': 0}
         print(f'reference: p{n} EURES not read ({type(error).__name__}: {str(error)[:80]})', flush=True)
-    board = boards(n, persona['reference']['words'])
+    try:
+        board = boards(n, persona['reference']['words'])
+    except Exception as error:   # noqa: BLE001 - Why (review, 10 Nov 2026): a board that raised must not end EURES or the other 17 people
+        board = {'board': None, 'status': f'not counted: {type(error).__name__}', 'rows': []}
     rows += [{**r, 'source': 'public_board'} for r in board['rows']]
     sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0)}
     sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026); Adzuna and Jooble stay parked (owner's word adds them)
@@ -138,12 +143,16 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
         except Exception as error:   # noqa: BLE001 - one refused or short judge answer leaves that persona out, never the other 17
             print(f'reference: p{n} not judged ({type(error).__name__}: {str(error)[:80]})', flush=True)
             continue
-        record[str(n)] = tally(rows, counted)
+        counts = tally(rows, counted)
+        if 'eures' in counted:   # the record sent to Admin keeps its EURES meaning (see tally); a person whose EURES was not read stays out of it, as before
+            record[str(n)] = counts
+        found = right_jobs(rows)
         if jobs is not None:
-            jobs[str(n)] = right_jobs(rows)
-        if details is not None:
-            details[str(n)] = {s: {**v, **({'right': record[str(n)][s]} if s in counted else {})} for s, v in sources.items()}
-        print(f'reference: p{n} {record[str(n)]} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
+            jobs[str(n)] = found
+        if details is not None:   # per source {status, read, right, only}: `only` = right jobs no other counted source showed (sa's WP6: what a source is worth)
+            only = {s: sum(job['sources'] == [s] for job in found) for s in counted}
+            details[str(n)] = {'market': counts['market'], **{s: {**v, **({'right': counts[s], 'only': only[s]} if s in counted else {})} for s, v in sources.items()}}
+        print(f'reference: p{n} {counts} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
     return {'personas': record}
 
 

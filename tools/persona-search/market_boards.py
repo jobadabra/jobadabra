@@ -10,6 +10,7 @@ Safety (CLAUDE.md, never relaxed): an honest user agent, one page at a time with
 Tests: tests/tooling/ci/test_market_boards.py."""
 import html
 import html.parser
+import http.client
 import json
 import re
 import sys
@@ -163,7 +164,7 @@ def fetch(url, opener=urllib.request.urlopen):
             return getattr(response, 'status', 200), raw.decode(charset, errors='replace')
     except urllib.error.HTTPError as error:
         return error.code, ''
-    except (urllib.error.URLError, OSError, ValueError, LookupError):
+    except (urllib.error.URLError, OSError, ValueError, LookupError, http.client.HTTPException):   # a connection cut mid-page (IncompleteRead) is no answer too (review of #mc 1/5)
         return 0, ''
 
 
@@ -187,7 +188,8 @@ def board_for(n):
 def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
     """-> {"source": "public_board", "board", "status", "rows"}: the first `cap` rows the board's own search lists for the role words in the person's place, in the board's order,
     one row per link (else per title + employer + place). Status: "counted"; "not counted: refused <code>" (that board ends for this run); "not counted: no answer"; "not counted: no cards"
-    (page 1 of every word had none: the board changed its page, or listed nothing; never read as 0 jobs); "none (no board)" for a country with no row."""
+    (page 1 of every word had none: the board changed its page, or listed nothing; never read as 0 jobs); "not counted: page answered <code>" (any page failed: a short read is
+    no count); "none (no board)" for a country with no row."""
     board = board_for(n)
     if board is None:
         return {'source': 'public_board', 'board': None, 'status': 'none (no board)', 'rows': []}
@@ -203,10 +205,9 @@ def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
             pages += 1
             if status in REFUSED:
                 return {'source': 'public_board', 'board': board['board'], 'status': f'not counted: refused {status}', 'rows': []}
-            if status != 200:
-                if not rows:
-                    return {'source': 'public_board', 'board': board['board'], 'status': 'not counted: no answer', 'rows': []}
-                break
+            if status != 200:   # Why (review, 10 Nov 2026): a page that failed after others were read would leave a short count reading "counted"; the board is not counted, its code shown
+                why = 'no answer' if not status else f'page answered {status}'
+                return {'source': 'public_board', 'board': board['board'], 'status': f'not counted: {why}', 'rows': [], 'pages': pages}
             found, new = cards(markup, board['shape'], url), 0
             carded = carded or bool(found)
             for row in found:
@@ -223,8 +224,7 @@ def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
 
 
 if __name__ == '__main__':
-    sys.path.insert(0, str(HERE))
-    from gate import PERSONAS
+    from gate import PERSONAS   # beside this file: the script's own folder is first on sys.path
     number = int(sys.argv[1])
     got = read(number, PERSONAS[number - 1]['reference']['words'])
     print(json.dumps({k: v for k, v in got.items() if k != 'rows'}), len(got['rows']), 'rows')
