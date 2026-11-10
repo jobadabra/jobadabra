@@ -1,6 +1,6 @@
-// Telegram alerts for the scheduled CI checks (owner, 14 Oct 2026): a failure of e2e.yml (scheduled and gate runs) and site-replays.yml sends 🔴 once per commit and set of failed jobs (16 Oct 2026), and the
-// first success after a failure sends 🟢. Bot @jobpilotto_ci_alerts_bot: CI_ALERTS_TELEGRAM_BOT_TOKEN + CI_ALERTS_TELEGRAM_CHAT_ID (missing: one line, no send).
-// The token is never printed; no AI. Guard: e2e/test/ci-alert.test.mjs.
+// Telegram alerts for the scheduled CI checks (owner, 14 Oct 2026): a failure of e2e.yml (scheduled and gate runs) and site-replays.yml sends 🔴 once per commit and set of failed jobs (16 Oct 2026), and a success
+// that closes a red the owner was sent sends 🟢 (only then; 10 Nov 2026). Bot @jobpilotto_ci_alerts_bot: CI_ALERTS_TELEGRAM_BOT_TOKEN + CI_ALERTS_TELEGRAM_CHAT_ID (missing: one line, no send).
+// The token is never printed; no AI. Guard: e2e/test/harness/green-again.test.mjs.
 //   node ci-alert.mjs <failure|success> "<cause in a few words>" "<the one next action>"      (GITHUB_* and GH_TOKEN from the runner)
 // Job: report health
 import path from 'node:path';
@@ -19,38 +19,20 @@ const backbone = (name, lanes = readLanes()) => isBackbone(lanes, suiteOfKey(nam
 
 // Until 28 Oct 2026 a renamed workflow's old file is read too (replay-offline.yml → site-replays.yml, 14 Oct 2026).
 export const OLD_FILES = {'site-replays.yml': 'replay-offline.yml'};
-/**
- * The previous finished run of this workflow on the same branch (not this one), from the GitHub runs API -> {conclusion, id}, conclusion '' when none is read
- * (API errors try the old file name, then give ''). An e2e.yml run whose failed jobs are all non-backbone lanes counts as 'success'.
- */
-export async function previousRun(env = process.env, fetcher = fetch, lanes = readLanes()) {
-  const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]);
-  for (const name of [file, OLD_FILES[file]].filter(Boolean)) {
-    const url = `${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${name}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=completed&per_page=10`;
-    try {
-      const answer = await fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)});
-      const body = await answer.json();
-      const found = (body.workflow_runs || []).find(run => String(run.id) !== String(env.GITHUB_RUN_ID));
-      if (file === 'e2e.yml' && found?.conclusion === 'failure') {
-        const jobs = await failedJobLinks(found.id, env, fetcher);
-        if (!jobs.some(job => backbone(job.name, lanes))) return {conclusion: 'success', id: found.id};
-      }
-      if (found?.conclusion) return {conclusion: found.conclusion, id: found.id};
-    } catch { /* try the next name */ }
-  }
-  return {conclusion: '', id: null};
-}
-
-/** previousRun's conclusion alone. */
-export const previousConclusion = async (...args) => (await previousRun(...args)).conclusion;
+const FAILED = ['failure', 'timed_out'];
+const workflowFile = env => path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]);
 
 const API = env => env.GITHUB_API_URL || 'https://api.github.com';
 const unsuccessful = job => ['failure', 'cancelled', 'timed_out'].includes(job.conclusion);
-const get = (url, env, fetcher) => fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)}).then(answer => answer.json());
+const get = (url, env, fetcher) => fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)}).then(answer => { if (answer.ok === false) throw new Error(`GitHub HTTP ${answer.status}`); return answer.json(); });
 
-// Why (31 Oct 2026, owner: a suite past its budget is our bug, red): a job's own conclusion is the verdict, no annotation turns a failed job into health.
-const unsuccessfulJobs = async (runId, env, fetcher) =>
-  ((await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher)).jobs || []).filter(unsuccessful);
+// Why (10 Nov 2026, #3660 review): a job's own conclusion is the verdict, but an unreadable jobs response proves neither failure nor recovery; reject it before classifying.
+const jobsFor = async (runId, env, fetcher) => {
+  const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
+  if (!Array.isArray(body.jobs)) throw new Error(`jobs of run ${runId} unreadable`);
+  return body.jobs;
+};
+const unsuccessfulJobs = async (runId, env, fetcher) => (await jobsFor(runId, env, fetcher)).filter(unsuccessful);
 
 /** A run's blocking backbone job names. */
 export async function failedJobs(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
@@ -103,22 +85,103 @@ export async function flakyCauses(causes, runId, env = process.env, fetcher = fe
   } catch { return causes; } finally { clearTimeout(timer); }
 }
 
-// The PRs that landed since this workflow's last green run on the branch (a merge commit "Merge pull request #123 from …", or a squash "Title (#123)"), newest first.
-// -> {prs: [number], more: number}; empty when unknown. Why (30 Oct 2026): main merges PRs by merge commit since 27 Oct; matching only "(#123)" left "Since green" empty.
+// PR numbers in a compare range's commits (a merge commit "Merge pull request #123 from …", or a squash "Title (#123)"), newest first.
+// Why (30 Oct 2026): main merges PRs by merge commit since 27 Oct; matching only "(#123)" left "Since green" empty.
+const prNumbers = commits => commits.map(commit => /^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$/.exec(String(commit.commit?.message || '').split('\n')[0])).filter(Boolean).map(found => found[1] || found[2]).reverse();
+
+// The PRs that landed since this workflow's last green run on the branch -> {prs: [number], more: number}; empty when unknown.
 export async function sinceGreen(env = process.env, fetcher = fetch, shown = 5) {
-  const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]), repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`;
+  const file = workflowFile(env), repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`;
   try {
     const green = (await get(`${repo}/actions/workflows/${file}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=success&per_page=1`, env, fetcher)).workflow_runs?.[0];
     if (!green?.head_sha || green.head_sha === env.GITHUB_SHA) return {prs: [], more: 0};
-    const commits = (await get(`${repo}/compare/${green.head_sha}...${env.GITHUB_SHA}`, env, fetcher)).commits || [];
-    const all = commits.map(commit => /^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$/.exec(String(commit.commit?.message || '').split('\n')[0])).filter(Boolean).map(found => found[1] || found[2]).reverse();
+    const all = prNumbers((await get(`${repo}/compare/${green.head_sha}...${env.GITHUB_SHA}`, env, fetcher)).commits || []);
     return {prs: all.slice(0, shown), more: Math.max(0, all.length - shown)};
   } catch { return {prs: [], more: 0}; }
 }
 
+/**
+ * The red the owner was sent that this green run closes, read from the workflow's own finished runs on the branch (no second store): walk back through recent alerting runs, closing each suite only on an observed pass.
+ * A streak run counts when a red card went out for it: an e2e.yml run only when a backbone job failed in it (report-only suites never send one; such a run can close only the suites it passed),
+ * any other workflow when it failed. A suite is closed only if a red remains open for it and this run passed it. Errors (told on stderr) and nothing open: suites [] (the caller stays silent).
+ * Why (10 Nov 2026, owner, asked via AskUserQuestion, "Only to close a red I saw"): "green again" came for suites that never sent a red and fell back to the workflow's name. The switchboard's own holds
+ * (a switch off, "same state") are not readable from here (its log has no read route), so a red it held counts as seen: the one gap, told by the PR.
+ * @returns {Promise<{suites: string[], at: string, sha: string, fixed: {prs: string[], more: number}, flaky: boolean}>} `at` = when the oldest closed red began; `flaky` = this run checked the same commit as the newest red.
+ */
+export async function openRed(env = process.env, fetcher = fetch, lanes = readLanes(), shown = 3) {
+  const none = {suites: [], at: '', sha: '', fixed: {prs: [], more: 0}, flaky: false};
+  const repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`, workflow = env.GITHUB_WORKFLOW || 'CI';
+  try {
+    const streak = await redStreak(env, fetcher, lanes);
+    if (!streak.length) return none;
+    const passed = workflowFile(env) === 'e2e.yml' ? await passedNow(env, fetcher) : null;
+    // Unrun and skipped suites keep their earlier red; only an observed pass closes it.
+    const back = [...new Set(streak.flatMap(item => item.suites))].filter(suite => suite === workflow || !passed || passed.has(suite));
+    if (!back.length) return none;
+    const newest = streak.find(item => item.suites.some(suite => back.includes(suite))).run;
+    const began = suite => streak.filter(item => item.suites.includes(suite)).at(-1).run;
+    const startOf = run => String(run.run_started_at || run.created_at), oldest = back.map(began).sort((a, b) => startOf(a).localeCompare(startOf(b)))[0], flaky = newest.head_sha === env.GITHUB_SHA;
+    const all = flaky || !newest.head_sha ? [] : prNumbers((await get(`${repo}/compare/${newest.head_sha}...${env.GITHUB_SHA}`, env, fetcher).catch(error => { console.error(`ci-alert: compare unavailable: ${String(error.message).slice(0, 80)}`); return {}; })).commits || []);
+    return {suites: back, at: oldest.run_started_at || oldest.created_at || '', sha: newest.head_sha || '', fixed: {prs: all.slice(0, shown), more: Math.max(0, all.length - shown)}, flaky};
+  } catch (error) {
+    console.error(`ci-alert: green not sent (could not read the earlier runs: ${String(error?.message || error).slice(0, 80)})`);
+    return none;
+  }
+}
+
+// Walk newest first: observed passes hide older reds for that suite; an absent suite never does.
+async function redStreak(env, fetcher, lanes) {
+  const e2e = workflowFile(env) === 'e2e.yml', workflow = env.GITHUB_WORKFLOW || 'CI', closed = new Set(), streak = [];
+  for (const run of (await finishedRuns(env, fetcher)).slice(0, 12)) {
+    if (e2e && run.conclusion === 'success' && /^E2E after merge · /.test(run.display_title || '')) continue;
+    if (!e2e) {
+      if (run.conclusion === 'success') break;
+      if (FAILED.includes(run.conclusion)) streak.push({run, suites: [workflow]});
+      continue;
+    }
+    if (!FAILED.includes(run.conclusion) && run.conclusion !== 'success') continue;
+    await collectSuiteReds(run, {env, fetcher, lanes, workflow, closed, streak});
+  }
+  return streak;
+}
+
+// Collect the still-open reds before hiding earlier failures behind the passes in this run.
+async function collectSuiteReds(run, {env, fetcher, lanes, workflow, closed, streak}) {
+  const jobs = await jobsFor(run.id, env, fetcher), bad = jobs.filter(unsuccessful);
+  const suites = [...new Set(bad.filter(job => backbone(job.name, lanes)).map(job => suiteOfKey(job.name)))].filter(suite => !closed.has(suite));
+  if (FAILED.includes(run.conclusion) && !bad.length && !closed.has(workflow)) suites.push(workflow);
+  if (suites.length) streak.push({run, suites});
+  if (run.conclusion === 'success' || effectiveStatus(run.conclusion, bad, lanes) === 'success') closed.add(workflow);
+  for (const suite of passedSuites(jobs)) closed.add(suite);
+}
+
+// A suite passed only when at least one job succeeded and none of its shards failed.
+function passedSuites(jobs) {
+  const bad = new Set(jobs.filter(unsuccessful).map(job => suiteOfKey(job.name)));
+  return new Set(jobs.filter(job => job.conclusion === 'success').map(job => suiteOfKey(job.name)).filter(suite => !bad.has(suite)));
+}
+
+// The suites this e2e run passed: a job succeeded and none of the suite's jobs failed.
+async function passedNow(env, fetcher) {
+  return passedSuites(await jobsFor(env.GITHUB_RUN_ID, env, fetcher));
+}
+
+// This workflow's finished runs on the branch except this one, newest first (the renamed file's too when the new name has none). A by-hand bisect run (e2e_bisect.py: "Bisect <suite> <sha>") is no main check.
+async function finishedRuns(env, fetcher) {
+  const file = workflowFile(env);
+  for (const name of [file, OLD_FILES[file]].filter(Boolean)) {
+    try {
+      const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${name}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=completed&per_page=20`, env, fetcher);
+      const runs = (body.workflow_runs || []).filter(run => String(run.id) !== String(env.GITHUB_RUN_ID) && (file !== 'e2e.yml' || /^(E2E check · |Beta E2E tests |E2E after merge · )/.test(run.display_title || '')));
+      if (runs.length) return runs;
+    } catch { /* try the next name */ }
+  }
+  return [];
+}
+
 // One alert per (workflow, commit, failed jobs): true when an earlier finished run of this workflow on this commit failed with the same failed jobs. Errors: false (alert).
 export async function isRepeat(env = process.env, fetcher = fetch, lanes = readLanes()) {
-  const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]);
+  const file = workflowFile(env);
   try {
     const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${file}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=completed&per_page=10`, env, fetcher);
     const earlier = (body.workflow_runs || []).filter(run => String(run.id) !== String(env.GITHUB_RUN_ID) && run.head_sha === env.GITHUB_SHA && run.conclusion === 'failure');
@@ -179,11 +242,17 @@ const causeRow = (group, prefix = '') => ({icon: group.icon, count: group.steps.
 const sinceText = since => (since.prs.length ? `after ${since.prs.slice(0, 3).map(number => `#${number}`).join(' · ')}${since.prs.length > 3 || since.more ? ` +${Math.max(0, since.prs.length - 3) + since.more} more` : ''}` : '');
 const factsOf = (since, where) => [`🕐 ${[where.time, sinceText(since)].filter(Boolean).join(' · ')}`];
 
-/** Build a pure Telegram payload (lib/tg-card.mjs): one card for the red suites, or the first recovery after red; non-backbone reds stay silent. */
-// Why (10 Nov 2026, owner: every message reads like the Central scout one): the per-suite sections, job links, PR links and commit link are one headline, the Why rows, one verdict and the run link.
-export function messageOf({status, what = '', causes = [], next = '', previous = '', recovered = [], since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
+/** A failure whose failed jobs are all non-backbone counts as a success (report-only suites never send a red card). */
+export const effectiveStatus = (status, jobs = [], lanes = readLanes()) => (status === 'failure' && jobs.length && !jobs.some(job => backbone(job.name, lanes)) ? 'success' : status);
+
+/**
+ * Build a pure Telegram payload (lib/tg-card.mjs): one card for the red suites, or one for the suites whose red the owner was sent and that passed now (`closed`, from openRed); anything else stays silent.
+ * Why (10 Nov 2026, owner, asked via AskUserQuestion, "Only to close a red I saw"): "🟢 … are green again on main" came with report-only suites and no red before it. It says what it closes and what fixed it, or that the same code passed again.
+ */
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): a red and a green card alike are one headline, the Why rows or two facts (red since, fixed by), one verdict and the run link; no per-suite sections, job links, PR links or commit link.
+export function messageOf({status, what = '', causes = [], next = '', closed, since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
-  if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
+  status = effectiveStatus(status, jobs, lanes);
   const where = placeOf(env, now);
   const named = names => [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes));
   const link = {text: 'Open the run', url: where.run};
@@ -197,11 +266,16 @@ export function messageOf({status, what = '', causes = [], next = '', previous =
     const headline = names.length === 1 ? `${names[0]}: ${steps ? `${plural(steps, 'step')} red` : 'failed'} on ${where.branch}` : `${plural(names.length, 'suite')} red on ${where.branch}: ${short(names.join(', '), 60)}`;
     return card({level: 'red', headline, why, facts: factsOf(since, where), verdict: {ok: false, text: next ? `Next: ${short(next, 160)}` : 'Main stays red until the failing step passes.'}, link});
   }
-  if (status === 'success' && ['failure', 'timed_out'].includes(previous)) {
-    const back = where.e2e ? named(recovered) : [];
-    return card({level: 'green', headline: `${back.join(', ') || where.workflow} ${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, facts: factsOf(since, where), verdict: {ok: true, text: 'It passed on the latest run.'}, link});
-  }
+  if (status === 'success' && closed?.suites?.length) return greenCard(closed, where, link);
   return '';
+}
+
+// The green card: the suites a sent red closed, since when, and what fixed it (a PR, or the same code passing again).
+function greenCard(closed, where, link) {
+  const back = closed.suites, fixed = closed.fixed || {prs: [], more: 0};
+  const fix = closed.flaky ? '🎲 Passed again on the same code (flaky)' : fixed.prs.length ? `🔧 Fixed by ${fixed.prs.map(number => `#${number}`).join(' · ')}${fixed.more ? ` +${fixed.more} more` : ''}` : '';
+  return card({level: 'green', headline: `${back.length > 1 ? short(back.join(', '), 60) : back[0]} ${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`,
+    facts: [closed.at ? `🕐 Red since ${zurich(new Date(closed.at))}` : '', fix].filter(Boolean), verdict: {ok: true, text: 'It passed on the latest run.'}, link});
 }
 
 // The run's place and time, from the GitHub env: links, branch, the commit it checked, whether it is the e2e workflow (suites name its alerts).
@@ -209,8 +283,9 @@ function placeOf(env, now) {
   const repo = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}`;
   return {repo, run: `${repo}/actions/runs/${env.GITHUB_RUN_ID}`, branch: env.GITHUB_REF_NAME || 'main', sha: String(env.AFTER_MERGE || env.GITHUB_SHA || ''),
     workflow: env.GITHUB_WORKFLOW || 'CI', e2e: path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]) === 'e2e.yml',
-    time: new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now)};
+    time: zurich(now)};
 }
+const zurich = date => new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(date);
 
 /**
  * True when a send() line means the alert is DONE: delivered, held on purpose by the owner's switch (a hold is final: no retry, no claim to release), or `unsure` (the request timed out, Telegram may have delivered it).
@@ -245,13 +320,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   const [status, what, next] = process.argv.slice(2);
   if (status === 'failure' && await isRepeat()) console.log('ci-alert: not sent (same failure on this commit already alerted)');
   else {
-    const failure = status === 'failure';
-    const {conclusion: previous, id: previousId} = await previousRun();
-    const red = ['failure', 'timed_out'].includes(previous);
-    const since = failure || red ? await sinceGreen() : undefined, jobs = failure ? await failedJobLinks(process.env.GITHUB_RUN_ID).catch(() => []) : undefined;
+    const jobs = status === 'failure' ? await failedJobLinks(process.env.GITHUB_RUN_ID).catch(() => []) : undefined;
+    const failure = effectiveStatus(status, jobs) === 'failure';
+    const since = failure ? await sinceGreen() : undefined, closed = failure ? undefined : await openRed();
     const seen = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
     const causes = failure && placeOf(process.env, new Date()).e2e ? await flakyCauses(seen, process.env.GITHUB_RUN_ID) : seen;
-    const recovered = red && previousId ? await failedJobs(previousId).catch(() => []) : [];
-    console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(status, {causes, jobs})}));
+    console.log(await send(messageOf({status, what, causes, next, closed, since, jobs}), process.env, fetch, {event: eventOfWorkflow(process.env), ...stateOf(failure ? 'failure' : 'success', {causes, jobs})}));
   }
 }
