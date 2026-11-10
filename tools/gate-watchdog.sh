@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The push gate's wall-clock budget (owner, 11 Oct 2026: every local check before a push takes under 60 s). `source tools/gate-watchdog.sh`.
 #   gate_budget            seconds the heavy steps may run (JP_GATE_BUDGET, default 55); 0 = no watchdog (JP_GATE_FULL=1 or PUSH_FULL=1: the old full run)
-#   gate_wait_budget PID:CODEFILE...  wait for those background steps (a step is done when its CODEFILE, the exit code it writes, exists); at the budget, kill the still-running DEFERRABLE ones (GATE_DEFERRABLE: " pid pid ") and list them in
+#   gate_wait_budget PID:CODEFILE...  wait for those background steps (a step is done when its CODEFILE, the exit code it writes, has its content); at the budget, kill the still-running DEFERRABLE ones (GATE_DEFERRABLE: " pid pid ") and list them in
 #                          GATE_DEFERRED; a step that is not deferrable (lint, the affected unit tests) is always waited out
 #   gate_was_deferred PID  is that step one the watchdog stopped?
 # A deferred step is never a failure and never silent: the hook says "DEFERRED TO CI" with its name, and CI runs it (build.yml, page-cases.yml).
@@ -25,7 +25,8 @@ gate_wait_budget() {
   local budget alive pid pair; budget="$(gate_budget)"
   while :; do
     alive=""
-    for pair in "$@"; do [ -f "${pair#*:}" ] || { kill -0 "${pair%%:*}" 2>/dev/null && alive="$alive ${pair%%:*}"; }; done
+    # Why (8 Nov 2026, run 42500080506): `echo $? >file` creates the file EMPTY and writes after; `-f` took the empty file for "done" and the hook read a passed step's empty code as a failure ("tests failed in desktop", no output). `-s` waits for the content; a step that died between the two leaves it empty, and its dead pid ends the wait.
+    for pair in "$@"; do [ -s "${pair#*:}" ] || { kill -0 "${pair%%:*}" 2>/dev/null && alive="$alive ${pair%%:*}"; }; done
     [ -n "$alive" ] || return 0
     if [ "$budget" -gt 0 ] && [ "$SECONDS" -ge "$budget" ]; then
       for pid in $alive; do

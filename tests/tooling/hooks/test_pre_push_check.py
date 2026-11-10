@@ -135,6 +135,23 @@ class PrePushCheckTest(PrePushFixture):
                 self.assertEqual(code, 0, err)
                 self.assertNotIn('main is RED', err)
 
+    def wait_for(self, writer):
+        """Run tools/gate-watchdog.sh's gate_wait_budget on a background `writer` that writes a step's exit code to $code; returns (what the hook would then read from $code, seconds waited)."""
+        script = f'source "{HOOK.parent}/gate-watchdog.sh"; code="$(mktemp)"; rm -f "$code"; ( {writer} ) & gate_wait_budget "$!:$code"; cat "$code"'
+        started = time.time()
+        done = subprocess.run(['bash', '-c', script], capture_output=True, text=True, timeout=20)
+        return done.stdout.strip(), time.time() - started
+
+    def test_a_step_is_done_when_its_exit_code_is_written_not_when_the_file_appears(self):
+        # Guard: release — a step that PASSED blocked the push ("tests failed in desktop (clean checkout)" and nothing after it; run 42500080506, 8 Nov 2026, #3629, the rerun was green):
+        # `echo $? >file` creates the file empty, then writes; the watchdog took the file's existence as "done", so a poll between the two read an empty code as a failure.
+        # The writer here stops between the two on purpose (what a loaded CI runner does by chance).
+        self.assertEqual(self.wait_for(': >"$code"; sleep 1.2; echo 0 >"$code"')[0], '0', 'waited for the code, not for the file')
+        out, seconds = self.wait_for(': >"$code"')   # a step that died between the two never writes: the wait ends, it does not hang
+        self.assertEqual(out, '')
+        self.assertLess(seconds, 5)
+        self.assertEqual(self.wait_for('echo 3 >"$code"')[0], '3', 'a step that finished normally is read as before')
+
     @unittest.skipUnless(shutil.which('node'), 'needs node')
     def test_the_journey_gate_runs_beside_the_suites_and_a_failing_gate_blocks_with_its_output(self):
         # owner, 11 Oct 2026: lock wait + journey gate + slowest suite, one after another; the gate now starts with the suites
