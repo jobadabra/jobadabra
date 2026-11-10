@@ -22,6 +22,7 @@ updated: 2026-11-03
 - `tools/pre-push-check.sh`, `tools/affected-tests.py`: the fast checks and which tests a change can break.
 - `tools/pr-verdict.py`, `.github/workflows/pr-gate.yml`, `pr-verdict.yml`: the one required check.
 - `.github/workflows/pr-e2e-steps.yml`, `integration.yml`, `journeys.yml`, `e2e.yml`: the layers in CI.
+- `desktop/test/nightly/`: real-container release proofs run by harness-daily.yml; PRs keep the network-free declarations/arguments guard. Folder map: [TESTS.md](../../TESTS.md).
 - `desktop/e2e/lib/`: the harness; `desktop/e2e/suites/`: the Tier 1 journeys; `desktop/integration/`: integration tests.
 - `tools/beta-release.sh`: a beta by hand; no beta starts while main's e2e is red.
 - `.gitar/`: the review rules Gitar applies to every PR.
