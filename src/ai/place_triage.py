@@ -96,6 +96,18 @@ def known(search):
     return batch_scope.view('places_store', _load).get(_key(search)) or {}
 
 
+def known_now(locations, search):
+    """{location: 'best' | 'in' | 'out'} known without a model call: the kept answers, then the map from its cache and the shared pack (geo.resolve ask=False).
+    Why (sf place PR a, 10 Nov 2026): a reader's jobs at these places go on at once; only the jobs at the others wait for the place call (src/sources/feed_places.py).
+    A failure is the caller's (src/sources/feed_places.py _guarded): those jobs then wait for the call, as before."""
+    from .. import geo
+    decided = dict(known(search))
+    rest = [n for n in dict.fromkeys(norm(loc) for loc in locations) if n and n not in decided]
+    if rest:
+        decided.update(geo.verdicts(rest, places_words(search, _preferences()), None, ask=False))
+    return decided
+
+
 def _keep(key, decided):
     with LOCK:
         data = _load()

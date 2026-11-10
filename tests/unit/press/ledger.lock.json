@@ -80,8 +80,8 @@
   "hash": "07eb66f257640508"
  },
  "L21": {
-  "gets": "a slow place call does not hold the EURES titles",
-  "hash": "915ca2a00fb1bff4"
+  "gets": "a slow place call holds only the jobs whose place it is asking; jobs in places already known go to your list at once (owner, 10 Nov 2026, asked via AskUserQuestion in session sa: \"Only the asked jobs wait (Recommended)\")",
+  "hash": "04edf79a096f5a47"
  },
  "L22": {
   "gets": "a city written with accents stays in the places a search reads",
