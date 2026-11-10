@@ -251,3 +251,17 @@ test('the reader says when a queued read can be handed out: queued while none is
   assert.equal((await second)?.unreadable, true);
   assert.equal(taken.length, 2, 'nothing queued: nothing to tell');
 });
+
+test('Cancel (or the app quitting) with reads queued wakes nothing: every read ends and none is left to hand out (Gitar on #3650)', async () => {
+  const t = clock(), r = reader({set: t.set, clear: t.clear});
+  let wakes = 0;
+  r.onReady(() => { wakes += 1; });
+  const reads = [r.read('https://jobs.example/cancel-a')];
+  r.take();   // one read is out; three more queue behind it
+  reads.push(...['b', 'c', 'd'].map(name => r.read(`https://jobs.example/cancel-${name}`)));
+  assert.equal(wakes, 1, 'the first read, queued while none was out');
+  assert.equal(r.cancelAll(), 4);
+  assert.equal(wakes, 1, 'no wake per cancelled read');
+  assert.deepEqual(await Promise.all(reads), [null, null, null, null]);
+  assert.equal(r.busy(), false);
+});

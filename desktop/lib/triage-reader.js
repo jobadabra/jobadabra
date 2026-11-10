@@ -28,10 +28,10 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
   const waiting = new Map(), queue = [], ended = new Set();
   const hear = fn => value => { try { fn(value); } catch { /* a listener's failure never leaves a read unanswered */ } };
   const heardStep = hear(onStep), heardDone = hear(onDone);
-  let active = '', ready = () => {};
+  let active = '', ready = () => {}, cancelling = false;
   // Why (10 Nov 2026, night burn-in 42721065574): the extension asked for a queued read only on its 30 s tab report, so each read waited 24-27 s for a 1.5 s look.
   // Whenever a queued read could be handed out (one is queued and none is out), the reader says so once; the app wakes the extension's poll on it.
-  const tellReady = () => { if (!active && queue.length) hear(ready)(); };
+  const tellReady = () => { if (!cancelling && !active && queue.length) hear(ready)(); };   // a Cancel ends every read: none is left to hand out (Gitar on #3650)
   // Why (2026-10-30, g2's G4 step, #2624): Cancel and a timeout resolve the app's promise but nothing told the extension, so the read's page stayed open in the hidden browser; a read ended without a report is remembered here until the poll hands it to the extension to close.
   function finish(id, value, reported = false) {
     const row = waiting.get(id);
@@ -90,7 +90,7 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
       return finish(id, 'simple' in payload ? readFromLook(payload) : readFromJudge(payload, {eligible: true, allFactsSaved: payload.allFactsSaved}), true);   // the light read says `simple`; the judge-based read (kept for the demo and older extensions) says its flags
     },
     /** Resolves every queued and active read with null (Cancel, the app quitting). Returns how many it ended. */
-    cancelAll: () => [...waiting.keys()].filter(id => finish(id, null)).length,
+    cancelAll() { cancelling = true; try { return [...waiting.keys()].filter(id => finish(id, null)).length; } finally { cancelling = false; } },
     /** The reads ended without a report (Cancel, a timeout) whose page the extension still holds; each is returned once. Returns [id]. */
     takeEnded() { const ids = [...ended]; ended.clear(); return ids; },
   };
