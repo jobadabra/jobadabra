@@ -20,6 +20,7 @@ BOARD = re.compile(r'^Job boards found: (.+?) ([\d,]+) job\(s\), ([\d,]+) releva
 BOARD_WEB = re.compile(r'^Job boards: (?:a web search found (.+)|the web search for trade and local boards did not answer)')
 SCOUT_WEB = re.compile(r'^Scout: employers with no job site found are looked up with a web search')
 COUNTS = re.compile(r'^Run counts: looked=(\d+) matches=(\d+) scored=(\d+) good=(\d+)')
+EURES_OFF = re.compile(r'^EURES: off in this run')   # src/daily_search.py start_sources: the press ran without the EURES reader
 EURES = re.compile(r'^EURES: (?:([\d,]+) vacanc|still reading when its time ended, keeping the ([\d,]+) read)')
 TITLES = re.compile(r'^Titles: .+? sorted ([\d,]+) new title\(s\) in your places')
 TITLE_BATCH = 30   # src/ai/title_triage.py BATCH: one AI call per up to 30 titles
@@ -33,7 +34,9 @@ def number(text):
 
 def step_count(part, out):
     """Tally one log line of the per-step counters into `out` (eu_jobs, titles_asked, ai_calls); True when the line was one of them."""
-    if m := EURES.match(part):
+    if EURES_OFF.match(part):
+        out['eures'] = 'off'
+    elif m := EURES.match(part):
         out['eu_jobs'] = number(m[1] or m[2])   # what OUR EURES read listed in the user's places (src/sources/eures.py), not what EURES holds
     elif m := TITLES.match(part):
         # Why (6 Nov 2026, Gitar on #3353): the "asking ... in N batch(es)" line is the plan, printed before any batch runs; the closing "sorted N" line counts what was answered, so a press cut by its time reads fewer.
@@ -49,7 +52,7 @@ def step_count(part, out):
 def funnel(lines):
     """{employers_picked, employers_in_places, employer_sites_read, boards_read, board_jobs, board_relevant, web_searches, web_found,
     scout_web, looked, matches, scored, good, eu_jobs, titles_asked, ai_calls} from a press's log lines; the CLI adds kinds (the role kinds the employers were picked by)."""
-    out = dict.fromkeys(('employers_picked', 'employers_in_places', 'employer_sites_read', 'looked', 'matches', 'scored', 'good', 'eu_jobs', 'titles_asked', 'ai_calls'))
+    out = dict.fromkeys(('employers_picked', 'employers_in_places', 'employer_sites_read', 'looked', 'matches', 'scored', 'good', 'eu_jobs', 'titles_asked', 'ai_calls', 'eures'))
     boards, web, found = {}, 0, 0
     scout_web = False
     # Why (2 Nov 2026, run 41376694937, mac-07: "everything is 0"): p2-p4 started their web search and still found 0 because the time budget ended before
