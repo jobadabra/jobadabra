@@ -5,8 +5,8 @@ calls instead of ~8 (titles sorted 108 -> 60 and 185 -> 58). The call now runs i
 Why the reader's own titles still wait for the answers (review of #3512, 7 Nov 2026): `feeds.triage` marks the AI sort as run (feeds.ASKED), after which `wanted_title` stops using the role words, and
 `wanted_location` falls back to the place words for a location not placed yet: a sort beside the place call raced that flag (no place call at all on big lists) and handed words-yes, AI-out jobs
 ("Paris, Texas") to scoring. Since sf's place PR a (10 Nov 2026) only the jobs at the locations the call asks about wait: the others' places are known (kept answers, the
-map's cache), so their titles are sorted at once. Why: after #3676 a few remote locations nobody had placed started the call, and p9 Lyon's ~100 employer jobs at known
-Lyon places waited 35-80 s behind 4 of them (sa's Mac run; first job 66 s, was 20 s). The race stays closed: the jobs to place are chosen before any sort sets the flag, and
+map's cache), so their titles are sorted at once. Why (owner, 10 Nov 2026, asked via AskUserQuestion in session sa: "Only the asked jobs wait (Recommended)"): after #3676 a few remote locations nobody had placed
+started the call, and on main p9 Lyon's employer jobs at known Lyon places were listed at 127 s, behind a place call asked at 36 s and answered at 125 s (sa's Mac run). The race stays closed: the jobs to place are chosen before any sort sets the flag, and
 every job at an asked location, whatever its title, waits for the answer. Tests: tests/unit/ai/test_titles_with_places.py."""
 import threading
 from collections import Counter
