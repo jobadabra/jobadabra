@@ -7,6 +7,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
@@ -267,11 +268,23 @@ class TheMarket(unittest.TestCase):
         self.assertEqual(row['sources']['eures'], {'status': 'counted', 'read': 2, 'right': 2, 'only': 1})
         self.assertEqual(row['sources']['web_search'], {'status': 'not counted: ValueError', 'read': None, 'right': None, 'only': None})
         self.assertEqual(row['sources']['linkedin'], {'status': 'by hand', 'read': None, 'right': None, 'only': None})
-        self.assertEqual(len(row['sources']['employer_sites']['status']), 120, 'the site keeps 120 characters')
+        self.assertEqual(len(row['sources']['employer_sites']['status']), reference.STATUS_SENT)
         self.assertNotIn('feeds_tried', json.dumps(record))
         self.assertEqual(details['3']['employer_sites']['feeds_tried'], 3, 'the counters stay in the artifact')
         self.assertEqual(len(record['personas']), 18)
-        self.assertLess(len(json.dumps({'personas': record['personas']}).encode()), 32 * 1024, "the 18 rows fit the site's 32 KB body (what send() puts)")
+        worst = {n: {**r, 'sources': {s: {'status': 'x' * 200, 'read': 9999, 'right': 9999, 'only': 9999} for s in reference.ADMIN_SOURCES}} for n, r in record['personas'].items()}
+        worst = {n: {**r, 'sources': {s: {**v, 'status': v['status'][:reference.STATUS_SENT]} for s, v in r['sources'].items()}} for n, r in worst.items()}
+        self.assertLess(len(json.dumps({'personas': worst}, ensure_ascii=False, separators=(',', ':')).encode()), 32 * 1024, "the worst 18 rows fit the site's 32 KB body cap (jobadabra-web #528)")
+
+    def test_a_partial_source_sends_its_numbers_and_a_source_with_no_board_sends_nulls(self):
+        def employers(persona):
+            rows = [{'title': 'Menuisier 7', 'company': 'Atelier', 'location': 'Brussels', 'url': 'https://feed.example/7'}] if persona is P3 else []
+            return {'source': 'employer_sites', 'status': 'partial: 1 of 2 feeds', 'rows': rows}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=NO_BOARD, employers=employers, today='2026-11-11')
+        sources = record['personas']['3']['sources']
+        self.assertEqual(sources['employer_sites'], {'status': 'partial: 1 of 2 feeds', 'read': 1, 'right': 1, 'only': 1})
+        self.assertEqual(sources['public_board'], {'status': 'none (no board)', 'read': None, 'right': None, 'only': None})
+        self.assertEqual({r['counted_on'] for r in record['personas'].values()}, {'2026-11-11'}, 'one date for the run')
 
     def test_a_refused_board_is_not_counted_and_the_market_is_eures_alone(self):
         details = {}
@@ -307,7 +320,7 @@ class TheCommandLine(unittest.TestCase):
         folder = Path(tempfile.mkdtemp()) / 'out' / 'deeper'
         seen = []
 
-        def fake_run(jobs=None, details=None):
+        def fake_run(jobs=None, details=None, **kw):
             seen.append(folder.is_dir())   # the folder is there before the read starts
             jobs['1'] = []
             return {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}}
@@ -391,6 +404,24 @@ class Sending(unittest.TestCase):
         reference.send(self.record(), self.env(), self.NOW, opener)
         self.assertTrue(seen['agent'], 'no User-Agent set: urllib would send its default, which the edge refuses with a 403')
         self.assertNotIn('urllib', seen['agent'].lower())
+
+    def test_a_body_the_site_finds_too_big_is_sent_once_more_with_the_eures_counts_only(self):
+        """Review of [mc] 5/5: until the site's cap rises to 32 KB, a 413 must not lose the week's EURES reference; the second body is the row the site took before."""
+        sent = []
+
+        def opener(request, timeout=30):
+            sent.append(json.loads(request.data))
+            if len(sent) == 1:
+                raise urllib.error.HTTPError(request.full_url, 413, 'Payload Too Large', {}, None)
+            return mock.MagicMock(__enter__=lambda s: s, __exit__=lambda *a: False, read=lambda *n: b'{"ok": true, "stored": true}')
+        path = self.record()
+        row = {'total': 2, 'reachable': 2, 'eures': 2, 'market': 3, 'counted_on': '2026-11-11', 'sources': {'eures': {'status': 'counted', 'read': 2, 'right': 2, 'only': 1}}}
+        Path(path).write_text(json.dumps({'personas': {'3': row}}), encoding='utf-8')
+        line = reference.send(path, self.env(), self.NOW, opener)
+        self.assertEqual(len(sent), 2)
+        self.assertEqual(sent[1], {'personas': {'3': {'total': 2, 'reachable': 2, 'eures': 2}}})
+        self.assertIn('stored', line)
+        self.assertIn('without per-source detail: 413', line)
 
     def test_a_refused_upload_is_one_line_never_an_exception(self):
         def refuse(request, timeout=30):

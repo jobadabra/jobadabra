@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -91,6 +92,8 @@ EMPLOYER_NUMBERS = ('feeds_tried', 'feeds_read', 'feeds_refused', 'feeds_failed'
 
 
 ADMIN_SOURCES = (*SOURCES, 'free_job_apis', 'linkedin')   # oe's fixed list on the site (jobadabra-web admin/search-reference.js); a key outside it is dropped there
+STATUS_SENT = 120  # characters of a status the site keeps (oe, 10 Nov 2026)
+LEAN = ('total', 'reachable', 'eures')   # the row the site took before the market count: what a body too big for it still carries
 
 
 def admin_row(counts, sources, only, counted, today):
@@ -102,7 +105,7 @@ def admin_row(counts, sources, only, counted, today):
             return {'read': None, 'right': None, 'only': None}
         return {'read': sources[source].get('read'), 'right': counts[source], 'only': only[source]}
     return {'total': counts['total'], 'reachable': counts['reachable'], 'eures': counts['eures'], 'market': counts['market'], 'counted_on': today,
-            'sources': {s: {'status': str(sources[s]['status'])[:120], **numbers(s)} for s in ADMIN_SOURCES if s in sources}}
+            'sources': {s: {'status': str(sources[s]['status'])[:STATUS_SENT], **numbers(s)} for s in ADMIN_SOURCES if s in sources}}
 
 
 def right(row):
@@ -188,6 +191,7 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
     says "no reference"). All sources' rows are judged in one blind pass, so every source is read by the same eyes and a job two sources show costs one verdict.
     `jobs`, when given, is filled with {"<n>": right_jobs(...)}; `details` with {"<n>": per-source status, rows read and right jobs}: the artifact's, never part of the record that is sent."""
     boards = boards or market_boards.read
+    today = today or datetime.date.today().isoformat()   # one date for the whole run, also the artifact's (main passes it)
     web = web or market_web.read
     record = {}
     # Why (review of [mc] 3/5): 18 searches one after another (up to a minute each) would push the job past its 20 minutes and lose every person's EURES count;
@@ -217,9 +221,9 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
             continue
         counts = tally(rows, counted)
         found = right_jobs(rows)
-        only = {s: sum(job['sources'] == [s] for job in found) for s in counted}   # right jobs no other counted source showed (sa's WP6: what a source is worth)
+        only = {s: sum([o for o in job['sources'] if o in counted] == [s] for job in found) for s in counted}   # right jobs no other counted source showed (sa's WP6: what a source is worth)
         if 'eures' in counted:   # the record sent to Admin keeps its EURES meaning (see tally); a person whose EURES was not read stays out of it, as before
-            record[str(n)] = admin_row(counts, sources, only, counted, today or datetime.date.today().isoformat())
+            record[str(n)] = admin_row(counts, sources, only, counted, today)
         if jobs is not None:
             jobs[str(n)] = found
         if details is not None:   # per source {status, read, right, only} plus each source's own numbers (board pages, employer feeds_*): the artifact's
@@ -248,20 +252,31 @@ def send(path, env=None, now=None, opener=urllib.request.urlopen):
         return f'search reference: not sent ({why})'
     try:
         record = json.loads(Path(path).read_text(encoding='utf-8'))
-        body = json.dumps({'personas': record['personas']}).encode()
+        body = json.dumps({'personas': record['personas']}, ensure_ascii=False, separators=(',', ':')).encode()   # compact UTF-8: a '·' is 2 bytes, not 6
     except (OSError, ValueError, KeyError):
         return 'search reference: nothing to send (no record)'
     if not record['personas']:
         return 'search reference: nothing to send (EURES was read for no persona)'
     week = iso_week(now)
-    request = urllib.request.Request(f'{SITE}?week={week}&run={run_id}', data=body, method='PUT',
-                                     headers={'Authorization': f"Bearer {env['REPLAYS_PUBLISH_KEY']}", 'Content-Type': 'application/json', 'User-Agent': USER_AGENT, 'X-Caller': 'search-reference'})
-    try:
+
+    def put(data):
+        request = urllib.request.Request(f'{SITE}?week={week}&run={run_id}', data=data, method='PUT',
+                                         headers={'Authorization': f"Bearer {env['REPLAYS_PUBLISH_KEY']}", 'Content-Type': 'application/json', 'User-Agent': USER_AGENT, 'X-Caller': 'search-reference'})
         with opener(request, timeout=30) as response:
-            told = json.load(response)
+            return json.load(response)
+    lean = ''
+    try:
+        try:
+            told = put(body)
+        except urllib.error.HTTPError as error:
+            if error.code != 413:
+                raise
+            # Why (review of [mc] 5/5): until jobadabra-web #528 raises the site's body cap (16 KB -> 32 KB), 18 rows with long statuses can pass it; the week's EURES
+            # reference must not be lost with them: the same counts are sent once more without the per-source detail (it stays in the run's artifact).
+            told, lean = put(json.dumps({'personas': {n: {k: r[k] for k in LEAN if k in r} for n, r in record['personas'].items()}}, separators=(',', ':')).encode()), ' (without per-source detail: 413)'
     except Exception as error:   # noqa: BLE001 - a failed upload is one line, never a red run
         return f'search reference: not sent ({str(getattr(error, "code", "") or type(error).__name__)[:40]})'
-    return f"search reference: week {week} {'stored' if told.get('stored') else 'not stored (' + str(told.get('why', 'unknown'))[:60] + ')'}: {len(record['personas'])} personas"
+    return f"search reference: week {week} {'stored' if told.get('stored') else 'not stored (' + str(told.get('why', 'unknown'))[:60] + ')'}: {len(record['personas'])} personas{lean}"
 
 
 def main(argv):
@@ -269,10 +284,10 @@ def main(argv):
     kind = argv[0] if argv else ''
     if kind == 'run' and len(argv) == 2:
         Path(argv[1]).parent.mkdir(parents=True, exist_ok=True)   # Why (6 Nov 2026, run 42191804037): `out/` did not exist and the 6-minute read ended in FileNotFoundError; make the folder first
-        jobs, details = {}, {}
-        record = run(jobs=jobs, details=details)
+        jobs, details, today = {}, {}, datetime.date.today().isoformat()
+        record = run(jobs=jobs, details=details, today=today)
         Path(argv[1]).write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding='utf-8')
-        Path(argv[1]).with_name('reference-jobs.json').write_text(json.dumps({'personas': jobs, 'sources': details, 'counted_on': datetime.date.today().isoformat()}, ensure_ascii=False, indent=1), encoding='utf-8')
+        Path(argv[1]).with_name('reference-jobs.json').write_text(json.dumps({'personas': jobs, 'sources': details, 'counted_on': today}, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"reference: {len(record['personas'])} of {len(PERSONAS)} personas")
     elif kind == 'send' and len(argv) == 2:
         print(send(argv[1]))
