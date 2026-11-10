@@ -317,6 +317,19 @@ def _ask(client, question):
     return json.loads(next(block.text for block in response.content if getattr(block, 'type', '') == 'text')).get('boards') or []
 
 
+def _named(answer, known, fetch):
+    """The valid, new boards of the web search's answer (at most MAX_FOUND), each with its search link, before they are judged."""
+    from ..ai import board_ideas
+    hosts = {board['host'] for board in known}
+    found = []
+    for item in answer:
+        board = board_ideas.valid(_with_search(item, fetch)) or board_ideas.valid(item)   # its search link first, else a field board's category page
+        if board and board['host'] not in hosts and len(found) < MAX_FOUND:
+            hosts.add(board['host'])
+            found.append(board)
+    return found
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
@@ -371,15 +384,8 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         print(f'Job boards: the web search for trade and local boards did not answer ({type(error).__name__})', flush=True)
         return []
     answered = raw[1] if raw is not None else web_answers.keep(web_answers.name(key, places), answer, now)
-    hosts = {board['host'] for board in known}
     fetch = fetch or careers.get_text
-    found = []
-    for item in answer:
-        board = board_ideas.valid(_with_search(item, fetch)) or board_ideas.valid(item)   # its search link first, else a field board's category page
-        if board and board['host'] not in hosts and len(found) < MAX_FOUND:
-            hosts.add(board['host'])
-            found.append(board)
-    found = _judged(found, roles, fetch)
+    found = _judged(_named(answer, known, fetch), roles, fetch)
     data = board_ideas.load() if own else data
     if found:
         ideas = data.setdefault('ideas', {})   # Why (E2b, 8 Nov 2026): data['ideas'] read before setdefault made a store with no ideas yet raise KeyError after the paid call
