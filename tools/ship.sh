@@ -65,7 +65,7 @@ if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools
   # CI runs, with the title the PR will get: --title= or the subject tools/ship-pr.sh takes, tagged once (an n/N plan title needs the Plan progress block).
   gate_title="${SHIP_PR_TITLE:-$(bash "$tools/pr-title.sh" origin/main 2>/dev/null || true)}"
   case "$gate_title" in ''|'['*'] '*) ;; *) gate_title="[xx] $gate_title" ;; esac
-  body_err="$( { body_out="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && printf '%s' "$body_out" | PR_TITLE="$gate_title" python3 "$tools/pr-body-check.py" >/dev/null; } 2>&1 >/dev/null)" || {
+  body_err="$( { body_out="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && printf '%s' "$body_out" | PR_TITLE="$gate_title" python3 "$tools/pr-body-check.py" --base origin/main >/dev/null; } 2>&1 >/dev/null)" || {
     echo "ship: the PR description is not laid out ($SHIP_PR_BODY), nothing was pushed:" >&2; echo "$body_err" >&2
     echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
   export SHIP_BODY_CHECKED=1

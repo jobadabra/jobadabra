@@ -1,9 +1,10 @@
 """Checks that a PR description is laid out by tools/pr-body-format.py (owner, 16 Oct 2026: "this PR description missed our rules: didn't add separators,
 didn't use headings"). #1043's body was replaced with `gh pr edit --body-file` on a raw summary, which skips the formatter that tools/ship.sh runs.
-Reads the body on stdin; exit 1 naming what is missing. Run by the step "PR description laid out" of .github/workflows/pr-gate.yml on every opened, pushed or edited PR. Guard: tests/tooling/ci/test_pr_images.py."""
+Reads the body on stdin; exit 1 naming what is missing. With `--base <ref>` (jobadabra's own pr-gate.yml and tools/ship.sh) it also asks the Find jobs admission line (moves_gap). Run by the step "PR description laid out" of .github/workflows/pr-gate.yml on every opened, pushed or edited PR. Guard: tests/tooling/ci/test_pr_images.py."""
 import importlib.util
 import os
 import re
+import subprocess
 import sys
 
 FIX = 'lay it out with tools/pr-body.sh <base> --body=<summary> (ship.sh does it), never a raw `gh pr edit --body-file`'
@@ -40,6 +41,32 @@ def title_gap(title):
     return None if not title or re.match(r'^\[[^\]]+\] \S', title) else f'the PR title "{title}" has no "[xx] " session tag: {TAG_FIX}'
 
 
+# The files that decide what Find jobs reads, keeps, scores or orders (the finish-line spec, guardrail G4).
+SEARCH_FILES = re.compile(r'^src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots)\.py$|(ai/)?(time_budget|job_rank)\.py$)')
+MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*\S*\d\S*\s*\(3 runs a side, spread\s+[^)\s]*\d[^)]*\)|nothing\s*\([^)<>]*\w[^)<>]*\))', re.M)
+MOVES_FIX = ('add a line `Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)` (the person, the number it moves, 3 runs before and 3 after, their spread), '
+             'or `Moves: nothing (<why>)` for a change no person feels; skill check-job-search-locally step 10, spec docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md')
+
+
+def moves_gap(body, changed):
+    """Find jobs admission line (owner, 10 Nov 2026, finish line, guardrail G4): a PR that changes a search file says which person and number it moves, 3 runs a side, or that it moves nothing.
+    Why (10 Nov 2026, sa): 246 of 647 PRs in 30 days changed the search engine and each was graded by its author on one run (4 claims withdrawn on 10 Nov alone); ±10 jobs of spread per person hides any single run."""
+    hit = sorted(f for f in changed if SEARCH_FILES.match(f))
+    if not hit or MOVES.search(body or ''):
+        return None
+    return f'this PR changes search files ({", ".join(hit[:3])}{", ..." if len(hit) > 3 else ""}) but the body has no "Moves:" line: {MOVES_FIX}'
+
+
+def changed_files(base):
+    """The files this PR changes against `base` (from the merge base, so main moving on is not this PR's change), None when git cannot say: then no admission check, a note on stderr."""
+    try:
+        start = subprocess.run(['git', 'merge-base', base, 'HEAD'], capture_output=True, text=True, check=True).stdout.strip() or base
+        return subprocess.run(['git', 'diff', '--name-only', start, 'HEAD'], capture_output=True, text=True, check=True).stdout.split()
+    except (subprocess.CalledProcessError, OSError):
+        print(f'pr-description: could not read the changed files against {base}: the admission line was not checked', file=sys.stderr)
+        return None
+
+
 STEP = re.compile(r'^\[[^\]]+\] (\d+)/(\d+) \S')
 PLAN_ROWS = ('Done', 'This PR', 'Left')
 
@@ -69,6 +96,12 @@ if __name__ == '__main__':
     if gap:
         print('pr-title: ' + gap, file=sys.stderr)
         sys.exit(1)
+    if '--base' in sys.argv[1:]:
+        files = changed_files(sys.argv[sys.argv.index('--base') + 1])
+        admission = moves_gap(text, files) if files is not None else None
+        if admission:
+            print('pr-description: ' + admission, file=sys.stderr)
+            sys.exit(1)
     if gaps:
         print('pr-description: ' + '; '.join(gaps) + ': ' + FIX, file=sys.stderr)
         sys.exit(1)
