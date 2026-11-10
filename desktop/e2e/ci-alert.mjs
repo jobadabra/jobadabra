@@ -249,13 +249,16 @@ export function messageOf({status, what = '', causes = [], next = '', closed, si
     const headline = names.length === 1 ? `${names[0]}: ${steps ? `${plural(steps, 'step')} red` : 'failed'} on ${where.branch}` : `${plural(names.length, 'suite')} red on ${where.branch}: ${short(names.join(', '), 60)}`;
     return card({level: 'red', headline, why, facts: factsOf(since, where), verdict: {ok: false, text: next ? `Next: ${short(next, 160)}` : 'Main stays red until the failing step passes.'}, link});
   }
-  if (status === 'success' && closed?.suites?.length) {
-    const back = closed.suites, fixed = closed.fixed || {prs: [], more: 0};
-    const fix = closed.flaky ? '🎲 Passed again on the same code (flaky)' : fixed.prs.length ? `🔧 Fixed by ${fixed.prs.map(number => `#${number}`).join(' · ')}${fixed.more ? ` +${fixed.more} more` : ''}` : '';
-    return card({level: 'green', headline: `${back.length > 1 ? short(back.join(', '), 60) : back[0]} ${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`,
-      facts: [closed.at ? `🕐 Red since ${zurich(new Date(closed.at))}` : '', fix].filter(Boolean), verdict: {ok: true, text: 'It passed on the latest run.'}, link});
-  }
+  if (status === 'success' && closed?.suites?.length) return greenCard(closed, where, link);
   return '';
+}
+
+// The green card: the suites a sent red closed, since when, and what fixed it (a PR, or the same code passing again).
+function greenCard(closed, where, link) {
+  const back = closed.suites, fixed = closed.fixed || {prs: [], more: 0};
+  const fix = closed.flaky ? '🎲 Passed again on the same code (flaky)' : fixed.prs.length ? `🔧 Fixed by ${fixed.prs.map(number => `#${number}`).join(' · ')}${fixed.more ? ` +${fixed.more} more` : ''}` : '';
+  return card({level: 'green', headline: `${back.length > 1 ? short(back.join(', '), 60) : back[0]} ${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`,
+    facts: [closed.at ? `🕐 Red since ${zurich(new Date(closed.at))}` : '', fix].filter(Boolean), verdict: {ok: true, text: 'It passed on the latest run.'}, link});
 }
 
 // The run's place and time, from the GitHub env: links, branch, the commit it checked, whether it is the e2e workflow (suites name its alerts).
