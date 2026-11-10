@@ -7,7 +7,7 @@
 import {card} from './tg-card.mjs';
 
 export const MAX_BULLETS = 3;
-const LEVELS = {'🔴': 'red', '⚠️': 'orange', '🟠': 'orange', '✅': 'green', '🟢': 'green', 'ℹ️': 'grey', '⚪': 'grey'};
+const LEVELS = {'🔴': 'red', '❌': 'red', '🚨': 'red', '🛑': 'red', '⚠️': 'orange', '🟠': 'orange', '✅': 'green', '🟢': 'green', 'ℹ️': 'grey', '⚪': 'grey'};
 
 /** Takes {icon, title, verdict, bullets: [text], run, linkText, level?}; returns the Telegram payload. The icon (or `level`) is the colour dot; ✅/🟢 reads "fine", every other dot "needs a look". */
 export function notice({icon = '⚠️', title, verdict = '', bullets = [], run = '', linkText = 'Open the run', level = ''}) {

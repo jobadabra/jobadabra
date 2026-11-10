@@ -15,7 +15,7 @@ async function main() {
   const response = await fetch(`${base}?snapshot=1`, {headers: {Authorization: `Bearer ${key}`}});
   if (!response.ok) throw new Error(`the site answered ${response.status} for the e2e snapshot`);
   const s = weekly(await response.json());
-  if (process.argv.includes('--dry-run')) { console.log(telegramText(s)); return; }
+  if (process.argv.includes('--dry-run')) { console.log(telegramText(s).text); return; }
   await deliver(s);
 }
 

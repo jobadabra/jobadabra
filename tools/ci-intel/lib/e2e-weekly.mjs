@@ -59,7 +59,7 @@ export function telegramText(s) {
   const grey = s.grey?.rows || [], slow = s.speed?.slowPr || [];
   const facts = [s.caught.length ? `🐛 Caught a bug: ${names(s.caught)}` : '🐛 No red suite caught a bug',
     s.work.total ? `🧱 Plumbing ${pct(s.work.counts.plumbing || 0, s.work.total)} of ${s.work.total} commits (${s.work.plumbing < PLUMBING_TARGET ? 'under' : 'over'} the ${pct(PLUMBING_TARGET, 1)} target)` : `🧱 No commit read for the week of ${dayWords(s.work.week)}`,
-    `⚪ ${grey.length ? plural(grey.length, 'grey suite') : 'No grey suite'} · ${slow.length ? `${plural(slow.length, 'PR suite')} over ${PR_SPLIT_SECONDS / 60} min` : 'no PR suite over 8 min'}`];
+    `⚪ ${s.grey?.read === false ? 'Lane registry not read yet' : grey.length ? plural(grey.length, 'grey suite') : 'No grey suite'} · ${slow.length ? `${plural(slow.length, 'PR suite')} over ${PR_SPLIT_SECONDS / 60} min` : 'no PR suite over 8 min'}`];
   const expired = grey.filter(row => row.expired || row.below);
   const call = [s.prune.length ? `${plural(s.prune.length, 'suite')} red in 30 days without catching a bug (${names(s.prune)}): keep, move to a tolerant lane, or retire?` : '',
     expired.length ? `Grey: ${names(expired)} past their limit: keep, fix or retire?` : ''].filter(Boolean).join(' ');

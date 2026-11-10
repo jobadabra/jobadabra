@@ -16,6 +16,7 @@ export const MAX_LINES = 12;    // non-empty lines of the whole message
 /** Ten blocks: filled for `done` of `total`; one failure always leaves one empty block, one answer always one filled. */
 export function bar(done, total, width = 10) {
   if (!total) return '░'.repeat(width);
+  done = Math.min(Math.max(done, 0), total);
   let filled = Math.round((done / total) * width);
   if (done < total) filled = Math.min(filled, width - 1);
   if (done > 0) filled = Math.max(filled, 1);

@@ -217,6 +217,7 @@ function placeOf(env, now) {
  * True when a send() line means the alert is DONE: delivered, held on purpose by the owner's switch (a hold is final: no retry, no claim to release), or `unsure` (the request timed out, Telegram may have delivered it).
  * Why (10 Nov 2026, owner: "It tells you once" came twice, 8 Nov 10:24 and 11:22; runs 42466803520, 42471046179): a timeout was read as "not sent", the claim was released and the next hour sent it again.
  * A message lost to a timeout is told by the run that is still red; a message told twice is noise the owner saw. At most once.
+ * Callers: msix-store-watch (keeps its claim) and credit-alert (writes its marker): a credit or Store verdict whose request never left the machine is lost for that run; accepted (code review, 10 Nov 2026), the next run tells the credit again.
  */
 export const delivered = line => /^ci-alert: (sent|held|unsure)\b/.test(String(line));
 
