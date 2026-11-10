@@ -2,7 +2,7 @@ name: CI · E2E tooling tests · daily
 # Every E2E tooling test (desktop/e2e/test/*/*.test.mjs) once a day on main, with the same command a PR runs (harness.yml, `npm test`).
 # Why (a8, 30 Oct 2026, option C): a PR runs the whole folder too, but only when it changes what a test reaches; this run catches what no PR starts: runner or package drift,
 # data outside harness.yml's paths, a test that depends on the date. One message to the CI alerts chat, only when something fails.
-# The second job runs the fixer's real proof container (a live image build), which no PR runs any more; report only, no chat message (it is a measurement of the outside world, see its Why).
+# The second job runs the fixer's real proof container (a live image build), which no PR runs any more; report only, no chat message; PRs guard the init arguments and Dockerfile account/HOME declarations without network access.
 on:
   schedule:
     - cron: '41 3 * * *'
@@ -62,4 +62,4 @@ jobs:
       # Why (10 Nov 2026, fx; public #3643 "Integration app (Linux)" timed out building the image after 3 min, file unchanged since 5 Nov): the proof image is built from a registry pull and apt installs,
       # so a PR must not depend on it; the PR layer checks the sandbox script's arguments against a stub docker (desktop/integration/app/fixer-sandbox.test.js), this job proves the real container nightly.
       - name: The real proof image reaps orphans and resolves its account
-        run: node --test --test-timeout=300000 desktop/integration/nightly/fixer-sandbox-docker.test.js
+        run: node --test --test-timeout=300000 desktop/test/nightly/fixer-sandbox-docker.test.js

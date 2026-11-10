@@ -1,7 +1,7 @@
 // Guard: release — the fixer's proof sandbox must start its container with an init process (orphans reaped) and keep every isolation flag, checked without building an image.
 // Why (10 Nov 2026, fx): this file used to run a live `docker build` of the proof image on every PR and timed out in docker build (public #3643): the registry, apt and a shared runner are not ours to time.
 // A stub `docker` records the arguments the real tools/feedback-ai-sandbox.sh passes; its `build` sleeps, so a test that builds again hangs here and fails. The real container (orphans reaped, account resolved)
-// is proved nightly by desktop/integration/nightly/fixer-sandbox-docker.test.js (harness-daily.yml).
+// is proved nightly by desktop/test/nightly/fixer-sandbox-docker.test.js (harness-daily.yml).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -63,4 +63,16 @@ test('the box command\'s exit code is the script\'s exit code', {skip, timeout: 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-sandbox-exit-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   assert.equal(runSandbox(dir, sandbox, 7).status, 7);
+});
+
+
+test('the proof image declares the non-root account and home needed by Python', () => {
+  const image = fs.readFileSync(path.join(root, 'tools/feedback-ai.Dockerfile'), 'utf8');
+  assert.match(image, /ARG PROOF_UID=1001/);
+  assert.match(image, /ARG PROOF_GID=1001/);
+  assert.match(image, /getent passwd "\$PROOF_UID"/);
+  assert.match(image, /usermod --home \/tmp/);
+  assert.match(image, /useradd --uid "\$PROOF_UID" --gid "\$PROOF_GID" --home-dir \/tmp/);
+  assert.match(image, /USER \$\{PROOF_UID\}:\$\{PROOF_GID\}/);
+  assert.match(image, /ENV HOME=\/tmp/);
 });

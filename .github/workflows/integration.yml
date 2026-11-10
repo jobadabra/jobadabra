@@ -44,6 +44,7 @@ on:
       - 'desktop/test/needs-electron.js'
       - 'desktop/test/no-live-site.mjs'
       - 'desktop/test/reporter-by-file.mjs'
+      - 'tools/feedback-ai.Dockerfile'   # the cheap PR guard checks the account and HOME declarations
       - 'tools/feedback-ai-sandbox.sh'   # fixer-sandbox.test.js runs the real sandbox script against a stub docker
       - 'extension/**'
       - 'src/**'   # the engine commands the kits run (python -m src.focus, src scout, src.stores.copy)

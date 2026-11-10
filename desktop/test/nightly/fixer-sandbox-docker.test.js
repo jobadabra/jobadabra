@@ -1,7 +1,7 @@
 // Guard: release — the real proof container must reap orphans and supply account metadata so unrelated lifecycle and Python tests can run.
 // Why (10 Nov 2026, fx): this builds the proof image with a live `docker build` (registry pull, apt), so it runs nightly in harness-daily.yml, never on a PR: on public #3643 "Integration app (Linux)"
 // timed out in docker build in this file, unchanged since 5 Nov (flaky: the outside world). The PR layer keeps desktop/integration/app/fixer-sandbox.test.js, which reads the same
-// sandbox script through a stub `docker`. Run by hand on Linux with Docker: node --test desktop/integration/nightly/fixer-sandbox-docker.test.js
+// sandbox script through a stub `docker`. Run by hand on Linux with Docker: node --test desktop/test/nightly/fixer-sandbox-docker.test.js
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
