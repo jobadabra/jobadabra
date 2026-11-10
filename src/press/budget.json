@@ -3,7 +3,6 @@
   {"name": "time_budget.RESERVE.titles", "value": 70, "unit": "s", "why": "seconds kept for the AI steps that come after this one", "pr": "2026-10-26"},
   {"name": "time_budget.RESERVE.enrich", "value": 40, "unit": "s", "why": "seconds kept for the AI steps that come after this one", "pr": "2026-10-26"},
   {"name": "time_budget.RESERVE.score", "value": 0, "unit": "s", "why": "seconds kept for the AI steps that come after this one", "pr": "2026-10-26"},
-  {"name": "time_budget.FACTS", "value": 25, "unit": "s", "why": "a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)", "pr": "2026-10-26"},
   {"name": "time_budget.TAIL", "value": 15, "unit": "s", "why": "no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)", "pr": "2026-10-26"},
   {"name": "time_budget.SCORING", "value": 45, "unit": "s", "why": "seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)", "pr": "2026-10-26"},
   {"name": "time_budget.FLOOR", "value": 3, "unit": "count", "why": "the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: \"Yes, always 3\"): a new user sees fits in press 1", "pr": "2026-10-18"},

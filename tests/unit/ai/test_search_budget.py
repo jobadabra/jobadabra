@@ -25,15 +25,16 @@ class BudgetTests(unittest.TestCase):
         self.assertFalse(budget.over('score', now=164))
         self.assertTrue(budget.over('score', now=165), 'no call starts in the last 15 s: one running ends by 180 s')
 
-    def test_a_refresh_that_scores_first_leaves_the_facts_their_time(self):
-        # 10 Oct 2026: scoring took all 180 s, the facts started with "Time is up", and 0 of 103 jobs ever had them.
+    def test_a_refresh_that_scores_first_leaves_the_facts_what_scoring_leaves(self):
+        # 10 Oct 2026: scoring took all 180 s, the facts started with "Time is up", and 0 of 103 jobs ever had them. ts (10 Nov 2026; owner asked via AskUserQuestion, "Yes, facts later
+        # (Recommended)"): the 25 s kept for them were read as "0 of 74, Time is up" on every night log while 71 jobs waited for a score; they take what scoring leaves, from the same end.
         budget.start(180, now=0)
         budget.score_first()
-        self.assertFalse(budget.over('score', now=139))
-        self.assertTrue(budget.over('score', now=140), 'scoring stops 40 s early (25 s of facts, the last 15 kept)')
-        self.assertFalse(budget.over('enrich', now=164), 'the facts run to the end of the budget')
+        self.assertFalse(budget.over('score', now=164))
+        self.assertTrue(budget.over('score', now=165), 'scoring runs to the last 15 s, which are kept')
+        self.assertFalse(budget.over('enrich', now=164), 'the facts run to the same end')
         self.assertTrue(budget.over('enrich', now=165))
-        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 40) * 1.0 / budget.PACE['score']), 'the batch is sized without their 40 s')
+        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 15) * 1.0 / budget.PACE['score']), 'the batch is sized without any seconds for the facts')
         budget.start(180, now=0)
         self.assertTrue(budget.over('enrich', now=145), 'a fresh budget is back to reading first')
 

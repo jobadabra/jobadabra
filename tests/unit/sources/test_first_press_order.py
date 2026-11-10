@@ -74,10 +74,10 @@ class ScoringKeepsTheTimeItNeeds(unittest.TestCase):
         patch = mock.patch('src.paths.DATA', self.data)   # its paces: the default ones, not a stray step_pace.json
         patch.start()
         self.addCleanup(patch.stop)
-        self.press(82)
+        self.press(101)
 
     def press(self, at):
-        """A 135 s press that scores (scoring stops 30 s before its end), `at` seconds in."""
+        """A 135 s press that scores (scoring stops 11 s before its end: TAIL; the 25 s kept for the job facts went in ts, 10 Nov 2026), `at` seconds in; the same distance to its stop as 82 s had before."""
         time_budget.start(135, now=time.monotonic() - at)
         time_budget.score_first()
         self.assertTrue(time_budget._scorings() and not time_budget.ended())
@@ -87,7 +87,7 @@ class ScoringKeepsTheTimeItNeeds(unittest.TestCase):
 
     def test_one_waiting_job_does_not_hold_back_the_local_titles(self):
         self.waiting(1)
-        self.assertEqual(time_budget.local_titles(100), time_budget.FEED, 'its score takes seconds, and 23 s are left: the titles go on, a batch a call')
+        self.assertEqual(time_budget.local_titles(100), time_budget.FEED, 'its score takes seconds, and 23 s are left (at 101 s of 135): the titles go on, a batch a call')
 
     def test_jobs_that_need_the_time_left_keep_it(self):
         self.waiting(20)   # b8cfac4's case: the floor's title calls took the time and a search scored only its first 3
@@ -95,7 +95,7 @@ class ScoringKeepsTheTimeItNeeds(unittest.TestCase):
 
     def test_the_last_seconds_before_scorings_stop_stay_scorings(self):
         self.waiting(1)
-        self.press(100)
+        self.press(119)
         self.assertEqual(time_budget.local_titles(10), 0, 'one round of title calls would leave its score no time')
 
     def test_this_computers_own_slow_pace_counts(self):

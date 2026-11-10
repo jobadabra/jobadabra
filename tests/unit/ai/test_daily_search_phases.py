@@ -10,8 +10,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from src import daily_helpers, daily_search, store, time_budget
-from src.ai import engine, score
+from src import daily_helpers, daily_search, daily_search_scoring, store, time_budget
+from src.ai import engine, score, slots
 from src.daily_args import build_parser
 from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_facts, feeds, found_boards
 from src.stores import memory, sqlite as sqlite_store
@@ -43,6 +43,7 @@ class SearchCharacterization(unittest.TestCase):
         self.matches_sync = self.stores.matches.sync
         self.import_report = store.import_watch_report
         self.enrich_error = self.score_error = None
+        self.beside, self.real_next_batch = False, daily_search_scoring.next_batch
         patches = [
             mock.patch.dict(os.environ, {'JOBADABRA_DATA_DIR': str(self.root), 'JOBADABRA_CONFIG_DIR': str(self.root),
                                         'JOBADABRA_DISABLE': 'mail,notion,google_jobs,job_alerts'}),
@@ -54,6 +55,7 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(daily_helpers, 'REPORTS', self.root),
             mock.patch.object(daily_search, 'load_search_config', return_value={}),
             mock.patch.object(daily_search, 'scoring_plan', side_effect=self.plan),
+            mock.patch.object(daily_search_scoring, 'next_batch', side_effect=self.next_batch),
             mock.patch.object(daily_search, 'starter_sources', return_value=[]),
             mock.patch.object(daily_search, 'downloaded_index', return_value=[]),
             mock.patch.object(daily_search.employer_index, 'problem', ''),
@@ -106,6 +108,11 @@ class SearchCharacterization(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
+    def next_batch(self, *args):
+        """The scorer beside the search looks for landed jobs when a thread happens to start: a race with this file's instant gather. Off, except in the tests of that scorer (self.beside),
+        so the older tests keep their one order; ts, 10 Nov 2026."""
+        return self.real_next_batch(*args) if self.beside else ([], slots.SCORE)
+
     def own_connection(self):
         db = self.connect(self.root / 'jobs.sqlite')
         if __import__('threading').current_thread() is __import__('threading').main_thread():   # a thread's own: that thread closes it
@@ -132,6 +139,11 @@ class SearchCharacterization(unittest.TestCase):
             jobs = []
         if not self.late_jobs:
             so_far.add(jobs, 'employer sites')
+            if self.beside and jobs:   # the search is still reading other sources: the scorer beside it takes the landed jobs meanwhile
+                deadline = __import__('time').monotonic() + 10
+                while 'score' not in self.calls and __import__('time').monotonic() < deadline:
+                    __import__('time').sleep(0.02)
+                self.event('gather goes on')
         return {'jobs': jobs, 'sources': source_rows}, None
 
     def boards_beside(self, search):

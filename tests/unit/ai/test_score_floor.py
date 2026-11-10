@@ -5,19 +5,27 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from src import time_budget as budget
 
 
 class FloorTests(unittest.TestCase):
+    """Since ts (10 Nov 2026) scoring has the run to its end minus TAIL (the 25 s kept for the job facts went), so the floor only matters when something is reserved after scoring:
+    these tests reserve 25 s (RESERVE['score']) to make scoring's own time end before the run's, as the facts' did."""
+    def setUp(self):
+        patch = mock.patch.dict(budget.RESERVE, {'score': 25})
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def tearDown(self):
         budget.start(0)
 
     def test_scorings_spent_share_still_takes_and_starts_the_first_three(self):
         budget.start(180, now=0)
-        budget.score_first()   # 150 s: scoring's time is spent (it keeps the facts' 25 s and the last 15), the run's is not
-        self.assertEqual(budget.batch('score', 10, now=150), 3, 'the batch keeps 3 when the time is up')
-        self.assertEqual(budget.batch('score', 2, now=150), 2)
+        # 150 s: scoring's time is spent (it keeps 25 s and the last 15), the run's is not; 162 s: its share covers 1 job and the floor keeps 3
+        self.assertEqual(budget.batch('score', 10, now=162), 3, 'the batch keeps 3 when the time is up')
+        self.assertEqual(budget.batch('score', 2, now=162), 2)
         self.assertEqual([budget.may_score(now=150) for _ in range(5)], [True, True, True, False, False])
 
     def test_the_floor_never_passes_the_runs_end(self):
@@ -34,12 +42,10 @@ class FloorTests(unittest.TestCase):
 
     def test_the_floor_is_per_search(self):
         budget.start(180, now=0)
-        budget.score_first()
         budget.may_score(now=150)
-        self.assertEqual(budget.batch('score', 10, now=151), 2)
+        self.assertEqual(budget.batch('score', 10, now=163), 2)
         budget.start(180, now=0)   # a new search
-        budget.score_first()
-        self.assertEqual(budget.batch('score', 10, now=151), 3)
+        self.assertEqual(budget.batch('score', 10, now=163), 3)
 
     def test_without_a_budget_every_score_starts(self):
         budget.start(0)
@@ -48,6 +54,11 @@ class FloorTests(unittest.TestCase):
 
 
 class ScoreRunTests(unittest.TestCase):
+    def setUp(self):
+        patch = mock.patch.dict(budget.RESERVE, {'score': 25})   # as FloorTests: something kept after scoring
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def tearDown(self):
         budget.start(0)
 
@@ -55,15 +66,13 @@ class ScoreRunTests(unittest.TestCase):
         from src import store
         from src.ai import score
         from tests.unit.ai.test_score import ModelClient
-        from unittest import mock
         with tempfile.TemporaryDirectory() as tmp, store.connect(Path(tmp) / 'jobs.sqlite') as db, mock.patch('src.paths.DATA', Path(tmp)):   # its pace file too
             report = {'jobs': [{'company': 'Example', 'id': str(i), 'title': f'SRE {i}', 'location': 'Zurich', 'url': f'https://x.test/{i}',
                                 'description': 'Kubernetes, Terraform, Datadog.', 'status': 'new'} for i in range(6)], 'sources': []}
             store.import_watch_report(db, report)
             from src.daily_helpers import to_score
             import time
-            budget.start(180, now=time.monotonic() - 150)   # scoring's time is spent (it keeps the facts' time), the run's is not
-            budget.score_first()
+            budget.start(180, now=time.monotonic() - 150)   # scoring's time is spent (it keeps its reserve), the run's is not
             stats = {}
             score.run(db, to_score(db, frozenset()), 'Profile v1', 'm', 50, client=ModelClient({'m': lambda title: 70}), stats=stats, workers=1)
             self.assertEqual(len(score.load(db)), 3, 'the first 3, the others wait for the next search')

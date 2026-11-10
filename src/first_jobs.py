@@ -13,7 +13,7 @@ import os
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from . import store
-from .press import budget, rank
+from .press import budget, rank, scorer as claims
 from .ai import score, slots, title_queue
 from .sources import ats, feeds
 
@@ -355,6 +355,11 @@ class _Scoring:
         self.before = lambda: None   # called before each batch is chosen: the readers that have read are sorted first (_Readers.take_ready)
 
     def over(self):
+        """Why (ts, 10 Nov 2026; owner asked via AskUserQuestion, "Yes, build it (Recommended)"): with a scorer beside the search (src/press/scorer.py shared()) the slice is the trigger
+        (its first `first` jobs) and that scorer goes on; before, the slice went on in the hub thread, 3 at a time up to `limit` until a job fit FIT+, and every reader's titles waited for
+        those scores (night 9 Nov, p3 and p5: 30 s). Without a scorer beside it (no time budget) the slice goes on as before."""
+        if claims.shared():
+            return self.stopped or len(self.tried) >= self.first
         return self.strong or self.stopped or len(self.tried) >= self.limit
 
     def step(self):
@@ -371,6 +376,11 @@ class _Scoring:
         ids = order[:min(self.first, self.limit - len(self.tried))]
         self.queued.update(map(str, order[:self.limit - len(self.tried)]))
         self.tried.update(map(str, ids))
+        if claims.shared():   # the scorer beside the search takes the jobs it has not been given: none is scored twice (src/press/scorer.py); the ones it holds count as the slice's look
+            taken = claims.claim(ids)
+            ids = [job_id for job_id in ids if job_id in taken]
+            if not ids:
+                return False
         stats = {}
         scorer(db, to_score(db, hidden), profile, model, self.first, workers=self.first, stats=stats, on_scored=self.sync, every=1, only_ids=set(ids))
         if not stats.get('done'):   # a paused Profile, a spent limit or the time: the next batch would score nothing either

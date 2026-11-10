@@ -47,7 +47,7 @@ TABLE = (
           ('time_budget.RESERVE.titles', 'time_budget.TAIL', 'time_budget.LOCAL_TITLES', 'time_budget.FEED', 'time_budget.SHARE.title_rounds',
            'time_budget.PACE.title_rounds', 'title_triage.BATCH', 'title_triage.MAX_NEW'), ('employer_sites', 'places', 'scoring'), ('title sorting',)),
     Stage('scoring', 'Scoring', ('src/ai/score.py', 'src/first_jobs.py'), 'kept jobs', 'fit scores',
-          ('time_budget.RESERVE.score', 'time_budget.FACTS', 'time_budget.FLOOR', 'time_budget.SHARE.score', 'time_budget.PACE.score'), ('titles',), ('scoring',)),
+          ('time_budget.RESERVE.score', 'time_budget.FLOOR', 'time_budget.SHARE.score', 'time_budget.PACE.score'), ('titles',), ('scoring',)),
     Stage('facts', 'Job facts, kits', ('src/ai/enrich.py', 'src/ai/kit.py'), 'scored jobs', 'facts and application kits',
           ('time_budget.RESERVE.enrich', 'time_budget.SHARE.enrich', 'time_budget.PACE.enrich'), (), ('job facts', 'kits')),
     Stage('scout', 'Employer finder (scout)', ('src/scout.py',), 'the person\'s search', 'new employers', ('app.SCOUT_SHARE_S', 'app.STOP_MARGIN_S'), (), (), 'scout'),
