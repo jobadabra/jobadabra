@@ -14,7 +14,7 @@ updated: 2026-11-10
 - One owner each: order and clock `src/press/`, "in your places" `wanted_location` (`src/sources/feeds.py`), meaning the AI. Never a second sort key or scheduler, or a keyword guess for an unjudged job.
 - First jobs in seconds: a small slice of fast feeds is scored three at a time, so a new list has its first job while the crawl runs (`src/first_jobs.py`); the free ranking spends AI on the best candidates first (`src/job_rank.py`).
 - Never past a login wall or captcha; no disguised browser; a 401, 403 or 429 is not retried (one slower retry of a 403 right after our own burst). LinkedIn jobs and refused public sites are the two opt-in exceptions (CLAUDE.md "Safety").
-- robots.txt and site terms are not consulted for public job listings; `Sitemap:` lines still help.
+- robots.txt and site terms are not consulted for public listings; `Sitemap:` lines help.
 - A place counts jobs located there; remote only if the AI placed it. Remote jobs No/Country/Yes: bare Remote only under Yes.
 - The AI decides what a title or place means (`src/ai/decide.py`, `src/places.py`); a capped AI leaves leftovers unknown, never a default such as "other". Nothing from the network becomes prompt text.
 - No job texts are stored centrally: only counts, place names and key facts, k of at least 3.
@@ -29,12 +29,12 @@ Night totals include EURES; source counts are not coverage. By-hand input `eures
 - `src/scout*.py`, `src/employer_index.py`: the central scout and the index installs download.
 - `src/places.py`, `regions.py`, `geo.py`: place words worked out by AI, kept locally.
 - `tools/persona-search/`, `tools/press-yardstick/`: the persona gate and the PR yardstick; skills `check-job-search-locally`, `fictional-candidate-runs`.
-- More: `node desktop/scripts/codemap.mjs scout search sources`.
 
 ## Live specs
+- [Find jobs finish line](../superpowers/specs/2026-11-10-find-jobs-finish-line.md): the goal and its two numbers.
 - [The press](../superpowers/specs/2026-11-07-the-press-design.md): one pipeline, budget table, ranker, fix ledger (plan [ps](../superpowers/plans/2026-11-07-the-press.md)).
 - [Collect, rank once, then spend](../superpowers/specs/2026-11-10-find-jobs-collect-rank-spend.md): a job's states and owners (plan sf).
-- [First jobs fast](../superpowers/specs/2026-10-16-first-jobs-fast.md) and [search learns sources](../superpowers/specs/2026-10-18-search-learns-sources.md).
+- [First jobs fast](../superpowers/specs/2026-10-16-first-jobs-fast.md), [search learns sources](../superpowers/specs/2026-10-18-search-learns-sources.md).
 - [Job board discovery](../superpowers/specs/2026-10-08-job-board-discovery.md), [locations, one source](../superpowers/specs/2026-10-17-locations-one-source.md), [LinkedIn headless](../superpowers/specs/2026-10-31-linkedin-headless-design.md).
 
 ## Ask the sources
@@ -43,7 +43,7 @@ ask: github runs workflow=search-personas days=7
 
 ## Lessons
 - Before tuning a discovery prompt for a missed site, search its name on the same engine: if that fails, the gap is its index.
-- A step that "finds nothing": read its times against its cap and what it saves when cut off.
+- A step that "finds nothing": read its times against its cap.
 - A substring keyword in front of the AI answers wrongly and invisibly ("office" made "First Officer" finance).
 - When a shared AI cap leaves items unjudged, publish nothing for them: a default looked real and filled 42% of the index.
 - "Jobs in places" counts worldwide remote as everywhere: classify from the saved location.

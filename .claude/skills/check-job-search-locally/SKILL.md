@@ -45,6 +45,7 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    after it, `python3 tools/persona-search/publish-session-check.py <out> <case> --session <your short name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick --build <sha> --broke "<what broke>" --conclusion "<what it shows>" --prs "#n"`
    (`--dry` prints the row; the key is the Keychain item `jobadabra.site.session_checks_key`; counts and board names only, no job titles or companies).
 9. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
+10. **A before/after claim needs 3 runs a side on the named person, and the spread** (owner, 10 Nov 2026, Find jobs finish line, spec `docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md`): one run moves a person by about ±10 jobs, so "better" counts only when the difference is larger than the spread of the runs on each side. Say the person, the number (in = out for a source, or coverage), the 3 + 3 values and the spread.
 
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;
