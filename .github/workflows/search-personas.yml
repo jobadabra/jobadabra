@@ -297,7 +297,7 @@ jobs:
 
   compare:
     name: Search check
-    needs: [room, persona, again, reference]   # Why (10 Nov 2026, sa's plan WP3): in = out reads the night's reference keys; a run without a reference job (a subset) still compares
+    needs: [room, persona, again, reference]   # Why (10 Nov 2026, sa's plan WP3 and WP5 3/6): in = out reads the night's reference keys, and a second try's row replaces its first; a run without a reference job (a subset) or second tries still compares
     if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison }}   # Why (#2243, 10 Nov 2026; room, oe 1/3, 10 Nov 2026): cancelled runs and a by-hand run refused for room have no persona results; paired comparisons have a separate report. None belongs in nightly history, and none may publish an empty night (a false drop alert).
     runs-on: ubuntu-24.04
     timeout-minutes: 5
