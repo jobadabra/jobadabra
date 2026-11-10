@@ -174,5 +174,30 @@ class TheFirstJobNeedsOneBatch(unittest.TestCase):
         run.run()
         self.assertEqual(run.events[0], "scored ['far', 'near']", f'both jobs were there before the first score: {run.events}')
 
+    def test_a_reader_joined_while_another_joins_at_the_end_does_not_stop_the_slice(self):
+        """Night 9 Nov 2026, p1 (run 42537909472, 105 s): "Warning: first jobs skipped: KeyError: 'EURES'". At the slice's end both readers had read; joining the boards
+        hands their jobs on, the score step's look at the hub (`before`, #3339) joins EURES meanwhile, and the end's own list still named it. The slice then stopped
+        before its closing "First jobs: N found" line, the one the app closes the first-jobs card on."""
+        from concurrent.futures import Future
+        boards, eu = Future(), Future()
+        boards.set_result([dict(NEAR)])
+        eu.set_result([dict(FAR)])
+        joined = []
+        with title_queue.hub() as hub:
+            readers = None
+
+            def hand(items):   # what the slice's hand does: a score step, which first looks at the hub (_Scoring.step -> before -> take_ready)
+                readers.take_ready()
+
+            def take(name, future, shown):
+                joined.append(name)
+                return future.result()
+            readers = first_jobs._Readers(hub, {'boards': boards, 'EURES': eu}, None, first_jobs._Imports(lambda report: None), hand, lambda line: None)
+            with mock.patch.object(readers, '_take', side_effect=take):
+                self.assertEqual(hub.box.qsize(), 2, 'positive control: both readers had read and wait in the hub')
+                readers.finish()
+        self.assertEqual(sorted(joined), ['EURES', 'boards'], 'each reader joined once')
+        self.assertEqual(readers.pending, {})
+
 if __name__ == '__main__':
     unittest.main()
