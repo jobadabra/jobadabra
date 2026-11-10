@@ -117,7 +117,7 @@ class SearchCharacterization(unittest.TestCase):
 
     def join_scorer(self):
         """Waits for the scorer thread the search started (src/daily_search_scoring.py `_beside`).
-        Why (ts, 10 Nov 2026; flaky on main after #3649, red on #3653 and #3654 which do not touch this file): the search's own join stops at the run's end
+        Why (ts, 10 Nov 2026; #3649 bounded the join (27da5b9f) and wrote this test; it was green in #3649's own CI and has been intermittently red since, on #3653 and #3654, which do not touch this file: a race that was there from the start, not a later change): the search's own join stops at the run's end
         (`thread.join(wait())`, 0 s once a test has spent the clock) and leaves the thread to finish alone, as it should on a person's Mac; a test that asserts
         on its scores, or drops the temp folder under it ("attempt to write a readonly database", "Directory not empty"), must wait for it. 30 s is a hang guard only."""
         for thread in [t for t in __import__('threading').enumerate() if t.name == 'scorer']:
