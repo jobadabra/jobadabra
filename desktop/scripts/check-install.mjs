@@ -7,7 +7,7 @@ try {
     console.error('Install refused: desktop/node_modules is a link; run tools/worktree.sh own-modules desktop from the repo root, then retry.');
     process.exitCode = 1;
   } else {
-    // Why (#3423, 7 Nov 2026; first seen 30 Oct, 67fbdacd): a link named node_modules INSIDE the folder (what `ln -s X desktop/node_modules` leaves when desktop/node_modules is already a link to a folder)
+    // Why (#3423, 7 Nov 2026; first seen 30 Oct, 67fbdacd): a link named node_modules INSIDE the folder (what ln -s leaves when its second argument, desktop/node_modules, is already a link to a folder)
     // is suspected, not reproduced, of causing npm's ENOTEMPTY rename error on desktop/node_modules/node_modules/ajv. Producer unproven; this only names the link to remove, it removes nothing.
     try {
       if (lstatSync(new URL('../node_modules/node_modules', import.meta.url)).isSymbolicLink()) {
