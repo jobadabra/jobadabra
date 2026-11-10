@@ -364,6 +364,17 @@ jobs:
           python3 tools/persona-search/floors.py check result/verdict.json result/floors-state.json ${NIGHT:+--night} | tee -a result/table.md
           [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a number under its floor two nights in a row; a crash reads "not checked"
           exit 0
+      # Why (10 Nov 2026, owner: "If a source is getting lost · We should have red CI · We should have alerts"; G6): a source with right jobs on the last 3 runs and none now,
+      # or a finder step that read no job for anyone, is red; a floor broken and persons not run are told too (tools/persona-search/lost.py stores `lost` on the verdict).
+      - name: A source lost (G6)
+        id: lost
+        if: always() && hashFiles('result/verdict.json') != ''
+        run: |
+          set +e
+          mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
+          python3 tools/persona-search/lost.py check result/verdict.json "${mains[@]}" | tee -a result/table.md
+          [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a source lost; a crash reads "not checked", never red
+          exit 0
       - uses: actions/upload-artifact@v6
         if: always() && hashFiles('result/floors-state.json') != ''
         with: {name: search-personas-floors-state, path: result/floors-state.json, retention-days: 7}
@@ -381,6 +392,18 @@ jobs:
           SEARCH_NIGHT_BY_HAND: ${{ inputs.scheduled && 'no' || 'yes' }}   # Why (10 Nov 2026, sa): only the Worker's scheduled run is a night; a by-hand run of all 18 is stored beside the nights and never replaces one
         shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the command's exit code without pipefail; the same pipe let the judge exam step (run 42410653476) show success after a crash
         run: node search-night-upload.mjs "$GITHUB_WORKSPACE/result/verdict.json" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      # Why (10 Nov 2026, G6, sa): one card through ci-alert's send(): the switchboard's event search-night (the Engineering bot the owner connected in Admin →
+      # Operations → Notifications), else the CI-alerts bot. Only a full run on main tells the owner (a branch or subset run never does); a failed send never reds the night.
+      - name: Tell the Engineering channel (G6)
+        if: always() && hashFiles('result/verdict.json') != '' && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        timeout-minutes: 2
+        working-directory: desktop/e2e
+        env:
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+        run: node search-alert.mjs "$GITHUB_WORKSPACE/result/verdict.json"
       - name: The table in the run's summary
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
@@ -389,7 +412,8 @@ jobs:
         env:
           CODE: ${{ steps.compare.outputs.code }}
           FLOORS: ${{ steps.floors.outputs.red }}
-        run: test "$CODE" = 0 && test "$FLOORS" != 1   # a number under its floor two nights in a row (G2) is red too
+          LOST: ${{ steps.lost.outputs.red }}
+        run: test "$CODE" = 0 && test "$FLOORS" != 1 && test "$LOST" != 1   # a number under its floor two nights in a row (G2) and a source lost (G6) are red too
       - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
