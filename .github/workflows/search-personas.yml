@@ -293,6 +293,22 @@ jobs:
           [ -f reference/reference-jobs.json ] && export SEARCH_REFERENCE_JOBS=reference/reference-jobs.json
           python3 tools/persona-search/gate.py compare results result "${mains[@]}"
           echo "code=$?" >> "$GITHUB_OUTPUT"
+      # Why (10 Nov 2026, owner: "Fixed guardrails", G2; sa: "contents: write only there"): this job reads artifacts built from scraped job text, so it only reads the
+      # floors' state and computes; the floors-save job below alone writes refs/tags/search-floors. Only a scheduled night on the locked chain gets --night (red + a new state).
+      - name: Floors that only rise (G2)
+        id: floors
+        if: always() && hashFiles('result/verdict.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
+        run: |
+          set +e
+          python3 tools/persona-search/floors.py check result/verdict.json result/floors-state.json ${NIGHT:+--night} | tee -a result/table.md
+          [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a number under its floor two nights in a row; a crash reads "not checked"
+          exit 0
+      - uses: actions/upload-artifact@v6
+        if: always() && hashFiles('result/floors-state.json') != ''
+        with: {name: search-personas-floors-state, path: result/floors-state.json, retention-days: 7}
       - uses: actions/upload-artifact@v6
         if: always()
         with: {name: "${{ (inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
@@ -314,9 +330,31 @@ jobs:
         if: inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or 2-press run measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
-        run: test "$CODE" = 0
+          FLOORS: ${{ steps.floors.outputs.red }}
+        run: test "$CODE" = 0 && test "$FLOORS" != 1   # a number under its floor two nights in a row (G2) is red too
       - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != ''
         uses: ./.github/actions/gh-ledger
         with:
           phase: end
         timeout-minutes: 5
+
+  floors-save:
+    name: Save the floors
+    needs: compare
+    if: ${{ !cancelled() && needs.compare.result != 'skipped' && inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a red night saves too: its below-streak is the state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write   # the one ref refs/tags/search-floors (tools/persona-search/floors.py save), nothing else
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v7
+        id: state
+        continue-on-error: true   # no state when the floors were not checked (unreadable state, a not-run night)
+        with: {name: search-personas-floors-state, path: floors}
+      - name: Write the floors compare computed (shape checked first; compare-and-swap)
+        if: steps.state.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/persona-search/floors.py save floors/floors-state.json
