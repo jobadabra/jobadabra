@@ -1,0 +1,15 @@
+{
+  "_why": "The market count's employer sites ([mc] 4/5): the local spellings of each person's city that a feed's place text may use instead of the English one (review, 10 Nov 2026: 'Lisboa', 'Göteborg', 'København' missed). Data for the 18 fixed people only, read by tools/persona-search/market_employers.py; it bounds what the blind judge sees and never judges.",
+  "local": {
+    "Sofia": ["Sofiya", "София"],
+    "Cluj-Napoca": ["Cluj"],
+    "Brussels": ["Bruxelles", "Brussel"],
+    "Krakow": ["Cracow"],
+    "Lisbon": ["Lisboa"],
+    "Milan": ["Milano"],
+    "Prague": ["Praha"],
+    "Gothenburg": ["Göteborg"],
+    "Vienna": ["Wien"],
+    "Copenhagen": ["København"]
+  }
+}

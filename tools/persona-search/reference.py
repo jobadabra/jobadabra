@@ -118,7 +118,14 @@ def right_jobs(rows):
 
 def pool(n, persona, post, boards, ahead):
     """-> (rows, sources): every source's rows for one persona, each tagged with its source, and per source {status, read} (plus the board's name and pages).
-    A source that could not be read is "not counted: <why>" and adds no row; it never ends the other source."""
+    A source that could not be read is "not counted: <why>" and adds no row; it never ends the other source. `ahead` = the reads started at the run's start, collected last."""
+    rows, sources = read_here(n, persona, post, boards)
+    collect(rows, sources, ahead)
+    return rows, sources
+
+
+def read_here(n, persona, post, boards):
+    """EURES and the national board, read in turn in the run's own thread: (rows, sources)."""
     rows, sources = [], {}
     try:
         found = eures_rows(persona, post)
@@ -133,7 +140,12 @@ def pool(n, persona, post, boards, ahead):
         board = {'board': None, 'status': f'not counted: {type(error).__name__}', 'rows': []}
     rows += [{**r, 'source': 'public_board'} for r in board['rows']]
     sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0), **({'note': board['note']} if board.get('note') else {})}
-    for source, get in ahead.items():   # the reads started at the run's start (web search, employer sites), each collected by the deadline
+    return rows, sources
+
+
+def collect(rows, sources, ahead):
+    """Adds the reads started at the run's start (web search, employer sites), each collected by the deadline, to one persona's rows and sources."""
+    for source, get in ahead.items():
         try:
             got = get()
         except concurrent.futures.TimeoutError:
@@ -150,6 +162,8 @@ def pool(n, persona, post, boards, ahead):
 WEB_AT_ONCE = 6        # web searches in flight at once (the broker serves the night's six presses at once too)
 EMPLOYERS_AT_ONCE = 4  # persons whose employer sites are read at once (a feed two persons share is read once)
 BUDGET_S = 600         # every person's web search and employer sites are back within 10 minutes of the run's start (the EURES reads alone take ~6)
+GRACE_S = 60           # past the deadline, a read still running gets this long to hand back what it has (employer sites stop at their next feed)
+JUDGES_AT_ONCE = 4     # persons judged at once: each person is one or more calls in turn, and 18 in a row with the new sources' rows would pass the job's 20 minutes
 
 
 def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None, clock=time.monotonic, employers=None):
@@ -167,16 +181,20 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
     searches = concurrent.futures.ThreadPoolExecutor(max_workers=WEB_AT_ONCE)
     reads = concurrent.futures.ThreadPoolExecutor(max_workers=EMPLOYERS_AT_ONCE)
     futures = {'web_search': [searches.submit(web, persona) for persona in PERSONAS], 'employer_sites': [reads.submit(employers, persona) for persona in PERSONAS]}
-    for n, persona in enumerate(PERSONAS, 1):
-        ahead = {source: (lambda future=started[n - 1]: future.result(timeout=max(0.0, deadline - clock()))) for source, started in futures.items()}
-        rows, sources = pool(n, persona, post, boards, ahead)
+    # Why (review of [mc] 4/5): the run's own reads go first for all 18 (no person waits on another's employer sites), then the started reads are collected,
+    # then the judge runs JUDGES_AT_ONCE persons at a time.
+    here = [read_here(n, persona, post, boards) for n, persona in enumerate(PERSONAS, 1)]
+    for n, (rows, sources) in enumerate(here, 1):
+        collect(rows, sources, {source: (lambda future=started[n - 1]: future.result(timeout=max(0.0, deadline - clock()) + GRACE_S)) for source, started in futures.items()})
+    judges = concurrent.futures.ThreadPoolExecutor(max_workers=JUDGES_AT_ONCE)
+    verdicts = [judges.submit(lambda n=n, rows=rows: rows and gate_judge.judge(n, rows, asker)) for n, (rows, _) in enumerate(here, 1)]
+    for n, (rows, sources) in enumerate(here, 1):
         counted = tuple(s for s in SOURCES if is_counted(sources[s]['status']))
         if not counted:
             print(f'reference: p{n} no source counted', flush=True)
             continue
         try:
-            if rows:
-                gate_judge.judge(n, rows, asker)
+            verdicts[n - 1].result()
         except Exception as error:   # noqa: BLE001 - one refused or short judge answer leaves that persona out, never the other 17
             print(f'reference: p{n} not judged ({type(error).__name__}: {str(error)[:80]})', flush=True)
             continue
@@ -190,6 +208,7 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
             only = {s: sum(job['sources'] == [s] for job in found) for s in counted}
             details[str(n)] = {'market': counts['market'], **{s: {**v, **({'right': counts[s], 'only': only[s]} if s in counted else {})} for s, v in sources.items()}}
         print(f'reference: p{n} {counts} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
+    judges.shutdown(wait=False)
     for executor in (searches, reads):
         executor.shutdown(wait=False, cancel_futures=True)
     return {'personas': record}

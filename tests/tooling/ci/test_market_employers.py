@@ -2,15 +2,20 @@
 not read), its shortfall is kept as numbers (feeds_unplaced, rows_outside_by_text), a 401/403/429 ends that feed for the run with no second request, a feed two persons share is
 read once, and no index means "not counted", never 0. Fakes only: no index, feed or NUTS table is downloaded."""
 import sys
+import tempfile
 import urllib.error
+import urllib.request
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'tools' / 'persona-search'))
 import market_employers as me  # noqa: E402
+from src.sources import host_pace  # noqa: E402
 
-TABLE = {'HR05': 'Grad Zagreb', 'HR050': 'Grad Zagreb', 'HR06': 'Sjeverna Hrvatska', 'CZ01': 'Praha', 'CZ010': 'Hlavní město Praha'}
+TABLE = {'HR05': 'Grad Zagreb', 'HR050': 'Grad Zagreb', 'HR06': 'Sjeverna Hrvatska', 'CZ01': 'Praha', 'CZ010': 'Hlavní město Praha', 'FRK2': 'Rhône-Alpes', 'FRK26': 'Rhône',
+         'DK01': 'Hovedstaden', 'PT17': 'Área Metropolitana de Lisboa'}
 ZAGREB = {'city': 'Zagreb', 'reference': {'nuts2': 'HR05'}}
 PRAGUE = {'city': 'Prague', 'reference': {'nuts2': 'CZ01'}}
 
@@ -49,6 +54,16 @@ class WhichPlaces(unittest.TestCase):
             self.assertFalse(me.names_place(place, names), place)
 
 
+    def test_only_the_region_level_name_and_local_spellings_with_letters_nfkd_keeps_whole(self):
+        """Review of [mc] 4/5: a NUTS-3 name ("Rhône") matched Bouches-du-Rhône; "Lisboa", "København" (ø) missed."""
+        lyon = me.region_names({'city': 'Lyon', 'reference': {'nuts2': 'FRK2'}}, TABLE)
+        self.assertFalse(me.names_place('Marseille, Bouches-du-Rhône', lyon))
+        self.assertTrue(me.names_place('Villeurbanne, Rhône-Alpes', lyon))
+        self.assertTrue(me.names_place('Lisboa, Portugal', me.region_names({'city': 'Lisbon', 'reference': {'nuts2': 'PT17'}}, TABLE)))
+        self.assertTrue(me.names_place('København K', me.region_names({'city': 'Copenhagen', 'reference': {'nuts2': 'DK01'}}, TABLE)))
+        self.assertEqual(me.fold('Łódź Ørestad'), 'lodz orestad')
+
+
 class TheCount(unittest.TestCase):
     def test_feeds_naming_the_region_are_read_their_jobs_there_are_rows_and_the_gaps_are_numbers(self):
         index = [feed('Infobip', ['Zagreb, Croatia', 'London']), feed('Rimac', ['Sveta Nedelja']), feed('Unplaced', None), feed('Unplaced2', [])]
@@ -80,15 +95,46 @@ class TheCount(unittest.TestCase):
         read(dict(ZAGREB))
         self.assertEqual(sorted(reader.asked), ['broken', 'busy', 'ok', 'shut'], 'one request per feed in the run: a refusal is never asked again, a shared feed is read once')
 
+    def test_a_429_is_one_request_and_refused_never_waited_out_and_tried_again(self):
+        """sa, 10 Nov 2026 (CLAUDE.md safety: never retry a 401/403/429): the engine's pace tries a 429 again up to 3 times; the referee's reader sends one request."""
+        folder = tempfile.mkdtemp()
+        sent = []
+
+        def opener(request, timeout):
+            sent.append(request.full_url)
+            raise urllib.error.HTTPError(request.full_url, 429, 'Too Many Requests', {}, None)
+
+        def fetch(system, slug):   # the real _fetch's switch, then the engine's real pace with a fake network
+            with mock.patch('src.sources.ats.fetch', lambda *a: host_pace.open(urllib.request.Request(f'https://boards.example/{slug}'), 5, opener)):
+                return me._fetch(system, slug)
+        with mock.patch.object(host_pace, 'FILE', Path(folder) / 'pace.json'), mock.patch.object(host_pace, 'RETRIES', host_pace.RETRIES), \
+                mock.patch.object(host_pace, 'turn', lambda url: None):
+            got = employers([feed('Busy', ['Zagreb'])], fetch)(ZAGREB)
+        self.assertEqual(len(sent), 1, 'one request, no retry')
+        self.assertEqual((got['status'], got['feeds_refused']), ('not counted: 0 of 1 feeds read', 1))
+
+    def test_importing_the_referee_leaves_the_engines_retries_as_they_are(self):
+        """sa, 10 Nov 2026: the no-retry switch must never leak into an engine run; it is set at the referee's first feed read only."""
+        import subprocess
+        code = 'import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; import market_employers; from src.sources import host_pace; print(host_pace.RETRIES)'
+        done = subprocess.run([sys.executable, '-c', code, str(ROOT / 'tools' / 'persona-search'), str(ROOT)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.stdout.strip(), '3', done.stderr)
+
     def test_time_up_leaves_the_feeds_not_read_as_partial_never_a_wait(self):
         index = [feed('A', ['Zagreb']), feed('B', ['Zagreb'])]
         reader = Reader({'a': jobs(1), 'b': jobs(1)})
         got = employers(index, reader, stop=lambda: len(reader.asked) >= 1)(ZAGREB)
         self.assertEqual((got['status'], got['feeds_late']), ('partial: 1 of 2 feeds', 1))
 
+    def test_without_the_nuts_table_the_count_says_it_used_city_names_only(self):
+        read = me.Employers(load=lambda: [feed('A', ['Zagreb'])], fetch=Reader({'a': jobs(1)}), table=lambda: {})
+        self.assertEqual(read(ZAGREB)['status'], 'partial: city names only (no NUTS table)')
+
     def test_no_index_is_not_counted_never_zero(self):
         got = employers(None, Reader({}))(ZAGREB)
         self.assertEqual((got['status'], got['rows']), ('not counted: index not downloaded', []))
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/nonexistent'}):
+            self.assertIsNone(me._index(), 'a fixture run has no index: never a count of 0')
 
 
 if __name__ == '__main__':

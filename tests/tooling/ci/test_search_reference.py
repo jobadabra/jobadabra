@@ -226,6 +226,9 @@ class TheMarket(unittest.TestCase):
             return {'source': 'web_search', 'status': 'counted', 'rows': []}
         ticks = iter([0.0])
         details = {}
+        grace = mock.patch.object(reference, 'GRACE_S', 0.0)
+        grace.start()
+        self.addCleanup(grace.stop)
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board(), details=details, web=web,
                                clock=lambda: next(ticks, reference.BUDGET_S + 1.0))
         self.assertEqual(len(record['personas']), 18)
