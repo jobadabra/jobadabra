@@ -69,25 +69,27 @@ class RunTests(unittest.TestCase):
         self.assertEqual(sum(len(call[1]) for call in calls), first_jobs.MAX_FIRST)
         self.assertEqual(count, first_jobs.MAX_FIRST)
 
-    def test_with_a_scorer_beside_the_search_the_slice_scores_its_first_three_and_that_scorer_goes_on(self):
-        """ts (10 Nov 2026; owner asked via AskUserQuestion, "Yes, build it (Recommended)"): the slice is the trigger, not the cap. It went on 3 at a time in the hub thread, and every reader's
-        titles waited for those scores (night 9 Nov, p3 and p5: 30 s); the scorer beside the search takes the next jobs, nearest first."""
+    def test_with_a_scorer_beside_the_search_the_slice_scores_none_and_ends_once_its_first_jobs_are_listed(self):
+        """sf 2/8 (owner, 10 Nov 2026, asked via AskUserQuestion: "From the ranked list (Recommended)"): the collecting thread never calls the AI scorer. Night run
+        42731674115 p9 (Lyon): the slice scored 3 here from 92 to 134 s, and the batch holding Rhône's 21 jobs, landed at 94 s, waited for those scores."""
         from src.press import scorer
         scorer.reset()
         self.addCleanup(scorer.reset)
         scorer.begin()
         count, calls, _, said = self.run_slice(found=20, fits={'1': 82})
-        self.assertEqual([call[1] for call in calls], [['0', '1', '2']], 'three, and no second batch although 17 are left and a job fits 70+')
-        self.assertEqual(count, 3)
+        self.assertEqual(calls, [], 'no score call in the thread that imports the jobs')
+        self.assertEqual(count, 0)
+        self.assertTrue(any(line.startswith('First jobs: 20 found, none to score in this step') for line in said), said)
 
-    def test_a_job_the_scorer_beside_the_search_took_is_not_scored_again(self):
+    def test_the_slice_claims_nothing_so_the_scorer_beside_takes_the_nearest(self):
         from src.press import scorer
         scorer.reset()
         self.addCleanup(scorer.reset)
         scorer.begin()
         scorer.claim(['0', '1'])
         _, calls, _, _ = self.run_slice(found=6)
-        self.assertEqual([call[1] for call in calls], [['2']], 'the two the scorer holds are not paid for twice; the slice takes the free one')
+        self.assertEqual(calls, [])
+        self.assertEqual(scorer.claim(['2', '3']), ['2', '3'], 'the jobs the slice listed are still free for the scorer beside the search')
 
     def test_the_slice_stops_when_no_job_is_left_to_score(self):
         _, calls, _, _ = self.run_slice(found=4)

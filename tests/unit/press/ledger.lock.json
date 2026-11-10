@@ -37,7 +37,7 @@
  },
  "L10": {
   "gets": "a press reads the job boards first; a first press reads its slice first and scores employer jobs without waiting for the boards",
-  "hash": "69705c9def9faf7f"
+  "hash": "8eee094a701fcd44"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
@@ -48,8 +48,8 @@
   "hash": "e89fe8de64c85eea"
  },
  "L13": {
-  "gets": "jobs found earlier and never scored take scoring's time first",
-  "hash": "e9dc26b1233b3687"
+  "gets": "jobs found earlier and never scored are scored from the run's first second, in one list with the new ones, the nearest first",
+  "hash": "e93f3c158aca9585"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
@@ -137,7 +137,7 @@
  },
  "L35": {
   "gets": "a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored",
-  "hash": "13dbdb2f33bb3251"
+  "hash": "d4821f858b2d0d13"
  },
  "L36": {
   "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",
@@ -149,10 +149,14 @@
  },
  "L38": {
   "gets": "a Find jobs run scores each job as it lands, beside the readers, to the run's end: no seconds are kept for the job facts and no job is paid for twice",
-  "hash": "5e3a69cba09ff7dd"
+  "hash": "435081beaa54a105"
  },
  "L39": {
   "gets": "jobs from the EU portal are placed on the map the moment they are read, so the jobs in your own area are sorted and scored first",
   "hash": "b75ee77fc6d0c3ac"
+ },
+ "L40": {
+  "gets": "the part of a Find jobs run that collects jobs never waits for a score: the one scorer beside it takes each job, ranked again at each new arrival",
+  "hash": "a3670d2f6739bb86"
  }
 }

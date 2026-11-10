@@ -186,6 +186,9 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     if not scoring.queued:
         say(f'First jobs: {imports.count} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the readers joined
         return 0
+    if claims.shared():   # the same line closes the card (desktop/renderer/find-card-model.js SLICE_END); "N found" re-reads the list (pages/jobs.js LIST_CHANGED)
+        say(f'First jobs: {imports.count} found, none to score in this step: the scorer beside the search takes them, nearest first')
+        return 0
     said = f', one fits {FIT}+' if scoring.strong else ''
     say(f'First jobs: {scoring.done} scored in {round(time_budget.now() - started)} s{said}; the full search goes on')
     return scoring.done
@@ -355,15 +358,16 @@ class _Scoring:
         self.before = lambda: None   # called before each batch is chosen: the readers that have read are sorted first (_Readers.take_ready)
 
     def over(self):
-        """Why (ts, 10 Nov 2026; owner asked via AskUserQuestion, "Yes, build it (Recommended)"): with a scorer beside the search (src/press/scorer.py shared()) the slice is the trigger
-        (its first `first` jobs) and that scorer goes on; before, the slice went on in the hub thread, 3 at a time up to `limit` until a job fit FIT+, and every reader's titles waited for
-        those scores (night 9 Nov, p3 and p5: 30 s). Without a scorer beside it (no time budget) the slice goes on as before."""
+        """With a scorer beside the search (src/press/scorer.py shared()) the slice ends once its first `first` nearest jobs are in the list: it scores none of them, that
+        scorer does (sf 2/8; before, ts 10 Nov 2026, it scored those `first` itself in the hub thread). Without a scorer beside it (no time budget) the slice scores 3 at a
+        time up to `limit` until a job fits FIT+, as before."""
         if claims.shared():
             return self.stopped or len(self.tried) >= self.first
         return self.strong or self.stopped or len(self.tried) >= self.limit
 
     def step(self):
-        """Score the next batch of the nearest jobs not scored yet (time_budget.best_first), whatever they are so far -> True when a batch was scored."""
+        """Score the next batch of the nearest jobs not scored yet (time_budget.best_first), whatever they are so far -> True when a batch was scored. With a scorer
+        beside the search it only notes them as the slice's first jobs (over) and scores nothing."""
         from . import time_budget
         db, hidden, profile, scorer, model = self.args
         self.before()   # Why (#3339, night p1 Sofia): EURES was read at 73 s and sat in the hub's box while 3 scores took 31 s (81-112 s), then its titles met the clock. One owner of the order:
@@ -376,11 +380,12 @@ class _Scoring:
         ids = order[:min(self.first, self.limit - len(self.tried))]
         self.queued.update(map(str, order[:self.limit - len(self.tried)]))
         self.tried.update(map(str, ids))
-        if claims.shared():   # the scorer beside the search takes the jobs it has not been given: none is scored twice (src/press/scorer.py); the ones it holds count as the slice's look
-            taken = claims.claim(ids)
-            ids = [job_id for job_id in ids if job_id in taken]
-            if not ids:
-                return False
+        if claims.shared():
+            # Design (sf 2/8, owner 10 Nov 2026, asked via AskUserQuestion: "From the ranked list (Recommended)", "At each new arrival (Recommended)"): this thread
+            # collects, the scorer beside the search scores. Scoring here held every import behind the AI: night run 42731674115 p9 (Lyon) scored 3 here 92-134 s
+            # while the batch with Rhône's 21 jobs, landed at 94 s, waited; the scorer beside took its 4 from the 15 jobs it could see. The slice ends once its
+            # first jobs are in the list, so the full crawl starts no later than before.
+            return False
         stats = {}
         scorer(db, to_score(db, hidden), profile, model, self.first, workers=self.first, stats=stats, on_scored=self.sync, every=1, only_ids=set(ids))
         if not stats.get('done'):   # a paused Profile, a spent limit or the time: the next batch would score nothing either
