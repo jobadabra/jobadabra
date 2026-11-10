@@ -284,7 +284,13 @@ def keep_open(job):
         return False   # its title the AI judged not this search's (a role word had shown it at once): it leaves the list (owner, 26 Oct 2026)
     if placing() and job.get('title') and wanted_title(job['title']) and (job.get('location') or '').strip() and place_of(job) is None:
         return True
-    return wanted_location(job)
+    return awaiting_place(job) or wanted_location(job)   # Why (retro review of #3676, 10 Nov 2026): a remote job waiting for the AI's place stays open whatever its title, as to_place asks about it and settled reads its site again
+
+
+def awaiting_place(job):
+    """A remote job nobody has placed yet: Claude's place answer will decide it (until then it is unknown, wanted_location says no). The ONE place of this rule: feed_places.to_place asks about it,
+    feed_facts.settled reads its site again, keep_open leaves it listed. A title the AI judged not this search's is the caller's own question (to_place asks `is not False`, settled `is None`)."""
+    return bool(placing() and job.get('title') and (job.get('location') or '').strip() and place_of(job) is None and not wanted_location(job) and could_be_in_places(job))
 
 
 def place_open_jobs(db):

@@ -56,7 +56,7 @@ def to_place(job):
         return False
     if feeds.wanted_title(job['title']):
         return True
-    return feeds.placing() and feeds.judged_title(job['title']) is not False and feeds.place_of(job) is None and not feeds.wanted_location(job) and feeds.could_be_in_places(job)
+    return feeds.judged_title(job['title']) is not False and feeds.awaiting_place(job)
 
 
 def place_jobs(jobs, chosen=False):

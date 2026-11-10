@@ -83,7 +83,7 @@ def settled(job):
     title = job.get('title') or ''
     if feeds.wanted_location(job) and _triage_on() and feeds.title_key(title) not in feeds._triaged():
         return False   # every title in your places waits for the AI's answer, word hits too (owner, 26 Oct 2026: "The AI decides")
-    if feeds.placing() and (job.get('location') or '').strip() and feeds.place_of(job) is None and feeds.could_be_in_places(job) and feeds.judged_title(title) is None:
+    if feeds.awaiting_place(job) and feeds.judged_title(title) is None:
         return False   # a remote job not placed yet is not in your places, so its title was never asked: read again once the AI placed it (#3674; code review, lj)
     return not (feeds.placing() and (job.get('location') or '').strip() and feeds.wanted_title(title) and feeds.place_of(job) is None)
 
