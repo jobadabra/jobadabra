@@ -28,6 +28,9 @@ test('the first minutes of a UTC day: Cloudflare answers with an empty list, whi
   resetCap();
   const noAccount = async () => ({json: async () => ({data: {viewer: {accounts: []}}})});
   assert.equal((await capReached({env, fetchImpl: noAccount, now: Date.parse('2026-11-10T00:02:00Z')})).unreadable, true, 'a missing account (wrong id or scope) is still unreadable, never 0');
+  resetCap();
+  const noFigure = async () => ({json: async () => ({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: [{sum: {}}]}]}}})});
+  assert.equal((await capReached({env, fetchImpl: noFigure, now: Date.parse('2026-11-10T00:02:00Z')})).unreadable, true, 'a row without its neuron figure is unreadable, never 0 (it would let the spend through)');
 });
 
 test('an unreadable count fails closed, with the cause and the fix in the grey line', async () => {

@@ -36,7 +36,7 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
       const answer = await fetchImpl(api(env), {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify({query: QUERY(account, day)}), signal: AbortSignal.timeout(15000)});
       // Why (10 Nov 2026, fr; review-eval runs 42725040307 and 3 more, 00:01Z): at the start of a UTC day Cloudflare answers with an EMPTY list until the first Workers AI call of the day, and that read as NaN, so "unreadable" and capped: every CI ask was refused while the day's count was 0. A list (even empty) is a readable count; an error answer or a missing account is still unreadable.
       const groups = (await answer.json())?.data?.viewer?.accounts?.[0]?.aiInferenceAdaptiveGroups;
-      const n = Array.isArray(groups) ? Number(groups[0]?.sum?.totalNeurons ?? 0) : NaN;
+      const n = !Array.isArray(groups) ? NaN : groups.length === 0 ? 0 : Number(groups[0]?.sum?.totalNeurons ?? NaN);   // only a truly empty list is 0; a row missing its figure stays unreadable (Gitar on #3643)
       if (Number.isFinite(n)) neurons = n;
     } catch { /* unreadable below */ }
   }
