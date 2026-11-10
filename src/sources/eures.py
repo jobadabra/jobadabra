@@ -187,9 +187,10 @@ def _mine(wanted, country, anywhere):
 
 def _pages(codes, words, began, get, failed):
     """Each listed page of one area. Why (5 Nov 2026, #2918): a cold share is about 5 pages, so every word's page 1 goes before any word's page 2; a word that ran out of rows leaves
-    the list, so a word with no rows costs one page. Ends on the clock with CUT set. A page that fails (_ends_the_read says not a refusal) costs that page only: it goes in
-    `failed`, and the next page is asked while the clock allows.
-    Why (#3689, 10 Nov 2026, sa's Lyon runs): one timed-out page ended every area and page left, 44 jobs listed where five runs of the same search listed 157-204."""
+    the list, so a word with no rows costs one page. Ends on the clock with CUT set. A page that fails costs that page only (noted in `failed`) and the next one is asked while the
+    clock allows; a refusal (_ends_the_read) or a second failed page in a row is raised, which ends the read.
+    Why (#3689, 10 Nov 2026, sa's Lyon runs): one timed-out page ended every area and page left, 44 jobs listed where five runs of the same search listed 157-204; a portal
+    that hangs on two pages in a row is not asked again and again until the stop time (review of #3689)."""
     left = list(words)
     for page in range(1, MAX_PAGES + 1):
         for word in list(left):
@@ -200,15 +201,25 @@ def _pages(codes, words, began, get, failed):
             try:
                 data = get(URL, json.dumps(_body(word, codes, page)).encode(), {'Content-Type': 'application/json'}, timeout=max(LAST_PAGE, min(30, stop_at(began) - time.monotonic())))
             except (OSError, http.client.HTTPException, ValueError) as error:
-                if _ends_the_read(error):
+                if _ends_the_read(error) or failed['in_a_row']:
                     raise
-                failed.append(error)
-                print(f'EURES: a page failed ({type(error).__name__}); the next one is read', flush=True)
+                _note(failed, error)
+                failed['in_a_row'] = True
                 continue
+            failed['in_a_row'] = False
             listed = data.get('jvs') or []
             if len(listed) < PAGE_SIZE:
                 left.remove(word)
             yield listed
+
+
+def _note(failed, error):
+    """One failed page in the read's tally: how many, their kinds, and the first failure that was not a timeout (the one raised when nothing was read)."""
+    failed['pages'] += 1
+    if type(error).__name__ not in failed['kinds']:
+        failed['kinds'].append(type(error).__name__)
+    if failed['error'] is None and not _timed_out(error):
+        failed['error'] = error
 
 
 def _timed_out(error):
@@ -217,23 +228,24 @@ def _timed_out(error):
 
 
 def _ends_the_read(error):
-    """True for a failure after which EURES is asked nothing more in this read: a refusal (401/403), a slow-down (429, or host_pace's Busy past its own
-    wait) or a portal that cannot be reached (a connection error that is not a timeout). The safety rule: a refused or busy site is never asked again in the run."""
+    """True for a failure after which EURES is asked nothing more in this read: any answer but a passing server error (500, 502, 504): a refusal (401/403),
+    a slow-down (429, a 503, or host_pace's Busy past its own wait), a request the portal rejects (another 4xx: every page would fail the same way), or a portal
+    that cannot be reached (a connection error that is not a timeout). The safety rule: a refused or busy site is never asked again in the run."""
     from . import host_pace
     if isinstance(error, host_pace.Busy):
         return True
     if isinstance(error, urllib.error.HTTPError):
-        return error.code in (401, 403, 429)
+        return error.code not in (500, 502, 504)
     return isinstance(error, urllib.error.URLError) and not _timed_out(error)
 
 
 def eures(search, get=None, client=None):
     """EURES vacancies for the user's role words, kept only where a job's region code lies in one of the user's places; each carries "<area its own code names>,
     <country>" as its location (the country alone when unnamed), never the person's place word. [] with no place in the portal's countries. `get(url, data, headers)` returns the parsed JSON.
-    Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that fails (a timeout, a server error, a broken answer) costs that page only and
-    the read goes on, with CUT set at its end so the source waits for the next search instead of being marked read (#3689). A refusal (401/403), a slow-down (429, Busy) or an
-    unreachable portal ends the read: it asks nothing again, keeps what was read with CUT set, and raises when nothing was read. A read that read nothing and failed on more
-    than timeouts raises too, so the source is reported as failed."""
+    Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that fails (a timeout, a passing server error, a broken answer) costs that page
+    only and the read goes on (#3689); a second failed page in a row, a refusal, a slow-down or an unreachable portal ends it (_ends_the_read): nothing more is asked. A read
+    with a failed page keeps what it read with CUT set, so the source waits for the next search instead of being marked read (a read that reached MOST is complete and is
+    marked read); one that read nothing raises its first failure that was not a timeout, so the source is reported as failed, never a silent 0."""
     from . import aggregators
     from ..places import place_words
     get = get or aggregators._get
@@ -251,8 +263,9 @@ def eures(search, get=None, client=None):
     began = time.monotonic()
     anywhere = {geo.norm(word) for word in place_words(search, ('country_wide',), 6)}
     words = _words(search)
-    seen, failed = set(), []
-    try:
+    seen, failed, stop = set(), {'pages': 0, 'kinds': [], 'error': None, 'in_a_row': False}, None
+
+    def read_areas():
         for codes in areas:
             country = codes[0][:2].upper()
             mine, before = _mine(wanted, country, anywhere), len(jobs)
@@ -272,18 +285,24 @@ def eures(search, get=None, client=None):
                     break
             if CUT[0]:
                 return jobs
-    except (OSError, http.client.HTTPException, ValueError) as error:
-        if not jobs and not _timed_out(error):
-            raise
-        CUT[0] = True
-        print(f'EURES: a page failed ({type(error).__name__}), keeping the {len(jobs)} read', flush=True)
         return jobs
-    if failed:
-        if not jobs and not all(_timed_out(error) for error in failed):
-            raise failed[-1]
-        CUT[0] = True
-    return jobs
-
+    kept = jobs
+    try:
+        kept = read_areas()
+    except (OSError, http.client.HTTPException, ValueError) as error:
+        stop = error
+        _note(failed, error)
+    if failed['pages']:
+        if not jobs:
+            if stop is not None and not _timed_out(stop):
+                raise stop
+            if failed['error'] is not None:
+                raise failed['error']
+        if len(kept) < MOST:
+            CUT[0] = True
+        ending = 'nothing more asked' if stop is not None else 'the others were read'
+        print(f"EURES: {failed['pages']} page(s) failed ({', '.join(failed['kinds'])}), keeping the {len(kept)} read; {ending}", flush=True)
+    return kept
 
 _early = {}   # the search's key -> the read started with the search (start_early)
 

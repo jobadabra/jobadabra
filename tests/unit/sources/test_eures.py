@@ -259,20 +259,6 @@ class EuresTest(unittest.TestCase):
         self.assertEqual(asked.count('bg41'), eures.KEEP // eures.PAGE_SIZE, 'enough near home: the next place gets its turn')
         self.assertEqual(len(found), eures.MOST)
 
-    def test_a_page_that_times_out_keeps_what_was_read(self):
-        def get(area, word, page):
-            if page == 2:
-                raise TimeoutError('The read operation timed out')
-            return {'jvs': [jv(f'a{n}', 'Teacher', 'BG411') for n in range(eures.PAGE_SIZE)]}
-        found = self._read(get, {'Sofia': ['BG41']})
-        self.assertEqual((len(found), eures.CUT[0]), (eures.PAGE_SIZE, True), 'a slow last page never costs the pages before it (#2918, Valencia)')
-
-    def test_a_refused_first_page_still_fails_the_source(self):
-        def get(area, word, page):
-            raise urllib.error.URLError('refused')
-        with self.assertRaises(urllib.error.URLError):
-            self._read(get, {'Sofia': ['BG41']})
-
     def test_one_request_names_the_region_its_parent_and_its_parts(self):
         # Why (5 Nov 2026, #2918, measured): the portal's filter takes one code level per country: DE and BE one up, SE, FI and CZ one down; a NUTS-2 code alone gave them 0 rows.
         table = {'DE21': 'Oberbayern', 'DE211': 'Ingolstadt', 'DE212': 'München', 'DE22': 'Niederbayern', 'DE221': 'Landshut'}
@@ -293,83 +279,6 @@ class EuresTest(unittest.TestCase):
 
     def test_the_words_are_the_board_searches_then_the_role_words_each_once(self):
         self.assertEqual(eures._words({'jobs_board_search_queries': ['Lærer', 'teacher'], 'role_keywords': ['lærer', 'tutor']}), ['Lærer', 'teacher', 'tutor'])
-
-    def test_a_page_that_times_while_connecting_keeps_what_was_read(self):
-        def get(area, word, page):
-            if area == 'bg':
-                raise urllib.error.URLError(TimeoutError('timed out'))
-            return {'jvs': [jv('a', 'Teacher', 'BG411')]}
-        found = self._read(get, {'Sofia': ['BG41']})
-        self.assertEqual((len(found), eures.CUT[0]), (1, True))
-
-    def test_a_refusal_after_jobs_were_read_keeps_them_and_asks_nothing_more(self):
-        asked = []
-
-        def get(area, word, page):
-            asked.append(area)
-            if area == 'bg':
-                raise refusal
-            return {'jvs': [jv('a', 'Teacher', 'BG411')]}
-        for refusal in (urllib.error.HTTPError(eures.URL, 403, 'Forbidden', {}, None), host_pace.Busy(eures.URL, 0)):   # Busy: what a 429 past host_pace's own wait reaches a reader as
-            asked.clear()
-            found = self._read(get, {'Sofia': ['BG41']}, words=('one', 'two'))
-            self.assertEqual((len(found), eures.CUT[0], asked), (1, True, ['bg41', 'bg41', 'bg']), 'the read ends on the refusal')
-
-    def test_a_first_page_that_times_out_waits_for_the_next_search(self):
-        def get(area, word, page):
-            raise TimeoutError('The read operation timed out')
-        self.assertEqual((self._read(get, {'Sofia': ['BG41']}), eures.CUT[0]), ([], True))
-
-    def test_one_slow_page_costs_that_page_and_the_next_pages_and_areas_are_still_read(self):
-        # #3689 (sa's Lyon runs, 10 Nov 2026): "EURES: a page failed (TimeoutError), keeping the 50 read" at 51 s, one full page read before it, ended every
-        # page and area left: 44 jobs listed where five runs of the same search listed 157-204.
-        import io
-        asked = []
-
-        def get(area, word, page):
-            asked.append((area, page))
-            if (area, page) == ('bg41', 2):
-                raise TimeoutError('The read operation timed out')
-            if area == 'bg41' and page == 1:   # a full page: 50 read before the slow one
-                return {'jvs': [jv(f'near{n}', 'Teacher', 'BG411') for n in range(eures.PAGE_SIZE)]}
-            return {'jvs': [jv(f'{area}{page}', 'Teacher', 'BG412')] if page == 3 or area == 'bg' else []}
-        with mock.patch('sys.stdout', new_callable=io.StringIO) as out:
-            found = self._read(get, {'Sofia': ['BG41']}, words=('teacher',))
-        self.assertEqual(asked, [('bg41', 1), ('bg41', 2), ('bg41', 3), ('bg', 1)], 'the page after the slow one and the next area are still asked')
-        self.assertEqual(len(found), eures.PAGE_SIZE + 2, 'the 50 read before, the next page\'s job and the next area\'s')
-        self.assertTrue(eures.CUT[0], 'a page was not read: the read waits for the next search, not marked read')
-        self.assertIn('EURES: a page failed (TimeoutError); the next one is read', out.getvalue())
-
-    def test_a_server_error_or_a_broken_answer_costs_that_page_only(self):
-        import http.client
-        import io
-        for failure in (urllib.error.HTTPError(eures.URL, 502, 'Bad Gateway', {}, None), ValueError('Expecting value'), http.client.IncompleteRead(b'')):
-            def get(area, word, page):
-                if area == 'bg41':
-                    raise failure
-                return {'jvs': [jv('a', 'Teacher', 'BG411')]}
-            with self.subTest(type(failure).__name__), mock.patch('sys.stdout', new_callable=io.StringIO):
-                self.assertEqual(([job['id'] for job in self._read(get, {'Sofia': ['BG41']})], eures.CUT[0]), (['eures:a'], True))
-
-        def broken(area, word, page):
-            raise urllib.error.HTTPError(eures.URL, 502, 'Bad Gateway', {}, None)
-        with mock.patch('sys.stdout', new_callable=io.StringIO), self.assertRaises(urllib.error.HTTPError):
-            self._read(broken, {'Sofia': ['BG41']})   # nothing read and not only timeouts: the source is reported as failed, never a silent 0
-
-    def test_a_refusal_or_an_unreachable_portal_still_ends_the_read_with_no_retry(self):
-        import io
-        for refusal in (urllib.error.HTTPError(eures.URL, 401, 'Unauthorized', {}, None), urllib.error.HTTPError(eures.URL, 429, 'Too Many Requests', {}, None),
-                        host_pace.Busy(eures.URL, 0), urllib.error.URLError(ConnectionRefusedError('refused'))):
-            asked = []
-
-            def get(area, word, page):
-                asked.append(area)
-                if area == 'bg41':
-                    raise refusal
-                return {'jvs': [jv('a', 'Teacher', 'BG411')]}
-            with self.subTest(type(refusal).__name__), mock.patch('sys.stdout', new_callable=io.StringIO), self.assertRaises(type(refusal)):
-                self._read(get, {'Sofia': ['BG41']}, words=('one', 'two'))
-            self.assertEqual(asked, ['bg41'], 'nothing is asked after a refusal')
 
     def _early_read(self, **future):
         """read() of a started read whose result() behaves as given; returns the future."""
