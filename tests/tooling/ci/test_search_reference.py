@@ -7,6 +7,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
@@ -44,6 +45,12 @@ def setUpModule():
     for patcher in (mock.patch.object(reference.market_web, 'read', NO_WEB), mock.patch.object(reference.market_employers, 'Employers', lambda **kw: NO_INDEX)):
         patcher.start()
         unittest.addModuleCleanup(patcher.stop)
+
+
+def flat(row):
+    """A sent row's counts as one flat dict (total, reachable, eures, each new source's right jobs, market), so a test reads every number at once."""
+    return {'total': row['total'], 'reachable': row['reachable'], 'eures': row['eures'], **{s: row['sources'][s]['right'] for s in ('public_board', 'web_search', 'employer_sites')},
+            'market': row['market']}
 
 
 def right_if(word):
@@ -119,15 +126,15 @@ class TheWeek(unittest.TestCase):
         record = reference.run(self.post, right_if('menuisier'), boards=NO_BOARD)
         self.assertEqual(sorted(record['personas'], key=int), [str(n) for n in range(1, 19)])
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 2})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'web_search', 'employer_sites', 'market'})
+        self.assertEqual(flat(record['personas']['3']), {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 2})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'market', 'counted_on', 'sources'})
 
     def test_the_right_jobs_keys_stay_beside_the_record_and_are_never_part_of_it(self):
         """WP3 (10 Nov 2026): a night's loss is matched job by job, so the artifact keeps each right job's title, employer and link; the record (the only thing sent) is unchanged."""
         jobs = {}
         record = reference.run(self.post, right_if('menuisier'), jobs, boards=NO_BOARD)
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board', 'web_search', 'employer_sites', 'market'})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'market', 'counted_on', 'sources'})
         self.assertEqual(len(jobs['3']), record['personas']['3']['total'], 'one key per right job, a posting listed twice once')
         self.assertTrue(all(set(j) == {'title', 'company', 'url', 'sources'} and j['url'].startswith(eures.DETAIL) and j['sources'] == ['eures'] for j in jobs['3']))
         self.assertTrue(all('menuisier' in j['title'].lower() for j in jobs['3']), 'only the jobs the judge called right')
@@ -182,7 +189,7 @@ class TheMarket(unittest.TestCase):
     def test_a_job_two_sources_show_counts_once_and_each_source_keeps_its_own_count(self):
         jobs, details = {}, {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=self.board(), details=details)
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': None, 'employer_sites': None, 'market': 3}, 'total keeps meaning EURES: Admin labels it so')
+        self.assertEqual(flat(record['personas']['3']), {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': None, 'employer_sites': None, 'market': 3}, 'total keeps meaning EURES: Admin labels it so')
         self.assertEqual({j['title']: j['sources'] for j in jobs['3']}, {'Menuisier 0': ['eures', 'public_board'], 'Menuisier 1': ['eures'], 'Menuisier 9': ['public_board']})
         self.assertEqual(details['3']['public_board'], {'status': 'counted', 'read': 2, 'board': 'board.example', 'pages': 0, 'right': 2, 'only': 1})
         self.assertEqual((details['3']['eures']['right'], details['3']['eures']['only']), (2, 1))
@@ -197,7 +204,7 @@ class TheMarket(unittest.TestCase):
             return {'source': 'web_search', 'status': 'counted', 'rows': rows if persona is P3 else []}
         jobs, details = {}, {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=self.board(), details=details, web=web)
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': 2, 'employer_sites': None, 'market': 4}, 'Ghent is the wrong place')
+        self.assertEqual(flat(record['personas']['3']), {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': 2, 'web_search': 2, 'employer_sites': None, 'market': 4}, 'Ghent is the wrong place')
         self.assertEqual({j['title']: j['sources'] for j in jobs['3']}['Menuisier 9'], ['public_board', 'web_search'])
         self.assertEqual(details['3']['web_search'], {'status': 'counted', 'read': 3, 'right': 2, 'only': 1})
         self.assertEqual(details['3']['public_board']['only'], 0, 'the job the web search also found is no longer the board alone')
@@ -212,7 +219,7 @@ class TheMarket(unittest.TestCase):
             details = {}
             record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board(), details=details, web=web)
             self.assertEqual(len(record['personas']), 18)
-            self.assertEqual((record['personas']['3']['web_search'], record['personas']['3']['market']), (None, 3), 'not counted is None, never 0')
+            self.assertEqual((flat(record['personas']['3'])['web_search'], record['personas']['3']['market']), (None, 3), 'not counted is None, never 0')
             self.assertEqual(details['3']['web_search'], {'status': status, 'read': 0})
 
     def test_a_web_search_not_back_by_the_deadline_is_not_counted_and_the_run_still_ends(self):
@@ -233,7 +240,7 @@ class TheMarket(unittest.TestCase):
                                clock=lambda: next(ticks, reference.BUDGET_S + 1.0))
         self.assertEqual(len(record['personas']), 18)
         self.assertEqual(details['3']['web_search'], {'status': 'not counted: time', 'read': 0})
-        self.assertIsNone(record['personas']['3']['web_search'])
+        self.assertIsNone(flat(record['personas']['3'])['web_search'])
 
     def test_a_partial_employer_read_still_counts_and_carries_its_shortfall(self):
         """[mc] 4/5 (sa, 10 Nov 2026): a short count never reads "counted", yet its rows are real: they count, and the numbers say how short it is."""
@@ -243,14 +250,46 @@ class TheMarket(unittest.TestCase):
                     'feeds_late': 0, 'feeds_unplaced': 30, 'rows_in_region': 1, 'rows_outside_by_text': 4}
         jobs, details = {}, {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=NO_BOARD, details=details, employers=employers)
-        self.assertEqual((record['personas']['3']['employer_sites'], record['personas']['3']['market']), (1, 3))
+        self.assertEqual((flat(record['personas']['3'])['employer_sites'], record['personas']['3']['market']), (1, 3))
         self.assertEqual(details['3']['employer_sites'], {'status': 'partial: 1 of 2 feeds', 'read': 1, 'feeds_tried': 2, 'feeds_read': 1, 'feeds_refused': 1, 'feeds_failed': 0,
                                                           'feeds_late': 0, 'feeds_unplaced': 30, 'rows_in_region': 1, 'rows_outside_by_text': 4, 'right': 1, 'only': 1})
+
+    def test_the_row_sent_to_admin_is_the_shape_agreed_with_oe(self):
+        """[mc] 5/5 (oe, 10 Nov 2026): per person total/reachable/eures, market, counted_on and per source {status, read, right, only}; a source not counted has its
+        status and null numbers, never 0; board names, pages and the employer feeds_* counters stay in the artifact."""
+        def employers(persona):
+            return {'source': 'employer_sites', 'status': 'not counted: ' + 'x' * 200, 'rows': [], 'feeds_tried': 3, 'feeds_read': 0}
+        details = {}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board(), details=details, employers=employers, today='2026-11-11')
+        row = record['personas']['3']
+        self.assertEqual({k: v for k, v in row.items() if k != 'sources'}, {'total': 2, 'reachable': 2, 'eures': 2, 'market': 3, 'counted_on': '2026-11-11'})
+        self.assertEqual(set(row['sources']), {'eures', 'public_board', 'web_search', 'employer_sites', 'free_job_apis', 'linkedin'})
+        self.assertEqual(row['sources']['public_board'], {'status': 'counted', 'read': 2, 'right': 2, 'only': 1}, 'no board name or pages: those stay in the artifact')
+        self.assertEqual(row['sources']['eures'], {'status': 'counted', 'read': 2, 'right': 2, 'only': 1})
+        self.assertEqual(row['sources']['web_search'], {'status': 'not counted: ValueError', 'read': None, 'right': None, 'only': None})
+        self.assertEqual(row['sources']['linkedin'], {'status': 'by hand', 'read': None, 'right': None, 'only': None})
+        self.assertEqual(len(row['sources']['employer_sites']['status']), reference.STATUS_SENT)
+        self.assertNotIn('feeds_tried', json.dumps(record))
+        self.assertEqual(details['3']['employer_sites']['feeds_tried'], 3, 'the counters stay in the artifact')
+        self.assertEqual(len(record['personas']), 18)
+        worst = {n: {**r, 'sources': {s: {'status': 'x' * 200, 'read': 9999, 'right': 9999, 'only': 9999} for s in reference.ADMIN_SOURCES}} for n, r in record['personas'].items()}
+        worst = {n: {**r, 'sources': {s: {**v, 'status': v['status'][:reference.STATUS_SENT]} for s, v in r['sources'].items()}} for n, r in worst.items()}
+        self.assertLess(len(json.dumps({'personas': worst}, ensure_ascii=False, separators=(',', ':')).encode()), 32 * 1024, "the worst 18 rows fit the site's 32 KB body cap (jobadabra-web #528)")
+
+    def test_a_partial_source_sends_its_numbers_and_a_source_with_no_board_sends_nulls(self):
+        def employers(persona):
+            rows = [{'title': 'Menuisier 7', 'company': 'Atelier', 'location': 'Brussels', 'url': 'https://feed.example/7'}] if persona is P3 else []
+            return {'source': 'employer_sites', 'status': 'partial: 1 of 2 feeds', 'rows': rows}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=NO_BOARD, employers=employers, today='2026-11-11')
+        sources = record['personas']['3']['sources']
+        self.assertEqual(sources['employer_sites'], {'status': 'partial: 1 of 2 feeds', 'read': 1, 'right': 1, 'only': 1})
+        self.assertEqual(sources['public_board'], {'status': 'none (no board)', 'read': None, 'right': None, 'only': None})
+        self.assertEqual({r['counted_on'] for r in record['personas'].values()}, {'2026-11-11'}, 'one date for the run')
 
     def test_a_refused_board_is_not_counted_and_the_market_is_eures_alone(self):
         details = {}
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board('not counted: refused 403'), details=details)
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 2})
+        self.assertEqual(flat(record['personas']['3']), {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 2})
         self.assertNotIn('right', details['3']['public_board'])
 
     def test_a_board_that_raises_is_not_counted_and_ends_nothing_else(self):
@@ -261,7 +300,7 @@ class TheMarket(unittest.TestCase):
         record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=board, details=details)
         self.assertEqual(len(record['personas']), 18)
         self.assertEqual(details['3']['public_board']['status'], 'not counted: RuntimeError')
-        self.assertIsNone(record['personas']['3']['public_board'])
+        self.assertIsNone(flat(record['personas']['3'])['public_board'])
 
     def test_when_eures_failed_the_board_still_counts_in_the_artifact_and_the_sent_record_leaves_the_person_out(self):
         def post(body):
@@ -281,7 +320,7 @@ class TheCommandLine(unittest.TestCase):
         folder = Path(tempfile.mkdtemp()) / 'out' / 'deeper'
         seen = []
 
-        def fake_run(jobs=None, details=None):
+        def fake_run(jobs=None, details=None, **kw):
             seen.append(folder.is_dir())   # the folder is there before the read starts
             jobs['1'] = []
             return {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}}
@@ -322,7 +361,7 @@ class TheCommandLine(unittest.TestCase):
             return {'jvs': []}
         with mock.patch('src.sources.nuts_names.names', return_value=NUTS):
             record = reference.run(post, right_if('menuisier'), boards=NO_BOARD)
-        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 0})
+        self.assertEqual(flat(record['personas']['3']), {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None, 'web_search': None, 'employer_sites': None, 'market': 0})
         self.assertEqual(len(record['personas']), 18)
 
 
@@ -365,6 +404,24 @@ class Sending(unittest.TestCase):
         reference.send(self.record(), self.env(), self.NOW, opener)
         self.assertTrue(seen['agent'], 'no User-Agent set: urllib would send its default, which the edge refuses with a 403')
         self.assertNotIn('urllib', seen['agent'].lower())
+
+    def test_a_body_the_site_finds_too_big_is_sent_once_more_with_the_eures_counts_only(self):
+        """Review of [mc] 5/5: until the site's cap rises to 32 KB, a 413 must not lose the week's EURES reference; the second body is the row the site took before."""
+        sent = []
+
+        def opener(request, timeout=30):
+            sent.append(json.loads(request.data))
+            if len(sent) == 1:
+                raise urllib.error.HTTPError(request.full_url, 413, 'Payload Too Large', {}, None)
+            return mock.MagicMock(__enter__=lambda s: s, __exit__=lambda *a: False, read=lambda *n: b'{"ok": true, "stored": true}')
+        path = self.record()
+        row = {'total': 2, 'reachable': 2, 'eures': 2, 'market': 3, 'counted_on': '2026-11-11', 'sources': {'eures': {'status': 'counted', 'read': 2, 'right': 2, 'only': 1}}}
+        Path(path).write_text(json.dumps({'personas': {'3': row}}), encoding='utf-8')
+        line = reference.send(path, self.env(), self.NOW, opener)
+        self.assertEqual(len(sent), 2)
+        self.assertEqual(sent[1], {'personas': {'3': {'total': 2, 'reachable': 2, 'eures': 2}}})
+        self.assertIn('stored', line)
+        self.assertIn('without per-source detail: 413', line)
 
     def test_a_refused_upload_is_one_line_never_an_exception(self):
         def refuse(request, timeout=30):
