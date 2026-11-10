@@ -51,25 +51,35 @@ export function affectedPlan({full, changed, linux, cadence = {}, stepTotal, nee
   for (const suite of [...new Set([...(full?.suites || []), ...edited])]) {
     if (cadence[suite] === 'manual' || cadence[suite] === NIGHT_REPORT) { later.push(`${suite}: ${cadence[suite]} suite, never on a PR`); continue; }
     if (!linux(suite)) { later.push(`${suite}: runs on the Mac, after the merge`); continue; }
-    const whole = full?.suites?.includes(suite) && !full.steps?.[suite];
-    const mapped = (full?.steps?.[suite] || []).filter(name => !renamed.has(name)), gone = (full?.steps?.[suite] || []).filter(name => renamed.has(name));
-    for (const name of gone) later.push(`${suite}: "${name}" is renamed or removed by this PR; its new name runs as an edited step`);
-    let names = whole ? null : [...new Set([...mapped, ...(changed?.steps?.[suite] || [])])];
-    // Why (code review, 10 Nov 2026): a suite whose every mapped step was renamed and that has no edited step of its own would run nothing; the whole suite runs, as the runner's own renamed-pick fallback does (#3587).
-    if (names && !names.length) { if (!gone.length) continue; names = null; }
-    const real = (names || []).filter(name => name !== SETUP), needs = names ? needsOf(suite, real).filter(word => !real.some(name => name.toLowerCase() === word)) : [];
-    candidates.push({suite, names, needs, cost: names ? Math.max(real.length, 1) + needs.length : stepTotal(suite), edited: edited.has(suite)});
+    const entry = candidateOf({suite, full, changed, edited, stepTotal, needsOf, renamed, later});
+    if (entry) candidates.push(entry);
   }
-  // Edited steps first (never dropped), then the cheapest suites: more of the reached suites fit under the cap.
-  candidates.sort((a, b) => Number(b.edited) - Number(a.edited) || a.cost - b.cost || (a.suite < b.suite ? -1 : 1));
+  const {kept, count} = fitCap(candidates, cap, later);
+  return planOut({kept, later, full, changed, count, cap});
+}
+
+// One reached Linux suite as a candidate {suite, names (null = whole), needs, cost, edited}, or null when it has nothing to run. A pure move out of affectedPlan (clean-code gate).
+function candidateOf({suite, full, changed, edited, stepTotal, needsOf, renamed, later}) {
+  const whole = full?.suites?.includes(suite) && !full.steps?.[suite];
+  const mapped = (full?.steps?.[suite] || []).filter(name => !renamed.has(name)), gone = (full?.steps?.[suite] || []).filter(name => renamed.has(name));
+  for (const name of gone) later.push(`${suite}: "${name}" is renamed or removed by this PR; its new name runs as an edited step`);
+  let names = whole ? null : [...new Set([...mapped, ...(changed?.steps?.[suite] || [])])];
+  // Why (code review, 10 Nov 2026): a suite whose every mapped step was renamed and that has no edited step of its own would run nothing; the whole suite runs, as the runner's own renamed-pick fallback does (#3587).
+  if (names && !names.length) { if (!gone.length) return null; names = null; }
+  const real = (names || []).filter(name => name !== SETUP), needs = names ? needsOf(suite, real).filter(word => !real.some(name => name.toLowerCase() === word)) : [];
+  return {suite, names, needs, cost: names ? Math.max(real.length, 1) + needs.length : stepTotal(suite), edited: edited.has(suite)};
+}
+
+// Edited steps first (never dropped), then the cheapest suites: more of the reached suites fit under the cap. Each one left out is named in `later`. -> {kept, count}
+function fitCap(candidates, cap, later) {
   const kept = [];
   let count = 0;
-  for (const entry of candidates) {
+  for (const entry of [...candidates].sort((a, b) => Number(b.edited) - Number(a.edited) || a.cost - b.cost || (a.suite < b.suite ? -1 : 1))) {
     if (!entry.edited && count + entry.cost > cap) { later.push(`${entry.suite}: ${entry.names ? `${entry.cost} step(s)` : `whole suite, ${entry.cost} steps`} over this PR's cap of ${cap}, after the merge`); continue; }
     kept.push(entry);
     count += entry.cost;
   }
-  return planOut({kept, later, full, changed, count, cap});
+  return {kept, count};
 }
 
 // The plan's output from the kept suites: e2e.yml's pr_steps (a whole suite has no step list) and the summary lines. A pure move out of affectedPlan (clean-code gate).
