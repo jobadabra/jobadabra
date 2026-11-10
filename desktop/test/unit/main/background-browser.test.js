@@ -83,3 +83,24 @@ test('after a restart no hidden browser runs: pageSocket says "no such page" (nu
   assert.equal(await createBackgroundBrowser(storage, {find: () => '/x', fetchImpl: refused, command}).pageSocket('s1'), null, 'a port file left by a browser that died with the app');
   await assert.rejects(createBackgroundBrowser(storage, {find: () => '/x', fetchImpl: slow, command}).pageSocket('s1'), /timeout/, 'a busy browser is not a closed page');
 });
+
+test('wake gives the worker\'s poll time to open every claimed job\'s window; reveal and close keep the short limit (hw review, 10 Nov 2026: a 10-job poll can pass 5 s, and a wake that worked would be logged as failed)', async () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-bb-')), profile = path.join(folder, 'background-browser', 'profile');
+  fs.mkdirSync(profile, {recursive: true});
+  fs.writeFileSync(path.join(profile, 'DevToolsActivePort'), '4242\n/devtools/browser/x');
+  const answers = {'/json/version': {webSocketDebuggerUrl: 'ws://127.0.0.1:4242/devtools/browser/x'},
+    '/json/list': [{id: 'W', type: 'service_worker', url: 'chrome-extension://id/background-owned.js', webSocketDebuggerUrl: 'ws://127.0.0.1:4242/devtools/page/W'}]};
+  const fetchImpl = async url => ({ok: true, json: async () => answers[new URL(url).pathname]});
+  const limits = {};
+  const command = async (socket, method, params, options = {}) => {
+    if (method === 'Browser.getBrowserCommandLine') return {arguments: [`--user-data-dir=${profile}`]};
+    limits[params.expression.match(/\?\.(\w+)\(/)[1]] = options.timeout;
+    return {result: {value: true}};
+  };
+  const browser = createBackgroundBrowser({path: name => path.join(folder, name)}, {find: () => '/x', fetchImpl, command});
+  assert.equal(await browser.wake(), true);
+  await browser.reveal('s1'); await browser.closeSession('s1');
+  assert.ok(limits.poll >= 30000, `the poll may open up to 10 windows before it answers (limit ${limits.poll})`);
+  assert.equal(limits.reveal, undefined, 'reveal keeps the default limit');
+  assert.equal(limits.closeSession, undefined, 'close keeps the default limit');
+});

@@ -85,9 +85,11 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
-  // A read that can be handed out wakes the owned worker's poll (lib/triage-reader.js onReady); a wake that fails is logged and leaves the read to the 30 s tab report, never ends it.
-  reader.onReady?.(() => Promise.resolve(browserOf().wake?.()).then(ok => { if (ok === false) log('apply', 'triage: the hidden browser did not take the wake', {}); },
-    error => log('apply', 'triage: the hidden browser could not be woken', {error: String(error?.message || error).slice(0, 120)})));
+  // Asks the owned worker to poll now (lib/background-browser.js wake), never waited for: that poll is served on the serial turn that may have asked for it.
+  // A wake that fails is logged and leaves the work to the 30 s tab report (extension/report-alarm.js), never fails what asked for it.
+  const wakeBrowser = what => new Promise(resolve => resolve(browserOf().wake?.())).then(ok => { if (ok === false) log('apply', `${what}: the hidden browser did not take the wake`, {}); },
+    error => log('apply', `${what}: the hidden browser could not be woken`, {error: String(error?.message || error).slice(0, 120)}));
+  reader.onReady?.(() => wakeBrowser('triage'));   // a read that can be handed out (lib/triage-reader.js onReady)
   const judgments = new Map();
   const latest = new Map();   // session id -> the background state this controller last wrote or read (cache, stateForPoll)
   let owner = '', pending = Promise.resolve();
@@ -201,6 +203,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       }
       if (!enrolled.length) return {ok: false, error: nothingStarted(tally), outcomes};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));
+      // Why (10 Nov 2026, hw): start() returns at once when the hidden browser already runs, and on a launch it hands the worker its owner after the worker's first report,
+      // so a queued job was claimed only by the 30 s tab report: up to 30 s before its form opened. Test: test/unit/main/background-apply-wake.test.js.
+      wakeBrowser('queued jobs');
       log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, ...tally});
       return {ok: true, mode, sessions: enrolled, outcomes, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedWords(tally)}`};
     });
@@ -430,7 +435,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // an unreadable store hands nothing over
     if (!state || state.session !== item.id || state.manualOverride || !allowed(state.state)) return null;
     const handed = await markManual(item, reason);
-    return handed?.ok === false ? null : handed;
+    if (handed?.ok === false) return null;
+    wakeBrowser('hand-over');   // the hidden tab hears it from the poll's hand-offs now, not at the 30 s report (hw, 10 Nov 2026)
+    return handed;
   });
   async function stopOne(id) { return handOverIf(id, state => !['submitting', 'receipt_confirmed'].includes(state), 'stopped'); }
   /** The extension's dead end on a hidden application before its form (the stuck event, lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
