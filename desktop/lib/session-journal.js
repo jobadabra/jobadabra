@@ -66,7 +66,7 @@ const BACKGROUND_STEPS = {
   ready_for_review: 'Every required field filled: review it, then Submit',
   waiting_to_submit: 'Every required field filled: it sends by itself after the wait, unless you press Stop', submitting: 'Pressing Submit',
   receipt_confirmed: 'The site confirmed the application',
-  cloud: 'Handed to our cloud browser: it sends this application by itself, even with your Mac off',
+  cloud: 'Handed to our cloud browser: it sends this application by itself, even with your computer off',
 };
 const HANDED = new Set(['needs_user_handoff', 'manual_submit_required']);
 

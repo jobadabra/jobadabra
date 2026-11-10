@@ -27,7 +27,7 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 const STATE_WORDS = {ready_for_review: 'Form filled — review the same background form and Submit', waiting_to_submit: 'Filled — waiting before automatic submission; Stop is available',
-  submitting: 'Submission attempted — waiting for the site receipt', cloud: 'Handed to our cloud browser: it sends this application by itself, even with your Mac off'};   // words-ok: our own state words
+  submitting: 'Submission attempted — waiting for the site receipt', cloud: 'Handed to our cloud browser: it sends this application by itself, even with your computer off'};   // words-ok: our own state words
 /** What the live step log and the card's note say for a background state (a hand-over says its reason's words). */
 const stateWords = state => (HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : STATE_WORDS[state.state] || 'Filling in the background');
 

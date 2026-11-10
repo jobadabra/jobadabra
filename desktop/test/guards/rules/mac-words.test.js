@@ -13,7 +13,7 @@ const walk = dir => readdirSync(join(root, dir), {withFileTypes: true}).flatMap(
 // Exact non-display values stay stable: stored schemas, migration IDs and diagnostic context.
 const NON_DISPLAY = {
   'lib/feedback-handlers.js': ['store: onNotion(storage)'],
-  'lib/ready-auto.js': ["check('the Mac sleeps')", "check('the Mac shuts down')"],
+  'lib/ready-auto.js': ["check('the Mac sleeps', true)", "check('the Mac shuts down', true)"],
   'lib/migrate.js': ["name: 'strategy from this Mac'", "name: 'employers from this Mac'", "name: 'runs from this Mac'"],
   'lib/run-history.js': ['Run: {title:', "block('paragraph', 'Run on this Mac before"],
   'lib/server-contact.js': ["keptSource = () => 'kept copy on this Mac'"],
