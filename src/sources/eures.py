@@ -15,6 +15,7 @@ import json
 import re
 import threading
 import time
+import urllib.error
 import urllib.parse
 
 from . import nuts_names
@@ -184,9 +185,11 @@ def _mine(wanted, country, anywhere):
     return mine
 
 
-def _pages(codes, words, began, get):
+def _pages(codes, words, began, get, failed):
     """Each listed page of one area. Why (5 Nov 2026, #2918): a cold share is about 5 pages, so every word's page 1 goes before any word's page 2; a word that ran out of rows leaves
-    the list, so a word with no rows costs one page. Ends on the clock with CUT set."""
+    the list, so a word with no rows costs one page. Ends on the clock with CUT set. A page that fails (_ends_the_read says not a refusal) costs that page only: it goes in
+    `failed`, and the next page is asked while the clock allows.
+    Why (#3689, 10 Nov 2026, sa's Lyon runs): one timed-out page ended every area and page left, 44 jobs listed where five runs of the same search listed 157-204."""
     left = list(words)
     for page in range(1, MAX_PAGES + 1):
         for word in list(left):
@@ -194,7 +197,14 @@ def _pages(codes, words, began, get):
                 CUT[0] = True
                 return
             # a request waits at most until the stop time, so a slow page cannot run into the AI steps' share (gitar-bot, #2251)
-            data = get(URL, json.dumps(_body(word, codes, page)).encode(), {'Content-Type': 'application/json'}, timeout=max(LAST_PAGE, min(30, stop_at(began) - time.monotonic())))
+            try:
+                data = get(URL, json.dumps(_body(word, codes, page)).encode(), {'Content-Type': 'application/json'}, timeout=max(LAST_PAGE, min(30, stop_at(began) - time.monotonic())))
+            except (OSError, http.client.HTTPException, ValueError) as error:
+                if _ends_the_read(error):
+                    raise
+                failed.append(error)
+                print(f'EURES: a page failed ({type(error).__name__}); the next one is read', flush=True)
+                continue
             listed = data.get('jvs') or []
             if len(listed) < PAGE_SIZE:
                 left.remove(word)
@@ -206,11 +216,24 @@ def _timed_out(error):
     return isinstance(error, TimeoutError) or isinstance(getattr(error, 'reason', None), TimeoutError)
 
 
+def _ends_the_read(error):
+    """True for a failure after which EURES is asked nothing more in this read: a refusal (401/403), a slow-down (429, or host_pace's Busy past its own
+    wait) or a portal that cannot be reached (a connection error that is not a timeout). The safety rule: a refused or busy site is never asked again in the run."""
+    from . import host_pace
+    if isinstance(error, host_pace.Busy):
+        return True
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in (401, 403, 429)
+    return isinstance(error, urllib.error.URLError) and not _timed_out(error)
+
+
 def eures(search, get=None, client=None):
     """EURES vacancies for the user's role words, kept only where a job's region code lies in one of the user's places; each carries "<area its own code names>,
     <country>" as its location (the country alone when unnamed), never the person's place word. [] with no place in the portal's countries. `get(url, data, headers)` returns the parsed JSON.
-    Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that times out, or fails after jobs were read, ends the read with them and CUT set;
-    a failure with nothing read raises, so the source is reported as failed. A refusal (401/403) or a slow-down past host_pace's own wait (Busy) ends the read: it asks nothing again."""
+    Asked nearest area first (_areas, _pages), at most KEEP per area and MOST per read. A page that fails (a timeout, a server error, a broken answer) costs that page only and
+    the read goes on, with CUT set at its end so the source waits for the next search instead of being marked read (#3689). A refusal (401/403), a slow-down (429, Busy) or an
+    unreachable portal ends the read: it asks nothing again, keeps what was read with CUT set, and raises when nothing was read. A read that read nothing and failed on more
+    than timeouts raises too, so the source is reported as failed."""
     from . import aggregators
     from ..places import place_words
     get = get or aggregators._get
@@ -228,12 +251,12 @@ def eures(search, get=None, client=None):
     began = time.monotonic()
     anywhere = {geo.norm(word) for word in place_words(search, ('country_wide',), 6)}
     words = _words(search)
-    seen = set()
+    seen, failed = set(), []
     try:
         for codes in areas:
             country = codes[0][:2].upper()
             mine, before = _mine(wanted, country, anywhere), len(jobs)
-            for listed in _pages(codes, words, began, get):
+            for listed in _pages(codes, words, began, get, failed):
                 for j in listed:
                     found = [c.upper() for held in (j.get('locationMap') or {}).values() for c in held or [] if c]
                     word = next((w for w, prefixes in mine.items() if any(c.startswith(p) for c in found for p in prefixes)), None)
@@ -254,6 +277,11 @@ def eures(search, get=None, client=None):
             raise
         CUT[0] = True
         print(f'EURES: a page failed ({type(error).__name__}), keeping the {len(jobs)} read', flush=True)
+        return jobs
+    if failed:
+        if not jobs and not all(_timed_out(error) for error in failed):
+            raise failed[-1]
+        CUT[0] = True
     return jobs
 
 
