@@ -67,6 +67,13 @@ jobs:
         run: |
           git fetch -q origin main
           printf '%s' "$BODY" | python3 tools/press-ledger-check.py --base origin/main
+      # Why (10 Nov 2026, owner: "Fixed guardrails"; finish-line spec G3): what the night Search check measures with (the 18 people, the judge's prompt, the fixed
+      # source list, the check's one AI) changes only with `Scoreboard-change: "<owner's words>"` and a rewritten tools/persona-search/scoreboard.lock.json.
+      - name: Scoreboard kept
+        if: ${{ !cancelled() }}
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$BODY" | python3 tools/persona-search/scoreboard.py --check --base origin/main
       # The open PR is the claim on the applying flow's files (tools/flow-fresh.mjs): red when main changed, since this PR's base, a flow file it also changes.
       # tools/ship.sh rebases and pushes again by itself on this failure (it finds this step's name: keep it in tools/ship-pr.sh).
       - name: Core flow files up to date with main
