@@ -13,6 +13,7 @@
 | `desktop/test/unit/<scope>/` | JavaScript unit tests; scope = the code: `main` (desktop/main.js, desktop/lib), `renderer`, `extension`, `cv`, `ready-fill` | `cd desktop && node --test test/unit/renderer/x.test.js` |
 | `desktop/test/guards/<scope>/` | JavaScript rule guards; same scopes as `tests/guards/` | `cd desktop && node --test test/guards/safety/x.test.js` |
 | `desktop/test/tooling/<scope>/` | JavaScript tests of our own tooling, with a `Guard:` line; same scopes as `tests/tooling/` | `cd desktop && node --test test/tooling/ci/x.test.js` |
+| `desktop/test/nightly/` | Real-container release proofs that depend on registry/apt access; run only by harness-daily.yml, outside PR unit/integration discovery | `node --test desktop/test/nightly/fixer-sandbox-docker.test.js` (Linux + Docker) |
 | `app-core/test/` | Unit tests of app-core (the code the app runs beside the engine) | `cd app-core && node --test test/x.test.js` |
 | `desktop/integration/<layer>/` | Integration: `store` (Node + real SQLite), `app` (the app with a fake browser), `extension` (recorded pages in a real browser) | `cd desktop && node --test integration/app/x.test.js` |
 | `desktop/e2e/suites/` | E2E: the Tier 1 journeys only (`desktop/e2e/critical-journeys.json`); CI only | `E2E_STEPS="<step>" node suite.mjs <suite>` (CI) |
