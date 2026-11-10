@@ -17,6 +17,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from . import ats, host_pace
+from ..press import stage
 
 MAX_BYTES = 2_000_000
 from ..ai import meanings_pack, page_words, slots
@@ -113,16 +114,15 @@ def fetch(slug, sleep=time.sleep):
     jobs = read_page(url, show) if show else jobs
     if not jobs:
         return jobs
-    try:
+    more = []   # the first page is read; its page links are a bonus
+    with stage.guard('employer sites: page links'):
         more = page_links(url, get_text(url))
-    except Exception:  # noqa: BLE001 — the first page is read; its page links are a bonus
-        more = []
     seen = {job.get('url') for job in jobs}
     for link in more:
         sleep(PAGE_PAUSE_S)
-        try:
+        with stage.guard('employer sites: next page') as caught:
             fresh = [job for job in read_page(link, show) if job.get("url") not in seen]
-        except Exception:  # noqa: BLE001 — a page that fails ends the list here
+        if caught:   # a page that fails ends the list here
             break
         if not fresh:
             break
@@ -187,10 +187,8 @@ def _from_recipe(url, markup, fetch_page):
         title, link = item
         found = None
         if link:
-            try:
+            with stage.guard('employer sites: listed job'):   # a job page that fails: the listing's own title and place
                 found = jsonld_jobs(fetch_page(link), link)[:1] or [job_from_page(fetch_page(link), link)]
-            except Exception:  # noqa: BLE001
-                found = None
         job = (found or [None])[0] or {}
         return ats._job(link or f'{url}#{title}', title, job.get('location') or listing.get('location', ''), link or url,
                         job.get('date_posted', ''), job.get('description', ''), bool(job.get('remote')))
@@ -280,10 +278,9 @@ def discover(website, fetch_page=get_text):
         if guessed and (not found or not guessed.get('empty')):
             found = guessed
     if (not found or found.get('empty')) and (choose := chooser()):   # a model reads the home page's links and picks the job list
-        try:
+        picked = []   # no answer: nothing more to try
+        with stage.guard('employer sites: job list chooser'):
             picked = choose(website, home)
-        except Exception:  # noqa: BLE001 — no answer: nothing more to try
-            picked = []
         chosen = _explore(website, home, fetch_page, show, links=picked) if picked else None
         if chosen and (not found or not chosen.get('empty')):
             found = chosen
@@ -301,9 +298,9 @@ def read_page_from(markup, url, fetch_page):
     """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
     when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not)."""
     def one(link):
-        try:
+        with stage.guard('employer sites: linked page') as caught:
             page = fetch_page(link)
-        except Exception:  # noqa: BLE001
+        if caught:
             return [], []
         declared = jsonld_jobs(page, link)
         return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])

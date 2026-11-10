@@ -7,6 +7,7 @@ import urllib.parse
 from html.parser import HTMLParser
 
 from .careers_parse import registrable
+from ..press import stage
 
 TEXT_BOXES = ('', 'text', 'search')   # an <input> a person types words into
 MAX_TEMPLATES = 2                     # forms tried per board: the home page's search box is among the first
@@ -39,9 +40,9 @@ class _Forms(HTMLParser):
 def templates(markup, page_url):
     """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first."""
     parser = _Forms()
-    try:
+    with stage.guard('job boards: form parse') as caught:
         parser.feed(str(markup or ''))
-    except Exception:  # noqa: BLE001 — a page the parser cannot read gives no form
+    if caught:   # a page the parser cannot read gives no form
         return []
     home = urllib.parse.urlsplit(page_url).hostname or ''
     out = []
@@ -65,10 +66,9 @@ def home(board, fetch):
     """(address, markup) of the board's home page; markup '' when it does not answer."""
     parts = urllib.parse.urlsplit(board['search_url'])
     address = f'{parts.scheme}://{parts.netloc}/'
-    try:
+    with stage.guard('job boards: home page'):
         return address, str(fetch(address) or '')
-    except Exception:  # noqa: BLE001 — a home page that does not answer: the proposed link stays
-        return address, ''
+    return address, ''   # a home page that does not answer: the proposed link stays
 
 
 def home_templates(board, fetch, page=None):

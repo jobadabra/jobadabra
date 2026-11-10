@@ -6,6 +6,7 @@ leaves a recipe), at most MAX_SECTIONS per board, robots.txt is not consulted (o
 import urllib.parse
 
 from . import board_pages, careers, careers_parse
+from ..press import stage
 
 DEPTH = 3       # pages of hubs followed down from the home page (a home page, its jobs hub, its categories hub)
 MAX_SECTIONS = 2      # section pages read per board
@@ -104,7 +105,6 @@ def _jobs(url, listing, fetch, relevant, shape):
 
 
 def _page(url, get, fetch):
-    try:
+    with stage.guard('job boards: section page'):
         return str(get(url) or '')
-    except Exception:  # noqa: BLE001 — a section that does not answer: the next one
-        return ''
+    return ''   # a section that does not answer: the next one
