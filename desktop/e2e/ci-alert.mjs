@@ -224,7 +224,7 @@ export const effectiveStatus = (status, jobs = [], lanes = readLanes()) => (stat
  * Build a pure Telegram payload (lib/tg-card.mjs): one card for the red suites, or one for the suites whose red the owner was sent and that passed now (`closed`, from openRed); anything else stays silent.
  * Why (10 Nov 2026, owner, asked via AskUserQuestion, "Only to close a red I saw"): "🟢 … are green again on main" came with report-only suites and no red before it. It says what it closes and what fixed it, or that the same code passed again.
  */
-// Why (10 Nov 2026, owner: every message reads like the Central scout one): the per-suite sections, job links, PR links and commit link are one headline, the Why rows, one verdict and the run link.
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): the per-suite sections, job links, PR links and commit link are one headline, the Why rows, one verdict and the run link. The green card is the same shape: one headline naming the suites it closes, two facts (red since, fixed by), one verdict.
 export function messageOf({status, what = '', causes = [], next = '', closed, since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
   status = effectiveStatus(status, jobs, lanes);
