@@ -272,7 +272,8 @@ export function settingsAfter(storage, accepted) {
     const current = JSON.parse(storage.readText('config/search.json') || '{}');
     const google = {...(current.google_jobs || {}), ...accepted.search.google_jobs,
       searches_per_run: current.google_jobs?.searches_per_run ?? 1, min_searches_left: current.google_jobs?.min_searches_left ?? 20};
-    out.search = withoutNotes(withDerived({...current, ...accepted.search, google_jobs: google}));   // the one list of roles gives role_keywords and the searches   // a note is never a setting (lib/config-text.js)
+    const kept = current.remote_jobs?.length ? {remote_jobs: current.remote_jobs} : {};   // Why (lj 2/4, 10 Nov 2026, code review): the draft now always carries Remote jobs, a rebuild must not overwrite the person's own choice, and its review lists no such change
+    out.search = withoutNotes(withDerived({...current, ...accepted.search, ...kept, google_jobs: google}));   // the one list of roles gives role_keywords and the searches   // a note is never a setting (lib/config-text.js)
   }
   if (accepted.preferences) {
     const preferences = JSON.parse(storage.readText('config/preferences.json') || '{}');

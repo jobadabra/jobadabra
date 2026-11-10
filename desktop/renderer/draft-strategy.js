@@ -30,6 +30,7 @@ export function draftAsStrategy(draft = {}) {
     },
     digest_min_score: preferences.digest_min_score,
     remote_jobs: ![search.remote_jobs].flat().some(value => NO.has(String(value ?? '').trim().toLowerCase())),
+    remote_word: String([search.remote_jobs].flat()[0] ?? '').trim().toLowerCase(),
     relocation: first(places.relocation) || 'unspecified',
     goals, details: {}, level: level || (goals.seniority ? searchLevel(goals.seniority) : ''), compensation: goals.minimum_salary || '',
     avoid: [], components: [], scored: 0, previous: 0, counts: {matches: 0, kits: 0, saved: 0, sent: 0}, insight: null, profile_empty: false,

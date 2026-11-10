@@ -129,7 +129,7 @@ function remoteChoice() {
     button.type = 'button';
     button.setAttribute('aria-pressed', String(yes === chosen));
     button.addEventListener('click', () => {
-      if (yes === now) delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};
+      if (yes === now && strategyState.lastStrategy?.remote_word !== 'country') delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};   // from "Country" a click on Yes is a real change (lj 2/4)
       renderTargets();
     });
     group.append(button);

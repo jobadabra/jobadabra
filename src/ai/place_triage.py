@@ -41,6 +41,7 @@ cities abroad. When they listed no such place, nothing is "inside".
 - "out": everything else, including a location naming only a country or an area wider than their places ("Switzerland" for someone who \
 wants only Geneva), and remote jobs unless they accept remote work and the posting does not limit it to a region outside their places.
 Being in the same country as their places does not make a town "inside". When unsure, answer "out".
+When remote_jobs is "only_their_country", a remote job is "inside" only when it names their country or a region that holds their places; a bare "Remote" or "Worldwide" is "out".
 A location may list several places: it is in their places only when one listed place is theirs, or it says remote with no region at all or a \
 region that holds their places. Other cities, and remote limits to other regions or countries, say where the job is based or who may take it: \
 "out" for someone whose places are elsewhere, even when they accept remote work. Examples with other places: "Lima; Bogota; Quito", \
@@ -58,7 +59,7 @@ def places_words(search, preferences=None):
     places = search.get('locations') or {}
     remote = [str(v).strip().lower() for v in search.get('remote_jobs') or []]
     return {'best_places': plain_words(places.get('top_tier'))[:20], 'anywhere_in': plain_words(places.get('country_wide'))[:20],
-            'cities_abroad': plain_words(places.get('abroad'))[:20], 'remote_jobs': 'no' if 'no' in remote else 'yes',
+            'cities_abroad': plain_words(places.get('abroad'))[:20], 'remote_jobs': 'no' if 'no' in remote else 'only_their_country' if 'country' in remote else 'yes',
             'remote_limited_to_regions_they_cannot_work_from': terms(search.get('remote_excluded_regions'))[:20],
             'work_rights': [str(w) for w in (preferences or {}).get('work_rights') or []][:10]}
 

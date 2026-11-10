@@ -33,7 +33,7 @@ export function placeQuestion(body, persona) {
   if (!match) return unkeyable('expected places JSON and numbered job locations');
   let places;
   try { places = JSON.parse(match[1]); } catch { return unkeyable('invalid places JSON'); }
-  if (!object(places) || !['best_places', 'anywhere_in', 'cities_abroad', 'remote_limited_to_regions_they_cannot_work_from'].every(key => Array.isArray(places[key]) && places[key].every(value => typeof value === 'string')) || !['yes', 'no'].includes(places.remote_jobs)) return unkeyable('invalid places block');
+  if (!object(places) || !['best_places', 'anywhere_in', 'cities_abroad', 'remote_limited_to_regions_they_cannot_work_from'].every(key => Array.isArray(places[key]) && places[key].every(value => typeof value === 'string')) || !['yes', 'no', 'only_their_country'].includes(places.remote_jobs)) return unkeyable('invalid places block');
   const lines = match[2].split('\n');
   if (!lines.length || lines.length > 30) return unkeyable('expected 1 to 30 location lines');
   // Why (29 Oct 2026, owner): the same location changes meaning with the user's places and persona, never with neighbours,
