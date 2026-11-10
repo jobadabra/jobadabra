@@ -132,6 +132,8 @@ function searchSummary() {
   return {roles: (search.role_keywords || []).length, places, countries};
 }
 const failed = [];
+/** 'on' or 'off': whether this run's presses read EURES (src/features.py 'eures': --with-eures or JOBADABRA_EURES=1 turn it on, --without-eures off), written on each press row for gate.py. */
+const euresMode = () => !process.argv.includes('--without-eures') && (process.argv.includes('--with-eures') || process.env.JOBADABRA_EURES === '1') ? 'on' : 'off';
 const done = fs.existsSync(path.join(out, 'presses.jsonl')) ? fs.readFileSync(path.join(out, 'presses.jsonl'), 'utf8').trim().split('\n').filter(Boolean).length : 0;
 const fieldFile = option('--change-field', '');
 for (let press = done + 1; press <= presses; press++) {
@@ -146,7 +148,7 @@ for (let press = done + 1; press <= presses; press++) {
   const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
-  const row = {press, code, crashes, ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
+  const row = {press, code, crashes, eures: euresMode(), ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
     search: searchSummary(),
     ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
