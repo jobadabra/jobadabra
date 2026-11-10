@@ -56,7 +56,7 @@ class Reading(unittest.TestCase):
         self.assertEqual([(w, page) for w, page, _ in pages], [('charpentier', 1), ('menuisier', 1)])
         self.assertEqual(pages[0][2], ['be10', 'be1', 'be100'])
         self.assertEqual(len(rows), 3, 'the same ids from the second word are one job each')
-        self.assertEqual(rows[0], {'title': 'Menuisier 0', 'company': 'ACME', 'location': 'Brussels-Capital, Belgium'})
+        self.assertEqual(rows[0], {'title': 'Menuisier 0', 'company': 'ACME', 'location': 'Brussels-Capital, Belgium', 'url': eures.DETAIL + 'j0?lang=en'})
 
     def test_it_reads_at_most_two_pages_a_word(self):
         calls = []
@@ -100,6 +100,16 @@ class TheWeek(unittest.TestCase):
         self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2})
         self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures'})
 
+    def test_the_right_jobs_keys_stay_beside_the_record_and_are_never_part_of_it(self):
+        """WP3 (10 Nov 2026): a night's loss is matched job by job, so the artifact keeps each right job's title, employer and link; the record (the only thing sent) is unchanged."""
+        jobs = {}
+        record = reference.run(self.post, right_if('menuisier'), jobs)
+        self.assertEqual(set(record), {'personas'})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures'})
+        self.assertEqual(len(jobs['3']), record['personas']['3']['total'], 'one key per right job, a posting listed twice once')
+        self.assertTrue(all(set(j) == {'title', 'company', 'url'} and j['url'].startswith(eures.DETAIL) for j in jobs['3']))
+        self.assertTrue(all('menuisier' in j['title'].lower() for j in jobs['3']), 'only the jobs the judge called right')
+
     def test_a_persona_whose_eures_read_failed_is_left_out_never_zero(self):
         def post(body):
             if body['locationCodes'][0].startswith('be'):
@@ -140,13 +150,15 @@ class TheCommandLine(unittest.TestCase):
         folder = Path(tempfile.mkdtemp()) / 'out' / 'deeper'
         seen = []
 
-        def fake_run():
+        def fake_run(jobs=None):
             seen.append(folder.is_dir())   # the folder is there before the read starts
+            jobs['1'] = []
             return {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}}
         with mock.patch.object(reference, 'run', fake_run):
             self.assertEqual(reference.main(['run', str(folder / 'reference.json')]), 0)
         self.assertEqual(seen, [True])
         self.assertEqual(json.loads((folder / 'reference.json').read_text()), {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}})
+        self.assertEqual(json.loads((folder / 'reference-jobs.json').read_text()), {'personas': {'1': []}}, 'the keys beside the counts, in their own file')
 
     def test_the_siblings_make_their_own_output_folder_too(self):
         """The same pattern in gate.py extract and gate_judge.py main: they worked in the nightly only because an earlier step had made `out/`."""
