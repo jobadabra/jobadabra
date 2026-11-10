@@ -26,6 +26,12 @@ runs:
       with:
         path: ~/.cache/ms-playwright
         key: pw-browser-${{ steps.which.outputs.key }}
+    - name: A folder the cache may restore into
+      if: runner.os == 'Linux'
+      shell: bash
+      # Why (10 Nov 2026, owner: "LET'S FIX THESE WARNINGS"): the cache restores as the runner user, which may not create a folder
+      # under /var/cache, so every hit since 24 Oct failed ("tar … exit code 2", 18 warnings per Search check) and apt downloaded again.
+      run: sudo install -d -o "$(id -u)" -g "$(id -g)" /var/cache/pw-apt
     - name: Cached system packages
       if: runner.os == 'Linux'
       uses: actions/cache@v5
