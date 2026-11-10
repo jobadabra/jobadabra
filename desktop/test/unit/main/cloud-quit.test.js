@@ -19,7 +19,7 @@ test('three cases for a Pro install with a Full automation application working: 
 
 test('code review: once today\'s night started, a later quit is the old dialog (the site takes one night a day: the dialog must not promise a hand-over)', () => {
   const started = (night, on = true) => ({settings: () => ({...store({on}).settings(), cloudAuto: {night, started: true}})});
-  assert.equal(offerFor(started(new Date().toISOString().slice(0, 10)), [auto], {real: here}), null);
+  assert.equal(offerFor(started(new Date().toISOString().slice(0, 10)), [auto], {real: here}), null);   // clock: relative, offerFor compares the night to the real UTC day
   assert.equal(offerFor(started('2020-01-01'), [auto], {real: here}), 'on', 'an earlier day does not count');
 });
 
