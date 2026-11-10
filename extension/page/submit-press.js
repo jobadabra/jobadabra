@@ -34,7 +34,9 @@
   const layerOf = el => { for (let node = el; node && node !== document.body && node !== document.documentElement; node = node.parentElement) { if (node.matches?.('[role=dialog], [role=alertdialog], [aria-modal=true], dialog')) return node; if (getComputedStyle(node).position === 'fixed') return node; } return null; };
   const refused = el => { const words = textOf(el); if (NEVER.test(words)) return true; if (!DECLINE.test(words)) return false; const layer = layerOf(el); const about = layer && textOf(layer); return !!layer && (!ABOUT_COOKIES.test(about) || STATEMENT.test(about.slice(0, 200))); };
   const press = el => { window.__jobadabraRefused = ''; if (refused(el)) { window.__jobadabraRefused = textOf(el).slice(0, 60) || 'x'; return true; } mark(el); el.click(); return true; };
+  // Full automation's one press (background-submit.js automaticPress): the floor first, then marked as the extension's own and clicked. -> true when pressed, false when the floor refused it.
+  const automatic = el => { press(el); return !window.__jobadabraRefused; };
   const person = event => event.type === 'submit' ? !(event.submitter ? own.has(event.submitter) : [...own].some(control => control.form && control.form === event.target)) : (own.has(controlOf(event.target)) ? (release(event.target, controlOf(event.target)), false) : true);
-  window.__jobadabraSubmitPress = {refused, says, person, mark, markAt, press, counts: (el, words) => says(el) || SUBMIT_WORDS.test(words)};
+  window.__jobadabraSubmitPress = {refused, says, person, mark, markAt, press, automatic, counts: (el, words) => says(el) || SUBMIT_WORDS.test(words)};
   window.__jobadabraPress = press;
 })();

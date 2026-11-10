@@ -1,4 +1,4 @@
-// Final action uses the server's exact control and the same local value seal; missing/changed/unsafe forms are never clicked.
+// Final action uses the server's exact control and the same local value seal; missing/changed/unsafe forms are never tagged for the press, and the page's own world never clicks.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {submissionPage} from '../../extension/background-submit.js';
@@ -16,15 +16,21 @@ test('final click requires one visible named control, valid fields, unchanged se
   assert.equal((await submissionPage('inspect', {control: 'Send application'})).factsOnly, true);
   assert.equal(proof.requiredComplete, true);
   assert.equal(proof.safe, true);
-  assert.equal((await submissionPage('press', {control: 'Send application', seal: proof.seal})).pressed, true);
-  assert.equal(clicks, 1);
+  // Why (10 Nov 2026, owner: "Fix it now (Recommended)"): the page's own world has no press floor, so it never clicks: it tags the one button for automaticPress (automatic-press.test.js).
+  const tags = [];
+  button.setAttribute = (name, value) => tags.push([name, value]);
+  const readied = await submissionPage('press', {control: 'Send application', seal: proof.seal});
+  assert.equal(readied.ready, true);
+  assert.deepEqual(tags, [['data-jobadabra-press', readied.token]]);
+  assert.equal(clicks, 0, 'the page world never clicks: the floor lives in the extension\'s world');
   field.value = 'Changed';
-  assert.equal((await submissionPage('press', {control: 'Send application', seal: proof.seal})).pressed, false);
+  assert.equal((await submissionPage('press', {control: 'Send application', seal: proof.seal})).ready, false);
+  assert.equal(tags.length, 1, 'a changed form is never tagged');
   field.type = 'password';
   assert.equal((await submissionPage('inspect', {control: 'Send application'})).safe, false);
   field.type = 'text'; field.checkValidity = () => false;
   assert.equal((await submissionPage('inspect', {control: 'Send application'})).requiredComplete, false);
-  assert.equal(clicks, 1);
+  assert.equal(clicks, 0);
 });
 
 // Found by the Full automation e2e (28 Oct 2026): extension/page/upload.js marks the input it filled as dataset.jobadabraInputFile (attribute data-jobadabra-input-file) and only the slot with

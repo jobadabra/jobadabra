@@ -4,7 +4,7 @@ import {parseMark, pageFingerprint, pageKey} from './tab-pages.js';
 import {sessionOf} from './tab-identity.js';
 import {api, settings, planAnswers} from './flow.js';
 import {isStopped, stopGeneration} from './stop-state.js';
-import {submissionPage} from './background-submit.js';
+import {automaticPress, submissionPage} from './background-submit.js';
 import {formNext, forgetJudged} from './form-ready.js';
 import {allFactsSavedOf} from './triage-facts.js';
 
@@ -21,6 +21,8 @@ globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(s
   }};
 const request = async (context, payload) => api(await settings(), '/extension/background-apply', {method: 'POST', body: JSON.stringify({owner: context.owner, session: context.session, ...payload})});
 const script = (tabId, frameId, func, args = []) => chrome.scripting.executeScript({target: {tabId, frameIds: [frameId ?? 0]}, world: 'MAIN', func, args}).then(rows => rows?.[0]?.result);
+// The extension's own world, where page/submit-press.js (the press floor and the mark of its own presses) lives: the press itself runs here (background-submit.js automaticPress).
+const own = (tabId, frameId, func, args = []) => chrome.scripting.executeScript({target: {tabId, frameIds: [frameId ?? 0]}, func, args}).then(rows => rows?.[0]?.result);
 
 /** Attach the existing submit watcher; automatic clicks arm it explicitly and never impersonate a human submit message. */
 export function setBackgroundWatcher(fn) { watcher = fn; }
@@ -171,7 +173,8 @@ async function pressOnce(tab, frameId, context, inspected, permit, generation) {
   if (refusal) { await backgroundChallenge(tab.id, refusal); return true; }
   const at = Date.now();
   await chrome.storage.session.set({[`submit:${tab.id}`]: {at, url: pageKey(tab.url), fingerprint: pageFingerprint(inspected.snapshot), calls: 0, automation: true, attempt: permit.attempt}});
-  const pressed = await script(tab.id, frameId, submissionPage, ['press', {control: permit.control, seal: inspected.seal}]).catch(() => null);
+  const tagged = await script(tab.id, frameId, submissionPage, ['press', {control: permit.control, seal: inspected.seal}]).catch(() => null);
+  const pressed = tagged?.ready && !isStopped() && stopGeneration() === generation ? await own(tab.id, frameId, automaticPress, [tagged.token]).catch(() => null) : null;
   if (!pressed?.pressed) { await backgroundChallenge(tab.id, 'submit_not_pressed'); return true; }
   watcher(tab.id);
   return true;
