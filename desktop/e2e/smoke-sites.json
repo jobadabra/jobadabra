@@ -614,6 +614,13 @@
     "https://jobs.corner.ch/o/corporate-actions-specialist-ref-1132"
    ],
    "signature": "form>posting>form>posting>form@jobs.corner.ch#form"
+  },
+  {
+   "shape": "Discovery: benedict.ch",
+   "urls": [
+    "https://www.benedict.ch/jobs"
+   ],
+   "signature": "posting@www.benedict.ch#posting"
   }
  ]
 }
