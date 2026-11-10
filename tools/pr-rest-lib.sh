@@ -6,8 +6,12 @@
 #   and fail in a deleted worktree, so web #177's watcher never saw its merge. Guard: tests/test_pr_rest_lib.py.
 # Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out": "No GraphQL in our tools"): opening, editing, listing and labelling PRs and red-main issues are here too, over
 #   REST; only what GitHub offers in GraphQL alone (a draft made ready, auto-merge) is left, and tools/bin/gh logs it with its session.
+# Why (owner, 10 Nov 2026, asked via AskUserQuestion, "REST first, GraphQL fallback"; amends the 27 Oct line above): at 00:31Z REST core sat at 0/5000 for 30 min and every watcher was blind
+#   while GraphQL still had 4,860. REST + ETag stays the only normal path (a normal day uses no GraphQL). Only when a read FAILS and `gh api rate_limit` (never counted) says core is 0,
+#   pr_view and pr_checks answer the same read over GraphQL, in the same shape, until the reset; any other failure (404, network, secondary limit) fails as before, with no retry.
+#   tools/bin/gh logs each such call as "fallback: REST out". Guard: tests/tooling/ci/test_pr_graphql_fallback.py.
 
-# Every gh of the tools that source this lib goes through tools/bin/gh, which logs a GraphQL call with its session (none should be left but a draft's ready and auto-merge).
+# Every gh of the tools that source this lib goes through tools/bin/gh, which logs a GraphQL call with its session (none should be left but a draft's ready, auto-merge and the REST-out fallback of pr_view and pr_checks).
 _pr_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bin"
 case ":$PATH:" in *":$_pr_bin:"*) ;; *) [ -x "$_pr_bin/gh" ] && PATH="$_pr_bin:$PATH" ;; esac
 
@@ -36,7 +40,8 @@ pr_get() {
 
 # pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,title,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
 # mergeable MERGEABLE|CONFLICTING|UNKNOWN, labels: the label names). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).
-pr_view() {
+pr_view() { _pr_view_rest "$@" || { _pr_rest_out && _pr_gql_view "$@"; }; }
+_pr_view_rest() {
   local p c r k
   p="$(pr_get "repos/$1/pulls/$2")" || return 1
   if [ "${3:-}" = full ]; then
@@ -54,7 +59,8 @@ pr_view() {
 
 # pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
 # Why (#2282, its own first run): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest.
-pr_checks() {
+pr_checks() { _pr_checks_rest "$@" || { _pr_rest_out && _pr_gql_checks "$@"; }; }
+_pr_checks_rest() {
   local runs st id run excluded='[]' status_excluded='[]'
   runs="$(pr_get "repos/$1/commits/$2/check-runs?per_page=100")" && st="$(pr_get "repos/$1/commits/$2/status")" || return 1
   # A cached or mismatched combined status cannot decide this head's red or green state.
@@ -79,6 +85,57 @@ pr_checks() {
       | group_by(.name) | map(max_by(.id))[] | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
       (.[1].statuses[]? | select(.target_url | allowed($status_excluded)) | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
+}
+
+# --- GraphQL fallback (owner, 10 Nov 2026): used only by pr_view and pr_checks, only while REST core is out of quota. ---
+
+# _pr_rest_out: succeeds only when GitHub says the REST core budget is 0 (`rate_limit` is never counted). A 404, a network error or a secondary limit is not "out": the read just fails.
+_pr_rest_out() { [ "$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null)" = 0 ]; }
+
+# _pr_gql <query> [gh api args]: one GraphQL call; tools/bin/gh logs it with its session and this reason. Fails on any GraphQL error.
+_pr_gql() { GH_GRAPHQL_WHY="fallback: REST out" gh api graphql -f query="$1" "${@:2}" 2>/dev/null; }
+
+# _pr_gql_view <repo> <n> [full]: pr_view's answer from GraphQL, field for field the same shape (mergeState = GitHub's mergeStateStatus, lowercase like REST's mergeable_state).
+_pr_gql_view() {
+  local full=false; [ "${3:-}" = full ] && full=true
+  _pr_gql 'query($o:String!,$r:String!,$n:Int!,$full:Boolean!){repository(owner:$o,name:$r){pullRequest(number:$n){number url title headRefOid headRefName isDraft state mergeable mergeStateStatus
+      mergeCommit{oid} labels(first:100){nodes{name}} comments(first:100)@include(if:$full){nodes{id author{login} body url createdAt}} reviews(first:100)@include(if:$full){nodes{id author{login} body state submittedAt}}
+      commits(first:100)@include(if:$full){nodes{commit{authoredDate committedDate}}}}}}' -f o="${1%%/*}" -f r="${1#*/}" -F n="$2" -F full="$full" \
+    | jq -ce '.data.repository.pullRequest | select(. != null) | {number, url, title, headRefOid, headRefName, isDraft, state, mergeable, mergeState: (.mergeStateStatus | ascii_downcase),
+        mergeCommit: (if .mergeCommit then {oid: .mergeCommit.oid} else null end), labels: [.labels.nodes[].name],
+        comments: [.comments.nodes[]? | {id, author: {login: (.author.login // "")}, body, url, createdAt}],
+        reviews: [.reviews.nodes[]? | {id, author: {login: (.author.login // "")}, body, state, submittedAt}],
+        commits: [.commits.nodes[]?.commit | {authoredDate, committedDate}]}'
+}
+
+# _pr_gql_checks <repo> <sha>: pr_checks' answer from GraphQL, with the same rules: the newest run of each check name, no workflow_dispatch suite (#2618), a status from an Actions run kept
+# only when that run is a workflow_run reporter or ran on this sha and was not dispatched (#2634). A suite or status whose provenance cannot be decided leaves the read pending (fails), never green.
+_pr_gql_checks() {
+  local c ids id q runs='{}' out
+  c="$(_pr_gql 'query($o:String!,$r:String!,$sha:GitObjectID!){repository(owner:$o,name:$r){object(oid:$sha){... on Commit{oid
+      checkSuites(first:100){nodes{workflowRun{databaseId event} checkRuns(first:100){nodes{databaseId name status conclusion permalink}}}} status{contexts{context state targetUrl}}}}}}' \
+    -f o="${1%%/*}" -f r="${1#*/}" -f sha="$2")" || return 1
+  # A status links to the Actions run that wrote it; one aliased lookup by URL tells each run's event and commit (a run of main's reporter is on another sha, so it is not among this commit's suites).
+  ids="$(jq -r '[.data.repository.object.status.contexts[]?.targetUrl // "" | capture("/actions/runs/(?<id>[0-9]+)")? | .id] | unique[]' <<<"$c" 2>/dev/null)" || return 1
+  if [ -n "$ids" ]; then
+    q='{'; while IFS= read -r id; do q="$q r$id: resource(url: \"https://github.com/$1/actions/runs/$id\") { ... on WorkflowRun { event checkSuite { commit { oid } } } }"; done <<<"$ids"
+    runs="$(_pr_gql "$q }" | jq -ce '.data // empty')" || return 1
+  fi
+  out="$(printf '%s\n%s\n' "$c" "$runs" | jq -sc --arg sha "$2" '
+    def rid: (. // "" | capture("/actions/runs/(?<id>[0-9]+)")? | .id) // "";
+    .[0].data.repository.object as $o | .[1] as $runs | ($o.checkSuites.nodes // []) as $suites | ($o.status.contexts // []) as $contexts
+    | def run: $runs["r" + (.targetUrl | rid)];
+      if $o == null
+        or any($suites[]; .workflowRun == null and any(.checkRuns.nodes[]; (.permalink | rid) != ""))
+        or any($contexts[]; (.targetUrl | rid) != "" and (run.event // "") == "") then empty
+      else [($suites | map(select((.workflowRun.event // "") != "workflow_dispatch") | .checkRuns.nodes[]) | group_by(.name) | map(max_by(.databaseId))[]
+            | {name, link: (.permalink // ""), bucket: (if (.status | ascii_downcase) != "completed" then "pending"
+                elif (.conclusion // "" | ascii_downcase | IN("success", "neutral")) then "pass" elif (.conclusion // "" | ascii_downcase) == "skipped" then "skipping"
+                elif (.conclusion // "" | ascii_downcase) == "cancelled" then "cancel" else "fail" end)}),
+            ($contexts[] | select((.targetUrl | rid) == "" or run.event == "workflow_run" or (run.checkSuite.commit.oid == $sha and run.event != "workflow_dispatch"))
+              | {name: .context, link: (.targetUrl // ""), bucket: (if .state == "SUCCESS" then "pass" elif .state == "PENDING" or .state == "EXPECTED" then "pending" else "fail" end)})] end' 2>/dev/null)"
+  [ -n "$out" ] || return 1
+  printf '%s\n' "$out"
 }
 
 # pr_list <repo> <state open|closed> [pages=1]: every PR of the state, 100 a page, newest first, as [{number, headRefName, headRefOid, merged}]. Each page is a conditional read.

@@ -3,7 +3,10 @@ rest/<path, every non-alphanumeric as _>: the JSON body for that path, with an E
 The watcher's looks (tests/test_ship_watch.py): when states exists, repos/<r>/pulls/<n> and the head's check-runs/status follow one line per look of
 states (OPEN | MERGED <sha> | CLOSED | REFUSED), mergeables, checks (pending | <failing name> | empty = pass), runs (none | running | gate | ok | refused: a 403), verdicts (pending | none | ok),
 heads (the head sha, default new1), labels (comma-separated names) twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
-Every call is appended to calls; any other gh command fails like an unknown call."""
+Every call is appended to calls; any other gh command fails like an unknown call.
+REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
+`gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
+fails like GitHub on an unbalanced query or a missing file. It adds one "GRAPHQL <kind> <GH_GRAPHQL_WHY>" line to calls."""
 import hashlib
 import json
 import os
@@ -21,8 +24,29 @@ if argv[:1] == ['api'] and 'Accept: application/vnd.github.raw' in argv:
         print(raw.read_text())
         sys.exit(0)
     sys.exit(1)
+if argv[:2] == ['api', 'rate_limit']:   # never counted, answers while REST is out
+    print((d / 'rate_core').read_text().strip() if (d / 'rate_core').exists() else '5000')
+    sys.exit(0)
+if argv[:2] == ['api', 'graphql']:
+    query = next((a[len('query='):] for a in argv if a.startswith('query=')), '')
+    kind = 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
+    with open(d / 'calls', 'a') as f:
+        f.write(f"GRAPHQL {kind} {os.environ.get('GH_GRAPHQL_WHY', '')}\n")
+    answer_file = d / f'graphql_{kind}.json'
+    if query.count('{') != query.count('}') or not answer_file.exists():
+        print('{"errors":[{"message":"Parse error"}]}')
+        sys.exit(1)
+    body = json.loads(answer_file.read_text())
+    if kind == 'view' and 'full=false' in argv:   # @include(if: $full) false: GitHub leaves those fields out
+        for name in ('comments', 'reviews', 'commits'):
+            body['data']['repository']['pullRequest'].pop(name, None)
+    print(json.dumps(body))
+    sys.exit(0)
 if argv[:1] != ['api'] or '-i' not in argv:
     print(f'fake gh: unknown call {argv}', file=sys.stderr)
+    sys.exit(1)
+if (d / 'refuse_rest').exists():
+    print('HTTP/2.0 403 Forbidden\n\n{"message":"API rate limit exceeded"}')
     sys.exit(1)
 path = argv[-1]
 sent = next((a.split(': ', 1)[1] for a in argv if a.startswith('If-None-Match: ')), '')

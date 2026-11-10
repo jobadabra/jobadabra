@@ -2,7 +2,9 @@
 # `gh` on our tools' PATH: logs each call GitHub answers through GraphQL (the owner's 5,000-an-hour budget) with its session, then runs the real gh unchanged.
 # Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out", his pick "No GraphQL in our tools": "A wrapper around gh logs every remaining GraphQL call with its session,
 #   so anything left is named by measurement"). Our tools read and write PRs over REST (tools/pr-rest-lib.sh); what is logged here is what is left.
-# Log: GH_GRAPHQL_LOG (default ~/.cache/jobadabra/gh-graphql.log; "off": none), one line each: UTC time, session, caller, folder, command identity (no argument values). Count: tools/gh-graphql-report.sh.
+# Log: GH_GRAPHQL_LOG (default ~/.cache/jobadabra/gh-graphql.log; "off": none), one line each: UTC time, session, caller, folder, command identity (no argument values), then the reason when the caller names one
+#   in GH_GRAPHQL_WHY. Count: tools/gh-graphql-report.sh.
+# Why (owner, 10 Nov 2026, "REST first, GraphQL fallback"): pr_view and pr_checks (tools/pr-rest-lib.sh) read over GraphQL while REST core is out of quota and say so here as "fallback: REST out", so these lines are told apart from a stray call.
 # Guard: tests/test_gh_graphql_log.py.
 # Why (28 Oct 2026, load 158): the marker sits in the first lines; grepping the whole file read the real gh (a 40 MB program, ~2.5 s under load) on every call. Only the head is read.
 JOBADABRA_GH_SHIM=1   # Stable marker: skip every worktree copy when resolving the real executable.
@@ -20,6 +22,6 @@ if [ -n "$graphql" ] && [ "$log" != off ]; then
   . "$here/../session-name.sh" 2>/dev/null && who="$(session_name)" || who="?"
   caller="$(ps -o command= -p "$PPID" 2>/dev/null | awk '{for (i = 1; i <= NF && i <= 2; i++) {n = split($i, p, "/"); printf "%s%s", (i > 1 ? " " : ""), p[n]}}')"
   mkdir -p "$(dirname "$log")" 2>/dev/null
-  printf '%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "${1:-} ${2:-}" >> "$log" 2>/dev/null
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$who" "${caller:-?}" "$(basename "$PWD")" "${1:-} ${2:-}" "${GH_GRAPHQL_WHY:-}" >> "$log" 2>/dev/null
 fi
 exec "$real" "$@"
