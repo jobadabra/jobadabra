@@ -190,10 +190,12 @@ test('the persona search check\'s tape reaches the engine (src/search_tape.py)',
   assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_SEARCH_TAPE, undefined);
 });
 
-test('the Search check\'s per-AI-call log flag reaches the engine, and a person\'s run has none (src/ai/call_log.py)', () => {
-  // Why (#3535, Gitar, 7 Nov 2026): the flag was set on the workflow, dropped here, and the engine printed no `AI call:` line; the unit test of the engine never goes through this allowlist.
-  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', JOBADABRA_AI_CALL_LOG: '1'}).JOBADABRA_AI_CALL_LOG, '1');
-  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_AI_CALL_LOG, undefined);
+test('the run-log measure flags reach the engine, and a person\'s run has none (src/ai/call_log.py, src/ai/slots.py)', () => {
+  // Why (#3535, Gitar, 7 Nov 2026; sf 2/8, 10 Nov 2026): each measure flag is dropped by this allowlist unless named (AI_CALL_LOG was: the engine printed no `AI call:` line), and the engine's own tests never go through it, so one loop checks every flag.
+  for (const flag of ['JOBADABRA_AI_CALL_LOG', 'JOBADABRA_SLOT_LOG']) {
+    assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', [flag]: '1'})[flag], '1', flag);
+    assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'})[flag], undefined, flag);
+  }
 });
 
 test('with Notion connected, the Profile comes from Notion, not the local file', () => {

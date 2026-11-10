@@ -143,5 +143,32 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         self.assertTrue(levels, 'positive control: the AI was asked')
         self.assertEqual(set(levels), {slots.NORMAL}, "each batch is asked by the queue's worker, at one level for every reader")
 
+
+class SlotLog(unittest.TestCase):
+    """JOBADABRA_SLOT_LOG=1: one run-log line per slot taken, the measure for the slots' order (sf 2/8, 10 Nov 2026); off by default; numbers only."""
+
+    def taken(self, env, rank):
+        from unittest import mock
+        with mock.patch.dict('os.environ', env), mock.patch('builtins.print') as said, slots.priority(slots.SCORE), slots.ranked(rank), slots.Slots(2):
+            pass
+        return [call.args[0] for call in said.call_args_list]
+
+    def test_on_it_says_the_ticket_wait_and_start_with_numbers_only(self):
+        lines = self.taken({'JOBADABRA_SLOT_LOG': '1'}, (0, 12.5, 'Lyon, France'))
+        self.assertEqual(len(lines), 1)
+        self.assertRegex(lines[0], r'^Slot: SCORE rank \(0, 12\.5, \?\) arrival 0 waited \d+\.\d s started at \d+\.\d s \(1/2 busy\)$')
+        self.assertNotIn('Lyon', lines[0], 'no job value in the run log')
+
+    def test_a_line_that_cannot_be_written_neither_fails_the_call_nor_keeps_its_slot(self):
+        from unittest import mock
+        pool = slots.Slots(1)
+        with mock.patch.dict('os.environ', {'JOBADABRA_SLOT_LOG': '1'}), mock.patch('builtins.print', side_effect=BrokenPipeError):
+            with pool:
+                pass
+        self.assertEqual(pool.free, 1, 'the slot is back')
+
+    def test_off_by_default(self):
+        self.assertEqual(self.taken({'JOBADABRA_SLOT_LOG': ''}, ()), [])
+
 if __name__ == '__main__':
     unittest.main()

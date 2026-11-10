@@ -49,11 +49,11 @@ W4 (sources beyond EURES) gets its own plan after this one.
 
 ## Progress
 - [x] Sketch + owner's yes (10 Nov 2026: "Let's improve" · "Let's do the fixes"; the three decisions above asked via AskUserQuestion in session sa) (proof: none: the owner's answers in the sf and sa sessions, 10 Nov 2026)
-- [ ] 1/8 EURES jobs placed from Eurostat's map when read (proof: tests/unit/press/test_home_region_first.py; replay of 55 presses 31% -> 49%)
-- [ ] 2/8 The collecting thread only collects; one ranked list
+- [x] 1/8 EURES jobs placed from Eurostat's map when read, #3671; replay of 55 presses 31% -> 49% (proof: tests/unit/press/test_home_region_first.py @f653aea)
+- [ ] 2/8 The collecting thread only collects; one ranked list (proof: tests/unit/sources/test_first_jobs.py, tests/unit/press/test_one_scorer.py)
 - [ ] 3/8 One Run object
 - [ ] 4/8 Prepared at strategy save
-- [ ] 5/8 Batch scoring
-- [ ] 6/8 Job boards, one entry point
+- [ ] 5/8 Batch scoring: decided on session sa's Mac numbers (median 15 scored on a Mac plan vs 2.5 on CI); skipped if 2/8 brings CI to that
+- [ ] 6/8 Job boards, one entry point: built by session cr ([cr] 3/5, `src/sources/board_reader.py`); sf moves the three calls into `daily_search.py` in a cutover PR after 2/8
 - [ ] 7/8 Stages say why they stopped
 - [ ] 8/8 Delete what never runs

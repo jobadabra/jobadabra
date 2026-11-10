@@ -110,10 +110,10 @@ class SearchCharacterization(unittest.TestCase):
             self.addCleanup(patch.stop)
         self.addCleanup(self.join_scorer)   # registered last, so it runs first: before the patches and the temp folder go
 
-    def next_batch(self, *args):
-        """The scorer beside the search looks for landed jobs when a thread happens to start: a race with this file's instant gather. Off, except in the tests of that scorer (self.beside),
-        so the older tests keep their one order; ts, 10 Nov 2026."""
-        return self.real_next_batch(*args) if self.beside else ([], slots.SCORE)
+    def next_batch(self, db, profile, hidden, earlier, size, ceiling, only_waiting=False):
+        """The scorer beside the search picks only jobs that waited, except in that scorer's own tests (self.beside). Why (ts, 10 Nov 2026; sf 2/8): this file's
+        search is instant, so a job may land between any snapshot and the pick; asking for waiting ones only, before the claim, holds whatever the thread's timing."""
+        return self.real_next_batch(db, profile, hidden, earlier, size, ceiling, only_waiting or not self.beside)
 
     def join_scorer(self):
         """Waits for the scorer thread the search started (src/daily_search_scoring.py `_beside`).
@@ -264,8 +264,7 @@ class SearchCharacterization(unittest.TestCase):
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             out = self.run_search(limit=100)
-        self.assertEqual(self.calls.count('score'), 2, 'the waiting jobs, then the new job found with the time left')
-        self.assertEqual(len(self.score_calls[0]), 5, 'the first pass is the 5 waiting jobs, started with the search (beside it: ps E2a-1)')
+        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'the first round is waiting jobs, started with the search (beside it: ps E2a-1), a round of the one list (sf 2/8)')
         self.assertLess(self.calls.index('score'), self.calls.index('keep seen'), 'scored before the search imports what it found (import_sources)')
         self.assertEqual(len(self.stores.matches.list()), 6, '5 waiting + 1 new, all scored')
         self.assertNotIn('job(s) waiting, none scored', out)
@@ -302,7 +301,7 @@ class SearchCharacterization(unittest.TestCase):
         out = output.getvalue()
         self.assertEqual(seen, [True], 'the employer sites started reading while the waiting jobs were still being scored')
         self.assertNotEqual(threads[0], __import__('threading').get_ident(), 'the waiting jobs are scored beside the search, in a thread of their own')
-        self.assertEqual(len(self.score_calls[0]), 50, 'all 50 waiting jobs in the first pass: all of scoring\'s time is still theirs (L13)')
+        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'a round of the one ranked list: since sf 2/8 (owner, 10 Nov 2026: "One list together (Recommended)") the waiting jobs have no round of their own')
         self.assertLess(self.calls.index('scored'), self.calls.index('keep seen'), 'joined before the import: nothing reads their numbers half-written')
         self.assertNotIn('scoring skipped', out, 'its own connection: the search\'s never crosses a thread (a ProgrammingError would land here)')
         self.assertIn('(so far)', out)
@@ -341,7 +340,7 @@ class SearchCharacterization(unittest.TestCase):
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
-        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'every waiting job scored, not the floor of 3')
+        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'every waiting job scored, not the floor of 3: owed to the run past its clock (sf 2/8)')
 
     def test_after_a_change_of_places_the_waiting_pass_skips_the_jobs_the_cleanup_will_close(self):
         # Code review of #3058: the cleanup after the crawl closes jobs outside your places; scoring them first spent the clock on them.
@@ -355,13 +354,14 @@ class SearchCharacterization(unittest.TestCase):
 
     def test_the_waiting_pass_takes_all_of_scorings_time(self):
         # Owner, 3 Nov 2026: "If the jobs in the backlog means jobs that are not currently displayed in the jobs list, then all of it first". 8 wait,
-        # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 go first (the half share of #3074 took 6), the search's pass takes what is left.
+        # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 are owed to the run (the half share of #3074 took 6); since sf 2/8 in rounds of the one list.
         self.waiting_jobs(8)
         time_budget.start(180, now=time_budget.time.monotonic() - 100)
         time_budget.score_first()
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
-        self.assertEqual(len(self.score_calls[0]), 8)
+        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'the first round: waiting jobs, in the one ranked list (sf 2/8; until then all 8 in one pass)')
+        self.assertEqual(len(self.stores.matches.list()), 9, 'all 8 waiting and the new one scored in the run')
         self.assertLess(self.calls.index('score'), self.calls.index('keep seen'))
 
     def test_find_jobs_only_ever_asks_for_the_jobs_that_were_never_scored(self):

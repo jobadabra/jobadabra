@@ -58,6 +58,7 @@ const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'L
   'SystemRoot', 'SYSTEMROOT', 'windir', 'USERPROFILE', 'USERNAME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'ComSpec', 'PATHEXT',
   'JOBADABRA_FIXTURE_DIR', 'JOBADABRA_LOCATIONS_FILE',   // these two: the end-to-end journey's fixture feeds and fictional candidate (desktop/e2e), never set for a user
   'JOBADABRA_AI_CALL_LOG',   // Why (7 Nov 2026, #2920, Gitar on #3535): the Search check's per-AI-call run-log lines (src/ai/call_log.py); left out, the engine never saw the flag and printed nothing. Never set for a user
+  'JOBADABRA_SLOT_LOG',   // Why (sf 2/8, 10 Nov 2026): the measure for the AI slots' order (src/ai/slots.py): one line per slot taken, for a by-hand Mac run. Never set for a user
   // Claude Code's own headless sign-in (`claude setup-token`): where there is no Keychain sign-in (Linux, a CI runner) it is the only way
   // the user's Claude Code answers. It goes to the engine only to reach the user's own `claude -p` (27 Oct 2026: on a runner every AI step
   // of a search failed as "signed out" because this was left out).

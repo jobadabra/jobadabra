@@ -1,6 +1,8 @@
 """The one scorer beside the search, through the whole search (ts, 10 Nov 2026; owner asked via AskUserQuestion, "Yes, build it (Recommended)"). The harness is
 tests/unit/ai/test_daily_search_phases.py's (its own tests are not run again here); its gather lands the job and waits until the scorer has it."""
 import unittest
+
+from src import daily_search_scoring
 from unittest import mock
 
 from src import time_budget
@@ -48,7 +50,8 @@ class BesideTheSearch(phases.SearchCharacterization):
         with mock.patch.object(time_budget, 'record'), mock.patch.object(time_budget.time, 'monotonic', return_value=181):
             self.run_search(limit=100)
         self.assertTrue(self.scorer_gate.is_set())
-        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'the scorer ran after the search returned and the harness waited for it (the closing pass may score the new job too)')
+        self.assertGreaterEqual(len(self.stores.matches.list()), daily_search_scoring.BATCH, 'the scorer ran its first round after the search returned and the harness waited for it '
+                                '(since sf 2/8 a round of the one ranked list, not all 8 waiting jobs)')
 
 
 for _name in [name for name in dir(phases.SearchCharacterization) if name.startswith('test_') and name not in BesideTheSearch.__dict__]:
