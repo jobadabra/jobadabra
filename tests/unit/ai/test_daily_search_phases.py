@@ -27,7 +27,7 @@ class SearchCharacterization(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores = [], [], [], [], False
+        self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores, self.rounds = [], [], [], [], False, []
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
         self.failed = self.expire = self.late_jobs = False
         self.scorer_gate = None   # an Event: the scorer thread does nothing until the search has saved its run (test_a_scorer_that_starts_after_the_search_ended...)
@@ -180,6 +180,7 @@ class SearchCharacterization(unittest.TestCase):
     def score(self, db, candidates, profile, model, maximum, stats, on_scored, only_ids, scope='all'):
         self.event('score')
         self.score_calls.append(only_ids)
+        self.rounds += [only_ids] if __import__('threading').current_thread().name == 'scorer' else []   # Why (after #3685): the scorer's IN_FLIGHT first rounds start together, so which calls first is a race (load: its round of 1 came first, 1 in 16)
         self.score_scopes.append(scope)
         if self.score_error:
             raise self.score_error
@@ -264,7 +265,7 @@ class SearchCharacterization(unittest.TestCase):
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             out = self.run_search(limit=100)
-        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'the first round is waiting jobs, started with the search (beside it: ps E2a-1), a round of the one list (sf 2/8)')
+        self.assertEqual(len(max(self.rounds[:daily_search_scoring.IN_FLIGHT], key=len)), daily_search_scoring.BATCH, 'the first round is waiting jobs, started with the search (beside it: ps E2a-1), a round of the one list (sf 2/8)')
         self.assertLess(self.calls.index('score'), self.calls.index('keep seen'), 'scored before the search imports what it found (import_sources)')
         self.assertEqual(len(self.stores.matches.list()), 6, '5 waiting + 1 new, all scored')
         self.assertNotIn('job(s) waiting, none scored', out)
@@ -301,7 +302,7 @@ class SearchCharacterization(unittest.TestCase):
         out = output.getvalue()
         self.assertEqual(seen, [True], 'the employer sites started reading while the waiting jobs were still being scored')
         self.assertNotEqual(threads[0], __import__('threading').get_ident(), 'the waiting jobs are scored beside the search, in a thread of their own')
-        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'a round of the one ranked list: since sf 2/8 (owner, 10 Nov 2026: "One list together (Recommended)") the waiting jobs have no round of their own')
+        self.assertEqual(len(max(self.rounds[:daily_search_scoring.IN_FLIGHT], key=len)), daily_search_scoring.BATCH, 'a round of the one ranked list: since sf 2/8 (owner, 10 Nov 2026: "One list together (Recommended)") the waiting jobs have no round of their own')
         self.assertLess(self.calls.index('scored'), self.calls.index('keep seen'), 'joined before the import: nothing reads their numbers half-written')
         self.assertNotIn('scoring skipped', out, 'its own connection: the search\'s never crosses a thread (a ProgrammingError would land here)')
         self.assertIn('(so far)', out)
@@ -349,7 +350,7 @@ class SearchCharacterization(unittest.TestCase):
         outside = lambda job: not job['title'].endswith(('0', '1', '2', '3'))   # Old SRE 0..3 are no longer in the places
         with mock.patch.object(time_budget, 'record'), mock.patch.object(feeds, 'keep_open', side_effect=outside):
             self.run_search(limit=100)
-        early = {j['title'] for j in store.digest_jobs(self.db, only_new=False) if j['id'] in self.score_calls[0]}
+        early = {j['title'] for j in store.digest_jobs(self.db, only_new=False) if j['id'] in max(self.rounds[:daily_search_scoring.IN_FLIGHT], key=len)}
         self.assertEqual(early, {'Old SRE 4', 'Old SRE 5'})
 
     def test_the_waiting_pass_takes_all_of_scorings_time(self):
@@ -360,7 +361,7 @@ class SearchCharacterization(unittest.TestCase):
         time_budget.score_first()
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
-        self.assertEqual(len(self.score_calls[0]), daily_search_scoring.BATCH, 'the first round: waiting jobs, in the one ranked list (sf 2/8; until then all 8 in one pass)')
+        self.assertEqual(len(max(self.rounds[:daily_search_scoring.IN_FLIGHT], key=len)), daily_search_scoring.BATCH, 'the first round: waiting jobs, in the one ranked list (sf 2/8; until then all 8 in one pass)')
         self.assertEqual(len(self.stores.matches.list()), 9, 'all 8 waiting and the new one scored in the run')
         self.assertLess(self.calls.index('score'), self.calls.index('keep seen'))
 
