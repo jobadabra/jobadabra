@@ -107,7 +107,8 @@ class LevelGoesToTheAiTest(unittest.TestCase):
 
 class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
     EXEMPT = {'src/sources/feeds.py': 'the gate itself',
-              'src/sources/feed_facts.py': 'only which places still wait for an answer, after feed_scan sorted the titles'}
+              'src/sources/feed_facts.py': 'only which places still wait for an answer, after feed_scan sorted the titles',
+              'src/sources/job_stage.py': 'keeps nothing: names why aggregators.kept, which sorted the titles first, did not keep a job'}
 
     def test_each_file_that_keeps_jobs_by_title_runs_the_ai_sort_on_them_first(self):
         missing = []

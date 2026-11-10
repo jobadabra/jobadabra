@@ -8,6 +8,7 @@ right role + place by a blind judge).
   python3 tools/persona-search/gate.py compare <results dir> <out dir> [<main run dir>...]   verdict.json + table.md; exit 1 when red
 Judge: gate_judge.py. Personas: gate-personas.json (copied from the benchmark round). Tests: tests/test_search_personas_gate.py."""
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -466,6 +467,9 @@ def main(argv):
     elif kind == 'compare':
         results, out, mains = argv[1], Path(argv[2]), argv[3:]
         verdict = compare(load_results(results), [load_results(m) for m in mains])
+        if os.environ.get('SEARCH_REFERENCE_JOBS'):   # in = out per source (tools/persona-search/inout.py): the night's reference job's keys
+            import inout
+            print(f"in = out: {inout.attach(verdict['rows'], results, os.environ['SEARCH_REFERENCE_JOBS'])} persona(s)")
         out.mkdir(parents=True, exist_ok=True)
         (out / 'verdict.json').write_text(json.dumps({**verdict, 'personas': {str(k): v for k, v in load_results(results).items()}}, ensure_ascii=False, indent=1))
         (out / 'table.md').write_text(table(verdict), encoding='utf-8')

@@ -57,6 +57,11 @@ def _words_title(title):
 ASKED = '\x00asked'   # a key in the run's judged titles: the AI title sort ran this run (reset with them)
 
 
+def asked():
+    """Whether the AI title sort ran this run: a title it left unjudged is then unknown (src/sources/job_stage.py counts it as never asked)."""
+    return bool(_triaged().get(ASKED))
+
+
 def wanted_title(title):
     """A title we keep and score: the AI's answer for this search (src/ai/title_triage.py; owner, 26 Oct 2026: "The AI decides"; a role word
     kept "Pilote / Product Owner" for a pilot search, a level word dropped "Senior First Officer"). One the AI sort did not judge though it
@@ -64,7 +69,7 @@ def wanted_title(title):
     judged = judged_title(title)
     if judged is not None:
         return judged
-    return False if _triaged().get(ASKED) else _words_title(title)
+    return False if asked() else _words_title(title)
 
 
 def sure_title(title):

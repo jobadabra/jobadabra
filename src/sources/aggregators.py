@@ -272,15 +272,24 @@ def kept(db, name, found, now=None, shown=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
     (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py). shown: {url: item} of the jobs handed early (early_items),
     taken as they are, not recorded again."""
-    now, matched, fresh, shown = now or time_budget.wall(), [], [], shown if shown is not None else {}
+    from collections import Counter
+    from . import job_stage
+    now, matched, fresh, shown, stages = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter()
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
     with db:
         for job in found:
             if job.get('url') in shown:
                 matched.append(shown[job['url']])
+                stage = 'kept'
             elif job.get('url') and feeds.wanted_title(job['title']) and feeds.wanted_location(job):
                 matched.append(_item(db, name, job, now))
                 fresh.append(matched[-1])
+                stage = 'kept'
+            else:
+                stage = job_stage.of(job)   # Why (sa's plan WP3, 10 Nov 2026): every job read leaves here with a stage; none goes unseen
+            stages[stage] += 1
+            job_stage.say_one(name, stage, job)
+    job_stage.say(name, len(found), stages)
     board_employers.fill_missing(fresh)   # the page's own hiringOrganization, a few per run
     board_employers.note(matched, name)
     return matched
