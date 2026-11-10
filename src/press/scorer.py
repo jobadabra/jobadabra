@@ -32,6 +32,12 @@ def shared():
     return _shared[0]
 
 
+def unclaimed(ids):
+    """The ids of `ids` nobody has claimed yet, in the order given (nothing is claimed)."""
+    with _lock:
+        return [job_id for job_id in ids if job_id not in _claimed]
+
+
 def claim(ids, ceiling=None, limit=None):
     """The ids of `ids` nobody has claimed yet, now claimed for the caller, in the order given: at most `limit` of them, and at most up to `ceiling` claims in all (None: no bound)."""
     with _lock:

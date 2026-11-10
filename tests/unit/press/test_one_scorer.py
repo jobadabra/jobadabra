@@ -4,6 +4,7 @@ Design: a job is Listed (a reader), Placed (place_triage), Kept (title sorting),
 included, runs beside the readers and stops at the run's end minus TAIL; the job facts take only what scoring leaves; the slice scores `first` jobs once and the scorer
 goes on; AI calls: first press's local reads > scoring of this run's jobs > the rest > the jobs of earlier runs (LATER) > the web search.
 Guard: release - what a first Find jobs run gives the person in its 3 minutes."""
+import itertools
 import threading
 import unittest
 from pathlib import Path
@@ -124,15 +125,29 @@ class NextBatch(unittest.TestCase):
         self.assertEqual((len(ids), level), (2, slots.LATER), 'L35 (8 Nov 2026): scoring them before the employers are named left 0 of 561 sites read')
 
     def test_a_batch_is_never_both_this_runs_jobs_and_earlier_ones(self):
-        """Code review of ts: a mixed batch took SCORE for the jobs of earlier runs too, which L35 keeps at LATER."""
+        """Code review of ts: a mixed batch took SCORE for the jobs of earlier runs too, which L35 keeps at LATER. A batch is the head's run of one kind."""
         from src.daily_helpers import to_score
         self.land('old1', 'old2')
         earlier = frozenset(job['id'] for job in to_score(self.db, frozenset()))
         self.land('new1')
-        ids, level = self.pick(earlier=earlier, size=5)
-        self.assertEqual((len(ids), level), (1, slots.SCORE), 'this run\'s job first, alone')
-        ids, level = self.pick(earlier=earlier, size=5)
-        self.assertEqual((len(ids), level), (2, slots.LATER), 'then the earlier ones, at LATER')
+        picks = [self.pick(earlier=earlier, size=5) for _ in range(2)]
+        for ids, level in picks:
+            self.assertIn(len({job_id in earlier for job_id in ids}), (1,), f'one kind per batch: {ids}')
+            self.assertEqual(level, slots.LATER if ids[0] in earlier else slots.SCORE)
+        taken = [job_id for ids, _ in picks for job_id in ids]
+        self.assertEqual((len(taken), len(set(taken))), (3, 3), 'all three, none twice')
+
+    def test_waiting_and_new_jobs_are_one_list_the_nearest_first(self):
+        """sf 2/8 (owner, 10 Nov 2026, asked via AskUserQuestion: "One list together (Recommended)": "A near new job is not scored after a far old one")."""
+        from src.daily_helpers import to_score
+        km = {'old near': 5, 'old far': 500, 'new near': 3, 'new far': 800}
+        self.land('old near', 'old far')
+        earlier = frozenset(job['id'] for job in to_score(self.db, frozenset()))
+        self.land('new near', 'new far')
+        title = {job['id']: job['title'][len('Driver '):] for job in to_score(self.db, frozenset())}
+        with mock.patch('src.time_budget.best_first', lambda jobs: sorted(jobs, key=lambda job: km[job['title'][len('Driver '):]])):
+            picks = [[title[job_id] for job_id in self.pick(earlier=earlier, size=1)[0]] for _ in range(4)]
+        self.assertEqual(picks, [['new near'], ['old near'], ['old far'], ['new far']], 'by distance, whichever run found them')
 
     def test_twelve_jobs_landing_over_the_search_are_all_scored_not_three(self):
         """The owner's scenario (night 9 Nov: 73-204 jobs in the places, 3 scored): jobs land source by source while the scorer polls; every one is scored once."""
@@ -217,7 +232,7 @@ class TheThreadBesideTheSearch(unittest.TestCase):
             round_run['score'] = {'done': 5, 'pending': 5}
             round_run['warnings'].append('a late warning')
         with mock.patch.object(scoring, 'score_candidates', side_effect=late_round), mock.patch.object(scoring, 'sync_partial'), \
-                mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring, 'next_batch', return_value=([], slots.SCORE)), \
+                mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring, 'next_batch', side_effect=itertools.chain([([1], slots.LATER)], itertools.repeat(([], slots.SCORE)))), \
                 mock.patch.object(scoring.score, 'queue', return_value=[{'id': 1}]), mock.patch.object(scoring, 'to_score', return_value=[]), \
                 mock.patch.object(scoring, '_stay', return_value=[]):
             finish = scoring.score_beside(args, self.stores, mock.Mock(), run, lambda: 'Profile v1', frozenset(), frozenset(), clock)

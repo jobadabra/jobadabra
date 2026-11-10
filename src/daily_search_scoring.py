@@ -1,4 +1,5 @@
 # Search scoring phases: shared timed batches, enrichment and incremental match writes.
+import itertools
 import threading
 
 from .ai import enrich, score, slots
@@ -18,9 +19,9 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     scored only by the pass at the end of search(), which met "No time left" at 105-163 s of 135. What `score_jobs` does after the import is the closer for what is left.
     Design (3 Nov 2026, owner, #3058, quoted in full in the PR): Find jobs grows the person's list of scored jobs. A job found and never scored is
     the cheapest growth (one score, no search), so a pressed or scheduled refresh scores ALL of those it has time for, best places and closest jobs
-    first, and searches for new jobs with the time left. Those waiting jobs are the first batch (sized by the clock, as before) and wait at AI level LATER (ps E2a-1,
-    owner, 8 Nov 2026: "Both: no waits + background (Recommended)"): scoring them first held the employer naming back and 0 of 561 sites were read; this run's own
-    jobs go at SCORE. Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score
+    first, and searches for new jobs with the time left. Those waiting jobs are ranked in one list with this run's (sf 2/8, owner 10 Nov 2026: "One list together
+    (Recommended)"; until then they were a first batch of their own) and their calls wait at AI level LATER (ps E2a-1, owner, 8 Nov 2026: "Both: no waits + background
+    (Recommended)"): scoring them first held the employer naming back and 0 of 561 sites were read; this run's own jobs go at SCORE. Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score
     action's (daily_modes.rescore_mode), not Find jobs' (scope='new'), and not the jobs the cleanup after the crawl closes as outside your places (feeds.keep_open, a cache
     read). Each job is claimed once (src/press/scorer.py); the jobs this run finds are scored up to score_max (60 in the app; the waiting batch is outside it).
     Returns the call that ends it: it stops the scorer after the round in flight and waits for it, to the run's end at most; the search calls it before it imports what it found, so nothing reads
@@ -37,10 +38,7 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         print(f'Warning: waiting jobs not scored first ({type(error).__name__}): they are scored after the search')
         return _nothing
     run['waiting'] = len(waiting) - taken
-    first = scorer.claim([job['id'] for job in waiting[:taken]])   # the waiting jobs are sized by the clock alone (L13), not by score_max
-    if first:
-        step_yield.scored('scoring', set(first))   # report only (src/press/step_yield.py): what the step took in hand
-    scorer.begin()   # the slice of a first press claims its jobs from here, so no job is scored twice
+    scorer.begin()   # from here the slice of a first press scores nothing itself: this scorer takes every job (src/first_jobs.py _Scoring)
     total, stop, lock, closed = {}, threading.Event(), threading.Lock(), [False]
 
     def score_batch(own_db, own_stores, ids, level):
@@ -60,9 +58,11 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
             return bool(stats.get('done'))
 
     def work(own_db, own_stores):
-        if first:
-            score_batch(own_db, own_stores, first, slots.LATER)   # one round for all the waiting jobs, as before (L13: they keep all of scoring's time)
-        drain(stop, lambda: next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + len(first)), lambda ids, level: score_batch(own_db, own_stores, ids, level), time_budget.ended)
+        # Design (sf 2/8, owner 10 Nov 2026, asked via AskUserQuestion: "One list together (Recommended)", "At each new arrival (Recommended)"): the jobs that waited
+        # and the ones this run finds are one list, ranked by one key (your places, distance, closeness) at every pick, so a near new job is never scored after a far
+        # old one. The waiting ones still count outside score_max, sized by the clock (`taken`, L13); they no longer take a first round of their own.
+        drain(stop, lambda: next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + taken), lambda ids, level: score_batch(own_db, own_stores, ids, level), time_budget.ended,
+              waiting=bool(taken))
 
     def wait():
         """Seconds the search may wait for the round in flight: to the run's end (a call started before it ends by it, TAIL), None without a budget."""
@@ -87,22 +87,28 @@ def _stay(db, jobs):
 
 
 def next_batch(db, profile, hidden, earlier, size, ceiling):
-    """-> (ids, level): up to `size` jobs the scorer has not claimed, best places first, claimed now (at most `ceiling` in the run). The jobs this run found come first, at SCORE;
-    the ones that waited before the run began (`earlier`: their ids) only when none of this run's is left, at LATER (a batch is never both)."""
+    """-> (ids, level): up to `size` jobs the scorer has not claimed, from the head of the one ranked list (score.queue: your places, distance, closeness), claimed now
+    (at most `ceiling` in the run). A batch is the head's run of one kind: this run's jobs at SCORE, or the ones that waited before it began (`earlier`: their ids) at
+    LATER, so their calls never queue ahead of the employer naming (L35); a batch is never both."""
     queue = score.queue(db, _stay(db, to_score(db, hidden)), profile, scope='new')
-    ids = [job['id'] for job in queue]
-    fresh = [job_id for job_id in ids if job_id not in earlier]
-    taken, level = scorer.claim(fresh, ceiling, size), slots.SCORE
-    if not taken:   # none of this run's is left unclaimed
-        taken, level = scorer.claim(ids, ceiling, size), slots.LATER
+    free = scorer.unclaimed([job['id'] for job in queue])
+    if not free:
+        return [], slots.SCORE
+    old = free[0] in earlier
+    head = list(itertools.takewhile(lambda job_id: (job_id in earlier) == old, free))
+    taken, level = scorer.claim(head, ceiling, size), slots.LATER if old else slots.SCORE
     if taken:
         step_yield.scored('scoring', set(taken))
     return taken, level
 
 
-def drain(stop, next_batch, score_batch, ended, pause=None):
-    """Score batch after batch until `stop` is set or the run's time is over (`ended()`); with no job landed, wait `POLL` seconds (or call `pause`) and look again."""
-    while not stop.is_set() and not ended():
+def drain(stop, next_batch, score_batch, ended, pause=None, waiting=False):
+    """Score batch after batch until `stop` is set or the run's time is over (`ended()`); with no job landed, wait `POLL` seconds (or call `pause`) and look again.
+    `waiting`: jobs waited when the run began, so the first pick is made whatever `stop` and the clock say: they are scored in this run (L13), even when the search
+    ends at once (until sf 2/8 they were a round of their own, started before this loop)."""
+    picked = False
+    while (waiting and not picked) or not (ended() or (picked and stop.is_set())):
+        picked = True
         ids, level = next_batch()
         if ids:
             if score_batch(ids, level) is False:   # a round that scored nothing: the next would not either
