@@ -205,3 +205,30 @@ test('only a refused owner reads "not on for this install"; the site\'s own reas
   assert.match(await said(409, {ok: false, error: 'already started'}), /already started/i);
   assert.doesNotMatch(await said(404, {ok: false, error: 'no queued night to run'}), /not on for this install/);
 });
+
+test('cs 4/4: an auto night is posted as the auto task and started as such; every /reads answer is told to each listener, and a listener that throws never loses the answer', async () => {
+  const {autoSend, autoRun, readTake, onTaken} = await import('../../../lib/ready-site.js');
+  const fake = site(200, {ok: true, batch: 'b1', queued: 1});
+  await autoSend(storage(), {night: '2026-11-10', jobs: [{id: 'j1'}]}, {fetcher: fake.fetcher});
+  await autoRun(storage(), {fetcher: fake.fetcher});
+  assert.deepEqual(fake.seen.map(call => [new URL(call.url).pathname, JSON.parse(call.init.body).task]), [['/api/ready/batch', 'auto'], ['/api/ready/run', 'auto']]);
+  const heard = [], reads = site(200, {ok: true, reads: [{job: 'r1'}], submits: [{job: 's1'}], pendingSubmits: 0});
+  const off = onTaken(got => { heard.push(got.submits[0].job); });
+  const throwing = onTaken(() => { throw new Error('listener down'); });
+  const got = await readTake(storage(), {fetcher: reads.fetcher});
+  assert.deepEqual([got.ok, got.reads.length, heard], [true, 1, ['s1']]);
+  off(); throwing();
+  await readTake(storage(), {fetcher: reads.fetcher});
+  assert.deepEqual(heard, ['s1'], 'a removed listener hears nothing more');
+});
+
+test('code review (cs 4/4): the /reads listeners all start at once, so a slow one never holds another back', async () => {
+  const {readTake, onTaken} = await import('../../../lib/ready-site.js');
+  let release, heard = false;
+  const gate = new Promise(resolve => { release = resolve; });
+  const offSlow = onTaken(() => gate), offFast = onTaken(() => { heard = true; });
+  const pending = readTake(storage(), {fetcher: site(200, {ok: true, reads: [], submits: []}).fetcher});
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(heard, true, 'the second listener ran while the first still waited');
+  release(); await pending; offSlow(); offFast();
+});

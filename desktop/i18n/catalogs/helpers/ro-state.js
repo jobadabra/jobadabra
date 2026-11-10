@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "Automatizarea completă ți-a predat această candidatură: verific-o și trimite-o tu.",
   "filling": "Se completează",
   "submittingSoon": "Se trimite în curând",
+  "inCloud": "Se trimite din cloud-ul nostru",
   "submitting": "Se trimite…",
   "connectionOff": "Conexiune oprită",
   "fillingFields": "Se completează · {done} din {total} câmpuri",

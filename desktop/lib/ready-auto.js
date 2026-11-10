@@ -38,18 +38,19 @@ export function createAutoSend({storage, eligible, tonightCodes, sendNow, now = 
 }
 
 // Electron's hooks: a timer, the screen lock, sleep, shutdown and the app's quit. app and powerMonitor come from main; absent (tests): nothing starts.
+// `check(why, leaving)`: leaving is true when the Mac is about to go away (lock, sleep, shutdown, quit): what also hands the Full automation items to the cloud (lib/cloud-auto.js), never the timer.
 export function startAutoSend(check, {app, powerMonitor, every = CHECK_EVERY_MS, quitWait = QUIT_WAIT_MS} = {}) {
   if (!app || !powerMonitor) return () => {};
   const timer = setInterval(() => check('every few minutes'), every), first = setTimeout(() => check('app start'), 60000);
   timer.unref?.(); first.unref?.();
-  powerMonitor.on('lock-screen', () => check('screen locked'));
-  powerMonitor.on('suspend', () => check('the Mac sleeps'));
-  powerMonitor.on('shutdown', event => { event.preventDefault?.(); withLimit(check('the Mac shuts down'), quitWait).then(() => app.quit()); });
+  powerMonitor.on('lock-screen', () => check('screen locked', true));
+  powerMonitor.on('suspend', () => check('the Mac sleeps', true));
+  powerMonitor.on('shutdown', event => { event.preventDefault?.(); withLimit(check('the Mac shuts down', true), quitWait).then(() => app.quit()); });
   let lastDone = false;
   app.on('before-quit', event => {
     if (lastDone || event.defaultPrevented) return;   // the app's own quit check asked first: its next quit comes back here
     event.preventDefault();
-    withLimit(check('the app quits'), quitWait).then(() => { lastDone = true; app.quit(); });
+    withLimit(check('the app quits', true), quitWait).then(() => { lastDone = true; app.quit(); });
   });
   return () => { clearInterval(timer); clearTimeout(first); };
 }

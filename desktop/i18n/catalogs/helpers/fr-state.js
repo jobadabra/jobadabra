@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "L'automatisation complète vous a confié cette candidature : vérifiez et envoyez-la vous-même.",
   "filling": "Remplissage",
   "submittingSoon": "Envoi prochain",
+  "inCloud": "Envoi depuis notre cloud",
   "submitting": "Envoi…",
   "connectionOff": "Connexion désactivée",
   "fillingFields": "Remplissage · {done} sur {total} champs",

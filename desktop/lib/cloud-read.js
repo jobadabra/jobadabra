@@ -25,7 +25,7 @@ export function createCloudRead({storage, jobs, ownKey = '', site = ready, wait 
   }
   const open = () => [...slots].filter(([, slot]) => !slot.settled);
   const settleAll = value => { for (const [, slot] of open()) slot.resolve(value); };
-  let ended = false;
+  let ended = false, unhook = null;
 
   function settle(taken) {
     const slot = slots.get(String(taken.job));
@@ -53,11 +53,14 @@ export function createCloudRead({storage, jobs, ownKey = '', site = ready, wait 
   return {
     async start() {
       if (!slots.size) return {ok: false, error: 'No job to check.'};
+      // Why (cs 4/4, code review): listening from BEFORE the night is posted, so a read another caller of /reads takes (the Full automation take-back) is never lost between the post and the first poll.
+      unhook = site.onTaken?.(got => { for (const taken of got.reads || []) settle(taken); });
       const sent = await site.readSend(storage, jobs.filter(job => slots.has(siteId(job))).map(job => ({id: siteId(job), url: job.url, title: String(job.title || ''), company: String(job.company || '')})), {ai: ownKey});
-      if (!sent.ok) return {ok: false, error: sent.error};
+      if (!sent.ok) { unhook?.(); return {ok: false, error: sent.error}; }
       const started = await site.readStart(storage);
-      if (!started.ok) return {ok: false, error: started.error};
-      poll().catch(() => settleAll(unreadable('failed'))).finally(() => finish());
+      if (!started.ok) { unhook?.(); return {ok: false, error: started.error}; }
+      // Why (cs 4/4): the site's one /reads call also hands out the install's auto outcomes, and a Full automation take-back may call it while this run waits: it tells every read it took to this run too.
+      poll().catch(() => settleAll(unreadable('failed'))).finally(() => { unhook?.(); finish(); });
       return {ok: true};
     },
     /** The step's `readForm(job)`: the read of this job's form, resolved when the site's night reports it; null for a form not in the batch. */

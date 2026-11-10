@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "La automatización completa te pasó esta solicitud: revísala y envíala tú.",
   "filling": "Rellenando",
   "submittingSoon": "Enviando pronto",
+  "inCloud": "Enviando desde nuestra nube",
   "submitting": "Enviando…",
   "connectionOff": "Conexión desactivada",
   "fillingFields": "Rellenando · {done} de {total} campos",

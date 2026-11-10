@@ -1,6 +1,8 @@
 // Testable Electron startup, activation, quit decisions and terminal shutdown; services are injected.
 import {activityText} from '../i18n/activity-notices.js';
 import * as quitDialog from './quit-dialog.js';
+import {chooseCloud, offerFor} from './cloud-quit.js';
+import {cloudAutoOf} from './cloud-auto.js';
 import {NO_PLACE} from '../renderer/targets.js';
 
 /**
@@ -37,7 +39,7 @@ const WORKING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 
 const fillingHidden = session => WORKING.has(session.background?.state);
 
 export function installQuitHandling({app, platform, state, pipeline, terminals, critical = {labels: () => [], whenDone: () => Promise.resolve()}, stopDataJob = () => Promise.resolve(), dataRunning = () => false, shouldAskOnQuit,
-  askWhyLeaving, showDialog, icon, getWindows, toWindow, notify, later = setTimeout, log = () => {}, onCancel = () => {}}) {
+  askWhyLeaving, showDialog, icon, getWindows, toWindow, notify, later = setTimeout, log = () => {}, onCancel = () => {}, cloudQuit = {offerFor, chooseCloud}}) {   // cloudQuit: a test's own (lib/cloud-quit.js)
   let quitting = false;
   app.on('window-all-closed', () => { if (platform !== 'darwin') app.quit(); });
   // Any quit, asked or not (update install, last window): an export, import or backup still running is stopped and its tar awaited first, then the quit goes on.
@@ -58,6 +60,22 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
     if (!enginesStopped && pipeline.hasChildren()) { event.preventDefault(); stopEnginesThenQuit(); return; }
     terminals.shutdown();
   });
+  // The quit dialog's Always on button (lib/cloud-quit.js): quit, or stay open on Always on's own card when nothing could be turned on.
+  const thirdButton = (storage, cloud, window) => cloudQuit.chooseCloud(storage, cloud).then(next => {
+    if (next === 'quit') { quitting = true; app.quit(); return; }
+    onCancel(); window?.show(); toWindow('openTarget', {card: 'always-on'});
+  });
+  // Only sessions are working: keep them, stop them and quit, or (a Pro install with Full automation applications) the Always on button.
+  const sessionsOnlyQuit = ({storage, window, sessions, label, show}) => {
+    const cloud = storage ? cloudQuit.offerFor(storage, sessions) : null;   // what Always on does for them (lib/cloud-quit.js, cs 4/4)
+    const choice = show(quitDialog.sessionsOnly(sessions, label, cloud), 0);
+    log('window', 'quit decision', {choice: ['keep sessions', 'stop sessions', 'always on'][choice] || 'stop sessions', cloud: cloud || '', sessions: sessions.length});
+    if (choice === 0) { onCancel(); window?.show(); toWindow('session', 'open', {id: sessions[0].id}); return; }
+    if (choice === 2 && cloud) return thirdButton(storage, cloud, window);
+    if (cloud === 'on') cloudAutoOf(storage)?.declineQuit();   // "Stop and quit" there stops them as before: this quit hands nothing over
+    quitting = true;
+    app.quit();
+  };
   const beforeQuit = event => {
     const {storage, window, telemetry, demo, smoke} = state();
     if (quitting || demo || smoke) return;
@@ -79,20 +97,14 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
     const show = (dialog, cancelId) => showDialog(getWindows()[0], {
       type: 'none', icon: icon(), ...dialog, defaultId: 0, cancelId,
     });
-    if (!busy && !queue.length && !important.length) {
-      const choice = show(quitDialog.sessionsOnly(sessions, label), 0);
-      log('window', 'quit decision', {choice: choice === 0 ? 'keep sessions' : 'stop sessions', sessions: sessions.length});
-      if (choice === 0) { onCancel(); window?.show(); toWindow('session', 'open', {id: sessions[0].id}); return; }
-      quitting = true;
-      app.quit();
-      return;
-    }
+    if (!busy && !queue.length && !important.length) return sessionsOnlyQuit({storage, window, sessions, label, show});
     const dialog = quitDialog.working({busy, queue, sessions, important, label, taskName: pipeline.taskName});
     const choice = show(dialog, 2);
     log('window', 'quit decision', {choice: ['when idle', 'now', 'cancel'][choice], queued: queue.length, sessions: sessions.length, important: important.join(', ')});
     if (choice === 2) { onCancel(); return; }
     quitting = true;
     if (choice === 1) {
+      cloudAutoOf(storage)?.declineQuit();   // "Quit now" says it stops them (code review of cs 4/4): this quit hands nothing over
       pipeline.freezeQueue(storage);
       pipeline.stopRunning();
       if (dataRunning()) stopDataThenQuit();   // the data job's tar is gone before the app goes
@@ -102,6 +114,8 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
     notify(activityText('quitTitle'), dialog.detail, NO_PLACE.app, 'info');
     Promise.all([pipeline.whenIdle(), critical.whenDone()]).then(() => app.quit());
   };
-  app.on('before-quit', beforeQuit);
+  // Why (cs 4/4, 10 Nov 2026): the Ready send and the cloud hand-over (lib/ready-auto.js startAutoSend) also listen to before-quit and skip a quit that is already held; this one goes FIRST, so
+  // "Keep working" never finds its applications already handed to the cloud, and "Stop and quit" can say so before anything is sent.
+  (app.prependListener || app.on).call(app, 'before-quit', beforeQuit);
   return beforeQuit;
 }

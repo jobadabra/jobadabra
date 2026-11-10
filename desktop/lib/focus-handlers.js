@@ -1,6 +1,7 @@
 // The jobs, focus and status IPC (moved out of main.js, 8 Oct 2026): the theme and automation switches, deleting a job and setting its status, the Focus
 // page's list, the daily target and audience, interview prep, describing a job, reassigning an email, focus history, outcomes and the rejection
 // review. main.js passes in the services they share. Guards: the focus, targets and status tests in desktop/test.
+import {cloudAutoOf} from './cloud-auto.js';
 import {copyMessage, copyFields} from '../i18n/display-copy.js';
 import {focusDisplayReply} from './pipeline-commands.js';
 import * as notionGate from './notion-gate.js';
@@ -50,7 +51,7 @@ export function registerFocusHandlers(ctx) {
     appLog('applied', `asked from the app (you): ${job}`);
     const result = await pipeline.setStatus(storage, job, status).catch(error => ({ok: false, error: error.message}));
     appLog('applied', `asked from the app (you): ${job} -> ${result?.ok ? 'marked applied' : result?.error || 'failed'}`);
-    if (result?.ok) { track('applied', {how: 'manual'}); server.sessionSubmitted(job); }   // the job is Applied: its sessions are over, as for a submit the extension saw
+    if (result?.ok) { track('applied', {how: 'manual'}); cloudAutoOf(storage)?.stopForUrl(job); server.sessionSubmitted(job); }   // the job is Applied: its sessions are over, as for a submit the extension saw
     return result;
   });
   // Focus: what to do next (Notion, no AI); Done on a reply logs a "Replied" event.

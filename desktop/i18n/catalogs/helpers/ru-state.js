@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "Полная автоматизация передала эту заявку вам: проверьте и отправьте её сами.",
   "filling": "Заполнение",
   "submittingSoon": "Скоро отправка",
+  "inCloud": "Отправка из нашего облака",
   "submitting": "Отправка…",
   "connectionOff": "Подключение отключено",
   "fillingFields": "Заполнение · {done} из {total} полей",

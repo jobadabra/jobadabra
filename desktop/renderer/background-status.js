@@ -27,6 +27,7 @@ export function sessionModeChip(item) {
 const WORDS = {
   queued: [t('helpers.queued'), 'neutral'], preflight: [t('helperState.filling'), 'info'], filling: [t('helperState.filling'), 'info'], ready_for_review: [t('helperState.readyReview'), 'warn'],
   needs_user_handoff: [t('helperState.needsYou'), 'warn'], manual_submit_required: [t('helperState.needsYou'), 'warn'], waiting_to_submit: [t('helperState.submittingSoon'), 'info'], submitting: [t('helperState.submitting'), 'info'],
+  cloud: [t('helperState.inCloud'), 'info'],   // cs 4/4: handed to the cloud browser (lib/background-apply-cloud.js)
 };
 
 /**

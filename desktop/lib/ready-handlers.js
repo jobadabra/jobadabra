@@ -11,6 +11,7 @@ import {fillNowPlan, waitingOn} from './ready-fill-now.js';
 import {CHIPS, costLine, pickTop} from './ready-top.js';
 import {costVisible} from './ai/names.js';
 import {createAutoSend, startAutoSend} from './ready-auto.js';
+import {wireCloudAuto} from './cloud-auto-wire.js';
 import {isTwin} from './twin.js';
 import {log as appLog} from './log.js';
 import {keysOf} from './ai/index.js';
@@ -83,7 +84,9 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   const ownApp = () => applyChosen(storage.settings()) && !isTwin() && !['JOBADABRA_DEMO', 'JOBADABRA_E2E', 'JOBADABRA_SMOKE', 'CI'].some(name => process.env[name]) && !!site.ownerSecret(storage);
   const autoSend = createAutoSend({storage, eligible: ownApp, tonightCodes: () => pickToSend(cached(), settings()).map(job => job.code),
     sendNow: sendTonight, log: (message, extra) => appLog('ready', message, extra)});
-  startAutoSend(autoSend.check, {app, powerMonitor});
+  // Full automation in the cloud (cs 4/4, lib/cloud-auto.js): when the Mac is about to go away, its confirmed items that have not pressed go to the cloud browser; only Always on. The same departure hooks, never the timer.
+  const cloudAuto = wireCloudAuto({storage, app, build, jobs: cached, log: (message, extra) => appLog('ready', message, extra)});
+  startAutoSend((why, leaving) => Promise.all([autoSend.check(why), leaving ? cloudAuto.handOver(why) : null]), {app, powerMonitor});
   // What a press would do (lib/ready-fill-now.js): send at once, ask first (forms of this night still wait for you; or only opened jobs are left), or nothing to fill.
   const planFor = async ({again = false, confirmed = false, refill = true} = {}) => {
     const all = await jobs(), mine = settings(), rows = await site.rows(storage).catch(() => ({}));
