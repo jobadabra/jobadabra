@@ -55,8 +55,9 @@ test('a refused publish puts the file back: Notion and the cache never disagree'
   assert.deepEqual(await strategy.retune(storage, [], deps), {changed: []});
 });
 
-test('Prepare top matches reads its result line', () => {
+test('Apply readiness on the top matches reads its result line', () => {
   assert.equal(pipeline.taskSummary('kits', ['Auto-drafted 2 of 2 kit(s); 0 failed', 'Applications ready: 2']), 'Applications ready: 2');
   assert.equal(pipeline.taskSummary('kits', ['Kits ready: 2']), 'Kits ready: 2', 'an older engine still writes this line');
-  assert.equal(pipeline.TASKS.kits.name, 'Prepare top matches');
+  assert.equal(pipeline.taskSummary('kits', ['Apply readiness: 3 jobs checked: 2 simple, 1 needs you']), '3 jobs checked: 2 simple, 1 needs you', 'the cloud run\'s own line (lib/top-matches-line.js), any language');
+  assert.equal(pipeline.TASKS.kits.name, 'Apply readiness on the top matches');
 });

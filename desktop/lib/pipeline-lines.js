@@ -20,7 +20,7 @@ export function isDataLine(line) {
 export const TASKS = {
   insight: {name: 'Insight', result: /^(Insight sent: |Insight: )/},
   weekly: {name: 'Search analysis', result: /^Weekly report sent: /},
-  kits: {name: 'Prepare top matches', result: /^(?:Applications|Kits) ready: /},
+  kits: {name: 'Apply readiness on the top matches', result: /^(?:Applications|Kits) ready: |^Apply readiness: /},
   visits: {name: 'Find jobs using your browser', result: /^Read \d+ of \d+ sites?/},
   tailor: {name: 'Tailor CV + cover letter', result: /^Tailored \d+ of \d+ CV/},
   today: {name: "Today's list", result: /^(Digest ready: |No new jobs since|Sent \d+ Telegram message)/},
@@ -42,7 +42,7 @@ export function appMessage(log) {
 // The result line a task printed, made readable: "Insight sent: Skills — Go in 40% (0.012 USD)" -> "Skills — Go in 40%".
 export function taskSummary(kind, log) {
   const line = log.filter(entry => TASKS[kind]?.result.test(entry)).pop();
-  return line ? readable(line).replace(/^(Insight sent|Weekly report sent|Insight): /, '')
+  return line ? readable(line).replace(/^(Insight sent|Weekly report sent|Insight|Apply readiness): /, '')
     .replace(/^🔎 Source scout · /, '').replace(/\s*\([\d.]+ USD\)$/, '').trim() : null;
 }
 // A line of the engine's output that says what it is doing now (the banner's and the activity's step): not an indented line, a warning, a long line, or the traceback

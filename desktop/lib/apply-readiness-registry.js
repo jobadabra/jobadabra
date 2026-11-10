@@ -7,5 +7,11 @@ const kept = new WeakMap();
 /** Keeps the step for a store (apply-handlers.js, once). */
 export const keepReadiness = (storage, readiness) => { kept.set(storage, readiness); return readiness; };
 
+const clouds = new WeakMap();
+/** The cloud read of the run in flight for a store (lib/cloud-read.js), or null when it ends: the step's readForm takes its reads from it, else reads in Chrome on this Mac. */
+export const keepCloudRead = (storage, reader) => { if (reader) clouds.set(storage, reader); else clouds.delete(storage); };
+/** The cloud read of the run in flight for a store (lib/cloud-read.js), or null when none runs: the step's readForm asks it first. Pure lookup, never throws. */
+export const cloudReadOf = storage => clouds.get(storage) || null;
+
 /** The step for a store, or null before apply-handlers.js registered it (a test with no apply handlers). */
 export const readinessOf = storage => kept.get(storage) || null;

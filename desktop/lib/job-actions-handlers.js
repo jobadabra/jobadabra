@@ -4,7 +4,12 @@
 import * as applicationOutcomes from './outcomes.js';
 import * as controlEvents from './control-events.js';
 import * as pipeline from './pipeline.js';
-import {readinessOf} from './apply-readiness-registry.js';
+import {keepCloudRead, readinessOf} from './apply-readiness-registry.js';
+import {createCloudRead} from './cloud-read.js';
+import {state as hostedSearch} from './hosted-search.js';
+import {classify, resultLine} from './top-matches-line.js';
+import {keysOf} from './ai/index.js';
+import {ownKeyFor} from './ready-batch.js';
 import {pickTop} from './ready-top.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
@@ -19,19 +24,16 @@ async function readyTop(readiness, jobs) {
 }
 
 export function registerJobActionsHandlers(ctx) {
-  const {DEMO, allowanceBlock, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter, storage, jobsList = pipeline.jobs} = ctx;   // jobsList: a test hands in its own list
+  const {DEMO, allowanceBlock, cloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter, storage, jobsList = pipeline.jobs, cloudSite} = ctx;   // jobsList: a test hands in its own list
   // Prepare top matches (Actions), now Apply readiness on the top matches: on this Mac each one goes through the one step (its kit, then its form check). Not a Telegram command.
-  // TODO(AI): with Always on it still runs the engine's kits mode in the user's GitHub repo, with no form check, until the cloud browser runner takes the check (8 Nov 2026).
+  // Always on (on our servers or on the person's own GitHub, owner 9 Nov 2026: "it doesn't care"): the forms are read by the cloud browser (lib/cloud-read.js, cloud browser runner 3/4) and go through the same step; the result line is the run's own (lib/top-matches-line.js).
   const prepareTopMatches = async () => {
     const gate = needsNotion('kits');
     if (gate) return gate;
     const blocked = await allowanceBlock();
     if (blocked) return blocked;
-    appLog('dispatch', 'prepare top matches', {where: cloud() ? 'github' : 'mac'});
-    if (cloud()) {
-      const started = await dispatchCloud('Prepare top matches', {mode: 'kits'});
-      return {text: started.ok ? 'Preparing applications for your top matches on GitHub.' : `⚠️ ${started.error}`};
-    }
+    const alwaysOn = cloud() || !!hostedSearch(storage).on;
+    appLog('dispatch', 'prepare top matches', {where: alwaysOn ? 'cloud' : 'mac'});
     const readiness = readinessOf(storage);
     if (!readiness) return {text: '⚠️ Apply readiness is not ready yet. Try again in a moment.'};
     // Why (8 Nov 2026, code review of R2): one run at a time, as the engine task's lock did: a second press while it runs would draft the same kits again and spend the AI twice.
@@ -44,8 +46,32 @@ export function registerJobActionsHandlers(ctx) {
       top = pickTop(jobs.filter(job => !job.kit), TOP_MATCHES).map(job => byCode.get(job.code));   // best first, as pickTop orders them
     } finally { if (!top.length) topRunning = false; }
     if (!top.length) return {text: 'Your top matches are ready to apply: nothing to prepare.'};
+    if (alwaysOn) return cloudTop(readiness, top);
     readyTop(readiness, top).catch(error => log(`Apply readiness on the top matches failed: ${error.message}`)).finally(() => { topRunning = false; });
     return {text: `Checking apply readiness on your top ${top.length === 1 ? 'match' : `${top.length} matches`}.`};
+  };
+  // Always on: ONE readiness night for the top matches whose check is not stored yet, in our cloud browser, then each form through the step as it is read. A tracked run, so Stop, the Activity record and the result line work as for any task.
+  // The press asks the site first (a refused credit or cap is said at once); a run taken out of the queue before its turn, or Stopped, ends the site's night too (code review of 3/4).
+  const cloudTop = async (readiness, top) => {
+    const toRead = [];
+    for (const job of top) if (!(await readiness.storedCheck({url: job.url, posted_at: job.posted_at || ''}).catch(() => null))) toRead.push(job);   // a fresh check is not read, nor paid for, again
+    const reader = toRead.length ? createCloudRead({storage, site: cloudSite, jobs: toRead, ownKey: ownKeyFor(storage.settings(), keysOf(storage)), log: appLog}) : null;
+    const started = reader ? await reader.start() : {ok: true};
+    if (!started.ok) { topRunning = false; return {text: `⚠️ ${started.error}`}; }
+    if (reader) keepCloudRead(storage, reader);
+    pipeline.work(storage, 'kits', log, async (tee, signal) => {
+      let stopped = false;
+      signal?.addEventListener('abort', () => { stopped = true; reader?.stop(); readiness.cancel(); });
+      const results = [];
+      for (const job of top) {
+        if (stopped) break;   // the rest are not prepared: no kit draft for a run the person stopped
+        results.push(await readiness.applyReadiness({url: job.url, code: job.code, title: `${job.title} · ${job.company}`, kit: false, posted_at: job.posted_at || ''}, {notices: 'all'}));
+      }
+      if (!stopped) tee(`Apply readiness: ${resultLine(classify(results))}`);
+      return !stopped;
+    }).then(outcome => { if (outcome?.removed) reader?.stop(); }).catch(error => { reader?.stop(); log(`Apply readiness on the top matches failed: ${error.message}`); }).finally(() => { if (reader?.pending()) reader.stop();   // Why (Gitar on #3648): a match whose kit failed never asks for its read; the site must stop reading and charging it
+      keepCloudRead(storage, null); topRunning = false; });
+    return {text: `Checking apply readiness on your top ${top.length === 1 ? 'match' : `${top.length} matches`} in our cloud browser.`};
   };
   let topRunning = false;   // Apply readiness on the top matches is running (from the press's list read to its last job)
   // Every Telegram command, from the app (the answer also goes to Telegram when connected).

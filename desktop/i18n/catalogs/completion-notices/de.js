@@ -5,7 +5,7 @@ export default {
   "kind_insight": "Einblick",
   "kind_interviewInsight": "Gesprächsanalyse",
   "kind_weekly": "Suchanalyse",
-  "kind_kits": "Beste Treffer vorbereiten",
+  "kind_kits": "Bewerbungsbereitschaft der besten Treffer",
   "kind_today": "Heutige Liste",
   "kind_scout": "Weitere Arbeitgeber",
   "kind_prepare": "Bewerbungsvorbereitung",
@@ -43,5 +43,10 @@ export default {
   },
   "gmailNotChecked": "Gmail wurde nicht geprüft",
   "gmailDisconnected": "Gmail ist nicht verbunden: Öffne Jobadabra, um es zu verbinden.",
-  "gmailWhy": "Öffne Jobadabra, um den Grund und die nächsten Schritte zu sehen."
+  "gmailWhy": "Öffne Jobadabra, um den Grund und die nächsten Schritte zu sehen.",
+  "readinessLine": "{checked}: {parts}",
+  "readinessChecked": {"one": "{shown} Stelle geprüft", "other": "{shown} Stellen geprüft"},
+  "readinessSimple": {"one": "{shown} einfach", "other": "{shown} einfach"},
+  "readinessNeeds": {"one": "{shown} braucht Sie", "other": "{shown} brauchen Sie"},
+  "readinessUnread": {"one": "{shown} nicht lesbar", "other": "{shown} nicht lesbar"}
 };

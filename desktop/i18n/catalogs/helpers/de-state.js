@@ -176,7 +176,7 @@ export const messages = {
   "completedWarnings": "Mit Warnungen abgeschlossen",
   "seeEmployers": "Arbeitgeber ansehen",
   "seeMatches": "Beste Treffer ansehen",
-  "seeApplications": "Bewerbungen unter Stellen ansehen",
+  "seeApplications": "In Stellen ansehen",
   "seeCvs": "Lebensläufe unter Stellen ansehen",
   "seeApplication": "Bewerbung unter Stellen ansehen",
   "openInterviews": "Gespräche öffnen",

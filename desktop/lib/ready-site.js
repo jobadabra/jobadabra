@@ -6,8 +6,9 @@ import {siteOffForUser, siteOffReason} from './recipes.js';
 import {read as keychainRead} from './keychain.js';
 import {installId} from './pool-share.js';
 import {installToken} from './install-token.js';
+import {withOwnAi} from './ready-batch.js';
 
-// The install's key for the site. An install on its own engine (Claude Code, its own key) has no JPF1 key, so its token is asked for from the install id (as Free AI does) through lib/install-token.js, kept in settings:
+// The install's key for the site. An install on its own engine (a CLI session, its own key) has no JPF1 key, so its token is asked for from the install id (as Free AI does) through lib/install-token.js, kept in settings:
 // it is not saved as the Anthropic key, so the engine does not change. The owner is told by the site's READY_OWNER match (the install id), nothing else.
 async function keyFor(storage, {fetcher = globalThis.fetch} = {}) {
   const own = keyOf(storage);
@@ -73,3 +74,16 @@ export async function video(storage, job, {fetcher = globalThis.fetch, ...option
   } catch { return {ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'}; }
 }
 export const link = async (storage, job, options) => words(await call(storage, '/api/ready/link', {method: 'POST', body: {job}, ...options}));   // -> {ok, url, expiresAt}: the 10-minute live-view link for one form
+
+// Cloud apply readiness (cloud browser runner 3/4, spec 2026-11-08-cloud-browser-runner-design.md): an Always on install posts the forms of its top matches, starts the read, takes each read once, and can Stop it.
+// The install's key alone opens these (an owner's secret, when set, is sent as before and changes nothing). The site's own words say a refusal: 402 "AI credit is used up", 429 "today's cloud checks are used up".
+const readWords = result => (result.ok ? result : {ok: false, status: result.status, error: result.status === 401 || (result.status === 404 && !reasonOf(result)) ? 'Cloud checks are not available for this install right now.' : result.error});
+/** Posts the top matches' forms as one readiness night (`jobs`: [{id, url, title, company}]; `ai`: the person's own Anthropic key (sk-ant-…) or ''). -> {ok, batch, queued} or {ok: false, status, error} in the site's own words (402 credit used up, 429 today's cap); never throws. */
+export const readSend = async (storage, jobs, {ai = '', now = () => new Date(), ...options} = {}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options,
+  body: withOwnAi({task: 'readiness', night: now().toISOString().slice(0, 10), jobs}, ai)}));
+/** Starts the queued readiness night now. -> {ok} or {ok: false, status, error}; never throws. */
+export const readStart = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'readiness'}, ...options}));
+/** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending}; a read taken here is removed from the site (at most once). */
+export const readTake = async (storage, options) => readWords(await call(storage, '/api/ready/reads', {method: 'POST', body: {}, ...options}));
+/** Stops the readiness night: the site ends it and its unread forms are told as failed. -> {ok, stopped} or {ok: false, status, error}; never throws. */
+export const readStop = async (storage, options) => readWords(await call(storage, '/api/ready/stop', {method: 'POST', body: {}, ...options}));

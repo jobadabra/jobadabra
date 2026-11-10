@@ -14,8 +14,7 @@ const FILES = ['main.js', 'preload.cjs', ...walk('lib/'), ...walk('renderer/')];
 const DIRECT = [
   {what: 'a kit draft (prepareKitFor)', pattern: /\bprepareKitFor\(/g, allowed: {'lib/apply-handlers.js': 1}},   // the one wiring of the step (createReadiness)
   {what: "the engine's kit run (mode 'prepare')", pattern: /mode: 'prepare'/g, allowed: {'lib/kit-handlers.js': 1}},   // prepareKitFor's own body
-  // TODO(AI): the Always on branch of Prepare top matches still runs the engine's kits mode until the cloud browser runner takes the check (8 Nov 2026).
-  {what: "the engine's top-matches kits run (mode 'kits')", pattern: /mode: 'kits'/g, allowed: {'lib/job-actions-handlers.js': 1}},
+  {what: "the engine's top-matches kits run (mode 'kits')", pattern: /mode: 'kits'/g, allowed: {}},   // Always on reads in the cloud browser since 9 Nov 2026 (lib/cloud-read.js)
   {what: 'a form read in the hidden browser (triageRead)', pattern: /\.triageRead\b/g, allowed: {'lib/apply-handlers.js': 1}},   // the step's readForm
   {what: "the window's old kit call (pilot.prepareKit)", pattern: /\bprepareKit: call\(|pilot\.prepareKit\(/g, allowed: {}},
 ];

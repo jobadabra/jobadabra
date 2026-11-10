@@ -180,7 +180,7 @@ export function merge(notionRuns, localRuns, pending = []) {
 
 // A finished run as a macOS / Windows notification, wherever it ran; null when there's nothing to say
 // (a Gmail check that recorded nothing, a Telegram button's small action).
-const NAMES = {search: 'Find jobs', mail: 'Gmail check', insight: 'Insight', interviewInsight: 'Interview insights', weekly: 'Search analysis', kits: 'Prepare top matches', today: "Today's list",
+const NAMES = {search: 'Find jobs', mail: 'Gmail check', insight: 'Insight', interviewInsight: 'Interview insights', weekly: 'Search analysis', kits: 'Apply readiness on the top matches', today: "Today's list",
   scout: 'More employers', prepare: 'Application preparation', interview: 'Interview review', add: 'Logged activity', rejection: 'Rejection review',
   prep: 'Interview prep kit', import: 'Add a job', tailor: 'Tailor CV + cover letter'};
 // A notification is the news of one run, so a click opens that run's result (Recent activity, the run selected); renderer/targets.js says how.
