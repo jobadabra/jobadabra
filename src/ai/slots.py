@@ -105,7 +105,10 @@ class Slots:
         got = time.monotonic()
         _local.waited = (getattr(_local, 'waited', None) or 0.0) + got - asked
         if os.environ.get('JOBADABRA_SLOT_LOG') == '1':
-            _say(ticket, got - asked, got - _BORN, self.n - self.free, self.n)
+            try:
+                _say(ticket, got - asked, got - _BORN, self.n - self.free, self.n)
+            except (OSError, TypeError, ValueError):   # a by-hand measure line never fails the AI call it measures (code review: a closed pipe, an odd rank)
+                pass
         return self
 
     def __exit__(self, *exc):
@@ -120,6 +123,6 @@ def _say(ticket, waited, at, busy, n):
     Why (sf 2/8, 10 Nov 2026, sa's Mac runs): a title batch waited 33 s for a free slot on p9 and the order of the tickets was not in any log; this is the measure for it,
     off unless JOBADABRA_SLOT_LOG=1 (a by-hand run; never set for a user)."""
     level, rank, arrival = ticket
-    parts = ', '.join(f'{part:g}' if isinstance(part, (int, float)) and not isinstance(part, bool) else '?' for part in rank)
+    parts = ', '.join(f'{part:g}' if isinstance(part, (int, float)) and not isinstance(part, bool) else '?' for part in (rank if isinstance(rank, tuple) else (rank,)))
     name = NAMES[level] if 0 <= level < len(NAMES) else str(level)
     print(f'Slot: {name} rank ({parts}) arrival {arrival} waited {waited:.1f} s started at {at:.1f} s ({busy}/{n} busy)', flush=True)

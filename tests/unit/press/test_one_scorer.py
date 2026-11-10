@@ -284,6 +284,28 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         self.assertEqual(run['score'], {'done': 1, 'pending': 1}, 'the late round neither doubled nor popped the closing pass\'s count')
         self.assertEqual(run['warnings'], [], 'nor added to the run\'s warnings')
 
+    def test_past_the_runs_end_the_rounds_in_flight_take_no_more_waiting_jobs_than_are_owed(self):
+        """Code review of sf 2/8's IN_FLIGHT: both rounds saw 'one owed' and took 4 each, 8 waiting jobs scored for 5 owed, and the search's import waited for them."""
+        from types import SimpleNamespace
+        waiting, scored = [{'id': n} for n in range(1, 13)], []
+        together = threading.Barrier(scoring.IN_FLIGHT, timeout=1)
+
+        def a_round(args, stores, db, round_run, profile, hidden, dismissed, ids, *rest, **kw):
+            scored.extend(ids)
+            try:
+                together.wait()   # both rounds in flight before either pays its jobs off, as on a busy Mac
+            except threading.BrokenBarrierError:
+                pass
+            round_run['score'] = {'done': len(ids), 'pending': 0}
+        args = SimpleNamespace(mode='run', score_max=10, db=self.path)
+        clock = mock.Mock(batch=lambda *a, **k: 5, end=lambda: None, now=lambda: 1.0, ended=lambda: True)   # 5 owed; the run is over at once
+        with mock.patch.object(scoring, 'score_candidates', side_effect=a_round), mock.patch.object(scoring, 'sync_partial'), \
+                mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring.score, 'queue', return_value=waiting), \
+                mock.patch.object(scoring, 'to_score', return_value=[]), mock.patch.object(scoring, '_stay', return_value=waiting), mock.patch('builtins.print'):
+            finish = scoring.score_beside(args, self.stores, mock.Mock(), {'warnings': []}, lambda: 'Profile v1', frozenset(), frozenset(), clock)
+            finish()
+        self.assertEqual(sorted(scored), [1, 2, 3, 4, 5], 'the 5 owed, the nearest first, and not one more')
+
     def test_at_the_first_import_the_rounds_in_flight_start_together_from_the_head_of_the_list(self):
         """sa's Mac runs (10 Nov 2026, main vs the first build of sf 2/8): one round at a time scored 27 jobs where main's two scorers scored 43 (p9, p5, p13).
         IN_FLIGHT rounds start in the same tick, each the next BATCH of the one ranked list, no job in two rounds."""

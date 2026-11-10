@@ -43,7 +43,8 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     syncing = threading.Lock()
 
     def synced(*given):
-        """sync_partial, one at a time: the Notion store is shared by the rounds in flight (src/stores/beside.py); two writes at once could add a job twice."""
+        """sync_partial for the rounds in flight, one at a time: they share the Notion store (src/stores/beside.py), and two writes at once could add a job twice.
+        The search's own writes do not take this lock."""
         with syncing:
             sync_partial(*given)
 
@@ -69,9 +70,14 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
         # old one. The `taken` waiting jobs the clock allowed at the start are owed to this run (L13): once the search stops or the clock ends, the scorer goes on with
         # waiting jobs only until they are paid; they no longer take a first round of their own.
         def pick(only_waiting):
-            ids, level = next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + taken, only_waiting)
-            with lock:
-                owed[0] -= sum(1 for job_id in ids if job_id in earlier)
+            if not only_waiting:
+                ids, level = next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + taken)
+                with lock:
+                    owed[0] -= sum(1 for job_id in ids if job_id in earlier)
+                return ids, level
+            with lock:   # past the end, what is owed and the pick are one step: the rounds in flight never take more than is owed between them (code review of IN_FLIGHT)
+                ids, level = next_batch(own_db, profile, hidden, earlier, min(BATCH, owed[0]), args.score_max + taken, True) if owed[0] > 0 else ([], slots.LATER)
+                owed[0] -= len(ids)
             return ids, level
         drain(stop, pick, lambda ids, level: score_batch(own_db, own_stores, ids, level), time_budget.ended, owing=lambda: owed[0] > 0)
 

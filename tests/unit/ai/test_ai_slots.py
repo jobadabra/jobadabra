@@ -159,6 +159,14 @@ class SlotLog(unittest.TestCase):
         self.assertRegex(lines[0], r'^Slot: SCORE rank \(0, 12\.5, \?\) arrival 0 waited \d+\.\d s started at \d+\.\d s \(1/2 busy\)$')
         self.assertNotIn('Lyon', lines[0], 'no job value in the run log')
 
+    def test_a_line_that_cannot_be_written_neither_fails_the_call_nor_keeps_its_slot(self):
+        from unittest import mock
+        pool = slots.Slots(1)
+        with mock.patch.dict('os.environ', {'JOBADABRA_SLOT_LOG': '1'}), mock.patch('builtins.print', side_effect=BrokenPipeError):
+            with pool:
+                pass
+        self.assertEqual(pool.free, 1, 'the slot is back')
+
     def test_off_by_default(self):
         self.assertEqual(self.taken({'JOBADABRA_SLOT_LOG': ''}, ()), [])
 
