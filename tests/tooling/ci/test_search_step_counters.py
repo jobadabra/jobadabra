@@ -150,5 +150,40 @@ class TheStepYield(unittest.TestCase):
         self.assertIsNone(gate.compare({}, [])['rows'][0]['step_yield'], 'a persona with no result claims no step yield')
 
 
+class TheRightPlaceCounts(unittest.TestCase):
+    """10 Nov 2026, owner: "How can I follow to understand if our search algoritm finds jobs out of the location" (a Dublin search listed 24 of 25 jobs in other countries): the row carries the judge's place and role counts,
+    which the site (jobadabra-web admin/search-night.js) stores only when each set adds up to the jobs found."""
+    def judged(self, rows):
+        out = Path(tempfile.mkdtemp())
+        (out / 'judged.json').write_text(json.dumps({'usd': 0, 'billing': 'subscription', 'rows': rows}))
+        return gate.result(1, out)
+
+    def test_the_dublin_search_reads_one_of_twenty_five_in_the_right_place(self):
+        rows = [{'role': 'yes', 'place': 'yes'}] + [{'role': 'yes' if i < 19 else 'no', 'place': 'no'} for i in range(24)]
+        row = self.judged(rows)
+        self.assertEqual(row['place'], {'yes': 1, 'no': 24, 'remote': 0, 'unknown': 0, 'unjudged': 0})
+        self.assertEqual(row['role'], {'yes': 20, 'no': 5, 'unjudged': 0})
+        self.assertEqual((row['found'], row['local']), (25, 1), 'the old totals are unchanged')
+
+    def test_a_job_the_judge_left_without_a_verdict_is_unjudged_never_right(self):
+        row = self.judged([{'role': 'yes', 'place': 'yes'}, {'role': 'missing', 'place': 'missing'}, {'role': 'not-judged', 'place': 'not-judged'}, {'role': 'no', 'place': 'remote'}, {'role': 'yes', 'place': 'unknown'}, {}])
+        self.assertEqual(row['place'], {'yes': 1, 'no': 0, 'remote': 1, 'unknown': 1, 'unjudged': 3})
+        self.assertEqual(row['role'], {'yes': 2, 'no': 1, 'unjudged': 3})
+        for key in ('place', 'role'):
+            self.assertEqual(sum(row[key].values()), row['found'], f'{key}: the counts add up to the jobs found, or the site stores nothing')
+
+    def test_no_text_of_a_job_leaves_the_run(self):
+        row = self.judged([{'role': 'yes', 'place': 'yes', 'title': 'Carpenter', 'company': 'Acme', 'location': 'Dublin'}])
+        self.assertEqual(set(row['place']), {'yes', 'no', 'remote', 'unknown', 'unjudged'})
+        self.assertEqual(set(row['role']), {'yes', 'no', 'unjudged'}, 'fixed words and whole numbers only')
+
+    def test_the_counts_reach_the_verdict_rows_the_site_reads(self):
+        row = self.judged([{'role': 'yes', 'place': 'no'}])
+        rows = gate.compare({n: {**row, 'persona': n} for n in range(1, len(gate.PERSONAS) + 1)}, [])['rows']
+        self.assertEqual((rows[0]['place']['no'], rows[0]['role']['yes']), (1, 1))
+        self.assertIsNone(gate.compare({}, [])['rows'][0]['place'], 'a persona with no result claims no counts')
+        self.assertNotIn('place', gate.result(1, Path(tempfile.mkdtemp())), 'a persona whose judge wrote nothing claims no counts')
+
+
 if __name__ == '__main__':
     unittest.main()
