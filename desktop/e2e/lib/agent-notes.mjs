@@ -107,14 +107,15 @@ export const ADMIN_PERSONA = 'https://www.jobadabra.top/admin/testing/ai-persona
 export function toFinding(note, {steps = [], session = {}} = {}) {
   const trail = steps.slice(-12).map((step, i) => `${i + 1}. ${step}`).join('\n');
   return {view: note.view, severity: note.severity, kind: note.kind, title: note.title, source: 'ai-user-agent',
+    ...(note.shotFile ? {file: note.shotFile} : {}),
     detail: `${note.observed}${trail ? `\n\nSteps before it:\n${trail}` : ''}${session.chain ? `\n\n${session.chain}` : ''}`, impact: note.why, expected: note.expected,
-    ...(/^\d{6,15}$/.test(String(session.run || '')) ? {evidence: {id: session.run, url: `${ADMIN_PERSONA}?run=${session.run}`, line: `${note.goal ? `Goal ${note.goal}: the` : 'The'} run's path, the screen when this was noted and the video are on that page.`}} : {}),
+    ...(note.bundle ? {evidence: {...note.bundle, line: `The app snapshot, logs, state and versions are kept with this bug. Replay: npm run twin -- --replay ${note.bundle.id}`}} : /^\d{6,15}$/.test(String(session.run || '')) ? {evidence: {id: session.run, url: `${ADMIN_PERSONA}?run=${session.run}`, line: `${note.bundleError ? `Bundle upload failed: ${note.bundleError}. ` : ''}${note.goal ? `Goal ${note.goal}: the` : 'The'} run's path, the screen when this was noted and the video are on that page.`}} : {}),
     agent: {type: note.type, persona: session.persona || '', seed: session.seed ?? '', snapshot: session.snapshot || '', judge: note.judge || 'unknown', judgeReason: note.judgeReason || '', proved: !!note.proved, cites: note.cites || ''}};
 }
 
 /** The labels the Finder's list is filtered by: the agent type (precision per type), the persona, the second opinion, and `proved`. needs-human is added when the judge disagrees.
  * Why (3 Nov 2026, Gitar on #3073): the seed is NOT a label: triage creates every label in the repo, and a seed per session would grow the label list without end; it is in the issue body's "Who found it" line. */
 export function agentLabels(agent) {
-  return [`agent-type:${agent.type}`, ...(agent.persona ? [`persona:${agent.persona}`.slice(0, 50)] : []), `judge:${agent.judge || 'unknown'}`,
+  return ['source:persona', `agent-type:${agent.type}`, ...(agent.persona ? [`persona:${agent.persona}`.slice(0, 50)] : []), `judge:${agent.judge || 'unknown'}`,
     ...(agent.proved ? ['proved'] : []), ...(agent.judge === 'disagrees' ? [NEEDS_HUMAN] : [])];
 }

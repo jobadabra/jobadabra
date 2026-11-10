@@ -276,7 +276,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       if (judged && /\/issues\/\d+$/.test(url)) gh(['issue', 'comment', url.split('/').pop(), '--body', verdictComment(judged, {number: Number(url.split('/').pop())})]);
       out.filed.push(finding.id);
     } else if (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl))) {
-      const comment = seenAgainComment(runUrl, picture, build);
+      const comment = seenAgainComment(runUrl, picture, build, finding.evidence);
       gh(['issue', 'comment', String(existing.number), '--body', comment]);
       existing.comments = [...(existing.comments || []), {body: comment}];   // a second finding of this run on the same issue sees it: one "Seen again" per run (#1711)
       // Seen on a second commit (one sighting per commit, lib/triage.mjs): labelled, so the list shows what is reproduced and what is a one-off.

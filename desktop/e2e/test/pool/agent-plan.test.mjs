@@ -2,6 +2,12 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {LANGUAGE_LABEL, OTHER_LANGUAGES, OWN_MOVES, languageGoal, movesFromPalette, poolLabel, poolOf, withLanguage} from '../../lib/agent-moves.mjs';
+
+// Guard: money — disabled or prerequisite-blocked palette goals cannot consume tonight's model budget.
+test('unavailable palette entries are omitted before planning, while available neighbors remain', () => {
+  const entries = [{group: 'Actions', label: 'Tailor documents', unavailable: 'no jobs to tailor'}, {group: 'Settings', label: 'Save', unavailable: 'control disabled'}, {group: 'Jobs', label: 'Open Jobs'}];
+  assert.deepEqual(movesFromPalette(entries), [{group: 'Jobs', label: 'Open Jobs'}]);
+});
 import {CV_SHAPES, makePersona} from '../../lib/agent-persona.mjs';
 import {LANGUAGE_EVERY, MAX_LANES, MIN_NEW, WINDOW, laneOf, laneSeed, languageDue, languageOf, lanePool, newShare, pairsOf, pendingGoals, planSession, recordSession} from '../../lib/agent-plan.mjs';
 

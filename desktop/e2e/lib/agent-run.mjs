@@ -9,6 +9,7 @@ import {judgeNote} from './agent-judge.mjs';
 import {KINDS, SEVERITIES, TYPES, toFinding, validateNote, holdingIds, joinSameElement} from './agent-notes.mjs';
 import {GOAL_VERDICTS, summarizeSession} from './agent-session.mjs';
 import {pointerLine} from './agent-chain.mjs';
+import {OTHER_LANGUAGES, languageGoal} from './agent-moves.mjs';
 import {goalSteps, MIN_STEPS, STEP_TOKENS, stepCost} from './agent-steps.mjs';
 
 const choice = values => ({type: 'string', enum: ['', ...values]});
@@ -28,16 +29,22 @@ Controls marked [not allowed] are refused (they delete, send, sign in, leave the
  * The agent's extra action and fields for explore(): `note` (an argued bug, validated by lib/agent-notes.mjs, never repaired) and the verdict a goal ends with. `sink` collects the valid notes.
  * `knowledgeIds`: the rule ids a note may cite; `views`: the screens it may name; `goal`: the goal being worked, kept on each note.
  */
-export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null, pressed = () => null}) {
+export function agentExtend({knowledgeIds, views, goal, sink, shoot = null, where = () => null, pressed = () => null, capture = null}) {
   const text = {type: 'string'};
   return {actions: ['note'], without: ['report_bug'], finalVerdict: true, properties: {type: choice(TYPES), kind: choice(KINDS), severity: choice(SEVERITIES), expected: text, observed: text, why: text, verdict: choice(GOAL_VERDICTS)},
     async take(input, row, {steps = []} = {}) {
       const checked = validateNote({...input, view: input.view || row.view}, {knowledgeIds, views});
       if (!checked.ok) { row.refused = checked.why; return `Refused: ${checked.why}. Note it again with an argument, or leave it.`; }
-      sink.push({...checked.note, goal: goal.n, at: Date.now(), videoSec: where(), control: pressed(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : ''});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
+      sink.push({...checked.note, goal: goal.n, at: Date.now(), videoSec: where(), control: pressed(), trail: steps.slice(-12).map(stepWords), image: shoot ? await shoot() : '', ...await retainCapture(capture, checked.note.view)});   // the screen as it is NOW: the second opinion judges this, not where the session ends up
       row.title = checked.note.title;
       return 'Noted. Carry on with your goal.';
     }};
+}
+
+/** Keep only a capture ticket on a note; failed evidence capture never loses the argument. */
+async function retainCapture(capture, view) {
+  if (!capture) return {};
+  try { return {captureId: await capture(view)}; } catch (error) { return {captureError: String(error.message).slice(0, 200)}; }
 }
 
 /** The tokens one actor step costs now: the measured average (or the engine's default), never under Claude's price once the night moved to Claude (a step there re-sends the whole prompt, whatever the Codex calls before it averaged; pz 2/5). */
@@ -52,9 +59,18 @@ function noteFailover({failedOver, reason, goalResult: row, stopped, goal, log})
 }
 
 /** What one goal's loop leaves: the verdict the agent gave, or why it did not give one. */
-function goalResult(goal, result) {
-  const final = result.final;
-  if (final && GOAL_VERDICTS.includes(final.verdict)) return {n: goal.n, verdict: final.verdict, summary: final.summary, steps: result.steps.length};
+function goalResult(goal, result, {verify = false, notes = []} = {}) {
+  let final = result.final;
+  if (final?.verdict === 'bug' && !notes.length) final = {...final, verdict: 'doubts', summary: `Unsubstantiated bug verdict: ${final.summary}`};
+  if (verify && final?.verdict === 'worked') {
+    const code = Object.keys(OTHER_LANGUAGES).find(code => languageGoal(code) === goal.label);
+    const visited = new Set((result.trace || []).filter(row => row.locale?.split('-')[0] === code).map(row => row.view));
+    const missing = code ? ['focus', 'jobs', 'settings'].filter(view => !visited.has(view)) : [];
+    const check = result.verification;
+    if (missing.length || check?.completion === 'incomplete') final = {...final, verdict: 'could-not-finish', summary: missing.length ? `Not verified in ${code}: ${missing.join(', ')}.` : check.completionReason};
+    else if (check?.completion !== 'verified') final = {...final, unverified: true, verdict: 'doubts', summary: `Completion not verified: ${check?.completionReason || 'no independent evidence'}.`};
+  }
+  if (final && GOAL_VERDICTS.includes(final.verdict)) return {n: goal.n, verdict: final.verdict, summary: final.summary, steps: result.steps.length, ...(final.unverified ? {unverified: true} : {})};
   if (final) return {n: goal.n, verdict: 'doubts', summary: `ended without a verdict: ${String(final.summary || '').slice(0, 120)}`, steps: result.steps.length};
   const why = result.stopped.startsWith('repeat: ') ? `it kept doing the same thing, ${result.stopped.slice(8)}${result.stopped.endsWith('on the same page') ? ', and the page did not change' : ''}` : `the goal ran out of room (${result.stopped})`;   // a loop is not a lack of room (replays 41857211406, 41857218091)
   return {n: goal.n, verdict: 'could-not-finish', summary: why, steps: result.steps.length};
@@ -72,7 +88,7 @@ export const goalIntro = (goal, knowledge) => `Your goal (${goal.group}): ${goal
  * The screen the goal ended on, read once by a call that is not busy with the goal (lib/agent-screen.mjs); the same words on a later goal are not read again (`read` keeps them). -> the screen notes, each with the picture taken after the element it quotes was brought into view.
  * Adds its call to `spent`. A read or a scroll that fails is logged and the session goes on with the notes it has.
  */
-async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}) {
+async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log, capture, verify}) {
   // Why (4 Nov 2026, FR 3/4): the screen the goal ended on is read once by a call that is not busy with the goal; the same words on a later goal are not read again
   // Why (5 Nov 2026, large Board run 41947380208, owner via mac-32): the judge disagreed with a true note because the cards were scrolled out of its screenshot and it read the Gmail toast instead; a screen note's picture is taken with the element it quotes in view. Actor notes keep their picture: the pressed control's box is drawn on it.
   const shootNote = async note => {
@@ -82,13 +98,15 @@ async function readGoalScreen({act, screenAsk, goal, result, read, spent, knowle
   const made = [];
   if (/^(api|calls|minutes)/.test(result.stopped)) return made;   // Why (Gitar on #3213): a goal that ended on the broker or a session cap makes no further call, the reader's one is on a pricier tier and can wait up to the broker's 180 s
   try {
-    const observation = formatObservation(await act.observe());
-    if (read.has(observation)) return made;
-    read.add(observation);
-    const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : ''});
+    const screen = formatObservation(await act.observe()), alreadyRead = read.has(screen);
+    const observation = screen + (verify ? `\nObserved actions (page and locale were read by the harness):\n${JSON.stringify(result.trace.map(({view, locale, action, did, failed}) => ({view, locale, action, did, failed})))}` : '');
+    if (!verify && alreadyRead) return made;
+    read.add(screen);
+    const seen = await readScreen({ask: screenAsk, observation, goal, knowledge, knowledgeIds, views, image: shoot ? await shoot() : '', verify, reportProblems: !alreadyRead});
+    if (verify) result.verification = seen;
     if (!String(seen.failed || '').includes(CAP_REACHED)) spent.calls++;   // a read the night token cap refused made no call
     spent.input += seen.usage?.input_tokens || 0; spent.output += seen.usage?.output_tokens || 0; spent.ms += seen.ms || 0;
-    for (const note of seen.notes) made.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shootNote(note) : '', by: 'screen'});
+    for (const note of seen.notes) made.push({...note, goal: goal.n, at: now(), videoSec: where(), control: null, trail: result.steps.slice(-12).map(stepWords), image: shoot ? await shootNote(note) : '', by: 'screen', ...await retainCapture(capture, note.view)});
     log(`  goal ${goal.n}: the screen reader ${seen.failed ? `gave no answer (${seen.failed})` : `noted ${seen.notes.length}${seen.refused.length ? `, refused ${seen.refused.length} (${seen.refused[0]})` : ''}`}`);
   } catch (error) { log(`  goal ${goal.n}: the screen reader failed, the session goes on: ${String(error.message).split('\n')[0]}`); }   // Why (code review): a page that changed under the read must not lose the notes of the goals already done
   return made;
@@ -105,9 +123,9 @@ function joinTwins(notes, log) {
 /** The second opinion on every note, one after another; adds its calls to `spent` and sets `judge` and `judgeReason` on each note. */
 async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
   // Why (3 Nov 2026, code review on 8/12): the judge asks for Claude alone and may wait up to the broker call's 180 s; the notes are judged one after another after the goals, so after the first call that gets no answer the rest are not asked (a refusal or a stuck Claude would otherwise cost 180 s per note and the step limit would end the night before the summary is written).
-  // Why (5 Nov 2026, code review on the 250k cap): when the run's cap leaves room for fewer judge calls than there are notes, the ones refused are held, so the serious notes are asked first and the low ones (never filed) last.
+  // Why (5 Nov 2026, code review on the 250k cap): when the run's cap leaves room for fewer judge calls than there are notes, the ones refused are held, so the serious notes are asked first; low notes (never filed) now spend no judge call (owner, 10 Nov 2026: one bug per 100k tokens).
   let judgeDown = '';
-  for (const note of [...notes].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
+  for (const note of [...notes].filter(note => note.severity !== 'low').sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
     const skipped = Boolean(judgeDown);
     const opinion = skipped ? {verdict: 'unavailable', reason: `not asked: ${judgeDown}`} : await judgeNote({ask: judgeAsk, note, image: note.image || '', knowledge: knowledgeOf(note)});
     if (opinion.verdict === 'unavailable' && !judgeDown) judgeDown = opinion.reason;
@@ -115,6 +133,43 @@ async function judgeNotes({notes, judgeAsk, spent, knowledgeOf}) {
     if (!skipped) spent.calls++;   // a note that was not asked made no call (Gitar, #3094)
     spent.input += opinion.usage?.input_tokens || 0; spent.output += opinion.usage?.output_tokens || 0; spent.ms += opinion.ms || 0;
   }
+}
+
+/** Number note-time images exactly as runRecord/shotFiles do, preserving the Finder's evidence path. */
+function numberNotePictures(notes) {
+  let shot = 0;
+  for (const note of notes) if (note.image && shot < 99) note.shotFile = `shot-${++shot}.png`;
+}
+
+/** Only independently worked goals advance live coverage; legacy scripted callers retain their existing done semantics. */
+function completedGoals(ends, results, verify) {
+  const worked = new Set(results.filter(row => row.verdict === 'worked').map(row => row.n));
+  return ends.filter(end => end.stopped === 'done' && (!verify || worked.has(end.n))).map(end => end.n);
+}
+
+/** Navigate through a palette entry without losing the session if a stale control no longer exists. */
+async function openGoal(act, goal, log) {
+  try { await act.openGoal?.(goal); } catch (error) { log(`  goal ${goal.n}: palette navigation failed: ${String(error.message).slice(0, 160)}`); }
+}
+
+/** Fund a goal at the current gross step price; report a shortfall before any actor call. */
+function fundedSteps({meter, actorCalls, onClaude, left, perGoal, goal, log}) {
+  if (!meter) return perGoal;
+  // Why (10 Nov 2026, owner; extends #3378): steps come from the stricter gross/incremental meter, never a larger preplanned allowance.
+  const next = goalSteps({left: meter.usable(), cost: stepPrice({meter, actorCalls, onClaude}), goalsLeft: left, maxPerGoal: perGoal});
+  if (!next.steps) log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`);
+  else log(`  goal ${goal.n}: ${next.steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
+  return next.steps;
+}
+
+/** Learn app observations only: unavailable verification must never become a remembered product problem. */
+function observedProblems(goals, results) {
+  const observations = {};
+  for (const row of goals) {
+    if (['worked', 'not-started'].includes(row.verdict) || results.find(result => result.n === row.n)?.unverified) continue;
+    (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
+  }
+  return observations;
 }
 
 /** Prefer a shared-budget/broker stop; otherwise preserve the first goal interrupted before its final verdict. */
@@ -127,7 +182,7 @@ const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== '
  * `meter` (optional): {usable(), actorUsed(), stepTokens}, the run's token meter: each goal's steps come from what `usable()` leaves and what a step costs (lib/agent-steps.mjs), and a goal the budget cannot fund is not started (`unfunded`). Without it every goal gets its share of `maxSteps`.
  * -> {summary, findings, observations, trace, spent, notes}: `findings` are ctx.findings items (source ai-user-agent); `observations` are {Area: [text]} for the field notes (the goals that did not simply work).
  */
-export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null, failover = () => ''}) {
+export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '', screenAsk = null, views, plan, knowledge = '', knowledgeIds = [], caps = {}, now = Date.now, log = () => {}, shoot = null, where = () => null, session = {}, meter = null, failover = () => '', capture = null, publish = null, verifyGoals = false, knowledgeOfGoal = null}) {
   const {maxSteps = 60, maxCalls = 260, maxMinutes = 35} = caps, started = now();
   const perGoal = Math.max(MIN_STEPS, Math.floor(maxSteps / Math.max(1, plan.goals.length)));
   const spent = {calls: 0, input: 0, output: 0, ms: 0}, notes = [], results = [], trace = [], read = new Set(), ends = [], unfunded = [];
@@ -135,25 +190,21 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   for (const goal of plan.goals) {
     const callsLeft = maxCalls - spent.calls, minutesLeft = maxMinutes - (now() - started) / 60000;
     if (callsLeft <= 0 || minutesLeft <= 0) { stopped = callsLeft <= 0 ? `calls ${maxCalls}` : `minutes ${maxMinutes}`; break; }
-    const mine = [];
-    let steps = perGoal;
-    if (meter) {   // Why (7 Nov 2026, #3378): the steps of a goal are what the token meter can pay for on this engine, so a night never plans goals its cap refuses
-      const left = plan.goals.length - results.length - unfunded.length;
-      const next = goalSteps({left: meter.usable(), cost: stepPrice({meter, actorCalls, onClaude: Boolean(failover())}), goalsLeft: left, maxPerGoal: perGoal});
-      if (!next.steps) { stopped = 'budget'; unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); log(`  goal ${goal.n} and ${left - 1} after it not started: ${Math.round(meter.usable() / 1000)}k tokens left fund no goal of ${MIN_STEPS} steps`); break; }
-      steps = next.steps;
-      log(`  goal ${goal.n}: ${steps} steps (${Math.round(meter.usable() / 1000)}k tokens left, ${next.funded} of ${left} goal(s) funded)`);
-    }
-    const result = await explore({act, ask, views, caps: {maxSteps: steps, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, knowledge), session: `agent-g${goal.n}`,
-      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null})});
+    const mine = [], goalKnowledge = knowledgeOfGoal ? knowledgeOfGoal(goal) : knowledge;
+    const left = plan.goals.length - results.length - unfunded.length;
+    const steps = fundedSteps({meter, actorCalls, onClaude: Boolean(failover()), left, perGoal, goal, log});
+    if (!steps) { stopped = 'budget'; unfunded.push(...plan.goals.slice(results.length).map(each => each.n)); break; }
+    await openGoal(act, goal, log);
+    const result = await explore({act, ask, views, caps: {maxSteps: steps, maxCalls: callsLeft, maxMinutes: minutesLeft}, now, log, system: AGENT_SYSTEM, first: goalIntro(goal, goalKnowledge), session: `agent-g${goal.n}`,
+      extend: agentExtend({knowledgeIds, views, goal, sink: mine, shoot, where, pressed: () => act.lastPress?.() ?? null, capture})});
     for (const key of ['calls', 'input', 'output', 'ms']) spent[key] += result.spent[key];
     actorCalls += result.spent.calls;
     trace.push(...result.trace.map(row => ({...row, goal: goal.n})));
-    if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge, knowledgeIds, views, shoot, where, now, log}));
+    if (screenAsk) mine.push(...await readGoalScreen({act, screenAsk, goal, result, read, spent, knowledge: goalKnowledge, knowledgeIds, views, shoot, where, now, log, capture, verify: verifyGoals}));
     notes.push(...mine);
     // Why (7 Nov 2026, pz, owner via mac-50: the language goal "switches back to English"): the screen reader above read the screen in the language the goal ended on; the harness puts the app back in English before the next goal, so a goal that forgot (or stopped early) never turns the next goals' screens into false findings.
     await backToEnglish(act, goal, log);
-    results.push(goalResult(goal, result));
+    results.push(goalResult(goal, result, {verify: verifyGoals, notes: mine}));
     failedOver = noteFailover({failedOver, reason: failover(), goalResult: results.at(-1), stopped: result.stopped, goal, log});   // Why (7 Nov 2026, pz): the record keeps the reason a goal moved to Claude (the Admin page shows each goal's summary); named once, on the goal during which the first call failed.
     ends.push({n: goal.n, stopped: result.stopped, steps: result.steps.map(stepWords)});   // Why (5 Nov 2026, SC 2/2): a chain hands on the goals that did not end on done, and the steps of the one that stopped
     log(`  goal ${goal.n} "${goal.label}": ${results.at(-1).verdict}, ${mine.length} note(s)`);
@@ -163,9 +214,10 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   await judgeNotes({notes, judgeAsk, spent, knowledgeOf: judgeKnowledge});
   const summary = summarizeSession({session: session.id || '', persona: plan.persona?.name || '', seed: plan.seed, goals: plan.goals, results, notes, joined,
     cost: {calls: spent.calls, tokensIn: spent.input, tokensOut: spent.output, ms: now() - started}});
+  numberNotePictures(notes);
+  if (publish) await publish(summary.filed);
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', run: session.run || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
-  const observations = {};
-  for (const row of summary.goals) if (!['worked', 'not-started'].includes(row.verdict)) (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
-  const completed = ends.filter(end => end.stopped === 'done').map(end => end.n);
+  const observations = observedProblems(summary.goals, results);
+  const completed = completedGoals(ends, results, verifyGoals);
   return {summary, findings, observations, trace, spent, notes, ends, unfunded, completed, played: results.map(each => each.n), stopped: runStop(stopped, ends)};
 }

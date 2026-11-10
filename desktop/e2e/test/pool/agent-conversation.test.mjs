@@ -1,6 +1,6 @@
 // A persona goal is one Codex conversation (broker contract of jobadabra-web #409, owner 5 Nov 2026 via mac-32): the loop names the goal's session and sends the newest turn as a delta, the broker call keeps those fields
 // unless one engine alone is asked, the run's cap counts what the broker metered (`tokens.counted`), and the report says how many calls opened, resumed or restarted a conversation.
-// Guard: money — without it every step pays Codex's ~12k own context again (~15 steps in a 250k run instead of ~50), or the cap counts the cached part and stops a warm goal at a third of its use.
+// Guard: money — without it every step pays Codex's ~12k own context again (~15 steps in a 250k run instead of ~50), or incremental calibration stops a warm goal early. The separate gross ceiling now deliberately bounds cached input too (owner, 10 Nov 2026).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {conversation, explore, refusedLine} from '../../lib/explore.mjs';
@@ -65,19 +65,27 @@ test('the report says how many calls opened, resumed or restarted a conversation
   assert.equal(conversationLine([{}, {}]), '', 'a run with no conversation (Claude) prints nothing');
 });
 
-test('a run of warm calls is not stopped early: 60 resumed steps of 2.6k fit in the cap, a restart is still allowed for', async () => {
-  const budget = runBudget({capTokens: 250_000});
-  let step = 0;
-  const ask = budget.actor(async () => {
-    step++;
-    const input = 16_500 + 2_500 * (step - 1), output = 100, cached = step === 1 ? 0 : input - 2_500;
-    return {text: 'x', usage: {input_tokens: input, output_tokens: output}, tokens: {input, output, cached, counted: input - cached + output}};
-  });
-  const args = {system: 's'.repeat(8_000), messages: [{role: 'user', content: 'u'.repeat(12_000)}], schema: {}};
-  let stoppedAt = 0;
-  for (let n = 1; n <= 80; n++) { try { await ask(args); } catch (error) { assert.equal(error.message, CAP_REACHED); stoppedAt = n; break; } }
-  assert.ok(budget.state.total <= 250_000, `counted ${budget.state.total}`);
-  assert.ok(stoppedAt === 0 || stoppedAt > 60, `stopped at step ${stoppedAt} with only ${budget.state.total} metered of 250,000 (the judge keeps 40k and one restart is allowed for)`);
+test('gross usage stops cached turns while incremental calibration still permits the steps its own budget funds', async () => {
+  const simulate = async budget => {
+    let step = 0;
+    const ask = budget.actor(async () => {
+      step++;
+      const input = 16_500 + 2_500 * (step - 1), output = 100, cached = step === 1 ? 0 : input - 2_500;
+      return {text: 'x', usage: {input_tokens: input, output_tokens: output}, tokens: {input, output, cached, counted: input - cached + output}};
+    });
+    const args = {system: 's'.repeat(8_000), messages: [{role: 'user', content: 'u'.repeat(12_000)}], schema: {}};
+    let stoppedAt = 0;
+    for (let n = 1; n <= 80; n++) { try { await ask(args); } catch (error) { assert.equal(error.message, CAP_REACHED); stoppedAt = n; break; } }
+    return stoppedAt;
+  };
+  const bounded = runBudget({capTokens: 250_000});
+  assert.equal(await simulate(bounded), 9, 'cached context is bounded by gross usage even with little incremental spend');
+  assert.equal(bounded.state.gross, 202_800);
+  assert.equal(bounded.state.total, 34_800);
+  const incremental = runBudget({capTokens: 250_000, grossCapTokens: 20_000_000});
+  const stoppedAt = await simulate(incremental);
+  assert.ok(incremental.state.total <= 250_000, `counted ${incremental.state.total}`);
+  assert.ok(stoppedAt === 0 || stoppedAt > 60, 'incremental calibration itself still funds more than 60 resumed turns');
 });
 
 test('the broker client hands back the tokens and the session mode it was told', async () => {

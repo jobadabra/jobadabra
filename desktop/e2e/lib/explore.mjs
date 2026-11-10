@@ -66,7 +66,7 @@ export function observePage() {
   const shown = document.querySelector('.view:not([hidden])');
   const text = (shown?.innerText || document.body.innerText || '').replace(/\n{3,}/g, '\n\n').slice(0, 3000);
   const overlays = [...document.querySelectorAll('#toasts .toast, dialog[open]')].map(node => node.innerText.replace(/\s+/g, ' ').trim().slice(0, 200)).filter(Boolean);
-  return {view: shown?.dataset.view || '', text, overlays, controls};
+  return {view: shown?.dataset.view || '', locale: document.documentElement.lang || 'en', text, overlays, controls};
 }
 
 // A control's safety is judged on its own name (safeLabel: the label without the app's pills, as a count "2 to check" is not a press); an old record without one keeps its label.
@@ -157,7 +157,7 @@ export async function explore({act, ask, views, caps = {}, now = Date.now, log =
     try { answer = await ask(args); } catch (error) { stopped = `api: ${String(error.message).slice(0, 400)}`; log(refusedLine(args, turn)); break; }
     spend(spent, answer);
     messages.push({role: 'assistant', content: answer.text});
-    const input = parseAction(answer.text, prepared.actions), row = {n: turn + 1, view: seen.view, action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
+    const input = parseAction(answer.text, prepared.actions), row = {n: turn + 1, view: seen.view, locale: seen.locale || '', action: input.action || 'invalid', tier: answer.tier, engine: answer.engine || '', ms: answer.ms ?? null, tokens: (answer.usage?.input_tokens || 0) + (answer.usage?.output_tokens || 0), ...callDetail(answer)};
     const was = formatObservation(seen), turned = await takeTurn({input, act, seen, steps, bugs, views, row, extend});
     seen = turned.seen;
     const repeat = watch(row, was, turn);

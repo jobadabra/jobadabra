@@ -6,6 +6,7 @@ import {AGENT_SYSTEM, agentExtend, goalIntro, runSession} from '../../lib/agent-
 import {actionSchema, actionsOf, explore, parseAction} from '../../lib/explore.mjs';
 import {planSession} from '../../lib/agent-plan.mjs';
 import {CAP_REACHED} from '../../lib/agent-tier.mjs';
+import {languageGoal} from '../../lib/agent-moves.mjs';
 
 const seen = {view: 'profile', text: 'Profile\nPhone: Phone number', overlays: [], controls: [{i: 0, kind: 'button', label: 'Save', disabled: false, cls: '', href: '', type: ''}]};
 const BLANK = {control: -1, text: '', key: '', view: '', title: '', kind: '', severity: '', what: '', check_type: '', check_text: '', check_control: '', summary: '', type: '', expected: '', observed: '', why: '', verdict: ''};
@@ -17,6 +18,51 @@ const plan = planSession({seed: 7, moves: MOVES, count: 3});
 const NOTE = {type: 'data', kind: 'wrong-result', severity: 'high', view: 'profile', title: 'Phone saved as its label', expected: 'profile-4 a saved answer is what the person typed', observed: 'The phone number now reads "Phone number".', why: 'An application would send the label as the phone number.'};
 const judge = verdict => async () => ({text: JSON.stringify({verdict, reason: 'because'}), usage: {input_tokens: 500, output_tokens: 50}, tier: 'mid', engine: 'codex'});
 const done = (verdict, summary = 'ok') => turn('done', {verdict, summary});
+
+// Guard: money — unperformed goals must not advance coverage and waste later nights on a false success.
+test('a claimed success needs independent completion evidence; a bug verdict needs a note', async () => {
+  const one = {...plan, goals: [plan.goals[0]]};
+  const incomplete = async () => ({text: JSON.stringify({problems: [], completion: 'incomplete', completionReason: 'The requested pages were not visited.'}), usage: {input_tokens: 100, output_tokens: 20}});
+  const failed = await runSession({act: fakeAct(), ask: script([done('worked', 'All pages checked')]), judgeAsk: judge('agrees'), screenAsk: incomplete, verifyGoals: true, views: ['profile'], plan: one});
+  assert.equal(failed.summary.goals[0].verdict, 'could-not-finish');
+  assert.deepEqual(failed.completed, []);
+  const bug = await runSession({act: fakeAct(), ask: script([done('bug', 'Cannot find Developer options')]), judgeAsk: judge('agrees'), views: ['profile'], plan: one});
+  assert.equal(bug.summary.goals[0].verdict, 'doubts');
+  const unknown = await runSession({act: fakeAct(), ask: script([done('worked')]), judgeAsk: judge('agrees'), verifyGoals: true, views: ['profile'], plan: one});
+  assert.equal(unknown.summary.goals[0].verdict, 'doubts');
+  assert.deepEqual(unknown.observations, {}, 'unavailable verification is a tester limitation, never learned as an app problem');
+});
+
+// Guard: money — the 8 Nov false Spanish success must not count as coverage or retire the pending goal.
+test('a reader cannot verify a language goal whose requested locale and pages were never observed', async () => {
+  const one = {...plan, goals: [{n: 1, group: 'App', label: languageGoal('es')}]};
+  const reader = async () => ({text: JSON.stringify({problems: [], completion: 'verified', completionReason: 'Looks fine.'}), usage: {input_tokens: 100, output_tokens: 20}});
+  const result = await runSession({act: fakeAct(), ask: script([done('worked', 'Spanish checked')]), screenAsk: reader, judgeAsk: judge('agrees'), verifyGoals: true, views: ['profile'], plan: one});
+  assert.equal(result.summary.goals[0].verdict, 'could-not-finish');
+  assert.deepEqual(result.completed, []);
+});
+
+// Guard: privacy — the selected finding must refer to its original main-process capture, not a later screen.
+test('the loop captures when a note is made and publishes only after the judge selected it', async () => {
+  const events = [];
+  const result = await runSession({act: fakeAct(), ask: script([turn('note', NOTE), done('bug')]), judgeAsk: async args => { events.push('judge'); return judge('agrees')(args); },
+    capture: async view => { events.push(`capture:${view}`); return 'ticket-a'; }, publish: async notes => { events.push('publish'); assert.equal(notes[0].captureId, 'ticket-a'); notes[0].bundle = {id: '0123456789abcdef', url: 'bundle-url'}; },
+    views: ['profile'], plan: {...plan, goals: [plan.goals[0]]}, knowledgeIds: ['profile-4']});
+  assert.deepEqual(events, ['capture:profile', 'judge', 'publish']);
+  assert.equal(result.findings[0].evidence.id, '0123456789abcdef');
+});
+
+// Guard: money — checking a second goal on the same unchanged screen must not pay to judge and publish its same bug again.
+test('completion checks stay per-goal but an unchanged screen emits its problems only once', async () => {
+  let judged = 0, reads = 0;
+  const reader = async () => { reads++; return {text: JSON.stringify({problems: [NOTE], completion: 'verified', completionReason: 'The state proves it.'}), usage: {input_tokens: 100, output_tokens: 20}}; };
+  const result = await runSession({act: fakeAct(), ask: script([done('worked'), done('worked')]), screenAsk: reader,
+    judgeAsk: async args => { judged++; return judge('agrees')(args); }, verifyGoals: true,
+    views: ['profile'], plan: {...plan, goals: plan.goals.slice(0, 2)}, knowledgeIds: ['profile-4']});
+  assert.equal(reads, 2, 'each goal still needs its own completion proof');
+  assert.equal(judged, 1);
+  assert.equal(result.findings.length, 1);
+});
 
 test('the agent adds one action and its fields to the explorer shape; without the extension the explorer is unchanged', () => {
   const plain = actionSchema(['jobs']);
@@ -62,7 +108,7 @@ test('notes are judged high first, then medium, then low', async () => {
   const order = [];
   const judgeAsk = async ({messages}) => { order.push(String(messages.at(-1).content?.at?.(-1)?.text ?? messages.at(-1).content).match(/(Low|High|Medium) one/)?.[1]); return {text: JSON.stringify({verdict: 'agrees', reason: 'ok'}), usage: {}, tier: 'mid', engine: 'codex'}; };
   await runSession({act: fakeAct(), ask, judgeAsk, views: ['profile'], plan: {...plan, goals: [plan.goals[0]]}, knowledgeIds: ['profile-4']});
-  assert.deepEqual(order, ['High', 'Medium', 'Low']);
+  assert.deepEqual(order, ['High', 'Medium'], 'low notes cannot be filed, so they spend no judge call');
 });
 
 test('the second opinion is given the rules of the note\'s area, and nothing when no rules are passed', async () => {

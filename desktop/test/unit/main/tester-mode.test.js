@@ -27,6 +27,25 @@ const storage = {settings: () => ({theme: 'dark', telemetryId: 'install-aaaa'}),
 const INPUT = {title: 'Phone label', journey: 'J12', severity: 'high', expected: 'typed phone', seen: 'label shown', steps: 'Open Profile\nPress Save'};
 const setup = extra => registerFeedbackHandlers({DEMO: false, app, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, storage, track: () => {}, getWindow: () => win, getPlan: () => ({state: () => ({plan: 'free'})}), jobsOf: async () => ({jobs: []}), ...extra});
 
+test('persona captures retain their own state across later notes and reject unknown tickets', async () => {
+  const uploads = [];
+  let sessions = [{url: 'https://example.test/first', title: 'First'}];
+  setup({tester: () => ({source: 'persona', key: 'k'}), sessionsOf: () => sessions,
+    upload: async call => { uploads.push(call); return {ok: true, id: '0123456789abcdef'}; }});
+  const first = await handlers.feedbackPrepare({}, 'jobs');
+  sessions = [{url: 'https://example.test/second', title: 'Second'}];
+  const second = await handlers.feedbackPrepare({}, 'settings');
+  assert.ok(first.captureId);
+  assert.notEqual(first.captureId, second.captureId);
+  assert.equal((await handlers.sendTesterBug({}, {...INPUT, captureId: 'unknown'})).ok, false);
+  assert.equal(uploads.length, 0);
+  assert.equal((await handlers.sendTesterBug({}, {...INPUT, captureId: first.captureId})).ok, true);
+  assert.equal(JSON.parse(uploads[0].files['state.json']).sessions[0].title, 'First');
+  assert.equal((await handlers.sendTesterBug({}, {...INPUT, captureId: first.captureId})).ok, false);
+  assert.equal((await handlers.sendTesterBug({}, {...INPUT, captureId: second.captureId})).ok, true);
+  assert.equal(JSON.parse(uploads[1].files['state.json']).sessions[0].title, 'Second');
+});
+
 test('in a person\'s app the tester send refuses, nothing is uploaded and the dialog is told nothing', async () => {
   const uploads = [];
   setup({tester: () => null, upload: async call => { uploads.push(call); return {ok: true}; }});

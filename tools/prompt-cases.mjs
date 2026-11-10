@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const PROMPT_FILE = /^(app-core\/src\/[^/]+\.js|desktop\/lib\/[^/]+\.js|src\/.+\.py)$/;
+export const PROMPT_FILE = /^(app-core\/src\/[^/]+\.js|desktop\/lib\/[^/]+\.js|desktop\/e2e\/lib\/agent-screen\.mjs|src\/.+\.py)$/;
 const NAME = /^(?:export\s+)?(?:const\s+|let\s+)?([A-Z0-9_]*(?:SYSTEM|PROMPT|RULES?|INSTRUCTIONS|EXAMPLES))\s*=\s*(.*)$/;
 const STRING_START = /^(?:[rRbBuUfF]{0,2}("""|'''|"|')|`|\()/;
 const TRAILER = /^Prompt-case:[ \t]*none\s+\S.{6,}$/m;
