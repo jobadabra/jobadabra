@@ -22,6 +22,7 @@ The PR's yardstick comment and job summary (`press-yardstick.yml`): 18 people ×
 - **Worse** = beyond one job (5 s of speed) and beyond the person's own band (2 sd of main's 5 replays). A 1-job change still shows in the cell even when it reads "no change".
 - **Noisy** people (their replays do not repeat on main) carry their band: read their "worse" with it. "Not measured" (no recording, no band yet) is no proof either way.
 - Report only, no red. Your PR names each worse person's cause or says why it is fine; a person who got worse and you did not look is the gap this table exists to close.
+- EURES is on only in the installed app (`JOBADABRA_EURES=1`, `src/features.py`); source and CI runs have it off. A replay uses it when the recording was made with it (`recorded.json` `eures`, replay `--with-eures`), so compare like with like: a recording made without it never shows what EURES adds.
 - It starts on every src file the run reaches (`python3 tools/press-yardstick/paths.py --check`). If it did not start, your change is not in the run's reach or the list drifted: say which.
 
 ## What each measure can and cannot see
