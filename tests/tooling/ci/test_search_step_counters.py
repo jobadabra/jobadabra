@@ -96,6 +96,13 @@ class TheEuresMode(unittest.TestCase):
                 daily_search.start_sources(mock.Mock(mode='run', only_visits=False), None)
             self.assertEqual(self.LINE.split('] ')[1] in out.getvalue(), printed, env)
 
+    def test_the_night_table_names_the_mode_in_its_first_line(self):
+        """sa, 10 Nov 2026: every measure says whether EURES was on, so "ours without EURES" is never read as a drop."""
+        row = {'persona': 1, 'local': 1, 'found': 2, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription', 'eures': 'off'}
+        off, on = (gate.table(gate.compare({1: {**row, 'eures': mode}}, [])) for mode in ('off', None))
+        self.assertIn('EURES: off', off.splitlines()[0])
+        self.assertIn('EURES: on', on.splitlines()[0])
+
     def test_the_verdict_says_off_only_when_every_press_that_ran_said_so(self):
         row = lambda eures: {'persona': 1, 'local': 1, 'found': 2, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription', 'eures': eures}
         pr = lambda *modes: {n + 1: row(mode) for n, mode in enumerate(modes)}

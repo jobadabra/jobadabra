@@ -433,10 +433,11 @@ def cost_label(verdict):
 
 def table(verdict):
     spent = sum(r['usd'] or 0 for r in verdict['rows'])
+    mode = f" · EURES: {verdict.get('eures', 'on')}"   # Why (10 Nov 2026, sa): every measure says its mode, so "ours without EURES" is never read as a drop
     cap = '' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else f' (legacy API cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})'
     if verdict.get('unavailable'):   # no table of zeros: nothing was searched, so there is nothing to compare
-        return f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
-    lines = [f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)} · cost ${spent:.2f}{cap}", '',
+        return f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}{mode}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
+    lines = [f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}{mode} · cost ${spent:.2f}{cap}", '',
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'

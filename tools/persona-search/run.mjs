@@ -62,7 +62,7 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
   const recordedFile = path.join(tape, 'recorded.json');
   if (process.argv.includes('--record')) {
     fs.mkdirSync(tape, {recursive: true});
-    fs.writeFileSync(recordedFile, JSON.stringify({model_override: process.env.JOBADABRA_MODEL_OVERRIDE || ''}) + '\n');
+    fs.writeFileSync(recordedFile, JSON.stringify({model_override: process.env.JOBADABRA_MODEL_OVERRIDE || '', eures: process.argv.includes('--with-eures')}) + '\n');   // Why (10 Nov 2026, ys): a tape recorded without EURES holds no EURES page; its replay must not ask for them (an older tape has no field: it was recorded with EURES on)
   } else if (fs.existsSync(recordedFile)) {
     const {model_override: recorded} = JSON.parse(fs.readFileSync(recordedFile, 'utf8')) || {};
     if (typeof recorded !== 'string') { console.error(`${recordedFile} has no model_override: the tape does not say which model it was recorded with`); process.exit(2); }
@@ -156,7 +156,7 @@ for (let press = done + 1; press <= presses; press++) {
   if (verdict) fs.writeFileSync(path.join(out, `judge-${press}.json`), JSON.stringify(verdict, null, 2));
   const first = row.ttfr ? `; 1st/10th relevant at ${row.ttfr.first_in_places_s ?? '—'}/${row.ttfr.tenth_in_places_s ?? '—'} s, 1st 70+ at ${row.ttfr.first_fit70_s ?? '—'} s` : '';
   if (crashes.length) { failed.push(...crashes); console.log(`PRESS ${name} ${press} FAILED: ${crashes.map(crash => `${crash.step}: ${crash.error}`).join(' | ')}`); }
-  console.log(`PRESS ${name} ${press}: ${row.in_places} in places, ${row.scored_in_places} scored, ${row.fit70_in_places} fit 70+ (${row.seconds} s${first})${verdict ? `; top 10: ${verdict.right} of ${verdict.of} right` : ''}`);
+  console.log(`PRESS ${name} ${press} (EURES: ${process.argv.includes('--with-eures') ? 'on' : 'off'}): ${row.in_places} in places, ${row.scored_in_places} scored, ${row.fit70_in_places} fit 70+ (${row.seconds} s${first})${verdict ? `; top 10: ${verdict.right} of ${verdict.of} right` : ''}`);
 }
 if (failed.length) { console.log(`PERSONA FAILED ${name}: ${failed.length} crash(es), the numbers above are not a clean run`); process.exitCode = 1; }
 else console.log(`PERSONA DONE ${name}`);
