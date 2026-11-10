@@ -1,0 +1,57 @@
+## EURES comparison · p1 Truck Driver (Class CE), Sofia
+
+Fresh EURES reference: **1** relevant title/employer pairs.
+Run order: normal → without_eures. Same saved strategy; two fresh installs.
+
+| Measurement | Normal search | EURES reader disabled |
+|---|---:|---:|
+| Status | measured | measured |
+| Press seconds | 90 | 90 |
+| First in-place job (s) | 15 | 15 |
+| First 70+ in-place job (s) | not reached | not reached |
+| Relevant pairs | 1 | 1 |
+| From EURES | 0 | 0 |
+| From other sources | 1 | 1 |
+| Exact overlap with reference | 1 | 1 |
+| Unmatched pairs | 0 | 0 |
+| Missing employer identity | 0 | 0 |
+
+**normal:** press completed
+Relevant pairs by source: Other sources: 1
+
+**without_eures:** press completed
+Relevant pairs by source: Other sources: 1
+
+Overlap uses exact title and employer after case/whitespace normalization within this persona. Different wording can hide duplicates; unmatched pairs are not proven additional vacancies. Unknown employers cannot establish overlap. Source contributions can overlap and need not sum to the total. The reference is a sampled EURES read, not the whole portal. Live sites and AI load can differ between presses. Disabling the EURES reader does not prevent another source from linking to EURES; any such result invalidates the disabled arm.
+
+## EURES comparison · p2 HR Generalist, Cluj-Napoca
+
+Fresh EURES reference: **1** relevant title/employer pairs.
+Run order: without_eures → normal. Same saved strategy; two fresh installs.
+
+| Measurement | Normal search | EURES reader disabled |
+|---|---:|---:|
+| Status | measured | measured |
+| Press seconds | 90 | 90 |
+| First in-place job (s) | 15 | 15 |
+| First 70+ in-place job (s) | not reached | not reached |
+| Relevant pairs | 1 | 1 |
+| From EURES | 0 | 0 |
+| From other sources | 1 | 1 |
+| Exact overlap with reference | 1 | 1 |
+| Unmatched pairs | 0 | 0 |
+| Missing employer identity | 0 | 0 |
+
+**normal:** press completed
+Relevant pairs by source: Other sources: 1
+
+**without_eures:** press completed
+Relevant pairs by source: Other sources: 1
+
+Overlap uses exact title and employer after case/whitespace normalization within this persona. Different wording can hide duplicates; unmatched pairs are not proven additional vacancies. Unknown employers cannot establish overlap. Source contributions can overlap and need not sum to the total. The reference is a sampled EURES read, not the whole portal. Live sites and AI load can differ between presses. Disabling the EURES reader does not prevent another source from linking to EURES; any such result invalidates the disabled arm.
+
+## EURES comparison · p1 Truck Driver (Class CE), Sofia
+
+**Not measured:** ValueError: live comparisons require the CI Codex relay
+
+PASS: attribution, overlap, unknown identity, contamination, timings, alternating arms, shared draft, failure report; no live calls
