@@ -14,7 +14,7 @@ afterEach(() => setLocale('en'));
 test('the actual startup prefix applies a saved choice before Applications consent', () => {
   const source = fs.readFileSync(new URL('../../../main.js', import.meta.url), 'utf8');
   const prefix = source.split('start: () => {')[1]?.split('\n  buildMenu();')[0];
-  assert.ok(prefix?.includes('quitBeforeStart'), 'exercise the real initial startup statements');
+  assert.ok(prefix?.includes('offerMove({app, dialog})'), 'exercise the real initial startup statements');
   const events = [], asked = [];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-startup-'));
   fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({displayLanguage: 'ru'}));
@@ -23,8 +23,7 @@ test('the actual startup prefix applies a saved choice before Applications conse
   setLocale('en');
   try {vm.runInNewContext(`(() => {${prefix}})()`, {app, dialog, appLog() {},
     initializeStartupLocale: options => {events.push('locale'); return initializeStartupLocale(options);},
-    offerMove: options => offerMove({...options, platform: 'darwin'}),
-    quitBeforeStart: ({offerMove: move, ...options}) => {events.push('prompt'); move(options); return true;}});
+    offerMove: options => {events.push('prompt'); offerMove({...options, platform: 'darwin'}); return true;}});
   assert.deepEqual(events, ['locale', 'prompt']);
   assert.equal(asked[0].message, 'Переместить Jobadabra в Программы?');
   } finally {fs.rmSync(dir, {recursive: true, force: true});}

@@ -90,6 +90,7 @@ on:
       - 'tools/feedback-released.mjs'   # desktop/test/tooling/release/feedback-released.test.js
       - 'tools/msix-store-watch.mjs'   # desktop/test/tooling/release/msix-store-watch.test.js
       - 'tools/msix-store-weekly.mjs'   # desktop/test/tooling/release/msix-store-weekly.test.js
+      - '.github/workflows/msix-store.yml'   # desktop/test/guards/release/store-manifest.test.js reads its build flags
       - 'tools/feedback-ai.mjs'   # desktop/test/tooling/ci/feedback-ai.test.js
       - 'tools/fixer/**'   # the walls, proof and leak scan feedback-ai.test.js drives through tools/feedback-ai.mjs
       - 'tools/feedback-ai-sandbox.sh'   # desktop/test/tooling/ci/feedback-ai.test.js reads its flags
