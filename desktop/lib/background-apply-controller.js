@@ -291,7 +291,11 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const generation = triageCancels;
     ({owner} = await browserOf().start({port, token: token()}));
     if (generation !== triageCancels) return null;   // Cancel came while the browser was starting: the read is never queued behind it (Gitar on #2636)
-    return reader.read(job?.url);
+    const read = reader.read(job?.url);
+    // Why (10 Nov 2026, night burn-in 42721065574): the extension asked for a queued read only on its 30 s tab report, so each read waited 24-27 s for a 1.5 s look.
+    // The owned worker polls now; a wake that fails leaves the read to that report, never ends it.
+    browserOf().wake?.().catch(() => false);
+    return read;
   }
   const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)
   // Hands one background job to the person through the store's interrupted check (`options`: afterMs, quit) with its own words; -> the saved state, or null when it was not handed over.

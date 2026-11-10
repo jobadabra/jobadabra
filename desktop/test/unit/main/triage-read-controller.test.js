@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundApplyController} from '../../../lib/background-apply-controller.js';
 import {markedSession} from '../../../lib/session-tab.js';
+import {createTriageReader} from '../../../lib/triage-reader.js';
 
-const make = ({open = [], ready = true, startGate = null} = {}) => {
+const make = ({open = [], ready = true, startGate = null, wakes = [], reader} = {}) => {
   const calls = [], starts = [];
   const controller = createBackgroundApplyController({}, {
     store: {read: async () => null, queue: () => calls.push('store.queue'), claim: () => calls.push('store.claim')},
-    browser: {ready: () => ready, start: async () => { starts.push('start'); await startGate; return {owner: 'o1'}; }},
+    browser: {ready: () => ready, start: async () => { starts.push('start'); await startGate; return {owner: 'o1'}; }, wake: async () => { wakes.push('wake'); return true; }},
+    ...(reader ? {reader} : {}),
     terminals: {list: () => open, byUrl: () => null, startForm: () => calls.push('terminals.startForm'), record: () => null, report: () => {}},
     config: () => ({}), log: () => {}, token: () => 'fictional', port: 1});
   return {controller, calls, starts};
@@ -131,4 +133,38 @@ test('a step report reaches the window, and the finished read writes one app.log
   assert.equal(summary?.outcome, 'read');
   for (const key of ['totalMs', 'queueMs', 'openMs', 'judgeMs', 'planMs']) assert.equal(typeof summary[key], 'number', key);
   } finally { setWindowSignal(() => {}); }
+});
+
+// Why (10 Nov 2026, night burn-in 42721065574 + after-merge 42719857151): the hidden browser's extension asked for a queued read only on its 30 s tab report, so every read
+// after the first waited 24-27 s (queueMs) for a look of 1.4-1.7 s. A queued read now wakes the owned worker's poll at once.
+test('a queued read wakes the hidden browser at once, so the extension takes it without waiting for its 30 s report', async () => {
+  const wakes = [], {controller} = make({wakes}), pending = controller.triageRead({url: 'https://jobs.example.test/wake'});
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(wakes, ['wake'], 'one wake per queued read');
+    const {jobs} = await poll(controller);
+    assert.equal(jobs[0]?.mode, 'read', 'the read the wake was for is the one handed out');
+  } finally {
+    controller.cancelTriage();
+    await pending;
+  }
+});
+
+test('a check of 4 jobs on a fake clock: each read is handed out when it is queued (queueMs 0, was up to 30 s each), so 4 reads take 6 s, not about 2 min', async () => {
+  const LOOK_MS = 1500, REPORT_MS = 30000;   // a measured light look; the extension's tab report period (extension/report-alarm.js, Chrome's shortest alarm)
+  let t = 0;
+  const done = [], wakes = [];
+  const reader = createTriageReader({now: () => t, set: () => 0, clear: () => {}, onDone: summary => done.push(summary)});
+  const {controller} = make({wakes, reader});
+  for (const n of [1, 2, 3, 4]) {
+    const before = wakes.length, pending = controller.triageRead({url: `https://jobs.example.test/check-${n}`});
+    await new Promise(resolve => setImmediate(resolve));
+    if (wakes.length === before) t = Math.floor(t / REPORT_MS + 1) * REPORT_MS;   // not woken: the read waits for the extension's next report
+    const {jobs} = await poll(controller);
+    t += LOOK_MS;
+    await controller.handle({action: 'triage-read', owner: 'o1', session: jobs[0].session, simple: true});
+    await pending;
+  }
+  assert.deepEqual(done.map(summary => summary.queueMs), [0, 0, 0, 0], 'no read waits for a report');
+  assert.equal(t, 4 * LOOK_MS, 'the check takes its reads, nothing else');
 });

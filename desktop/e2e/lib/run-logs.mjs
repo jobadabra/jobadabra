@@ -2,6 +2,7 @@
 // "what did this run reach?": notion-requests.log (every Notion request the app and its Python made: route and status, never content) and store-call.log
 // (every ctx.data call of the suite itself, lib/store-call.mjs: which store, which Notion host). A run that made none still leaves the file, empty: zero
 // is then a fact, not a missing file. Guarded by test/run-logs.test.mjs.
+// Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -29,6 +30,9 @@ export function keepRunLogs(profile, artifacts) {
   for (const name of fs.existsSync(from) ? fs.readdirSync(from) : []) {
     if (fs.statSync(path.join(from, name)).isFile()) fs.copyFileSync(path.join(from, name), path.join(to, name));
   }
+  // Why (10 Nov 2026, night burn-in 42721065574): the hidden browser took a read and made no request for 30 s, and nothing it said was kept; its own messages (lib/background-browser.js, e2e only) go with the app's.
+  const hidden = path.join(profile, 'background-browser', 'e2e-browser.log');
+  if (fs.existsSync(hidden)) fs.copyFileSync(hidden, path.join(to, 'hidden-browser.log'));
   const counts = {};
   for (const name of KEPT_LOGS) {
     const file = path.join(to, name);
