@@ -38,6 +38,7 @@ on:
       - 'extension/**'
       - 'src/**'   # test/pool/quality.test.mjs reads the engine's folder
       - '.github/workflows/**'
+      - '.github/actions/electron-cache/action.yml'   # Why (10 Nov 2026, fr): desktop/e2e/test/harness/app-env-electron-cache.test.mjs reads the variable this action exports
       - '.github/workflows/e2e-windows.yml'
       - '.github/workflows/e2e.yml'
       - '.github/workflows/journeys.yml'
