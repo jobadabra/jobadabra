@@ -21,6 +21,18 @@ test('under the cap it is open, at the cap it is closed, and stays closed for th
   assert.equal((await capReached({env, fetchImpl: analytics(5), now: Date.parse('2026-10-29T00:01:00Z')})).capped, false, 'a new UTC day opens it');
 });
 
+test('the first minutes of a UTC day: Cloudflare answers with an empty list, which is 0 neurons used, not an unreadable count', async () => {
+  resetCap();
+  const empty = async () => ({json: async () => ({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: []}]}}})});
+  assert.deepEqual(await capReached({env, fetchImpl: empty, now: Date.parse('2026-11-10T00:02:00Z')}), {capped: false, neurons: 0});
+  resetCap();
+  const noAccount = async () => ({json: async () => ({data: {viewer: {accounts: []}}})});
+  assert.equal((await capReached({env, fetchImpl: noAccount, now: Date.parse('2026-11-10T00:02:00Z')})).unreadable, true, 'a missing account (wrong id or scope) is still unreadable, never 0');
+  resetCap();
+  const noFigure = async () => ({json: async () => ({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: [{sum: {}}]}]}}})});
+  assert.equal((await capReached({env, fetchImpl: noFigure, now: Date.parse('2026-11-10T00:02:00Z')})).unreadable, true, 'a row without its neuron figure is unreadable, never 0 (it would let the spend through)');
+});
+
 test('an unreadable count fails closed, with the cause and the fix in the grey line', async () => {
   resetCap();
   assert.deepEqual(await capReached({env: {}, fetchImpl: analytics(1e9)}), {capped: true, neurons: null, unreadable: true}, 'no analytics token');
