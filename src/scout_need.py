@@ -20,7 +20,7 @@ def covered(search=None, cache=None, db=None):
     if not kinds or role_kinds.UNKNOWN in kinds or not index or not index['feeds']:   # unknown field: the scout looks
         return None
     have = sum(1 for feed in index['feeds'] if scout_cells.top_kind(feed) in kinds
-               and any(feeds.wanted_location({'location': place}) for place in feed.get('places') or []))
+               and any(feeds.could_be_in_places({'location': place}) for place in feed.get('places') or []))
     if have < scout_cells.FLOOR:
         return None
     hits = sum(row['in_places'] for row in source_yield.latest(db)) if db is not None else 0

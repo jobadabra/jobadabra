@@ -275,7 +275,7 @@ def triage_places(jobs):
         placed().update(place_triage.decide(ordered, _SEARCH))
         placed().update(place_triage.vague(ordered, _SEARCH))   # of the ones outside: which name no town of their own
     except Exception as error:  # noqa: BLE001 — not placed this run: the place words decide, said
-        print(f'Warning: job locations not placed by {providers.who()} ({reason(error)}): your place words decide this run')
+        print(f'Warning: job locations not placed by {providers.who()} ({reason(error)}): the place words decide this run (remote jobs wait)')
         detail('sources', error)
 
 

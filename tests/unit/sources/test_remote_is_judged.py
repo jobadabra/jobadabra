@@ -53,9 +53,17 @@ class RemoteIsJudgedTest(unittest.TestCase):
                 self.assertTrue(feeds.wanted_location({'location': where, 'remote': True}), where)
 
     def test_an_unplaced_remote_job_has_its_site_read_again(self):
-        with mock.patch.object(feeds, '_triaged', return_value={}), mock.patch.object(feed_facts, '_triage_on', return_value=True):
-            self.assertFalse(feed_facts.settled({'location': 'Remote, Ireland', 'title': 'Clinical Research Nurse'}),
-                             'its title and place are not judged yet: the next run reads the list again')
+        job = {'location': 'Remote, Ireland', 'title': 'Clinical Research Nurse'}
+        for triaged in ({}, {feeds.ASKED: True}):   # the title sort ran or not: either way its title was never asked (not in your places yet)
+            with mock.patch.object(feeds, '_triaged', return_value=dict(triaged)), mock.patch.object(feed_facts, '_triage_on', return_value=True):
+                self.assertFalse(feed_facts.settled(job), f'not placed, title not judged: the next run reads the list again ({triaged})')
+        with mock.patch.object(feeds, '_triaged', return_value={feeds.ASKED: True}), mock.patch.object(feeds, 'judged_title', return_value=False):
+            self.assertTrue(feed_facts.settled(job), 'a title the AI judged not this search\'s needs no place')
+
+    def test_an_unplaced_remote_job_with_a_judged_title_stays_open(self):
+        job = {'location': 'Remote, Ireland', 'title': 'Staff Nurse'}
+        with mock.patch.object(feeds, 'wanted_title', return_value=True), mock.patch.object(feeds, 'judged_title', return_value=True):
+            self.assertTrue(feeds.keep_open(job), 'waits for its place (place_open_jobs), is not closed as outside your places')
 
     def test_an_employer_hiring_remote_is_still_read(self):
         index = [{'company': 'remote-first', 'places': ['Remote - EMEA']}, {'company': 'elsewhere', 'places': ['Austin, Texas']}]

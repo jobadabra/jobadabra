@@ -183,7 +183,7 @@ def counted_jobs(jobs):
 def quality(jobs):
     """Deterministic 0-100 score of how useful a feed is for this search, with its evidence."""
     relevant = counted_jobs(jobs)
-    preferred = [j for j in relevant if feeds.wanted_location(j)]
+    preferred = [j for j in relevant if feeds.could_be_in_places(j)]
     swiss = [j for j in preferred if SWISS_OR_ZURICH.search(j['location'] or '')]
     stack = [j for j in relevant if STACK.search(j.get('description') or '')]
     cutoff = (now() - timedelta(days=90)).date().isoformat()
