@@ -17,10 +17,25 @@ function refusalOf(body) {
   try { return String(JSON.parse(String(body))?.error?.message || '').replace(/\s+/g, ' ').trim().slice(0, 200); } catch { return ''; }
 }
 
-/** Measure each relay call without changing its answer. `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
+/**
+ * The one engine a run's every call is pinned to, from JOBADABRA_CHECK_ENGINE (set by search-personas.yml), or null (other callers keep the broker's chain).
+ * Why (10 Nov 2026, owner's finish line via sa, WP5: "one engine, no fallback"): from 7 to 10 Nov the Search check's AI changed under it 4 times (a whole night
+ * on Free AI after Codex ran out; 7 people on Claude then Codex; single calls on Claude when Codex failed), so its numbers were not comparable. Pinned, the
+ * broker answers on that engine alone or refuses with its reason (lib/engines.mjs `only`); a refused run is "not run", never finished on another AI.
+ */
+export function checkEngine(env = process.env) {
+  const engine = String(env.JOBADABRA_CHECK_ENGINE || '').trim();
+  if (!engine) return null;
+  if (!['codex', 'claude', 'free-ai'].includes(engine)) throw new Error(`JOBADABRA_CHECK_ENGINE "${engine.slice(0, 20)}" is not an engine the broker knows (codex, claude, free-ai)`);
+  return engine;
+}
+
+/** Measure each relay call without changing its answer (beyond pinning it to the run's one engine, checkEngine). `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
 export function timedRelay({env = process.env, ask = askBroker, now = Date.now, log = line => console.error(line)} = {}) {
   let inFlight = 0;
-  return async (body, kind = 'unlabelled') => {
+  const pinned = checkEngine(env);
+  return async (asked, kind = 'unlabelled') => {
+    const body = pinned ? {...asked, engine: pinned, only: true} : asked;
     const started = now(), call = toBrokerCall(body);
     let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null, why = '';
     inFlight++;

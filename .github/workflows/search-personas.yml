@@ -45,6 +45,7 @@ concurrency:   # one at a time, so no two runs share the broker; a newer queued 
 env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
+  JOBADABRA_CHECK_ENGINE: codex   # Why (10 Nov 2026, owner's finish line, WP5): every call of the check (press, judge, reference, EURES comparison) on this one engine, no fallback (tools/persona-search/codex.mjs checkEngine)
   JOBADABRA_AI_CALL_LOG: '1'   # Why (7 Nov 2026, #2920): one run-log line per AI call (step, asked, slot wait, answered; src/ai/call_log.py) so a run says where the 2:15 clock went
   JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
 
