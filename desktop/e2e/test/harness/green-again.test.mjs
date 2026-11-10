@@ -8,7 +8,7 @@ import {checkCard} from '../../lib/tg-card.mjs';
 const lanes = {suites: {'prompt-cases': {lane: 'tolerant'}, 'integration-shots': {lane: 'tolerant'}}};
 const env = (file = 'e2e.yml', sha = 'ccc') => ({GITHUB_API_URL: 'https://api.test', GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'org/repo', GITHUB_RUN_ID: '99', GITHUB_REF_NAME: 'main', GITHUB_SHA: sha,
   GITHUB_WORKFLOW: file === 'e2e.yml' ? 'E2E' : 'Journeys', GITHUB_WORKFLOW_REF: `org/repo/.github/workflows/${file}@refs/heads/main`, GH_TOKEN: 'x'});
-const run = (id, conclusion, sha, extra = {}) => ({id, conclusion, head_sha: sha, created_at: '2026-11-10T00:35:00Z', run_started_at: '2026-11-10T00:35:00Z', display_title: 'E2E', ...extra});
+const run = (id, conclusion, sha, extra = {}) => ({id, conclusion, head_sha: sha, created_at: '2026-11-10T00:35:00Z', run_started_at: '2026-11-10T00:35:00Z', display_title: 'E2E check · main', ...extra});
 const job = (name, conclusion) => ({name, conclusion, html_url: `https://github.com/org/repo/job/${name}`});
 // url fragment -> JSON; the first fragment the URL contains answers. An unlisted URL throws (a read the test did not expect).
 const gh = routes => async url => {
@@ -16,7 +16,7 @@ const gh = routes => async url => {
   if (!hit) throw new Error(`unexpected read ${url}`);
   return {json: async () => hit[1]};
 };
-const runs = (...list) => ({'/workflows/': {workflow_runs: list}});
+const runs = (...list) => ({'/workflows/': {workflow_runs: list}, ...Object.fromEntries(list.filter(item => item.conclusion === 'success').map(item => [`/actions/runs/${item.id}/jobs`, {jobs: [job('apply', 'success'), job('wizard', 'success')]}]))});
 const jobsOf = (id, ...list) => ({[`/actions/runs/${id}/jobs`]: {jobs: list}});
 const merged = number => ({commits: [{commit: {message: `Some change (#${number - 1})`}}, {commit: {message: `Fix the step (#${number})\n\nbody`}}]});
 const card = closed => messageOf({status: 'success', closed, env: env(), lanes, now: new Date('2026-11-10T08:00:00Z')});
@@ -50,7 +50,7 @@ test('a previous run that failed only report-only suites sent no red, so no gree
 });
 
 test('a report-only failure after a sent red ends the streak: the run counted as green, so the red was closed then', async () => {
-  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb'), run(11, 'failure', 'bbb')), ...jobsOf(12, job('prompt-cases', 'failure')), ...jobsOf(11, job('apply-1of3', 'failure')), ...jobsOf(99, job('apply-1of3', 'success'))}), lanes);
+  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb'), run(11, 'failure', 'bbb')), ...jobsOf(12, job('prompt-cases', 'failure'), job('apply-1of3', 'success')), ...jobsOf(11, job('apply-1of3', 'failure')), ...jobsOf(99, job('apply-1of3', 'success'))}), lanes);
   assert.deepEqual(closed.suites, []);
 });
 
@@ -81,7 +81,7 @@ test('no earlier failure, or an unreadable GitHub, sends nothing', async () => {
 });
 
 test('a suite that passed in a failed run in between had recovered then: only the suite red in the newest run is closed, red since that run', async () => {
-  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb', {run_started_at: '2026-11-10T04:00:00Z'}), run(11, 'failure', 'bbb')), ...jobsOf(12, job('wizard', 'failure')), ...jobsOf(11, job('apply-1of3', 'failure')),
+  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb', {run_started_at: '2026-11-10T04:00:00Z'}), run(11, 'failure', 'bbb')), ...jobsOf(12, job('wizard', 'failure'), job('apply-1of3', 'success')), ...jobsOf(11, job('apply-1of3', 'failure')),
     ...jobsOf(99, job('apply-1of3', 'success'), job('wizard', 'success')), '/compare/ccb...ccc': merged(3650)}), lanes);
   assert.deepEqual(closed.suites, ['wizard']);
   assert.equal(closed.at, '2026-11-10T04:00:00Z');
@@ -103,4 +103,25 @@ test('a failed status whose jobs are all report-only closes an open red but alon
   const sent = messageOf({status: 'failure', jobs: [{name: 'prompt-cases', url: 'u'}], closed: {suites: ['apply'], at: '2026-11-10T00:35:00Z', fixed: {prs: [], more: 0}, flaky: false}, env: env(), lanes});
   assert.match(sent.text, /green again/, 'a run with only report-only failures can still close a blocking red');
   assert.equal(messageOf({status: 'failure', jobs: [{name: 'prompt-cases', url: 'u'}], env: env(), lanes}), '', 'and with no red to close it is silent');
+});
+
+
+test('an unrun suite carries across a different red and a partial green until it actually passes', async () => {
+  const closed = await openRed(env(), gh({...runs(run(13, 'success', 'ccc'), run(12, 'failure', 'ccb'), run(11, 'failure', 'bbb')),
+    ...jobsOf(13, job('wizard', 'success'), job('apply', 'skipped')), ...jobsOf(12, job('wizard', 'failure')), ...jobsOf(11, job('apply', 'failure')),
+    ...jobsOf(99, job('apply', 'success')), '/compare/bbb...ccc': merged(3650)}), lanes);
+  assert.deepEqual(closed.suites, ['apply']);
+});
+
+test('mutants never open a red and after-merge greens never close a sent red', async () => {
+  const closed = await openRed(env(), gh({...runs(run(14, 'failure', 'zzz', {display_title: 'Mutant wizard'}), run(13, 'success', 'ccc', {display_title: 'E2E after merge · main'}), run(11, 'failure', 'bbb')),
+    ...jobsOf(11, job('apply', 'failure')), ...jobsOf(99, job('apply', 'success')), '/compare/bbb...ccc': merged(3650)}), lanes);
+  assert.deepEqual(closed.suites, ['apply']);
+  const never = await openRed(env(), gh({...runs(run(14, 'failure', 'zzz', {display_title: 'Mutant wizard'})), ...jobsOf(99, job('wizard', 'success'))}), lanes);
+  assert.deepEqual(never.suites, []);
+});
+
+test('an unreadable jobs response never turns into a workflow red', async () => {
+  const closed = await openRed(env(), gh({...runs(run(11, 'failure', 'bbb')), '/actions/runs/11/jobs': {message: 'rate limited'}, ...jobsOf(99, job('apply', 'success'))}), lanes);
+  assert.deepEqual(closed.suites, []);
 });
