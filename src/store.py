@@ -58,20 +58,31 @@ CREATE INDEX IF NOT EXISTS jobs_state_idx ON jobs(state);
 """
 
 
+NEWER = (('posted_at', 'TEXT'), ('description', 'TEXT'), ('identity', 'TEXT'))   # columns added after the first jobs files: an older file gets them at its next open
+
+
+def _missing(db):
+    """The NEWER columns this jobs file lacks, as (name, type)."""
+    columns = {row['name'] for row in db.execute("PRAGMA table_info(jobs)")}
+    return [(name, kind) for name, kind in NEWER if name not in columns]
+
+
 def connect(path):
+    """The jobs file at `path`, made or brought up to date (SCHEMA, then the NEWER columns), rows as sqlite3.Row. Safe for two first opens at once."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
     # Databases restored from older runs predate these columns.
-    columns = {row['name'] for row in db.execute("PRAGMA table_info(jobs)")}
-    if 'posted_at' not in columns:
-        db.execute("ALTER TABLE jobs ADD COLUMN posted_at TEXT")
-    if 'description' not in columns:
-        db.execute("ALTER TABLE jobs ADD COLUMN description TEXT")
-    if 'identity' not in columns:
-        db.execute("ALTER TABLE jobs ADD COLUMN identity TEXT")
+    # Why (#3721, 10 Nov 2026): two first opens of one file both read "no column" and both ran ALTER TABLE, and the second died ("duplicate column
+    # name"). An opener that finds a column missing takes the write lock (BEGIN IMMEDIATE) and looks again, so a second one waits and then finds it;
+    # an opener that finds them all takes no lock, so an open never waits behind the search's own writes.
+    if _missing(db):
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            for name, kind in _missing(db):
+                db.execute(f"ALTER TABLE jobs ADD COLUMN {name} {kind}")
     db.execute("CREATE INDEX IF NOT EXISTS jobs_identity_idx ON jobs(identity)")
     return db
 
