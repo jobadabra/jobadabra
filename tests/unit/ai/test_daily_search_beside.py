@@ -35,6 +35,22 @@ class BesideTheSearch(phases.SearchCharacterization):
 
 
 
+    def test_a_scorer_that_starts_after_the_search_ended_is_waited_for_by_the_harness(self):
+        # Guard: the flake of #3649's bounded join (thread.join(wait()) is 0 s on a spent clock): the scorer thread is held until the search has saved its run, the
+        # clock is spent, and the search returns with the thread not yet started. Without join_scorer in run_search this reads 0 matches and drops the temp folder under
+        # the thread, every time; with it the 8 waiting jobs are scored before the first assertion.
+        self.waiting_jobs(8)
+        self.expire = True
+        self.scorer_gate = __import__('threading').Event()
+        time_budget.start(180)
+        # Why (ts, 10 Nov 2026): gather's start(180, now=0) is spent only when the machine's monotonic clock is past 180 s, and a fresh CI runner's is not (#3656 read 9 matches, not 8): pin it, as
+        # test_deadline_hit_during_gather_keeps_partial_jobs_and_clock does.
+        with mock.patch.object(time_budget, 'record'), mock.patch.object(time_budget.time, 'monotonic', return_value=181):
+            self.run_search(limit=100)
+        self.assertTrue(self.scorer_gate.is_set())
+        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'the scorer ran after the search returned and the harness waited for it (the closing pass may score the new job too)')
+
+
 for _name in [name for name in dir(phases.SearchCharacterization) if name.startswith('test_') and name not in BesideTheSearch.__dict__]:
     setattr(BesideTheSearch, _name, None)   # unittest skips what is not callable: the harness's own tests run in their own file
 

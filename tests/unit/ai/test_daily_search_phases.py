@@ -30,6 +30,7 @@ class SearchCharacterization(unittest.TestCase):
         self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores = [], [], [], [], False
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
         self.failed = self.expire = self.late_jobs = False
+        self.scorer_gate = None   # an Event: the scorer thread does nothing until the search has saved its run (test_a_scorer_that_starts_after_the_search_ended...)
         self.stores = memory.open_store()
         self.stores.texts.set('profile', 'Fictional SRE in Zurich')
         # A file, as the app's: each store.connect is a connection of its own, bound to the thread that opened it (sqlite3's check_same_thread), so a
@@ -116,7 +117,7 @@ class SearchCharacterization(unittest.TestCase):
 
     def join_scorer(self):
         """Waits for the scorer thread the search started (src/daily_search_scoring.py `_beside`).
-        Why (ts, 10 Nov 2026; flaky on main after #3649, red on #3653 and #3654 which do not touch this file): the search's own join stops at the run's end
+        Why (ts, 10 Nov 2026; #3649 bounded the join (27da5b9f) and wrote this test; it was green in #3649's own CI and has been intermittently red since, on #3653 and #3654, which do not touch this file: a race that was there from the start, not a later change): the search's own join stops at the run's end
         (`thread.join(wait())`, 0 s once a test has spent the clock) and leaves the thread to finish alone, as it should on a person's Mac; a test that asserts
         on its scores, or drops the temp folder under it ("attempt to write a readonly database", "Directory not empty"), must wait for it. 30 s is a hang guard only."""
         for thread in [t for t in __import__('threading').enumerate() if t.name == 'scorer']:
@@ -124,6 +125,8 @@ class SearchCharacterization(unittest.TestCase):
             self.assertFalse(thread.is_alive(), 'the scorer thread did not end')
 
     def own_connection(self):
+        if self.scorer_gate and __import__('threading').current_thread().name == 'scorer':
+            self.scorer_gate.wait(30)   # hang guard only
         db = self.connect(self.root / 'jobs.sqlite')
         if __import__('threading').current_thread() is __import__('threading').main_thread():   # a thread's own: that thread closes it
             self.addCleanup(db.close)
@@ -131,6 +134,8 @@ class SearchCharacterization(unittest.TestCase):
 
     def event(self, name, result=None):
         self.calls.append(name)
+        if name == 'save' and self.scorer_gate:
+            self.scorer_gate.set()
         return result
 
     def plan(self, args, stores):
