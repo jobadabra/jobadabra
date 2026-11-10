@@ -364,14 +364,14 @@ const heldReadPage = form => page(form, `<form id="application_form" method="pos
   const report = () => fetch('/__triage-fields?job=' + encodeURIComponent(location.href.split('#')[0]) + '&filled=' + [...document.querySelectorAll('input')].filter(item => item.type === 'file' ? item.files.length : item.value).length, {method: 'POST', keepalive: true});
   ['input', 'change', 'pagehide'].forEach(name => window.addEventListener(name, report, true)); report();`, {realSubmit: true});
 
-/** Holds registered job pages until release(url); counts exact GET addresses and field observations, never applicant values. Unregistered requests keep the usual fixture routes. */
+/** Holds registered job pages until release(url); counts exact GET addresses (with when each came and was released, on a monotonic clock) and field observations, never applicant values. Unregistered requests keep the usual fixture routes. */
 function heldReadRoutes() {
   const pages = new Map();
   const holdReads = jobs => {
-    const reads = [], reports = [];
-    const release = url => { const row = pages.get(url); row.released = true; for (const send of row.pending.splice(0)) send(); };
-    for (const form of jobs) pages.set(form.url, {form, reads, reports, pending: [], released: false});
-    return {reads, reports, release, close: () => { for (const {url} of jobs) { release(url); pages.delete(url); } }};
+    const reads = [], reports = [], times = [];   // times: [{url, at}] per GET, performance.now() ms (a span's anchor, never a date)
+    const release = url => { const row = pages.get(url); row.released = true; row.releasedAt ??= performance.now(); for (const send of row.pending.splice(0)) send(); };
+    for (const form of jobs) pages.set(form.url, {form, reads, reports, times, pending: [], released: false});
+    return {reads, reports, times, releasedAt: url => pages.get(url)?.releasedAt ?? null, release, close: () => { for (const {url} of jobs) { release(url); pages.delete(url); } }};
   };
   const route = next => (req, res) => {
     const url = new URL(req.url, 'https://x'), host = String(req.headers.host || '').split(':')[0];
@@ -381,7 +381,7 @@ function heldReadRoutes() {
     }
     const held = pages.get(`https://${host}${url.pathname}${url.search}`);
     if (req.method !== 'GET' || !held) { next(req, res); return; }
-    held.reads.push(held.form.url);
+    held.reads.push(held.form.url); held.times.push({url: held.form.url, at: performance.now()});
     const send = () => { if (!res.destroyed) res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}).end(heldReadPage(held.form)); };
     if (held.released) send(); else held.pending.push(send);
   };

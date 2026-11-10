@@ -7,6 +7,7 @@ import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, hiddenTargets, linkRuntime,
 import {CHIP_VALUE} from './apply-triage-steps.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 import {messages as shortJobs} from '../../i18n/catalogs/pages/short-jobs.js';
+import {SILENT_MS} from '../../lib/triage-reader.js';
 
 /**
  * True when the dialog's progress line names job `n` of `total` by its title. The words come from the catalog line the dialog paints (m203), so a renamed check keeps this step's intent.
@@ -14,12 +15,26 @@ import {messages as shortJobs} from '../../i18n/catalogs/pages/short-jobs.js';
  */
 export const namesJob = (text, n, total, title) => text.startsWith(shortJobs.en.m203.replace('{seen}', n).replace('{length}', total)) && text.includes(title);
 
-/** Waits on a state for as long as the step's hang cap leaves (stepTimeLeft: no clock of its own); throws what it waited for and last read. */
+/**
+ * Which side a held read's red was on, from three monotonic times in ms (null = never): the first poll that saw the dialog name job `n`, its page's GET at the fixture, the step's release.
+ * The app ends a read silent for SILENT_MS (lib/triage-reader.js), so "the browser never asked" and "the step held it too long" are told apart instead of one "never named" line.
+ * Why (night burn-in 42721065574, 10 Nov 2026): the hidden browser made no request for job 2 in 30 s while the step polled every ~270 ms; the old message read like the step's fault.
+ */
+export function heldVerdict({n, namedAt, requestedAt, releasedAt, now, silentMs = SILENT_MS}) {
+  const s = ms => `${(ms / 1000).toFixed(1)} s`, limit = `the app ends a read silent for ${s(silentMs)}`;
+  if (namedAt === null) return `the dialog never named job ${n}`;
+  if (requestedAt === null) return `the hidden browser never asked for job ${n}'s page in the ${s(now - namedAt)} the dialog named it (${limit})`;
+  const held = (releasedAt ?? now) - requestedAt;
+  if (held > silentMs) return `the step held job ${n}'s page ${s(held)}, past the app's silence end (${limit})`;
+  return `job ${n}'s page was asked for ${s(requestedAt - namedAt)} after the dialog named it and held ${s(held)}`;
+}
+
+/** Waits on a state for as long as the step's hang cap leaves (stepTimeLeft: no clock of its own); throws what it waited for, its last read and, when given, `seen.why()`. */
 async function waitOn(seen, what, read, accepts) {
   seen.what = what;
   console.log(`  triage: ${what}`);
   const {value} = await pollUntil(async () => (seen.state = await read()), accepts, {capMs: stepTimeLeft(), log: () => {}});
-  if (!accepts(value)) throw new Error(`${what} (last read: ${JSON.stringify(seen.state)})`);
+  if (!accepts(value)) throw new Error(`${what} (last read: ${JSON.stringify(seen.state)})${seen.why ? ` | ${seen.why()}` : ''}`);
   return value;
 }
 
@@ -32,7 +47,7 @@ const screenOf = (page, urls) => page.evaluate(({urls, selector}) => ({
 }), {urls, selector: CHIP_VALUE});
 
 /** The runner's hang report: last state, exact per-job GET counts, field reports and the hidden browser's targets. */
-const hangOf = seen => () => `${seen.what} (last read: ${JSON.stringify(seen.state)}) | reads: ${JSON.stringify(seen.held?.reads)} | field reports: ${JSON.stringify(seen.held?.reports)}`;   // evidence; the runner says it was cut off
+const hangOf = seen => () => `${seen.what} (last read: ${JSON.stringify(seen.state)})${seen.why ? ` | ${seen.why()}` : ''} | reads: ${JSON.stringify(seen.held?.reads)} | field reports: ${JSON.stringify(seen.held?.reports)}`;   // evidence; the runner says it was cut off
 
 /** Runs one triage proof with four fixture jobs; removes the suite's fixture urls first so only this run's jobs can be picked. No application is started. */
 export async function runTriageCancelSteps(ctx, {urls}) {
@@ -63,7 +78,16 @@ export async function runTriageCancelSteps(ctx, {urls}) {
 
       for (const completed of [1, 2]) {
         held.release(addresses[completed - 1]);
-        const state = await waitOn(seen, `the dialog never named job ${completed + 1} of ${jobs.length} while its read was held`, async () => ({screen: await screenOf(page, addresses), reads: [...held.reads]}), state => namesJob(state.screen.text, completed + 1, jobs.length, jobs[completed].title) && state.reads.includes(addresses[completed]));
+        const n = completed + 1, url = addresses[completed];
+        let namedAt = null;
+        seen.why = () => heldVerdict({n, namedAt, requestedAt: held.times.find(time => time.url === url)?.at ?? null, releasedAt: held.releasedAt(url), now: performance.now()});
+        const named = text => namesJob(text, n, jobs.length, jobs[completed].title);
+        const state = await waitOn(seen, `the dialog never named job ${n} of ${jobs.length} while its read was held`, async () => {
+          const screen = await screenOf(page, addresses);
+          if (namedAt === null && named(screen.text)) namedAt = performance.now();
+          return {screen, reads: [...held.reads]};
+        }, state => named(state.screen.text) && state.reads.includes(url));
+        seen.why = null;
         const width = `${Math.round(completed / jobs.length * 100)}%`;
         if (!state.screen.shown || state.screen.width !== width) throw new Error(`after ${completed} real reads the bar should show ${width}: ${JSON.stringify(state)}`);
         console.log(`  triage progress: ${state.screen.text}, bar ${state.screen.width}`);
