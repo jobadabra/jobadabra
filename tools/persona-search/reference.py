@@ -11,8 +11,10 @@ Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, 
 artifact only: it is never sent (send reads the counts file).
 Why (10 Nov 2026, sa's finish-line plan WP3, owner: "our search results should always be what EURES gives + some additional sources"): a night's loss is counted per job and
 per stage, which needs the reference's jobs, not only their count.
-Record: {"personas": {"<n>": {total, reachable, eures, public_board, web_search, employer_sites, market}}}; total = reachable = the EURES count (Admin labels it "EURES reference"); public_board = the board's own
-count, None when not counted (refused, a page failed, its cards moved, or no board for the country), never 0; web_search likewise (None when the search failed or ran outside the relay); employer_sites likewise (None when the index was not downloaded; "partial: …" still counts, its numbers beside it in the artifact); market = distinct right jobs (title + employer) of every counted source.
+Record ([mc] 5/5, the shape agreed with oe for Admin's "Market coverage", 10 Nov 2026): {"personas": {"<n>": {total, reachable, eures, market, counted_on,
+sources: {<eures|public_board|web_search|employer_sites|free_job_apis|linkedin>: {status, read, right, only}}}}}; total = reachable = the EURES count (Admin labels it
+"EURES reference"); market = distinct right jobs (title + employer) of every counted source; a source's status is "counted", "partial: …" (counted, its shortfall said),
+"not counted: <why>", "none (…)" or "by hand", and its numbers are null unless it was counted, never 0.
 A persona whose EURES was not read, or whose judge failed, is left out of the record (Admin then says "no reference"); its board count and jobs still go to reference-jobs.json. Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
 import concurrent.futures
 import datetime
@@ -86,6 +88,21 @@ def is_counted(status):
 
 
 EMPLOYER_NUMBERS = ('feeds_tried', 'feeds_read', 'feeds_refused', 'feeds_failed', 'feeds_late', 'feeds_unplaced', 'rows_in_region', 'rows_outside_by_text')
+
+
+ADMIN_SOURCES = (*SOURCES, 'free_job_apis', 'linkedin')   # oe's fixed list on the site (jobadabra-web admin/search-reference.js); a key outside it is dropped there
+
+
+def admin_row(counts, sources, only, counted, today):
+    """One person's row for Admin's "Market coverage" (the shape agreed with oe, 10 Nov 2026): total/reachable/eures as before, the market, the date of the count,
+    and per source {status, read, right, only}; a source not counted carries its status and null numbers, never 0. Board names, pages and the employer
+    feeds_* counters stay in the artifact (not drawn; oe: keep the body small)."""
+    def numbers(source):
+        if source not in counted:
+            return {'read': None, 'right': None, 'only': None}
+        return {'read': sources[source].get('read'), 'right': counts[source], 'only': only[source]}
+    return {'total': counts['total'], 'reachable': counts['reachable'], 'eures': counts['eures'], 'market': counts['market'], 'counted_on': today,
+            'sources': {s: {'status': str(sources[s]['status'])[:120], **numbers(s)} for s in ADMIN_SOURCES if s in sources}}
 
 
 def right(row):
@@ -166,7 +183,7 @@ GRACE_S = 60           # past the deadline, a read still running gets this long 
 JUDGES_AT_ONCE = 4     # persons judged at once: each person is one or more calls in turn, and 18 in a row with the new sources' rows would pass the job's 20 minutes
 
 
-def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None, clock=time.monotonic, employers=None):
+def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None, clock=time.monotonic, employers=None, today=None):
     """The record for every persona with at least one counted source whose judge worked (a persona with none, or whose judge failed, is left out, never 0: the tab then
     says "no reference"). All sources' rows are judged in one blind pass, so every source is read by the same eyes and a job two sources show costs one verdict.
     `jobs`, when given, is filled with {"<n>": right_jobs(...)}; `details` with {"<n>": per-source status, rows read and right jobs}: the artifact's, never part of the record that is sent."""
@@ -199,13 +216,13 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
             print(f'reference: p{n} not judged ({type(error).__name__}: {str(error)[:80]})', flush=True)
             continue
         counts = tally(rows, counted)
-        if 'eures' in counted:   # the record sent to Admin keeps its EURES meaning (see tally); a person whose EURES was not read stays out of it, as before
-            record[str(n)] = counts
         found = right_jobs(rows)
+        only = {s: sum(job['sources'] == [s] for job in found) for s in counted}   # right jobs no other counted source showed (sa's WP6: what a source is worth)
+        if 'eures' in counted:   # the record sent to Admin keeps its EURES meaning (see tally); a person whose EURES was not read stays out of it, as before
+            record[str(n)] = admin_row(counts, sources, only, counted, today or datetime.date.today().isoformat())
         if jobs is not None:
             jobs[str(n)] = found
-        if details is not None:   # per source {status, read, right, only}: `only` = right jobs no other counted source showed (sa's WP6: what a source is worth)
-            only = {s: sum(job['sources'] == [s] for job in found) for s in counted}
+        if details is not None:   # per source {status, read, right, only} plus each source's own numbers (board pages, employer feeds_*): the artifact's
             details[str(n)] = {'market': counts['market'], **{s: {**v, **({'right': counts[s], 'only': only[s]} if s in counted else {})} for s, v in sources.items()}}
         print(f'reference: p{n} {counts} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
     judges.shutdown(wait=False)
