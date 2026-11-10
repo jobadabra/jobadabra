@@ -2,7 +2,7 @@
 JOB SEARCH WITH SEARCHING ON GOOGLE!"; the pilot search's web search found 4 aviation boards at 37 s that were read after 1,123 employer
 sites, or never). It reads the boards that gave this install jobs in this field and places before (board_yield.working) at once, then
 waits for the web search started with the run (src/sources/board_web.py early) up to WEB_WAIT seconds and reads what it found; each group's
-first pages are read in parallel and their jobs put on screen at once. When they give board_yield.ENOUGH jobs in your roles and places, the employer read
+first pages are read in parallel (src/sources/board_reader.py, which only reads) and their jobs kept and put on screen at once. When they give board_yield.ENOUGH jobs in your roles and places, the employer read
 keeps only its best sites (src/sources/read_budget.py short). The full board read reads their next pages later, from the pages fetched here. Without a web search in this
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. A repeat Find jobs run starts them
 first and reads the employer sites beside them (Beside, ps E2a-2). Tests: tests/unit/sources/test_boards_first.py."""
@@ -15,27 +15,13 @@ def run(feed_db, search, on_jobs, wait=WEB_WAIT):
     """The known working boards read now, then the web search's: their first pages' jobs in your roles and places (the report's shape), each
     group given to on_jobs at once. The full read reads their next pages beside the employer sites, from the pages fetched here (found_boards).
     A first Find jobs run's order (after its slice); a repeat run reads them beside the employer sites (Beside)."""
-    from . import read_budget
+    from . import board_reader, read_budget
     read_budget.short(False)
     matched = []
-    for said, boards in _groups(search, wait):
-        matched += _read(feed_db, search, boards, on_jobs, said)
+    for _said, found in board_reader.read(None, search, early=True, wait=wait, where='before'):
+        matched += _keep(feed_db, found, on_jobs)
     _enough(matched)
     return matched
-
-
-def _groups(search, wait):
-    """(said, boards) in read order: the boards that gave jobs in this field before, at once; then, once the web search answers (up to `wait` s), what
-    it found that is not among them."""
-    from ..ai import board_ideas
-    from . import board_web, board_yield
-    known = board_yield.working(search, board_ideas.load().get('boards') or {})
-    if known:
-        yield f'the {len(known)} that gave you jobs in this field before', known
-    hosts = {board['host'] for board in known}
-    found = [board for board in board_web.found_first(search, wait) if board['host'] not in hosts]   # the web search ran meanwhile
-    if found:
-        yield f'the {len(found)} the web search found', found
 
 
 def _enough(matched):
@@ -49,21 +35,15 @@ def _enough(matched):
     return False
 
 
-def _read(feed_db, search, boards, on_jobs, said):
-    """These boards' first pages (early: one page per search, as the first-jobs slice; owner's pilot run, 26 Oct 2026: a board's 5 pages, each
-    judged by the AI before the next, held its 16 jobs until 163 s); their new jobs in your roles and places, given to on_jobs."""
+def _keep(feed_db, found, on_jobs):
+    """Of one group of boards' first pages (early: one page per search, as the first-jobs slice; owner's pilot run, 26 Oct 2026: a board's 5 pages,
+    each judged by the AI before the next, held its 16 jobs until 163 s), the new jobs in your roles and places, given to on_jobs.
+    TODO(AI): this kept() moves into the run core with sf's cutover; the board reader only reads (2026-11-10)."""
     from . import aggregators, boards_ahead
-    matched = aggregators.kept(feed_db, boards_ahead.NAME, _fetch(search, boards, said, 'before'))
+    matched = aggregators.kept(feed_db, boards_ahead.NAME, found)
     if matched:
         on_jobs(matched)
     return matched
-
-
-def _fetch(search, boards, said, where):
-    """These boards' first pages read (found_boards early), said in the log the Find jobs card reads (desktop/renderer/find-card-model.js)."""
-    from . import found_boards
-    print(f"Job boards first: reading {said}, {where} the employer sites: {', '.join(board['name'] for board in boards)}", flush=True)
-    return found_boards.read(search, boards, web=False, early=True)
 
 
 class Beside:
@@ -88,11 +68,10 @@ class Beside:
     def _read_all(self, wait):
         import copy
         from ..ai import batch_scope
-        from . import feeds
+        from . import board_reader, feeds
         try:
             with batch_scope.reader(self.NAME), step_yield.span('job_boards'):
-                for said, boards in _groups(self.search, wait):
-                    found = _fetch(self.search, boards, said, 'beside')
+                for _said, found in board_reader.read(None, self.search, early=True, wait=wait, where='beside'):
                     feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
                     self.groups.put((found, copy.deepcopy(batch_scope.current())))
         except Exception as error:  # noqa: BLE001 — the full board read reads them

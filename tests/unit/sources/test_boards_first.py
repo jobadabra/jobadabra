@@ -279,8 +279,8 @@ class OldState(unittest.TestCase):
 
     def test_a_failure_keeping_the_boards_never_stops_the_employer_read(self):
         # Gitar on #3606: deliver runs inside the employer read (feeds.scan on_read); before, a failing boards_first.run only warned.
-        with mock.patch.object(boards_first, '_groups', return_value=iter([('the 1 that worked before', [{'name': 'Board'}])])), \
-                mock.patch.object(boards_first, '_fetch', return_value=[{'url': 'https://example.test/1', 'title': 'Nurse'}]), \
+        with mock.patch('src.sources.board_reader._groups', return_value=iter([('the 1 that worked before', [{'name': 'Board'}])])), \
+                mock.patch('src.sources.board_reader._fetch', return_value=[{'url': 'https://example.test/1', 'title': 'Nurse'}]), \
                 mock.patch('src.sources.feeds.triage'), \
                 mock.patch('src.sources.aggregators.kept', side_effect=sqlite3.OperationalError('database is locked')), \
                 redirect_stdout(io.StringIO()) as out:
