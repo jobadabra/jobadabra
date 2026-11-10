@@ -9,8 +9,9 @@ const HEADERS = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Heade
 const file = (name, base64) => (base64 ? {data: base64, name, type: 'application/pdf'} : null);
 
 // batch: {contact, jobs: [{id, url, title, company, kit, cv, letterPdf}]}. The read task (read-night.mjs) adds `background(body)`, its answer to the extension's background poll, and `pageKind(body)`, the AI's page kind;
-// a fill night passes neither and both routes answer as before (a refused poll, no kind). -> {port, close, outcome(url), asked}
-export async function createStandIn(batch, {answer = null, background = null, pageKind = null} = {}) {
+// a fill night passes neither and both routes answer as before (a refused poll, no kind). The auto night (auto-night.mjs) adds `routes`: {route: body => answer} for the form judge and the confirmation.
+// -> {port, close, outcome(url), asked}
+export async function createStandIn(batch, {answer = null, background = null, pageKind = null, routes = {}} = {}) {
   // A page the extension reports belongs to the job whose form it is (the posting, its form address, or a page below it, the way the app matches):
   // every lookup and every count is kept under that job's address, so a press on Apply or a next step stays on the same job.
   const key = address => { const page = String(address || '').split('#')[0]; return batch.jobs.find(job => isFormOf(page, job.url))?.url.split('#')[0] ?? page; };
@@ -33,6 +34,7 @@ export async function createStandIn(batch, {answer = null, background = null, pa
     '/extension/background-apply': (port, url, body) => (background ? background(body) : {ok: false}),
     '/extension/page-kind': (port, url, body) => (pageKind ? pageKind(body) : {}),
     '/extension/kit': (port, url) => { const job = jobs.get(key(url)); return job ? {job: {title: job.title, company: job.company, url: job.url}, kit: job.kit || null} : {error: 'not tracked'}; },
+    ...Object.fromEntries(Object.entries(routes).map(([route, handle]) => [route, (port, url, body) => handle(body)])),
   };
   // The night's answers for a job, each with its question's id and label (the morning matches a field by them): only answers it typed or proposed, never an empty one.
   function keepSaid(body, answers) {

@@ -1,6 +1,6 @@
 // The final browser action for a one-shot Full automation permit: recheck the same form and exact named control immediately before clicking.
 
-/** Inspect or press inside the real page; only counts/digests leave it, and an ambiguous/invalid/changed page returns pressed:false. */
+/** Inspect, or ready the press inside the real page (its own world); only counts/digests leave it, and an ambiguous/invalid/changed page returns ready:false. 'press' tags the button for automaticPress. */
 export async function submissionPage(action, {control = '', seal = ''} = {}) {
   const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
   const visible = el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none';
@@ -33,9 +33,25 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
     const headings = [...document.querySelectorAll('h1, h2')].map(el => clean(el.innerText)).filter(Boolean).slice(0, 6);
     return {requiredComplete, safe, factsOnly, seal: current, snapshot: {title: clean(document.title).slice(0, 180), headings, text: clean(document.body?.innerText).slice(0, 800), inputs: fields.length}};
   }
-  if (!safe || !requiredComplete || !seal || seal !== current) return {pressed: false};
-  // The normal press floor still rejects destructive controls; submit-watch is explicitly armed as automation, not as a human press.
-  if (globalThis.__jobadabraSubmitPress?.refused(button)) return {pressed: false};
-  (globalThis.__jobadabraPress?.(button) || button.click());
-  return {pressed: true};
+  if (!safe || !requiredComplete || !seal || seal !== current) return {ready: false};
+  // Why (10 Nov 2026, owner: "Fix it now (Recommended)"): this check runs in the page's own world (it reads Stop there), where page/submit-press.js does not exist, so the floor was skipped and the click was a bare
+  // one the panel took for the person's. The button is only tagged here, once; automaticPress below presses it in the extension's world, through the floor.
+  document.querySelectorAll('[data-jobadabra-press]').forEach(el => el.removeAttribute('data-jobadabra-press'));   // a tag an earlier press left behind (Stop between the two steps) never makes two
+  const token = crypto.randomUUID();
+  button.setAttribute('data-jobadabra-press', token);
+  return {ready: true, token};
+}
+
+/**
+ * The press itself, run in the extension's isolated world where page/submit-press.js lives: the one button submissionPage tagged with `token`, through the press floor (a Withdraw, Delete or
+ * Decline is never pressed) and marked as the extension's own, so the submit it fires is never the person's. Invariant: no floor, no tag, two tags, a moved or disabled button: not pressed.
+ */
+export function automaticPress(token) {
+  const tagged = [...document.querySelectorAll('[data-jobadabra-press]')];
+  const button = tagged.length === 1 && tagged[0].getAttribute('data-jobadabra-press') === token ? tagged[0] : null;
+  tagged.forEach(el => el.removeAttribute('data-jobadabra-press'));   // one use
+  if (!button || !button.isConnected || button.disabled) return {pressed: false, why: 'changed'};
+  const automatic = globalThis.__jobadabraSubmitPress?.automatic;
+  if (typeof automatic !== 'function') return {pressed: false, why: 'no_floor'};
+  return automatic(button) ? {pressed: true} : {pressed: false, why: 'refused'};
 }
