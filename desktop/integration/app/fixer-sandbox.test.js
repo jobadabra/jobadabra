@@ -1,4 +1,7 @@
-// Guard: release — the real proof container must reap orphans and supply account metadata so unrelated lifecycle and Python tests can run.
+// Guard: release — the fixer's proof sandbox must start its container with an init process (orphans reaped) and keep every isolation flag, checked without building an image.
+// Why (10 Nov 2026, fx): this file used to run a live `docker build` of the proof image on every PR and died with `spawnSync docker ETIMEDOUT` (public #3643): the registry, apt and a shared runner are not ours to time.
+// A stub `docker` records the arguments the real tools/feedback-ai-sandbox.sh passes; its `build` sleeps, so a test that builds again hangs here and fails. The real container (orphans reaped, account resolved)
+// is proved nightly by desktop/integration/nightly/fixer-sandbox-docker.test.js (harness-daily.yml).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,46 +10,57 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '../../..');
-const names = ['e2e-runner-watch.test.js', 'kill-tree.test.js'];
+const sandbox = path.join(root, 'tools/feedback-ai-sandbox.sh');
+const command = ['node', '--test', 'desktop/test/unit/main/e2e-runner-watch.test.js'];
 
-/** Build the real proof image for the same UID/GID the sandbox uses, before running any test code in it. */
-function buildImage(context) {
-  const build = spawnSync('docker', ['build', '--quiet', '--build-arg', `PROOF_UID=${process.getuid()}`, '--build-arg', `PROOF_GID=${process.getgid()}`, '--tag', 'fd-ai-proof', '--file', path.join(root, 'tools/feedback-ai.Dockerfile'), context], {encoding: 'utf8', timeout: 180000});
-  assert.equal(build.status, 0, `proof image: ${build.error?.message || build.stderr}`);
+/** Run a copy of the sandbox script with a stub `docker` first on PATH; returns the arguments the stub saw (one per line) and the script's exit code. */
+function runSandbox(dir, script, exitCode = 0) {
+  const bin = path.join(dir, 'bin'), log = path.join(dir, 'docker-args.log');
+  fs.mkdirSync(bin, {recursive: true});
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/usr/bin/env bash\nif [ "$1" = build ]; then echo build >> "$DOCKER_LOG"; sleep 600; fi\nprintf '%s\\n' "$@" > "$DOCKER_LOG"\nexit ${exitCode}\n`, {mode: 0o755});
+  const done = spawnSync('bash', [script, ...command], {
+    encoding: 'utf8', timeout: 30000,
+    env: {...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, DOCKER_LOG: log, FBT: path.join(dir, 'fbt'), PYDEPS: path.join(dir, 'pydeps'), BOX: path.join(dir, 'box')},
+  });
+  return {status: done.status, error: done.error, args: fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : []};
 }
 
-test('the proof sandbox fails on orphan PIDs without init and passes the same lifecycle tests with init', {skip: process.platform !== 'linux' && 'Linux Docker is required', timeout: 240000}, t => {
+const skip = process.platform === 'win32' && 'the sandbox script is bash on a Docker host';
+const value = (args, flag) => args[args.indexOf(flag) + 1];
+
+/** What the sandbox must pass to docker; throws on the first missing piece. */
+function assertSandboxArgs(args) {
+  assert.equal(args[0], 'run', `the sandbox only runs the image the workflow built, saw: ${args.join(' ')}`);
+  assert.ok(!args.includes('build'));
+  assert.ok(args.includes('--init'), 'without --init orphaned children stay as zombies and the lifecycle tests see a live process');
+  assert.equal(value(args, '--network'), 'none');
+  assert.equal(value(args, '--cap-drop'), 'ALL');
+  assert.equal(value(args, '--security-opt'), 'no-new-privileges');
+  assert.equal(value(args, '--user'), `${process.getuid()}:${process.getgid()}`);
+  assert.deepEqual(args.slice(-1 - command.length), ['fd-ai-proof', ...command], 'the image, then the command, last');
+}
+
+test('the proof sandbox starts its container with init and every isolation flag, and never builds', {skip, timeout: 60000}, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-sandbox-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const box = path.join(dir, 'box');
-  for (const folder of ['box/desktop/test/unit/main', 'fbt', 'pydeps', 'context']) fs.mkdirSync(path.join(dir, folder), {recursive: true});
-  fs.cpSync(path.join(root, 'desktop/lib'), path.join(box, 'desktop/lib'), {recursive: true});
-  fs.copyFileSync(path.join(root, 'desktop/package.json'), path.join(box, 'desktop/package.json'));
-  for (const name of names) fs.copyFileSync(path.join(root, 'desktop/test/unit/main', name), path.join(box, 'desktop/test/unit/main', name));
-  buildImage(path.join(dir, 'context'));
-  const sandbox = path.join(root, 'tools/feedback-ai-sandbox.sh');
-  const before = path.join(dir, 'without-init.sh');
-  fs.writeFileSync(before, fs.readFileSync(sandbox, 'utf8').replace('--init ', ''));
-  const run = script => spawnSync('bash', [script, 'node', '--test', ...names.map(name => `desktop/test/unit/main/${name}`)], {
-    encoding: 'utf8', timeout: 30000, env: {...process.env, FBT: path.join(dir, 'fbt'), PYDEPS: path.join(dir, 'pydeps'), BOX: box},
-  });
-  const old = run(before), oldLog = `${old.stdout}${old.stderr}`;
-  assert.notEqual(old.status, 0, 'without init the container must reproduce the red');
-  assert.match(oldLog, /the watched app is still alive after its runner was killed/);
-  assert.match(oldLog, /the grandchild is gone after the stop/);
-  const fixed = run(sandbox);
-  assert.equal(fixed.status, 0, `${fixed.error?.message || ''}\n${fixed.stdout}${fixed.stderr}`);
+  const {status, error, args} = runSandbox(dir, sandbox);
+  assert.equal(error, undefined);
+  assert.equal(status, 0);
+  assertSandboxArgs(args);
 });
 
-test('Python can resolve its non-root account and home after clearing the environment', {skip: process.platform !== 'linux' && 'Linux Docker is required', timeout: 240000}, t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-account-'));
+test('the same check sees the red when --init is taken out (positive control)', {skip, timeout: 60000}, t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-sandbox-control-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  for (const folder of ['box', 'fbt', 'pydeps', 'context']) fs.mkdirSync(path.join(dir, folder), {recursive: true});
-  buildImage(path.join(dir, 'context'));
-  // The observed failures clear USER/HOME before getpass.getuser() or Path.home(); environment defaults alone cannot fix them.
-  const code = 'import os, getpass; from pathlib import Path; os.environ.clear(); assert os.getuid() != 0; assert getpass.getuser(); assert Path.home() == Path("/tmp")';
-  const done = spawnSync('bash', [path.join(root, 'tools/feedback-ai-sandbox.sh'), 'python3', '-c', code], {
-    encoding: 'utf8', timeout: 30000, env: {...process.env, FBT: path.join(dir, 'fbt'), PYDEPS: path.join(dir, 'pydeps'), BOX: path.join(dir, 'box')},
-  });
-  assert.equal(done.status, 0, `${done.error?.message || ''}\n${done.stdout}${done.stderr}`);
+  const without = path.join(dir, 'without-init.sh');
+  fs.writeFileSync(without, fs.readFileSync(sandbox, 'utf8').replace('--init ', ''));
+  const {args} = runSandbox(dir, without);
+  assert.ok(!args.includes('--init'));
+  assert.throws(() => assertSandboxArgs(args), /--init/);
+});
+
+test('the box command\'s exit code is the script\'s exit code', {skip, timeout: 60000}, t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixer-sandbox-exit-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  assert.equal(runSandbox(dir, sandbox, 7).status, 7);
 });
