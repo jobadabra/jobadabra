@@ -54,6 +54,48 @@ class StageResultTest(unittest.TestCase):
             stage.Result(stage.FAILED)
 
 
+class GuardTest(unittest.TestCase):
+    def setUp(self):
+        from src import run_details
+        self.details = run_details
+        run_details.reset()
+        self.addCleanup(run_details.reset)
+
+    def test_a_block_that_runs_through_caught_nothing(self):
+        with stage.guard('job boards first') as caught:
+            pass
+        self.assertFalse(caught)
+        self.assertEqual((caught.error, caught.reason), (None, ''))
+        self.assertEqual(self.details.failures(), {})
+
+    def test_a_failure_lets_the_run_go_on_and_is_counted_without_its_words(self):
+        with stage.guard('job boards first') as caught:
+            raise TimeoutError('https://board.test/jobs?q=nurse+geneva timed out')
+        self.assertTrue(caught)
+        self.assertEqual(caught.reason, 'TimeoutError')
+        self.assertEqual(self.details.failures(), {'failed job boards first: TimeoutError': 1})
+        self.assertNotIn('failures', self.details.build({}), 'shown later, not in the saved details yet')
+
+    def test_an_interrupt_is_never_caught(self):
+        with self.assertRaises(KeyboardInterrupt):
+            with stage.guard('job boards first'):
+                raise KeyboardInterrupt
+
+    def test_guards_in_many_threads_lose_no_count(self):
+        import threading
+
+        def fail_often():
+            for _ in range(500):
+                with stage.guard('beside'):
+                    raise OSError('x')
+        threads = [threading.Thread(target=fail_often) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(30)
+        self.assertEqual(self.details.failures(), {'failed beside: OSError': 4000})
+
+
 class JobStatesTest(unittest.TestCase):
     def test_each_state_has_one_owner_that_exists(self):
         self.assertEqual(set(job.OWNERS), set(job.STATES))

@@ -31,6 +31,16 @@ def reset():
     _clock['start'] = _clock['now']()
 
 
+def failed(where, kind):
+    """A failure a stage or reader let the run go past (src/press/stage.py guard): counted under its place and error type, never its words."""
+    _counts.update((f'failed {where}: {kind}',))   # Why (sf on #3679): guards run in several threads at once; Counter.update counts in C under one hold of the GIL, `+= 1` could lose one
+
+
+def failures():
+    """{'failed <where>: <Type>': count} of this run so far. Not in build() yet: where it is shown is a later PR (spec 2026-11-10-find-jobs-code-shape.md)."""
+    return {key: count for key, count in _counts.items() if key.startswith('failed ')}
+
+
 def line(text):
     """One output line of the running job: a ⏳ step starts, a board is read, a refused site is met, an employer is checked."""
     if _clock['start'] is None:

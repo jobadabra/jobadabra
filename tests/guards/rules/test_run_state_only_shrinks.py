@@ -4,7 +4,7 @@ Why (cr 1/5, 10 Nov 2026): state a module keeps between calls is shared by every
 another's through it (69 such containers measured on main 87a41364). A run's state belongs on the Run (src/press/run.py), made once and passed down.
 State here = a module-level name a function of the module mutates (an item set, append/add/clear/update..., `global`), or a
 lock/condition/event/thread-local; a table built once at import (a schema extended below its definition) is not state. An object that keeps
-its state in its own attributes (time_budget.CLOCK) is not seen here: the Run's SHARED_TODAY (tests/unit/press/test_run.py) lists it. A name on the list may go (then delete its line); a new one fails: put it on the Run instead."""
+its state in its own attributes (time_budget.CLOCK) is not seen here: the Run's SHARED_TODAY (tests/unit/press/test_run.py) lists it. A name on the list may go (it passes and says which line to delete); a new one fails: put it on the Run instead."""
 import ast
 import unittest
 from pathlib import Path
@@ -104,7 +104,8 @@ class RunStateOnlyShrinksTest(unittest.TestCase):
                 new = seen.get(path, set()) - KNOWN.get(path, set())
                 gone = KNOWN.get(path, set()) - seen.get(path, set())
                 self.assertFalse(new, f'{path}: new module-level state {sorted(new)}; a run\'s state goes on the Run (src/press/run.py), passed down')
-                self.assertFalse(gone, f'{path}: {sorted(gone)} is gone, thank you: delete it from KNOWN in {Path(__file__).name} (the list only shrinks)')
+                if gone:   # Why (sf on #3679): a PR that moves one must not race the others on merge order; a later PR deletes the line
+                    print(f'{path}: {sorted(gone)} is gone: delete it from KNOWN in {Path(__file__).name}')
 
 
 if __name__ == '__main__':
