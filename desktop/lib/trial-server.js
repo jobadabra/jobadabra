@@ -1,6 +1,6 @@
 // The free trial as the website counts it (GET /api/trial/status, site/src/trial.js): the app asks with its install key and keeps the answer in settings.trialServer,
 // which lib/license.js reads with the local numbers (the highest count and earliest first run win), so the app and the Always on runs cannot disagree. Offline: the local numbers stand.
-import {FREE_BASE, TRIAL_KEY, isFreeKey} from './ai-free.js';
+import {FREE_BASE, TRIAL_KEY, isFreeKey, isOn} from './ai-free.js';
 import {siteOffForUser} from './recipes.js';
 
 const BASE = FREE_BASE.replace(/\/api\/ai$/, '');
@@ -13,6 +13,8 @@ export async function refresh(storage, license, {fetcher = globalThis.fetch, now
   try {
     const settings = storage.settings(), mine = license.state();
     const query = new URLSearchParams({applied: String(mine.used), first: settings.firstRunAt || ''});
+    // Why (10 Nov 2026, owner, asked via AskUserQuestion "App sends a flag"): a trial on the person's own AI has 30 free applications, not 20. The app says so once; the site grants it and keeps it. The flag is never the key itself.
+    if (!isOn(settings)) query.set('own_ai', '1');
     const headers = {'x-api-key': key};
     if (license.key()) headers['x-jp-license'] = license.key();
     const response = await fetcher(`${BASE}/api/trial/status?${query}`, {headers});

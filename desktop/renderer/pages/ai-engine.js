@@ -59,7 +59,7 @@ export function mountEngine(box, {context = 'settings', onChange = () => {}} = {
     const head = el('div', 'engine-head');
     head.append(el('h3', '', TEXT.title), el('p', 'muted small', context === 'settings' ? TEXT.settingsSubtitle : TEXT.subtitle));
     const parts = [head];
-    parts.push(free, el('p', 'muted small engine-own', TEXT.ownAccount), familyCards(), el('p', 'muted small engine-quality', TEXT.ownQuality));
+    parts.push(free, el('p', 'muted small engine-own', TEXT.ownAccount), familyCards(), el('p', 'muted small engine-quality', TEXT.ownQuality), el('p', 'muted small engine-headroom', TEXT.ownHeadroom));
     if (cards) parts.push(cards);
     if (selection({picked, family}).note) parts.push(cliNote());   // what the old confirm said, now a note under the selected card
     // Only the picked subscription card says more: one line (ready, or what is missing), the rest folded under "More about this".

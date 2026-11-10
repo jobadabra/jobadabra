@@ -17,6 +17,7 @@ export const TEXT = {
   familyHint: {claude: t('helperMore.claudePlanKey'), openai: t('helperMore.chatgptPlanKey')},   // the company's logo on each card (owner, 16 Oct 2026)
   ownAccount: t('helperMore.ownAccount'),
   ownQuality: t('helperMore.ownQuality'),   // quality, never a number (owner, 16 Oct 2026)
+  ownHeadroom: t('helperMore.ownHeadroom'),   // the numbers have their own line (owner, 10 Nov 2026: "let the users know of this difference"): own AI = no daily limit and 30 free applications on the trial; Pro unlimited
   subtitle: t('helperMore.engineSubtitle'),
   settingsSubtitle: t('helperMore.chooseEngine'),  // Settings → Connections: the two cards under it say the rest
   details: t('helperMore.installationDetails'),                 // the Claude Code path, folded under its status line

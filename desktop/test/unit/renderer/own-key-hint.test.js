@@ -33,6 +33,14 @@ test('the words are about quality: no number, never extra applications', () => {
   assert.equal(HINT.text, 'Free AI wrote this, and it is a bit weaker than Pro\'s AI. Want stronger letters? Connect your Claude account or ChatGPT.');   // + the weaker line, owner 27 Oct 2026
 });
 
+// Owner, 10 Nov 2026 (asked via AskUserQuestion): "We should let the users know of this difference... using their own AI give them a bit more headroom on the Free Trial, while on the Pro gives them unlimited access."
+// The quality line above stays a number-free (16 Oct 2026); the numbers live in their own line, under it.
+test('the headroom line says what an own AI gives a trial and what Pro gives, in its own line under the quality one', () => {
+  assert.equal(TEXT.ownHeadroom, 'Your own AI: no daily limit, and 30 free applications instead of 20. With Pro: unlimited.');
+  const src = fs.readFileSync(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
+  assert.match(src, /TEXT\.ownQuality\), el\('p', 'muted small engine-headroom', TEXT\.ownHeadroom\)/);
+});
+
 test('Settings → Connections → AI shows the quality line under the Claude / ChatGPT cards', () => {
   const src = fs.readFileSync(new URL('../../../renderer/pages/ai-engine.js', import.meta.url), 'utf8');
   assert.match(src, /familyCards\(\), el\('p', 'muted small engine-quality', TEXT\.ownQuality\)/);
