@@ -15,9 +15,13 @@ on:
 permissions:
   contents: read
 
-# A title or description edit (ship refreshes the body) runs the same gate in its OWN group, so it never cancels the run of a push or a retarget (17 Oct 2026: #1162 went red on a cancelled older gate run).
+# Why (10 Nov 2026, fr; #3643 and 78 other PRs since 25 Oct: a cancelled "pure checks" stays red on the head beside its green twin, 73 of the 75 read said "higher priority waiting request for pr-gate-N-text"):
+# two runs on ONE commit must never share a group, because the group keeps one waiting run and cancels the rest, and GitHub's rollup counts a cancelled run as red for as long as the commit stays.
+# A push or an open is the only event that replaces an older run (the older run is on a head that is gone, so its cancelled check is on no live head). A title/description edit or a reopen
+# (same commit) gets a group of its own, its run id, so it neither cancels nor is cancelled; two edits seconds apart both run, each on the text it was started with.
+# Same rule as the site's tests.yml since 6 Nov (jobadabra-web #462: 15 of 53 PRs had a cancelled twin before, 0 of 47 after). History: 17 Oct 2026, #1162 split 'text' from 'code' so an edit never cancelled a push's run; that left two edits in ONE group.
 concurrency:
-  group: pr-gate-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && !github.event.changes.base && 'text' || 'code' }}
+  group: pr-gate-${{ github.event.pull_request.number }}-${{ (github.event.action == 'edited' || github.event.action == 'reopened') && format('same-commit-{0}', github.run_id) || 'code' }}
   cancel-in-progress: true
 
 jobs:

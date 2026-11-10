@@ -59,7 +59,7 @@ if argv[:3] == ['api', '-X', 'POST'] and argv[3].endswith('/pulls'):   # pr_open
     state.update(state='OPEN', head=f.get('head'), auto=False, draft=f.get('draft') == 'true', title=f.get('title'), body=f.get('body'))
     said(f"pr create --base {f.get('base')} --head {f.get('head')} --title {f.get('title')} --body {f.get('body')}" + (' --draft' if f.get('draft') == 'true' else ''))
     print('https://example.test/pull/1'); save(); sys.exit(0)
-if argv[:3] == ['api', '-X', 'PATCH'] and re.search(r'/pulls/\d+$', argv[3]):   # pr_set: a title or a description
+if argv[:3] == ['api', '-X', 'PATCH'] and re.search(r'/pulls/\d+$', argv[3]):   # pr_set_text: a title and/or a description, in one request
     state.update(fields()); said('pr edit 1 ' + ' '.join(f'--{k} {v}' for k, v in fields().items())); print(1); save(); sys.exit(0)
 if argv[:3] == ['api', '-X', 'POST'] and re.search(r'/labels$', argv[3]):   # pr_label: the label, then the PR's labels
     if 'labels[]' in fields(): said(f"pr edit 1 --add-label {fields()['labels[]']}"); state.setdefault('labels', []).append(fields()['labels[]'])

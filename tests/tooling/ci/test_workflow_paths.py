@@ -108,7 +108,7 @@ class TheClass(unittest.TestCase):
 
     def test_a_description_edit_never_cancels_the_run_of_a_push_or_a_retarget(self):
         gate = (WORKFLOWS / 'pr-gate.yml').read_text()
-        self.assertIn("github.event.action == 'edited' && !github.event.changes.base && 'text' || 'code'", gate)
+        self.assertIn("(github.event.action == 'edited' || github.event.action == 'reopened') && format('same-commit-{0}', github.run_id) || 'code'", gate)   # 10 Nov 2026: an edit has its own group (test_pr_gate_one_run_per_head.py)
         self.assertIn('cancel-in-progress: true', gate)
 
     def test_no_workflow_asks_a_pick(self):
