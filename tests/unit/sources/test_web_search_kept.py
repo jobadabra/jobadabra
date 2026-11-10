@@ -65,6 +65,7 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
+        self.addCleanup(self.quiet)   # runs before the folder goes: no search thread writes into it while it is removed
         self.data = Path(tmp.name)
         self.gate = threading.Event()
         self.addCleanup(self.gate.set)   # no search thread outlives its test
@@ -84,6 +85,11 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
         board_web._early.clear()
         self.addCleanup(board_web._early.clear)
         self.addCleanup(time_budget.start, 0)
+
+    def quiet(self):
+        for thread in threading.enumerate():
+            if thread.name.startswith(('board-web', 'board-judge', 'kept-search')):
+                thread.join(10)
 
     def judged(self, found, roles, fetch):
         assert self.judging.wait(30), 'the test never let the judging end'
@@ -111,10 +117,12 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
         self.assertIn('englishjobs.dk', json.dumps(board_ideas.load().get('ideas')), 'the boards it found are kept for the next run')
         self.assertIn('k-civil', board_ideas.load().get('web_used') or {}, 'the saved answer is not marked used: the next run would judge it again')
         self.assertIn('did not answer in the search', log.getvalue())
-        time_budget.start(BUDGET)   # run 2
-        with redirect_stdout(io.StringIO()):
-            board_web.early(SEARCH)
-        self.assertEqual(len(self.client.asked), 1, 'run 2 asked the web search again')
+        # Run 2 on the stored state, its boards working (under 2 working boards a search asks again by the thin rule): it rests, no new question.
+        time_budget.start(BUDGET)
+        later = Gated(self.gate)
+        with redirect_stdout(io.StringIO()), mock.patch.object(board_web, '_working', return_value=[{}, {}]):
+            board_web.search(SEARCH, [], client=later, data=board_ideas.load())
+        self.assertEqual(later.asked, [], 'run 2 asked the web search again')
 
     def test_a_search_a_stage_took_is_not_handed_on_twice(self):
         time_budget.start(BUDGET)
@@ -138,7 +146,7 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
         self.judging.clear()
         self.gate.set()
         time_budget.start(BUDGET)
-        threading.Thread(target=lambda: board_web.search(SEARCH, [], client=self.client, data={}, now=T0), daemon=True).start()
+        threading.Thread(target=lambda: board_web.search(SEARCH, [], client=self.client, data={}, now=T0), name='kept-search', daemon=True).start()
         self.assertTrue(wait_for(lambda: self.raw().get(RAW_NAME)), 'the answer was not saved when the call returned: a run that ends now loses it')
         self.assertEqual(len(self.client.asked), 1)
         self.assertFalse(self.stamped(), 'nothing is judged yet: no stamp, no ideas')
