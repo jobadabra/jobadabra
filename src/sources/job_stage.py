@@ -9,19 +9,31 @@ import os
 ORDER = ('kept', 'ai_no', 'never_asked', 'placed_out', 'no_link')
 
 
-def of(job):
+def of(job, places=None):
     """The stage of a job that aggregators.kept did not keep: placed_out (Claude placed it outside; no place call runs and the words say no; or it
     names no place at all), never_asked (its place or its title had no answer when kept looked: no call reached it in time, or none asks on this
     path), ai_no (the title sort said no; the words, with no AI), no_link. Never 'kept': an answer that lands after kept looked was not there in time.
-    Why (review of sf's step 3, 10 Nov 2026): a verdict landing between kept's check and this one made a dropped job read as kept."""
+    `places`: one kept() pass's {(location, remote): the place words' answer}, so their regex runs once per unplaced location, not per job.
+    Why (review of sf's step 3, 10 Nov 2026): a verdict landing between kept's check and this one made a dropped job read as kept; and the place
+    words cost ~150 µs a job (#3709's yardstick: p5 and p13 slower), so they run once per unplaced location in a pass."""
     from . import feeds
     if not job.get('url'):
         return 'no_link'
-    if not feeds.wanted_location(job):
-        verdict = feeds.place_of(job)
-        return 'never_asked' if verdict is None and feeds.placing() and (job.get('location') or '').strip() else 'placed_out'
-    if not feeds.wanted_title(job.get('title') or ''):
-        return 'never_asked' if feeds.judged_title(job.get('title') or '') is None and feeds.asked() else 'ai_no'
+    title = job.get('title') or ''
+    key = ((job.get('location') or '').strip(), bool(job.get('remote')))
+    verdict = feeds.place_of(job)   # Claude's, per posting for a vague place: never shared between jobs
+    if verdict is not None:
+        inside = verdict != 'out'
+    elif places is not None and key in places:
+        inside = places[key]
+    else:
+        inside = feeds.wanted_location(job)   # unplaced: the place words, which read only the location and remote
+        if places is not None:
+            places[key] = inside
+    if not inside:
+        return 'never_asked' if verdict is None and feeds.placing() and key[0] else 'placed_out'
+    if not feeds.wanted_title(title):
+        return 'never_asked' if feeds.judged_title(title) is None and feeds.asked() else 'ai_no'
     return 'never_asked'
 
 

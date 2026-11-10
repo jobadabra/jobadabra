@@ -274,7 +274,7 @@ def kept(db, name, found, now=None, shown=None):
     taken as they are, not recorded again."""
     from collections import Counter
     from . import job_stage
-    now, matched, fresh, shown, stages = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter()
+    now, matched, fresh, shown, stages, places = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter(), {}
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
     with db:
         for job in found:
@@ -286,7 +286,7 @@ def kept(db, name, found, now=None, shown=None):
                 fresh.append(matched[-1])
                 stage = 'kept'
             else:
-                stage = job_stage.of(job)   # Why (sa's plan WP3, 10 Nov 2026): every job read leaves here with a stage; none goes unseen
+                stage = job_stage.of(job, places)   # Why (sa's plan WP3 and #3709's yardstick, 10 Nov 2026): each job read gets a stage, none unseen; one `places` per pass keeps the place words to once per location
             stages[stage] += 1
             job_stage.say_one(name, stage, job)
     job_stage.say(name, len(found), stages)
