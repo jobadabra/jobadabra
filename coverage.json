@@ -56,5 +56,14 @@
    "Focus: Suggestions → Settings: Experience sources: Add another CV version",
    "Settings: Experience sources: Add another CV version → Actions: Tailor CV + cover letter for top matches"
   ]
+ },
+ {
+  "seed": 20261110,
+  "pairs": [
+   "start → Strategy: Tune my strategy",
+   "Strategy: Tune my strategy → Jobs: Show jobs as a list",
+   "Jobs: Show jobs as a list → Settings: Experience sources: Add another CV version",
+   "Settings: Experience sources: Add another CV version → Actions: Tailor CV + cover letter for top matches"
+  ]
  }
 ]
