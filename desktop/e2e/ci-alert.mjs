@@ -106,39 +106,47 @@ export async function sinceGreen(env = process.env, fetcher = fetch, shown = 5) 
  */
 export async function openRed(env = process.env, fetcher = fetch, lanes = readLanes(), shown = 3) {
   const none = {suites: [], at: '', sha: '', fixed: {prs: [], more: 0}, flaky: false};
-  const e2e = workflowFile(env) === 'e2e.yml', repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`, workflow = env.GITHUB_WORKFLOW || 'CI';
+  const repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`, workflow = env.GITHUB_WORKFLOW || 'CI';
   try {
-    const failed = [];   // newest first, up to the last success; a cancelled or skipped run is neither a red nor a green
-    for (const run of (await finishedRuns(env, fetcher)).slice(0, 12)) {
-      if (run.conclusion === 'success') break;
-      if (FAILED.includes(run.conclusion)) failed.push(run);
-    }
-    // A run with no job failed at all (the plan broke) sent its red card named after the workflow; one whose failed jobs are all report-only sent none and counted as green.
-    const reads = await Promise.all(failed.map(run => (e2e ? unsuccessfulJobs(run.id, env, fetcher) : Promise.resolve([workflow])).then(jobs => ({run, jobs}))));
-    const streak = [];
-    for (const {run, jobs} of reads) {
-      const blocking = e2e ? jobs.filter(job => backbone(job.name, lanes)).map(job => suiteOfKey(job.name)) : [workflow];
-      if (e2e && jobs.length && !blocking.length) break;
-      streak.push({run, suites: [...new Set(blocking.length ? blocking : [workflow])]});
-    }
+    const streak = await redStreak(env, fetcher, lanes);
     if (!streak.length) return none;
-    let passed = null;
-    if (e2e) {
-      const jobs = (await get(`${repo}/actions/runs/${env.GITHUB_RUN_ID}/jobs?per_page=100`, env, fetcher)).jobs || [];
-      const bad = new Set(jobs.filter(unsuccessful).map(job => suiteOfKey(job.name)));
-      passed = new Set(jobs.filter(job => job.conclusion === 'success').map(job => suiteOfKey(job.name)).filter(suite => !bad.has(suite)));
-    }
+    const passed = workflowFile(env) === 'e2e.yml' ? await passedNow(env, fetcher) : null;
     // A suite's red is open only if it failed in the newest red run; its red began at the oldest run of its unbroken chain (one that passed it in between closed it then).
     const newest = streak[0].run, back = streak[0].suites.filter(suite => suite === workflow || !passed || passed.has(suite));
     if (!back.length) return none;
     const began = suite => { let i = 0; while (i + 1 < streak.length && streak[i + 1].suites.includes(suite)) i++; return streak[i].run; };
-    const oldest = back.map(began).sort((a, b) => String(a.run_started_at || a.created_at).localeCompare(String(b.run_started_at || b.created_at)))[0], flaky = newest.head_sha === env.GITHUB_SHA;
+    const startOf = run => String(run.run_started_at || run.created_at), oldest = back.map(began).sort((a, b) => startOf(a).localeCompare(startOf(b)))[0], flaky = newest.head_sha === env.GITHUB_SHA;
     const all = flaky || !newest.head_sha ? [] : prNumbers((await get(`${repo}/compare/${newest.head_sha}...${env.GITHUB_SHA}`, env, fetcher).catch(() => ({}))).commits || []);
     return {suites: back, at: oldest.run_started_at || oldest.created_at || '', sha: newest.head_sha || '', fixed: {prs: all.slice(0, shown), more: Math.max(0, all.length - shown)}, flaky};
   } catch (error) {
     console.error(`ci-alert: green not sent (could not read the earlier runs: ${String(error?.message || error).slice(0, 80)})`);
     return none;
   }
+}
+
+// The red runs a red card went out for, newest first, back to the last success: [{run, suites}]. A cancelled or skipped run is neither a red nor a green.
+// A run with no job failed at all (the plan broke) sent its red card named after the workflow; one whose failed jobs are all report-only sent none and counted as green (the streak ends there).
+async function redStreak(env, fetcher, lanes) {
+  const e2e = workflowFile(env) === 'e2e.yml', workflow = env.GITHUB_WORKFLOW || 'CI', failed = [];
+  for (const run of (await finishedRuns(env, fetcher)).slice(0, 12)) {
+    if (run.conclusion === 'success') break;
+    if (FAILED.includes(run.conclusion)) failed.push(run);
+  }
+  const reads = await Promise.all(failed.map(run => (e2e ? unsuccessfulJobs(run.id, env, fetcher) : Promise.resolve([])).then(jobs => ({run, jobs}))));
+  const streak = [];
+  for (const {run, jobs} of reads) {
+    const suites = [...new Set(jobs.filter(job => backbone(job.name, lanes)).map(job => suiteOfKey(job.name)))];
+    if (jobs.length && !suites.length) break;
+    streak.push({run, suites: suites.length ? suites : [workflow]});
+  }
+  return streak;
+}
+
+// The suites this e2e run passed: a job succeeded and none of the suite's jobs failed.
+async function passedNow(env, fetcher) {
+  const jobs = (await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/jobs?per_page=100`, env, fetcher)).jobs || [];
+  const bad = new Set(jobs.filter(unsuccessful).map(job => suiteOfKey(job.name)));
+  return new Set(jobs.filter(job => job.conclusion === 'success').map(job => suiteOfKey(job.name)).filter(suite => !bad.has(suite)));
 }
 
 // This workflow's finished runs on the branch except this one, newest first (the renamed file's too when the new name has none). A by-hand bisect run (e2e_bisect.py: "Bisect <suite> <sha>") is no main check.
