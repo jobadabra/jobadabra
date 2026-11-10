@@ -176,6 +176,13 @@ class TheClass(unittest.TestCase):
         self.assertTrue(any('quality' in line for line in missing) or starts('main-steps.yml', ['src/ai/score.py'], 'push'), 'positive control')
         self.assertEqual(missing, [], 'main-steps.yml push paths: add these files its suites watch')
 
+    def test_the_pr_check_starts_on_every_file_the_after_merge_plan_does(self):
+        # Owner, 10 Nov 2026 (asked via AskUserQuestion): "Yes, affected steps only (Recommended)". A PR runs the steps its files reach from the plan main-steps.yml runs after the
+        # merge (desktop/e2e/lib/pr-affected.mjs); a file that starts one and not the other is a step that goes red only after the merge (#3297, #3573, #3630).
+        after = [path for path in pr_paths('main-steps.yml', 'push') if path != '.github/workflows/main-steps.yml']
+        self.assertIn('desktop/i18n/**', after, 'positive control: a catalog word a step reads starts the plan')
+        self.assertEqual([path for path in pr_paths('pr-e2e-steps.yml') if path != '.github/workflows/pr-e2e-steps.yml'], after)
+
     def test_the_windows_job_starts_on_the_files_the_linux_job_does(self):
         # 5 Nov 2026, owner: "Yes: reached tests, every PR". Windows picks the tests its change reaches, as Linux does, so it starts on the same files; this replaces the hand-kept list
         # (~60 files) and its test, under which #3172 (tools/fixer) never ran Windows and main's Windows went red 12 times.
@@ -264,7 +271,7 @@ class TheShapes(unittest.TestCase):
         self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml'})   # desktop/test/tooling/ci/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-desktop-windows.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-desktop-windows.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml', 'pr-e2e-steps.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 

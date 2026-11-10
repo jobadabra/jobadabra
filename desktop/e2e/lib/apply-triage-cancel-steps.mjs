@@ -4,7 +4,7 @@
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, hiddenTargets, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
-import {CHIP_VALUE} from './apply-triage-steps.mjs';
+import {CHIP_VALUE, CHIP_WORDS} from './apply-triage-steps.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 import {messages as shortJobs} from '../../i18n/catalogs/pages/short-jobs.js';
 import {SILENT_MS} from '../../lib/triage-reader.js';
@@ -68,7 +68,7 @@ export async function runTriageCancelSteps(ctx, {urls}) {
       await waitOn(seen, 'the Jobs navigation never appeared', () => page.locator('.nav[data-view="jobs"]').isVisible(), shown => shown);
       await page.click('.nav[data-view="jobs"]');
       await page.fill('#filter-text', jobs[0].url.split('?')[0]);
-      await waitOn(seen, 'the four fixture chips never appeared unchecked', () => screenOf(page, addresses), state => state.chips.every(chip => chip === 'Not checked'));
+      await waitOn(seen, 'the four fixture chips never appeared unchecked', () => screenOf(page, addresses), state => state.chips.every(chip => chip === CHIP_WORDS.notChecked));
       for (const job of jobs) if (await sessionOf(page, job.url)) throw new Error(`a session already holds ${job.url}`);
       const posted = forms.posts.length;
       await page.click('#triage-open');
@@ -97,8 +97,8 @@ export async function runTriageCancelSteps(ctx, {urls}) {
       await page.click('#triage-cancel');
       await waitOn(seen, 'Cancel never ended the run and hid its bar', () => screenOf(page, addresses), state => !state.shown);
       const stopped = await screenOf(page, addresses);
-      if (stopped.chips.slice(0, 2).some(chip => !chip || chip === 'Not checked')) throw new Error(`the completed reads never changed their chips: ${JSON.stringify(stopped)}`);
-      if (stopped.chips.slice(2).some(chip => chip !== 'Not checked')) throw new Error(`Cancel changed an unread job's chip: ${JSON.stringify(stopped)}`);
+      if (stopped.chips.slice(0, 2).some(chip => !chip || chip === CHIP_WORDS.notChecked)) throw new Error(`the completed reads never changed their chips: ${JSON.stringify(stopped)}`);
+      if (stopped.chips.slice(2).some(chip => chip !== CHIP_WORDS.notChecked)) throw new Error(`Cancel changed an unread job's chip: ${JSON.stringify(stopped)}`);
       const counts = addresses.map(url => held.reads.filter(read => read === url).length);
       if (JSON.stringify(counts) !== '[1,1,1,0]') throw new Error(`Cancel read another job or repeated a read: per-address GET counts ${JSON.stringify(counts)}`);
       if (forms.posts.length !== posted) throw new Error('triage posted a fixture form');

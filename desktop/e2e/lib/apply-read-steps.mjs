@@ -8,7 +8,7 @@ import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
 import {pollUntil, stepTimeLeft, stepWait} from './wait-on-state.mjs';
 import {assertReadUntyped, sampleBeforeClose, TYPED_SNAPSHOT} from './typed-recorder.mjs';
-import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
+import {CHIP_VALUE, CHIP_WORDS, sessionsNow} from './apply-triage-steps.mjs';
 
 /** The http pages the hidden browser of `profile` holds, [] when it is not running. */
 const hiddenPages = profile => hiddenTargets(profile).then(targets => targets.filter(item => item.type === 'page' && /^https?:/.test(item.url)), () => []);
@@ -53,7 +53,7 @@ const rowOf = (page, {url, title}) => page.evaluate(({link, text, selector}) => 
  */
 export async function chipBeforeRead(read, wait = {}) {
   const row = await readState('the Jobs list never showed the fixture job as Saved', read, seen => seen.stage === 'Saved' && seen.chip !== '', wait);
-  if (row.chip !== 'Not checked') throw new Error(`the job already had a chip before any read: "${row.chip}"`);
+  if (row.chip !== CHIP_WORDS.notChecked) throw new Error(`the job already had a chip before any read: "${row.chip}"`);
 }
 
 /** Every chip text now on the Jobs list, for a failure message. */
@@ -78,9 +78,10 @@ export async function readState(why, read, accepts, wait = {}) {
 export async function runReadSteps(ctx) {
   const {page, proxy, forms} = ctx;
   // Why (7 Nov 2026, owner, #3519: "we don't need to go through normal flow of applying… just to understand if it's a simple form and can be submitted automatically"): a read only looks at the form, so it makes no answer plan and the
-  // "answers not saved" variant ("You review and submit") has no producer any more; the one step left proves a simple form reads "Simple form" (sub-status: can apply automatically) without the form judge.
-  for (const [form, expected] of [[autoFormOf(FORMS.submitter), 'Simple form']]) {
-    await ctx.run('"See which jobs can apply automatically" reads a job\'s form in the hidden browser: ' + expected + ', the tab closes, and nothing is filled or sent', async () => {
+  // "answers not saved" variant ("You review and submit") has no producer any more; the one step left proves a simple form reads the catalog's "Simple form" chip (sub-status: can apply automatically) without the form judge.
+  // Updated 10 Nov 2026 (owner: "Steps also read words and timings from the app, never copies"): the step's name keeps its words (its identity in the coverage map); the chip it expects is the catalog's (CHIP_WORDS), so a renamed chip keeps the step's intent.
+  for (const [form, named, expected] of [[autoFormOf(FORMS.submitter), 'Simple form', CHIP_WORDS.simpleForm]]) {
+    await ctx.run('"See which jobs can apply automatically" reads a job\'s form in the hidden browser: ' + named + ', the tab closes, and nothing is filled or sent', async () => {
       const unlinked = linkRuntime(ctx.profile);
       if (unlinked) throw new Error(unlinked);
       const previous = proxy.canned(), judge = withFormJudge(previous, 'Submit Application');
@@ -108,7 +109,7 @@ export async function runReadSteps(ctx) {
         await stepWait('the triage dialog opened', timeout => page.waitForSelector('#triage-dialog[open]', {timeout}));
         await page.fill('#triage-n', '1');   // Why (2026-10-30, owner: the popup is becoming one field, the first N best matching jobs): the default "best" choice ranks by fit; this job is fit 90 and the suite's other fixture jobs sit below it, so the first 1 is this job
         await page.click('#triage-start');
-        await readState('the chip never showed the form read', () => chipOfRow(page, form.title), chip => chip !== 'Not checked')
+        await readState('the chip never showed the form read', () => chipOfRow(page, form.title), chip => chip !== CHIP_WORDS.notChecked)
           .catch(async error => { throw new Error(`${error.message} | chips: ${JSON.stringify(await allChips(page))} | ${await describeHidden(ctx.profile)}`); });
         const chip = await chipOfRow(page, form.title);
         if (chip !== expected) throw new Error(`the fixture should read "${expected}", the chip says "${chip}"`);
