@@ -8,13 +8,16 @@ Why SCORE (ts, 10 Nov 2026, owner asked via AskUserQuestion: night 9 Nov): a sco
 59 started with 6+), all at NORMAL; a job that is already Kept is one call from a score, so its call goes before the calls that only bring more jobs."""
 import contextlib
 import itertools
+import os
 import threading
 import time
 
 from ..press import rank as order   # this file has its own rank()
 
 FIRST, SCORE, NORMAL, LATER = 0, 1, 2, 3
+NAMES = ('FIRST', 'SCORE', 'NORMAL', 'LATER')
 _local = threading.local()
+_BORN = time.monotonic()   # the engine process's start, near enough: a Find jobs run is one process
 
 
 def level():
@@ -99,7 +102,10 @@ class Slots:
             self.free -= 1
             if self.free:   # the next in line may take another free slot
                 self._cond.notify_all()
-        _local.waited = (getattr(_local, 'waited', None) or 0.0) + time.monotonic() - asked
+        got = time.monotonic()
+        _local.waited = (getattr(_local, 'waited', None) or 0.0) + got - asked
+        if os.environ.get('JOBADABRA_SLOT_LOG') == '1':
+            _say(ticket, got - asked, got - _BORN, self.n - self.free, self.n)
         return self
 
     def __exit__(self, *exc):
@@ -107,3 +113,13 @@ class Slots:
             self.free += 1
             self._cond.notify_all()
         return False
+
+
+def _say(ticket, waited, at, busy, n):
+    """One run-log line for a slot taken: the ticket (level, rank, arrival), its wait and the second it started. Numbers only: a rank part that is not a number prints as '?'.
+    Why (sf 2/8, 10 Nov 2026, sa's Mac runs): a title batch waited 33 s for a free slot on p9 and the order of the tickets was not in any log; this is the measure for it,
+    off unless JOBADABRA_SLOT_LOG=1 (a by-hand run; never set for a user)."""
+    level, rank, arrival = ticket
+    parts = ', '.join(f'{part:g}' if isinstance(part, (int, float)) and not isinstance(part, bool) else '?' for part in rank)
+    name = NAMES[level] if 0 <= level < len(NAMES) else str(level)
+    print(f'Slot: {name} rank ({parts}) arrival {arrival} waited {waited:.1f} s started at {at:.1f} s ({busy}/{n} busy)', flush=True)
