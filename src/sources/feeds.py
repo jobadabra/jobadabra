@@ -253,30 +253,9 @@ def needs_visa(job):
 
 
 def triage_places(jobs):
-    """Ask Claude where the new locations are, for the jobs that could be kept (their title fits); each location once per version of the
-    places. Off without AI or with JOBADABRA_DISABLE=place_triage: the place words only."""
-    from .. import features
-    from ..ai import engine
-    locations = [job.get('location') for job in jobs if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title'])]
-    if not locations or features.disabled('place_triage') or not engine.ready():
-        return
-    try:
-        from ..ai import place_triage
-        # A refresh places a batch: the ones your place words name first, then the ones most jobs share (7 Oct 2026: it asked in feed
-        # order, Warsaw and Dallas first, and "Genève, Switzerland" with 6 jobs waited behind 1,400 others), each job counted by how close
-        # it is to your search (src/job_rank.py; 18 Oct 2026: a first search in Cluj placed 1,313 locations for 10 minutes before scoring)
-        from ..job_rank import ranker
-        from ..press import rank
-        closeness, count = ranker(), Counter()
-        for job in jobs:
-            if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title']):
-                count[place_triage.norm(job['location'])] += 1 + closeness(job)
-        ordered = rank.titles(list(count), rank.in_your_places(lambda location: mentions(PLACE, location)), lambda location: -count[location])
-        placed().update(place_triage.decide(ordered, _SEARCH))
-        placed().update(place_triage.vague(ordered, _SEARCH))   # of the ones outside: which name no town of their own
-    except Exception as error:  # noqa: BLE001 — not placed this run: the place words decide, said
-        print(f'Warning: job locations not placed by {providers.who()} ({reason(error)}): the place words decide this run (remote jobs wait)')
-        detail('sources', error)
+    """Ask Claude where the new locations of these jobs are (src/sources/feed_places.py place_jobs); each location once per version of the places."""
+    from . import feed_places
+    feed_places.place_jobs(jobs)
 
 
 def placing():
