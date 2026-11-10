@@ -80,6 +80,18 @@ test('no earlier failure, or an unreadable GitHub, sends nothing', async () => {
   assert.equal(card(undefined), '');
 });
 
+test('a suite that passed in a failed run in between had recovered then: only the suite red in the newest run is closed, red since that run', async () => {
+  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb', {run_started_at: '2026-11-10T04:00:00Z'}), run(11, 'failure', 'bbb')), ...jobsOf(12, job('wizard', 'failure')), ...jobsOf(11, job('apply-1of3', 'failure')),
+    ...jobsOf(99, job('apply-1of3', 'success'), job('wizard', 'success')), '/compare/ccb...ccc': merged(3650)}), lanes);
+  assert.deepEqual(closed.suites, ['wizard']);
+  assert.equal(closed.at, '2026-11-10T04:00:00Z');
+});
+
+test('a red card with no failed job (the plan broke) is named after the workflow and closed by the next green', async () => {
+  const closed = await openRed(env(), gh({...runs(run(11, 'failure', 'bbb')), ...jobsOf(11), ...jobsOf(99, job('apply-1of3', 'success')), '/compare/bbb...ccc': merged(3650)}), lanes);
+  assert.deepEqual(closed.suites, ['E2E']);
+});
+
 test('another workflow: a failed previous run is its red, named after the workflow; a success before it sends nothing', async () => {
   const closed = await openRed(env('journeys.yml'), gh({...runs(run(11, 'failure', 'bbb'), run(10, 'success', 'aaa')), '/compare/bbb...ccc': merged(3700)}), lanes);
   assert.deepEqual(closed.suites, ['Journeys']);
@@ -87,7 +99,7 @@ test('another workflow: a failed previous run is its red, named after the workfl
   assert.deepEqual((await openRed(env('journeys.yml'), gh({...runs(run(10, 'success', 'aaa'))}), lanes)).suites, []);
 });
 
-test('a failure run whose failed jobs are all report-only is not a red either', () => {
+test('a failed status whose jobs are all report-only closes an open red but alone sends nothing', () => {
   const sent = messageOf({status: 'failure', jobs: [{name: 'prompt-cases', url: 'u'}], closed: {suites: ['apply'], at: '2026-11-10T00:35:00Z', fixed: {prs: [], more: 0}, flaky: false}, env: env(), lanes});
   assert.match(sent.text, /green again/, 'a run with only report-only failures can still close a blocking red');
   assert.equal(messageOf({status: 'failure', jobs: [{name: 'prompt-cases', url: 'u'}], env: env(), lanes}), '', 'and with no red to close it is silent');
