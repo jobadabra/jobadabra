@@ -202,3 +202,14 @@ test('a tab that is not a read never runs the look', async t => {
   assert.equal(ran, false);
   assert.deepEqual(posted, []);
 });
+
+// #3711 (10 Nov 2026): the LinkedIn read's own hidden browser has no owner; without its reads-only key a worker with no owner fills like the person's own extension.
+test('a reads-only hidden browser never fills any tab; the same worker without the key would (positive control)', async t => {
+  const state = install(t);
+  delete state.local.backgroundOwner;
+  const {backgroundMayFill} = await import('../../../../extension/background-apply.js');
+  assert.equal(await backgroundMayFill(7), true, 'positive control: no owner and no key fills like the person\'s own extension');
+  state.local.backgroundReadsOnly = true;
+  assert.equal(await backgroundMayFill(7), false);
+  assert.equal(await backgroundMayFill(99), false);
+});

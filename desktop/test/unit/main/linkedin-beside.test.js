@@ -34,3 +34,21 @@ test('the step is the LinkedIn step with this app\'s seams: off when the switch 
   assert.deepEqual(touched, []);
   setLinkedinStep(null);
 });
+
+// Why (#3711, 10 Nov 2026): the session must not outlive the read on disk, so each step's own browser is disposed (its folder deleted) however the step ends, an error included.
+test('each step reads in its own browser and disposes it when the step ends, also when the read throws', async () => {
+  const on = {settings: () => ({linkedinJobs: {on: true}}), saveSettings: () => {}, secret: () => 'stand-in-token'};
+  const made = [];
+  const readBrowser = () => {
+    const own = {disposed: 0, ready: () => true, start: async () => { own.started = true; }, send: async () => ({cookies: []}), targetSocket: async () => null, dispose: async () => { own.disposed += 1; return true; }};
+    made.push(own);
+    return own;
+  };
+  const seams = linkedinSeams(on, {readBrowser, readSession: () => ({li_at: 'FAKE-LI-AT-unit'}), refresh: {ask: async () => 'no-extension'}, runEngine: async () => ({code: 0, stdout: JSON.stringify({ok: true, searches: [{name: 'a', url: 'https://www.linkedin.com/jobs/search/?keywords=a'}]})}),
+    run: async () => { throw new Error('the read broke'); }});
+  await seams.step(null, () => {}).catch(() => null);
+  await seams.step(null, () => {}).catch(() => null);
+  assert.equal(made.length, 2, 'one browser per step, never reused');
+  assert.deepEqual(made.map(own => own.disposed), [1, 1], 'each is disposed once, whatever ended the step');
+  assert.ok(made.every(own => own.started), 'positive control: each step got as far as starting its browser and reading');
+});

@@ -36,6 +36,9 @@ export async function backgroundContext(tabId) {
 }
 /** A terminal per-job handoff never resumes through a reload, solved CAPTCHA, or changed mode; ordinary mode 1 keeps its existing behavior. */
 export async function backgroundMayFill(tabId) {
+  // Why (#3711, 10 Nov 2026): the LinkedIn read's own hidden browser has no backgroundOwner (it must never claim a queued application), and with no owner a worker
+  // fills like the person's own extension. backgroundReadsOnly (lib/background-browser.js claims: false) marks a browser that reads pages and never fills or submits.
+  if (globalThis.chrome?.storage?.local?.get && (await chrome.storage.local.get('backgroundReadsOnly')).backgroundReadsOnly) return false;
   const context = await backgroundContext(tabId);
   if (!context) return !globalThis.chrome?.storage?.local?.get || !(await chrome.storage.local.get('backgroundOwner')).backgroundOwner;
   return owned().mayContinue(context.session);

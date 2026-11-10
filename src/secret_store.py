@@ -110,6 +110,9 @@ def _get_one(service, user=None, allowed_as=None):
         own = (_isolated_items()[1].get(service) or {}).get('value') or None
         if own or not _twin_may_read(allowed_as or service):   # a twin may read the owner's old-name Google items as it reads the new-name ones
             return own
+    if (under_test() or os.getenv('NODE_TEST_CONTEXT')) and _reaches_real_store():   # NODE_TEST_CONTEXT: an engine a desktop `node --test` file started
+        # Why (#3711, 10 Nov 2026): a desktop unit test read the owner's real LinkedIn session item; only writes were refused (24 Oct). A test reads nothing real either.
+        return None
     user = account() if user is None else user
     if sys.platform == 'darwin':
         result = subprocess.run(['security', 'find-generic-password', '-a', user, '-s', service, '-w'],
