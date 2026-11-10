@@ -66,7 +66,8 @@ function candidateOf({suite, full, changed, edited, stepTotal, needsOf, renamed,
   let names = whole ? null : [...new Set([...mapped, ...(changed?.steps?.[suite] || [])])];
   // Why (code review, 10 Nov 2026): a suite whose every mapped step was renamed and that has no edited step of its own would run nothing; the whole suite runs, as the runner's own renamed-pick fallback does (#3587).
   if (names && !names.length) { if (!gone.length) return null; names = null; }
-  const real = (names || []).filter(name => name !== SETUP), needs = names ? needsOf(suite, real).filter(word => !real.some(name => name.toLowerCase() === word)) : [];
+  // Why (Gitar on #3651, 10 Nov 2026): stepNeeds names a step by words (the runner matches them inside step names, lib/runner.mjs wantedWords), so a need already inside a picked step's full name is that step, counted once.
+  const real = (names || []).filter(name => name !== SETUP), needs = names ? needsOf(suite, real).filter(word => !real.some(name => name.toLowerCase().includes(word))) : [];
   return {suite, names, needs, cost: names ? Math.max(real.length, 1) + needs.length : stepTotal(suite), edited: edited.has(suite)};
 }
 

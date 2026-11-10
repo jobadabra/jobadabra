@@ -86,3 +86,13 @@ test('every mapped step of a suite renamed and none edited: the suite runs whole
   assert.equal(plan.steps.settings, undefined, 'no step list: the whole suite');
   assert.equal(plan.count, 7);
 });
+
+test('a prerequisite already in the pick counts once toward the cap, not twice (Gitar on #3651)', () => {
+  // stepNeeds names the setup step by a prefix; the pick holds its full name. wantedWords adds the prefix again, which is the same step.
+  const full = {suites: ['apply'], steps: {apply: [CHECK, SETUP]}};
+  const plan = affectedPlan({...base, full, changed: {suites: [], steps: {}}});
+  assert.equal(plan.count, 2, 'the check and its setup step, each once');
+  assert.ok(!plan.lines.some(line => line.includes('needs "the app has an applicant"')), plan.lines.join('\n'));
+  const alone = affectedPlan({...base, full: {suites: ['apply'], steps: {apply: [CHECK]}}, changed: {suites: [], steps: {}}});
+  assert.equal(alone.count, 2, 'without the setup in the pick it is still added and counted');
+});
