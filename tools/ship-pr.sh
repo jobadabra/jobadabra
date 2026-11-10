@@ -67,17 +67,23 @@ ship_pr_land() {
     step "opened the pull request: $(echo "$out" | tail -n 1)"
   else
     step "the branch already has pull request #$n: reusing it"
+    # Why (10 Nov 2026, fr; 79 PRs since 25 Oct carried a cancelled "pure checks" beside a green one, #3643 among them): the description and the title used to be two PATCHes, so two `edited` events
+    #   seconds apart. Each starts the Guard gate; one cancelled the other and the cancelled run stayed red on the head. ONE request carries both now (pr_set_text), so a re-ship makes one event.
+    new_body=""; new_title=""; who="$(session_short)"
     if [ -n "${SHIP_PR_BODY:-}" ]; then   # a new --body=<file> on a PR that is already open: its description is refreshed through the same tools/pr-body.sh (16 Oct 2026: #1049 kept the first draft's numbers)
-      body="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && pr_set "$repo" "$n" body "$body" 2>/dev/null && step "refreshed the description of #$n from --body" || step "could not refresh the description of #$n (the old one stays)"
+      new_body="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" || { new_body=""; step "could not build the description of #$n from --body (the old one stays)"; }
     fi
     if [ -n "${SHIP_PR_TITLE:-}" ]; then   # --title= on a PR that is already open: its title is replaced (only then)
-      who="$(session_short)"; title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || title="[$who] ${title#"[$who] "}"
-      pr_set "$repo" "$n" title "$title" 2>/dev/null && step "retitled #$n" || step "could not retitle #$n (the old title stays)"
+      new_title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || new_title="[$who] ${new_title#"[$who] "}"
     else   # no --title: still keep the "[xx]" tag (21 Oct 2026: site#18 and #19 were red for a missing tag, opened or retitled by hand): add it when the title lacks one
-      who="$(session_short)"; title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
-      if [ "$who" != "?" ] && [ -n "$title" ] && ! printf '%s' "$title" | grep -qE '^\[[^]]+\] '; then
-        pr_set "$repo" "$n" title "[$who] $title" 2>/dev/null && step "added the [$who] tag to the title of #$n" || step "could not add the session tag to #$n (the old title stays)"
-      fi
+      title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
+      if [ "$who" != "?" ] && [ -n "$title" ] && ! printf '%s' "$title" | grep -qE '^\[[^]]+\] '; then new_title="[$who] $title"; fi
+    fi
+    if [ -n "$new_body$new_title" ]; then
+      if pr_set_text "$repo" "$n" "$new_title" "$new_body" 2>/dev/null; then
+        [ -z "$new_body" ] || step "refreshed the description of #$n from --body"
+        [ -z "$new_title" ] || step "retitled #$n"
+      else step "could not edit the title and description of #$n (the old ones stay)"; fi
     fi
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until its new checks are green" || true; fi   # --draft: a new push restarts the checks
   fi
