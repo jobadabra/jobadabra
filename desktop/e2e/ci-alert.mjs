@@ -135,7 +135,6 @@ const plain = text => String(text).replace(/\b(shows|says|is) (?:null|undefined)
 
 // Short names stop at a whole word; annotation evidence remains available in the linked job log.
 const short = (text, max = 80) => text.length <= max ? text : `${text.slice(0, max - 1).replace(/\s+\S*$/, '')}…`;
-const stepName = step => short(String(step).replace(/\s*\([^)]*\)\s*$/, ''));
 
 // Parse only runner-owned budget wording, after the shared timeout classifier has identified timing.
 function timingCause(message) {

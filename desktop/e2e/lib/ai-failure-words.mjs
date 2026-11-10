@@ -56,7 +56,7 @@ export function failureAlert({jobs = [], summaries = null, notes = [], run = '',
   const rows = new Map();
   let title = `${name}: AI calls failed`;
   if (sums) {
-    const calls = sums.reduce((n, one) => n + one.calls, 0), failed = sums.reduce((n, one) => n + one.failed, 0), ok = sums.reduce((n, one) => n + one.ok, 0);
+    const calls = sums.reduce((n, one) => n + one.calls, 0), failed = sums.reduce((n, one) => n + one.failed, 0);
     for (const one of sums) for (const cause of one.causes) rows.set(cause.key, {...cause, count: (rows.get(cause.key)?.count || 0) + cause.count});
     title = `${name}: ${failed} of ${calls} AI calls failed`;
   } else {
