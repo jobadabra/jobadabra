@@ -139,14 +139,19 @@ async function redStreak(env, fetcher, lanes) {
       continue;
     }
     if (!FAILED.includes(run.conclusion) && run.conclusion !== 'success') continue;
-    const jobs = await jobsFor(run.id, env, fetcher), bad = jobs.filter(unsuccessful);
-    const suites = [...new Set(bad.filter(job => backbone(job.name, lanes)).map(job => suiteOfKey(job.name)))].filter(suite => !closed.has(suite));
-    if (FAILED.includes(run.conclusion) && !bad.length && !closed.has(workflow)) suites.push(workflow);
-    if (suites.length) streak.push({run, suites});
-    if (run.conclusion === 'success' || effectiveStatus(run.conclusion, bad, lanes) === 'success') closed.add(workflow);
-    for (const suite of passedSuites(jobs)) closed.add(suite);
+    await collectSuiteReds(run, {env, fetcher, lanes, workflow, closed, streak});
   }
   return streak;
+}
+
+// Collect the still-open reds before hiding earlier failures behind the passes in this run.
+async function collectSuiteReds(run, {env, fetcher, lanes, workflow, closed, streak}) {
+  const jobs = await jobsFor(run.id, env, fetcher), bad = jobs.filter(unsuccessful);
+  const suites = [...new Set(bad.filter(job => backbone(job.name, lanes)).map(job => suiteOfKey(job.name)))].filter(suite => !closed.has(suite));
+  if (FAILED.includes(run.conclusion) && !bad.length && !closed.has(workflow)) suites.push(workflow);
+  if (suites.length) streak.push({run, suites});
+  if (run.conclusion === 'success' || effectiveStatus(run.conclusion, bad, lanes) === 'success') closed.add(workflow);
+  for (const suite of passedSuites(jobs)) closed.add(suite);
 }
 
 // A suite passed only when at least one job succeeded and none of its shards failed.
