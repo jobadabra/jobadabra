@@ -39,7 +39,7 @@ sa's default (the owner may change it): "reached" = every person at 95% or more 
 | WP | What the owner gets | Who | Model | Files |
 |---|---|---|---|---|
 | 1 | The rule in CLAUDE.md, this plan as a spec with `## Progress`, the local-check skill's "3 runs a side" step | pane fl | Sonnet | CLAUDE.md, docs/superpowers/specs/, .claude/skills/check-job-search-locally |
-| 2 | The market count: every source of the list counted per person, stored per source | lj | Opus | tools/persona-search/ reference files, search-reference.yml |
+| 2 | The market count: every source of the list counted per person, stored per source | mc | Opus | tools/persona-search/ reference files, search-reference.yml |
 | 3 | In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people | sf | Opus | src/ (pipeline) |
 | 4 | The Admin graph: coverage and in = out per person and over time, blind nights grey | oe | Sonnet | jobadabra-web |
 | 6 | The Sources section: what share of right jobs each source brings, and what only it brings | oe (after WP4) | Sonnet | jobadabra-web + the run's rows |
@@ -47,7 +47,7 @@ sa's default (the owner may change it): "reached" = every person at 95% or more 
 
 Order: WP1, WP2, WP3's table, WP4's picture and WP5 start now, side by side. WP3's fixes start when its table exists. WP4 shows in = out for EURES from day one and gains sources as WP2 lands them.
 
-### WP2 detail (lj)
+### WP2 detail (mc)
 1. Count first, no code: what search-reference.yml and its tools count today (fields total / reachable / eures), per person; which of the list's sources have a search of their own that takes role + place.
 2. Design in one page to sa: per source, the query, the cap (today: the first 100 in-region rows), the judge, the unique key, what "refused" does (a 401/403/429 or a bot check ends that source for the run: "not counted", never retried, never a guess).
 3. Independence: the counter imports no pipeline stage (no title triage, no place triage, no time budget); it may share only fetch and parse helpers. A job counts for the market whoever found it; the list also records which sources showed it.
@@ -110,7 +110,12 @@ So two parts, neither started before its number exists:
 
 ## Progress
 - [x] WP1 The rule in CLAUDE.md, this spec, the local-check skill's "3 runs a side" step (pane fl) (proof: docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md, CLAUDE.md)
-- [ ] WP2 (lj) The market count: every source of the list counted per person, stored per source
+- [ ] WP2 (mc) The market count: every source of the list counted per person, stored per source
+  - [x] 1/5 the six people without EURES get their national board (proof: tools/persona-search/market_boards.py, tests/tooling/ci/test_market_boards.py @d54ef2d3)
+  - [x] 2/5 every person's national board, 16 of 18 (proof: tools/persona-search/market-boards.json @6e43bf36)
+  - [x] 3/5 web search (proof: tools/persona-search/market_web.py, tests/tooling/ci/test_market_web.py @0257d351)
+  - [ ] 4/5 employer sites (this PR: tools/persona-search/market_employers.py)
+  - [ ] 5/5 Admin rows with every check (oe's row shape)
 - [ ] WP3 (sf) In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people
 - [ ] WP4 (oe) The Admin graph: coverage and in = out per person and over time, blind nights grey
 - [ ] WP5 (cr) A check that measures everyone: one AI, no fallback, an unmeasured person run again once
