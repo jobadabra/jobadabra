@@ -20,7 +20,7 @@ const stubs = {
     return {jobs: [{url:'https://jobs.test/1', title:'Engineer', company:'Fixture'}]};
   };`,
   'view-cache.js': `export const recall = () => globalThis.__serverRouteTest.cached ? {result:{jobs:[{url:'https://jobs.test/1', title:'Engineer', company:'Fixture'}]}} : null;`,
-  'build-state.js': `export const extensionBuild = () => ({version:'fixture'});`,
+  'build-state.js': `export const extensionBuild = () => ({version:'fixture'}); export const warmExtensionHistory = () => {};`,
   'build-handlers.js': `export const packagedBuild = () => null;`,
   'server-contact.js': `export const kept = () => {}; export const contactSaved = () => {};
     export const me = async (_s, url) => ({contact:url});`,

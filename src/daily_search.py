@@ -114,6 +114,9 @@ def start_sources(args, read_profile):
     if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0 (src/sources/board_web.py early)
         from .sources import board_web   # Why (#first-press-slots, owner, 27 Oct 2026: "Web search ... in parallel"): it started at ~25 s, after the employers' pick
         board_web.early(load_search_config())
+        from .features import enabled
+        if not enabled('eures'):   # Why (10 Nov 2026, owner: "as good as EURES, without using EURES"): the press says which mode it ran, so a night's log and verdict (tools/persona-search/funnel.py) never read "0 EURES jobs" as a fault
+            print('EURES: off in this run (an installed beta or stable app turns it on)', flush=True)
         from .sources import eures   # Why (27 Oct 2026, benchmark 40504636029): the free-API stage starts at 72-107 s and queued EURES in every persona; read from second 0, it only takes the result
         eures.start_early(load_search_config())
 

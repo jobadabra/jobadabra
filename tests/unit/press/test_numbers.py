@@ -72,6 +72,55 @@ class ThreeNumbersTest(unittest.TestCase):
                          {'coverage': 'better', 'quality': 'worse', 'speed': 'better'}, 'speed: fewer seconds is better')
         self.assertEqual(numbers.compare(numbers.band(runs[:1]), runs[0])['coverage'], 'not measured', 'one replay is no band')
 
+    def test_a_person_is_worse_only_beyond_one_job_and_the_cell_shows_both_numbers(self):
+        # Plan ys 1/2 (owner, 10 Nov 2026): main's replays repeat to the digit, so one person losing more than one job is a real loss, and one job is not.
+        row = lambda **kw: {'persona': 'p1', 'coverage': 0.5, 'quality': 0.5, 'speed': 40, 'most': 10, 'scored': 20, **kw}
+        verdict = lambda main, pr: numbers.people([main], [pr])['p1']['verdict']
+        self.assertEqual(verdict(row(), row(coverage=0.4, quality=0.45, speed=44))['coverage'], 'no change', 'one job of ten')
+        self.assertEqual(verdict(row(), row(coverage=0.3))['coverage'], 'worse', 'two jobs of ten')
+        self.assertEqual(verdict(row(), row(speed=46))['speed'], 'worse', 'more than 5 s')
+        self.assertEqual(verdict(row(), row(speed=30))['speed'], 'better')
+        self.assertEqual(verdict(row(speed=None), row(speed=30))['speed'], 'better', 'a first right 70+ job where there was none')
+        self.assertEqual(verdict(row(), row(speed=None))['speed'], 'worse', 'the first right 70+ job is lost')
+        self.assertEqual(verdict(row(coverage=0.1, most=10), row(coverage=0.0, most=10))['coverage'], 'worse', 'the one right job lost is all of it')
+        self.assertEqual(verdict(row(coverage=None), row(coverage=None))['coverage'], 'not measured')
+
+    def test_jobs_listed_in_the_wrong_place_show_as_a_person_getting_worse(self):
+        # Owner, 10 Nov 2026, on #3674: 24 of 25 listed jobs were in the wrong country for a Dublin search and no number said so (coverage counts right jobs found,
+        # quality the right share of the jobs SCORED). The judge's place verdict on every job LISTED, scored or not, does.
+        rows = [{'title': f'Nurse {n}', 'company': 'HSE', 'location': place, 'role': 'yes', 'place': verdict}
+                for n, (place, verdict) in enumerate([('Dublin', 'yes')] * 4 + [('Vienna', 'no')] * 6)]
+        judged, placed = numbers.verdicts(rows), numbers.places(rows)
+        listed = lambda count: [job(row['title'], 'HSE', row['location'], 5) for row in rows[:count]]   # none of them scored: the quality number cannot see them
+        main = {'persona': 'p7', **numbers.three(listed(4), judged, listed(4), placed)}
+        pr = {'persona': 'p7', **numbers.three(listed(10), judged, listed(4), placed)}
+        self.assertEqual((main['placed'], pr['placed'], pr['listed']), (1.0, 0.4, 10))
+        self.assertIsNone(pr['quality'], 'positive control: nothing was scored, so quality could not tell')
+        found = numbers.people([main], [pr])
+        self.assertEqual(found['p7']['verdict']['placed'], 'worse')
+        self.assertEqual(numbers.wrong_place_line(found), 'Listed in the right place, lowest: p7 40% (main 100%)')
+        self.assertEqual(numbers.three(listed(4), judged, listed(4))['placed'], None, 'no verdicts handed in: not measured')
+
+    def test_a_person_whose_main_replays_differ_gets_a_wider_step(self):
+        # Measured 10 Nov 2026 (5 replays of main, 16 people): p3's speed moved 8.7 s (sd) between identical replays; one fixed 5 s step named p3 worse on about every PR.
+        row = lambda speed: {'persona': 'p3', 'coverage': 0.5, 'quality': 0.5, 'speed': speed, 'most': 10, 'scored': 20, 'placed': 1.0, 'listed': 10}
+        noise = numbers.person_noise([[row(s)] for s in (40, 52, 31, 47, 38)])
+        self.assertGreater(noise['p3']['speed'], 10)
+        self.assertEqual(noise['p3']['coverage'], 0, 'a number that repeated exactly has no extra width')
+        self.assertEqual(numbers.people([row(40)], [row(52)])['p3']['verdict']['speed'], 'worse', 'positive control: the fixed step alone names it')
+        self.assertEqual(numbers.people([row(40)], [row(52)], noise)['p3']['verdict']['speed'], 'no change')
+        self.assertEqual(numbers.people([row(40)], [row(80)], noise)['p3']['verdict']['speed'], 'worse', 'a real loss is still named')
+
+    def test_the_first_line_names_who_got_worse_and_counts_the_rest(self):
+        row = lambda persona, **kw: {'persona': persona, 'coverage': 0.5, 'quality': 0.5, 'speed': 40, 'most': 10, 'scored': 20, **kw}
+        found = numbers.people([row('p1'), row('p2'), row('p3')], [row('p1'), row('p2', coverage=0.1, speed=20), row('p3', speed=20)])
+        self.assertEqual(numbers.people_line(found, ['p1', 'p2', 'p3', 'p4']),
+                         '1 better, 1 no change, 1 worse, 1 not measured; worse: p2 (coverage)', 'p2 got faster and lost jobs: worse, named')
+        table = numbers.people_table(found, ['p1', 'p2', 'p3', 'p4'], {'p4': 'no recording'})
+        self.assertIn('| p2 | 50% → 10% ❌ worse |', table)
+        self.assertIn('| p4 | ⚪ not measured (no recording) |', table)
+        self.assertEqual(table.count('\n'), 5, 'a header, a rule and a row for every person asked about')
+
     def test_the_command_reads_the_tape_and_replay_folders(self):
         with tempfile.TemporaryDirectory() as root:
             tapes, replay = Path(root, 'tapes', 'p7'), Path(root, 'replay', 'p7')

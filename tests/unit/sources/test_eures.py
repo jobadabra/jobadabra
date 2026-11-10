@@ -160,9 +160,18 @@ class EuresTest(unittest.TestCase):
             self.assertEqual(eures.regions(['Brussels'], client), {'Brussels': ['BE10']})
         self.assertIn(eures.NO_LIST, client.asked[0]['system'][0]['text'], 'the question never points at a list that is not there')
 
-    def test_registered_as_a_free_api_and_off_by_its_switch(self):
-        self.assertIn('EURES', [name for name, _ in aggregators.sources({})])
-        self.assertNotIn('EURES', [name for name, _ in aggregators.sources({'JOBADABRA_DISABLE': 'eures'})])
+    def test_registered_as_a_free_api_only_when_the_app_turns_it_on_and_off_by_its_switch(self):
+        # Owner, 10 Nov 2026: "we should consider that we don't have access to EURES"; "In the beta/stable releases it should be on... But local and on CI ... it should be off".
+        names = lambda env: [name for name, _ in aggregators.sources(env)]
+        self.assertNotIn('EURES', names({}), 'a run from source, on CI or from the command line searches without EURES')
+        self.assertIn('EURES', names({'JOBADABRA_EURES': '1'}), 'an installed beta or stable build (desktop/lib/eures-on.js)')
+        self.assertNotIn('EURES', names({'JOBADABRA_EURES': '1', 'JOBADABRA_DISABLE': 'eures'}))
+        self.assertNotIn('EURES', names({'JOBADABRA_EURES': '1', 'JOBADABRA_DISABLE': 'aggregators'}))
+
+    def test_always_on_hands_the_installed_apps_switch_to_the_engine(self):
+        """Review of oe 1/3, 10 Nov 2026: the cloud daily search is an installed app's search; the app sends the variable (desktop/lib/github.js) and daily.yml must export it."""
+        daily = (Path(__file__).resolve().parents[3] / '.github' / 'workflows' / 'daily.yml').read_text()
+        self.assertIn('  JOBADABRA_EURES: ${{ vars.JOBADABRA_EURES }}\n', daily)
 
     def test_it_runs_past_the_read_cut_and_stops_asking_after_its_own_time(self):
         from src.sources import read_budget
@@ -389,7 +398,7 @@ class EuresTest(unittest.TestCase):
             calls.append(1)
             return {'jvs': [jv('a', 'Carpenter', 'BE100')]}
         read = mock.Mock(return_value=[{'id': 'eures:a'}])
-        with mock.patch.object(eures, 'eures', read), mock.patch('builtins.print'):
+        with mock.patch.object(eures, 'eures', read), mock.patch('builtins.print'), mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}):
             future = eures.start_early(SEARCH)
             future.result(5)
             taken = eures.read(SEARCH)
@@ -399,9 +408,11 @@ class EuresTest(unittest.TestCase):
     def test_the_early_read_is_not_started_when_the_stage_would_not_take_it(self):
         from datetime import datetime, timezone
         from src.sources import feeds
-        with mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': 'eures'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1', 'JOBADABRA_DISABLE': 'eures'}):
             self.assertIsNone(eures.start_early(SEARCH), 'switched off')
-        with mock.patch.object(eures, 'DATA', Path(self.tmp.name)):
+        with mock.patch.dict('os.environ', {'JOBADABRA_EURES': ''}):
+            self.assertIsNone(eures.start_early(SEARCH), 'not an installed build: no early read either (desktop/lib/eures-on.js)')
+        with mock.patch.object(eures, 'DATA', Path(self.tmp.name)), mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}):
             with feeds.database(Path(self.tmp.name) / 'jobs.sqlite') as db:
                 aggregators.mark_read(db, 'EURES', datetime.now(timezone.utc), SEARCH)
             self.assertIsNone(eures.start_early(SEARCH), 'read within the last SPACING_HOURS for this search')

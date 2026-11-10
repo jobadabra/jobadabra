@@ -98,10 +98,10 @@ test('a job the owner stops while it is read sends no result, and the next job i
   assert.equal(seen.commands.length, 1, 'j2 was never handed to the extension');
 });
 
-test('a task that is not built (Full automation\'s `auto`) is refused before the site is asked anything', async () => {
+test('a task the night does not have is refused before the site is asked anything', async () => {
   const {runNight} = await import('../../../ready-fill/night.mjs');
   const {calls, fetchImpl} = site();
-  await assert.rejects(runNight({chromium: fakeChromium(fresh()), site: 'https://site.example', token: 't', task: 'auto', fetchImpl}), /unknown night task: auto/);
+  await assert.rejects(runNight({chromium: fakeChromium(fresh()), site: 'https://site.example', token: 't', task: 'submit', fetchImpl}), /unknown night task: submit/);
   assert.deepEqual(calls, []);
 });
 

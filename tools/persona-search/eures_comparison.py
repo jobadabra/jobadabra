@@ -110,8 +110,7 @@ def run(n, out):
             gate.make_cv(n, folder)
             tag = f'eures-{n}-{arm}-{os.environ.get("GITHUB_RUN_ID", "local")}'
             command = ['node', str(HERE / 'run.mjs'), 'draw', str(folder), '--presses', '1', '--fresh', '--engine', 'api', '--tag', tag]
-            if arm == 'without_eures':
-                command.append('--without-eures')
+            command.append('--without-eures' if arm == 'without_eures' else '--with-eures')   # EURES is off by default outside an installed app (src/features.py): the normal arm turns it on
             if draft:
                 command += ['--draft', str(draft)]
             with (folder / 'run.log').open('w') as log:

@@ -7,6 +7,7 @@ A persona with no recording has no artifact and is left out ("not measured"); a 
 import hashlib
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,8 @@ _spec = importlib.util.spec_from_file_location('press_numbers', HERE / 'three_nu
 numbers = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(numbers)
 RUNS = {'1': 'first Find jobs run', '2': 'repeat Find jobs run'}
+ALL_PEOPLE = [f'p{n}' for n in range(1, 19)]   # the night personas (press-tapes.yml): every one is a row of the per-person table, measured or not
+PACE_NOTE = ("The recordings carry CI's slow AI pace (a Mac baseline scored 15 jobs a run against 2 here): read speed as a change between main and this PR, not as the product's speed.")
 BAND_RUN = 'Find jobs pipeline yardstick band'   # the run-name of a mode=band dispatch
 
 
@@ -73,6 +76,20 @@ def recording_gaps(art):
     return gaps
 
 
+def failed_presses(art):
+    """{run: {persona: [sides]}} for each Find jobs press a replay's own log says failed (`PRESS draw <n> FAILED: <step>: <error>`, tools/persona-search/run.mjs): killed at the
+    run's hard stop (src/run_log.py _on_terminate, SystemExit 143) or crashed. Its jobs are a cut-off press, not the pipeline's: the person leaves both sides of that run (cr's #3682, run 42827634813:
+    main's p12 press 1 was killed at 175 s with 6 scored, the PR's ended at 139 s with 0, and the means moved 0.50 → 0.34 with no code difference)."""
+    found = {}
+    for log in sorted(Path(art).glob('yardstick-p*-*/run.log')):
+        persona, side = log.parent.name[len('yardstick-'):].split('-', 1)
+        for line in log.read_text(encoding='utf-8', errors='replace').splitlines():
+            failed = re.match(r'PRESS draw (\d+) FAILED', line)
+            if failed:
+                found.setdefault(failed.group(1), {}).setdefault(persona, []).append(side)
+    return found
+
+
 def rows(recordings, folder, run):
     """numbers.persona_rows for the personas this side replayed that run (one whose replay crashed before that run is left out)."""
     kept = Path(folder).parent / f'.run{run}-{Path(folder).name}'
@@ -122,6 +139,23 @@ def comparable(band, recordings, run, personas):
     return band['runs'].get(run, {}), None
 
 
+def either_run(noises):
+    """{persona: {number: widest half-width of the runs}}: a person is noisy for the headline when main's replays of either Find jobs run did not repeat."""
+    out = {}
+    for noise in noises.values():
+        for persona, widths in noise.items():
+            into = out.setdefault(persona, {})
+            for name, half in widths.items():
+                into[name] = max(half, into.get(name, 0))
+    return out
+
+
+def noise_for(band, recordings, run):
+    """{persona: {number: half-width}} from main's band for the personas whose recording is the one the band was measured on (a re-made recording has no noise yet: the one-job step alone)."""
+    now = stamps(recordings)
+    return {persona: noise for persona, noise in (band.get('people') or {}).get(run, {}).items() if (band.get('recordings') or {}).get(persona) == now.get(persona)}
+
+
 def newest_band():
     """main's newest band (band_mode's band.json), from the last successful mode=band run on main; {} when there is none yet."""
     try:
@@ -132,7 +166,10 @@ def newest_band():
             return {}
         folder = Path('band-download')
         subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
-        return json.loads((folder / 'band.json').read_text(encoding='utf-8'))
+        # Why (10 Nov 2026, ys 1/2): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json); this read band-download/band.json, found nothing in every PR run since #3594 (8 Nov)
+        # and every verdict read "not measured". Found by reading the first PR comment against the band's own artifact.
+        found = next(folder.rglob('band.json'), None)
+        return json.loads(found.read_text(encoding='utf-8')) if found else {}
     except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError):
         return {}
 
@@ -150,19 +187,26 @@ def pr(art, out):
         return 0
     if not band:
         lines.append("main's noise band is not measured yet (dispatch this workflow with mode=band on main): every verdict reads \"not measured\".")
-    found = {}
+    found, everyone, noises, cuts = {}, {}, {}, {}
     gaps = recording_gaps(art)
     if gaps:
         lines += ['', '**Recording gap, re-record (their numbers below are not the pipeline\'s): ' + '; '.join(
             f'{persona} ({web_missing} of {web} pages and {ai_missing} of {ai} AI answers missing)' for persona, (web_missing, web, ai_missing, ai) in sorted(gaps.items(), key=lambda item: int(item[0][1:]))) + '**']
     for run, label in RUNS.items():
-        mine = rows(recordings, sides['pr'], run)
-        theirs = rows(recordings, sides['main'], run) if 'main' in sides else []
+        cut = failed_presses(art).get(run, {})
+        mine = [row for row in rows(recordings, sides['pr'], run) if row['persona'] not in cut]
+        theirs = [row for row in rows(recordings, sides['main'], run) if row['persona'] not in cut] if 'main' in sides else []
+        cuts[run] = cut
         found[run] = {'pr': {'personas': mine, 'summary': numbers.summary(mine) if mine else {}},
                       'main': {'personas': theirs, 'summary': numbers.summary(theirs) if theirs else {}}}
         measured = [row['persona'] for row in mine]
+        noise = noises[run] = noise_for(band, recordings, run)
+        seen = numbers.people(theirs, mine, noise)
+        everyone[run] = seen
         against, why = comparable(band, recordings, run, measured)
         lines += ['', f'### The {label} ({len(mine)} personas)', '']
+        lines += (['No replay measured this run.', ''] if not seen else
+                  [numbers.people_line(seen, ALL_PEOPLE), ''] + ([numbers.repeat_line(seen, noise), ''] if noise else []) + [numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run, cut), noise), ''])
         if why:
             lines += [why, '']
         crashed = sorted(p.name for p in recordings.glob('p*') if (p / f'jobs-{run}.json').exists() and p.name not in measured)
@@ -176,8 +220,34 @@ def pr(art, out):
         curve = by_minute(recordings, run)
         lines.append('right local jobs the recordings found by minute ' + ', '.join(f'{m}: {n}' for m, n in curve.items()))
     Path(out, 'numbers.json').write_text(json.dumps(found, ensure_ascii=False), encoding='utf-8')
-    print('\n'.join(lines))
+    wrong = numbers.wrong_place_line(next((seen for seen in everyone.values() if seen), {}))   # the first run's: the repeat run lists the same jobs again
+    crashed = sorted({(side, persona) for cut in cuts.values() for persona, sides in cut.items() for side in sides}, key=lambda item: (item[0], int(item[1][1:])))
+    head = ['## Find jobs pipeline yardstick', '', '**' + numbers.people_line(worst_of(everyone), ALL_PEOPLE, 'People, both runs: ') + '**'] + (
+        ['', '**Press failed, the person is left out of both sides of that run: ' + '; '.join(f'{side} side: {persona}' for side, persona in crashed) + '**'] if crashed else []) + ['', numbers.repeat_line({persona: one for seen in everyone.values() for persona, one in seen.items()}, either_run(noises))] + (['', wrong] if wrong else []) + ['', PACE_NOTE]
+    text = '\n'.join(head + lines[1:])
+    Path(out, 'summary.md').write_text(text + '\n', encoding='utf-8')   # the PR comment's body (the workflow's comment job posts it)
+    print(text)
     return 0
+
+
+def missing_why(recordings, run, cut=None):
+    """{persona: reason} for the night personas a run's table has no row for: no recording, a press that failed on a side (cut: failed_presses()[run]), or a replay that left no jobs."""
+    why = {persona: 'replay crashed or missing on a side' if (Path(recordings) / persona / f'jobs-{run}.json').exists() else 'no recording' for persona in ALL_PEOPLE}
+    why.update({persona: f"press failed on {' and '.join(sorted(set(sides)))}, left out of both sides" for persona, sides in (cut or {}).items()})
+    return why
+
+
+def worst_of(everyone):
+    """{persona: {'overall', 'verdict'}} over both runs: each number's worst verdict of the two, so the headline names anyone who got worse in either."""
+    merged = {}
+    for seen in everyone.values():
+        for persona, one in seen.items():
+            into = merged.setdefault(persona, {'verdict': {}})['verdict']
+            for name, verdict in one['verdict'].items():
+                into[name] = min(verdict, into.get(name, verdict), key=numbers.WORSE_FIRST.index)
+    for one in merged.values():
+        one['overall'] = next(v for v in numbers.WORSE_FIRST if v in one['verdict'].values())
+    return merged
 
 
 def band_mode(art, out):
@@ -191,6 +261,7 @@ def band_mode(art, out):
         # A persona counts in the band only when every replay of main measured it, so each replay's mean is over the same personas.
         common = set.intersection(*({row['persona'] for row in found} for found in replays)) if replays else set()
         band['personas'][run] = sorted(common)
+        band.setdefault('people', {})[run] = numbers.person_noise([[row for row in found if row['persona'] in common] for found in replays]) if common else {}
         band['runs'][run] = numbers.band([numbers.summary([row for row in found if row['persona'] in common]) for found in replays if common])
     Path(out, 'band.json').write_text(json.dumps(band), encoding='utf-8')
     print('## Find jobs pipeline yardstick: main\'s noise band\n')

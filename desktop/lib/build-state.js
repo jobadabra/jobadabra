@@ -2,7 +2,8 @@
 // The app: the commit it started on (a package's build-info.json, or the checkout's HEAD at start) and how many PRs merged into the checkout since change desktop/extension ("Restart to get N fixes").
 // The extension: the commit its version names (a checkout stamps base.<commits that changed extension/>, scripts/extension-stamp.mjs) and how many fixes it lacks ("Reload the extension to get N fixes").
 // Git failing, a shallow clone or an unnamed version says nothing rather than a wrong number. Guard: desktop/test/guards/release/build-state.test.js.
-import {execFileSync} from 'node:child_process';
+import {execFile, execFileSync} from 'node:child_process';
+import {promisify} from 'node:util';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const TTL_MS = 20000;   // the extension checks in every 30 s; a pull changes the answer at most every couple of minutes
@@ -47,36 +48,55 @@ export function appBuild({repo, running, run = execFileSync, now = Date.now()}) 
 }
 
 // The commits that changed extension/, oldest first, as {commit, time}: the n-th is the build a stamped patch n names (scripts/extension-stamp.mjs).
-// Why (#2910, 2 Nov 2026): it was two history walks per check-in (one per label, a 20 s cache, a check-in every 30 s), ~1-5 s each inside the request.
-// A HEAD's commits never change, so one walk per HEAD; `rev-parse HEAD` costs milliseconds. A walk that fails (git's 5 s limit on a cold checkout)
-// is kept as an empty list for that HEAD too: the labels then say nothing until a pull, instead of costing 2 x 5 s on every check-in (#3000 review).
-const extensionHistory = new Map();
-function extensionCommits(repo, run) {
-  const git = gitIn(repo, run), key = `${repo}:${git('rev-parse', 'HEAD')}`;
-  if (!extensionHistory.has(key)) {
-    for (const old of [...extensionHistory.keys()]) if (old.startsWith(`${repo}:`)) extensionHistory.delete(old);   // one HEAD kept per checkout
-    let commits = [];
-    try {
-      commits = git('log', '--reverse', '--format=%H %cI', 'HEAD', '--', 'extension').split('\n').filter(Boolean).map(line => {
-        const [sha, time] = line.split(' ');
-        return {commit: sha.slice(0, 7), time};
-      });
-    } catch { /* git ran out of time or failed: nothing is claimed for this HEAD */ }
-    extensionHistory.set(key, commits);
-  }
-  return extensionHistory.get(key);
+// Why (#2910, 2 Nov 2026; #3000; 10 Nov 2026): a check-in came every 30 s and each one walked the history, ~1-5 s inside the request. A HEAD's commits never change, so one walk per HEAD;
+// `rev-parse HEAD` costs milliseconds. A walk that fails (git's time limit on a cold checkout) keeps the last good list and is asked again only after TTL_MS, never on every check-in.
+// Why (10 Nov 2026, hw; owner's app.log 31 Oct-6 Nov: 10,020 check-ins over 2 s, average 4.3 s): a source run asked git for this on every check-in, on the app's main thread
+// (execFileSync here, and again in dev-extension-version.js; a 20 s cache never helped against a 30 s check-in), and froze the whole app for 3-5 s each time (a CPU profile of
+// the practice app: 3.4 s inside that call). Design: ONE owner, `checkouts`: repo -> {head, commits, at}, the commits that changed extension/ at HEAD. Only an asynchronous
+// refresh writes it (started at app start by warmExtensionHistory, and by any read that finds it older than TTL_MS); a read never waits: until the first refresh ends, or when none has ever
+// succeeded, the commits are [] (a failed refresh keeps the last good list) and the labels and stamped version say nothing (the manifest's version stands). A new HEAD (a pull) is walked once. Both readers use it: the labels
+// (extensionBuild) and the stamped version (dev-extension-version.js: its count is this list's length).
+// Tests: test/guards/release/build-state.test.js, test/unit/extension/latest-extension-nonblocking.test.js.
+const checkouts = new Map();
+const execFileAsync = promisify(execFile);
+const gitAsync = (repo, ...args) => execFileAsync('git', ['-C', repo, ...args], {encoding: 'utf8', timeout: 30000, maxBuffer: 16 * 1024 * 1024}).then(done => String(done.stdout).trim());
+const gitHead = repo => gitAsync(repo, 'rev-parse', 'HEAD');
+// A shallow clone cannot count its history: no commits, the manifest's version stands.
+const gitLog = async repo => (await gitAsync(repo, 'rev-parse', '--is-shallow-repository') === 'true' ? '' : gitAsync(repo, 'log', '--reverse', '--format=%H %cI', 'HEAD', '--', 'extension'));
+const parseHistory = text => String(text).trim().split('\n').filter(Boolean).map(line => { const [sha, time] = line.split(' '); return {commit: sha.slice(0, 7), time}; });
+async function refresh(entry, repo, {now, head, walk}) {
+  const at = await head(repo);
+  if (at !== entry.head) { entry.commits = parseHistory(await walk(repo)); entry.head = at; }
+  entry.at = now;
 }
+/**
+ * The commits that changed extension/ at the checkout's HEAD, oldest first, as {commit, time}: what was last found, never waiting for git. [] until the first refresh ends or when git cannot say.
+ * Starts a refresh when none ran for TTL_MS (one at a time); a failed refresh keeps what was known and tries again after TTL_MS. head/walk/now: for tests.
+ */
+export function checkoutCommits(repo, {now = Date.now(), head = gitHead, walk = gitLog} = {}) {
+  let entry = checkouts.get(repo);
+  if (!entry) checkouts.set(repo, entry = {head: '', commits: [], at: -Infinity, running: null});
+  if (!entry.running && now - entry.at >= TTL_MS) {
+    entry.at = now;   // a failed refresh waits TTL_MS too, never one git call per check-in
+    entry.running = refresh(entry, repo, {now, head, walk}).catch(() => {}).finally(() => { entry.running = null; });
+  }
+  return entry.commits;
+}
+/** Start the refresh now (the app's start), so the first check-in finds its answer; never throws, never waits. */
+export function warmExtensionHistory(repo, options) { try { checkoutCommits(repo, options); } catch { /* no git: nothing is claimed */ } }
+/** Resolves when the refresh in flight for `repo` has ended (for tests; the app never waits for it). */
+export const whenCheckoutCommits = repo => checkouts.get(repo)?.running || Promise.resolve();
 
 const patchOf = version => { const m = /^\d+\.\d+\.(\d+)$/.exec(String(version || '')); return m ? Number(m[1]) : null; };
 
 // The extension at `version` (what it reports) against `latest` (the checkout's, or the package's). packaged: {commit, time} of an installed app, whose extension is the app's own build.
 // -> {label, latestLabel, behind}: behind = 0 current, N fixes, or null when it is behind by an unknown number (a copy that never reloaded reports the manifest's base "0.9").
-export function extensionBuild({repo, version, latest, packaged = null, run = execFileSync}) {
+export function extensionBuild({repo, version, latest, packaged = null, ...options}) {
   if (packaged) return {label: labelOf(packaged), latestLabel: labelOf(packaged), behind: 0, reloadLabel: ''};
   const mine = patchOf(version), newest = patchOf(latest);
   const behind = newest === null ? 0 : mine === null ? (version && version !== latest ? null : 0) : Math.max(0, newest - mine);
   let commits = [];
-  if (mine !== null || newest !== null) { try { commits = extensionCommits(repo, run); } catch { /* no git (rev-parse failed): nothing is claimed */ } }
+  if (mine !== null || newest !== null) { try { commits = checkoutCommits(repo, options); } catch { /* no git (rev-parse failed): nothing is claimed */ } }
   const at = n => labelOf(commits[n - 1]);
   return {label: mine === null ? '' : at(mine), latestLabel: newest === null ? '' : at(newest), behind, reloadLabel: behind === 0 ? '' : reloadLabel(behind)};
 }

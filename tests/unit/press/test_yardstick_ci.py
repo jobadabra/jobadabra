@@ -3,6 +3,7 @@ personas; a band of other personas or of re-made recordings would read a lost jo
 import importlib.util
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -47,6 +48,51 @@ class YardstickCi(unittest.TestCase):
             (recordings / 'p2' / 'judged.json').write_text(json.dumps({'rows': []}))
             self.assertIn('other recordings', ci.comparable(band, recordings, '1', ['p1', 'p2'])[1], 'a re-made recording is not compared')
 
+    def test_a_persons_band_counts_only_on_the_recording_it_was_measured_on(self):
+        with tempfile.TemporaryDirectory() as root:
+            band = self.band(root)
+            recordings = Path(root, 'band-out', 'recordings')
+            self.assertEqual(set(band['people']['1']), {'p1', 'p2'}, 'a band per person, beside the common one')
+            band['people']['1']['p1']['speed'] = 9
+            self.assertEqual(ci.noise_for(band, recordings, '1')['p1'].get('speed'), 9)
+            (recordings / 'p1' / 'judged.json').write_text(json.dumps({'rows': []}))
+            self.assertNotIn('p1', ci.noise_for(band, recordings, '1'), 'a re-made recording has no noise yet')
+            self.assertIn('p2', ci.noise_for(band, recordings, '1'), 'the other person is still measured')
+
+    def test_a_press_that_failed_on_one_side_leaves_the_person_out_of_both(self):
+        # cr's #3682 (run 42827634813): main's p12 press 1 was killed at the run's hard stop (SystemExit 143) with 6 jobs scored, the PR's ended with 0: the means moved with no code difference.
+        with tempfile.TemporaryDirectory() as root:
+            art = Path(root, 'art')
+            for persona in ('p1', 'p2'):
+                artifact(art, persona, 'main'), artifact(art, persona, 'pr')
+            (art / 'yardstick-p2-main' / 'run.log').write_text('PRESS draw 1 FAILED: Reading new jobs with AI: SystemExit: 143\nPRESS draw 1: 40 in places, 6 scored\n')
+            (art / 'yardstick-p1-pr' / 'run.log').write_text('PRESS draw 2 FAILED: x\n')
+            self.assertEqual(ci.failed_presses(art), {'1': {'p2': ['main']}, '2': {'p1': ['pr']}})
+            out = io.StringIO()
+            with mock.patch.object(ci, 'newest_band', return_value={}), redirect_stdout(out):
+                ci.pr(art, Path(root, 'out'))
+            text = out.getvalue()
+            self.assertIn('Press failed, the person is left out of both sides of that run: main side: p2; pr side: p1', text)
+            self.assertIn('| p2 | ⚪ not measured (press failed on main, left out of both sides', text)
+            self.assertIn('### The first Find jobs run (1 personas)', text, 'p2 is not in the first run\'s means on either side')
+
+    def test_main_newest_band_is_read_from_the_artifact_as_the_workflow_uploads_it(self):
+        # The upload step names out/ and art/..., so the downloaded artifact holds out/band.json: the reader looked for band.json at the top and found no band in any PR run since 8 Nov.
+        with tempfile.TemporaryDirectory() as root:
+            def fake_gh(command, **_):
+                if command[:3] == ['gh', 'run', 'list']:
+                    return mock.Mock(stdout=json.dumps([{'databaseId': 7, 'displayTitle': ci.BAND_RUN}]))
+                Path(command[command.index('-D') + 1], 'out').mkdir(parents=True)
+                Path(command[command.index('-D') + 1], 'out', 'band.json').write_text(json.dumps({'runs': {'1': {}}, 'people': {}}))
+                return mock.Mock(stdout='')
+            before = os.getcwd()
+            os.chdir(root)
+            try:
+                with mock.patch.object(ci.subprocess, 'run', side_effect=fake_gh):
+                    self.assertEqual(ci.newest_band(), {'runs': {'1': {}}, 'people': {}})
+            finally:
+                os.chdir(before)
+
     def test_a_persona_one_replay_of_main_lost_is_left_out_of_the_band(self):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(self.band(root, crashed={('p2', 'main-2')})['personas']['1'], ['p1'])
@@ -62,6 +108,24 @@ class YardstickCi(unittest.TestCase):
                 ci.pr(art, Path(root, 'out'))
             self.assertIn('crashed or missing on this ref (left out', out.getvalue())
             self.assertIn(': p2', out.getvalue())
+
+    def test_the_summary_has_a_row_for_all_18_people_and_names_who_got_worse(self):
+        # Plan ys 1/2: p1 loses its right job on the PR, p2 is unchanged, the other 16 have no recording.
+        with tempfile.TemporaryDirectory() as root:
+            art = Path(root, 'art')
+            artifact(art, 'p1', 'main'), artifact(art, 'p2', 'main'), artifact(art, 'p2', 'pr')
+            artifact(art, 'p1', 'pr')
+            (art / 'yardstick-p1-pr' / 'result' / 'jobs-1.json').write_text('[]')
+            out = io.StringIO()
+            with mock.patch.object(ci, 'newest_band', return_value={}), redirect_stdout(out):
+                ci.pr(art, Path(root, 'out'))
+            text = out.getvalue()
+            self.assertIn('People, both runs: 0 better, 1 no change, 1 worse, 16 not measured; worse: p1 (coverage, speed)', text)
+            self.assertEqual(sum(1 for line in text.splitlines() if line.startswith('| p') and line.split('|')[1].strip()[1:].isdigit()), 18, 'a row for each of the 18 people (the repeat run measured nobody: no table)')
+            self.assertIn('| p10 | ⚪ not measured (no recording)', text)
+            self.assertIn('slow AI pace', text)
+            self.assertIn('not measured for these people yet', text, 'no band yet: the line says "worse" reads at one job only')
+            self.assertEqual(Path(root, 'out', 'summary.md').read_text().strip(), text.strip(), 'the PR comment posts what the job summary shows')
 
     def test_a_stale_recording_is_named_main_decides_and_a_pr_only_report_stands(self):
         with tempfile.TemporaryDirectory() as root:

@@ -77,6 +77,8 @@ FEATURES = (
             'on with the AI key (Sonnet, at most once a day); JOBADABRA_DISABLE=role_ideas turns it off'),
     Feature('aggregators', 'Job aggregators with free public APIs: Arbeitnow, Himalayas, Jobicy (source named on every job)', (), 'free',
             'on by default; JOBADABRA_DISABLE=aggregators turns it off'),
+    Feature('eures', 'EURES, the EU job portal (its public search): in the installed beta and stable app only', ('JOBADABRA_EURES=1',), 'free',
+            'on in the installed app (desktop/lib/eures-on.js sets JOBADABRA_EURES=1); off from source and on CI, so our own sources are measured without it'),
     Feature('found_boards', 'Job boards found for your countries and roles: the AI proposes them once, their public search pages are read', (AI,), 'paid',
             'on with the AI key (one main-model call when your places or roles change); JOBADABRA_DISABLE=found_boards turns it off'),
     Feature('adzuna', 'Adzuna job search (19 countries incl. Switzerland)', ('ADZUNA_APP_ID', 'ADZUNA_APP_KEY'), 'free tier',

@@ -132,9 +132,16 @@ test('the Mac\'s Full automation and the cloud gate share one proof and eligibil
   assert.doesNotMatch(store, /const proofOk\s*=/, 'a second copy of the proof check drifts');
 });
 
-test('readiness and fill never reach the gate: no night file imports it yet', () => {
+test('readiness and fill never reach the gate: the auto night\'s line is its one caller, and only it presses', () => {
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../ready-fill');
-  const callers = fs.readdirSync(dir).filter(name => /\.m?js$/.test(name) && name !== 'submit-gate.js' && fs.readFileSync(path.join(dir, name), 'utf8').includes('submit-gate'));
-  // Why (10 Nov 2026, cs 1/4): the auto night (cs 3/4) is the only caller to come; adding it here is that PR's reviewed change.
-  assert.deepEqual(callers, []);
+  const read = name => fs.readFileSync(path.join(dir, name), 'utf8');
+  const callers = fs.readdirSync(dir).filter(name => /\.m?js$/.test(name) && name !== 'submit-gate.js' && /\bgateSubmit\b|\bsubmitVerdict\b/.test(read(name)));
+  // Why (10 Nov 2026, cs 3/4): auto-commands.mjs answers the extension's `ready` through gateSubmit; a second caller is a second way to press, and changing this list is a reviewed change.
+  assert.deepEqual(callers, ['auto-commands.mjs']);
+  assert.match(read('night.mjs'), /if \(task === 'auto'\) return \{held, \.\.\.await autoNight\(/, 'the night reaches the line only for task auto');
+  assert.doesNotMatch(read('read-night.mjs') + read('fill-job.mjs'), /auto-commands|auto-night/, 'the read and the fill never load the auto line');
+  // Why (10 Nov 2026, cs 3/4 review): the fill's net is in night.mjs (fillAll), not fill-job.mjs; every net( call but the auto night's is the bare full net.
+  const nets = fs.readdirSync(dir).filter(name => /\.m?js$/.test(name) && name !== 'no-submit.mjs').flatMap(name => [...read(name).matchAll(/\bnet\(context([^)]*)\)/g)].map(match => [name, match[1]]));
+  assert.deepEqual(nets.filter(([, args]) => args).map(([name]) => name), ['auto-night.mjs'], 'only the auto night opens the net');
+  assert.ok(nets.filter(([, args]) => !args).length >= 2, 'the fill and the read still call the full net');
 });

@@ -187,8 +187,8 @@ class AggregatorTests(unittest.TestCase):
 
     def test_keyed_sources_only_with_their_keys_and_free_ones_can_be_switched_off(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
-        self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
-        keys = {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j'}
+        self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found'], 'EURES only in the installed app (owner, 10 Nov 2026)')
+        keys = {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j', 'JOBADABRA_EURES': '1'}
         # Parked (owner, 26 Oct 2026; src/features.py PARKED): saved keys are not used until JOBADABRA_ENABLE names the source.
         self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
         keys['JOBADABRA_ENABLE'] = 'adzuna,jooble'

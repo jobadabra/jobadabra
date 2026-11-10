@@ -49,6 +49,18 @@ def recorded_override(tape):
     return found
 
 
+# Why (plan ys 1/2, 10 Nov 2026; oe on #3678: "from the merge on, the engine reads EURES only when JOBADABRA_EURES=1"): every recording made so far holds EURES pages, and a replay without the reader asks for none of them, so
+# every person would read "worse" at once. A recording says whether it was made with the reader (recorded.json `eures`, absent = on, the only way recordings were made before); run.mjs's `--with-eures`
+# sets the switch in the engine child (a variable in this process is dropped by pipelineEnv). A run.mjs that predates the flag ignores it.
+def recorded_eures(tape):
+    """True unless the recording's recorded.json says `"eures": false` (a recording made with the reader off); unreadable files are recorded_override's to name."""
+    try:
+        recorded = json.loads(Path(tape, 'recorded.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return True
+    return not (isinstance(recorded, dict) and recorded.get('eures') is False)
+
+
 def start(recordings, art, persona, side, checkout):
     """Starts one replay in its own folder; returns (Popen, its log file)."""
     work = Path(art, f'yardstick-{persona}-{side}').resolve()
@@ -58,7 +70,7 @@ def start(recordings, art, persona, side, checkout):
     out = work / 'out'
     script = (f'python3 tools/persona-search/gate.py cv {persona[1:]} "{out}" && '
               f'node tools/persona-search/run.mjs draw "{out}" --presses 2 --fresh --engine api --tag replay --draft "{work}/tape/draft.json" '
-              f'--tape "{work}/tape" --replay --no-live --wait-scale 1')
+              f'--tape "{work}/tape" --replay --no-live --wait-scale 1' + (' --with-eures' if recorded_eures(work / 'tape') else ''))
     venv = (Path(checkout) / '.venv' / 'bin').resolve()
     env = {**os.environ, 'PATH': f"{venv}{os.pathsep}{os.environ.get('PATH', '')}", 'TMPDIR': str(work / 'tmp'), 'JOBADABRA_TAPE_ITEMS': '1', 'JOBADABRA_TAPE_BUDGET': '0'}
     env.pop('JOBADABRA_MODEL_OVERRIDE', None)

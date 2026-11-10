@@ -21,6 +21,8 @@ import {jobKey} from '../shared/app-core/extension.js';
 import {log as appLog} from './log.js';
 import {pageKey} from './server-pages.js';
 import {devVersion} from './dev-extension-version.js';
+import {newer} from './updater.js';
+import {checkoutCommits} from './build-state.js';
 import {captureAnswer} from './live-capture.js';
 import {client as engineClient, keptAnswerClient} from './ai/index.js';
 import * as learnings from './learnings.js';
@@ -219,7 +221,7 @@ export function latestExtension(read = fs.readFileSync) {
   try {
     const version = JSON.parse(read(`${pipeline.REPO}/extension/manifest.json`, 'utf8')).version || '';
     // A development copy keeps the base version in its manifest and is told the stamped one, so it reloads itself after a pull (extension/tab-report.js).
-    return version && developmentCopy() ? devVersion(pipeline.REPO, version) : version;
+    return version && developmentCopy() ? devVersion(version, checkoutCommits(pipeline.REPO).length) : version;
   } catch { return ''; }
 }
 
@@ -243,14 +245,14 @@ export function extensionChangedNote({boot, version, at}, state, {latest, newest
   return {state: {...next, told: true}, note: EXTENSION_CHANGED};
 }
 
-// The sentence a stale copy deserves, or '' when the two agree (or either is unknown). One wording for the two
+// The sentence a stale copy deserves, or '' when the two agree, the copy is not older than the app's, or either is unknown. One wording for the two
 // places that need it: the fill failure the app records, and the sessions page's "likely cause" line.
 // The Chrome Web Store item's ID (owner, 26 Oct 2026). A store copy updates from the store by itself, after Google's review: never "reload it".
 export const STORE_EXTENSION_ID = 'nmbnjhmpofifgcdalfefddbiihccogoi';
 let checkedInId = '';   // the ID of the copy that last checked in (server.js, /extension/tabs)
 export const noteExtensionId = id => { if (id) checkedInId = id; };
 export function staleExtension(version, latest, id = checkedInId) {
-  if (!version || !latest || version === latest) return '';
+  if (!version || !latest || !newer(latest, version)) return '';   // Why (10 Nov 2026, hw): until git has answered a development copy's `latest` is the bare manifest version while a reloaded copy runs a stamped one: newer, never "older"
   if (id === STORE_EXTENSION_ID) return `Chrome runs Jobadabra extension ${version} from the Chrome Web Store; this app ships ${latest}. `
     + 'Chrome updates it by itself once the store has the new version, usually within a day.';
   return `Chrome runs Jobadabra extension ${version}, older than this app's ${latest}: reload it once `
