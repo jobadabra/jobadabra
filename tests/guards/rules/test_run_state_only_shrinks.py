@@ -2,15 +2,17 @@
 2026: "each session that tries to improve a case, does this wihout worsening/affecting other improvements done previosuly").
 Why (cr 1/5, 10 Nov 2026): state a module keeps between calls is shared by every stage and every run in the process, so one session's change reached
 another's through it (69 such containers measured on main 87a41364). A run's state belongs on the Run (src/press/run.py), made once and passed down.
-State here = a module-level name the module mutates (an item set, append/add/clear/update..., `global`, or a lock/condition/event/thread-local);
-a constant table nobody writes is not state. A name on the list may go (then delete its line); a new one fails: put it on the Run instead."""
+State here = a module-level name a function of the module mutates (an item set, append/add/clear/update..., `global`), or a
+lock/condition/event/thread-local; a table built once at import (a schema extended below its definition) is not state. An object that keeps
+its state in its own attributes (time_budget.CLOCK) is not seen here: the Run's SHARED_TODAY (tests/unit/press/test_run.py) lists it. A name on the list may go (then delete its line); a new one fails: put it on the Run instead."""
 import ast
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SEARCH_PATH = ('src/press/*.py', 'src/sources/*.py', 'src/ai/*.py', 'src/first_jobs.py', 'src/daily_search*.py', 'src/run_counts.py',
-               'src/run_details.py', 'src/read_methods.py', 'src/time_budget.py')
+               'src/run_details.py', 'src/read_methods.py', 'src/time_budget.py', 'src/geo.py', 'src/places.py', 'src/regions.py',
+               'src/job_rank.py', 'src/employer_index.py', 'src/source_rank.py')
 MUTATORS = {'append', 'add', 'clear', 'update', 'pop', 'extend', 'setdefault', 'discard', 'remove', 'insert', 'put', 'popitem', 'appendleft', 'popleft'}
 SYNC = {'Lock', 'RLock', 'Condition', 'Event', 'local', 'Semaphore', 'BoundedSemaphore'}
 
@@ -20,14 +22,14 @@ KNOWN = {
     'src/ai/board_ideas.py': {'STORE'},
     'src/ai/cost.py': {'SIDE', 'TOPICS', 'TOPICS_LOCK'},
     'src/ai/decide.py': {'CACHE_ONLY', 'FAILED', 'SCOPE', 'STOPPED', 'WAITING', '_calls', '_own'},
-    'src/ai/insights.py': {'SCHEMA'},
-    'src/ai/insights_text.py': {'WEEKLY_SCHEMA'},
     'src/ai/page_reader.py': {'_reads'},
     'src/ai/place_triage.py': {'LOCK'},
     'src/ai/slots.py': {'_local'},
     'src/ai/title_queue.py': {'_cv', '_hub', '_local', '_running'},
     'src/ai/title_triage.py': {'LOCK'},
+    'src/employer_index.py': {'problem'},
     'src/first_jobs.py': {'_early'},
+    'src/geo.py': {'LOCK'},
     'src/press/resume.py': {'_lock', '_ran', '_said'},
     'src/press/scorer.py': {'_claimed', '_lock', '_shared'},
     'src/press/step_yield.py': {'_landed', '_lock', '_scored', '_spans'},
@@ -51,7 +53,6 @@ KNOWN = {
     'src/sources/render.py': {'_state'},
     'src/sources/visits.py': {'LOCK'},
     'src/sources/web_answers.py': {'_lock'},
-    'src/time_budget.py': {'CLOCK'},
 }
 
 
@@ -68,7 +69,8 @@ def module_state(source):
             func = value.func
             if (func.attr if isinstance(func, ast.Attribute) else getattr(func, 'id', '')) in SYNC:
                 found.add(name)
-    for node in ast.walk(tree):
+    inside = [node for fn in ast.walk(tree) if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) for node in ast.walk(fn)]
+    for node in inside:
         if isinstance(node, ast.Global):
             found.update(name for name in node.names if name in top)
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in MUTATORS \
@@ -86,8 +88,9 @@ def module_state(source):
 class RunStateOnlyShrinksTest(unittest.TestCase):
     def test_the_finder_sees_each_kind_of_state(self):
         source = ('import threading\nA = []\nB = {}\nC = {}\nD = threading.Lock()\nE = [0]\nTABLE = {"k": 1}\n'
-                  'def f():\n    global C\n    A.append(1)\n    B["x"] = 1\n    E[0] += 1\n    return TABLE["k"]\n')
-        self.assertEqual(module_state(source), ['A', 'B', 'C', 'D', 'E'])   # TABLE is only read: a constant
+                  'SCHEMA = {"r": []}\nSCHEMA["r"].append("x")\n'
+                  'def f():\n    global C\n    A.append(1)\n    B["x"] = 1\n    E[0] += 1\n    return TABLE["k"], SCHEMA\n')
+        self.assertEqual(module_state(source), ['A', 'B', 'C', 'D', 'E'])   # TABLE is only read; SCHEMA is built once at import
 
     def test_no_new_module_state_on_the_search_path(self):
         seen = {}

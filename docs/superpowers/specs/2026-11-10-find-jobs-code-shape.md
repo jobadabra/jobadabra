@@ -9,7 +9,7 @@ Owner, 10 Nov 2026 (session sa): "each session want to improve his case, his iss
 - 🟢 Target: four contracts (below). A PR that moves a number is not a move: split it.
 
 ## Measured on main (87a41364, checked again on 05c6bfbf by cr)
-- Module-level state on the search path: 70 names a module mutates (`tests/guards/rules/test_run_state_only_shrinks.py` KNOWN lists each; scope `src/press`, `src/sources`, `src/ai`, `first_jobs`, `daily_search*`, `run_counts`, `run_details`, `read_methods`, `time_budget`).
+- Module-level state on the search path: 69 names a function of their module writes, plus the one process Clock (`tests/guards/rules/test_run_state_only_shrinks.py` KNOWN lists each; scope `src/press`, `src/sources`, `src/ai`, `first_jobs`, `daily_search*`, `run_counts`, `run_details`, `read_methods`, `time_budget`, `geo`, `places`, `regions`, `job_rank`, `employer_index`, `source_rank`; a schema built once at import is not state).
 - `first_jobs.run(...)`: 16 parameters, 8 of them test seams.
 - Catch-alls (`except Exception`/bare): `daily_search.py` 16, `first_jobs.py` 8, `feeds.py` 7, `careers.py` 7, `found_boards.py` 7, `boards.py` 7.
 - Job boards: 17 modules, about 3,200 lines, four ways in (`boards_first`, `boards_beside`, `boards_ahead`, `found_boards.read`).
