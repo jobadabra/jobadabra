@@ -412,13 +412,6 @@
    "kind": "ci"
   },
   {
-   "path": "/search-lab/rows",
-   "methods": [
-    "PUT"
-   ],
-   "kind": "ci"
-  },
-  {
    "path": "/search-lab/session-checks",
    "methods": [
     "PUT"
