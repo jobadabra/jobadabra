@@ -76,6 +76,7 @@ jobs:
           retention-days: 90
           path: |
             out/reference.json
+            out/reference-jobs.json
             out/reference.log
       - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != '' && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger

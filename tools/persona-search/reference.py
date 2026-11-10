@@ -4,6 +4,9 @@ so the reference and a night are judged by the same eyes. Only counts leave this
 Why EURES only (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone, so no Google Jobs here and no Google figure on the tab.
   node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run <out.json>   read EURES, judge blind behind the Codex relay, write the counts
   python3 tools/persona-search/reference.py send <out.json>                                         PUT the counts to Admin (only a CI run on main; GITHUB_RUN_ID, REPLAYS_PUBLISH_KEY)
+Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, link) for the run's artifact only: it is never sent (send reads the counts file).
+Why (10 Nov 2026, sa's finish-line plan WP3, owner: "our search results should always be what EURES gives + some additional sources"): a night's loss is counted per job and
+per stage, which needs the reference's jobs, not only their count.
 Record: {"personas": {"<n>": {total, reachable, eures}}}; total = distinct right jobs EURES lists, eures = the same count (the source), reachable = total: every EURES posting opens on the public EURES portal
 without signing in (its apply step may go elsewhere; the list gives no link, so no per-job check is made). Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
 import datetime
@@ -11,6 +14,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -51,7 +55,8 @@ def eures_rows(persona, post=eures_post):
                     continue
                 seen.add(job['id'])
                 found = [c.upper() for held in (job.get('locationMap') or {}).values() for c in held or [] if c]
-                rows.append({'title': job['title'], 'company': (job.get('employer') or {}).get('name') or '', 'location': eures._where(found, cc)})
+                rows.append({'title': job['title'], 'company': (job.get('employer') or {}).get('name') or '', 'location': eures._where(found, cc),
+                             'url': eures.DETAIL + urllib.parse.quote(job['id']) + '?lang=en'})   # the same link the app keeps (src/sources/eures.py); the judge reads only title, employer and place
             if len(listed) < eures.PAGE_SIZE:
                 break
     return rows
@@ -68,8 +73,18 @@ def tally(rows):
     return {'total': len(right), 'reachable': len(right), 'eures': len(right)}
 
 
-def run(post=eures_post, asker=gate_judge.ask):
-    """The record for every persona whose EURES read and judge worked (one that failed is left out, never 0: the tab then says "no reference")."""
+def right_jobs(rows):
+    """-> the distinct right jobs (role AND place yes) as {title, company, url}, in the order EURES listed them: the keys a night's list is matched against."""
+    kept = {}
+    for row in rows:
+        if row.get('role') == 'yes' and row.get('place') == 'yes':
+            kept.setdefault(same_job(row), {'title': row['title'], 'company': row.get('company') or '', 'url': row.get('url') or ''})
+    return list(kept.values())
+
+
+def run(post=eures_post, asker=gate_judge.ask, jobs=None):
+    """The record for every persona whose EURES read and judge worked (one that failed is left out, never 0: the tab then says "no reference").
+    `jobs`, when given, is filled with {"<n>": right_jobs(...)} for the same personas: the artifact's keys, never part of the record that is sent."""
     record = {}
     for n, persona in enumerate(PERSONAS, 1):
         try:
@@ -84,6 +99,8 @@ def run(post=eures_post, asker=gate_judge.ask):
             print(f'reference: p{n} not judged ({type(error).__name__}: {str(error)[:80]})', flush=True)
             continue
         record[str(n)] = tally(rows)
+        if jobs is not None:
+            jobs[str(n)] = right_jobs(rows)
         print(f'reference: p{n} {record[str(n)]}', flush=True)
     return {'personas': record}
 
@@ -126,8 +143,10 @@ def main(argv):
     kind = argv[0] if argv else ''
     if kind == 'run' and len(argv) == 2:
         Path(argv[1]).parent.mkdir(parents=True, exist_ok=True)   # Why (6 Nov 2026, run 42191804037): `out/` did not exist and the 6-minute read ended in FileNotFoundError; make the folder first
-        record = run()
+        jobs = {}
+        record = run(jobs=jobs)
         Path(argv[1]).write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding='utf-8')
+        Path(argv[1]).with_name('reference-jobs.json').write_text(json.dumps({'personas': jobs}, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"reference: {len(record['personas'])} of {len(PERSONAS)} personas")
     elif kind == 'send' and len(argv) == 2:
         print(send(argv[1]))
