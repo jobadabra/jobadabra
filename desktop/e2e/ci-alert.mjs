@@ -116,8 +116,9 @@ export async function openRed(env = process.env, fetcher = fetch, lanes = readLa
     if (!streak.length) return none;
     const passed = workflowFile(env) === 'e2e.yml' ? await passedNow(env, fetcher) : null;
     // Unrun and skipped suites keep their earlier red; only an observed pass closes it.
-    const newest = streak[0].run, back = [...new Set(streak.flatMap(item => item.suites))].filter(suite => suite === workflow || !passed || passed.has(suite));
+    const back = [...new Set(streak.flatMap(item => item.suites))].filter(suite => suite === workflow || !passed || passed.has(suite));
     if (!back.length) return none;
+    const newest = streak.find(item => item.suites.some(suite => back.includes(suite))).run;
     const began = suite => streak.filter(item => item.suites.includes(suite)).at(-1).run;
     const startOf = run => String(run.run_started_at || run.created_at), oldest = back.map(began).sort((a, b) => startOf(a).localeCompare(startOf(b)))[0], flaky = newest.head_sha === env.GITHUB_SHA;
     const all = flaky || !newest.head_sha ? [] : prNumbers((await get(`${repo}/compare/${newest.head_sha}...${env.GITHUB_SHA}`, env, fetcher).catch(error => { console.error(`ci-alert: compare unavailable: ${String(error.message).slice(0, 80)}`); return {}; })).commits || []);

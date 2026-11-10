@@ -49,7 +49,7 @@ test('a previous run that failed only report-only suites sent no red, so no gree
   assert.equal(card(closed), '', 'nothing is sent, not even a card named after the workflow');
 });
 
-test('a report-only failure after a sent red ends the streak: the run counted as green, so the red was closed then', async () => {
+test('a report-only failure that passed the red suite closes it, so it is not closed again', async () => {
   const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccb'), run(11, 'failure', 'bbb')), ...jobsOf(12, job('prompt-cases', 'failure'), job('apply-1of3', 'success')), ...jobsOf(11, job('apply-1of3', 'failure')), ...jobsOf(99, job('apply-1of3', 'success'))}), lanes);
   assert.deepEqual(closed.suites, []);
 });
@@ -124,4 +124,15 @@ test('mutants never open a red and after-merge greens never close a sent red', a
 test('an unreadable jobs response never turns into a workflow red', async () => {
   const closed = await openRed(env(), gh({...runs(run(11, 'failure', 'bbb')), '/actions/runs/11/jobs': {message: 'rate limited'}, ...jobsOf(99, job('apply', 'success'))}), lanes);
   assert.deepEqual(closed.suites, []);
+});
+
+
+test('fix and flaky facts belong to the suite being closed, not a newer unrelated red', async () => {
+  const closed = await openRed(env(), gh({...runs(run(12, 'failure', 'ccc'), run(11, 'failure', 'bbb')),
+    ...jobsOf(12, job('wizard', 'failure')), ...jobsOf(11, job('apply', 'failure')),
+    ...jobsOf(99, job('apply', 'success'), job('wizard', 'skipped')), '/compare/bbb...ccc': merged(3650)}), lanes);
+  assert.deepEqual(closed.suites, ['apply']);
+  assert.equal(closed.flaky, false);
+  assert.equal(closed.sha, 'bbb');
+  assert.deepEqual(closed.fixed.prs, ['3650', '3649']);
 });
