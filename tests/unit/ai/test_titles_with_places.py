@@ -114,6 +114,34 @@ class PlaceCallBesideTitles(unittest.TestCase):
             self.assertGreater(self.model.index(asked[0]), placed_at, f'{title}: asked after the place answer')
 
 
+    def test_jobs_at_a_known_place_go_on_while_the_place_call_holds_only_the_jobs_it_asks_about(self):
+        """sf place PR a (#3676 then sa's Mac run of p9 Lyon, 10 Nov 2026): 4 remote locations nobody had placed went to the place call (asked at 51 s,
+        answered at 73 s) and the reader's ~100 jobs at Lyon, placed on earlier presses, waited behind it: first job 66 s instead of 20 s."""
+        place_triage._keep(place_triage._key(feeds._SEARCH), {place_triage.norm('Known town'): 'in'})   # placed on an earlier press
+        feeds.PLACED = None
+        employer = self.jobs(KNOWN, 'Known town') + self.jobs(LATE, 'Late town')
+        log_at_answer = []
+
+        def release_when_known_titles_are_asked():
+            for _ in range(2000):   # 5 s of 2.5 ms polls: a hang guard
+                if all(self.model.asked(title) for title in KNOWN) and self.model.asked('place asked'):
+                    break
+                threading.Event().wait(0.0025)
+            log_at_answer.extend(self.model.log)
+            self.model.gate.set()
+        releaser = threading.Thread(target=release_when_known_titles_are_asked)
+        with title_queue.hub(), batch_scope.concurrent():
+            releaser.start()
+            with batch_scope.reader('employer sites'):
+                feed_places.triage_with_places(employer)
+        releaser.join(30)
+        self.assertEqual(sorted(entry for entry in log_at_answer if entry.startswith('titles')), sorted(f'titles {t.lower()}' for t in KNOWN),
+                         f'the known place\'s titles were asked while the place call was held, the asked place\'s were not: {log_at_answer}')
+        placed_at = self.model.index('place answered')
+        for title in LATE:
+            self.assertGreater(self.model.index(self.model.asked(title)[0]), placed_at, f'{title}: its place was asked, so its title waits for the answer')
+        self.assertEqual(self.model.asked('place asked'), ['place asked'], 'one place call, for the asked place only')
+
 class RealTitleWordsStillSeeTheNewLocations(unittest.TestCase):
     """Review of #3512: beside the sort, the place call raced feeds.ASKED (after it `wanted_title` stops using the role words) and, on a few thousand jobs, placed nothing."""
 
