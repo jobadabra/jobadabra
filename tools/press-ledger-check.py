@@ -13,10 +13,10 @@ from pathlib import Path
 LOCK = 'tests/unit/press/ledger.lock.json'
 
 
-def read_base(base):
-    """The lock on `base`, {} when the base has none yet (the ledger's own first PR)."""
+def read_base(base, lock=LOCK):
+    """The lock on `base`, {} when the base has none yet (the lock's own first PR). `lock`: the scoreboard's lock reuses this (tools/persona-search/scoreboard.py)."""
     try:
-        return json.loads(subprocess.run(['git', 'show', f'{base}:{LOCK}'], capture_output=True, text=True, check=True).stdout)
+        return json.loads(subprocess.run(['git', 'show', f'{base}:{lock}'], capture_output=True, text=True, check=True).stdout)
     except (subprocess.CalledProcessError, ValueError):
         return {}
 
@@ -31,13 +31,15 @@ def own_base(base):
         return base
 
 
-def gaps(base_lock, head_lock, body):
-    """The fixes changed or removed without the owner's words in the body -> ['L13 (changed)', ...]."""
-    allowed = {m.group(1) for m in re.finditer(r'^\s*[-*]?\s*Ledger-change:\s*(L\d+)\s+["“].+["”]', body or '', re.M)}
+def gaps(base_lock, head_lock, body, word='Ledger-change', whole=False):
+    """The rows changed or removed without the owner's words in the body -> ['L13 (changed: "...")', ...]. A line names its row (`Ledger-change: L13 "<words>"`);
+    with `whole`, a line without a row id covers every row (the scoreboard's `Scoreboard-change: "<words>"`, one measure)."""
+    lines = [m.group(1) for m in re.finditer(rf'^\s*[-*]?\s*{word}:\s*(?:([A-Z]\d+)\s+)?["“].+["”]', body or '', re.M)]
+    allowed = {row for row in lines if row}
     out = []
     for fix, row in sorted(base_lock.items()):
         state = 'removed' if fix not in head_lock else 'changed' if head_lock[fix].get('hash') != row.get('hash') else None
-        if state and fix not in allowed:
+        if state and fix not in allowed and not (whole and None in lines):
             out.append(f'{fix} ({state}: "{row.get("gets", "")}")')
     return out
 
