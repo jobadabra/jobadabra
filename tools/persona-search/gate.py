@@ -211,6 +211,7 @@ def result(n, out):
         if note:
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
+        row['eures'] = (press.get('funnel') or {}).get('eures')   # 'off' when the press logged it ran without EURES, else None (a build before the line)
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press), step_yield=(press.get('funnel') or {}).get('step_yield'))
         if press.get('scored_in_places') is not None:   # a missing count stays unknown (read_of falls back to the judge's), never 0
             row['scored'] = int(press['scored_in_places'])
@@ -413,7 +414,10 @@ def compare(pr, main_runs):
         head, reason = grey_head(rows, pr)
     head += ' · ' + ((f"quality: shown, not gated ({quality_['why']})" if quality_.get('why') else f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far") if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
-    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
+    modes = {(row or {}).get('eures') for row in pr.values()} - {None}
+    # Why (10 Nov 2026, owner): the site compares a night only with nights of its own kind (jobadabra-web admin/search-night-judge.js euresOf); 'off' only when every press that said so said off.
+    eures = 'off' if modes == {'off'} else 'on'
+    return {'state': state, 'head': head, 'eures': eures, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
 
 
 def cost_label(verdict):

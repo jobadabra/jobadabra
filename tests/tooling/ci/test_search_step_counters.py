@@ -73,6 +73,38 @@ class TheRow(unittest.TestCase):
         self.assertIsNone(gate.compare({}, [])['rows'][0]['counters'], 'a persona with no result claims no counters')
 
 
+class TheEuresMode(unittest.TestCase):
+    """Owner, 10 Nov 2026: "we should make sure that our algorim/search can be as good as EURES, without using EURES". The press says which mode it ran (src/daily_search.py start_sources) and the verdict
+    carries one word, `eures`, that the site's Night search reads (jobadabra-web admin/search-night.js): a wording change here fails instead of storing an EURES-off night as "on" and firing a false drop."""
+    LINE = '[2s] EURES: off in this run (an installed beta or stable app turns it on)'
+
+    def test_the_press_line_is_read_as_the_mode(self):
+        self.assertEqual(funnel.funnel([self.LINE])['eures'], 'off')
+        self.assertIsNone(funnel.funnel(['[5s] Places: 1 place words placed'])['eures'], 'a build before the line claims nothing')
+
+    def test_the_engine_prints_that_line_when_it_starts_without_eures(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from src import daily_search
+        for env, printed in (({}, True), ({'JOBADABRA_EURES': '1'}, False)):
+            with mock.patch.dict('os.environ', env, clear=False), mock.patch('src.sources.board_web.early'), mock.patch('src.sources.eures.start_early'), \
+                 mock.patch.object(daily_search, 'load_search_config', return_value={}), redirect_stdout(io.StringIO()) as out:
+                if not env:
+                    import os
+                    os.environ.pop('JOBADABRA_EURES', None)
+                daily_search.start_sources(mock.Mock(mode='run', only_visits=False), None)
+            self.assertEqual(self.LINE.split('] ')[1] in out.getvalue(), printed, env)
+
+    def test_the_verdict_says_off_only_when_every_press_that_ran_said_so(self):
+        row = lambda eures: {'persona': 1, 'local': 1, 'found': 2, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription', 'eures': eures}
+        pr = lambda *modes: {n + 1: row(mode) for n, mode in enumerate(modes)}
+        self.assertEqual(gate.compare(pr('off', 'off', None), [])['eures'], 'off', 'a persona with no press adds nothing')
+        self.assertEqual(gate.compare(pr('off', 'on'), [])['eures'], 'on')
+        self.assertEqual(gate.compare(pr(None, None), [])['eures'], 'on', 'a build before the line is EURES on, as the site reads a missing word')
+        self.assertEqual(gate.compare({}, [])['eures'], 'on')
+
+
 class TheStepYield(unittest.TestCase):
     """8 Nov 2026, owner: "Can I get in Admin these stats as well?": each press row carries the step yield the engine saved in the persona's own job cache (src/press/step_yield.py)."""
     ROWS = [{'step': 'scoring', 'seconds': 31.5, 'jobs': 50, 'local': 40, 'scored': 50, 'fit70': 18, 'local_fit70': 15},

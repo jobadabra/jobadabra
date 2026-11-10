@@ -194,12 +194,14 @@ def technical_search(search):
 def sources(env=None):
     """[(name, reader)] of the aggregators this install may use now (free ones always; keyed ones when their keys are set)."""
     env = os.environ if env is None else env
-    from ..features import disabled, off
+    from ..features import disabled, enabled, off
     found = [] if disabled('aggregators', env) else [('Arbeitnow', lambda search: arbeitnow()), ('Himalayas', lambda search: himalayas()),
                                                       ('Jobicy', lambda search: jobicy() if technical_search(search) else [])]   # its tags are IT ones
     if not disabled('aggregators', env) and not disabled('jobsch', env):
         found.append(('jobs.ch', jobsch))   # Swiss places only (it returns nothing otherwise)
-    if not disabled('aggregators', env) and not disabled('eures', env):
+    # Why (10 Nov 2026, owner: "our algorim/search can be as good as EURES, without using EURES"): only the installed app turns EURES on (JOBADABRA_EURES=1, desktop/lib/eures-on.js),
+    # so a run from source, CI and the Night search measure our own sources; this is the one gate (start_early and the first-jobs slice read through it).
+    if not disabled('aggregators', env) and enabled('eures', env):
         found.append(('EURES', eures.read))   # the portal's countries only (it returns nothing otherwise)
     if not disabled('aggregators', env) and not disabled('found_boards', env):   # boards found for your countries (src/sources/found_boards.py)
         from . import found_boards
