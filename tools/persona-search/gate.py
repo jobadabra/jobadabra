@@ -11,6 +11,7 @@ import json
 import re
 import sqlite3
 import sys
+from urllib.parse import urlparse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -60,8 +61,8 @@ def make_cv(n, out):
     return p
 
 
-def extract(db_path, out):
-    """The open jobs of the persona's install, without URLs or posting text: what the judge reads. A store the press never created, or created empty, reads as no jobs.
+def extract(db_path, out, *, include_urls=False):
+    """The open jobs of the persona's install, without posting text: what the judge reads. URLs are opt-in for the paired comparison's provenance check and never sent to the judge. A store the press never created, or created empty, reads as no jobs.
     Why (PR 3130, run 41813036119, personas 3 and 6, 4 Nov 2026): the press was cut by the 3-minute stop before any step opened the store, so this call died on "unable to open"
     or "no such table: jobs", the press step went red, and the judge never ran; the row should read as zero jobs, grey."""
     Path(out).parent.mkdir(parents=True, exist_ok=True)   # a tool makes its own output folder (6 Nov 2026, run 42191804037); it worked only because an earlier step had made it
@@ -69,9 +70,10 @@ def extract(db_path, out):
         rows = []
     else:
         db = sqlite3.connect(db_path)
-        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': s or ''} for t, c, loc, s in table_rows(
-            db, 'jobs', "SELECT j.title, co.name, j.location, s.name FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
-            "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")]
+        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+                              "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")
+        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', **({'url': url or ''} if include_urls else {})}
+                for t, c, loc, source, url in selected]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 
@@ -178,6 +180,19 @@ def after_repeat(out):
     return {k: again.get(k) for k in ('seconds', 'code', 'local_jobs', 'in_places', 'scored_in_places', 'fit70_in_places')} if isinstance(again, dict) else None
 
 
+def source_kind(row):
+    """Fixed provenance category for counts: reader name or public EURES URL; never returns employer/source text."""
+    if str(row.get('provider') or '').casefold() == 'eures':
+        return 'eures'
+    try:
+        host = (urlparse(row.get('url') or '').hostname or '').lower()
+    except ValueError:
+        host = ''
+    if host == 'eures.europa.eu' or (host == 'europa.eu' and '/eures/' in str(row.get('url') or '')):
+        return 'eures'
+    return 'other' if row.get('provider') else 'unknown'
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
@@ -219,7 +234,11 @@ def result(n, out):
         subscription = judged_file.get('billing') == 'subscription'
         judge_usd = float(judged_file.get('usd') or 0)
         judged = judged_file['rows']
-        row.update(found=len(judged), local=sum(1 for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes'))
+        relevant = [r for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes']
+        row.update(found=len(judged), local=len(relevant))
+        # Fixed categories only: source names can be employer names; no such text belongs in the central night record.
+        row['relevant_sources'] = {kind: sum(1 for r in relevant if source_kind(r) == kind)
+                                   for kind in ('eures', 'other', 'unknown')}
     except (OSError, ValueError, KeyError):
         row.setdefault('error', 'the judge wrote no verdicts (see judge.log)')
     row['usd'] = None if press_usd is None else round(press_usd + float(judge_usd), 4)
@@ -379,7 +398,7 @@ def compare(pr, main_runs):
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
-                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield')})
+                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources')})
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
@@ -433,7 +452,7 @@ def main(argv):
     if kind == 'cv':
         print(json.dumps(make_cv(argv[1], argv[2]), ensure_ascii=False))
     elif kind == 'extract':
-        print(len(extract(argv[1], argv[2])), 'open jobs')
+        print(len(extract(argv[1], argv[2], include_urls='--urls' in argv[3:])), 'open jobs')
     elif kind == 'result':
         print(json.dumps(result(argv[1], argv[2]), ensure_ascii=False))
     elif kind == 'compare':
