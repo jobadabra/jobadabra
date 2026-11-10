@@ -112,7 +112,7 @@ class FoundBoardsTests(unittest.TestCase):
         import threading
         boards = [{**BOARD, 'name': f'Board {n}', 'host': f'b{n}.example', 'search_url': f'https://b{n}.example/q?q={{role}}&l={{place}}'}
                   for n in range(1, found_boards.BOARD_WORKERS + 1)]
-        all_reading = threading.Barrier(found_boards.BOARD_WORKERS, timeout=60)   # one after the other: the first never gets past it; 60 s is a hang guard (a 5 s one broke on a loaded runner, 10 Nov 2026)
+        all_reading = threading.Barrier(found_boards.BOARD_WORKERS, timeout=5)   # one after the other: the first never gets past it
         first = set()
         def pages(url):
             host = url.split('//')[1].split('/')[0]

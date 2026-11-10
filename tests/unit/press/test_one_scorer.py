@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import daily_search_scoring as scoring, store
+from src import daily_search_scoring as scoring
 from src.ai import slots
 from src.press import scorer
 from src.press.clock import Clock
@@ -245,8 +245,6 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.path, self.stores = Path(tmp.name) / 'jobs.sqlite', memory.open_store()
-        store.connect(self.path).close()   # Why (10 Nov 2026, flaky 1 in 40 on CI, cr's #3716 and sa's #3718): the search has opened its jobs file before the scorers start
-        # (src/daily_search.py score_beside); a fresh file let two scorer threads add the same column at once ('duplicate column name'), and one died
 
     def test_it_does_not_wait_past_the_runs_end_for_a_round_slow_behind_the_ai_slots(self):
         import time
@@ -276,7 +274,7 @@ class TheThreadBesideTheSearch(unittest.TestCase):
                 mock.patch.object(scoring.score, 'queue', return_value=[{'id': 1}]), mock.patch.object(scoring, 'to_score', return_value=[]), \
                 mock.patch.object(scoring, '_stay', return_value=[]):
             finish = scoring.score_beside(args, self.stores, mock.Mock(), run, lambda: 'Profile v1', frozenset(), frozenset(), clock)
-            self.assertTrue(in_round.wait(60), 'the scorer is in its round')   # 60 s: a hang guard, never the verdict (10 Nov 2026)
+            self.assertTrue(in_round.wait(5), 'the scorer is in its round')
             finish()
             run['score'] = {'done': 1, 'pending': 1}   # the closing pass owns it now
             release.set()
@@ -313,18 +311,11 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         IN_FLIGHT rounds start in the same tick, each the next BATCH of the one ranked list, no job in two rounds."""
         from types import SimpleNamespace
         ranked = [{'id': n} for n in range(1, 4 * scoring.BATCH + 1)]
-        # Why (flaky 1 in 40 on a loaded CI runner, cr's #3716, 10 Nov 2026): a 5 s barrier and a 5 s poll decided the verdict; now only the first
-        # IN_FLIGHT rounds meet (later ones have no partner by design), the test waits for a state, and 60 s is a hang guard only.
-        together, rounds, guard, all_in = threading.Barrier(scoring.IN_FLIGHT, timeout=60), [], threading.Lock(), threading.Event()
+        together, rounds = threading.Barrier(scoring.IN_FLIGHT, timeout=5), []
 
         def a_round(args, stores, db, round_run, profile, hidden, dismissed, ids, *rest, **kw):
-            with guard:
-                rounds.append(sorted(ids))
-                first = len(rounds) <= scoring.IN_FLIGHT
-                if len(rounds) == len(ranked) // scoring.BATCH:
-                    all_in.set()
-            if first:
-                together.wait()   # broken (BrokenBarrierError) unless every round in flight started before any ended
+            rounds.append(sorted(ids))
+            together.wait()   # broken (BrokenBarrierError) unless every round in flight started before any ended
             round_run['score'] = {'done': len(ids), 'pending': 0}
         args = SimpleNamespace(mode='run', score_max=len(ranked), db=self.path)
         clock = mock.Mock(batch=lambda *a, **k: 0, end=lambda: None, now=lambda: 1.0, ended=lambda: False)
@@ -332,9 +323,10 @@ class TheThreadBesideTheSearch(unittest.TestCase):
                 mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring.score, 'queue', return_value=ranked), \
                 mock.patch.object(scoring, 'to_score', return_value=[]), mock.patch.object(scoring, '_stay', return_value=[]), mock.patch('builtins.print'):
             finish = scoring.score_beside(args, self.stores, mock.Mock(), {'warnings': []}, lambda: 'Profile v1', frozenset(), frozenset(), clock)
-            for _ in range(1200):   # a hang guard (60 s), never the verdict: the loop ends on a state
-                if together.broken or all_in.wait(0.05):
+            for _ in range(100):
+                if together.broken or len(rounds) == len(ranked) // scoring.BATCH:
                     break
+                threading.Event().wait(0.05)
             finish()
         self.assertGreaterEqual(scoring.IN_FLIGHT, 2, 'the budget row keeps more than one round in flight')
         self.assertFalse(together.broken, 'every round in flight started before any ended')
