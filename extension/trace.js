@@ -72,28 +72,31 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
     return base && !base.entries.length && buffer.current(run.tabId) === base ? base : buffer.page(run.tabId);
   }
 
+  // The top frame committed a page: one whose request went out before the trace listened opens its page now, and loaded() reads its document back.
+  function committed(run, frame) {
+    run.top = frame.id;
+    if (!run.docSeen) run.missed = {page: nextPage(run), at: now() - run.t0};
+    run.shown = buffer.current(run.tabId);
+  }
+  function requested(run, params) {
+    if (!/^https?:/i.test(params.request.url)) return;
+    const old = run.requests.get(params.requestId);
+    if (params.redirectResponse && old) { old.status = params.redirectResponse.status; old.headers = pick(params.redirectResponse.headers); finish(run, old, false); }
+    // A top-level navigation (not a redirect, not a frame inside the page) starts the next page of the application.
+    else if (params.type === 'Document' && params.requestId === params.loaderId && (!run.top || params.frameId === run.top)) { run.docSeen = true; run.missed = null; nextPage(run); }
+    run.seen.add(params.request.url);
+    run.requests.set(params.requestId, {id: params.requestId, method: params.request.method, url: params.request.url, type: TYPES[params.type] || 'other', mode: fetchMode(params.request.headers),
+      began: now(), status: 0, headers: {}});
+    run.pending.add(params.requestId);
+  }
+
   function onEvent(source, method, params) {
     if (method === 'Fetch.requestPaused') { holdReply(source.tabId, params); return; }   // always answered: a paused reply is never left waiting, whether a trace runs on the tab or not
     const run = runs.get(source.tabId);
     if (!run || run.paused) return;
-    if (method === 'Page.frameNavigated') {
-      if (params.frame.parentId) return;
-      run.top = params.frame.id;
-      if (!run.docSeen) run.missed = {page: nextPage(run), at: now() - run.t0};   // committed, but its request went out before the trace listened: loaded() reads it back
-      run.shown = buffer.current(run.tabId);
-      return;
-    }
-    if (method === 'Network.requestWillBeSent') {
-      if (!/^https?:/i.test(params.request.url)) return;
-      const old = run.requests.get(params.requestId);
-      if (params.redirectResponse && old) { old.status = params.redirectResponse.status; old.headers = pick(params.redirectResponse.headers); finish(run, old, false); }
-      // A top-level navigation (not a redirect, not a frame inside the page) starts the next page of the application.
-      else if (params.type === 'Document' && params.requestId === params.loaderId && (!run.top || params.frameId === run.top)) { run.docSeen = true; run.missed = null; nextPage(run); }
-      run.seen.add(params.request.url);
-      run.requests.set(params.requestId, {id: params.requestId, method: params.request.method, url: params.request.url, type: TYPES[params.type] || 'other', mode: fetchMode(params.request.headers),
-        began: now(), status: 0, headers: {}});
-      run.pending.add(params.requestId);
-    } else if (method === 'Network.responseReceived') {
+    if (method === 'Page.frameNavigated') { if (!params.frame.parentId) committed(run, params.frame); return; }
+    if (method === 'Network.requestWillBeSent') requested(run, params);
+    else if (method === 'Network.responseReceived') {
       const request = run.requests.get(params.requestId);
       if (request) { request.status = params.response.status; request.headers = pick(params.response.headers); }
     } else if (method === 'Network.loadingFinished') {
@@ -112,21 +115,25 @@ export function createTrace({chrome, attach = attachDebugger, detach = detachDeb
   // (status and timing were not seen; a text Chrome no longer has is `bodyLost`, never an empty reply). Never on a page with a password field; dropped when a navigation began meanwhile.
   const READ_BACK = new Set(['script', 'stylesheet', 'font']);
   const bare = url => String(url || '').split('#')[0];
+  // The code, styles and fonts of the page that the trace never saw (it began after the commit); never an image or a call's reply (method and status unknown).
+  const missedTexts = (run, resources = []) => resources.filter(item => !item.failed && !item.canceled && READ_BACK.has(TYPES[item.type]) && !run.seen.has(item.url)).map(item => ({...item, type: TYPES[item.type]}));
+  // -> the body Chrome keeps of one resource of the page (base64), or null when it no longer has it
+  async function contentOf(tabId, frameId, url) {
+    try { const got = await send(tabId, 'Page.getResourceContent', {frameId, url}); return got.base64Encoded ? got.content : btoa(unescape(encodeURIComponent(got.content))); } catch { return null; }
+  }
+  // One read-back entry in the net-record shape: status and timing were not seen (recovered); a missing body is bodyLost, never an empty reply.
+  const readBackEntry = (item, body, startMs) => ({method: 'GET', url: item.url, type: item.type, mode: item.type === 'document' ? 'navigate' : '', startMs, waitMs: 0, bodyKey: '', status: 200, failed: false,
+    headers: item.mimeType ? {'content-type': String(item.mimeType)} : {}, hadCookie: false, body, size: body ? Math.floor(body.length * 3 / 4) : 0, recovered: true, ...(body ? {} : {bodyLost: true})});
+
   async function readBack(run, url) {
     const missed = run.missed;
     run.missed = null;
     if (await hasPassword(run.tabId).catch(() => true)) return;   // a sign-in page: the watch pauses the trace; nothing is read
     const tree = (await send(run.tabId, 'Page.getResourceTree').catch(() => null))?.frameTree, frame = tree?.frame;
     if (!frame || frame.parentId || !/^https?:/i.test(frame.url || '') || bare(frame.url) !== bare(url)) return;   // not the page whose document just completed
-    const items = [{url: frame.url, type: 'document', mimeType: frame.mimeType},
-      ...(missed ? [] : (tree.resources || []).filter(item => !item.failed && !item.canceled && READ_BACK.has(TYPES[item.type]) && !run.seen.has(item.url)).map(item => ({...item, type: TYPES[item.type]})))];
+    const items = [{url: frame.url, type: 'document', mimeType: frame.mimeType}, ...(missed ? [] : missedTexts(run, tree.resources))];
     const entries = [];
-    for (const [index, item] of items.entries()) {
-      let body = null;
-      try { const got = await send(run.tabId, 'Page.getResourceContent', {frameId: frame.id, url: item.url}); body = got.base64Encoded ? got.content : btoa(unescape(encodeURIComponent(got.content))); } catch { /* Chrome no longer has it */ }
-      entries.push({method: 'GET', url: item.url, type: item.type, mode: index ? '' : 'navigate', startMs: missed ? missed.at - 1 : index ? -1 : -2, waitMs: 0, bodyKey: '', status: 200, failed: false,
-        headers: item.mimeType ? {'content-type': String(item.mimeType)} : {}, hadCookie: false, body, size: body ? Math.floor(body.length * 3 / 4) : 0, recovered: true, ...(body ? {} : {bodyLost: true})});
-    }
+    for (const [index, item] of items.entries()) entries.push(readBackEntry(item, await contentOf(run.tabId, frame.id, item.url), missed ? missed.at - 1 : index ? -1 : -2));
     if (runs.get(run.tabId) !== run || run.paused || run.docSeen || run.missed) return;   // a navigation began while reading: that page is no longer the one shown
     const page = missed?.page || run.base;
     if (!page || buffer.current(run.tabId) !== page) return;
