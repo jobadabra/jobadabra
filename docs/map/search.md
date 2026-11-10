@@ -31,7 +31,7 @@ Night totals include EURES; source counts are not coverage. By-hand input `eures
 
 ## Live specs
 - [The press](../superpowers/specs/2026-11-07-the-press-design.md): one pipeline, budget table, ranker and fix ledger for Find jobs (plan [ps](../superpowers/plans/2026-11-07-the-press.md)).
-- [Collect, rank once, then spend](../superpowers/specs/2026-11-10-find-jobs-collect-rank-spend.md): a job's four states and their one owner; the 7-PR sf plan (W2, W1, W3).
+- [Collect, rank once, then spend](../superpowers/specs/2026-11-10-find-jobs-collect-rank-spend.md): a job's states and owners; plan sf.
 - [First jobs fast](../superpowers/specs/2026-10-16-first-jobs-fast.md) and [search learns sources](../superpowers/specs/2026-10-18-search-learns-sources.md).
 - [Job board discovery](../superpowers/specs/2026-10-08-job-board-discovery.md) and [locations, one source](../superpowers/specs/2026-10-17-locations-one-source.md).
 - [LinkedIn headless](../superpowers/specs/2026-10-31-linkedin-headless-design.md): the opt-in LinkedIn read.
