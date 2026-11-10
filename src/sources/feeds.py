@@ -318,10 +318,27 @@ def place_open_jobs(db):
 
 def wanted_location(job):
     """One of your places: Claude's answer for this location when it has placed it (src/ai/place_triage.py); else the place words
-    (config/search.json), or remote that isn't limited elsewhere (unless you want no remote jobs)."""
+    (config/search.json). A remote job is in your places only when Claude says so: while Claude places locations and has not answered for it,
+    it is unknown, so not listed and not scored, and its site is read again (feed_facts.settled). Without AI the words stay the floor (remote that isn't limited elsewhere, unless you want no remote jobs).
+    Why (#3674, 10 Nov 2026, Mac runs of 5 on-site searches: Dublin nurse 24 of 25 kept jobs were "Remote, Poland", "Remote, United Kingdom"…): the place call was cut by the clock,
+    and the words let any remote location in; whether a remote job is open to someone in Dublin is the AI's judgment (which countries may take it), never a word's guess."""
     verdict = place_of(job)
     if verdict is not None:
         return verdict != 'out'   # 'vague': kept until its posting is read
+    return _words_say(job, remote_unknown=placing())
+
+
+def could_be_in_places(job):
+    """wanted_location's guess for which SITES to read, and nothing else: it may only choose what to READ, never what is recorded, listed or scored (an employer that hires remote is still read;
+    its jobs are placed by Claude when listed, and wanted_location decides those). The AI's 'out' says no; anything it has not placed is judged by the words, remote included."""
+    verdict = place_of(job)
+    if verdict is not None:
+        return verdict != 'out'
+    return _words_say(job, remote_unknown=False)
+
+
+def _words_say(job, remote_unknown):
+    """The place words' answer for a location Claude has not placed; `remote_unknown`: a remote job with a place text is not answered (False) because only Claude can say who may take it."""
     where = country_codes.name(job.get("location") or "")   # a field that is only a country code ("MD") is that country, whichever reader gave it
     if mentions(PLACE, where):
         return True
@@ -331,6 +348,8 @@ def wanted_location(job):
     # A posting whose place is only a city elsewhere is based there, even when its feed flags it remote (7 Oct 2026: "London" and "Singapore"
     # account executive jobs reached a Geneva search). One that says remote in its place ("Remote, Germany") is judged by the regions you skip.
     if job.get("remote") and not said and where.strip():
+        return False
+    if remote_unknown and where.strip():
         return False
     return bool(job.get("remote") or said) and not REMOTE_ELSEWHERE.search(where)
 

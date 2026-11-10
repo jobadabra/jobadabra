@@ -365,14 +365,14 @@ def downloaded_index():
     # The labels this install shares and is ranked by: fixed lists only (7 Oct 2026: a wrong label, like "Suisse" read as ten metros, shows here).
     print('Pool labels: ' + '; '.join(f"{name} {','.join(me.get(name) or []) or '-'}" for name in ('roles', 'families', 'countries', 'metros')))
     said = []
-    kept = employer_index.relevant(index, feeds.wanted_location, kinds, me=me, keep=scored_companies(), said=said)
+    kept = employer_index.relevant(index, feeds.could_be_in_places, kinds, me=me, keep=scored_companies(), said=said)
     for company, label, what in said[:30]:   # each decision, named: "why don't I see Manor's jobs?"
         print(f"Employers: {company} {'left out' if what == 'out' else 'would be left out (shadow mode, still read)'}: "
               f"people doing {label} read it and never found a job there")
     if len(said) > 30:
         print(f'Employers: {len(said) - 30} more like that')
-    for_kind = employer_index.relevant(index, feeds.wanted_location, kinds, countries=me.get('countries'))
-    in_places = employer_index.relevant(index, feeds.wanted_location)
+    for_kind = employer_index.relevant(index, feeds.could_be_in_places, kinds, countries=me.get('countries'))
+    in_places = employer_index.relevant(index, feeds.could_be_in_places)
     if len(for_kind) < len(in_places):   # said once a run: which employers were left out, and why
         print(f'Employers: {len(for_kind)} of {len(in_places)} in your places hire for your kind of role; the others are left out.')
     return kept
