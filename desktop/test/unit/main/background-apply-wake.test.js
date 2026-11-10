@@ -26,14 +26,17 @@ test('a wake that fails or throws is logged and never fails the queueing', async
     const {events, enqueue} = rig({wake});
     assert.equal((await enqueue()).ok, true);
     await new Promise(resolve => setImmediate(resolve));
-    assert.ok(events.some(event => /log:.*(wake|woken)/.test(event)), 'the missed wake is logged; the 30 s report still claims the job');
+    assert.ok(events.some(event => /^log:queued jobs: the hidden browser (did not take the wake|could not be woken)$/.test(event)), 'the missed wake is logged; the 30 s report still claims the job');
   }
 });
 
 test('the wake is not waited for inside the queueing: its poll would wait for that same turn', async () => {
-  let release;
+  let release, done = false;
   const {enqueue} = rig({wake: () => new Promise(resolve => { release = resolve; })});
-  const result = await Promise.race([enqueue(), new Promise(resolve => setTimeout(() => resolve('stuck'), 200))]);
-  assert.notEqual(result, 'stuck', 'enqueue returned while the wake was still out');
+  const queued = enqueue().then(result => { done = true; return result; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(typeof release, 'function', 'the wake was asked for');
+  assert.equal(done, true, 'enqueue returned while the wake was still out');
+  assert.equal((await queued).ok, true);
   release(true);
 });
