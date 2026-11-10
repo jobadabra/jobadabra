@@ -398,7 +398,11 @@ jobs:
       - name: Install the app
         timeout-minutes: 5
         working-directory: desktop
-        run: npm ci
+        # Why (10 Nov 2026, fr; RC soak 42582847751): Electron 44 has no install script, so without this the zip is fetched at the first launch, mid-suite, and a GitHub 504 shows as
+        # "Process failed to launch"; here it stops on this step with its cause, and the cache action's post step saves the zip it just downloaded (as the Linux jobs below already do).
+        run: |
+          npm ci
+          node node_modules/electron/install.js
       - name: Install the tests
         timeout-minutes: 5
         working-directory: desktop/e2e
