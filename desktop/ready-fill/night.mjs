@@ -1,5 +1,5 @@
 // The night's run (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): read the batch with the night token, start ONE browser with the night's copy of the extension and the stand-in app, fill each job in its own tab, one after the other,
-// post only counts to the Worker after each (it can answer "stop": the night's cost cap), and keep every filled tab open for the morning. Never presses Submit or an account button (extension-copy.mjs, no-submit.mjs).
+// post only counts to the Worker after each (it can answer "stop": the night's cost cap), and keep every filled tab open for the morning. A fill or a read never presses Submit or an account button (extension-copy.mjs, no-submit.mjs); only the `auto` task may press, once per job, through submit-gate.js (auto-night.mjs).
 // Counts only leave this file: no field value, no address in a log. Guard: desktop/test/unit/ready-fill/ready-fill.test.js; the one-night image check is hosted/ready-fill/image-check.mjs in jobadabra-web.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,9 +52,10 @@ async function post(fetchImpl, site, token, route, body) {
   return response.json().catch(() => ({}));
 }
 
-// The cloud runner's tasks (spec docs/superpowers/specs/2026-11-08-cloud-browser-runner-design.md): `fill` is Ready to send's night (the default, so a run that names none is unchanged), `readiness` reads each form only.
-// Why (8 Nov 2026, owner approved the spec's safety lines): `auto` (Full automation, Submit) is not a task until its own PR brings its one gate and guard test; any other name is refused before the batch is read.
-export const TASKS = ['fill', 'readiness'];
+// The cloud runner's tasks (spec docs/superpowers/specs/2026-11-08-cloud-browser-runner-design.md): `fill` is Ready to send's night (the default, so a run that names none is unchanged), `readiness` reads each form only,
+// `auto` is Full automation from the cloud: each job pressed at most once, only through submit-gate.js (auto-night.mjs). Any other name is refused before the batch is read.
+// Why (10 Nov 2026, cs 3/4; owner: "Build it now (Recommended)"): `auto` became a task with its gate and guard (cs 1/4) and the site's stamps and reservation (cs 2/4) in place.
+export const TASKS = ['fill', 'readiness', 'auto'];
 
 // chromium: Playwright's (main.mjs passes `playwright`'s; the fixture proof passes the desktop's), so this file loads without a browser package. task: one of TASKS.
 // -> {held: Map(jobId -> page), context, close()} once every job has been tried (a fill's pages stay open); a read holds no page and also returns {results}.
@@ -72,12 +73,25 @@ export async function runNight({chromium, site, token, task = 'fill', fetchImpl 
       const {results} = await readAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, told, log, extraArgs, launchOptions, readerOptions, client: siteClient({site, token, fetchImpl})});
       return {held, results, close: async () => {}};
     }
+    if (task === 'auto') return {held, ...await autoNight({batch, chromium, site, token, fetchImpl, log, told, extraArgs, launchOptions}), close: async () => {}};
     return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs});
   } catch (error) {   // the night could not start or stopped: each job not yet told is told, so the card says so at once instead of "waiting" until the night's end
-    const failed = task === 'readiness' ? {task, state: 'failed', read: null, why: NIGHT_FAILED, ms: 0, costMicro: 0} : {state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0};
+    const failed = task === 'readiness' ? {task, state: 'failed', read: null, why: NIGHT_FAILED, ms: 0, costMicro: 0} : task === 'auto' ? {task, state: 'failed', why: NIGHT_FAILED, ms: 0, costMicro: 0}   // auto: a job with a press already told itself (auto-night.mjs)
+      : {state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0};
     for (const job of batch.jobs.filter(job => !held.has(job.id) && !told.has(job.id))) await post(fetchImpl, site, token, 'result', {job: job.id, ...failed}).catch(() => {});
     throw error;
   }
+}
+
+// The `auto` task (auto-night.mjs, loaded only for it): the site's calls with the night token: the job's one attempt (/reserve), its Stop (the live line's answer), each outcome (/result).
+async function autoNight({batch, chromium, site, token, fetchImpl, log, told, extraArgs, launchOptions}) {
+  const {autoAll} = await import('./auto-night.mjs');
+  const over = async () => { const again = await post(fetchImpl, site, token, 'batch').catch(() => ({})); return again.ok === false || !!again.error || !!again.stop; };
+  const tell = {result: body => post(fetchImpl, site, token, 'result', body), stepper: job => stepper({fetchImpl, site, token, job}), costMicro: ms => costMicro(ms), over,
+    reserve: job => post(fetchImpl, site, token, 'reserve', {job}),
+    stopped: async job => (await post(fetchImpl, site, token, 'progress', {job, step: 'submitting'})).stop === true};
+  const client = siteClient({site, token, fetchImpl});
+  return autoAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, client, answer: await answererFor({batch, site, token, fetchImpl}), told, log, extraArgs, launchOptions});
 }
 
 // Pure: one press of a form (the night's first list, or a Fill again: the site counts its `turn` up). The container fills each press once, whatever the site

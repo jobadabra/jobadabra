@@ -1,4 +1,5 @@
 // The floor "the server never presses Submit" as a net under the filler (private spec jobadabra-lab:docs/specs/2026-10-17-ready-to-send.md): the extension has no Submit path, and this stops what it would never do anyway.
+// Why (10 Nov 2026, cs 3/4; owner: "Build it now (Recommended)"): the one exception is the `auto` night's press that submit-gate.js permitted, let through by `allow` below; fill and readiness keep the full net.
 // Every request the night's browser makes goes through `net`: a form submission (a POST that navigates a page) or a POST/PUT whose address ends in a submit or apply word is refused and counted. A CV upload on choice
 // (a multipart POST that is not a navigation) goes through: the fill needs it. A word list is a safety floor here, never a meaning. Guard: desktop/test/unit/ready-fill/ready-fill.test.js.
 const SUBMIT_PATH = /\/(submit|apply|applications?)(\.json)?\/?$/i;
@@ -10,12 +11,14 @@ export function looksLikeSubmit({method, url, navigation}) {
   try { return SUBMIT_PATH.test(new URL(url).pathname); } catch { return false; }
 }
 
-// Routes a Playwright context: -> {blocked: [{host, method}]} that fills as requests are refused.
-export async function net(context) {
-  const state = {blocked: []};
+// Routes a Playwright context: -> {blocked: [{host, method}], allowed} that fills as requests are refused or let through.
+// allow(request): the auto night's one way through (auto-night.mjs: only its job's own pages, only while submit-gate.js's permit lasts); the fill and readiness nights pass none, so nothing passes.
+export async function net(context, {allow = () => false} = {}) {
+  const state = {blocked: [], allowed: 0};
   await context.route('**/*', route => {
     const request = route.request();
     const submit = looksLikeSubmit({method: request.method(), url: request.url(), navigation: request.isNavigationRequest()});
+    if (submit && allow(request) === true) { state.allowed++; return route.continue(); }
     if (submit) { state.blocked.push({host: new URL(request.url()).hostname, method: request.method()}); return route.abort('blockedbyclient'); }
     return route.continue();
   });
