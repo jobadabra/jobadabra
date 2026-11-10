@@ -352,7 +352,7 @@ def read(search, keep=False):
     Prints what it found, so a press log shows whether EURES gave jobs. keep: the first-jobs slice's look (src/first_jobs.py): the early read stays for the
     free-API stage when the slice ends before it has read (#2918, Gitar)."""
     from concurrent.futures import TimeoutError as Late
-    from . import aggregators
+    from . import aggregators, job_stage
     future = (_early.get if keep else _early.pop)(aggregators.search_key(search), None)
     if future is None:
         jobs = eures(search)
@@ -365,7 +365,9 @@ def read(search, keep=False):
                 jobs = list(HELD[0])
                 CUT[0] = True
                 print(f'EURES: still reading when its time ended, keeping the {len(jobs)} read so far; the rest waits for the next search', flush=True)
+                job_stage.say_read('EURES', jobs)
                 return jobs
             jobs = future.result()
     print(f'EURES: {len(jobs)} vacanc{"y" if len(jobs) == 1 else "ies"} in your places read', flush=True)
+    job_stage.say_read('EURES', jobs)
     return jobs

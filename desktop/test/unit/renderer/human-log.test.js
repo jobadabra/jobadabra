@@ -8,6 +8,8 @@ const REFRESH = [
   'Cronjob run logged: https://app.notion.com/p/x',
   'AI: Claude Code, on your Claude plan (no API budget to watch)',
   'Pool labels: roles sales_retail',
+  'Stages: EURES read 200 · kept 40 · ai_no 60 · never_asked 80 · placed_out 20',
+  'Stage: EURES never_asked https://europa.eu/eures/portal/jv-se/jv-details/x?lang=en',
   '⏳ Reading employer job sites: 0 of 102',
   '⏳ Reading employer job sites: 102 of 102 · 6,565 jobs listed',
   '⏱ This refresh places 240 of 608 job locations (2 round(s) of 2 calls, about 7.9 s each); 368 wait for the next refresh, best places first',
@@ -50,7 +52,7 @@ test('a refresh reads as what happened', () => {
 
 test('no Claude timing, pool, Notion link or digest text reaches the readable log', () => {
   const text = readableLog(REFRESH).join('\n');
-  for (const raw of ['model 3 s', 'Pool labels', 'app.notion.com', '✈️ Job digest', '(so far)', 'tokens in']) assert.ok(!text.includes(raw), raw);
+  for (const raw of ['model 3 s', 'Pool labels', 'Stages: ', 'never_asked', 'app.notion.com', '✈️ Job digest', '(so far)', 'tokens in']) assert.ok(!text.includes(raw), raw);
 });
 
 // 10 Oct 2026: the engine says what happened to a job (expired, unmatched, removed); a run from before still says Closed and still reads.

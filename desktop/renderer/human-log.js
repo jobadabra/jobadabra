@@ -35,6 +35,7 @@ const RULES = [
     return null;
   }],
   [/^Run counts: /, () => null],   // the Find jobs card's numbers (find-card-model.js runCounts), not a line to read
+  [/^Stages?: /, () => null],   // Why (sf, 10 Nov 2026): where each source's jobs stopped (src/sources/job_stage.py), the Search check's count, not a line to read
   [/^(Pool labels|Shared \d+ employer feeds|Pool catch-up|Cronjob run logged|AI: )/, () => null],
   [/^Job Matches: .*\(so far\)$/, () => null],
   [/^Job Matches: (\d+) created, (\d+) updated/, m => (Number(m[1]) + Number(m[2]) ? t('helperGuide.log3', {v0: m[1], v1: m[2]}) : null)],   // about Notion
