@@ -25,7 +25,7 @@ gate_wait_budget() {
   local budget alive pid pair; budget="$(gate_budget)"
   while :; do
     alive=""
-    # Why (8 Nov 2026, run 42500080506): `echo $? >file` creates the file EMPTY and writes after; `-f` took the empty file for "done" and the hook read a passed step's empty code as a failure ("tests failed in desktop", no output). `-s` waits for the content; a step that died between the two leaves it empty, and its dead pid ends the wait.
+    # Why (8 Nov 2026, run 42500080506): a step writes its exit code by redirecting, which creates the file EMPTY and writes after; testing only that the file exists took it for done, and the hook read a passed step's empty code as a failure (a blocked push, no output). -s waits for the content; a step that died between the two leaves it empty, and its dead pid ends the wait.
     for pair in "$@"; do [ -s "${pair#*:}" ] || { kill -0 "${pair%%:*}" 2>/dev/null && alive="$alive ${pair%%:*}"; }; done
     [ -n "$alive" ] || return 0
     if [ "$budget" -gt 0 ] && [ "$SECONDS" -ge "$budget" ]; then
