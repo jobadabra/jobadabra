@@ -14,6 +14,9 @@ Report only what you can quote from the screen: at most ${MAX_PROBLEMS} problems
 Before you report a contradiction, check that both sides name the same thing: a count that leaves out one kind of item (inbound jobs, the person's own edits) and a count of everything differ by design, and the rules under "What is known about the app" say so. A state shown because the person opened or pressed something (an open row marked Editing, a filter just switched off) is not a contradiction. A control named in the list of controls has a name: report an unnamed control only when the list shows no label for it. Quote the two sides you compare; when you cannot quote both from this screen, report nothing.
 Never report taste, wording that is fine, a guess about the app's insides, or anything not on this screen. Answer with the JSON asked for.`;
 
+// The independent completion instructions have their own offline regression case in the prompt registry.
+export const COMPLETION_SYSTEM = '\nAlso verify whether the stated goal was actually completed from the observed steps and state. completion is verified only when ALL requested steps and results are evidenced. incomplete means the evidence shows an unmet requirement; unknown means proof is missing. An actor saying done or worked is not evidence. Explain with exact observations in completionReason.';
+
 // Why-changed (5 Nov 2026, replays 41944858938 and 41944862753): the reader wrote the view as "Jobs", validateNote wants the screen id "jobs", so every problem it found on the Board was refused (0 notes, 2 refused) and the proof run measured nothing; the schema now offers the screens as an enum.
 /** The strict answer: a list of at most two problems, each in the shape of an agent note (empty = the screen holds together); `views` (the screens of the app) makes the view field a choice. */
 export const screenSchema = (views = null, verify = false, reportProblems = true) => {
@@ -35,7 +38,7 @@ export async function readScreen({ask, observation, goal, knowledge = '', knowle
   const started = now(), prompt = `Goal the person was working on: ${goal.label} (${goal.group})\n\nWhat is known about the app:\n${knowledge || '(nothing recorded yet)'}\n\nThe screen:\n${observation}`;
   let answer;
   try {
-    answer = await ask({system: SCREEN_SYSTEM + (!reportProblems ? '\nThis unchanged screen was already reviewed. Return problems: []; only verify this goal completion.' : '') + (verify ? '\nAlso verify whether the stated goal was actually completed from the observed steps and state. completion is verified only when ALL requested steps and results are evidenced. incomplete means the evidence shows an unmet requirement; unknown means proof is missing. An actor saying done or worked is not evidence. Explain with exact observations in completionReason.' : ''), messages: [{role: 'user', content: image ? [{type: 'image', source: {type: 'base64', media_type: 'image/png', data: image}}, {type: 'text', text: prompt}] : prompt}], schema: screenSchema(views, verify, reportProblems)});
+    answer = await ask({system: SCREEN_SYSTEM + (!reportProblems ? '\nThis unchanged screen was already reviewed. Return problems: []; only verify this goal completion.' : '') + (verify ? COMPLETION_SYSTEM : ''), messages: [{role: 'user', content: image ? [{type: 'image', source: {type: 'base64', media_type: 'image/png', data: image}}, {type: 'text', text: prompt}] : prompt}], schema: screenSchema(views, verify, reportProblems)});
   } catch (error) {
     return {notes: [], refused: [], failed: String(error?.message || error).slice(0, 120), ms: now() - started};
   }

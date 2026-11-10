@@ -129,7 +129,8 @@
       ],
       "prompts": {
         "desktop/e2e/lib/agent-screen.mjs": [
-          "SCREEN_SYSTEM"
+          "SCREEN_SYSTEM",
+          "COMPLETION_SYSTEM"
         ]
       }
     }
