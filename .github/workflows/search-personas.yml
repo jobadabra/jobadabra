@@ -281,6 +281,7 @@ jobs:
         working-directory: desktop/e2e
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
+          SEARCH_NIGHT_BY_HAND: ${{ inputs.scheduled && 'no' || 'yes' }}   # Why (10 Nov 2026, sa): only the Worker's scheduled run is a night; a by-hand run of all 18 is stored beside the nights and never replaces one
         shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the command's exit code without pipefail; the same pipe let the judge exam step (run 42410653476) show success after a crash
         run: node search-night-upload.mjs "$GITHUB_WORKSPACE/result/verdict.json" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The table in the run's summary

@@ -47,3 +47,15 @@ test('a refused, unreachable or oversized upload is one line and never throws', 
   assert.match(await uploadSearchNight(verdictFile('x'.repeat(MAX_BYTES + 1)), '42133678718', {env: CI, now: NOW, fetcher: async () => assert.fail('over the cap: not sent')}), /over 65536/);
   assert.equal(await uploadSearchNight(verdictFile(), '42133678718', {env: CI, now: NOW, fetcher: async () => ({ok: true, json: async () => { throw new Error('not json'); }})}), 'search night: sent night 2026-11-07 (stored) to /admin/job-search/lab?tab=night');
 });
+
+test('a by-hand run sends by_hand=1 and says it is stored beside the nights; the scheduled run does not (a by-hand run must never replace the night)', async () => {
+  const calls = [];
+  const fetcher = async (url, init) => { calls.push(url); return {ok: true, json: async () => ({ok: true, byHand: true})}; };
+  const line = await uploadSearchNight(verdictFile(), '42133678718', {env: {...CI, SEARCH_NIGHT_BY_HAND: 'yes'}, fetcher, now: NOW});
+  assert.equal(calls[0], `${SEARCH_NIGHT_SITE}?night=2026-11-07&run=42133678718&by_hand=1`);
+  assert.match(line, /sent a by-hand run of 2026-11-07 \(stored beside the nights/);
+  await uploadSearchNight(verdictFile(), '42133678718', {env: {...CI, SEARCH_NIGHT_BY_HAND: 'no'}, fetcher, now: NOW});
+  assert.doesNotMatch(calls[1], /by_hand/);
+  assert.match(await uploadSearchNight(verdictFile(), '42133678718', {env: {...CI, JP_CI_ROWS_DRY: '1', SEARCH_NIGHT_BY_HAND: 'yes'}, fetcher, now: NOW}), /would send \d+ bytes for a by-hand run 2026-11-07/);
+  assert.equal(calls.length, 2, 'the dry run sends nothing');
+});
