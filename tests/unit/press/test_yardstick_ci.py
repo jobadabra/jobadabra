@@ -58,6 +58,23 @@ class YardstickCi(unittest.TestCase):
             self.assertNotIn('p1', ci.noise_for(band, recordings, '1'), 'a re-made recording has no noise yet')
             self.assertIn('p2', ci.noise_for(band, recordings, '1'), 'the other person is still measured')
 
+    def test_a_press_that_failed_on_one_side_leaves_the_person_out_of_both(self):
+        # cr's #3682 (run 42827634813): main's p12 press 1 was killed at the run's hard stop (SystemExit 143) with 6 jobs scored, the PR's ended with 0: the means moved with no code difference.
+        with tempfile.TemporaryDirectory() as root:
+            art = Path(root, 'art')
+            for persona in ('p1', 'p2'):
+                artifact(art, persona, 'main'), artifact(art, persona, 'pr')
+            (art / 'yardstick-p2-main' / 'run.log').write_text('PRESS draw 1 FAILED: Reading new jobs with AI: SystemExit: 143\nPRESS draw 1: 40 in places, 6 scored\n')
+            (art / 'yardstick-p1-pr' / 'run.log').write_text('PRESS draw 2 FAILED: x\n')
+            self.assertEqual(ci.failed_presses(art), {'1': {'p2': ['main']}, '2': {'p1': ['pr']}})
+            out = io.StringIO()
+            with mock.patch.object(ci, 'newest_band', return_value={}), redirect_stdout(out):
+                ci.pr(art, Path(root, 'out'))
+            text = out.getvalue()
+            self.assertIn('Press failed, the person is left out of both sides of that run: main side: p2; pr side: p1', text)
+            self.assertIn('| p2 | ⚪ not measured (press failed on main, left out of both sides', text)
+            self.assertIn('### The first Find jobs run (1 personas)', text, 'p2 is not in the first run\'s means on either side')
+
     def test_a_persona_one_replay_of_main_lost_is_left_out_of_the_band(self):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(self.band(root, crashed={('p2', 'main-2')})['personas']['1'], ['p1'])

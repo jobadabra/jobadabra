@@ -7,6 +7,7 @@ A persona with no recording has no artifact and is left out ("not measured"); a 
 import hashlib
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -73,6 +74,20 @@ def recording_gaps(art):
             elif side == 'main':
                 gaps.pop(persona, None)
     return gaps
+
+
+def failed_presses(art):
+    """{run: {persona: [sides]}} for each Find jobs press a replay's own log says failed (`PRESS draw <n> FAILED: <step>: <error>`, tools/persona-search/run.mjs): killed at the
+    run's hard stop (src/run_log.py _on_terminate, SystemExit 143) or crashed. Its jobs are a cut-off press, not the pipeline's: the person leaves both sides of that run (cr's #3682, run 42827634813:
+    main's p12 press 1 was killed at 175 s with 6 scored, the PR's ended at 139 s with 0, and the means moved 0.50 → 0.34 with no code difference)."""
+    found = {}
+    for log in sorted(Path(art).glob('yardstick-p*-*/run.log')):
+        persona, side = log.parent.name[len('yardstick-'):].split('-', 1)
+        for line in log.read_text(encoding='utf-8', errors='replace').splitlines():
+            failed = re.match(r'PRESS draw (\d+) FAILED', line)
+            if failed:
+                found.setdefault(failed.group(1), {}).setdefault(persona, []).append(side)
+    return found
 
 
 def rows(recordings, folder, run):
@@ -169,14 +184,16 @@ def pr(art, out):
         return 0
     if not band:
         lines.append("main's noise band is not measured yet (dispatch this workflow with mode=band on main): every verdict reads \"not measured\".")
-    found, everyone, noises = {}, {}, {}
+    found, everyone, noises, cuts = {}, {}, {}, {}
     gaps = recording_gaps(art)
     if gaps:
         lines += ['', '**Recording gap, re-record (their numbers below are not the pipeline\'s): ' + '; '.join(
             f'{persona} ({web_missing} of {web} pages and {ai_missing} of {ai} AI answers missing)' for persona, (web_missing, web, ai_missing, ai) in sorted(gaps.items(), key=lambda item: int(item[0][1:]))) + '**']
     for run, label in RUNS.items():
-        mine = rows(recordings, sides['pr'], run)
-        theirs = rows(recordings, sides['main'], run) if 'main' in sides else []
+        cut = failed_presses(art).get(run, {})
+        mine = [row for row in rows(recordings, sides['pr'], run) if row['persona'] not in cut]
+        theirs = [row for row in rows(recordings, sides['main'], run) if row['persona'] not in cut] if 'main' in sides else []
+        cuts[run] = cut
         found[run] = {'pr': {'personas': mine, 'summary': numbers.summary(mine) if mine else {}},
                       'main': {'personas': theirs, 'summary': numbers.summary(theirs) if theirs else {}}}
         measured = [row['persona'] for row in mine]
@@ -186,7 +203,7 @@ def pr(art, out):
         against, why = comparable(band, recordings, run, measured)
         lines += ['', f'### The {label} ({len(mine)} personas)', '']
         lines += (['No replay measured this run.', ''] if not seen else
-                  [numbers.people_line(seen, ALL_PEOPLE), '', numbers.repeat_line(seen, noise), '', numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run), noise), ''])
+                  [numbers.people_line(seen, ALL_PEOPLE), '', numbers.repeat_line(seen, noise), '', numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run, cut), noise), ''])
         if why:
             lines += [why, '']
         crashed = sorted(p.name for p in recordings.glob('p*') if (p / f'jobs-{run}.json').exists() and p.name not in measured)
@@ -201,16 +218,20 @@ def pr(art, out):
         lines.append('right local jobs the recordings found by minute ' + ', '.join(f'{m}: {n}' for m, n in curve.items()))
     Path(out, 'numbers.json').write_text(json.dumps(found, ensure_ascii=False), encoding='utf-8')
     wrong = numbers.wrong_place_line(next((seen for seen in everyone.values() if seen), {}))   # the first run's: the repeat run lists the same jobs again
-    head = ['## Find jobs pipeline yardstick', '', '**' + numbers.people_line(worst_of(everyone), ALL_PEOPLE, 'People, both runs: ') + '**'] + ['', numbers.repeat_line({persona: one for seen in everyone.values() for persona, one in seen.items()}, either_run(noises))] + (['', wrong] if wrong else []) + ['', PACE_NOTE]
+    crashed = sorted({(side, persona) for cut in cuts.values() for persona, sides in cut.items() for side in sides}, key=lambda item: (item[0], int(item[1][1:])))
+    head = ['## Find jobs pipeline yardstick', '', '**' + numbers.people_line(worst_of(everyone), ALL_PEOPLE, 'People, both runs: ') + '**'] + (
+        ['', '**Press failed, the person is left out of both sides of that run: ' + '; '.join(f'{side} side: {persona}' for side, persona in crashed) + '**'] if crashed else []) + ['', numbers.repeat_line({persona: one for seen in everyone.values() for persona, one in seen.items()}, either_run(noises))] + (['', wrong] if wrong else []) + ['', PACE_NOTE]
     text = '\n'.join(head + lines[1:])
     Path(out, 'summary.md').write_text(text + '\n', encoding='utf-8')   # the PR comment's body (the workflow's comment job posts it)
     print(text)
     return 0
 
 
-def missing_why(recordings, run):
-    """{persona: reason} for the night personas a run's table has no row for: no recording, or a recording whose replay left no jobs on a side."""
-    return {persona: 'replay crashed or missing on a side' if (Path(recordings) / persona / f'jobs-{run}.json').exists() else 'no recording' for persona in ALL_PEOPLE}
+def missing_why(recordings, run, cut=None):
+    """{persona: reason} for the night personas a run's table has no row for: no recording, a press that failed on a side (cut: failed_presses()[run]), or a replay that left no jobs."""
+    why = {persona: 'replay crashed or missing on a side' if (Path(recordings) / persona / f'jobs-{run}.json').exists() else 'no recording' for persona in ALL_PEOPLE}
+    why.update({persona: f"press failed on {' and '.join(sorted(set(sides)))}, left out of both sides" for persona, sides in (cut or {}).items()})
+    return why
 
 
 def worst_of(everyone):
