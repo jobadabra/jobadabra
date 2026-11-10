@@ -1,7 +1,7 @@
 ---
 area: search
 paths: [tests/unit/press, src/scout.py, src/daily.py, src/first_jobs.py, src/employer_index.py, src/job_rank.py, src/places.py, src/regions.py, src/sources, tools/persona-search, .github/workflows/scout.yml, .github/workflows/search-personas.yml, docs/ARCHITECTURE.md]
-updated: 2026-11-07
+updated: 2026-11-10
 ---
 # Search and scoring
 > Find jobs crawls employer feeds and boards that match the person's strategy, scores them with AI, and delivers the best first. A central scout grows the shared employer index; every install downloads it and nothing about the user goes up.
@@ -17,6 +17,9 @@ updated: 2026-11-07
 - The AI decides what a title or place means (`src/ai/decide.py`, `src/places.py`); a capped AI leaves leftovers unknown, never a default such as "other". Nothing from the network becomes prompt text.
 - No job texts are stored centrally: only counts, place names and key facts, aggregated with k of at least 3.
 - The Search check runs once a night, a report that blocks nothing: 18 fictional personas in a row (one role family and one city each; about 80-85 minutes, see SEARCH_SLOT in app-core/src/scheduler.js), scored by right role and right place, red when a press takes over 180 s (`tools/persona-search/`). A search PR relies on its unit and integration tests. By hand for now, `search-reference.yml` counts the right jobs EURES lists per persona, outside the app, as the Night search tab's yardstick.
+
+## Fair EURES comparison
+Night totals include EURES; source counts are not coverage. By-hand input `eures_comparison=true` pairs fresh searches with/without the reader, one strategy, fresh reference and blind judge (twice the presses; no nightly-history change). Actions summaries/artifacts show conservative overlap and first-job/70+ timing. [Design and limits](../superpowers/specs/2026-11-10-eures-comparison-design.md).
 
 ## Key files
 - `src/daily.py` and `daily_*.py`: orchestrates a search run; `src/first_jobs.py`, `job_rank.py`, `score.py` (in `src/ai/`): first jobs, ranking, scoring.

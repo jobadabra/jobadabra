@@ -13,6 +13,10 @@ run-name: ${{ inputs.scheduled && 'Search check · nightly (Worker cron)' || 'Se
 on:
   workflow_dispatch:
     inputs:
+      eures_comparison:
+        description: 'Paired fresh searches with/without EURES plus a fresh reference (twice the presses; separate report)'
+        type: boolean
+        default: false
       scheduled:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
@@ -48,7 +52,7 @@ jobs:
   persona:
     name: Persona ${{ matrix.persona }}
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.presses == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
+    timeout-minutes: ${{ inputs.eures_comparison && 25 || inputs.presses == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
     # Why (8 Nov 2026, owner: "Fix Free AI + PR lane now (Recommended)": "by-hand Search checks may use the 30% PR reserve (about 1 run a day)"): the run token's environment is the only signed
     # sign of a by-hand run (the Worker's nightly is workflow_dispatch by the same account); the broker puts this one environment of this workflow on its PR lane (jobadabra-web lib/lanes.mjs).
     # The nightly names no environment and stays on the scheduled lane. No deployment record: it deploys nothing.
@@ -101,8 +105,21 @@ jobs:
         if: steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
+      - name: Paired EURES comparison (same strategy, fresh installs, one blind judge)
+        if: steps.token.outputs.ok == 'yes' && inputs.eures_comparison
+        run: |
+          node tools/persona-search/codex.mjs -- python3 tools/persona-search/eures_comparison.py "${{ matrix.persona }}" out/eures-comparison
+      - name: The paired report in this run's summary
+        if: always() && inputs.eures_comparison
+        run: cat out/eures-comparison/comparison.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always() && inputs.eures_comparison
+        with:
+          name: eures-comparison-p${{ matrix.persona }}
+          retention-days: 30
+          path: out/eures-comparison/
       - name: The persona's fictional CV, then one Find jobs press (small tier through the Codex relay)
-        if: steps.token.outputs.ok == 'yes'
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
@@ -112,7 +129,7 @@ jobs:
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
           if [ -f "$titles" ]; then cp "$titles" out/titles-judged.json; fi   # the title sort's verdicts ({search key: {title: fits}}): public job titles only, to read what was judged no (#2920)
       - name: The blind judge (right role, right place; Codex small tier)
-        if: steps.token.outputs.ok == 'yes'
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison
         run: |
           set -o pipefail
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
@@ -143,7 +160,7 @@ jobs:
   compare:
     name: Search check
     needs: persona
-    if: ${{ !cancelled() }}   # Why (#2243, 3 Nov 2026 7/7): a cancelled run posted a red table ("p6: no result"), so compare only when the personas were not cancelled
+    if: ${{ !cancelled() && !inputs.eures_comparison }}   # Why (#2243, 3 Nov 2026 7/7): a cancelled run posted a red table ("p6: no result"), so compare only when the personas were not cancelled
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
