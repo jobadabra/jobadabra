@@ -49,7 +49,7 @@ W4 (sources beyond EURES) gets its own plan after this one.
 
 ## Progress
 - [x] Sketch + owner's yes (10 Nov 2026: "Let's improve" · "Let's do the fixes"; the three decisions above asked via AskUserQuestion in session sa) (proof: none: the owner's answers in the sf and sa sessions, 10 Nov 2026)
-- [x] 1/8 EURES jobs placed from Eurostat's map when read, #3671 (proof: tests/unit/press/test_home_region_first.py @f653aea; replay of 55 presses 31% -> 49%)
+- [x] 1/8 EURES jobs placed from Eurostat's map when read, #3671; replay of 55 presses 31% -> 49% (proof: tests/unit/press/test_home_region_first.py @f653aea)
 - [ ] 2/8 The collecting thread only collects; one ranked list (proof: tests/unit/sources/test_first_jobs.py, tests/unit/press/test_one_scorer.py)
 - [ ] 3/8 One Run object
 - [ ] 4/8 Prepared at strategy save
