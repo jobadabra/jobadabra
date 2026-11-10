@@ -476,6 +476,6 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     });
   }
   // cs 4/4 (lib/background-apply-cloud.js): which items the cloud may hold, the move of one, the site's outcome written back.
-  const cloud = createCloudSide({store, terminals, serial, cache, itemFor, closeSession: id => browserOf().closeSession(id), notify: (...args) => notify(...args), tellAway, applied: () => (applied ||= appliedMessageFor(storage)), log, now});
+  const cloud = createCloudSide({store, terminals, serial, cache, itemFor, closeSession: id => browserOf().closeSession(id), notify, tellAway, applied: () => (applied ||= appliedMessageFor(storage)), log, now});
   return {cloud, enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, deadEnd, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

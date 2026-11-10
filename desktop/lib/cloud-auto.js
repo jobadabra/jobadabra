@@ -12,7 +12,7 @@ export const cloudAutoOf = storage => registry.get(storage) || null;
 export const keepCloudAuto = (storage, auto) => { if (auto) registry.set(storage, auto); else registry.delete(storage); return auto; };
 
 const GIVE_UP_MS = 5 * 60 * 1000;   // an outcome that has not arrived once the site says nothing is left running this long after the send: lost, the person checks
-const REASONS = {not_eligible: 'not_eligible', bot_check: 'captcha_runtime', stopped: 'stopped'};   // the cloud's words for why it did not press -> the Mac's hand-off reason ids (anything else: 'needs_user')
+const REASONS = {not_eligible: 'not_eligible', bot_check: 'captcha_runtime', stopped: 'stopped'};   // words-ok: our own reason ids (the site's `why` code -> the hand-off reason), not page knowledge; the cloud's words for why it did not press -> the Mac's hand-off reason ids (anything else: 'needs_user')
 const day = at => at.toISOString().slice(0, 10);
 
 /**
