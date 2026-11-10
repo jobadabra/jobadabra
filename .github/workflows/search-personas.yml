@@ -175,9 +175,10 @@ jobs:
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
       - name: The persona's numbers
         if: always() && steps.token.outputs.ok == 'yes'
-        run: |
-          python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
-          if [ "${{ github.job }}" = again ]; then python3 tools/persona-search/again.py second out; fi   # the row says it is the night's second try
+        run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
+      - name: This press is the night's second try
+        if: always() && github.job == 'again' && hashFiles('out/result.json') != ''   # its own step (Gitar on #3716): a failed result step or a missing token never leaves a second try unmarked
+        run: python3 tools/persona-search/again.py second out
       # Why (7 Nov 2026, #2920): the draft's role words and places differ run to run; p1/p3 EURES jobs fell 86 -> 18 and 18 -> 8 and the words behind it were never kept (draft.json is a fictional persona's, no real data)
       - uses: actions/upload-artifact@v6
         if: always()

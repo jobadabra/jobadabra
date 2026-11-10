@@ -48,6 +48,7 @@ class WhoRunsAgain(unittest.TestCase):
             self.assertEqual(rows[2], {'persona': 2, 'local': 4, 'again': 1, 'first_try': 'AI slow (a call took 25 s on average)'})
             self.assertNotIn('again', rows[3])
             self.assertEqual(again.mark(tmp, Path(tmp, 'none.json')), [], 'no list (first pass skipped): nothing marked')
+            again.second(Path(tmp, 'no-such-press'))   # a second try that wrote no row: nothing to mark, no crash (Gitar on #3716)
 
 
 class TheNightRunsThem(unittest.TestCase):
@@ -68,7 +69,8 @@ class TheNightRunsThem(unittest.TestCase):
     def test_the_second_try_replaces_the_files_and_is_marked_before_the_compare(self):
         persona = self.job('persona')
         self.assertIn('overwrite: true', persona)
-        self.assertIn('if [ "${{ github.job }}" = again ]; then python3 tools/persona-search/again.py second out; fi', persona)
+        self.assertIn("if: always() && github.job == 'again' && hashFiles('out/result.json') != ''", persona)
+        self.assertIn('run: python3 tools/persona-search/again.py second out', persona)
         compare = self.job('compare')
         self.assertRegex(compare, r'needs: \[room, persona, again, reference\]')
         self.assertLess(compare.index('again.py mark results again/first-try.json'), compare.index('gate.py compare'))

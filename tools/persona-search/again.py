@@ -34,9 +34,12 @@ def wanted(folder):
 
 
 def second(out):
-    """Mark this press's row as the night's second try."""
+    """Mark this press's row as the night's second try; no row (or an unreadable one) is left as it is."""
     path = Path(out) / 'result.json'
-    row = json.loads(path.read_text(encoding='utf-8'))
+    try:
+        row = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return
     path.write_text(json.dumps({**row, 'again': 1}, ensure_ascii=False), encoding='utf-8')
 
 
