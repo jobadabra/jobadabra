@@ -97,7 +97,8 @@ export function listChips(name, placeholder) {
     input.dataset.list = name;
     input.addEventListener('input', () => { typed[name] = input.value; changed(); });
     // A match word can be added as the whole word only (stored \bword\b by lib/strategy-edit.js cleanEdits), never by typing quotes.
-    const whole = PLAIN.has(name) ? null : Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!wholeWords[name]});
+    // Why (10 Nov 2026, owner: "Why 'Add as a whole word only'? It's confusing"): a place word already matches only as a whole word in the engine (src/paths.py place regex), so Locations has no box.
+    const whole = PLAIN.has(name) || LOCATION_LISTS.has(name) ? null : Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!wholeWords[name]});
     whole?.addEventListener('change', () => { wholeWords[name] = whole.checked; });
     input.addEventListener('keydown', event => {
       const text = input.value.trim(), plain = PLAIN.has(name) ? text : text.toLowerCase(), word = whole?.checked ? asWholeWord(plain) : plain;
@@ -116,6 +117,16 @@ export function listChips(name, placeholder) {
   }
   return box;
 }
+// A small "?" that shows `text` on hover or keyboard focus (the shared .tip pattern, style.css).
+function helpDot(text) {
+  const dot = Object.assign(el('span', 'tip help-dot'), {tabIndex: 0});
+  dot.dataset.tip = text;
+  dot.setAttribute('aria-label', text);
+  dot.append(icon('help'));
+  return dot;
+}
+const labelWithHelp = (label, text) => { const line = el('p', 'sub', label); line.append(helpDot(text)); return line; };
+const LOCATION_LISTS = new Set(['places', 'country', 'abroad', 'rights']);
 const wholeWords = {};   // the "Whole word only" box per list while editing
 // Remote jobs (Search settings "Remote jobs"): No, My country (only remote that names your country), Yes (any; a bare "Remote" lists only here). lj 3/4, owner 10 Nov 2026:
 // "Small: add a third Remote work button"; the whole-country part is the Acceptable places row (empty = only your area).
@@ -179,8 +190,10 @@ function targetCard([key, glyph, title, lists]) {
     // Relocation is a value (Yes / No / Not specified); its places are asked only for Yes, and kept whatever the mode.
     if (name === 'abroad') { card.append(el('p', 'sub', t('pagesCommon.relocation')), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
     const box = listChips(name, placeholder);
-    if (name === 'places') { const priority = el('div', 'priority'); priority.append(el('b', '', label), box); card.append(priority); continue; }
-    if (label) card.append(el('p', 'sub', label));
+    // Preferred vs Acceptable, as a "?" tooltip on each label (owner, 10 Nov 2026: "What is the difference between Acceptable and Preferred locations? ... what about using tooltips? with question mark").
+    const hint = {places: t('pagesCommon.preferredHelp'), country: t('pagesCommon.acceptableHelp')}[name];
+    if (name === 'places') { const priority = el('div', 'priority'); const head = el('b', '', label); head.append(helpDot(hint)); priority.append(head, box); card.append(priority); continue; }
+    if (label) card.append(hint ? labelWithHelp(label, hint) : el('p', 'sub', label));
     card.append(box);
   }
   if (key === 'places') card.append(el('p', 'sub', t('pagesCommon.remoteWork')), remoteChoice());
