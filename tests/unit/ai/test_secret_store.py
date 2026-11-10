@@ -32,6 +32,13 @@ class RealStoreIsOffLimitsToTestsTest(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, 'real secret store'):
                         change()
 
+    def test_an_unmocked_read_reads_nothing_and_reaches_nothing(self):
+        """#3711 (10 Nov 2026): a test read the owner's real LinkedIn session item; reads were not refused, only changes."""
+        for platform in ('darwin', 'win32'):
+            with mock.patch.object(sys, 'platform', platform), mock.patch.dict('os.environ', {'JOBADABRA_E2E': '', 'JOBADABRA_TWIN': ''}), \
+                    mock.patch.object(secret_store.subprocess, 'Popen', side_effect=AssertionError('reached the real tool')):
+                self.assertIsNone(secret_store.get('jobadabra.linkedin-jobs.session', 'linkedin-jobs'))
+
     def test_the_guard_knows_a_test_is_running(self):
         self.assertTrue(secret_store.under_test())
 

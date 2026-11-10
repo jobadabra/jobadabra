@@ -61,10 +61,14 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // No hidden browser runs in this profile: it never started (no port file) or it died and left its port file (the port refuses).
 const notRunning = error => error?.code === 'ENOENT' || error?.cause?.code === 'ECONNREFUSED';
 
-/** Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js). */
+/**
+ * Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js).
+ * `name`: the folder under the app folder (default the kept 'background-browser'). `claims`: false = its worker never gets the backgroundOwner, so it never polls
+ * for queued applications (extension/background-apply.js pollBackgroundApply hands jobs to ANY owned worker that polls); used by the LinkedIn read's own short-lived browser.
+ */
 export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
-   spawn = guarded(spawnProcess, 'start the background browser'), reaper = startReaper, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
-  const folder = storage.path('background-browser'), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
+   spawn = guarded(spawnProcess, 'start the background browser'), reaper = startReaper, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand, name = 'background-browser', claims = true} = {}) {
+  const folder = storage.path(name), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
   const portFile = path.join(profile, 'DevToolsActivePort'), ownerFile = path.join(folder, 'owner.json');
   let pending = null, ownChild = null;
   const get = async (port, route) => { const response = await fetchImpl(`http://127.0.0.1:${port}${route}`, {signal: AbortSignal.timeout(2000)}); if (!response.ok) throw new Error('Owned browser is unavailable.'); return response.json(); };
@@ -159,7 +163,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         running = worker ? await runningStamp(worker, expected) : '';
         if (worker && running === expected) {
           const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
-          await setExtensionStorage({evaluate: evaluator(worker)}, {workerUrl: `http://127.0.0.1:${appPort}`, token, backgroundOwner: owner});
+          await setExtensionStorage({evaluate: evaluator(worker)}, {workerUrl: `http://127.0.0.1:${appPort}`, token, ...(claims ? {backgroundOwner: owner} : {backgroundReadsOnly: true})});
           return {owner, port: live.port};
         }
         misses += 1;
@@ -197,7 +201,16 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return (await get(live.port, '/json/list')).find(target => target.type === 'page' && target.id === targetId)?.webSocketDebuggerUrl || null;
   }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
+  /** Close this profile's browser if it runs and wait until its port is gone (10 s hang guard). -> true when none runs any more. */
+  async function quit() {
+    const live = await connect().catch(() => null);
+    if (!live) return true;
+    await command(live.socket, 'Browser.close').catch(() => {});
+    for (const until = Date.now() + 10000; Date.now() < until; await pause(100)) if (!(await connect().catch(() => null))) return true;
+    return false;
+  }
   // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read or queued applications; true when the app acknowledged that poll.
-  // Why (10 Nov 2026, hw review): that poll opens a window for each claimed job (up to 10) before it answers and can pass the 5 s command limit: a wake that worked would be logged as failed. 30 s is a hang guard.
-  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), wake: () => sessionAction(null, 'poll', {timeout: 30000}), close};
+  // Why (10 Nov 2026, hw review): wake's poll opens a window for each claimed job (up to 10) before it answers and can pass the 5 s command limit: a wake that worked would be logged as failed. 30 s is a hang guard.
+  const wake = () => sessionAction(null, 'poll', {timeout: 30000});
+  return {folder, ready: () => !!find(storage.path('background-browser-runtime')), start, quit, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), wake, close};
 }

@@ -21,7 +21,7 @@
 **One read per Find jobs, only when the switch is on and a session exists.**
 1. The extension (in the person's Chrome) copies the LinkedIn session cookies to the app **when the switch is turned on and at each Find jobs while on** (refresh), over the existing authenticated loopback. It never reads them otherwise.
 2. The app keeps them **only in the Keychain** (`job-pilotto.linkedin-jobs.session`; e2e: the isolated-secrets file, `lib/keychain.js`).
-3. At the LinkedIn step the app starts the owned headless browser (`lib/background-browser.js`, reused, no second browser), sets the cookies in it for the read, opens the searches, and **removes the cookies from the browser's profile when the step ends** (so the profile never keeps a credential between runs).
+3. At the LinkedIn step the app starts **the read's own short-lived headless browser** (`lib/linkedin-browser.js` over `lib/background-browser.js`, its own folder `linkedin-read`, a worker with no backgroundOwner so it never claims an application), sets the cookies in it for the read, opens the searches, and **deletes that browser's whole folder when the step ends** (so no profile keeps a credential between runs). Why (#3711, 10 Nov 2026): the first version used the kept, shared profile; the in-memory expiry never reached disk before the app's end killed the browser, so li_at stayed in the app folder on 4 LinkedIn hosts.
 4. The owned browser's extension reads each list page exactly like today (`extension/visit.js`: AI-judged cards, follow pages, stop at login wall or check) and sends it to the app; `src/sources/visits.py` ingests; scoring and filters are the normal path.
 5. Searches come from the current strategy (its own role and place words: `src/sources/visits_portals.py` `linkedin_searches`), at most **3 searches × 3 pages** (the app ends a read after 3 pages: `visits.runAll` `maxPages`), 1.8–3.2 s between pages (the extension's own pause) and 3–5 s between searches, beside the engine's steps on the press's one deadline (ends at 170 s: `lib/search-beside.js`); what did not fit is reported ("LinkedIn: read 2 of 3 searches, ran out of time").
 6. Every search is a row in Recent activity; **Stop ends it** (tab closed, cookies removed).
@@ -60,6 +60,26 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 - **Relaxed on purpose (on top of the 31 Oct list):** "never types a password" stays true for us (the person types it, on LinkedIn's page, in our window; nothing is injected or read); what changes is that the app now **hosts** LinkedIn's sign-in page. Checks and codes there are the person's to solve ("a captcha is the user's to solve", refused-sites rule), never ours.
 - **Not changed:** the session is a credential (Keychain only, never logged), the read pace, the 3×3 cap, Stop, `no-browser` (the hidden reader's one-time download), tests never touch the owner's session (a fake partition and a fake LinkedIn page).
 
+## Design (10 Nov 2026, issues #3711 · #3710 · #3705; one block for the three PRs, owner's circles rule)
+After lt's by-hand check (one press, signed in, LinkedIn answered: 0 jobs kept, the card silent, the session left on disk). Every PR on these files builds to this; none adds a case.
+| State of a LinkedIn read | When | Card's LinkedIn lane says |
+|---|---|---|
+| `off` | switch off | nothing: no chip, no line |
+| `no-session` | on, no session held | sign in to LinkedIn (Settings → Connections → LinkedIn) |
+| `no-browser` | Jobadabra's browser not downloaded | one-time download, progress and Cancel |
+| `reading` | step running | search n of m · N jobs read · M match your search so far |
+| `done` | ≥ 1 search answered, jobs read | N jobs read · M match your search |
+| `none-new` | ≥ 1 search answered, no new job | searches read · no new job since your last search |
+| `signed-out` | a search landed on LinkedIn's sign-in page | sign in again; nothing more is read this time |
+| `check` | a check page | LinkedIn asked for a check; not answered; nothing more today |
+| `limited` | 401/403/429/999 | asked us to slow down; 429 = left alone a day |
+| `failed` | asked and got no answer (0 of m searches answered), or the browser would not start | could not read LinkedIn this time (never "none new") |
+| `stopped` | Stop | stopped |
+- **One owner of the state:** the step's result (`lib/linkedin-headless.js` `linkedinStep`), written once per run (`noteRun` → `settings.linkedinJobs.last`). Verdicts that change it: the extension's page kind, the HTTP status, Stop, the deadline, and whether each search's read reached the step (the read is tied to the tab the step opened, never to a mark in the URL that a redirect drops: #3710).
+- **Who reads it:** the Find jobs card's lane (chip + one live line, the same mechanism every parallel source will use: #3705), `settings.linkedinJobs.last` (the next press and Settings), Recent activity (one row per search).
+- **Where the session lives:** the Keychain; during a read, only in the read's own browser folder, deleted when the step ends. Remaining window: an app killed in the middle of a read leaves that folder until the next start, which deletes it (and scrubs LinkedIn rows any earlier version left in the kept profile). Nothing else.
+- **Tests read no real Keychain** (#3711): under `node --test` / unittest (`NODE_TEST_CONTEXT`, `JOBADABRA_UNDER_TEST`) the genuine `security` reads nothing (`lib/keychain.js`, `src/secret_store.py`); a test passes a fake `readSession` or exec. A by-hand verification press runs the DEV app, which is not a test and reads its session as a user's app does: never set either variable on it to "fix" a press.
+
 ## Safety (all of CLAUDE.md Safety still holds)
 - Never solves a captcha or check, never uses an SMS code, never types a password; a login page or checkpoint ends LinkedIn for the run.
 - **Never disguises the browser**: honest user agent (measured: `HeadlessChrome/156`, `navigator.webdriver=false`), no stealth plugin, no UA/fingerprint override. If a signed-in read needs disguise to work, **stop: new owner decision**.
@@ -81,7 +101,7 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 4. Cookies: absent from logs, `app.log`, store, telemetry (assert by scanning a run's output for the fixture's cookie value); absent from the owned profile after the step; Keychain item deleted when the switch goes off.
 5. The step respects the Find jobs deadline and says what it skipped.
 6. No user-agent override or stealth flag in `browserArguments` (guard test).
-7. Every mode touched (Find jobs, "Find jobs using your browser", background apply sharing the owned browser) still passes its own test; the owned browser is shared, not duplicated.
+7. Every mode touched (Find jobs, "Find jobs using your browser", background apply) still passes its own test. The LinkedIn read does NOT share the kept browser: it runs in its own short-lived one, only during the step (Why (#3711, 10 Nov 2026): the shared kept profile is what leaked the session to disk; an in-memory browser context would avoid disk entirely, but the owned extension cannot run there, measured).
 
 ## Test plan
 - Unit: cookie filter (only the allow-listed names/host), Keychain round trip (isolated), state verdicts, search selection from strategy, deadline cut.
@@ -111,3 +131,7 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 - [ ] Owner's signed-in try on local main
 - [x] Sign-in window: "Sign in to LinkedIn" opens a Jobadabra window on LinkedIn's own page, cookies → Keychain, extension copy kept as a shortcut, every press logged (owner's yes 3 Nov 2026) (proof: desktop/lib/linkedin-signin-window.js, desktop/test/linkedin-signin-window.test.js)
 - [ ] Owner's real sign-in through the window (unproven until then; if LinkedIn blocks it: stop, no disguise)
+- [x] By-hand check of a signed-in read, 10 Nov 2026 (lt): session works, LinkedIn answers, 0 jobs kept, card silent, session left on disk (proof: none: one press, issues #3705 #3710 #3711)
+- [ ] #3711 the read's own browser, deleted at the step's end, swept at start (proof: desktop/integration/extension/linkedin-session-on-disk.test.mjs)
+- [ ] #3710 the read reaches its step after a redirect; 0 answered = failed
+- [ ] #3705 the LinkedIn lane on the Find jobs card

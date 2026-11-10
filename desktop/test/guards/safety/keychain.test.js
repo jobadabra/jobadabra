@@ -127,6 +127,18 @@ test('a test that passes no fake exec can never change the real Keychain (24 Oct
   assert.equal(calls.length, 1);
 });
 
+// #3711 (10 Nov 2026): a unit test that passed no fake read the owner's real LinkedIn session item; reads were not refused, only changes.
+test('a test that passes no fake exec reads nothing from the real Keychain; a fake exec still reads', () => {
+  const env = {NODE_TEST_CONTEXT: 'child-v8'};
+  assert.equal(keychain.read('jobadabra.linkedin-jobs.session', {account: 'linkedin-jobs', env, platform: 'darwin'}), null);
+  assert.equal(keychain.comment('jobadabra.x.token', {env, platform: 'darwin'}), '');
+  assert.equal(keychain.dump({env, platform: 'darwin'}), null);
+  assert.equal(keychain.read('jobadabra.x.token', {env: {JOBADABRA_UNDER_TEST: '1'}, platform: 'darwin'}), null);
+  const {calls, exec} = spy(() => 'fake-value\n');
+  assert.equal(keychain.read('jobadabra.x.token', {env, exec, platform: 'darwin'}), 'fake-value');   // positive control: the same call with a fake reaches it
+  assert.equal(calls.length, 1);
+});
+
 // Rename to Jobadabra (1 Nov 2026, owner: "small fallbacks"): an install made before it keeps its items under job-pilotto.* with account job-pilotto.
 test('an item an older install stored under job-pilotto.* is still read; the new name wins; nothing is written under the old name', () => {
   const items = {'job-pilotto|job-pilotto.notion.token': 'old-secret', 'job-pilotto|job-pilotto.google.scopes': 'old-scopes'};
