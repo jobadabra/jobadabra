@@ -68,9 +68,9 @@ function goalResult(goal, result, {verify = false, notes = []} = {}) {
     const missing = code ? ['focus', 'jobs', 'settings'].filter(view => !visited.has(view)) : [];
     const check = result.verification;
     if (missing.length || check?.completion === 'incomplete') final = {...final, verdict: 'could-not-finish', summary: missing.length ? `Not verified in ${code}: ${missing.join(', ')}.` : check.completionReason};
-    else if (check?.completion !== 'verified') final = {...final, verdict: 'doubts', summary: `Completion not verified: ${check?.completionReason || 'no independent evidence'}.`};
+    else if (check?.completion !== 'verified') final = {...final, unverified: true, verdict: 'doubts', summary: `Completion not verified: ${check?.completionReason || 'no independent evidence'}.`};
   }
-  if (final && GOAL_VERDICTS.includes(final.verdict)) return {n: goal.n, verdict: final.verdict, summary: final.summary, steps: result.steps.length};
+  if (final && GOAL_VERDICTS.includes(final.verdict)) return {n: goal.n, verdict: final.verdict, summary: final.summary, steps: result.steps.length, ...(final.unverified ? {unverified: true} : {})};
   if (final) return {n: goal.n, verdict: 'doubts', summary: `ended without a verdict: ${String(final.summary || '').slice(0, 120)}`, steps: result.steps.length};
   const why = result.stopped.startsWith('repeat: ') ? `it kept doing the same thing, ${result.stopped.slice(8)}${result.stopped.endsWith('on the same page') ? ', and the page did not change' : ''}` : `the goal ran out of room (${result.stopped})`;   // a loop is not a lack of room (replays 41857211406, 41857218091)
   return {n: goal.n, verdict: 'could-not-finish', summary: why, steps: result.steps.length};
@@ -162,6 +162,16 @@ function fundedSteps({meter, actorCalls, onClaude, left, perGoal, goal, log}) {
   return next.steps;
 }
 
+/** Learn app observations only: unavailable verification must never become a remembered product problem. */
+function observedProblems(goals, results) {
+  const observations = {};
+  for (const row of goals) {
+    if (['worked', 'not-started'].includes(row.verdict) || results.find(result => result.n === row.n)?.unverified) continue;
+    (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
+  }
+  return observations;
+}
+
 /** Prefer a shared-budget/broker stop; otherwise preserve the first goal interrupted before its final verdict. */
 const runStop = (stopped, ends) => stopped || ends.find(end => end.stopped !== 'done')?.stopped || 'goals';
 
@@ -207,8 +217,7 @@ export async function runSession({act, ask, judgeAsk, judgeKnowledge = () => '',
   numberNotePictures(notes);
   if (publish) await publish(summary.filed);
   const findings = summary.filed.map(note => toFinding(note, {steps: note.trail, session: {persona: plan.persona?.name || '', seed: plan.seed, snapshot: session.snapshot || '', run: session.run || '', chain: session.chain ? pointerLine(session.chain) : ''}}));
-  const observations = {};
-  for (const row of summary.goals) if (!['worked', 'not-started'].includes(row.verdict)) (observations[row.group] ||= []).push(`${row.label}: ${row.summary}`);
+  const observations = observedProblems(summary.goals, results);
   const completed = completedGoals(ends, results, verifyGoals);
   return {summary, findings, observations, trace, spent, notes, ends, unfunded, completed, played: results.map(each => each.n), stopped: runStop(stopped, ends)};
 }

@@ -30,6 +30,7 @@ test('a claimed success needs independent completion evidence; a bug verdict nee
   assert.equal(bug.summary.goals[0].verdict, 'doubts');
   const unknown = await runSession({act: fakeAct(), ask: script([done('worked')]), judgeAsk: judge('agrees'), verifyGoals: true, views: ['profile'], plan: one});
   assert.equal(unknown.summary.goals[0].verdict, 'doubts');
+  assert.deepEqual(unknown.observations, {}, 'unavailable verification is a tester limitation, never learned as an app problem');
 });
 
 // Guard: money — the 8 Nov false Spanish success must not count as coverage or retire the pending goal.
