@@ -1,5 +1,5 @@
 // Guard: release — the fixer's proof sandbox must start its container with an init process (orphans reaped) and keep every isolation flag, checked without building an image.
-// Why (10 Nov 2026, fx): this file used to run a live `docker build` of the proof image on every PR and died with `spawnSync docker ETIMEDOUT` (public #3643): the registry, apt and a shared runner are not ours to time.
+// Why (10 Nov 2026, fx): this file used to run a live `docker build` of the proof image on every PR and timed out in docker build (public #3643): the registry, apt and a shared runner are not ours to time.
 // A stub `docker` records the arguments the real tools/feedback-ai-sandbox.sh passes; its `build` sleeps, so a test that builds again hangs here and fails. The real container (orphans reaped, account resolved)
 // is proved nightly by desktop/integration/nightly/fixer-sandbox-docker.test.js (harness-daily.yml).
 import test from 'node:test';

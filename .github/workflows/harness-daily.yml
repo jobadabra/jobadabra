@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      # Why (10 Nov 2026, fx; public #3643 "Integration app (Linux)" died with `spawnSync docker ETIMEDOUT` after 3 min, file unchanged since 5 Nov): the proof image is built from a registry pull and apt installs,
+      # Why (10 Nov 2026, fx; public #3643 "Integration app (Linux)" timed out in docker build after 3 min, file unchanged since 5 Nov): the proof image is built from a registry pull and apt installs,
       # so a PR must not depend on it; the PR layer checks the sandbox script's arguments against a stub docker (desktop/integration/app/fixer-sandbox.test.js), this job proves the real container nightly.
       - name: The real proof image reaps orphans and resolves its account
         run: node --test --test-timeout=300000 desktop/integration/nightly/fixer-sandbox-docker.test.js
