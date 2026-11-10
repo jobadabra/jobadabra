@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ..features import disabled
-from . import careers
+from . import careers, web_answers
 from ..ai import slots
 from ..press import resume
 
@@ -204,6 +204,7 @@ def _merge(into, copy):
     """What a search run on its own copy recorded (when it searched, the boards it found), into the read's found_boards.json."""
     into.setdefault('web', {}).update(copy.get('web') or {})
     into.setdefault('web_thin', {}).update(copy.get('web_thin') or {})
+    into.setdefault('web_used', {}).update(copy.get('web_used') or {})
     for key, boards in (copy.get('ideas') or {}).items():
         have = into.setdefault('ideas', {}).setdefault(key, [])
         hosts = {board['host'] for board in have}
@@ -222,14 +223,32 @@ def finish(started, proposed, timeout=None, data=None):
     except Exception:  # noqa: BLE001 — the proposal's boards stand
         return []
     if found is read_budget.LEFT:   # not killed: when it answers, its boards are kept for the next search, not asked again (_keep_late)
-        print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
-        future.add_done_callback(lambda done: _keep_late(done, copy, data))
+        _leave_open(future, copy, data)
         return []
     found = found or []
     if data is not None and copy is not None and copy is not data:
         _merge(data, copy)
     hosts = {board['host'] for board in proposed}
     return [{**board, 'origin': 'web'} for board in found if board['host'] not in hosts]
+
+
+def _leave_open(future, copy, data):
+    """The one place a search still open at the cut is handed on: its answer, when it comes, is kept for the next search (_keep_late)."""
+    if not future.done():
+        print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
+    future.add_done_callback(lambda done: _keep_late(done, copy, data))
+
+
+def leave(search_config):
+    """The job boards' step is skipped at the search's read cut (found_boards.read): the web search started with the run (early), still open,
+    is handed on here so its late answer is kept for the next search, not lost and asked again from second 0 (E2b, 8 Nov 2026: persona 18's
+    chain, run 2 waited ~116 s, ~70% of the run, for a search run 1 had paid for). Nothing is read or asked; no-op when none is open."""
+    from ..ai import board_ideas
+    asked = board_ideas.asked_for(search_config)
+    with _lock:
+        taken = _early.pop(asked[0], None) if asked else None
+    if taken is not None:
+        _leave_open(taken[0], taken[1], None)
 
 
 def _keep_late(done, copy, data):
@@ -285,13 +304,55 @@ def _judged(found, roles, fetch):
     return kept
 
 
+def _ask(client, question):
+    """One web search call: the boards it names, as the AI gave them (not yet validated or judged)."""
+    from ..ai import board_ideas, cost, engine
+    from ..ai.models import SMALL_MODEL
+    response = client.messages.create(
+        model=SMALL_MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
+        messages=[{'role': 'user', 'content': json.dumps(question, ensure_ascii=False)}],
+        tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}],
+        output_config=engine.structured(board_ideas.SCHEMA, SMALL_MODEL, 'low'))
+    cost.side(SMALL_MODEL, response.usage)
+    return json.loads(next(block.text for block in response.content if getattr(block, 'type', '') == 'text')).get('boards') or []
+
+
+def _named(answer, known, fetch):
+    """The valid, new boards of the web search's answer (at most MAX_FOUND), each with its search link, before they are judged."""
+    from ..ai import board_ideas
+    hosts = {board['host'] for board in known}
+    found = []
+    for item in answer:
+        board = board_ideas.valid(_with_search(item, fetch)) or board_ideas.valid(item)   # its search link first, else a field board's category page
+        if board and board['host'] not in hosts and len(found) < MAX_FOUND:
+            hosts.add(board['host'])
+            found.append(board)
+    return found
+
+
+def _stamped(data, key, when, tries, thin):
+    """The search's mark: when it was asked (once per due time, even when it fails) and the thin searches in a row (TRIES, then weekly)."""
+    data.setdefault('web', {})[key] = when.isoformat(timespec='seconds')
+    data.setdefault('web_thin', {})[key] = tries + 1 if thin else 0
+
+
+def _told_again(data, key, last, working, tries):
+    """Why a thin search asks again, said in the log, and what the last one found, for the question (the AI gets other words); {} when it is the first."""
+    if last is None or len(working) >= WANT:
+        return {}
+    # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
+    print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
+          f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
+    return {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
+                                                                      (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
     if careers.READER is None or disabled('web_search') or os.getenv('JOBADABRA_FIXTURE_DIR'):
         return []
-    from ..ai import board_ideas, cost, engine
-    from ..ai.models import SMALL_MODEL
+    from ..ai import board_ideas
     now = now or datetime.now(timezone.utc)
     asked = board_ideas.asked_for(search_config)
     own, data = data is None, board_ideas.load() if data is None else data
@@ -306,19 +367,15 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         print('Job boards: no web search: searched in this run', flush=True)
         return []
     kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)
-    if due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
+    raw = web_answers.take(web_answers.name(key, places), now, (data.get('web_used') or {}).get(key))   # an earlier search's answer, saved before it was judged: judged now, not asked again
+    if raw is None and due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
         print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
               'its boards are kept', flush=True)
         return []
     # judged only after a search (a first one asks no AI for the role's kind; it counts as thin: nothing it found works yet)
     working, tries = (_working(kept, search_config) if last is not None else []), int((data.get('web_thin') or {}).get(key) or 0)
-    before = {}
-    if last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
-        print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
-              f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
-        before = {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
-                                                                            (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
-    if client is None:
+    before = {} if raw is not None else _told_again(data, key, last, working, tries)
+    if client is None and raw is None:
         client = _searcher()
         if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
             print('Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)', flush=True)
@@ -326,35 +383,27 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     if run is not None:
         with _lock:
             _searched.add(run)
-    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per due time, even when it fails
-    data.setdefault('web_thin', {})[key] = tries + 1 if len(working) < WANT else 0   # thin searches in a row (TRIES, then weekly)
+    if raw is None or last is None or last < raw[1]:   # a saved answer whose asking run already stamped and counted it is not counted twice (Gitar, #3642)
+        _stamped(data, key, raw[1] if raw is not None else now, tries, len(working) < WANT)
     if own:
         board_ideas.save(data)
+    if raw is not None:
+        print('Job boards: the web search answered in the last run; judging the boards it named, no new search', flush=True)
     try:
-        response = client.messages.create(
-            model=SMALL_MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
-            messages=[{'role': 'user', 'content': json.dumps({'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds,
-                                                              'known boards': [board['name'] for board in known], **before}, ensure_ascii=False)}],
-            tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}],
-            output_config=engine.structured(board_ideas.SCHEMA, SMALL_MODEL, 'low'))
-        cost.side(SMALL_MODEL, response.usage)
-        answer = json.loads(next(block.text for block in response.content if getattr(block, 'type', '') == 'text')).get('boards') or []
+        question = {'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds, 'known boards': [board['name'] for board in known], **before}
+        answer = raw[0] if raw is not None else _ask(client, question)
     except Exception as error:  # noqa: BLE001 — the proposal's boards stand
         print(f'Job boards: the web search for trade and local boards did not answer ({type(error).__name__})', flush=True)
         return []
-    hosts = {board['host'] for board in known}
+    answered = raw[1] if raw is not None else web_answers.keep(web_answers.name(key, places), answer, now)
     fetch = fetch or careers.get_text
-    found = []
-    for item in answer:
-        board = board_ideas.valid(_with_search(item, fetch)) or board_ideas.valid(item)   # its search link first, else a field board's category page
-        if board and board['host'] not in hosts and len(found) < MAX_FOUND:
-            hosts.add(board['host'])
-            found.append(board)
-    found = _judged(found, roles, fetch)
+    found = _judged(_named(answer, known, fetch), roles, fetch)
+    data = board_ideas.load() if own else data
     if found:
-        data = board_ideas.load() if own else data
-        data.setdefault('ideas', {})[key] = (data['ideas'].get(key) or []) + [{**board, 'origin': 'web'} for board in found]
-        if own:
-            board_ideas.save(data)
+        ideas = data.setdefault('ideas', {})   # Why (E2b, 8 Nov 2026): data['ideas'] read before setdefault made a store with no ideas yet raise KeyError after the paid call
+        ideas[key] = (ideas.get(key) or []) + [{**board, 'origin': 'web'} for board in found]
+    data.setdefault('web_used', {})[key] = answered.isoformat(timespec='seconds')   # JUDGED: the saved answer of this time is used (web_answers.take)
+    if own:
+        board_ideas.save(data)
     print(f"Job boards: a web search found {', '.join(board['name'] for board in found) or 'no trade or local board'}", flush=True)
     return found
