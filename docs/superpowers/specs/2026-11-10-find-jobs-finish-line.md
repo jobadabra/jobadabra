@@ -111,9 +111,9 @@ So two parts, neither started before its number exists:
 ## Progress
 - [x] WP1 The rule in CLAUDE.md, this spec, the local-check skill's "3 runs a side" step (pane fl) (proof: docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md, CLAUDE.md)
 - [ ] WP2 (mc) The market count: every source of the list counted per person, stored per source
-  - [x] 1/5 the six people without EURES get their national board (proof: tools/persona-search/market_boards.py, tests/tooling/ci/test_market_boards.py @d54ef2d3)
+  - [x] 1/5 the six people without EURES get their national board (proof: tools/persona-search/market_boards.py @d54ef2d3)
   - [x] 2/5 every person's national board, 16 of 18 (proof: tools/persona-search/market-boards.json @6e43bf36)
-  - [x] 3/5 web search (proof: tools/persona-search/market_web.py, tests/tooling/ci/test_market_web.py @0257d351)
+  - [x] 3/5 web search (proof: tools/persona-search/market_web.py @0257d351)
   - [ ] 4/5 employer sites (this PR: tools/persona-search/market_employers.py)
   - [ ] 5/5 Admin rows with every check (oe's row shape)
 - [ ] WP3 (sf) In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people
