@@ -147,7 +147,7 @@ def rescore_mode(args, stores=None):
     from .daily_search_scoring import sync_partial
     run = new_cron_run('rescore')
     run['score'] = {}
-    read_profile = profile_source(stores) if args.score_max else None   # no facts are read after it: scoring keeps the whole run (not scoring_plan's FACTS)
+    read_profile = profile_source(stores) if args.score_max else None   # no facts are read after it: scoring keeps the whole run
     hidden, _, dismissed, _ = application_stages(stores, run)
     if read_profile:
         from . import time_budget

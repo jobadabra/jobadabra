@@ -128,8 +128,8 @@
   "hash": "aff7360452428064"
  },
  "L33": {
-  "gets": "the first press keeps scoring until a 70+ job, up to 10",
-  "hash": "a8b8bf55c97302a6"
+  "gets": "the first press keeps scoring until a 70+ job, up to 10 (when no scorer runs beside the search; with one the slice scores 3 and that scorer goes on, L38)",
+  "hash": "9969a55fe03640b9"
  },
  "L34": {
   "gets": "a press after the first is one search: waiting jobs scored first, the job boards read inside it beside the employer sites",
@@ -149,6 +149,6 @@
  },
  "L38": {
   "gets": "a Find jobs run scores each job as it lands, beside the readers, to the run's end: no seconds are kept for the job facts and no job is paid for twice",
-  "hash": "c7d068009bc92cc3"
+  "hash": "8065c5991d666ed2"
  }
 }

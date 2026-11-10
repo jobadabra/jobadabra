@@ -123,6 +123,32 @@ class NextBatch(unittest.TestCase):
         ids, level = self.pick(earlier=earlier, size=5)
         self.assertEqual((len(ids), level), (2, slots.LATER), 'L35 (8 Nov 2026): scoring them before the employers are named left 0 of 561 sites read')
 
+    def test_a_batch_is_never_both_this_runs_jobs_and_earlier_ones(self):
+        """Code review of ts: a mixed batch took SCORE for the jobs of earlier runs too, which L35 keeps at LATER."""
+        from src.daily_helpers import to_score
+        self.land('old1', 'old2')
+        earlier = frozenset(job['id'] for job in to_score(self.db, frozenset()))
+        self.land('new1')
+        ids, level = self.pick(earlier=earlier, size=5)
+        self.assertEqual((len(ids), level), (1, slots.SCORE), 'this run\'s job first, alone')
+        ids, level = self.pick(earlier=earlier, size=5)
+        self.assertEqual((len(ids), level), (2, slots.LATER), 'then the earlier ones, at LATER')
+
+    def test_twelve_jobs_landing_over_the_search_are_all_scored_not_three(self):
+        """The owner's scenario (night 9 Nov: 73-204 jobs in the places, 3 scored): jobs land source by source while the scorer polls; every one is scored once."""
+        scored, stop, landing = [], threading.Event(), [['a', 'b', 'c', 'd', 'e'], [], ['f', 'g'], ['h', 'i', 'j', 'k', 'l']]
+        def poll():
+            if landing:
+                self.land(*landing.pop(0))
+            ids, level = self.pick(size=4)
+            return ids, level
+        def score_batch(ids, level):
+            scored.extend(ids)
+            return True
+        scoring.drain(stop, poll, score_batch, lambda: not landing and len(scored) >= 12, pause=lambda: None)
+        self.assertEqual(len(scored), 12)
+        self.assertEqual(len(set(scored)), 12, 'none twice')
+
     def test_the_ceiling_stops_the_scorer(self):
         self.land('a', 'b', 'c')
         self.assertEqual(len(self.pick(size=5, ceiling=2)[0]), 2)
@@ -142,6 +168,12 @@ class TheLoop(unittest.TestCase):
         self.assertEqual(scored, [['a', 'b'], ['c']])
         self.assertEqual(waited, [1], 'one wait, for the empty poll')
 
+    def test_a_round_that_scored_nothing_ends_it(self):
+        """The AI down or a paused Profile: the claims are not given back, so looping would burn the run's ceiling in seconds (code review of ts)."""
+        rounds = []
+        scoring.drain(threading.Event(), lambda: (['a'], slots.SCORE), lambda ids, level: rounds.append(ids) or False, lambda: False)
+        self.assertEqual(rounds, [['a']])
+
     def test_it_ends_with_the_runs_time(self):
         scored = []
         scoring.drain(threading.Event(), lambda: (['a'], slots.SCORE), lambda ids, level: scored.append(ids), lambda: True)
@@ -150,3 +182,35 @@ class TheLoop(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TheThreadBesideTheSearch(unittest.TestCase):
+    """The call that ends the scorer: bounded by the run's end, and its counts and the slice's claims survive a scorer that died (code review of ts)."""
+
+    def setUp(self):
+        import tempfile
+        from src.stores import memory
+        scorer.reset()
+        self.addCleanup(scorer.reset)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.path, self.stores = Path(tmp.name) / 'jobs.sqlite', memory.open_store()
+
+    def test_it_does_not_wait_past_the_runs_end_for_a_round_slow_behind_the_ai_slots(self):
+        import time
+        release, said = threading.Event(), []
+        self.addCleanup(release.set)
+        finish = scoring._beside(self.path, self.stores, lambda db, stores: release.wait(10), threading.Event(), wait=lambda: 0.2, counts=lambda: said.append('counts'))
+        began = time.monotonic()
+        finish()
+        self.assertLess(time.monotonic() - began, 2, 'the join gave up at the run\'s end; the 3 minutes hold')
+        self.assertEqual(said, ['counts'], 'the counts so far are said all the same')
+
+    def test_a_scorer_that_died_leaves_the_slice_no_one_to_defer_to(self):
+        scorer.begin()
+        def work(db, stores):
+            raise RuntimeError('database is locked')
+        finish = scoring._beside(self.path, self.stores, work, threading.Event())
+        with mock.patch('builtins.print'):
+            finish()
+        self.assertFalse(scorer.shared(), 'the slice goes on by its old rule')

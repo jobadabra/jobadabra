@@ -7,8 +7,8 @@ from .daily_helpers import for_job_matches, left_out, no_profile, none_scored, t
 
 
 # Score jobs beside the search: the ones that already wait, then every job the search lands, until the run's end.
-BATCH = 5   # jobs a scoring call round takes at once (src/ai/score.py runs 5 workers); the next round is picked after it, from what has landed since
-POLL = 1.0  # seconds the scorer waits when no job has landed (the search lands jobs source by source, src/jobs_so_far.py)
+BATCH = 4   # jobs a round takes at once: Claude Code's slots (src/ai/providers/claude_code.py PARALLEL); the next round is picked after it, from what has landed since
+POLL = 2.0  # seconds the scorer waits when no job has landed (the search lands jobs source by source, src/jobs_so_far.py)
 
 
 def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_budget):
@@ -23,13 +23,13 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     jobs go at SCORE. Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score
     action's (daily_modes.rescore_mode), not Find jobs' (scope='new'), and not the jobs the cleanup after the crawl closes as outside your places (feeds.keep_open, a cache
     read). Each job is claimed once (src/press/scorer.py); the jobs this run finds are scored up to score_max (60 in the app; the waiting batch is outside it).
-    Returns the call that ends it: it stops the scorer after the round in flight and waits for it; the search calls it before it imports what it found, so nothing reads
+    Returns the call that ends it: it stops the scorer after the round in flight and waits for it, to the run's end at most; the search calls it before it imports what it found, so nothing reads
     run['score'] half-written (a no-op when the scorer did not start)."""
     if args.mode not in ('scheduled', 'run') or not (time_budget_on() and args.score_max and read_profile):
         return _nothing
     try:
         profile = read_profile()
-        stay = _stay(db, to_score(db, hidden), profile)
+        stay = _stay(db, to_score(db, hidden))
         earlier = frozenset(job['id'] for job in stay)   # waiting before this run began: their calls queue at LATER
         waiting = score.queue(db, stay, profile, scope='new')
         taken = time_budget.batch('score', len(waiting)) if waiting else 0
@@ -41,40 +41,56 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     if first:
         step_yield.scored('scoring', set(first))   # report only (src/press/step_yield.py): what the step took in hand
     scorer.begin()   # the slice of a first press claims its jobs from here, so no job is scored twice
-    total, stop = {}, threading.Event()
+    total, stop, lock = {}, threading.Event(), threading.Lock()
 
     def score_batch(own_db, own_stores, ids, level):
+        """One round, -> False when it scored nothing (a paused Profile, the AI down, a spent limit): the next would score nothing either, and the claims are not given back."""
         with step_yield.span('scoring'), slots.priority(level):
             score_candidates(args, own_stores, own_db, run, read_profile, hidden, dismissed, set(ids), __import__('time').monotonic(), time_budget, final=False)
-            add_stats(total, run.pop('score', None) or {})
+            stats = run.pop('score', None) or {}
+            with lock:
+                add_stats(total, stats)
+            sync_partial(args, own_stores, own_db, hidden, dismissed)   # score.run syncs every 10 scored in one call, and a round has 4: the app's list has these now (code review, ts)
+            return bool(stats.get('done'))
 
     def work(own_db, own_stores):
         if first:
             score_batch(own_db, own_stores, first, slots.LATER)   # one round for all the waiting jobs, as before (L13: they keep all of scoring's time)
         drain(stop, lambda: next_batch(own_db, profile, hidden, earlier, BATCH, args.score_max + len(first)), lambda ids, level: score_batch(own_db, own_stores, ids, level), time_budget.ended)
-        run['score'] = total
 
-    return _beside(args.db, stores, work, stop)
+    def wait():
+        """Seconds the search may wait for the round in flight: to the run's end (a call started before it ends by it, TAIL), None without a budget."""
+        end = time_budget.end()
+        return None if end is None else max(0.0, end - time_budget.now())
+
+    def counts():
+        with lock:
+            run['score'] = dict(total)   # whole, whether the thread ended or is still in its last round (the closing pass adds to it)
+    return _beside(args.db, stores, work, stop, wait, counts)
 
 
 def _nothing():
     """The wait for a scorer that did not start."""
 
 
-def _stay(db, jobs, profile):
+def _stay(db, jobs):
     """The jobs the cleanup after the crawl will not close as outside your places (a cache read)."""
     from .sources import feeds
     return [job for job in jobs if feeds.keep_open({**job, 'remote': 'remote' in (job.get('work_mode') or '').lower()})]
 
 
 def next_batch(db, profile, hidden, earlier, size, ceiling):
-    """-> (ids, level): up to `size` jobs the scorer has not claimed, best places first, claimed now (at most `ceiling` in the run). Level: SCORE for the jobs this run found,
-    LATER when they all waited before the run began (`earlier`: their ids)."""
-    queue = score.queue(db, _stay(db, to_score(db, hidden), profile), profile, scope='new')
-    ids = scorer.claim([job['id'] for job in queue], ceiling, size)
-    if ids:
-        step_yield.scored('scoring', set(ids))
-    return ids, (slots.LATER if ids and all(job_id in earlier for job_id in ids) else slots.SCORE)
+    """-> (ids, level): up to `size` jobs the scorer has not claimed, best places first, claimed now (at most `ceiling` in the run). The jobs this run found come first, at SCORE;
+    the ones that waited before the run began (`earlier`: their ids) only when none of this run's is left, at LATER (a batch is never both)."""
+    queue = score.queue(db, _stay(db, to_score(db, hidden)), profile, scope='new')
+    ids = [job['id'] for job in queue]
+    fresh = [job_id for job_id in ids if job_id not in earlier]
+    taken, level = scorer.claim(fresh, ceiling, size), slots.SCORE
+    if not taken:   # none of this run's is left unclaimed
+        taken, level = scorer.claim(ids, ceiling, size), slots.LATER
+    if taken:
+        step_yield.scored('scoring', set(taken))
+    return taken, level
 
 
 def drain(stop, next_batch, score_batch, ended, pause=None):
@@ -82,15 +98,17 @@ def drain(stop, next_batch, score_batch, ended, pause=None):
     while not stop.is_set() and not ended():
         ids, level = next_batch()
         if ids:
-            score_batch(ids, level)
+            if score_batch(ids, level) is False:   # a round that scored nothing: the next would not either
+                return
         elif pause is not None:
             pause()
         else:
             stop.wait(POLL)
 
 
-def _beside(path, stores, work, stop):
-    """work(db, stores) in a thread of its own; returns the call that stops it after the round in flight and waits for it. A SQLite connection belongs to the thread that opened
+def _beside(path, stores, work, stop, wait=lambda: None, counts=lambda: None):
+    """work(db, stores) in a thread of its own; returns the call that stops it after the round in flight, waits for it up to `wait()` seconds (None: as long as it takes: the
+    run's end when it has a budget, so a round slow behind the AI slots never holds the search past its 3 minutes, code review of ts) and then says the counts (`counts()`). A SQLite connection belongs to the thread that opened
     it, so the thread opens its own to the jobs file and to this Mac's Job Matches (src/stores/beside.py), never the search's.
     Why (ps E2a-1, 8 Nov 2026): the waiting jobs' calls queue after the search's (slots.LATER, as the board web search): the employer naming's rounds
     must not wait behind five scoring calls (Codex has 2 slots), the very wait that left p10, p12 and p17 0 employer sites read; this run's jobs go at SCORE (ts).
@@ -111,13 +129,16 @@ def _beside(path, stores, work, stop):
                 own_db.close()
         except Exception as error:  # noqa: BLE001 — the search's own pass scores them after it, as before
             print(f'Warning: jobs not scored beside the search ({type(error).__name__}): they are scored after it', flush=True)
+        finally:
+            scorer.end()   # a scorer that died leaves nothing for the slice to defer to
     thread = threading.Thread(target=run, name='scorer', daemon=True)
     thread.start()
 
     def finish():
         stop.set()
-        thread.join()
+        thread.join(wait())
         scorer.end()   # not left on for the next search of this process (a test, the app's long process)
+        counts()
     return finish
 
 

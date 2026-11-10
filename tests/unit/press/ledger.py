@@ -138,7 +138,7 @@ FIXES = (
          'tests/unit/sources/test_titles_ai_first.py::test_a_failed_or_capped_ai_sort_leaves_a_title_unknown_never_a_words_guess')),
     Fix('L32', '27 Oct 2026 d545a217', 'a title gets a second look before a role-word hit leaves the list',
         ('tests/unit/ai/test_title_one_pass.py::test_the_second_look_is_asked_for_a_role_word_no_on_the_one_pass',)),
-    Fix('L33', '18 Oct 2026 801ed53d (Cluj)', 'the first press keeps scoring until a 70+ job, up to 10',
+    Fix('L33', '18 Oct 2026 801ed53d (Cluj)', 'the first press keeps scoring until a 70+ job, up to 10 (when no scorer runs beside the search; with one the slice scores 3 and that scorer goes on, L38)',
         ('tests/unit/sources/test_first_jobs.py::test_scoring_goes_on_three_at_a_time_until_a_job_fits_70',
          'tests/unit/sources/test_first_jobs.py::test_the_slice_scores_at_most_ten_while_none_fits')),
     Fix('L34', '8 Nov 2026 (ps E, run 42411469318 p7)', 'a press after the first is one search: waiting jobs scored first, the job boards read inside it beside the employer sites',
