@@ -29,7 +29,7 @@ const rows = {
   tailor: ["Tailor CV + cover letter","Lebenslauf und Anschreiben anpassen","Adapter CV et lettre","Adatta CV e lettera","Adaptar CV y carta","Adaptează CV-ul și scrisoarea","Адаптировать резюме и письмо"],
   browserFind: ["Find jobs using your browser","Jobs mit deinem Browser finden","Trouver des offres avec votre navigateur","Trova offerte con il browser","Buscar empleos con tu navegador","Caută joburi cu browserul","Найти вакансии через браузер"],
   searchAnalysis: ["Search analysis","Suchanalyse","Analyse de recherche","Analisi della ricerca","Análisis de búsqueda","Analiza căutării","Анализ поиска"],
-  prepareTop: ["Prepare top matches","Beste Treffer vorbereiten","Préparer les meilleures offres","Prepara le migliori offerte","Preparar mejores coincidencias","Pregătește cele mai bune potriviri","Подготовить лучшие совпадения"],
+  prepareTop: ["Apply readiness on the top matches","Bewerbungsbereitschaft der besten Treffer","Préparation à la candidature des meilleures offres","Prontezza a candidarsi per le migliori offerte","Preparación para postular a las mejores coincidencias","Pregătirea pentru aplicare la cele mai bune potriviri","Готовность к отклику на лучшие совпадения"],
   todayList: ["Today's list","Heutige Liste","Liste du jour","Elenco di oggi","Lista de hoy","Lista de azi","Сегодняшняя подборка"],
   moreEmployers: ["More employers","Weitere Arbeitgeber","Plus d’employeurs","Altri datori di lavoro","Más empleadores","Mai mulți angajatori","Другие работодатели"],
   telegramAction: ["Telegram action","Telegram-Aktion","Action Telegram","Azione Telegram","Acción de Telegram","Acțiune Telegram","Действие Telegram"],

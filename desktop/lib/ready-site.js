@@ -73,3 +73,13 @@ export async function video(storage, job, {fetcher = globalThis.fetch, ...option
   } catch { return {ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'}; }
 }
 export const link = async (storage, job, options) => words(await call(storage, '/api/ready/link', {method: 'POST', body: {job}, ...options}));   // -> {ok, url, expiresAt}: the 10-minute live-view link for one form
+
+// Cloud apply readiness (cloud browser runner 3/4, spec 2026-11-08-cloud-browser-runner-design.md): an Always on install posts the forms of its top matches, starts the read, takes each read once, and can Stop it.
+// The install's key alone opens these (an owner's secret, when set, is sent as before and changes nothing). The site's own words say a refusal: 402 "AI credit is used up", 429 "today's cloud checks are used up".
+const readWords = result => (result.ok ? result : {ok: false, status: result.status, error: result.status === 401 || (result.status === 404 && !reasonOf(result)) ? 'Cloud checks are not available for this install right now.' : result.error});
+export const readSend = async (storage, jobs, {ai = '', now = () => new Date(), ...options} = {}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options,
+  body: {task: 'readiness', night: now().toISOString().slice(0, 10), jobs, ...(/^sk-ant-/.test(ai) ? {ai: {key: ai}} : {})}}));
+export const readStart = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'readiness'}, ...options}));
+/** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending}; a read taken here is removed from the site (at most once). */
+export const readTake = async (storage, options) => readWords(await call(storage, '/api/ready/reads', {method: 'POST', body: {}, ...options}));
+export const readStop = async (storage, options) => readWords(await call(storage, '/api/ready/stop', {method: 'POST', body: {}, ...options}));

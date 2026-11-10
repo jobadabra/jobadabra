@@ -42,7 +42,7 @@ import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
 import {demoFormsOpen, demoPath, demoTriageMatch, demoTriageRead, blocked} from './demo.js';
 import {matchReads} from './triage-match.js';
 import {createReadiness} from './apply-readiness.js';
-import {keepReadiness} from './apply-readiness-registry.js';
+import {cloudReadOf, keepReadiness} from './apply-readiness-registry.js';
 import {applyOf, batchConfirmation, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 
 /** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
@@ -68,7 +68,7 @@ export function registerApplyHandlers(ctx) {
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply readiness (R1, spec 2026-11-07-apply-readiness-design.md): ONE step per job, its kit when missing, then its stored form check or one fresh read in the hidden browser (lib/apply-readiness.js). The demo has no hidden browser or store: it reads what settings.demoTriageReads names (lib/demo.js).
   const matchLogged = asked => matchReads(storage, asked).catch(error => { appLog('apply', 'triage: the question match failed', {error: String(error?.message || error).slice(0, 300)}); return {}; });   // one matcher and one log line for every caller
-  const readiness = keepReadiness(storage, createReadiness({storage, prepareKit: (code, name, {notices = 'none'} = {}) => prepareKitFor(code, name, KIT_NOTICES[notices] || KIT_NOTICES.none).then(refusedOrDrafted), readForm: job => triageReadOrNull(background.triageRead, job.url), log: appLog,
+  const readiness = keepReadiness(storage, createReadiness({storage, prepareKit: (code, name, {notices = 'none'} = {}) => prepareKitFor(code, name, KIT_NOTICES[notices] || KIT_NOTICES.none).then(refusedOrDrafted), readForm: job => cloudReadOf(storage)?.readForm(job) ?? triageReadOrNull(background.triageRead, job.url), log: appLog,
     match: asked => matchLogged(asked)}));
   const storedCheck = givenStoredCheck || (DEMO ? async () => null : readiness.storedCheck);
   const named = job => [job?.title, job?.company].filter(Boolean).join(' · ');   // the kit's notices name the job as "Role · Employer", as the old draft did

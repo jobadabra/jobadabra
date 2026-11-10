@@ -5,7 +5,7 @@ export default {
   "kind_insight": "Insight",
   "kind_interviewInsight": "Interview insights",
   "kind_weekly": "Search analysis",
-  "kind_kits": "Prepare top matches",
+  "kind_kits": "Apply readiness on the top matches",
   "kind_today": "Today’s list",
   "kind_scout": "More employers",
   "kind_prepare": "Application preparation",
@@ -43,5 +43,10 @@ export default {
   },
   "gmailNotChecked": "Gmail check not checked",
   "gmailDisconnected": "Gmail is not connected: open Jobadabra to connect it.",
-  "gmailWhy": "Open Jobadabra to see why and what to do."
+  "gmailWhy": "Open Jobadabra to see why and what to do.",
+  "readinessLine": "{checked}: {parts}",
+  "readinessChecked": {"one": "{shown} job checked", "other": "{shown} jobs checked"},
+  "readinessSimple": {"one": "{shown} simple", "other": "{shown} simple"},
+  "readinessNeeds": {"one": "{shown} needs you", "other": "{shown} need you"},
+  "readinessUnread": {"one": "{shown} couldn’t be read", "other": "{shown} couldn’t be read"}
 };

@@ -176,7 +176,7 @@ export const messages = {
   "completedWarnings": "Finalizat cu avertismente",
   "seeEmployers": "Vezi angajatorii",
   "seeMatches": "Vezi cele mai bune potriviri",
-  "seeApplications": "Vezi candidaturile în Joburi",
+  "seeApplications": "Vezi-le în Joburi",
   "seeCvs": "Vezi CV-urile în Joburi",
   "seeApplication": "Vezi candidatura în Joburi",
   "openInterviews": "Deschide interviurile",

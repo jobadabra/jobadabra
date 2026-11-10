@@ -5,7 +5,7 @@ export default {
   "kind_insight": "Analiză",
   "kind_interviewInsight": "Analiza interviului",
   "kind_weekly": "Analiza căutării",
-  "kind_kits": "Pregătirea celor mai bune potriviri",
+  "kind_kits": "Pregătirea pentru aplicare la cele mai bune potriviri",
   "kind_today": "Lista de azi",
   "kind_scout": "Mai mulți angajatori",
   "kind_prepare": "Pregătirea candidaturii",
@@ -46,5 +46,10 @@ export default {
   },
   "gmailNotChecked": "Gmail nu a fost verificat",
   "gmailDisconnected": "Gmail nu este conectat: deschide Jobadabra pentru a-l conecta.",
-  "gmailWhy": "Deschide Jobadabra pentru a vedea motivul și ce ai de făcut."
+  "gmailWhy": "Deschide Jobadabra pentru a vedea motivul și ce ai de făcut.",
+  "readinessLine": "{checked}: {parts}",
+  "readinessChecked": {"one": "{shown} job verificat", "few": "{shown} joburi verificate", "other": "{shown} de joburi verificate"},
+  "readinessSimple": {"one": "{shown} simplu", "few": "{shown} simple", "other": "{shown} simple"},
+  "readinessNeeds": {"one": "{shown} are nevoie de tine", "few": "{shown} au nevoie de tine", "other": "{shown} au nevoie de tine"},
+  "readinessUnread": {"one": "{shown} nu s-a putut citi", "few": "{shown} nu s-au putut citi", "other": "{shown} nu s-au putut citi"}
 };

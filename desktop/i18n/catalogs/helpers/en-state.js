@@ -176,7 +176,7 @@ export const messages = {
   "completedWarnings": "Completed with warnings",
   "seeEmployers": "See the employers",
   "seeMatches": "See the top matches",
-  "seeApplications": "See the applications in Jobs",
+  "seeApplications": "See them in Jobs",
   "seeCvs": "See the CVs in Jobs",
   "seeApplication": "See the application in Jobs",
   "openInterviews": "Open Interviews",

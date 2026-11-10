@@ -5,7 +5,7 @@ export default {
   "kind_insight": "Анализ",
   "kind_interviewInsight": "Анализ собеседования",
   "kind_weekly": "Анализ поиска",
-  "kind_kits": "Подготовка лучших совпадений",
+  "kind_kits": "Готовность к отклику на лучшие совпадения",
   "kind_today": "Список на сегодня",
   "kind_scout": "Больше работодателей",
   "kind_prepare": "Подготовка отклика",
@@ -49,5 +49,10 @@ export default {
   },
   "gmailNotChecked": "Gmail не проверен",
   "gmailDisconnected": "Gmail не подключён: откройте Jobadabra, чтобы подключить его.",
-  "gmailWhy": "Откройте Jobadabra, чтобы узнать причину и что делать."
+  "gmailWhy": "Откройте Jobadabra, чтобы узнать причину и что делать.",
+  "readinessLine": "{checked}: {parts}",
+  "readinessChecked": {"one": "проверена {shown} вакансия", "few": "проверено {shown} вакансии", "many": "проверено {shown} вакансий", "other": "проверено {shown} вакансии"},
+  "readinessSimple": {"one": "{shown} простая", "few": "{shown} простые", "many": "{shown} простых", "other": "{shown} простой"},
+  "readinessNeeds": {"one": "{shown} требует вашего участия", "few": "{shown} требуют вашего участия", "many": "{shown} требуют вашего участия", "other": "{shown} требуют вашего участия"},
+  "readinessUnread": {"one": "{shown} не удалось прочитать", "few": "{shown} не удалось прочитать", "many": "{shown} не удалось прочитать", "other": "{shown} не удалось прочитать"}
 };
