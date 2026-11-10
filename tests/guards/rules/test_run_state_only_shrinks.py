@@ -103,7 +103,8 @@ class RunStateOnlyShrinksTest(unittest.TestCase):
             with self.subTest(path):
                 new = seen.get(path, set()) - KNOWN.get(path, set())
                 gone = KNOWN.get(path, set()) - seen.get(path, set())
-                self.assertFalse(new, f'{path}: new module-level state {sorted(new)}; a run\'s state goes on the Run (src/press/run.py), passed down')
+                self.assertFalse(new, f'{path}: new module-level state {sorted(new)}; a run\'s state goes on the Run (src/press/run.py), passed down. '
+                                 'A name moved here from another file: move its KNOWN entry with it')
                 if gone:   # Why (sf on #3679): a PR that moves one must not race the others on merge order; a later PR deletes the line
                     print(f'{path}: {sorted(gone)} is gone: delete it from KNOWN in {Path(__file__).name}')
 

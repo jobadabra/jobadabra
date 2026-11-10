@@ -116,7 +116,8 @@ class CatchAllsOnlyShrinkTest(unittest.TestCase):
         for name in sorted(set(seen) | set(KNOWN)):
             with self.subTest(name):
                 now, known = seen.get(name, 0), KNOWN.get(name, 0)
-                self.assertLessEqual(now, known, f'{name}: {now} catch-alls, {known} known; a failure goes through src/press/stage.py guard (it is counted), not a new except Exception')
+                self.assertLessEqual(now, known, f'{name}: {now} catch-alls, {known} known; a failure goes through src/press/stage.py guard (it is counted), not a new except Exception. '
+                                     'A catch-all moved here from another file: move its KNOWN entry with it')
                 if now < known:   # Why (sf on #3679): a PR that removes one must not race the others on merge order; a later PR lowers the number
                     print(f'lower {name} to {now} in KNOWN of {Path(__file__).name}')
 
