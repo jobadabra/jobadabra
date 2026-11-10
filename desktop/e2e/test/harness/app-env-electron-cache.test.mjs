@@ -1,4 +1,4 @@
-// Guard: harness — the launched Electron keeps the job's download-cache folder.
+// Guard: release — without the cache folder in the launch env every macOS run's Electron cache stays cold and one GitHub 504 reddens the release suites; a CI secret beside it must still not reach the app.
 // Why (10 Nov 2026, fr; RC soak 42582847751, 9 apply reds on 8-9 Nov): the macOS jobs fetch Electron's zip at the first launch, inside the child that lib/app-env.mjs
 // filters down to an allowlist. `electron_config_cache` was not on it, so the zip went to ~/Library/Caches/electron, the cache action found nothing to save and every
 // macOS run stayed cold: one GitHub 504 on the release host reddened the suite. The action's variable and the allowlist must name the same thing.
