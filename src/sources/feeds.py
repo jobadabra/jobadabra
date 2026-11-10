@@ -179,7 +179,13 @@ def remote_wanted(search=None):
     return not any(v in ('no', 'non', 'nein', 'none', 'never', 'off', 'false') for v in said)
 
 
+def remote_country_only(search=None):
+    """True when "Remote jobs" says "Country": only remote that names your country counts, a bare "Remote" or "Worldwide" never (lj, 10 Nov 2026, owner: bare Remote only under Any remote)."""
+    return any(str(v).strip().lower() == 'country' for v in ((search or _SEARCH).get('remote_jobs') or []))
+
+
 REMOTE_WANTED = remote_wanted()
+REMOTE_COUNTRY_ONLY = remote_country_only()
 
 
 PLACED = None   # {location: 'best' | 'in' | 'out'} decided by Claude for these places (src/ai/place_triage.py), read once a run
@@ -313,7 +319,7 @@ def _words_say(job, remote_unknown):
     where = country_codes.name(job.get("location") or "")   # a field that is only a country code ("MD") is that country, whichever reader gave it
     if mentions(PLACE, where):
         return True
-    if not REMOTE_WANTED:
+    if not REMOTE_WANTED or REMOTE_COUNTRY_ONLY:   # "Country": the words let in only a remote job that names your place; the AI judges the rest
         return False
     said = re.search(_REMOTE_SYNONYMS, where, re.I)
     # A posting whose place is only a city elsewhere is based there, even when its feed flags it remote (7 Oct 2026: "London" and "Singapore"

@@ -98,7 +98,7 @@
     "place": {
       "live": false,
       "about": "where a job is, for one person's places (src/ai/place_triage.py): a city list without theirs and remote limited elsewhere are out; remote from anywhere inside an anywhere place is in (Zagreb, Helsinki, quality golden 3003/3010; 27 Oct 2026)",
-      "cases": ["tests/unit/ai/test_place_triage_wrong_place.py"],
+      "cases": ["tests/unit/ai/test_place_triage_wrong_place.py", "tests/unit/sources/test_remote_country_only.py"],
       "prompts": {
         "src/ai/place_triage.py": ["SYSTEM", "READ_SYSTEM", "VAGUE_SYSTEM"]
       }
@@ -120,6 +120,12 @@
       "about": "the fit score's search part (src/ai/score_search.py, score.py): a role that needs a licence, certification or rating the person does not hold is capped at 49 (owner, 7 Nov 2026: a Cessna captain job scored 85 while its card said Not eligible); a scheme that trains from zero, a job in the person's own field, a language gap (49 cap) and a missing tool keep their bands. Replay: tools/score-cases.py on the Claude plan ($0).",
       "cases": ["tests/fixtures/score-cases.json", "tools/score-cases.py"],
       "prompts": {"src/ai/score_search.py": ["RULE"], "src/ai/score.py": ["SYSTEM"]}
+    },
+    "strategy-draft": {
+      "live": false,
+      "about": "the strategy draft's search part (desktop/lib/strategy.js INSTRUCTIONS): country_wide only for work doable anywhere in the country, Remote jobs No / Country / Yes from the work mode (lj 2/4, 10 Nov 2026: 16 of 18 drafts filled the whole country)",
+      "cases": ["desktop/test/unit/main/strategy-reach.test.js"],
+      "prompts": {"desktop/lib/strategy.js": ["INSTRUCTIONS"]}
     },
     "persona-completion": {
       "live": false,
