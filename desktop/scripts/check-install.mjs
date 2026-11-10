@@ -11,11 +11,11 @@ try {
     // through desktop/node_modules/node_modules/ajv and ends in a raw ENOTEMPTY rename error. Producer unproven (no repo code makes it); this only names the one link to remove, it removes nothing.
     try {
       if (lstatSync(new URL('../node_modules/node_modules', import.meta.url)).isSymbolicLink()) {
-        console.error('Install refused: desktop/node_modules/node_modules is a link into itself; remove that one link (rm desktop/node_modules/node_modules from the repo root, never the folder), then retry.');
+        console.error('Install refused: desktop/node_modules/node_modules is a link inside the modules folder; remove that one link (rm desktop/node_modules/node_modules from the repo root, never the folder), then retry.');
         process.exitCode = 1;
       }
     } catch (nested) {
-      if (nested.code !== 'ENOENT') throw nested;   // a real folder or nothing there is fine
+      if (!['ENOENT', 'ENOTDIR'].includes(nested.code)) throw nested;   // a real folder or nothing there is fine
     }
   }
 } catch (error) {
