@@ -54,7 +54,10 @@ jobs:
           BODY: ${{ github.event.pull_request.body }}
           # Why (4 Nov 2026, #3095): '' is falsy in a GitHub expression, so "&& '' ||" always gave the title and a bot's PR went red on the session tag. The PR's author, not the actor: a person may edit a bot's PR.
           PR_TITLE: ${{ github.event.pull_request.user.type != 'Bot' && github.event.pull_request.title || '' }}   # the "[xx] " session tag (a bot's PR has none)
-        run: printf '%s' "$BODY" | python3 tools/pr-body-check.py
+        # Why (10 Nov 2026, owner, finish line G4): --base lets the check read which files the PR changes, for the Find jobs admission line ("Moves:").
+        run: |
+          git fetch -q origin main
+          printf '%s' "$BODY" | python3 tools/pr-body-check.py --base origin/main
       # Why (7 Nov 2026, owner: "we overwrite one another and we never get it right"): a PR that changes or removes a past fix of the press's ledger
       # (tests/unit/press/ledger.py) carries the owner's words for it, `Ledger-change: L<nn> "<words>"`; adding a fix needs nothing.
       - name: Fix ledger kept
