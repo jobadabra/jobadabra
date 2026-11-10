@@ -19,6 +19,10 @@ function fixture(t, modules = 'missing') {
   const source = path.join(desktop, 'scripts', guard);
   if (fs.existsSync(source)) fs.copyFileSync(source, path.join(dir, 'scripts', guard));
   if (modules === 'directory') fs.mkdirSync(path.join(dir, 'node_modules'));
+  if (modules === 'self-linked') {   // what `ln -s <modules> <a link to modules>` leaves: a link named node_modules inside the folder, pointing back at it
+    fs.mkdirSync(path.join(dir, 'node_modules', 'ajv'), {recursive: true});
+    fs.symlinkSync(path.join(dir, 'node_modules'), path.join(dir, 'node_modules', 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  }
   if (modules === 'linked' || modules === 'dangling') {
     const shared = path.join(dir, 'shared');
     if (modules === 'linked') fs.mkdirSync(shared);
@@ -83,4 +87,17 @@ test('prestart allows an owned modules directory to reach npm', t => {
   const result = run(scripts.prestart);
   assert.equal(result.status, 236, 'preserve the install failure status');
   assert.ok(fs.existsSync(path.join(dir, 'npm-called')));
+});
+
+test('prestart refuses a link named node_modules inside the modules folder, naming the link to remove (#3423)', t => {
+  // Why (#3423, 7 Nov 2026; same shape on 30 Oct, 67fbdacd): npm's dependency walk enters desktop/node_modules/node_modules/ajv and dies with a raw ENOTEMPTY rename error.
+  const {dir, run} = fixture(t, 'self-linked');
+  const result = run(scripts.prestart);
+  assert.ok(result.status > 0);
+  assert.equal(fs.existsSync(path.join(dir, 'npm-called')), false, 'stop before npm');
+  assert.match(result.stderr, /node_modules\/node_modules/);
+  assert.match(result.stderr, /rm desktop\/node_modules\/node_modules/);
+  assert.equal(result.stderr.trim().split(/\r?\n/).length, 1, 'one actionable line');
+  assert.ok(fs.lstatSync(path.join(dir, 'node_modules', 'node_modules')).isSymbolicLink(), 'the guard only reports; it removes nothing');
+  assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'ajv')), 'the real packages stay');
 });
