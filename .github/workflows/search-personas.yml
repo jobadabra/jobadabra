@@ -168,6 +168,8 @@ jobs:
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json --urls
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
           if [ -f "$titles" ]; then cp "$titles" out/titles-judged.json; fi   # the title sort's verdicts ({search key: {title: fits}}): public job titles only, to read what was judged no (#2920)
+          boards="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/found_boards.json"
+          if [ -f "$boards" ]; then cp "$boards" out/found-boards.json; fi   # public board names and hosts: which boards this person's web search found (sources_count.py web_search)
       - name: The blind judge (right role, right place; Codex small tier)
         if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison
         run: |
@@ -186,6 +188,7 @@ jobs:
             out/result.json
             out/judged.json
             out/jobs.json
+            out/found-boards.json
             out/run.log
             out/judge.log
             out/draw/presses.jsonl
@@ -285,6 +288,8 @@ jobs:
           printf 'main runs: '
           for dir in main/*; do [ ! -d "$dir" ] || printf '%s ' "${dir#main/}"; done
           printf '\n'
+      - name: Right jobs per source of our list (G6)
+        run: python3 tools/persona-search/sources_count.py results
       - name: Compare with the earlier runs
         id: compare
         run: |

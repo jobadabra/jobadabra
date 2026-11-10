@@ -73,10 +73,10 @@ def extract(db_path, out, *, include_urls=False):
         rows = []
     else:
         db = sqlite3.connect(db_path)
-        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url, s.kind FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
                               "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")
-        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', **({'url': url or ''} if include_urls else {})}
-                for t, c, loc, source, url in selected]
+        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', 'kind': kind or '', **({'url': url or ''} if include_urls else {})}
+                for t, c, loc, source, url, kind in selected]   # kind: sources.kind, the stored source's kind (tools/persona-search/sources_count.py)
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 
