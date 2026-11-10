@@ -107,11 +107,21 @@ class SearchCharacterization(unittest.TestCase):
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
+        self.addCleanup(self.join_scorer)   # registered last, so it runs first: before the patches and the temp folder go
 
     def next_batch(self, *args):
         """The scorer beside the search looks for landed jobs when a thread happens to start: a race with this file's instant gather. Off, except in the tests of that scorer (self.beside),
         so the older tests keep their one order; ts, 10 Nov 2026."""
         return self.real_next_batch(*args) if self.beside else ([], slots.SCORE)
+
+    def join_scorer(self):
+        """Waits for the scorer thread the search started (src/daily_search_scoring.py `_beside`).
+        Why (ts, 10 Nov 2026; flaky on main after #3649, red on #3653 and #3654 which do not touch this file): the search's own join stops at the run's end
+        (`thread.join(wait())`, 0 s once a test has spent the clock) and leaves the thread to finish alone, as it should on a person's Mac; a test that asserts
+        on its scores, or drops the temp folder under it ("attempt to write a readonly database", "Directory not empty"), must wait for it. 30 s is a hang guard only."""
+        for thread in [t for t in __import__('threading').enumerate() if t.name == 'scorer']:
+            thread.join(30)
+            self.assertFalse(thread.is_alive(), 'the scorer thread did not end')
 
     def own_connection(self):
         db = self.connect(self.root / 'jobs.sqlite')
@@ -194,6 +204,7 @@ class SearchCharacterization(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             result = daily_search.search(self.args, self.stores)
+        self.join_scorer()   # what the search left the scorer to finish alone
         self.assertEqual(result, 0)
         self.assertEqual((self.root / 'daily-latest.txt').read_text(), f'Digest: {self.db.execute("SELECT count(*) FROM jobs").fetchone()[0]} jobs\n')
         self.report = json.loads((self.root / 'daily-latest.json').read_text())
