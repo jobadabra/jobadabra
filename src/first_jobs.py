@@ -318,10 +318,12 @@ class _Readers:
         """The boards (the full search's pages) are waited for and join, and so is any reader that has read; one still reading is left to the free-API stage, which
         takes the same early read (eures.read keep): the full crawl never waits for it (#2918, Gitar)."""
         for name in list(self.pending):
-            if name != 'boards' and not self.pending[name].done():
+            future = self.pending.get(name)
+            # Why (night 9 Nov 2026, p1, run 42537909472): joining one reader runs a score step whose look at the hub (_Scoring.before, #3339) may join the next one first; it is gone from `pending` then, and was read as a KeyError that stopped the slice before its closing line
+            if future is None or (name != 'boards' and not future.done()):
                 continue
             try:
-                self.pending[name].result()
+                future.result()
             except Exception:  # noqa: BLE001 — joined below as a failed read
                 pass
             self.join(name)
