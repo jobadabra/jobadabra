@@ -64,14 +64,16 @@ class PrGraphqlFallbackTest(unittest.TestCase):
         pr = {'number': 7, 'html_url': 'https://github.com/o/r/pull/7', 'title': 'Do it', 'head': {'sha': SHA, 'ref': 'feature'}, 'draft': False, 'state': 'closed', 'merged_at': '2026-11-10T00:00:00Z',
               'merge_commit_sha': 'm1', 'mergeable': None, 'mergeable_state': 'clean', 'labels': [{'name': 'Gitar: approved'}]}
         self.rest('repos/o/r/pulls/7', pr)
-        self.rest('repos/o/r/issues/7/comments?per_page=100', [{'node_id': 'IC_1', 'user': {'login': 'gitar-bot'}, 'body': 'ok', 'html_url': 'https://github.com/o/r/pull/7#c1', 'created_at': '2026-11-10T00:01:00Z'}])
-        self.rest('repos/o/r/pulls/7/reviews?per_page=100', [{'node_id': 'PRR_1', 'user': None, 'body': 'hm', 'state': 'COMMENTED', 'submitted_at': '2026-11-10T00:02:00Z'}])
+        self.rest('repos/o/r/issues/7/comments?per_page=100', [{'node_id': 'IC_1', 'user': {'login': 'gitar-bot[bot]', 'type': 'Bot'}, 'body': 'ok', 'html_url': 'https://github.com/o/r/pull/7#c1', 'created_at': '2026-11-10T00:01:00Z'}])
+        self.rest('repos/o/r/pulls/7/reviews?per_page=100', [{'node_id': 'PRR_1', 'user': None, 'body': 'hm', 'state': 'COMMENTED', 'submitted_at': '2026-11-10T00:02:00Z'},
+                                                                       {'node_id': 'PRR_2', 'user': {'login': 'GarryOne', 'type': 'User'}, 'body': 'ok', 'state': 'APPROVED', 'submitted_at': '2026-11-10T00:03:00Z'}])
         self.rest('repos/o/r/pulls/7/commits?per_page=100', [{'commit': {'author': {'date': '2026-11-09T10:00:00Z'}, 'committer': {'date': '2026-11-09T10:01:00Z'}}}])
         (self.tmp / 'graphql_view.json').write_text(json.dumps({'data': {'repository': {'pullRequest': {
             'number': 7, 'url': 'https://github.com/o/r/pull/7', 'title': 'Do it', 'headRefOid': SHA, 'headRefName': 'feature', 'isDraft': False, 'state': 'MERGED', 'mergeable': 'UNKNOWN',
             'mergeStateStatus': 'CLEAN', 'mergeCommit': {'oid': 'm1'}, 'labels': {'nodes': [{'name': 'Gitar: approved'}]},
-            'comments': {'nodes': [{'id': 'IC_1', 'author': {'login': 'gitar-bot'}, 'body': 'ok', 'url': 'https://github.com/o/r/pull/7#c1', 'createdAt': '2026-11-10T00:01:00Z'}]},
-            'reviews': {'nodes': [{'id': 'PRR_1', 'author': None, 'body': 'hm', 'state': 'COMMENTED', 'submittedAt': '2026-11-10T00:02:00Z'}]},
+            'comments': {'nodes': [{'id': 'IC_1', 'author': {'__typename': 'Bot', 'login': 'gitar-bot'}, 'body': 'ok', 'url': 'https://github.com/o/r/pull/7#c1', 'createdAt': '2026-11-10T00:01:00Z'}]},
+            'reviews': {'nodes': [{'id': 'PRR_1', 'author': None, 'body': 'hm', 'state': 'COMMENTED', 'submittedAt': '2026-11-10T00:02:00Z'},
+                                  {'id': 'PRR_2', 'author': {'__typename': 'User', 'login': 'GarryOne'}, 'body': 'ok', 'state': 'APPROVED', 'submittedAt': '2026-11-10T00:03:00Z'}]},
             'commits': {'nodes': [{'commit': {'authoredDate': '2026-11-09T10:00:00Z', 'committedDate': '2026-11-09T10:01:00Z'}}]}}}}}))
 
     def test_view_over_graphql_is_the_same_json_as_over_rest(self):
@@ -83,6 +85,8 @@ class PrGraphqlFallbackTest(unittest.TestCase):
             code, via_graphql = self.read(f'pr_view o/r 7 {flag}', 0)
             self.assertEqual(code, 0, via_graphql)
             self.assertEqual(json.loads(via_graphql), json.loads(via_rest), flag or 'light')
+            if flag:   # Gitar, 10 Nov 2026: GraphQL names a bot without "[bot]"; pr-comments-lib tells bots by that suffix
+                self.assertEqual(json.loads(via_graphql)['comments'][0]['author']['login'], 'gitar-bot[bot]')
             self.assertEqual(self.graphql_calls(), ['GRAPHQL view fallback: REST out'])
 
     def test_a_failed_read_with_quota_left_fails_as_today_and_never_asks_graphql(self):

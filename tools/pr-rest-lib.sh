@@ -99,12 +99,13 @@ _pr_gql() { GH_GRAPHQL_WHY="fallback: REST out" gh api graphql -f query="$1" "${
 _pr_gql_view() {
   local full=false; [ "${3:-}" = full ] && full=true
   _pr_gql 'query($o:String!,$r:String!,$n:Int!,$full:Boolean!){repository(owner:$o,name:$r){pullRequest(number:$n){number url title headRefOid headRefName isDraft state mergeable mergeStateStatus
-      mergeCommit{oid} labels(first:100){nodes{name}} comments(first:100)@include(if:$full){nodes{id author{login} body url createdAt}} reviews(first:100)@include(if:$full){nodes{id author{login} body state submittedAt}}
+      mergeCommit{oid} labels(first:100){nodes{name}} comments(first:100)@include(if:$full){nodes{id author{__typename login} body url createdAt}} reviews(first:100)@include(if:$full){nodes{id author{__typename login} body state submittedAt}}
       commits(first:100)@include(if:$full){nodes{commit{authoredDate committedDate}}}}}}' -f o="${1%%/*}" -f r="${1#*/}" -F n="$2" -F full="$full" \
-    | jq -ce '.data.repository.pullRequest | select(. != null) | {number, url, title, headRefOid, headRefName, isDraft, state, mergeable, mergeState: (.mergeStateStatus | ascii_downcase),
+    | jq -ce 'def login: (.author.login // "") + (if .author.__typename == "Bot" then "[bot]" else "" end);   # Why (Gitar, 10 Nov 2026): GraphQL names a bot without the [bot] suffix REST puts on it; pc_items tells bots by that suffix
+      .data.repository.pullRequest | select(. != null) | {number, url, title, headRefOid, headRefName, isDraft, state, mergeable, mergeState: (.mergeStateStatus | ascii_downcase),
         mergeCommit: (if .mergeCommit then {oid: .mergeCommit.oid} else null end), labels: [.labels.nodes[].name],
-        comments: [.comments.nodes[]? | {id, author: {login: (.author.login // "")}, body, url, createdAt}],
-        reviews: [.reviews.nodes[]? | {id, author: {login: (.author.login // "")}, body, state, submittedAt}],
+        comments: [.comments.nodes[]? | {id, author: {login: login}, body, url, createdAt}],
+        reviews: [.reviews.nodes[]? | {id, author: {login: login}, body, state, submittedAt}],
         commits: [.commits.nodes[]?.commit | {authoredDate, committedDate}]}'
 }
 
