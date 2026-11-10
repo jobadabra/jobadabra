@@ -73,10 +73,11 @@ def extract(db_path, out, *, include_urls=False):
         rows = []
     else:
         db = sqlite3.connect(db_path)
-        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url, s.kind, j.notes FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
                               "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")
-        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', **({'url': url or ''} if include_urls else {})}
-                for t, c, loc, source, url in selected]
+        kinds = dict(table_rows(db, 'sources', 'SELECT name, kind FROM sources'))   # kind and `also` (each other reader that listed the job: src/store.py notes "also on <reader>"): sources_count.py
+        rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', 'kind': kind or '', 'also': [[name, kinds.get(name) or ''] for name in re.findall(r'also on (.+?)(?= · also on |$)', notes or '')],
+                 **({'url': url or ''} if include_urls else {})} for t, c, loc, source, url, kind, notes in selected]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 
