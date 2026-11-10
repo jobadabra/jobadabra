@@ -160,7 +160,7 @@ jobs:
   compare:
     name: Search check
     needs: persona
-    if: ${{ !cancelled() && !inputs.eures_comparison }}   # Why (#2243, 3 Nov 2026 7/7): a cancelled run posted a red table ("p6: no result"), so compare only when the personas were not cancelled
+    if: ${{ !cancelled() && !inputs.eures_comparison }}   # Why (#2243, 10 Nov 2026): cancelled runs lack personas; paired comparisons have a separate report. Neither belongs in nightly history.
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
