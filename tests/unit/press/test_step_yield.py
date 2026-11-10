@@ -117,7 +117,7 @@ class StepYieldTests(unittest.TestCase):
         ended = threading.Event()
 
         def read(_search):
-            ended.wait(5)
+            ended.wait(60)   # a hang guard (10 Nov 2026: a 5 s wait decided a sibling's verdict on a loaded runner)
             return [{'url': 'https://x.test/3'}, {'url': 'https://x.test/4'}]
 
         def scan(sources, db, on_jobs=None, **_):
