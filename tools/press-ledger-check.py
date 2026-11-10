@@ -21,6 +21,16 @@ def read_base(base):
         return {}
 
 
+def own_base(base):
+    """The commit this tree started from: `git merge-base <base> HEAD`, else `base` itself (no history to ask). The PR's own change is what the owner's words are for, not whatever main moved to since.
+    Why (10 Nov 2026, fr; #3643, rerun 01:03Z): the lock was read from the CURRENT origin/main, so a PR behind main (a rerun, a description edit, a run that started before another PR changed the lock)
+    read main's newer rows as its own change and went red, 'changing' L01 and L04 it never touched. The lock changed on main 8 times between 7 and 10 Nov."""
+    try:
+        return subprocess.run(['git', 'merge-base', base, 'HEAD'], capture_output=True, text=True, check=True).stdout.strip() or base
+    except (subprocess.CalledProcessError, OSError):
+        return base
+
+
 def gaps(base_lock, head_lock, body):
     """The fixes changed or removed without the owner's words in the body -> ['L13 (changed)', ...]."""
     allowed = {m.group(1) for m in re.finditer(r'^\s*[-*]?\s*Ledger-change:\s*(L\d+)\s+["“].+["”]', body or '', re.M)}
@@ -35,7 +45,7 @@ def gaps(base_lock, head_lock, body):
 if __name__ == '__main__':
     base = sys.argv[sys.argv.index('--base') + 1] if '--base' in sys.argv else 'origin/main'
     head = Path(LOCK)
-    missing = gaps(read_base(base), json.loads(head.read_text()) if head.exists() else {}, sys.stdin.read())
+    missing = gaps(read_base(own_base(base)), json.loads(head.read_text()) if head.exists() else {}, sys.stdin.read())
     if missing:
         print('press ledger: this PR changes or removes a past fix without the owner\'s yes: ' + '; '.join(missing) +
               '. Read the fix\'s PR (tests/unit/press/ledger.py), ask the owner, then add `Ledger-change: L<nn> "<owner\'s words>"` to the PR body.', file=sys.stderr)
