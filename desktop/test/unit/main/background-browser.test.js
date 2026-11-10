@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {HIDDEN_WINDOW, browserArguments, createBackgroundBrowser, verifiedDebugPort} from '../../../lib/background-browser.js';
+import {HIDDEN_WINDOW, browserArguments, createBackgroundBrowser, holdStartsUntil, verifiedDebugPort} from '../../../lib/background-browser.js';
 
 test('background browser launch uses only its owned profile and starts without a visible page', () => {
   const args = browserArguments('/owned/profile', '/owned/extension');
@@ -103,4 +103,22 @@ test('wake gives the worker\'s poll time to open every claimed job\'s window; re
   assert.ok(limits.poll >= 30000, `the poll may open up to 10 windows before it answers (limit ${limits.poll})`);
   assert.equal(limits.reveal, undefined, 'reveal keeps the default limit');
   assert.equal(limits.closeSession, undefined, 'close keeps the default limit');
+});
+
+// #3717 Gitar review (10 Nov 2026): the start-up sweep of LinkedIn leftovers deletes Cookies rows; a hidden browser started during it would hold that file.
+test('no hidden browser starts before the start-up hold is released; the same start goes on after it (positive control)', async t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-bb-hold-'));
+  t.after(() => { holdStartsUntil(Promise.resolve()); fs.rmSync(home, {recursive: true, force: true}); });
+  let release, asked = 0;
+  holdStartsUntil(new Promise(resolve => { release = resolve; }));
+  const storage = {path: name => path.join(home, name)};
+  const browser = createBackgroundBrowser(storage, {find: () => { asked += 1; return null; }, fetchImpl: async () => { throw new Error('no browser in a unit test'); },
+    reaper: () => {}, spawn: () => { throw new Error('no spawn in a unit test'); }});
+  const started = browser.start({port: 47999, token: 'stand-in'});
+  for (let turn = 0; turn < 20; turn++) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(asked, 0, 'nothing of the start ran while the hold is on');
+  assert.equal(fs.existsSync(storage.path('background-browser')), false, 'not even its folder');
+  release();
+  await assert.rejects(started, /Download the optional background browser first/);
+  assert.equal(asked, 1, 'once released, the same start runs');
 });

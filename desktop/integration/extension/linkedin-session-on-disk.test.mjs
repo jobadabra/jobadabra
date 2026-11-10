@@ -148,3 +148,25 @@ test('the start-up sweep removes the LinkedIn rows an earlier version left in th
     assert.deepEqual(rowsOnDisk(each.appHome, "host_key = '.boards.example'"), ['session@.boards.example'], 'another site\'s sign-in stays');
   } finally { await each.end(); }
 }));
+
+// Why (#3717 Gitar review, 10 Nov 2026): a read browser that does not close kept its folder (and the session in it) until the next app start, and kept running: the old
+// dispose judged a browser gone when its port went quiet, which a hung browser also does.
+test('a read browser that hangs is ended by its dispose: no process and no read folder are left', {skip: process.platform === 'win32' && 'SIGSTOP is POSIX only', timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, () => withE2eEnv(async () => {
+  const each = home();
+  onHang(each.close);
+  try {
+    at('the read browser starts, then hangs');
+    const browser = each.read();
+    await browser.start({port: 51998, token: 'stand-in-token'});
+    const [child] = each.children;
+    assert.ok(child?.pid && fs.existsSync(each.storage.path(READ_FOLDER)), 'positive control: the read browser runs in its own folder');
+    process.kill(-child.pid, 'SIGSTOP');
+    at('the step ends: dispose');
+    assert.equal(await browser.dispose(), true, 'dispose reports the folder gone');
+    assert.ok(child.exitCode !== null || child.signalCode !== null, 'the hung browser was ended, not left running');
+    assert.equal(fs.existsSync(each.storage.path(READ_FOLDER)), false, 'the read folder is gone at once, not at the next app start');
+  } finally {
+    for (const child of each.children) if (child.exitCode === null && child.signalCode === null) killGroup(child);
+    await each.end();
+  }
+})));

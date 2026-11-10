@@ -15,6 +15,12 @@ import {startReaper} from './browser-reaper.js';
 // pointed at the fixture server or it would reach the real sites. The harness passes a JSON list in JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS; it counts only with
 // JOBADABRA_E2E=1 (never set for a person) and only a host map, the test certificate and (e2e only) --no-sandbox pass, so no other flag, proxy or debugging address can come in this way.
 // Why (2026-10-28, #2364): `--no-sandbox` also passes under e2e only: Playwright's own Chromium launches without the sandbox, and a CI runner (Ubuntu 24.04) may not allow the sandbox for the app's plain spawn.
+// Why (#3717 Gitar review, 10 Nov 2026): the start-up sweep of LinkedIn leftovers (lib/linkedin-browser.js) deletes rows from a hidden-browser profile's Cookies file; a
+// browser started during it would hold that file and the sweep would fail or race it. Every start of every hidden browser waits for the hold first.
+let startsWait = Promise.resolve();
+/** Hold every hidden-browser start until `promise` settles (a rejection only releases the hold). */
+export function holdStartsUntil(promise) { startsWait = Promise.resolve(promise).then(() => {}, () => {}); }
+
 const E2E_ARGUMENTS = /^(--host-resolver-rules=.+|--ignore-certificate-errors|--no-sandbox)$/;
 function e2eArguments(env) {
   if (env.JOBADABRA_E2E !== '1') return [];
@@ -149,6 +155,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
   async function start({port: appPort, token}) {
     if (!Number.isInteger(appPort) || !token) throw new Error('The app server is not ready.');
     pending ||= (async () => {
+      await startsWait;
       fs.mkdirSync(folder, {recursive: true, mode: 0o700});
       let owner; try { owner = JSON.parse(fs.readFileSync(ownerFile, 'utf8')).owner; } catch { /* first use */ }
       if (!owner) { owner = randomUUID(); writePrivate(ownerFile, JSON.stringify({owner})); }
@@ -201,13 +208,21 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return (await get(live.port, '/json/list')).find(target => target.type === 'page' && target.id === targetId)?.webSocketDebuggerUrl || null;
   }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  /** Close this profile's browser if it runs and wait until its port is gone (10 s hang guard). -> true when none runs any more. */
+  const exited = () => ownChild.exitCode !== null || ownChild.signalCode !== null;
+  const within = async (ms, done) => { for (const until = Date.now() + ms; Date.now() < until; await pause(100)) if (await done()) return true; return done(); };
+  /**
+   * Close this profile's browser and wait until it is gone (10 s hang guard). -> true when none runs any more.
+   * Invariant: a browser this instance started is judged by its own process exiting, never by its port going quiet (a hung browser stops answering yet still holds the profile).
+   */
   async function quit() {
     const live = await connect().catch(() => null);
-    if (!live) return true;
-    await command(live.socket, 'Browser.close').catch(() => {});
-    for (const until = Date.now() + 10000; Date.now() < until; await pause(100)) if (!(await connect().catch(() => null))) return true;
-    return false;
+    if (live) await command(live.socket, 'Browser.close').catch(() => {});
+    if (!ownChild) return !live || within(10000, async () => !(await connect().catch(() => null)));
+    if (await within(10000, exited)) return true;
+    // Why (#3717 Gitar review, 10 Nov 2026): a browser that does not close keeps the LinkedIn session's folder open; the one this app started is ended with its helpers
+    // (it leads its own process group: spawned detached), so its folder can be deleted at once instead of waiting for the next app start.
+    try { if (process.platform === 'win32') ownChild.kill('SIGKILL'); else process.kill(-ownChild.pid, 'SIGKILL'); } catch { /* it ended meanwhile */ }
+    return within(5000, exited);
   }
   // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read or queued applications; true when the app acknowledged that poll.
   // Why (10 Nov 2026, hw review): wake's poll opens a window for each claimed job (up to 10) before it answers and can pass the 5 s command limit: a wake that worked would be logged as failed. 30 s is a hang guard.
