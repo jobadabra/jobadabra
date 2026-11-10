@@ -38,6 +38,15 @@ class RecordingRoom(unittest.TestCase):
         self.assertFalse(room({**NEW, 'daily': {'byhand': 600}}, 'byhand')[0])
         self.assertTrue(room({**NEW, 'daily': {'byhand': 500}}, 'byhand')[0])
 
+    def test_no_by_hand_day_cap_since_10_nov(self):
+        # owner, 10 Nov 2026 (jobadabra-web budget.mjs): "As long as we're actively developing/testing. There should be no limits/caps": the broker's lines have no byhand day line,
+        # so a by-hand run has room from the weeks alone, whatever today's count says; a spent week still holds
+        uncapped = {**NEW, 'lines': {**NEW['lines'], 'daily': {'drift': 24}}, 'daily': {'byhand': 5000, 'drift': 0}}
+        ok, said = room(uncapped, 'byhand')
+        self.assertTrue(ok, said)
+        self.assertIn('calls today -', said)
+        self.assertFalse(room({**uncapped, 'limits': {'usedPercent': 99}, 'lines': {**uncapped['lines'], 'claude': 90, 'claudeWeek': {'usedPercent': 89, 'resetsAt': NOW + 3600}}}, 'byhand', now=NOW)[0])
+
     def test_a_broker_before_the_lines_field(self):
         old = {'limits': {'usedPercent': 73}, 'daily': {'byhand': 301}}
         self.assertTrue(room(old, 'byhand')[0])

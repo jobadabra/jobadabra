@@ -68,9 +68,10 @@ def sources():
 
 
 def chain():
-    """The AIs every call of the check may use, in order (JOBADABRA_CHECK_CHAIN in search-personas.yml: Codex, then Claude as its replacement), or 'none' while it has none."""
-    found = re.search(r'^\s*JOBADABRA_CHECK_CHAIN:\s*([\w,-]+)', WORKFLOW.read_text(encoding='utf-8'), re.M)
-    return found.group(1) if found else 'none'
+    """The night's AIs, in order (JOBADABRA_CHECK_CHAIN in search-personas.yml: Codex, then Claude as its replacement; the default of `inputs.chain` when a by-hand run may name
+    another series, such as free-ai alone, which is never a night), or 'none' while it has none."""
+    found = re.search(r"^\s*JOBADABRA_CHECK_CHAIN:\s*(?:\$\{\{\s*inputs\.chain\s*\|\|\s*'([\w,-]+)'\s*\}\}|([\w,-]+))", WORKFLOW.read_text(encoding='utf-8'), re.M)
+    return (found.group(1) or found.group(2)) if found else 'none'
 
 
 PARTS = (('S1', 'the 18 people the check measures', people),
