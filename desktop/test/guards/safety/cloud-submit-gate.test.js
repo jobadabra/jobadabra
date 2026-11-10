@@ -139,5 +139,9 @@ test('readiness and fill never reach the gate: the auto night\'s line is its one
   // Why (10 Nov 2026, cs 3/4): auto-commands.mjs answers the extension's `ready` through gateSubmit; a second caller is a second way to press, and changing this list is a reviewed change.
   assert.deepEqual(callers, ['auto-commands.mjs']);
   assert.match(read('night.mjs'), /if \(task === 'auto'\) return \{held, \.\.\.await autoNight\(/, 'the night reaches the line only for task auto');
-  assert.doesNotMatch(read('read-night.mjs') + read('fill-job.mjs'), /auto-commands|auto-night|allow:/, 'the read and the fill keep the full net');
+  assert.doesNotMatch(read('read-night.mjs') + read('fill-job.mjs'), /auto-commands|auto-night/, 'the read and the fill never load the auto line');
+  // Why (10 Nov 2026, cs 3/4 review): the fill's net is in night.mjs (fillAll), not fill-job.mjs; every net( call but the auto night's is the bare full net.
+  const nets = fs.readdirSync(dir).filter(name => /\.m?js$/.test(name) && name !== 'no-submit.mjs').flatMap(name => [...read(name).matchAll(/\bnet\(context([^)]*)\)/g)].map(match => [name, match[1]]));
+  assert.deepEqual(nets.filter(([, args]) => args).map(([name]) => name), ['auto-night.mjs'], 'only the auto night opens the net');
+  assert.ok(nets.filter(([, args]) => !args).length >= 2, 'the fill and the read still call the full net');
 });

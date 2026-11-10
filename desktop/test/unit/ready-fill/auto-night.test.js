@@ -36,7 +36,7 @@ function fakeChromium(seen, {pageStatus = 200, pressEarly = false, lostReceipt =
   let port = 0, storage = {}, routeHandler = null;
   const listeners = {page: [], response: []};
   const call = async (route, body) => (await fetch(`http://127.0.0.1:${port}${route}`, {method: 'POST', body: JSON.stringify(body)})).json();
-  const send = (page, url) => new Promise(resolve => routeHandler({request: () => ({method: () => 'POST', url: () => url, isNavigationRequest: () => true, frame: () => ({page: () => page})}),
+  const send = (page, url) => new Promise(resolve => routeHandler({request: () => ({method: () => 'POST', url: () => url, isNavigationRequest: () => true, frame: () => ({page: () => page, parentFrame: () => null})}),
     continue: () => { seen.sent.push(url); resolve(true); }, abort: () => { seen.refused.push(url); resolve(false); }}));
   const worker = {evaluate: async (fn, values) => {
     if (values?.workerUrl) { port = Number(new URL(values.workerUrl).port); storage = values; seen.owner = values.backgroundOwner; return true; }
@@ -51,7 +51,7 @@ function fakeChromium(seen, {pageStatus = 200, pressEarly = false, lostReceipt =
     if (page) return page;
     page = {url: command.url, close: async () => { seen.closed++; }}; seen.pages.set(command.session, page); seen.commands.push(command);
     for (const fn of listeners.page) fn(page);
-    for (const fn of listeners.response) fn({status: () => pageStatus, request: () => ({isNavigationRequest: () => true, frame: () => ({page: () => page})})});
+    for (const fn of listeners.response) fn({status: () => pageStatus, request: () => ({isNavigationRequest: () => true, frame: () => ({page: () => page, parentFrame: () => null})})});
     if (pressEarly) await send(page, 'https://jobs.example.com/acme/apply');
     return page;
   }
@@ -90,11 +90,64 @@ test('a confirmed item that passes every check is pressed once: the site reserve
   assert.ok(!logs.join('\n').includes('jobs.example.com'), 'the log has no address');
 });
 
-test('a send before the permit, or from a page that is not the job\'s, never passes the net', async () => {
+test('a page that sends itself before the permit is refused by the net and handed to the person at once, never reserved', async () => {
   const seen = fresh(), s = site({jobs: [job('j1')]});
   await night(seen, s, {pressEarly: true});
   assert.deepEqual(seen.refused, ['https://jobs.example.com/acme/apply'], 'the early send was refused');
-  assert.deepEqual(seen.sent, ['https://jobs.example.com/acme/apply'], 'only the permitted press went');
+  assert.deepEqual(seen.sent, [], 'nothing went');
+  assert.deepEqual(s.seen.reserved, []);
+  assert.deepEqual(s.seen.results.map(({state, why}) => [state, why]), [['not_submitted', 'page_sends_early']]);
+});
+
+// The review's races (10 Nov 2026, cs 3/4): a `ready` whose /reserve is still in flight when the job ends, or two overlapping `ready` calls.
+const lineFor = (reserve, more = {}) => {
+  const line = createAutoLine({client: {}, sentAt: new Date(NOW - 600000).toISOString(), reserve, judge: async () => ({answer: 'ready', step: 'final', submitControl: 'Submit application', botCheck: false, confidence: 0.95}),
+    confirm: async () => ({confirmation: true}), ...more});
+  line.begin(job('j1'));
+  const context = {owner: AUTO_OWNER, session: 's-j1'};
+  const ready = async () => line.background({...context, action: 'ready', proof: (await line.formJudge({phase: 'form', sketch: SKETCH, background: context})).background.proof, requiredComplete: true, safe: true});
+  return {line, context, ready};
+};
+const later = (value, ms = 30) => new Promise(resolve => setTimeout(() => resolve(value), ms));
+
+test('a job that ends while its reservation is in flight gets no permit: reserved, it is unknown; refused, it keeps the end it waited with', async () => {
+  for (const [answer, state, attempt] of [[{ok: true, attempt: 'A1'}, 'unknown', 'A1'], [{ok: false, error: 'already'}, 'not_submitted', '']]) {
+    const {line, ready} = lineFor(() => later(answer));
+    const permit = ready();
+    await later(null, 5);
+    line.end('not_submitted', 'timeout');
+    assert.equal(line.outcome(), null, 'the end waits for the reservation');
+    assert.notEqual((await permit).submit, true, 'no permit after the job ended');
+    assert.deepEqual([line.outcome().state, line.attempt(), line.pressing()], [state, attempt, false]);
+  }
+  const {line, ready} = lineFor(() => later({ok: true, attempt: 'A2'}));
+  const permit = ready();
+  await later(null, 5);
+  assert.equal(line.stop(), false, 'a Stop during the reservation is not a stop before the press');
+  assert.notEqual((await permit).submit, true);
+  assert.equal(line.outcome().state, 'unknown');
+});
+
+test('two overlapping ready calls give at most one permit, and the other never decides the job', async () => {
+  let asked = 0;
+  const {line, context, ready} = lineFor(() => (++asked === 1 ? later({ok: true, attempt: 'A1'}) : {ok: false, error: 'already'}));
+  const [first, second] = await Promise.all([ready(), ready()]);
+  assert.deepEqual([first.submit, second.submit, asked], [true, undefined, 1], 'the second waits and sees the attempt');
+  assert.equal(line.outcome(), null);
+  assert.equal((await line.confirmation({page: 'https://jobs.example.com/acme/thanks', background: {...context, attempt: 'A1'}})).confirmation, true);
+  assert.deepEqual(line.outcome(), {state: 'submitted', why: 'receipt'});
+});
+
+test('a reservation the site never answers ends the job unknown, and its late answer gives no permit', async () => {
+  let answer;
+  const {line, ready} = lineFor(() => new Promise(resolve => { answer = resolve; }));
+  const permit = ready();
+  await later(null, 5);
+  line.abandon();
+  assert.equal(line.outcome().state, 'unknown');
+  answer({ok: true, attempt: 'A1'});
+  assert.notEqual((await permit).submit, true);
+  assert.equal(line.pressing(), false);
 });
 
 test('an item without its own confirmation, not eligible, or behind a bot check is never reserved nor pressed; each ends not_submitted with its reason', async () => {
@@ -175,4 +228,9 @@ test('the line answers only its own owner and session, and a judgment it did not
   assert.deepEqual(await line.background({owner: AUTO_OWNER, session: 's-j1', action: 'ready', proof: 'made-up'}), {ok: false, recheck: true});
   assert.deepEqual(await line.formJudge({phase: 'ready', sketch: SKETCH, background: {owner: AUTO_OWNER, session: 's-j1'}}), {}, 'an account phase is never judged here');
   assert.equal((await line.confirmation({background: {owner: AUTO_OWNER, session: 's-j1', attempt: 'x'}})).confirmation, false, 'no reserved attempt: nothing to confirm');
+  let judged = 0;
+  const {line: pressed, context, ready} = lineFor(async () => ({ok: true, attempt: 'A1'}), {confirm: async () => { judged++; return {confirmation: true}; }});
+  assert.equal((await ready()).submit, true);
+  assert.equal((await pressed.confirmation({background: {...context, attempt: 'other'}})).confirmation, false);
+  assert.equal(judged, 0, 'another attempt\'s page is never sent to the AI');
 });

@@ -13,13 +13,14 @@ export function looksLikeSubmit({method, url, navigation}) {
 
 // Routes a Playwright context: -> {blocked: [{host, method}], allowed} that fills as requests are refused or let through.
 // allow(request): the auto night's one way through (auto-night.mjs: only its job's own pages, only while submit-gate.js's permit lasts); the fill and readiness nights pass none, so nothing passes.
-export async function net(context, {allow = () => false} = {}) {
+// refused(request): told of each refused send after it was refused (the auto night ends a job whose page sent itself early).
+export async function net(context, {allow = () => false, refused = () => {}} = {}) {
   const state = {blocked: [], allowed: 0};
   await context.route('**/*', route => {
     const request = route.request();
     const submit = looksLikeSubmit({method: request.method(), url: request.url(), navigation: request.isNavigationRequest()});
     if (submit && allow(request) === true) { state.allowed++; return route.continue(); }
-    if (submit) { state.blocked.push({host: new URL(request.url()).hostname, method: request.method()}); return route.abort('blockedbyclient'); }
+    if (submit) { state.blocked.push({host: new URL(request.url()).hostname, method: request.method()}); try { refused(request); } catch {} return route.abort('blockedbyclient'); }
     return route.continue();
   });
   return state;
