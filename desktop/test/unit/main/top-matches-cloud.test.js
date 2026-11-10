@@ -14,18 +14,18 @@ function memory() {
   const files = new Map(), settings = {hostedSearch: {on: true}};
   return {settings: () => settings, saveSettings: patch => Object.assign(settings, patch), readText: name => { if (!files.has(name)) throw new Error('none'); return files.get(name); }, writeText: (name, text) => { files.set(name, text); }, files, secret: () => ''};
 }
-function rig({site, stored = new Set(), cloud = false, count = 3} = {}) {
+function rig({site, stored = new Set(), cloud = false, count = 3, refuse = new Set()} = {}) {   // refuse: jobs whose kit is refused, so the step never asks for their read
   const handlers = new Map(), storage = memory(), asked = [], cancelled = [];
   let finished; const done = new Promise(resolve => { finished = resolve; });
-  keepReadiness(storage, {cancel: () => { cancelled.push(true); }, storedCheck: async job => stored.has(job.url) ? SIMPLE : null, applyReadiness: async job => { asked.push(job.code); const check = await cloudReadOf(storage)?.readForm(job); if (asked.length === count) finished(); return {kit: {ok: true}, check}; }});
+  keepReadiness(storage, {cancel: () => { cancelled.push(true); }, storedCheck: async job => stored.has(job.url) ? SIMPLE : null, applyReadiness: async job => { asked.push(job.code); const check = refuse.has(job.code) ? null : await cloudReadOf(storage)?.readForm(job); if (asked.length === count) finished(); return {kit: {ok: true}, check}; }});
   registerJobActionsHandlers({DEMO: false, allowanceBlock: async () => null, cloud: () => cloud, ipcMain: {handle: (name, fn) => handlers.set(name, fn)},
     log: () => {}, needsNotion: () => null, storage, jobsList: async () => ({jobs: [row('a', 95), row('b', 90), row('c', 80)]}), cloudSite: site});
   return {press: () => handlers.get('command')({}, 'kits'), asked, done, storage, cancelled};
 }
-const site = (script = {}) => {
+const site = (script = {}) => {   // skipB: b is still being read on the site and nobody will ask for it
   const calls = [];
   return {calls, readSend: async (_, jobs, options) => { calls.push(['send', jobs.map(job => job.id), options.ai]); return script.send || {ok: true}; }, readStart: async () => { calls.push(['start']); return script.start || {ok: true}; },
-    readTake: async () => { calls.push(['take']); if (script.hang) return {ok: true, pending: 3, reads: []}; return {ok: true, pending: 0, reads: [{job: 'a', state: 'read', read: SIMPLE}, {job: 'b', state: 'read', read: SIMPLE}, {job: 'c', state: 'read', read: NEEDS}]}; }, readStop: async () => { calls.push(['stop']); return {ok: true}; }};
+    readTake: async () => { calls.push(['take']); if (script.hang) return {ok: true, pending: 3, reads: []}; if (script.skipB) return {ok: true, pending: 1, reads: [{job: 'a', state: 'read', read: SIMPLE}, {job: 'c', state: 'read', read: NEEDS}]}; return {ok: true, pending: 0, reads: [{job: 'a', state: 'read', read: SIMPLE}, {job: 'b', state: 'read', read: SIMPLE}, {job: 'c', state: 'read', read: NEEDS}]}; }, readStop: async () => { calls.push(['stop']); return {ok: true}; }};
 };
 
 test('a hosted Always on press posts the top matches once, runs each form through the step with its cloud read, and records "3 jobs checked: 2 simple, 1 needs you"', async () => {
@@ -91,4 +91,14 @@ test('Stop during the run ends the site night and the rest of the matches are no
   assert.deepEqual(asked, ['a'], 'no kit is drafted for the matches after the one Stop cut short');
   assert.equal(cloudReadOf(storage), null);
   assert.ok(!pipeline.runs(storage)[0]?.summary || !/jobs? checked/.test(pipeline.runs(storage)[0].summary), 'a stopped run reports no result line');
+});
+
+test("a match whose kit was refused never asks for its read: the run's end stops the site's night, so nobody is charged for a form nobody will use (Gitar on #3648)", async () => {
+  const fake = site({skipB: true}), {press, asked, done, storage} = rig({site: fake, refuse: new Set(['b'])});
+  await press();
+  await done;
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.deepEqual(asked, ['a', 'b', 'c']);
+  assert.equal(fake.calls.filter(([name]) => name === 'stop').length, 1, 'the night was told to stop once the run was over');
+  assert.equal(cloudReadOf(storage), null);
 });

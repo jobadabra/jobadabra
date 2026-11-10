@@ -69,7 +69,8 @@ export function registerJobActionsHandlers(ctx) {
       }
       if (!stopped) tee(`Apply readiness: ${resultLine(classify(results))}`);
       return !stopped;
-    }).then(outcome => { if (outcome?.removed) reader?.stop(); }).catch(error => { reader?.stop(); log(`Apply readiness on the top matches failed: ${error.message}`); }).finally(() => { keepCloudRead(storage, null); topRunning = false; });
+    }).then(outcome => { if (outcome?.removed) reader?.stop(); }).catch(error => { reader?.stop(); log(`Apply readiness on the top matches failed: ${error.message}`); }).finally(() => { if (reader?.pending()) reader.stop();   // Why (Gitar on #3648): a match whose kit failed never asks for its read; the site must stop reading and charging it
+      keepCloudRead(storage, null); topRunning = false; });
     return {text: `Checking apply readiness on your top ${top.length === 1 ? 'match' : `${top.length} matches`} in our cloud browser.`};
   };
   let topRunning = false;   // Apply readiness on the top matches is running (from the press's list read to its last job)

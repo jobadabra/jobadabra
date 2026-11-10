@@ -6,6 +6,7 @@ import {siteOffForUser, siteOffReason} from './recipes.js';
 import {read as keychainRead} from './keychain.js';
 import {installId} from './pool-share.js';
 import {installToken} from './install-token.js';
+import {withOwnAi} from './ready-batch.js';
 
 // The install's key for the site. An install on its own engine (a CLI session, its own key) has no JPF1 key, so its token is asked for from the install id (as Free AI does) through lib/install-token.js, kept in settings:
 // it is not saved as the Anthropic key, so the engine does not change. The owner is told by the site's READY_OWNER match (the install id), nothing else.
@@ -79,7 +80,7 @@ export const link = async (storage, job, options) => words(await call(storage, '
 const readWords = result => (result.ok ? result : {ok: false, status: result.status, error: result.status === 401 || (result.status === 404 && !reasonOf(result)) ? 'Cloud checks are not available for this install right now.' : result.error});
 /** Posts the top matches' forms as one readiness night (`jobs`: [{id, url, title, company}]; `ai`: the person's own Anthropic key (sk-ant-…) or ''). -> {ok, batch, queued} or {ok: false, status, error} in the site's own words (402 credit used up, 429 today's cap); never throws. */
 export const readSend = async (storage, jobs, {ai = '', now = () => new Date(), ...options} = {}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options,
-  body: {task: 'readiness', night: now().toISOString().slice(0, 10), jobs, ...(/^sk-ant-/.test(ai) ? {ai: {key: ai}} : {})}}));
+  body: withOwnAi({task: 'readiness', night: now().toISOString().slice(0, 10), jobs}, ai)}));
 /** Starts the queued readiness night now. -> {ok} or {ok: false, status, error}; never throws. */
 export const readStart = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'readiness'}, ...options}));
 /** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending}; a read taken here is removed from the site (at most once). */

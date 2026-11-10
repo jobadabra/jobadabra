@@ -62,6 +62,8 @@ export function createCloudRead({storage, jobs, ownKey = '', site = ready, wait 
     },
     /** The step's `readForm(job)`: the read of this job's form, resolved when the site's night reports it; null for a form not in the batch. */
     readForm: job => slots.get(siteId(job))?.promise ?? null,
+    /** How many forms are still waiting for the site's read: after the run's loop, a form whose kit failed is never awaited, so the night must end or it keeps reading and charging for it. */
+    pending: () => open().length,
     /** Stop (the Stop button or the app closing): the site ends its night and every open form is told "could not be read". */
     async stop() {
       ended = true;
