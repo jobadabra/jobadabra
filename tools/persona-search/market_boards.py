@@ -27,6 +27,7 @@ CAP = 100        # rows per board per person, the EURES reference's cap (sa's de
 MAX_PAGES = 6    # pages per role word; a board shows 20-25 cards a page, so 100 rows fit in 5
 PAUSE_S = 2.0    # between two pages of one board
 REFUSED = (401, 403, 429)
+CLOSES_P = frozenset('address article aside div dl fieldset footer form h1 h2 h3 h4 h5 h6 header hr li main nav ol p section table ul'.split())
 VOID = frozenset('area base br col embed hr img input link meta source track wbr'.split())
 
 
@@ -66,6 +67,14 @@ class _Tree(html.parser.HTMLParser):
         self.at = self.root
 
     def handle_starttag(self, tag, attrs):
+        if tag in CLOSES_P and self.at.tag == 'p':   # HTML's implied ends: a block closes an open paragraph, a list item closes the open item of its list (pages that leave them open)
+            self.at = self.at.parent
+        if tag == 'li':
+            node = self.at
+            while node is not self.root and node.tag not in ('li', 'ul', 'ol'):
+                node = node.parent
+            if node.tag == 'li':
+                self.at = node.parent
         node = Node(tag, {k: v or '' for k, v in attrs}, self.at)
         self.at.children.append(node)
         if tag not in VOID:
@@ -104,14 +113,21 @@ def matches(node, sel):
 
 
 def _take(card, spec, base):
-    """One field of a card: the element `in` names inside it (else the card), then its text or one attribute ("@href"); links made absolute."""
-    node = card if not spec.get('in') else next((n for n in card.walk() if matches(n, spec['in'])), None)
-    if node is None:
+    """One field of a card: the element `in` names inside it (else the card; a list of selectors is a path; `index` picks the n-th), then its text or one attribute ("@href");
+    links made absolute; a script link (javascript:) is no link."""
+    found, chain = [card], spec.get('in') or []
+    for step in chain if isinstance(chain, list) else [chain]:   # a list is a path: the first element fitting step 1, then inside it step 2 ...
+        found = [n for n in (found[0].walk() if found else ()) if matches(n, step)]
+    index = spec.get('index', 0)   # the n-th element that fits (from the end when negative): for cards whose fields share one class
+    if not -len(found) <= index < len(found):
         return ''
+    node = found[index]
     take = spec.get('take', 'text')
     value = node.text() if take == 'text' else html.unescape(node.attrs.get(take[1:], ''))
     value = ' '.join(value.split())
-    return urllib.parse.urljoin(base, value) if take == '@href' and value else value
+    if take == '@href':
+        return urllib.parse.urljoin(base, value) if value and not value.lower().startswith('javascript:') else ''
+    return value
 
 
 def cards(markup, shape, base):
@@ -153,7 +169,7 @@ def _state_rows(markup, shape, base):
 
 def fetch(url, opener=urllib.request.urlopen):
     """-> (status, page text). A refusal or failure is its status (0 = no answer), never raised."""
-    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en'})
+    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8', 'Accept-Language': 'en'})
     try:
         with opener(request, timeout=30) as response:
             raw = response.read()
@@ -217,7 +233,7 @@ def read(n, words, fetch=fetch, sleep=time.sleep, cap=CAP):
                 seen.add(key)
                 rows.append(row)
                 new += 1
-            if not new:
+            if not new or '{page}' not in board['search']:   # a search answered in one request (an API's 100 rows) has no next page
                 break
     status = 'counted' if carded else 'not counted: no cards'
     return {'source': 'public_board', 'board': board['board'], 'status': status, 'rows': rows if carded else [], 'pages': pages}
