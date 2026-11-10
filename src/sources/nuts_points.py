@@ -9,19 +9,20 @@ import json
 from pathlib import Path
 
 TABLE = Path(__file__).with_name('nuts_points.json')
-_by_name = {}
+_by_name = [None]   # the built table, set once whole: a thread never reads it half-built (code review, sf 1/8)
 
 
 def _load():
     """{normalized "<area>, <country>": {lat, lon}}, built once; on a name two levels share, the deepest code's point (as _where names the deepest)."""
-    if not _by_name:
+    if _by_name[0] is None:
         from .. import geo
-        table = json.loads(TABLE.read_text(encoding='utf-8'))
+        table, built = json.loads(TABLE.read_text(encoding='utf-8')), {}
         for code in sorted(table, key=len):
             lat, lon, name = table[code]
             country = code[:2]
-            _by_name[geo.norm(f'{name}, {geo.country_name(country) or country}')] = {'lat': lat, 'lon': lon}
-    return _by_name
+            built[geo.norm(f'{name}, {geo.country_name(country) or country}')] = {'lat': lat, 'lon': lon}
+        _by_name[0] = built
+    return _by_name[0]
 
 
 def point(location):

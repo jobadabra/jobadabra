@@ -21,7 +21,7 @@ def best_first(jobs):
     """Jobs in your best places first (Search settings "Best places"), then the nearest to them, then the closest to your search (src/job_rank.py:
     your role words, level and skills), the order kept otherwise: a short search spends its time on them.
     Why (#2918, owner 5 Nov 2026: "One clear order first"): a place word cannot tell "Haute-Garonne, France" (Toulouse's own area) from Paris, both
-    "in"; geo's stored place answers can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
+    "in"; geo's stored place answers, or Eurostat's point of a EURES area, can (near_best). A location never placed sorts after the placed ones, as before among themselves."""
     from .paths import load_search_config, place_regex
     from .job_rank import ranker
     from .press import rank
