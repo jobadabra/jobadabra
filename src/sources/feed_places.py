@@ -100,3 +100,28 @@ def _guarded(work, said):
         print(f'Warning: {said(reason(error))}', flush=True)
         detail('sources', error)
         return None
+
+
+_OWN = {}   # (the kept map's file state, the search) -> the compiled pattern of the countries of the person's places; one read per refresh, not one per job
+
+
+def names_own_country(where):
+    """True when the text names the country of one of the person's places, from the kept map's answers (src/geo.py): under "Country" the places are often only cities (the drafting prompt leaves country_wide empty),
+    so PLACE alone never matched "Remote, Ireland" for a Dublin search (retro review of #3687, Gitar, 10 Nov 2026). A place the map does not know yet adds nothing: the floor stays as it was.
+    Why (code review of the same fix): this runs for every remote-saying location the places miss, and the map is a disk read outside a batch scope: the pattern is kept per map file state and search."""
+    from .. import geo
+    from ..ai import place_triage
+    from . import feeds
+    try:
+        seen = geo.STORE.stat()
+        state = (seen.st_mtime_ns, seen.st_size, id(feeds._SEARCH))
+    except OSError:
+        state = (0, 0, id(feeds._SEARCH))
+    if state not in _OWN:
+        known = geo.load()
+        words = place_triage.places_words(feeds._SEARCH)
+        names = {geo.country_name((known.get(geo.norm(place)) or {}).get('cc')) for key in ('best_places', 'anywhere_in', 'cities_abroad') for place in words.get(key) or []} - {None}
+        _OWN.clear()
+        _OWN[state] = feeds.place_regex(sorted(names)) if names else None
+    pattern = _OWN[state]
+    return bool(pattern) and feeds.mentions(pattern, where)
