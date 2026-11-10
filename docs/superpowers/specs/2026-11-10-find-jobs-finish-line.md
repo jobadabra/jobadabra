@@ -1,6 +1,6 @@
 # Find jobs finish line: the goal, the two numbers, the plan
 
-> **Verdict:** Find jobs is finished when what it lists for a person equals what a person finds by hand on every free source. Two numbers measure it, on 18 fixed people. The rule that keeps search work pointed at it is in CLAUDE.md "Working rules".
+> **Verdict:** Find jobs is finished when what it lists for a person equals what a person finds by hand on every free source. Two numbers measure it, on 18 fixed people, and fixed guardrails keep them from slipping back. The rule that keeps search work pointed at it is in CLAUDE.md "Working rules".
 
 Design by session sa (search architect), 10 Nov 2026. Owner decisions are quoted; everything else is sa's default and says so. Rule: [CLAUDE.md](../../../CLAUDE.md) "Find jobs has a finish line"; map: [search](../../map/search.md).
 
@@ -42,6 +42,7 @@ sa's default (the owner may change it): "reached" = every person at 95% or more 
 | 2 | The market count: every source of the list counted per person, stored per source | lj | Opus | tools/persona-search/ reference files, search-reference.yml |
 | 3 | In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people | sf | Opus | src/ (pipeline) |
 | 4 | The Admin graph: coverage and in = out per person and over time, blind nights grey | oe | Sonnet | jobadabra-web |
+| 6 | The Sources section: what share of right jobs each source brings, and what only it brings | oe (after WP4) | Sonnet | jobadabra-web + the run's rows |
 | 5 | A check that measures everyone: one AI, no fallback, an unmeasured person run again once; room for by-hand runs | cr (after #3696) | Sonnet | search-personas.yml, jobadabra-web broker lane |
 
 Order: WP1, WP2, WP3's table, WP4's picture and WP5 start now, side by side. WP3's fixes start when its table exists. WP4 shows in = out for EURES from day one and gains sources as WP2 lands them.
@@ -60,10 +61,33 @@ Order: WP1, WP2, WP3's table, WP4's picture and WP5 start now, side by side. WP3
 4. Held work stays held (3/8 to 8/8, place PR b) unless the table names it as the cause.
 
 ### WP4 detail (oe)
-Replaces sa's earlier chart list. Per run (night or by hand, marked): (a) market coverage % for the 18 and per person, (b) in = out per source per person (bars: in, out, lost by stage), (c) people at the line, over time, (d) people not measured as a grey band, (e) the AI the run used, (f) LinkedIn "not counted" until typed in; a field to type it. Line broken at 11 Nov (EURES off in the night's own search; the in = out runs for EURES are by hand with EURES on). Picture to the owner first (side by side), then build.
+Replaces sa's earlier chart list. Per run (night or by hand, marked): (a) market coverage % for the 18 and per person, (b) in = out per source per person (bars: in, out, lost by stage), (c) people at the line, over time, (d) people not measured as a grey band, (e) the AI the run used, (f) LinkedIn "not counted" until typed in; a field to type it. (g) **Weakest now** (owner, 10 Nov 2026: "We should be more in control of what's happening with our algorithm · what is weak"): on top of the page, the 5 worst rows of the last run: person × source × stage with the most right jobs lost, each with its trend over 7 runs and the open PR that names it (or "nobody on it"). Line broken at 11 Nov (EURES off in the night's own search; the in = out runs for EURES are by hand with EURES on). Picture to the owner first (side by side), then build.
 
 ### WP5 detail (cr)
 From sf's live count (10 Nov): one night = about 560 AI calls; Codex fits one night plus one by-hand run a day; the by-hand lane's cap is 800 calls a day. (1) The check runs on one engine with no fallback (Codex now: measured to fit); a night whose engine is out is "not run" and is dispatched again, never finished on another AI. (2) A person is unmeasured only when the run did not finish for them; an "AI slow" person is run once more at the end of the same run. (3) Say what by-hand cap gives two full runs a day and bring that number to sa (the owner decides limits). Site PR first where both repos change.
+
+### WP6 detail (oe, after WP4's first graph): what each source is worth
+Owner, 10 Nov 2026: "We should have in Admin also, probably a dedicated section showing what are all our sources and how much do they weight, how much do they help… on average, 30% (or x amount) of the jobs we find because of Web Search. Y amount because of the Central scout / employer sites. X amount because of Linkedin Jobs… X amount of EURES… So that we know how good/efficient/valuable are each of our sources, and so that we can continuously add new sources and increase our job results." · "let's make sure that we have enough data being collected to understand how good/fast are we moving to the finish line. We should have graphs in the Admin showing us our progress."
+A section in Admin → Job search, "Sources". Per source (EURES, employer sites: central scout and index, job boards found by web search, free job feed APIs, LinkedIn Jobs, each new one), per run and averaged over the last 7 runs, for the 18 people:
+- right jobs it brought, and its share of all right jobs listed (the "30% because of web search" number);
+- right jobs ONLY it brought (no other source showed them): the real value of a source, and the test a new source must pass;
+- fit 70+ jobs it brought; seconds it took; people for whom it brought at least one.
+Data: the engine already keeps a job's source and the check's rows carry `step_yield` (employer_sites, job_boards, free_job_apis) and `counters.eu`; first step is a count of what is stored against the list above, then one row shape per source sent with the run (same sender as #3695), counts only.
+LinkedIn Jobs: the 18 fictional people never read LinkedIn (safety rule). Its share comes only from real installs that turned it on: counts only, through the existing pack path, shown when at least 3 installs report (k of 3); until then "not enough installs".
+Adding a source stays an owner decision; this section is the evidence for it. Owner, 10 Nov 2026: "At some point I should be able to say: Ok. Now let's add Adzuna API... And we'll have one more source, and we'll measure in some time how much that method/source is helping on top of what we have." So a new source is one reader row (cr's `src/sources/reader_rows.py`, #3696) and appears in this section by itself, with its "only it brought" number after 7 runs: no new graph, no new pipeline code per source.
+
+## Fixed guardrails (WP7; owner, 10 Nov 2026: "Let's not forget about guardrails. Fixed guardrails")
+Fixed = it does not move unless the owner's words are in the commit, like the fix ledger. Each one below would have caught at least 2 real escapes of the last 30 days (the "gate only if it pays" rule); the PR that adds it counts them.
+| # | Guardrail | Where it runs | Stops | Who |
+|---|---|---|---|---|
+| G1 | **In = out, offline.** A fixture source with N jobs, every AI answer yes, time enough: all N are listed. One loop over every reader row, so a new source is covered by itself. A second case with a short clock: the unasked jobs are counted as `never_asked`, never silently gone. | every PR touching the search (unit, seconds, no AI, no network) | a stage that drops a source's jobs (9 Nov: 0-23 of EURES's right jobs lost per person; KeyError 'EURES' skipping first jobs; #3689 one failed page ending the read) | sf, first PR of WP3 |
+| G2 | **Floors that only rise.** Per person and number (in = out per source, coverage, right jobs, seconds to first job), the best level held on 3 runs in a row is written to a floor file. A run below a floor by more than that person's spread, twice in a row, is red: Admin card + alert + the merges since the last green run named. A floor is lowered only with `Floor-change: "<owner's words>"`. | each night and each by-hand run (not per PR: one full run is about 560 AI calls) | one session's gain undone by the next (#3685's first build halved scoring; the week of 30 Oct to 5 Nov at 0) | cr (file + check), oe (card + alert) |
+| G3 | **The measure itself is locked.** The 18 people, the judge's prompt, the fixed source list, the check's one AI: a lock file; changing any needs `Scoreboard-change: "<owner's words>"`, and the graph breaks its line there. | every PR (hash check) | numbers that stop being comparable (the check's AI changed 3 times in 2 weeks unseen; 6 people became 18) | cr |
+| G4 | **Admission line.** A PR that changes search files says `Moves: p<n> <number> <before> → <after> (3 runs a side, spread s)` or `Moves: nothing (why)`; tools/pr-body-check.py refuses it otherwise. | every search PR | fixes graded by their author on one run (4 claims withdrawn on 10 Nov alone) | fl, after WP1 |
+| G6 | **A source getting lost is red and alerted.** Owner, 10 Nov 2026: "If a source is getting lost · We should have red CI · We should have alerts · on the Engineering channel". Per run and per source: a source that brought right jobs on the last 3 runs and brings none, or whose in = out falls under its floor, or that was not read at all (refused, crashed, timed out for every person), turns the run red (the workflow fails, not a note) and posts one alert on the Engineering channel through the existing alert path: source, people hit, stage where the jobs stopped, the merges since the last green run. One alert per cause, one green-again message when it clears. A blind run (the check's AI out) is "not run", never a red source. | each night and each by-hand run; per PR the offline G1 is the red CI | a source silently contributing nothing | cr (red run + alert), sf (the stage counts it reads) |
+| G5 | Already there, kept: the fix ledger (locked rows), Find jobs ≤ 3 min test, the one-ranker guard, the two "only shrinks" ratchets (run state, catch-alls), the blind judge. | every PR | | |
+Not a guardrail: the PR yardstick (replays 13 of 16 people to 0 jobs); it stays a crash check and is named so in its PR comment.
+Limit, said plainly: G2 cannot run per PR (AI budget), so between two runs a regression can sit on main for up to a day; G1 and the ledger are the per-PR net, G2 the daily one.
 
 ## Rules for every search PR from now (go into CLAUDE.md with WP1)
 - It names the person and the number it moves (in = out for a source, or coverage), with 3 runs before and 3 after; a difference counts only when larger than the spread of those runs.
@@ -83,3 +107,8 @@ From sf's live count (10 Nov): one night = about 560 AI calls; Codex fits one ni
 - [ ] WP3 (sf) In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people
 - [ ] WP4 (oe) The Admin graph: coverage and in = out per person and over time, blind nights grey
 - [ ] WP5 (cr) A check that measures everyone: one AI, no fallback, an unmeasured person run again once
+- [ ] WP6 (oe, after WP4) The Admin "Sources" section: what share of right jobs each source brings, and what only it brings
+- [ ] WP7 G1 (sf, first PR of WP3) In = out, offline: a fixture source loses no job at any stage, one loop over every reader row
+- [ ] WP7 G2 (cr file + check, oe card + alert) Floors that only rise, per person and number
+- [ ] WP7 G3 (cr) The measure is locked: the 18 people, the judge's prompt, the source list, the check's AI
+- [ ] WP7 G4 (fl, after WP1 is READY) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)`
