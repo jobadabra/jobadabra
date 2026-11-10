@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {test,afterEach} from 'node:test';
 import '../../../i18n/server-notices.js';
 import {setLocale,SUPPORTED_LOCALES,t} from '../../../i18n/index.js';
+import {newer} from '../../../lib/updater.js';
 const read=file=>fs.readFileSync(new URL('../../../lib/'+file,import.meta.url),'utf8');
 afterEach(()=>setLocale('en'));
 test('fill producer uses the current display locale and keeps raw job text, session targets and tones',()=>{
@@ -99,8 +100,8 @@ test('version notices preserve store/folder decisions, exact versions and canoni
   const changedSource=source.match(/export function extensionChangedNote\([\s\S]*?\n}/)[0].replace('export ','');
   const changed=new Function('EXTENSION_CHANGED',changedSource+';return extensionChangedNote;')(canonical);
   const staleSource=source.match(/export function staleExtension\([\s\S]*?\n}/)[0].replace('export ','');
-  const stale=new Function('t','STORE_EXTENSION_ID','checkedInId',staleSource+';return staleExtension;')(t,'same-store','folder');
-  const version='0.9.{count}',latest='0.9.<keep>';
+  const stale=new Function('t','STORE_EXTENSION_ID','checkedInId','newer',staleSource+';return staleExtension;')(t,'same-store','folder',newer);   // a copy is "stale" only when strictly older (10 Nov 2026), so the versions are real ones
+  const version='0.9.100',latest='0.9.101';
   setLocale('en');const storeDiagnostic=stale(version,latest,'same-store'),folderDiagnostic=stale(version,latest,'folder');
   for(const locale of SUPPORTED_LOCALES) {
     setLocale(locale);

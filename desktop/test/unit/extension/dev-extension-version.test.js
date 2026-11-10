@@ -4,17 +4,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {devVersion} from '../../../lib/dev-extension-version.js';
 
-const git = counts => (cmd, args) => { const sub = args.slice(2).join(' '); return sub.startsWith('rev-parse') ? 'false' : String(counts.shift()); };
-
 test('the stamped version rises with the commits that changed extension/', () => {
-  const run = git([300, 301]);
-  assert.equal(devVersion('/r1', '0.9', {now: 0, run}), '0.9.300');
-  assert.equal(devVersion('/r1', '0.9', {now: 1000, run}), '0.9.300', 'cached within the window');
-  assert.equal(devVersion('/r1', '0.9', {now: 60000, run}), '0.9.301', 'a pull is seen after it');
+  assert.equal(devVersion('0.9', 300), '0.9.300');
+  assert.equal(devVersion('0.9.12', 301), '0.9.301', 'the manifest\'s own patch is replaced by the count');
 });
 
-test('without git the manifest version stands', () => {
-  assert.equal(devVersion('/r2', '0.9', {now: 0, run: () => { throw new Error('no git'); }}), '0.9');
+test('without a count (git not answered yet, no git, a shallow clone) the manifest version stands', () => {
+  for (const commits of [0, undefined, NaN, -1]) assert.equal(devVersion('0.9', commits), '0.9');
 });
 
 // Why (7 Nov 2026, owner's 0.9.13 retest, replacing the old rule that the bare manifest is never reported): the report sends the manifest as version and the stamped version apart as reloadedFor; the app counts the stamped one only for a development copy (lib/extension-version.js). Sending the stamped one as version hid a reload that did not take.
