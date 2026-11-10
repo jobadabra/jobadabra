@@ -8,6 +8,7 @@ import * as server from './server.js';
 import * as visits from './visits.js';
 import fs from 'node:fs';
 import {log as appLog} from './log.js';
+import {newer} from './updater.js';
 import {registerRefusedReadsHandlers} from './refused-reads-handlers.js';
 import {linkedinSeams} from './linkedin-beside.js';
 import {setLinkedinStep} from './search-beside.js';
@@ -78,7 +79,7 @@ export function registerVisitsHandlers(ctx) {
     const n = Math.max(1, Math.min(5, Number(atOnce) || 2));
     // An older extension in Chrome cannot read the sites by itself (owner's run, 7 Oct 2026: it waited 8 min on 0.9.3): said now, not after.
     const seen = server.extensionSeen?.()?.version, latest = server.latestExtension();
-    if (seen && latest && seen !== latest) {
+    if (seen && latest && newer(latest, seen)) {
       appLog('visit', 'read sites refused: Chrome has an older extension', {seen, latest});
       return {text: `Chrome still has the Jobadabra extension ${seen}; Find jobs using your browser needs ${latest}. In Chrome open chrome://extensions, press Reload on Jobadabra, then Run again.`};
     }

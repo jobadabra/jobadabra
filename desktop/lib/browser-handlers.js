@@ -11,6 +11,7 @@ import path from 'node:path';
 import {reloadFormTab} from './form-tab.js';
 import {launchOnce} from './chrome-launch-once.js';
 import {extensionTarget, linkedinPageOpener, openExtensionPage} from './extension-target.js';
+import {newer} from './updater.js';
 import {registerLinkedinHandlers} from './linkedin-handlers.js';
 import {createSignIn} from './linkedin-signin-window.js';
 
@@ -27,7 +28,7 @@ export function registerBrowserHandlers(ctx) {
   // then the page's fresh panel answers the focus handshake, so one press both heals and brings Chrome to the field.
   ipcMain.handle('reviewReload', async (_, id, url, company) => {
     const seen = server.extensionSeen(), latest = server.latestExtension();
-    const current = !!seen?.version && seen.version === latest;  // an older copy ignores the command below, silently
+    const current = !!seen?.version && !!latest && !newer(latest, seen.version);  // an older copy ignores the command below, silently; a newer one (a development copy before git answered) takes it
     // 1. The page's own panel: it reloads itself, in whatever browser and instance it runs (no macOS permission).
     if (current) {
       review.queueReload(String(id));

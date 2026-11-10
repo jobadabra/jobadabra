@@ -16,7 +16,7 @@ import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {reportedVersion} from './extension-version.js';
 import {localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile, noteExtensionId} from './server-env.js';
-import {extensionBuild} from './build-state.js';
+import {extensionBuild, warmExtensionHistory} from './build-state.js';
 import {packagedBuild} from './build-handlers.js';
 import {pageKey, sessionOfJob, markReportedConfirmations} from './server-pages.js';
 import {t} from '../i18n/server-notices.js';
@@ -198,5 +198,6 @@ export function start(storage, onError = () => {}) {
   const server = http.createServer(requestListener(storage));
   server.on('connection', socket => noteConnection(socket));   // #2608: the slow-request line says how long a new connection waited and what held the others
   listen(server, PORT, {onError});   // lib/server-listen.js: a busy port is said and retried, a test app without its own port stays off
+  if (developmentCopy()) warmExtensionHistory(pipeline.REPO);   // a source run: the extension's history is walked now, off the main thread, so no check-in waits for it (lib/build-state.js)
   return server;
 }
