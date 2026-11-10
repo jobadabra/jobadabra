@@ -2,7 +2,7 @@
 Engineering channel"). Reads the night's verdict (after gate.py compare and floors.py check) and the earlier main runs' verdicts, and stores `lost` on the verdict:
 {causes, red, open, tell, back, merges}. tools/persona-search/search-alert.mjs turns `tell` and `back` into the one Telegram card; the "Red when" step reads the exit
 code. Causes ({kind, red, what, people, detail}), one per kind and what:
-- gone: a source word of `sources` (sources_count.py) whose right jobs, summed over the 18, were above 0 on each of the last 3 runs that carried it, and are 0
+- gone: a source word of `sources` (tools/persona-search/sources_count.py, #3749; until it lands no row carries `sources`, so this cause waits) whose right jobs, summed over the 18, were above 0 on each of the last 3 runs that carried it, and are 0
   (or left out) now; only runs where at least MIN_READ persons carry `sources` count, so a partly blind night is no evidence (arms by itself once 3 runs carry
   `sources`; EURES only from persons whose row read EURES; a {status} word is not measured, never gone); red;
 - unread: a finder step (step_yield: employer_sites, job_boards, free_job_apis) that brought no job for any measured person, when at least MIN_READ persons were
@@ -124,7 +124,8 @@ def not_run(verdict):
 
 
 def merges(verdict):
-    """The merges since the floors were last green (floors.py's, computed once there when a floor is red; else asked here), [] when unknown."""
+    """The merges since the floors were last green, only to help read the alert: floors.py's when a floor is red, else asked here from the floors' last green run;
+    [] when the floors were not checked (no last green) or GitHub does not answer: the alert is still sent, without them."""
     floors = verdict.get('floors') or {}
     if floors.get('merges'):
         return floors['merges']
@@ -175,7 +176,8 @@ def check(verdict_path, earlier_dirs, logs=None, state_file=None, night=False):
     verdict['lost'] = {'causes': causes, 'red': red, 'open': sorted(now), 'tell': tell, 'back': back, 'merges': merges(verdict) if any(c['red'] for c in tell) else []}
     Path(verdict_path).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
     if data is not None and isinstance(data.get('state'), dict):
-        data['state']['lost'] = {'open': sorted(now)}   # floors-save writes it with the floors, compare-and-set (floors.validate checks its shape)
+        import floors as floors_mod   # Why (Gitar on #3770): only keys of the one shape floors.validate takes, so a bad cause can never make floors-save refuse the floors
+        data['state']['lost'] = {'open': sorted(k for k in now if floors_mod.LOST_KEY.fullmatch(k))[:floors_mod.LOST_MAX]}
         Path(state_file).write_text(json.dumps(data), encoding='utf-8')
     print('lost: ' + ('; '.join(f"{c['kind']} {c['what']}: {c['detail']}" for c in causes) or 'no source lost')
           + f" · tell {len(tell)}, back {len(back)}{' (told before: the night stays red, no message)' if causes and not tell and not back else ''}")

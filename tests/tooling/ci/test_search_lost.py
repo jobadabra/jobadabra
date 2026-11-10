@@ -126,6 +126,11 @@ class Check(unittest.TestCase):
             self.assertFalse(Path(tmp, 'no-floors-state.json').exists())
         self.assertEqual((code, out['tell']), (lost.RED, []), 'open on the ref: still red, not told again')
 
+    def test_an_odd_cause_key_is_never_written_into_the_floors_state(self):
+        odd = {'state': 'red', 'rows': [], 'personas': [], 'floors': {'red': [{'persona': 4, 'number': 'right/now', 'floor': 9, 'now': 2}]}}
+        code, out, opened = self.run_check(odd)   # run_check asserts floors.validate accepts what was written
+        self.assertEqual((code, [c['what'] for c in out['tell']], opened), (lost.RED, ['p4 right/now'], []), 'told and red, but never a key that blocks floors-save')
+
     def test_the_state_takes_only_fixed_cause_keys(self):
         good = {'version': 1, 'series': {}, 'lost': {'open': ['unread:job_boards', 'floor:p4 right', 'not-run:not run']}}
         self.assertEqual(floors.validate(good), [])

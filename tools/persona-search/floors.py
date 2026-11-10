@@ -31,6 +31,8 @@ RESETS = 'tools/persona-search/floors-reset.json'
 LOCK = HERE / 'scoreboard.lock.json'
 KEEP = 14   # levels kept per number: enough for a spread and for "3 in a row"
 MAX_BYTES = 1_000_000
+LOST_KEY = re.compile(r'(gone|unread|floor|not-run):[\w ,.-]{1,40}')   # G6's open cause keys (tools/persona-search/lost.py): one shape, checked on both sides
+LOST_MAX = 50
 RED = 3   # check's exit code for a red night: a crash (exit 1) is never read as a floor
 COUNTED = ('measured', 'none-right', 'nothing')   # gate.row_verdict's kinds that measured the code
 
@@ -129,8 +131,8 @@ def validate(state):
         return ['not a floors state (version 1, series, optional lost)']
     out = []
     lost = state.get('lost', {'open': []})   # G6's causes open between nights (tools/persona-search/lost.py): fixed cause keys only, never scraped text
-    if not isinstance(lost, dict) or set(lost) != {'open'} or not isinstance(lost['open'], list) or len(lost['open']) > 50 \
-            or not all(isinstance(k, str) and re.fullmatch(r'(gone|unread|floor|not-run):[\w ,.-]{1,40}', k) for k in lost['open']):
+    if not isinstance(lost, dict) or set(lost) != {'open'} or not isinstance(lost['open'], list) or len(lost['open']) > LOST_MAX \
+            or not all(isinstance(k, str) and LOST_KEY.fullmatch(k) for k in lost['open']):
         out.append('lost')
     for key, series in state['series'].items():
         if not re.fullmatch(r'[0-9a-f]{12}\|[\w,-]+\|eures-(on|off)', key) or set(series) != {'people', 'last_green'}:
