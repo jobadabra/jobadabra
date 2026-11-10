@@ -90,3 +90,12 @@ test('runtime allowlist preserves Windows names and supplies PATH for launch wra
   assert.equal(env.PATH, '/windows/bin');
   assert.equal('E2E_NOTION_TOKEN' in env, false);
 });
+
+// Why (10 Nov 2026, hw): the owner's first practice run did nothing, because the app could not find Claude Code's Keychain sign-in, which is kept under USER.
+// A test never inherits USER (it must not reach the owner's Claude Code); practice names it on purpose (practice/launch.mjs).
+test('USER reaches the app only when a caller names it: never inherited, so tests stay off the owner\'s Claude Code sign-in', async () => {
+  const {appLaunchEnv} = await import('../../lib/app-env.mjs');
+  assert.equal('USER' in appLaunchEnv({PATH: '/test/bin', HOME: '/test/home', USER: 'owner'}), false, 'inherited USER is dropped');
+  assert.equal(appLaunchEnv({PATH: '/test/bin'}, {USER: 'owner'}).USER, 'owner', 'a caller that names USER (practice) passes it');
+  assert.match(fs.readFileSync(new URL('../../../practice/launch.mjs', import.meta.url), 'utf8'), /USER: process\.env\.USER/, 'practice names USER, so its app can use the signed-in Claude Code');
+});

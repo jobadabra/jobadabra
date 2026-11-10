@@ -82,8 +82,14 @@ async function main() {
   fs.writeFileSync(path.join(held.shim.bin, 'osascript'), '#!/bin/sh\necho "practice: the app may not drive the person\'s Chrome" >&2\nexit 1\n', {mode: 0o755});
   fs.writeFileSync(path.join(folder, 'settings.json'), JSON.stringify(initialSettings(storeSettings('sqlite'))));
   fs.copyFileSync(path.join(import.meta.dirname, '..', 'e2e', 'fixtures', 'cv.pdf'), path.join(folder, 'cv.pdf'));
+  // Why (10 Nov 2026, hw): the folder starts empty, so the hidden browser was missing and every Apply offered a 200 MB download into a folder the next start wipes.
+  // This is the e2e harness's link to the installed test Chromium, made into this folder only.
+  const {linkRuntime} = await import('../e2e/lib/background-proof.mjs');
+  const unlinked = linkRuntime(folder);
+  say(unlinked ? `hidden browser: ${unlinked}; Apply will offer its download` : 'hidden browser: the installed test Chromium, no download');
   held.app = await launch({profile: folder, env: {
     JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(browserArguments),
+    USER: process.env.USER,   // Claude Code finds its Keychain sign-in under it; without it practice had no AI (hw, 10 Nov 2026; e2e/lib/app-env.mjs EXPLICIT_ONLY)
     JOBADABRA_PRACTICE_LEDGER: ledger,   // the window's banner and each job's Practice view read it (lib/practice-mode.js)
     PATH: `${held.shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: held.shim.spool,
     ...(process.platform === 'win32' ? {JOBADABRA_E2E_OPENER: held.shim.script} : {}),
