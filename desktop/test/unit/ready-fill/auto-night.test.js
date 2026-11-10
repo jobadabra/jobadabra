@@ -6,7 +6,7 @@ import {test} from 'node:test';
 import {runNight} from '../../../ready-fill/night.mjs';
 import {AUTO_OWNER, createAutoLine} from '../../../ready-fill/auto-commands.mjs';
 
-const NOW = Date.now();
+const NOW = Date.now();   // clock: relative every item time is minutes or days before this one reading, compared with the night's own clock
 const item = (id, change = {}) => ({job: id, url: `https://jobs.example.com/acme/${id}`, session: `s-${id}`, state: 'cloud', manualOverride: false, mode: 'auto', chosenAt: new Date(NOW - 86400000).toISOString(),
   autoConfirmedAt: new Date(NOW - 3600000).toISOString(), queuedAt: NOW - 3000000, allowIneligible: false, waitMin: 0, ...change});
 const job = (id, change = {}, itemChange = {}) => ({id, url: `https://jobs.example.com/acme/${id}`, title: 'SRE', company: 'Acme', kit: {}, cv: '', letterPdf: '', item: item(id, itemChange), stage: 'Kit ready', eligible: true, ...change});

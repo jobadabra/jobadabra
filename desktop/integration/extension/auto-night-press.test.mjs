@@ -13,7 +13,7 @@ import {runNight} from '../../ready-fill/night.mjs';
 const NIGHT_MS = 240000;   // hang guard only: one form fills, is judged and sent in under a minute on the Mac
 const FORM = FORMS.submitter, URL_ = `https://${FORM.host}${FORM.path}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n').toString('base64');
-const NOW = Date.now();
+const NOW = Date.now();   // clock: relative every item time is minutes or days before this one reading, compared with the night's own clock
 const itemOf = (id, change = {}) => ({job: id, url: URL_, session: `night${id}`, state: 'cloud', manualOverride: false, mode: 'auto', chosenAt: new Date(NOW - 86400000).toISOString(),
   autoConfirmedAt: new Date(NOW - 3600000).toISOString(), queuedAt: NOW - 3000000, allowIneligible: false, waitMin: 0, ...change});
 const jobOf = (id, change) => ({id, url: URL_, title: FORM.title, company: FORM.company, kit: {answers: FORM.kit}, cv: PDF, letterPdf: '', item: itemOf(id, change), stage: 'Kit ready', eligible: true});
