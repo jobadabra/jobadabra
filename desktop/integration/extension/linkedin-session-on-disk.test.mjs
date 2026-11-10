@@ -28,7 +28,7 @@ import {linkedinStep} from '../../lib/linkedin-headless.js';
 const TEST_MS = 120000;   // a hang guard: Chrome writes its cookies to disk in batches (about every 30 s), and each read waits for that
 const DESKTOP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FAKE = {li_at: 'FAKE-LI-AT-disk-0001', JSESSIONID: '"ajax:FAKE-disk"'};
-const YEAR = () => Math.floor(Date.now() / 1000) + 365 * 24 * 3600;
+const YEAR = () => Math.floor(Date.now() / 1000) + 365 * 24 * 3600;   // clock: relative — a real Chromium drops a cookie whose expiry is past by its own clock
 // What LinkedIn itself sets during a signed-in read (seen 10 Nov 2026): the session again on its own hosts, valid for a year.
 const SITE_SETS = () => ['.www.linkedin.com', '.ads.linkedin.com', '.perf.linkedin.com'].flatMap(domain => ['li_at', 'JSESSIONID'].map(name => ({name, value: `FAKE-rotated-${name}`, domain, path: '/', secure: true, expires: YEAR()})));
 const E2E_ENV = {JOBADABRA_E2E: '1', JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(['--no-sandbox'])};
