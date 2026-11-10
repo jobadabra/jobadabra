@@ -253,30 +253,9 @@ def needs_visa(job):
 
 
 def triage_places(jobs):
-    """Ask Claude where the new locations are, for the jobs that could be kept (their title fits); each location once per version of the
-    places. Off without AI or with JOBADABRA_DISABLE=place_triage: the place words only."""
-    from .. import features
-    from ..ai import engine
-    locations = [job.get('location') for job in jobs if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title'])]
-    if not locations or features.disabled('place_triage') or not engine.ready():
-        return
-    try:
-        from ..ai import place_triage
-        # A refresh places a batch: the ones your place words name first, then the ones most jobs share (7 Oct 2026: it asked in feed
-        # order, Warsaw and Dallas first, and "Genève, Switzerland" with 6 jobs waited behind 1,400 others), each job counted by how close
-        # it is to your search (src/job_rank.py; 18 Oct 2026: a first search in Cluj placed 1,313 locations for 10 minutes before scoring)
-        from ..job_rank import ranker
-        from ..press import rank
-        closeness, count = ranker(), Counter()
-        for job in jobs:
-            if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title']):
-                count[place_triage.norm(job['location'])] += 1 + closeness(job)
-        ordered = rank.titles(list(count), rank.in_your_places(lambda location: mentions(PLACE, location)), lambda location: -count[location])
-        placed().update(place_triage.decide(ordered, _SEARCH))
-        placed().update(place_triage.vague(ordered, _SEARCH))   # of the ones outside: which name no town of their own
-    except Exception as error:  # noqa: BLE001 — not placed this run: the place words decide, said
-        print(f'Warning: job locations not placed by {providers.who()} ({reason(error)}): your place words decide this run')
-        detail('sources', error)
+    """Ask Claude where the new locations of these jobs are (src/sources/feed_places.py place_jobs); each location once per version of the places."""
+    from . import feed_places
+    feed_places.place_jobs(jobs)
 
 
 def placing():
@@ -317,11 +296,20 @@ def place_open_jobs(db):
 
 
 def wanted_location(job):
-    """One of your places: Claude's answer for this location when it has placed it (src/ai/place_triage.py); else the place words
-    (config/search.json), or remote that isn't limited elsewhere (unless you want no remote jobs)."""
+    """One of your places: Claude's answer for this location when it has placed it (src/ai/place_triage.py); else the place words (config/search.json).
+    A remote job counts only when Claude placed it: until then it is unknown (not listed, not scored, its site read again: feed_facts.settled); without AI the words stay the floor.
+    Why (#3674, 10 Nov 2026): the clock cut the place call and the words let any remote location in (Dublin nurse: 24 of 25); who may take a remote job is the AI's call."""
     verdict = place_of(job)
-    if verdict is not None:
-        return verdict != 'out'   # 'vague': kept until its posting is read
+    return _words_say(job, remote_unknown=placing()) if verdict is None else verdict != 'out'   # 'vague': kept until its posting is read
+
+
+def could_be_in_places(job):
+    """Which SITES to read, nothing else: never what is recorded, listed or scored (wanted_location decides that). The AI's 'out' says no; unplaced is the words' guess, remote included."""
+    return _words_say(job, False) if place_of(job) is None else place_of(job) != 'out'
+
+
+def _words_say(job, remote_unknown):
+    """The place words' answer for a location Claude has not placed; `remote_unknown`: remote with a place text is not answered (False), only Claude says who may take it."""
     where = country_codes.name(job.get("location") or "")   # a field that is only a country code ("MD") is that country, whichever reader gave it
     if mentions(PLACE, where):
         return True
@@ -330,7 +318,7 @@ def wanted_location(job):
     said = re.search(_REMOTE_SYNONYMS, where, re.I)
     # A posting whose place is only a city elsewhere is based there, even when its feed flags it remote (7 Oct 2026: "London" and "Singapore"
     # account executive jobs reached a Geneva search). One that says remote in its place ("Remote, Germany") is judged by the regions you skip.
-    if job.get("remote") and not said and where.strip():
+    if (job.get("remote") and not said and where.strip()) or (remote_unknown and where.strip()):
         return False
     return bool(job.get("remote") or said) and not REMOTE_ELSEWHERE.search(where)
 
