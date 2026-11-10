@@ -106,6 +106,8 @@ def count(judged, step_yield, free, web):
     out = {}
     for name in (*WORDS, 'other'):
         rivals = [words - {'web_search'} for words in words_of.values() if name in words]   # web_search is a second fact on a board's job, never a rival reader
+        # only: no other reader listed it. A web_search job always also carries its board's word (job_boards), so for web_search "no other" means at most that one
+        # reader; the two forms differ on purpose (Gitar on #3749): one rule for both would give web_search only = 0 always
         only = sum(1 for rest in rivals if (len(rest) <= 1 if name == 'web_search' else rest <= {name}))
         step = steps.get(name) if name in STEPS else None
         out[name] = {'right': len(rivals), 'only': only, 'fit70': step.get('local_fit70') if step else None, 'seconds': step.get('seconds') if step else None}
