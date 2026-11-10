@@ -365,14 +365,18 @@ jobs:
           [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a number under its floor two nights in a row; a crash reads "not checked"
           exit 0
       # Why (10 Nov 2026, owner: "If a source is getting lost · We should have red CI · We should have alerts"; G6): a source with right jobs on the last 3 runs and none now,
-      # or a finder step that read no job for anyone, is red; a floor broken and persons not run are told too (tools/persona-search/lost.py stores `lost` on the verdict).
+      # or a finder step that read no job for anyone, is red; a floor broken and persons not run are told too; each is told once when it starts and once when it is back
+      # (sa: "never the same alert every night"; tools/persona-search/lost.py stores `lost` on the verdict and the open causes in the floors' state, which only
+      # floors-save writes, on a scheduled night: a by-hand run can neither open nor clear a cause).
       - name: A source lost (G6)
         id: lost
         if: always() && hashFiles('result/verdict.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}   # a run without the night's floors-state.json reads the open causes from refs/tags/search-floors (read only)
         run: |
           set +e
           mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
-          python3 tools/persona-search/lost.py check result/verdict.json "${mains[@]}" | tee -a result/table.md
+          python3 tools/persona-search/lost.py check result/verdict.json --state result/floors-state.json --logs results "${mains[@]}" | tee -a result/table.md
           [ "${PIPESTATUS[0]}" = 3 ] && echo "red=1" >> "$GITHUB_OUTPUT"   # 3 = a source lost; a crash reads "not checked", never red
           exit 0
       - uses: actions/upload-artifact@v6
@@ -393,9 +397,10 @@ jobs:
         shell: bash   # Why (7 Nov 2026, pz): `| tee` hides the command's exit code without pipefail; the same pipe let the judge exam step (run 42410653476) show success after a crash
         run: node search-night-upload.mjs "$GITHUB_WORKSPACE/result/verdict.json" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       # Why (10 Nov 2026, G6, sa): one card through ci-alert's send(): the switchboard's event search-night (the Engineering bot the owner connected in Admin →
-      # Operations → Notifications), else the CI-alerts bot. Only a full run on main tells the owner (a branch or subset run never does); a failed send never reds the night.
+      # Operations → Notifications), else the CI-alerts bot. Only the scheduled night tells (it alone moves the open causes; a by-hand run would tell them again);
+      # a failed send never reds the night.
       - name: Tell the Engineering channel (G6)
-        if: always() && hashFiles('result/verdict.json') != '' && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && github.ref == 'refs/heads/main'
+        if: always() && hashFiles('result/verdict.json') != '' && inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && github.ref == 'refs/heads/main'
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e

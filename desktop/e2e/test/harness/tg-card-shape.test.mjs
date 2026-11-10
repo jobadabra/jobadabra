@@ -63,9 +63,9 @@ async function samples() {
   const sa = await imp('desktop/e2e/search-alert.mjs');
   const lost = [{kind: 'gone', red: true, what: 'employer_sites', people: [], detail: '0 right now, 14 / 12 / 15 on the last 3 runs'}, {kind: 'floor', red: true, what: 'right', people: [4], detail: '2 under its floor 9 two nights in a row'},
     {kind: 'not-run', red: false, what: 'not run', people: [3, 7], detail: 'Codex broker: queue full'}];
-  await keep('search-night-red', 'Search', () => sa.searchCard({causes: lost, red: true, merges: ['Read the employer list once per run (#3801)']}, run));
-  await keep('search-night-not-run', 'Search', () => sa.searchCard({causes: lost.slice(2), red: false}, run));
-  await keep('search-night-green', 'Search', () => sa.searchCard({causes: [], red: false, green_again: true}, run));
+  await keep('search-night-red', 'Search', () => sa.searchCard({causes: lost, tell: lost, back: ['unread:free_job_apis'], red: true, merges: ['Read the employer list once per run (#3801)']}, run));
+  await keep('search-night-not-run', 'Search', () => sa.searchCard({causes: lost.slice(2), tell: lost.slice(2), back: [], red: false}, run));
+  await keep('search-night-back', 'Search', () => sa.searchCard({causes: [], tell: [], back: ['unread:job_boards', 'floor:p4 right'], red: false}, run));
   const dj = await imp('desktop/e2e/lib/discovery-judge.mjs');
   const judged = [{shape: 'wd-a', host: 'careers.example-one.com', verdict: 'fields-left', detail: 'phone'}, {shape: 'gh-b', host: 'jobs.example-two.org', verdict: 'wrong', detail: ''}, {shape: 'lv-c', host: 'example-three.io', verdict: 'fine'}, {shape: 'ab-d', host: 'example-four.eu', verdict: 'fine'}, {shape: 'sm-e', host: 'example-five.ch', verdict: 'not-measured'}];
   await keep('discovery', 'Tests', () => dj.telegramText({day: '2026-11-09', judged, usd: 0.42, weekSpent: 1.1, weekCap: 3}));

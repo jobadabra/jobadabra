@@ -125,9 +125,13 @@ def update(state, verdict, chain, run, today, resets=(), sha=''):
 
 def validate(state):
     """The shape floors-save accepts -> [problem]; anything else is never written (the state comes from a job that read scraped text)."""
-    if not isinstance(state, dict) or set(state) != {'version', 'series'} or state['version'] != 1 or not isinstance(state['series'], dict):
-        return ['not a floors state (version 1, series)']
+    if not isinstance(state, dict) or not {'version', 'series'} <= set(state) <= {'version', 'series', 'lost'} or state['version'] != 1 or not isinstance(state['series'], dict):
+        return ['not a floors state (version 1, series, optional lost)']
     out = []
+    lost = state.get('lost', {'open': []})   # G6's causes open between nights (tools/persona-search/lost.py): fixed cause keys only, never scraped text
+    if not isinstance(lost, dict) or set(lost) != {'open'} or not isinstance(lost['open'], list) or len(lost['open']) > 50 \
+            or not all(isinstance(k, str) and re.fullmatch(r'(gone|unread|floor|not-run):[\w ,.-]{1,40}', k) for k in lost['open']):
+        out.append('lost')
     for key, series in state['series'].items():
         if not re.fullmatch(r'[0-9a-f]{12}\|[\w,-]+\|eures-(on|off)', key) or set(series) != {'people', 'last_green'}:
             out.append(f'series {key[:40]!r}')
