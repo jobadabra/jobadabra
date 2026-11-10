@@ -117,19 +117,22 @@ export function listChips(name, placeholder) {
   return box;
 }
 const wholeWords = {};   // the "Whole word only" box per list while editing
-// Remote jobs (Search settings "Remote jobs"): a place of its own, or only jobs in your places.
+// Remote jobs (Search settings "Remote jobs"): No, My country (only remote that names your country), Yes (any; a bare "Remote" lists only here). lj 3/4, owner 10 Nov 2026:
+// "Small: add a third Remote work button"; the whole-country part is the Acceptable places row (empty = only your area).
+const REMOTE_WORDS = [['No', () => t('pagesStatus.no')], ['Country', () => t('pagesCommon.remoteCountry')], ['Yes', () => t('pagesCommon.yes')]];
 function remoteChoice() {
-  const now = strategyState.lastStrategy?.remote_jobs !== false, draft = drafts().targetEdits.remote, chosen = draft ? draft.set === 'Yes' : now;
-  if (!isOpen('places')) return el('span', '', remoteWords(chosen, labelsOf('country').slice(0, 1).map(titleCase)));
+  const last = strategyState.lastStrategy, now = last?.remote_word === 'country' ? 'Country' : last?.remote_jobs === false ? 'No' : 'Yes';
+  const draft = drafts().targetEdits.remote, chosen = draft ? draft.set : now;
+  if (!isOpen('places')) return el('span', '', chosen === 'Country' ? t('pagesCommon.remoteCountry') : remoteWords(chosen === 'Yes', labelsOf('country').slice(0, 1).map(titleCase)));
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
   group.setAttribute('aria-label', t('pagesCommon.remoteWork'));
-  for (const [label, yes] of [['Yes', true], ['No', false]]) {
-    const button = el('button', yes === chosen ? 'is-active' : '', yes ? t('pagesCommon.yes') : t('pagesStatus.no'));
+  for (const [label, words] of REMOTE_WORDS) {
+    const button = el('button', label === chosen ? 'is-active' : '', words());
     button.type = 'button';
-    button.setAttribute('aria-pressed', String(yes === chosen));
+    button.setAttribute('aria-pressed', String(label === chosen));
     button.addEventListener('click', () => {
-      if (yes === now && strategyState.lastStrategy?.remote_word !== 'country') delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};   // from "Country" a click on Yes is a real change (lj 2/4)
+      if (label === now) delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};
       renderTargets();
     });
     group.append(button);
@@ -237,7 +240,7 @@ const VIEWS = {
     const preferred = places.length ? withHints('places', chipsOf) : none(t('pagesCommon.none'));
     preferred.title = t('pagesStrategyMore.rankedFirst');
     return [readRows([{icon: 'pin', label: t('pagesCommon.preferredPlaces'), value: preferred},
-      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesFinalLabels.noneSelected'))},
+      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesCommon.onlyYourArea'))},
       mode === 'yes' && abroad.length ? {icon: 'send', label: t('pagesStrategyMore.relocatePlaces'), value: folded(abroad.map(entry => entry.label), 10, t('pagesCommon.showAll'))}
         : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
       {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},

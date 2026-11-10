@@ -89,6 +89,8 @@ const rows = {
   addRoleWords: ["Add role words","Rollenbegriffe hinzufügen","Ajouter des termes de poste","Aggiungi termini del ruolo","Añadir términos de puesto","Adaugă termeni de rol","Добавить названия должностей"],
   loosen: ["Loosen your filters","Filter lockern","Assouplir vos filtres","Allenta i filtri","Ampliar tus filtros","Relaxează filtrele","Смягчить фильтры"],
   remoteWork: ["Remote work","Fernarbeit","Télétravail","Lavoro da remoto","Trabajo remoto","Lucru la distanță","Удалённая работа"],
+  remoteCountry: ["My country","Mein Land","Mon pays","Il mio paese","Mi país","Țara mea","Моя страна"],
+  onlyYourArea: ["Only your area","Nur Ihre Gegend","Seulement votre zone","Solo la tua zona","Solo tu zona","Doar zona ta","Только ваш район"],
   applications: ["Applications","Bewerbungen","Candidatures","Candidature","Solicitudes","Candidaturi","Отклики"],
   openJobPosting: ["Open the job posting","Stellenanzeige öffnen","Ouvrir l’offre d’emploi","Apri l’annuncio di lavoro","Abrir la oferta de empleo","Deschide anunțul de angajare","Открыть объявление о вакансии"],
   needsAnswer: ["Needs your answer","Braucht deine Antwort","Attend votre réponse","Richiede una tua risposta","Necesita tu respuesta","Necesită răspunsul tău","Нужен ваш ответ"],
