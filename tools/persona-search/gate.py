@@ -18,6 +18,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))   # scores_rows.py sits beside this file, as for metrics.py
 from scores_rows import table_rows  # noqa: E402
 import funnel as funnel_mod  # noqa: E402
+import verdicts  # noqa: E402
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
@@ -236,7 +237,7 @@ def result(n, out):
         judge_usd = float(judged_file.get('usd') or 0)
         judged = judged_file['rows']
         relevant = [r for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes']
-        row.update(found=len(judged), local=len(relevant))
+        row.update(found=len(judged), local=len(relevant), **verdicts.counts(judged))   # place / role counts for the Night tab (verdicts.py)
         # Fixed categories only: source names can be employer names; no such text belongs in the central night record.
         row['relevant_sources'] = {kind: sum(1 for r in relevant if source_kind(r) == kind)
                                    for kind in ('eures', 'other', 'unknown')}
@@ -399,7 +400,7 @@ def compare(pr, main_runs):
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
-                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources')})
+                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources'), 'place': (row or {}).get('place'), 'role': (row or {}).get('role')})
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
