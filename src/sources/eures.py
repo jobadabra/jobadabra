@@ -292,16 +292,23 @@ def eures(search, get=None, client=None):
     except (OSError, http.client.HTTPException, ValueError) as error:
         stop = error
         _note(failed, error)
-    if failed['pages']:
-        if not jobs:
-            if stop is not None and not _timed_out(stop):
-                raise stop
-            if failed['error'] is not None:
-                raise failed['error']
-        if len(kept) < MOST:
-            CUT[0] = True
-        ending = 'nothing more asked' if stop is not None else 'the others were read'
-        print(f"EURES: {failed['pages']} page(s) failed ({', '.join(failed['kinds'])}), keeping the {len(kept)} read; {ending}", flush=True)
+    return _close(failed, stop, jobs, kept)
+
+
+def _close(failed, stop, jobs, kept):
+    """The end of a read with failed pages (#3689): one that read nothing raises `stop` (unless a timeout) or the first failure that was not a timeout; one that read
+    something keeps `kept`, with CUT set unless it reached MOST, and says how many pages failed in one line. A read with no failed page returns `kept` as it is."""
+    if not failed['pages']:
+        return kept
+    if not jobs:
+        if stop is not None and not _timed_out(stop):
+            raise stop
+        if failed['error'] is not None:
+            raise failed['error']
+    if len(kept) < MOST:
+        CUT[0] = True
+    ending = 'nothing more asked' if stop is not None else 'the others were read'
+    print(f"EURES: {failed['pages']} page(s) failed ({', '.join(failed['kinds'])}), keeping the {len(kept)} read; {ending}", flush=True)
     return kept
 
 _early = {}   # the search's key -> the read started with the search (start_early)
