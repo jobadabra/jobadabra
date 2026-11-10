@@ -29,13 +29,13 @@ class ScoreFirstFromTheStart(unittest.TestCase):
     def test_a_timed_search_with_a_profile_scores_first_from_the_start(self):
         self.assertIsNotNone(self.plan())
         self.assertTrue(time_budget.SCORE_FIRST)
-        time_budget.start(180, now=time.monotonic() - 100)
+        time_budget.start(180, now=time.monotonic() - 125)
         time_budget.score_first()
         from src import run_counts
         run_counts.reset()   # Why (#2218): an earlier test in the shard that scored https://x.test/1 left it scored, so nothing "waited"
         self.addCleanup(run_counts.reset)
         run_counts.matched([{'url': f'https://x.test/{n}'} for n in range(20)])   # jobs that need the time: the floor's titles wait (with room, one batch: test_first_press_order.py)
-        self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring what it needs (stop 140 s, SCORING 45 s)")
+        self.assertEqual(time_budget.local_titles(10), 0, "past 120 s the title floor leaves scoring what it needs (stop 165 s, SCORING 45 s; the facts' 25 s went in ts, 10 Nov 2026)")
 
     def test_nothing_to_score_plans_no_score_first(self):
         for kwargs in ({'score_max': 0}, {'profile': None}, {'budget': 0}):

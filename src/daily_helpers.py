@@ -49,7 +49,7 @@ def time_budget_on():
 
 def scoring_plan(args, stores):
     """What reads the Profile for scoring (None: no scoring), decided when the search starts. A timed search that scores scores first
-    (time_budget.score_first: scoring stops FACTS seconds early for the job facts), so the reads, the title floor and scoring's share plan
+    (time_budget.score_first: the job facts take the seconds scoring leaves), so the reads, the title floor and scoring's share plan
     for that stop from second 0 (26 Oct 2026, a proof on a copy of the owner's data: it was switched on only when scoring began, the floor's
     title calls ran to 120 s and scoring got 3 s: 3 jobs)."""
     read_profile = profile_source(stores) if args.score_max else None

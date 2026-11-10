@@ -120,7 +120,7 @@ def waiting_entry(key, turn, seq, *rest):
 
 
 def slot_ticket(level, nearest, arrival):
-    """A caller waiting for an AI slot: its level first (slots.FIRST before NORMAL before LATER: a first run's local boards go first, 27 Oct 2026), then the nearness of the batch it asks
+    """A caller waiting for an AI slot: its level first (slots.FIRST before SCORE before NORMAL before LATER: a first run's local boards go first, 27 Oct 2026; a Kept job's score before the calls that bring more jobs, ts 10 Nov 2026), then the nearness of the batch it asks
     (#2918), then arrival. Reproduces: slots.Slots's ticket."""
     return (level, nearest, arrival)
 

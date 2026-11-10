@@ -76,7 +76,6 @@ class Clock:
         self.BEGAN = None   # when the search started (src/sources/read_budget.py cut_at)
         self.PLANNED = budget.value('time_budget.PLANNED')   # the app's budget, which the seconds below are planned for (part)
         self.RESERVE = budget.group('time_budget.RESERVE')   # seconds kept for the AI steps that come after this one
-        self.FACTS = budget.value('time_budget.FACTS')   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
         self.TAIL = budget.value('time_budget.TAIL')    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
         self.SCORING = budget.value('time_budget.SCORING')   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts only calls that leave scoring its time (title_room; 26 Oct 2026, a proof
         #                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
@@ -208,15 +207,15 @@ class Clock:
             return True
 
     def score_first(self, on=True):
-        """This refresh scores first and reads the facts after (src/daily_search.py). Scoring then stops FACTS seconds early and the reading goes
-        to the end of the budget. 10 Oct 2026: scoring took every second, the reading started with "Time is up" on every refresh, and no job ever
-        had its facts (seniority, salary, languages...): 0 of 103 read."""
+        """This refresh scores first and reads the facts after (src/daily_search.py): scoring has the budget to its end (minus TAIL) and the reading takes the
+        seconds scoring leaves. 10 Oct 2026: scoring took every second and no job ever had its facts: 0 of 103 read. Why no seconds kept for them any more (ts,
+        10 Nov 2026, owner asked via AskUserQuestion: "Yes, facts later"): the 25 s kept were read as "0 of 74, Time is up" on every night log, while 71 jobs waited for a score."""
         self.SCORE_FIRST = on
 
     def reserve(self, step):
         """Seconds before the deadline at which `step` starts no new call (this run's part of them, the TAIL included)."""
         if self.SCORE_FIRST:
-            return self.part({'titles': self.RESERVE['titles'], 'enrich': 0, 'score': self.FACTS}.get(step, 0) + self.TAIL)
+            return self.part({'titles': self.RESERVE['titles'], 'enrich': 0}.get(step, 0) + self.TAIL)
         return self.part(self.RESERVE.get(step, 0) + self.TAIL)
 
     def over(self, step='score', now=None, key=None):
@@ -256,7 +255,7 @@ class Clock:
         if self.DEADLINE is None or wanted <= 0:
             return wanted
         floor = min(wanted, self.floor_left()) if step == 'score' and not self.ended(now) else 0   # never fewer than the search's first scores (may_score)
-        stop = min(self.DEADLINE - self.part(self.FACTS if self.SCORE_FIRST and step in ('score', 'job') else 0), self.end())   # a stage's own end comes first
+        stop = self.end()   # a stage's own end comes first; scoring keeps no seconds for the facts (ts, 10 Nov 2026)
         left = stop - (now if now is not None else time.monotonic()) - self.part(self.TAIL)
         pace = max(0.5, self._paces().get(step, self.PACE[step]))
         n = max(floor, min(wanted, int(left * self.SHARE[step] / pace)))

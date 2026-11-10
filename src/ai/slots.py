@@ -1,9 +1,11 @@
 """The AI command-line engines' slots (Claude Code, Codex: processes at once) served by priority, then by arrival: a first press's local boards
-(their reads, titles and proposal) FIRST, every other call NORMAL, the board web search LATER. A thread's level is set with priority(); a pool
+(their reads, titles and proposal) FIRST, the scores of the jobs this run found SCORE, every other call NORMAL, the board web search and the scores of earlier runs' jobs LATER. A thread's level is set with priority(); a pool
 thread takes its caller's level only through carry(). Used by src/ai/providers/cli_base.py; set by src/first_jobs.py, src/sources/found_boards.py
 and src/sources/board_web.py. Tests: tests/unit/ai/test_ai_slots.py.
 Why (#first-press-slots, owner, 27 Oct 2026: "Web search, combined with more AI slots, combined with local boards first"): on rerun 40450152414
-the board reads' calls waited 13-24 s each behind the web search's 25 s call, and the read cut (67 s) came first."""
+the board reads' calls waited 13-24 s each behind the web search's 25 s call, and the read cut (67 s) came first.
+Why SCORE (ts, 10 Nov 2026, owner asked via AskUserQuestion: night 9 Nov): a score call took 9-10 s with at most 2 other AI calls in flight and 32 s with 6 or more (31 of
+59 started with 6+), all at NORMAL; a job that is already Kept is one call from a score, so its call goes before the calls that only bring more jobs."""
 import contextlib
 import itertools
 import threading
@@ -11,7 +13,7 @@ import time
 
 from ..press import rank as order   # this file has its own rank()
 
-FIRST, NORMAL, LATER = 0, 1, 2
+FIRST, SCORE, NORMAL, LATER = 0, 1, 2, 3
 _local = threading.local()
 
 
@@ -22,7 +24,7 @@ def level():
 
 @contextlib.contextmanager
 def priority(at):
-    """Inside the block, this thread's AI calls queue at level `at` (FIRST, NORMAL or LATER); the previous level comes back after it, also on
+    """Inside the block, this thread's AI calls queue at level `at` (FIRST, SCORE, NORMAL or LATER); the previous level comes back after it, also on
     an exception. Only this thread: a pool thread it starts takes the level through carry()."""
     before = level()
     _local.level = at
