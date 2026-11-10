@@ -58,7 +58,7 @@ _pr_view_rest() {
 }
 
 # pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
-# Why (#2282, its own first run): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest.
+# Why (#2282, its own first run; 10 Nov 2026, REST-out fallback): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest. The REST reader is _pr_checks_rest; this wrapper tries it first and asks GraphQL (same rows, same rules) only when REST core is out of quota.
 pr_checks() { _pr_checks_rest "$@" || { _pr_rest_out && _pr_gql_checks "$@"; }; }
 _pr_checks_rest() {
   local runs st id run excluded='[]' status_excluded='[]'
