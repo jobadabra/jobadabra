@@ -146,3 +146,63 @@ test('a second copy quits on its own, with no callback needed and no other app c
   await Promise.resolve(); await Promise.resolve();
   assert.deepEqual(calls, ['quit'], 'it quits at once and creates no window');
 });
+
+// cs 4/4 (owner, 10 Nov 2026: "Yes + 'Stop and quit' in case 3"): the quit dialog's three Always on cases, one test each, with the real quit-dialog words.
+import {keepCloudAuto} from '../../../lib/cloud-auto.js';
+function cloudFixture(kind, choice, chosen = 'quit') {
+  const calls = [], hand = {declined: 0}, handlers = {};
+  const app = {on: (event, fn) => { handlers[event] = fn; }, quit: () => calls.push('quit')};
+  const storage = {settings: () => ({}), saveSettings: () => {}};
+  const window = {show: () => calls.push('show'), isDestroyed: () => false};
+  keepCloudAuto(storage, {declineQuit: () => { hand.declined++; }});
+  const before = installQuitHandling({app, platform: 'darwin', state: () => ({storage, window}), pipeline: {running: () => null, queued: () => [], taskName: () => 'Search', freezeQueue() {}, stopRunning: () => Promise.resolve(), hasChildren: () => false, whenIdle: () => Promise.resolve()},
+    terminals: {running: () => [], list: () => [{id: 's1', company: 'Acme', background: {mode: 'auto', state: 'filling'}}], label: () => 'Company', shutdown() {}}, shouldAskOnQuit: () => false,
+    showDialog: (_parent, options) => { calls.push(options.buttons); return choice; }, icon: () => ({}), getWindows: () => [window], toWindow: (...args) => calls.push(args), onCancel: () => calls.push('cancelled'),
+    cloudQuit: {offerFor: () => kind, chooseCloud: async (_s, asked) => { calls.push(`choose ${asked}`); return chosen; }}});
+  return {calls, hand, quit: () => before({preventDefault: () => calls.push('prevent')})};
+}
+const settle = () => new Promise(resolve => setImmediate(resolve));
+test('Always on off, e-mail on file: the third button turns it on and quits; Stop and quit and Keep working keep their meaning', async () => {
+  const turn = cloudFixture('off', 2); turn.quit(); await settle();
+  assert.deepEqual(turn.calls[1], ['Keep working', 'Stop and quit', 'Turn on Always on and quit']);
+  assert.deepEqual(turn.calls.slice(2), ['choose off', 'quit']);
+  const stop = cloudFixture('off', 1); stop.quit(); await settle();
+  assert.ok(!stop.calls.some(value => String(value).startsWith('choose')), 'no Always on on Stop and quit');
+  assert.equal(stop.calls.at(-1), 'quit');
+  const keep = cloudFixture('off', 0); keep.quit(); await settle();
+  assert.ok(!keep.calls.includes('quit') && keep.calls.includes('cancelled'));
+});
+test('Always on off, no e-mail yet (or it could not be turned on): the app stays open and shows Always on\'s card', async () => {
+  const setup = cloudFixture('setup', 2, 'stay'); setup.quit(); await settle();
+  assert.deepEqual(setup.calls[1], ['Keep working', 'Stop and quit', 'Set up Always on…']);
+  assert.ok(!setup.calls.includes('quit'));
+  assert.deepEqual(setup.calls.filter(value => Array.isArray(value) && value[0] === 'openTarget'), [['openTarget', {card: 'always-on'}]]);
+  assert.ok(setup.calls.includes('cancelled') && setup.calls.includes('show'));
+});
+test('Always on on: Hand over and quit quits (the departure hook hands them over); Stop and quit stops them and tells the cloud hand-over not to send', async () => {
+  const hand = cloudFixture('on', 2); hand.quit(); await settle();
+  assert.deepEqual(hand.calls[1], ['Keep working', 'Stop and quit', 'Hand over and quit']);
+  assert.equal(hand.calls.at(-1), 'quit');
+  assert.equal(hand.hand.declined, 0);
+  const stop = cloudFixture('on', 1); stop.quit(); await settle();
+  assert.equal(stop.hand.declined, 1, 'this quit hands nothing over');
+  assert.equal(stop.calls.at(-1), 'quit');
+});
+test('the quit dialog is the old one without an offer, and lib/lifecycle.js listens first so a held quit is never handed over before the answer', () => {
+  const f = fixture({busy: null, sessions: [{id: 's1', status: 'running'}]}); f.quit();
+  assert.deepEqual(f.calls.find(Array.isArray), ['Keep working', 'Stop and quit']);
+  const order = [];
+  const app = {on: event => order.push(`on ${event}`), prependListener: event => order.push(`prepend ${event}`), quit() {}};
+  installQuitHandling({app, platform: 'darwin', state: () => ({}), pipeline: {}, terminals: {}});
+  assert.ok(order.includes('prepend before-quit') && !order.includes('on before-quit'), order.join(', '));
+});
+
+test('code review (cs 4/4): "Quit now" in the searches-and-sessions dialog says it stops them, so it hands nothing over', () => {
+  const storage = {settings: () => ({}), saveSettings() {}}, hand = {declined: 0};
+  keepCloudAuto(storage, {declineQuit: () => { hand.declined++; }});
+  const app = {on() {}, quit() {}};
+  const before = installQuitHandling({app, platform: 'darwin', state: () => ({storage, window: {show() {}, isDestroyed: () => false}}), pipeline: {running: () => ({kind: 'search'}), queued: () => [], taskName: () => 'Search', freezeQueue() {}, stopRunning: () => Promise.resolve(), hasChildren: () => false, whenIdle: () => Promise.resolve()},
+    terminals: {running: () => [], list: () => [], label: () => 'C', shutdown() {}}, shouldAskOnQuit: () => false, showDialog: () => 1, icon: () => ({}), getWindows: () => [{}], toWindow() {}});
+  before({preventDefault() {}});
+  assert.equal(hand.declined, 1);
+});

@@ -10,6 +10,8 @@ import {kitAllows, proofOk} from './submit-proof.js';   // the page's proof and 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
 const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'receipt_confirmed', 'submitting']);
+// Why (10 Nov 2026, cs 4/4, owner: "Phased: A now"): an item the cloud holds can still press, so it is not TERMINAL (queue() still refuses another mode over it), but the Mac's own claim, ready, checkpoint and reserve never act on it.
+const HELD = new Set([...TERMINAL, 'cloud']);
 const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // a job still on its way to a press: a quit hands it over (interrupted)
 // The hand-offs that end a run with nothing left to settle: the person's Stop or Cancel, a quit before the press, a mode change, a page with no form to reach (8 Nov 2026). Applying again starts a new run.
 // Every other reason stays with the person (a bot check, an unknown or reserved press, a form taken to their own browser, where they may have submitted it).
@@ -60,7 +62,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
   async function claim(url, session, owner) {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
-      if (!owner || !state || state.session !== session || state.manualOverride || (state.owner && state.owner !== owner)) return {ok: false};
+      if (!owner || !state || state.session !== session || state.manualOverride || state.state === 'cloud' || (state.owner && state.owner !== owner)) return {ok: false};
       if (state.state !== 'queued') return {ok: own(state, session, owner), state};
       const next = await save(app, {...state, owner, state: 'preflight', launchedAt: now()});
       return {ok: true, state: next};
@@ -78,7 +80,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
       if (!own(state, session, owner)) return {ok: false};
-      if (TERMINAL.has(state.state)) return state;
+      if (HELD.has(state.state)) return state;
       if (!proofOk(proof)) return manual(app, state, proof?.botCheck ? 'captcha_runtime' : 'incomplete_or_uncertain');   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       const changed = state.signature !== proof.signature;
       return save(app, {...state, state: state.mode === 'fill' ? 'ready_for_review' : 'waiting_to_submit', signature: proof.signature, submitControl: proof.submitControl,
@@ -89,7 +91,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
       if (!own(state, session, owner)) return {ok: false};
-      if (TERMINAL.has(state.state)) return state;
+      if (HELD.has(state.state)) return state;
       if (proof?.answer !== 'ready' || proof.step !== 'middle' || proof.requiredComplete !== true || proof.safe !== true) return manual(app, state, 'incomplete_or_uncertain');
       return save(app, {...state, state: 'filling', factsUnknown: state.factsUnknown === true || proof.factsOnly !== true});
     });
@@ -98,7 +100,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
       const deny = reason => ({submit: false, reason, state: state?.state || ''});
-      if (!own(state, session, owner) || state.mode !== 'auto' || state.manualOverride || TERMINAL.has(state.state)) return deny('manual_or_already_attempted');
+      if (!own(state, session, owner) || state.mode !== 'auto' || state.manualOverride || HELD.has(state.state)) return deny('manual_or_already_attempted');
       const stop = async reason => { const next = await manual(app, state, reason); return {submit: false, reason, state: next.state}; };
       // Why (7 Nov 2026, owner, #3363): the item's own mode and confirmation decide, not what Settings says now; an item queued without a confirmation (an older build) is handed over, never pressed.
       if (state.mode !== 'auto' || !state.chosenAt || !state.autoConfirmedAt) return stop('mode_changed_or_not_opted_in');
@@ -153,5 +155,40 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       return save(app, {...state, state: 'receipt_confirmed', humanSubmittedAt: pressedAt, receiptAt: realNow()});
     });
   }
-  return {queue, ended, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, read};
+  /**
+   * cs 4/4 (model A): hands an item that has not pressed to the cloud. -> the saved `cloud` state, or null when it cannot press any more (handed over, pressed, receipt), is not Full automation, or is another session's.
+   * The item keeps its own stamp (mode, chosenAt, autoConfirmedAt); the Mac then never claims, readies or reserves it again, and the next start's quit sweep leaves it (state is not BEFORE_PRESS).
+   */
+  async function sendToCloud(url, session) {
+    return serial(async () => {
+      const app = await appOf(url), state = await load(app);
+      if (!state || state.session !== session || state.mode !== 'auto' || state.manualOverride || !BEFORE_PRESS.has(state.state)) return null;
+      return save(app, {...state, state: 'cloud', was: state.state, cloudAt: realNow()});
+    });
+  }
+  /** cs 4/4: a send that failed puts the item back where it was (the Mac stays on at a lock or sleep and goes on, a quit hands it over at the next start as before). -> the restored state, or null (not a cloud item). */
+  async function unsend(url, session) {
+    return serial(async () => {
+      const app = await appOf(url), state = await load(app);
+      if (!state || state.session !== session || state.state !== 'cloud' || !BEFORE_PRESS.has(state.was)) return null;
+      const {was, cloudAt: _sentAt, ...rest} = state;
+      return save(app, {...rest, state: was});
+    });
+  }
+  /**
+   * cs 4/4: the site's outcome for a `cloud` item ({state: submitted | not_submitted | unknown | failed, attempt, reason}). submitted is a receipt; unknown is "check whether it went through"; anything else
+   * keeps the site's reason for the person. -> the saved state, or null (another session, a receipt already, not a cloud item). A press (submitted, unknown) after the person's Stop is still recorded
+   * (the Stop and the press crossed): never hidden; a refusal after a Stop changes nothing.
+   */
+  async function fromCloud(url, session, outcome) {
+    return serial(async () => {
+      const app = await appOf(url), state = await load(app);
+      if (!state || state.session !== session || state.receiptAt) return null;
+      const pressed = ['submitted', 'unknown'].includes(outcome?.state);
+      if (state.state !== 'cloud' && !(pressed && state.state === 'needs_user_handoff' && !state.attempt && state.cloudAt > 0)) return null;
+      if (outcome.state === 'submitted') return save(app, {...state, state: 'receipt_confirmed', manualOverride: false, via: 'cloud', cloudAttempt: String(outcome.attempt || '').slice(0, 80), receiptAt: realNow()});
+      return manual(app, state, outcome.state === 'unknown' ? 'submission_outcome_unknown' : String(outcome?.reason || 'needs_user').slice(0, 80));
+    });
+  }
+  return {queue, ended, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, sendToCloud, unsend, fromCloud, read};
 }

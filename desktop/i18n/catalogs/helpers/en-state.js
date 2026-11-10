@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "Full automation handed this one to you: review and submit it yourself.",
   "filling": "Filling",
   "submittingSoon": "Submitting soon",
+  "inCloud": "Sending from our cloud",
   "submitting": "Submitting…",
   "connectionOff": "Connection off",
   "fillingFields": "Filling · {done} of {total} fields",

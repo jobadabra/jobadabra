@@ -247,6 +247,7 @@ export const messages = {
   "fullAutoHandoff": "Vollautomatik hat diese Bewerbung an dich übergeben: prüfe und sende sie selbst.",
   "filling": "Wird ausgefüllt",
   "submittingSoon": "Wird bald eingereicht",
+  "inCloud": "Wird aus unserer Cloud gesendet",
   "submitting": "Wird eingereicht…",
   "connectionOff": "Verbindung aus",
   "fillingFields": "Wird ausgefüllt · {done} von {total} Feldern",

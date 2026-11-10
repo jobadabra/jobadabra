@@ -79,7 +79,8 @@ test('startAutoSend: nothing starts without Electron; quit waits for the last se
   const app = new EventEmitter(), powerMonitor = new EventEmitter(), checks = [];
   let quits = 0;
   app.quit = () => { quits++; app.emit('before-quit', {defaultPrevented: false, preventDefault() {}}); };
-  const stop = startAutoSend(why => { checks.push(why); return Promise.resolve(); }, {app, powerMonitor, every: 1e9, quitWait: 50});
+  const leavings = [];
+  const stop = startAutoSend((why, leaving) => { checks.push(why); leavings.push(leaving === true); return Promise.resolve(); }, {app, powerMonitor, every: 1e9, quitWait: 50});
   powerMonitor.emit('lock-screen');
   powerMonitor.emit('suspend');
   const asked = {defaultPrevented: true, preventDefault() {}};
@@ -91,6 +92,7 @@ test('startAutoSend: nothing starts without Electron; quit waits for the last se
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(quits, 1);
   assert.deepEqual(checks.slice(2), ['the app quits'], 'the second quit goes through without another send');
+  assert.deepEqual(leavings, [true, true, true], 'every departure says so: the cloud hand-over (cs 4/4) follows these, never the timer');
   stop();
 });
 

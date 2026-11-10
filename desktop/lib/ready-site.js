@@ -83,7 +83,23 @@ export const readSend = async (storage, jobs, {ai = '', now = () => new Date(), 
   body: withOwnAi({task: 'readiness', night: now().toISOString().slice(0, 10), jobs}, ai)}));
 /** Starts the queued readiness night now. -> {ok} or {ok: false, status, error}; never throws. */
 export const readStart = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'readiness'}, ...options}));
-/** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending}; a read taken here is removed from the site (at most once). */
-export const readTake = async (storage, options) => readWords(await call(storage, '/api/ready/reads', {method: 'POST', body: {}, ...options}));
+// One call takes both the readiness reads and the Full automation outcomes (the site removes each once taken), so whoever calls hands what it did not ask for to the others: `onTaken` (cs 4/4: lib/cloud-read.js for reads, lib/cloud-auto.js for outcomes).
+const listeners = new Set();
+/** Registers `fn(got)`, called with every successful /reads answer; -> its remover. A listener that throws is ignored: the call's own answer is never lost to it. */
+export const onTaken = fn => { listeners.add(fn); return () => listeners.delete(fn); };
+/** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending, submits: [{job, night, state, why, outcome, ms}], pendingSubmits}; what is taken here is removed from the site (at most once) and also told to every `onTaken` listener. */
+export const readTake = async (storage, options) => {
+  const got = readWords(await call(storage, '/api/ready/reads', {method: 'POST', body: {}, ...options}));
+  if (got.ok) await Promise.allSettled([...listeners].map(async listener => listener(got)));   // all start at once: a slow one never holds another back (code review of cs 4/4)
+  return got;
+};
 /** Stops the readiness night: the site ends it and its unread forms are told as failed. -> {ok, stopped} or {ok: false, status, error}; never throws. */
 export const readStop = async (storage, options) => readWords(await call(storage, '/api/ready/stop', {method: 'POST', body: {}, ...options}));
+
+// Cloud Full automation (cs 4/4, spec "cs 4/4 Design"): the Mac's confirmed items go as ONE auto night, started at once. 402 = Pro only, 404 = not available yet, 409 = this day's night already started; the site's own words say so.
+/** Posts the items as one auto night: `batch` is lib/ready-batch.js buildBatch's batch with each job carrying its `item` (the Mac's own queued stamp), `night` = the UTC day. -> {ok, batch, queued} or {ok: false, status, error}; never throws. */
+export const autoSend = async (storage, batch, {ai = '', ...options} = {}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options, body: withOwnAi({...batch, task: 'auto'}, ai)}));
+/** Starts the queued auto night now. -> {ok} or {ok: false, status, error}; never throws. */
+export const autoRun = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'auto'}, ...options}));
+/** Stops these jobs of the auto night one by one (the whole-night stop would also end a readiness night). -> {ok}: true only when every one was stopped. */
+export const autoStop = async (storage, jobs, options) => ({ok: (await Promise.all((jobs || []).map(job => stop(storage, job, options)))).every(result => result.ok)});

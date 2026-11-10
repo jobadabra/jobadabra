@@ -45,12 +45,16 @@ export function sessionLines(sessions, label) {
 const afterOf = sessions => t(sessions.some(session => session.background) ? 'native.afterHidden' : 'native.afterForms');
 
 // Only Claude sessions are working (the queue is empty): keep them, or stop them and quit.
-export function sessionsOnly(sessions, label) {
+// `cloud` (cs 4/4, owner's yes 10 Nov 2026: "Yes + 'Stop and quit' in case 3"; lib/cloud-quit.js offerFor): for a Pro install with Full automation applications working, what Always on does for them:
+// 'off' offers to turn it on and quit, 'setup' to set it up first (the app stays open), 'on' says a quit hands them to the cloud browser (Stop and quit still stops them). Keep working stays the default.
+export function sessionsOnly(sessions, label, cloud = null) {
   const one = sessions.length === 1, who = sessions.every(session => session.background) ? t('native.hiddenBrowser') : 'Claude';
+  const third = {off: 'quitTurnOn', setup: 'quitSetUpAlways', on: 'quitHandOver'}[cloud];
+  const why = third ? t({off: 'native.quitAlwaysOffDetail', setup: 'native.quitAlwaysSetupDetail', on: 'native.quitAlwaysOnDetail'}[cloud]) : t(one ? 'native.stoppingOne' : 'native.stoppingMany', {after: afterOf(sessions)});
   return {
     message: t(one ? 'native.sessionsOne' : 'native.sessionsMany', {who, count: sessions.length}),
-    detail: `${sessionLines(sessions, label).join('\n')}\n\n${t(one ? 'native.stoppingOne' : 'native.stoppingMany', {after: afterOf(sessions)})}`,
-    buttons: [t('native.keepWorking'), t('native.stopQuit')],
+    detail: `${sessionLines(sessions, label).join('\n')}\n\n${why}`,
+    buttons: [t('native.keepWorking'), t('native.stopQuit'), ...(third ? [t(`native.${third}`)] : [])],
   };
 }
 

@@ -12,6 +12,8 @@ import {extensionToken} from './server-env.js';
 import {notify as notifyDefault, stopAsked, tellWindow} from './server-hooks.js';
 import {log as appLog} from './log.js';
 import {appliedMessageFor} from './applied-message.js';
+import {createCloudSide} from './background-apply-cloud.js';
+import {cloudAutoOf} from './cloud-auto.js';
 import {waitingMessageFor} from './waiting-message.js';
 import * as journal from './session-journal.js';
 
@@ -24,6 +26,10 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.',
   no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
+const STATE_WORDS = {ready_for_review: 'Form filled — review the same background form and Submit', waiting_to_submit: 'Filled — waiting before automatic submission; Stop is available',
+  submitting: 'Submission attempted — waiting for the site receipt', cloud: 'Handed to our cloud browser: it sends this application by itself, even with your Mac off'};   // words-ok: our own state words
+/** What the live step log and the card's note say for a background state (a hand-over says its reason's words). */
+const stateWords = state => (HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : STATE_WORDS[state.state] || 'Filling in the background');
 
 // What an Apply batch says about the jobs it did not start: not eligible (the store refused), busy (the person already has the job open in Chrome) and live (still queued for Full automation, Gitar on #3409: skipped and said, never a refusal after earlier jobs of the batch were queued).
 const SKIPS = {NOT_ELIGIBLE: 'skipped', LIVE_AUTO: 'live'};   // the store's error codes that skip one job and keep the batch going
@@ -106,7 +112,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const testClock = process.env.JOBADABRA_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
     record.background = {...testClock, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
-    const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
+    const words = stateWords(state);
     if (state.state !== before) journal.note(item.id, journal.backgroundStep(state.state, words));   // the live step log: each new state once (lib/session-journal.js)
     terminals.report(item.id, {event: 'note', message: words});
   };
@@ -126,6 +132,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   async function markManual(item, reason) {
     const state = await store.handoff(item.url, item.id, owner, reason);
     if (state.ok === false) return state;
+    cloudAutoOf(storage)?.stopFor(item.id);   // the person's Stop or Cancel reaches the cloud too: it stops that job (cs 4/4). Asked of the persisted list, not of this run's cache: after a restart nothing is cached
     cache(item, state);
     log('apply', 'background application handed to the person', {session: item.id, mode: state.mode, reason});
     const note = NOTICES[reason] || 'Review and submit this application yourself.';
@@ -468,5 +475,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, deadEnd, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
+  // cs 4/4 (lib/background-apply-cloud.js): which items the cloud may hold, the move of one, the site's outcome written back.
+  const cloud = createCloudSide({store, terminals, serial, cache, itemFor, closeSession: id => browserOf().closeSession(id), notify: (...args) => notify(...args), tellAway, applied: () => (applied ||= appliedMessageFor(storage)), log, now});
+  return {cloud, enqueue, canQueue, releaseEnded, markUpdatedStart, handle, judgment, reveal, outcome, cancel, stopOne, deadEnd, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }
