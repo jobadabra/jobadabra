@@ -40,3 +40,12 @@ test('⌘K reaches Locations; Reset search coverage only while it is active; Job
   assert.match(card, /shared\.coverageActive = coverage\(strategyState\.lastStrategy\)\.active/);
   assert.doesNotMatch(nav.match(/add\('Strategy', 'Job preferences'.*\n?.*\n/)[0], /countries|relocation/);
 });
+
+// lj 3/4 (owner, 10 Nov 2026: "What is the difference between Acceptable and Preferred? ... tooltips with question mark"; "Why 'Add as a whole word only'? It's confusing").
+test('Preferred and Acceptable carry a "?" tooltip, Locations lists have no whole-word box, Remote work has three buttons', () => {
+  assert.match(card, /hint = \{places: 'The cities or areas where you most want to work\. Jobs there match best\.', country: 'A wider region or country where any town is fine/);
+  assert.match(card, /helpDot\(hint\)/);
+  assert.match(card, /const LOCATION_LISTS = new Set\(\['places', 'country', 'abroad', 'rights'\]\)/);
+  assert.match(card, /const whole = PLAIN\.has\(name\) \|\| LOCATION_LISTS\.has\(name\) \? null/);
+  assert.match(card, /const REMOTE_WORDS = \[\['No'.*\['Country', \(\) => 'My country'\].*\['Yes'/);
+});

@@ -97,7 +97,8 @@ export function listChips(name, placeholder) {
     input.dataset.list = name;
     input.addEventListener('input', () => { typed[name] = input.value; changed(); });
     // A match word can be added as the whole word only (stored \bword\b by lib/strategy-edit.js cleanEdits), never by typing quotes.
-    const whole = PLAIN.has(name) ? null : Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!wholeWords[name]});
+    // Why (10 Nov 2026, owner: "Why 'Add as a whole word only'? It's confusing"): a place word already matches only as a whole word in the engine (src/paths.py place regex), so Locations has no box.
+    const whole = PLAIN.has(name) || LOCATION_LISTS.has(name) ? null : Object.assign(document.createElement('input'), {type: 'checkbox', checked: !!wholeWords[name]});
     whole?.addEventListener('change', () => { wholeWords[name] = whole.checked; });
     input.addEventListener('keydown', event => {
       const text = input.value.trim(), plain = PLAIN.has(name) ? text : text.toLowerCase(), word = whole?.checked ? asWholeWord(plain) : plain;
@@ -116,20 +117,33 @@ export function listChips(name, placeholder) {
   }
   return box;
 }
+// A small "?" that shows `text` on hover or keyboard focus (the shared .tip pattern, style.css).
+function helpDot(text) {
+  const dot = Object.assign(el('span', 'tip help-dot'), {tabIndex: 0});
+  dot.dataset.tip = text;
+  dot.setAttribute('aria-label', text);
+  dot.append(icon('help'));
+  return dot;
+}
+const labelWithHelp = (label, text) => { const line = el('p', 'sub', label); line.append(helpDot(text)); return line; };
+const LOCATION_LISTS = new Set(['places', 'country', 'abroad', 'rights']);
 const wholeWords = {};   // the "Whole word only" box per list while editing
-// Remote jobs (Search settings "Remote jobs"): a place of its own, or only jobs in your places.
+// Remote jobs (Search settings "Remote jobs"): No, My country (only remote that names your country), Yes (any; a bare "Remote" lists only here). lj 3/4, owner 10 Nov 2026:
+// "Small: add a third Remote work button"; the whole-country part is the Acceptable places row (empty = only your area).
+const REMOTE_WORDS = [['No', () => t('pagesStatus.no')], ['Country', () => t('pagesCommon.remoteCountry')], ['Yes', () => t('pagesCommon.yes')]];
 function remoteChoice() {
-  const now = strategyState.lastStrategy?.remote_jobs !== false, draft = drafts().targetEdits.remote, chosen = draft ? draft.set === 'Yes' : now;
-  if (!isOpen('places')) return el('span', '', remoteWords(chosen, labelsOf('country').slice(0, 1).map(titleCase)));
+  const last = strategyState.lastStrategy, now = last?.remote_word === 'country' ? 'Country' : last?.remote_jobs === false ? 'No' : 'Yes';
+  const draft = drafts().targetEdits.remote, chosen = draft ? draft.set : now;
+  if (!isOpen('places')) return el('span', '', chosen === 'Country' ? t('pagesCommon.remoteCountry') : remoteWords(chosen === 'Yes', labelsOf('country').slice(0, 1).map(titleCase)));
   const group = el('div', 'segmented');
   group.setAttribute('role', 'group');
   group.setAttribute('aria-label', t('pagesCommon.remoteWork'));
-  for (const [label, yes] of [['Yes', true], ['No', false]]) {
-    const button = el('button', yes === chosen ? 'is-active' : '', yes ? t('pagesCommon.yes') : t('pagesStatus.no'));
+  for (const [label, words] of REMOTE_WORDS) {
+    const button = el('button', label === chosen ? 'is-active' : '', words());
     button.type = 'button';
-    button.setAttribute('aria-pressed', String(yes === chosen));
+    button.setAttribute('aria-pressed', String(label === chosen));
     button.addEventListener('click', () => {
-      if (yes === now && strategyState.lastStrategy?.remote_word !== 'country') delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};   // from "Country" a click on Yes is a real change (lj 2/4)
+      if (label === now) delete drafts().targetEdits.remote; else drafts().targetEdits.remote = {set: label};
       renderTargets();
     });
     group.append(button);
@@ -176,8 +190,10 @@ function targetCard([key, glyph, title, lists]) {
     // Relocation is a value (Yes / No / Not specified); its places are asked only for Yes, and kept whatever the mode.
     if (name === 'abroad') { card.append(el('p', 'sub', t('pagesCommon.relocation')), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
     const box = listChips(name, placeholder);
-    if (name === 'places') { const priority = el('div', 'priority'); priority.append(el('b', '', label), box); card.append(priority); continue; }
-    if (label) card.append(el('p', 'sub', label));
+    // Preferred vs Acceptable, as a "?" tooltip on each label (owner, 10 Nov 2026: "What is the difference between Acceptable and Preferred locations? ... what about using tooltips? with question mark").
+    const hint = {places: t('pagesCommon.preferredHelp'), country: t('pagesCommon.acceptableHelp')}[name];
+    if (name === 'places') { const priority = el('div', 'priority'); const head = el('b', '', label); head.append(helpDot(hint)); priority.append(head, box); card.append(priority); continue; }
+    if (label) card.append(hint ? labelWithHelp(label, hint) : el('p', 'sub', label));
     card.append(box);
   }
   if (key === 'places') card.append(el('p', 'sub', t('pagesCommon.remoteWork')), remoteChoice());
@@ -237,7 +253,7 @@ const VIEWS = {
     const preferred = places.length ? withHints('places', chipsOf) : none(t('pagesCommon.none'));
     preferred.title = t('pagesStrategyMore.rankedFirst');
     return [readRows([{icon: 'pin', label: t('pagesCommon.preferredPlaces'), value: preferred},
-      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesFinalLabels.noneSelected'))},
+      {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesCommon.onlyYourArea'))},
       mode === 'yes' && abroad.length ? {icon: 'send', label: t('pagesStrategyMore.relocatePlaces'), value: folded(abroad.map(entry => entry.label), 10, t('pagesCommon.showAll'))}
         : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
       {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},

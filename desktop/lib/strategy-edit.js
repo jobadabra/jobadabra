@@ -36,11 +36,11 @@ const listAt = (data, path) => (path.length === 1 ? data[path[0]] : data[path[0]
 const textsAt = (data, name) => name === 'roles' ? titlesOf(data) : listAt(data, EDITABLE_LISTS[name][1]).map(EDITABLE_LISTS[name][3] === 'place' ? placeText : String);
 const stored = (name, list) => (EDITABLE_LISTS[name][3] === 'place' ? list.map(placeOf) : list);
 const lowerSet = list => new Set(list.map(item => String(item).toLowerCase()));
-// edits: {list: {add, remove}}, and remote: {set: 'Yes' | 'No'} (the search settings' "Remote jobs").
+// edits: {list: {add, remove}}, and remote: {set: 'Yes' | 'No' | 'Country'} (the search settings' "Remote jobs").
 export function cleanEdits(edits) {
   const out = {};
   for (const [name, edit] of Object.entries(edits && typeof edits === 'object' ? edits : {})) {
-    if (name === 'remote') { if (['Yes', 'No'].includes(edit?.set)) out.remote = {set: edit.set}; continue; }
+    if (name === 'remote') { if (['Yes', 'No', 'Country'].includes(edit?.set)) out.remote = {set: edit.set}; continue; }
     if (SCALARS[name]) { if (edit && SCALARS[name].valid(edit.set)) out[name] = {set: edit.set}; continue; }
     if (!EDITABLE_LISTS[name] || !edit || typeof edit !== 'object') continue;
     const plain = EDITABLE_LISTS[name][2];

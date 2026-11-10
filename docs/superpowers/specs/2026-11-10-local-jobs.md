@@ -17,5 +17,5 @@ Owner, 10 Nov 2026 (asked via AskUserQuestion on the sketch): "A: 'How far would
 ## Progress
 - [x] 1/4 A remote job is listed only when the AI placed it (proof: tests/unit/sources/test_remote_is_judged.py @d24b6d0e). Mac proof of the merged patch: listed 25 to 3, 33 to 19, 17 to 6, 24 to 9; wrong-country remote 0.
 - [ ] 2/4 Remote jobs: Country, and the draft sets it (proof: tests/unit/sources/test_remote_country_only.py, desktop/test/unit/main/strategy-reach.test.js)
-- [ ] 3/4 The "How far would you go?" switch (preview + owner's yes first)
+- [x] 3/4 A third Remote work button, My country, "?" tooltips on Preferred and Acceptable, no whole-word box on places (owner 10 Nov 2026, via AskUserQuestion: "Small: add a third Remote work button", "No box on locations") (proof: desktop/test/unit/renderer/locations-card.test.js)
 - [ ] 4/4 Local jobs where EURES is thin (sketch + owner's yes first)
