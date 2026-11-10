@@ -103,6 +103,14 @@ class TheEuresMode(unittest.TestCase):
         self.assertIn('EURES: off', off.splitlines()[0])
         self.assertIn('EURES: on', on.splitlines()[0])
 
+    def test_a_by_hand_run_with_eures_marks_each_row_on_from_how_the_press_ran(self):
+        """sa, 10 Nov 2026: search-personas.yml's by-hand `eures` input (--with-eures) measures in = out for EURES; the row says "on" so the site keeps that series apart."""
+        for given, mark in (({'eures': 'on'}, 'on'), ({'eures': 'off'}, 'off'), ({'funnel': {'eures': 'off'}}, 'off'), ({}, None)):
+            with tempfile.TemporaryDirectory() as out:
+                (Path(out) / 'draw').mkdir()
+                (Path(out) / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'seconds': 90, 'funnel': {}, **given}) + '\n', encoding='utf-8')
+                self.assertEqual(gate.result(1, out).get('eures'), mark, given)
+
     def test_the_verdict_says_off_only_when_every_press_that_ran_said_so(self):
         row = lambda eures: {'persona': 1, 'local': 1, 'found': 2, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription', 'eures': eures}
         pr = lambda *modes: {n + 1: row(mode) for n, mode in enumerate(modes)}

@@ -17,6 +17,12 @@ on:
         description: 'Paired fresh searches with/without EURES plus a fresh reference (twice the presses; separate report)'
         type: boolean
         default: false
+      # Why (10 Nov 2026, sa for the owner's invariant "If we're using EURES, our search results should always be what EURES gives + some additional sources"): in = out for EURES
+      # is measured only on presses that read EURES, and the night runs without it since #3678; each row says `eures: on|off`, so the site keeps the two series apart.
+      eures:
+        description: 'Presses read EURES (the installed app does; the night does not): measures in = out for EURES'
+        type: boolean
+        default: false
       scheduled:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
@@ -148,7 +154,7 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '1' }}" --fresh --engine api --tag gate 2>&1 | tee out/run.log || true
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '1' }}" --fresh --engine api --tag gate ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json --urls
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
