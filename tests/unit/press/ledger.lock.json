@@ -49,7 +49,7 @@
  },
  "L13": {
   "gets": "jobs found earlier and never scored are scored from the run's first second, in one list with the new ones, the nearest first",
-  "hash": "cf65cdf243703f33"
+  "hash": "08722935021a7243"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
@@ -149,7 +149,7 @@
  },
  "L38": {
   "gets": "a Find jobs run scores each job as it lands, beside the readers, to the run's end: no seconds are kept for the job facts and no job is paid for twice",
-  "hash": "1233d22521ce1425"
+  "hash": "435081beaa54a105"
  },
  "L39": {
   "gets": "jobs from the EU portal are placed on the map the moment they are read, so the jobs in your own area are sorted and scored first",
