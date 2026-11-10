@@ -3,6 +3,7 @@ personas; a band of other personas or of re-made recordings would read a lost jo
 import importlib.util
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -74,6 +75,23 @@ class YardstickCi(unittest.TestCase):
             self.assertIn('Press failed, the person is left out of both sides of that run: main side: p2; pr side: p1', text)
             self.assertIn('| p2 | ⚪ not measured (press failed on main, left out of both sides', text)
             self.assertIn('### The first Find jobs run (1 personas)', text, 'p2 is not in the first run\'s means on either side')
+
+    def test_main_newest_band_is_read_from_the_artifact_as_the_workflow_uploads_it(self):
+        # The upload step names out/ and art/..., so the downloaded artifact holds out/band.json: the reader looked for band.json at the top and found no band in any PR run since 8 Nov.
+        with tempfile.TemporaryDirectory() as root:
+            def fake_gh(command, **_):
+                if command[:3] == ['gh', 'run', 'list']:
+                    return mock.Mock(stdout=json.dumps([{'databaseId': 7, 'displayTitle': ci.BAND_RUN}]))
+                Path(command[command.index('-D') + 1], 'out').mkdir(parents=True)
+                Path(command[command.index('-D') + 1], 'out', 'band.json').write_text(json.dumps({'runs': {'1': {}}, 'people': {}}))
+                return mock.Mock(stdout='')
+            before = os.getcwd()
+            os.chdir(root)
+            try:
+                with mock.patch.object(ci.subprocess, 'run', side_effect=fake_gh):
+                    self.assertEqual(ci.newest_band(), {'runs': {'1': {}}, 'people': {}})
+            finally:
+                os.chdir(before)
 
     def test_a_persona_one_replay_of_main_lost_is_left_out_of_the_band(self):
         with tempfile.TemporaryDirectory() as root:

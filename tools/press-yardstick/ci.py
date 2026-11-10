@@ -166,7 +166,10 @@ def newest_band():
             return {}
         folder = Path('band-download')
         subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
-        return json.loads((folder / 'band.json').read_text(encoding='utf-8'))
+        # Why (10 Nov 2026, ys 1/2): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json); this read band-download/band.json, found nothing in every PR run since #3594 (8 Nov)
+        # and every verdict read "not measured". Found by reading the first PR comment against the band's own artifact.
+        found = next(folder.rglob('band.json'), None)
+        return json.loads(found.read_text(encoding='utf-8')) if found else {}
     except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError):
         return {}
 
@@ -203,7 +206,7 @@ def pr(art, out):
         against, why = comparable(band, recordings, run, measured)
         lines += ['', f'### The {label} ({len(mine)} personas)', '']
         lines += (['No replay measured this run.', ''] if not seen else
-                  [numbers.people_line(seen, ALL_PEOPLE), '', numbers.repeat_line(seen, noise), '', numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run, cut), noise), ''])
+                  [numbers.people_line(seen, ALL_PEOPLE), ''] + ([numbers.repeat_line(seen, noise), ''] if noise else []) + [numbers.people_table(seen, ALL_PEOPLE, missing_why(recordings, run, cut), noise), ''])
         if why:
             lines += [why, '']
         crashed = sorted(p.name for p in recordings.glob('p*') if (p / f'jobs-{run}.json').exists() and p.name not in measured)
