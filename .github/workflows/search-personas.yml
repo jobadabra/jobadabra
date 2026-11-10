@@ -289,6 +289,7 @@ jobs:
           for dir in main/*; do [ ! -d "$dir" ] || printf '%s ' "${dir#main/}"; done
           printf '\n'
       - name: Right jobs per source of our list (G6)
+        continue-on-error: true   # report only: a crash here never costs the night its compare, floors and send
         run: python3 tools/persona-search/sources_count.py results
       - name: Compare with the earlier runs
         id: compare
