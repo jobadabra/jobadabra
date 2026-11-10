@@ -119,7 +119,7 @@ def pool(n, persona, post, boards):
     except Exception as error:   # noqa: BLE001 - Why (review, 10 Nov 2026): a board that raised must not end EURES or the other 17 people
         board = {'board': None, 'status': f'not counted: {type(error).__name__}', 'rows': []}
     rows += [{**r, 'source': 'public_board'} for r in board['rows']]
-    sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0)}
+    sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0), **({'note': board['note']} if board.get('note') else {})}
     sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026); Adzuna and Jooble stay parked (owner's word adds them)
     sources['linkedin'] = {'status': 'by hand'}   # never read by a tool (CLAUDE.md, login walls); sa's by-hand count fills it
     return rows, sources

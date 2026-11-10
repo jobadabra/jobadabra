@@ -1,44 +1,644 @@
 {
- "_why": "The market count's national job boards (tools/persona-search/market_boards.py): one row per country, the largest public, no-login, server-rendered board (sa, 10 Nov 2026). The referee's data, never the product's site list (src/ stays universal). people: persona number -> the place as the board's search spells it. shape: where a job card's title, employer, place and link are on the board's result page.",
+ "_why": "The market count's national job boards (tools/persona-search/market_boards.py): one row per country, the largest public, no-login board whose own search page lists jobs without a browser (sa, 10 Nov 2026). The referee's data, never the product's site list (src/ stays universal). people: persona number -> the place as the board's search spells it. search (and next, for later pages of another form): the board's own address. max_pages + note: a row that reads fewer pages says so. shape: where a job card's title, employer, place and link are.",
  "boards": [
-  {"country": "HR", "board": "moj-posao.net", "people": {"6": "zagreb"},
+  {
+   "country": "BG",
+   "board": "zaplata.bg",
+   "people": {
+    "1": "sofia"
+   },
+   "search": "https://www.zaplata.bg/{place}/?q={role}&page={page}",
+   "shape": {
+    "card": {
+     "tag": "div",
+     "class": "grid"
+    },
+    "title": {
+     "in": {
+      "class": "title"
+     }
+    },
+    "company": {
+     "in": [
+      {
+       "class": "logo"
+      },
+      {
+       "tag": "img"
+      }
+     ],
+     "take": "@alt"
+    },
+    "location": {
+     "in": {
+      "class": "city"
+     }
+    },
+    "url": {
+     "in": [
+      {
+       "class": "title"
+      },
+      {
+       "tag": "a"
+      }
+     ],
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "RO",
+   "board": "bestjobs.eu",
+   "people": {
+    "2": "cluj-napoca"
+   },
+   "search": "https://www.bestjobs.eu/ro/locuri-de-munca-in-{place}/{role_slug}",
+   "shape": {
+    "card": {
+     "tag": "div",
+     "class": "xl:hover:shadow-cardHover"
+    },
+    "title": {
+     "in": {
+      "tag": "h2"
+     }
+    },
+    "company": {
+     "in": {
+      "tag": "div",
+      "class": "line-clamp-1"
+     }
+    },
+    "location": {
+     "in": {
+      "tag": "a",
+      "class": "hover:underline"
+     }
+    },
+    "url": {
+     "in": {
+      "tag": "a",
+      "class": "inset-0"
+     },
+     "take": "@href"
+    }
+   },
+   "max_pages": 1,
+   "note": "first page only: its later jobs load by script"
+  },
+  {
+   "country": "CH",
+   "board": "jobs.ch",
+   "people": {
+    "4": "Zürich"
+   },
+   "search": "https://www.jobs.ch/de/stellenangebote/?term={role}&location={place}&page={page}",
+   "shape": {
+    "card": {
+     "attr": {
+      "data-cy": "serp-item"
+     }
+    },
+    "title": {
+     "in": {
+      "attr": {
+       "data-cy": "job-link"
+      }
+     },
+     "take": "@title"
+    },
+    "company": {
+     "in": {
+      "tag": "p",
+      "class": "textStyle_caption1"
+     },
+     "index": -1
+    },
+    "location": {
+     "in": {
+      "tag": "p",
+      "class": "textStyle_caption1"
+     },
+     "index": 1
+    },
+    "url": {
+     "in": {
+      "attr": {
+       "data-cy": "job-link"
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "PL",
+   "board": "praca.pl",
+   "people": {
+    "5": "krakow"
+   },
+   "search": "https://www.praca.pl/s-{role_slug},{place}.html",
+   "shape": {
+    "card": {
+     "tag": "li",
+     "class": "listing-v2__item"
+    },
+    "title": {
+     "in": {
+      "class": "listing-v2__title"
+     }
+    },
+    "company": {
+     "in": {
+      "class": "listing-v2__employer"
+     }
+    },
+    "location": {
+     "in": {
+      "class": "listing-v2__location"
+     }
+    },
+    "url": {
+     "in": {
+      "class": "listing-v2__title"
+     },
+     "take": "@href"
+    }
+   },
+   "next": "https://www.praca.pl/s-{role_slug},{place}_{page}.html"
+  },
+  {
+   "country": "HR",
+   "board": "moj-posao.net",
+   "people": {
+    "6": "zagreb"
+   },
    "search": "https://www.moj-posao.net/Pretraga-Poslova/?query={role}&locations={place}&page={page}",
-   "shape": {"card": {"class": "job-card"},
-             "title": {"in": {"attr": {"data-test": "job-card-content-title"}}},
-             "company": {"in": {"tag": "img"}, "take": "@alt"},
-             "location": {"in": {"class": "info__child"}},
-             "url": {"in": {"tag": "a", "attr": {"href": ""}}, "take": "@href"}}},
-  {"country": "IE", "board": "irishjobs.ie", "people": {"7": "dublin"},
+   "shape": {
+    "card": {
+     "class": "job-card"
+    },
+    "title": {
+     "in": {
+      "attr": {
+       "data-test": "job-card-content-title"
+      }
+     }
+    },
+    "company": {
+     "in": {
+      "tag": "img"
+     },
+     "take": "@alt"
+    },
+    "location": {
+     "in": {
+      "class": "info__child"
+     }
+    },
+    "url": {
+     "in": {
+      "tag": "a",
+      "has": {
+       "attr": {
+        "data-test": "job-card-content-title"
+       }
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "IE",
+   "board": "irishjobs.ie",
+   "people": {
+    "7": "dublin"
+   },
    "search": "https://www.irishjobs.ie/jobs/{role_slug}/in-{place}?page={page}",
-   "shape": {"card": {"attr": {"data-at": "job-item"}},
-             "title": {"in": {"attr": {"data-at": "job-item-title"}}},
-             "company": {"in": {"attr": {"data-at": "job-item-company-name"}}},
-             "location": {"in": {"attr": {"data-at": "job-item-location"}}},
-             "url": {"in": {"attr": {"data-at": "job-item-title"}}, "take": "@href"}}},
-  {"country": "PT", "board": "net-empregos.com", "people": {"11": "Lisboa"},
+   "shape": {
+    "card": {
+     "attr": {
+      "data-at": "job-item"
+     }
+    },
+    "title": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-title"
+      }
+     }
+    },
+    "company": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-company-name"
+      }
+     }
+    },
+    "location": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-location"
+      }
+     }
+    },
+    "url": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-title"
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "DE",
+   "board": "stepstone.de",
+   "people": {
+    "8": "leipzig"
+   },
+   "search": "https://www.stepstone.de/jobs/{role_slug}/in-{place}?page={page}",
+   "shape": {
+    "card": {
+     "attr": {
+      "data-at": "job-item"
+     }
+    },
+    "title": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-title"
+      }
+     }
+    },
+    "company": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-company-name"
+      }
+     }
+    },
+    "location": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-location"
+      }
+     }
+    },
+    "url": {
+     "in": {
+      "attr": {
+       "data-at": "job-item-title"
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "FR",
+   "board": "hellowork.com",
+   "people": {
+    "9": "Lyon"
+   },
+   "search": "https://www.hellowork.com/fr-fr/emploi/recherche.html?k={role}&l={place}&p={page}",
+   "shape": {
+    "card": {
+     "attr": {
+      "data-cy": "serpCard"
+     }
+    },
+    "title": {
+     "in": {
+      "tag": "span",
+      "class": "block"
+     }
+    },
+    "company": {
+     "in": {
+      "tag": "span",
+      "class": "inline"
+     }
+    },
+    "location": {
+     "in": {
+      "attr": {
+       "data-cy": "localisationCard"
+      }
+     }
+    },
+    "url": {
+     "in": {
+      "attr": {
+       "data-cy": "offerTitle"
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "PT",
+   "board": "net-empregos.com",
+   "people": {
+    "11": "Lisboa"
+   },
    "search": "https://www.net-empregos.com/pesquisa-empregos.asp?chaves={role}&cidade={place}&page={page}",
-   "shape": {"card": {"class": "job-item"},
-             "title": {"in": {"tag": "h2"}},
-             "company": {"in": {"tag": "li", "has": {"class": "flaticon-work"}}},
-             "location": {"in": {"tag": "li", "has": {"class": "flaticon-pin"}}},
-             "url": {"in": {"class": "oferta-link"}, "take": "@href"}}},
-  {"country": "HU", "board": "profession.hu", "people": {"15": "budapest"},
+   "shape": {
+    "card": {
+     "class": "job-item"
+    },
+    "title": {
+     "in": {
+      "tag": "h2"
+     }
+    },
+    "company": {
+     "in": {
+      "tag": "li",
+      "has": {
+       "class": "flaticon-work"
+      }
+     }
+    },
+    "location": {
+     "in": {
+      "tag": "li",
+      "has": {
+       "class": "flaticon-pin"
+      }
+     }
+    },
+    "url": {
+     "in": {
+      "class": "oferta-link"
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "IT",
+   "board": "subito.it",
+   "people": {
+    "12": "milano"
+   },
+   "search": "https://www.subito.it/annunci-lombardia/vendita/offerte-lavoro/{place}/?q={role}&o={page}",
+   "shape": {
+    "card": {
+     "tag": "article",
+     "class": "_7cUP-a_adItemCard"
+    },
+    "title": {
+     "in": {
+      "tag": "h3"
+     }
+    },
+    "location": {
+     "in": {
+      "tag": "span",
+      "class": "index-module_location__vLPWy"
+     }
+    },
+    "url": {
+     "in": {
+      "tag": "a"
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "CZ",
+   "board": "jobs.cz",
+   "people": {
+    "13": "praha"
+   },
+   "search": "https://www.jobs.cz/prace/{place}/?q%5B%5D={role}&page={page}",
+   "shape": {
+    "card": {
+     "tag": "article"
+    },
+    "title": {
+     "in": {
+      "class": "SearchResultCard__titleLink"
+     }
+    },
+    "company": {
+     "in": {
+      "class": "SearchResultCard__footerItem"
+     }
+    },
+    "location": {
+     "in": {
+      "attr": {
+       "data-test": "serp-locality"
+      }
+     }
+    },
+    "url": {
+     "in": {
+      "class": "SearchResultCard__titleLink"
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "SE",
+   "board": "Platsbanken (jobsearch.api.jobtechdev.se)",
+   "people": {
+    "14": "göteborg"
+   },
+   "search": "https://jobsearch.api.jobtechdev.se/search?q={role}+{place}&limit=100",
+   "shape": {
+    "state": {
+     "after": "",
+     "path": "hits"
+    },
+    "title": "headline",
+    "company": "employer.name",
+    "location": "workplace_address.municipality",
+    "url": "webpage_url"
+   },
+   "max_pages": 1
+  },
+  {
+   "country": "HU",
+   "board": "profession.hu",
+   "people": {
+    "15": "budapest"
+   },
    "search": "https://www.profession.hu/allasok/{place}/{page},0,0,{role}",
-   "shape": {"card": {"class": "dsx-job-card"},
-             "title": {"in": {"class": "dsx-job-card-save-advertisement"}, "take": "@data-item-name"},
-             "company": {"in": {"class": "dsx-job-card-save-advertisement"}, "take": "@data-affiliation"},
-             "location": {"in": {"class": "dsx-job-card-save-advertisement"}, "take": "@data-location-id"},
-             "url": {"in": {"tag": "a", "attr": {"target": "_blank"}}, "take": "@href"}}},
-  {"country": "AT", "board": "karriere.at", "people": {"16": "wien"},
+   "shape": {
+    "card": {
+     "class": "dsx-job-card"
+    },
+    "title": {
+     "in": {
+      "class": "dsx-job-card-save-advertisement"
+     },
+     "take": "@data-item-name"
+    },
+    "company": {
+     "in": {
+      "class": "dsx-job-card-save-advertisement"
+     },
+     "take": "@data-affiliation"
+    },
+    "location": {
+     "in": {
+      "class": "dsx-job-card-save-advertisement"
+     },
+     "take": "@data-location-id"
+    },
+    "url": {
+     "in": {
+      "tag": "a",
+      "attr": {
+       "target": "_blank"
+      }
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "AT",
+   "board": "karriere.at",
+   "people": {
+    "16": "wien"
+   },
    "search": "https://www.karriere.at/jobs/{role_slug}/{place}?page={page}",
-   "shape": {"card": {"class": "m-jobsListItem"}, "skip": {"class": "m-jobsListItem--inactive"},
-             "title": {"in": {"class": "m-jobsListItem__title"}},
-             "company": {"in": {"class": "m-jobsListItem__companyName"}},
-             "location": {"in": {"class": "m-jobsListItem__locations"}},
-             "url": {"in": {"class": "m-jobsListItem__titleLink"}, "take": "@href"}}},
-  {"country": "DK", "board": "jobindex.dk", "people": {"18": "storkoebenhavn"},
+   "shape": {
+    "card": {
+     "class": "m-jobsListItem"
+    },
+    "skip": {
+     "class": "m-jobsListItem--inactive"
+    },
+    "title": {
+     "in": {
+      "class": "m-jobsListItem__title"
+     }
+    },
+    "company": {
+     "in": {
+      "class": "m-jobsListItem__companyName"
+     }
+    },
+    "location": {
+     "in": {
+      "class": "m-jobsListItem__locations"
+     }
+    },
+    "url": {
+     "in": {
+      "class": "m-jobsListItem__titleLink"
+     },
+     "take": "@href"
+    }
+   }
+  },
+  {
+   "country": "ES",
+   "board": "infoempleo.com",
+   "people": {
+    "17": "valencia"
+   },
+   "search": "https://www.infoempleo.com/trabajo/?search={role}&region={place}",
+   "shape": {
+    "card": {
+     "tag": "li",
+     "class": "offerblock"
+    },
+    "skip": {
+     "class": "related-offerblock"
+    },
+    "title": {
+     "in": {
+      "class": "offer-title"
+     }
+    },
+    "company": {
+     "in": {
+      "class": "company-name"
+     }
+    },
+    "location": {
+     "in": [
+      {
+       "class": "offer-location"
+      },
+      {
+       "tag": "span"
+      }
+     ]
+    },
+    "url": {
+     "in": [
+      {
+       "class": "offer-title"
+      },
+      {
+       "tag": "a"
+      }
+     ],
+     "take": "@href"
+    }
+   },
+   "max_pages": 1,
+   "note": "first page only: its later pages are built by script"
+  },
+  {
+   "country": "DK",
+   "board": "jobindex.dk",
+   "people": {
+    "18": "storkoebenhavn"
+   },
    "search": "https://www.jobindex.dk/jobsoegning/{place}?q={role}&page={page}",
-   "shape": {"state": {"after": "var Stash = ", "path": "jobsearch/result_app/list.storeData.searchResponse.results"},
-             "title": "headline", "company": "companytext", "location": "area", "url": "url"}}
- ]
+   "shape": {
+    "state": {
+     "after": "var Stash = ",
+     "path": "jobsearch/result_app/list.storeData.searchResponse.results"
+    },
+    "title": "headline",
+    "company": "companytext",
+    "location": "area",
+    "url": "url"
+   }
+  }
+ ],
+ "_refused": {
+  "_why": "Tried 10 Nov 2026 (mc) and not used: a refusal is never retried (CLAUDE.md), a browser-only page is not read here. sa: no further hunting for BE and NL.",
+  "403 or bot check": [
+   "jobs.bg",
+   "ejobs.ro",
+   "stepstone.be",
+   "jobat.be",
+   "pracuj.pl",
+   "nationalevacaturebank.nl",
+   "werkzoeken.nl",
+   "infojobs.net",
+   "bakeca.it"
+  ],
+  "browser only (no list in the page)": [
+   "actiris.brussels",
+   "leforem.be",
+   "vdab.be",
+   "werk.nl (redirects)",
+   "jobs.ams.at",
+   "job.jobnet.dk",
+   "jobsireland.ie"
+  ],
+  "role ignored by the page": [
+   "jobbird.com"
+  ],
+  "closed": [
+   "infojobs.it"
+  ]
+ }
 }

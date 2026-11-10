@@ -32,6 +32,30 @@ class Cards(unittest.TestCase):
         self.assertEqual(rows, [{'title': 'Nurse 1', 'company': 'Clinic 1', 'location': 'Dublin', 'url': 'https://board.example/j/1'},
                                 {'title': 'Nurse 3', 'company': 'Clinic 3', 'location': 'Dublin', 'url': 'https://board.example/j/3'}])
 
+    def test_list_items_and_paragraphs_left_open_are_closed_as_html_does_so_cards_never_nest(self):
+        markup = '<ul>' + ''.join(f'<li class="job"><h2><a href="/j/{i}">Nurse {i}</a></h2>' + (f'<p class="co">Clinic {i}<div>x</div>' if i else '') for i in range(3)) + '</ul>'
+        shape = {'card': {'class': 'job'}, 'title': {'in': {'tag': 'h2'}}, 'company': {'in': {'class': 'co'}}}
+        self.assertEqual([(r['title'], r['company']) for r in mb.cards(markup, shape, 'https://b.example/')], [('Nurse 0', ''), ('Nurse 1', 'Clinic 1'), ('Nurse 2', 'Clinic 2')],
+                         'a card without an employer never borrows the next card\'s')
+
+    def test_a_block_closes_an_open_paragraph_through_inline_elements(self):
+        markup = '<div class="job"><h2>Nurse</h2><p class="co"><span>Clinic<div class="pl">Dublin</div></div>'
+        shape = {'card': {'class': 'job'}, 'title': {'in': {'tag': 'h2'}}, 'company': {'in': {'class': 'co'}}, 'location': {'in': {'class': 'pl'}}}
+        self.assertEqual(mb.cards(markup, shape, 'https://b.example/')[0], {'title': 'Nurse', 'company': 'Clinic', 'location': 'Dublin', 'url': ''})
+
+    def test_a_selector_path_a_field_index_and_a_script_link(self):
+        markup = ('<div class="job"><div class="title"><a href="/j/1">Driver</a></div><a href="javascript:void(0)">save</a><div class="logo"><img alt="Acme"></div>'
+                  '<p class="c">2 days ago</p><p class="c">Sofia</p><p class="c">Full time</p></div>')
+        shape = {'card': {'class': 'job'}, 'title': {'in': {'class': 'title'}}, 'company': {'in': [{'class': 'logo'}, {'tag': 'img'}], 'take': '@alt'},
+                 'location': {'in': {'class': 'c'}, 'index': 1}, 'url': {'in': [{'class': 'title'}, {'tag': 'a'}], 'take': '@href'}}
+        self.assertEqual(mb.cards(markup, shape, 'https://b.example/'), [{'title': 'Driver', 'company': 'Acme', 'location': 'Sofia', 'url': 'https://b.example/j/1'}])
+        self.assertEqual(mb.cards(markup, {**shape, 'url': {'in': {'tag': 'a'}, 'index': 1, 'take': '@href'}}, 'https://b.example/')[0]['url'], '', 'a script link is no link')
+
+    def test_an_api_answer_is_a_state_from_its_first_character(self):
+        body = json.dumps({'hits': [{'headline': 'Bilmekaniker', 'employer': {'name': 'AB'}, 'workplace_address': {'municipality': 'Göteborg'}, 'webpage_url': 'https://x.example/1'}] * 3})
+        shape = {'state': {'after': '', 'path': 'hits'}, 'title': 'headline', 'company': 'employer.name', 'location': 'workplace_address.municipality', 'url': 'webpage_url'}
+        self.assertEqual(mb.cards(body, shape, 'https://x.example/')[0], {'title': 'Bilmekaniker', 'company': 'AB', 'location': 'Göteborg', 'url': 'https://x.example/1'})
+
     def test_a_page_state_gives_rows_from_its_path(self):
         state = {'list': {'results': [{'headline': 'Ingeniør', 'company': {'name': 'A/S'}, 'area': 'København', 'url': '/c?t=1'}, {'headline': ''}]}}
         shape = {'state': {'after': 'var Stash = ', 'path': 'list.results'}, 'title': 'headline', 'company': 'company.name', 'location': 'area', 'url': 'url'}
@@ -45,6 +69,11 @@ class Cards(unittest.TestCase):
             self.assertTrue(set(board['people']) <= {str(n) for n in range(1, len(PERSONAS) + 1)}, board['board'])
             self.assertIn('{role', board['search'])
             self.assertTrue(board['shape'].get('state') or board['shape'].get('card'), board['board'])
+            self.assertTrue('{page}' in board['search'] or board.get('next') or board.get('max_pages') == 1,
+                            f"{board['board']}: a row that cannot reach page 2 says max_pages 1 (review of [mc] 2/5: a first page read as the whole count)")
+            for field in ('title', 'company', 'location', 'url'):
+                spec = board['shape'].get(field)
+                self.assertTrue(not isinstance(spec, dict) or isinstance(spec.get('index', 0), int), f"{board['board']} {field}: index is a number")
 
 
 class Reading(unittest.TestCase):
@@ -96,6 +125,15 @@ class Reading(unittest.TestCase):
         self.assertEqual((got['status'], len(got['rows']), len(calls)), ('counted', mb.CAP, 4))
         got, calls = self.run_with([(200, page(card(1), card(2)))])
         self.assertEqual((len(got['rows']), len(calls)), (2, 3), 'page 2 repeats page 1: next word, which repeats too')
+
+    def test_a_one_page_row_is_read_once_per_word_and_its_note_goes_with_the_count(self):
+        self.BOARD = {**self.BOARD, 'search': 'https://board.example/jobs?q={role}&in={place}', 'max_pages': 1, 'note': 'first page only'}
+        got, calls = self.run_with([(200, page(card(1), card(2))), (200, page(card(3)))])
+        self.assertEqual((got['status'], len(calls), got['note']), ('counted', 2, 'first page only'), 'one request for each of the two words, no page 2')
+
+    def test_later_pages_use_the_next_form_when_the_row_has_one(self):
+        board = {'search': 'https://b.example/s-{role_slug},{place}.html', 'next': 'https://b.example/s-{role_slug},{place}_{page}.html'}
+        self.assertEqual([mb.address(board, 'kucharz', 'krakow', p) for p in (0, 1)], ['https://b.example/s-kucharz,krakow.html', 'https://b.example/s-kucharz,krakow_2.html'])
 
     def test_a_person_with_no_board_is_none_not_zero(self):
         self.assertEqual(mb.read(3, ['menuisier'], fetch=lambda url: self.fail('no board, no request'))['status'], 'none (no board)')
