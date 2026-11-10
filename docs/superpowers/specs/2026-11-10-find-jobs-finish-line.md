@@ -26,7 +26,7 @@ sa's default (the owner may change it): "reached" = every person at 95% or more 
 | Employer career sites | yes | the employers the index names for the person's places, read by the reference counter, not by the pipeline |
 | Free job feed APIs | yes | each API's own search for role + place |
 | Web search | yes | the AI's web search tool, asked for postings of role + place; never a scraped Google page (bot checks: safety rule) |
-| LinkedIn Jobs | yes, **by hand** | Safety rule (CLAUDE.md): no test or automation passes a login wall or uses the owner's LinkedIn session. So the owner (or a person) types the count for a person into Admin; until then the column shows "not counted" and the coverage says "without LinkedIn". Lifting this is an owner decision, not a session's. |
+| LinkedIn Jobs | yes, **by hand** | Safety rule (CLAUDE.md): no test or automation passes a login wall or uses the owner's LinkedIn session. Owner, 10 Nov 2026: "you can use my Linkedin Jobs to see some stats? But use it with care. Not too fast, not too long...": one session reads a few result counts by hand in his own Chrome with the local skill `linkedin-jobs-baseline` (at most 9 searches a session, one page each) and the numbers are typed into Admin's by-hand field; until then the column shows "not counted" and the coverage says "without LinkedIn". Whether the app's own LinkedIn jobs feature works is checked by a dedicated session (lt). Tests, CI and the engine still never use his LinkedIn session. |
 
 ## Where we are (10 Nov 2026)
 - In = out for EURES, EURES on (night 9 Nov against the reference of 6 Nov, one run each): at or above EURES for 5 of 12 people (p3, p9, p10, p12, p14); below for p5 23 of 24, p8 17 of 18, p1 14 of 19, p13 23 of 43, p17 7 of 13, p4 1 of 6, p2 0 of 1. Not yet split by stage: that is WP3's first table.
@@ -89,6 +89,13 @@ Fixed = it does not move unless the owner's words are in the commit, like the fi
 Not a guardrail: the PR yardstick (replays 13 of 16 people to 0 jobs); it stays a crash check and is named so in its PR comment.
 Limit, said plainly: G2 cannot run per PR (AI budget), so between two runs a regression can sit on main for up to a day; G1 and the ledger are the per-PR net, G2 the daily one.
 
+## Queued after WP3's table: the search in parallel, and one progress line per lane (WP8)
+Owner, 10 Nov 2026: "we should try to parallelize as much as possible a job search. Instead of having one progress line that shows a sequential order... We should have as many progress lines as many parallel threads we can have in parallel."
+What is known (10 Nov): the readers already run side by side (EURES from the press, employer sites, job boards), but (a) a serial start comes first: places worked out at 13-20 s, then employers named at 41-59 s on the night's AI (24 s on the Mac), and employer sites are read only after it; (b) every AI question shares 4 slots, and that is where jobs are lost: 28 to 307 titles per person were never asked when the 3 minutes ended (night 9 Nov), score calls waited 17-32 s behind other calls (Mac, 10 Nov).
+So two parts, neither started before its number exists:
+- Engine (sf, inside WP3): the per-person timeline in the table: each stage's start and end, what it waited for, slot occupancy. From it, the parallel fixes that move `never_asked` and seconds to first job (the serial start; more than 4 AI calls at once if the plan and the person's machine allow it: measured, not assumed; one lane per source). Each is a search PR under the admission rule.
+- App (a UI session, Queued): the Find jobs card shows one progress line per lane that really runs (per source: read N of M; AI: titles asked N of M; scored N of M), fed by the same per-source counts as the run's rows. Picture first (side by side, light and dark), built after the owner's yes; it shows only lanes that exist in the engine, never a made-up one.
+
 ## Rules for every search PR from now (go into CLAUDE.md with WP1)
 - It names the person and the number it moves (in = out for a source, or coverage), with 3 runs before and 3 after; a difference counts only when larger than the spread of those runs.
 - The scoreboard grades it, not its author.
@@ -111,4 +118,6 @@ Limit, said plainly: G2 cannot run per PR (AI budget), so between two runs a reg
 - [ ] WP7 G1 (sf, first PR of WP3) In = out, offline: a fixture source loses no job at any stage, one loop over every reader row
 - [ ] WP7 G2 (cr file + check, oe card + alert) Floors that only rise, per person and number
 - [ ] WP7 G3 (cr) The measure is locked: the 18 people, the judge's prompt, the source list, the check's AI
-- [ ] WP7 G4 (fl, after WP1 is READY) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)`
+- [ ] WP7 G4 (fl, own PR after this one is green) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)`
+- [ ] WP7 G6 (cr red run + alert, sf stage counts) A source getting lost is red and alerted on the Engineering channel
+- [ ] WP8 (sf engine timeline and parallel fixes, a UI session for the app) The search in parallel, one progress line per lane
