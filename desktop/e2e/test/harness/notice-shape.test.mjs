@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {nightlyNotice, parseGate} from '../../lib/nightly-alert.mjs';
+import {checkCard} from '../../lib/tg-card.mjs';
 import {notice} from '../../lib/notice.mjs';
 import {STORE_KINDS, storeNotice} from '../../lib/store-notices.mjs';
 
@@ -45,17 +46,16 @@ const UNREADABLE = "Could not read main's e2e state: unknown, not green.\nNo bet
 const NIGHTLY = [['changed steps and one flaky', CHANGED_AND_FLAKY], ['flaky only', FLAKY_ONLY], ['flaky but stopped', FLAKY_BUT_STOPPED], ['all four kinds', `${CHANGED_AND_FLAKY}Red step: unknown | a step | -\nRed step: broken | x | y | z\n`], ['state unreadable', UNREADABLE]];
 const STORES = STORE_KINDS.map(kind => [kind, storeNotice(kind, {...env, TAG: 'v1.2.3', RUN: 'https://github.com/o/r/actions/runs/5'}).message]);
 
-test('every CI notice has the one shape: bold title, a one-line verdict, at most 3 bullets, a named link, no raw URL', () => {
+test('every CI notice has the one card shape: dot + bold headline, at most 3 bullets, one verdict, a named link, no raw URL', () => {
   for (const [name, message] of [...NIGHTLY.map(([name, log]) => [`nightly: ${name}`, nightlyNotice(log, env).message]), ...STORES.map(([kind, message]) => [`store: ${kind}`, message])]) {
-    const text = message.text, rows = text.split('\n\n');
-    assert.match(text, /^\S+ <b>[^<\n]+<\/b> [^\n]+/, `${name}: icon, title, then the verdict on the first line\n${text}`);
+    const text = message.text;
+    assert.deepEqual(checkCard(message), [], `${name}: the one card shape (dot + bold headline, ≤12 lines, one link, no raw JSON)\n${text}`);
     assert.equal(message.parse_mode, 'HTML', name);
     const bullets = text.split('\n').filter(line => line.startsWith('• '));
     assert.ok(bullets.length <= 3, `${name}: ${bullets.length} bullets`);
     assert.ok(/<a href="https:\/\/[^"]+">Open the (run|re-check)<\/a>/.test(text), `${name}: a named link\n${text}`);
     assert.doesNotMatch(text.replace(/<a href="[^"]+">/g, ''), /https?:\/\//, `${name}: no bare URL`);
     assert.doesNotMatch(text, /;[^ ]|Changed:,|Flaky:,/, `${name}: no glued wall of text`);
-    assert.ok(rows.length <= 3, `${name}: head, bullets, link`);
   }
 });
 
@@ -63,14 +63,14 @@ test('the nightly notice names the suites the gate printed, never its indented "
   assert.deepEqual(parseGate(CHANGED_AND_FLAKY).suites, ['apply']);
   assert.deepEqual(parseGate(FLAKY_ONLY).suites, ['apply', 'employers']);
   const {message, summary} = nightlyNotice(CHANGED_AND_FLAKY, env);
-  assert.match(message.text, /Main&#39;s e2e is red on apply|Main's e2e is red on apply/);
+  assert.match(message.text, /Nightly skipped: main is red on apply/);
   assert.doesNotMatch(summary, /Changed:|Flaky:/);
   assert.ok(!/apply,Changed|Changed:,/.test(message.text + summary));
 });
 
 test('a flaky step is told as flaky with the run that was green, never as "still red"', () => {
   const {message} = nightlyNotice(FLAKY_ONLY, env);
-  assert.match(message.text, /flaky, not a regression/);
+  assert.match(message.text, /Flaky, not a regression/);
   assert.match(message.text, /Flaky: saves the kit: the same code was green in run 71/);
   assert.doesNotMatch(message.text, /still red/);
   assert.doesNotMatch(nightlyNotice(FLAKY_BUT_STOPPED, env).message.text, /not a regression/, 'a stop reason means it is not only flaky');

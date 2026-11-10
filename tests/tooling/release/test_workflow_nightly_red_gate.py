@@ -103,7 +103,7 @@ class NightlyRedGateRuns(unittest.TestCase):
         code, out, sent, stdout = run_step(1, RED_OUTPUT)
         self.assertEqual(code, 0, 'the job itself stays green: the night was skipped on purpose')
         self.assertEqual(out.strip(), 'red=true')
-        self.assertIn("<b>Nightly skipped</b> Main's e2e is red on apply, employers", sent.replace('&#39;', "'"))
+        self.assertIn("<b>Nightly skipped: main is red on apply, employers</b>", sent)
         self.assertIn('<a href="https://example.test/runs/99">Open the re-check</a>', sent)
         self.assertIn("::notice title=Nightly skipped::Nightly skipped: Main's e2e is red on apply, employers", stdout)
 
@@ -129,7 +129,7 @@ class NightlyRedGateRuns(unittest.TestCase):
     def test_an_unreadable_main_is_not_green_either(self):
         code, out, sent, _ = run_step(1, 'Could not read main\'s e2e state: unknown, not green.\n')
         self.assertEqual((code, out.strip()), (0, 'red=true'))
-        self.assertIn("Main's e2e state could not be read", sent)
+        self.assertIn("Nightly skipped: main could not be read", sent)
         self.assertIn('<a href="https://example.test/o/r/actions/runs/5">Open the run</a>', sent)
 
 

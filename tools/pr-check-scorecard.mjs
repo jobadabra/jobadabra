@@ -11,6 +11,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {PUBLIC_REPO} from '../desktop/e2e/lib/repos.mjs';
 import {checkName} from './check-name.mjs';
+import {card as tgCard} from '../desktop/e2e/lib/tg-card.mjs';
 
 export const SETUP_STEP = /checkout|set ?up|install|download|fetch|cache|artifact|paths|bundle|restore|upload/i;
 export const TEST_PATH = /(^|\/)(tests?|__tests__|e2e|fixtures|recorded|docs|zoo)\/|\.(test|spec)\.|\.md$|^\.github\/|^tools\/githooks\//;
@@ -86,11 +87,14 @@ export function scorecard(runs, changed, {days = 30, now = new Date(), paths = {
   return {days, generatedAt: now.toISOString(), checks};
 }
 
-// The Telegram text: a table of a few words per cell, then one line per check to review.
-export function message(card) {
-  const rows = card.checks.map(check => `${check.verdict === 'review' ? '🟡' : '🟢'} ${check.name}: ${check.runs} runs, ${check.realCatches} catches${check.catchPrs?.length ? ` (${check.catchPrs.map(number => `#${number}`).join(' ')})` : ''}, ${check.falseReds} false reds, p90 ${check.p90Min} min (+${check.addedMin} wait)`);
-  const review = card.checks.filter(check => check.verdict === 'review').map(check => `🟡 review: ${check.name} (0 catches in ${card.days} days)`);
-  return [`PR checks, last ${card.days} days`, ...rows, ...(review.length ? ['', ...review] : [])].join('\n');
+// The Telegram message (a card, desktop/e2e/lib/tg-card.mjs): how many checks are proven, the ones to review as rows (top 3 + N more), one verdict line. The full table is the admin page's.
+// Why (10 Nov 2026, owner: every message reads like the Central scout one): a table of a dozen lines of "runs, catches, false reds, p90" is the page's job, not Telegram's.
+export function message(scorecard) {
+  const review = scorecard.checks.filter(check => check.verdict === 'review'), total = scorecard.checks.length;
+  return tgCard({level: review.length ? 'orange' : 'green', headline: `PR checks, last ${scorecard.days} days: ${review.length ? `${review.length} of ${total} to review` : `all ${total} proven`}`,
+    bar: {done: total - review.length, total, doneWord: 'caught a real bug', restWord: 'to review'},
+    why: review.map(check => ({icon: '🟡', text: `${check.name}: ${check.runs} runs, 0 catches`})), whyTitle: review.length ? 'To review' : '',
+    verdict: review.length ? {ok: false, text: `${review.length === 1 ? 'This check' : 'These checks'} ran for ${scorecard.days} days without catching a bug.`} : {ok: true, text: 'Every check caught a real bug.'}});
 }
 
 const repo = process.env.GITHUB_REPOSITORY || process.env.REPO || PUBLIC_REPO;
@@ -141,8 +145,8 @@ function main() {
   if (!arg('runs') && arg('save')) writeFileSync(arg('save'), JSON.stringify(input));
   const card = scorecard(input.runs, (from, to) => input.compare[`${from}...${to}`] || {rebased: true, files: []}, {days, paths: input.paths || {}});
   if (arg('out')) writeFileSync(arg('out'), JSON.stringify(card, null, 1));
-  if (arg('message')) writeFileSync(arg('message'), message(card));
-  console.log(message(card));
+  if (arg('message')) writeFileSync(arg('message'), JSON.stringify(message(card)));
+  console.log(message(card).text);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

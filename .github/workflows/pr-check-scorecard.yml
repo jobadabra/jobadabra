@@ -37,6 +37,8 @@ jobs:
             desktop/e2e/lib/repos.mjs
             desktop/e2e/tell-owner.mjs
             desktop/e2e/lib/telegram-post.mjs
+            desktop/e2e/lib/tg-card.mjs
+            desktop/e2e/lib/telegram-html.mjs
             desktop/e2e/lib/switchboard.mjs
             desktop/e2e/lib/ci-state.mjs
           sparse-checkout-cone-mode: false

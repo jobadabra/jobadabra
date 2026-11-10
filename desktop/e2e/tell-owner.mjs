@@ -10,7 +10,10 @@ const flag = name => { const i = process.argv.indexOf(name); return i > 0 ? proc
 /** Reads the message file and sends it; -> the line printed. */
 export async function main(env = process.env) {
   const event = flag('--event'), file = flag('--file');
-  const text = file && fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  const raw = file && fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  // A card payload is written as JSON ({text, parse_mode: 'HTML', ...}); anything else is plain text.
+  let text = raw;
+  if (raw.startsWith('{')) { try { const parsed = JSON.parse(raw); if (typeof parsed.text === 'string') text = parsed; } catch (error) { console.log(`tell-owner: ${file} starts with "{" but is not JSON (${error.message}); sent as plain text`); } }   // Why (10 Nov 2026): a plain message that starts with a brace is still told, and the log says why it was not read as a card
   return postTelegram(text, {env, event, bot: {token: env.CI_ALERTS_TELEGRAM_BOT_TOKEN, chat: env.CI_ALERTS_TELEGRAM_CHAT_ID}});
 }
 if (import.meta.url === `file://${process.argv[1]}`) console.log(await main());

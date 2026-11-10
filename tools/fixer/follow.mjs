@@ -10,11 +10,17 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {scrub} from '../context/lib.mjs';
 import {postTelegram} from '../../desktop/e2e/lib/telegram-post.mjs';
+import {card} from '../../desktop/e2e/lib/tg-card.mjs';
 import {BRANCH, STOPS, checkTarget, classify, failureKey, firstErrorLine, ours, stopReason, stopText} from './driver.mjs';
 
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
 const MARK = '<!-- ai-fixer-stop -->', LOG_BYTES = 24000, TEXT_BYTES = 12000;
 const flag = (args, name) => (args.includes(name) ? args[args.indexOf(name) + 1] : '');
+
+/** The fixer's Telegram card for a stop word (STOPS): ready is green, every other stop red. Why (10 Nov 2026, owner: every message reads like the Central scout one): was one plain line "AI fixer: <reason> (source ref)". */
+export const fixerCard = (reason, {source, ref, pr, repo}) => card({level: reason === 'ready' ? 'green' : 'red', headline: reason === 'ready' ? `AI fixer: ${source} ${ref} is READY` : `AI fixer stopped on ${source} ${ref}`,
+  why: [{icon: reason === 'ready' ? '✅' : '🛑', text: STOPS[reason] || STOPS['round-failed']}], whyTitle: 'Why',
+  verdict: reason === 'ready' ? {ok: true, text: 'Still a draft: you mark it ready and merge.'} : {ok: false, text: 'Nothing more is pushed; what is left is on the pull request.'}, link: repo && pr ? {text: `Open #${pr}`, url: `https://github.com/${repo}/pull/${pr}`} : null});
 
 /**
  * The follow loop. `io`: {pr() -> the PR (REST), lines() -> async iterable of ship-watch's log lines, failedLog(check, head) -> text, items() -> {items, answeredAt, gitarOpen, owner},
@@ -25,8 +31,8 @@ export async function runFollow({pr, round, deadline, lastKey = '', source, ref,
   let others = 0;
   const finish = action => { io.out('action', action); io.setStop?.(); return action; };
   const mine = () => checkTarget(io.pr(), {repo: io.repo, source, ref});
-  // Why (4 Nov 2026, review): the PR can be taken over or merged during the hour; a comment is posted only while it is still the fixer's own open draft.
-  const speak = (text, reason) => { if (!mine().ok) { io.out('reason', 'taken over'); return finish('end'); } io.say(text); io.telegram(`AI fixer: ${STOPS[reason]} (${source} ${ref})`); io.out('reason', reason); return null; };
+  // Why (4 Nov 2026, review; the Telegram line is a card since 10 Nov 2026): the PR can be taken over or merged during the hour; a comment is posted only while it is still the fixer's own open draft.
+  const speak = (text, reason) => { if (!mine().ok) { io.out('reason', 'taken over'); return finish('end'); } io.say(text); io.telegram(fixerCard(reason, {source, ref, pr, repo: io.repo})); io.out('reason', reason); return null; };
   const stop = reason => speak(stopText(reason, {round, others}), reason) || finish('stop');
   if (!mine().ok) { io.out('reason', mine().why.slice(0, 80)); return finish('end'); }   // merged, closed, or taken over by the owner: nothing to follow
   const first = stopReason({round: 1, deadline, now: now()});   // the round cap is checked when a round would START: a PR that turns READY after round 6 is still reported
@@ -131,7 +137,7 @@ async function main(argv = process.argv.slice(2), env = process.env) {
     const reason = flag(args, '--reason');
     if (!STOPS[reason]) throw new Error('unknown stop reason');
     if (!checkTarget(io.pr(), {repo, source, ref}).ok) return console.log('stop: the pull request is closed, merged or taken over: no comment');   // nothing to say on a PR that is no longer the fixer's
-    io.say(stopText(reason, {round})); io.telegram(`AI fixer: ${STOPS[reason]} (${source} ${ref})`);
+    io.say(stopText(reason, {round})); io.telegram(fixerCard(reason, {source, ref, pr, repo}));
   } else if (command === 'watch') {
     const action = await runFollow({pr, round, deadline, lastKey: flag(args, '--last-key'), source, ref, io});
     console.log(`follow: ${action} (round ${round})`);   // the word only: the log is public
