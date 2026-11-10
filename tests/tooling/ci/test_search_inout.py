@@ -64,6 +64,15 @@ class InEqualsOut(unittest.TestCase):
         self.assertEqual(rows[0]['inout']['eures']['out'], 1, 'the same job listed by another source counts as out')
         self.assertEqual(rows[0]['inout']['eures']['lost']['not_read'], 6)
 
+    def test_right_jobs_only_another_source_showed_are_not_eures_in(self):
+        """Review of [mc] 3/5: the reference also keeps the board's and the web search's right jobs; EURES's `in` counts only those EURES listed."""
+        root, reference = self.folder(13, log(f"Stage: EURES kept {RIGHT[0]['url']}"), [])
+        right = [{**RIGHT[0], 'sources': ['eures', 'web_search']}, {**RIGHT[1], 'sources': ['eures']}, {**RIGHT[2], 'sources': ['public_board']}, {**RIGHT[3], 'sources': ['web_search']}]
+        reference.write_text(json.dumps({'personas': {'13': right}}), encoding='utf-8')
+        rows = [{'persona': 13}]
+        inout.attach(rows, root, reference)
+        self.assertEqual(rows[0]['inout']['eures']['in'], 2)
+
     def test_without_stage_lines_or_a_judged_list_a_persona_gets_no_in_equals_out(self):
         for run_log, judged in (('[60s] EURES: 200 vacancies in your places read', []), (None, []), (log(f"Stage: EURES kept {RIGHT[0]['url']}"), None)):
             with self.subTest(run_log=run_log, judged=judged):

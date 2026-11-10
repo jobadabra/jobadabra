@@ -2,7 +2,7 @@
 normal person would do without Jobadabra)… should be the number what Jobadabra finds"): for each of the 18 fictional candidates, the right-role, right-place jobs each source of the plan's
 fixed list shows when a person searches it by hand, read OUTSIDE the app, judged by the nightly check's blind judge (gate_judge.py) in one pass, so a night and the market are judged by the same eyes.
 Sources counted so far: EURES's public API (the city's NUTS-2 region, the role in the place's own language) and the country's national job board (market_boards.py, one data row per country:
-sa's design, 10 Nov 2026). Free job APIs are "none (no query)" (none takes a role and a place; Adzuna and Jooble stay parked until the owner adds them); LinkedIn is "by hand" (never read here).
+sa's design, 10 Nov 2026) and a web search (market_web.py: the AI's web search tool asked for postings of the role in the city, one call per person). Free job APIs are "none (no query)" (none takes a role and a place; Adzuna and Jooble stay parked until the owner adds them); LinkedIn is "by hand" (never read here).
 Why no Google (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone.
   node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run <out.json>   read every source, judge blind behind the Codex relay, write the counts
   python3 tools/persona-search/reference.py send <out.json>                                         PUT the counts to Admin (only a CI run on main; GITHUB_RUN_ID, REPLAYS_PUBLISH_KEY)
@@ -10,14 +10,16 @@ Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, 
 artifact only: it is never sent (send reads the counts file).
 Why (10 Nov 2026, sa's finish-line plan WP3, owner: "our search results should always be what EURES gives + some additional sources"): a night's loss is counted per job and
 per stage, which needs the reference's jobs, not only their count.
-Record: {"personas": {"<n>": {total, reachable, eures, public_board, market}}}; total = reachable = the EURES count (Admin labels it "EURES reference"); public_board = the board's own
-count, None when not counted (refused, a page failed, its cards moved, or no board for the country), never 0; market = distinct right jobs (title + employer) of every counted source.
+Record: {"personas": {"<n>": {total, reachable, eures, public_board, web_search, market}}}; total = reachable = the EURES count (Admin labels it "EURES reference"); public_board = the board's own
+count, None when not counted (refused, a page failed, its cards moved, or no board for the country), never 0; web_search likewise (None when the search failed or ran outside the relay); market = distinct right jobs (title + employer) of every counted source.
 A persona whose EURES was not read, or whose judge failed, is left out of the record (Admin then says "no reference"); its board count and jobs still go to reference-jobs.json. Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
+import concurrent.futures
 import datetime
 import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -29,6 +31,7 @@ sys.path.insert(0, str(HERE))
 from gate import PERSONAS  # noqa: E402
 import gate_judge  # noqa: E402
 import market_boards  # noqa: E402
+import market_web  # noqa: E402
 
 SITE = 'https://www.jobadabra.top/search-check/reference'
 USER_AGENT = 'jobadabra-reference'   # Why (6 Nov 2026, run 42299710525): the site's edge answers 403 to urllib's default `Python-urllib/3.x`, so every call here names itself
@@ -72,7 +75,7 @@ def same_job(row):
     return (' '.join(row['title'].lower().split()), ' '.join((row.get('company') or '').lower().split()))
 
 
-SOURCES = ('eures', 'public_board')   # the plan's fixed words (sa, 10 Nov 2026); a new word goes to sa first
+SOURCES = ('eures', 'public_board', 'web_search')   # the plan's fixed words (sa, 10 Nov 2026); a new word goes to sa first
 
 
 def right(row):
@@ -81,7 +84,7 @@ def right(row):
 
 
 def tally(rows, counted=('eures',)):
-    """-> {total, reachable, eures, public_board, market} from judged rows (each row's `source`, EURES when unnamed): per source, the distinct right jobs it listed, None when not
+    """-> {total, reachable, eures, public_board, web_search, market} from judged rows (each row's `source`, EURES when unnamed): per source, the distinct right jobs it listed, None when not
     counted (never 0); market = the distinct right jobs of every counted source (one job two sources show counts once). total = reachable = the EURES count, as before.
     Why total stays EURES (review, 10 Nov 2026): Admin prints `total` as "EURES reference: N" (jobadabra-web admin/search-night-page.js) and keeps only total, reachable, eures
     and google; the market reaches Admin with the row shape agreed with oe ([mc] 5/5), never by changing what total means under a label that says EURES."""
@@ -103,7 +106,7 @@ def right_jobs(rows):
     return list(kept.values())
 
 
-def pool(n, persona, post, boards):
+def pool(n, persona, post, boards, web):
     """-> (rows, sources): every source's rows for one persona, each tagged with its source, and per source {status, read} (plus the board's name and pages).
     A source that could not be read is "not counted: <why>" and adds no row; it never ends the other source."""
     rows, sources = [], {}
@@ -120,19 +123,37 @@ def pool(n, persona, post, boards):
         board = {'board': None, 'status': f'not counted: {type(error).__name__}', 'rows': []}
     rows += [{**r, 'source': 'public_board'} for r in board['rows']]
     sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0), **({'note': board['note']} if board.get('note') else {})}
+    try:
+        searched = web()
+    except concurrent.futures.TimeoutError:
+        searched = {'status': 'not counted: time', 'rows': []}
+    except Exception as error:   # noqa: BLE001 - a search that raised is that source not counted, never the end of the others
+        searched = {'status': f'not counted: {type(error).__name__}', 'rows': []}
+    rows += [{**r, 'source': 'web_search'} for r in searched['rows']]
+    sources['web_search'] = {'status': searched['status'], 'read': len(searched['rows'])}
     sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026); Adzuna and Jooble stay parked (owner's word adds them)
     sources['linkedin'] = {'status': 'by hand'}   # never read by a tool (CLAUDE.md, login walls); sa's by-hand count fills it
     return rows, sources
 
 
-def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None):
+WEB_AT_ONCE = 6        # web searches in flight at once (the broker serves the night's six presses at once too)
+WEB_BUDGET_S = 600     # every person's web search is back within 10 minutes of the run's start, or not counted (the EURES reads alone take ~6)
+
+
+def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None, web=None, clock=time.monotonic):
     """The record for every persona with at least one counted source whose judge worked (a persona with none, or whose judge failed, is left out, never 0: the tab then
     says "no reference"). All sources' rows are judged in one blind pass, so every source is read by the same eyes and a job two sources show costs one verdict.
     `jobs`, when given, is filled with {"<n>": right_jobs(...)}; `details` with {"<n>": per-source status, rows read and right jobs}: the artifact's, never part of the record that is sent."""
     boards = boards or market_boards.read
+    web = web or market_web.read
     record = {}
+    # Why (review of [mc] 3/5): 18 searches one after another (up to a minute each) would push the job past its 20 minutes and lose every person's EURES count;
+    # they run WEB_AT_ONCE at a time beside the EURES and board reads, and a search not back by the deadline is "not counted: time".
+    searches = concurrent.futures.ThreadPoolExecutor(max_workers=WEB_AT_ONCE)
+    futures = [searches.submit(web, persona) for persona in PERSONAS]
+    deadline = clock() + WEB_BUDGET_S
     for n, persona in enumerate(PERSONAS, 1):
-        rows, sources = pool(n, persona, post, boards)
+        rows, sources = pool(n, persona, post, boards, lambda future=futures[n - 1]: future.result(timeout=max(0.0, deadline - clock())))
         counted = tuple(s for s in SOURCES if sources[s]['status'] == 'counted')
         if not counted:
             print(f'reference: p{n} no source counted', flush=True)
@@ -153,6 +174,7 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=N
             only = {s: sum(job['sources'] == [s] for job in found) for s in counted}
             details[str(n)] = {'market': counts['market'], **{s: {**v, **({'right': counts[s], 'only': only[s]} if s in counted else {})} for s, v in sources.items()}}
         print(f'reference: p{n} {counts} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
+    searches.shutdown(wait=False, cancel_futures=True)
     return {'personas': record}
 
 
