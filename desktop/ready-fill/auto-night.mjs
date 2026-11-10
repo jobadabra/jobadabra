@@ -15,6 +15,24 @@ export const JOB_SECONDS = 300;   // hang guard per job before its own wait: the
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const pageOf = request => { try { return request.frame()?.page() || null; } catch { return null; } };   // a service worker's request has no frame
 
+// A navigation of the job's own page that answered 401, 403 or 429 tells the line (auto-commands.mjs blocked: before the press the job ends there).
+function refusedBy(response, auto) {
+  if (response.request().isNavigationRequest() && BLOCKED_STATUS.includes(response.status())) auto.blocked(response.status());
+}
+
+/** Waits for one job's outcome: its tab is asked for (or the job was stopped at once), its recheck handed out when its wait runs out, a Stop heard every 5 ticks; at `deadline` it ends as not sent (or `unknown` after a press). */
+async function untilOutcome({auto, onStep, kick, deadline, tick, now}) {
+  if (await onStep('opening')) { auto.stop(); return; }
+  await kick();
+  for (let n = 1; !auto.outcome() && now() < deadline; n++) {
+    await pause(tick);
+    if (auto.dueAt() && now() >= auto.dueAt()) await kick();   // the wait ran out: the poll hands the extension its recheck
+    if (n % 5) continue;
+    if (await onStep(auto.attempt() ? 'submitting' : 'filling') && auto.stop()) return;   // after the press a Stop changes nothing
+  }
+  if (!auto.outcome()) auto.end('not_submitted', 'timeout');   // after a press, end() makes this `unknown`
+}
+
 /**
  * Runs every job of an auto `batch` in turn. `tell` speaks to the site: result(body) -> its answer ({stop} ends the night), stepper(jobId) -> onStep(step) answering true when the owner stopped it,
  * stopped(jobId) -> true when the site says this job was stopped (asked right before a reservation), reserve(jobId) -> {ok, attempt} | {ok: false, error}, over() -> true once the night has ended, costMicro(ms).
@@ -35,24 +53,13 @@ export async function autoAll({batch, chromium, extensionDir, tell, client, answ
     // The one way through the net: a send from this job's own pages while its permit lasts (auto-commands.mjs PRESS_WINDOW_MS).
     const guard = await net(context, {allow: request => auto.pressing() && pages.has(pageOf(request))});
     context.on('page', page => { if (current) pages.add(page); });
-    context.on('response', response => {
-      const request = response.request(), page = pageOf(request);
-      if (request.isNavigationRequest() && pages.has(page) && BLOCKED_STATUS.includes(response.status())) auto.blocked(response.status());
-    });
+    context.on('response', response => { if (pages.has(pageOf(response.request()))) refusedBy(response, auto); });
     for (const job of batch.jobs) {
       const started = now(), onStep = tell.stepper(job.id);
       current = job; pages = new Set(); auto.begin(job); standIn.reset(job.url);
       try {
-        if (await onStep('opening')) auto.stop(); else await kick();
         // Why (10 Nov 2026, cs 3/4): the job's own wait is part of its time (the Mac waits the same before its press); jobSeconds is only a hang guard.
-        const deadline = started + jobSeconds * 1000 + (Number(job.item?.waitMin) || 0) * 60000;
-        for (let n = 1; !auto.outcome() && now() < deadline; n++) {
-          await pause(tick);
-          if (auto.dueAt() && now() >= auto.dueAt()) await kick();   // the wait ran out: the poll hands the extension its recheck
-          if (n % 5) continue;
-          if (await onStep(auto.attempt() ? 'submitting' : 'filling') && auto.stop()) break;   // every 5 ticks the line moves and a Stop is heard; after the press a Stop changes nothing
-        }
-        if (!auto.outcome()) auto.end('not_submitted', 'timeout');   // after a press, end() makes this `unknown`
+        await untilOutcome({auto, onStep, kick, deadline: started + jobSeconds * 1000 + (Number(job.item?.waitMin) || 0) * 60000, tick, now});
       } catch (error) {   // the browser failed under this job: a press it may have made is `unknown`, never "failed"
         auto.end('failed', 'error');
         await report(job, started);

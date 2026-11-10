@@ -42,27 +42,32 @@ function fakeChromium(seen, {pageStatus = 200, pressEarly = false, lostReceipt =
     if (values?.workerUrl) { port = Number(new URL(values.workerUrl).port); storage = values; seen.owner = values.backgroundOwner; return true; }
     if (!String(fn).includes('__jobPilottoBackgroundSessions')) return true;
     const owner = storage.backgroundOwner, polled = await call('/extension/background-apply', {action: 'poll', owner});
-    for (const command of [...polled.jobs || [], ...polled.checks || []]) {
-      const session = command.session, context = {owner, session, mode: 'auto', attempt: '', manual: false};
-      let page = seen.pages.get(session);
-      if (!page) {
-        page = {url: command.url, close: async () => { seen.closed++; }}; seen.pages.set(session, page); seen.commands.push(command);
-        for (const fn of listeners.page) fn(page);
-        for (const fn of listeners.response) fn({status: () => pageStatus, request: () => ({isNavigationRequest: () => true, frame: () => ({page: () => page})})});
-        if (pressEarly) await send(page, 'https://jobs.example.com/acme/apply');
-      }
-      const judged = await call('/extension/account-judge', {phase: 'form', sketch: SKETCH, background: context});
-      if (!judged.background?.proof) { await call('/extension/background-apply', {...context, action: 'manual', reason: 'judgment_unavailable'}); continue; }
-      const permit = await call('/extension/background-apply', {...context, action: 'ready', proof: judged.background.proof, requiredComplete: true, factsOnly: true, safe: true});
-      seen.permits.push(permit);
-      if (permit.manual) { await call('/extension/background-apply', {...context, action: 'manual', reason: permit.reason}); continue; }
-      if (!permit.submit) continue;
-      await send(page, 'https://jobs.example.com/acme/apply');
-      if (lostReceipt) { await call('/extension/background-apply', {...context, action: 'manual', reason: 'submission_outcome_unknown'}); continue; }
-      seen.receipts.push(await call('/extension/confirmation', {job: command.url, page: 'https://jobs.example.com/acme/thanks', title: 'Thanks', headings: ['Application received'], text: 'We received your application.', inputs: 0, background: {...context, attempt: permit.attempt}}));
-    }
+    for (const command of [...polled.jobs || [], ...polled.checks || []]) await play(owner, command);
     return true;
   }};
+  // A command's page opens once (its status told, an early send tried when asked); then it is judged, `ready` is asked, a permit is pressed and the landed page judged.
+  async function opened(command) {
+    let page = seen.pages.get(command.session);
+    if (page) return page;
+    page = {url: command.url, close: async () => { seen.closed++; }}; seen.pages.set(command.session, page); seen.commands.push(command);
+    for (const fn of listeners.page) fn(page);
+    for (const fn of listeners.response) fn({status: () => pageStatus, request: () => ({isNavigationRequest: () => true, frame: () => ({page: () => page})})});
+    if (pressEarly) await send(page, 'https://jobs.example.com/acme/apply');
+    return page;
+  }
+  async function play(owner, command) {
+    const session = command.session, context = {owner, session, mode: 'auto', attempt: '', manual: false};
+    const page = await opened(command);
+    const judged = await call('/extension/account-judge', {phase: 'form', sketch: SKETCH, background: context});
+    if (!judged.background?.proof) { await call('/extension/background-apply', {...context, action: 'manual', reason: 'judgment_unavailable'}); return; }
+    const permit = await call('/extension/background-apply', {...context, action: 'ready', proof: judged.background.proof, requiredComplete: true, factsOnly: true, safe: true});
+    seen.permits.push(permit);
+    if (permit.manual) { await call('/extension/background-apply', {...context, action: 'manual', reason: permit.reason}); return; }
+    if (!permit.submit) return;
+    await send(page, 'https://jobs.example.com/acme/apply');
+    if (lostReceipt) { await call('/extension/background-apply', {...context, action: 'manual', reason: 'submission_outcome_unknown'}); return; }
+    seen.receipts.push(await call('/extension/confirmation', {job: command.url, page: 'https://jobs.example.com/acme/thanks', title: 'Thanks', headings: ['Application received'], text: 'We received your application.', inputs: 0, background: {...context, attempt: permit.attempt}}));
+  }
   const context = {serviceWorkers: () => [worker], route: async (_pattern, handler) => { routeHandler = handler; }, on: (event, fn) => listeners[event]?.push(fn), newPage: async () => ({}), close: async () => {}};
   return {launchPersistentContext: async () => context, send: url => send(null, url)};
 }
