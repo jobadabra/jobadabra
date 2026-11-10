@@ -42,7 +42,9 @@ class ScoreboardLocked(unittest.TestCase):
 
     def test_a_reworded_comment_or_a_new_reference_word_is_not_a_new_measure(self):
         source = (ROOT / 'tools/persona-search/gate_judge.py').read_text(encoding='utf-8')
-        reworded = source.replace('def ask(', '# a new comment\ndef ask(')
+        line = '    env = os.environ if env is None else env\n'
+        self.assertIn(line, source)
+        reworded = source.replace('def ask(', '# a new comment\ndef ask(').replace(line, line[:-1] + '   # a reworded note inside ask()\n')
         original = Path.read_text
         with mock.patch.object(Path, 'read_text', lambda self, *a, **k: reworded if self.name == 'gate_judge.py' else original(self, *a, **k)):
             self.assertEqual(scoreboard.lock()['S2'], KEPT['S2'])

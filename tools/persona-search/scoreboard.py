@@ -9,9 +9,11 @@ Haiku (8c6f107d, 27 Oct) then to Codex (d5faabd1, 30 Oct), and 6 people became 1
 import ast
 import hashlib
 import importlib.util
+import io
 import json
 import re
 import sys
+import tokenize
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,17 +32,31 @@ def people():
 
 
 def judge_prompt():
-    """The judge's words and how a batch is asked: SYSTEM, MODEL, BATCH and the code of ask() and judge(), without comments or docstrings (a reworded comment is not a new measure)."""
-    tree = ast.parse((HERE / 'gate_judge.py').read_text(encoding='utf-8'))
+    """The judge's words and how a batch is asked: SYSTEM, MODEL, BATCH and the code of ask() and judge(), as their source tokens without comments or docstrings
+    (a reworded comment is not a new measure). Why (10 Nov 2026, #3708 red): ast.unparse prints the same code differently across Python builds (3.12.6 here, 3.12.16 on CI,
+    3.9), so the fingerprint is the source's own text, which no Python version rewrites."""
+    source = (HERE / 'gate_judge.py').read_text(encoding='utf-8')
     kept = []
-    for node in tree.body:
+    for node in ast.parse(source).body:
         if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') in ('SYSTEM', 'MODEL', 'BATCH') for t in node.targets):
-            kept.append(node)
+            kept.append(tokens(ast.get_source_segment(source, node)))
         elif isinstance(node, ast.FunctionDef) and node.name in ('ask', 'judge'):
+            code = ast.get_source_segment(source, node)
             if node.body and isinstance(node.body[0], ast.Expr) and isinstance(getattr(node.body[0], 'value', None), ast.Constant):
-                node.body = node.body[1:] or [ast.Pass()]
-            kept.append(node)
-    return '\n'.join(ast.unparse(node) for node in kept)
+                code = code.replace(ast.get_source_segment(source, node.body[0]), '', 1)
+            kept.append(tokens(code))
+    return '\n'.join(kept)
+
+
+def tokens(code):
+    """The code's own text without its comments, whitespace runs as one space. Only the comments' positions come from tokenize (the same in every Python);
+    re-printed tokens are not stable (3.12 splits f-strings into new token kinds, PEP 701), nor is ast.unparse."""
+    lines = code.splitlines(keepends=True)
+    comments = [token for token in tokenize.generate_tokens(io.StringIO(code).readline) if token.type == tokenize.COMMENT]
+    for token in reversed(comments):
+        (row, start), (_, end) = token.start, token.end
+        lines[row - 1] = lines[row - 1][:start] + lines[row - 1][end:]
+    return ' '.join(''.join(lines).split())
 
 
 def sources():
