@@ -5,6 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
 import {backgroundWaitNow} from './background-apply-clock.js';
 import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
+import {kitAllows, proofOk} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
@@ -27,8 +28,6 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
   const save = async (app, state) => { await ask('applications', 'set_section', {app_id: app.id, name: BACKGROUND_SECTION, markdown: JSON.stringify(state)}); return state; };
   const own = (state, session, owner) => !!state && state.session === session && state.owner === owner;
   const manual = (app, state, reason) => save(app, {...state, state: reason.startsWith('captcha_') ? 'manual_submit_required' : 'needs_user_handoff', manualOverride: true, reason, handoffAt: now()});   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
-  const proofOk = proof => proof?.answer === 'ready' && proof.step === 'final' && proof.requiredComplete === true && proof.safe === true &&
-    typeof proof.submitControl === 'string' && proof.submitControl.trim() && typeof proof.signature === 'string' && !!proof.signature;
 
   async function read(url) { return load(await appOf(url)); }
   // Whether the run the store holds for this job ended without an answer (Stop, Cancel, a quit or an update before the press) and starts afresh when the person applies again, in ANY mode.
@@ -107,7 +106,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));
-      if (!STARTABLE_STAGES.includes(app.stage) || (kit?.eligible !== true && !(state.allowIneligible === true && kit?.eligible === false))) return stop('not_eligible');   // Why (2026-11-07, owner): stage proof always applies; only explicit false is overridden by this item's saved opt-in.
+      if (!kitAllows({stage: app.stage, kit, allowIneligible: state.allowIneligible})) return stop('not_eligible');   // Why (2026-11-07, owner): stage proof always applies; only explicit false is overridden by this item's saved opt-in (lib/submit-proof.js).
       const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
       const reservations = await ask('events', 'list', {kind: RESERVED});
