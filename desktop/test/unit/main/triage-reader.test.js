@@ -233,3 +233,21 @@ test('a step heard again (a redirect, a second look) is progress: the quiet guar
   r.cancelAll();
   await pending;
 });
+
+// Why (10 Nov 2026, night burn-in 42721065574 and its /code-review): the extension took a queued read only on its 30 s report; the reader now says when one can go, including the
+// read queued while another was out, which a wake at queue time alone left to the report.
+test('the reader says when a queued read can be handed out: queued while none is out, or the one out ended with another queued; never while one is out', async () => {
+  const t = clock(), r = reader({set: t.set, clear: t.clear}), taken = [];
+  r.onReady(() => taken.push(r.take()));   // what the woken extension does: it takes the read
+  const urls = () => taken.map(read => read?.url ?? 'nothing');
+  const first = r.read('https://jobs.example/ready-1');
+  assert.deepEqual(urls(), ['https://jobs.example/ready-1'], 'queued while idle: told at once');
+  const second = r.read('https://jobs.example/ready-2');
+  assert.deepEqual(urls(), ['https://jobs.example/ready-1'], 'queued while one is out: not told yet');
+  r.report(taken[0].id, {simple: true});
+  assert.deepEqual(urls(), ['https://jobs.example/ready-1', 'https://jobs.example/ready-2'], 'the one out ended: the queued one is told');
+  await first;
+  t.fire();   // the second read's timers fire: the reader ends it, and with nothing queued says nothing
+  assert.equal((await second)?.unreadable, true);
+  assert.equal(taken.length, 2, 'nothing queued: nothing to tell');
+});

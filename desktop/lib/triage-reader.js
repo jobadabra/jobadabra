@@ -28,7 +28,10 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
   const waiting = new Map(), queue = [], ended = new Set();
   const hear = fn => value => { try { fn(value); } catch { /* a listener's failure never leaves a read unanswered */ } };
   const heardStep = hear(onStep), heardDone = hear(onDone);
-  let active = '';
+  let active = '', ready = () => {};
+  // Why (10 Nov 2026, night burn-in 42721065574): the extension asked for a queued read only on its 30 s tab report, so each read waited 24-27 s for a 1.5 s look.
+  // Whenever a queued read could be handed out (one is queued and none is out), the reader says so once; the app wakes the extension's poll on it.
+  const tellReady = () => { if (!active && queue.length) hear(ready)(); };
   // Why (2026-10-30, g2's G4 step, #2624): Cancel and a timeout resolve the app's promise but nothing told the extension, so the read's page stayed open in the hidden browser; a read ended without a report is remembered here until the poll hands it to the extension to close.
   function finish(id, value, reported = false) {
     const row = waiting.get(id);
@@ -40,6 +43,7 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
     if (at >= 0) queue.splice(at, 1);
     if (active === id) { active = ''; if (!reported) ended.add(id); }   // only a read that was handed out has a page to close
     row.resolve(value);
+    tellReady();   // the read that was out ended (a report, 30 s of silence, Cancel): the next queued one can go now
     return true;
   }
   function mark(id, given) {
@@ -62,8 +66,11 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
       return new Promise(resolve => {
         waiting.set(id, {resolve, url: address, queued: now(), marks: {}, timer: set(() => finish(id, {unreadable: true, why: 'timeout'}), timeoutMs)});
         queue.push({id, url: address});
+        tellReady();
       });
     },
+    /** Sets the one listener told when a queued read can be handed out now (queued while none is out, or the one out ended). Takes a function; a listener that throws changes nothing. */
+    onReady(fn) { ready = typeof fn === 'function' ? fn : () => {}; },
     /** The next queued read for the extension, or null while one is already out or none waits. Returns {id, url}. */
     take() {
       if (active || !queue.length) return null;

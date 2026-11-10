@@ -168,3 +168,22 @@ test('a check of 4 jobs on a fake clock: each read is handed out when it is queu
   assert.deepEqual(done.map(summary => summary.queueMs), [0, 0, 0, 0], 'no read waits for a report');
   assert.equal(t, 4 * LOOK_MS, 'the check takes its reads, nothing else');
 });
+
+test('a read queued while another is out wakes the browser when that one is reported, not at the next 30 s report (/code-review of the wake)', async () => {
+  const wakes = [], {controller} = make({wakes});
+  const first = controller.triageRead({url: 'https://jobs.example.test/out'});
+  const [out] = (await (async () => { await new Promise(resolve => setImmediate(resolve)); return poll(controller); })()).jobs;
+  const second = controller.triageRead({url: 'https://jobs.example.test/queued'});
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(wakes, ['wake'], 'queued behind a read that is out: no wake yet, the extension could not take it');
+    await controller.handle({action: 'triage-read', owner: 'o1', session: out.session, simple: true});
+    await first;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(wakes, ['wake', 'wake'], 'the read out ended: the queued one wakes the browser');
+    assert.equal((await poll(controller)).jobs[0]?.url.split('#')[0], 'https://jobs.example.test/queued');
+  } finally {
+    controller.cancelTriage();
+    await second;
+  }
+});

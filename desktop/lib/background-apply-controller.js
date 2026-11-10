@@ -85,6 +85,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
+  // A read that can be handed out wakes the owned worker's poll (lib/triage-reader.js onReady); a wake that fails is logged and leaves the read to the 30 s tab report, never ends it.
+  reader.onReady?.(() => Promise.resolve(browserOf().wake?.()).then(ok => { if (ok === false) log('apply', 'triage: the hidden browser did not take the wake', {}); },
+    error => log('apply', 'triage: the hidden browser could not be woken', {error: String(error?.message || error).slice(0, 120)})));
   const judgments = new Map();
   const latest = new Map();   // session id -> the background state this controller last wrote or read (cache, stateForPoll)
   let owner = '', pending = Promise.resolve();
@@ -291,11 +294,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const generation = triageCancels;
     ({owner} = await browserOf().start({port, token: token()}));
     if (generation !== triageCancels) return null;   // Cancel came while the browser was starting: the read is never queued behind it (Gitar on #2636)
-    const read = reader.read(job?.url);
-    // Why (10 Nov 2026, night burn-in 42721065574): the extension asked for a queued read only on its 30 s tab report, so each read waited 24-27 s for a 1.5 s look.
-    // The owned worker polls now; a wake that fails leaves the read to that report, never ends it.
-    browserOf().wake?.().catch(() => false);
-    return read;
+    return reader.read(job?.url);
   }
   const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)
   // Hands one background job to the person through the store's interrupted check (`options`: afterMs, quit) with its own words; -> the saved state, or null when it was not handed over.
