@@ -30,6 +30,7 @@ class SearchCharacterization(unittest.TestCase):
         self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores = [], [], [], [], False
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
         self.failed = self.expire = self.late_jobs = False
+        self.scorer_gate = None   # an Event: the scorer thread does nothing until the search has saved its run (test_a_scorer_that_starts_after_the_search_ended...)
         self.stores = memory.open_store()
         self.stores.texts.set('profile', 'Fictional SRE in Zurich')
         # A file, as the app's: each store.connect is a connection of its own, bound to the thread that opened it (sqlite3's check_same_thread), so a
@@ -124,6 +125,8 @@ class SearchCharacterization(unittest.TestCase):
             self.assertFalse(thread.is_alive(), 'the scorer thread did not end')
 
     def own_connection(self):
+        if self.scorer_gate and __import__('threading').current_thread().name == 'scorer':
+            self.scorer_gate.wait(30)   # hang guard only
         db = self.connect(self.root / 'jobs.sqlite')
         if __import__('threading').current_thread() is __import__('threading').main_thread():   # a thread's own: that thread closes it
             self.addCleanup(db.close)
@@ -131,6 +134,8 @@ class SearchCharacterization(unittest.TestCase):
 
     def event(self, name, result=None):
         self.calls.append(name)
+        if name == 'save' and self.scorer_gate:
+            self.scorer_gate.set()
         return result
 
     def plan(self, args, stores):

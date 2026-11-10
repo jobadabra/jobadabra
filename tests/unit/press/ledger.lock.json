@@ -37,7 +37,7 @@
  },
  "L10": {
   "gets": "a press reads the job boards first; a first press reads its slice first and scores employer jobs without waiting for the boards",
-  "hash": "07473a15f195594e"
+  "hash": "b5aea2c08e8b3b19"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
@@ -49,7 +49,7 @@
  },
  "L13": {
   "gets": "jobs found earlier and never scored take scoring's time first",
-  "hash": "2016237fd8b66e84"
+  "hash": "ab7cd5c2b4f2c505"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
@@ -137,7 +137,7 @@
  },
  "L35": {
   "gets": "a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored",
-  "hash": "69153c7c641a6ceb"
+  "hash": "c31f3985887fdbca"
  },
  "L36": {
   "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",
