@@ -28,6 +28,11 @@ test('the engine is told JOBADABRA_EURES=1 only by an installed build; a develop
 test('Always on gets the same answer: an installed app sends the variable, a source run removes it; daily.yml hands it on, pinned in tests/unit/sources/test_eures.py (review of oe 1/3, 10 Nov 2026)', async () => {
   const github = await import('../../../lib/github.js');
   const store = {settings: () => ({}), saveSettings: () => {}, readText: () => '', secret: () => '', setSecret: () => {}};
+  // Why (10 Nov 2026, run 42827171220: green on the Mac, red on CI): payload() reads the process's own environment, and CI sets CI / GITHUB_ACTIONS, which make an "installed app" read as a test run (lib/telemetry.js reportingOff).
+  // The test plays an installed app on a person's Mac, so it removes the test-run variables for its own length and puts them back.
+  const testRunVars = ['CI', 'GITHUB_ACTIONS', 'JOBADABRA_E2E', 'JOBADABRA_SMOKE', 'JOBADABRA_PTY_SMOKE', 'JOBADABRA_TWIN'];
+  const kept = Object.fromEntries(testRunVars.map(name => [name, process.env[name]]));
+  for (const name of testRunVars) delete process.env[name];
   try {
     setInstalledBuild(true);
     assert.equal(github.payload(store).variables.JOBADABRA_EURES, '1');
@@ -35,5 +40,8 @@ test('Always on gets the same answer: an installed app sends the variable, a sou
     const off = github.payload(store);
     assert.equal(off.variables.JOBADABRA_EURES, undefined);
     assert.ok(off.removed.includes('JOBADABRA_EURES'), 'a repo that had it loses it when the app no longer says so');
-  } finally { setInstalledBuild(false); }
+  } finally {
+    setInstalledBuild(false);
+    for (const name of testRunVars) if (kept[name] === undefined) delete process.env[name]; else process.env[name] = kept[name];
+  }
 });
