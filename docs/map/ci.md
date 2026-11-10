@@ -23,6 +23,7 @@ updated: 2026-11-03
 - `tools/pr-verdict.py`, `.github/workflows/pr-gate.yml`, `pr-verdict.yml`: the one required check.
 - `.github/workflows/pr-e2e-steps.yml`, `integration.yml`, `journeys.yml`, `e2e.yml`: the layers in CI.
 - `desktop/test/nightly/`: real-container release proofs run by harness-daily.yml; PRs keep the network-free declarations/arguments guard. Folder map: [TESTS.md](../../TESTS.md).
+- `desktop/e2e/lib/agent-bundles.mjs`: the persona's per-note tester captures and ranked-note publishing; `agent-run.mjs` verifies completion, `agent-tier.mjs` budgets incremental and gross usage. Design: [persona evidence and token yield](../superpowers/specs/2026-11-10-persona-bundles-reliability-design.md).
 - `desktop/e2e/lib/`: the harness; `desktop/e2e/suites/`: the Tier 1 journeys; `desktop/integration/`: integration tests.
 - `tools/beta-release.sh`: a beta by hand; no beta starts while main's e2e is red.
 - `.gitar/`: the review rules Gitar applies to every PR.

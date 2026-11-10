@@ -16,7 +16,9 @@ export function appLaunchEnv(base, overrides = {}) {
   for (const name of Object.keys(result)) if (/^(?:E2E_.*(?:KEY|TOKEN)|ACTIONS_|CI_.*(?:TOKEN|KEY))/.test(name)) delete result[name];
   // Invariant: a suite cannot copy an inherited CI secret into a differently named product hook.
   for (const [name, value] of Object.entries(base)) {
-    if (value?.length >= 8 && /(?:^|_)(?:KEY|TOKEN|SECRET|PASSWORD)(?:_|$)/.test(name) && Object.values(result).some(setting => String(setting).includes(value))) throw new Error(`CI credential override refused: ${name}`);
+    const testerKey = name === 'JOBADABRA_TESTER_KEY' && overrides.JOBADABRA_TESTER === 'persona' && overrides.JOBADABRA_E2E === '1' && result.JOBADABRA_TESTER_KEY === value;
+    if (value?.length >= 8 && /(?:^|_)(?:KEY|TOKEN|SECRET|PASSWORD)(?:_|$)/.test(name)
+      && Object.entries(result).some(([key, setting]) => String(setting).includes(value) && !(testerKey && key === 'JOBADABRA_TESTER_KEY'))) throw new Error(`CI credential override refused: ${name}`);
   }
   return result;
 }

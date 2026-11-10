@@ -120,6 +120,18 @@
       "about": "the fit score's search part (src/ai/score_search.py, score.py): a role that needs a licence, certification or rating the person does not hold is capped at 49 (owner, 7 Nov 2026: a Cessna captain job scored 85 while its card said Not eligible); a scheme that trains from zero, a job in the person's own field, a language gap (49 cap) and a missing tool keep their bands. Replay: tools/score-cases.py on the Claude plan ($0).",
       "cases": ["tests/fixtures/score-cases.json", "tools/score-cases.py"],
       "prompts": {"src/ai/score_search.py": ["RULE"], "src/ai/score.py": ["SYSTEM"]}
+    },
+    "persona-completion": {
+      "live": false,
+      "about": "Persona completion evidence: the 8 Nov false Spanish success and unsupported bug verdict remain unverified; offline scripted answers, no paid model evaluation.",
+      "cases": [
+        "desktop/e2e/test/pool/agent-run.test.mjs"
+      ],
+      "prompts": {
+        "desktop/e2e/lib/agent-screen.mjs": [
+          "SCREEN_SYSTEM"
+        ]
+      }
     }
   }
 }

@@ -37,9 +37,9 @@ const NEEDS_OUTSIDE = /^Read this board$/;
 /** Palette entries ([{group, label, hint, kind}]) -> unique safe moves [{group, label}], per-job entries folded, a quiet order (as listed). */
 export function movesFromPalette(entries = []) {
   const seen = new Map();
-  for (const {group = '', label = ''} of entries) {
+  for (const {group = '', label = '', unavailable: entryUnavailable = ''} of entries) {
     const name = PER_JOB.test(label) ? label.replace(/: .*/, '') : label;
-    if (!group || !name || PER_RUN.test(name) || NEEDS_OUTSIDE.test(name) || !isSafe({text: name}) || seen.has(`${group}: ${name}`)) continue;
+    if (entryUnavailable || !group || !name || PER_RUN.test(name) || NEEDS_OUTSIDE.test(name) || !isSafe({text: name}) || seen.has(`${group}: ${name}`)) continue;
     seen.set(`${group}: ${name}`, {group, label: name});
   }
   return [...seen.values()];
@@ -53,5 +53,6 @@ export const poolOf = entries => {
 
 /** Reads the open app's ⌘K list. The renderer exposes it as window.__jp.paletteCommands (renderer/app.js). -> [{group, label, hint, kind}] */
 export async function readPalette(page) {
-  return page.evaluate(() => window.__jp.paletteCommands().map(({group, label, hint, kind}) => ({group, label, hint: hint || '', kind: kind || 'place'})));
+  return page.evaluate(() => window.__jp.paletteCommands().map(({group, label, hint, kind, node}) => ({group, label, hint: hint || '', kind: kind || 'place',
+    unavailable: node?.disabled ? 'control disabled' : node?.dataset.palette === 'tailor' && !window.__jp.shared.allJobs?.length ? 'no jobs to tailor' : ''})));
 }

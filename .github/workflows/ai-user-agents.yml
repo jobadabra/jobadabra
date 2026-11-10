@@ -199,6 +199,7 @@ jobs:
         timeout-minutes: 45   # the suite stops itself at its minute cap plus 5 (suites/agent.mjs); this only ends a hung runner
         working-directory: desktop/e2e
         env:
+          JOBADABRA_TESTER_KEY: ${{ !env.IS_REPLAY && secrets.REPLAYS_PUBLISH_KEY || '' }}   # only the isolated persona app receives this; tester-mode takes it out of its environment at import
           AGENT_SEED: ${{ inputs.seed }}
           AGENT_PLAN: ${{ inputs.plan }}
           AGENT_SHAPE: ${{ inputs.shape }}
@@ -237,8 +238,10 @@ jobs:
         timeout-minutes: 5
         shell: bash
         env:
+          JOBADABRA_TESTER_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
           E2E_ARTIFACT_SECRET_NAMES: |
             ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            JOBADABRA_TESTER_KEY
             CI_CF_ANALYTICS_TOKEN
             E2E_FREE_AI_KEY
             FREE_AI_LOCAL_CF_ACCOUNT_ID

@@ -9,6 +9,19 @@ const small = {system: 's', messages: [{role: 'user', content: 'hello'}]};
 // A request as big as the input the fake answer reports (4 characters a token), so the pre-call worst case and the real usage agree as they do in life.
 const sized = tokens => ({system: 's', messages: [{role: 'user', content: 'y'.repeat((tokens - 100) * 4)}]});
 
+// Guard: money — cached context still appears in the owner's gross-token cost; cheap incremental turns cannot bypass the gross ceiling.
+test('gross usage caps cached conversations as well as incremental tokens, across actor reader and judge', async () => {
+  let calls = 0;
+  const ask = async () => { calls++; return {text: '{}', usage: {input_tokens: 90_000, output_tokens: 1000}, tokens: {counted: 1000}}; };
+  const budget = runBudget();
+  await budget.actor(ask)(small);
+  await budget.reader(ask)(small);
+  await assert.rejects(budget.judge(ask)(small), /run token cap was reached/);
+  assert.equal(calls, 2);
+  assert.equal(budget.state.total, 2000);
+  assert.equal(budget.state.gross, 182_000);
+});
+
 test('a night acts on the mid tier, a replay or a run with no kind on small, and what a dispatch asked for wins', () => {
   assert.deepEqual([actorTierOf({kind: 'night'}), actorTierOf({kind: 'replay'}), actorTierOf({requested: 'mid', kind: 'night'}), actorTierOf({requested: 'large', kind: 'replay'}), actorTierOf(), actorTierOf({kind: 'lane'})], ['mid', 'small', 'mid', 'large', 'small', 'mid']);   // a lane files like a night, so it acts on mid (pz, 7 Nov 2026)
 });
@@ -42,11 +55,11 @@ test('a screenshot is a flat price, not its bytes: a request with a big picture 
 test('under the cap the report shows tokens against it with each part; at the cap it says the run stopped there', async () => {
   const under = runBudget();
   await under.actor(asks(60_000))(sized(60_000)); await under.reader(asks(18_000, 'mid'))(sized(18_000)); await under.judge(asks(6_000, 'mid'))(sized(6_000));
-  assert.equal(tokensLine(under.state, 'large'), 'Tokens counted toward the run cap: 84k / 250k (actor 60k, screen reader 18k, second opinion 6k). Actor tier: large.');
+  assert.equal(tokensLine(under.state, 'large'), 'Tokens counted toward the run cap: 84k / 250k (actor 60k, screen reader 18k, second opinion 6k). Gross: 84k / 250k cap, including cached input. Actor tier: large.');
   const capped = runBudget({capTokens: 50_000, reserve: 5_000});
   await capped.actor(asks(30_000))(sized(30_000));
   await assert.rejects(capped.actor(asks(30_000))(sized(30_000)), /cap was reached/);
-  assert.equal(tokensLine(capped.state, 'small'), 'Stopped at the 50k cap: 30k / 50k counted tokens; the notes made so far are kept (actor 30k, screen reader 0k, second opinion 0k). Actor tier: small.');
+  assert.equal(tokensLine(capped.state, 'small'), 'Stopped at the 50k cap: 30k / 50k counted tokens; the notes made so far are kept (actor 30k, screen reader 0k, second opinion 0k). Gross: 30k / 50k cap, including cached input. Actor tier: small.');
 });
 
 test('a refused broker call is not counted and its error reaches the loop, which stops the night as before', async () => {

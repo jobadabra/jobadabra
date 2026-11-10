@@ -28,6 +28,14 @@ export function agentAct(page) {
         return page.evaluate(observePage);
       }
     },
+    /** Use only a node-backed palette entry: its run opens and reveals the control, never presses it (nav.js addNode). */
+    openGoal: async goal => {
+      await page.evaluate(({group, label}) => {
+        const command = window.__jp.paletteCommands().find(entry => entry.group === group && entry.label === label && entry.node);
+        command?.run();
+      }, {group: goal.group, label: goal.label});
+      await settle(page);
+    },
     lastPress: () => pressed,
     click: async i => {
       await tagged(i).scrollIntoViewIfNeeded();
