@@ -330,6 +330,23 @@ def _named(answer, known, fetch):
     return found
 
 
+def _stamped(data, key, when, tries, thin):
+    """The search's mark: when it was asked (once per due time, even when it fails) and the thin searches in a row (TRIES, then weekly)."""
+    data.setdefault('web', {})[key] = when.isoformat(timespec='seconds')
+    data.setdefault('web_thin', {})[key] = tries + 1 if thin else 0
+
+
+def _told_again(data, key, last, working, tries):
+    """Why a thin search asks again, said in the log, and what the last one found, for the question (the AI gets other words); {} when it is the first."""
+    if last is None or len(working) >= WANT:
+        return {}
+    # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
+    print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
+          f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
+    return {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
+                                                                      (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
@@ -357,12 +374,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         return []
     # judged only after a search (a first one asks no AI for the role's kind; it counts as thin: nothing it found works yet)
     working, tries = (_working(kept, search_config) if last is not None else []), int((data.get('web_thin') or {}).get(key) or 0)
-    before = {}
-    if raw is None and last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
-        print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
-              f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
-        before = {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
-                                                                            (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
+    before = {} if raw is not None else _told_again(data, key, last, working, tries)
     if client is None and raw is None:
         client = _searcher()
         if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
@@ -371,8 +383,8 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     if run is not None:
         with _lock:
             _searched.add(run)
-    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per due time, even when it fails
-    data.setdefault('web_thin', {})[key] = tries + 1 if len(working) < WANT else 0   # thin searches in a row (TRIES, then weekly)
+    if raw is None or last is None or last < raw[1]:   # a saved answer whose asking run already stamped and counted it is not counted twice (Gitar, #3642)
+        _stamped(data, key, raw[1] if raw is not None else now, tries, len(working) < WANT)
     if own:
         board_ideas.save(data)
     if raw is not None:
