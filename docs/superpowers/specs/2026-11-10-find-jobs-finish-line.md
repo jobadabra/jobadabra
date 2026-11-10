@@ -114,8 +114,8 @@ So two parts, neither started before its number exists:
   - [x] 1/5 the six people without EURES get their national board (proof: tools/persona-search/market_boards.py @d54ef2d3)
   - [x] 2/5 every person's national board, 16 of 18 (proof: tools/persona-search/market-boards.json @6e43bf36)
   - [x] 3/5 web search (proof: tools/persona-search/market_web.py @0257d351)
-  - [ ] 4/5 employer sites (this PR: tools/persona-search/market_employers.py)
-  - [ ] 5/5 Admin rows with every check (oe's row shape)
+  - [x] 4/5 employer sites (proof: tools/persona-search/market_employers.py @5a53992f)
+  - [ ] 5/5 Admin rows with every check (oe's row shape): sender tools/persona-search/reference.py (this PR), receiver jobadabra-web #528
 - [ ] WP3 (sf) In = out: the table of where EURES's right jobs are lost, then the fixes, each naming its people
 - [ ] WP4 (oe) The Admin graph: coverage and in = out per person and over time, blind nights grey
 - [ ] WP5 (cr) A check that measures everyone: Codex, then Claude, never Free AI (#3703); a night no AI answered is "not run" (#3714); an AI-slow person run again once (#3716)
