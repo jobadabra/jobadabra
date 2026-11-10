@@ -2,6 +2,7 @@ name: CI · Search reference (18 personas)
 # The yardstick of the nightly Search check (owner, 6 Nov 2026: "how to know if it's a good or bad result?"; EURES as the baseline): for each of the 18 fictional candidates, how many right-role, right-place jobs
 # EURES lists (its public API, outside the app), judged by the same blind judge as the night. Counts go to Admin → Job search → Night search ("found 7 of 24 reachable"); nothing else leaves. A report: it blocks nothing.
 # EURES only (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone, so no Google Jobs step and no search secret here.
+# Since 10 Nov 2026 (sa's finish-line plan WP2, "the market count"): each person's national job board too (tools/persona-search/market-boards.json); a board refused or changed is "not counted", never 0.
 # Tool: tools/persona-search/reference.py (run, send). Guard: tests/tooling/ci/test_search_reference.py. By hand for now; a weekly start from the Worker is one line in app-core/src/scheduler.js when the owner asks.
 run-name: Search reference · by hand
 
@@ -50,12 +51,12 @@ jobs:
       - uses: actions/setup-python@v6
         if: steps.token.outputs.ok == 'yes'
         with: {python-version: '3.12'}
-      - name: The engine's libraries (the EURES reader, the judge)
+      - name: The engine's libraries (the EURES reader, the judge; the boards need none)
         if: steps.token.outputs.ok == 'yes'
         run: |
           pip install --quiet -r requirements.txt
           (cd desktop/e2e && (npm ci || npm install))
-      - name: Read EURES for the 18 candidates, then the blind judge (right role, right place; Codex small tier)
+      - name: Read EURES and each national board for the 18 candidates, then the blind judge (right role, right place; Codex small tier)
         if: steps.token.outputs.ok == 'yes'
         run: |
           set -o pipefail

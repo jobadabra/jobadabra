@@ -24,6 +24,11 @@ def job(i, title='Menuisier', code='BE100', employer='ACME'):
     return {'id': f'j{i}', 'title': f'{title} {i}', 'employer': {'name': employer}, 'locationMap': {'BE': [code]}}
 
 
+def NO_BOARD(n, words):
+    """A board reader for a country with no board row: no network in these tests."""
+    return {'source': 'public_board', 'board': None, 'status': 'none (no board)', 'rows': []}
+
+
 def right_if(word):
     """A fake blind judge: role yes when the title holds `word`, place yes for a Brussels location."""
     def asker(profile, jobs):
@@ -79,8 +84,8 @@ class Counting(unittest.TestCase):
                 {'title': 'menuisier h/f', 'company': 'BOIS SA', 'location': 'Brussels, Belgium', 'role': 'yes', 'place': 'yes'},
                 {'title': 'Comptable', 'company': 'Z', 'location': 'Brussels', 'role': 'no', 'place': 'yes'},
                 {'title': 'Menuisier', 'company': 'Y', 'location': 'Liege', 'role': 'yes', 'place': 'no'}]
-        self.assertEqual(reference.tally(rows), {'total': 1, 'reachable': 1, 'eures': 1})
-        self.assertEqual(reference.tally([]), {'total': 0, 'reachable': 0, 'eures': 0})
+        self.assertEqual(reference.tally(rows), {'total': 1, 'reachable': 1, 'eures': 1, 'public_board': None})
+        self.assertEqual(reference.tally([]), {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None})
 
 
 class TheWeek(unittest.TestCase):
@@ -94,20 +99,20 @@ class TheWeek(unittest.TestCase):
         return {'jvs': [job(i) for i in range(2)]}
 
     def test_every_persona_gets_a_record_and_the_record_holds_counts_only(self):
-        record = reference.run(self.post, right_if('menuisier'))
+        record = reference.run(self.post, right_if('menuisier'), boards=NO_BOARD)
         self.assertEqual(sorted(record['personas'], key=int), [str(n) for n in range(1, 19)])
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures'})
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board'})
 
     def test_the_right_jobs_keys_stay_beside_the_record_and_are_never_part_of_it(self):
         """WP3 (10 Nov 2026): a night's loss is matched job by job, so the artifact keeps each right job's title, employer and link; the record (the only thing sent) is unchanged."""
         jobs = {}
-        record = reference.run(self.post, right_if('menuisier'), jobs)
+        record = reference.run(self.post, right_if('menuisier'), jobs, boards=NO_BOARD)
         self.assertEqual(set(record), {'personas'})
-        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures'})
+        self.assertEqual(set(record['personas']['3']), {'total', 'reachable', 'eures', 'public_board'})
         self.assertEqual(len(jobs['3']), record['personas']['3']['total'], 'one key per right job, a posting listed twice once')
-        self.assertTrue(all(set(j) == {'title', 'company', 'url'} and j['url'].startswith(eures.DETAIL) for j in jobs['3']))
+        self.assertTrue(all(set(j) == {'title', 'company', 'url', 'sources'} and j['url'].startswith(eures.DETAIL) and j['sources'] == ['eures'] for j in jobs['3']))
         self.assertTrue(all('menuisier' in j['title'].lower() for j in jobs['3']), 'only the jobs the judge called right')
 
     def test_a_persona_whose_eures_read_failed_is_left_out_never_zero(self):
@@ -115,7 +120,7 @@ class TheWeek(unittest.TestCase):
             if body['locationCodes'][0].startswith('be'):
                 raise OSError('EURES is down')
             return {'jvs': []}
-        record = reference.run(post, right_if('menuisier'))
+        record = reference.run(post, right_if('menuisier'), boards=NO_BOARD)
         self.assertEqual(sorted(record['personas'], key=int), [str(n) for n in range(1, 19) if n != 3])
 
     def test_a_judge_that_fails_for_one_persona_leaves_that_one_out(self):
@@ -123,7 +128,7 @@ class TheWeek(unittest.TestCase):
             if 'Carpenter' in profile:
                 raise ValueError('the judge left out 2 of 2 jobs')
             return right_if('menuisier')(profile, jobs)
-        record = reference.run(self.post, asker)
+        record = reference.run(self.post, asker, boards=NO_BOARD)
         self.assertEqual(sorted(record['personas'], key=int), [str(n) for n in range(1, 19) if n != 3])
 
     def test_only_title_employer_and_place_reach_the_judge(self):
@@ -132,7 +137,7 @@ class TheWeek(unittest.TestCase):
         def asker(profile, jobs):
             seen.extend(jobs)
             return right_if('menuisier')(profile, jobs)
-        reference.run(self.post, asker)
+        reference.run(self.post, asker, boards=NO_BOARD)
         self.assertTrue(seen and all(set(j) == {'n', 'title', 'company', 'location'} for j in seen))
 
     def test_nothing_in_the_tool_or_its_workflow_touches_serpapi_or_google(self):
@@ -140,6 +145,43 @@ class TheWeek(unittest.TestCase):
             code = re.sub(r'"""[\s\S]*?"""', '', path.read_text(encoding='utf-8'))   # docstrings and comments may say why; code may not call it
             code = '\n'.join(re.sub(r'\s#.*$', '', line) for line in code.splitlines() if not line.lstrip().startswith('#'))
             self.assertIsNone(re.search(r'serp|google_jobs|REFERENCE_SERPAPI|CENTRAL_SCOUT', code, re.I), path.name)
+
+
+class TheMarket(unittest.TestCase):
+    """The market count (sa's finish-line plan WP2, 10 Nov 2026): EURES and the person's national board are judged in one pass; total = the distinct right jobs of every counted source,
+    each source's own count beside it; a source that was not counted is None, never 0, and never ends the other."""
+    def setUp(self):
+        patcher = mock.patch('src.sources.nuts_names.names', return_value=NUTS)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def board(status='counted', titles=('Menuisier 0', 'Menuisier 9')):
+        def read(n, words):
+            rows = [{'title': t, 'company': 'ACME', 'location': 'Brussels', 'url': f'https://board.example/{i}'} for i, t in enumerate(titles)] if n == 3 and status == 'counted' else []
+            return {'source': 'public_board', 'board': 'board.example' if n == 3 else None, 'status': status if n == 3 else 'none (no board)', 'rows': rows}
+        return read
+
+    def test_a_job_two_sources_show_counts_once_and_each_source_keeps_its_own_count(self):
+        jobs, details = {}, {}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), jobs, boards=self.board(), details=details)
+        self.assertEqual(record['personas']['3'], {'total': 3, 'reachable': 3, 'eures': 2, 'public_board': 2})
+        self.assertEqual({j['title']: j['sources'] for j in jobs['3']}, {'Menuisier 0': ['eures', 'public_board'], 'Menuisier 1': ['eures'], 'Menuisier 9': ['public_board']})
+        self.assertEqual(details['3']['public_board'], {'status': 'counted', 'read': 2, 'board': 'board.example', 'pages': 0, 'right': 2})
+        self.assertEqual(details['3']['free_job_apis'], {'status': 'none (no query)'})
+        self.assertEqual(details['3']['linkedin'], {'status': 'by hand'})
+
+    def test_a_refused_board_is_not_counted_and_the_market_is_eures_alone(self):
+        details = {}
+        record = reference.run(lambda body: {'jvs': [job(i) for i in range(2)]}, right_if('menuisier'), boards=self.board('not counted: refused 403'), details=details)
+        self.assertEqual(record['personas']['3'], {'total': 2, 'reachable': 2, 'eures': 2, 'public_board': None})
+        self.assertNotIn('right', details['3']['public_board'])
+
+    def test_a_board_still_counts_when_eures_failed_and_eures_is_none_not_zero(self):
+        def post(body):
+            raise OSError('EURES is down')
+        record = reference.run(post, right_if('menuisier'), boards=self.board())
+        self.assertEqual(record['personas'], {'3': {'total': 2, 'reachable': 2, 'eures': None, 'public_board': 2}}, 'the 17 without a counted source are left out')
 
 
 class TheCommandLine(unittest.TestCase):
@@ -150,7 +192,7 @@ class TheCommandLine(unittest.TestCase):
         folder = Path(tempfile.mkdtemp()) / 'out' / 'deeper'
         seen = []
 
-        def fake_run(jobs=None):
+        def fake_run(jobs=None, details=None):
             seen.append(folder.is_dir())   # the folder is there before the read starts
             jobs['1'] = []
             return {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}}
@@ -158,7 +200,9 @@ class TheCommandLine(unittest.TestCase):
             self.assertEqual(reference.main(['run', str(folder / 'reference.json')]), 0)
         self.assertEqual(seen, [True])
         self.assertEqual(json.loads((folder / 'reference.json').read_text()), {'personas': {'1': {'total': 0, 'reachable': 0, 'eures': 0}}})
-        self.assertEqual(json.loads((folder / 'reference-jobs.json').read_text()), {'personas': {'1': []}}, 'the keys beside the counts, in their own file')
+        beside = json.loads((folder / 'reference-jobs.json').read_text())
+        self.assertEqual(beside['personas'], {'1': []}, 'the keys beside the counts, in their own file')
+        self.assertEqual(set(beside), {'personas', 'sources', 'counted_on'}, 'per-source detail and the date of the count stay in the artifact too')
 
     def test_the_siblings_make_their_own_output_folder_too(self):
         """The same pattern in gate.py extract and gate_judge.py main: they worked in the nightly only because an earlier step had made `out/`."""
@@ -188,8 +232,8 @@ class TheCommandLine(unittest.TestCase):
         def post(body):
             return {'jvs': []}
         with mock.patch('src.sources.nuts_names.names', return_value=NUTS):
-            record = reference.run(post, right_if('menuisier'))
-        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0})
+            record = reference.run(post, right_if('menuisier'), boards=NO_BOARD)
+        self.assertEqual(record['personas']['3'], {'total': 0, 'reachable': 0, 'eures': 0, 'public_board': None})
         self.assertEqual(len(record['personas']), 18)
 
 

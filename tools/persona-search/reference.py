@@ -1,14 +1,18 @@
-"""The weekly reference of the nightly Search check (owner, 6 Nov 2026: "how to know if it's a good or bad result?", chose EURES as the baseline): for each of the 18 fictional candidates, how many right-role,
-right-place jobs EURES lists, read OUTSIDE the app: EURES's public API (the city's NUTS-2 region, the role in the place's own language). The blind judge of the nightly check (gate_judge.py) says which are right,
-so the reference and a night are judged by the same eyes. Only counts leave this tool.
-Why EURES only (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone, so no Google Jobs here and no Google figure on the tab.
-  node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run <out.json>   read EURES, judge blind behind the Codex relay, write the counts
+"""The reference of the nightly Search check, the market count (owner, 6 Nov 2026: "how to know if it's a good or bad result?"; 10 Nov 2026: "summing all the jobs I found (that's what a
+normal person would do without Jobadabra)… should be the number what Jobadabra finds"): for each of the 18 fictional candidates, the right-role, right-place jobs each source of the plan's
+fixed list shows when a person searches it by hand, read OUTSIDE the app, judged by the nightly check's blind judge (gate_judge.py) in one pass, so a night and the market are judged by the same eyes.
+Sources counted so far: EURES's public API (the city's NUTS-2 region, the role in the place's own language) and the country's national job board (market_boards.py, one data row per country:
+sa's design, 10 Nov 2026). Free job APIs are "none (no query)" (none takes a role and a place; Adzuna and Jooble stay parked until the owner adds them); LinkedIn is "by hand" (never read here).
+Why no Google (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone.
+  node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run <out.json>   read every source, judge blind behind the Codex relay, write the counts
   python3 tools/persona-search/reference.py send <out.json>                                         PUT the counts to Admin (only a CI run on main; GITHUB_RUN_ID, REPLAYS_PUBLISH_KEY)
-Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, link) for the run's artifact only: it is never sent (send reads the counts file).
+Beside <out.json>, `reference-jobs.json` keeps each right job (title, employer, link, the sources that showed it), each source's status per person and the date of the count, for the run's
+artifact only: it is never sent (send reads the counts file).
 Why (10 Nov 2026, sa's finish-line plan WP3, owner: "our search results should always be what EURES gives + some additional sources"): a night's loss is counted per job and
 per stage, which needs the reference's jobs, not only their count.
-Record: {"personas": {"<n>": {total, reachable, eures}}}; total = distinct right jobs EURES lists, eures = the same count (the source), reachable = total: every EURES posting opens on the public EURES portal
-without signing in (its apply step may go elsewhere; the list gives no link, so no per-job check is made). Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
+Record: {"personas": {"<n>": {total, reachable, eures, public_board}}}; total = the market: distinct right jobs (title + employer) of every counted source; eures, public_board = each
+source's own count, None when not counted (refused, unread, or no board for the country), never 0; reachable = total: every posting counted opens on its public page without signing in.
+A persona with no counted source, or whose judge failed, is left out (Admin then says "no reference"). Admin: jobadabra-web admin/search-reference.js. Tests: tests/tooling/ci/test_search_reference.py."""
 import datetime
 import json
 import os
@@ -24,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 from gate import PERSONAS  # noqa: E402
 import gate_judge  # noqa: E402
+import market_boards  # noqa: E402
 
 SITE = 'https://www.jobadabra.top/search-check/reference'
 USER_AGENT = 'jobadabra-reference'   # Why (6 Nov 2026, run 42299710525): the site's edge answers 403 to urllib's default `Python-urllib/3.x`, so every call here names itself
@@ -67,30 +72,65 @@ def same_job(row):
     return (' '.join(row['title'].lower().split()), ' '.join((row.get('company') or '').lower().split()))
 
 
-def tally(rows):
-    """-> {total, reachable, eures} from judged rows: the distinct jobs the judge called right role AND right place; reachable = total (see the module docstring)."""
-    right = {same_job(row) for row in rows if row.get('role') == 'yes' and row.get('place') == 'yes'}
-    return {'total': len(right), 'reachable': len(right), 'eures': len(right)}
+SOURCES = ('eures', 'public_board')   # the plan's fixed words (sa, 10 Nov 2026); a new word goes to sa first
+
+
+def right(row):
+    """Whether the blind judge called a row the right role AND in the right place."""
+    return row.get('role') == 'yes' and row.get('place') == 'yes'
+
+
+def tally(rows, counted=('eures',)):
+    """-> {total, reachable, eures, public_board} from judged rows (each row's `source`, EURES when unnamed): per source, the distinct right jobs it listed; total = the market,
+    the distinct right jobs of every counted source (one job shown by two sources counts once); a source not counted is None, never 0; reachable = total (every listed posting
+    opens without signing in, see the module docstring)."""
+    keys = {source: {same_job(r) for r in rows if right(r) and r.get('source', 'eures') == source} for source in SOURCES}
+    market = set().union(*(keys[s] for s in SOURCES if s in counted))
+    return {'total': len(market), 'reachable': len(market), **{s: len(keys[s]) if s in counted else None for s in SOURCES}}
 
 
 def right_jobs(rows):
-    """-> the distinct right jobs (role AND place yes) as {title, company, url}, in the order EURES listed them: the keys a night's list is matched against."""
+    """-> the distinct right jobs (role AND place yes) as {title, company, url, sources}, in the order they were read: the keys a night's list is matched against;
+    `url` is the first source's link, `sources` every source that showed the job."""
     kept = {}
     for row in rows:
-        if row.get('role') == 'yes' and row.get('place') == 'yes':
-            kept.setdefault(same_job(row), {'title': row['title'], 'company': row.get('company') or '', 'url': row.get('url') or ''})
+        if right(row):
+            job = kept.setdefault(same_job(row), {'title': row['title'], 'company': row.get('company') or '', 'url': row.get('url') or '', 'sources': []})
+            if row.get('source', 'eures') not in job['sources']:
+                job['sources'].append(row.get('source', 'eures'))
     return list(kept.values())
 
 
-def run(post=eures_post, asker=gate_judge.ask, jobs=None):
-    """The record for every persona whose EURES read and judge worked (one that failed is left out, never 0: the tab then says "no reference").
-    `jobs`, when given, is filled with {"<n>": right_jobs(...)} for the same personas: the artifact's keys, never part of the record that is sent."""
+def pool(n, persona, post, boards):
+    """-> (rows, sources): every source's rows for one persona, each tagged with its source, and per source {status, read} (plus the board's name and pages).
+    A source that could not be read is "not counted: <why>" and adds no row; it never ends the other source."""
+    rows, sources = [], {}
+    try:
+        found = eures_rows(persona, post)
+        rows += [{**r, 'source': 'eures'} for r in found]
+        sources['eures'] = {'status': 'counted', 'read': len(found)}
+    except Exception as error:   # noqa: BLE001 - one unreadable region must not end the board or the other 17
+        sources['eures'] = {'status': f'not counted: {type(error).__name__}', 'read': 0}
+        print(f'reference: p{n} EURES not read ({type(error).__name__}: {str(error)[:80]})', flush=True)
+    board = boards(n, persona['reference']['words'])
+    rows += [{**r, 'source': 'public_board'} for r in board['rows']]
+    sources['public_board'] = {'status': board['status'], 'read': len(board['rows']), 'board': board.get('board'), 'pages': board.get('pages', 0)}
+    sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026); Adzuna and Jooble stay parked (owner's word adds them)
+    sources['linkedin'] = {'status': 'by hand'}   # never read by a tool (CLAUDE.md, login walls); sa's by-hand count fills it
+    return rows, sources
+
+
+def run(post=eures_post, asker=gate_judge.ask, jobs=None, boards=None, details=None):
+    """The record for every persona with at least one counted source whose judge worked (a persona with none, or whose judge failed, is left out, never 0: the tab then
+    says "no reference"). All sources' rows are judged in one blind pass, so every source is read by the same eyes and a job two sources show costs one verdict.
+    `jobs`, when given, is filled with {"<n>": right_jobs(...)}; `details` with {"<n>": per-source status, rows read and right jobs}: the artifact's, never part of the record that is sent."""
+    boards = boards or market_boards.read
     record = {}
     for n, persona in enumerate(PERSONAS, 1):
-        try:
-            rows = eures_rows(persona, post)
-        except Exception as error:   # noqa: BLE001 - one unreadable region must not end the other 17
-            print(f'reference: p{n} EURES not read ({type(error).__name__}: {str(error)[:80]})', flush=True)
+        rows, sources = pool(n, persona, post, boards)
+        counted = tuple(s for s in SOURCES if sources[s]['status'] == 'counted')
+        if not counted:
+            print(f'reference: p{n} no source counted', flush=True)
             continue
         try:
             if rows:
@@ -98,10 +138,12 @@ def run(post=eures_post, asker=gate_judge.ask, jobs=None):
         except Exception as error:   # noqa: BLE001 - one refused or short judge answer leaves that persona out, never the other 17
             print(f'reference: p{n} not judged ({type(error).__name__}: {str(error)[:80]})', flush=True)
             continue
-        record[str(n)] = tally(rows)
+        record[str(n)] = tally(rows, counted)
         if jobs is not None:
             jobs[str(n)] = right_jobs(rows)
-        print(f'reference: p{n} {record[str(n)]}', flush=True)
+        if details is not None:
+            details[str(n)] = {s: {**v, **({'right': record[str(n)][s]} if s in counted else {})} for s, v in sources.items()}
+        print(f'reference: p{n} {record[str(n)]} ' + ' · '.join(f"{s}: {v['status']}" for s, v in sources.items() if s in SOURCES), flush=True)
     return {'personas': record}
 
 
@@ -143,10 +185,10 @@ def main(argv):
     kind = argv[0] if argv else ''
     if kind == 'run' and len(argv) == 2:
         Path(argv[1]).parent.mkdir(parents=True, exist_ok=True)   # Why (6 Nov 2026, run 42191804037): `out/` did not exist and the 6-minute read ended in FileNotFoundError; make the folder first
-        jobs = {}
-        record = run(jobs=jobs)
+        jobs, details = {}, {}
+        record = run(jobs=jobs, details=details)
         Path(argv[1]).write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding='utf-8')
-        Path(argv[1]).with_name('reference-jobs.json').write_text(json.dumps({'personas': jobs}, ensure_ascii=False, indent=1), encoding='utf-8')
+        Path(argv[1]).with_name('reference-jobs.json').write_text(json.dumps({'personas': jobs, 'sources': details, 'counted_on': datetime.date.today().isoformat()}, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f"reference: {len(record['personas'])} of {len(PERSONAS)} personas")
     elif kind == 'send' and len(argv) == 2:
         print(send(argv[1]))
