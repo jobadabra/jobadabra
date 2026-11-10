@@ -17,12 +17,29 @@ function refusalOf(body) {
   try { return String(JSON.parse(String(body))?.error?.message || '').replace(/\s+/g, ' ').trim().slice(0, 200); } catch { return ''; }
 }
 
-/** Measure each relay call without changing its answer. `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
+/**
+ * The engines every call of a run may use, from JOBADABRA_CHECK_CHAIN (set by search-personas.yml), as the broker fields, or null (other callers keep the broker's chain).
+ * `codex,claude` (either order) = the two subscriptions, that one first, never Free AI (`subs`, jobadabra-web lib/engines.mjs); one engine = that engine alone (`only`).
+ * Why (10 Nov 2026, owner on #3703: "I don't want to depend just on Codex? Claude should be at any times a replacement. Free AI is good, except when we need higher
+ * intelligence models"): from 7 to 10 Nov the check's AI changed under it 4 times, a whole night on Free AI (3 of 18 measured); each row now says which engine answered.
+ */
+export function checkChain(env = process.env) {
+  const raw = String(env.JOBADABRA_CHECK_CHAIN || '').trim();
+  if (!raw) return null;
+  const names = raw.split(',').map(name => name.trim());
+  if (names.length === 1 && ['codex', 'claude', 'free-ai'].includes(names[0])) return {engine: names[0], only: true};
+  if (names.length === 2 && names.includes('codex') && names.includes('claude')) return {engine: names[0], subs: true};
+  throw new Error(`JOBADABRA_CHECK_CHAIN "${raw.slice(0, 30)}" is not a chain the broker knows (codex,claude; claude,codex; or one engine)`);
+}
+
+/** Measure each relay call without changing its answer (beyond keeping it on the run's chain, checkChain). `waited` is the client residual, not a measurement of queue time alone; `engine` is the one that answered (gate.py counts them per person); no prompt text is logged. */
 export function timedRelay({env = process.env, ask = askBroker, now = Date.now, log = line => console.error(line)} = {}) {
   let inFlight = 0;
-  return async (body, kind = 'unlabelled') => {
+  const pinned = checkChain(env);
+  return async (asked, kind = 'unlabelled') => {
+    const body = pinned ? {...asked, ...pinned} : asked;
     const started = now(), call = toBrokerCall(body);
-    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null, why = '';
+    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error', outTokens = null, why = '', engine = '';
     inFlight++;
     try {
       const answer = await answerViaBroker(body, {env, ask: async (wire, options) => {
@@ -30,6 +47,7 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
         sent = true;
         const result = await ask(wire, options);
         if (Number.isFinite(result.ms)) brokerMs = result.ms;
+        if (result.engine) engine = String(result.engine).replace(/[^a-z-]/g, '').slice(0, 20);
         return result;
       }});
       status = answer.status;
@@ -39,7 +57,7 @@ export function timedRelay({env = process.env, ask = askBroker, now = Date.now, 
     } finally {
       const total = now() - started;
       const label = String(kind).replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 64);
-      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0} out-tokens ${outTokens ?? 'na'}${why ? ` why ${why}` : ''}`);
+      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0} out-tokens ${outTokens ?? 'na'}${engine ? ` engine ${engine}` : ''}${why ? ` why ${why}` : ''}`);
       inFlight--;
     }
   };

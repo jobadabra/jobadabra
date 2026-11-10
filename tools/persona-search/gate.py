@@ -19,6 +19,7 @@ sys.path.insert(0, str(HERE))   # scores_rows.py sits beside this file, as for m
 from scores_rows import table_rows  # noqa: E402
 import funnel as funnel_mod  # noqa: E402
 import verdicts  # noqa: E402
+import engine_calls  # noqa: E402
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
@@ -226,6 +227,7 @@ def result(n, out):
     engine = engines_of(out / 'run.log')
     if engine:
         row['engine'] = engine
+    row.update(engine_calls.row_fields(out))
     unavailable = refused_reason(out / 'run.log')
     if unavailable:
         row['unavailable'] = unavailable
