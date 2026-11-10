@@ -174,14 +174,14 @@ def save(repo, base, state):
 
 
 def merges_since(repo, last_green):
-    """The merges since the floors were last green: first lines, at most 20."""
+    """The merges since the floors were last green: the newest 10 first lines, 100 characters each (oe: what the site keeps)."""
     if not (last_green or {}).get('sha') or not os.environ.get('GITHUB_SHA'):
         return []
     try:
         commits = gh(f"repos/{repo}/compare/{last_green['sha']}...{os.environ['GITHUB_SHA']}")['commits']
     except (RuntimeError, KeyError, TypeError):
         return []
-    return [c['commit']['message'].splitlines()[0][:120] for c in commits][-20:]
+    return [c['commit']['message'].splitlines()[0][:100] for c in commits][-10:]
 
 
 def reset_ok(reset):
@@ -222,9 +222,7 @@ def check(verdict_path, state_out, night):
             chain = os.environ.get('JOBADABRA_CHECK_CHAIN', 'codex,claude')
             new, report = update(state, verdict, chain, os.environ.get('GITHUB_RUN_ID', 'local'), os.environ.get('FLOORS_TODAY') or datetime.date.today().isoformat(),
                                  resets_on(), os.environ.get('GITHUB_SHA', ''))
-            merges = merges_since(repo, report['last_green']) if report['red'] else []
-            for item in report['red']:
-                item['merges'] = merges
+            report['merges'] = merges_since(repo, report['last_green']) if report['red'] else []   # once per night, not per red number (the site's 64 KB upload cap)
             verdict['floors'] = report
             if night:
                 Path(state_out).write_text(json.dumps({'base': base, 'state': new}), encoding='utf-8')

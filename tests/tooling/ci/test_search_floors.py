@@ -183,8 +183,9 @@ class TheStateIsSafe(unittest.TestCase):
             self.assertFalse(Path(tmp, 'byhand.json').exists())
             verdict.write_text(json.dumps(night({1: ('measured', {'local': 1})})))
             self.assertEqual(floors.check(verdict, Path(tmp, 'new.json'), night=True), floors.RED)
-            red = json.loads(verdict.read_text())['floors']['red']
-            self.assertEqual(red[0]['merges'], ['[sf] 2/8 Find jobs scores the nearest jobs first (#3685)'])
+            written = json.loads(verdict.read_text())['floors']
+            self.assertEqual(written['merges'], ['[sf] 2/8 Find jobs scores the nearest jobs first (#3685)'], 'once per night, not per red number')
+            self.assertNotIn('merges', written['red'][0])
             self.assertEqual(json.loads(Path(tmp, 'new.json').read_text())['base'], 'c' * 40)
 
 
