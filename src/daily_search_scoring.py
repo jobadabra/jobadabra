@@ -41,16 +41,22 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     if first:
         step_yield.scored('scoring', set(first))   # report only (src/press/step_yield.py): what the step took in hand
     scorer.begin()   # the slice of a first press claims its jobs from here, so no job is scored twice
-    total, stop, lock = {}, threading.Event(), threading.Lock()
+    total, stop, lock, closed = {}, threading.Event(), threading.Lock(), [False]
 
     def score_batch(own_db, own_stores, ids, level):
-        """One round, -> False when it scored nothing (a paused Profile, the AI down, a spent limit): the next would score nothing either, and the claims are not given back."""
+        """One round, -> False when it scored nothing (a paused Profile, the AI down, a spent limit): the next would score nothing either, and the claims are not given back.
+        Why a round-local dict (Gitar on #3649): the thread never touches the run's dict while the search may own it; a round that ends after the search took the counts
+        (`closed`, the join gave up at the run's end) is dropped from the card, its scores are saved all the same."""
+        own_run = {'warnings': [], 'waiting': 0}
         with step_yield.span('scoring'), slots.priority(level):
-            score_candidates(args, own_stores, own_db, run, read_profile, hidden, dismissed, set(ids), __import__('time').monotonic(), time_budget, final=False)
-            stats = run.pop('score', None) or {}
+            score_candidates(args, own_stores, own_db, own_run, read_profile, hidden, dismissed, set(ids), __import__('time').monotonic(), time_budget, final=False)
+            stats = own_run.get('score') or {}
             with lock:
-                add_stats(total, stats)
-            sync_partial(args, own_stores, own_db, hidden, dismissed)   # score.run syncs every 10 scored in one call, and a round has 4: the app's list has these now (code review, ts)
+                if not closed[0]:
+                    add_stats(total, stats)
+                    run['warnings'] += own_run['warnings']
+            if not closed[0]:
+                sync_partial(args, own_stores, own_db, hidden, dismissed)   # score.run syncs every 10 scored in one call, and a round has 4: the app's list has these now (code review, ts)
             return bool(stats.get('done'))
 
     def work(own_db, own_stores):
@@ -65,6 +71,7 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
 
     def counts():
         with lock:
+            closed[0] = True
             run['score'] = dict(total)   # whole, whether the thread ended or is still in its last round (the closing pass adds to it)
     return _beside(args.db, stores, work, stop, wait, counts)
 

@@ -180,9 +180,6 @@ class TheLoop(unittest.TestCase):
         self.assertEqual(scored, [], 'ended(): no new batch starts')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
 
 class TheThreadBesideTheSearch(unittest.TestCase):
     """The call that ends the scorer: bounded by the run's end, and its counts and the slice's claims survive a scorer that died (code review of ts)."""
@@ -206,6 +203,34 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         self.assertLess(time.monotonic() - began, 2, 'the join gave up at the run\'s end; the 3 minutes hold')
         self.assertEqual(said, ['counts'], 'the counts so far are said all the same')
 
+    def test_a_round_that_ends_after_the_join_gave_up_does_not_touch_the_runs_dict(self):
+        """Gitar on #3649: a late round popped run['score'] while the closing pass owned it (doubled totals, or a KeyError and a lost count)."""
+        from types import SimpleNamespace
+        release, in_round = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        run, args = {'warnings': []}, SimpleNamespace(mode='run', score_max=10, db=self.path)
+        clock = mock.Mock(batch=lambda *a, **k: 1, end=lambda: 1.0, now=lambda: 1.0, ended=lambda: False)   # the run's end is now: the join gives up at once
+
+        def late_round(args, stores, db, round_run, *rest, **kw):
+            in_round.set()
+            release.wait(10)
+            round_run['score'] = {'done': 5, 'pending': 5}
+            round_run['warnings'].append('a late warning')
+        with mock.patch.object(scoring, 'score_candidates', side_effect=late_round), mock.patch.object(scoring, 'sync_partial'), \
+                mock.patch.object(scoring, 'time_budget_on', return_value=True), mock.patch.object(scoring, 'next_batch', return_value=([], slots.SCORE)), \
+                mock.patch.object(scoring.score, 'queue', return_value=[{'id': 1}]), mock.patch.object(scoring, 'to_score', return_value=[]), \
+                mock.patch.object(scoring, '_stay', return_value=[]):
+            finish = scoring.score_beside(args, self.stores, mock.Mock(), run, lambda: 'Profile v1', frozenset(), frozenset(), clock)
+            self.assertTrue(in_round.wait(5), 'the scorer is in its round')
+            finish()
+            run['score'] = {'done': 1, 'pending': 1}   # the closing pass owns it now
+            release.set()
+            for thread in threading.enumerate():
+                if thread.name == 'scorer':
+                    thread.join(5)
+        self.assertEqual(run['score'], {'done': 1, 'pending': 1}, 'the late round neither doubled nor popped the closing pass\'s count')
+        self.assertEqual(run['warnings'], [], 'nor added to the run\'s warnings')
+
     def test_a_scorer_that_died_leaves_the_slice_no_one_to_defer_to(self):
         scorer.begin()
         def work(db, stores):
@@ -214,3 +239,7 @@ class TheThreadBesideTheSearch(unittest.TestCase):
         with mock.patch('builtins.print'):
             finish()
         self.assertFalse(scorer.shared(), 'the slice goes on by its old rule')
+
+
+if __name__ == '__main__':
+    unittest.main()

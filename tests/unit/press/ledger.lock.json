@@ -149,6 +149,6 @@
  },
  "L38": {
   "gets": "a Find jobs run scores each job as it lands, beside the readers, to the run's end: no seconds are kept for the job facts and no job is paid for twice",
-  "hash": "8065c5991d666ed2"
+  "hash": "5e3a69cba09ff7dd"
  }
 }
