@@ -52,3 +52,35 @@ test('the site adds a bonus: 22 applications past 60 days are no longer over, 25
   await refresh(st, license, {fetcher: answer({used: 22, first: '2026-07-01T00:00:00.000Z', pro: false, bonus: 2.7})});
   assert.equal(license.state().limit, 22, 'a fraction counts its whole part');
 });
+
+// Owner, 10 Nov 2026 (asked via AskUserQuestion "App sends a flag"): a trial on its own AI has 30 free applications; the app only says it is on its own AI, never sends the key.
+// Gitar on #3655: "Free off" is not an own AI; the site's bonus here follows the flag, so the number on the line proves the flag was sent.
+const OWN = 'sk-ant-api03-owner-test-key';
+async function lineFor(settings, secrets) {
+  const asked = [];
+  const fetcher = async (url, init) => { asked.push({url: String(url), headers: init.headers}); return Response.json({ok: true, used: 12, first: '2026-10-10T00:00:00.000Z', pro: false, bonus: /[?&]own_ai=1\b/.test(String(url)) ? 10 : 0}); };
+  const st = store(settings, secrets), license = create(st, {appliedNow: () => 12, now: () => now});
+  assert.equal(await refresh(st, license, {fetcher}), true);
+  return {asked, line: text(license.state())};
+}
+
+test('on its own API key the app tells the site with a flag (never the key) and the line says 12 of 30', async () => {
+  const {asked, line} = await lineFor({aiFree: false, aiEngine: 'api'}, {ANTHROPIC_API_KEY: OWN, JOBADABRA_TRIAL_KEY: FREE});
+  assert.match(asked[0].url, /[?&]own_ai=1\b/);
+  assert.ok(!asked[0].url.includes('sk-ant') && !JSON.stringify(asked[0].headers).includes('sk-ant'), 'no key of theirs leaves the Mac');
+  assert.match(line, /^12 of 30 free applications/);
+});
+
+test('on their own Claude/ChatGPT subscription engine too, even when Free AI was started once and its flag is still set', async () => {
+  for (const settings of [{aiFree: false, aiEngine: 'cli'}, {aiFree: true, aiEngine: 'cli'}, {aiFree: true, aiEngine: 'codex'}]) {
+    assert.match((await lineFor(settings, {JOBADABRA_TRIAL_KEY: FREE})).line, /^12 of 30 free applications/, JSON.stringify(settings));
+  }
+});
+
+test('Free AI in charge, or Free AI left with no AI of their own (only the install\'s trial token), sends no flag: 12 of 20', async () => {
+  for (const [settings, secrets] of [[{aiFree: true}, {ANTHROPIC_API_KEY: FREE}], [{aiFree: false}, {JOBADABRA_TRIAL_KEY: FREE}], [{aiFree: true, aiEngine: 'api'}, {ANTHROPIC_API_KEY: FREE, JOBADABRA_TRIAL_KEY: FREE}]]) {
+    const {asked, line} = await lineFor(settings, secrets);
+    assert.doesNotMatch(asked[0].url, /own_ai/, JSON.stringify(settings));
+    assert.match(line, /^12 of 20 free applications/);
+  }
+});
