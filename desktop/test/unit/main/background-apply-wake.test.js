@@ -40,3 +40,19 @@ test('the wake is not waited for inside the queueing: its poll would wait for th
   assert.equal((await queued).ok, true);
   release(true);
 });
+
+// Why (10 Nov 2026, hw review): a Stop pressed on one application, or the app ending a run that cannot reach its form, is written to the store and reached the hidden tab
+// only with the next 30 s poll's hand-offs; the tab kept filling meanwhile (never pressing: the ready answer refuses a handed-over job).
+test('handing one application to the person wakes the hidden browser after the hand-over is saved; a refused one wakes nothing', async () => {
+  for (const [state, woken] of [['filling', true], ['submitting', false]]) {
+    const events = [];
+    const item = {id: 's1', url: 'https://jobs.example.test/a', background: {}};
+    const controller = createBackgroundApplyController({}, {
+      store: {read: async () => ({session: 's1', state}), handoff: async () => { events.push('handed'); return {session: 's1', state: 'manual', mode: 'fill', reason: 'stopped'}; }},
+      browser: {ready: () => true, start: async () => ({owner: 'o1'}), wake: async () => { events.push('wake'); return true; }},
+      terminals: {list: () => [item], byUrl: () => item, record: id => (id === 's1' ? item : null), report: () => {}},
+      config: () => ({mode: 'fill', chosenAt: 'c1'}), now: () => now, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+    await controller.stopOne('s1');
+    assert.deepEqual(events, woken ? ['handed', 'wake'] : [], `a ${state} job`);
+  }
+});

@@ -435,7 +435,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const state = latest.get(item.id) || await store.read(item.url).catch(() => null);   // an unreadable store hands nothing over
     if (!state || state.session !== item.id || state.manualOverride || !allowed(state.state)) return null;
     const handed = await markManual(item, reason);
-    return handed?.ok === false ? null : handed;
+    if (handed?.ok === false) return null;
+    wakeBrowser('hand-over');   // the hidden tab hears it from the poll's hand-offs now, not at the 30 s report (hw, 10 Nov 2026)
+    return handed;
   });
   async function stopOne(id) { return handOverIf(id, state => !['submitting', 'receipt_confirmed'].includes(state), 'stopped'); }
   /** The extension's dead end on a hidden application before its form (the stuck event, lib/session-flow.js stuck) hands the run over as 'no_form'. -> the saved state, or null.
