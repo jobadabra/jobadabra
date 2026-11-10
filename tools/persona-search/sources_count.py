@@ -6,7 +6,8 @@ only where its step is exactly that word: employer_sites; the free-API step also
 Which readers listed a job, check side only (the engine writes no step or "found by" on a job yet: stage 2, on the Work board): the stored source and every
 "also on <reader>" the store noted when another reader brought the same job (gate.extract's `also`, src/store.py upsert_job). A copy at the same link replaces the
 stored source instead (src/store.py), so an earlier reader of that link is not seen here. How a reader gets its word:
-- eures: the reader's name or the EURES host (gate.source_kind);
+- eures: the reader's name or the EURES host (gate.source_kind); the host only for the stored reader (the store keeps one link), an "also on" reader by its
+  name alone, which is "EURES" for the EURES reader (src/sources/reader_rows.py), so both sides name it the same way;
 - employer_sites: sources.kind 'employer feed' (src/store.py import_watch_report);
 - free_job_apis vs job_boards: both are sources.kind 'job board'; a reader named in the free-API stage's own reader list (src/sources/aggregators.sources, parked
   readers included) is a free API, else a board. When that list cannot be read, free_job_apis says {"status": "inside job_boards"} and its jobs count there;
