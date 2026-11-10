@@ -4,5 +4,5 @@
 log="${GH_GRAPHQL_LOG:-$HOME/.cache/jobadabra/gh-graphql.log}"; hours="${1:-1}"
 since="$(date -u -d "-$hours hours" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-"$hours"H +%Y-%m-%dT%H:%M:%SZ)"
 [ -f "$log" ] || { echo "no GraphQL call logged ($log missing)"; exit 0; }
-awk -F'\t' -v since="$since" '$1 >= since {n++; s[$2]++; split($5, w, " "); c[$3 " | " w[1] " " w[2]]++}
+awk -F'\t' -v since="$since" '$1 >= since {n++; s[$2]++; split($5, w, " "); c[$3 " | " w[1] " " w[2] ($6 != "" ? " (" $6 ")" : "")]++}
   END {printf "%d GraphQL calls since %s\n", n, since; for (k in s) printf "  session %-28s %d\n", k, s[k]; for (k in c) printf "  caller  %-40s %d\n", k, c[k]}' "$log"
