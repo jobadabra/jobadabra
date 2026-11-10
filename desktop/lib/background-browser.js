@@ -172,12 +172,12 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     })().finally(() => { pending = null; });
     return pending;
   }
-  async function sessionAction(session, action) {
+  async function sessionAction(session, action, options = {}) {
     const live = await connect();
     const worker = (await get(live.port, '/json/list')).find(target => target.type === 'service_worker' && target.url.endsWith('/background-owned.js'));
     if (!worker) return false;
     const expression = `globalThis.__jobPilottoBackgroundSessions?.${action}(${JSON.stringify(session)})`;
-    const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
+    const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true}, options);
     return result.result?.value === true;
   }
   // The held tab of one application session, by the ONE rule that says which tab is a session's (lib/session-tab.js): its loopback CDP address, or null.
@@ -197,6 +197,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return (await get(live.port, '/json/list')).find(target => target.type === 'page' && target.id === targetId)?.webSocketDebuggerUrl || null;
   }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read; true when the app acknowledged that poll.
-  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), wake: () => sessionAction(null, 'poll'), close};
+  // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read or queued applications; true when the app acknowledged that poll.
+  // Why (10 Nov 2026, hw review): that poll opens a window for each claimed job (up to 10) before it answers and can pass the 5 s command limit: a wake that worked would be logged as failed. 30 s is a hang guard.
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), wake: () => sessionAction(null, 'poll', {timeout: 30000}), close};
 }
