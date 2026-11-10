@@ -185,11 +185,11 @@ class TitlesTest(unittest.TestCase):
                 thread = threading.Thread(target=wait, args=(name, level, near), daemon=True)
                 thread.start()
                 threads.append(thread)
-                deadline = time.monotonic() + 10   # a hang guard, not the clock the test depends on
+                deadline = time.monotonic() + 60   # a hang guard, not the clock the test depends on (10 s ran out on a loaded runner in a sibling: 10 Nov 2026)
                 while pool.waiting() < len(threads) and time.monotonic() < deadline:
                     time.sleep(0.001)
         for thread in threads:
-            thread.join(10)
+            thread.join(60)
         self.assertEqual(got, ['first-far', 'normal-near', 'normal-near-2', 'normal-far', 'later'])
 
 
