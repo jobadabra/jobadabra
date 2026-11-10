@@ -77,9 +77,12 @@ export const link = async (storage, job, options) => words(await call(storage, '
 // Cloud apply readiness (cloud browser runner 3/4, spec 2026-11-08-cloud-browser-runner-design.md): an Always on install posts the forms of its top matches, starts the read, takes each read once, and can Stop it.
 // The install's key alone opens these (an owner's secret, when set, is sent as before and changes nothing). The site's own words say a refusal: 402 "AI credit is used up", 429 "today's cloud checks are used up".
 const readWords = result => (result.ok ? result : {ok: false, status: result.status, error: result.status === 401 || (result.status === 404 && !reasonOf(result)) ? 'Cloud checks are not available for this install right now.' : result.error});
+/** Posts the top matches' forms as one readiness night (`jobs`: [{id, url, title, company}]; `ai`: the person's own Claude key or ''). -> {ok, batch, queued} or {ok: false, status, error} in the site's own words (402 credit used up, 429 today's cap); never throws. */
 export const readSend = async (storage, jobs, {ai = '', now = () => new Date(), ...options} = {}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options,
   body: {task: 'readiness', night: now().toISOString().slice(0, 10), jobs, ...(/^sk-ant-/.test(ai) ? {ai: {key: ai}} : {})}}));
+/** Starts the queued readiness night now. -> {ok} or {ok: false, status, error}; never throws. */
 export const readStart = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'readiness'}, ...options}));
 /** -> {ok, reads: [{job, state: read | unreadable | failed, read, why}], pending}; a read taken here is removed from the site (at most once). */
 export const readTake = async (storage, options) => readWords(await call(storage, '/api/ready/reads', {method: 'POST', body: {}, ...options}));
+/** Stops the readiness night: the site ends it and its unread forms are told as failed. -> {ok, stopped} or {ok: false, status, error}; never throws. */
 export const readStop = async (storage, options) => readWords(await call(storage, '/api/ready/stop', {method: 'POST', body: {}, ...options}));
