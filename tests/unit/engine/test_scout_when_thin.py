@@ -34,7 +34,7 @@ def yield_db(hits):
 
 class CoveredTest(unittest.TestCase):
     def covered(self, n, hits=scout_need.MIN_HITS, **kw):
-        with tempfile.TemporaryDirectory() as folder, mock.patch('src.sources.feeds.wanted_location', lambda job: job['location'] == 'Nürnberg'):
+        with tempfile.TemporaryDirectory() as folder, mock.patch('src.sources.feeds.could_be_in_places', lambda job: job['location'] == 'Nürnberg'):
             return scout_need.covered(DRIVER, index_file(folder, n, **kw), db=yield_db(hits))
 
     def test_a_long_index_list_is_not_cover_when_the_search_itself_found_next_to_nothing(self):
