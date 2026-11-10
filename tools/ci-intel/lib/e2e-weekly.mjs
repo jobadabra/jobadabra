@@ -56,13 +56,12 @@ const names = (rows, pick = row => row.suite, shown = 3) => `${rows.slice(0, sho
  */
 export function telegramText(s) {
   const why = GROUPS.filter(group => s.byGroup[group.id]).map(group => ({icon: GROUP_ICON[group.id], count: s.byGroup[group.id], text: group.label}));
-  const grey = s.grey?.rows || [], slow = s.speed?.slowPr || [];
-  const facts = [s.caught.length ? `🐛 Caught a bug: ${names(s.caught)}` : '🐛 No red suite caught a bug',
-    s.work.total ? `🧱 Plumbing ${pct(s.work.counts.plumbing || 0, s.work.total)} of ${s.work.total} commits (${s.work.plumbing < PLUMBING_TARGET ? 'under' : 'over'} the ${pct(PLUMBING_TARGET, 1)} target)` : `🧱 No commit read for the week of ${dayWords(s.work.week)}`,
-    `⚪ ${s.grey?.read === false ? 'Lane registry not read yet' : grey.length ? plural(grey.length, 'grey suite') : 'No grey suite'} · ${slow.length ? `${plural(slow.length, 'PR suite')} over ${PR_SPLIT_SECONDS / 60} min` : 'no PR suite over 8 min'}`];
-  const expired = grey.filter(row => row.expired || row.below);
-  const call = [s.prune.length ? `${plural(s.prune.length, 'suite')} red in 30 days without catching a bug (${names(s.prune)}): keep, move to a tolerant lane, or retire?` : '',
-    expired.length ? `Grey: ${names(expired)} past their limit: keep, fix or retire?` : ''].filter(Boolean).join(' ');
+  const grey = s.grey?.rows || [], slow = s.speed?.slowPr || [], limit = PR_SPLIT_SECONDS / 60;
+  // Why (Gitar on #3644): the decision and the plumbing sentence have one source each (decision(), plumbingLine()), and the PR-speed fact says "not read" when the snapshot has no PR timings, never a false all-clear.
+  const speed = !s.speed?.prRead ? 'PR speed not read' : slow.length ? `${plural(slow.length, 'PR suite')} over ${limit} min` : `no PR suite over ${limit} min`;
+  const facts = [s.caught.length ? `🐛 Caught a bug: ${names(s.caught)}` : '🐛 No red suite caught a bug', `🧱 ${plumbingLine(s)}`,
+    `⚪ ${s.grey?.read === false ? 'Lane registry not read yet' : grey.length ? plural(grey.length, 'grey suite') : 'No grey suite'} · ${speed}`];
+  const call = decision(s, 2) || '';
   const level = !s.runs ? 'grey' : call || s.redRuns / s.runs > 0.1 ? 'orange' : 'green';
   return card({level, headline: `E2E week to ${dayWords(s.day)}: ${s.redRuns} of ${s.runs} runs red (${pct(s.redRuns, s.runs)})`,
     bar: {done: s.runs - s.redRuns, total: s.runs, doneWord: 'green', restWord: 'red'}, why, whyTitle: s.reds ? `${s.reds} red suites` : 'No red suite this week', facts,
