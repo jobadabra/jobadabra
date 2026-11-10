@@ -11,7 +11,7 @@ from tests.guards.rules.test_run_state_only_shrinks import ROOT, SEARCH_PATH
 
 EXEMPT = {'src/press/stage.py'}   # the guard itself
 
-# Measured on main 05c6bfbf (10 Nov 2026): `except Exception` / `except BaseException` / bare, per file. Only shrinks.
+# Measured on main 05c6bfbf, then d24b6d0e (lj #3676 moved one from feeds.py to feed_places.py), 10 Nov 2026: `except Exception` / `except BaseException` / bare, per file. Only shrinks.
 KNOWN = {
     'src/press/clock.py': 1,
     'src/sources/board_check.py': 4,
@@ -28,9 +28,9 @@ KNOWN = {
     'src/sources/careers_explore.py': 5,
     'src/sources/describe.py': 2,
     'src/sources/eures.py': 1,
-    'src/sources/feed_places.py': 1,
+    'src/sources/feed_places.py': 2,
     'src/sources/feed_scan.py': 2,
-    'src/sources/feeds.py': 7,
+    'src/sources/feeds.py': 6,
     'src/sources/found_boards.py': 7,
     'src/sources/google.py': 5,
     'src/sources/google_jobs.py': 2,
