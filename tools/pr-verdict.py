@@ -39,7 +39,7 @@ GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey',
                    # Why (31 Oct 2026, owner: "Grey: not known yet"): budget refusal is not a quality judgment.
                    'ai-budget': ('qualityai', 'AI budget refused, not judged')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
-# The workflows a pull request can start: a pull_request trigger, or started by one of them (a PR starts an e2e run only when it adds or changes a step: pr-e2e-steps.yml, owner, 2 Nov 2026;
+# The workflows a pull request can start: a pull_request trigger, or started by one of them (a PR starts an e2e run only for the steps its files reach: pr-e2e-steps.yml, owner, 2 and 10 Nov 2026;
 # the other journeys run after each merge, main-steps.yml). A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/tooling/ci/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
