@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 
 ANSWERED = re.compile(r'^relay: .* status 200 .* engine ([a-z-]+)', re.M)
+ANY_ANSWER = re.compile(r'^relay: .* status 200 ', re.M)
+UNANSWERED = re.compile(r'^relay: .* status (?!200 )(\S+) .*?(?: why (.+))?$', re.M)   # refused (why …) or never reached (status error, no why)
 
 
 def calls_by_engine(log):
@@ -19,7 +21,20 @@ def calls_by_engine(log):
     return counts
 
 
+def not_run(log):
+    """The broker's reason when a press's AI never answered (every call refused: Codex and Claude both out, `subs: codex <why>, claude <why>`; or never
+    reached: `status error`), else ''.
+    Why (10 Nov 2026, sa, WP5 2/6): such a night measured nothing; it is "not run", never a fault or a row of zeros (jobadabra-web #523 draws it as a gap)."""
+    try:
+        text = Path(log).read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return ''
+    refused = UNANSWERED.search(text)
+    return '' if ANY_ANSWER.search(text) or not refused else (refused.group(2) or f'status {refused.group(1)}').strip()[:200]
+
+
 def row_fields(out):
-    """The row's `calls_by_engine` (the press's answered calls per engine) and `judged_by` ("codex", "claude" or "codex + claude"), each only when known."""
-    press, judge = calls_by_engine(Path(out) / 'run.log'), calls_by_engine(Path(out) / 'judge.log')
-    return {**({'calls_by_engine': press} if press else {}), **({'judged_by': ' + '.join(sorted(judge))} if judge else {})}
+    """The row's `calls_by_engine` (the press's answered calls per engine), `judged_by` ("codex", "claude" or "claude + codex") and `not_run` (the reason no call
+    was answered), each only when known."""
+    press, judge, refused = calls_by_engine(Path(out) / 'run.log'), calls_by_engine(Path(out) / 'judge.log'), not_run(Path(out) / 'run.log')
+    return {**({'calls_by_engine': press} if press else {}), **({'judged_by': ' + '.join(sorted(judge))} if judge else {}), **({'not_run': refused} if refused else {})}

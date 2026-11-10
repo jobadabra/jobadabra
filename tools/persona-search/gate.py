@@ -256,17 +256,27 @@ def result(n, out):
         row['non_haiku'] = int((out / 'non-haiku-steps.txt').read_text().strip() or 0)
     except (OSError, ValueError):
         pass
-    # Grey only for a press that ran clean and ended inside its budget: a non-zero exit, a crash, a step outside the small tier or a run past 180 s stay red
-    # (Gitar on #2955). A starved press is cut at the app's own stop, never past it.
-    if starved_wait is not None and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT:
-        row['not_measured'] = f'AI queue full (waited {starved_wait} s)'
-    elif not row.get('error') and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT and row.get('local') == 0 and read_of(row) == 0 \
-            and (not row.get('cost_unmeasured') or row.get('cut')) and (row.get('usd') or 0) <= PERSONA_CAP_USD:   # judge_one's cost reds stay (Gitar on #3082)
-        mean = mean_call_s(out / 'run.log')   # nothing scored, nothing right, and an AI this slow: what the press found says nothing about the code
-        if mean is not None and mean >= SLOW_CALL_S:
-            row['not_measured'] = f'AI slow (a call took {round(mean)} s on average)'
+    reason = grey_reason(row, out, starved_wait)
+    if reason:
+        row['not_measured'] = reason
     (out / 'result.json').write_text(json.dumps(row, ensure_ascii=False), encoding='utf-8')
     return row
+
+
+def grey_reason(row, out, starved_wait):
+    """Why a press measured nothing about the code (no AI answered, AI queue full, AI slow), else ''. Only a clean press may be grey: a non-zero exit, a crash,
+    a step off the small tier or a run past 180 s stays a red fault (Gitar on #2955, /code-review on 2/6). A starved press is cut at the app's own stop."""
+    if row.get('code') or row.get('crashes') or row.get('non_haiku') or row.get('seconds', 0) > PRESS_LIMIT:
+        return ''
+    if row.get('not_run'):   # no AI call answered (engine_calls.not_run): never a zero or a floor, every not_measured exclusion applies
+        return f"not run: {row['not_run']}"
+    if starved_wait is not None:
+        return f'AI queue full (waited {starved_wait} s)'
+    if not row.get('error') and row.get('local') == 0 and read_of(row) == 0 \
+            and (not row.get('cost_unmeasured') or row.get('cut')) and (row.get('usd') or 0) <= PERSONA_CAP_USD:   # judge_one's cost reds stay (Gitar on #3082)
+        mean = mean_call_s(out / 'run.log')   # nothing scored, nothing right, and an AI this slow: what the press found says nothing about the code
+        return f'AI slow (a call took {round(mean)} s on average)' if mean is not None and mean >= SLOW_CALL_S else ''
+    return ''
 
 
 def load_results(folder):
@@ -316,11 +326,13 @@ def row_verdict(row):
     """-> (mark, why, kind): THE rule for one persona's row; compare() builds the overall line from these and from nothing else (owner, 2 Nov 2026: the row
     and the overall line of #2969 disagreed: 🟢 rows with 0 right jobs under "⚪ not measured (1 of 6)").
     🔴 a fault (judge_one: failed press, over 180 s, cost, off the small tier, no result); ⚪ no right job, kind 'unmeasured' (AI queue full, no token),
-    'nothing' (no job scored: cut by the cap, time ran out, AI refused) or 'none-right' (jobs scored, none right role AND place); 🟢 at least one right job.
+    'nothing' (no job scored: cut by the cap, time ran out, AI refused), 'not-run' (no AI answered) or 'none-right' (jobs scored, none right role AND place); 🟢 a right job.
     Invariant: 'nothing' only on an explicit 0 (a missing count is 'none-right', unknown is not zero)."""
     reasons = judge_one(row, [])[0]
     if reasons:
         return '🔴', '; '.join(reasons) + (f" {row['cut']}" if row and row.get('cut') else ''), 'fault'
+    if row.get('not_run') and str(row.get('not_measured', '')).startswith('not run: '):
+        return '⚪', row['not_measured'], 'not-run'
     if row.get('not_measured'):
         return '⚪', f"not measured: {row['not_measured']}", 'unmeasured'
     if type(row.get('local')) is int and row['local'] > 0:
@@ -384,18 +396,19 @@ def grey_head(rows, pr):
             return f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)", reason
         return f'⚪ measured nothing: all {len(PERSONAS)} judges saw 0 jobs, so no press read a job (not a pass)', ''
     first = next((r['why'].removeprefix('not measured: ') for r in rows if r['kind'] == 'unmeasured'), '')
-    causes = {'unmeasured': f'not measured ({kinds.count("unmeasured")} of {len(PERSONAS)}): {first}', 'nothing': f'{kinds.count("nothing")} no job scored',
+    blind = next((r['why'].removeprefix('not run: ') for r in rows if r['kind'] == 'not-run'), '')
+    causes = {'not-run': f'{kinds.count("not-run")} of {len(PERSONAS)} not run ({blind})', 'unmeasured': f'not measured ({kinds.count("unmeasured")} of {len(PERSONAS)}): {first}', 'nothing': f'{kinds.count("nothing")} no job scored',
               'none-right': f'{kinds.count("none-right")} scored but none right'}
     parts = [text for k, text in causes.items() if k in kinds]
-    if all(k == 'unmeasured' for k in kinds):   # nothing ran: no "found 0"
-        return f'⚪ {parts[0]} (not a pass)', ''
+    if all(k in ('unmeasured', 'not-run') for k in kinds):   # nothing ran: no "found 0"
+        return f"⚪ {', '.join(parts)} (not a pass)", ''
     every = len(PERSONAS)
-    return (f'⚪ no right job on any of the {every} (not a pass): ' if 'unmeasured' in kinds else f'⚪ found 0 right jobs on all {every} (not a pass): ') + ', '.join(parts), ''
+    return (f'⚪ no right job on any of the {every} (not a pass): ' if {'unmeasured', 'not-run'} & set(kinds) else f'⚪ found 0 right jobs on all {every} (not a pass): ') + ', '.join(parts), ''
 
 
 def compare(pr, main_runs):
-    """pr: {n: result}; main_runs: [{n: result}] newest first. -> {state: success|failure|neutral, rows, head}. Every row is decided by row_verdict, the
-    overall state only adds the rows up: any 🔴 row or a pooled total below main's range is red, no 🟢 row is grey, else green "measured k of 6"."""
+    """pr: {n: result}; main_runs: [{n: result}] newest first. -> {state: success|failure|neutral|not-run, rows, head}. Every row is decided by row_verdict, the
+    overall state only adds the rows up: any 🔴 row or a pooled total below main's range is red, no 🟢 row is grey, else green "measured k of 6"; every row 'not-run' is state 'not-run' (no zero, no floor)."""
     rows = []
     for n in range(1, len(PERSONAS) + 1):
         row = pr.get(n)
@@ -413,6 +426,8 @@ def compare(pr, main_runs):
         state, head = 'failure', '🔴 ' + ' · '.join(parts)
     elif green:
         state, head = 'success', f'🟢 measured {green} of {len(PERSONAS)} · every press ≤ 180 s'
+    elif rows and all(r['kind'] == 'not-run' for r in rows):   # no AI answered anyone (sa, 2/6): the night is "not run", never drawn as zeros (jobadabra-web #523)
+        state, head = 'not-run', f"⚪ not run: no AI answered ({rows[0]['why'].removeprefix('not run: ')}); start it again by hand: gh workflow run search-personas.yml"
     else:
         state = 'neutral'
         head, reason = grey_head(rows, pr)
