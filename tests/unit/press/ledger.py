@@ -176,6 +176,13 @@ FIXES = (
         owner='Yes, build it (Recommended)',
         notes=('asked via AskUserQuestion, with "Yes, more on press 1 (Recommended)" (the per-run ceiling stays 60) and "Yes, facts later (Recommended)"',
                'a score call took 9-10 s with <=2 other AI calls in flight and 32 s with >=6; scoring has its own slot level (SCORE) between the first press\'s local reads and the rest')),
+    Fix('L39', '10 Nov 2026 (sf 1/7, #3670: night run 42731674115 p9 Lyon scored 7 jobs outside Lyon while 21 waited in Rhône)',
+        'jobs from the EU portal are placed on the map the moment they are read, so the jobs in your own area are sorted and scored first',
+        ('tests/unit/press/test_home_region_first.py::test_the_jobs_scored_first_are_in_the_persons_city',
+         'tests/unit/press/test_home_region_first.py::test_the_title_batches_asked_first_hold_the_persons_city'),
+        owner="Let's do the fixes",
+        notes=('Eurostat\'s NUTS label points (src/sources/nuts_points.json), no AI; the AI placing answered at 81 s and 113 s, after titles (66 s) and scores (92 s) were picked',
+               'replay of 55 night presses: right role and city among scored 31% -> 49%; presses with right jobs found and none scored 14 -> 5')),
 )
 
 
