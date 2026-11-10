@@ -42,5 +42,9 @@ test('a chain the broker does not know stops the run before any call, never a gu
 
 test('search-personas.yml sets the chain once at the workflow level, so the press, the judge and the reference count all inherit it', async () => {
   const workflow = await readFile(new URL('../../../../.github/workflows/search-personas.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /^env:\n(?:  .*\n)*?  JOBADABRA_CHECK_CHAIN: codex,claude\b/m);
+  assert.match(workflow, /^env:\n(?:  .*\n)*?  JOBADABRA_CHECK_CHAIN: \$\{\{ inputs\.chain \|\| 'codex,claude' \}\}/m, 'the night (no input) is codex,claude');
+  // a by-hand chain other than the night's is never a night: every night-only step also asks for the default chain
+  const nightOnly = workflow.split('\n').filter(line => line.includes("inputs.personas == ''"));
+  assert.ok(nightOnly.length >= 4);
+  for (const line of nightOnly) assert.match(line, /\(inputs\.chain \|\| 'codex,claude'\) == 'codex,claude'/, line.trim().slice(0, 80));
 });

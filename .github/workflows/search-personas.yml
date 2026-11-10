@@ -23,6 +23,13 @@ on:
         description: 'Presses read EURES (the installed app does; the night does not): measures in = out for EURES'
         type: boolean
         default: false
+      # Why (10 Nov 2026, owner on #3703 asked whether Gemma 4 (Free AI) can do job search and scoring; via AskUserQuestion by sa: "1 person first (Recommended)"): a by-hand run can put
+      # every call on Free AI alone, to measure seconds per call and its cost on one person; such a run is never a night (no Admin night, no red, no reference) and never in the codex,claude series.
+      chain:
+        description: 'The AI of every call: codex,claude (Codex, Claude as its replacement; the night) or free-ai alone (its own series, never a night)'
+        type: choice
+        options: ['codex,claude', 'free-ai']
+        default: 'codex,claude'
       scheduled:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
@@ -51,7 +58,7 @@ concurrency:   # one at a time, so no two runs share the broker; a newer queued 
 env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
-  JOBADABRA_CHECK_CHAIN: codex,claude   # Why (10 Nov 2026, owner on #3703: "Claude should be at any times a replacement. Free AI is good, except when we need higher intelligence models"): every call of the check (press, judge, reference, EURES comparison) on Codex, then Claude when Codex is out, never Free AI; each row counts its calls per engine (tools/persona-search/codex.mjs checkChain, gate.py)
+  JOBADABRA_CHECK_CHAIN: ${{ inputs.chain || 'codex,claude' }}   # by hand, `chain: free-ai` runs every call on Free AI alone (its own series, never a night, owner 10 Nov 2026: one person first); Why (10 Nov 2026, owner on #3703: "Claude should be at any times a replacement. Free AI is good, except when we need higher intelligence models"): every call of the check (press, judge, reference, EURES comparison) on Codex, then Claude when Codex is out, never Free AI; each row counts its calls per engine (tools/persona-search/codex.mjs checkChain, gate.py)
   JOBADABRA_AI_CALL_LOG: '1'   # Why (7 Nov 2026, #2920): one run-log line per AI call (step, asked, slot wait, answered; src/ai/call_log.py) so a run says where the 2:15 clock went
   JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
 
@@ -194,7 +201,7 @@ jobs:
   reference:
     name: EURES reference
     needs: [room, persona]
-    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && inputs.presses != '2' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
+    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -279,10 +286,10 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: "${{ (inputs.personas == '' && inputs.presses != '2') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
-        if: always() && inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run is not a night
+        if: always() && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or 2-press run is not a night
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -295,7 +302,7 @@ jobs:
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
-        if: inputs.personas == '' && inputs.presses != '2'   # a by-hand subset or 2-press run measures, it is no verdict
+        if: inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or 2-press run measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
         run: test "$CODE" = 0
