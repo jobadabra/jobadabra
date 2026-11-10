@@ -105,8 +105,8 @@ class NextBatch(unittest.TestCase):
         store.import_watch_report(self.db, {'jobs': [{'company': 'Example', 'id': i, 'title': f'Driver {i}', 'location': 'Sofia', 'url': f'https://x.test/{i}',
                                                        'description': 'A fictional job.'} for i in ids]})
 
-    def pick(self, earlier=frozenset(), size=2, ceiling=60):
-        return scoring.next_batch(self.db, 'Profile v1', frozenset(), earlier, size, ceiling)
+    def pick(self, earlier=frozenset(), size=2, ceiling=60, only_waiting=False):
+        return scoring.next_batch(self.db, 'Profile v1', frozenset(), earlier, size, ceiling, only_waiting)
 
     def test_jobs_landed_while_the_search_runs_are_taken_in_batches_once(self):
         self.land('a', 'b', 'c')
@@ -149,13 +149,32 @@ class NextBatch(unittest.TestCase):
             picks = [[title[job_id] for job_id in self.pick(earlier=earlier, size=1)[0]] for _ in range(4)]
         self.assertEqual(picks, [['new near'], ['old near'], ['old far'], ['new far']], 'by distance, whichever run found them')
 
+    def test_a_list_that_alternates_kinds_is_scored_in_full_rounds(self):
+        """Code review of sf 2/8: a batch was the head's run of one kind, so waiting and new jobs at alternating distances made 8 rounds of 1, a quarter of the AI."""
+        from src.daily_helpers import to_score
+        self.land('o1', 'o2', 'o3', 'o4')
+        earlier = frozenset(job['id'] for job in to_score(self.db, frozenset()))
+        self.land('n1', 'n2', 'n3', 'n4')
+        km = {f'{kind}{n}': 2 * n + (kind == 'n') for kind in 'on' for n in range(1, 5)}   # o1 n1 o2 n2 ...
+        with mock.patch('src.time_budget.best_first', lambda jobs: sorted(jobs, key=lambda job: km[job['title'][len('Driver '):]])):
+            sizes = [len(self.pick(earlier=earlier, size=4)[0]) for _ in range(3)]
+        self.assertEqual(sizes, [4, 4, 0])
+
+    def test_past_the_end_only_waiting_jobs_are_picked(self):
+        from src.daily_helpers import to_score
+        self.land('old1')
+        earlier = frozenset(job['id'] for job in to_score(self.db, frozenset()))
+        self.land('new1')
+        ids, level = self.pick(earlier=earlier, size=5, only_waiting=True)
+        self.assertEqual((len(ids), ids[0] in earlier, level), (1, True, slots.LATER))
+
     def test_twelve_jobs_landing_over_the_search_are_all_scored_not_three(self):
         """The owner's scenario (night 9 Nov: 73-204 jobs in the places, 3 scored): jobs land source by source while the scorer polls; every one is scored once."""
         scored, stop, landing = [], threading.Event(), [['a', 'b', 'c', 'd', 'e'], [], ['f', 'g'], ['h', 'i', 'j', 'k', 'l']]
-        def poll():
+        def poll(over=False):
             if landing:
                 self.land(*landing.pop(0))
-            ids, level = self.pick(size=4)
+            ids, level = self.pick(size=4, only_waiting=over)
             return ids, level
         def score_batch(ids, level):
             scored.extend(ids)
@@ -173,7 +192,7 @@ class NextBatch(unittest.TestCase):
 class TheLoop(unittest.TestCase):
     def test_it_scores_every_batch_until_stopped_and_waits_when_nothing_landed(self):
         stop, batches, scored, waited = threading.Event(), [['a', 'b'], [], ['c']], [], []
-        def next_batch():
+        def next_batch(over=False):
             return (batches.pop(0), slots.SCORE) if batches else ([], slots.SCORE)
         def score_batch(ids, level):
             scored.append(ids)
@@ -186,13 +205,32 @@ class TheLoop(unittest.TestCase):
     def test_a_round_that_scored_nothing_ends_it(self):
         """The AI down or a paused Profile: the claims are not given back, so looping would burn the run's ceiling in seconds (code review of ts)."""
         rounds = []
-        scoring.drain(threading.Event(), lambda: (['a'], slots.SCORE), lambda ids, level: rounds.append(ids) or False, lambda: False)
+        scoring.drain(threading.Event(), lambda over: (['a'], slots.SCORE), lambda ids, level: rounds.append(ids) or False, lambda: False)
         self.assertEqual(rounds, [['a']])
 
     def test_it_ends_with_the_runs_time(self):
         scored = []
-        scoring.drain(threading.Event(), lambda: (['a'], slots.SCORE), lambda ids, level: scored.append(ids), lambda: True)
+        scoring.drain(threading.Event(), lambda over: (['a'], slots.SCORE), lambda ids, level: scored.append(ids), lambda: True)
         self.assertEqual(scored, [], 'ended(): no new batch starts')
+
+    def test_a_stop_before_the_first_pick_starts_nothing_when_nothing_is_owed(self):
+        """Code review of sf 2/8: the first pick ignored a stop already set."""
+        stop, picks = threading.Event(), []
+        stop.set()
+        scoring.drain(stop, lambda over: picks.append(over) or (['a'], slots.SCORE), lambda ids, level: True, lambda: False)
+        self.assertEqual(picks, [])
+
+    def test_owed_waiting_jobs_are_scored_past_the_end_and_nothing_else(self):
+        """L13: the waiting jobs the clock allowed at the start are scored in this run even when the search spends the clock at once; past the end only those."""
+        owed, asked, waiting = [3], [], [['w1', 'w2'], ['w3']]
+        def next_batch(over):
+            asked.append(over)
+            return (waiting.pop(0), slots.LATER) if waiting else ([], slots.SCORE)
+        def score_batch(ids, level):
+            owed[0] -= len(ids)
+            return True
+        scoring.drain(threading.Event(), next_batch, score_batch, lambda: True, owing=lambda: owed[0] > 0)
+        self.assertEqual((owed[0], asked), (0, [True, True]), 'two picks of waiting jobs only, then paid')
 
 
 

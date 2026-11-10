@@ -110,11 +110,10 @@ class SearchCharacterization(unittest.TestCase):
             self.addCleanup(patch.stop)
         self.addCleanup(self.join_scorer)   # registered last, so it runs first: before the patches and the temp folder go
 
-    def next_batch(self, db, profile, hidden, earlier, size, ceiling):
+    def next_batch(self, db, profile, hidden, earlier, size, ceiling, only_waiting=False):
         """The scorer beside the search picks only jobs that waited, except in that scorer's own tests (self.beside). Why (ts, 10 Nov 2026; sf 2/8): this file's
-        search is instant, so a job may land between any snapshot and the pick; keeping only `earlier` holds whatever the thread's timing (one list made it pick more often)."""
-        ids, level = self.real_next_batch(db, profile, hidden, earlier, size, ceiling)
-        return (ids if self.beside else [i for i in ids if i in set(earlier)]), level
+        search is instant, so a job may land between any snapshot and the pick; asking for waiting ones only, before the claim, holds whatever the thread's timing."""
+        return self.real_next_batch(db, profile, hidden, earlier, size, ceiling, only_waiting or not self.beside)
 
     def join_scorer(self):
         """Waits for the scorer thread the search started (src/daily_search_scoring.py `_beside`).
@@ -341,7 +340,7 @@ class SearchCharacterization(unittest.TestCase):
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             self.run_search(limit=100)
-        self.assertGreaterEqual(len(self.stores.matches.list()), daily_search_scoring.BATCH, 'the first round of waiting jobs is made on a clock spent at once (sf 2/8: no longer all 8 in one)')
+        self.assertGreaterEqual(len(self.stores.matches.list()), 8, 'every waiting job scored, not the floor of 3: owed to the run past its clock (sf 2/8)')
 
     def test_after_a_change_of_places_the_waiting_pass_skips_the_jobs_the_cleanup_will_close(self):
         # Code review of #3058: the cleanup after the crawl closes jobs outside your places; scoring them first spent the clock on them.
@@ -355,7 +354,7 @@ class SearchCharacterization(unittest.TestCase):
 
     def test_the_waiting_pass_takes_all_of_scorings_time(self):
         # Owner, 3 Nov 2026: "If the jobs in the backlog means jobs that are not currently displayed in the jobs list, then all of it first". 8 wait,
-        # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 go first (the half share of #3074 took 6), the search's pass takes what is left.
+        # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 are owed to the run (the half share of #3074 took 6); since sf 2/8 in rounds of the one list.
         self.waiting_jobs(8)
         time_budget.start(180, now=time_budget.time.monotonic() - 100)
         time_budget.score_first()
