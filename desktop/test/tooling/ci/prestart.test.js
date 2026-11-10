@@ -90,7 +90,7 @@ test('prestart allows an owned modules directory to reach npm', t => {
 });
 
 test('prestart refuses a link named node_modules inside the modules folder, naming the link to remove (#3423)', t => {
-  // Why (#3423, 7 Nov 2026; same shape on 30 Oct, 67fbdacd): npm's dependency walk enters desktop/node_modules/node_modules/ajv and dies with a raw ENOTEMPTY rename error.
+  // Why (#3423, 7 Nov 2026; same shape on 30 Oct, 67fbdacd): the owner's npm start failed on desktop/node_modules/node_modules/ajv; the link is the suspected cause (not reproduced), so this proves only the refusal and its one line.
   const {dir, run} = fixture(t, 'self-linked');
   const result = run(scripts.prestart);
   assert.ok(result.status > 0);
