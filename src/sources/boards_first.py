@@ -6,7 +6,8 @@ first pages are read in parallel (src/sources/board_reader.py, which only reads)
 keeps only its best sites (src/sources/read_budget.py short). The full board read reads their next pages later, from the pages fetched here. Without a web search in this
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. A repeat Find jobs run starts them
 first and reads the employer sites beside them (Beside, ps E2a-2). Tests: tests/unit/sources/test_boards_first.py."""
-from ..press import budget, step_yield
+from ..press import budget, stage, step_yield
+from ..press.run import Run
 
 WEB_WAIT = budget.value('boards_first.WEB_WAIT')   # seconds the run waits for its web search before any employer site (the pilot search's answered at 37 s on the plan)
 
@@ -18,7 +19,7 @@ def run(feed_db, search, on_jobs, wait=WEB_WAIT):
     from . import board_reader, read_budget
     read_budget.short(False)
     matched = []
-    for _said, found in board_reader.read(None, search, early=True, wait=wait, where='before'):
+    for _said, found in board_reader.read(Run.current(), search, early=True, wait=wait, where='before'):
         matched += _keep(feed_db, found, on_jobs)
     _enough(matched)
     return matched
@@ -70,12 +71,12 @@ class Beside:
         from ..ai import batch_scope
         from . import board_reader, feeds
         try:
-            with batch_scope.reader(self.NAME), step_yield.span('job_boards'):
-                for _said, found in board_reader.read(None, self.search, early=True, wait=wait, where='beside'):
+            with stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
+                for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside'):
                     feeds.triage(found)   # judged here: the owner thread's kept() then asks nothing (the copy holds every answer it reads)
                     self.groups.put((found, copy.deepcopy(batch_scope.current())))
-        except Exception as error:  # noqa: BLE001 — the full board read reads them
-            print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+            if caught:   # the full board read reads them
+                print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)
         finally:
             self.done.set()
 
@@ -89,10 +90,10 @@ class Beside:
         reads them, as when boards_first.run failed in front of it)."""
         if self.failed:
             return
-        try:
+        with stage.guard('job boards first: deliver') as caught:
             self._deliver(feed_db, on_jobs)
-        except Exception as error:  # noqa: BLE001 — the full board read reads them; the employer read goes on
-            print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+        if caught:   # the full board read reads them; the employer read goes on
+            print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)
             self.failed = True
 
     def _deliver(self, feed_db, on_jobs):

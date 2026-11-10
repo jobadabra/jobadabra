@@ -11,27 +11,20 @@ from tests.guards.rules.test_run_state_only_shrinks import ROOT, SEARCH_PATH
 
 EXEMPT = {'src/press/stage.py'}   # the guard itself
 
-# Measured on main 05c6bfbf, then d24b6d0e (lj #3676 moved one from feeds.py to feed_places.py), 10 Nov 2026: `except Exception` / `except BaseException` / bare, per file. Only shrinks.
+# Measured on main 05c6bfbf, then d24b6d0e (lj #3676 moved one from feeds.py to feed_places.py), 10 Nov 2026; cr 4/5 moved 34 reader sites to the guard: `except Exception` / `except BaseException` / bare, per file. Only shrinks.
 KNOWN = {
     'src/press/clock.py': 1,
-    'src/sources/board_check.py': 4,
-    'src/sources/board_forms.py': 2,
+    'src/sources/board_check.py': 3,
     'src/sources/board_pages.py': 1,
     'src/sources/board_rendered.py': 1,
-    'src/sources/board_sections.py': 1,
-    'src/sources/board_web.py': 5,
-    'src/sources/board_yield.py': 2,
-    'src/sources/boards.py': 7,
-    'src/sources/boards_beside.py': 1,
-    'src/sources/boards_first.py': 2,
-    'src/sources/careers.py': 7,
-    'src/sources/careers_explore.py': 5,
+    'src/sources/careers.py': 2,
+    'src/sources/careers_explore.py': 1,
     'src/sources/describe.py': 2,
     'src/sources/eures.py': 1,
     'src/sources/feed_places.py': 2,
     'src/sources/feed_scan.py': 2,
     'src/sources/feeds.py': 6,
-    'src/sources/found_boards.py': 7,
+    'src/sources/found_boards.py': 3,
     'src/sources/google.py': 5,
     'src/sources/google_jobs.py': 2,
     'src/sources/job_alerts.py': 2,

@@ -15,6 +15,7 @@ import urllib.parse
 from html.parser import HTMLParser
 
 from . import careers
+from ..press import stage
 
 KINDS = ('job board', 'one employer', 'other')
 NOT_A_BOARD = ('gone', 'one employer', 'other')   # what is read in place of a board, not as one
@@ -53,10 +54,8 @@ class _Digest(HTMLParser):
 
 def _read(page):
     digest = _Digest()
-    try:
+    with stage.guard('job boards: page parse'):   # a broken page: what was read so far
         digest.feed(page)
-    except Exception:  # noqa: BLE001 — a broken page: what was read so far
-        pass
     return digest
 
 

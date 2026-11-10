@@ -6,6 +6,7 @@ The count kept in found_boards.json is this read's only (it decides within the r
 from datetime import date, datetime
 
 from .careers_parse import registrable
+from ..press import stage
 
 DEAD_AFTER = 3         # reads with no relevant job (a StepStone banner counted as 2 jobs before)
 ENOUGH = 10            # relevant jobs in the user's places: from here no untried board is read
@@ -17,11 +18,9 @@ def is_relevant(jobs):
     triage first, then the role and place words)."""
     from . import feeds
     jobs = list(jobs)
-    try:
+    with stage.guard('job boards: triage'):   # a failure: the role and place words decide
         feeds.triage_places(jobs)
         feeds.triage(jobs)
-    except Exception:  # noqa: BLE001 — the role and place words decide
-        pass
     return [job for job in jobs if feeds.wanted_title(job.get('title')) and feeds.wanted_location(job)]
 
 
@@ -134,11 +133,9 @@ def _read_since():
     from contextlib import closing
     from ..paths import DATA, load_search_config
     from . import aggregators, boards_ahead, feeds
-    try:
-        with closing(feeds.database(DATA / 'jobs.sqlite')) as db:
-            return aggregators.read_lately(db, boards_ahead.NAME, search=load_search_config())
-    except Exception:  # noqa: BLE001 — unknown: the step reads them all
-        return None
+    with stage.guard('job boards: read lately'), closing(feeds.database(DATA / 'jobs.sqlite')) as db:
+        return aggregators.read_lately(db, boards_ahead.NAME, search=load_search_config())
+    return None   # unknown: the step reads them all
 
 
 def step(search, is_relevant=is_relevant):

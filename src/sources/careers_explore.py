@@ -9,6 +9,7 @@ import re
 import urllib.parse
 
 from . import ats
+from ..press import stage
 from ..ai import page_words
 from .careers_parse import JOB_ID, NO_JOBS, encode, job_links, jsonld_jobs, registrable
 
@@ -66,7 +67,7 @@ def guessed_links(website, fetch_page):
     parts = urllib.parse.urlsplit(website)
     origin = f'{parts.scheme}://{parts.netloc}'
     found, strong = [], {}
-    try:
+    with stage.guard('employer sites: site map'):   # no site map: the common paths are still tried
         sitemap = fetch_page(f'{origin}/sitemap.xml')
         locations = re.findall(r'<loc>\s*([^<\s]+)\s*</loc>', sitemap)
         if '<sitemapindex' in sitemap:   # an index of site maps: read the ones that sound like pages, at most two
@@ -79,8 +80,6 @@ def guessed_links(website, fetch_page):
             if now and (now.strong or now.weak) and not now.not_jobs:
                 found.append(loc)
                 strong[loc] = now.strong
-    except Exception:  # noqa: BLE001 — no site map: the common paths are still tried
-        pass
     found.sort(key=lambda loc: (not strong.get(loc), len(loc)))
     domain = company_domain(parts.hostname or '')
     subdomains = [f'{parts.scheme}://{name}.{domain}' for name in CAREER_SUBDOMAINS if domain and (parts.hostname or '') != f'{name}.{domain}']
@@ -88,22 +87,19 @@ def guessed_links(website, fetch_page):
 
 
 def _quiet(fetch_page, url):
-    try:
+    with stage.guard('employer sites: quiet page'):
         return fetch_page(url)
-    except Exception:  # noqa: BLE001
-        return ''
+    return ''
 
 
 def _says_no_jobs(markup, link=''):
     """The page says it has no open jobs, in any language: as the AI reader read it (kept per page; a page it has not read is not known to be
     empty). The four languages NO_JOBS knows answer only with no AI at all (audit PR 7, 26 Oct 2026)."""
     if link and careers.READER == 'auto':
-        try:
+        with stage.guard('employer sites: no-jobs answer'):   # no cache yet: as before
             from ..ai import page_reader
             if page_reader.said_no_open_jobs(link):
                 return True
-        except Exception:  # noqa: BLE001 — no cache yet: as before
-            pass
     if page_words.ai_on():
         return False
     return bool(NO_JOBS.search(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', markup))))
@@ -132,9 +128,9 @@ def _explore(start, home, fetch_page, show=None, links=None, limit=8):
         found = ats.detect(link)
         if found:
             return {'ats': found[0], 'slug': found[1]}
-        try:
+        with stage.guard('employer sites: explored page') as caught:
             page = fetch_page(link)
-        except Exception:  # noqa: BLE001
+        if caught:
             continue
         result = _look(page, link, fetch_page, careers_page=True)
         if not result and show and _shell(page):   # the plain page is an empty frame: read this one page again after its scripts ran

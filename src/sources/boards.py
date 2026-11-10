@@ -21,7 +21,7 @@ from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
 from ..ai import meanings_pack, page_words, slots
 from ..ai.providers.contract import detail, reason
-from ..press import budget, resume
+from ..press import budget, resume, stage
 _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
 CAREER = meanings_pack.matcher('page-words', 'board_careers_link')   # the meanings pack: the old list (seed) + rows the site adds
@@ -214,15 +214,15 @@ def enrich(pair,client):
     c={'company':name,'jobs':jobs,'website':'','size':'Unknown','min_employees':None,'career_pages':[], 'platforms':[], 'notes':[]}
     for job in jobs:
         if job['source'] != 'jobs.ch': continue
-        try:
+        with stage.guard('job boards: jobs.ch detail') as caught:
             detail=client.get(job['url'])
             posting=next(walk(Page(detail['html']).schemas,'JobPosting'),{})
             description=text(posting.get('description',''))
             job['work_mode']=mode(job['title']+' '+str(posting.get('jobLocationType',''))+' '+description)
             job['description']=description[:12000]
-        except Exception as e:
-            c['notes'].append(f'Job detail unavailable; remote conditions unverified: {type(e).__name__}')
-    try:
+        if caught:
+            c['notes'].append(f'Job detail unavailable; remote conditions unverified: {caught.reason}')
+    with stage.guard('job boards: enrichment') as enriched:
         profile=jobs[0]['profile']
         if profile and urlsplit(profile).hostname=='www.jobs.ch':
             p=client.get(profile)
@@ -239,16 +239,16 @@ def enrich(pair,client):
         home=client.get(c['website']); c['website']=home['url']
         candidates=useful_links(home['html'],home['url'])[:3]
         for url in candidates:
-            try:
+            with stage.guard('job boards: career link') as caught:
                 p=client.get(url)
                 c['career_pages'].append(p['url'])
                 for link in [p['url']]+useful_links(p['html'],p['url']):
                     name_ats=platform(link)
                     if name_ats!='Company website / unknown ATS' and {'platform':name_ats,'url':link} not in c['platforms']:
                         c['platforms'].append({'platform':name_ats,'url':link})
-            except Exception as e:c['notes'].append(f'Career link unavailable: {url}: {type(e).__name__}')
+            if caught:c['notes'].append(f'Career link unavailable: {url}: {caught.reason}')
         if not candidates:c['notes'].append('No career link found on homepage')
-    except Exception as e:c['notes'].append(f'Enrichment incomplete: {type(e).__name__}: {e}')
+    if enriched:c['notes'].append(f'Enrichment incomplete: {enriched.reason}: {enriched.error}')
     return c
 
 
@@ -306,7 +306,7 @@ def board_queries(search, client=None):
         kept = {}
     if key in kept:
         return kept[key]
-    try:
+    with stage.guard('job boards: queries') as caught:
         from ..ai import cost, engine
         if not engine.ready():
             return []
@@ -316,9 +316,9 @@ def board_queries(search, client=None):
                                           output_config=engine.structured(QUERIES_SCHEMA, QUERIES_MODEL, 'low'))
         cost.side(QUERIES_MODEL, response.usage)
         queries = [str(q).strip()[:40] for q in json.loads(next(b.text for b in response.content if b.type == 'text')).get('queries') or [] if str(q).strip()][:8]
-    except Exception as error:  # noqa: BLE001 — the user's own board searches only, this time
-        print(f'Job boards: searches from your roles not worked out ({reason(error)}); your own board searches only', flush=True)
-        detail('job boards', error)
+    if caught:   # the user's own board searches only, this time
+        print(f'Job boards: searches from your roles not worked out ({reason(caught.error)}); your own board searches only', flush=True)
+        detail('job boards', caught.error)
         return []
     store.parent.mkdir(parents=True, exist_ok=True)
     store.write_text(json.dumps({key: queries}, ensure_ascii=False))
@@ -389,15 +389,15 @@ def _jobsch_pages(client,used,pages,sources):
         for page in range(1,pages+1):   # pages is the most read: a short page or one with nothing new ends the search
             if asked>=MAX_REQUESTS or read_budget.past_cut():break
             url='https://www.jobs.ch/en/vacancies/?'+urlencode({'term':query,**({'location':place} if place else {}),'page':page})
-            try:
+            with stage.guard('job boards: jobs.ch page') as caught:
                 asked+=1
                 result=client.get(url);found=parse_jobs(result['html'],url,'jobs.ch',roles=False)
                 listed=sum(1 for _ in walk(Page(result['html']).schemas,'JobPosting'))
                 fresh=[job for job in found if job['url'] not in seen_urls];seen_urls.update(job['url'] for job in found)
                 pages_found.append((url,listed,found,fresh))
                 if listed<PAGE_SIZE or (page>1 and not fresh and listed):break
-            except Exception as e:
-                sources.append({'source':url,'status':str(e)});break
+            if caught:
+                sources.append({'source':url,'status':str(caught.error)});break
     done(taken)
     if pairs and taken<len(pairs) and read_budget.past_cut():
         from .. import time_budget
@@ -412,10 +412,10 @@ def _fit_jobs(pages_found,jobs,sources):
     # Which titles are your kind of job: the AI title check, as for every source (7 Oct 2026: a word match dropped most titles here)
     from . import feed_places, feeds
     board_jobs=[job for _,_,_,fresh in pages_found for job in fresh]
-    try:feed_places.triage_with_places(board_jobs)
-    except Exception as e:
-        print(f'Warning: job board titles not checked by AI ({reason(e)}): your role words decide',flush=True)
-        detail("job board titles", e)
+    with stage.guard('job boards: title check') as caught:feed_places.triage_with_places(board_jobs)
+    if caught:
+        print(f'Warning: job board titles not checked by AI ({reason(caught.error)}): your role words decide',flush=True)
+        detail("job board titles", caught.error)
     for url,listed,found,fresh in pages_found:
         fit=[job for job in found if feeds.wanted_title(job['title'])];fit_fresh=[job for job in fresh if feeds.wanted_title(job['title'])]
         jobs.extend(fit_fresh);sources.append({'source':url,'status':jobsch_status(listed,len(fit),len(fit_fresh))})
@@ -425,11 +425,11 @@ def _dev_boards(client,used,jobs,sources):
     """SwissDevJobs and TechTree, when used and before the read's cut: their matching listings added to jobs."""
     for label,url in [('SwissDevJobs','https://swissdevjobs.ch/api/jobsLight'),('TechTree','https://jobs.techtree.dev/')]:
         if label not in used or read_budget.past_cut():continue
-        try:
+        with stage.guard('job boards: dev boards') as caught:
             page=client.get(url)['html']
             found=parse_tree(page) if label=='TechTree' else parse_swissdevjobs(json.loads(page),wanted_title);jobs.extend(found)
             sources.append({'source':label,'status':f'{len(found)} matching listings on fetched page' if found else 'No compatible listings parsed; requires another adapter'})
-        except Exception as e:sources.append({'source':label,'status':f'Unavailable: {e}'})
+        if caught:sources.append({'source':label,'status':f'Unavailable: {caught.error}'})
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--pages',type=int,default=1);p.add_argument('--max-companies',type=int,default=30);p.add_argument('--refresh',action='store_true');p.add_argument('--budget',type=int,default=0,help='seconds of the Find jobs press (src/time_budget.py): this step ends at its share of them; 0 = none');args=p.parse_args()

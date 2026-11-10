@@ -22,7 +22,7 @@ from ..ai import slots
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
-from ..press import resume
+from ..press import resume, stage
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -155,9 +155,9 @@ def _read_by_ai(board, search, fetch):
         return []
     place = (_places(search) or [''])[0] if '{place}' in board['search_url'] else ''
     url = board['search_url'].replace('{role}', urllib.parse.quote_plus(_terms(search, 1)[0])).replace('{place}', urllib.parse.quote_plus(place))
-    try:
+    with stage.guard('found boards: AI page read') as caught:
         page = fetch(url)
-    except Exception:  # noqa: BLE001 — the page does not answer now: the other ways stand
+    if caught:   # the page does not answer now: the other ways stand
         return []
     return _shaped(board, careers._asked(url, page, [], fetch)) if page and not careers._shell(page) else []
 
@@ -206,12 +206,11 @@ def _section(board, page, search, fetch, judge, show=None):
     if careers.READER is None or not page[1] or not terms:
         return [], None, False
     from ..ai import decide
-    try:
+    with stage.guard('found boards: sections'):
         rendered = []
         found, section = board_sections.read(page[1], page[0], terms[0], fetch, decide.decide, judge, lambda found: _shaped(board, found), show, rendered)
         return found, section, bool(rendered)
-    except Exception:  # noqa: BLE001 — a fallback never breaks the read
-        return [], None, False
+    return [], None, False   # a fallback never breaks the read
 
 
 def _went_up(entry, proposed):
@@ -267,10 +266,9 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         return (answer[0], 'browser', answer[2]) if refused and answer[1] != 'ok' else answer
     bare = _bare(proposed)
     if bare:   # an extra filter in the link (a sector, a radius): the same search with only the words and the place
-        try:
+        again, state = [], 'empty'   # a failure: the other ways stand
+        with stage.guard('found boards: bare link'):
             again, state, _ = read_board({**board, 'search_url': bare}, search, fetch, None, show=show)
-        except Exception:  # noqa: BLE001 — the other ways stand
-            again, state = [], 'empty'
         relevant = judge(again) if again else []
         if state == 'browser':
             refused.append(bare)
@@ -297,9 +295,9 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     for template in board_forms.home_templates(board, fetch, page):
         if cut():
             return stands(before)
-        try:
+        with stage.guard('found boards: form link') as caught:
             again, state, _ = read_board({**board, 'search_url': template}, search, fetch, None, show=show)
-        except Exception:  # noqa: BLE001 — a form link that fails: the next one, or the proposed link's result
+        if caught:   # a form link that fails: the next one, or the proposed link's result
             continue
         relevant = judge(again) if again else []
         if state == 'browser':

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..features import disabled
 from . import careers, web_answers
+from ..press import stage
 from ..ai import slots
 from ..press import resume
 
@@ -60,10 +61,9 @@ def _unknown_kind(search_config):
     unknown = getattr(role_kinds, 'UNKNOWN', None)
     if unknown is None or not search_config:
         return False
-    try:
+    with stage.guard('job boards: role kind'):
         return unknown in (role_kinds.of_search(search_config) or ())   # a set of kinds; UNKNOWN among them when the AI could not place the role
-    except Exception:  # noqa: BLE001 — a kind we cannot tell is not a reason to search more
-        return False
+    return False   # a kind we cannot tell is not a reason to search more
 
 
 def needed(kept, boards, search_config=None):
@@ -80,10 +80,9 @@ def _working(kept, search_config):
     """The kept sector or regional boards that gave relevant jobs for THIS search's field and places (src/sources/board_yield.py working):
     a board kept for an earlier search (a software board, another country) never counts. [] when the role's kind is unknown."""
     from . import board_yield
-    try:
+    with stage.guard('job boards: working boards'):
         return [board for board in board_yield.working(search_config or {}, kept or {}) if board['source_kind'] in LOCAL_KINDS]
-    except Exception:  # noqa: BLE001 — boards we cannot judge are not working ones
-        return []
+    return []   # boards we cannot judge are not working ones
 
 
 def _last(data, key):
@@ -165,13 +164,12 @@ def found_first(search_config, wait):
     if started is None:
         return []
     left = read_budget.seconds_left(read_budget.cut_at())
-    try:
-        started[0].result(timeout=wait if left is None else min(wait, left))
-    except Late:
-        print('Job boards: the web search is still searching; its boards are read with the others', flush=True)
-        return []
-    except Exception:  # noqa: BLE001 — the search failed: the proposal's boards stand
-        pass
+    with stage.guard('job boards: early web search'):   # the search failed: the proposal's boards stand
+        try:
+            started[0].result(timeout=wait if left is None else min(wait, left))
+        except Late:
+            print('Job boards: the web search is still searching; its boards are read with the others', flush=True)
+            return []
     with _lock:
         _early.pop(asked[0], None)
     with board_ideas.STORE:
@@ -218,9 +216,9 @@ def finish(started, proposed, timeout=None, data=None):
         return []
     from . import read_budget
     future, copy = started if isinstance(started, tuple) else (started, None)
-    try:   # never past the search's cut (src/sources/read_budget.py cut_at)
+    with stage.guard('job boards: web search result') as caught:   # never past the search's cut (src/sources/read_budget.py cut_at)
         found = future.result(timeout=timeout) if timeout is not None else read_budget.result(future, read_budget.cut_at())
-    except Exception:  # noqa: BLE001 — the proposal's boards stand
+    if caught:   # the proposal's boards stand
         return []
     if found is read_budget.LEFT:   # not killed: when it answers, its boards are kept for the next search, not asked again (_keep_late)
         _leave_open(future, copy, data)
@@ -389,11 +387,11 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         board_ideas.save(data)
     if raw is not None:
         print('Job boards: the web search answered in the last run; judging the boards it named, no new search', flush=True)
-    try:
+    with stage.guard('job boards: web search') as caught:
         question = {'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds, 'known boards': [board['name'] for board in known], **before}
         answer = raw[0] if raw is not None else _ask(client, question)
-    except Exception as error:  # noqa: BLE001 — the proposal's boards stand
-        print(f'Job boards: the web search for trade and local boards did not answer ({type(error).__name__})', flush=True)
+    if caught:   # the proposal's boards stand
+        print(f'Job boards: the web search for trade and local boards did not answer ({caught.reason})', flush=True)
         return []
     answered = raw[1] if raw is not None else web_answers.keep(web_answers.name(key, places), answer, now)
     fetch = fetch or careers.get_text
