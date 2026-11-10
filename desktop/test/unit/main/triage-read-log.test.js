@@ -30,5 +30,5 @@ test('a read that throws before its promise is still caught; a read that answers
 
 test('the Apply readiness IPC hands the read no logger of its own, so the read logs to app.log', () => {
   const source = fs.readFileSync(new URL('../../../lib/apply-handlers.js', import.meta.url), 'utf8');
-  assert.match(source, /readForm: job => triageReadOrNull\(background\.triageRead, job\.url\)/);
+  assert.match(source, /readForm: job => cloudReadOf\(storage\)\?\.readForm\(job\) \?\? triageReadOrNull\(background\.triageRead, job\.url\)/);
 });
