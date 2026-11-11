@@ -274,6 +274,7 @@ def capture_engine(prompts=False):
          'src/places.py', 'answer = json.loads(next(block.text')
 
     engine.PARALLEL = 1
+    engine.at_once, engine.queued = (lambda: 1), (lambda: False)   # one call at a time here, no slot queue (src/ai/engine.py at_once, queued)
     slots = NS(carry=lambda function, *level: function, priority=lambda level: __import__("contextlib").nullcontext(), NORMAL=1, TITLES=0)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None, now=time.monotonic, scored_beside=lambda: False),
@@ -343,7 +344,7 @@ def capture_engine(prompts=False):
 
         pack.patterns = lambda *a: []
         IMPORTS['levels'] = load('src/levels.py', ['SENIOR', 'ENTRY', 'LEVELS', '_BY_WORD', '_named', 'level_of', 'title_skips'])
-        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'RECHECK_SYSTEM', '_key', '_norm',
+        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'RECHECK_SYSTEM', '_key', '_norm', '_workers',
                      '_load', 'known', '_may_start', '_second_look', 'decide'], **bindings, STORE=temporary / 'titles.json')
         title_search = {'role_keywords': ['site reliability'], 'title_exclude_keywords': ['intern'], 'level': ['senior']}
         titles = ['Senior Site Reliability Engineer']
