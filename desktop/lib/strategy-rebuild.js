@@ -12,6 +12,7 @@ export const SCORES_PER_SEARCH = 60;  // the app's --score-max
 const FORM_ONLY = /contact|\blinks?\b|application form answers|📎/i;
 import {fragmentWords} from '../renderer/fragment-words.js';
 import {titlesOf} from './target-roles.js';
+import {remoteWordOf} from '../renderer/remote-word.js';
 export const wordsOf = fragmentWords;   // a crawl pattern as words (one rule for every screen)
 function sections(markdown, skipFormOnly = false) {
   const found = new Map();
@@ -74,12 +75,20 @@ function listChanges(label, before = [], after = [], displayKey) {
   if (added.length || removed.length) displayNote(changes, `${label}: ${values}`, () => words('changeList', {label: words(displayKey), values}));
   return changes;
 }
+const REMOTE_WORDS = {yes: 'remoteYes', no: 'remoteNo', country: 'remoteCountry'};
+/** "Remote work: Yes → My country": the draft's Remote jobs against the saved one, one line of Search criteria (retro review of #3687, owner 11 Nov 2026), so ticking the group is the person's yes. */
+function remoteChange(before, after) {
+  const from = remoteWordOf(before, 'yes'), to = remoteWordOf(after);
+  const changes = [];
+  if (to && to !== from) displayNote(changes, `Remote work: ${from} → ${to}`, () => words('changeRemote', {label: words('labelRemoteWork'), from: words(REMOTE_WORDS[from]), to: words(REMOTE_WORDS[to])}));
+  return changes;
+}
 export function rebuildGroups({search = {}, preferences = {}, profile = '', answers = ''}, draft, {scored = 0, kits = 0} = {}) {
   const next = draft.search || {}, places = search.locations || {}, nextPlaces = next.locations || {};
   const where = concatDisplay(listChanges('Top cities', places.top_tier, nextPlaces.top_tier, 'labelCities'), listChanges('Country', places.country_wide, nextPlaces.country_wide, 'labelCountry'),
     listChanges('Abroad', places.abroad, nextPlaces.abroad, 'labelAbroad'), listChanges('Remote excluded for', search.remote_excluded_regions, next.remote_excluded_regions, 'labelRemoteExcluded'));
   const searchChanges = concatDisplay(listChanges('Target roles', titlesOf(search), titlesOf(next), 'labelRoles'), listChanges('Level', search.level, next.level, 'labelLevel'),
-    where,
+    where, remoteChange(search.remote_jobs, next.remote_jobs),
     listChanges('Excluded titles', search.title_exclude_keywords, next.title_exclude_keywords, 'labelExcludedTitles'),
     listChanges('Key skills and tools', search.quality_stack_keywords, next.quality_stack_keywords, 'labelSkills'));
   const prefs = draft.preferences || {};

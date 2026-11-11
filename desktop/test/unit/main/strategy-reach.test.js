@@ -2,7 +2,8 @@
 // and leave country_wide empty for work that needs them in one place; the prompt says when (drafted by the AI, validated here as schema + wording).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {DRAFT_SCHEMA, INSTRUCTIONS, applyEdits, cleanEdits, edited, settingsAfter} from '../../../lib/strategy.js';
+import {DRAFT_SCHEMA, INSTRUCTIONS, applyEdits, cleanEdits, edited, rebuildGroups, settingsAfter} from '../../../lib/strategy.js';
+import {forWindow} from '../../../lib/settings-native-display.js';
 
 test('the draft schema carries remote_jobs next to the locations, as a list of words', () => {
   const search = DRAFT_SCHEMA.properties.search.properties;
@@ -17,12 +18,31 @@ test('the prompt no longer fills the whole country for every role, and names the
   for (const word of ['["No"]', '["Country"]', '["Yes"]']) assert.ok(INSTRUCTIONS.includes(word), word);
 });
 
-// Code review of lj 2/4: a rebuild's draft always carries Remote jobs, so the person's own choice must survive it (its review lists no such change).
+// Retro review of #3687 (Gitar, 10 Nov 2026; owner 11 Nov 2026, asked via AskUserQuestion: "Show 'Yes → Country' (Recommended)"): a rebuild's draft always carries Remote jobs, and keeping the saved value
+// silently meant a person on an older "Yes" never got the draft's Country. The review now lists the change as a line of Search criteria; ticking that group saves it, leaving it unticked keeps the person's.
 const storageOf = search => ({readText: name => (name === 'config/search.json' ? JSON.stringify(search) : '{}')});
 
-test('a rebuild keeps the Remote jobs the person chose, and a first setup takes the draft\'s', () => {
-  const chosen = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['Yes']}), {search: {target_roles: ['nurse'], remote_jobs: ['No']}});
-  assert.deepEqual(chosen.search.remote_jobs, ['Yes'], 'the draft said No, the person had Yes: unchanged, silently overwriting it hid all their remote jobs');
+test('a rebuild lists "Remote work: Yes → My country" in Search criteria; an older strategy with no word counts as Yes; nothing is listed when the word is the same', () => {
+  const lines = (current, draft) => rebuildGroups({search: current}, {search: draft}).find(group => group.id === 'search')?.changes || [];
+  assert.ok(forWindow(lines({remote_jobs: ['Yes']}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'));
+  assert.ok(forWindow(lines({}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'), 'missing = Yes (an old strategy)');
+  assert.ok(forWindow(lines({remote_jobs: ['No']}, {remote_jobs: ['Yes']})).includes('Remote work: No → Yes'));
+  assert.deepEqual(lines({remote_jobs: ['Country']}, {remote_jobs: ['Country']}).filter(line => /Remote work/.test(line)), []);
+  // Code review: the engine reads none/never/off/false/non/nein as No (src/sources/feeds.py remote_wanted); one reader, renderer/remote-word.js, serves this review and the Strategy cards.
+  assert.ok(forWindow(lines({remote_jobs: ['none']}, {remote_jobs: ['Country']})).includes('Remote work: No → My country'), 'a saved "none" is No, as the engine reads it');
+  assert.doesNotThrow(() => lines({remote_jobs: 'No'}, {remote_jobs: ['Country']}), 'a saved value that is not a list does not break the review');
+  assert.ok(forWindow(lines({remote_jobs: 'No'}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'), 'the engine iterates a bare string by letters and finds no word: Yes (src/sources/feeds.py remote_wanted)');
+  assert.deepEqual(lines({remote_jobs: ['No']}, {remote_jobs: ['None']}).filter(line => /Remote work/.test(line)), [], 'the same word in another spelling is no change');
+  assert.deepEqual(lines({remote_jobs: ['Yes']}, {remote_jobs: []}).filter(line => /Remote work/.test(line)), [], 'a draft that says nothing changes nothing');
+});
+
+test('a rebuild takes the draft\'s Remote jobs when Search criteria is accepted (the person saw the line), keeps theirs when the draft says none, and a first setup takes the draft\'s', () => {
+  const accepted = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['Yes']}), {search: {target_roles: ['nurse'], remote_jobs: ['Country']}});
+  assert.deepEqual(accepted.search.remote_jobs, ['Country']);
+  const silent = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['No']}), {search: {target_roles: ['nurse'], remote_jobs: []}});
+  assert.deepEqual(silent.search.remote_jobs, ['No'], 'an empty answer never wipes the person\'s word');
+  const same = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['none']}), {search: {target_roles: ['nurse'], remote_jobs: ['']}});
+  assert.deepEqual(same.search.remote_jobs, ['none'], 'a draft word that is no word keeps theirs');
   const first = settingsAfter(storageOf({role_keywords: []}), {search: {target_roles: ['nurse'], remote_jobs: ['Country']}});
   assert.deepEqual(first.search.remote_jobs, ['Country'], 'nothing chosen yet: the draft decides');
 });
