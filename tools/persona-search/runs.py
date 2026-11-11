@@ -1,8 +1,9 @@
 """What each Find jobs run of a person adds (owner, 11 Nov 2026, asked via AskUserQuestion in session sa: "2 runs nightly, 5 runs weekly (Recommended)"; the
 reason: "each of the runs should provide new jobs"). The night presses Find jobs twice in the same install; the blind judge reads every run's jobs in one pass
 (only a later run's new jobs add calls), and this splits its answer by run:
-- judged-all.json keeps every judged row with its `run`; judged.json keeps the first run's rows only, so every number read from it (right jobs, the per-source
-  count, in = out, the floors' `right`) stays the first run's, as before the second run existed;
+- judged-all.json keeps every judged row with its `run`; judged.json keeps the first run's rows only, and jobs.json (the listed links in = out reads,
+  inout.attach) the first run's jobs, the full list kept as jobs-all.json; so every number read from them (right jobs, the per-source count, in = out, the
+  floors' `right`) stays the first run's, as before the second run existed (Gitar on #3781: in = out read the links of both runs);
 - runs.json: per run {run, new_listed, new_right, seconds}: the distinct jobs (gate_judge.key: title, employer, place) a run listed first, and how many of them
   the judge called right role AND right place.
 A job's run: the latest press that started at or before its first_seen_at. src/store.py writes first_seen_at once, at insert (UTC, seconds); a job listed again,
@@ -69,6 +70,11 @@ def split(out):
         (out / 'judged-all.json').write_text(json.dumps(judged, ensure_ascii=False, indent=1), encoding='utf-8')
         kept = [row for row in rows if row['run'] == 1]
         (out / 'judged.json').write_text(json.dumps({**judged, 'rows': kept, 'judged_jobs': len({key(row) for row in kept})}, ensure_ascii=False, indent=1), encoding='utf-8')
+        listed = out / 'jobs.json'
+        if listed.exists():
+            jobs = json.loads(listed.read_text(encoding='utf-8'))
+            (out / 'jobs-all.json').write_text(json.dumps(jobs, ensure_ascii=False, indent=1), encoding='utf-8')
+            listed.write_text(json.dumps([job for job in jobs if first.get(key(job), 1) == 1], ensure_ascii=False, indent=1), encoding='utf-8')
     return found
 
 

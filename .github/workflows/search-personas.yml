@@ -198,6 +198,7 @@ jobs:
             out/judged-all.json
             out/runs.json
             out/jobs.json
+            out/jobs-all.json
             out/found-boards.json
             out/run.log
             out/judge.log

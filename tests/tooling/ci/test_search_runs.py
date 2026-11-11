@@ -56,13 +56,28 @@ class Split(unittest.TestCase):
                        ('Welder D', 'https://a.example/4', 'Board', '2026-11-11T00:06:30+00:00')])
         with tempfile.TemporaryDirectory() as tmp:
             out = person(tmp, judged(rows, wrong={'Welder D'}), TWO)
+            (out / 'jobs.json').write_text(json.dumps(rows), encoding='utf-8')   # what gate.extract wrote: every listed job of both runs
             found = runs.split(out)
             kept = json.loads((out / 'judged.json').read_text(encoding='utf-8'))
             every = json.loads((out / 'judged-all.json').read_text(encoding='utf-8'))
+            listed = json.loads((out / 'jobs.json').read_text(encoding='utf-8'))
+            listed_all = json.loads((out / 'jobs-all.json').read_text(encoding='utf-8'))
         self.assertEqual(found, [{'run': 1, 'new_listed': 2, 'new_right': 2, 'seconds': 170}, {'run': 2, 'new_listed': 2, 'new_right': 1, 'seconds': 120}])
         self.assertEqual(sorted(r['title'] for r in kept['rows']), ['Joiner A', 'Joiner B'], 'judged.json: the first run only, so every older number stays the first run\'s')
         self.assertEqual(kept['judged_jobs'], 2)
         self.assertEqual({r['title']: r['run'] for r in every['rows']}, {'Joiner A': 1, 'Joiner B': 1, 'Joiner C': 2, 'Welder D': 2})
+        self.assertEqual(sorted(j['title'] for j in listed), ['Joiner A', 'Joiner B'], 'Gitar on #3781: in = out reads jobs.json\'s links, so it holds run 1 only')
+        self.assertEqual(len(listed_all), 4)
+
+    def test_each_of_more_runs_counts_what_it_listed_first(self):
+        """The weekly presses 5 times in a row (2/3); any run count splits the same way."""
+        three = TWO + [{'press': 3, 'started': '2026-11-11T00:09:00Z', 'seconds': 100}]
+        one = lambda title, seen: {'title': title, 'company': 'Acme', 'location': 'Lyon', 'first_seen': seen}
+        rows = judged([one('A', '2026-11-11T00:01:00+00:00'), one('B', '2026-11-11T00:05:00+00:00'), one('C', '2026-11-11T00:09:00+00:00'),
+                       one('D', '2026-11-11T00:10:00+00:00')], wrong={'D'})
+        with tempfile.TemporaryDirectory() as tmp:
+            found = runs.split(person(tmp, rows, three))
+        self.assertEqual([(r['run'], r['new_listed'], r['new_right'], r['seconds']) for r in found], [(1, 1, 1, 170), (2, 1, 1, 120), (3, 2, 1, 100)])
 
     def test_two_stored_rows_of_one_judged_job_belong_to_the_earlier_run(self):
         """The store kept two rows the judge reads as one job (gate_judge.key: title, employer, place): the job is run 1's, its run-2 copy is not new."""
@@ -105,6 +120,8 @@ class Night(unittest.TestCase):
         self.assertFalse(floors.series_key({'eures': 'off', 'personas': {'1': {}}}, 'codex,claude').endswith('runs-2'), 'a one-run night keeps the older key')
         for k in (key, key.removesuffix('|runs-2')):
             self.assertEqual(floors.validate({'version': 1, 'series': {k: {'people': {}, 'last_green': None}}}), [], k)
+        self.assertNotEqual(floors.validate({'version': 1, 'series': {key.replace('runs-2', 'runs-5'): {'people': {}, 'last_green': None}}}), [],
+                            'the weekly 5 runs keep their own record, never a floors series')
         self.assertEqual(floors.NUMBERS['new_on_2'][0](verdict['personas']['1']), 1)
         self.assertIsNone(floors.NUMBERS['new_on_2'][0]({'runs': [{'run': 1, 'new_right': 3}]}))
 
