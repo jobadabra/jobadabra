@@ -181,7 +181,7 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
         apis = start_apis(feed_db) if full_read else None   # every lane from second 0: the free APIs no longer wait for the employer sites (lanes 3/5)
-        try:   # Gitar on #3802: the lane's threads end with the whole gather, whatever raises before the APIs' stage
+        try:   # Why (#3802, 11 Nov 2026): the lane's threads end with the whole gather, whatever raises before the APIs' stage (they were left running)
             from .sources import boards_first
             if slice_first:
                 try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
