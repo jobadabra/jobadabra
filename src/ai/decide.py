@@ -124,7 +124,8 @@ _probe = threading.local()
 
 @contextlib.contextmanager
 def probe_allowance(n):
-    """This thread is a probe check: every model call it makes (decide() and the page reader) counts against `n` calls a run, outside the run's cap; None: no allowance, nothing changes."""
+    """This thread is a probe check: its model calls (decide() and the page reader) are drawn from ONE pool of `n` calls a run, shared by every probe thread and outside the run's cap;
+    when it is spent the probe's later asks wait for the next run (unknown, never guessed). None: no pool, nothing changes."""
     _probe.n = n
     try:
         yield
@@ -132,15 +133,36 @@ def probe_allowance(n):
         _probe.n = None
 
 
-def probe_state():
-    """(calls used, allowance) when this thread is a probe check with an allowance, else None."""
+_take_lock = threading.Lock()
+
+
+def _pool(topic, allowance):
+    """(pool, cap) a call is counted on: its own allowance=, else own_allowance()'s scope, else the probe's pool when this thread is a probe check; (None, 0): the run's cap."""
+    if allowance is not None:
+        return topic, allowance
+    if SCOPE['name']:
+        return SCOPE['name'], SCOPE['n']
     n = getattr(_probe, 'n', None)
-    return None if n is None else (_own.get('probe', 0), n)
+    return ('probe', n) if n is not None else (None, 0)
 
 
-def probe_spend():
-    """One call made on the probe's allowance (page_reader.read counts its own call here; decide() counts its calls itself)."""
-    _own['probe'] = _own.get('probe', 0) + 1
+def take(topic, key, allowance=None, label='decide'):
+    """Count one model call on its pool: True to make it, False when the pool is spent. One lock, as the feeds and the probe are checked side by side (Gitar, sk 4/5: a bare read then write overshot)."""
+    with _take_lock:
+        pool, cap = _pool(topic, allowance)
+        used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
+        if not budget_tape.within(label, f'{topic} {key}', used, cap):
+            return False
+        if pool:
+            _own[pool] = used + 1
+        else:
+            _calls['n'] += 1
+        return True
+
+
+def probe_take():
+    """None when this thread is not a probe check; else True when it took one of the probe's calls (page_reader.read counts its call here), False when the pool is spent."""
+    return None if getattr(_probe, 'n', None) is None else take('page read', 'probe')
 
 
 CACHE_ONLY = {'on': False}   # cache_only(): every decide() inside answers from the cache and the pack, as ask=False does
@@ -284,14 +306,8 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
         stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
         for start in range(0, len(todo), BATCH):
-            pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n']) if SCOPE['name'] else ('probe', _probe.n) if getattr(_probe, 'n', None) is not None else (None, 0)
-            used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
-            if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
+            if not take(topic, todo[start], allowance):
                 return _wait(out, len(todo) - start)
-            if pool:
-                _own[pool] = used + 1
-            else:
-                _calls['n'] += 1
             WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
             chunk = todo[start:start + BATCH]
             text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(

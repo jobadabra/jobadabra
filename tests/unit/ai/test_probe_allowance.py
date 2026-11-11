@@ -44,7 +44,7 @@ class ProbeAllowance(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def test_a_probe_check_stops_asking_at_its_allowance_and_the_run_s_cap_is_untouched(self):
+    def test_the_probe_stops_asking_when_its_pool_is_spent_and_the_run_s_cap_is_untouched(self):
         client = FakeClient()
         with decide.probe_allowance(2):
             for key in ('alpha', 'beta', 'gamma'):
@@ -76,11 +76,25 @@ class ProbeAllowance(unittest.TestCase):
             ask(client, 'beta')
         self.assertEqual(len(client.calls), 1, 'the thread with no allowance asked; the probe thread (allowance 0) did not')
 
+    def test_threads_drawing_one_pool_never_overshoot_it(self):
+        client = FakeClient()
+
+        def worker(index):
+            with decide.probe_allowance(5):
+                for n in range(10):
+                    ask(client, f'key-{index}-{n}')
+        workers = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+        for thread in workers:
+            thread.start()
+        for thread in workers:
+            thread.join()
+        self.assertEqual(len(client.calls), 5, 'the pool of 5 is shared by every probe thread, and spent exactly')
+
     def test_no_allowance_changes_nothing(self):
         client = FakeClient()
         with decide.probe_allowance(None):
             ask(client, 'alpha')
-        self.assertEqual((len(client.calls), decide._calls['n'], decide.probe_state()), (1, 1, None))
+        self.assertEqual((len(client.calls), decide._calls['n'], decide.probe_take()), (1, 1, None))
 
     def test_only_the_central_scout_s_probe_checks_run_on_the_allowance(self):
         seen = []

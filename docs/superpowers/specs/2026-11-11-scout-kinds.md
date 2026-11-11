@@ -6,7 +6,7 @@ Short name `sk`. The numbers behind it (private list) are in `jobadabra/jobadabr
 - One owner of a feed's mix: `scout_carry.mix_fields`. A read the AI could not answer changes nothing (kept).
 - The scout's AI calls a run are few: they go by need (unjudged feeds first, then the rest by age), and per job (titles and places have their own allowance), one answer per place string.
 - Measure (agreed with the measure session): N = fit + kind_not_theirs + no_mix + empty; no-mix share = no_mix / (N - empty); a mix-only feed has a mix.
-- The central scout's candidate probe (employer checks, in worker threads) asks on one allowance of its own, `decide.CENTRAL_PROBE_CALLS` (30), counting its decide() calls and its page reads; the feed pass that counts the known employers keeps the rest. A probe check that reaches its allowance leaves the employer for the next run (unknown, never guessed). What the owner gives up: a few new sources a run; what he gets: counted feeds.
+- The central scout's candidate probe (employer checks, in worker threads) asks on one allowance of its own, `decide.CENTRAL_PROBE_CALLS` (30), counting its decide() calls and its page reads; the feed pass that counts the known employers keeps the rest. The 30 are one pool for the whole run, shared by every probe thread; once it is spent the probe's later asks wait for the next run (unknown, never guessed). What the owner gives up: a few new sources a run; what he gets: counted feeds.
 - Not built: reading an uncounted employer last (it changes the 26 Oct 2026 rule "read an employer only when its jobs in your countries are your kind"; the owner's call).
 
 ## Progress
