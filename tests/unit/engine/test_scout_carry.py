@@ -267,9 +267,31 @@ class BoundedWaitTest(unittest.TestCase):
         from src import scout_index
         scout_index.FETCH_GRACE_S = 0.2
         self.addCleanup(setattr, scout_index, 'FETCH_GRACE_S', 20)
+        import threading   # here, not at the top: this file's imports are part of ledger proofs' lock (tests/unit/press/ledger.py source)
+        # Why (L21 flake, CI run 42947986693, 11 Nov 2026): the fetches slept 5 s and then judged their jobs with whatever AI the test running
+        # by then had patched in; one "Engineer" title sort landed in L21's fake model and turned it red. They are released when this test ends
+        # and waited for (each fetch's return, then its worker's last step), so no work of this test, AI questions included, outlives it.
+        release, fetching, returned = threading.Event(), [], []
+        all_returned = threading.Condition()
+
         def stuck(system, slug):
-            time.sleep(5)   # a fetch asleep behind a slow site
-            return job()
+            fetching.append(threading.current_thread())
+            try:
+                release.wait(5)   # a fetch asleep behind a slow site, until this test ends (5 s: a hang guard)
+                return []
+            finally:
+                with all_returned:
+                    returned.append(slug)
+                    all_returned.notify_all()
+
+        def end_the_fetches():
+            release.set()
+            with all_returned:
+                all_returned.wait_for(lambda: len(returned) == len(fetching), timeout=30)   # the state: every fetch entered has returned (30 s: a hang guard)
+            for thread in fetching:
+                thread.join(30)   # the pool was shut down: each worker ends after its fetch's last step (30 s: a hang guard)
+            self.assertFalse([t.name for t in fetching if t.is_alive()], 'a fetch of this test is still running after it: a later test would get its AI questions')
+        self.addCleanup(end_the_fetches)
         began = time.monotonic()
         feeds, _ = scout.build_index(self.db, self.starter, stuck, today='2026-10-21', workers=3, carry=True, deadline=time.monotonic() + 0.1)
         self.assertLess(time.monotonic() - began, 2)
