@@ -75,6 +75,7 @@ ship_pr_land() {
     fi
     if [ -n "${SHIP_PR_TITLE:-}" ]; then   # --title= on a PR that is already open: its title is replaced (only then)
       new_title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || new_title="[$who] ${new_title#"[$who] "}"
+      new_title="$(pr_keep_hold "$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)" "$new_title")"   # a held PR keeps "DONT MERGE" (11 Nov 2026, sm)
     else   # no --title: still keep the "[xx]" tag (21 Oct 2026: site#18 and #19 were red for a missing tag, opened or retitled by hand): add it when the title lacks one
       title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
       if [ "$who" != "?" ] && [ -n "$title" ] && ! printf '%s' "$title" | grep -qE '^\[[^]]+\] '; then new_title="[$who] $title"; fi

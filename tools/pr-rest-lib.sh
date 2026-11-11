@@ -157,6 +157,15 @@ pr_of_head() { pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1" | 
 # pr_open <repo> <branch> <title> <body> [draft]: opens the PR into main; prints its URL.
 pr_open() { gh api -X POST "repos/$1/pulls" -f base=main -f head="$2" -f title="$3" -f body="$4" ${5:+-F draft=true} --jq .html_url; }
 
+# pr_keep_hold <current title> <new title>: the title to set on an open PR. A held PR (draft, "DONT MERGE" in its title) keeps the words, right after its tag(s), when a re-ship replaces
+#   its title; any other PR gets the new title as given. Invariant: the hold is never dropped by ship (the tag stays first: the PR-title check wants it there, web #526).
+# Why (11 Nov 2026, sm, owner 10 Nov: "you should put it as draft and a prefix \"DONT MERGE\""): ship.sh --title= replaced #3809's title wholesale, so each push dropped the words and sm restored them by hand.
+pr_keep_hold() {
+  case "$1" in *"DONT MERGE"*) ;; *) printf '%s' "$2"; return 0 ;; esac
+  case "$2" in *"DONT MERGE"*) printf '%s' "$2"; return 0 ;; esac
+  case "$2" in "["*) printf '%s' "$2" | sed -E 's/^((\[[^]]+\] )+)/\1DONT MERGE /' ;; *) printf 'DONT MERGE %s' "$2" ;; esac
+}
+
 # pr_set_text <repo> <n> <title> <body>: replaces the title and/or the description in ONE request (an empty argument is left as it is). Two PATCHes are two `edited` events,
 #   and two events on one commit make the Guard gate cancel one of its own runs, which stays red on the head (10 Nov 2026, fr; 79 PRs since 25 Oct).
 pr_set_text() {
