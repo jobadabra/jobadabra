@@ -1,9 +1,9 @@
 """The engine process ends by its deadline, whatever call is still running (lanes 1/5, issue #3740; design: docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md WP8).
 Why (sf, 10-11 Nov 2026): the search ended at 135 s, but a scoring call still in flight held the process to 158 s (a thread dump of p5's night recording)
 or to the app's 175 s stop on CI (exit 143), and the employer finder lost its 45 s. The engine's own end, src/run_exit.py `finish` (src/__main__.py), waits
-for the open threads until the deadline and then exits without them, but it counts only non-daemon threads: the scorer runs in a daemon thread
-(src/daily_search_scoring.py), so the pool it opens (src/ai/score.py) gets a daemon worker that `finish` does not see, while Python's exit
-(concurrent/futures/thread.py _python_exit) still joins it. Every place that leaves background work running when the search ends is one case of the
+for the open threads until the deadline and then exits without them, but it counted only non-daemon threads: the scorer runs in a daemon thread
+(src/daily_search_scoring.py), so the pool it opens (src/ai/score.py) got a daemon worker that `finish` did not see, while Python's exit
+(concurrent/futures/thread.py _python_exit) still joined it (lanes 2/5 counts it: src/run_exit.py held). Every place that leaves background work running when the search ends is one case of the
 same class, so one loop plays them all: each child process starts the product's own work with a stand-in call that never returns by itself, ends
 its search as the product does, then ends the way the engine does (run_exit.finish) and must exit. Real time is fair here (a real process exit) but
 kept far from both sides: the deadline is 2 s, the call never returns, and the bound is 15 s after it."""
@@ -17,7 +17,6 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.unit.press.red_until import red_until
 
 ROOT = Path(__file__).resolve().parents[3]
 DEADLINE_S = 2   # the children's search clock (time_budget.start)
@@ -94,6 +93,14 @@ discovery = boards_beside.Beside(blocking)
 from src.sources import boards_ahead
 boards_ahead.Ahead({'roles': ['SRE']}, blocking)
 ''', ''),
+    'a pool with its own thread names, opened in a daemon thread (the shape behind the scorer: src/run_exit.py held)': ('''
+from concurrent.futures import ThreadPoolExecutor
+
+def opener():
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix='lane-reader') as pool:
+        pool.submit(blocking)
+threading.Thread(target=opener, daemon=True).start()
+''', ''),
 }
 
 
@@ -102,7 +109,6 @@ def _child(start, end):
 
 
 class PressEndsTest(unittest.TestCase):
-    @red_until('lanes 2/5 (#3740)', 'still runs')
     def test_the_engine_process_ends_by_its_deadline_with_a_call_still_in_flight(self):
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
