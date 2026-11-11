@@ -76,6 +76,7 @@ class Ask(unittest.TestCase):
             reply = {'model': model, 'content': [{'type': 'text', 'text': json.dumps({'jobs': [{'n': 1, 'role': 'yes', 'place': 'no'}]})}]}
             return io.BytesIO(json.dumps(reply).encode())
         got = gate_judge.ask('Profile: x', [{'n': 1, 'title': 't', 'company': 'c', 'location': 'l'}], open_url=open_url, env=env)
+        self.sent = sent[0]
         return sent[0]['model'], got[1]['ai']
 
     def test_the_reply_names_the_model_and_the_tier_is_small_unless_a_by_hand_run_names_another(self):
@@ -83,6 +84,13 @@ class Ask(unittest.TestCase):
         self.assertEqual(self.ask({**self.ENV, 'JOBADABRA_JUDGE_TIER': 'large'})[0], 'claude-opus-5-5')
         with self.assertRaises(ValueError):
             self.ask({**self.ENV, 'JOBADABRA_JUDGE_TIER': 'sonnet'})
+
+    def test_small_high_asks_luna_to_reason_more_and_the_night_sends_no_effort(self):
+        """Owner to sa, 11 Nov 2026: "or luan with higher reasoning": the same small model at effort high; the night's small call is unchanged."""
+        self.assertEqual(self.ask({**self.ENV, 'JOBADABRA_JUDGE_TIER': 'small-high'})[0], 'claude-haiku-5-5')
+        self.assertEqual(self.sent['output_config'], {'effort': 'high'})
+        self.ask(self.ENV)
+        self.assertNotIn('output_config', self.sent)
 
 
 if __name__ == '__main__':

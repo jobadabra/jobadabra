@@ -23,9 +23,11 @@ from judge_three import ANSWERS, agreement, answered_three, majority  # noqa: E4
 
 BATCH = 60
 MODEL = 'claude-haiku-5-5'   # Why (30 Oct 2026, owner): retain the small tier; the broker maps Haiku to Codex on the ChatGPT plan.
-# Why (11 Nov 2026, sa for the owner's "What LLM model does the blind judge use? It is because it uses Haiku instead of Sonnet?"): a by-hand run may name a larger tier
-# to measure it (JOBADABRA_JUDGE_TIER, search-personas.yml input judge_tier); the night never sets it, and making another tier the default is a Scoreboard-change of its own.
-TIERS = {'small': MODEL, 'mid': 'claude-sonnet-5-5', 'large': 'claude-opus-5-5'}
+# Why (11 Nov 2026, sa for the owner's "What LLM model does the blind judge use? It is because it uses Haiku instead of Sonnet?" and his "Luna might be very dumb, maybe we
+# should a higher intelligence model, or luan with higher reasoning"): a by-hand run may name another tier to measure it (JOBADABRA_JUDGE_TIER, search-personas.yml judge_tier):
+# a larger model (mid, large) or the same small one reasoning more (small-high: effort high, which the broker passes to Codex only and counts 2x on the Codex week).
+# The night never sets it; making another tier the default is a Scoreboard-change of its own. Each tier: (model, effort or None = Codex's default).
+TIERS = {'small': (MODEL, None), 'small-high': (MODEL, 'high'), 'mid': ('claude-sonnet-5-5', None), 'large': ('claude-opus-5-5', None)}
 SYSTEM = ('You check a job search for one job seeker. You get their short profile and a numbered list of jobs (title, employer, place). For EACH job decide two things on their own. '
           'role: would a person with this profile see it as their kind of job? yes = same occupation (any seniority, any employer, any language of the title); no = a different occupation. '
           'place: yes = in their city or a short commute from it, or remote and the text names their country; remote = says remote and names no country, or names many countries (a list such as "Remote - Moldova; Remote - Canada; ..." is worldwide remote, never yes); no = another city or country (including remote limited to another country); unknown = no place given. '
@@ -47,7 +49,8 @@ def ask(profile, jobs, open_url=urlopen, env=None):
     if tier not in TIERS:
         raise ValueError(f'JOBADABRA_JUDGE_TIER "{tier[:20]}" is not one of {sorted(TIERS)}')
     prompt = profile + '\n\nJOBS\n' + '\n'.join(f'{j["n"]}. {j["title"]} | {j["company"] or "?"} | {j["location"] or "(no place)"}' for j in jobs)
-    body = {'model': TIERS[tier], 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}]}
+    model, effort = TIERS[tier]
+    body = {'model': model, 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}], **({'output_config': {'effort': effort}} if effort else {})}
     request = Request(base + '/v1/messages', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
     with open_url(request, timeout=600) as response:
         reply = json.loads(response.read())
