@@ -51,6 +51,8 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             mock.patch('src.sources.aggregators.scan', return_value={'jobs': [], 'sources': []}),
             # Why (#2651): the mocked aggregator never takes this read; it leaked into test_eures in the same process.
             mock.patch.object(eures, 'start_early'),
+            # Why (11 Nov 2026, same class as #2651): #3802's free-API lane starts at second 0; unstubbed, its reads outlived the test.
+            mock.patch.object(daily_search, 'start_apis', return_value=None),
             mock.patch.object(daily_search.describe, 'backfill', return_value=''),
             mock.patch.object(daily_search.google_jobs, 'api_key', return_value=''),
             mock.patch.object(daily_search.coverage, 'save'),

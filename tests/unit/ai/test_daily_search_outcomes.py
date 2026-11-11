@@ -10,6 +10,14 @@ from tests.unit.ai.test_daily_search_phases import JOB
 
 
 class SearchOutcomes(phases.SearchCharacterization):
+    def test_a_harness_search_starts_no_live_free_api_read(self):
+        """Why (11 Nov 2026, #3825): unstubbed, #3802's second-0 lane read the live free APIs in a thread that outlived the test and wrote into a
+        later test's read tally (test_read_methods red 1 in 3 on one commit). The harness's setUp stubs every second-0 lane."""
+        from src.sources import api_lane
+        with mock.patch.object(api_lane, 'start') as lane:
+            self.run_search()
+        lane.assert_not_called()
+
     def test_no_sources_still_reports_and_saves_empty_search(self):
         self.sources = []
         out = self.run_search()

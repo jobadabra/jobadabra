@@ -21,7 +21,8 @@ MONOTONIC = time.monotonic   # the real clock, for the hang guard: the test move
 # The real starters the harness replaces with stand-ins; this test puts them back (taken before any test patches them).
 REAL = {(board_web, 'early'): board_web.early, (eures, 'start_early'): eures.start_early, (boards_first, 'run'): boards_first.run,
         (boards_first, 'Beside'): boards_first.Beside, (first_jobs, 'propose_early'): first_jobs.propose_early, (first_jobs, 'run'): first_jobs.run,
-        (boards_ahead, 'scan_beside'): boards_ahead.scan_beside, (aggregators, 'scan'): aggregators.scan}
+        (boards_ahead, 'scan_beside'): boards_ahead.scan_beside, (aggregators, 'scan'): aggregators.scan,
+        (daily_search, 'start_apis'): daily_search.start_apis}
 # Each source lane that is on in this search -> its reader's seam. boards_found waits for board_web by design (its declared need) and is not held here.
 SEAMS = {'eures': (eures, 'eures'), 'employer_sites': (feed_scan, 'scan'), 'job_boards': (found_boards, 'read'),
          'free_job_apis': (aggregators, 'arbeitnow'), 'board_web': (board_web, 'search')}
