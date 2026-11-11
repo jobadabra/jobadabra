@@ -57,6 +57,10 @@ class MovesLine(unittest.TestCase):
             self.assertIn('Moves:', refused.stderr)
             self.assertEqual(run(body + GOOD + '\n', '--base', 'main').returncode, 0)
             self.assertEqual(run(body).returncode, 0)
+            for args in (('--base', 'no-such-base'), ('--base',)):   # Gitar on #3704: git cannot say, or no base given: refused, never a silent pass
+                unread = run(body + GOOD + '\n', *args)
+                self.assertEqual(unread.returncode, 1, args)
+                self.assertIn('could not read the changed files', unread.stderr)
 
 
 if __name__ == '__main__':

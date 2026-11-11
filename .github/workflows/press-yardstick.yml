@@ -46,7 +46,6 @@ on:
       - '!src/import_url.py'
       - '!src/jobs_so_far.py'
       - '!src/notion/runs.py'
-      - '!src/press/stages.py'
       - '!src/search_report.py'
       - '!src/stores/__main__.py'
       - '!src/stores/copy.py'
