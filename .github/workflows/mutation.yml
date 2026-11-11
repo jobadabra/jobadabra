@@ -50,7 +50,8 @@ jobs:
         run: node node_modules/electron/install.js
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
-        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
+        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
       - run: npm ci || npm install
         working-directory: desktop/e2e
       - name: Stage the app's shared files

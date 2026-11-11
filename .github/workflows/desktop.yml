@@ -767,7 +767,8 @@ jobs:
       - name: A virtual display and Electron's libraries (Linux only)
         timeout-minutes: 5
         if: runner.os == 'Linux' && matrix.suite != 'unit'
-        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
+        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
         if: matrix.suite != 'unit'
         timeout-minutes: 5

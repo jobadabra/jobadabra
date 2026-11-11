@@ -1,0 +1,35 @@
+name: Apt packages
+description: >-
+  Installs apt packages through tools/apt-install.sh from .deb files kept in the GitHub cache (keyed by the runner image and the package list),
+  so a stalled or down Ubuntu mirror only hits a cold cache. Use it in place of `run: bash tools/apt-install.sh <packages>`.
+  Why (11 Nov 2026, owner: "I build it now (Recommended)", asked via AskUserQuestion): the mirror reddened 3 Linux jobs of #3798 at 15:09Z after
+  apt-install.sh's two tries (~1 red run a day); the same fix as Electron's zip (#3632).
+inputs:
+  packages:
+    description: The apt packages, space separated
+    required: true
+  script:
+    description: Path to apt-install.sh from the workspace root (e2e.yml runs the workflow's own copy in lock-tools/)
+    default: tools/apt-install.sh
+runs:
+  using: composite
+  steps:
+    - name: Which runner image and packages
+      id: which
+      shell: bash
+      env: {PACKAGES: "${{ inputs.packages }}"}
+      # The image in the key: a new runner image starts a new cache, so cached files never fight the image's own library versions for long.
+      run: |
+        image="${ImageOS:-linux}-${ImageVersion:-$(lsb_release -rs 2>/dev/null || echo unknown)}"
+        list="$(printf '%s\n' $PACKAGES | sort -u | tr '\n' ' ')"
+        echo "key=apt-debs-${image}-${RUNNER_ARCH}-$(printf '%s' "$list" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+        echo "dir=$RUNNER_TEMP/apt-debs" >> "$GITHUB_OUTPUT"
+    - name: Cached .deb files
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.which.outputs.dir }}
+        key: ${{ steps.which.outputs.key }}
+    - name: Install
+      shell: bash
+      env: {APT_DEBS: "${{ steps.which.outputs.dir }}", PACKAGES: "${{ inputs.packages }}", SCRIPT: "${{ inputs.script }}"}
+      run: bash "$SCRIPT" $PACKAGES

@@ -2,12 +2,24 @@
 # CI: installs apt packages without ever hanging (owner, 25 Oct 2026: the "ffmpeg for the hero media tests" step sat 11m51s on web #122, normally 15-30 s: "that's way too much"
 # ... "let's fix it"). apt itself retries a download 3 times and gives up on a silent mirror after 20 s; each try of `apt-get update` and `install` is cut by `timeout`;
 # a failed try is repeated once; then the step fails at once and says why. Worst case about 5 minutes, never 12. Usage: tools/apt-install.sh <package>...
-# The same script lives in the private site repo (tools/apt-install.sh); tests/test_ci_apt.py (here) fails when a workflow calls apt-get on its own.
+# The same script lives in the private site repo (tools/apt-install.sh). Tests: tests/tooling/ci/test_apt_install_cache.py.
+# Why (11 Nov 2026, owner: "I build it now (Recommended)", asked via AskUserQuestion): the mirror still stalled after the two tries (#3798: 3 Linux jobs
+#   red at 15:09Z, ~1 red run a day); retries alone could not end it. With APT_DEBS (a folder the action .github/actions/apt-packages restores
+#   from the GitHub cache), the packages install from their .deb files with no download and no `apt-get update`; the mirror is reached
+#   only on a cold or stale cache, and its downloads land in that folder for the next run.
 set -uo pipefail
 [ $# -gt 0 ] || { echo "apt-install: no packages named" >&2; exit 2; }
-printf '%s\n' 'Acquire::Retries "3";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' 'DPkg::Lock::Timeout "60";' 'APT::Install-Recommends "false";' \
-  | sudo tee /etc/apt/apt.conf.d/98ci-apt >/dev/null
+debs="${APT_DEBS:-}"   # the cached .deb folder; empty = no cache (a local run, the private repo's copy)
+conf=('Acquire::Retries "3";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' 'DPkg::Lock::Timeout "60";' 'APT::Install-Recommends "false";')
+if [ -n "$debs" ]; then   # apt keeps what it downloads in the cached folder (apt runs as root: the folder is opened to it)
+  sudo mkdir -p "$debs/partial" && sudo chmod -R a+rwX "$debs"
+  conf+=("Dir::Cache::archives \"$debs\";" 'APT::Keep-Downloaded-Packages "true";')
+fi
+printf '%s\n' "${conf[@]}" | sudo tee "${APT_CONF:-/etc/apt/apt.conf.d/98ci-apt}" >/dev/null
 cut() { timeout --kill-after=10 "$1" "${@:2}"; }   # a command, ended after $1 seconds
+installed() {   # every named package is installed (a package the runner image already has needs no .deb)
+  local p; for p in "$@"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' || return 1; done
+}
 # The second try uses Ubuntu's own archive instead of the runner's Azure mirror (26 Oct 2026: web #154 failed 3 times in a row on a stalled
 # mirror, 16:13-16:22): a mirror that is down stays down for minutes, so the same mirror again rarely helps.
 apt_dir="${APT_DIR:-/etc/apt}"   # tests point it at a folder of their own
@@ -28,6 +40,14 @@ phase() {
   case "$code" in 0) return 0 ;; 124|137) why="apt-get $name cut after $limit s" ;; *) why="apt-get $name failed (exit $code)" ;; esac
   return 1
 }
+# The cache first: its .deb files by path with --no-download, so a missing or stale file fails at once and the mirror tries below run.
+if [ -n "$debs" ] && compgen -G "$debs/*.deb" >/dev/null; then
+  log="$(mktemp)"; started=$SECONDS
+  if cut 90 sudo apt-get install -y -q --no-download -o Dpkg::Use-Pty=0 "$debs"/*.deb >>"$log" 2>&1 && installed "$@"; then
+    echo "apt-install: $* ready (from the cache, $((SECONDS - started)) s)"; exit 0
+  fi
+  echo "apt-install: the cache did not cover $* (stale or partial), going to the mirror; apt's last lines:" >&2; tail -n 8 "$log" >&2
+fi
 for attempt in 1 2; do
   [ "$attempt" = 2 ] && other_mirror
   log="$(mktemp)"; started=$SECONDS   # apt's own words: shown when a try fails, so a stall names its source (a mirror, a third-party list, a lock)
