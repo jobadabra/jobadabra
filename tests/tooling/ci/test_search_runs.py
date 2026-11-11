@@ -128,6 +128,8 @@ class Night(unittest.TestCase):
         verdict = {'eures': 'off', 'personas': {'1': {'runs': [{'run': 1, 'new_right': 3}, {'run': 2, 'new_right': 1}]}}}
         key = floors.series_key(verdict, 'codex,claude')
         self.assertTrue(key.endswith('|eures-off|runs-2'), key)
+        short_first = {'eures': 'off', 'personas': {'1': {'runs': [{'run': 1, 'new_right': 2}]}, '2': verdict['personas']['1']}}
+        self.assertTrue(floors.series_key(short_first, 'codex,claude').endswith('|runs-2'), 'Gitar on #3781: one person who lost a press never moves the night into the 1-run series')
         self.assertFalse(floors.series_key({'eures': 'off', 'personas': {'1': {}}}, 'codex,claude').endswith('runs-2'), 'a one-run night keeps the older key')
         for k in (key, key.removesuffix('|runs-2')):
             self.assertEqual(floors.validate({'version': 1, 'series': {k: {'people': {}, 'last_green': None}}}), [], k)

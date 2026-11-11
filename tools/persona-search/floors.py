@@ -76,7 +76,7 @@ def series_key(verdict, chain):
     """The series a night belongs to: the lock's fingerprint, the check's AI chain (JOBADABRA_CHECK_CHAIN), the verdict's EURES mode ('on' when unsaid) and, for a
     night of more than one run per person (runs.py), the runs: a 2-run night never shares a floor with a 1-run one. The older 3-part keys stay readable; only
     `runs-2` is a floors series: more runs (the weekly 5) -> None, they keep their own record, never floors (Gitar on #3781: a runs-5 key would make the save refuse the state)."""
-    count = len(next((row['runs'] for row in (verdict.get('personas') or {}).values() if isinstance(row, dict) and isinstance(row.get('runs'), list)), []))
+    count = max((len(row['runs']) for row in (verdict.get('personas') or {}).values() if isinstance(row, dict) and isinstance(row.get('runs'), list)), default=0)   # Why (Gitar on #3781): the night's runs, never one short person's
     if count > 2:
         return None
     return f"{measure()}|{chain}|eures-{verdict.get('eures') or 'on'}" + ('|runs-2' if count == 2 else '')
