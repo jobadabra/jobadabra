@@ -403,3 +403,23 @@ test('maxPages: the read ends after that many pages, keeps the jobs read, and sa
   const [open] = await runAll([{name: 'Open', url: 'https://open.example/jobs?q=x'}], {openTab: url => { const ticket = /-([a-z0-9]+)$/.exec(url)[1]; setTimeout(() => done({url, ticket, jobs: 9, added: 1, pages: 6, stopped: 'no next page'}), 5); return {ok: true}; }, waitMs: 500});
   assert.equal(open.why, 'no next page', 'without maxPages nothing is cut');
 });
+
+// Why (#3710, the owner's LinkedIn press of 10 Nov 2026): every caller of runAll (Find jobs using your browser, a held board, LinkedIn jobs) ends a tab that went quiet or
+// ran out of time with the jobs its pages already gave, and a first page that comes after `waitMs` is not cut: waitMs waits only for the first news.
+for (const [caller, options] of [['Find jobs using your browser', {filter: true}], ['a held board', {hold: true}], ['LinkedIn jobs', {filter: false, maxPages: 3}]]) {
+  for (const end of ['quiet', 'time']) {
+    test(`${caller}: a tab whose first page comes after the first-news wait and then ${end === 'quiet' ? 'goes quiet' : 'runs out of time'} keeps that page's jobs`, async () => {
+      const engine = async () => ({code: 0, stdout: JSON.stringify({ok: true, jobs: 7, added: 7, fits: 1})});
+      const openTab = url => {
+        const start = url.split('#')[0], ticket = /-([a-z0-9]+)$/.exec(url)[1];
+        setTimeout(() => stepOf({ticket, words: 'the extension has the tab: waiting for the page to load'}), 10);   // a held board: the person's Read
+        setTimeout(() => read({}, {url: `${start}?landed=1`, ticket, cards: [], session: 's'}, engine), 80);
+        if (end === 'time') { const talk = setInterval(() => heardFrom(ticket), 10); setTimeout(() => clearInterval(talk), 600); }
+        return {ok: true};
+      };
+      const [result] = await runAll([{name: 'Site', url: 'https://site.example/jobs'}], {...options, atOnce: 1, openTab, waitMs: 50, quietMs: 150, siteMs: end === 'time' ? 300 : 5000});
+      assert.match(result.why, end === 'quiet' ? /stopped answering/ : /s are up/, 'the control: the tab ended on the clock under test');
+      assert.deepEqual([result.ok, result.jobs, result.answered], [true, 7, true], `${caller}: the page's jobs are kept (${result.why})`);
+    });
+  }
+}

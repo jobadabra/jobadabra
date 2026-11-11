@@ -160,7 +160,7 @@ export async function read(storage, page, runEngine = pipeline.run) {
       log('visit', 'page not read', {host: new URL(body.url).hostname, code});
       return {ok: false, error: 'The app could not read this page.'};
     }
-    log('visit', 'read a page the user opened', {host: new URL(body.url).hostname, name: answer.name, jobs: answer.jobs, added: answer.added, fits: answer.fits ?? null, cards: body.cards.length, session: body.session});
+    log('visit', 'read a page the user opened', {host: new URL(body.url).hostname, path: new URL(body.url).pathname.slice(0, 60), name: answer.name, jobs: answer.jobs, added: answer.added, fits: answer.fits ?? null, cards: body.cards.length, session: body.session});
     if (page?.ticket) fitsBy.set(String(page.ticket), answer.fits || 0);   // the site's latest count (pages of one visit add up in the engine)
     watchers.get(page?.ticket)?.({page: answer, url: body.url});
     return answer;
@@ -330,7 +330,7 @@ export function stepOf(payload) {
 }
 export function done(payload) {
   const resolve = waiting.get(which(payload));
-  if (resolve) { waiting.delete(which(payload)); resolve(payload); }
+  if (resolve) { waiting.delete(which(payload)); resolve({...payload, answered: true}); }   // the extension's own end: the tab answered
   return {ok: true};
 }
 // `prepare` (a site -> the site to open, e.g. with its job page found): run in the site's own lane just before its tab opens, so the first tab
@@ -364,7 +364,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     active?.tickets.set(key(site.url), ticket);
     lastNews.set(ticket, Date.now());
     let openedAt = Date.now();   // a held board: from the person's Read (release below)
-    let waitTimer = null;   // the wait for the first news; the person's Read is that news
+    let waitTimer = null, answered = false; const sofar = {jobs: 0, added: 0, pages: 0};   // Why (#3710): waitMs waits for the FIRST news only (a held board's: the person's Read); then quietMs/siteMs end it, and every end keeps what it read (LinkedIn's 40 s cut 33 s reads to 0)
     if (signal?.aborted) return {...site, start: chosen.url, ok: false, why: 'Stopped by you', jobs: 0, added: 0};
     mine.add(ticket);
     if (hold) { held.set(ticket, () => { openedAt = Date.now(); clearTimeout(waitTimer); }); blocked.add(ticket); }   // "Read this board": waits for the person's Read, no clock runs
@@ -378,32 +378,32 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
         if (!blocked.has(ticket) && Date.now() - openedAt - (thoughtMs.get(ticket) || 0) > siteMs) {
           clearInterval(watch);
           waiting.delete(ticket);
-          resolve({stopped: `${Math.round(siteMs / 1000)} s are up${stuck}: skipped, the jobs read so far are kept`, jobs: 0, added: 0, quiet: true});
+          resolve({stopped: `${Math.round(siteMs / 1000)} s are up${stuck}: skipped, the jobs read so far are kept`, ...sofar, quiet: true});
           return;
         }
         if (!blocked.has(ticket) && Date.now() - (lastNews.get(ticket) || 0) > quietMs) {
           clearInterval(watch);
           waiting.delete(ticket);
-          resolve({stopped: `it stopped answering (nothing for ${Math.round(quietMs / 1000)} s)${stuck}: skipped, you can close its tab`, jobs: 0, added: 0, quiet: true});
+          resolve({stopped: `it stopped answering (nothing for ${Math.round(quietMs / 1000)} s)${stuck}: skipped, you can close its tab`, ...sofar, quiet: true});
         }
       }, Math.min(5000, quietMs, siteMs));
       waitTimer = setTimeout(() => {
-        if (!waiting.delete(ticket)) return;
+        if ((answered && !blocked.has(ticket)) || !waiting.delete(ticket)) return;   // waiting on the Allow is the one wait it still ends
         resolve({stopped: blocked.has(ticket) ? 'you have not allowed the extension on the sites the app opens yet (Chrome, the Jobadabra page)'
-          : 'no answer from the extension in time: is it installed and enabled in Chrome?', jobs: 0, added: 0});
+          : 'no answer from the extension in time: is it installed and enabled in Chrome?', ...sofar});
       }, waitMs);
     });
-    let pages = 0, jobs = 0;
     watchers.set(ticket, event => {
+      if (event.step || event.page) answered = true;
       if (event.closed) {
         const resolve = waiting.get(ticket);
         waiting.delete(ticket);
-        log('visit', 'read tab closed by the person', {host: new URL(site.url).hostname, pages});
-        resolve?.({stopped: 'You closed the tab', closed: true, jobs: 0, added: 0});
+        log('visit', 'read tab closed by the person', {host: new URL(site.url).hostname, pages: sofar.pages});
+        resolve?.({stopped: 'You closed the tab', closed: true, ...sofar});
       }
-      if (event.step) tee(siteLine('reading', site.name, `${event.step}${jobs ? ` · ${jobs} jobs so far` : ''}`));
+      if (event.step) tee(siteLine('reading', site.name, `${event.step}${sofar.jobs ? ` · ${sofar.jobs} jobs so far` : ''}`));
       if (event.waiting) tee(siteLine('waiting', site.name, typeof event.waiting === 'string' ? event.waiting : 'Waiting for you in Chrome: press Allow on the Jobadabra page'));
-      if (event.page) { active?.lastPage.set(key(chosen.url), event.url); seenPages.set(key(chosen.url), event.url); blocked.delete(ticket); pages += 1; jobs = Math.max(jobs, Number(event.page.jobs) || 0); tee(siteLine('reading', site.name, `page ${pages} · ${jobs} jobs`)); capPages(maxPages, pages, ticket, {jobs, added: event.page.added}); }
+      if (event.page) { active?.lastPage.set(key(chosen.url), event.url); seenPages.set(key(chosen.url), event.url); blocked.delete(ticket); sofar.pages += 1; sofar.jobs = Math.max(sofar.jobs, Number(event.page.jobs) || 0); sofar.added = Math.max(sofar.added, Number(event.page.added) || 0); tee(siteLine('reading', site.name, `page ${sofar.pages} · ${sofar.jobs} jobs`)); capPages(maxPages, sofar.pages, ticket, sofar); }
     });
     const mark = hold ? 'jp-board' : filter ? 'jp-read-filter' : 'jp-read';
     marks.set(ticket, mark);
@@ -435,7 +435,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     tee(siteLine(ok ? 'done' : state.closed ? 'closed' : 'stopped', site.name, ok ? `${state.jobs} job${state.jobs === 1 ? '' : 's'} read (${state.added || 0} new), ${fits} matching your search${cut}` : state.stopped || 'nothing read'));
     tee(`⏳ Finding jobs in your browser: ${doneCount} of ${sites.length} · ${percent(doneCount, sites.length)}% · ${site.name}: ${ok ? `${state.jobs} jobs` : 'stopped'}`);   // the window's running step
     log('visit', 'site read by the Actions task', {host: new URL(site.url).hostname, jobs: state.jobs || 0, added: state.added || 0, fits, pages: state.pages || 0, stopped: String(state.stopped || '').slice(0, 80)});
-    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state)};
+    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state), answered: answered || !!state.answered};
   };
   active = {queue, sites, lastPage: new Map(), tickets: new Map(), back: site => {   // "Open again": the site is next once more, and no longer counted as finished
     if (queue.includes(site)) return;

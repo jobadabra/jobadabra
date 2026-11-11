@@ -59,7 +59,7 @@ function standInBrowser() {
  * LinkedIn and the extension behind each tab: `kind` per search ('list' | 'login' | 'check' | 'limited' | 'hold'). A list sets LinkedIn's own cookies (a rotated li_at on the www host,
  * a tracker, a host-only one) and the extension reports what it read; a wall reports its page kind; a 429 is the document's response; 'hold' never answers (for Stop).
  */
-function standInLinkedin(browser, kinds) {
+function standInLinkedin(browser, kinds, storage) {
   const reads = [], sent = [];
   let reached;
   const held = new Promise(resolve => { reached = resolve; });
@@ -74,6 +74,7 @@ function standInLinkedin(browser, kinds) {
         const {url} = params, ticket = /#jp-read-([a-z0-9]+)$/.exec(url)?.[1], kind = kinds[reads.length] || 'list';
         reads.push({url, socket, kind, liAt: [...browser.jar.values()].some(c => c.name === 'li_at' && c.value === COPIED[0].value)});
         if (kind === 'hold') { reached(); return {}; }
+        if (kind in TIMED) { playTimed(TIMED[kind], {ticket, storage}); return {}; }
         if (kind === 'limited') { listeners.forEach(fn => fn({type: 'Document', response: {status: 429, url: url.split('#')[0]}})); return {}; }
         if (kind === 'list') {
           for (const c of [{name: 'li_at', value: 'rotated', domain: '.www.linkedin.com', path: '/'}, {name: 'bcookie', value: 'b', domain: '.linkedin.com', path: '/'},
@@ -87,15 +88,42 @@ function standInLinkedin(browser, kinds) {
   return {openCdp, reads, sent, held, searches: () => reads.filter(read => read.url.includes('/jobs/search')).length};
 }
 
+// Why (#3710, the owner's press of 10 Nov 2026 in app.log): a real LinkedIn read takes its time. The extension says it has the tab at once, LinkedIn's redirect lands on
+// /jobs/search-results/, the first page's 7 cards reach the app 33 s after the tab opened and its "done" comes later. Each kind is that timeline, played on the mocked clock.
+const READ_AT = 33000, DONE_AT = 62000, LANDED = 'https://www.linkedin.com/jobs/search-results/?currentJobId=4300000001', CARDS = 7;
+const TIMED = {
+  slow: {page: READ_AT, done: DONE_AT},   // the read the owner's press had: one page, then done
+  quiet: {page: READ_AT},                 // one page read, then the extension says nothing more
+  silent: {},                             // the tab opened and the extension never answered
+};
+const pageEngine = async () => ({code: 0, stdout: JSON.stringify({ok: true, name: 'LinkedIn', jobs: CARDS, added: CARDS, fits: 0})});
+function playTimed({page, done}, {ticket, storage}) {
+  if (page === undefined) return;
+  visits.stepOf({ticket, words: 'the extension has the tab: waiting for the page to load'});
+  setTimeout(() => visits.read(storage, {ticket, url: LANDED, title: 'Jobs', session: `tab-${ticket}`, cards: Array.from({length: CARDS}, (_, n) => ({title: `Job ${n}`}))}, pageEngine), page);
+  if (done !== undefined) setTimeout(() => visits.done({ticket, url: LANDED, jobs: CARDS, added: CARDS, pages: 1}), done);
+}
+/** Run the press while the mocked clock moves in 5 s steps (at most `ms`), so a timed read plays out. -> the press's result. */
+async function pressOverTime(t, r, ms = 200000) {
+  let settled = null;
+  const pressed = r.press().then(result => { settled = result; });
+  for (let at = 0; at <= ms && !settled; at += 5000) {
+    for (let n = 0; n < 20; n++) await new Promise(resolve => setImmediate(resolve));
+    t.mock.timers.tick(5000);
+  }
+  await pressed;
+  return settled;
+}
+
 /** A temp app folder with the real LinkedIn wiring, one stand-in browser and LinkedIn, and the person's press. Cleaned up when the test ends. */
 function rig(t, {kinds = ['list'], searches = 1} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-linkedin-'));
   process.env.JOBADABRA_USER_DATA = dir;
   assert.equal(keychain.isolatedFile(), path.join(path.resolve(dir), 'isolated-secrets.json'), 'every Keychain call goes to this run\'s own file, never the owner\'s Keychain');
-  t.mock.timers.enable({apis: ['setTimeout', 'setInterval']});
+  t.mock.timers.enable({apis: ['setTimeout', 'setInterval', 'Date'], now: Date.now()});   // Date too: the read's quiet and site clocks compare Date.now() (lib/visits.js runAll)
   logTo(path.join(dir, 'logs'));
   const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});
-  const browser = standInBrowser(), linkedin = standInLinkedin(browser, kinds), engineCalls = [], lines = [];
+  const browser = standInBrowser(), linkedin = standInLinkedin(browser, kinds, storage), engineCalls = [], lines = [];
   const runEngine = async (_, args) => { engineCalls.push(args); return {code: 0, stdout: args.includes('linkedin-searches') ? JSON.stringify({searches: searchesOf(searches)}) : ''}; };
   const seams = linkedinSeams(storage, {browser, runEngine, openCdp: linkedin.openCdp, refresh: {ask: async () => 'no-extension'}});
   setLinkedinStep(seams.step, seams.score);   // what the visits handlers register at the app's start
@@ -166,6 +194,32 @@ for (const [kind, verdict, words, name] of [
     assert.ok(next.run.log.some(line => words.test(line)), 'it says LinkedIn is left alone');
   });
 }
+
+for (const [kind, name] of [
+  ['slow', 'a LinkedIn read that takes as long as the owner\'s did (first page at 33 s, done at 62 s) counts the jobs it read'],
+  ['quiet', 'a LinkedIn read that goes quiet after its first page still counts the jobs that page gave'],
+]) {
+  test(name, async t => {
+    const r = rig(t, {kinds: [kind]});
+    r.connect();
+    const {run} = await pressOverTime(t, r);
+    assert.equal(r.linkedin.searches(), 1, 'the control: the one search was opened');
+    assert.ok(fs.readFileSync(path.join(r.dir, 'logs', 'app.log'), 'utf8').includes('"jobs":7'), 'the control: the app read the page\'s 7 jobs');
+    assert.deepEqual([r.mine().last?.state, r.mine().last?.jobs], ['done', CARDS], `the verdict counts the jobs the page gave (its lines: ${JSON.stringify(run.log.filter(line => /LinkedIn/.test(line)))})`);
+    assert.ok(run.log.includes(`LinkedIn: ${CARDS} jobs read`), 'the run says how many');
+    assert.equal(run.log.some(line => /none new|no answer from the extension/.test(line)), false, 'never "none new" or "no answer" for a read that answered');
+  });
+}
+
+test('a LinkedIn read the extension never answers says it could not be read, never "none new"', async t => {
+  const r = rig(t, {kinds: ['silent', 'silent'], searches: 2});
+  r.connect();
+  const {run} = await pressOverTime(t, r);
+  assert.equal(r.linkedin.searches(), 2, 'the control: both searches were opened');
+  assert.equal(r.mine().last?.state, 'failed', 'no search answered: the verdict is failed');
+  assert.ok(run.log.includes('LinkedIn: could not be read this time'), `the run says so (its lines: ${JSON.stringify(run.log.filter(line => /LinkedIn/.test(line)))})`);
+  assert.equal(run.log.some(line => /none new/.test(line)), false, 'never "none new" for a read that never answered');
+});
 
 test('Stop in the middle of a LinkedIn read closes its tab and takes the session out of the browser', async t => {
   const r = rig(t, {kinds: ['hold']});
