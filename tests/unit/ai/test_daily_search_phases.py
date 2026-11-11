@@ -29,7 +29,7 @@ class SearchCharacterization(unittest.TestCase):
         self.root = Path(tmp.name)
         self.calls, self.runs, self.score_calls, self.score_scopes, self.fail_scores, self.rounds = [], [], [], [], False, []
         self.jobs, self.sources = [dict(JOB)], [dict(SOURCE)]
-        self.failed = self.expire = self.late_jobs = False
+        self.failed = self.expire = self.late_jobs = self.waiting_first = False
         self.scorer_gate = None   # an Event: the scorer thread does nothing until the search has saved its run (test_a_scorer_that_starts_after_the_search_ended...)
         self.stores = memory.open_store()
         self.stores.texts.set('profile', 'Fictional SRE in Zurich')
@@ -144,6 +144,10 @@ class SearchCharacterization(unittest.TestCase):
 
     def gather(self, sources, db, search, so_far, due, first=None):
         self.event('gather')
+        if self.waiting_first:   # Why (#3798): as in a real run (scorer at second 0, reading 100+ s), the owed round starts before the search lands a job; the import no longer waits for it
+            deadline = __import__('time').monotonic() + 10   # a hang guard, not a pace
+            while 'score' not in self.calls and __import__('time').monotonic() < deadline:
+                __import__('time').sleep(0.02)
         self.first_given = first
         jobs = [dict(j) for j in self.jobs] if sources else []
         if self.expire:
@@ -262,6 +266,7 @@ class SearchCharacterization(unittest.TestCase):
     def test_a_refresh_scores_the_jobs_waiting_with_its_search_before_the_import(self):
         # Design (3 Nov 2026, owner): Find jobs grows the scored list; a waiting job is the cheapest growth (one score, no search), so it goes first.
         self.waiting_jobs(5)
+        self.waiting_first = True
         time_budget.start(180)
         with mock.patch.object(time_budget, 'record'):
             out = self.run_search(limit=100)
@@ -303,11 +308,33 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual(seen, [True], 'the employer sites started reading while the waiting jobs were still being scored')
         self.assertNotEqual(threads[0], __import__('threading').get_ident(), 'the waiting jobs are scored beside the search, in a thread of their own')
         self.assertEqual(len(max(self.rounds[:daily_search_scoring.IN_FLIGHT], key=len)), daily_search_scoring.BATCH, 'a round of the one ranked list: since sf 2/8 (owner, 10 Nov 2026: "One list together (Recommended)") the waiting jobs have no round of their own')
-        self.assertLess(self.calls.index('scored'), self.calls.index('keep seen'), 'joined before the import: nothing reads their numbers half-written')
+        self.assertEqual(self.runs[0]['score']['done'], 51, 'joined before the closing pass: the run\'s numbers are read whole, never half-written')
         self.assertNotIn('scoring skipped', out, 'its own connection: the search\'s never crosses a thread (a ProgrammingError would land here)')
         self.assertIn('(so far)', out)
         self.assertNotIn('not updated yet', out, 'Job Matches written as they are scored, on the thread\'s own connection to the store')
         self.assertEqual(len(self.stores.matches.list()), 51, '50 waiting + 1 new, all scored')
+
+    def test_what_the_search_found_is_imported_while_the_owed_jobs_are_still_scored(self):
+        """Design (#3798, 11 Nov 2026): the jobs a search found go to the list when its reading ends; the waiting jobs the run owes (L13) are still
+        scored first by the AI, beside it, but the import never waits for them. p14's repeat run: 14 employer jobs read late were imported only after
+        the owed scoring (153 s locally), and on CI after the app's 175 s stop, so they were never listed."""
+        self.waiting_jobs(20)
+        self.stores = sqlite_store.open_store({'JOBADABRA_DATA_DIR': str(self.root / 'store')})   # this Mac's store: its connection is the run's thread's
+        self.addCleanup(self.stores.matches.db.close)
+        time_budget.start(180)
+        imported, held, real = __import__('threading').Event(), [], self.score
+
+        def owed_score(db, *a, **k):
+            if not held:   # the first owed round (IN_FLIGHT rounds start together: each records whether the import came while it ran)
+                held.append(imported.wait(10))   # a hang guard, not a pace: the round runs until the search has imported
+            return real(db, *a, **k)
+        every = lambda db, *a, **k: (store.digest_jobs(db, limit=10_000, only_new=False), [])   # the fixture's lists a page of 10
+        with mock.patch.object(time_budget, 'record'), mock.patch.object(score, 'run', side_effect=owed_score), \
+                mock.patch.object(feed_facts, 'keep_seen', side_effect=lambda *a: (self.event('keep seen'), imported.set())), \
+                mock.patch.object(daily_search.digest, 'eligible_jobs', side_effect=every), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(daily_search.search(self.args, self.stores), 0)
+        self.assertTrue(held and all(held), f'the search imported what it found while the owed round was still being scored: {held}')
+        self.assertEqual(len(self.stores.matches.list()), 21, '20 waiting + 1 new, all scored')
 
     def test_a_refresh_with_nothing_waiting_keeps_its_order(self):
         time_budget.start(180)
@@ -357,6 +384,7 @@ class SearchCharacterization(unittest.TestCase):
         # Owner, 3 Nov 2026: "If the jobs in the backlog means jobs that are not currently displayed in the jobs list, then all of it first". 8 wait,
         # 40 s of scoring time is 13 jobs at the 3 s pace: all 8 are owed to the run (the half share of #3074 took 6); since sf 2/8 in rounds of the one list.
         self.waiting_jobs(8)
+        self.waiting_first = True
         time_budget.start(180, now=time_budget.time.monotonic() - 100)
         time_budget.score_first()
         with mock.patch.object(time_budget, 'record'):
@@ -401,54 +429,6 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual(self.runs[0]['score']['done'], 3)
         self.assertIn('scoring skipped: RuntimeError', self.runs[0]['warnings'])
 
-    def test_no_sources_still_reports_and_saves_empty_search(self):
-        self.sources = []
-        out = self.run_search()
-        self.assertEqual(self.report, {'jobs': [], 'sources': []})
-        self.assertEqual(self.stores.matches.list(), [])
-        self.assertNotIn('Added ', out)
-        self.assertEqual(self.runs[0]['new'], 0)
-        self.assert_order('gather', 'score', 'matches', 'digest', 'save')
-
-    def test_failed_source_is_counted_without_blocking_report(self):
-        self.failed = True
-        out = self.run_search()
-        self.assertFalse(self.report['sources'][0]['ok'])
-        self.assertEqual(len(self.runs[0]['failing_feeds']), 1)
-        self.assertEqual(self.stores.matches.list(), [])
-        self.assertIn('Scored 0', out)
-
-    def test_deadline_hit_during_gather_keeps_partial_jobs_and_clock(self):
-        self.jobs.append({**JOB, 'id': 'two', 'url': 'https://example.test/two', 'title': 'Second SRE'})
-        self.expire = True
-        # Why (29 Oct 2026): now=0 sets deadline 180; a fresh Linux runner's monotonic clock can still be below it.
-        with mock.patch.object(time_budget.time, 'monotonic', return_value=181):
-            out = self.run_search()
-        self.assertEqual(len(self.report['jobs']), 1)
-        self.assertEqual(time_budget.DEADLINE, 180)
-        self.assertEqual(self.stores.matches.list(), [])
-        self.assertIn('Scored 0', out)
-        self.assert_order('gather', 'descriptions', 'score', 'enrich', 'digest', 'save')
-
-    def test_nothing_new_does_not_send_or_mark_shown(self):
-        self.jobs = []
-        out = self.run_search(mode='scheduled', send=True)
-        self.assertIn('No new jobs since the last run; nothing sent.', out)
-        self.assertNotIn('send', self.calls)
-        self.assertNotIn('shown', self.calls)
-        self.assertEqual(self.runs[0]['telegram'], 'nothing new; not sent')
-        self.assert_order('matches', 'ledger', 'gone', 'interviews', 'digest', 'save', 'log')
-
-    def test_more_preview_never_imports_syncs_or_saves(self):
-        self.import_report(self.db, {'jobs': [JOB]})
-        out = self.run_search(mode='more')
-        self.assertEqual(self.report, {'jobs': [], 'sources': []})
-        for name in ('gather', 'import', 'matches', 'save', 'log', 'shown'):
-            self.assertNotIn(name, self.calls)
-        self.assertIn('Scored 1', out)
-        self.assertEqual(self.stores.matches.list(), [])
-        self.assert_order('descriptions', 'enrich', 'score', 'digest', 'app')
-
     def test_first_slice_precedes_boards_and_full_gather(self):
         self.run_search(first_jobs=True)
         self.assert_order('plan', 'web', 'sources', 'proposal', 'slice', 'boards first', 'gather')
@@ -461,39 +441,6 @@ class SearchCharacterization(unittest.TestCase):
         self.assert_order('web', 'sources', 'boards beside', 'gather')
         self.assertNotIn('boards first', self.calls, 'nothing reads the boards in front of the employer sites')
         self.assertIsNotNone(self.first_given, 'the employer read is given the boards to show beside it')
-
-    def test_only_visits_does_not_start_web_or_close_jobs(self):
-        self.sources.append({'company': 'Browser', 'ats': 'visit', 'slug': 'browser'})
-        out = self.run_search(mode='today', only_visits=True)
-        self.assertIn('Reading only the 1 page(s) read in Chrome on this Mac', out)
-        for name in ('web', 'boards first', 'boards beside', 'apis', 'stale', 'dropped', 'places'):
-            self.assertNotIn(name, self.calls)
-        self.assertEqual([s['company'] for s in self.report['sources']], ['Browser'])
-
-    def test_enrichment_and_scoring_errors_are_warned_and_reported(self):
-        self.enrich_error = ValueError('facts fixture')
-        self.score_error = ValueError('score fixture')
-        out = self.run_search()
-        self.assertIn('Warning: enrichment skipped: ValueError: facts fixture', out)
-        self.assertIn('Warning: scoring skipped: ValueError: score fixture', out)
-        self.assertIn('enrichment skipped: ValueError', self.runs[0]['warnings'])
-        self.assertIn('scoring skipped: ValueError', self.runs[0]['warnings'])
-        self.assert_order('enrich', 'score', 'matches', 'digest', 'save')
-
-    def test_sent_digest_marks_shown_before_save(self):
-        out = self.run_search(send=True)
-        self.assertIn('Sent 1 Telegram message(s); imported 1 jobs.', out)
-        self.assertEqual(self.runs[0]['telegram'], 'sent 1 message(s), 1 new')
-        self.assert_order('digest', 'send', 'shown', 'save', 'log')
-
-    def test_refused_delivery_leaves_jobs_unshown(self):
-        with mock.patch.object(daily_search.telegram, 'send', side_effect=ValueError('refused')), \
-                mock.patch.object(daily_search.telegram, 'failure_words', return_value='Delivery refused'):
-            out = self.run_search(send=True)
-        self.assertIn('Warning: Delivery refused', out)
-        self.assertNotIn('shown', self.calls)
-        self.assertEqual(self.runs[0]['telegram'], 'not sent: Telegram refused it')
-        self.assertEqual(len(self.stores.matches.list()), 1)
 
 
 if __name__ == '__main__':

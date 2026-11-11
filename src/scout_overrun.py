@@ -64,22 +64,21 @@ def disarm():
 
 def leave_if_stuck(grace_s=LEAVE_GRACE_S, code=0):
     """The run is over: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every
-    non-daemon thread before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s.
-    Daemon threads never hold the exit and are not counted, nor threads alive before the run began (arm); a pool shut with wait=False keeps
+    non-daemon thread, and every pool worker, before it exits (src/run_exit.py holding), so the job would sit until its cancel. Leaves at once when
+    one is still running after grace_s. Other daemon threads never hold the exit and are not counted, nor threads alive before the run began (arm); a pool shut with wait=False keeps
     its idle workers alive a moment, and those end by themselves (26 Oct 2026: all three counted as stuck checks, other tests' leftover threads
     ended a unittest shard halfway with exit 0)."""
     if not _armed[0]:   # no run began here (a test that stubs arm): never leave (26 Oct 2026: os._exit(0) ended a CI shard halfway on 4 PRs)
         return
     until = time.monotonic() + grace_s
-    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon and not any(t is early for early in _before)]
+    from . import run_exit
+    held = run_exit.holding(skip=_before)   # what the exit waits for: a pool worker too, whatever its daemon flag (lanes 2/5)
     for thread in held:
         thread.join(max(0, until - time.monotonic()))
     stuck = [t for t in held if t.is_alive()]
     if stuck:
         print(f'scout: {len(stuck)} check thread(s) still running after the run; leaving without them', flush=True)
-        sys.stdout.flush()
-        sys.stderr.flush()
-        os._exit(code)
+        run_exit.leave(code)   # the exit handlers run first (lanes 2/5)
 
 
 def stop_run(message, grace_s=LEAVE_GRACE_S):

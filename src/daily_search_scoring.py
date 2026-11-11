@@ -24,8 +24,8 @@ def score_beside(args, stores, db, run, read_profile, hidden, dismissed, time_bu
     (Recommended)"): scoring them first held the employer naming back and 0 of 561 sites were read; this run's own jobs go at SCORE. Never a job that already has a score: a changed text, a Profile edit, newly read facts or a score the person asked to redo are the Re-score
     action's (daily_modes.rescore_mode), not Find jobs' (scope='new'), and not the jobs the cleanup after the crawl closes as outside your places (feeds.keep_open, a cache
     read). Each job is claimed once (src/press/scorer.py); one ceiling for both kinds: score_max (60 in the app) plus the waiting jobs the clock allowed at the start (`taken`).
-    Returns the call that ends it: it stops the scorer after the round in flight and waits for it, to the run's end at most; the search calls it before it imports what it found, so nothing reads
-    run['score'] half-written (a no-op when the scorer did not start)."""
+    Returns the call that ends it: it stops the scorer after the round in flight and waits for it, to the run's end at most; the search imports what it found first (#3798), then calls it before the closing pass
+    (score_jobs), so nothing reads run['score'] half-written (a no-op when the scorer did not start)."""
     if args.mode not in ('scheduled', 'run') or not (time_budget_on() and args.score_max and read_profile):
         return _nothing
     try:
