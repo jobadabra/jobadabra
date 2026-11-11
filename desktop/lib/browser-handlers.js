@@ -105,6 +105,6 @@ export function registerBrowserHandlers(ctx) {
   }, () => server.extensionSeen()?.at || 0));
   // LinkedIn jobs (lib/linkedin-handlers.js): the person signs in in a Jobadabra window (lib/linkedin-signin-window.js); the extension's own consent page is the shortcut when it is connected.
   // A press that opened nothing says why (lib/extension-target.js): never "extension needed" while the extension has checked in.
-  registerLinkedinCloudHandlers({DEMO, ipcMain, storage});   // the owner's one measured cloud read (lib/linkedin-cloud-handlers.js)
+  registerLinkedinCloudHandlers({DEMO, ipcMain, storage, allowed: () => !app.isPackaged || storage.settings().betaChannel === true});   // the owner's one measured cloud read (lib/linkedin-cloud-handlers.js)
   registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn: createSignIn({BrowserWindow, shell, hidden: HIDDEN}), openPage: linkedinPageOpener({server, installed: () => extensionInstall.installed({folder: extensionFolder()}), open: extensionInstall.openInChrome})});
 }

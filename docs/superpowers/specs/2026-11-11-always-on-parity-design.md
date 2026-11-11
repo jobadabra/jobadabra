@@ -20,12 +20,12 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 | Which settings the cloud knows | pushed, with their copy time | `hosted-search.js config()` | the app's push |
 
 ## 1/6 The LinkedIn cloud probe (the one measured read)
-- **Trigger:** the owner calls `await window.pilot.linkedinCloudProbe()` from the window's developer console on a beta or dev build; no button, no ⌘K row, no new screen (a one-time measurement is not a feature: owner, "Explore, then park"). Product code reads the session with `linkedin-session.js readSession` (a macOS Keychain prompt is the owner's to answer); no agent reads it. New files only (`lib/linkedin-cloud-probe.js`, `lib/linkedin-cloud-handlers.js`); `linkedin-*.js` and `search-beside.js` stay lt's. The real switch comes with 5/6, only if the probe says go.
+- **Trigger:** the owner calls `await window.pilot.linkedinCloudProbe()` from the window's developer console; the IPC refuses unless the build runs from source or has the Beta channel on (a real gate in `lib/linkedin-cloud-handlers.js`, code review 11 Nov 2026); no button, no ⌘K row, no new screen (a one-time measurement is not a feature: owner, "Explore, then park"). Product code reads the session with `linkedin-session.js readSession` (a macOS Keychain prompt is the owner's to answer); no agent reads it. New files only (`lib/linkedin-cloud-probe.js`, `lib/linkedin-cloud-handlers.js`); `linkedin-*.js` and `search-beside.js` stay lt's. The real switch comes with 5/6, only if the probe says go.
 - **Path:** the app sends the session once over TLS to `/api/ready/batch` with task `linkedin`; the site seals it in the batch blob (READY_KEK, like the user's own AI key) and returns it only to that batch's night token; the container opens a plain browser (honest default user agent, no stealth, no extension), sets the two cookies, loads ONE LinkedIn Jobs search page, reports `{status, finalPath, cards}`, and the browser profile is deleted.
 - **Verdict (conservative by design):** `go` only when every main-document answer is not 401/403/429/999, the last status is 200, the final URL is still `/jobs/search`, the SIGNED-IN page shows (its navigation bar, no guest sign-in form or public list) and signed-in job cards are on it. LinkedIn serves a public guest page with cards at the same address when it does not accept the session, so cards alone are never a go (code review, 11 Nov 2026). Everything else (sign-in, authwall, checkpoint, captcha, a limit status, a guest page, an unclear page, no cards, an error) is `no`: LinkedIn stays Mac-only, no retry, no second try. A selector LinkedIn changed can only turn `go` into `unclear`.
 - **Who:** the owner's install only (`reader.owner`; the app asks the site `owner` BEFORE it reads the session, so a non-owner install uploads nothing). The session is whichever LinkedIn account the Keychain holds: for the owner's pick, a spare account, the owner signs in to LinkedIn with it first (Settings → Connections → LinkedIn); nothing enforces it. One read a day per install; a started night is never replaced; the tick never starts it. Cost: container seconds, about $0.0004.
 - **Never:** the session in a log, file, PR, test or message; a retry; a stealth plugin; a real-session test (tests use a fake session on a stand-in host).
-- **CLAUDE.md "LinkedIn jobs":** "Keychain only" changes only when 5/6 is built, with the owner's words in that commit.
+- **CLAUDE.md "LinkedIn jobs":** this PR adds the one owner-approved cloud-probe exception sentence (owner's words in the commit); the "Keychain only" rule itself changes only when 5/6 is built.
 
 ## 2/6 Settings parity
 - "How often": the chosen hours reach the cloud schedule (the site owns the schedule; the app pushes the hours with the config). The finder lane ("searching wider", `press-stages.js`): read its cloud counterpart and say works or missing.
@@ -46,7 +46,7 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 
 ## Progress
 - [ ] Sketch and the owner's yes (sketch https://claude.ai/artifact/TdRGmaJvmB8oRbFXhs8zUs; yes 11 Nov 2026)
-- [ ] 1/6 LinkedIn cloud probe: web PR first, then this repo's night file and ⌘K command; the one read by the owner
+- [ ] 1/6 LinkedIn cloud probe: web PR first, then this repo's night file and the console-called IPC; the one read by the owner
 - [ ] 2/6 Settings parity
 - [ ] 3/6 Web search in the cloud (cost shown first)
 - [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each)

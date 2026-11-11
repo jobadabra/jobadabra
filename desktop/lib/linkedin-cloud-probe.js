@@ -1,14 +1,15 @@
 // The one LinkedIn read from the cloud (spec docs/superpowers/specs/2026-11-11-always-on-parity-design.md, 1/6; owner, 11 Nov 2026: "Prove one cloud read first", asked via AskUserQuestion: a spare account's session).
-// The owner presses it (dev and beta builds only, Settings → Connections → LinkedIn); the session is read from the Keychain HERE, by this code, sent once to the site that seals it with the batch, and read once by the cloud browser
+// The owner calls it from the window's developer console (no button; only a build from source or with the Beta channel on, gated in lib/linkedin-cloud-handlers.js); the session is read from the Keychain HERE, by this code, sent once to the site that seals it with the batch, and read once by the cloud browser
 // (desktop/ready-fill/linkedin-probe.mjs). The answer is only {word, status, cards, go}: what LinkedIn answered, never the session.
 // Invariants: ONE search, ONE page, no retry and no second try on any answer; the session is only in the one send call, never in a line, a result, an error or a log; a sign-in page, check or 401/403/429/999 is `no`.
 // Guard: test/unit/main/linkedin-cloud-probe.test.js.
 import * as realSession from './linkedin-session.js';
 import * as realSite from './ready-site.js';
+import {POLL_MS} from './cloud-read.js';
 
 export const SEARCH = 'https://www.linkedin.com/jobs/search/?keywords=engineer&location=Switzerland';   // the same address as the night's (ready-fill/linkedin-probe.mjs): the site checks it
 export const GIVE_UP_MS = 4 * 60 * 1000;
-export const POLL_MS = 4000;
+// Why (code review, 11 Nov 2026): the poll cadence is lib/cloud-read.js's. Its "reads lost" exit cannot be copied: the site's `pending` counts readiness reads only, so for this night it is 0 while LinkedIn is being read and the probe would end at once.
 const WORDS = {ok: 'LinkedIn answered the cloud with the signed-in job list: no check.', limited: 'LinkedIn asked us to slow down (401/403/429/999): LinkedIn stays on your computer.', login: 'LinkedIn showed a sign-in page: LinkedIn stays on your computer.',
   check: 'LinkedIn asked for a check: LinkedIn stays on your computer.', guest: 'LinkedIn did not accept the session and showed its public page: LinkedIn stays on your computer.', unclear: 'The page did not look signed in: LinkedIn stays on your computer.',
   nocards: 'LinkedIn answered signed in but without job cards: LinkedIn stays on your computer.', other: 'LinkedIn sent the cloud to another page: LinkedIn stays on your computer.', error: 'The cloud could not read the page (not a LinkedIn answer). Nothing is tried again; ask for a new try.'};

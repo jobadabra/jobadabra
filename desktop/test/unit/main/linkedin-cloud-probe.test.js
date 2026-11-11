@@ -76,9 +76,19 @@ test('the IPC reaches nothing in demo mode, and a second press while one runs do
   assert.equal((await handlers.linkedinCloudProbe()).ok, false);
   let started = 0, release;
   const gate = new Promise(resolve => { release = resolve; });
-  registerLinkedinCloudHandlers({DEMO: false, ipcMain, storage: {}, probe: async () => { started++; await gate; return {ok: true, go: false, word: 'check'}; }});
+  registerLinkedinCloudHandlers({DEMO: false, allowed: () => true, ipcMain, storage: {}, probe: async () => { started++; await gate; return {ok: true, go: false, word: 'check'}; }});
   const first = handlers.linkedinCloudProbe(), second = handlers.linkedinCloudProbe();
   release();
   assert.deepEqual([await first, await second], [{ok: true, go: false, word: 'check'}, {ok: true, go: false, word: 'check'}]);
   assert.equal(started, 1);
+});
+
+test('a packaged build without the Beta channel refuses before the session is read, and by default', async () => {
+  const handlers = {};
+  const ipcMain = {handle: (name, fn) => { handlers[name] = fn; }};
+  const probe = async () => { throw new Error('must not run'); };
+  registerLinkedinCloudHandlers({DEMO: false, ipcMain, storage: {}, probe});
+  assert.equal((await handlers.linkedinCloudProbe()).ok, false);
+  registerLinkedinCloudHandlers({DEMO: false, ipcMain, storage: {}, probe, allowed: () => false});
+  assert.equal((await handlers.linkedinCloudProbe()).ok, false);
 });
