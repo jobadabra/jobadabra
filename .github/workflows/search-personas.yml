@@ -32,10 +32,11 @@ on:
         default: 'codex,claude'
       # Why (11 Nov 2026, sa for the owner's "What LLM model does the blind judge use? It is because it uses Haiku instead of Sonnet?"): a by-hand run can judge on a larger tier
       # to measure how often its 3 answers disagree and what it costs; like a free-ai run it is never a night (no Admin night, no floors, no reference, no red), and the default stays small.
+      # small-high (11 Nov 2026, owner to sa: "or luan with higher reasoning"): the same luna asked to reason at effort high, measured the same way.
       judge_tier:
-        description: "The blind judge's tier: small (the night; Codex gpt-6-luna) or mid/large to measure them (never a night)"
+        description: "The blind judge's tier: small (the night; Codex gpt-6-luna) or small-high/mid/large to measure them (never a night)"
         type: choice
-        options: ['small', 'mid', 'large']
+        options: ['small', 'small-high', 'mid', 'large']
         default: 'small'
       scheduled:
         description: 'The Worker started it (the name says so); leave off by hand'
