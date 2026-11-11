@@ -1,5 +1,5 @@
 // The "Remote jobs" setting's word (yes | no | country) as the engine reads it: the ONE place the No words live for the app (renderer/draft-strategy.js cards and lib/strategy-rebuild.js review).
-// Why (Gitar on #3779, 11 Nov 2026): the No words were copied in three places; the Python engine is the fourth reader (src/sources/feeds.py remote_wanted) and must say the same words.
+// Why (Gitar on #3779, 11 Nov 2026): the No words were copied in three places; the Python engine reads them in one home, src/my_places.py NO_WORDS (tests/unit/sources/test_places_one_home.py holds both equal).
 // Guarded by test/unit/main/strategy-reach.test.js.
 const NO_WORDS = new Set(['no', 'non', 'nein', 'none', 'never', 'off', 'false']);
 /** True when one saved or drafted value says No in any of the words src/sources/feeds.py remote_wanted reads. */

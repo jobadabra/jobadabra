@@ -6,7 +6,7 @@ import json
 import re
 import sys
 
-from . import digest, levels, target_roles
+from . import digest, levels, my_places, target_roles
 from .ai import locations, score, score_old
 from .ai.insights_data import is_finding
 from .desktop_jobs import blank_profile, stage_status
@@ -255,7 +255,7 @@ def strategy(db, tracker=None, stores=None):
                               if isinstance(p, dict) and p.get('location')]},
         'digest_min_score': prefs.get('digest_min_score'),
         'remote_jobs': feeds_remote_wanted(search),
-        'remote_word': str(next(iter(search.get('remote_jobs') or []), '')).strip().lower(),   # 'country' is a third state the Yes/No control cannot draw (lj 2/4); 3/4 draws it
+        'remote_word': my_places.remote_word(search),   # 'country' is a third state the Yes/No control cannot draw (lj 2/4); 3/4 draws it
         'relocation': locations.places(search)['relocation'],   # Yes / No / Not specified are all answers (Locations, 17 Oct 2026)
         'goals': goals,
         'details': details,   # Your details' facts, shown read-only ("Edit in Your details")

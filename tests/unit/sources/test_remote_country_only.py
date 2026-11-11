@@ -44,7 +44,7 @@ class RemoteCountryOnlyTest(unittest.TestCase):
         folder = pathlib.Path(tempfile.mkdtemp())
         (folder / 'geo.json').write_text(json.dumps({'dublin': {'kind': 'city', 'cc': 'IE'}}))
         search = {'locations': {'top_tier': ['Dublin'], 'country_wide': [], 'abroad': []}, 'remote_jobs': ['Country']}
-        with mock.patch.object(feeds, 'PLACE', place_regex(['Dublin'])), mock.patch.object(feeds, '_PLACES', ['Dublin']), mock.patch.object(feeds, 'REMOTE_WANTED', True), \
+        with mock.patch.object(feeds, 'PLACE', place_regex(['Dublin'])), mock.patch.object(feeds, 'REMOTE_WANTED', True), \
                 mock.patch.object(feeds, 'REMOTE_COUNTRY_ONLY', True), mock.patch.object(feeds, 'placing', return_value=False), mock.patch.object(feeds, 'place_of', return_value=None), \
                 mock.patch.object(geo, 'STORE', folder / 'geo.json'), mock.patch.object(feeds, '_SEARCH', search):
             self.assertTrue(feeds.wanted_location({'location': 'Remote, Ireland', 'remote': True}), 'names their country')

@@ -14,7 +14,7 @@ import unicodedata
 import urllib.request
 
 from . import ats, posting_text
-from .. import country_codes, coverage, run_counts
+from .. import country_codes, coverage, my_places, run_counts
 from ..paths import CONFIG, DATA, REPORTS, keyword_regex, load_search_config, place_regex
 from ..ai import batch_scope, providers
 from ..ai.providers.contract import detail, reason
@@ -148,8 +148,7 @@ def dropped_by(title):
 # are dropped before they reach the digest or the AI stages.
 # Only the user's places (7 Oct 2026: a hard-coded \bch\b and UAE, left from the first search, let every Swiss town in for a
 # Romandie search; a place word "Switzerland" adds \bch\b itself, src/regions.py).
-_PLACES = [*_SEARCH['locations']['top_tier'], *_SEARCH['locations']['country_wide'], *_SEARCH['locations']['abroad']]
-PLACE = place_regex(_PLACES)
+PLACE = my_places.words_regex(_SEARCH)
 _REMOTE_SYNONYMS = r'remote|anywhere|worldwide|global|emea|europe'
 
 
@@ -179,14 +178,13 @@ def mention_of(pattern, text):
 
 
 def remote_wanted(search=None):
-    """False when the settings' "Remote jobs" says no (7 Oct 2026: a photographer and shop seller wants jobs in Geneva and Lausanne only)."""
-    said = [str(v).strip().lower() for v in ((search or _SEARCH).get('remote_jobs') or [])]
-    return not any(v in ('no', 'non', 'nein', 'none', 'never', 'off', 'false') for v in said)
+    """False when the settings' "Remote jobs" says no (7 Oct 2026: a photographer and shop seller wants jobs in Geneva and Lausanne only); src/my_places.py remote_word."""
+    return my_places.remote_word(search or _SEARCH) != 'no'
 
 
 def remote_country_only(search=None):
     """True when "Remote jobs" says "Country": only remote that names your country counts, a bare "Remote" or "Worldwide" never (lj, 10 Nov 2026, owner: bare Remote only under Any remote)."""
-    return any(str(v).strip().lower() == 'country' for v in ((search or _SEARCH).get('remote_jobs') or []))
+    return my_places.remote_word(search or _SEARCH) == 'country'
 
 
 REMOTE_WANTED = remote_wanted()
