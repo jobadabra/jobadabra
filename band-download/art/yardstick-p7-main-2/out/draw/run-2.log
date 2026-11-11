@@ -1,0 +1,39 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[5s] Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one
+[5s] Cronjob run logged: store:cron_runs/c98f05b6b462449d9f32da17ff39a69d
+[5s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[5s] Job boards: searching the web again: the last search (2026-11-10T19:09+00:00) left 0 of 2 working boards for this search; try 2 of 3, with other words
+[5s] Job boards: searching the web for trade and local boards (your API key)
+[5s] Plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 6 left · 2 employer sites 0 fit 70+/min, 15 left · 3 web search not measured · 4 free job APIs not measured, 1 left · +5 more · done: title sorting, scoring, job facts, employer names
+[5s] Job boards: the web search for trade and local boards did not answer (RuntimeError)
+[7s] Pool labels: roles healthcare; families nursing_care; countries ie; metros ie-dublin
+[121s] Employers: 26 of 1187 in your places hire for your kind of role; the others are left out.
+[121s] ⏱ Time is up (2 min 00 s) for job boards: 1 board read waits for the next search
+[122s] ⏳ Reading employer job sites: 0 of 26
+[122s] Employers: read 0 of 26 sites in the time, best first; the other 26 are read first next time.
+[122s] ⏱ Time is up (2 min 01 s) for employer sites: 26 sites wait for the next search
+[122s] EURES: 3 vacancies in your places read
+[122s] ⏱ No time left in this refresh for these: 3 title(s) wait for the next one
+[122s] Titles: asking Claude about 3 job title(s) in your places, in 1 batch(es) of up to 30
+[122s] ⏳ Sorting job titles with AI: 0 of 3
+[131s] ⏳ Sorting job titles with AI: 3 of 3
+[131s] Titles: Claude sorted 3 new title(s) in your places; 0 could fit your search
+[131s] ⏱ Time is up (2 min 10 s) for free job APIs: 4 sources wait for the next search
+[131s] Job boards: done, 0 job(s) for your search
+[131s] Expired 0 job(s) not seen for 7 days
+[131s] ⏱ Time is up (2 min 10 s) for descriptions: 1 round of posting reads waits for the next search
+[131s] 0 job(s) to score with claude-haiku-5-5
+[131s] 0 job(s) to enrich with claude-haiku-5-5
+[131s] Job Matches: 0 created, 0 updated
+[131s] Where your jobs came from: no source gave a job in your places yet
+[131s] Step yield: no step brought a job in your places
+[131s] Next plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 1 left · 2 employer sites 0 fit 70+/min, 26 left · 3 free job APIs 0 fit 70+/min, 4 left · 4 web search not measured · +5 more · done: title sorting, scoring, job facts, employer names
+[131s] <<<message
+[131s] ✈️ Job digest
+[131s] 0 new
+[131s] Tap a job number to mark it applied, save or dismiss it.
+[131s] message>>>
+[131s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[131s] Warning: run not logged to the run history: KeyError: 'free'
+[131s] Warning: run not logged to the run history: KeyError: 'free'

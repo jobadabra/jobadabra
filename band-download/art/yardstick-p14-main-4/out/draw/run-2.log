@@ -1,0 +1,51 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[5s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[5s] Cronjob run logged: store:cron_runs/bcffe4a54d7e43d891de7e07669d9b34
+[5s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[5s] Job boards: the web search answered in the last run; judging the boards it named, no new search
+[5s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured, 15 left · 4 free job APIs not measured · +9 more
+[8s] Pool labels: roles trades; families electrical_mechanical; countries se; metros -
+[18s] Job boards: Verkstadsjobb is one employer's own site: left out
+[18s] Job boards: a web search found Mekanikerjobb.se, Framtid.se
+[132s] Employers: 18 of 1263 in your places hire for your kind of role; the others are left out.
+[132s] Job boards first: reading the 2 the web search found, beside the employer sites: Mekanikerjobb.se, Framtid.se
+[132s] ⏱ Time is up (2 min 11 s) for job boards: 2 boards wait for the next search
+[132s] ⏳ Reading employer job sites: 0 of 18
+[132s] Employers: read 0 of 18 sites in the time, best first; the other 18 are read first next time.
+[132s] ⏱ Time is up (2 min 12 s) for employer sites: 18 sites wait for the next search
+[133s] ⏱ Time is up (2 min 12 s) for free job APIs: 4 sources wait for the next search
+[133s] Job boards: done, 0 job(s) for your search
+[133s] Expired 0 job(s) not seen for 7 days
+[133s] ⏱ Time is up (2 min 12 s) for descriptions: 1 round of posting reads waits for the next search
+[133s] 0 job(s) to score with claude-haiku-5-5
+[133s] 0 job(s) to enrich with claude-haiku-5-5
+[133s] Job Matches: 0 created, 0 updated
+[133s] Where your jobs came from: no source gave a job in your places yet
+[133s] Step yield: no step brought a job in your places
+[133s] Next plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 2 left · 2 employer sites 0 fit 70+/min, 18 left · 3 web search not measured · 4 free job APIs not measured, 4 left · +6 more · done: scoring, job facts, employer names
+[133s] <<<message
+[133s] ✈️ Job digest
+[133s] 0 new
+[133s] Tap a job number to mark it applied, save or dismiss it.
+[133s] message>>>
+[133s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[133s] Cronjob run logged: store:cron_runs/bcffe4a54d7e43d891de7e07669d9b34
+[133s] Searching wider…
+[136s] Cronjob run logged: store:cron_runs/b0b83023f569448da76c183faad27e80
+[136s] Scout: reading the employer lists (your roles are outside IT, so the tech company lists are left out)…
+[164s] Warning: Wikidata companies in Sweden skipped (TimeoutError: TimeoutError: The read operation timed out)
+[164s] Scout: its time for new names is up: 2 employer list(s) wait for the next run
+[164s] Scout: 0 new candidate(s) from the lists; asking the AI for ideas…
+[164s] Scout: half its time is gone, so no more new names this run; the checks get the rest.
+[165s] Scout: checking 0 employer(s)…
+[165s] Scout: checking employers took 29 s
+[165s] AI cost of this scout run: $0.000 in 0 call(s)
+[165s] <<<message
+[165s] 🔎 New employer sources
+[165s] 0 checked · 0 new to the search · 0 new sources
+[165s] No new useful feeds in this batch.
+[165s] Not added
+[165s] 0 without a job feed we can read (their own job site, or jobs.ch) · 0 low relevance · 0 feeds crawled · 0 candidates queued
+[165s] Source quality measures the source, not your job fit.
+[165s] message>>>

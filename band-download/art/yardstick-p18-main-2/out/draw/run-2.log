@@ -1,0 +1,130 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[1s] Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one
+[1s] Cronjob run logged: store:cron_runs/65f5c62615db42a99e393c4d8fb46a86
+[1s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[1s] Job boards: searching the web again: the last search (2026-11-10T19:22+00:00) left 0 of 2 working boards for this search; try 2 of 3, with other words
+[1s] Job boards: searching the web for trade and local boards (your API key)
+[1s] Job boards: the web search for trade and local boards did not answer (RuntimeError)
+[1s] Plan (logged, not applied yet): 1 employer sites 0 fit 70+/min, 15 left · 2 web search not measured · 3 job boards not measured, 6 left · 4 free job APIs not measured, 1 left · +5 more · done: title sorting, scoring, job facts, employer names
+[1s] Pool labels: roles engineering; families construction,electrical_mechanical,product_project; countries dk; metros dk-copenhagen
+[24s] Employers: 34 of 1205 in your places hire for your kind of role; the others are left out.
+[24s] Job boards: no web search: searched in this run
+[24s] ⏳ Reading employer job sites: 0 of 34
+[24s] Run counts: looked=4 matches=0 scored=0 good=0
+[24s] Run counts: looked=43 matches=0 scored=0 good=0
+[25s] Run counts: looked=167 matches=0 scored=0 good=0
+[25s] Run counts: looked=240 matches=0 scored=0 good=0
+[25s] Job boards: 0 read in the last 6 h skipped; reading 6 new ones
+[25s] ⏳ Reading job boards: 0 of 6
+[25s] Run counts: looked=242 matches=0 scored=0 good=0
+[25s] Run counts: looked=511 matches=0 scored=0 good=0
+[25s] Run counts: looked=522 matches=0 scored=0 good=0
+[25s] Run counts: looked=554 matches=0 scored=0 good=0
+[25s] Run counts: looked=584 matches=0 scored=0 good=0
+[25s] Run counts: looked=633 matches=0 scored=0 good=0
+[25s] Run counts: looked=667 matches=0 scored=0 good=0
+[26s] Run counts: looked=763 matches=0 scored=0 good=0
+[26s] Run counts: looked=776 matches=0 scored=0 good=0
+[26s] Run counts: looked=949 matches=0 scored=0 good=0
+[26s] Run counts: looked=1140 matches=0 scored=0 good=0
+[26s] Run counts: looked=1241 matches=0 scored=0 good=0
+[26s] Run counts: looked=1246 matches=0 scored=0 good=0
+[26s] Run counts: looked=1288 matches=0 scored=0 good=0
+[26s] Run counts: looked=1384 matches=0 scored=0 good=0
+[27s] Run counts: looked=1406 matches=0 scored=0 good=0
+[27s] Run counts: looked=1408 matches=0 scored=0 good=0
+[27s] Run counts: looked=1413 matches=0 scored=0 good=0
+[27s] Run counts: looked=1545 matches=0 scored=0 good=0
+[28s] Run counts: looked=1566 matches=0 scored=0 good=0
+[28s] Run counts: looked=1790 matches=0 scored=0 good=0
+[28s] Run counts: looked=1790 matches=1 scored=0 good=0
+[28s] Jobs so far: 1 new from employer sites
+[28s] Run counts: looked=2057 matches=1 scored=0 good=0
+[29s] Run counts: looked=2126 matches=1 scored=0 good=0
+[30s] Run counts: looked=2351 matches=1 scored=0 good=0
+[30s] Run counts: looked=2355 matches=1 scored=0 good=0
+[31s] Run counts: looked=3183 matches=1 scored=0 good=0
+[32s] Run counts: looked=4183 matches=1 scored=0 good=0
+[32s] ⏳ Reading employer job sites: 33 of 34 · 4,394 jobs listed
+[32s] Run counts: looked=4381 matches=1 scored=0 good=0
+[33s] ⏳ Reading employer job sites: 34 of 34 · 4,423 jobs listed
+[33s] Run counts: looked=4410 matches=1 scored=0 good=0
+[37s] ⏱ This refresh places 120 of 129 job locations (1 round(s) of 4 calls, about 10 s each); 9 wait for the next refresh, best places first
+[37s] Warning: the map of places was not used (the AI call failed); the AI placed these locations instead
+[37s] Technical: map of places: RuntimeError
+[37s] Places: asking Claude where 120 job location(s) are, in 4 batch(es) of up to 30
+[37s] ⏳ Placing job locations with AI: 0 of 120
+[37s] Warning: job locations not placed by Claude (the AI call failed): the place words decide this run (remote jobs wait)
+[37s] Technical: sources: RuntimeError
+[38s] Titles: asking Claude about 79 job title(s) in your places, in 3 batch(es) of up to 30
+[38s] ⏳ Sorting job titles with AI: 0 of 79
+[47s] ⏳ Sorting job titles with AI: 19 of 79 · under a minute left
+[49s] ⏳ Sorting job titles with AI: 49 of 79 · under a minute left
+[51s] ⏳ Sorting job titles with AI: 79 of 79
+[51s] Titles: Claude sorted 79 new title(s) in your places; 22 could fit your search
+[53s] Technical: decide board field link: RuntimeError
+[53s] Run counts: looked=4410 matches=2 scored=0 good=0
+[53s] Job boards found: Jobfinder.dk 0 job(s), 0 relevant
+[53s] ⏳ Reading job boards: 1 of 6 · Jobfinder.dk · about 2 min left
+[53s] Job boards found: Akademikernes Jobbank 0 job(s), 0 relevant (refuses automated reading: offered as a visit)
+[53s] ⏳ Reading job boards: 2 of 6 · Akademikernes Jobbank · about 1 min left
+[54s] Run counts: looked=4410 matches=3 scored=0 good=0
+[62s] Run counts: looked=4410 matches=22 scored=0 good=0
+[62s] Run counts: looked=4410 matches=33 scored=0 good=0
+[77s] Technical: decide board field link: RuntimeError
+[82s] Job boards found: Jobnet 0 job(s), 0 relevant
+[82s] ⏳ Reading job boards: 3 of 6 · Jobnet · under a minute left
+[83s] Technical: decide board field link: RuntimeError
+[84s] Job boards found: Workindenmark 0 job(s), 0 relevant
+[84s] ⏳ Reading job boards: 4 of 6 · Workindenmark · under a minute left
+[90s] Job boards: Jobindex, StepStone Denmark still being read at the search's time; read next time
+[90s] ⏱ Time is up (1 min 30 s) for job boards: 2 boards wait for the next search
+[90s] EURES: 200 vacancies in your places read
+[90s] ⏱ This refresh sorts 120 of 164 job titles (1 round(s) of 4 calls, about 8.5 s each); 44 wait for the next refresh, best places first
+[90s] Titles: asking Claude about 164 job title(s) in your places, in 6 batch(es) of up to 30
+[90s] ⏳ Sorting job titles with AI: 0 of 164
+[110s] ⏳ Sorting job titles with AI: 30 of 164 · about 1 min left
+[112s] ⏳ Sorting job titles with AI: 60 of 164 · under a minute left
+[112s] ⏳ Sorting job titles with AI: 90 of 164 · under a minute left
+[114s] ⏳ Sorting job titles with AI: 120 of 164 · under a minute left
+[126s] ⏳ Sorting job titles with AI: 134 of 164
+[136s] ⏳ Sorting job titles with AI: 164 of 164
+[136s] Titles: Claude sorted 164 new title(s) in your places; 7 could fit your search
+[136s] Jobs so far: 7 new from job boards
+[136s] ⏱ Time is up (2 min 16 s) for free job APIs: 4 sources wait for the next search
+[136s] Job boards: done, 7 job(s) for your search
+[136s] Added 40 new job(s): København S 8, Taastrup 8, Aarhus N 3, Odense C 3, Vejle 3, Viby J 3, Aarhus 2, Københavns omegn 2 and 7 more
+[136s] New job: Electrical Project Engineer | BEUMERGroup1 | https://jobs.smartrecruiters.com/BEUMERGroup1/744000152390208
+[136s] New job: Senior Automation Engineer, Project Engineering | BEUMERGroup1 | https://jobs.smartrecruiters.com/BEUMERGroup1/744000146615672
+[136s] New job: Tværfaglig teknisk entreprisechef til præstigeprojekt i Københavns Nordhavn | NCC | https://jobs.smartrecruiters.com/NCC/744000157489960
+[136s] New job: Associate Electrical Engineer - Data Centres | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000158089500
+[136s] New job: Associate/Principal Mechanical Engineer - Data Centres | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000158090322
+[136s] New job: Cost Manager – sæt dit aftryk på komplekse bygge- og anlægsprojekter | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000153564819
+[136s] New job: Erfaren Bygningsingeniør/Bygningskonstruktør for bygningsanalyser | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000111421895
+[136s] New job: High Voltage Substation Control Engineer | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000154979954
+[136s] New job: High Voltage Substation Control Engineer | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000154980229
+[136s] New job: High Voltage Substation Control Engineer | Ramboll3 | https://jobs.smartrecruiters.com/Ramboll3/744000154980129
+[136s] Expired 0 job(s) not seen for 7 days
+[136s] ⏱ No time left in this refresh for these: 15 location(s) wait for the next one
+[136s] ⏱ Time is up (2 min 16 s) for descriptions: 1 round of posting reads waits for the next search
+[136s] ⏱ This refresh scores 9 of 40 jobs (about 3 s each, to finish in about 3 min); 31 wait for the next refresh, best places and closest jobs first
+[137s] ⏳ Scoring jobs against your Profile: 0 of 9
+[150s] ⏳ Scoring jobs against your Profile: 1 of 9 · about 2 min left
+[150s] Run counts: looked=4410 matches=33 scored=1 good=0
+[150s] Scored 1 of 9 job(s)
+[150s] Run counts: looked=4410 matches=33 scored=2 good=0
+[150s] Scored 2 of 9 job(s)
+[153s] Run counts: looked=4410 matches=33 scored=3 good=0
+[153s] Scored 3 of 9 job(s)
+[155s] Run counts: looked=4410 matches=33 scored=4 good=0
+[155s] Scored 4 of 9 job(s)
+[166s] ⏳ Scoring jobs against your Profile: 5 of 9 · under a minute left
+[166s] Run counts: looked=4410 matches=33 scored=5 good=0
+[166s] Scored 5 of 9 job(s)
+[174s] ⏳ Scoring jobs against your Profile: 6 of 9 · under a minute left
+[174s] Run counts: looked=4410 matches=33 scored=6 good=0
+[174s] Scored 6 of 9 job(s)
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for the search: what it has not reached waits for the next search

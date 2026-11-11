@@ -1,0 +1,214 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[5s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[5s] Cronjob run logged: store:cron_runs/dabd13547cc4497ba638f97446a2bd90
+[5s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[5s] Job boards: the web search answered in the last run; judging the boards it named, no new search
+[5s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured, 6 left · 3 employer sites not measured, 15 left · 4 free job APIs not measured · +9 more
+[6s] ⏱ This refresh scores 39 of 125 jobs (about 3 s each, to finish in about 2.2 min); 86 wait for the next refresh, best places and closest jobs first
+[11s] Pool labels: roles trades; families electrical_mechanical; countries fr; metros fr-lyon
+[31s] Technical: decide job site kind for a field: RuntimeError
+[39s] Job boards: a web search found Electrijob, PMEBTP, Lyon Emplois, Emploi Lyon, BTP-Emploi, Job-BTP, Action BTP
+[42s] ⏳ Scoring jobs against your Profile: 0 of 4
+[42s] ⏳ Scoring jobs against your Profile: 0 of 4
+[50s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[50s] Run counts: looked=0 matches=0 scored=1 good=0
+[50s] Scored 1 of 4 job(s)
+[54s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[54s] Run counts: looked=0 matches=0 scored=2 good=0
+[54s] Run counts: looked=0 matches=0 scored=2 good=1
+[54s] Scored 1 of 4 job(s)
+[54s] Run counts: looked=0 matches=0 scored=3 good=1
+[54s] Run counts: looked=0 matches=0 scored=3 good=2
+[54s] Scored 2 of 4 job(s)
+[55s] Run counts: looked=0 matches=0 scored=4 good=2
+[55s] Run counts: looked=0 matches=0 scored=4 good=3
+[55s] Scored 3 of 4 job(s)
+[61s] Run counts: looked=0 matches=0 scored=5 good=3
+[61s] Scored 2 of 4 job(s)
+[70s] ⏳ Scoring jobs against your Profile: 3 of 4 · under a minute left
+[70s] Run counts: looked=0 matches=0 scored=6 good=3
+[70s] Run counts: looked=0 matches=0 scored=6 good=4
+[70s] Scored 3 of 4 job(s)
+[71s] ⏳ Scoring jobs against your Profile: 4 of 4
+[71s] Run counts: looked=0 matches=0 scored=7 good=4
+[71s] Scored 4 of 4 job(s)
+[71s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 64371 (+0 cached), out 755
+[71s] Job Matches: 7 created, 0 updated (so far)
+[73s] ⏳ Scoring jobs against your Profile: 0 of 4
+[74s] ⏳ Scoring jobs against your Profile: 4 of 4
+[74s] Run counts: looked=0 matches=0 scored=8 good=4
+[74s] Scored 4 of 4 job(s)
+[74s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 80962 (+0 cached), out 948
+[74s] Job Matches: 1 created, 0 updated (so far)
+[76s] ⏳ Scoring jobs against your Profile: 0 of 4
+[85s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[85s] Run counts: looked=0 matches=0 scored=9 good=4
+[85s] Run counts: looked=0 matches=0 scored=9 good=5
+[85s] Scored 1 of 4 job(s)
+[85s] Run counts: looked=0 matches=0 scored=10 good=5
+[85s] Run counts: looked=0 matches=0 scored=10 good=6
+[85s] Scored 2 of 4 job(s)
+[86s] Run counts: looked=0 matches=0 scored=11 good=6
+[86s] Run counts: looked=0 matches=0 scored=11 good=7
+[86s] Scored 3 of 4 job(s)
+[87s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[87s] Run counts: looked=0 matches=0 scored=12 good=7
+[87s] Scored 1 of 4 job(s)
+[88s] Run counts: looked=0 matches=0 scored=13 good=7
+[88s] Scored 2 of 4 job(s)
+[89s] Run counts: looked=0 matches=0 scored=14 good=7
+[89s] Scored 3 of 4 job(s)
+[89s] ⏳ Scoring jobs against your Profile: 4 of 4
+[89s] Run counts: looked=0 matches=0 scored=15 good=7
+[89s] Run counts: looked=0 matches=0 scored=15 good=8
+[89s] Scored 4 of 4 job(s)
+[89s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 64160 (+0 cached), out 766
+[89s] Job Matches: 7 created, 0 updated (so far)
+[91s] ⏳ Scoring jobs against your Profile: 0 of 4
+[93s] ⏳ Scoring jobs against your Profile: 4 of 4
+[93s] Run counts: looked=0 matches=0 scored=16 good=8
+[93s] Scored 4 of 4 job(s)
+[93s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63788 (+0 cached), out 804
+[93s] Job Matches: 1 created, 0 updated (so far)
+[95s] ⏳ Scoring jobs against your Profile: 0 of 4
+[99s] Run counts: looked=0 matches=0 scored=17 good=8
+[99s] Run counts: looked=0 matches=0 scored=17 good=9
+[99s] Scored 1 of 4 job(s)
+[101s] ⏳ Scoring jobs against your Profile: 2 of 4 · under a minute left
+[101s] Run counts: looked=0 matches=0 scored=18 good=9
+[101s] Run counts: looked=0 matches=0 scored=18 good=10
+[101s] Scored 2 of 4 job(s)
+[101s] Run counts: looked=0 matches=0 scored=19 good=10
+[101s] Scored 3 of 4 job(s)
+[104s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[104s] Run counts: looked=0 matches=0 scored=20 good=10
+[104s] Run counts: looked=0 matches=0 scored=20 good=11
+[104s] Scored 1 of 4 job(s)
+[107s] Run counts: looked=0 matches=0 scored=21 good=11
+[107s] Scored 2 of 4 job(s)
+[113s] ⏳ Scoring jobs against your Profile: 3 of 4
+[113s] Run counts: looked=0 matches=0 scored=22 good=11
+[113s] Scored 3 of 4 job(s)
+[114s] ⏳ Scoring jobs against your Profile: 4 of 4
+[114s] Run counts: looked=0 matches=0 scored=23 good=11
+[114s] Run counts: looked=0 matches=0 scored=23 good=12
+[114s] Scored 4 of 4 job(s)
+[114s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 64183 (+0 cached), out 780
+[114s] Job Matches: 7 created, 0 updated (so far)
+[116s] ⏳ Scoring jobs against your Profile: 0 of 4
+[117s] ⏳ Scoring jobs against your Profile: 4 of 4
+[117s] Run counts: looked=0 matches=0 scored=24 good=12
+[117s] Scored 4 of 4 job(s)
+[117s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63707 (+0 cached), out 991
+[117s] Job Matches: 1 created, 0 updated (so far)
+[118s] ⏳ Scoring jobs against your Profile: 0 of 4
+[130s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[130s] Run counts: looked=0 matches=0 scored=25 good=12
+[130s] Scored 1 of 4 job(s)
+[134s] Run counts: looked=0 matches=0 scored=26 good=12
+[134s] Scored 2 of 4 job(s)
+[134s] Run counts: looked=0 matches=0 scored=27 good=12
+[134s] Scored 3 of 4 job(s)
+[136s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[136s] Run counts: looked=0 matches=0 scored=28 good=12
+[136s] Scored 1 of 4 job(s)
+[136s] ⏳ Scoring jobs against your Profile: 4 of 4
+[136s] Run counts: looked=0 matches=0 scored=29 good=12
+[136s] Scored 4 of 4 job(s)
+[136s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63847 (+0 cached), out 748
+[136s] Job Matches: 5 created, 0 updated (so far)
+[136s] Run counts: looked=0 matches=0 scored=30 good=12
+[136s] Run counts: looked=0 matches=0 scored=30 good=13
+[136s] Scored 2 of 4 job(s)
+[138s] ⏳ Scoring jobs against your Profile: 0 of 4
+[138s] ⏳ Scoring jobs against your Profile: 4 of 4
+[138s] ⏱ Time is up for this refresh: 4 job(s) left for the next one (it stops at 2.2 min)
+[138s] Scored 0 of 4 job(s) with claude-haiku-5-5; 0 failed; tokens in 0 (+0 cached), out 0
+[138s] Job Matches: 1 created, 0 updated (so far)
+[144s] ⏳ Scoring jobs against your Profile: 3 of 4 · under a minute left
+[144s] Run counts: looked=0 matches=0 scored=31 good=13
+[144s] Scored 3 of 4 job(s)
+[147s] Employers: 26 of 1594 in your places hire for your kind of role; the others are left out.
+[147s] Job boards first: reading the 7 the web search found, beside the employer sites: Electrijob, PMEBTP, Lyon Emplois, Emploi Lyon, BTP-Emploi, Job-BTP, Action BTP
+[147s] ⏱ Time is up (2 min 27 s) for job boards: 7 boards wait for the next search
+[148s] ⏳ Reading employer job sites: 0 of 26
+[148s] Employers: read 0 of 26 sites in the time, best first; the other 26 are read first next time.
+[148s] ⏱ Time is up (2 min 27 s) for employer sites: 26 sites wait for the next search
+[148s] EURES: 200 vacancies in your places read
+[149s] ⏱ No time left in this refresh for these: 53 title(s) wait for the next one
+[149s] ⏱ Time is up (2 min 29 s) for free job APIs: 4 sources wait for the next search
+[149s] Job boards: done, 0 job(s) for your search
+[149s] Expired 0 job(s) not seen for 7 days
+[149s] ⏱ Time is up (2 min 29 s) for descriptions: 1 round of posting reads waits for the next search
+[150s] ⏱ No time left in this refresh to score any: 94 job(s) to score wait for the next one
+[150s] 0 job(s) to score with claude-haiku-5-5
+[150s] ⏱ 94 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)
+[150s] Scored 28 of 32 job(s)
+[150s] ⏳ Reading new jobs with AI: 0 of 100
+[150s] ⏱ Time is up for this refresh: 100 job(s) left for the next one (it stops at 2.2 min)
+[150s] Enriched 0 of 0 job(s) with claude-haiku-5-5; 0 failed; tokens in 0, out 0
+[150s] Job Matches: 1 created, 0 updated
+[150s] Where your jobs came from: europa.eu (job board) 125 in your places, 13 fit 70+
+[150s] Step yield: scoring 36 local in 128.2 s (16.8/min, 13 fit 70+)
+[150s] Next plan (logged, not applied yet): 1 scoring 6.1 fit 70+/min, 4 left · 2 job boards 0 fit 70+/min, 7 left · 3 employer sites 0 fit 70+/min, 26 left · 4 free job APIs 0 fit 70+/min, 4 left · +7 more · done: title sorting, employer names
+[150s] <<<message
+[150s] ✈️ Job digest
+[150s] 26 new
+[150s] 📍 In your preferred locations
+[150s] New since your last run · 10 jobs
+[150s] 1. Électricien Bâtiment Tertiaire F/H - ENERGIS RH Lyon (https://europa.eu/eures/portal/jv-se/jv-details/ODQwMjY4OCA5?lang=en)
+[150s] ENERGIS RH Lyon · Rhône, France
+[150s] Fit: 81/100 · Strong match for your searched building electrician roles and commercial-site work.
+[150s] 2. Électricien / Électricienne tertiaire (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/Nzg2NjA5NSA5?lang=en)
+[150s] DLSI · Rhône, France
+[150s] Fit: 81/100 · Tertiary electrical work matches the searched roles and your installation experience.
+[150s] 3. Technicien Électricien Courant Faible (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/ODM2NTMxMCA5?lang=en)
+[150s] COHESIS INTERIM · Rhône, France
+[150s] Fit: 79/100 · Strong match for the searched low-voltage electrician work; pay is unstated.
+[150s] 4. Électricien Bâtiment (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/ODM5ODE1NCA5?lang=en)
+[150s] Non renseigné · Rhône, France
+[150s] Fit: 78/100 · Strong match for your electrician search; the role is in the Lyon area.
+[150s] 5. Électricien / Électricienne du bâtiment (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/ODMwNjIwMiA5?lang=en)
+[150s] POSITIF INTERIM · Rhône, France
+[150s] Fit: 78/100 · Électricien building work fits your search, with current habilitations required.
+[150s] 6. Électricien / Électricienne du bâtiment (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/NDMxOTcyNCA5?lang=en)
+[150s] SYNERGIE · Rhône, France
+[150s] Fit: 78/100 · Bâtiment electrical work fits your search; Rhône worksite location is unclear.
+[150s] 7. Électricien / Électricienne de chantier (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/ODU4NzIxMSA5?lang=en)
+[150s] Randstad · Ain, France
+[150s] Fit: 76/100 · Strong electrician match; Ain location and required driving licence are gaps.
+[150s] 8. Électricien Bâtiment Logements Neufs F/H - ENERGIS RH Lyon (https://europa.eu/eures/portal/jv-se/jv-details/ODQwMjY0MyA5?lang=en)
+[150s] ENERGIS RH Lyon · Rhône, France
+[150s] Fit: 76/100 · Strong match for Lyon building-electrician work and your installation and testing experience.
+[150s] 9. Technicien électricien service à l'habitat (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/MjE2QllDTCA5?lang=en)
+[150s] ENSIO EST · Rhône, France
+[150s] Fit: 76/100 · A strong match for your electrician search, with current habilitations unconfirmed.
+[150s] 10. Électricien Bâtiment (H/F) (https://europa.eu/eures/portal/jv-se/jv-details/ODUxODM2OSA5?lang=en)
+[150s] APROJOB - LYON BTP · Rhône, France
+[150s] Fit: 75/100 · Building electrician work matches your search; current electrical authorizations are unconfirmed.
+[150s] Tap a job number to mark it applied, save or dismiss it. 16 more with ➕.
+[150s] message>>>
+[150s] Digest ready: 10 jobs, 26 new. Telegram isn't connected, so nothing was sent.
+[150s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[175s] Exception ignored in: <module 'threading' from '/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/threading.py'>
+[175s] Traceback (most recent call last):
+[175s]   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/threading.py", line 1594, in _shutdown
+[175s]     atexit_call()
+[175s]   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/concurrent/futures/thread.py", line 31, in _python_exit
+[175s]     t.join()
+[175s]   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/threading.py", line 1149, in join
+[175s]     self._wait_for_tstate_lock()
+[175s]   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/threading.py", line 1169, in _wait_for_tstate_lock
+[175s]     if lock.acquire(block, timeout):
+[175s]        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[175s]   File "/home/runner/work/jobadabra/jobadabra/sides/main/src/run_log.py", line 244, in _on_terminate
+[175s]     sys.exit(128 + signum)
+[175s] SystemExit: 143
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Warning: The AI could not judge 1 items this time; they wait for the next run
+[175s] AI decide calls: job site kind for a field 1
+[175s] ⏱ Time is up (2 min 55 s) for the search: what it has not reached waits for the next search
+[175s] ⏱ Time is up (2 min 55 s) for searching wider: it waits for the next search

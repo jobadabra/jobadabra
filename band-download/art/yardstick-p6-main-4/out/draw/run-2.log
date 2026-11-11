@@ -1,0 +1,94 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[5s] Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one
+[5s] Cronjob run logged: store:cron_runs/2900ee85f33946bda3fe8edf98cbf07d
+[5s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[5s] Job boards: searching the web again: the last search (2026-11-10T19:09+00:00) left 0 of 2 working boards for this search; try 2 of 3, with other words
+[5s] Job boards: searching the web for trade and local boards (your API key)
+[5s] Plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 1 left · 2 employer sites 0 fit 70+/min, 15 left · 3 web search not measured · 4 free job APIs not measured, 1 left · +6 more · done: scoring, job facts, employer names
+[5s] Job boards: the web search for trade and local boards did not answer (RuntimeError)
+[8s] Pool labels: roles creative_media; families marketing_social; countries hr; metros -
+[77s] Employers: 82 of 1025 in your places hire for your kind of role; the others are left out.
+[78s] Job boards: no web search: searched in this run
+[78s] ⏳ Reading employer job sites: 0 of 82
+[79s] Run counts: looked=88 matches=0 scored=0 good=0
+[79s] Run counts: looked=139 matches=0 scored=0 good=0
+[80s] Run counts: looked=156 matches=0 scored=0 good=0
+[80s] Run counts: looked=162 matches=0 scored=0 good=0
+[80s] Run counts: looked=172 matches=0 scored=0 good=0
+[80s] Run counts: looked=195 matches=0 scored=0 good=0
+[80s] Run counts: looked=204 matches=0 scored=0 good=0
+[80s] Run counts: looked=212 matches=0 scored=0 good=0
+[80s] Run counts: looked=216 matches=0 scored=0 good=0
+[80s] Run counts: looked=268 matches=0 scored=0 good=0
+[80s] Run counts: looked=284 matches=0 scored=0 good=0
+[80s] Run counts: looked=302 matches=0 scored=0 good=0
+[80s] Run counts: looked=340 matches=0 scored=0 good=0
+[80s] Run counts: looked=349 matches=0 scored=0 good=0
+[80s] Run counts: looked=411 matches=0 scored=0 good=0
+[80s] Run counts: looked=429 matches=0 scored=0 good=0
+[81s] Run counts: looked=460 matches=0 scored=0 good=0
+[81s] Run counts: looked=591 matches=0 scored=0 good=0
+[81s] Run counts: looked=709 matches=0 scored=0 good=0
+[81s] Run counts: looked=729 matches=0 scored=0 good=0
+[82s] Run counts: looked=763 matches=0 scored=0 good=0
+[82s] Run counts: looked=773 matches=0 scored=0 good=0
+[82s] Run counts: looked=822 matches=0 scored=0 good=0
+[82s] Run counts: looked=865 matches=0 scored=0 good=0
+[82s] Run counts: looked=875 matches=0 scored=0 good=0
+[82s] Run counts: looked=885 matches=0 scored=0 good=0
+[82s] Run counts: looked=902 matches=0 scored=0 good=0
+[83s] Run counts: looked=1352 matches=0 scored=0 good=0
+[83s] Run counts: looked=1728 matches=0 scored=0 good=0
+[84s] Run counts: looked=1739 matches=0 scored=0 good=0
+[84s] Run counts: looked=1754 matches=0 scored=0 good=0
+[86s] Run counts: looked=1794 matches=0 scored=0 good=0
+[86s] Run counts: looked=1855 matches=0 scored=0 good=0
+[86s] ⏳ Reading employer job sites: 39 of 82 · 2,072 jobs listed
+[86s] Run counts: looked=1897 matches=0 scored=0 good=0
+[88s] Run counts: looked=2063 matches=0 scored=0 good=0
+[88s] Employers: read 40 of 82 sites in the time, best first; the other 42 are read first next time.
+[88s] ⏱ Time is up (1 min 28 s) for employer sites: 42 sites wait for the next search
+[97s] Job boards of your field: HURA (Croatian Association of Communications Agencies), Marketing Magazin, JobHunter
+[97s] Job boards: 0 read in the last 6 h skipped; reading 6 new ones
+[97s] ⏳ Reading job boards: 0 of 6
+[97s] Job boards: posao.hr – Marketing, PR i mediji, njuskalo.hr, aviationcv.com, HURA (Croatian Association of Communications Agencies), Marketing Magazin, JobHunter still being read at the search's time; read next time
+[98s] ⏱ Time is up (1 min 37 s) for job boards: 6 boards wait for the next search
+[100s] Technical: decide link-kind: RuntimeError
+[100s] ⏱ No time left in this refresh for these: 195 location(s) wait for the next one
+[102s] Titles: asking Claude about 12 job title(s) in your places, in 1 batch(es) of up to 30
+[102s] ⏳ Sorting job titles with AI: 0 of 12
+[111s] ⏳ Sorting job titles with AI: 12 of 12
+[111s] Titles: Claude sorted 12 new title(s) in your places; 1 could fit your search
+[114s] Run counts: looked=2063 matches=1 scored=0 good=0
+[115s] EURES: 0 vacancies in your places read
+[115s] ⏱ Time is up (1 min 54 s) for free job APIs: 5 sources wait for the next search
+[115s] Job boards: done, 0 job(s) for your search
+[115s] Added 1 new job(s): Budapest 1
+[115s] New job: Senior Programmatic Consultant | dept | https://job-boards.greenhouse.io/dept/jobs/7832057
+[115s] Expired 0 job(s) not seen for 7 days
+[115s] ⏱ No time left in this refresh for these: 1 location(s) wait for the next one
+[115s] ⏱ Time is up (1 min 54 s) for descriptions: 1 round of posting reads waits for the next search
+[127s] ⏳ Scoring jobs against your Profile: 0 of 1
+[146s] ⏳ Scoring jobs against your Profile: 1 of 1
+[146s] Run counts: looked=2063 matches=1 scored=1 good=0
+[146s] Scored 1 of 1 job(s)
+[146s] Scored 1 of 1 job(s) with gpt-6-luna; 0 failed; tokens in 16775 (+0 cached), out 174
+[146s] ⏳ Reading new jobs with AI: 0 of 1
+[146s] ⏱ Time is up for this refresh: 1 job(s) left for the next one (it stops at 3 min)
+[146s] Enriched 0 of 0 job(s) with claude-haiku-5-5; 0 failed; tokens in 0, out 0
+[146s] Job Matches: 1 created, 0 updated
+[146s] Where your jobs came from: dept (employer feed) 1 in your places
+[146s] Step yield: no step brought a job in your places
+[146s] Next plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 6 left · 2 employer sites 0 fit 70+/min, 42 left · 3 free job APIs not measured, 5 left · 4 Google Jobs not measured · +4 more · done: web search, places, title sorting, scoring, employer names
+[146s] <<<message
+[146s] ✈️ Job digest
+[146s] 0 new
+[146s] Tap a job number to mark it applied, save or dismiss it.
+[146s] message>>>
+[146s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[146s] Warning: run not logged to the run history: KeyError: 'free'
+[150s] ⏱ No time left in this refresh for these: 1 title(s) wait for the next one
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for the search: what it has not reached waits for the next search

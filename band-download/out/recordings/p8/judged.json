@@ -1,0 +1,1638 @@
+{
+ "persona": {
+  "family": "welder",
+  "title": "Welder",
+  "kind": "non-tech",
+  "city": "Leipzig",
+  "country": "Germany",
+  "language": "German",
+  "reference": {
+   "words": [
+    "Schweißer"
+   ],
+   "nuts2": "DED5"
+  }
+ },
+ "judged_jobs": 202,
+ "model": "Codex small tier",
+ "billing": "subscription",
+ "usd": 0,
+ "rows": [
+  {
+   "title": "WIG Schweißer/in (m/w/d) (WIG-Schweißer/in)",
+   "company": "OPTIPER Personaldienste GmbH",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer & Schleifer (m/w/d) (WIG-Schweißer/in)",
+   "company": "H.B.S. Industriedienste GmbH + Co. KG",
+   "location": "Warendorf, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG- Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen NL Riesa gew",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer in Tagschicht (MAG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (w/m/d) (WIG-Schweißer/in)",
+   "company": "Brunel GmbH NL Leipzig SimpliOffice",
+   "location": "Sachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer m/w/d Schweißer Metallbau (Schweißer/in)",
+   "company": "TriTec HR GmbH",
+   "location": "Borken, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) gesucht (WIG-Schweißer/in)",
+   "company": "Industriepersonalservice GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Produktionsmitarbeiter Schweißer (Schweißer/in)",
+   "company": "Drahtweberei Pausa GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/Schweißerin (m/w/d) (Schweißer/in)",
+   "company": "Industriemontagen Büssers GmbH",
+   "location": "Oberhausen, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer/in (WIG-Schweißer/in)",
+   "company": "Die Elbmonteure Service GmbH",
+   "location": "Bremen, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (MAG-Schweißer/in)",
+   "company": "ESD Personalservice GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) sofort (WIG-Schweißer/in)",
+   "company": "ARWA Personaldienstleistungen GmbH",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer m/w/d (MAG-Schweißer/in)",
+   "company": "IC TEAM GS Dresden IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer m/w/d in Plauen (WIG-Schweißer/in)",
+   "company": "Profectus Personal GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) Vollzeit (WIG-Schweißer/in)",
+   "company": "ARWA Personaldienstleistungen GmbH",
+   "location": "Sächsische Schweiz-Osterzgebirge, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) Vollzeit (WIG-Schweißer/in)",
+   "company": "ARWA Personaldienstleistungen GmbH",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (MAG-Schweißer/in)",
+   "company": "GPM Gesellschaft für Personalmanagement mbH",
+   "location": "Heilbronn, Landkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/Schleifer (m/w/d) (Schweißer/in)",
+   "company": "AUREA GmbH",
+   "location": "Mettmann, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w) (Schweißer/in)",
+   "company": "JOHN Blechbearbeitung GmbH & Co. KG",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer / Edelstahlverarbeiter (m/w/d) (WIG-Schweißer/in)",
+   "company": "Neo Temp GmbH",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer Edelstahl (m/w/d) (WIG-Schweißer/in)",
+   "company": "CS Metallbau GmbH & Co. KG",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer / Schweißer (m/w/d) (Schweißer/in)",
+   "company": "teamkompetent GmbH Personaldienstleistungen",
+   "location": "Straubing-Bogen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) MAG-Schweißen (Schweißer/in)",
+   "company": "iperdi AHR GmbH - Niederlassung Stade",
+   "location": "Stade, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Metallbauer / Schweißer (m/w/d) (Metallbauer/in - Konstruktionstechnik)",
+   "company": "zeitconcept GmbH Personaldienstleistungen",
+   "location": "Kelheim, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Wir suchen dich! WIG-Schweißer / Metallbauer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Pertec GmbH",
+   "location": "Weimar, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d)) (MAG-Schweißer/in)",
+   "company": "persona service Verwaltungs AG & Co.KG",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer MAG-Schweißer(m/w/d) (Schweißer/in)",
+   "company": "Stewe Personalservice GmbH & Co. KG - Niederlassung Bielefeld",
+   "location": "Paderborn, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer MAG-Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Stewe Personalservice GmbH & Co. KG - Niederlassung Bielefeld",
+   "location": "Bielefeld, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer / in (Schweißer/in)",
+   "company": "Herges Stahl und Blechbau GmbH Herges Wolfgang",
+   "location": "Saarpfalz-Kreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "TVS Personalservice GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Pro Pensum GmbH",
+   "location": "Heidenheim, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Segment-Behälter-Bau GmbH",
+   "location": "Börde, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Rottach Oberstaufen KG",
+   "location": "Oberallgäu, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Zeitpartner 24 GmbH",
+   "location": "Ostallgäu, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Zeitpartner 24 GmbH",
+   "location": "Kempten (Allgäu), Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Netzwerk31 GmbH",
+   "location": "Emsland, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "Thiele Metalltechnik GmbH",
+   "location": "Cuxhaven, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/in (Schweißer/in)",
+   "company": "König SE & Co. KG",
+   "location": "Osnabrück, Landkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer / Schleifer (m/w/d) (Schweißer/in)",
+   "company": "E. Dold & Soehne GmbH & Co. KG Relaisfabrik",
+   "location": "Schwarzwald-Baar-Kreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Actief Personalmanagement GmbH Zwickau",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Pegasus Sanitary & Energy GmbH",
+   "location": "Lichtenfels, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Industrieservice Tissen",
+   "location": "Märkischer Kreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Unique Personalservice GmbH NL Salzwedel",
+   "location": "Altmarkkreis Salzwedel, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Anton Lippert GmbH 1",
+   "location": "Dillingen a.d. Donau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "RUDAR Raffinerie Anlagenbau GmbH",
+   "location": "Uckermark, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Pro Metall Blechverarbeitung GmbH",
+   "location": "Ortenaukreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Consul Werkstattausrüstung GmbH",
+   "location": "Märkischer Kreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Randstad Deutschland GmbH & Co. KG",
+   "location": "Flensburg, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Mia GmbH & Co KG Metall-,Industrie-u Anlagenbau",
+   "location": "Vorpommern-Greifswald, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Alb Zeitarbeit GmbH Günzburg",
+   "location": "Günzburg, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "EXPERTS TALENTS Personal dienstleistungen Ruhr GmbH",
+   "location": "Neuwied, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (Schweißer/in)",
+   "company": "Seebacher Gesellschaft mit beschränkter Haftung GmbH",
+   "location": "Stuttgart, Stadtkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "AlphaConsult Premium KG",
+   "location": "Sachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "W.I.R. Wirtschafts- und Industrie Reserve GmbH Niederlassung Dresden",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "IC TEAM GS RIESA IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "persona service Verwaltungs AG & Co.KG",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "B & W Personal GbR Michael Braune Sylvia Weis",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "teamkompetent GmbH Personaldienstleistungen",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "persona Service AG & Co. KG Niederlassung Freiberg",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "teamkompetent GmbH Personaldienstleistungen",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "GeAT mbH Gera",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "ARWA Personaldienstleistungen GmbH Leipzig Nord",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "persona service AG & Co. KG",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "persona service AG & Co. KG",
+   "location": "Sächsische Schweiz-Osterzgebirge, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "FERCHAU GmbH Vertriebsstützpunkt Görlitz",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "FERCHAU GmbH Niederlassung Dresden",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "FES GmbH Fahrzeug-Entwicklung Sachsen",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Neo Temp GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Reißaus & Baumberg Maschinenbau GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Jenatec Industriemontagen GmbH",
+   "location": "Sächsische Schweiz-Osterzgebirge, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Jenatec Industriemontagen GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "JENATEC Industriemontagen GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "TimePartner Personalmanagement GmbH",
+   "location": "Sachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "persona service AG & Co. KG Niederlassung Annaberg- Buchholz",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "Actief Personalmanagement GmbH Zwickau",
+   "location": "Sachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "zeitconcept GmbH Personaldienstleistungen",
+   "location": "Rottal-Inn, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) (Schweißer/in)",
+   "company": "zeitconcept GmbH Personaldienstleistungen",
+   "location": "Erlangen-Höchstadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d) für die Region Leipzig | Vollzeit (Schweißer/in)",
+   "company": "DIS AG",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG | WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen NL Riesa gew",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (w/m/d) (Schweißer/in)",
+   "company": "Salzgitter Mannesmann Grobblech GmbH",
+   "location": "Mülheim an der Ruhr, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/ -in (Schweißer/in)",
+   "company": "HADRIAN GmbH & Co. Metall- und Kunststofftechnik KG",
+   "location": "Vorpommern-Greifswald, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG - Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen NL Riesa gew",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG - Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Kiefel UG GmbH & Co. KG",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer*in (Schweißer/in)",
+   "company": "Anja Gelhard Personal-Service GmbH",
+   "location": "Westerwaldkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer*in (Schweißer/in)",
+   "company": "Anja Gelhard Personal-Service GmbH",
+   "location": "Rhein-Lahn-Kreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "Akkodis Germany Tech Experts GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "TriTec HR GmbH",
+   "location": "Kassel, Landkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "timecon GmbH & Co. KG",
+   "location": "Oldenburg, Landkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "Job find 4 you Personalmanagement GmbH",
+   "location": "Borken, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "Töws Personaldienste Peter Töws",
+   "location": "Nordrhein-Westfalen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (MAG-Schweißer/in)",
+   "company": "Wimatec Mattes GmbH",
+   "location": "Sigmaringen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer / MAG-Schweißer / Metallbauer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Radeburger Fensterbau GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer gesucht (MAG-Schweißer/in)",
+   "company": "OPPM OFFICE Professional Personalmanagement GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer m/w/d/x (WIG-Schweißer/in)",
+   "company": "iperdi GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (Schweißer/in)",
+   "company": "Pamec Papp GmbH Leipzig",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Sächsische Schweiz-Osterzgebirge, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (Schweißer/in)",
+   "company": "Pamec Papp GmbH Leipzig",
+   "location": "Halle (Saale), Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/Schweißerin (m/w/d) (MAG-Schweißer/in)",
+   "company": "Erwin Peetz GmbH & Co. KG",
+   "location": "Olpe, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer / Orbitalschweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Jürgen Tausch Personnel Service",
+   "location": "München, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Experts & Talents Dresden GmbH",
+   "location": "Sachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "DIS AG",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Dornseifer Personalmanagement GmbH NL Leipzig",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Metallbau Bennewitz GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Leipziger Leuchten GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Bautzen",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Zwickau",
+   "location": "Zwickau, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "OPTIPER GmbH - Niederlassung Plauen",
+   "location": "Rostock, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "OPTIPER Personaldienste GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Arevipharma GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "ODS Ostsächsische Dienstleistungs- und Service GmbH",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "FOURTEENONE Silver GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "FOURTEENON White GmbH - Dresden",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "zeitconcept GmbH Personaldienstleistungen",
+   "location": "Straubing-Bogen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "zeitconcept GmbH Personaldienstleistungen",
+   "location": "Schwandorf, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer in Stollberg (m/w/d) (WIG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Chemnitz",
+   "location": "Chemnitz, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (MAG-Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (gn) (MAG-Schweißer/in)",
+   "company": "MANPOWER GmbH & Co. KG",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "persona service Verwaltungs AG & Co.KG",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "persona service AG & Co. KG",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "persona service AG & Co.KG Senftenberg",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "IC TEAM GS RIESA IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "iperdi GmbH",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "IC TEAM GS RIESA IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Nordsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "persona service AG & Co. KG Niederlassung Annaberg- Buchholz",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "König Fachpersonal GmbH & Co KG, Niederlassung Leipzig",
+   "location": "Harz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "JENATEC Industriemontagen GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "DIE JOBMACHER GmbH Standort Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "FOURTEENON White GmbH - Dresden",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer Rohrleitungsbau (m/w/d) (WIG-Schweißer/in)",
+   "company": "DIS AG Industrie",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "VIG & MAG Schweißer (MAG-Schweißer/in)",
+   "company": "IC TEAM GS Grimma IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer m/w/d (WIG-Schweißer/in)",
+   "company": "IC TEAM GS Dresden IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG-Schweißer m/w/d (WIG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "E Hand Schweißer / Schweißer (m/w/d) (Schweißer/in)",
+   "company": "DIE JOBMACHER GmbH Standort Leipzig",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer WIG/MIG (m/w/D) (WIG-Schweißer/in)",
+   "company": "Edelstahl-Laser-Technik GmbH",
+   "location": "Bautzen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "IC TEAM GS Grimma IC TEAM Personaldienste GmbH Zeitarbeit",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Jenatec Industriemontagen GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Zeitsprung Personaldienstleistungen GmbH & Co. KG",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Dresden tec.",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Orizon GmbH, NL Oberfranken-Vogtland",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "OPTIPER GmbH - Niederlassung Plauen",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Avento Personal - NL Dresden",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "OPTIPER Personaldienste GmbH",
+   "location": "Rostock, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "OPTIPER Personaldienste GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "FOURTEENONE Silver GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "OPTIMA Personal-Dienstleistungen GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Avento Personal GmbH NL Dresden",
+   "location": "Sächsische Schweiz-Osterzgebirge, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d) (MAG-Schweißer/in)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Leipzig tec.",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (Rohr) (m/w/d) (WIG-Schweißer/in)",
+   "company": "Coswiger Tief- und Rohrleitungsbau GmbH",
+   "location": "Meißen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "persona service AG & Co. KG",
+   "location": "Dresden, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "Die Elbmonteure Service GmbH",
+   "location": "Leipzig, Kreisfreie Stadt, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "persona service AG & Co. KG Niederlassung Annaberg- Buchholz",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "I. K. Hofmann GmbH Hofmann Görlitz",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "grey engineering GmbH",
+   "location": "Görlitz, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "König Fachpersonal GmbH & Co KG, Niederlassung Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "persona service AG & Co.KG",
+   "location": "Vogtlandkreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) (WIG-Schweißer/in)",
+   "company": "persona service AG & Co. KG",
+   "location": "Mittelsachsen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer/ in (Schweißer/in)",
+   "company": "SMP Simone Misselwitz Personaldienstleistungen",
+   "location": "Nordrhein-Westfalen, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Einrichter der Schweißerei (Schweißer/in)",
+   "company": "OPPM OFFICE Professional Personalmanagement GmbH",
+   "location": "Erzgebirgskreis, Germany",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Welder (m/f/d)",
+   "company": "rocketfactoryaugsburgag",
+   "location": "Augsburg, Bavaria, Germany",
+   "provider": "rocketfactoryaugsburgag",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Engine Assembly Technician (m/f/d) - Rocket Engines",
+   "company": "rocketfactoryaugsburgag",
+   "location": "Augsburg, Bavaria, Germany",
+   "provider": "rocketfactoryaugsburgag",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Elektriker/ Industriemechaniker (m/w/d)",
+   "company": "amapharm",
+   "location": "Neunkirchen, Germany",
+   "provider": "amapharm",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Kfz-Karosseriebauer / Kfz-Mechatroniker (m/w/d) – Schwerpunkt Karosserieinstandsetzung",
+   "company": "autohaus-thurow",
+   "location": "Ilmenau, Germany",
+   "provider": "autohaus-thurow",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Techniker (m/w/d)",
+   "company": "assemblean",
+   "location": "Paderborn, Germany",
+   "provider": "assemblean",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer / Konstruktionsmechaniker (m/w/d)",
+   "company": "Hübner",
+   "location": "Kassel, DE, 34123",
+   "provider": "Hübner",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "WIG Schweißer (m/w/d) – Luftfahrt",
+   "company": "YER Deutschland",
+   "location": "Tussenhausen, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Freelance-Experten (m/w/d) für den Pipelinebau gesucht",
+   "company": "YER Deutschland",
+   "location": "Hamburg, Germany",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Tempton Personaldienstleistungen GmbH NL Leipzig techn",
+   "location": "Delitzsch, Germany; Leipzig, Germany; Grimma, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "ARWA Personaldienstleistungen GmbH Leipzig Nord",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "RailMaint GmbH - Werk Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "work InTime GmbH",
+   "location": "Hamburg, Germany; Bremen, Germany; Flensburg, Germany; Kiel, Germany; München, Germany; Bielefeld, Germany; Magdeburg, Germany; Leipzig, Germany; Dresden, Germany; Chemnitz, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Personal Solutions e.K.",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "TTI Personaldienstleistung GmbH - Leipzig",
+   "location": "Schkeuditz, Germany; Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "biac Personalservice GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "PERSO PLANKONTOR GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "P.S.R. Personal+Service GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Unique Personalservice GmbH NL Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "OPPM GmbH Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Randstad Deutschland GmbH & Co.KG, Abt. gewerbliche Berufe",
+   "location": "Leipzig, Germany; Schkeuditz, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "TimePartner Personalmanagement GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (w/m/d)",
+   "company": "Brunel GmbH NL Leipzig SimpliOffice",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "Me-Ma-Tec Industriedienste GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "JENATEC Industriemontagen GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer (m/w/d)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Germany; Wurzen, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MAG-Schweißer",
+   "company": "Akkodis Germany Tech Experts GmbH",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (gn)",
+   "company": "Pamec Papp GmbH Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "WIG-Schweißer (m/w/d)",
+   "company": "Dornseifer Personalmanagement GmbH NL Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "MIG-Schweißer (m/w/d)",
+   "company": "Akzent Personaldienstleistungen GmbH",
+   "location": "Leipzig, Germany; Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d) Mehrlagenschweißen",
+   "company": "OPPM GmbH Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Schweißer (m/w/d)",
+   "company": "König Fachpersonal GmbH & Co KG, Niederlassung Leipzig",
+   "location": "Leipzig, Germany",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Rohrnetzmonteur (m/w/d) Gas/Wasser",
+   "company": "EWR Netz GmbH",
+   "location": "Germany",
+   "provider": "EWR Netz GmbH",
+   "role": "no",
+   "place": "unknown"
+  }
+ ]
+}

@@ -1,0 +1,8 @@
+{"family": "civil-engineer", "title": "Civil Engineer", "kind": "non-tech", "city": "Copenhagen", "country": "Denmark", "language": "Danish", "reference": {"words": ["civilingeniør"], "nuts2": "DK01"}}
+tape: recorded with model override claude-haiku-5-5, replayed with it
+draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p18-main-3/tape/draft.json in 0 s
+Search: 6 roles; places copenhagen, denmark
+PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (175 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
+Search: 6 roles; places copenhagen, denmark
+PRESS draw 2 (EURES: on): 40 in places, 6 scored, 0 fit 70+ (178 s)
+PERSONA DONE draw

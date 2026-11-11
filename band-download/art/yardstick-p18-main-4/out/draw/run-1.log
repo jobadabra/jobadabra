@@ -1,0 +1,59 @@
+[0s] Finding your first jobs…
+[21s] Places: worked out 2 place words with AI: copenhagen, denmark
+[22s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[22s] Cronjob run logged: store:cron_runs/a1f76ec735764838ae224c0bba24f3e4
+[22s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[22s] Job boards: searching the web for trade and local boards (your API key)
+[22s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[93s] Pool labels: roles engineering; families construction,electrical_mechanical,product_project; countries dk; metros dk-copenhagen
+[114s] Employers: 34 of 1205 in your places hire for your kind of role; the others are left out.
+[114s] First jobs: reading 15 of 34 employer sites first
+[114s] EURES: 156 vacancies in your places read
+[115s] ⏳ Reading employer job sites: 0 of 15
+[115s] Employers: read 0 of 15 sites in the time, best first; the other 15 are read first next time.
+[115s] ⏱ Time is up (1 min 54 s) for employer sites: 15 sites wait for the next search
+[115s] First jobs: 0 found
+[115s] ⏱ No time left in this refresh for these: 150 title(s) wait for the next one
+[115s] Titles: asking Claude about 30 job title(s) in your places, in 1 batch(es) of up to 30
+[115s] ⏳ Sorting job titles with AI: 0 of 30
+[133s] Job boards of your field: Jobfinder.dk, Akademikernes Jobbank
+[133s] Job boards of your field: Jobfinder.dk, Akademikernes Jobbank
+[137s] Job boards: a web search found Jobfinder (now Techjob.dk), Byggerijob
+[143s] Job boards proposed for Denmark: Jobnet, Workindenmark, Jobindex, StepStone Denmark, Akademikernes Jobbank, Jobfinder, JobsInEnglish.dk — Engineering
+[143s] Job boards proposed for Denmark: Jobnet, Workindenmark, Jobindex, StepStone Denmark, Akademikernes Jobbank, Jobfinder, JobsInEnglish.dk — Engineering
+[143s] First jobs: reading Jobfinder.dk, Akademikernes Jobbank, Jobnet, Workindenmark, Jobindex, StepStone Denmark, job boards for your country
+[143s] ⏱ Time is up (2 min 22 s) for job boards: 6 boards wait for the next search
+[143s] ⏳ Sorting job titles with AI: 30 of 30
+[143s] Titles: Claude sorted 30 new title(s) in your places; 0 could fit your search
+[143s] ⏱ Time is up (2 min 23 s) for free job APIs: 1 source waits for the next search
+[143s] Job boards: done, 0 job(s) for your search
+[143s] First jobs: 0 found, none to score yet
+[143s] Job boards first: reading the 2 the web search found, before the employer sites: Jobfinder (now Techjob.dk), Byggerijob
+[143s] ⏳ Reading employer job sites: 0 of 34
+[143s] Employers: read 0 of 34 sites in the time, best first; the other 34 are read first next time.
+[143s] Job boards: done, 0 job(s) for your search
+[143s] Expired 0 job(s) not seen for 7 days
+[143s] ⏱ Time is up (2 min 23 s) for descriptions: 1 round of posting reads waits for the next search
+[143s] 0 job(s) to score with claude-haiku-5-5
+[143s] 0 job(s) to enrich with claude-haiku-5-5
+[143s] Job Matches: 0 created, 0 updated
+[143s] Where your jobs came from: no source gave a job in your places yet
+[143s] Step yield: no step brought a job in your places
+[143s] Next plan (logged, not applied yet): 1 employer sites 0 fit 70+/min, 15 left · 2 web search not measured · 3 job boards not measured, 6 left · 4 free job APIs not measured, 1 left · +5 more · done: title sorting, scoring, job facts, employer names
+[143s] <<<message
+[143s] ✈️ Job digest
+[143s] 0 new
+[143s] Tap a job number to mark it applied, save or dismiss it.
+[143s] message>>>
+[143s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[143s] Warning: run not logged to the run history: KeyError: 'free'
+[143s] Warning: run not logged to the run history: KeyError: 'free'
+[143s] AI decide calls: job site kind for a field 2, pool-country 1, pool-family 1, pool-metro 1, pool-region 1, pool-role 1, role-kind 1
+[143s] ⏱ Time is up (2 min 23 s) for job boards: it waits for the next search
+[143s] ⏱ Time is up (2 min 23 s) for scoring the job boards' jobs: it waits for the next search
+[143s] Searching wider…
+[144s] Cronjob run logged: store:cron_runs/1c5858c6af814dbdbfc60955116ede38
+[144s] Scout: reading the employer lists (your roles are outside IT, so the tech company lists are left out)…
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[175s] Scout: checking employers took 31 s
+[175s] ⏱ Time is up (2 min 55 s) for searching wider: what it has not reached waits for the next search

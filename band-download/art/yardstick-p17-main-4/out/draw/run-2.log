@@ -1,0 +1,295 @@
+[0s] Searching job boards…
+[0s] Checking employer career pages, then reading and scoring new jobs…
+[0s] Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one
+[0s] Cronjob run logged: store:cron_runs/2ac2d3ed851e4b6a92905406b330979f
+[0s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[0s] Job boards: searching the web again: the last search (2026-11-10T19:22+00:00) left 0 of 2 working boards for this search; try 2 of 3, with other words
+[0s] Job boards: searching the web for trade and local boards (your API key)
+[0s] Plan (logged, not applied yet): 1 employer sites 0 fit 70+/min, 7 left · 2 web search not measured · 3 job boards not measured, 6 left · 4 free job APIs not measured, 4 left · +6 more · done: places, title sorting, scoring
+[0s] Job boards: the web search for trade and local boards did not answer (RuntimeError)
+[0s] ⏱ This refresh scores 39 of 66 jobs (about 4.1 s each, to finish in about 3 min); 27 wait for the next refresh, best places and closest jobs first
+[1s] Pool labels: roles hospitality; families accounting_finance,admin_office,service_hotel; countries es; metros -
+[7s] Employers: 9 of 1409 in your places hire for your kind of role; the others are left out.
+[7s] ⏳ Reading employer job sites: 0 of 7
+[7s] Job boards: no web search: searched in this run
+[8s] Job boards: 0 read in the last 6 h skipped; reading 6 new ones
+[8s] ⏳ Reading job boards: 0 of 6
+[8s] Run counts: looked=10 matches=0 scored=0 good=0
+[8s] Run counts: looked=80 matches=0 scored=0 good=0
+[8s] Run counts: looked=195 matches=0 scored=0 good=0
+[9s] ⏳ Scoring jobs against your Profile: 0 of 4⏳ Scoring jobs against your Profile: 0 of 4
+[9s] Run counts: looked=420 matches=0 scored=0 good=0
+[9s] Run counts: looked=420 matches=4 scored=0 good=0
+[9s] Run counts: looked=706 matches=4 scored=0 good=0
+[9s] Run counts: looked=996 matches=4 scored=0 good=0
+[14s] ⏳ Reading employer job sites: 7 of 7 · 1,995 jobs listed
+[14s] Run counts: looked=1995 matches=4 scored=0 good=0
+[16s] Warning: the map of places was not used (the AI call failed); the AI placed these locations instead
+[16s] Technical: map of places: RuntimeError
+[16s] Places: asking Claude where 19 job location(s) are, in 1 batch(es) of up to 30
+[16s] ⏳ Placing job locations with AI: 0 of 19
+[16s] Warning: job locations not placed by Claude (the AI call failed): the place words decide this run (remote jobs wait)
+[16s] Technical: sources: RuntimeError
+[16s] Titles: asking Claude about 62 job title(s) in your places, in 3 batch(es) of up to 30
+[16s] ⏳ Sorting job titles with AI: 0 of 62
+[16s] Technical: decide search_role: RuntimeError
+[16s] Run counts: looked=1995 matches=4 scored=1 good=0
+[16s] Scored 1 of 4 job(s)
+[18s] ⏳ Scoring jobs against your Profile: 2 of 4
+[18s] Run counts: looked=1995 matches=4 scored=2 good=0
+[18s] Scored 2 of 4 job(s)
+[19s] Run counts: looked=1995 matches=4 scored=3 good=0
+[19s] Scored 3 of 4 job(s)
+[20s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[20s] Run counts: looked=1995 matches=4 scored=4 good=0
+[20s] Scored 1 of 4 job(s)
+[21s] Run counts: looked=1995 matches=4 scored=5 good=0
+[21s] Scored 2 of 4 job(s)
+[22s] ⏳ Sorting job titles with AI: 30 of 62
+[23s] ⏳ Sorting job titles with AI: 60 of 62
+[24s] ⏳ Sorting job titles with AI: 62 of 62
+[24s] Titles: Claude sorted 62 new title(s) in your places; 2 could fit your search
+[24s] ⏳ Scoring jobs against your Profile: 4 of 4
+[24s] Run counts: looked=1995 matches=4 scored=6 good=0
+[24s] Scored 4 of 4 job(s)
+[24s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 79598 (+0 cached), out 865
+[24s] Job Matches: 6 created, 0 updated (so far)
+[24s] ⏳ Scoring jobs against your Profile: 0 of 4
+[27s] Run counts: looked=1995 matches=5 scored=6 good=0
+[28s] Run counts: looked=1995 matches=6 scored=6 good=0
+[28s] Employers unchanged since your last search: 2 not read again (2 read under 6 h ago, 0 said their list is the same); their jobs stay listed.
+[37s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[37s] Run counts: looked=1995 matches=6 scored=7 good=0
+[37s] Scored 1 of 4 job(s)
+[40s] ⏳ Scoring jobs against your Profile: 3 of 4 · under a minute left
+[40s] Run counts: looked=1995 matches=6 scored=8 good=0
+[40s] Scored 3 of 4 job(s)
+[40s] ⏳ Scoring jobs against your Profile: 4 of 4
+[40s] Run counts: looked=1995 matches=6 scored=9 good=0
+[40s] Scored 4 of 4 job(s)
+[40s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63680 (+0 cached), out 691
+[40s] Job Matches: 3 created, 0 updated (so far)
+[40s] ⏳ Scoring jobs against your Profile: 0 of 4
+[46s] ⏳ Scoring jobs against your Profile: 2 of 4 · under a minute left
+[46s] Run counts: looked=1995 matches=6 scored=10 good=0
+[46s] Scored 2 of 4 job(s)
+[46s] Run counts: looked=1995 matches=6 scored=11 good=0
+[46s] Scored 3 of 4 job(s)
+[52s] ⏳ Scoring jobs against your Profile: 4 of 4
+[52s] Run counts: looked=1995 matches=6 scored=12 good=0
+[52s] Scored 4 of 4 job(s)
+[52s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63403 (+0 cached), out 689
+[52s] Job Matches: 3 created, 0 updated (so far)
+[52s] ⏳ Scoring jobs against your Profile: 0 of 4
+[58s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[58s] Run counts: looked=1995 matches=6 scored=13 good=0
+[58s] Scored 1 of 4 job(s)
+[59s] Run counts: looked=1995 matches=6 scored=14 good=0
+[59s] Scored 2 of 4 job(s)
+[59s] Run counts: looked=1995 matches=6 scored=15 good=0
+[59s] Scored 3 of 4 job(s)
+[64s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[64s] Run counts: looked=1995 matches=6 scored=16 good=0
+[64s] Scored 1 of 4 job(s)
+[64s] Run counts: looked=1995 matches=6 scored=17 good=0
+[64s] Scored 2 of 4 job(s)
+[65s] Titles: asking Claude about 9 job title(s) in your places, in 1 batch(es) of up to 30
+[65s] ⏳ Sorting job titles with AI: 0 of 9
+[66s] ⏳ Sorting job titles with AI: 9 of 9
+[66s] Titles: Claude sorted 9 new title(s) in your places; 2 could fit your search
+[67s] ⏳ Scoring jobs against your Profile: 4 of 4
+[67s] Run counts: looked=1995 matches=6 scored=18 good=0
+[67s] Scored 4 of 4 job(s)
+[67s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63036 (+0 cached), out 721
+[67s] Job Matches: 6 created, 0 updated (so far)
+[67s] ⏳ Scoring jobs against your Profile: 0 of 4
+[69s] Run counts: looked=1995 matches=6 scored=19 good=0
+[69s] Scored 3 of 4 job(s)
+[77s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[77s] Run counts: looked=1995 matches=6 scored=20 good=0
+[77s] Scored 1 of 4 job(s)
+[80s] Run counts: looked=1995 matches=6 scored=21 good=0
+[80s] Scored 2 of 4 job(s)
+[80s] ⏳ Scoring jobs against your Profile: 4 of 4
+[80s] Run counts: looked=1995 matches=6 scored=22 good=0
+[80s] Scored 4 of 4 job(s)
+[80s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 62965 (+0 cached), out 643
+[80s] Job Matches: 4 created, 0 updated (so far)
+[80s] ⏳ Scoring jobs against your Profile: 0 of 4
+[90s] Job boards: flightdeckfriend.com, Turijobs, Hosteleo, Hostelería de España · Campus Hostelería Empleo, InfoJobs, JOB TODAY still being read at the search's time; read next time
+[90s] ⏱ Time is up (1 min 30 s) for job boards: 6 boards wait for the next search
+[90s] ⏱ Time is up (1 min 30 s) for free job APIs: 4 sources wait for the next search
+[90s] Job boards: done, 0 job(s) for your search
+[91s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[92s] Run counts: looked=1995 matches=6 scored=23 good=0
+[92s] Scored 1 of 4 job(s)
+[92s] Run counts: looked=1995 matches=6 scored=24 good=0
+[92s] Scored 2 of 4 job(s)
+[92s] ⏳ Scoring jobs against your Profile: 3 of 4
+[92s] Run counts: looked=1995 matches=6 scored=25 good=0
+[92s] Scored 3 of 4 job(s)
+[93s] ⏳ Scoring jobs against your Profile: 4 of 4
+[93s] Run counts: looked=1995 matches=6 scored=26 good=0
+[93s] Scored 4 of 4 job(s)
+[93s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63324 (+0 cached), out 695
+[93s] Job Matches: 4 created, 0 updated (so far)
+[93s] ⏳ Scoring jobs against your Profile: 0 of 4
+[97s] Run counts: looked=1995 matches=6 scored=27 good=0
+[97s] Scored 3 of 4 job(s)
+[99s] Titles: asking Claude about 9 job title(s) in your places, in 1 batch(es) of up to 30
+[99s] ⏳ Sorting job titles with AI: 0 of 9
+[100s] ⏳ Scoring jobs against your Profile: 4 of 4
+[100s] Run counts: looked=1995 matches=6 scored=28 good=0
+[100s] Scored 4 of 4 job(s)
+[100s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63244 (+0 cached), out 1117
+[100s] Job Matches: 2 created, 0 updated (so far)
+[100s] ⏳ Scoring jobs against your Profile: 0 of 4
+[100s] ⏳ Sorting job titles with AI: 9 of 9
+[100s] Titles: Claude sorted 9 new title(s) in your places; 0 could fit your search
+[102s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[102s] Run counts: looked=1995 matches=6 scored=29 good=0
+[102s] Scored 1 of 4 job(s)
+[103s] Run counts: looked=1995 matches=6 scored=30 good=0
+[103s] Scored 2 of 4 job(s)
+[104s] Run counts: looked=1995 matches=6 scored=31 good=0
+[104s] Scored 3 of 4 job(s)
+[104s] ⏳ Scoring jobs against your Profile: 4 of 4
+[104s] Run counts: looked=1995 matches=6 scored=32 good=0
+[104s] Scored 4 of 4 job(s)
+[104s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63232 (+0 cached), out 735
+[104s] Job Matches: 4 created, 0 updated (so far)
+[104s] ⏳ Scoring jobs against your Profile: 0 of 3
+[110s] ⏳ Scoring jobs against your Profile: 1 of 4 · under a minute left
+[110s] Run counts: looked=1995 matches=6 scored=33 good=0
+[110s] Scored 1 of 4 job(s)
+[111s] Run counts: looked=1995 matches=6 scored=34 good=0
+[111s] Scored 2 of 4 job(s)
+[113s] Run counts: looked=1995 matches=6 scored=35 good=0
+[113s] Scored 3 of 4 job(s)
+[114s] ⏳ Scoring jobs against your Profile: 4 of 4
+[114s] Run counts: looked=1995 matches=6 scored=36 good=0
+[114s] Scored 4 of 4 job(s)
+[114s] Scored 4 of 4 job(s) with gpt-6-luna; 0 failed; tokens in 63282 (+0 cached), out 668
+[114s] Job Matches: 4 created, 0 updated (so far)
+[114s] ⏳ Scoring jobs against your Profile: 1 of 3 · under a minute left
+[114s] Run counts: looked=1995 matches=6 scored=37 good=0
+[114s] Scored 1 of 3 job(s)
+[114s] Run counts: looked=1995 matches=6 scored=38 good=0
+[114s] Scored 2 of 3 job(s)
+[116s] ⏳ Scoring jobs against your Profile: 3 of 3
+[116s] Run counts: looked=1995 matches=6 scored=39 good=0
+[116s] Scored 3 of 3 job(s)
+[116s] Scored 3 of 3 job(s) with gpt-6-luna; 0 failed; tokens in 47513 (+0 cached), out 537
+[116s] Job Matches: 3 created, 0 updated (so far)
+[116s] Added 2 new job(s): Madrid 2
+[116s] New job: AZAFATA/O Lounge Aeropuerto | DOCO1 | https://jobs.smartrecruiters.com/DOCO1/744000132670397
+[116s] New job: Guest Experience Trainee | RHG | https://jobs.smartrecruiters.com/RHG/744000158781510
+[116s] Expired 0 job(s) not seen for 7 days
+[116s] ⏱ No time left in this refresh for these: 27 location(s) wait for the next one
+[116s] ⏱ Time is up (1 min 56 s) for descriptions: 1 round of posting reads waits for the next search
+[116s] ⏱ This refresh scores 12 of 33 jobs (about 4 s each, to finish in about 3 min); 21 wait for the next refresh, best places and closest jobs first
+[116s] ⏳ Scoring jobs against your Profile: 0 of 12
+[120s] ⏱ No time left in this refresh for these: 2 location(s) wait for the next one
+[120s] Titles: asking Claude about 8 job title(s) in your places, in 1 batch(es) of up to 30
+[120s] ⏳ Sorting job titles with AI: 0 of 8
+[121s] ⏳ Sorting job titles with AI: 8 of 8
+[121s] Titles: Claude sorted 8 new title(s) in your places; 8 could fit your search
+[127s] ⏳ Scoring jobs against your Profile: 1 of 12 · about 2 min left
+[127s] Run counts: looked=1995 matches=6 scored=40 good=0
+[127s] Scored 1 of 12 job(s)
+[128s] Run counts: looked=1995 matches=6 scored=41 good=0
+[128s] Scored 2 of 12 job(s)
+[129s] Run counts: looked=1995 matches=6 scored=42 good=0
+[129s] Scored 3 of 12 job(s)
+[129s] Run counts: looked=1995 matches=6 scored=43 good=0
+[129s] Scored 4 of 12 job(s)
+[130s] Run counts: looked=1995 matches=6 scored=44 good=0
+[130s] Scored 5 of 12 job(s)
+[139s] ⏱ No time left in this refresh for these: 6 location(s) wait for the next one
+[139s] Titles: asking Claude about 2 job title(s) in your places, in 1 batch(es) of up to 30
+[139s] ⏳ Sorting job titles with AI: 0 of 2
+[139s] ⏳ Sorting job titles with AI: 2 of 2
+[139s] Titles: Claude sorted 2 new title(s) in your places; 1 could fit your search
+[139s] ⏳ Scoring jobs against your Profile: 6 of 12 · under a minute left
+[139s] Run counts: looked=1995 matches=6 scored=45 good=0
+[139s] Scored 6 of 12 job(s)
+[140s] Run counts: looked=1995 matches=6 scored=46 good=0
+[140s] Scored 7 of 12 job(s)
+[141s] Run counts: looked=1995 matches=6 scored=47 good=0
+[141s] Scored 8 of 12 job(s)
+[141s] Run counts: looked=1995 matches=6 scored=48 good=0
+[141s] Scored 9 of 12 job(s)
+[141s] Run counts: looked=1995 matches=6 scored=49 good=0
+[141s] Scored 10 of 12 job(s)
+[141s] Job Matches: 10 created, 0 updated (so far)
+[150s] ⏳ Scoring jobs against your Profile: 11 of 12
+[150s] Run counts: looked=1995 matches=6 scored=50 good=0
+[150s] Scored 11 of 12 job(s)
+[153s] ⏳ Scoring jobs against your Profile: 12 of 12
+[153s] Run counts: looked=1995 matches=6 scored=51 good=0
+[153s] Scored 12 of 12 job(s)
+[153s] Scored 12 of 12 job(s) with gpt-6-luna; 0 failed; tokens in 189725 (+0 cached), out 2203
+[153s] ⏳ Scoring jobs against your Profile: 0 of 3
+[163s] ⏳ Scoring jobs against your Profile: 1 of 3 · under a minute left
+[163s] Run counts: looked=1995 matches=6 scored=52 good=0
+[163s] Scored 1 of 3 job(s)
+[164s] Run counts: looked=1995 matches=6 scored=53 good=0
+[164s] Scored 2 of 3 job(s)
+[167s] ⏳ Scoring jobs against your Profile: 3 of 3
+[167s] Run counts: looked=1995 matches=6 scored=54 good=0
+[167s] Scored 3 of 3 job(s)
+[167s] Scored 3 of 3 job(s) with gpt-6-luna; 0 failed; tokens in 47249 (+0 cached), out 518
+[167s] ⏱ 18 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)
+[167s] Scored 51 of 51 job(s)
+[167s] ⏳ Reading new jobs with AI: 0 of 92
+[167s] ⏱ Time is up for this refresh: 92 job(s) left for the next one (it stops at 3 min)
+[167s] Enriched 0 of 0 job(s) with claude-haiku-5-5; 0 failed; tokens in 0, out 0
+[167s] Job Matches: 5 created, 0 updated
+[167s] Where your jobs came from: europa.eu (job board) 86 in your places · AccorCorpo (employer feed) 4 in your places · DOCO1 (employer feed) 1 in your places · RHG (employer feed) 1 in your places
+[167s] Step yield: scoring 39 local in 115.6 s (20.2/min)
+[167s] Next plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 6 left · 2 free job APIs not measured, 4 left · 3 Google Jobs not measured · 4 job-alert emails not measured · +3 more · done: web search, employer sites, places, title sorting, scoring, employer names
+[167s] <<<message
+[167s] ✈️ Job digest
+[167s] 22 new
+[167s] 📍 In your preferred locations
+[167s] New since your last run · 10 jobs
+[167s] 1. Recepcionista – Hotel Parque Cabañeros **** estrellas (Horcajo de los Montes) (https://europa.eu/eures/portal/jv-se/jv-details/NzI5MzI4MCAxMDI?lang=en)
+[167s] NUEVO HOTEL PARQUE CABAÑEROS SL · Ciudad Real, Spain
+[167s] Fit: 68/100 · Strong receptionist match, but the Ciudad Real location is a major practical gap.
+[167s] 2. RECEPCIONISTAS DE HOTEL (https://europa.eu/eures/portal/jv-se/jv-details/NzQ1MzkzNiAxMDI?lang=en)
+[167s] Unknown employer · Alicante/Alacant, Spain
+[167s] Fit: 62/100 · Guest reception work matches your search, but the temporary Benidorm role is away from Valencia.
+[167s] 3. ID. EURES: 6770897, RECEPCIONISTAS DE HOTEL (https://europa.eu/eures/portal/jv-se/jv-details/Njc3MDU4OCAxMDI?lang=en)
+[167s] Unknown employer · Girona, Spain
+[167s] Fit: 61/100 · Reception work matches your search, though the role is in Platja d'Aro.
+[167s] 4. ADMINISTRATIVO RECEPCIONISTA (https://europa.eu/eures/portal/jv-se/jv-details/NzE2NTYzNyAxMDI?lang=en)
+[167s] GOOD RENT VLC 2025 · Valencia/València, Spain
+[167s] Fit: 61/100 · Reception work matches your search, but the role also centers on general administration.
+[167s] 5. Recepcionista (https://europa.eu/eures/portal/jv-se/jv-details/NzI0NDgwNCAxMDI?lang=en)
+[167s] NUEVO HOTEL PARQUE CABAÑEROS SL · Ciudad Real, Spain
+[167s] Fit: 58/100 · Reception work matches your search, but the posting requires relocation to Ciudad Real.
+[167s] 6. RECEPCIONISTA (https://europa.eu/eures/portal/jv-se/jv-details/NzQyNDQzMiAxMDI?lang=en)
+[167s] Unknown employer · Barcelona, Spain
+[167s] Fit: 58/100 · Receptionist work matches your search, but the job is in Barcelona.
+[167s] 7. Recepcionista hotel 4* jornada completa (https://europa.eu/eures/portal/jv-se/jv-details/NzM5NjU5NSAxMDI?lang=en)
+[167s] Hotelera Zentral Camino SL · Madrid, Spain
+[167s] Fit: 56/100 · Hotel reception matches your search; the Madrid location is a significant gap.
+[167s] 8. Recepcionista de hotel (https://europa.eu/eures/portal/jv-se/jv-details/NzM2MzQ1MiAxMDI?lang=en)
+[167s] Unknown employer · Málaga, Spain
+[167s] Fit: 56/100 · Reception work matches your search, but the job is in Málaga.
+[167s] 9. RECEPCIONISTA HOTEL-CON EXPERIENCIA-CARNET B-INGLÉS B2-INDEFINIDO/JORNADA COMPLETA (https://europa.eu/eures/portal/jv-se/jv-details/NzQ2MTc1OSAxMDI?lang=en)
+[167s] Unknown employer · Cáceres, Spain
+[167s] Fit: 55/100 · Reception work matches your search, but the role is in Cáceres.
+[167s] 10. SECRETARIA/RECEPCIONISTA (https://europa.eu/eures/portal/jv-se/jv-details/NzM0MzY4NyAxMDI?lang=en)
+[167s] ReSport Clínic Barcelona, S.L. · Barcelona, Spain
+[167s] Fit: 55/100 · Fits your search · Your CV: No clinic experience or Catalan fluency is listed.
+[167s] Tap a job number to mark it applied, save or dismiss it. 12 more with ➕.
+[167s] message>>>
+[167s] Digest ready: 10 jobs, 22 new. Telegram isn't connected, so nothing was sent.
+[167s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[175s] Warning: run not logged to the run history: KeyError: 'free'
+[175s] Warning: The AI could not judge 1 items this time; they wait for the next run
+[175s] AI decide calls: job site kind 2, link-kind 16, one-posting 3, search_role 4
+[175s] ⏱ Time is up (2 min 55 s) for the search: what it has not reached waits for the next search

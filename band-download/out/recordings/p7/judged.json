@@ -1,0 +1,231 @@
+{
+ "persona": {
+  "family": "nurse",
+  "title": "Registered Nurse",
+  "kind": "non-tech",
+  "city": "Dublin",
+  "country": "Ireland",
+  "language": "English",
+  "reference": {
+   "words": [
+    "registered nurse",
+    "staff nurse"
+   ],
+   "nuts2": "IE06"
+  }
+ },
+ "judged_jobs": 26,
+ "model": "Codex small tier",
+ "billing": "subscription",
+ "usd": 0,
+ "rows": [
+  {
+   "title": "Combined Autism & ADHD Assessor for Children (Self-employed)",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Combined Autism & ADHD Assessor for Children",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Combined Autism & ADHD Senior Assessor for Children",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Non-Medical Prescriber - CYP ADHD",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Combined ADHD Senior Assessor & Non-Medical Prescriber for Children",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "ADHD Assessor for Children (Employed)",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "ADHD Assessor for Children (Self-employed)",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "ADHD Senior Assessor for Children",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Combined ADHD Assessor & Non-Medical Prescriber for Children",
+   "company": "palomahealthuk",
+   "location": "Remote",
+   "provider": "palomahealthuk",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Registered Nurses – Relocation to Ireland | Visa Sponsorship & Accommodation Available",
+   "company": "Bluebird Care Longford, Roscommon and Westmeath",
+   "location": "Ireland; Athlone, Ireland; Longford, Ireland; Roscommon, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Registered Nurses, Private Hospitals, Dublin",
+   "company": "via Healthcarejobs.ie",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Registered General Nurse - Permanent - Nationwide",
+   "company": "Inspire Medical",
+   "location": "Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Registered Nurses, Private Hospital Jobs, Dublin",
+   "company": "CPL Healthcare",
+   "location": "Dublin 1, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Registered Psychiatric Nurse",
+   "company": "via Healthcarejobs.ie",
+   "location": "Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Registered Nurse – €1,000 Sign-On Bonus (Day & Night shifts)",
+   "company": "BAYADA Home Health Care",
+   "location": "County Mayo, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Registered General Nurse (RGN) - Cork City & East Cork",
+   "company": "Excel Recruitment",
+   "location": "County Cork, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Registered General Nurse (RGN) - Kildare",
+   "company": "Excel Recruitment",
+   "location": "Kildare, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Registered Psychiatric Nurse, Dublin Central",
+   "company": "CPL Healthcare",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse Oncology",
+   "company": "Orange Recruitment",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse - Cath Lab - €5000 Sign on Bonus",
+   "company": "CPL Healthcare",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse - Endoscopy",
+   "company": "CPL Healthcare",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse Galway Immediate interviews!",
+   "company": "Head Hunt International",
+   "location": "County Galway, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Staff Nurses Required for Nursing Homes, Ireland - NMBI Pinned Nurses Only",
+   "company": "CPL Healthcare",
+   "location": "County Cork, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Registered Nurse",
+   "company": "via Nurse Jobs Ireland",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse",
+   "company": "via Healthcarejobs.ie",
+   "location": "Dublin, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Staff Nurse",
+   "company": "via Healthcarejobs.ie",
+   "location": "Cork, Ireland",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  }
+ ]
+}

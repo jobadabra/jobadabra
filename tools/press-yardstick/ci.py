@@ -174,8 +174,11 @@ def newest_band():
         run = next((r['databaseId'] for r in runs if r['displayTitle'] == BAND_RUN), None)
         if run is None:
             return {}
-        folder = Path('band-download')
-        subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
+        folder = Path('band-download', str(run))
+        # Why (11 Nov 2026, #3805): the verdict reads the band again in the same job, and gh refuses to extract over the first download ("file exists"),
+        # so the second read was {} and every person read "no band on this recording": the band of that run is read once, then reused.
+        if not next(folder.rglob('band.json'), None):
+            subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
         # Why (10 Nov 2026, ys 1/2): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json); this read band-download/band.json, found nothing in every PR run since #3594 (8 Nov)
         # and every verdict read "not measured". Found by reading the first PR comment against the band's own artifact.
         found = next(folder.rglob('band.json'), None)

@@ -145,6 +145,30 @@ class Verdict(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn('not measured', said.getvalue())
 
+    def test_the_verdict_reads_the_same_band_ci_py_read_in_the_same_job(self):
+        """#3805's own run: ci.py downloaded main's band, then the verdict's second download hit gh's "file exists", read {} and said
+        "no band on this recording" for 16 people: a gate that can never be red."""
+        band = {'recordings': {'p1': 'abc'}, 'personas': {'1': ['p1']}, 'runs': {'1': {}}}
+
+        def gh(cmd, **_):
+            if cmd[:3] == ['gh', 'run', 'list']:
+                return mock.Mock(stdout=json.dumps([{'databaseId': 7, 'displayTitle': ci.BAND_RUN}]))
+            target = Path(cmd[cmd.index('-D') + 1], 'out', 'band.json')
+            if target.exists():   # what gh does: it never extracts over a file
+                raise verdict.ci.subprocess.CalledProcessError(1, cmd, stderr='error extracting "out/band.json": file exists')
+            target.parent.mkdir(parents=True)
+            target.write_text(json.dumps(band))
+            return mock.Mock(stdout='')
+
+        cwd = os.getcwd()
+        os.chdir(self.root)
+        try:
+            with mock.patch.object(ci.subprocess, 'run', side_effect=gh):
+                self.assertEqual(ci.newest_band(), band)
+                self.assertEqual(ci.newest_band(), band, 'the second read in the job is the same band, never {}')
+        finally:
+            os.chdir(cwd)
+
     def test_the_lanes_are_main_reader_rows_lanes(self):
         reader_rows = verdict._load('rr', ROOT / 'src' / 'sources' / 'reader_rows.py')
         self.assertEqual(verdict.lanes(self.root / 'no-main-here'), [lane.id for lane in reader_rows.LANES])

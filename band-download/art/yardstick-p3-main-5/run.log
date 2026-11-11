@@ -1,0 +1,8 @@
+{"family": "carpenter", "title": "Carpenter", "kind": "non-tech", "city": "Brussels", "country": "Belgium", "language": "French", "reference": {"words": ["charpentier", "menuisier"], "nuts2": "BE10"}}
+tape: recorded with model override claude-haiku-5-5, replayed with it
+draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p3-main-5/tape/draft.json in 0 s
+Search: 7 roles; places brussels, belgium
+PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (162 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
+Search: 7 roles; places brussels, belgium
+PRESS draw 2 (EURES: on): 4 in places, 0 scored, 0 fit 70+ (175 s)
+PERSONA DONE draw

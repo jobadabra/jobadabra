@@ -1,0 +1,959 @@
+{
+ "persona": {
+  "family": "driver",
+  "title": "Truck Driver (Class CE)",
+  "kind": "non-tech",
+  "city": "Sofia",
+  "country": "Bulgaria",
+  "language": "Bulgarian",
+  "reference": {
+   "words": [
+    "шофьор",
+    "камионен шофьор"
+   ],
+   "nuts2": "BG41"
+  }
+ },
+ "judged_jobs": 115,
+ "model": "Codex small tier",
+ "billing": "subscription",
+ "usd": 0,
+ "rows": [
+  {
+   "title": "Водач (оператор), платформа - промишлен транспорт",
+   "company": "ТРАКИЯ ГЛАС БЪЛГАРИЯ ЕАД",
+   "location": "Targovishte, Bulgaria",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ГОЛДЕН ИНВЕСТМЪНТ ГРУП ООД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ФАКТОРИ 83 ООД ООД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "МЕТКО ТРАНС-89 ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "Стойчев Билд ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ИМПЕРИАЛ-2006 ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ЕЛАЦИТЕ - МЕД АД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ЖОАДИ ЕООД",
+   "location": "Burgas, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ТОДОР КОЛЕВ - ХРИСТИНА КОЛЕВА ЕТ",
+   "location": "Haskovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "Трент Сълюшънс ЕООД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ЖОАДИ ЕООД",
+   "location": "Burgas, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "АНГЕЛОВ - ИВАН АНГЕЛОВ ЕТ",
+   "location": "Pazardzhik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ПРОШЕ - ПАНО ПАНОВ ЕТ",
+   "location": "Razgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "Катя -2011 ЕООД",
+   "location": "Pleven, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ЕМ ДЖИ Поултри ООД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "АСАРЕЛ - ТРАНС ООД",
+   "location": "Pazardzhik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ДОЙЧГАР-60 ЕООД",
+   "location": "Ruse, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ГРИЙН МАРК ООД",
+   "location": "Varna, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "КЛАС 95 ООД",
+   "location": "Haskovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ТРАЧИМ БЪЛГАРИЯ ЕООД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ЕНЕРГОСТРОЙМОНТАЖ - ПС - Б ЕАД",
+   "location": "Veliko Tarnovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ПЪТНО СТРОИТЕЛСТВО АД",
+   "location": "Dobrich, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил",
+   "company": "ТРАНС АСИ 80 ЕООД",
+   "location": "Pazardzhik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "АЛАРА 2000 ООД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ЛЕССЪР ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ЕЛАЦИТЕ - МЕД АД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "КОРОНА ИМ ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "АТИДЖАМ ООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ПЛЮС ХИРИС ООД",
+   "location": "Pernik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "МЕЛБОН АД АД",
+   "location": "Pernik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ДЪНДИ ПРЕШЪС МЕТАЛС ЧЕЛОПЕЧ ЕАД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "АВТОМАГИСТРАЛИ - ЧЕРНО МОРЕ АД",
+   "location": "Shumen, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "Чистота ОП",
+   "location": "Plovdiv, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "Карго Транс 2022 ЕООД",
+   "location": "Shumen, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ЩРАБАГ ЕАД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ВЕТЕРАНЪТ ЕООД",
+   "location": "Burgas, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "БВС - 15 ООД",
+   "location": "Burgas, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "КАМЕЛИЯ ЛОГИСТИК ЕООД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "КАЛЦИТ АД",
+   "location": "Plovdiv, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "РУСКОВ ООД",
+   "location": "Smolyan, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ЕС ТРАНС ЮНИОН ЕООД",
+   "location": "Silistra, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "СВН ТРАНССТРОЙ ЕООД",
+   "location": "Plovdiv, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ПЪТНИ СТРОЕЖИ - ВЕЛИКО ТЪРНОВО ЕАД",
+   "location": "Veliko Tarnovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил - 12 и повече тона",
+   "company": "ИВ ЕКСПРЕС ТРАНСПОРТ ООД",
+   "location": "Ruse, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "МЕЦО ТРАНС ЕООД ЕООД",
+   "location": "Kyustendil, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "ДИСКОРДИА АД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "Сашо шпед ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "ГЛОРИЪР ООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "Б и П Груп ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "СТЕФАНЕЛ 2017 ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "СТЕФАНЕЛ 2017 ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "МАРТИНЕЛИ ООД",
+   "location": "Pernik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "БЕТИ ТРАНС 58 ООД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "ВС-ОЙЛ 94 ООД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "МАТ-СТАР ООД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "ЕНВИРОНМАН-ТЕО-БЪЛГАРИЯ ООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "ММИГ - 2006 ООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "ОБЩИНСКО ДРУЖЕСТВО ЧЕЛОПЕЧ ЕООД",
+   "location": "Sofia, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "СТРОИТЕЛНА КЪЩА - БЕЛА-ИЦА ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "РЕМУС ТРАНС-74 ЕООД ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "МАРШАЛ 91 ООД ООД",
+   "location": "Kyustendil, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, товарен автомобил",
+   "company": "МАКЛЕР КОМЕРС ЕООД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "Авиопартнър България ЕООД ЕООД",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "Тхор Транспорт и Лоджистикс ЕООД",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "КОМУНАЛНА ДЕЙНОСТ ОП",
+   "location": "Vratsa, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ЗАВОДСКИ СТРОЕЖИ - ПС - ПАЗАРДЖИК ЕАД",
+   "location": "Pazardzhik, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ГЛОБЪЛ КЛИНЪР ООД",
+   "location": "Veliko Tarnovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "Общинско предприятие \"Комунална дейност и поддържане на инфраструктурата\" поделение",
+   "location": "Stara Zagora, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "Военно окръжие І степен - Стара Загора поделение",
+   "location": "Haskovo, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ОБЩИНА КОТЕЛ община",
+   "location": "Sliven, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ЕКО ПРОГРАМА 2006 ООД",
+   "location": "Targovishte, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "УЕЙСТ СОЛЮШЪНС БЪЛГАРИЯ ЕООД ЕООД",
+   "location": "Dobrich, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ЗМБГ АД",
+   "location": "Varna, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "ПЕРЛА - ТРЕЙД ЕООД",
+   "location": "Burgas, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, специален тежкотоварен автомобил",
+   "company": "СОРИКО ООД",
+   "location": "Sliven, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, автокран",
+   "company": "Балканстрой КК ООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, платформа",
+   "company": "БАЛКАНТРАНС-2009 ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, самосвал",
+   "company": "ГОГО - ГЕОРГИ ХРИСТОВ ЕТ",
+   "location": "Sofia (stolitsa), Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, самосвал",
+   "company": "Елит -Строй -ТМ ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен самосвал - 12 и повече тона",
+   "company": "АГРОБИЛД ЕООД",
+   "location": "Blagoevgrad, Bulgaria",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "5730.58 Лева Шофьор на товарен автомобил за международни превози",
+   "company": "via Форум на българските шофьори — Обявите на българските шофьор",
+   "location": "Plovdiv",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор прави курсове С+Е",
+   "company": "КРАСИ СИРАКОВ ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор C+E",
+   "company": "ТДМ ГРУП 2015 ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор международен транспорт - Холандия,Белгия,Франция - Контейнери",
+   "company": "Шавемакер България ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Международен шофьор на камион-прави курсове",
+   "company": "СК ТРАНС - 24 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Водач товарен автомобил C+E",
+   "company": "Марая Транс 21 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор",
+   "company": "ЙОАНА 11 ЕООД",
+   "location": "Перник, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "МЕЖДУНАРОДЕН ШОФЬОР на ХЛАДИЛНИК",
+   "company": "ЕН ПЕ ЕС - 2008 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор тежкотоварен автомобил -12 и повече тона",
+   "company": "АБМ ТРАНСПОРТ ООД",
+   "location": "Кюстендил, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор",
+   "company": "ДИАС СПЕД ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьори категория С+Е",
+   "company": "Фриго Транс 2019 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор на млековоз",
+   "company": "АНИТА - 7 ЕООД",
+   "location": "Раковски, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Mеждународен шофьор",
+   "company": "ВИПТЕХ ТРЕЙД ООД",
+   "location": "Варна, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "ШОФЬОР",
+   "company": "МАРТРАНС 25 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор",
+   "company": "Зелени Дел Петров исие СД",
+   "location": "Враца, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьори тежкотоварни автомобили Машинисти на ПСМ",
+   "company": "ЕЛ ТРАНС 2015 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор",
+   "company": "Зелени Дел Петров исие СД",
+   "location": "Дупница, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "МЕЖДУНАРОДНИ ШОФЬОРИ (Категория C+E)",
+   "company": "ДЖИ ГРУП ЛОГИСТИК ООД",
+   "location": "Пазарджик, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор C + E",
+   "company": "ИННА ТРАНС ООД",
+   "location": "Севлиево, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор с кaтегория С+Е за работа в България",
+   "company": "ВМ Логистик ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор, тежкотоварен автомобил – 12 и повече тона (международен транспорт)",
+   "company": "З КОМПАНИ ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "ШОФЬОР ТЕЖКОТОВАРЕН АВТОМОБИЛ - 12 И ПОВЕЧЕ ТОНА",
+   "company": "Н Транс 77 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор",
+   "company": "АВЦ АГАРИКУС ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Международен Шофьор",
+   "company": "С И Д МОТОРС ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор на тежкотоварен автомобил",
+   "company": "Виттвер България ООД",
+   "location": "Благоевград, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "ШОФЬОР, ТОВАРЕН АВТОМОБИЛ МЕЖДУНАРОДНИ ПРЕВОЗИ",
+   "company": "ДИОРЕ ТРАНС ЕООД",
+   "location": "Петрич, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор ТУРЦИЯ-БЪЛГАРИЯ - ТУРЦИЯ",
+   "company": "Тримекс логистик ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международeн шофьор - прави курсове от България",
+   "company": "МО - МО ТРАНС ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "ШОФЬОР",
+   "company": "Лозана ЕАД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьори на четириосен самосвал в София и Багеристи",
+   "company": "ГЛОРИЯ 97 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор на самосвал",
+   "company": "Гого - Георги Христов ЕТ",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор, товарен автомобил (международни превози)",
+   "company": "ИМАРО ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор четириос самосвал",
+   "company": "ЕЙЧ АР БИЗНЕС ПАРТНЕР ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Шофьор на товарен автомобил (самосвал/дъмпер) за работа на кариера",
+   "company": "Копривлен-мрамор ЕООД",
+   "location": "Горна Кремена, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Шофьор товарен автомобил над 12т. международен",
+   "company": "САМ 96 ЕООД",
+   "location": "София, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Международен шофьор ТУРЦИЯ-БЪЛГАРИЯ-ТУРЦИЯ",
+   "company": "Тримекс логистик ЕООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Международен шофьор",
+   "company": "К З Т - ЗЛАТАНОВИ ООД",
+   "location": "Пловдив, Bulgaria",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  }
+ ]
+}
