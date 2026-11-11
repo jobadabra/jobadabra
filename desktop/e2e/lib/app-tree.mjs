@@ -76,10 +76,14 @@ const LSTART = /^(\s*\d+\s+\d+\s+)[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d\d
 const startsAsMs = text => text.split(/\r?\n/).map(line => line.replace(LSTART, (whole, ids) => { const ms = Date.parse(whole.slice(ids.length)); return Number.isFinite(ms) ? `${ids}@${ms} ` : ids; })).join('\n');
 
 /** Running (a zombie waiting to be reaped is gone: the program has ended). */
-export function isAlive(pid, {kill = process.kill.bind(process), stat = file => fs.readFileSync(file, 'utf8')} = {}) {
+export function isAlive(pid, {kill = process.kill.bind(process), stat = file => fs.readFileSync(file, 'utf8'), proc = HAS_PROC} = {}) {
   try { kill(pid, 0); } catch (error) { return error.code === 'EPERM'; }
-  try { return !/^\d+ \(.*\) Z/s.test(stat(`/proc/${pid}/stat`)); } catch { return true; }   // no /proc (Mac, Windows): alive
+  if (!proc) return true;   // no /proc (Mac, Windows): the signal's answer is the whole answer
+  // Why (11 Nov 2026, #3723's harness run 42935706906): a program that ends between the two reads answered the signal and then had no /proc entry; that read
+  // failing meant "alive" (the no-/proc fallback), so close-app-tree saw it running when closeApp returned, and it "ended 0 ms later" (state '?', not listed).
+  try { return !/^\d+ \(.*\) Z/s.test(stat(`/proc/${pid}/stat`)); } catch { return false; }
 }
+const HAS_PROC = fs.existsSync('/proc/self/stat');
 
 // Why (1 Nov 2026, review of this fix): `ps lstart` has 1 s resolution and procps derives it from the uptime, so two `ps` calls can differ by a second for one process. A pid that was
 // taken over is always newer than the process it replaces, so only a start later than this slack is "another process".
