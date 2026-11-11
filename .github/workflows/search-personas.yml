@@ -439,7 +439,7 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/download-artifact@v7
         id: state
-        continue-on-error: true   # no state when the floors were not checked (unreadable state, a not-run night)
+        continue-on-error: true   # no state when neither floors.py nor lost.py wrote one (a floors state floors-save would refuse, or one GitHub did not return)
         with: {name: search-personas-floors-state, path: floors}
       - name: Write the floors compare computed (shape checked first; compare-and-swap)
         if: steps.state.outcome == 'success'

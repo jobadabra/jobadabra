@@ -12,8 +12,9 @@ code. Causes ({kind, red, what, people, detail}), one per kind and what:
 Told on a change only (sa, 10 Nov 2026: "never the same alert every night"; the night itself stays red while a cause lasts): `open` = the causes now; `tell` = the
 causes not open before; `back` = the causes open before and gone now. A blind night keeps the open causes (it saw no source) and backs none.
 Where `open` lives between nights (sa, 10 Nov 2026): in the floors' state (refs/tags/search-floors, key `lost`), so only a scheduled night opens or clears a cause, through
-the floors-save job (contents: write, compare-and-set, shape checked by floors.validate). The night's compare writes it into result/floors-state.json (--state); a run
-without that file (by hand, or floors not checked) reads the open causes from the ref and never writes them.
+the floors-save job (contents: write, compare-and-set, shape checked by floors.validate). The night's compare writes it into result/floors-state.json (--state); a
+scheduled night whose floors wrote none (not run, no floors state yet) writes that file itself from the ref's state, floors unchanged, so a cause is never told twice
+(Gitar on #3770); a by-hand run reads the open causes from the ref and never writes them. Only a ref state floors.validate refuses stays unsaved, said in the log.
 
   python3 tools/persona-search/lost.py check <verdict.json> [--state <floors-state.json>] [--logs <results dir>] [--night] [<earlier run dir>...]   (newest first)
   adds `lost`; exit 3 when a cause is red"""
@@ -134,8 +135,9 @@ def key(cause):
     return f"{cause['kind']}:{cause['what']}"
 
 
-def open_before(state_file):
-    """(the floors-state file's data or None, the causes open before): from the night's floors-state.json when compare wrote one, else read from the ref (never written)."""
+def open_before(state_file, night=False):
+    """(the floors-state data to write, or None; the causes open before): from the night's floors-state.json when compare wrote one, else from the ref. On a
+    scheduled night without that file the data is the ref's state as it is (a fresh one when there is none), so floors-save keeps the open causes; never by hand."""
     try:
         data = json.loads(Path(state_file).read_text(encoding='utf-8'))
         return data, list(((data.get('state') or {}).get('lost') or {}).get('open') or [])
@@ -143,10 +145,17 @@ def open_before(state_file):
         pass
     try:
         import floors as floors_mod
-        _, state = floors_mod.read_state(os.environ.get('GITHUB_REPOSITORY', ''))
-        return None, list(((state or {}).get('lost') or {}).get('open') or [])
+        base, state = floors_mod.read_state(os.environ.get('GITHUB_REPOSITORY', ''))
     except Exception:   # noqa: BLE001 (Why: no readable state = nothing open before; the causes are told as new, the night's red is unchanged)
+        print('lost: the floors state could not be read; open causes are not saved tonight (they may be told again)')
         return None, []
+    opened = list(((state or {}).get('lost') or {}).get('open') or [])
+    if not night or not state_file:
+        return None, opened
+    if state is not None and floors_mod.validate(state):
+        print('lost: the floors state has a shape floors-save refuses; open causes are not saved tonight (they may be told again)')
+        return None, opened
+    return {'base': base, 'state': state if state is not None else {'version': 1, 'series': {}}}, opened
 
 
 def check(verdict_path, earlier_dirs, logs=None, state_file=None, night=False):
@@ -161,7 +170,7 @@ def check(verdict_path, earlier_dirs, logs=None, state_file=None, night=False):
     blind = verdict.get('state') == 'not-run'
     causes = ([] if blind else gone(verdict, earlier) + unread(verdict, timeups(logs)) + floor(verdict, night)) + not_run(verdict)
     red = any(c['red'] for c in causes)
-    data, opened = open_before(state_file)
+    data, opened = open_before(state_file, night)
     was = set(opened)
     now = {key(c) for c in causes} | ({k for k in was if not k.startswith('not-run:')} if blind else set())
     tell = [c for c in causes if key(c) not in was]

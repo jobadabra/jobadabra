@@ -126,6 +126,39 @@ class Check(unittest.TestCase):
             self.assertFalse(Path(tmp, 'no-floors-state.json').exists())
         self.assertEqual((code, out['tell']), (lost.RED, []), 'open on the ref: still red, not told again')
 
+    def test_a_night_whose_floors_wrote_no_state_still_keeps_its_causes(self):
+        """Gitar on #3770: a scheduled night without floors-state.json (not run, no floors state yet) must save its open causes, or the same cause is told nightly."""
+        unread_night = {'state': 'red', 'rows': [], 'personas': [person(n, step_yield=read({'employer_sites': 3, 'free_job_apis': 1})) for n in range(1, 7)]}
+        series = {'0123456789ab|codex,claude|eures-on': {'people': {}, 'last_green': None}}
+        ref = {'state': ('b' * 40, {'version': 1, 'series': series})}
+        with tempfile.TemporaryDirectory() as tmp:
+            def night_without_floors():
+                path, state = Path(tmp, 'verdict.json'), Path(tmp, 'floors-state.json')
+                state.unlink(missing_ok=True)
+                path.write_text(json.dumps(unread_night), encoding='utf-8')
+                with mock.patch.object(floors, 'read_state', return_value=ref['state']):
+                    code = lost.check(path, [], None, state, night=True)
+                written = json.loads(state.read_text(encoding='utf-8'))
+                ref['state'] = ('c' * 40, written['state'])   # floors-save wrote it
+                return code, json.loads(path.read_text(encoding='utf-8'))['lost'], written
+            code, first, written = night_without_floors()
+            self.assertEqual((code, [c['what'] for c in first['tell']]), (lost.RED, ['job_boards']))
+            self.assertEqual((written['base'], written['state']['series'], written['state']['lost']), ('b' * 40, series, {'open': ['unread:job_boards']}),
+                             'the floors stay as the ref has them; only the open causes are added')
+            _, second, _ = night_without_floors()
+            self.assertEqual(second['tell'], [], 'told once, not every night')
+
+    def test_a_floors_state_save_would_refuse_is_never_written(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path, state = Path(tmp, 'verdict.json'), Path(tmp, 'floors-state.json')
+            path.write_text(json.dumps({'personas': []}), encoding='utf-8')
+            with mock.patch.object(floors, 'read_state', return_value=('b' * 40, {'version': 2})):
+                lost.check(path, [], None, state, night=True)
+            self.assertFalse(state.exists(), 'a broken state stays for floors.py to report, never overwritten here')
+            with mock.patch.object(floors, 'read_state', return_value=(None, None)):
+                lost.check(path, [], None, state, night=True)
+            self.assertEqual(json.loads(state.read_text(encoding='utf-8')), {'base': None, 'state': {'version': 1, 'series': {}, 'lost': {'open': []}}}, 'first night: a fresh state')
+
     def test_an_odd_cause_key_is_never_written_into_the_floors_state(self):
         odd = {'state': 'red', 'rows': [], 'personas': [], 'floors': {'red': [{'persona': 4, 'number': 'right/now', 'floor': 9, 'now': 2}]}}
         code, out, opened = self.run_check(odd)   # run_check asserts floors.validate accepts what was written
