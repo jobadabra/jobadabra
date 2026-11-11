@@ -117,7 +117,7 @@ Design:
    we are at step x from the plan (which has y total steps)".)
 Simplify to it: the ordering code of boards_first, boards_ahead and boards_beside is replaced; no new case is added.
 ```
-Proofs, red today and marked `unittest.expectedFailure` so the run stays green and turns red the moment a fix makes them pass (the mark comes off in that PR): `tests/unit/press/test_lanes.py` (rules 1, 4: every source lane reading before any has finished; 3/5) and `tests/unit/press/test_press_ends.py` (rule 3: the process ends with a call in flight, 6 places in one loop; 2/5). The table's own guard: `tests/unit/sources/test_reader_rows.py` LanesTest.
+Proofs, red today and marked `red_until(<fix>, <cause>)` (tests/unit/press/red_until.py): each is reported skipped while it fails with its stated cause, fails on any other error, and fails once it passes, so the fixing PR removes the mark: `tests/unit/press/test_lanes.py` (rules 1, 4: every source lane reading before any has finished; 3/5) and `tests/unit/press/test_press_ends.py` (rule 3: the process ends by its deadline with a call in flight, each place that leaves work running in one loop, ending as the engine does through src/run_exit.py; 2/5). The table's own guard: `tests/unit/sources/test_reader_rows.py` LanesTest.
 
 ## Rules for every search PR from now (go into CLAUDE.md with WP1)
 - It names the person and the number it moves (in = out for a source, or coverage), with 3 runs before and 3 after; a difference counts only when larger than the spread of those runs.
@@ -149,7 +149,7 @@ Proofs, red today and marked `unittest.expectedFailure` so the run stays green a
 - [x] WP7 G4 (fl) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)` (proof: tools/pr-body-check.py, tests/tooling/ci/test_pr_moves.py)
 - [x] WP7 G6 (cr red run + alert, sf stage counts) A source getting lost is red and alerted on the Engineering channel ("gone" arms once #3749 writes `sources`) (proof: tools/persona-search/lost.py, desktop/e2e/search-alert.mjs, tests/tooling/ci/test_search_lost.py)
 - [ ] WP8 (sf engine timeline and parallel fixes, a UI session for the app) The search in parallel, one progress line per lane
-  - [ ] 1/5 Safety net: the lane table and the two proofs, red today under expectedFailure (this PR)
+  - [ ] 1/5 Safety net: the lane table and the two proofs, red today for their stated cause under `red_until` (this PR)
   - [ ] 2/5 Calls end on the clock, in every place that leaves background work (closes #3740)
   - [ ] 3/5 Lanes: every source starts at 0, ends in a said state (closes #3754)
   - [ ] 4/5 Waiting jobs kept and asked first; sorting and scoring take jobs as they land; the planner applied (rules 5-7)
