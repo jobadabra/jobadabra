@@ -25,6 +25,14 @@ async function assertGone(pid, what) {
 const START_THE_APP = "const {spawn} = require('node:child_process'); const app = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'}); console.log(app.pid); setInterval(() => {}, 1000);";
 const firstLine = async stream => { for await (const chunk of stream) return String(chunk).split('\n')[0]; return ''; };
 
+test('a program that ends between the signal and the /proc read is gone, not alive', () => {
+  const ended = () => { throw Object.assign(new Error('ENOENT'), {code: 'ENOENT'}); };   // the entry went away right after the signal was answered
+  assert.equal(isAlive(4242, {kill: () => true, stat: ended, proc: true}), false, 'Linux: the /proc entry is gone, so is the program');
+  assert.equal(isAlive(4242, {kill: () => true, stat: ended, proc: false}), true, 'no /proc (Mac, Windows): the signal\'s answer stands');
+  assert.equal(isAlive(4242, {kill: () => true, stat: () => '4242 (node) Z 1', proc: true}), false, 'a zombie is gone');
+  assert.equal(isAlive(4242, {kill: () => true, stat: () => '4242 (node) S 1', proc: true}), true, 'positive control: a sleeping program is alive');
+});
+
 test('closing the app ends the program the launcher started, when only the launcher exits', async t => {
   const launcher = spawn(process.execPath, ['-e', START_THE_APP], {stdio: ['ignore', 'pipe', 'ignore']});
   const app = Number(await firstLine(launcher.stdout));
