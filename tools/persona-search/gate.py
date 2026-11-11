@@ -465,7 +465,7 @@ def table(verdict):
     notes = [f"{r['label'].split(' ')[0]}: {r['funnel_note']}" for r in verdict['rows'] if r.get('funnel_note') and r['mark'] != '🟢']
     if notes:   # where a press that found no right job spent its time (funnel.py), one line each
         lines += ['', '<sub>Where the time went: ' + ' · '.join(notes) + '</sub>']
-    lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of every open job found; Shown = of the jobs the Jobs list in the app shows once the search has ended (unscored jobs wait); one press each, '
+    lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of every open job found; Shown = of the jobs the Jobs list in the app shows once the search has ended (every found job, scored or waiting for its score); one press each, '
               'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the all-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). A row is green with at least one right job, grey without (it says why: AI queue full, no job scored, none right); the whole check is grey when no row is green (not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
