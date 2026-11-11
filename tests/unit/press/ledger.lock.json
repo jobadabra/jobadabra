@@ -17,7 +17,7 @@
  },
  "L05": {
   "gets": "the job boards lane ends at the run's deadline, not at the employer sites' read cut",
-  "hash": "09542b2a91ec77ac"
+  "hash": "5e18c9fd04e45e79"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
@@ -37,7 +37,7 @@
  },
  "L10": {
   "gets": "every press starts the job boards at second 0 in their own lane; the first-jobs step reads employer sites and scores them without waiting for the boards",
-  "hash": "855239e46fed0103"
+  "hash": "a4e3cc044ef99968"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
