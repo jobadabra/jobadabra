@@ -14,7 +14,7 @@ from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
 from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
-from src.press import stage, step_yield
+from src.press import stage
 
 GUARD_S = 15   # a hang guard only: every lane starts within milliseconds of the press once none waits for another (the red run waits it out once)
 MONOTONIC = time.monotonic   # the real clock, for the hang guard: the test moves the stand-in clock the search reads
@@ -75,6 +75,8 @@ class LanesTest(phases.SearchCharacterization):
                     mock.patch.object(time_budget.time, 'monotonic', side_effect=lambda: real_monotonic() + jumped[0])]
         # Why (lanes 1/5, #3780's CI): the real starters turn the search's own tallies on; left so, they broke the next tests in the same process
         patches += [mock.patch.dict(read_methods._state)] + [mock.patch.object(feeds, name, getattr(feeds, name)) for name in ('PLACED', 'READ', 'TRIAGED')]
+        scans, real_scan = [], REAL[(aggregators, 'scan')]   # the real stage (the harness swaps in a stand-in)
+        patches += [mock.patch.object(aggregators, 'scan', side_effect=lambda *a, **k: scans.append(real_scan(*a, **k)) or scans[-1])]   # what the APIs' stage reports
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
@@ -84,8 +86,8 @@ class LanesTest(phases.SearchCharacterization):
         self.assertTrue(lanes.all_in.is_set(), f'every source lane started before any finished; started: {sorted(lanes.started)}, '
                                                f'first to finish: {lanes.finished_first}')
         self.assertLessEqual(set(SEAMS), set(reader_rows.BY_LANE), 'every lane here is a lane of the table')
-        ended = step_yield.ended()   # each lane's one said state (design rule 4): done / cut, saying what waits / failed, why
-        self.assertEqual(ended['free_job_apis'], stage.Result(stage.FAILED, 'RuntimeError'), 'a reader that raises is its lane failing, never the run')
+        said = [found['said'] for found in scans if 'said' in found]   # the lane's one said state (design rule 4): done / cut, saying what waits / failed, why
+        self.assertEqual(said, [stage.Result(stage.FAILED, 'RuntimeError')], 'a reader that raises is its lane failing, never the run')
 
 
 for _name in [name for name in dir(phases.SearchCharacterization) if name.startswith('test_') and name not in LanesTest.__dict__]:

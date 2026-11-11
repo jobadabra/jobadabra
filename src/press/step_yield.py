@@ -25,27 +25,12 @@ _lock = threading.Lock()
 _spans = {}    # step -> [(start, end)] in time.monotonic() seconds
 _landed = {}   # step -> {url: True} of the NEW jobs that landed
 _scored = {}   # step -> {job id} of the jobs the step scored
-_ended = {}    # lane id (src/sources/reader_rows.py LANES) -> its one said state, a stage.Result (lanes 3/5, design rule 4)
 
 
 def reset():
     """A run's measure starts empty (the search calls it first, as run_counts.reset)."""
     with _lock:
-        _spans.clear(), _landed.clear(), _scored.clear(), _ended.clear()
-
-
-def end(lane, result):
-    """`lane` ended in `result` (a stage.Result: done / cut, saying what waits / failed, why); its one owner says it once, the first word stands.
-    Why (lanes 3/5, #3754, 11 Nov 2026): a lane cut by the clock and one that failed both read as "0 jobs"; one said state per lane feeds the
-    night's sources rows, G6 and the card (WP8 design rule 4)."""
-    with _lock:
-        _ended.setdefault(lane, result)
-
-
-def ended():
-    """{lane id: stage.Result} of the lanes that ended in this run so far (a copy)."""
-    with _lock:
-        return dict(_ended)
+        _spans.clear(), _landed.clear(), _scored.clear()
 
 
 @contextlib.contextmanager
@@ -170,7 +155,6 @@ def run(db, run_at):
     """Measure, keep and say this run's step yield; returns the rows. Never stops a search (the caller catches)."""
     rows = measure(db)
     record(db, run_at, rows)
-    with _lock:   # the lanes' states stay readable until the next search's reset: the run's report and the card read them after this
-        _spans.clear(), _landed.clear(), _scored.clear()
+    reset()
     print(line(rows), flush=True)
     return rows

@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from .. import read_methods, time_budget
 from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
-from ..press import resume, stage, step_yield
+from ..press import resume, stage
 
 SPACING_HOURS = 6
 PAGES = 2
@@ -268,7 +268,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     on_jobs(jobs): each reader's jobs as soon as it is read (owner, 18 Oct 2026: jobs shown as quickly as possible). ahead: the found boards
     already read beside the employer sites (src/sources/boards_ahead.py), taken instead of read again. early: the first-jobs slice takes `readers` now (TAKEN).
     shown: {url: item} of the jobs the slice handed early (kept). lane: the APIs already asked from the press's start (src/sources/api_lane.py),
-    taken here, never asked again; one still reading at the read cut waits for the next search. The lane ends in one said state (step_yield.end)."""
+    taken here, never asked again; one still reading at the read cut waits for the next search. The lane's one said state is report['said']."""
     resume.ran('free job APIs')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     report = {'jobs': [], 'sources': []}
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
@@ -320,7 +320,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     if late:
         time_budget.later('free job APIs', len(late), 'sources' if len(late) != 1 else 'source')
     if not early:
-        step_yield.end('free_job_apis', _said(report, late))   # the lane's own sources only: EURES and the found boards are lanes of their own
+        report['said'] = _said(report, late)   # the lane's one state, in the run's own report (no module state: test_run_state_only_shrinks)
     return _done(report)
 
 
@@ -348,15 +348,17 @@ def _one(db, search, name, read, now, shown, ahead, lane, lately):
 
 
 def _said(report, late):
-    """The free job APIs' lane's one state: cut when one of its sources waits for the next search, failed when every one asked failed, else done."""
+    """The free job APIs' lane's one state: failed when some failed and none read (Gitar on #3802: also when others still wait, so a failure
+    is never hidden behind a wait), else cut when one of its sources waits for the next search, else done."""
     from . import api_lane
     own = [row for row in report['sources'] if row.get('company') not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
     late = [name for name in late if name not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
     failed = [row for row in own if not row.get('ok')]
+    if failed and len(failed) == len(own):
+        waiting = f'; {len(late)} wait for the next search' if late else ''
+        return stage.Result(stage.FAILED, (failed[0].get('error', '').split(':')[0] or 'failed') + waiting)
     if late:
         return stage.Result(stage.CUT, f'{len(late)} wait for the next search')
-    if failed and len(failed) == len(own):
-        return stage.Result(stage.FAILED, failed[0].get('error', '').split(':')[0] or 'failed')
     return stage.Result(stage.DONE)
 
 

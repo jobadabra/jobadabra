@@ -181,44 +181,44 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
         apis = start_apis(feed_db) if full_read else None   # every lane from second 0: the free APIs no longer wait for the employer sites (lanes 3/5)
-        from .sources import boards_first
-        if slice_first:
-            try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
-                with step_yield.span('employer_sites'):   # the slice also scores the first 3 jobs: its seconds are the read's and those scores' (step_yield.py)
-                    first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
-                        db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
-                                   import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
-            except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
-                print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
-            if full_read:
+        try:   # Gitar on #3802: the lane's threads end with the whole gather, whatever raises before the APIs' stage
+            from .sources import boards_first
+            if slice_first:
+                try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
+                    with step_yield.span('employer_sites'):   # the slice also scores the first 3 jobs: its seconds are the read's and those scores' (step_yield.py)
+                        first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
+                            db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
+                                       import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
+                except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
+                    print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
+                if full_read:
+                    try:
+                        with step_yield.span('job_boards'):
+                            first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
+                    except Exception as error:  # noqa: BLE001 — the full board read reads them
+                        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
+            from .ai import batch_scope
+            from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
+            # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
+            # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
+            beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
+            first = None   # the web search's boards on a repeat run: started first, read beside the employer sites (a first press read them after its slice)
+            with batch_scope.concurrent() if beside or (full_read and not slice_first) else contextlib.nullcontext():   # one scope for every reader beside the employer sites
+                if full_read and not slice_first:
+                    first = start_boards_first()
+                discovery = boards_beside.start() if beside else None
                 try:
-                    with step_yield.span('job_boards'):
-                        first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
-                except Exception as error:  # noqa: BLE001 — the full board read reads them
-                    print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
-        from .ai import batch_scope
-        from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
-        # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
-        # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
-        beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
-        first = None   # the web search's boards on a repeat run: started first, read beside the employer sites (a first press read them after its slice)
-        with batch_scope.concurrent() if beside or (full_read and not slice_first) else contextlib.nullcontext():   # one scope for every reader beside the employer sites
-            if full_read and not slice_first:
-                first = start_boards_first()
-            discovery = boards_beside.start() if beside else None
-            try:
-                report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'), first=first)
-            finally:   # inside the scope: its answers join the shared copies before the scope ends
-                if discovery is not None:
-                    discovery.finish()
-            first_boards = take_boards_first(first, feed_db, so_far) or first_boards
-        report['jobs'] += first_boards
-        crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
-        if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
-            crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
-        run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
-        coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
-        try:
+                    report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'), first=first)
+                finally:   # inside the scope: its answers join the shared copies before the scope ends
+                    if discovery is not None:
+                        discovery.finish()
+                first_boards = take_boards_first(first, feed_db, so_far) or first_boards
+            report['jobs'] += first_boards
+            crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
+            if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
+                crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
+            run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
+            coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
             gather_apis(args, feed_db, report, so_far, ahead, apis)
         finally:
             if apis is not None:
