@@ -8,7 +8,7 @@ import * as contactDetails from './contact.js';
 import * as notion from './notion.js';   // Notion-only: the Profile/answers texts and ⚙️ Search settings page when Notion is the store
 import * as notionGate from './notion-gate.js';
 import {withoutNotes} from './config-text.js';
-import {remoteWordOf} from './strategy-rebuild.js';
+import {remoteWordOf} from '../renderer/remote-word.js';
 import {writePrivate} from './private-file.js';
 import {log as appLog} from './log.js';
 import {dropFragment, editTitles, hasFragment, titlesOf, view as viewRoles, withDerived} from './target-roles.js';

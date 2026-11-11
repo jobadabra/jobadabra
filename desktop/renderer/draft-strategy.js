@@ -2,14 +2,13 @@
 // goals, relocation, remote_jobs, level, digest_min_score), so step 3 draws the same cards from the draft instead of the saved settings. Pure; guarded by
 // test/unit/renderer/draft-strategy.test.js.
 import {fragmentWords} from './fragment-words.js';
+import {isNoWord} from './remote-word.js';
 import {searchLevel} from './goal-kinds.js';
 
 const SEARCHED = 5;   // lib/target-roles.js: the first titles are also searched on job boards
 const first = value => [value].flat().filter(Boolean)[0] || '';
 const entries = items => (items || []).map(item => ({fragment: String(item), label: fragmentWords(item)})).filter(entry => entry.label);
 const placeText = place => (place && typeof place === 'object' ? [place.location, place.language].filter(Boolean).join(' · ') : String(place ?? ''));
-// The "Remote jobs" setting says no in any of these words (src/sources/feeds.py remote_wanted).
-const NO = new Set(['no', 'non', 'nein', 'none', 'never', 'off', 'false']);
 
 export function draftAsStrategy(draft = {}) {
   const search = draft.search || {}, preferences = draft.preferences || {}, places = search.locations || {};
@@ -29,7 +28,7 @@ export function draftAsStrategy(draft = {}) {
       gqueries: (search.google_jobs?.queries || []).map(String), gplaces: (search.google_jobs?.locations || []).map(placeText).filter(Boolean),
     },
     digest_min_score: preferences.digest_min_score,
-    remote_jobs: ![search.remote_jobs].flat().some(value => NO.has(String(value ?? '').trim().toLowerCase())),
+    remote_jobs: ![search.remote_jobs].flat().some(isNoWord),
     remote_word: String([search.remote_jobs].flat()[0] ?? '').trim().toLowerCase(),
     relocation: first(places.relocation) || 'unspecified',
     goals, details: {}, level: level || (goals.seniority ? searchLevel(goals.seniority) : ''), compensation: goals.minimum_salary || '',

@@ -28,9 +28,10 @@ test('a rebuild lists "Remote work: Yes → My country" in Search criteria; an o
   assert.ok(forWindow(lines({}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'), 'missing = Yes (an old strategy)');
   assert.ok(forWindow(lines({remote_jobs: ['No']}, {remote_jobs: ['Yes']})).includes('Remote work: No → Yes'));
   assert.deepEqual(lines({remote_jobs: ['Country']}, {remote_jobs: ['Country']}).filter(line => /Remote work/.test(line)), []);
-  // Code review: the engine reads none/never/off/false/non/nein as No (src/sources/feeds.py remote_wanted), and a saved value may be one string.
+  // Code review: the engine reads none/never/off/false/non/nein as No (src/sources/feeds.py remote_wanted); one reader, renderer/remote-word.js, serves this review and the Strategy cards.
   assert.ok(forWindow(lines({remote_jobs: ['none']}, {remote_jobs: ['Country']})).includes('Remote work: No → My country'), 'a saved "none" is No, as the engine reads it');
-  assert.ok(forWindow(lines({remote_jobs: 'No'}, {remote_jobs: ['Yes']})).includes('Remote work: No → Yes'), 'a string value does not break the review');
+  assert.doesNotThrow(() => lines({remote_jobs: 'No'}, {remote_jobs: ['Country']}), 'a saved value that is not a list does not break the review');
+  assert.ok(forWindow(lines({remote_jobs: 'No'}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'), 'the engine iterates a bare string by letters and finds no word: Yes (src/sources/feeds.py remote_wanted)');
   assert.deepEqual(lines({remote_jobs: ['No']}, {remote_jobs: ['None']}).filter(line => /Remote work/.test(line)), [], 'the same word in another spelling is no change');
   assert.deepEqual(lines({remote_jobs: ['Yes']}, {remote_jobs: []}).filter(line => /Remote work/.test(line)), [], 'a draft that says nothing changes nothing');
 });
