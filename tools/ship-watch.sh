@@ -19,6 +19,7 @@ repo="${4:-$(pr_repo .)}"; start_dir="$PWD"
 # Why (2 Nov 2026, owner: "let's check every 1 imnute"; PRs sat red for minutes): a look every 60 s, not 120; the ETag reads below made an unchanged look free, so the 27 Oct limit no longer sets the pace.
 #   Each look reads REST with the last ETag (tools/pr-rest-lib.sh): an unchanged answer is free, so a look costs about one call.
 poll="${SHIP_WATCH_POLL:-60}"; cap="${SHIP_WATCH_CAP:-172800}"; backoff_max="${SHIP_WATCH_BACKOFF_MAX:-900}"; backoff=0
+gitar_head=""; gitar_t0=0   # the head the Gitar-ask timer runs for, and when it began (below)
 old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
@@ -108,6 +109,17 @@ while :; do
     #   GREEN also needs the required "All checks passed" green on it: a status pr-verdict.yml writes since 26 Oct 2026 (before: a check-run of pr-gate.yml with that name).
     checks="$(pr_checks "$repo" "$head")" || checks=""
     now="$(jq -r '[.[]? | select(.bucket == "fail") | .name] | first // empty' <<<"${checks:-[]}" 2>/dev/null)" || now=""
+    # Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 sat 7+ min with no review): Gitar reviews a PR when it opens, not a push to an
+    #   open PR, so a pushed head has no "Gitar" check and nobody asks. After SHIP_WATCH_GITAR_AFTER s (default 180) without one, this watcher posts ONE "Gitar review" per head (a second comment inside
+    #   ~50 min locks the PR, so the head is written to the marker before the post and never asked twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
+    if [ -z "$checks" ] || jq -e 'any(.[]?; .name == "Gitar")' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
+    else
+      [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
+      if [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ]; then
+        printf '%s\n' "$head" > "$seen.gitar-asked"
+        if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi
+      fi
+    fi
     key="${now:+$head:$now}"
     [ "$key" = "$red" ] || { [ -z "$now" ] || say "RED #$n $now $head"; red="$key"; }   # once per red check; green again re-arms it
     if jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping") and any(.[]; .name == "All checks passed")' <<<"${checks:-[]}" >/dev/null 2>&1; then

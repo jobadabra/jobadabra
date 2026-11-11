@@ -4,7 +4,7 @@
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
-//   States: changes requested | approved with suggestions | approved | reviewing (no verdict for the current head), plus the gray "working" mark a session sets.
+//   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026), plus the gray "working" mark a session sets.
 //   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
 //   Moments that run it: a push, open or reopen of the PR, Gitar's review or new comment, EVERY push to main (all open PRs), and the Worker's ten-minute tick (all open PRs;
 //   app-core/src/scheduler.js). Gitar closes a finding by only EDITING its comment, which starts nothing, so the tick is what bounds the label's age: at most ten minutes stale.
@@ -22,6 +22,8 @@ export const LABELS = {
 };
 // Gray, our side of the conversation (owner, 28 Oct 2026: "when we acknowledged and working on the feedback, a secondary label, a gray one"; "what's the latest status from Gitar and what's our current action").
 export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'No Gitar verdict for the current head yet'};
+// Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check on the head; no check = not started.
+export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has no check on this head yet; one "Gitar review" comment starts it'};
 export const WORKING = {name: 'Working on PR comments', color: '6b7280', description: 'A session is applying the review feedback; a push clears it'};
 
 /** The verdict kind in Gitar's comment body, or null when it holds no verdict line (e.g. a review in progress). Order matters: "Approved with suggestions" contains "Approved". */
@@ -55,14 +57,19 @@ function headTime(repo, sha) {
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
+/** True when Gitar has a check suite on the head (REST path; the GraphQL read gets it from the same suites it already lists). */
+function gitarOnHead(repo, sha) {
+  return JSON.parse(gh('api', `repos/${repo}/commits/${sha}/check-suites`)).check_suites.some(c => /gitar/i.test(c.app?.slug || ''));
+}
+
 /** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, workingSince, headTime, verdictTime}) {
-  const names = [verdict || WAITING.name];
+export function wantedLabels({verdict, workingSince, headTime, verdictTime, gitarOnHead = true}) {
+  const names = [verdict || (gitarOnHead ? WAITING.name : NOT_STARTED.name)];
   if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && (verdict !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
-const ALL = [...Object.values(LABELS), WAITING, WORKING];
+const ALL = [...Object.values(LABELS), WAITING, NOT_STARTED, WORKING];
 const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
 /** Adds one label; creates it (a REST call) only when GitHub says the repo has no such label yet, then adds it again.
@@ -106,7 +113,7 @@ const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository
   comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body updatedAt } }
   labels(first: 30) { nodes { name } }
   timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
-  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt } } } } }
+  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } } } } } }
 } } }`;
 
 /** The PR's state, Gitar's newest Code Review comment, head time, labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit
@@ -126,6 +133,7 @@ export function fromGraphql(data) {
     review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
     labels,
     workingSince: workedAt,
+    gitarOnHead: commit.checkSuites.nodes.some(c => /gitar/i.test(c.app?.slug || '')),
   };
 }
 
@@ -141,7 +149,7 @@ function readPrByRest(repo, pr, info) {
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
+  return {state: info.state, headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
 }
 
 const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
@@ -152,7 +160,7 @@ function syncOnce(pr) {
   const read = readLive(repo, pr);
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});
+  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead});
   const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
