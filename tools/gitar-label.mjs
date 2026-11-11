@@ -122,19 +122,21 @@ const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository
  * of Actions' 1,000-an-hour GITHUB_TOKEN quota; GraphQL is its own bucket and one call. Same head-time rule as headTime(): the later of commit date and first check suite. */
 export function fromGraphql(data) {
   const pr = data.repository.pullRequest;
-  const reviews = pr.comments.nodes.filter(c => c.author?.login === 'gitar-bot' && /Code Review/.test(c.body));
+  const reviews = pr.comments.nodes.filter(c => c?.author?.login === 'gitar-bot' && /Code Review/.test(c.body));
   if (!reviews.length && pr.comments.pageInfo.hasPreviousPage) return null;
   const commit = pr.commits.nodes[0].commit;
+  // Why (11 Nov 2026, #3817 run 43026926353): GitHub can answer a null node in a list (a suite or event this token may not see); one crashed the label run red. Every list here skips them.
+  const suites = commit.checkSuites.nodes.filter(Boolean);
   const latest = reviews.sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt)).at(-1);
-  const labels = pr.labels.nodes.map(l => l.name);
-  const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
+  const labels = pr.labels.nodes.filter(Boolean).map(l => l.name);
+  const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e?.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
   return {
     state: pr.state.toLowerCase(),
-    headTime: [commit.committedDate, commit.checkSuites.nodes.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
+    headTime: [commit.committedDate, suites.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
     review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
     labels,
     workingSince: workedAt,
-    gitarOnHead: commit.checkSuites.nodes.some(c => /gitar/i.test(c.app?.slug || '') && (c.checkRuns?.totalCount ?? 0) > 0),
+    gitarOnHead: suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.checkRuns?.totalCount ?? 0) > 0),
   };
 }
 

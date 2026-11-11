@@ -46,6 +46,16 @@ class GitarLabelStatesTest(unittest.TestCase):
         data['repository']['pullRequest']['commits']['nodes'][0]['commit']['checkSuites']['nodes'].append({'createdAt': '2026-11-11T00:01:00Z', 'app': {'slug': 'gitar'}, 'checkRuns': {'totalCount': 1}})
         self.assertTrue(node(f"m.fromGraphql({json.dumps(data)}).gitarOnHead"))
 
+    def test_a_null_node_in_any_list_does_not_crash_the_read(self):
+        # 11 Nov 2026, #3817 run 43026926353: GitHub answered a null check suite and the label run crashed ("reading 'createdAt'"); the owner saw the PR red.
+        data = {'repository': {'pullRequest': {'state': 'OPEN', 'comments': {'pageInfo': {'hasPreviousPage': False}, 'nodes': [None]}, 'labels': {'nodes': [None, {'name': 'Working on PR comments'}]},
+                'timelineItems': {'nodes': [None, {'createdAt': '2026-11-11T00:02:00Z', 'label': {'name': 'Working on PR comments'}}]},
+                'commits': {'nodes': [{'commit': {'committedDate': '2026-11-11T00:00:00Z', 'checkSuites': {'nodes': [None, {'createdAt': '2026-11-11T00:00:01Z', 'app': {'slug': 'gitar'}, 'checkRuns': {'totalCount': 1}}]}}}]}}}}
+        read = node(f"m.fromGraphql({json.dumps(data)})")
+        self.assertEqual(read['headTime'], '2026-11-11T00:00:01Z')
+        self.assertTrue(read['gitarOnHead'])
+        self.assertEqual(read['workingSince'], '2026-11-11T00:02:00Z')
+
     def test_a_stale_approval_keeps_the_working_mark_set_after_the_push(self):
         """Gitar #3790: an approval older than the head can never be newer than a "working" mark set after that head, so the mark stays (and clears once the approval is current)."""
         stale = "workingSince: '2026-11-11T02:00:00Z', headTime: '2026-11-11T01:00:00Z', verdictTime: '2026-11-11T00:30:00Z'"
