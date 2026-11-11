@@ -54,6 +54,14 @@ class ProbeAllowance(unittest.TestCase):
         ask(client, 'delta')
         self.assertEqual((len(client.calls), decide._calls['n']), (3, 1), 'outside the probe the run asks as before')
 
+    def test_probe_spent_tells_how_many_of_the_pool_a_run_used(self):
+        client = FakeClient()
+        self.assertEqual(decide.probe_spent(), 0)
+        with decide.probe_allowance(3):
+            for key in ('alpha', 'beta', 'gamma', 'delta'):
+                ask(client, key)
+        self.assertEqual((decide.probe_spent(), len(client.calls)), (3, 3), 'the line the scout prints: 3 of the 3 calls used, the 4th waited')
+
     def test_the_page_reader_counts_a_probe_check_s_reads_on_the_same_allowance(self):
         client = FakeClient()
         with mock.patch.object(scout_core, 'CENTRAL', True), mock.patch.object(page_reader, 'wanted_text', lambda: page_reader.careers.ats.re.compile('reliability', 2)):

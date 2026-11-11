@@ -158,6 +158,11 @@ def take(topic, key, allowance=None, label='decide'):
         return True
 
 
+def probe_spent():
+    """How many of the probe's calls this run has used (the central scout prints it beside the calls by topic, so a run shows the allowance held)."""
+    return _own.get('probe', 0)
+
+
 def probe_take():
     """None when this thread is not a probe check; else True when it took one of the probe's calls (page_reader.read counts its call here), False when the pool is spent."""
     return None if getattr(threading.current_thread(), 'probe_pool', None) is None else take('page read', 'probe')

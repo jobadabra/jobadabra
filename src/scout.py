@@ -164,6 +164,9 @@ def report_ai_cost(side):
     from .ai import cost
     if cost.TOPICS:   # Why (5 Nov 2026, #2915): here, not at exit: leave_if_stuck's os._exit skips atexit, so decide's own line never reached a central run's log
         print('AI calls by topic: ' + ', '.join(f'{topic} {n}' for topic, n in sorted(cost.TOPICS.items(), key=lambda item: (-item[1], item[0]))))
+        from .ai import decide
+        if scout_core.CENTRAL:   # Why (sk 4/5, 11 Nov 2026): the trial's topic totals could not show whether the probe stayed within its allowance (page reads also come from outside the probe)
+            print(f'Probe allowance: {decide.probe_spent()} of {decide.CENTRAL_PROBE_CALLS} calls used')
     target = os.getenv('JOBADABRA_AI_COST_FILE')
     if target:
         Path(target).write_text(json.dumps({'usd': round(usd, 6), 'calls': calls}))
