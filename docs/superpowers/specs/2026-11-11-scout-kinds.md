@@ -10,8 +10,8 @@ Short name `sk`. The numbers behind it (private list) are in `jobadabra/jobadabr
 - Not built: reading an uncounted employer last (it changes the 26 Oct 2026 rule "read an employer only when its jobs in your countries are your kind"; the owner's call).
 
 ## Progress
-- [x] 1/4 The scout reads employers with open jobs and no mix first (`scout_carry.order`) (#3811, merged)
-- [x] 2/4 Titles and places keep their own AI allowance; a place is judged once (#3812, merged)
-- [x] 3/4 The title seed arrives (jobadabra-lab#88, merged), and a missing seed says so (#3813, merged)
+- [x] 1/4 The scout reads employers with open jobs and no mix first (`scout_carry.order`) (#3811, merged) (proof: tests/unit/engine/test_scout_order.py @7280163)
+- [x] 2/4 Titles and places keep their own AI allowance; a place is judged once (#3812, merged) (proof: tests/unit/ai/test_kind_counts.py @af7220d)
+- [x] 3/4 The title seed arrives (jobadabra-lab#88, merged), and a missing seed says so (#3813, merged) (proof: tests/tooling/ci/test_recount_title_kinds.py @c7aad2c)
 - [ ] 4/5 The candidate probe asks the AI on its own 30-call allowance; the feed pass keeps the rest of the run's 200 (this PR)
 - [ ] 5/5 Owner's call, not built: read uncounted employers last

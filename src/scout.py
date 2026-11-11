@@ -180,6 +180,15 @@ def where_of(stores):
     return 'Notion' if stores.name == 'notion' else 'your employer list'
 
 
+def upload_index(trial_run, feeds_out, *args, **kwargs):
+    """The count of feeds published: publish_index's, or with --no-upload (a trial) the feeds built, nothing sent.
+    Why (sk, 11 Nov 2026, owner: no proof waits for a merge when a by-hand run can give it): a trial of a branch reads the live index and must write none of it."""
+    if not trial_run:
+        return publish_index(feeds_out, *args, **kwargs)
+    print('Scout: trial run (--no-upload): nothing was uploaded to the employer index')
+    return len(feeds_out)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, default=JOBS_DB)
@@ -191,6 +200,8 @@ def main():
     parser.add_argument('--publish-index', action='store_true',
                         help='the central scout: after the run, verify every feed and upload the employer index '
                              '(needs INDEX_PUBLISH_KEY; URL: JOBADABRA_INDEX_URL or the default)')
+    parser.add_argument('--no-upload', action='store_true',
+                        help='with --publish-index: a trial of an unmerged change (jobadabra-lab central-scout.yml engine_ref): every step runs and logs as the central scout does, and nothing is uploaded')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -280,7 +291,7 @@ def main():
             with scout_overrun.phase('reading the job boards'):
                 boards = board_stats(fetch_boards(index_url, key))
             with scout_overrun.phase('uploading the index'):
-                count = publish_index(feeds_out, index_url, key, stats=stats, nofeed=dead_ends(db, shared_dead), boards=boards, board_facts=board_facts)
+                count = upload_index(args.no_upload, feeds_out, index_url, key, stats=stats, nofeed=dead_ends(db, shared_dead), boards=boards, board_facts=board_facts)
             print(publish_summary(feeds_out, contributions, boards))
             print('Feeds by system: ' + ', '.join(f'{system} {n}' for system, n in Counter(f['ats'] for f in feeds_out).most_common()))
             print('Market coverage (our index / jobs.ch): ' + ', '.join(f"{m['term']} {m['ours']}/{m['jobsch']}" for m in stats['market']))
