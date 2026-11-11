@@ -273,8 +273,7 @@ def capture_engine(prompts=False):
     keep('app.places', client, {'subrequest': 'place-word-expansion', 'words': words}, 'src/places.py', 'response = client.messages.create(',
          'src/places.py', 'answer = json.loads(next(block.text')
 
-    engine.PARALLEL = 1
-    engine.at_once, engine.queued = (lambda: 1), (lambda: False)   # one call at a time here, no slot queue (src/ai/engine.py at_once, queued)
+    engine.PARALLEL, engine.at_once, engine.queued = 1, (lambda: 1), (lambda: False)   # one call at a time here, no slot queue (src/ai/engine.py at_once, queued)
     slots = NS(carry=lambda function, *level: function, priority=lambda level: __import__("contextlib").nullcontext(), NORMAL=1, TITLES=0)
     IMPORTS.update(ThreadPoolExecutor=ThreadPoolExecutor, Ticker=lambda *a, **k: NS(tick=lambda *a: None),
                    time_budget=NS(in_calls=lambda label, count, *a, **k: count, over=lambda *a, **k: False, record=lambda *a: None, now=time.monotonic, scored_beside=lambda: False),
