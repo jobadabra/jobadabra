@@ -19,6 +19,7 @@ FEEDS = [
     {'company': 'Other Co', 'ats': 'lever', 'slug': 'other', 'places': ['Lyon'], 'kinds': {'software': 1.0}},
     {'company': 'No Mix Co', 'ats': 'lever', 'slug': 'nomix', 'places': ['Lyon']},
     {'company': 'Faraway Co', 'ats': 'lever', 'slug': 'far', 'places': ['Oslo'], 'kinds': {'trades': 1.0}},
+    {'company': 'Empty Co', 'ats': 'lever', 'slug': 'empty', 'fresh': {'ok': '2026-11-10', 'fails': 0, 'jobs': 0, 'trend': 'flat', 'new': None}},   # no open job, no place: in every person's places
 ]
 
 
@@ -32,15 +33,21 @@ def judged(*rows):
 
 class Counts(unittest.TestCase):
     def test_n_k_and_why_the_rest_was_left_out(self):
-        out = sl.split(FEEDS, here, {'trades'}, None)
-        self.assertEqual((out['in_places'], out['for_role']), (3, 1))
-        self.assertEqual((out['kind_not_theirs'], out['no_kind_mix']), (1, 1), 'one employer the scout counted as not theirs, one it has not counted yet')
+        out, kept = sl.split(FEEDS, here, {'trades'}, None)
+        self.assertEqual((out['in_places'], out['for_role'], len(kept)), (4, 1, 1))
+        self.assertEqual((out['kind_not_theirs'], out['no_kind_mix'], out['empty_feeds']), (1, 1, 1), 'counted and not theirs; not counted yet; no open job')
+        self.assertEqual(out['in_places'], out['for_role'] + out['kind_not_theirs'] + out['no_kind_mix'] + out['empty_feeds'], 'every employer of N is somewhere')
+
+    def test_a_feed_with_no_open_job_is_never_a_scout_gap(self):
+        out, _ = sl.split([FEEDS[-1]], here, {'trades'}, None)
+        self.assertEqual((out['empty_feeds'], out['no_kind_mix']), (1, 0), 'sk, lab#87: 363 empty feeds read as "no kind counted" for every person')
 
     def test_an_undecided_kind_is_not_measured_never_zero(self):
-        out = sl.split(FEEDS, here, None, None)
-        self.assertEqual((out['in_places'], out['kinds_known']), (3, False))
-        self.assertNotIn('served', out, 'a list-wide number never leaves the press')
-        self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs', 'no_kind_mix')))
+        for kinds in (None, {'unknown'}):   # role_kinds.UNKNOWN: every word of the search unsure, no list is read in bulk whatever the scout counted (Gitar on #3809)
+            out, kept = sl.split(FEEDS, here, kinds, None)
+            self.assertEqual((out['in_places'], out['kinds_known'], kept), (4, False, []))
+            self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs', 'no_kind_mix', 'empty_feeds')))
+            self.assertNotIn('served', out, 'a list-wide number never leaves the press')
 
     def test_the_join_counts_right_jobs_of_listed_employers_in_memory(self):
         rows = judged(('Welder', SECRET, 'yes', 'yes'), ('Welder II', SECRET, 'yes', 'no'), ('Dev', 'Other Co', 'yes', 'yes'), ('Cook', 'Not Listed', 'yes', 'yes'))
@@ -73,7 +80,7 @@ class Written(unittest.TestCase):
         self.assertEqual(set(scout), set(sl.WORDS))
         self.assertTrue(all(isinstance(value, (int, bool)) for value in scout.values()), 'per-person counts and a flag: nothing else leaves')
         self.assertNotIn('2026-11-10', text, 'the publish id is list-wide: it stays out of the public artifact')
-        self.assertEqual((scout['in_places'], scout['for_role'], scout['right_from_list']), (3, 1, 1))
+        self.assertEqual((scout['in_places'], scout['for_role'], scout['right_from_list']), (4, 1, 1))
 
     def test_no_cached_list_claims_nothing(self):
         env = {'JOBADABRA_DATA_DIR': tempfile.gettempdir(), 'JOBADABRA_CONFIG_DIR': tempfile.gettempdir()}
