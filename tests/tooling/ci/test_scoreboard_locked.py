@@ -40,6 +40,19 @@ class ScoreboardLocked(unittest.TestCase):
         self.assertIn('EURES', scoreboard.sources())
         self.assertNotIn('free-ai', scoreboard.chain(), 'the check never finishes on Free AI (owner on #3703)')
 
+    def test_an_edit_to_how_the_judge_dedupes_or_accepts_a_batch_is_a_new_measure(self):
+        """Gitar on #3708 (owner, 11 Nov 2026, asked via AskUserQuestion: "Lock them too (Recommended)"): key() decides which jobs the judge sees as one,
+        complete() when a batch reply is accepted; either changes the numbers as much as the prompt does."""
+        source = (ROOT / 'tools/persona-search/gate_judge.py').read_text(encoding='utf-8')
+        original = Path.read_text
+        for old, new in (("row['title'].strip().lower()", "row['title'].lower()"),   # key(): titles that differ by a space become two jobs
+                         ("missing = [j['n'] for j in jobs if j['n'] not in got]", 'missing = []')):   # complete(): a reply that left jobs out is accepted
+            with self.subTest(edit=old):
+                self.assertEqual(source.count(old), 1, old)
+                edited = source.replace(old, new)
+                with mock.patch.object(Path, 'read_text', lambda self, *a, **k: edited if self.name == 'gate_judge.py' else original(self, *a, **k)):
+                    self.assertNotEqual(scoreboard.lock()['S2'], KEPT['S2'], f'{old} → {new} changes what the judge measures')
+
     def test_a_reworded_comment_or_a_new_reference_word_is_not_a_new_measure(self):
         source = (ROOT / 'tools/persona-search/gate_judge.py').read_text(encoding='utf-8')
         line = '    env = os.environ if env is None else env\n'
