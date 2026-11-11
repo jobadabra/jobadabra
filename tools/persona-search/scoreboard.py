@@ -1,5 +1,5 @@
 """The scoreboard's lock (finish-line spec G3, docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md): what the night Search check measures with
-(the 18 people, the judge's prompt, the fixed source list, the check's AI chain) is fingerprinted into scoreboard.lock.json; a PR that changes one carries
+(the 18 people, the judge's prompt, the fixed source list, the check's AI chain, what counts as a listed job) is fingerprinted into scoreboard.lock.json; a PR that changes one carries
 `Scoreboard-change: "<owner's words>"` and rewrites the lock. The check reuses the fix ledger's (tools/press-ledger-check.py), with the parts computed live,
 so a part changed without the lock rewritten is red too.
   python3 tools/persona-search/scoreboard.py --write-lock                 rewrite the lock after the owner's yes
@@ -85,10 +85,18 @@ def chain():
     return (found.group(1) or found.group(2)) if found else 'none'
 
 
+
+def listed():
+    """What counts as a listed job: the shown count's person and how it is read (shown.py ENV, keys(), field(), counts(), _list()), as source tokens.
+    Why (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Count what the list shows, then 4/5 (Recommended)"): which jobs count as listed moves every number of the check."""
+    return '\n'.join(_code('shown.py', ('ENV',), ('keys', 'field', 'counts', '_list')))
+
+
 PARTS = (('S1', 'the 18 people the check measures', people),
          ('S2', "the blind judge's prompt and model", judge_prompt),
          ('S3', 'the fixed source list of the market count', sources),
-         ('S4', "the check's AI: Codex, Claude as its replacement, never Free AI", chain))
+         ('S4', "the check's AI: Codex, Claude as its replacement, never Free AI", chain),
+         ('S5', "what counts as a listed job: the app's Jobs list once the search has ended, beside every open job", listed))
 
 
 def lock():

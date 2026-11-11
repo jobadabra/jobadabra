@@ -22,6 +22,7 @@ import funnel as funnel_mod  # noqa: E402
 import verdicts  # noqa: E402
 import engine_calls  # noqa: E402
 import runs as runs_mod  # noqa: E402
+import shown as shown_mod  # noqa: E402
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
@@ -77,8 +78,11 @@ def extract(db_path, out, *, include_urls=False):
         selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url, s.kind, j.notes, j.first_seen_at FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
                               "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")
         kinds = dict(table_rows(db, 'sources', 'SELECT name, kind FROM sources'))   # kind and `also` (each other reader that listed the job: src/store.py notes "also on <reader>"): sources_count.py
+        db.close()
+        shown = shown_mod.keys(db_path)   # what the app's Jobs list shows once the search has ended (shown.py); None = unknown, no `shown` field
         rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', 'kind': kind or '', 'also': [[name, kinds.get(name) or ''] for name in re.findall(r'also on (.+?)(?= · also on |$)', notes or '')],
-                 'first_seen': first_seen or '', **({'url': url or ''} if include_urls else {})} for t, c, loc, source, url, kind, notes, first_seen in selected]
+                 'first_seen': first_seen or '', **({'url': url or ''} if include_urls else {}), **shown_mod.field(url, shown)}
+                for t, c, loc, source, url, kind, notes, first_seen in selected]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 
@@ -233,6 +237,7 @@ def result(n, out):
         judged = judged_file['rows']
         relevant = [r for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes']
         row.update(found=len(judged), local=len(relevant), **verdicts.counts(judged))   # place / role counts for the Night tab (verdicts.py)
+        row.update(shown_mod.counts(judged))   # found / local = every open job; shown_* = what the app's list shows once the search ended (shown.py)
         # Fixed categories only: source names can be employer names; no such text belongs in the central night record.
         row['relevant_sources'] = {kind: sum(1 for r in relevant if source_kind(r) == kind)
                                    for kind in ('eures', 'other', 'unknown')}
@@ -406,7 +411,7 @@ def compare(pr, main_runs):
         row = pr.get(n)
         _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run, _size(run))])   # a run that measured nothing shows no zeros
         mark, why, kind = row_verdict(row)
-        rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
+        rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'shown_local': (row or {}).get('shown_local'), 'shown_found': (row or {}).get('shown_found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
                      'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources'), 'place': (row or {}).get('place'), 'role': (row or {}).get('role'),
                      'sources': (row or {}).get('sources'), 'scout': (row or {}).get('scout')})   # Why (11 Nov 2026, owner: the Admin Sources card was empty): sources_count.py and scout_list.py set `sources` and `scout` on the result and the Admin reads rows, so a field left out here shows as "not sent"
@@ -450,16 +455,16 @@ def table(verdict):
     if verdict.get('unavailable'):   # no table of zeros: nothing was searched, so there is nothing to compare
         return f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}{mode}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
     lines = [f"🔍 **Search check:** {verdict['head']} · {cost_label(verdict)}{mode} · cost ${spent:.2f}{cap}", '',
-             f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
+             f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Shown: right / listed | Press | Cost | |", '|---|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
         mark = f"{r['mark']} {r['why']}".strip()
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
-        lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
+        lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r.get('shown_local'))} / {cell(r.get('shown_found'))} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     notes = [f"{r['label'].split(' ')[0]}: {r['funnel_note']}" for r in verdict['rows'] if r.get('funnel_note') and r['mark'] != '🟢']
     if notes:   # where a press that found no right job spent its time (funnel.py), one line each
         lines += ['', '<sub>Where the time went: ' + ' · '.join(notes) + '</sub>']
-    lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
+    lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of every open job found; Shown = of the jobs the Jobs list in the app shows once the search has ended (unscored jobs wait); one press each, '
               'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the all-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). A row is green with at least one right job, grey without (it says why: AI queue full, no job scored, none right); the whole check is grey when no row is green (not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
