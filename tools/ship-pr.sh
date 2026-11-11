@@ -131,7 +131,9 @@ ship_pr_land() {
     fi
     # Review mode ends when every check the PR started passed (none pending, none failing): the PR waits for the owner, nothing has landed on main.
     if [ -n "$review" ] && [ -z "$failing" ] && jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping")' <<<"${checks:-[]}" >/dev/null 2>&1; then
-      if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" >/dev/null 2>&1 && step "#$n: marked ready for review (it was a draft until green)" || step "#$n: could not mark it ready: do it by hand (gh pr ready $n)"; fi
+      # Why (11 Nov 2026, owner: "you should put it as draft and a prefix \"DONT MERGE\""): a held PR (draft + "DONT MERGE" in its title) stays a draft when it turns green; #3773 was merged 59 s after this step marked it ready. The hold comes off by hand (gh pr ready, then the title).
+      if [ -n "${SHIP_PR_DRAFT:-}" ] && grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then step "#$n: every check is green, but its title says DONT MERGE: it stays a draft (undo the hold by hand: gh pr ready $n, then strip the title prefix)"
+      elif [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" >/dev/null 2>&1 && step "#$n: marked ready for review (it was a draft until green)" || step "#$n: could not mark it ready: do it by hand (gh pr ready $n)"; fi
       review_n="$n"; review_url="$(jq -r '.url // empty' <<<"$view")"; step "#$n: every check is green: open for the owner's review"; return 0
     fi
     if [ "$waited" -ge "$limit" ]; then ship_pr_fail "pull request #$n is not merged after ${limit}s (it merges by itself when the checks pass): $(jq -r '.url' <<<"$view")"; fi
