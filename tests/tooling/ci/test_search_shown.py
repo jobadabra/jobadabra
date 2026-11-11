@@ -1,6 +1,7 @@
 """Guard: release — the night Search check's "shown" count (tools/persona-search/shown.py) is what the app's Jobs list shows once the search has ended:
-a job not scored yet waits, a scored one is shown (src/desktop_jobs.py jobs, hide_unscored). Without it the count could silently read every open job again, or
-nothing, and the scoreboard would measure a list no person sees (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Count what the list shows, then 4/5")."""
+since #3843 a found job is listed before its score, so a scored job and one not scored yet are both shown (src/desktop.py _jobs). Without it the count could
+silently differ from the app's list and the scoreboard would measure a list no person sees (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Count what
+the list shows, then 4/5"; then "Follow the app, after #3843 merges (Recommended)")."""
 import importlib.util
 import os
 import shutil
@@ -30,7 +31,7 @@ SEED = textwrap.dedent('''
 
 
 class ShownCount(unittest.TestCase):
-    def test_a_scored_job_is_shown_and_one_not_scored_yet_waits(self):
+    def test_a_scored_job_and_one_not_scored_yet_are_both_shown_as_in_the_app(self):
         with tempfile.TemporaryDirectory() as tmp:
             data, config = Path(tmp) / 'data', Path(tmp) / 'config'
             data.mkdir()
@@ -39,7 +40,7 @@ class ShownCount(unittest.TestCase):
                    'JOBADABRA_DATA_DIR': str(data), 'JOBADABRA_CONFIG_DIR': str(config)}
             seeded = subprocess.run([sys.executable, '-c', SEED], cwd=ROOT, env=env, capture_output=True, text=True)
             self.assertEqual(seeded.returncode, 0, seeded.stderr[-800:])
-            self.assertEqual(shown.keys(data / 'jobs.sqlite'), {'https://jobs.test/1'})
+            self.assertEqual(shown.keys(data / 'jobs.sqlite'), {'https://jobs.test/1', 'https://jobs.test/2'})
 
     def test_counts_read_only_the_shown_rows_and_say_unknown_without_them(self):
         rows = [{'shown': True, 'role': 'yes', 'place': 'yes'}, {'shown': True, 'role': 'no', 'place': 'yes'}, {'shown': False, 'role': 'yes', 'place': 'yes'}]
