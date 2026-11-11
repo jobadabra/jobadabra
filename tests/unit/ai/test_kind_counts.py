@@ -4,7 +4,8 @@ The scout counts each feed's jobs by country and kind (`kind_counts`); a job who
 import unittest
 from unittest import mock
 
-from src import employer_index, geo, role_kinds, scout_kind_counts
+from src import employer_index, geo, pool_tags, role_kinds, scout, scout_core, scout_kind_counts
+from src.ai import meanings
 from src.ai import decide
 
 KIND = {'First Officer': 'aviation_transport', 'Cabin Crew': 'aviation_transport', 'Backend Engineer': 'software', 'Accountant': 'finance_admin'}
@@ -54,6 +55,35 @@ class ScoutCountsTest(Fixtures):
         jobs = [{'title': 'First Officer', 'location': 'Zurich'}] + [{'title': 'Backend Engineer', 'location': 'Frankfurt'}] * 4
         self.assertIsNone(scout_kind_counts.kind_counts(jobs), '1 of 5 jobs judged on both says little about the employer')
 
+
+
+class CountriesFromPlaceAnswersTest(Fixtures):
+    """Why (sk 2/4, 11 Nov 2026): the scout judged an employer's places three times (kind counts, country, region); the country is now read from the kind counts' place answers."""
+    def labels(self, topic, texts, choices, task):
+        self.assertNotEqual(topic, 'pool-country', 'a place is not judged a second time for its country')
+        return [], []
+
+    def test_countries_come_from_the_place_answers_and_remote_or_unknown_name_none(self):
+        with mock.patch.object(meanings, 'labels_read', self.labels):
+            found = pool_tags.countries_read(['Zurich', 'Frankfurt', 'Remote', 'Somewhere'], scout_kind_counts.country_ids)
+        self.assertEqual(found, (['ch', 'de'], []))
+        self.assertEqual(self.asked, [['frankfurt']], 'asked once, only what the cache and the pack do not know')
+
+    def test_a_place_past_the_cap_is_unanswered_so_its_earlier_country_is_kept(self):
+        decide._calls['n'] = decide.MAX_CALLS_PER_RUN
+        with mock.patch.object(meanings, 'labels_read', self.labels):
+            self.assertEqual(pool_tags.countries_read(['Zurich', 'Frankfurt'], scout_kind_counts.country_ids), (['ch'], ['Frankfurt']))
+        self.assertEqual(self.asked, [])
+
+    def test_the_scouts_index_build_asks_no_pool_country_question(self):
+        import tempfile
+        from pathlib import Path
+        from src import store
+        job = [{'id': '1', 'title': 'Backend Engineer', 'location': 'Frankfurt', 'url': 'u', 'date_posted': '2099-01-01', 'description': '', 'remote': False, 'salary': ''}]
+        with tempfile.TemporaryDirectory() as tmp, store.connect(Path(tmp) / 'j.sqlite') as db, mock.patch.object(meanings, 'labels_read', self.labels), mock.patch.object(scout_core, 'CENTRAL', True):
+            db.executescript(scout.TABLES)
+            feeds, _ = scout.build_index(db, [{'company': 'Co', 'ats': 'lever', 'slug': 'co'}], lambda s, slug: job, today='2026-11-11')
+        self.assertEqual(feeds[0]['countries'], ['de'])
 
 
 class CentralCapAndSampleTest(Fixtures):

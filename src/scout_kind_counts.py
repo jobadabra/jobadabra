@@ -31,6 +31,16 @@ def places(locations):
     return known
 
 
+def country_ids(texts):
+    """(country ids, unanswered texts) of these place words, from the same place answers the kind counts use (`places`: the cache, the shared pack, then the scout's AI
+    within its calls), so a place is judged once. A remote or unknown answer is an answer with no country. Why (sk 2/4, 11 Nov 2026): the same place words were also
+    judged by the pool-country question, a second AI call each (12% of a run's calls)."""
+    texts = [t for t in dict.fromkeys(str(t).strip() for t in texts) if t]
+    where = places(texts)
+    ids = {str((where[geo.norm(t)] or {}).get('cc') or '').lower() for t in texts if geo.norm(t) in where and where[geo.norm(t)]['kind'] not in ('remote', 'unknown')}
+    return sorted(i for i in ids if i in pool_tags.COUNTRIES), [t for t in texts if geo.norm(t) not in where]
+
+
 def sample(jobs):
     """Up to SAMPLE of these jobs, in list order: those whose own hash ranks first, so a list that alternates is seen whole (even steps would see one
     kind of it); every job of a smaller employer."""
