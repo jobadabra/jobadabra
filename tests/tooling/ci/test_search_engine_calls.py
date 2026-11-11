@@ -64,6 +64,13 @@ class NotRun(unittest.TestCase):
             failed = press(tmp, 1)
         self.assertNotIn('not_measured', failed)
         self.assertEqual(gate.row_verdict(failed)[2], 'fault', 'a press that exited non-zero is a fault even when its AI was refused (/code-review on 2/6)')
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'draw').mkdir()   # Gitar on #3714: the press crashed before writing presses.jsonl, while the AI was refused too
+            (Path(tmp) / 'run.log').write_text(self.REFUSED + '\n')
+            (Path(tmp) / 'judged.json').write_text(json.dumps({'usd': 0, 'rows': []}))
+            silent = gate.result(1, Path(tmp))
+        self.assertEqual(silent.get('error'), 'the press wrote no numbers (see run.log)')
+        self.assertEqual(gate.row_verdict(silent)[2], 'fault', 'a press that wrote no numbers is a fault, never "not run"')
 
     def test_a_night_nobody_was_answered_is_not_run_never_red_never_zero(self):
         import gate
