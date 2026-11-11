@@ -114,6 +114,15 @@ class InEqualsOut(unittest.TestCase):
         with mock.patch.object(feeds, 'placing', return_value=True):
             self.assertEqual(job_stage.of(dict(job, location='')), 'placed_out', 'no place to ask about')
 
+    def test_the_place_words_run_once_per_location_in_a_pass_not_once_per_job(self):
+        """#3709's yardstick (10 Nov 2026): staging every dropped job ran the place words' regex (~150 µs) per job: aggregators.kept()
+        on 20,000 title-dropped jobs over 200 places took 3.38 s, 0.40 s once per location (median of 3 on a Mac, #3723's body)."""
+        jobs = [dict(job, url=f"{job['url']}-{n}") for n in range(50) for job in listed('EURES')]   # 300 jobs at one location
+        self.verdicts, self.places = {}, {job['url']: None for job in jobs}   # no title answered, no place placed: the words decide each
+        with mock.patch.object(feeds, 'wanted_location', wraps=feeds.wanted_location) as words, mock.patch.object(feeds, 'triage'), redirect_stdout(io.StringIO()):
+            aggregators.kept(database(), 'EURES', jobs)
+        self.assertEqual(words.call_count, 1, 'one location, one look by the place words (kept drops these by title before their place)')
+
     def test_at_the_slices_end_every_reader_that_has_read_is_imported_whatever_order_they_end_in(self):
         for row in reader_rows.ROWS:
             with self.subTest(row.name):
