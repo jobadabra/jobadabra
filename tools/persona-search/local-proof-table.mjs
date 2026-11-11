@@ -59,6 +59,8 @@ export function table(runs) {
   for (const x of r) for (const s of x.stages) lines.push(`Stages (${x.label}): ${s}`);
   // Why (11 Nov 2026, as, measured): the same code on p10 listed 46, 60 and 59 jobs in three runs, because the job-board web search found 3 or 5 boards: one run a side cannot judge a small difference
   if (r.length > 1) lines.push('Noise: one run a side. The same code listed 46-60 jobs for p10 (11 Nov 2026, boards and web search vary): a difference under ~15 listed jobs needs 2-3 runs a side.');
+  // Why (Gitar on #3831): the table reads the engine's log lines (src/ai/call_log.py, src/sources/job_stage.py); a run with a press row but no AI call line read means their format changed, said aloud instead of dashes
+  for (const x of r) if (x.row && !x.calls.length) lines.push(`\n⚠️ ${x.label}: no "AI call:" line read from run-1.log: the log format changed (src/ai/call_log.py), so the AI rows are blank; fix local-proof-table.mjs AI_CALL`);
   for (const x of r) if (x.limit) lines.push(`\n⛔ NOT COUNTED (${x.label}): ${x.limit}`);
   lines.push('', ...r.map((x, i) => `Run ${i + 1} files: ${runs[i].out}`));
   return lines.join('\n');
