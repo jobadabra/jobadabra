@@ -16,7 +16,7 @@ from src.ai import cost
 
 
 class PublishPathTest(unittest.TestCase):
-    def run_main(self, board_run, seed=lambda *a, **k: 0):
+    def run_main(self, board_run, seed=lambda *a, **k: 0, flags=()):
         feed = {'company': 'Acme', 'ats': 'greenhouse', 'slug': 'acme', 'countries': ['ch'], 'jobs': 3}
         seen = self.seen = {}
 
@@ -42,7 +42,7 @@ class PublishPathTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         self.addCleanup(setattr, scout_core, 'CENTRAL', scout_core.CENTRAL)
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--batch', '1', '--publish-index', '--db', str(Path(tmp) / 'jobs.sqlite')]):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--batch', '1', '--publish-index', *flags, '--db', str(Path(tmp) / 'jobs.sqlite')]):
             scout.main()
         return seen
 
@@ -68,6 +68,19 @@ class PublishPathTest(unittest.TestCase):
         self.assertEqual(len(calls), 1, 'the board pass ran once')
         self.assertLessEqual(seen['check_deadline'], calls[0]['until'] - scout_boards.RESERVE_S + 1,
                              'the feed checks end RESERVE_S before the pass must have started')
+
+    def test_a_trial_run_does_everything_but_upload_the_index(self):
+        """Why (sk, 11 Nov 2026): a by-hand trial of an unmerged branch (lab central-scout.yml engine_ref) reads the live index and must never write it. Guard: data."""
+        calls, out = [], io.StringIO()
+        with contextlib.redirect_stdout(out):
+            trial_seen = self.run_main(lambda db, **kwargs: calls.append(kwargs) or [], flags=['--no-upload'])
+        self.assertEqual(len(calls), 1, 'the board pass ran as in a real run')
+        self.assertIn('check_deadline', trial_seen, 'the feeds were checked as in a real run')
+        self.assertNotIn('board_facts', trial_seen, 'publish_index was never called')
+        self.assertIn('nothing was uploaded', out.getvalue())
+
+    def test_without_the_flag_the_index_is_published(self):
+        self.assertIn('board_facts', self.run_main(lambda db, **kwargs: []))
 
 
 if __name__ == '__main__':

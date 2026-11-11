@@ -9,6 +9,7 @@ import re
 from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED
 from datetime import timedelta
 from . import budget_tape, read_methods, run_exit, employer_index, scout_need, scout_queue, scout_role_search, scout_core
+from .ai import decide
 from .sources import ats, careers
 
 
@@ -118,7 +119,8 @@ def make_checks(scout, candidate_count, probe, active, search, lookup):
     # Isolate one failed check and emit its locked completion count.
     def check(candidate):
         try:
-            return check_one(candidate)
+            with decide.probe_allowance(decide.CENTRAL_PROBE_CALLS if scout_core.CENTRAL else None):   # Why (sk 4/5, 11 Nov 2026): the central scout's probe has its own AI allowance, the feed pass keeps the rest of the run's calls
+                return check_one(candidate)
         except Exception as error:  # noqa: BLE001  one employer's odd site must not end the run (7 Oct 2026: a TypeError at 90 of 91 lost them all)
             print(f"Warning: {candidate['name']} could not be checked: {type(error).__name__}: {str(error)[:160]}; counted as no job site we can "
                   'read, and checked again when the readers change')
