@@ -141,6 +141,27 @@ class YardstickCi(unittest.TestCase):
             report('yardstick-p5-pr', web_tape=10, web_missing=5)            # only the PR replayed it
             self.assertEqual(ci.recording_gaps(art), {'p11': (551, 760, 0, 0), 'p5': (5, 15, 0, 0)})
 
+    def test_the_gaps_mode_lists_the_people_the_pr_comment_asks_to_re_record_plus_those_without_a_recording(self):
+        """Why (11 Nov 2026, asked via AskUserQuestion by sa: "Auto re-record after merge"): press-tapes-auto.yml re-records exactly the people main's replay names (recording_gaps, the PR comment's "Re-record"
+        list) and those with no recording; a second computation of the list would send the automatic run after other people than the verdict names."""
+        with tempfile.TemporaryDirectory() as root:
+            art, out, recs = Path(root, 'art'), Path(root, 'out'), Path(root, 'recordings')
+            (art / 'yardstick-p11-main').mkdir(parents=True)
+            (art / 'yardstick-p11-main' / 'tape-report.jsonl').write_text(json.dumps({'mode': 'replay', 'web_tape': 209, 'web_missing': 551}) + '\n')
+            for person in ci.ALL_PEOPLE:
+                if person not in ('p4', 'p12'):
+                    (recs / person).mkdir(parents=True)
+            with redirect_stdout(io.StringIO()) as printed:
+                self.assertEqual(ci.main(['gaps', str(art), str(out), str(recs)]), 0)
+            found = json.loads((out / 'gaps.json').read_text())
+            self.assertEqual(found['personas'], [4, 11, 12], 'the gap and the two without a recording, numbers only, in order')
+            self.assertEqual(sorted(found['gap']), sorted(ci.recording_gaps(art)))
+            self.assertIn('Re-record: p4, p11, p12', printed.getvalue())
+            self.assertEqual(ci.main(['gaps', str(art), str(Path(root, 'out2'))]), 0, 'without a recordings folder only the gaps count')
+            self.assertEqual(json.loads(Path(root, 'out2', 'gaps.json').read_text())['personas'], [11])
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(ci.main(['gaps', str(art)]), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

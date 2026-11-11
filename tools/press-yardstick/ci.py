@@ -2,6 +2,7 @@
 the replay jobs' artifacts (art/yardstick-p<N>-<side>/result/: jobs-<run>.json, judged.json, ceiling/jobs-<run>.json) laid out the way
 three_numbers.py reads them, then one markdown summary on stdout (the job summary) and the numbers as JSON in <out>.
   python3 tools/press-yardstick/ci.py pr <art> <out>     this ref and main, each Find jobs run (1 = first, 2 = repeat) against main's newest band
+  python3 tools/press-yardstick/ci.py gaps <art> <out> [recordings]   who main's replay says has a recording gap (+ who has no recording) -> <out>/gaps.json, for press-tapes-auto.yml
   python3 tools/press-yardstick/ci.py band <art> <out>   main's 5 replays per persona -> <out>/band.json: the recordings it used, the personas, {run: {number: [low, high]}}
 A persona with no recording has no artifact and is left out ("not measured"); a missing band reads "not measured" on every number, never red."""
 import hashlib
@@ -291,11 +292,29 @@ def band_mode(art, out):
     return 0
 
 
+def gaps_mode(art, out, recordings=None):
+    """mode=gaps (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Auto re-record after merge (Recommended)"): who press-tapes-auto.yml re-records, from ONE offline replay of main on the recordings:
+    the people whose replay asked for more than the bounds (recording_gaps: the list the PR comment prints as "Re-record", never a second computation) plus, when `recordings` is given, the people
+    with no recording folder there. Writes <out>/gaps.json {personas: [n...], gap: {pN: [web missing, web asked, AI missing, AI asked]}, no_recording: [pN...]}; returns 0."""
+    gap, none = recording_gaps(art), [person for person in ALL_PEOPLE if recordings is not None and not Path(recordings, person).exists()]
+    people = sorted({int(person[1:]) for person in [*gap, *none]})
+    Path(out, 'gaps.json').write_text(json.dumps({'personas': people, 'gap': {person: list(counts) for person, counts in gap.items()}, 'no_recording': none}), encoding='utf-8')
+    print('## Find jobs recordings against main\'s code\n')
+    print(f"- Re-record: {', '.join(f'p{n}' for n in people) if people else 'nobody, every recording is within the bounds'}")
+    for person, (web_missing, web, ai_missing, ai) in sorted(gap.items(), key=lambda item: int(item[0][1:])):
+        print(f'  - {person}: {web_missing} of {web} pages and {ai_missing} of {ai} AI answers missing')
+    if none:
+        print(f"  - no recording yet: {', '.join(none)}")
+    return 0
+
+
 def main(argv):
-    if len(argv) != 3 or argv[0] not in ('pr', 'band'):
+    if not argv or argv[0] not in ('pr', 'band', 'gaps') or len(argv) not in ((3, 4) if argv[0] == 'gaps' else (3,)):
         print(__doc__, file=sys.stderr)
         return 2
     Path(argv[2]).mkdir(parents=True, exist_ok=True)
+    if argv[0] == 'gaps':
+        return gaps_mode(argv[1], argv[2], argv[3] if len(argv) == 4 else None)
     return (pr if argv[0] == 'pr' else band_mode)(argv[1], argv[2])
 
 
