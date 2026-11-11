@@ -9,9 +9,9 @@ import * as realSite from './ready-site.js';
 export const SEARCH = 'https://www.linkedin.com/jobs/search/?keywords=engineer&location=Switzerland';   // the same address as the night's (ready-fill/linkedin-probe.mjs): the site checks it
 export const GIVE_UP_MS = 4 * 60 * 1000;
 export const POLL_MS = 4000;
-const WORDS = {ok: 'LinkedIn answered the cloud with the signed-in job list: no check.', limited: 'LinkedIn asked us to slow down (401/403/429/999): LinkedIn stays on the Mac.', login: 'LinkedIn showed a sign-in page: LinkedIn stays on the Mac.',
-  check: 'LinkedIn asked for a check: LinkedIn stays on the Mac.', guest: 'LinkedIn did not accept the session and showed its public page: LinkedIn stays on the Mac.', unclear: 'The page did not look signed in: LinkedIn stays on the Mac.',
-  nocards: 'LinkedIn answered signed in but without job cards: LinkedIn stays on the Mac.', other: 'LinkedIn sent the cloud to another page: LinkedIn stays on the Mac.', error: 'The cloud could not read the page (not a LinkedIn answer). Nothing is tried again; ask for a new try.'};
+const WORDS = {ok: 'LinkedIn answered the cloud with the signed-in job list: no check.', limited: 'LinkedIn asked us to slow down (401/403/429/999): LinkedIn stays on your computer.', login: 'LinkedIn showed a sign-in page: LinkedIn stays on your computer.',
+  check: 'LinkedIn asked for a check: LinkedIn stays on your computer.', guest: 'LinkedIn did not accept the session and showed its public page: LinkedIn stays on your computer.', unclear: 'The page did not look signed in: LinkedIn stays on your computer.',
+  nocards: 'LinkedIn answered signed in but without job cards: LinkedIn stays on your computer.', other: 'LinkedIn sent the cloud to another page: LinkedIn stays on your computer.', error: 'The cloud could not read the page (not a LinkedIn answer). Nothing is tried again; ask for a new try.'};
 
 /**
  * Runs the probe once. -> {ok: true, go, word, status, cards, line} when the cloud answered, or {ok: false, error} when it never started or no answer came (nothing is tried again).
@@ -22,7 +22,7 @@ const WORDS = {ok: 'LinkedIn answered the cloud with the signed-in job list: no 
 export async function tryCloudRead(storage, {site = realSite, session = realSession, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), now = Date.now} = {}) {
   if (!await site.owner(storage)) return {ok: false, error: 'This install is not the owner\'s: nothing was sent.'};
   const held = session.readSession();
-  if (!held?.li_at) return {ok: false, error: 'No LinkedIn session on this Mac: sign in to LinkedIn first (Settings → Connections → LinkedIn).'};
+  if (!held?.li_at) return {ok: false, error: 'No LinkedIn session on this computer: sign in to LinkedIn first (Settings → Connections → LinkedIn).'};
   let caught = null;
   const unhook = site.onTaken(got => { caught ||= (got.reads || []).find(each => each.job === 'probe') || null; });
   try {
