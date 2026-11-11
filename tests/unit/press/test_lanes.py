@@ -10,13 +10,14 @@ import time
 import unittest
 from unittest import mock
 
-from src import daily_search, first_jobs, time_budget
+from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
 from src.press import stage, step_yield
-from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, found_boards, reader_rows
+from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
+from tests.unit.press.red_until import red_until
 
-GUARD_S = 60   # a hang guard only: every lane starts within milliseconds of the press once none waits for another
+GUARD_S = 15   # a hang guard only: every lane starts within milliseconds of the press once none waits for another (the red run waits it out once)
 MONOTONIC = time.monotonic   # the real clock, for the hang guard: the test moves the stand-in clock the search reads
 # The real starters the harness replaces with stand-ins; this test puts them back (taken before any test patches them).
 REAL = {(board_web, 'early'): board_web.early, (eures, 'start_early'): eures.start_early, (boards_first, 'run'): boards_first.run,
@@ -52,7 +53,7 @@ class Lanes:
 
 
 class LanesTest(phases.SearchCharacterization):
-    @unittest.expectedFailure   # Why (lanes 1/5, #3754): red today, the ratchet's mark: lanes 3/5 makes it pass and removes this line
+    @red_until('lanes 3/5 (#3754)', 'every source lane started before any finished')
     def test_every_source_lane_is_reading_before_any_has_finished_and_each_ends_done_time_up_or_failed(self):
         lanes, jumped = Lanes(SEAMS), [0.0]
         real_monotonic = time.monotonic
@@ -72,14 +73,17 @@ class LanesTest(phases.SearchCharacterization):
         patches += [mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}),   # EURES is a lane like any other here, behind its own gate
                     mock.patch.object(board_ideas, 'asked_for', return_value=['site reliability boards']),
                     mock.patch.object(time_budget.time, 'monotonic', side_effect=lambda: real_monotonic() + jumped[0])]
+        # Why (lanes 1/5, #3780's CI): the real starters turn the search's own tallies on; left so, they broke the next tests in the same process
+        patches += [mock.patch.dict(read_methods._state)] + [mock.patch.object(feeds, name, getattr(feeds, name)) for name in ('PLACED', 'READ', 'TRIAGED')]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
         time_budget.start(180)
         self.run_search(first_jobs=False)
+        self.assertIn('employer_sites', lanes.started, 'positive control: the search reached the stand-in readers')
         self.assertTrue(lanes.all_in.is_set(), f'every source lane started before any finished; started: {sorted(lanes.started)}, '
                                                f'first to finish: {lanes.finished_first}')
-        ended = step_yield.ended()   # each lane's one said state (design rule 4): a stage.Result per lane id
+        ended = step_yield.ended()   # each lane's one said state (design rule 4): a stage.Result per lane id; lanes 3/5 adds it
         self.assertEqual({lane: ended[lane].status for lane in SEAMS}, {'eures': stage.DONE, 'employer_sites': stage.DONE, 'board_web': stage.DONE,
                                                                         'job_boards': stage.CUT, 'free_job_apis': stage.FAILED})
         self.assertIn('wait', ended['job_boards'].reason, 'a lane cut by the clock says what waits')
