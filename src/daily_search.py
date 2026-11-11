@@ -66,8 +66,10 @@ def search(args, stores=None):
                 scored()
                 leave_early_reads(args)
                 raise
-            scored()   # before the import: run['score'] is whole
+            # Why (#3798, p14's repeat run, 11 Nov 2026): the import first; scored() keeps scoring the jobs the run owes (L13) past its stop, so
+            # importing after it held every job the search found, late employer reads included, behind that scoring and past the app's stop.
             imported = import_sources(db, report, so_far, run)
+            scored()   # before the closing pass: run['score'] is whole when score_jobs reads it
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
         imported = filter_jobs(args, db, imported)
