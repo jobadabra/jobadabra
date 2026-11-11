@@ -54,6 +54,17 @@ class EarlySitesTest(unittest.TestCase):
         self.assertEqual([s['company'] for s in report['sources']], [f'Co{i}' for i in range(2, 12)], 'the full read holds all 10 sites, in read order')
         self.assertEqual(len(report['jobs']), 10)
 
+    def test_a_sites_turn_is_its_place_in_the_full_read_order_the_slices_sites_counted(self):
+        """Review of #3832: the floor (the first READ_FLOOR sites beat the read's time) is counted over the full order, as in scan; counted over the
+        remainder it also protected the first sites past the slice."""
+        time_budget.start(180)
+        turns = []
+        with mock.patch('src.sources.read_budget.over', side_effect=lambda stop, n: turns.append(n) or False):
+            early = feed_scan.EarlySites(self.sources, self.db, skip=self.sources[:2], fetcher=self.fetcher)
+            self.addCleanup(early.close)
+            wait(early.reads.values(), timeout=30)
+        self.assertEqual(sorted(turns), list(range(2, 12)))
+
     def test_positive_control_without_them_a_full_read_that_starts_past_the_cut_reads_nothing(self):
         self.past_the_cut()
         report = feeds.scan(self.sources, self.db, fetcher=self.fetcher, details={})

@@ -22,7 +22,7 @@ def _sure(index, source, download, db, now, shown):
     jobs, failure = download
     if failure:
         return []
-    board, found = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}', []
+    board, found = _key(source), []
     with db:
         for job in jobs or []:
             if feeds.sure_title(job["title"]) and feeds.wanted_location(job):
@@ -44,7 +44,7 @@ def _hander(db, sources, downloads, shown, now, on_sorted):
             for job in fit_jobs:
                 index, source = owner[id(job)]
                 if (index, str(job["id"])) not in shown:
-                    board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
+                    board = _key(source)
                     shown[(index, str(job["id"]))] = _item(source, job, feeds.record(db, board, job, now))
                     items.append(shown[(index, str(job["id"]))])
         if items:
@@ -92,13 +92,13 @@ class EarlySites:
     def __init__(self, sources, db, skip=(), fetcher=None):
         _, _, due, _, facts = _plan(sources, db, feed_facts._now().isoformat(timespec="seconds"))
         skipped, stop, fetcher = {_key(source) for source in skip}, read_budget.deadline(), fetcher or feeds.fetch
-        due = [source for source in due if _key(source) not in skipped]
 
         def read(n, source):   # None: its turn came after the read's time, so it is the next search's (read_budget.keep_left)
             return None if read_budget.over(stop, n) else read_site(source, facts, fetcher, self.notes)
         self.notes = {}
         self.pool = ThreadPoolExecutor(max_workers=feeds.FETCH_WORKERS)
-        self.reads = {_key(source): self.pool.submit(slots.carry(read), n, source) for n, source in enumerate(due)}
+        # n is the site's place in the FULL read order, the slice's sites counted: the floor (read_budget.READ_FLOOR) protects the same sites as in scan (review of #3832)
+        self.reads = {_key(source): self.pool.submit(slots.carry(read), n, source) for n, source in enumerate(due) if _key(source) not in skipped}
 
     def close(self):
         """No site starts any more; one being read ends by itself."""
@@ -140,13 +140,12 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
     early: an EarlySites already reading some of these sites: its answers are taken, a site it has is never read twice."""
     fetcher = fetcher or feeds.fetch
     now = feed_facts._now().isoformat(timespec="seconds")
-    key = _key
     fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     rested, same, sources, rest, facts = _plan(sources, db, now)
     total = len(sources)
     if rested:   # said every run, so a short list is never a mystery
         print(f'Employers resting: {len(rested)} gave no match for your roles in your places {feeds.REST_AFTER} checks in a row; checked again after '
-              f'{min(rest[key(source)] for source in rested)[:10]}.')
+              f'{min(rest[_key(source)] for source in rested)[:10]}.')
     from ..progress import Ticker
     ticker, read = Ticker('Reading employer job sites', len(sources)), [0, 0]   # [sites read, jobs listed]
     took, asked, taken, notes = {}, {}, [], {}   # seconds per site read (source_yield.timed); each read's "changed since?" state; sites read after the last cut (late_reads); read_site's notes
@@ -154,17 +153,17 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
     stop, cut, cut_off = read_budget.deadline(), read_budget.cut_at(), False   # no new site past its read's time, no wait past the cut
     pool = ThreadPoolExecutor(max_workers=feeds.FETCH_WORKERS)   # a few hundred feeds must fit in the job's time; not waited for at the cut
     ahead = early.reads if early is not None else {}
-    pending = {ahead[key(source)]: index for index, source in enumerate(sources) if key(source) in ahead}   # begun at second 0: taken as they end
+    pending = {ahead[_key(source)]: index for index, source in enumerate(sources) if _key(source) in ahead}   # begun at second 0: taken as they end
     begun, at = set(pending.values()), [0]
     try:
         def take(done):   # one site that has ended: the counting and the database work stay in this thread, one site at a time
             index = pending.pop(done)
             downloads[index] = done.result()
             if downloads[index] is not None:   # None: read ahead, and its turn came after the read's time
-                note = notes.get(key(sources[index])) or (early.notes.get(key(sources[index])) if early is not None else None) or (None, None, False)
-                asked[key(sources[index])], took[key(sources[index])], late = note
+                note = notes.get(_key(sources[index])) or (early.notes.get(_key(sources[index])) if early is not None else None) or (None, None, False)
+                asked[_key(sources[index])], took[_key(sources[index])], late = note
                 if late:
-                    taken.append(key(sources[index]))
+                    taken.append(_key(sources[index]))
                 read[0] += 1
                 read[1] += len(downloads[index][0] or [])
                 ticker.tick(read[0], f' · {read[1]:,} jobs listed')
@@ -190,7 +189,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
             if not finished:   # the cut: the sites still open are left for the next run (src/sources/read_budget.py cut_at)
                 cut_off = True
                 for open_read, index in pending.items():   # not killed: what they read when they end is the next search's (late_reads)
-                    late_reads.when_done(open_read, 'employer', key(sources[index]), lambda got: got[0] if got and got[1] is None and got[0] is not None else None)
+                    late_reads.when_done(open_read, 'employer', _key(sources[index]), lambda got: got[0] if got and got[1] is None and got[0] is not None else None)
                 break
             for done in finished:
                 take(done)
@@ -200,7 +199,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
     if taken:
         print(f"Employers: {len(taken)} site(s) read after the last search's time taken from it, not read again", flush=True)
     kept = [index for index in range(len(sources)) if downloads[index] is not None]
-    read_budget.keep_left([source for index, source in enumerate(sources) if downloads[index] is None], key, len(kept), total)
+    read_budget.keep_left([source for index, source in enumerate(sources) if downloads[index] is None], _key, len(kept), total)
     sources, downloads = [sources[index] for index in kept], [downloads[index] for index in kept]
     where = {old: new for new, old in enumerate(kept)}   # the jobs shown early follow their site to its place in the read list
     shown = {(where[index], job): item for (index, job), item in shown.items() if index in where}
