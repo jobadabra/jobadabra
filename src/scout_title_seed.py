@@ -19,8 +19,11 @@ def load(path=None, db=None):
     if _loaded and path is None:
         return 0
     _loaded.append(True)
-    path = Path(path or os.getenv('SCOUT_TITLE_KINDS') or '')
-    if not str(path) or not path.is_file():
+    raw = str(path or os.getenv('SCOUT_TITLE_KINDS') or '')
+    path = Path(raw)
+    if not raw or not path.is_file():
+        # Why (sk 3/4, 11 Nov 2026): the seed file was never in the lab repo and no run said so ("no file: nothing changes"), so the scout's few calls did all the judging.
+        print(f'Scout: no title seed ({raw or "SCOUT_TITLE_KINDS not set"} is not a file); every new title is asked of the AI')
         return 0
     try:
         with gzip.open(path, 'rt', encoding='utf-8') as handle:

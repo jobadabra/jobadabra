@@ -2,11 +2,13 @@
 (src/scout_title_seed.py; owner, 26 Oct 2026: "do that from local, to rely on subscription. not costs")."""
 import gzip
 import json
+import os
 import sqlite3
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
@@ -43,6 +45,15 @@ class ToolTests(unittest.TestCase):
         recount.titles_of(feeds, work, 2, fetch, say=lambda line: None)
         self.assertEqual(sorted(reads), ['air', 'dead'], 'the second run reads no feed again')
 
+    def test_only_feeds_with_open_jobs_and_no_mix_are_read_and_through_the_scouts_sample(self):
+        feeds = [{'slug': 'a', 'fresh': {'jobs': 3}}, {'slug': 'b', 'fresh': {'jobs': 3}, 'kinds': {'software': 1.0}}, {'slug': 'c', 'fresh': {'jobs': 3}, 'kind_counts': {'ch': {'software': 1}}},
+                 {'slug': 'd', 'fresh': {'jobs': 0}}, {'slug': 'e'}]
+        self.assertEqual([f['slug'] for f in recount.without_mix(feeds)], ['a'])
+        work = self.folder()
+        got = recount.titles_of([{'ats': 'lever', 'slug': 'big'}], work, 1, lambda ats, slug: [{'id': str(n), 'title': f'Job {n}'} for n in range(100)], say=lambda line: None,
+                                pick=lambda jobs: jobs[:2])
+        self.assertEqual(got, {'lever:big': ['Job 0', 'Job 1']})
+
     def test_the_most_frequent_unknown_titles_are_asked_first(self):
         by_feed = {'a': ['First Officer', 'Nurse', 'first officer'], 'b': ['Cabin Crew', 'First Officer']}
         self.assertEqual(recount.to_judge(by_feed, lambda title: title == 'Nurse'), ['First Officer', 'Cabin Crew'])
@@ -77,8 +88,23 @@ class SeedTests(unittest.TestCase):
         self.assertEqual(decide.kept('job-title-kind', ['first officer', 'process engineer', 'nurse', 'hacker'], db, since=role_kinds.SINCE),
                          {'first officer': 'aviation_transport', 'process engineer': 'engineering', 'nurse': 'education'})
 
-    def test_no_file_changes_nothing(self):
-        self.assertEqual(scout_title_seed.load(Path('/nonexistent/title_kinds.json.gz')), 0)
+    def test_no_file_changes_nothing_and_says_so(self):
+        import contextlib
+        import io
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            self.assertEqual(scout_title_seed.load(Path('/nonexistent/title_kinds.json.gz')), 0)
+        self.assertIn('no title seed', said.getvalue())
+
+    def test_no_variable_says_it_is_not_set(self):
+        import contextlib
+        import io
+        said = io.StringIO()
+        with mock.patch.dict('os.environ', {}, clear=False), contextlib.redirect_stdout(said):
+            os.environ.pop('SCOUT_TITLE_KINDS', None)
+            scout_title_seed._loaded.clear()   # it loads once a process; the earlier tests used that
+            self.assertEqual(scout_title_seed.load(None), 0)
+        self.assertIn('SCOUT_TITLE_KINDS not set', said.getvalue())
 
     def test_the_index_build_loads_the_seed(self):
         self.assertIn('scout_title_seed.load()', (ROOT / 'src' / 'scout_index.py').read_text(encoding='utf-8'))
