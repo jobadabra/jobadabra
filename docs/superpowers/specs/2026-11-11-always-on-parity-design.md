@@ -37,7 +37,7 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 - **Cost, measured:** nothing yet: the lane has never run in production (no `freeai:web:*` keys in the KV; no `WEB_SEARCH_ANTHROPIC_KEY` on the `www` Worker, read 11 Nov). Owner, asked via AskUserQuestion: "Fund the lane, then enable it (Recommended)": the owner makes the separate Anthropic workspace key with a $10/month spend limit (money stays his); the Worker secret is set through the Cloudflare MCP; then one cloud run's `board_web` line is read to measure.
 
 ## 4/6 EURES, Adzuna, alert e-mails
-- EURES: `JOBADABRA_EURES=1` in the cloud env, as the installed app (owner, 10 Nov: off in development and CI, never the headline).
+- EURES: `JOBADABRA_EURES=1` in the cloud env, as the installed app (owner, 10 Nov: off in development and CI, never the headline). **Built (4/6a):** `src/hosted_run.py environment()` sets it; the row's one gate stays `reader_rows._eures_on`.
 - Adzuna: the person's own free key would go sealed to the site and be deleted on Always on off (a credential leaving the Mac: its own design block before code).
 - Alert e-mails: needs the Gmail token in the cloud, which `hosted_run.py` forbids today (docstring "No Notion, Gmail, Telegram ... ever"). The owner chose it ("let's build them all"); its own design block (sealed token, delete on off, read-only scope) comes first and is shown to the owner before code.
 
@@ -52,6 +52,6 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 - [ ] 1/6 LinkedIn cloud probe (app #3784 merged 14f9d37; site jobadabra-web #547; the owner's one read still to do): web PR first, then this repo's night file and the console-called IPC; the one read by the owner
 - [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane reported missing; the card's wording is 6/6) (proof: desktop/test/unit/main/hosted-hours.test.js)
 - [ ] 3/6 Web search in the cloud (cost shown first)
-- [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each)
+- [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each; EURES done: hosted_run.environment sets JOBADABRA_EURES=1; Adzuna and alert e-mails wait for the owner's design yes)
 - [ ] 5/6 LinkedIn lane in the cloud (only if the probe says go)
 - [ ] 6/6 Always On says what it does not read
