@@ -17,6 +17,9 @@ if [ -n "$debs" ]; then   # apt keeps what it downloads in the cached folder (ap
 fi
 printf '%s\n' "${conf[@]}" | sudo tee "${APT_CONF:-/etc/apt/apt.conf.d/98ci-apt}" >/dev/null   # APT_CONF, like APT_DIR below: a check with a fake apt points it at its own file
 cut() { timeout --kill-after=10 "$1" "${@:2}"; }   # a command, ended after $1 seconds
+# Why (11 Nov 2026, #3820 run 43069035134): apt leaves a root-only lock file and an _apt-only partial folder in the folder, so the cache's save
+#   (tar as the runner user) failed "Permission denied" and nothing was kept; the folder is handed back to the runner user before the save.
+mine() { [ -z "$debs" ] || sudo chown -R "$(id -u):$(id -g)" "$debs"; }
 installed() {   # every named package is installed (a package the runner image already has needs no .deb)
   local p; for p in "$@"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' || return 1; done
 }
@@ -44,7 +47,7 @@ phase() {
 if [ -n "$debs" ] && compgen -G "$debs/*.deb" >/dev/null; then
   log="$(mktemp)"; started=$SECONDS
   if cut 90 sudo apt-get install -y -q --no-download -o Dpkg::Use-Pty=0 "$debs"/*.deb >>"$log" 2>&1 && installed "$@"; then
-    echo "apt-install: $* ready (from the cache, $((SECONDS - started)) s)"; exit 0
+    echo "apt-install: $* ready (from the cache, $((SECONDS - started)) s)"; mine; exit 0
   fi
   echo "apt-install: the cache did not cover $* (stale or partial), going to the mirror; apt's last lines:" >&2; tail -n 8 "$log" >&2
 fi
@@ -52,7 +55,7 @@ for attempt in 1 2; do
   [ "$attempt" = 2 ] && other_mirror
   log="$(mktemp)"; started=$SECONDS   # apt's own words: shown when a try fails, so a stall names its source (a mirror, a third-party list, a lock)
   if phase 45 update && phase 90 install -y -o Dpkg::Use-Pty=0 "$@"; then
-    echo "apt-install: $* ready (try $attempt, $((SECONDS - started)) s)"; exit 0
+    echo "apt-install: $* ready (try $attempt, $((SECONDS - started)) s)"; mine; exit 0
   fi
   echo "apt-install: try $attempt: $why, ${attempt}/2; apt's last lines:" >&2; tail -n 15 "$log" >&2; sleep 5
 done
