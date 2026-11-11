@@ -1,8 +1,8 @@
 /* Scores arriving after a Find jobs run (pages/score-queue-draw.js): the bar above the Jobs list and the two waiting states of a row's score ring. */
-.score-queue-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px;
+.score-queue-bar { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md);
   background: var(--surface); font: 500 var(--fs-base) var(--font-sans); }
 .score-queue-bar[hidden] { display: none; }
-.score-queue-track { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.score-queue-track { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
 .score-queue-track i { display: block; height: 100%; width: 0; background: var(--good-bright); transition: width .3s; }
 .fit-cell.is-queued .fit-ring { background: none; border: 2px dashed var(--line-strong); }
 .fit-cell.is-queued .fit-ring span { background: none; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
