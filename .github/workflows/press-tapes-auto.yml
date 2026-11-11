@@ -85,7 +85,7 @@ jobs:
     needs: gaps
     if: ${{ needs.gaps.outputs.personas != '' && needs.gaps.outputs.personas != '[]' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 320
     permissions:
       contents: read
       actions: read
@@ -99,18 +99,33 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -o pipefail
-          # Why (11 Nov 2026, sa: "never record while a Search check uses the broker (its refusals would be recorded)"): a queued or running Search check or by-hand tape run holds the broker; this run waits for it, 20 min at most, and then stands down.
+          # Why (11 Nov 2026, sa: "never record while a Search check uses the broker (its refusals would be recorded)"): a queued or running Search check or by-hand tape run holds the broker; this run waits for it.
+          # Why (12 Nov 2026, run 43112178073 after #3840): it waited 22 min on a running all-18 Search check, stood down, recorded nobody and ended GREEN, so the gap stayed. Now it waits up to 5 h (a free runner, no AI call; one look every 2 min keeps the token's request budget), an older run stands down when a newer one is pending (that one replays and records on newer code, #3841 landed mid-run), and a run that ends still held ends RED.
+          # Holds the broker: a Search check (search-personas.yml: the night run, the week, a by-hand run) or a by-hand tape run (press-tapes.yml) that is queued, waiting or running; and the hour before the night run's slot 00:00 UTC
+          # (app-core/src/scheduler.js SEARCH_SLOT) until 10 min after it, when the Worker starts it: a recording that began just before would run beside it and take its refusals (the nightly is then listed above and waited for).
           held() { for workflow in search-personas.yml press-tapes.yml; do for state in in_progress queued waiting; do gh run list --repo "$REPO" --workflow "$workflow" --status "$state" --json url --jq '.[].url' || true; done; done; }
-          for _ in $(seq 1 40); do
-            now=$(held); [ -z "$now" ] && break
-            echo "waiting, a Search check or a by-hand tape run holds the broker: $now"; sleep 30
+          due() { m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) )); [ "$m" -ge 1380 ] || [ "$m" -lt 10 ]; }
+          blocked() { held; if due; then echo "the night Search check is due at 00:00 UTC"; fi; }
+          mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
+          newer() { for state in pending queued waiting; do gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status "$state" --json createdAt,url --jq ".[] | select(.createdAt > \"$mine\") | .url" || true; done; }
+          for _ in $(seq 1 150); do
+            n=$(newer)
+            if [ -n "$n" ]; then
+              echo "go=false" >> "$GITHUB_OUTPUT"
+              echo "### Stood down: a newer automatic run is pending" >> "$GITHUB_STEP_SUMMARY"
+              echo "It replays main's newest code and records the people it names, so this run records nobody: $n" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            now=$(blocked); [ -z "$now" ] && break
+            echo "waiting, a Search check or a by-hand tape run holds the broker: $now"; sleep 120
           done
-          now=$(held)
+          now=$(blocked)
           if [ -n "$now" ]; then
             echo "go=false" >> "$GITHUB_OUTPUT"
-            echo "### Stood down: a Search check or a by-hand tape run holds the broker" >> "$GITHUB_STEP_SUMMARY"
-            echo "No recording started, so no refusal can spoil a tape. Re-record by dispatching press-tapes-auto.yml when it ends: $now" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "### Not recorded: a Search check, a by-hand tape run or the night run's hour still holds the broker after 5 h" >> "$GITHUB_STEP_SUMMARY"
+            echo "No recording started, so no refusal can spoil a tape; the people stay gaps. Dispatch press-tapes-auto.yml when it ends: $now" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::The broker was held for 5 h, nobody was re-recorded (see the summary)"
+            exit 1
           fi
           # Three at once only while nothing else is on the broker (its /health `queue`: calls in flight + waiting); a count it does not say is not idle (owner, 11 Nov 2026: "3 at once, broker free").
           busy=$(curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | node -e 'const q = JSON.parse(require("fs").readFileSync(0, "utf8")).queue; console.log(q && Number.isInteger(q.active) ? q.active + Object.values(q.waiting || {}).reduce((a, b) => a + b, 0) : 99)' || echo 99)
