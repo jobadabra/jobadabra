@@ -1,8 +1,0 @@
-{"family": "nurse", "title": "Registered Nurse", "kind": "non-tech", "city": "Dublin", "country": "Ireland", "language": "English", "reference": {"words": ["registered nurse", "staff nurse"], "nuts2": "IE06"}}
-tape: no recorded.json (recorded before it existed): the model override is the environment's
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p7-main-1/tape/draft.json in 0 s
-Search: 6 roles; places Dublin, Ireland
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (176 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 6 roles; places Dublin, Ireland
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (132 s)
-PERSONA DONE draw

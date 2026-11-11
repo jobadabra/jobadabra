@@ -1,8 +1,0 @@
-{"family": "hr", "title": "HR Generalist", "kind": "non-tech", "city": "Cluj-Napoca", "country": "Romania", "language": "Romanian", "reference": {"words": ["specialist resurse umane", "HR"], "nuts2": "RO11"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p2-main-1/tape/draft.json in 0 s
-Search: 7 roles; places Cluj-Napoca, Romania
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (178 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 7 roles; places Cluj-Napoca, Romania
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (117 s)
-PERSONA DONE draw

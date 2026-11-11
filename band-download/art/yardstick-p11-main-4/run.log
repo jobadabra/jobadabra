@@ -1,8 +1,0 @@
-{"family": "data-analyst", "title": "Data Analyst", "kind": "tech", "city": "Lisbon", "country": "Portugal", "language": "Portuguese", "reference": {"words": ["analista de dados"], "nuts2": "PT17"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p11-main-4/tape/draft.json in 1 s
-Search: 6 roles; places lisbon, portugal
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (176 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 6 roles; places lisbon, portugal
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (178 s)
-PERSONA DONE draw

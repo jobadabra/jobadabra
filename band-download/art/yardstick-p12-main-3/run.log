@@ -1,8 +1,0 @@
-{"family": "accountant", "title": "Accountant", "kind": "non-tech", "city": "Milan", "country": "Italy", "language": "Italian", "reference": {"words": ["contabile"], "nuts2": "ITC4"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p12-main-3/tape/draft.json in 1 s
-Search: 6 roles; places milan, italy
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (178 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 6 roles; places milan, italy
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (143 s)
-PERSONA DONE draw

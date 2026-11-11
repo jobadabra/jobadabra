@@ -166,6 +166,8 @@ class Verdict(unittest.TestCase):
             with mock.patch.object(ci.subprocess, 'run', side_effect=gh):
                 self.assertEqual(ci.newest_band(), band)
                 self.assertEqual(ci.newest_band(), band, 'the second read in the job is the same band, never {}')
+            self.assertEqual(sorted(p.name for p in self.root.iterdir()), ['recordings'],
+                             'nothing is downloaded into the working folder: #3805 committed 609 band files a by-hand run left in the repo')
         finally:
             os.chdir(cwd)
 

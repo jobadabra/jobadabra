@@ -1,8 +1,0 @@
-{"family": "teacher", "title": "Secondary School Teacher", "kind": "non-tech", "city": "Prague", "country": "Czechia", "language": "Czech", "reference": {"words": ["učitel"], "nuts2": "CZ01"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p13-main-5/tape/draft.json in 0 s
-Search: 7 roles; places Prague, Czechia
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (176 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 7 roles; places Prague, Czechia
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (149 s)
-PERSONA DONE draw
