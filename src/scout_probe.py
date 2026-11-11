@@ -232,8 +232,8 @@ def relevant_roles(jobs):
     return len({str(j['title']).strip().lower() for j in counted_jobs(jobs)})
 
 
-def job_places(jobs, limit=40):
-    """Where a feed has matching roles: its most common location strings, so a client can skip feeds with none in
+def job_places(jobs, limit=40, width=60):
+    """Where a feed has matching roles: its most common location strings (each cut to `width` characters), so a client can skip feeds with none in
     its own places without downloading them."""
-    counts = Counter((j.get('location') or '').strip()[:60] for j in counted_jobs(jobs))
+    counts = Counter((j.get('location') or '').strip()[:width] for j in counted_jobs(jobs))
     return [place for place, _ in counts.most_common(limit + 1) if place][:limit]

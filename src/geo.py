@@ -38,8 +38,11 @@ for an area the radius that covers it. For a country, remote or unknown: 0, 0, 0
 Never invent a place: when unsure, answer "unknown"."""
 
 
+KEY_WIDTH = 120   # a place's cache key is its normalized text cut to this: a caller that reads the same place must not cut it shorter
+
+
 def norm(text):
-    return ' '.join(str(text or '').lower().split())[:120]
+    return ' '.join(str(text or '').lower().split())[:KEY_WIDTH]
 
 
 def _read():

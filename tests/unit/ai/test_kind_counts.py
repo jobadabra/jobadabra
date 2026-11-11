@@ -59,31 +59,58 @@ class ScoutCountsTest(Fixtures):
 
 class CountriesFromPlaceAnswersTest(Fixtures):
     """Why (sk 2/4, 11 Nov 2026): the scout judged an employer's places three times (kind counts, country, region); the country is now read from the kind counts' place answers."""
-    def labels(self, topic, texts, choices, task):
-        self.assertNotEqual(topic, 'pool-country', 'a place is not judged a second time for its country')
-        return [], []
+    def setUp(self):
+        super().setUp()
+        self.pack = []
+
+        def labels(topic, texts, choices, task):
+            self.pack.append((topic, list(texts)))
+            return ([], list(texts))   # the pack knows none of them
+        patch = mock.patch.object(meanings, 'labels_read', labels)
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def test_countries_come_from_the_place_answers_and_remote_or_unknown_name_none(self):
-        with mock.patch.object(meanings, 'labels_read', self.labels):
-            found = pool_tags.countries_read(['Zurich', 'Frankfurt', 'Remote', 'Somewhere'], scout_kind_counts.country_ids)
+        found = pool_tags.countries_read(['Zurich', 'Frankfurt', 'Remote', 'Somewhere'], scout_kind_counts.country_ids)
         self.assertEqual(found, (['ch', 'de'], []))
         self.assertEqual(self.asked, [['frankfurt']], 'asked once, only what the cache and the pack do not know')
+        self.assertEqual(self.pack, [], 'every word was answered by a place answer: no pool-country question')
 
-    def test_a_place_past_the_cap_is_unanswered_so_its_earlier_country_is_kept(self):
+    def test_a_place_past_the_cap_gets_the_pack_answer_only_and_is_otherwise_unanswered(self):
         decide._calls['n'] = decide.MAX_CALLS_PER_RUN
-        with mock.patch.object(meanings, 'labels_read', self.labels):
-            self.assertEqual(pool_tags.countries_read(['Zurich', 'Frankfurt'], scout_kind_counts.country_ids), (['ch'], ['Frankfurt']))
-        self.assertEqual(self.asked, [])
+        self.assertEqual(pool_tags.countries_read(['Zurich', 'Frankfurt'], scout_kind_counts.country_ids), (['ch'], ['Frankfurt']))
+        self.assertEqual((self.asked, self.pack), ([], [('pool-country', ['Frankfurt'])]), "the pack's old-list answers still count; nothing else is asked")
 
-    def test_the_scouts_index_build_asks_no_pool_country_question(self):
+    def test_a_long_location_is_one_place_for_the_counts_and_the_country(self):
+        long = 'Frankfurt am Main, Hessen, Deutschland, Europe, Mainzer Landstrasse 1, 60329 Frankfurt'
+        self.assertGreater(len(long), 60)
+        known, asked = {}, []
+
+        def resolve(strings, client=None, ask=True, share=False):   # a cache that learns what it is asked
+            keys = [geo.norm(s) for s in strings if s]
+            if ask:
+                asked.append(keys)
+                known.update({k: {'kind': 'city', 'cc': 'DE', 'lat': 50.1, 'lon': 8.68, 'r': 20} for k in keys})
+            return {k: known[k] for k in keys if k in known}
+        with mock.patch.object(geo, 'resolve', resolve):
+            scout_kind_counts.kind_counts([{'title': 'Backend Engineer', 'location': long}] * 3)
+            found = pool_tags.countries_read([long], scout_kind_counts.country_ids)
+        self.assertEqual(found, (['de'], []))
+        self.assertEqual(asked, [[geo.norm(long)]], 'the full location is one cache key: asked once, not twice')
+
+    def test_the_scouts_index_build_reads_the_full_location_for_countries(self):
         import tempfile
         from pathlib import Path
         from src import store
-        job = [{'id': '1', 'title': 'Backend Engineer', 'location': 'Frankfurt', 'url': 'u', 'date_posted': '2099-01-01', 'description': '', 'remote': False, 'salary': ''}]
-        with tempfile.TemporaryDirectory() as tmp, store.connect(Path(tmp) / 'j.sqlite') as db, mock.patch.object(meanings, 'labels_read', self.labels), mock.patch.object(scout_core, 'CENTRAL', True):
+        long = 'Frankfurt am Main, Hessen, Deutschland, Europe, Mainzer Landstrasse 1, 60329 Frankfurt'
+        PLACE[geo.norm(long)] = {'kind': 'city', 'cc': 'DE', 'lat': 50.1, 'lon': 8.68, 'r': 20}
+        self.addCleanup(PLACE.pop, geo.norm(long))
+        job = [{'id': '1', 'title': 'Backend Engineer', 'location': long, 'url': 'u', 'date_posted': '2099-01-01', 'description': '', 'remote': False, 'salary': ''}]
+        with tempfile.TemporaryDirectory() as tmp, store.connect(Path(tmp) / 'j.sqlite') as db, mock.patch.object(scout_core, 'CENTRAL', True):
             db.executescript(scout.TABLES)
             feeds, _ = scout.build_index(db, [{'company': 'Co', 'ats': 'lever', 'slug': 'co'}], lambda s, slug: job, today='2026-11-11')
         self.assertEqual(feeds[0]['countries'], ['de'])
+        self.assertEqual([t for t in self.pack if t[0] == 'pool-country'], [], 'no pool-country question for a place the place answers cover')
 
 
 class CentralCapAndSampleTest(Fixtures):
