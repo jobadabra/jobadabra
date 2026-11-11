@@ -59,7 +59,7 @@ function headTime(repo, sha) {
 
 /** True when Gitar has a check suite on the head (REST path; the GraphQL read gets it from the same suites it already lists). */
 function gitarOnHead(repo, sha) {
-  return JSON.parse(gh('api', `repos/${repo}/commits/${sha}/check-suites`)).check_suites.some(c => /gitar/i.test(c.app?.slug || ''));
+  return JSON.parse(gh('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.some(c => /gitar/i.test(c.app?.slug || ''));
 }
 
 /** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */

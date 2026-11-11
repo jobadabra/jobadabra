@@ -25,12 +25,12 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, heads, runs='ok', after='0'):
+    def watch(self, heads, runs='ok', after='0'):   # runs: one fake check-run answer for every look, or a list with one per look
         """One look per head, then the PR closes. Returns (the log lines, the number of `gh pr comment` calls, the calls' text)."""
         self.log.write_text('ship: opened\n')
         looks = len(heads)
         files = {'states': 'OPEN\n' * looks + 'CLOSED\n', 'drafts': 'false\n' * (looks + 1), 'labels': 'Gitar: not started\n' * (looks + 1), 'mergeables': '', 'fixes': '',
-                 'verdicts': '', 'heads': '\n'.join(heads) + '\n', 'looks': '0', 'mergestates': '', 'twins': '', 'runs': (runs + '\n') * (looks + 1)}
+                 'verdicts': '', 'heads': '\n'.join(heads) + '\n', 'looks': '0', 'mergestates': '', 'twins': '', 'runs': (''.join(r + '\n' for r in runs) if isinstance(runs, list) else (runs + '\n') * looks) + 'ok\n'}
         for name, text in files.items():
             (self.tmp / name).write_text(text)
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
@@ -52,6 +52,10 @@ class ShipWatchGitarAskTest(unittest.TestCase):
     def test_each_new_head_is_asked_once(self):
         _, calls = self.watch(['aaa1111', 'aaa1111', 'bbb2222', 'bbb2222'])
         self.assertEqual(len(calls), 2, calls)
+
+    def test_a_failed_check_read_never_asks_and_the_next_good_read_asks_once(self):
+        lines, calls = self.watch(['aaa1111'] * 3, runs=['refused', 'ok', 'ok'])
+        self.assertEqual(len(calls), 1, (calls, lines))
 
     def test_it_waits_before_asking(self):
         _, calls = self.watch(['aaa1111', 'aaa1111'], after='3600')
