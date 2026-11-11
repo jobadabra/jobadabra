@@ -61,6 +61,23 @@ class TheRow(unittest.TestCase):
         quiet = self.press({**funnel.funnel([])}, first=None)
         self.assertEqual(quiet['counters'], {'eu': 0, 'sites': 0, 'titles': 0, 'ai': 0, 'firstS': None}, 'a press that ran and logged no EU line read none; no job in its places is "none", not 0 s')
 
+    def test_the_row_carries_what_the_search_read_for_the_finish_line_card(self):
+        """sa, 11 Nov 2026, asked via AskUserQuestion: the Finish line card "What a search read" needs the jobs listed in the person's places and the employers in them; a number the press did not write is None, never 0."""
+        out = Path(tempfile.mkdtemp())
+        (out / 'draw').mkdir()
+        line = {'press': 1, 'code': 0, 'billing': 'subscription', 'seconds': 159, 'scored_in_places': 3, 'local_jobs': 46, 'funnel': funnel.funnel(['[12s] Employers: 7 of 9 in your places hire for your kind of role']), 'ttfr': {}}
+        (out / 'draw' / 'presses.jsonl').write_text(json.dumps(line) + '\n')
+        self.assertEqual(gate.result(1, out)['read'], {'listed': 46, 'employers': 9})
+        line.update(local_jobs=0, funnel=funnel.funnel([]))
+        (out / 'draw' / 'presses.jsonl').write_text(json.dumps(line) + '\n')
+        self.assertEqual(gate.result(1, out)['read'], {'listed': 0, 'employers': None}, 'a measured 0 listed is 0; an employers line that never came is None')
+        del line['local_jobs']
+        (out / 'draw' / 'presses.jsonl').write_text(json.dumps(line) + '\n')
+        self.assertEqual(gate.result(1, out)['read'], {'listed': None, 'employers': None}, 'a press row from before the field claims nothing')
+        pr = {n: {'persona': n, 'local': 1, 'found': 2, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': 0, 'billing': 'subscription', 'read': {'listed': 46, 'employers': 7}} for n in range(1, len(gate.PERSONAS) + 1)}
+        self.assertEqual(gate.compare(pr, [])['rows'][0]['read'], {'listed': 46, 'employers': 7}, 'the verdict row the site reads carries it')
+        self.assertIsNone(gate.compare({}, [])['rows'][0]['read'], 'a persona with no result claims nothing')
+
     def test_a_press_that_wrote_no_numbers_claims_nothing(self):
         out = Path(tempfile.mkdtemp())
         self.assertNotIn('counters', gate.result(1, out))
