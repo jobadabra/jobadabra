@@ -1,19 +1,5 @@
 [
  {
-  "seed": 20261104,
-  "pairs": [
-   "start → Settings: What we learned about you: Add answer",
-   "Settings: What we learned about you: Add answer → Actions: Actions: More · 2",
-   "Actions: Actions: More · 2 → Settings: Chrome extension: chrome://extensions",
-   "Settings: Chrome extension: chrome://extensions → Focus: Suggestions",
-   "Focus: Suggestions → Settings: Keep a trace of each form fill",
-   "Settings: Keep a trace of each form fill → Strategy: Strategy: View matching jobs",
-   "Strategy: Strategy: View matching jobs → Profile: Build a CV with the AI",
-   "Profile: Build a CV with the AI → Settings: 🤝 Fixes from the community",
-   "Settings: 🤝 Fixes from the community → Jobs: Jobs filter: Closed"
-  ]
- },
- {
   "seed": 20261107,
   "pairs": [
    "start → Focus: Up next",
@@ -65,5 +51,9 @@
    "Jobs: Show jobs as a list → Settings: Experience sources: Add another CV version",
    "Settings: Experience sources: Add another CV version → Actions: Tailor CV + cover letter for top matches"
   ]
+ },
+ {
+  "seed": 20261111,
+  "pairs": []
  }
 ]
