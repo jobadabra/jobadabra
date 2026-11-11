@@ -1,5 +1,5 @@
 name: CI · Search check (18 personas)
-# Once a night, alone on the broker: eighteen fictional job seekers press Find jobs once on fresh installs, one after the other (about 4.5 minutes each: the six took 26-29 minutes on 5-6 Nov, so about 80-85 minutes in all); a press over 180 s reads red. A report: it blocks nothing.
+# Once a night, alone on the broker: eighteen fictional job seekers press Find jobs twice on fresh installs, one after the other (one press was about 4.5 minutes each, about 100 minutes in all on 10 Nov; two runs about 8 minutes each, about 150); a press over 180 s reads red. A report: it blocks nothing.
 # Why (4 Nov 2026, owner: "still doesn't work. We tried to fix it 10+ times", chose "Night run, off PRs"; reverses 27 Oct's check on every search PR, #2285): none of the last 15 PR results found a job (8 not measured,
 # 5 found 0, 2 red) because the result follows the broker's load, so it could not judge a PR. A search PR relies on its unit and integration tests. The coordinator reads each night; two not measured or a drop goes to the owner.
 # Quality is shown per persona and pooled; it reads red only after 10 measured complete runs on main, below their mean minus twice the sample standard deviation
@@ -34,14 +34,15 @@ on:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
         default: false
-      # Why (7 Nov 2026, ps 2/6, gi's review): the repeat press is never measured (every night is one fresh press), so a by-hand run can take 2 presses for chosen
-      # personas; such a run (a subset or 2 presses; a plain by-hand run of all 18 is still a night) is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
+      # Why (11 Nov 2026, owner, asked via AskUserQuestion in session sa: "2 runs nightly, 5 runs weekly (Recommended)"; "each of the runs should provide new jobs"): a night is
+      # 2 runs per person in the same install (tools/persona-search/runs.py: what each run listed first; every older number stays the first run's). A run of
+      # other presses or a subset (a plain by-hand run of all 18 with 2 is still a night) is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
       # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565).
       presses:
-        description: 'Presses per persona (1 = the night check; 2 also measures a repeat press)'
+        description: 'Runs per person in one install (2 = the night check; 1 = a quick look, not a night)'
         type: choice
         options: ['1', '2']
-        default: '1'
+        default: '2'
       personas:
         description: 'Only these personas, a JSON list such as [7] (empty = all 18)'
         type: string
@@ -80,7 +81,7 @@ jobs:
       - name: The broker lane has room for every persona of this run
         env:
           PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
-          PRESSES: ${{ inputs.presses || '1' }}
+          PRESSES: ${{ inputs.presses || '2' }}
           ARMS: ${{ inputs.eures_comparison && 2 || 1 }}
         run: |
           set -o pipefail
@@ -92,7 +93,7 @@ jobs:
     needs: room
     if: ${{ !cancelled() && (needs.room.result == 'success' || needs.room.result == 'skipped') }}   # the nightly skips the room check; a by-hand run with no room stops before any persona
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.eures_comparison && 25 || inputs.presses == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
+    timeout-minutes: ${{ inputs.eures_comparison && 25 || (inputs.presses || '2') == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
     # Why (8 Nov 2026, owner: "Fix Free AI + PR lane now (Recommended)": "by-hand Search checks may use the 30% PR reserve (about 1 run a day)"): the run token's environment is the only signed
     # sign of a by-hand run (the Worker's nightly is workflow_dispatch by the same account); the broker puts this one environment of this workflow on its PR lane (jobadabra-web lib/lanes.mjs).
     # The nightly names no environment and stays on the scheduled lane. No deployment record: it deploys nothing.
@@ -163,7 +164,7 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '1' }}" --fresh --engine api --tag gate ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '2' }}" --fresh --engine api --tag gate ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json --urls
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"
@@ -175,6 +176,9 @@ jobs:
         run: |
           set -o pipefail
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
+      - name: Which run listed each job first
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison
+        run: python3 tools/persona-search/runs.py split out
       - name: The persona's numbers
         if: always() && steps.token.outputs.ok == 'yes'
         run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
@@ -191,7 +195,10 @@ jobs:
           path: |
             out/result.json
             out/judged.json
+            out/judged-all.json
+            out/runs.json
             out/jobs.json
+            out/jobs-all.json
             out/found-boards.json
             out/run.log
             out/judge.log
@@ -234,7 +241,7 @@ jobs:
     needs: [room, again-list]
     if: ${{ !cancelled() && needs.again-list.outputs.personas != '' && needs.again-list.outputs.personas != '[]' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.presses == '2' && 18 || 12 }}
+    timeout-minutes: ${{ (inputs.presses || '2') == '2' && 18 || 12 }}
     environment:
       name: ${{ !inputs.scheduled && 'search-check-by-hand' || '' }}
       deployment: false
@@ -253,7 +260,7 @@ jobs:
   reference:
     name: EURES reference
     needs: [room, persona, again]   # after the second tries: one press or read at a time on the broker
-    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
+    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -366,7 +373,7 @@ jobs:
         if: always() && hashFiles('result/verdict.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
         run: |
           set +e
           python3 tools/persona-search/floors.py check result/verdict.json result/floors-state.json ${NIGHT:+--night} | tee -a result/table.md
@@ -393,10 +400,10 @@ jobs:
         with: {name: search-personas-floors-state, path: result/floors-state.json, retention-days: 7}
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: "${{ (inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
-        if: always() && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or 2-press run is not a night
+        if: always() && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or a 1-run look is not a night
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -422,7 +429,7 @@ jobs:
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
-        if: inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or 2-press run measures, it is no verdict
+        if: inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or a 1-run look measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
           FLOORS: ${{ steps.floors.outputs.red }}
@@ -437,7 +444,7 @@ jobs:
   floors-save:
     name: Save the floors
     needs: compare
-    if: ${{ !cancelled() && needs.compare.result != 'skipped' && inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a red night saves too: its below-streak is the state
+    if: ${{ !cancelled() && needs.compare.result != 'skipped' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' }}   # a red night saves too: its below-streak is the state
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
