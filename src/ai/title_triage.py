@@ -38,7 +38,7 @@ A level, when given, is the seniority they want: leave out a title plainly far f
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
 Owner" is no pilot). When unsure, include it: a later step scores each job."""
 
-PROMPT = hashlib.sha1(SYSTEM.encode()).hexdigest()[:12]   # the SYSTEM a search's kept answers were sorted under (_current)
+PROMPT = hashlib.sha1(SYSTEM.encode()).hexdigest()   # the SYSTEM a search's kept answers were sorted under (_current)
 STAMP = '#PROMPT'   # its key inside a search's entry: a kept title is lower-cased (_norm), so never this
 
 # Why (27 Oct 2026, owner "Ask again before closing"; quality run 40508145728): Free AI said no to 'Staff Platform Engineer, Kubernetes' and 'Cloud Infrastructure
