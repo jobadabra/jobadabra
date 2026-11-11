@@ -34,7 +34,7 @@ test('turning on sends the e-mail and the profile (never a news answer) with the
   assert.deepEqual(await turnOn(st, {email: 'bad'}, {fetcher: s.fetcher}), {ok: false, error: 'Enter an email address like you@example.com.'});
   assert.deepEqual(await turnOn(st, {email: ' A@Example.com '}, {fetcher: s.fetcher}), {ok: true});
   assert.deepEqual(s.calls.map(c => c.key), ['PUT /api/hosted/schedule', 'PUT /api/hosted/config']);
-  assert.deepEqual(s.calls[0].body, {on: true, email: 'A@Example.com'});
+  assert.deepEqual(s.calls[0].body, {on: true, email: 'A@Example.com', freqHours: 4});   // How often (default 4 h) reaches the schedule (ap 2/6)
   assert.deepEqual(s.calls[1].body, {search: {role_keywords: ['sre']}, profile: 'My profile', cv: ''});
   assert.ok(s.calls.every(c => c.key_header === FREE));
   assert.deepEqual([state(st).on, state(st).email], [true, 'A@Example.com']);
