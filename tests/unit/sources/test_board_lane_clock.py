@@ -34,7 +34,7 @@ class TheLaneClock(unittest.TestCase):
         cut, end = read_budget.cut_at(), read_budget.run_end()
         self.assertTrue(read_budget.past_cut(), 'positive control: the employer sites\' read cut has come')
         self.assertLess(cut, end, 'positive control: the cut comes before the run\'s end')
-        with read_budget.in_lane(end):
+        with slots.in_lane(end):
             self.assertEqual(read_budget.cut_at(), end)
             self.assertFalse(read_budget.past_cut(), 'the lane still reads')
             with ThreadPoolExecutor(max_workers=1) as pool:   # a board's pages are read in pool threads (found_boards.read)

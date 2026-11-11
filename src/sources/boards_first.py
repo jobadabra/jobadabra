@@ -51,7 +51,7 @@ def _keep(feed_db, found, on_jobs):
 class Beside:
     """The job boards' lane, started at second 0 of every Find jobs run (lanes 4a, owner, 11 Nov 2026: "Run's deadline, own lane (Recommended)";
     before, a repeat run only, ps E2a-2): their pages fetched and their titles judged in threads of their own (reader NAME of
-    src/ai/batch_scope.py, inside the caller's side-by-side scope), reading until the run's end (src/sources/read_budget.py in_lane), not the
+    src/ai/batch_scope.py, inside the caller's side-by-side scope), reading until the run's end (src/ai/slots.py in_lane), not the
     employer sites' read cut. Groups: the boards known for this field and the web search's (src/sources/board_reader.py), and beside them
     `listed` when given (a first run's own board list, src/first_jobs.py board_jobs). The thread that owns the job cache keeps their jobs and
     shows them (deliver: in the first-jobs step through `notify`, after each employer site, then `take` until the lane ends), as
@@ -78,10 +78,9 @@ class Beside:
 
     def _read(self, read, end, wait):
         """One group source of the lane in its own thread, to the lane's end; the lane is done when every source has ended."""
-        from ..ai import batch_scope
-        from . import read_budget
+        from ..ai import batch_scope, slots
         try:
-            with read_budget.in_lane(end), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
+            with slots.in_lane(end), stage.guard('job boards first: read') as caught, batch_scope.reader(self.NAME), step_yield.span('job_boards'):
                 read(wait)
             if caught:   # the full board read reads them
                 print(f'Warning: job boards first skipped: {caught.reason}: {caught.error}', flush=True)

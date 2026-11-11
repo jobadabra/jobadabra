@@ -7,11 +7,9 @@ or cloud run, a test without one): every site, as before. Used by src/sources/fe
 Every read of the run ends at its cut, half the budget (owner, 26 Oct 2026: "A find jobs session should take at most 3min"): the titles, places
 and scores of what was read get the other half of the same deadline (src/time_budget.py); a read stage past the cut only queues (past_cut).
 Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py.
-A lane of its own (in_lane: the job boards, src/sources/boards_first.py Beside) reads to the run's end instead of this cut; every read in its
-threads (src/ai/slots.py carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py."""
-import contextlib
+A lane of its own (src/ai/slots.py in_lane: the job boards, src/sources/boards_first.py Beside) reads to the run's end instead of this cut; every
+read in its threads (slots.carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py."""
 import json
-import threading
 from concurrent.futures import TimeoutError as Late
 from datetime import datetime
 
@@ -30,7 +28,6 @@ def _file():
     return paths.DATA / FILE
 
 
-_lane = threading.local()   # this thread's own lane end (in_lane), carried into its pools by src/ai/slots.py carry
 _short = [False]   # the boards read first gave enough jobs: only the best READ_FLOOR employer sites (src/sources/boards_first.py)
 
 
@@ -40,19 +37,9 @@ def short(on=True):
 
 
 def lane_end():
-    """The end of the lane this thread reads in (in_lane), None outside one: the employer sites' read and the slice keep the cut."""
-    return getattr(_lane, 'end', None)
-
-
-@contextlib.contextmanager
-def in_lane(end):
-    """Reads in this block (and in the pools it starts through slots.carry) end at `end`, not at the read cut; None: the cut again."""
-    before = lane_end()
-    _lane.end = end
-    try:
-        yield
-    finally:
-        _lane.end = before
+    """The end of the lane this thread reads in (src/ai/slots.py in_lane), None outside one: the employer sites' read and the slice keep the cut."""
+    from ..ai import slots
+    return slots.lane()
 
 
 def run_end():

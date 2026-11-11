@@ -17,7 +17,7 @@
  },
  "L05": {
   "gets": "the job boards lane ends at the run's deadline, not at the employer sites' read cut",
-  "hash": "5f1fee336bc46f51"
+  "hash": "09542b2a91ec77ac"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
