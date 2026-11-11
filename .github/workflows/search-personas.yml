@@ -301,6 +301,7 @@ jobs:
           name: search-personas-reference
           retention-days: 30
           if-no-files-found: ignore
+          # Why (sf, #3723, 10 Nov 2026): session mc's market count reads reference.json (each source's counts) and reference.log (the night's in = out)
           path: |
             out/reference-jobs.json
             out/reference.json

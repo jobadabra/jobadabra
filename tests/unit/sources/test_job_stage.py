@@ -115,7 +115,8 @@ class InEqualsOut(unittest.TestCase):
             self.assertEqual(job_stage.of(dict(job, location='')), 'placed_out', 'no place to ask about')
 
     def test_the_place_words_run_once_per_location_in_a_pass_not_once_per_job(self):
-        """#3709's yardstick (10 Nov 2026): staging every dropped job ran the place words' regex (~150 µs) per job, 3 s on a 20,000-job board read."""
+        """#3709's yardstick (10 Nov 2026): staging every dropped job ran the place words' regex (~150 µs) per job: aggregators.kept()
+        on 20,000 title-dropped jobs over 200 places took 3.38 s, 0.40 s once per location (median of 3 on a Mac, #3723's body)."""
         jobs = [dict(job, url=f"{job['url']}-{n}") for n in range(50) for job in listed('EURES')]   # 300 jobs at one location
         self.verdicts, self.places = {}, {job['url']: None for job in jobs}   # no title answered, no place placed: the words decide each
         with mock.patch.object(feeds, 'wanted_location', wraps=feeds.wanted_location) as words, mock.patch.object(feeds, 'triage'), redirect_stdout(io.StringIO()):

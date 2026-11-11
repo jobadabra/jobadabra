@@ -15,7 +15,8 @@ def of(job, places=None):
     path), ai_no (the title sort said no; the words, with no AI), no_link. Never 'kept': an answer that lands after kept looked was not there in time.
     `places`: one kept() pass's {(location, remote): the place words' answer}, so their regex runs once per unplaced location, not per job.
     Why (review of sf's step 3, 10 Nov 2026): a verdict landing between kept's check and this one made a dropped job read as kept; and the place
-    words cost ~150 µs a job (#3709's yardstick: p5 and p13 slower), so they run once per unplaced location in a pass."""
+    words cost ~150 µs a job (#3709's yardstick: p5 and p13 slower; aggregators.kept() on 20,000 title-dropped jobs over 200 places, median of 3:
+    3.38 s per job, 0.40 s per location, #3723), so they run once per unplaced location in a pass."""
     from . import feeds
     if not job.get('url'):
         return 'no_link'
