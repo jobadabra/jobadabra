@@ -10,7 +10,7 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
 
 **To prove a Find jobs change (before | after) in ~2.5 min a search, use `local-proof` instead** (owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins"):
 `node tools/persona-search/local-proof.mjs <person 1-18> --ref <before: worktree path or git ref> --ref <after>`. The CV and search plan are made once per person
-(`$TMPDIR/jp-local-proof/people/p<n>/`), a worktree path searches as it is (edits too), one table comes out; a run that hit the plan limit reads NOT COUNTED.
+(`$TMPDIR/jp-local-proof/people/p<n>/`), a worktree path searches as it is (edits too), one table comes out; a run that hit the plan limit reads NOT COUNTED. The saved plan is reused, so a change to the strategy draft itself needs `--fresh-draft`.
 `--together` runs both at once (measured 11 Nov 2026: the 3-minute clock holds, 1st job +2-3 s; not 3 at once). One run a side is noisy (p10, same code: 46-60 listed).
 
 ## What it uses and costs

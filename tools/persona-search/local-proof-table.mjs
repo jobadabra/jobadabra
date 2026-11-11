@@ -1,6 +1,7 @@
 // The one table of a local proof (tools/persona-search/local-proof.mjs): one column per run, read from its press row (presses.jsonl: metrics.py, funnel.py, ttfr.py) and run-1.log.
 import fs from 'node:fs';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 
 const LIMIT = /CliLimitError|usage window is exhausted|usage limit|not signed in on this computer|did not answer twice in a row/;
 const AI_CALL = /^\[\d+s\] AI call: (\S+) \([^)]*\): asked at ([\d.]+) s, (?:no slot queue|waited ([\d.]+) s for a slot), answered at ([\d.]+) s \(([\d.]+) s\)/;
@@ -36,7 +37,7 @@ export function table(runs) {
   const add = (what, f) => rows.push([what, ...r.map(x => { try { const v = f(x); return v == null ? '–' : String(v); } catch { return '–'; } })]);
   add('Code', x => x.label);
   add('Counts?', x => (x.limit ? 'NO: the Claude plan limit was hit' : !x.row ? `NO: no press row (${x.tail.slice(0, 60)})` : x.row.crashes?.length ? `NO: ${x.row.crashes.length} crash(es)` : 'yes'));
-  add('Wall clock (search + start-up)', x => `${x.wall} s (${x.row.seconds} + ${x.wall - x.row.seconds})`);
+  add('Wall clock (search + start-up)', x => (Number.isFinite(x.wall) ? `${x.wall} s (${x.row.seconds} + ${x.wall - x.row.seconds})` : `search ${x.row.seconds} s`));
   add('Jobs listed in your places', x => x.row.in_places);
   add('… scored · fit 70+', x => `${x.row.scored_in_places} · ${x.row.fit70_in_places}`);
   add('1st · 10th job in your places', x => `${x.row.ttfr?.first_in_places_s ?? '–'} s · ${x.row.ttfr?.tenth_in_places_s ?? '–'} s`);
@@ -59,11 +60,11 @@ export function table(runs) {
   // Why (11 Nov 2026, as, measured): the same code on p10 listed 46, 60 and 59 jobs in three runs, because the job-board web search found 3 or 5 boards: one run a side cannot judge a small difference
   if (r.length > 1) lines.push('Noise: one run a side. The same code listed 46-60 jobs for p10 (11 Nov 2026, boards and web search vary): a difference under ~15 listed jobs needs 2-3 runs a side.');
   for (const x of r) if (x.limit) lines.push(`\n⛔ NOT COUNTED (${x.label}): ${x.limit}`);
-  lines.push('', ...r.map((x, i) => `Run ${i + 1} files: ${path.dirname(path.join(runs[i].out, 'x'))}`));
+  lines.push('', ...r.map((x, i) => `Run ${i + 1} files: ${runs[i].out}`));
   return lines.join('\n');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {   // re-print a table: node local-proof-table.mjs <name> <out folder>...
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {   // re-print a table: node local-proof-table.mjs <name> <out folder>...
   const [name, ...outs] = process.argv.slice(2);
   console.log(table(outs.map(out => ({out, name, code: 0, seconds: NaN, label: path.basename(out)}))));
 }

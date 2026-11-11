@@ -1,11 +1,12 @@
-// One command proves a Find jobs change on this Mac in about 3-4 minutes and prints one table (sa for the owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins. 3 mins.").
+// One command proves a Find jobs change on this Mac in about 2.5 minutes a search and prints one table (sa for the owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins. 3 mins.").
 //   node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--together] [--fresh-draft]
 //   --ref: the code to search with, any number (two = before | after side by side): a checkout folder (`.` = this one, the default; or a session's worktree path) searches as it is, edits too;
 //          Any other ref gets its own detached worktree under <os temp>/jp-local-proof/trees/<sha>, made once and never edited (the repo's post-checkout hook links node_modules).
 //   --together: the refs search at the same time instead of one after the other (to measure whether two local searches move the 3-minute clock).
 //   --fresh-draft: make the person's saved search plan again.
 // What it cuts (a full local run, search-check.mjs, is 5-12 min): the CV (gate.py cv) and the strategy draft (one AI call of ~1 min) are made ONCE per person and kept in
-// <os temp>/jp-local-proof/people/p<n>/ (outside the repo and the app's folder; kept until the Mac restarts), so every run searches for exactly the same thing; no judge, no second press. What is left is the press itself
+// <os temp>/jp-local-proof/people/p<n>/ (outside the repo and the app's folder; kept until macOS clears its temp folder), so every run searches for exactly the same thing
+// (a change to the strategy draft itself is therefore NOT tested unless --fresh-draft remakes the plan with the first ref); no judge, no second press. What is left is the press itself
 // (its own 3-minute clock, desktop/lib/search-steps.js) plus the engine's start-up. The search runs through run.mjs: a throwaway install under the OS temp folder, the Claude plan
 // via `claude -p` ($0), API keys removed from the environment, never the person's app folder, Keychain, Notion or Telegram; telemetry and pool sharing off.
 // The model is Haiku (JOBADABRA_MODEL_OVERRIDE, as the CI Search check) unless the environment names another. A run whose log says the plan's limit was hit is marked NOT COUNTED.
@@ -18,7 +19,7 @@ import {cleanEnv} from './search-check.mjs';
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2), person = Number(args[0]);
 const refs = args.flatMap((arg, i) => (arg === '--ref' ? [args[i + 1]] : []));
-if (!(person >= 1 && person <= 18) || refs.some(ref => !ref)) {
+if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--'))) {
   console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--together] [--fresh-draft]');
   process.exit(2);
 }
@@ -69,7 +70,8 @@ if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json
   fs.copyFileSync(path.join(out, name, 'draft.json'), path.join(home, 'draft.json'));
 }
 
-console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}, ~3 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
+console.log(`${name}: search plan saved ${fs.statSync(path.join(home, 'draft.json')).mtime.toISOString().slice(0, 16)}Z (a change to the strategy draft is NOT tested; --fresh-draft remakes it)`);
+console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
 const go = (t, i) => { const out = path.join(work, 'runs', `${stamp}-${i + 1}`); console.log(`  ${i + 1}. ${t.label}: ${out}`); return press(t.dir, out, ['--presses', '1', '--draft', path.join(home, 'draft.json')]).then(r => ({...r, out, label: t.label})); };
 const ran = [];
 if (args.includes('--together')) ran.push(...await Promise.all(trees.map(go)));
