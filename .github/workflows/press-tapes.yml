@@ -1,7 +1,7 @@
 name: Press tapes
 # The press's yardstick (plan docs/superpowers/plans/2026-11-07-the-press.md 2b): each night persona's first and repeat press recorded once with a longer
 # press (the ceiling, tools/persona-search/run.mjs --ceiling), every web and AI answer kept (src/search_tape.py, per item: src/tape_items.py), then
-# published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand only; plan path through the Codex broker ($0).
+# published encrypted on jobadabra-lab's release `search-tapes` (tools/persona-search/tape-store.mjs). By hand, or called by press-tapes-auto.yml after a merge (11 Nov 2026); plan path through the Codex broker ($0).
 # Its calls ride the broker's by-hand lane (jobadabra-web lib/lanes.mjs: the PR reserve to 100% of the week, never Claude), so a spent scheduled share (70%) no longer turns a tape into another AI's answers.
 # That lane has 800 calls a UTC day, shared with by-hand Search checks; past it every call is refused (429, no other AI). A persona's two 180 s presses took 87-91 calls (8 Nov 2026);
 # at the 540 s ceiling it is not measured yet, so each persona starts only with room on its lane (by hand: 300 calls left today; scheduled, from 11 Nov: the week under 66%), and a tape with any refused or Free AI call is not published.
@@ -22,13 +22,38 @@ on:
       ceiling:
         description: 'Seconds of the recorded press (180 = a normal press)'
         type: string
-        default: '540'   # Why (7 Nov 2026, owner: "3× press, one at a time (Recommended)"): ~6 h for the 18, off the night check's broker time
+        default: '180'   # Why (11 Nov 2026, owner, asked via AskUserQuestion by sa: "180 s, a normal search (Recommended)", replacing his 7 Nov "3× press, one at a time (Recommended)", which took ~19 min and ~230 calls a person, ~6 h for 18): 180 s takes ~7.5 min and ~90 calls; a PR that makes the search ask more than main shows the extra part as "not in the recording" until the re-record (the 540 s tape was the cushion)
+      parallel:
+        description: 'How many people are recorded at once (1 by hand; press-tapes-auto.yml asks 3 when nothing else is on the broker, else 2)'
+        type: string
+        default: '1'
+  # Why (11 Nov 2026, owner, asked via AskUserQuestion by sa: "Auto re-record after merge (Recommended)"): press-tapes-auto.yml records the people main's replay names, through this same job, so every rule below (room check, Codex only,
+  # a tape with a refused or Free AI call is not published, encrypted publish, band rebuild) stays the one copy. `auto` moves the run out of the Search check's concurrency group (below).
+  workflow_call:
+    inputs:
+      personas:
+        type: string
+        required: true
+      lane:
+        type: string
+        default: scheduled
+      ceiling:
+        type: string
+        default: '180'
+      parallel:
+        type: string
+        default: '1'
+      auto:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:   # the night check's group: a recording never shares the broker with it (its refusals would be recorded into the tape)
-  group: search-personas
+  # Why (11 Nov 2026, sa: "an automatic run must never replace or be replaced by a queued by-hand run"): a group keeps ONE pending run, and a new pending run cancels the older one. The automatic run is serialised by
+  # press-tapes-auto.yml's own group and stands down while a Search check or a by-hand tape run holds the broker (its guard job), so here it gets a group of its own that nothing else shares.
+  group: ${{ inputs.auto && format('press-tapes-auto-record-{0}', github.run_id) || 'search-personas' }}
   cancel-in-progress: false
 
 env:
@@ -46,7 +71,7 @@ jobs:
     steps:
       - env:
           PERSONAS: ${{ inputs.personas }}
-          MAX: ${{ inputs.lane == 'scheduled' && '12' || '4' }}
+          MAX: ${{ inputs.lane == 'scheduled' && '18' || '4' }}   # Why (11 Nov 2026, sa: "Cap 12 → 18 on the scheduled lane: OK, it is the per-person room check that guards"): the automatic run can name up to the 18 (12-15 stale after a search merge, measured on #3802-#3832); each person still starts only with room on the lane
         run: |
           n=$(node -e 'const v = JSON.parse(process.env.PERSONAS || "[]"); if (!Array.isArray(v) || !v.every(Number.isInteger)) process.exit(2); console.log(v.length)') || { echo "::error::personas must be a JSON list of numbers"; exit 1; }
           if [ "$n" -lt 1 ] || [ "$n" -gt "$MAX" ]; then echo "::error::name 1 to $MAX personas on the ${{ inputs.lane }} lane (a recording takes ~300 calls), got $n"; exit 1; fi
@@ -66,7 +91,7 @@ jobs:
       id-token: write   # the Codex broker: GitHub OIDC, no stored secret
     strategy:
       fail-fast: false
-      max-parallel: 1   # one at a time: the broker refuses calls under load, and a refusal recorded in a tape skews its times (owner, 7 Nov 2026)
+      max-parallel: ${{ fromJSON(inputs.parallel || '1') }}   # Why (11 Nov 2026, owner, asked via AskUserQuestion by sa: "3 at once, broker free (Recommended)", replacing his 7 Nov "one at a time"): a refusal recorded in a tape skews its times, so press-tapes-auto.yml asks 3 only while nothing else is on the broker (else 2) and never beside a Search check; a by-hand run that starts in the middle spoils those tapes, they are recorded again
       matrix:
         persona: ${{ fromJSON(inputs.personas) }}
     steps:
@@ -78,7 +103,9 @@ jobs:
       - name: The broker lane has room for this recording
         run: |
           set -o pipefail
-          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py "${{ inputs.lane }}" 4 300
+          # a 540 s recording took 203-265 calls, a 180 s one ~90 (8 Nov): the room asked is the recording's own need, never under 100
+          calls=$(( ${{ inputs.ceiling }} * 300 / 540 )); [ "$calls" -lt 100 ] && calls=100
+          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py "${{ inputs.lane }}" 4 "$calls"
       - uses: actions/setup-node@v5
         with: {node-version: '22'}
       - uses: actions/setup-python@v6
