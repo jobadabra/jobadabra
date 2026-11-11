@@ -36,7 +36,8 @@ class Counts(unittest.TestCase):
         out, kept = sl.split(FEEDS, here, {'trades'}, ['fr'])
         self.assertEqual((out['in_places'], out['for_role'], len(kept)), (4, 1, 1))
         self.assertEqual((out['empty_feeds'], out['no_kind_mix'], out['mix_only'], out['counted_per_country']), (1, 1, 1, 1), 'no open job; no kind counted; whole mix only (read); counted per country')
-        self.assertEqual(out['kind_not_theirs'], 1, 'Other Co has a mix and it is software, not trades')
+        self.assertEqual((out['kind_not_theirs'], out['fit_their_kind']), (1, 1), 'of the 2 with a mix: Zorblax fits trades, Other Co is software')
+        self.assertEqual(out['fit_their_kind'] + out['kind_not_theirs'], out['mix_only'] + out['counted_per_country'], 'every employer with a mix fits or does not')
         self.assertEqual(out['in_places'], out['empty_feeds'] + out['no_kind_mix'] + out['mix_only'] + out['counted_per_country'], 'every employer of N is in one class')
 
     def test_a_feed_with_no_open_job_is_never_a_scout_gap(self):
@@ -47,7 +48,7 @@ class Counts(unittest.TestCase):
         for kinds in (None, {'unknown'}):   # role_kinds.UNKNOWN: every word of the search unsure, no list is read in bulk whatever the scout counted (Gitar on #3809)
             out, kept = sl.split(FEEDS, here, kinds, ['fr'])
             self.assertEqual((out['in_places'], out['kinds_known'], kept), (4, False, []))
-            self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs')))
+            self.assertTrue(all(out[word] is None for word in ('for_role', 'fit_their_kind', 'kind_not_theirs')))
             self.assertEqual((out['empty_feeds'], out['no_kind_mix'], out['mix_only'], out['counted_per_country']), (1, 1, 1, 1), 'the classes do not depend on the person\'s kind')
             self.assertNotIn('served', out, 'a list-wide number never leaves the press')
 

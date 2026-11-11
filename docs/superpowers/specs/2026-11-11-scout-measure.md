@@ -21,6 +21,6 @@ The first reading said 55-94% of the employers in a person's places have no coun
 
 ## Progress
 - [x] 1/3 The Sources card shows the night's per-source counts (verdict rows carry `sources`; guard test) (#3807) (proof: tests/tooling/ci/test_search_sources_count.py @024f7496)
-- [ ] 2/3 The night records what the Central Scout's list gave each person: `scout` on each result (in_places, empty_feeds, no_kind_mix, mix_only, counted_per_country, for_role, kind_not_theirs, listed/right from the list), rows[].scout, a night step (`tools/persona-search/scout_list.py`, counts only, names never written)
+- [ ] 2/3 The night records what the Central Scout's list gave each person: `scout` on each result (in_places, empty_feeds, no_kind_mix, mix_only, counted_per_country, for_role, fit_their_kind, kind_not_theirs, listed/right from the list), rows[].scout, a night step (`tools/persona-search/scout_list.py`, counts only, names never written)
 - [ ] 3/3 Admin card "Central Scout" (jobadabra-web, on the Finish line page): first figure = the share of the person's employers with open jobs that have no counted kind (no_kind_mix over N - empty_feeds), per person and the median of the 18, empty feeds shown apart; one Before | After picture and the owner's yes through sa
 - Parked, not numbered: the engine writes an `origin` on a job (Work board draft, Parked/Low)

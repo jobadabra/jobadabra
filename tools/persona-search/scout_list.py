@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-WORDS = ('in_places', 'empty_feeds', 'no_kind_mix', 'mix_only', 'counted_per_country', 'for_role', 'kind_not_theirs', 'kinds_known', 'listed_from_list', 'right_from_list', 'employers_right_from_list', 'right_from_role')
+WORDS = ('in_places', 'empty_feeds', 'no_kind_mix', 'mix_only', 'counted_per_country', 'for_role', 'fit_their_kind', 'kind_not_theirs', 'kinds_known', 'listed_from_list', 'right_from_list', 'employers_right_from_list', 'right_from_role')
 
 
 def key(feed):
@@ -45,12 +45,13 @@ def split(index, in_places, kinds, countries):
     counted = [f for f in mixed if has_counts(f, countries)]
     known = kinds is not None and role_kinds.UNKNOWN not in kinds
     out = {'in_places': len(places), 'empty_feeds': len(empty), 'no_kind_mix': len(open_feeds) - len(mixed), 'mix_only': len(mixed) - len(counted), 'counted_per_country': len(counted),
-           'for_role': None, 'kind_not_theirs': None, 'kinds_known': known}
+           'for_role': None, 'fit_their_kind': None, 'kind_not_theirs': None, 'kinds_known': known}
     if not known:
         return out, []
     kept = employer_index.relevant(index, in_places, kinds, countries=countries)
     kept_keys = {key(f) for f in kept}
-    out.update(for_role=len(kept), kind_not_theirs=sum(1 for f in mixed if key(f) not in kept_keys))
+    not_theirs = sum(1 for f in mixed if key(f) not in kept_keys)
+    out.update(for_role=len(kept), kind_not_theirs=not_theirs, fit_their_kind=len(mixed) - not_theirs)   # of the employers with open jobs and a mix: those that fit and those that do not ("not counted" apart from "the list holds few of their kind", sa, 11 Nov 2026)
     return out, kept
 
 
