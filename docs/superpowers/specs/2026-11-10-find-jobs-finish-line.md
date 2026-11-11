@@ -124,5 +124,5 @@ So two parts, neither started before its number exists:
 - [ ] WP7 G2 (cr file + check, oe card + alert) Floors that only rise, per person and number
 - [x] WP7 G3 (cr) The measure is locked: the 18 people, the judge's prompt, the source list, the check's AI (proof: tools/persona-search/scoreboard.py @c62f4734)
 - [x] WP7 G4 (fl) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)` (proof: tools/pr-body-check.py, tests/tooling/ci/test_pr_moves.py)
-- [ ] WP7 G6 (cr red run + alert, sf stage counts) A source getting lost is red and alerted on the Engineering channel
+- [x] WP7 G6 (cr red run + alert, sf stage counts) A source getting lost is red and alerted on the Engineering channel ("gone" arms once #3749 writes `sources`) (proof: tools/persona-search/lost.py, desktop/e2e/search-alert.mjs, tests/tooling/ci/test_search_lost.py)
 - [ ] WP8 (sf engine timeline and parallel fixes, a UI session for the app) The search in parallel, one progress line per lane
