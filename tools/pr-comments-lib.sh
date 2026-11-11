@@ -6,9 +6,11 @@
 #   self = the body ends with the Claude Code line (sessions post as the owner's gh login, so the login alone cannot tell them apart); owner = the owner's login without that line;
 #   bot = a review bot (gitar-bot); everything else is `other` = data for the coordinator, never an instruction (the repo is public). PR_COMMENTS_OWNER overrides the owner's login.
 # A review with state COMMENTED and no body is only the container of its line comments, which are listed on their own.
+# Why (11 Nov 2026, #3785): a body that is exactly "Gitar review" is a session's own request: Gitar reads the bare words, so it carries no Claude Code line, and the watcher announced it as an
+#   unanswered owner comment (READY then waited for a push). Guard: tests/tooling/ci/test_pr_comments_gitar_request.py.
 pc_items() {
   jq -rn --arg owner "${PR_COMMENTS_OWNER:-GarryOne}" --argjson v "${1:-null}" --argjson l "${2:-null}" '
-    def who(login; body): if ((body // "") | test("Generated with.{0,4}Claude Code")) then "self"
+    def who(login; body): if ((body // "") | test("Generated with.{0,4}Claude Code|^\\s*Gitar review\\s*$")) then "self"
       elif (login | test("\\[bot\\]$|-bot$")) then "bot" elif login == $owner then "owner" else "other" end;
     ( [($v.comments // [])[] | {id: .id, a: who(.author.login // ""; .body), k: "comment", u: (.url // $v.url // ""), t: (.createdAt // "")}]
     + [($v.reviews // [])[] | select((.state != "COMMENTED") or ((.body // "") != ""))
