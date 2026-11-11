@@ -48,7 +48,7 @@ def search(args, stores=None):
     start_sources(args, read_profile)
     hidden, saved, dismissed, stages = application_stages(stores, run)
     sources = starter_sources()
-    report, imported = {'jobs': [], 'sources': []}, []
+    report, imported, lane, so_far = {'jobs': [], 'sources': []}, [], None, None   # lane: the job boards' (gather_sources), handed over after it
     with store.connect(args.db) as db:
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
@@ -61,7 +61,7 @@ def search(args, stores=None):
             try:
                 feed_list = plan_sources(args, stores, db, sources, run)
                 start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
-                report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+                report, so_far, lane = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
             except Exception:   # an error waits for the round in flight; a Stop (SystemExit) ends at once, the daemon thread with it
                 scored()
                 leave_early_reads(args)
@@ -70,11 +70,13 @@ def search(args, stores=None):
             # importing after it held every job the search found, late employer reads included, behind that scoring and past the app's stop.
             imported = import_sources(db, report, so_far, run)
             scored()   # before the closing pass: run['score'] is whole when score_jobs reads it
+            keep_late_boards(lane, so_far)   # the boards' groups that landed while the run scored (lanes 4a)
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
         imported = filter_jobs(args, db, imported)
         backfill_descriptions(db)
         score_jobs(args, stores, db, run, read_profile, hidden, dismissed, time_budget)
+        keep_late_boards(lane, so_far)   # the last of the boards' groups before the run's matches are saved (lanes 4a)
         open_urls = save_matches(args, stores, db, run, report, hidden, dismissed, started)
         scheduled_updates(args, stores, run, open_urls, datetime)
         seed = args.seed or random.randrange(1, 10**9)
@@ -216,12 +218,14 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
             run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
             coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
             gather_apis(args, feed_db, report, so_far, ahead, apis)
-            # Why (lanes 4a): the boards' lane reads to the run's end; its groups are kept as they land, after the APIs' stage so their titles are not held behind it
-            report['jobs'] += take_boards_first(first, feed_db, so_far)
+            # Why (lanes 4a; #3826, Gitar): the boards' lane reads to the run's end, but the gather takes its groups only to the employer sites' cut, as
+            # before 4a: waiting to the lane's end held the import and every score up to ~100 s. Later groups: keep_late_boards, between the stages after.
+            from .sources import read_budget
+            report['jobs'] += take_boards_first(first, feed_db, so_far, until=read_budget.cut_at())
         finally:
             if apis is not None:
                 apis.close()
-    return report, so_far
+    return report, so_far, first
 
 
 # Ask every due free job API now, beside the other lanes.
@@ -249,15 +253,29 @@ def start_boards_first(listed=None):
 
 
 # Keep and show what the boards first read and the employer sites' callbacks did not take yet.
-def take_boards_first(first, feed_db, so_far):
-    """Their jobs (the report's shape), [] when they did not start or failed: the full board read reads them."""
+def take_boards_first(first, feed_db, so_far, until=None):
+    """Their jobs (the report's shape) to `until` at most, [] when they did not start or failed: the full board read reads them."""
     if first is None:
         return []
     try:
-        return first.take(feed_db, so_far.listener('job boards'))
+        return first.take(feed_db, so_far.listener('job boards'), until=until)
     except Exception as error:  # noqa: BLE001 — the full board read reads them
         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         return []
+
+
+def keep_late_boards(lane, so_far):
+    """The boards lane's groups that landed after the gather, kept and shown now (imported into the list, src/jobs_so_far.py), never waited for:
+    the main thread owns the job cache, so it hands them over between the stages after the gather (lanes 4a). Not scored this run when it has no
+    time left: they wait in the list for the next run's scoring (4b)."""
+    if lane is None:
+        return
+    try:
+        with feeds.database(DATA / 'jobs.sqlite') as feed_db:   # the gather's connection is closed by now
+            lane.deliver(feed_db, so_far.listener('job boards'))
+        so_far.flush()
+    except Exception as error:  # noqa: BLE001 — late groups are a bonus; the run goes on
+        print(f'Warning: late job boards not kept: {type(error).__name__}: {error}', flush=True)
 
 
 # Append paid and free API results in their original order.

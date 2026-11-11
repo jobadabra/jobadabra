@@ -7,6 +7,8 @@ keeps only its best sites (src/sources/read_budget.py short). The full board rea
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Every Find jobs run starts them
 at second 0 as a lane of their own (Beside), ending at the run's end, not at the employer sites' read cut (lanes 4a); a first run's own board
 list (src/first_jobs.py board_jobs) is read in the same lane. Tests: tests/unit/sources/test_boards_first.py, tests/unit/sources/test_board_lane_clock.py."""
+import time
+
 from ..press import budget, stage, step_yield
 from ..press.run import Run
 
@@ -156,9 +158,13 @@ class Beside:
                 self.matched += matched
                 self.shortened = self.shortened or _enough(self.matched)
 
-    def take(self, feed_db, on_jobs):
-        """Keeps and shows each group as it lands until the lane ends (the run's end at most): every job these boards gave (the report's shape)."""
-        while not self.done.wait(1):
+    def take(self, feed_db, on_jobs, until=None):
+        """Keeps and shows each group as it lands until the lane ends or, when given, the monotonic time `until`: every job these boards gave so far
+        (the report's shape). Why (#3826, Gitar): the gather took it to the lane's end (~170 s), holding the import and every score behind the
+        boards; the gather now takes it to the employer sites' cut, as before lanes 4a, and later groups are kept between the stages after it."""
+        while not self.done.wait(1 if until is None else max(0.0, min(1.0, until - time.monotonic()))):
             self.deliver(feed_db, on_jobs)
+            if until is not None and time.monotonic() >= until:
+                break
         self.deliver(feed_db, on_jobs)
         return self.matched
