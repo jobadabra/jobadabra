@@ -7,7 +7,7 @@ os.environ.update({'JOBADABRA_DATA_DIR': os.environ['RD'] + '/data', 'JOBADABRA_
 from src.ai import engine
 engine.ready = lambda *a, **k: False   # AI off in both
 from src import role_kinds, coverage, levels, contribute, employer_index, paths
-from src.sources import aggregators, boards, feeds
+from src.sources import boards, feeds
 try:
     from src.daily_helpers import scored_companies
 except ImportError:   # before the split of daily.py
@@ -18,7 +18,6 @@ res['of_search'] = sorted(role_kinds.of_search(search) or [])
 res['looks_technical'] = coverage.looks_technical(search.get('role_keywords') or [])
 res['level_skips'] = levels.title_skips(search.get('level'))
 res['swiss_word'] = boards.swiss_place_word(search)
-res['adzuna'] = aggregators._countries(search)
 res['tags'] = contribute.tags(search)
 res['fine_tags'] = contribute.fine_tags() if hasattr(contribute, 'fine_tags') else None
 index = employer_index.clean(json.load(open(os.environ['RD'] + '/data/employer_index.json'))['feeds'])

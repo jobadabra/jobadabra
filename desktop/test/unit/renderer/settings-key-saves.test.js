@@ -10,7 +10,7 @@ const OWN_HANDLER = new Set(['notion', 'telegram']);   // saved by their own flo
 
 test('every key panel Save button has a handler', () => {
   const ids = [...html.matchAll(/id="set-([a-z0-9-]+)-save"/g)].map(match => match[1]).filter(id => !OWN_HANDLER.has(id));
-  assert.ok(ids.length >= 7, 'the panels were found');
+  assert.ok(ids.length >= 4, 'the panels were found');   // 7 before Adzuna and Jooble's three were deleted (11 Nov 2026)
   for (const id of ids) assert.ok(connections.includes(`['${id}', '`), `set-${id}-save has a handler in connections.js`);
 });
 

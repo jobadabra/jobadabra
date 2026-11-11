@@ -40,8 +40,8 @@ test('every recommending card records shown and taken (a new card without it fai
 
 test('the sources card says what a source gave people like you; the employers card lists where they got interviews', async () => {
   const {employersCard, sourcesCard} = await import('../../../renderer/coverage-card.js');
-  const sources = sourcesCard({at: 'x', sources: [{id: 'aggregators', name: 'Adzuna and Jooble', effort: 'Two free keys', gain: 'all trades', people: 'gave a match to 8 in 10 people like you'}]});
-  assert.equal(sources.chips[0].label, '+ Adzuna and Jooble · gave a match to 8 in 10 people like you');
+  const sources = sourcesCard({at: 'x', sources: [{id: 'brave', name: 'Web search (Brave)', effort: 'A free key', gain: 'all trades', people: 'gave a match to 8 in 10 people like you'}]});
+  assert.equal(sources.chips[0].label, '+ Web search (Brave) · gave a match to 8 in 10 people like you');
   const card = employersCard({at: 'x', for_you: [{company: 'Studio Geneva', interview: 1, applied: 3, why: 'kind of work'}]});
   assert.equal(card.chips[0].label, 'Studio Geneva · 1 interview');
   assert.equal(employersCard({at: 'x', for_you: []}), null);
@@ -50,7 +50,7 @@ test('the sources card says what a source gave people like you; the employers ca
 test('the Few new jobs box: employer numbers with one recommendation, words as rows, sources and sites as rows', async () => {
   const {fewJobsGroups} = await import('../../../renderer/coverage-actions.js');
   const verdict = {at: 'x', employers: {read: 21, matched: 3, pending: 14}, suggestions: [{term: 'social media', count: 31}], narrow: true,
-    sources: [{id: 'aggregators', name: 'Adzuna and Jooble', effort: 'Two free keys, about 3 minutes', gain: 'all trades', people: ''}],
+    sources: [{id: 'brave', name: 'Web search (Brave)', effort: 'A free key, about 2 minutes', gain: 'all trades', people: ''}],
     visits: [{name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/search/?keywords=x', kind: 'portal', why: 'no way in but your own visit', last_read: null}]};
   const groups = fewJobsGroups(verdict);
   assert.equal(groups.employers.dry, true, '3 of 21 with a match: running dry');
@@ -58,7 +58,7 @@ test('the Few new jobs box: employer numbers with one recommendation, words as r
   assert.deepEqual(groups.words.map(action => [action.row.title, action.row.sub, action.row.button, action.row.review]),
     [['Add "social media" to your role words', '31 postings in your places your role words miss', 'Review role word', 'coverage']]);
   assert.equal(groups.employers.fill, 14);
-  assert.deepEqual(groups.sources.map(row => [row.name, row.sub]), [['Adzuna and Jooble', 'Two free keys, about 3 minutes']]);
+  assert.deepEqual(groups.sources.map(row => [row.name, row.sub]), [['Web search (Brave)', 'A free key, about 2 minutes']]);
   assert.deepEqual(groups.visits.map(row => [row.name, row.sub]), [['LinkedIn', 'your search']]);
   assert.ok(groups.words.every(action => !['source', 'visit'].includes(action.kind)), 'sources and sites are rows, not chips');
   assert.equal(fewJobsGroups({at: 'x'}).employers, null, 'no counts yet: no meter');

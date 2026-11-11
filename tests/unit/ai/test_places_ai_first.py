@@ -44,7 +44,7 @@ PATHS = {
     'pool_tags.places metros': lambda: set(pool_tags.places(PLACES)[1]),
     'contribute.tags regions': lambda: set(contribute.tags({**SEARCH, 'role_keywords': []})[1]),
     'contribute.regions_of (a feed)': lambda: set(contribute.regions_of(PLACES)),
-    'aggregators._countries (Adzuna)': lambda: set(aggregators._countries(SEARCH)),
+    'aggregators._countries (the user\'s countries)': lambda: set(aggregators._countries(SEARCH)),
 }
 
 

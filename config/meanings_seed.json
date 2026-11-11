@@ -851,61 +851,61 @@
    "topic": "place-country",
    "pattern": "switzerland|schweiz|suisse|z[uü]rich|gen[eè]v|basel|bern|lausanne|zug",
    "answer": "ch",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "germany|deutschland|berlin|munich|m[uü]nchen|hamburg|frankfurt",
    "answer": "de",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "united kingdom|\\buk\\b|england|london|manchester|edinburgh",
    "answer": "gb",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "netherlands|amsterdam|rotterdam|utrecht",
    "answer": "nl",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "france|paris|lyon",
    "answer": "fr",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "austria|vienna|wien",
    "answer": "at",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "spain|madrid|barcelona",
    "answer": "es",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "italy|milan|rome",
    "answer": "it",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "poland|warsaw|krak",
    "answer": "pl",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "place-country",
    "pattern": "belgium|brussels",
    "answer": "be",
-   "source": "aggregators.py ADZUNA_COUNTRIES"
+   "source": "aggregators.py COUNTRY_NAMES"
   },
   {
    "topic": "job-region",

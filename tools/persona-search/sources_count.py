@@ -38,7 +38,7 @@ def free_api_names():
     """The free-API stage's reader names (the engine's own list, every keyed or parked reader as if it were set up), or None when it cannot be read."""
     try:
         from src.sources import aggregators
-        env = {'ADZUNA_APP_ID': 'x', 'ADZUNA_APP_KEY': 'x', 'JOOBLE_API_KEY': 'x', 'JOBADABRA_ENABLE': 'adzuna,jooble'}
+        env = {}
         names = {name for name, _ in aggregators.sources(env)}
     except Exception:   # noqa: BLE001 (Why: an engine that cannot be imported here leaves the split unknown, said as "inside job_boards", never guessed)
         return None

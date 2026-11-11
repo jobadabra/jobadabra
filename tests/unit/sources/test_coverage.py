@@ -165,15 +165,15 @@ class TradeSuggestionsTests(unittest.TestCase):
         self.assertNotIn('client advisor', [s['term'] for s in it['suggestions']])
 
     def test_no_key_source_is_offered_while_the_flag_is_off(self):
-        # Owner, 24 Oct 2026: Adzuna and Jooble, Brave and SerpApi rows are hidden everywhere (too much configuration).
+        # Owner, 24 Oct 2026: the Brave and SerpApi rows are hidden everywhere (too much configuration).
         self.assertFalse(coverage.KEY_SOURCES_OFFERED)
         self.assertEqual(coverage.unused_sources({}), [])
 
     @mock.patch.object(coverage, 'KEY_SOURCES_OFFERED', True)
     def test_unused_sources_least_effort_first(self):
         names = [s['id'] for s in coverage.unused_sources({})]
-        self.assertEqual(names, ['brave', 'aggregators', 'serpapi'])
-        self.assertEqual([s['id'] for s in coverage.unused_sources({'JOOBLE_API_KEY': 'k', 'JOBADABRA_AI_ENGINE': 'cli'})], ['serpapi'],
+        self.assertEqual(names, ['brave', 'serpapi'])
+        self.assertEqual([s['id'] for s in coverage.unused_sources({'JOBADABRA_AI_ENGINE': 'cli'})], ['serpapi'],
                          'Claude Code\'s own web search stands in for the Brave key')
 
 
