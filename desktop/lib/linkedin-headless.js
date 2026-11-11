@@ -79,7 +79,7 @@ function gate({storage, browser, signal, now, readSession}) {
 }
 
 async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}) {
-  const total = {jobs: 0, fits: 0, read: 0, verdict: 'done'};
+  const total = {jobs: 0, fits: 0, read: 0, answered: 0, verdict: 'done'};
   for (const [index, search] of list.entries()) {
     if (signal?.aborted) { total.verdict = 'stopped'; break; }
     if (index) await pause(3000 + Math.random() * 2000);   // a gap between searches, like a person: the extension also waits 2-3 s between pages
@@ -87,10 +87,12 @@ async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}
     const [result] = await run([{name: search.name, url: search.url}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
       tee: line => { if (/^\s*[✓✗]/.test(line)) tee(line); }, waitMs: 40000, quietMs: 30000, siteMs: 75000});
     await closeTabs();
-    total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1;
+    total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1; total.answered += result?.answered ? 1 : 0;
     const ended = endOf(result, seen, signal);
     if (ended) { total.verdict = ended; break; }
   }
+  // Why (#3710, owner: "I never saw a LinkedIn job"): searches the extension never answered are not "none new"; when none answered the read failed (a lane's done / cut / failed).
+  if (total.verdict === 'done' && total.read && !total.answered) total.verdict = 'failed';
   return total;
 }
 

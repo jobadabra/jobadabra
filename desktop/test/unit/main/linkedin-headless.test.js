@@ -44,7 +44,7 @@ function rig({on = true, session = SESSION, ready = true, searches = SEARCHES, p
     searchNo += 1;
     options.openTab(`${site.url}#jp-read-abcd1234`);
     await new Promise(resolve => setTimeout(resolve, 5));
-    return [{...site, ...result}];
+    return [{answered: true, ...site, ...result}];   // runAll's `answered`: the extension said something for this tab (lib/visits.js)
   };
   const controller = new AbortController();
   if (aborted) controller.abort();
