@@ -17,6 +17,7 @@ import json
 import os
 import sqlite3
 import sys
+import threading
 from datetime import datetime, timezone
 
 from .. import budget_tape
@@ -112,6 +113,34 @@ def own_allowance(name, n):
         yield
     finally:
         SCOPE.update(before)
+
+
+# The central scout's candidate probe (its employer checks, in worker threads) asks the AI on one allowance of its own, so the feed pass that counts the known employers keeps the rest.
+# Why (sk 4/5, 11 Nov 2026, owner: "Counted feeds are worth more now than a few new sources a run"): a run's probe spent about half the relay's calls on careers-page reads (link-kind and the page reader) for a few new sources,
+# and the cap was gone minutes into the feed pass that counts the known employers (numbers: jobadabra-lab#87). A thread-local tag, not own_allowance(): the probe's late checks run on into the feed pass and that scope is process-wide.
+CENTRAL_PROBE_CALLS = 30
+_probe = threading.local()
+
+
+@contextlib.contextmanager
+def probe_allowance(n):
+    """This thread is a probe check: every model call it makes (decide() and the page reader) counts against `n` calls a run, outside the run's cap; None: no allowance, nothing changes."""
+    _probe.n = n
+    try:
+        yield
+    finally:
+        _probe.n = None
+
+
+def probe_state():
+    """(calls used, allowance) when this thread is a probe check with an allowance, else None."""
+    n = getattr(_probe, 'n', None)
+    return None if n is None else (_own.get('probe', 0), n)
+
+
+def probe_spend():
+    """One call made on the probe's allowance (page_reader.read counts its own call here; decide() counts its calls itself)."""
+    _own['probe'] = _own.get('probe', 0) + 1
 
 
 CACHE_ONLY = {'on': False}   # cache_only(): every decide() inside answers from the cache and the pack, as ask=False does
@@ -255,7 +284,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
         stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
         for start in range(0, len(todo), BATCH):
-            pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n'])
+            pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n']) if SCOPE['name'] else ('probe', _probe.n) if getattr(_probe, 'n', None) is not None else (None, 0)
             used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
             if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
                 return _wait(out, len(todo) - start)

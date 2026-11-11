@@ -145,13 +145,17 @@ def read(url, markup, client=None, db=None, careers_page=False):
         row = db.execute('SELECT digest, jobs_json FROM page_reads WHERE url = ?', (url,)).fetchone()
         if row and row[0] == digest:
             return clean(json.loads(row[1]), url)
-        if not budget_tape.within('page read', f'{counter} {url}', _reads.get(counter, 0), limit):
+        probe = decide.probe_state()   # a central scout probe check: its reads count on the probe's allowance (src/ai/decide.py), not the run's
+        if not budget_tape.within('page read', f'{counter} {url}', *(probe or (_reads.get(counter, 0), limit))):
             return clean(json.loads(row[1]), url) if row else None
         if decide.stopped():   # today's limit is spent: unknown, read again next run
             return clean(json.loads(row[1]), url) if row else None
         try:
             client = client or engine.client(action='scout')
-            _reads[counter] = _reads.get(counter, 0) + 1
+            if probe:
+                decide.probe_spend()
+            else:
+                _reads[counter] = _reads.get(counter, 0) + 1
             response = client.messages.create(
                 model=MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
                 messages=[{'role': 'user', 'content': f'Careers page: {url}\n\n{text}'}], output_config=engine.structured(SCHEMA, MODEL, 'low'))
