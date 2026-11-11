@@ -25,11 +25,11 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, mergestates, twins=''):
+    def watch(self, mergestates, twins='', labels='Gitar: approved'):
         """One look per line of mergestates, then the PR closes. Every look: Gitar approved, the gate green (newest row), no draft."""
         self.log.write_text('ship: opened\n')
         looks = len(mergestates)
-        files = {'states': 'OPEN\n' * looks + 'CLOSED\n', 'drafts': 'false\n' * (looks + 1), 'labels': 'Gitar: approved\n' * (looks + 1), 'mergeables': '', 'fixes': '', 'checks': '', 'runs': 'gate\n' * (looks + 1),
+        files = {'states': 'OPEN\n' * looks + 'CLOSED\n', 'drafts': 'false\n' * (looks + 1), 'labels': (labels + '\n') * (looks + 1), 'mergeables': '', 'fixes': '', 'checks': '', 'runs': 'gate\n' * (looks + 1),
                  'verdicts': '', 'heads': '', 'looks': '0', 'mergestates': '\n'.join(mergestates) + '\n', 'twins': twins}
         for name, text in files.items():
             (self.tmp / name).write_text(text)
@@ -47,6 +47,12 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
     def test_ready_comes_when_the_merge_state_turns_clean_and_only_once(self):
         lines = self.watch(['blocked', 'clean', 'clean'])
         self.assertEqual([line for line in lines if 'READY' in line], ['ship: READY #7 new1'], lines)
+
+    def test_a_stale_approval_beside_a_pending_gitar_label_is_never_ready(self):
+        """11 Nov 2026: the label keeps the older verdict beside "reviewing" / "not started"; READY needs the approval to be for the current head."""
+        for pending in ('Gitar: reviewing', 'Gitar: not started'):
+            lines = self.watch(['clean', 'clean'], labels=f'Gitar: approved,{pending}')
+            self.assertFalse(any('READY' in line for line in lines), (pending, lines))
 
     def test_a_computing_merge_state_holds_ready_and_does_not_re_arm_it(self):
         lines = self.watch(['clean', 'unknown', 'clean'])
