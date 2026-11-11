@@ -112,6 +112,22 @@ class Files(unittest.TestCase):
             for folder in (odd, empty):
                 self.assertNotIn('sources', json.loads(Path(folder, 'result.json').read_text(encoding='utf-8')), 'nothing claimed for a row it could not read')
 
+    def test_the_verdict_rows_carry_what_the_admin_reads(self):
+        """11 Nov 2026: sources_count.py wrote `sources` on each result, gate.compare built rows from a fixed field list without it, and the Admin Sources card
+        (it reads verdict rows) said "No run has sent per-source counts". One loop over the fields the Admin reads: each one a result carries must reach its row."""
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp, 'search-personas-p1')
+            folder.mkdir()
+            self.write(folder, 'result.json', {'persona': 1, 'step_yield': [], 'counters': {'sites': 1}, 'relevant_sources': {'other': 1}, 'place': {'yes': 1}, 'role': {'yes': 1}})
+            self.write(folder, 'judged.json', {'rows': [right('Cook', 'Acme', 'employer feed')]})
+            sc.annotate(tmp)
+            result = json.loads(Path(folder, 'result.json').read_text(encoding='utf-8'))
+        row = gate.compare({1: result}, [])['rows'][0]
+        for field in ('sources', 'step_yield', 'counters', 'relevant_sources', 'place', 'role'):
+            self.assertIsNotNone(result.get(field), f'the fixture result carries {field}')
+            self.assertEqual(row[field], result[field], f'the verdict row passes {field} on to the Admin')
+        self.assertEqual(row['sources']['employer_sites']['right'], 1)
+
     def test_the_night_step_is_report_only(self):
         text = (ROOT / '.github/workflows/search-personas.yml').read_text(encoding='utf-8')
         step = text[text.index('- name: Right jobs per source of our list (G6)'):text.index('- name: Compare with the earlier runs')]
