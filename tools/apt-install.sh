@@ -43,6 +43,9 @@ phase() {
   case "$code" in 0) return 0 ;; 124|137) why="apt-get $name cut after $limit s" ;; *) why="apt-get $name failed (exit $code)" ;; esac
   return 1
 }
+# Why (11 Nov 2026, #3820): the runner image already has every package most jobs name (xvfb, fonts, Chrome's libraries), so the only
+#   network call was `apt-get update`, the step that stalled on every runner from 15:08 to ~17:25Z; nothing missing = no apt call at all.
+if installed "$@"; then echo "apt-install: $* already installed (runner image), no apt call"; mine; exit 0; fi
 # The cache first: its .deb files by path with --no-download, so a missing or stale file fails at once and the mirror tries below run.
 if [ -n "$debs" ] && compgen -G "$debs/*.deb" >/dev/null; then
   log="$(mktemp)"; started=$SECONDS
