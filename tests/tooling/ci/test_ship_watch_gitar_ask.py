@@ -37,7 +37,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
             (self.tmp / name).write_text(text)
         if locked_ago is not None:   # Gitar's own "wait about N minutes" reply, written so many seconds ago (an inline thread reply, like #3785's)
             (self.tmp / 'rest').mkdir(exist_ok=True)
-            at = (datetime.now(timezone.utc) - timedelta(seconds=locked_ago)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            at = (datetime.now(timezone.utc) - timedelta(seconds=locked_ago)).strftime('%Y-%m-%dT%H:%M:%SZ')   # clock: relative, the watcher measures the reply's age against its own now
             (self.tmp / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': at, 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."}]))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after}
