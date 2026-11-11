@@ -34,7 +34,7 @@ Not goals: the 436 imports inside functions; renames; any change of order, clock
 ## Who builds what
 | Part | Session |
 |---|---|
-| Run core: `first_jobs.py`, `daily_search*.py`, `src/press/*` (C1 adoption, C2 runner, C4 in scoring) | sf 3/8, 7/8, 8/8 |
+| Run core: `first_jobs.py`, `daily_search*.py`, `src/press/*` (C1 adoption, C2 runner, C4 in scoring) | sf 3/8, 7/8, 8/8, now inside the lanes plan (2/5-4/5, WP8 of [the finish line](2026-11-10-find-jobs-finish-line.md); sa, 11 Nov 2026) |
 | Skeletons + readers: `run.py`, `stage.py`, `job.py`, `reader_rows.py`, `board*.py`, `boards*.py`, `found_boards.py`, `eures.py`, `careers*.py` | cr |
 | What is kept: `feeds.py` | lj (cr waits for lj 1/3) |
 | EURES gate: `features.py`, `aggregators.py` sources() | oe 1/3 (cr touches `aggregators.py` after it merges); oe 2/3, 3/3 add rows to `reader_rows.py` |

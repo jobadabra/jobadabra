@@ -96,6 +96,29 @@ So two parts, neither started before its number exists:
 - Engine (sf, inside WP3): the per-person timeline in the table: each stage's start and end, what it waited for, slot occupancy. From it, the parallel fixes that move `never_asked` and seconds to first job (the serial start; more than 4 AI calls at once if the plan and the person's machine allow it: measured, not assumed; one lane per source). Each is a search PR under the admission rule.
 - App (a UI session, Queued): the Find jobs card shows one progress line per lane that really runs (per source: read N of M; AI: titles asked N of M; scored N of M), fed by the same per-source counts as the run's rows. Picture first (side by side, light and dark), built after the owner's yes; it shows only lanes that exist in the engine, never a made-up one.
 
+### WP8 Design: every source its own lane (owner, 10 Nov 2026: "Build the lanes now (Recommended)", asked via AskUserQuestion by sa; 11 Nov: "Ok. Let's fix/build it then")
+Measured first (sf, 32 person-runs, yardstick replays of the night recordings, EURES on; befores to be re-measured on EURES-off tapes, owner, 11 Nov 2026: "Other 3rd parties should be just bonuses, not our core"): free job APIs ran out of time on 28 of 32 first presses, job boards on 27, both on 32 of 32 repeat presses; the employer sites' first read started at 111 s (median); 19 of 32 first presses were ended by the app's 175 s stop because a scoring call still running held the process (#3740). The sources wait for each other only by call order, never because one needs another's result (`src/daily_search.py:209` → `:220`).
+```
+Design:
+1. One clock (the press's), one lane per source: EURES, employer sites, job boards, free job APIs, web search for boards, LinkedIn (app).
+   Every lane starts at second 0; none waits for another.
+2. A wait is a real need, declared in the one lane table (src/sources/reader_rows.py LANES); today only the boards the web search found need it.
+   EURES is a lane like any other behind its own on(env): nothing waits or is ordered around it.
+3. Calls end on the clock, not only start on it: every network and AI call gets its lane's time left as its limit, and the search never waits
+   at exit for a late call (#3740: Python's exit joined a 15-64 s scoring call).
+4. A lane ends in exactly one said state, a stage.Result: done / cut (time up, "N wait") / failed (why). One owner per lane writes it; the
+   same state feeds step_yield, the night's `sources` rows, G6 and the card. A failing lane never ends the press (one catch-all, stage.guard).
+5. Sorting and scoring take jobs as they land from every lane, on the existing AI slots. The finder keeps its 45 s.
+6. Nothing a run found is dropped: a job read but not yet placed, sorted or scored stays waiting in its one owner (the jobs store), and a
+   source with waiting jobs is not marked read or rested 6 h. (Owner, 11 Nov 2026: "each of the runs should provide new jobs".)
+7. One owner of priority, the planner (src/press/plan.py), now applied: every run scores what waits, then sorts and places what waits, then
+   reads new; a lane pauses and keeps its place when its waiting queue passes what the AI can ask in the rest of the run. A run ends saying
+   "step x of y" and what waits; the next run continues there. (Owner, 11 Nov 2026: "When a find jobs run finished after 3 min, we know that
+   we are at step x from the plan (which has y total steps)".)
+Simplify to it: the ordering code of boards_first, boards_ahead and boards_beside is replaced; no new case is added.
+```
+Proofs, red today and marked `unittest.expectedFailure` so the run stays green and turns red the moment a fix makes them pass (the mark comes off in that PR): `tests/unit/press/test_lanes.py` (rules 1, 4: every source lane reading before any has finished; 3/5) and `tests/unit/press/test_press_ends.py` (rule 3: the process ends with a call in flight, 6 places in one loop; 2/5). The table's own guard: `tests/unit/sources/test_reader_rows.py` LanesTest.
+
 ## Rules for every search PR from now (go into CLAUDE.md with WP1)
 - It names the person and the number it moves (in = out for a source, or coverage), with 3 runs before and 3 after; a difference counts only when larger than the spread of those runs.
 - The scoreboard grades it, not its author.
@@ -126,3 +149,8 @@ So two parts, neither started before its number exists:
 - [x] WP7 G4 (fl) Admission line: a search PR says `Moves:` with person, number, 3 runs a side and spread, or `Moves: nothing (why)` (proof: tools/pr-body-check.py, tests/tooling/ci/test_pr_moves.py)
 - [x] WP7 G6 (cr red run + alert, sf stage counts) A source getting lost is red and alerted on the Engineering channel ("gone" arms once #3749 writes `sources`) (proof: tools/persona-search/lost.py, desktop/e2e/search-alert.mjs, tests/tooling/ci/test_search_lost.py)
 - [ ] WP8 (sf engine timeline and parallel fixes, a UI session for the app) The search in parallel, one progress line per lane
+  - [ ] 1/5 Safety net: the lane table and the two proofs, red today under expectedFailure (this PR)
+  - [ ] 2/5 Calls end on the clock, in every place that leaves background work (closes #3740)
+  - [ ] 3/5 Lanes: every source starts at 0, ends in a said state (closes #3754)
+  - [ ] 4/5 Waiting jobs kept and asked first; sorting and scoring take jobs as they land; the planner applied (rules 5-7)
+  - [ ] 5/5 The card: one progress line per lane (picture first, the owner's yes before code)

@@ -4,17 +4,47 @@ Why (cr 2/5, sf and oe, 10 Nov 2026): a source was wired by hand at each place t
 or a gate changed in one place and not the others. A reader is added here once; oe's free job APIs and known employers' sites at the press add theirs.
 Readers of the rows: aggregators.sources() (the free-API stage's list, through which eures.start_early and the first-jobs slice also ask). The first-jobs slice's own loop
 over the rows, with a "starts at the press" field, comes with the Run made at the entry (sf 3/8); the employer feeds' row with it (its employers are the run's pick).
+Lanes (design: docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md WP8; owner, 10 Nov 2026: "Build the lanes now (Recommended)", asked via AskUserQuestion by sa):
+a press is one clock and one lane per source; every lane starts at second 0 and none waits for another unless LANES declares the need here. A lane ends in
+one said state, a stage.Result (done / cut = time up, "N wait" / failed, why). A row names its lane; a lane holds one or more rows (the free job APIs are several).
+Invariants: `needs` names lanes, never a cycle; a wait not declared here is a bug; an app lane runs in the app and has no engine row.
 Tests: tests/unit/sources/test_reader_rows.py."""
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
 
 @dataclass(frozen=True)
+class Lane:
+    """One lane of a press: `side` 'engine' (this process) or 'app' (desktop/lib); `needs`, the lanes whose answer it must have before it reads (a real need,
+    never call order); `clock`, the names its "⏱ Time is up … for <name>" lines use (src/press/clock.py STAGES, desktop/lib/press-stages.js)."""
+    id: str
+    side: str
+    needs: tuple = ()
+    clock: tuple = ()
+
+
+LANES = (
+    Lane('eures', 'engine'),   # its own line when cut ("EURES: still reading when its time ended", src/sources/eures.py); on only in the installed app (#3678)
+    Lane('employer_sites', 'engine', clock=('employer sites',)),
+    Lane('job_boards', 'engine', clock=('job boards',)),   # the boards known before the press: the field's, the proposed and the found ones
+    Lane('free_job_apis', 'engine', clock=('free job APIs', 'Google Jobs')),
+    Lane('job_alert_emails', 'engine', clock=('job-alert emails',)),
+    Lane('board_web', 'engine', clock=('web search',)),   # the web search for boards
+    Lane('boards_found', 'engine', needs=('board_web',)),   # the boards that web search found: the one declared wait
+    Lane('linkedin', 'app'),   # desktop/lib/search-beside.js withLinkedin; no "Time is up" line yet (a 170 s stop says "stopped", lt's #3705)
+    Lane('finder', 'app', clock=('searching wider',)),   # the employer finder after the search (desktop/lib/search-steps.js, press-stages.js scout)
+)
+BY_LANE = {lane.id: lane for lane in LANES}
+
+
+@dataclass(frozen=True)
 class Row:
-    """One reader. read(run, search) -> jobs as listed (run may be None until the entry makes one, sf 3/8); on(env) -> whether this install reads it now."""
+    """One reader. read(run, search) -> jobs as listed (run may be None until the entry makes one, sf 3/8); on(env) -> whether this install reads it now;
+    lane: the id of its lane in LANES."""
     name: str
     read: Callable
     on: Callable[[Mapping], bool]
+    lane: str
 
 
 def _eures_read(run, search):
@@ -32,5 +62,5 @@ def _eures_on(env):
 
 
 ROWS = (
-    Row('EURES', _eures_read, _eures_on),   # the portal's countries only (it returns nothing otherwise)
+    Row('EURES', _eures_read, _eures_on, 'eures'),   # the portal's countries only (it returns nothing otherwise)
 )
