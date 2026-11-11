@@ -101,11 +101,16 @@ jobs:
         with: {persist-credentials: false}
       # Why (8 Nov 2026, mac-9d; Gitar on #3589): a recording starts only when the broker says its lane has room, and an unread count is no room (tools/persona-search/recording_room.py).
       - name: The broker lane has room for this recording
+        env:
+          CEILING: ${{ inputs.ceiling }}
+          LANE: ${{ inputs.lane }}
         run: |
           set -o pipefail
+          # Why (11 Nov 2026, Gitar on #3838): the inputs come in through env and the ceiling is checked before it reaches the arithmetic, never pasted into the script text.
+          case "$CEILING" in ''|*[!0-9]*) echo "::error::ceiling must be whole seconds, got '$CEILING'"; exit 1;; esac
           # a 540 s recording took 203-265 calls, a 180 s one ~90 (8 Nov): the room asked is the recording's own need, never under 100
-          calls=$(( ${{ inputs.ceiling }} * 300 / 540 )); [ "$calls" -lt 100 ] && calls=100
-          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py "${{ inputs.lane }}" 4 "$calls"
+          calls=$(( CEILING * 300 / 540 )); [ "$calls" -lt 100 ] && calls=100
+          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py "$LANE" 4 "$calls"
       - uses: actions/setup-node@v5
         with: {node-version: '22'}
       - uses: actions/setup-python@v6

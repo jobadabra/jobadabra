@@ -95,8 +95,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: press-yardstick-${{ github.event.pull_request.number || github.ref }}-${{ inputs.mode || 'pr' }}
-  cancel-in-progress: true
+  # Why (11 Nov 2026, Gitar on #3838): only a newer run of the SAME pull request replaces an older one. A push, a by-hand run or a call from press-tapes-auto.yml gets a group of its own (the caller's run id), so a second mode=gaps call never cancels a replay whose answer a re-record waits for.
+  group: press-yardstick-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}-${{ inputs.mode || 'pr' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   replay:
