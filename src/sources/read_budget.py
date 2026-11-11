@@ -6,8 +6,12 @@ after its read began (or at the run's deadline, the earlier), always reading the
 or cloud run, a test without one): every site, as before. Used by src/sources/feed_scan.py. Tests: tests/unit/sources/test_read_budget.py.
 Every read of the run ends at its cut, half the budget (owner, 26 Oct 2026: "A find jobs session should take at most 3min"): the titles, places
 and scores of what was read get the other half of the same deadline (src/time_budget.py); a read stage past the cut only queues (past_cut).
-Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py."""
+Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cut.py.
+A lane of its own (in_lane: the job boards, src/sources/boards_first.py Beside) reads to the run's end instead of this cut; every read in its
+threads (src/ai/slots.py carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py."""
+import contextlib
 import json
+import threading
 from concurrent.futures import TimeoutError as Late
 from datetime import datetime
 
@@ -26,6 +30,7 @@ def _file():
     return paths.DATA / FILE
 
 
+_lane = threading.local()   # this thread's own lane end (in_lane), carried into its pools by src/ai/slots.py carry
 _short = [False]   # the boards read first gave enough jobs: only the best READ_FLOOR employer sites (src/sources/boards_first.py)
 
 
@@ -34,10 +39,37 @@ def short(on=True):
     _short[0] = on
 
 
+def lane_end():
+    """The end of the lane this thread reads in (in_lane), None outside one: the employer sites' read and the slice keep the cut."""
+    return getattr(_lane, 'end', None)
+
+
+@contextlib.contextmanager
+def in_lane(end):
+    """Reads in this block (and in the pools it starts through slots.carry) end at `end`, not at the read cut; None: the cut again."""
+    before = lane_end()
+    _lane.end = end
+    try:
+        yield
+    finally:
+        _lane.end = before
+
+
+def run_end():
+    """The run's own end for a lane: when no AI call starts any more (time_budget.ended, TAIL before the deadline); None without a budget.
+    Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Run's deadline, own lane (Recommended)"): the job boards started at
+    49-59 s on a first press and the read cut stopped them at 67.5 s; they listed jobs in 1 of 49 first runs since the cut came (26 Oct, be074c43)."""
+    if time_budget.DEADLINE is None or time_budget.BEGAN is None:
+        return None
+    return time_budget.end() - time_budget.part(time_budget.TAIL)
+
+
 def deadline(now=None):
-    """The monotonic time after which no new site starts, or None when the search has no budget."""
+    """The monotonic time after which no new site starts, or None when the search has no budget. In a lane: the lane's end."""
     if time_budget.DEADLINE is None:
         return None
+    if lane_end() is not None:
+        return lane_end()
     started = now if now is not None else time_budget.now()
     if _short[0]:
         return started
@@ -47,9 +79,11 @@ def deadline(now=None):
 def cut_at():
     """The monotonic time a timed search stops waiting for any site still being read: employer sites, job boards, the boards its web search
     found, the web search itself (owner's run d4561921e533, 26 Oct 2026: no new site after 2 minutes, but ~22 slow ones already open held the
-    read until 5 min 37 s). From the search's start, READ_GRACE past READ_SECONDS; None without a budget."""
+    read until 5 min 37 s). From the search's start, READ_GRACE past READ_SECONDS; None without a budget. In a lane: the lane's end."""
     if time_budget.DEADLINE is None or time_budget.BEGAN is None:
         return None
+    if lane_end() is not None:
+        return lane_end()
     cut = time_budget.BEGAN + time_budget.part(READ_SECONDS + READ_GRACE)
     if time_budget.STAGE_END is not None:   # a step with its share of the press (the job boards' step): its reads end with its AI calls
         cut = min(cut, time_budget.STAGE_END - time_budget.part(time_budget.TAIL))

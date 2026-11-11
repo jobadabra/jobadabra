@@ -16,8 +16,8 @@
   "hash": "b30c17856343d573"
  },
  "L05": {
-  "gets": "the job boards step ends at its share of the press",
-  "hash": "37de01fe2f4b672e"
+  "gets": "the job boards lane ends at the run's deadline, not at the employer sites' read cut",
+  "hash": "5f1fee336bc46f51"
  },
  "L06": {
   "gets": "the best employer sites are always read, the rest are kept and read first next time",
@@ -36,8 +36,8 @@
   "hash": "78bae36cdea2633c"
  },
  "L10": {
-  "gets": "a press reads the job boards first; a first press reads its slice first and scores employer jobs without waiting for the boards",
-  "hash": "38888cdd22ff0779"
+  "gets": "every press starts the job boards at second 0 in their own lane; the first-jobs step reads employer sites and scores them without waiting for the boards",
+  "hash": "855239e46fed0103"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
@@ -49,7 +49,7 @@
  },
  "L13": {
   "gets": "jobs found earlier and never scored are scored from the run's first second, in one list with the new ones, the nearest first",
-  "hash": "518ce3489973dfc6"
+  "hash": "685e3d7ea7118ed9"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
@@ -137,7 +137,7 @@
  },
  "L35": {
   "gets": "a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored",
-  "hash": "2423fb55a52370de"
+  "hash": "18abc1ce1a20d5a7"
  },
  "L36": {
   "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",

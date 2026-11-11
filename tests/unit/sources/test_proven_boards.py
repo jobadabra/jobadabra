@@ -183,7 +183,8 @@ class FirstSliceTests(Fixture):
                 mock.patch.object(first_jobs.store, 'import_watch_report', lambda db, report: imported.extend(report['jobs']) or []), \
                 mock.patch.object(first_jobs.score, 'queue', return_value=[]), mock.patch.object(first_jobs, 'to_score', return_value=[]):
             first_jobs.run(self.db, feed_db, [], profile='p', hidden=frozenset(), sync=lambda: None, say=said.append,
-                           scan=lambda sources, db, **kw: {'jobs': [], 'sources': []}, scorer=mock.Mock())
+                           scan=lambda sources, db, **kw: {'jobs': [], 'sources': []}, scorer=mock.Mock(),
+                           boards=first_jobs.board_jobs)   # a run reads this list in the boards' lane since lanes 4a (src/sources/boards_first.py Beside)
             self.assertEqual(sorted(j['url'] for j in imported), ['https://b1.example/job/ControllerAmsterdam1', 'https://b2.example/job/ControllerAmsterdam2'])
             self.assertTrue(any('Board 1, Board 2' in line for line in said), said)
             full = found_boards.read(SEARCH, [board(1), board(2), board(3)])

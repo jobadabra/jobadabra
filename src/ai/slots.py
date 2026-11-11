@@ -63,11 +63,13 @@ def waited(reset=False):
 
 
 def carry(fn, at=None):
-    """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry()."""
-    at = level() if at is None else at
+    """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry(), and in its reading lane
+    (src/sources/read_budget.py in_lane), so a board's pool threads end where the job boards' lane ends."""
+    from ..sources import read_budget
+    at, lane = level() if at is None else at, read_budget.lane_end()   # a lane's reads end at its own end in every thread it starts
 
     def run(*args, **kwargs):
-        with priority(at):
+        with priority(at), read_budget.in_lane(lane):
             return fn(*args, **kwargs)
     return run
 
