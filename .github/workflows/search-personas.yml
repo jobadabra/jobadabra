@@ -8,7 +8,7 @@ name: CI · Search check (18 personas)
 # The app and engine keep their Messages contract; codex.mjs sends every call to the existing OIDC broker, including the blind judge. No secret or API fallback.
 # Tools: tools/persona-search/gate.py (cv, result, compare), gate_judge.py (the blind judge), run.mjs (the press). Guard: tests/test_search_personas_gate.py.
 # The Worker starts it once a night (app-core/src/scheduler.js SEARCH_SLOT); a person can start it any time.
-run-name: ${{ inputs.scheduled && 'Search check · nightly (Worker cron)' || 'Search check · by hand' }}
+run-name: ${{ inputs.scheduled && inputs.presses == '5' && 'Search check · weekly, 5 runs (Worker cron)' || inputs.scheduled && 'Search check · nightly (Worker cron)' || 'Search check · by hand' }}
 
 on:
   workflow_dispatch:

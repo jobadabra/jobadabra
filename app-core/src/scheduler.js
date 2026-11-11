@@ -6,7 +6,7 @@
 //   e2e.yml      -scheduled: true  the three-a-day journey runs, planned exactly as the schedule event plans them
 //   e2e.yml      -night_pass: n/5  the night burn-in: five full runs at fixed UTC times (NIGHT_SLOTS below), each on the commit of pass 1
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
-//   search-personas.yml           the Search check's night run (SEARCH_SLOT below)
+//   search-personas.yml           the Search check's night run (SEARCH_SLOT below) and its week, 5 runs a person (SEARCH_WEEKLY)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   pr-labels.yml                 sets every open PR's Gitar label from Gitar's latest comment every 10 minutes (7 Nov 2026, gl): Gitar closes a finding by editing its comment, which starts no event
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
@@ -29,6 +29,10 @@ export const STORE_WATCH_MINUTE = 20;
 // The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
 // one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).
 export const STORE_WEEKLY = {day: 1, time: '07:00'};
+// The Search check's week (search-personas.yml, 5 runs a person), UTC day + HH:MM. Why (11 Nov 2026, owner via AskUserQuestion in session sa: "2 runs nightly, 5 runs weekly
+// (Recommended)"; "each of the runs should provide new jobs"): about 7 h of the one-at-a-time group, so it starts after the night (00:00, ends about 02:30) and ends long before the
+// next; Thursday, the day after the Codex subscription's weekly reset (Wednesday morning), when it has the most room for the week's ~3,000 calls.
+export const SEARCH_WEEKLY = {day: 4, time: '03:00'};
 const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 /** The night pass due at this moment as "n/5", or '' when none. */
 export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
@@ -49,6 +53,7 @@ export function jobsFor(cron, now = new Date()) {
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
     if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
     if (hhmm(now) === SEARCH_SLOT) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true'}});
+    if (now.getUTCDay() === SEARCH_WEEKLY.day && hhmm(now) === SEARCH_WEEKLY.time) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true', presses: '5'}});
     // Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days, so an hourly look (minute 20) tells him within the hour;
     // it rides this trigger (no 4th trigger can be registered) and costs one Ubuntu minute unless a submitted version waits (msix-store-watch.yml).
     if (now.getUTCMinutes() === STORE_WATCH_MINUTE) jobs.push({workflow: 'msix-store-watch.yml'});
