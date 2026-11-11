@@ -45,7 +45,7 @@ class ScoreFirstFromTheStart(unittest.TestCase):
 
     def test_the_search_plans_before_it_reads_any_site(self):
         text = SEARCH.read_text()
-        self.assertLess(text.index('scoring_plan(args, stores)'), text.index('boards_first.run('))
+        self.assertLess(text.index('scoring_plan(args, stores)'), text.index('start_boards_first(listed='))   # the boards' lane, the first read (lanes 4a)
         self.assertNotIn('time_budget.score_first()', text, 'decided once, at the start (daily_helpers.scoring_plan)')
 
 

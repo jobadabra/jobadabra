@@ -179,32 +179,28 @@ def plan_sources(args, stores, db, sources, run):
 def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run):
     with feeds.database(DATA / 'jobs.sqlite') as feed_db:
         so_far = jobs_so_far.SoFar(db)   # each source's jobs in the list as soon as it is read, not all at the end (owner, 18 Oct 2026); before the slice, so its jobs stay "new" in the count
-        first_boards = []
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
         apis = start_apis(feed_db) if full_read else None   # every lane from second 0: the free APIs no longer wait for the employer sites (lanes 3/5)
+        # Why (lanes 4a, owner, 11 Nov 2026: "Run's deadline, own lane (Recommended)"; L10): a first run's boards lane starts at second 0 with its own
+        # board list, beside the slice; before, the slice read that list itself to the read cut and the web search's boards came after it, past the cut:
+        # board jobs on a first run in 1 of 49 runs since 26 Oct. A repeat run starts it inside the employer read's scope below, as before.
+        first = start_boards_first(listed=first_jobs.board_jobs) if full_read and slice_first else None
         try:   # Why (#3802, 11 Nov 2026): the lane's threads end with the whole gather, whatever raises before the APIs' stage (they were left running)
-            from .sources import boards_first
             if slice_first:
                 try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
                     with step_yield.span('employer_sites'):   # the slice also scores the first 3 jobs: its seconds are the read's and those scores' (step_yield.py)
                         first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
                             db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
-                                       import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
+                                       import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'),
+                                       lane=first, lane_jobs=so_far.listener('job boards'))
                 except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
                     print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
-                if full_read:
-                    try:
-                        with step_yield.span('job_boards'):
-                            first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
-                    except Exception as error:  # noqa: BLE001 — the full board read reads them
-                        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
             from .ai import batch_scope
             from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
             # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
             # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
             beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
-            first = None   # the web search's boards on a repeat run: started first, read beside the employer sites (a first press read them after its slice)
             with batch_scope.concurrent() if beside or (full_read and not slice_first) else contextlib.nullcontext():   # one scope for every reader beside the employer sites
                 if full_read and not slice_first:
                     first = start_boards_first()
@@ -214,14 +210,14 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                 finally:   # inside the scope: its answers join the shared copies before the scope ends
                     if discovery is not None:
                         discovery.finish()
-                first_boards = take_boards_first(first, feed_db, so_far) or first_boards
-            report['jobs'] += first_boards
             crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
             if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
                 crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
             run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
             coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
             gather_apis(args, feed_db, report, so_far, ahead, apis)
+            # Why (lanes 4a): the boards' lane reads to the run's end; its groups are kept as they land, after the APIs' stage so their titles are not held behind it
+            report['jobs'] += take_boards_first(first, feed_db, so_far)
         finally:
             if apis is not None:
                 apis.close()
@@ -240,13 +236,13 @@ def start_apis(feed_db):
 
 
 # Start the web search's boards before the employer sites, read beside them.
-def start_boards_first():
-    """The web search's boards, started first and read beside the employer sites (src/sources/boards_first.py Beside); None when they cannot start.
+def start_boards_first(listed=None):
+    """The job boards' lane (src/sources/boards_first.py Beside; listed: a first run's own board list); None when it cannot start.
     Why (ps E2a-2, owner, 8 Nov 2026: "Both: no waits + background (Recommended)", whose option kept "the boards still start first"): read before
     the employer sites, one board held them to 165 s (run 42451932088, p7: 0 of 13 employer sites read)."""
     from .sources import boards_first
     try:
-        return boards_first.Beside(load_search_config())
+        return boards_first.Beside(load_search_config(), listed=listed)
     except Exception as error:  # noqa: BLE001 — the full board read reads them
         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         return None

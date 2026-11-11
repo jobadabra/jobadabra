@@ -27,12 +27,15 @@ def tearDownModule():
 
 
 class TheSliceNeverWaitsForTheWebSearch(unittest.TestCase):
-    def test_a_first_press_reads_its_slice_then_the_known_and_web_searchs_boards(self):
+    def test_a_first_press_starts_its_boards_lane_before_its_slice_and_no_board_read_waits_after_it(self):
+        """L10 (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Yes, update L05 and L10 (Recommended)"): the boards' lane starts at
+        second 0 and the slice is handed it (its groups kept as they land); before, the slice's own boards and then the web search's were read
+        after it, past the read cut: board jobs on a first run in 1 of 49 runs since 26 Oct."""
         source = (Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py').read_text()
         body = source[source.index('def search('):]
-        self.assertIn('if full_read and not slice_first:', body, 'the wait for the web search (boards_first.run) is not in front of a slice')
-        self.assertLess(body.index('first_jobs.run('), body.rindex('boards_first.run('), 'the boards are still read on a first press, after its slice')
-        self.assertLess(body.rindex('boards_first.run('), body.index('boards_ahead.scan_beside('), 'still before the employer read')
+        self.assertLess(body.index('start_boards_first(listed=first_jobs.board_jobs)'), body.index('first_jobs.run('), 'the lane starts before the slice')
+        self.assertIn('lane=first,', body, 'the slice keeps and shows the lane\'s groups as they land')
+        self.assertNotIn('boards_first.run(', body, 'no board read waits after the slice')
 
 
 class TheTitlesThatFeedScoringAreSorted(unittest.TestCase):

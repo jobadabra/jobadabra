@@ -165,9 +165,9 @@ class SearchCharacterization(unittest.TestCase):
                 self.event('gather goes on')
         return {'jobs': jobs, 'sources': source_rows}, None
 
-    def boards_beside(self, search):
-        """A repeat run's boards first (src/sources/boards_first.py Beside), read by nothing here."""
-        self.event('boards beside')
+    def boards_beside(self, search, listed=None):
+        """The boards' lane (src/sources/boards_first.py Beside), read by nothing here; listed: a first run's own board list (lanes 4a)."""
+        self.event('boards beside' if listed is None else 'boards lane')
         return mock.Mock(take=lambda feed_db, on_jobs: [])
 
     def import_jobs(self, db, report):
@@ -429,10 +429,13 @@ class SearchCharacterization(unittest.TestCase):
         self.assertEqual(self.runs[0]['score']['done'], 3)
         self.assertIn('scoring skipped: RuntimeError', self.runs[0]['warnings'])
 
-    def test_first_slice_precedes_boards_and_full_gather(self):
+    def test_a_first_run_starts_its_boards_lane_before_its_slice_and_reads_no_board_after_it(self):
+        """L10 (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Yes, update L05 and L10 (Recommended)"): every press starts the job
+        boards at second 0 in their own lane; the first-jobs step reads employer sites and scores them without waiting for the boards. Before, a
+        first run read its boards after its slice, past the read cut: board jobs in 1 of 49 first runs since 26 Oct."""
         self.run_search(first_jobs=True)
-        self.assert_order('plan', 'web', 'sources', 'proposal', 'slice', 'boards first', 'gather')
-        self.assertNotIn('boards beside', self.calls, 'a first run reads its boards after its slice, not beside the employer sites')
+        self.assert_order('plan', 'web', 'sources', 'proposal', 'boards lane', 'slice', 'gather')
+        self.assertNotIn('boards first', self.calls, 'no board read waits after the slice')
 
     def test_the_found_boards_start_before_the_employer_sites_and_are_read_beside_them(self):
         """L10 (owner, 26 Oct 2026: "START A JOB SEARCH WITH SEARCHING ON GOOGLE!"; ps E2a-2, owner, 8 Nov 2026, option "the boards still

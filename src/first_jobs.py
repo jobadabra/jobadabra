@@ -141,7 +141,7 @@ def scored_fits(db):
 
 
 def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, scorer=None, model=None, size=SLICE, first=FIRST_JOBS, boards=None,
-        fits=None, import_jobs=None, others=None):
+        fits=None, import_jobs=None, others=None, lane=None, lane_jobs=None):
     """Read `size` feeds while the first boards (boards(say) -> their jobs as read) and the other readers started with the search (others: {name: future},
     default EURES's early read) read too; import what matches and score `first` jobs at a time (the nearest read so far, any source), a sync after every score,
     until one fits FIT+ or MAX_FIRST are scored. -> how many were scored. A failure here never blocks the search: the full run that follows does everything the
@@ -149,7 +149,12 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     Why (#2918, owner 5 Nov 2026: "One clear order first"; 6 Nov 2026: "Score from the nearest batches as they land"): every reader's titles are sorted in one
     queue, nearest place first (src/ai/title_queue.py), and the jobs of each batch that fits reach scoring as it lands, from any reader, so the first job waits
     for one batch, not for a reader's whole sort, and a Toulouse press scores the jobs near Toulouse instead of 6 in Paris while EURES's rows wait.
-    Threads: this one is the hub (it owns the job store); the other readers only read, then it sorts and imports what they read, in `join`."""
+    Threads: this one is the hub (it owns the job store); the other readers only read, then it sorts and imports what they read, in `join`.
+    lane: the job boards' lane (src/sources/boards_first.py Beside), read beside the slice from second 0: each group it lands is kept and shown by
+    this hub (lane_jobs), never waited for. Why (lanes 4a, owner, 11 Nov 2026: L10 "the first-jobs step reads employer sites and scores them
+    without waiting for the boards"): the slice read its boards itself and waited for them to the read cut (68 s for 5 of 7 people), so the
+    full employer read after it started past the cut and read 0 sites. boards: a board reader of the slice's own, for tests only.
+    TODO(AI): the tests that pass `boards` move to the lane and the argument goes (2026-11-11)."""
     from . import time_budget
     from .sources import aggregators
     started = time_budget.now()
@@ -164,7 +169,7 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     def read_boards():   # side by side with the employer sites: each batches its own jobs, so a tape replays in any finishing order
         # Why (#first-press-slots, owner, 27 Oct 2026: "local boards first"): the local boards' reads take Claude's slots first
         with batch_scope.reader('boards'), slots.priority(slots.FIRST):
-            return placed((boards or board_jobs)(say))
+            return placed(boards(say))
 
     def hand(items):   # a batch of titles landed: its jobs in your places are imported and scored now
         if imports.add({'jobs': items}):
@@ -173,7 +178,10 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     pool = ThreadPoolExecutor(max_workers=2)
     try:
         with title_queue.hub() as hub, batch_scope.concurrent():
-            readers = _Readers(hub, {'boards': pool.submit(slots.carry(read_boards)), **(_others(pool) if others is None else others)}, feed_db, imports, hand, say)
+            readers = _Readers(hub, {**({'boards': pool.submit(slots.carry(read_boards))} if boards else {}), **(_others(pool) if others is None else others)},
+                               feed_db, imports, hand, say)
+            if lane is not None:   # each group the boards' lane lands is kept and shown here, in the hub, while the slice waits for anything
+                lane.notify = lambda: hub.post(lambda: lane.deliver(feed_db, lane_jobs or (lambda jobs: None)))
             scoring.before = readers.take_ready
             with batch_scope.reader('employer sites'):
                 report = scan(chosen, feed_db, on_sorted=hand)
@@ -182,6 +190,8 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
             readers.settle(scoring)
             readers.finish()   # the boards' pages are the full search's: waited for; EURES still reading is the free-API stage's
     finally:
+        if lane is not None:
+            lane.notify = None   # past the slice, the employer read and the gather's end deliver the lane's groups
         pool.shutdown(wait=False)   # Why (#2918, Gitar): a reader still reading is not waited for here; its own clock ends it
     if not scoring.queued:
         say(f'First jobs: {imports.count} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the readers joined
