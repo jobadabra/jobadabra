@@ -184,7 +184,10 @@ def reset_run():
     STOPPED.update(why='', key=False)
     WAITING.update(n=0, said=False, calls={})
     _calls['n'] = 0
+    lock = _own.pop('\0lock', None)   # the one lock take() holds stays, or a thread inside it and the next caller would hold different locks
     _own.clear()
+    if lock is not None:
+        _own['\0lock'] = lock
 
 
 def stopped():
