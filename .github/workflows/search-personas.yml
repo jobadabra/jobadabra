@@ -388,7 +388,7 @@ jobs:
         if: always() && hashFiles('result/verdict.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}   # a run without the night's floors-state.json reads the open causes from refs/tags/search-floors (read only)
-          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
         run: |
           set +e
           mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
@@ -416,7 +416,7 @@ jobs:
       # Operations → Notifications), else the CI-alerts bot. Only the scheduled night tells (it alone moves the open causes; a by-hand run would tell them again);
       # a failed send never reds the night.
       - name: Tell the Engineering channel (G6)
-        if: always() && hashFiles('result/verdict.json') != '' && inputs.scheduled && inputs.personas == '' && inputs.presses != '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && github.ref == 'refs/heads/main'
+        if: always() && hashFiles('result/verdict.json') != '' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && github.ref == 'refs/heads/main'
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
