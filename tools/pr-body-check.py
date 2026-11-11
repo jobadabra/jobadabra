@@ -43,8 +43,13 @@ def title_gap(title):
 
 # The files that decide what Find jobs reads, keeps, scores or orders (the finish-line spec, guardrail G4).
 SEARCH_FILES = re.compile(r'^src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots)\.py$|(ai/)?(time_budget|job_rank)\.py$)')
-MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*\S*\d\S*\s*\(3 runs a side, spread\s+[^)\s]*\d[^)]*\)|nothing\s*\([^)<>]*\w[^)<>]*\))', re.M)
+# Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Accept your measure (Recommended)"): a move from saved runs (before) to the owner's
+# chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the PR is then a DONT MERGE draft).
+MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*\S*\d\S*\s*\(3 runs a side, spread\s+[^)\s]*\d[^)]*\)'
+                   r'|p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*(?:\S*\d\S*|pending)\s*\([1-9]\d* saved runs? before, [1-9]\d* runs? after\b[^)]*\)'
+                   r'|nothing\s*\([^)<>]*\w[^)<>]*\))', re.M)
 MOVES_FIX = ('add a line `Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)` (the person, the number it moves, 3 runs before and 3 after, their spread), '
+             '`Moves: p<n> <number> <before> → <after or pending> (<N> saved runs before, <M> run(s) after)` for a measure the owner chose, '
              'or `Moves: nothing (<why>)` for a change no person feels; skill check-job-search-locally step 10, spec docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md')
 
 

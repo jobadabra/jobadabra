@@ -74,9 +74,9 @@ class TheFirstPressMarksItsCalls(unittest.TestCase):
         return (ROOT / 'src' / name).read_text()
 
     def test_the_slices_board_reader_and_proposal_go_first(self):
-        text = self.source('first_jobs.py')
-        self.assertRegex(text, r'def read_boards\(\):.*\n(.*\n){0,3}.*slots\.priority\(slots\.FIRST\)')
-        self.assertRegex(text, r'pool\.submit\(slots\.carry\(.*board_ideas\.ideas')
+        # since lanes 4a (#3826) a first run's own board list is read in the boards' lane, at the level the slice gave it
+        self.assertRegex(self.source('sources/boards_first.py'), r'self\._listed\(listed\), slots\.FIRST\)')
+        self.assertRegex(self.source('first_jobs.py'), r'pool\.submit\(slots\.carry\(.*board_ideas\.ideas')
 
     def test_a_board_reads_pool_threads_carry_the_callers_level(self):
         self.assertIn('pool.submit(slots.carry(one_or_spare), read_item)', self.source('sources/found_boards.py'))

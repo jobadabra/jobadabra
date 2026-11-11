@@ -48,7 +48,7 @@ def search(args, stores=None):
     start_sources(args, read_profile)
     hidden, saved, dismissed, stages = application_stages(stores, run)
     sources = starter_sources()
-    report, imported = {'jobs': [], 'sources': []}, []
+    report, imported, lane, so_far = {'jobs': [], 'sources': []}, [], None, None   # lane: the job boards' (gather_sources), handed over after it
     with store.connect(args.db) as db:
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
@@ -61,7 +61,7 @@ def search(args, stores=None):
             try:
                 feed_list = plan_sources(args, stores, db, sources, run)
                 start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
-                report, so_far = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+                report, so_far, lane = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
             except Exception:   # an error waits for the round in flight; a Stop (SystemExit) ends at once, the daemon thread with it
                 scored()
                 leave_early_reads(args)
@@ -70,11 +70,13 @@ def search(args, stores=None):
             # importing after it held every job the search found, late employer reads included, behind that scoring and past the app's stop.
             imported = import_sources(db, report, so_far, run)
             scored()   # before the closing pass: run['score'] is whole when score_jobs reads it
+            keep_late_boards(lane, so_far)   # the boards' groups that landed while the run scored (lanes 4a)
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
         imported = filter_jobs(args, db, imported)
         backfill_descriptions(db)
         score_jobs(args, stores, db, run, read_profile, hidden, dismissed, time_budget)
+        keep_late_boards(lane, so_far)   # the last of the boards' groups before the run's matches are saved (lanes 4a)
         open_urls = save_matches(args, stores, db, run, report, hidden, dismissed, started)
         scheduled_updates(args, stores, run, open_urls, datetime)
         seed = args.seed or random.randrange(1, 10**9)
@@ -179,32 +181,28 @@ def plan_sources(args, stores, db, sources, run):
 def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run):
     with feeds.database(DATA / 'jobs.sqlite') as feed_db:
         so_far = jobs_so_far.SoFar(db)   # each source's jobs in the list as soon as it is read, not all at the end (owner, 18 Oct 2026); before the slice, so its jobs stay "new" in the count
-        first_boards = []
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
         apis = start_apis(feed_db) if full_read else None   # every lane from second 0: the free APIs no longer wait for the employer sites (lanes 3/5)
+        # Why (lanes 4a, owner, 11 Nov 2026: "Run's deadline, own lane (Recommended)"; L10): a first run's boards lane starts at second 0 with its own
+        # board list, beside the slice; before, the slice read that list itself to the read cut and the web search's boards came after it, past the cut:
+        # board jobs on a first run in 1 of 49 runs since 26 Oct. A repeat run starts it inside the employer read's scope below, as before.
+        first = start_boards_first(listed=first_jobs.board_jobs) if full_read and slice_first else None
         try:   # Why (#3802, 11 Nov 2026): the lane's threads end with the whole gather, whatever raises before the APIs' stage (they were left running)
-            from .sources import boards_first
             if slice_first:
                 try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
                     with step_yield.span('employer_sites'):   # the slice also scores the first 3 jobs: its seconds are the read's and those scores' (step_yield.py)
                         first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
                             db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
-                                       import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
+                                       import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'),
+                                       lane=first, lane_jobs=so_far.listener('job boards'))
                 except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
                     print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
-                if full_read:
-                    try:
-                        with step_yield.span('job_boards'):
-                            first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
-                    except Exception as error:  # noqa: BLE001 — the full board read reads them
-                        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
             from .ai import batch_scope
             from .sources import boards_ahead, boards_beside   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
             # Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"): the app's own discover step in front of the search held the
             # run lock to ~60 s, and the employer read stops 67.5 s after the press (run 42411469318, p7: employer sites got ~4 s).
             beside = getattr(args, 'discover_beside', False) and full_read and not args.first_jobs
-            first = None   # the web search's boards on a repeat run: started first, read beside the employer sites (a first press read them after its slice)
             with batch_scope.concurrent() if beside or (full_read and not slice_first) else contextlib.nullcontext():   # one scope for every reader beside the employer sites
                 if full_read and not slice_first:
                     first = start_boards_first()
@@ -214,18 +212,20 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                 finally:   # inside the scope: its answers join the shared copies before the scope ends
                     if discovery is not None:
                         discovery.finish()
-                first_boards = take_boards_first(first, feed_db, so_far) or first_boards
-            report['jobs'] += first_boards
             crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
             if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
                 crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
             run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
             coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
             gather_apis(args, feed_db, report, so_far, ahead, apis)
+            # Why (lanes 4a; #3826, Gitar): the boards' lane reads to the run's end, but the gather takes its groups only to the employer sites' cut, as
+            # before 4a: waiting to the lane's end held the import and every score up to ~100 s. Later groups: keep_late_boards, between the stages after.
+            from .sources import read_budget
+            report['jobs'] += take_boards_first(first, feed_db, so_far, until=read_budget.cut_at())
         finally:
             if apis is not None:
                 apis.close()
-    return report, so_far
+    return report, so_far, first
 
 
 # Ask every due free job API now, beside the other lanes.
@@ -240,28 +240,42 @@ def start_apis(feed_db):
 
 
 # Start the web search's boards before the employer sites, read beside them.
-def start_boards_first():
-    """The web search's boards, started first and read beside the employer sites (src/sources/boards_first.py Beside); None when they cannot start.
+def start_boards_first(listed=None):
+    """The job boards' lane (src/sources/boards_first.py Beside; listed: a first run's own board list); None when it cannot start.
     Why (ps E2a-2, owner, 8 Nov 2026: "Both: no waits + background (Recommended)", whose option kept "the boards still start first"): read before
     the employer sites, one board held them to 165 s (run 42451932088, p7: 0 of 13 employer sites read)."""
     from .sources import boards_first
     try:
-        return boards_first.Beside(load_search_config())
+        return boards_first.Beside(load_search_config(), listed=listed)
     except Exception as error:  # noqa: BLE001 — the full board read reads them
         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         return None
 
 
 # Keep and show what the boards first read and the employer sites' callbacks did not take yet.
-def take_boards_first(first, feed_db, so_far):
-    """Their jobs (the report's shape), [] when they did not start or failed: the full board read reads them."""
+def take_boards_first(first, feed_db, so_far, until=None):
+    """Their jobs (the report's shape) to `until` at most, [] when they did not start or failed: the full board read reads them."""
     if first is None:
         return []
     try:
-        return first.take(feed_db, so_far.listener('job boards'))
+        return first.take(feed_db, so_far.listener('job boards'), until=until)
     except Exception as error:  # noqa: BLE001 — the full board read reads them
         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
         return []
+
+
+def keep_late_boards(lane, so_far):
+    """The boards lane's groups that landed after the gather, kept and shown now (imported into the list, src/jobs_so_far.py), never waited for:
+    the main thread owns the job cache, so it hands them over between the stages after the gather (lanes 4a). Not scored this run when it has no
+    time left: they wait in the list for the next run's scoring (4b)."""
+    if lane is None:
+        return
+    try:
+        with feeds.database(DATA / 'jobs.sqlite') as feed_db:   # the gather's connection is closed by now
+            lane.deliver(feed_db, so_far.listener('job boards'))
+        so_far.flush()
+    except Exception as error:  # noqa: BLE001 — late groups are a bonus; the run goes on
+        print(f'Warning: late job boards not kept: {type(error).__name__}: {error}', flush=True)
 
 
 # Append paid and free API results in their original order.

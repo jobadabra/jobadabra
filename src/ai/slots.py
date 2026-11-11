@@ -37,6 +37,25 @@ def priority(at):
         _local.level = before
 
 
+def lane():
+    """The end of the reading lane the calling thread is in (in_lane), None outside one (src/sources/read_budget.py cut_at reads it)."""
+    return getattr(_local, 'lane', None)
+
+
+@contextlib.contextmanager
+def in_lane(end):
+    """Inside the block, this thread's site reads end at `end` (a monotonic time), not at the employer sites' read cut; None: the cut again.
+    Only this thread: a pool thread it starts takes the lane through carry(), as it takes the level.
+    Why (lanes 4a, 11 Nov 2026): kept beside the level on the thread's one context, not in a container of its own (contract C1,
+    tests/guards/rules/test_run_state_only_shrinks.py): both are the calling thread's, and carry() is their one way into a pool."""
+    before = lane()
+    _local.lane = end
+    try:
+        yield
+    finally:
+        _local.lane = before
+
+
 def rank():
     """The calling thread's order inside its level (a tuple; none = first): the title queue sets the nearness of the batch it asks, so a near batch takes a free slot before a far one that was popped earlier."""
     return getattr(_local, 'rank', ())
@@ -63,11 +82,12 @@ def waited(reset=False):
 
 
 def carry(fn, at=None):
-    """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry()."""
-    at = level() if at is None else at
+    """`fn` to run in another thread (a pool's) at level `at`, by default the level of the thread that calls carry(), and in its reading lane
+    (in_lane), so a board's pool threads end where the job boards' lane ends."""
+    at, end = level() if at is None else at, lane()   # a lane's reads end at its own end in every thread it starts
 
     def run(*args, **kwargs):
-        with priority(at):
+        with priority(at), in_lane(end):
             return fn(*args, **kwargs)
     return run
 

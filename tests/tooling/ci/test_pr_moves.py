@@ -29,6 +29,15 @@ class MovesLine(unittest.TestCase):
         for line in (GOOD, '- Moves: p13 coverage 40% -> 61% (3 runs a side, spread 4%)', '**Moves:** nothing (a comment fix, no behaviour)'):
             self.assertIsNone(check.moves_gap('## x\n' + line + '\n', ['src/press/run.py']), line)
 
+    def test_saved_runs_before_and_the_owners_after_run_pass_with_a_number_or_pending(self):
+        """Why (lanes 4a, owner, 11 Nov 2026: "Accept your measure (Recommended)"): 49 saved runs before, one run after; pending while it runs."""
+        for line in ('Moves: p2 p3 p6 p9 p10 p11 p13 board jobs on a first run 1/49 → pending (49 saved runs before, 1 run after)',
+                     'Moves: p2 board jobs on a first run 1/49 → 5/7 (49 saved runs before, 1 run after, run 42999)'):
+            self.assertIsNone(check.moves_gap('## x\n' + line + '\n', ['src/sources/boards_first.py']), line)
+        for line in ('Moves: p2 board jobs 1/49 → soon (49 saved runs before, 1 run after)', 'Moves: p2 board jobs 1/49 → pending (0 saved runs before, 1 run after)',
+                     'Moves: p2 board jobs 1/49 → pending (49 saved runs before)', 'Moves: p2 board jobs → pending (49 saved runs before, 1 run after)'):
+            self.assertIsNotNone(check.moves_gap('## x\n' + line, ['src/sources/boards_first.py']), line)
+
     def test_a_half_filled_line_is_refused(self):
         for line in ('Moves: p5 EURES (3 runs a side, spread 3)', 'Moves: p5 x 1 → 2 (1 run, spread 3)', 'Moves: nothing ()', 'Moves: nothing (<why>)',
                      'Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)', 'Moves: <a PR that changes a search file ...>'):

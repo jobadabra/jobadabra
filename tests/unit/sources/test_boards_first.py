@@ -158,12 +158,18 @@ class OldState(unittest.TestCase):
             began = time.monotonic()
             with redirect_stdout(io.StringIO()) as out:
                 searching = board_web.early(SEARCH, fetch=fetch)
-                matched = boards_first.run(self.db, SEARCH, on_jobs, wait=wait)
+                matched = self.lane(on_jobs, wait=wait)
             if gate is not None:
                 gate.set()   # a web search still searching answers now, inside this test
             with redirect_stdout(io.StringIO()):   # a web search still searching ends inside this test: its line never lands in another test's output
                 searching.exception(timeout=10)
         return matched, shown, out.getvalue()
+
+    def lane(self, on_jobs, wait=None):
+        """The boards' lane of a run (Beside), taken to its end by the thread that owns the job cache: the jobs it kept."""
+        from src.ai import batch_scope
+        with batch_scope.concurrent():
+            return boards_first.Beside(SEARCH, wait=wait).take(self.db, on_jobs)
 
     def test_first_officer_jobs_from_the_found_boards_are_on_screen_first(self):
         matched, shown, log = self.run_first()
@@ -171,7 +177,7 @@ class OldState(unittest.TestCase):
         self.assertTrue(any('First Officer' in title for title in titles), log)
         self.assertEqual(len(matched), 14, 'both board shapes read: 8 links by id, 6 cards')
         self.assertTrue(shown and shown[0][0] < 60, 'on screen within 60 s')
-        self.assertIn('Job boards first: reading the 3 the web search found, before the employer sites', log)
+        self.assertIn('Job boards first: reading the 3 the web search found, beside the employer sites', log)
 
     def test_enough_jobs_from_the_boards_keep_the_employer_read_to_its_best_sites(self):
         self.run_first()
@@ -206,7 +212,7 @@ class OldState(unittest.TestCase):
     def test_no_web_search_this_run_and_no_working_board_reads_nothing_first(self):
         shown = []
         with redirect_stdout(io.StringIO()):
-            self.assertEqual(boards_first.run(self.db, SEARCH, shown.append), [])
+            self.assertEqual(self.lane(shown.append), [])
         self.assertEqual(shown, [])
 
     def search_again(self):
@@ -236,7 +242,7 @@ class OldState(unittest.TestCase):
         board_web._early.clear()
         shown = []
         with redirect_stdout(io.StringIO()) as out:
-            matched = boards_first.run(self.db, SEARCH, shown.append)
+            matched = self.lane(shown.append)
         self.assertEqual(len(matched), 14, out.getvalue())
         self.assertTrue(shown)
 
@@ -278,7 +284,7 @@ class OldState(unittest.TestCase):
                          'they gave enough: from now no employer site past the floor, though the read took its deadline before')
 
     def test_a_failure_keeping_the_boards_never_stops_the_employer_read(self):
-        # Gitar on #3606: deliver runs inside the employer read (feeds.scan on_read); before, a failing boards_first.run only warned.
+        # Gitar on #3606: deliver runs inside the employer read (feeds.scan on_read); before, a failing board read before the slice only warned.
         with mock.patch('src.sources.board_reader._groups', return_value=iter([('the 1 that worked before', [{'name': 'Board'}])])), \
                 mock.patch('src.sources.board_reader._fetch', return_value=[{'url': 'https://example.test/1', 'title': 'Nurse'}]), \
                 mock.patch('src.sources.feeds.triage'), \
@@ -295,7 +301,7 @@ class OldState(unittest.TestCase):
         self.search_again()
         board_web._early.clear()
         with mock.patch('src.role_kinds.of_search', return_value={'health_care'}), redirect_stdout(io.StringIO()):
-            self.assertEqual(boards_first.run(self.db, SEARCH, lambda jobs: None), [])
+            self.assertEqual(self.lane(lambda jobs: None), [])
 
 
 if __name__ == '__main__':
