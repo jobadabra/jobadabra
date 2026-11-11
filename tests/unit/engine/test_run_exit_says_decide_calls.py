@@ -50,6 +50,18 @@ class HardStop(unittest.TestCase):
         self.assertIn('1 task(s) still running at the run\'s time', run.stderr, run.stderr[-1500:])
         self.assertNotIn('site read(s)', run.stderr)
 
+    def test_an_open_read_keeps_the_runs_time_to_its_deadline(self):
+        """Why (#3798, owner 11 Nov 2026, asked via AskUserQuestion: "Wait to the deadline (Recommended)"): the open reads' wait ended
+        run_exit.HANDLERS (5 s) before the deadline, so every live run cut its last 5 s of work (lanes after-1: 130 s instead of 135 s); the
+        exit handlers take under 1 s and run after the deadline, on their own limit."""
+        reading = PROGRAM.replace("target=lambda: time.sleep(30)", "target=lambda: time.sleep(2)").replace("time_budget.start(1)", "time_budget.start(3)")
+        self.assertIn("time.sleep(2)", reading, 'positive control: the read ends 1 s before the deadline')
+        self.assertIn("time_budget.start(3)", reading, 'positive control: the run has 3 s')
+        reading += "print('the read ended in the run\\'s time', flush=True)\n"
+        run = subprocess.run([sys.executable, '-c', reading], capture_output=True, text=True, timeout=20)
+        self.assertNotIn('still open', run.stderr, run.stderr[-1500:])
+        self.assertIn("the read ended in the run's time", run.stdout, 'finish waited for the read and returned: no hard stop')
+
 
 if __name__ == '__main__':
     unittest.main()
