@@ -13,6 +13,7 @@ import threading
 from ..paths import DATA
 from ..press import budget as press_budget, resume
 from .models import SMALL_MODEL
+from .providers.contract import AiError
 from . import batch_scope, providers, slots, title_queue
 from ..press import rank
 
@@ -149,9 +150,18 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
             return None
         listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
         asked_at = budget.now()
-        response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],
-                                          messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
-                                          output_config=engine.structured(SCHEMA, MODEL, 'low'))
+        try:
+            response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': SYSTEM}],
+                                              messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
+                                              output_config=engine.structured(SCHEMA, MODEL, 'low'))
+        except AiError:
+            # Why (sa, 11 Nov 2026, local p10 search): a batch that got no AI slot before the search's time was up (cli_base refuses it) failed the whole
+            # sort: the answers of the 12 batches that had landed were not kept and 417 titles read "not sorted". Past the time it is a late batch, as _may_start's.
+            if not budget.ended():
+                raise
+            with lock:
+                late[0] += len(batch)
+            return None
         cost.side(MODEL, response.usage)
         with lock:
             spent[0] += budget.now() - asked_at
@@ -166,9 +176,12 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         ticker.tick(sorted_[0])
         if land:
             land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
-    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
+    # Why half the AI slots while a scorer runs beside the search (sa, 11 Nov 2026, three local p10 searches): a title call takes the next free slot (slots.TITLES), so with as many title workers as slots
+    # the scores got none: 1,056 titles asked and 13 jobs scored instead of 32. Behind the scores instead, a batch waited 42-56 s and ~750 titles were never asked.
+    # Half the slots are the titles', at once; the other half stay with the scores and the board reads.
+    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL // 2 if budget.scored_beside() else engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
     budget.record('title_rounds', spent[0] / max(1, engine.PARALLEL), -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
-    with slots.priority(slots.NORMAL):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
+    with slots.priority(slots.TITLES):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
         _second_look(client, ask, decided, search, words, mine, forced)
     with LOCK:
         data = _load()

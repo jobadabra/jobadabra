@@ -1,7 +1,7 @@
 """One queue for every reader's job-title batches, nearest place first (#2918; owner, 5 Nov 2026: "One clear order first"; 6 Nov 2026: "Score from the nearest
 batches as they land (Recommended)"). A reader (the employer sites, the boards, EURES...) cuts its own titles into batches of its own (a request holds one reader's
 titles, so a recorded search replays whatever order readers finish in: owner, 18 Oct 2026, tests/unit/ai/test_triage_batch_order.py) and `serve`s them here. A worker
-asks the batch with the nearest title first, whichever reader it came from: no source has a level of its own (all workers run at NORMAL). Batches of equal or still unknown distance
+asks the batch with the nearest title first, whichever reader it came from: no source has a level of its own (all workers run at TITLES, src/ai/slots.py). Batches of equal or still unknown distance
 (a first press has an empty map) go by their place in their own reader's list, then by arrival: the readers take turns, none takes every call the clock allows (#2920). As each batch lands
 its reader's thread gets it (`land`), so a job can reach scoring after ONE batch instead of after the reader's whole sort.
 Threads: a batch is asked by a worker; `land` runs in the thread that called `serve` (it holds that reader's own views of places and titles, src/ai/batch_scope.py).
@@ -149,7 +149,7 @@ def _work():
                 return
             key, _, _, titles, ask, put, landed, _refresh = ranking.pop(_heap)
         try:
-            with slots.ranked(key):   # Why (#2918 review): order applies at the model's slots too, not only at the pop
+            with slots.priority(slots.TITLES), slots.ranked(key):   # Why (#2918 review; lanes 4b-1, 11 Nov 2026): a batch waits for the model's slot at the titles' own level (src/ai/slots.py TITLES), nearest first there too, not only at the pop
                 result = ask(titles)
         except BaseException as error:  # noqa: BLE001 — handed to the reader's thread, which raises it
             result = error

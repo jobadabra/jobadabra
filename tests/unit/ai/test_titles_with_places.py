@@ -22,7 +22,7 @@ class Model:
     """A fake model: a place call waits for `gate` (a slow answer); a title call answers at once; records every call in order."""
 
     def __init__(self):
-        self.gate, self.log, self.lock, self.vague = threading.Event(), [], threading.Lock(), False
+        self.gate, self.log, self.lock, self.vague, self.out = threading.Event(), [], threading.Lock(), False, set()
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
@@ -37,7 +37,8 @@ class Model:
             with self.lock:
                 self.log.append('place answered')
             lines = content.split(':\n', 1)[1].split('\n')
-            answer = {'locations': [{'n': int(line.split('.', 1)[0]), 'where': '', 'country': 'France', 'nearest': 'none', 'km': -1, 'answer': 'inside'} for line in lines]}
+            answer = {'locations': [{'n': int(line.split('.', 1)[0]), 'where': '', 'country': 'France', 'nearest': 'none', 'km': -1,
+                                     'answer': 'out' if line.split('. ', 1)[-1].lower() in self.out else 'inside'} for line in lines]}
         elif 'The titles:' not in content:
             answer = {'vague': [], 'visa': [], 'places': []}   # the other place questions (work rights): nothing to say
         else:
@@ -107,14 +108,13 @@ class PlaceCallBesideTitles(unittest.TestCase):
         releaser.join(30)
 
         self.assertTrue(seen['served'], f'positive control: EURES\'s titles were asked while the place call was still held; log at release: {seen["log_at_release"]}')
-        self.assertEqual(sorted(seen['log_at_release']), sorted(['place asked'] + [f"titles {t.lower()}" for t in EURES]), 'EURES\'s titles were asked while the place call was in flight (held): nothing else, and no answer yet')
+        beside = {f'titles {t.lower()}' for t in KNOWN + LATE}   # the held jobs' own titles, asked beside the place call
+        self.assertEqual(sorted(entry for entry in seen['log_at_release'] if entry not in beside), sorted(['place asked'] + [f"titles {t.lower()}" for t in EURES]),
+                         'EURES\'s titles were asked while the place call was in flight (held), and no answer yet')
         self.assertEqual(eures_ran, [True], 'EURES\'s hand-over ran in the hub while the place call was held')
         self.assertEqual(late_verdict, 'in', 'a place answer that arrives late is applied to the reader')
-        placed_at = self.model.index('place answered')
-        for title in KNOWN + LATE:   # both towns are asked about: no title of a job a late answer might put outside your places is handed on the words (Paris, Texas)
-            asked = self.model.asked(title)
-            self.assertEqual(len(asked), 1, f'{title}: asked once')
-            self.assertGreater(self.model.index(asked[0]), placed_at, f'{title}: asked after the place answer')
+        for title in KNOWN + LATE:   # both towns are asked about: their titles are sorted beside the call, once; no job is handed on the words (the next test)
+            self.assertEqual(len(self.model.asked(title)), 1, f'{title}: asked once')
 
 
     def test_jobs_at_a_known_place_go_on_while_the_place_call_holds_only_the_jobs_it_asks_about(self):
@@ -147,12 +147,38 @@ class PlaceCallBesideTitles(unittest.TestCase):
         releaser.join(30)
         self.assertEqual(sorted(handed_at_answer), sorted(KNOWN + mapped), 'the jobs at known places reached the list while the place call was held, and only they')
         self.assertNotIn(place_triage.norm('Map town'), [where for locations, ask in map_asked if ask for where in locations], 'the map\'s answer is not asked again')
-        self.assertEqual(sorted(entry for entry in log_at_answer if entry.startswith('titles')), sorted(f'titles {t.lower()}' for t in KNOWN + mapped),
-                         f'the known place\'s titles were asked while the place call was held, the asked place\'s were not: {log_at_answer}')
-        placed_at = self.model.index('place answered')
-        for title in LATE:
-            self.assertGreater(self.model.index(self.model.asked(title)[0]), placed_at, f'{title}: its place was asked, so its title waits for the answer')
+        self.assertTrue({f'titles {t.lower()}' for t in KNOWN + mapped} <= set(log_at_answer), f'the known place\'s titles were asked while the place call was held: {log_at_answer}')
+        self.assertEqual(sorted(handed), sorted(KNOWN + mapped + LATE), 'the asked place\'s jobs are handed after its answer')
         self.assertEqual(self.model.asked('place asked'), ['place asked'], 'one place call, for the asked place only')
+
+    def test_the_held_jobs_titles_are_sorted_while_the_place_call_runs_and_handed_only_after_its_answer(self):
+        """sa's read of CI run before-3, p10 Amsterdam (11 Nov 2026): one place call asked at 30.4 s answered at 95.7 s (65.3 s); the titles of the jobs at its locations were
+        asked only after it, and at 116 s "81 title(s) wait for the next one". They are asked beside the call now; a job is still handed only once its place is known (#3512: "Paris, Texas")."""
+        far = [f'Far role {n}' for n in range(2)]
+        self.model.out = {'far town'}
+        employer = self.jobs(LATE, 'Late town') + self.jobs(far, 'Far town')
+        handed, at_answer = [], {}
+
+        def release_when_held_titles_are_asked():
+            for _ in range(2000):   # 5 s of 2.5 ms polls: a hang guard
+                if self.model.asked('place asked') and all(self.model.asked(title) for title in LATE + far):
+                    break
+                threading.Event().wait(0.0025)
+            at_answer['log'], at_answer['handed'] = list(self.model.log), list(handed)
+            self.model.gate.set()
+        releaser = threading.Thread(target=release_when_held_titles_are_asked)
+        with title_queue.hub(), batch_scope.concurrent():
+            releaser.start()
+            with batch_scope.reader('employer sites'), title_queue.handing_to(lambda jobs: handed.extend(job['title'] for job in jobs)):
+                feed_places.triage_with_places(employer)
+        releaser.join(30)
+        self.assertNotIn('place answered', at_answer['log'], 'positive control: the place call was still held when the log was read')
+        self.assertEqual(sorted(entry for entry in at_answer['log'] if entry.startswith('titles')), sorted(f'titles {t.lower()}' for t in LATE + far),
+                         'the held jobs\' titles were asked while the place call was in flight')
+        self.assertEqual(at_answer['handed'], [], 'no held job was handed before its place was known')
+        self.assertEqual(sorted(handed), sorted(LATE), 'after the answer: the jobs placed inside are handed, the ones placed outside never, though their titles fit')
+        for title in LATE + far:
+            self.assertEqual(len(self.model.asked(title)), 1, f'{title}: asked once')
 
     def test_a_kept_plain_out_this_run_finds_names_no_town_is_still_sorted(self):
         """Code review of sf place PR a: a place kept as plain 'out' (its "names no town" question not asked yet) was taken as known, its jobs sorted at once and

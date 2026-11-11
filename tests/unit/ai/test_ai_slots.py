@@ -123,9 +123,10 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         self.assertEqual(missing, [], "wrap the pool's function in slots.carry(...), or list it in NO_CARRY with why it never needs the level")
         self.assertEqual(sorted(set(NO_CARRY) - set(found)), [], 'a NO_CARRY entry whose pool is gone')
 
-    def test_every_readers_title_calls_ask_at_normal_whatever_level_the_reader_has(self):
+    def test_every_readers_title_calls_ask_at_one_titles_level_whatever_level_the_reader_has(self):
         """Owner, 5 Nov 2026 ("One clear order first"): no source's title calls queue ahead of another's. A board read's page reads keep FIRST (src/first_jobs.py);
-        its titles are asked by the one queue's workers at NORMAL (src/ai/title_queue.py), ordered by distance, not by who asks."""
+        its titles are asked by the one queue's workers at TITLES (src/ai/title_queue.py), ordered by distance, not by who asks.
+        Why TITLES, not NORMAL (lanes 4b-1, 11 Nov 2026): title batches took a slot after the page- and link-kind calls (src/ai/slots.py)."""
         import json
         import tempfile
         from types import SimpleNamespace
@@ -141,7 +142,15 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         with mock.patch.object(title_triage, 'STORE', Path(tempfile.mkdtemp()) / 't.json'), slots.priority(slots.FIRST):
             title_triage.decide(['Lagerist', 'Staplerfahrer'], {'role_keywords': ['warehouse']}, client)
         self.assertTrue(levels, 'positive control: the AI was asked')
-        self.assertEqual(set(levels), {slots.NORMAL}, "each batch is asked by the queue's worker, at one level for every reader")
+        self.assertEqual(set(levels), {slots.TITLES}, "each batch is asked by the queue's worker, at one level for every reader")
+
+
+class TitlesTakeTheNextFreeSlot(unittest.TestCase):
+    def test_a_title_batch_goes_before_a_board_read_a_score_and_a_page_kind_call(self):
+        """Lanes 4b-1 (11 Nov 2026): p10 left 81 titles waiting at 116 s while page- and link-kind calls (NORMAL) ran to 118 s. sa's local p10 search the same day,
+        titles behind the boards' reads (FIRST) and the scores: two title batches asked at 23-26 s waited 42 s for a slot; a batch judges ~30 jobs in a 3-9 s call."""
+        order = _queue(slots.Slots(1), [slots.NORMAL, slots.SCORE, slots.FIRST, slots.TITLES, slots.NORMAL])
+        self.assertEqual(order, [3, 2, 1, 0, 4], 'the titles, then the first boards\' read, then the score, then the navigation calls in arrival order')
 
 
 class SlotLog(unittest.TestCase):

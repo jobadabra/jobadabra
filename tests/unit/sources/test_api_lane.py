@@ -54,8 +54,8 @@ class LaneTest(unittest.TestCase):
 
         lane = self.start([('A', read), ('EURES', never), (boards_ahead.NAME, never), ('Lately', never), ('B', read)], lately=('Lately',))
         self.assertEqual(sorted(lane.reads), ['A', 'B'])
-        self.assertEqual(lane.take('A', None), [JOB])
-        self.assertEqual(lane.take('B', None), [JOB])
+        self.assertEqual(lane.take('A', None)[0], [JOB])
+        self.assertEqual(lane.take('B', None)[0], [JOB])
         self.assertTrue(all(name.startswith('free-api') for name in names), names)
 
     def test_a_read_still_running_at_the_cut_is_none_and_its_jobs_come_once_it_ends(self):
@@ -63,7 +63,7 @@ class LaneTest(unittest.TestCase):
         lane = self.start([('Slow', lambda search: go.wait(5) and [JOB])])
         self.assertIsNone(lane.take('Slow', time.monotonic() + 0.05))
         go.set()
-        self.assertEqual(lane.take('Slow', None), [JOB])
+        self.assertEqual(lane.take('Slow', None)[0], [JOB])
 
     def test_a_read_that_raises_raises_at_take(self):
         def broken(search):
@@ -138,6 +138,58 @@ class ScanTakesTheLaneTest(unittest.TestCase):
             raise RuntimeError('boom')
         report = self.lane_scan([('Broken', broken), ('Slow', lambda search: go.wait(5) and [JOB])], cut_in=0.2)
         self.assertEqual(report['said'], stage.Result(stage.FAILED, 'RuntimeError; 1 wait for the next search'))
+
+
+
+class TheLaneJudgesItsTitlesAsItReads(unittest.TestCase):
+    """Lanes 4b-1 (owner, 11 Nov 2026, via sa: "Start it right away."): the free APIs were read from second 0 (3/5) but their titles were judged
+    only when the stage kept them, at 68-108 s, past the titles' stop: 0 of 600-890 judged for 7 of 7 people. The lane now judges them in its
+    own thread as it reads, as the boards' lane does (src/sources/boards_first.py Beside._put)."""
+
+    def setUp(self):
+        import json
+        import pathlib
+        import tempfile
+        from types import SimpleNamespace
+        from src import time_budget
+        from src.ai import engine, title_triage
+        from src.sources import feeds
+        tmp, self.asked = pathlib.Path(tempfile.mkdtemp()), []
+
+        def create(**kwargs):   # a fake model: every title fits (the shape of tests/unit/sources/test_eures_titles_in_time.py)
+            listed = kwargs['messages'][0]['content'].split('The titles:\n', 1)[1].split('\n')
+            self.asked += [line.split('. ', 1)[1] for line in listed]
+            return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps({'fit': list(range(1, len(listed) + 1))}))],
+                                   usage=SimpleNamespace(input_tokens=1, output_tokens=1))
+        model = SimpleNamespace(messages=SimpleNamespace(create=create))
+        self.db = feeds.database(tmp / 'jobs.sqlite')   # the job cache's own schema: the stage records what it keeps
+        self.addCleanup(self.db.close)
+        for patch in (mock.patch.object(title_triage, 'STORE', tmp / 't.json'), mock.patch('src.paths.DATA', tmp), mock.patch.object(feeds, '_SEARCH', SEARCH),
+                      mock.patch.object(feeds, 'wanted_location', lambda job: True), mock.patch.object(feeds, 'in_my_place', lambda job: False),   # an API job elsewhere: no local floor
+                      mock.patch.object(engine, 'ready', return_value=True), mock.patch.object(engine, 'client', lambda **kw: model),
+                      mock.patch.dict(os.environ), mock.patch('builtins.print')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        os.environ.pop('JOBADABRA_FIXTURE_DIR', None)
+        feeds.PLACED = feeds.TRIAGED = feeds.READ = None
+        self.addCleanup(lambda: setattr(feeds, 'TRIAGED', None))
+        self.addCleanup(time_budget.start, 0)
+        self.time_budget = time_budget
+
+    def at(self, second):
+        """The app's 180 s run, `second` seconds in (the titles' stop: 180 - RESERVE.titles 70 - TAIL 15 = 95 s)."""
+        self.time_budget.start(180, now=time.monotonic() - second)
+
+    def test_a_job_an_api_lists_at_second_5_is_judged_in_the_lane_and_listed_when_the_stage_keeps_it_past_the_titles_stop(self):
+        self.at(5)
+        lane = api_lane.start(self.db, SEARCH, readers=[('A', lambda search: [dict(JOB)])])
+        self.addCleanup(lane.close)
+        self.assertIsNotNone(lane.take('A', None), 'positive control: the read ended')
+        self.at(100)   # the stage keeps the lane's jobs at 68-108 s (night 42927975750)
+        self.assertTrue(self.time_budget.over('titles'), 'positive control: past the titles\' stop, where main judged them')
+        report = aggregators.scan(self.db, SEARCH, readers=[('A', lambda search: [])], lane=lane)
+        self.assertEqual(self.asked, ['engineer'], 'judged once, in the lane')
+        self.assertEqual([job['url'] for job in report['jobs']], [JOB['url']], 'listed')
 
 
 if __name__ == '__main__':
