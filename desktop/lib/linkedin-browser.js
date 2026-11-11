@@ -64,7 +64,7 @@ export async function sweepLinkedinLeftovers(storage, {fetchImpl = globalThis.fe
 
 /**
  * At app start: sweep the LinkedIn leftovers and hold every hidden-browser start until that sweep is done, as one step so the two cannot come apart
- * (#3717 Gitar review: the sweep ran unawaited and a browser could start during it). `log(area, message, fields)`. -> the sweep's promise; it never rejects.
+ * (#3717 Gitar review: the sweep ran unawaited and a browser could start during it). `log(area, message, fields)`. -> the sweep's promise (it rejects only if `log` throws; the hold ignores that).
  */
 export function sweepBeforeAnyStart(storage, log, options = {}) {
   const swept = sweepLinkedinLeftovers(storage, options).then(
