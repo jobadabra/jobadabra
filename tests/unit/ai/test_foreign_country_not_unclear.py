@@ -101,6 +101,17 @@ class ForeignCountryNotUnclearTests(unittest.TestCase):
                     self.assertEqual(feeds.place_of(job), 'vague')
                     self.assertTrue(digest.place_unclear(job))
 
+    def test_under_country_only_a_foreign_country_is_outside_too(self):
+        """Retro review of #3687 (Gitar, 10 Nov 2026): under "Remote jobs: Country" only remote naming your country counts, so a bare other country is outside, not "Place unclear"."""
+        only_country = {**SEARCH, 'remote_jobs': ['Country']}
+        with mock.patch.object(feeds, '_SEARCH', only_country):
+            for location in FOREIGN:
+                with self.subTest(location):
+                    job = self.jobs()[location]
+                    self.assertEqual(feeds.place_of(job), 'out')
+                    self.assertFalse(digest.place_unclear(job))
+            self.assertEqual(feeds.place_of(self.jobs()['Moldova']), 'vague', 'positive control: their own country stays unclear')
+
     def test_a_weak_vague_answer_is_cleared_without_asking(self):
         norms = [place_triage.norm(loc) for loc in [*FOREIGN, 'Moldova']]
         client = Silent()

@@ -237,9 +237,10 @@ def verdicts(locations, words, client=None, ask=True):
 def cannot_hold(location, words):
     """True when this location is only a country (kept map answer, no model call) and none of the user's places lies in that country: a job there
     can never be in their places, so it is not "unclear" (owner, 24 Oct 2026: Canada, US, Poland listed as "Place unclear" for a Moldova search).
-    False when the map lacks the location or any of the places, or when the user accepts remote jobs (their setting: a remote job in a country
-    may be open to them, so it stays until its posting is read, as before): the model or the posting decides then."""
-    if words.get('remote_jobs') != 'no':
+    False when the map lacks the location or any of the places, or when the user accepts remote jobs anywhere (their setting: a remote job in a country
+    may be open to them, so it stays until its posting is read, as before): the model or the posting decides then. Under "Country" (only_their_country) only a
+    remote job that names their own country counts, so another bare country is outside as under "no" (retro review of #3687, Gitar, 10 Nov 2026)."""
+    if words.get('remote_jobs') not in ('no', 'only_their_country'):
         return False
     data = load()
     entry = data.get(norm(location))

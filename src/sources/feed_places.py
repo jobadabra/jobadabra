@@ -100,3 +100,16 @@ def _guarded(work, said):
         print(f'Warning: {said(reason(error))}', flush=True)
         detail('sources', error)
         return None
+
+
+def names_own_country(where):
+    """True when the text names the country of one of the person's places, from the kept map's answers (src/geo.py): under "Country" the places are often only cities (the drafting prompt leaves country_wide empty),
+    so PLACE alone never matched "Remote, Ireland" for a Dublin search (retro review of #3687, Gitar, 10 Nov 2026). A place the map does not know yet adds nothing: the floor stays as it was.
+    No cache of its own (a module-level one was refused by tests/guards/rules/test_run_state_only_shrinks.py and keyed on id()): inside a Find jobs run the map is the reader's per-scope copy (geo.load)."""
+    from .. import geo
+    from ..ai import place_triage
+    from . import feeds
+    known = geo.load()
+    words = place_triage.places_words(feeds._SEARCH)
+    names = {geo.country_name((known.get(geo.norm(place)) or {}).get('cc')) for key in ('best_places', 'anywhere_in', 'cities_abroad') for place in words.get(key) or []} - {None}
+    return bool(names) and feeds.mentions(feeds.place_regex(sorted(names)), where)

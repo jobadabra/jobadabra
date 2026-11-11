@@ -330,8 +330,9 @@ def _words_say(job, remote_unknown):
     where = country_codes.name(job.get("location") or "")   # a field that is only a country code ("MD") is that country, whichever reader gave it
     if mentions(PLACE, where):
         return True
-    if not REMOTE_WANTED or REMOTE_COUNTRY_ONLY:   # "Country": the words let in only a remote job that names your place; the AI judges the rest
-        return False
+    if not REMOTE_WANTED or REMOTE_COUNTRY_ONLY:   # "Country": the words let in only a remote job that names your place or your country; the AI judges the rest
+        from . import feed_places   # read at call time
+        return bool(REMOTE_WANTED and re.search(_REMOTE_SYNONYMS, where, re.I) and feed_places.names_own_country(where))
     said = re.search(_REMOTE_SYNONYMS, where, re.I)
     # A posting whose place is only a city elsewhere is based there, even when its feed flags it remote (7 Oct 2026: "London" and "Singapore"
     # account executive jobs reached a Geneva search). One that says remote in its place ("Remote, Germany") is judged by the regions you skip.
