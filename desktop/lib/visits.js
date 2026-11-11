@@ -160,7 +160,7 @@ export async function read(storage, page, runEngine = pipeline.run) {
       log('visit', 'page not read', {host: new URL(body.url).hostname, code});
       return {ok: false, error: 'The app could not read this page.'};
     }
-    log('visit', 'read a page the user opened', {host: new URL(body.url).hostname, path: new URL(body.url).pathname.slice(0, 60), name: answer.name, jobs: answer.jobs, added: answer.added, fits: answer.fits ?? null, cards: body.cards.length, session: body.session});
+    log('visit', 'read a page the user opened', {host: new URL(body.url).hostname, path: new URL(body.url).pathname.replace(/\d+/g, 'N').slice(0, 60), name: answer.name, jobs: answer.jobs, added: answer.added, fits: answer.fits ?? null, cards: body.cards.length, session: body.session});
     if (page?.ticket) fitsBy.set(String(page.ticket), answer.fits || 0);   // the site's latest count (pages of one visit add up in the engine)
     watchers.get(page?.ticket)?.({page: answer, url: body.url});
     return answer;

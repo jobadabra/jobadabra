@@ -18,7 +18,7 @@ test('scenario: a LinkedIn session that expired, then Chrome signs in again: the
   const call = async (config, path, init) => (path === '/extension/linkedin-pending' ? routes.pending() : routes.refresh(JSON.parse(init.body)));   // the loopback, without a socket
   await revokeIfOff({chrome, call, config: {}});   // an earlier minute look: the extension is alive
   const sets = [], browser = {ready: () => true, start: async () => ({}), send: async (method, params) => { if (method === 'Storage.setCookies') sets.push(params.cookies); return method === 'Target.createTarget' ? {targetId: 'T'} : {}; }};
-  const step = linkedinStep({storage, browser, run: async () => [{jobs: 0, fits: 0}], end: () => {}, searches: async () => [{name: 'LinkedIn: role', url: 'https://www.linkedin.com/jobs/search/?keywords=role'}],
+  const step = linkedinStep({storage, browser, run: async () => [{jobs: 0, fits: 0, answered: true}], end: () => {}, searches: async () => [{name: 'LinkedIn: role', url: 'https://www.linkedin.com/jobs/search/?keywords=role'}],
     readSession: () => session.readSession({keychain}), refresh: options => note.ask(options), port: 1, token: 't', pause: async () => {}, now: () => 0});
   await revokeIfOff({chrome, call, config: {}});   // the next minute look hears "copy now" and answers while the press waits
   assert.equal((await step).state, 'done');

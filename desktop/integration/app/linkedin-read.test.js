@@ -204,7 +204,10 @@ for (const [kind, name] of [
     r.connect();
     const {run} = await pressOverTime(t, r);
     assert.equal(r.linkedin.searches(), 1, 'the control: the one search was opened');
-    assert.ok(fs.readFileSync(path.join(r.dir, 'logs', 'app.log'), 'utf8').includes('"jobs":7'), 'the control: the app read the page\'s 7 jobs');
+    const applog = fs.readFileSync(path.join(r.dir, 'logs', 'app.log'), 'utf8');
+    assert.ok(applog.includes('"jobs":7'), 'the control: the app read the page\'s 7 jobs');
+    assert.ok(applog.includes('"path":"/jobs/search-results/"'), 'the read names the page LinkedIn landed on, by its path');
+    assert.equal(/currentJobId|4300000001/.test(applog), false, 'and never its query or an id');
     assert.deepEqual([r.mine().last?.state, r.mine().last?.jobs], ['done', CARDS], `the verdict counts the jobs the page gave (its lines: ${JSON.stringify(run.log.filter(line => /LinkedIn/.test(line)))})`);
     assert.ok(run.log.includes(`LinkedIn: ${CARDS} jobs read`), 'the run says how many');
     assert.equal(run.log.some(line => /none new|no answer from the extension/.test(line)), false, 'never "none new" or "no answer" for a read that answered');
