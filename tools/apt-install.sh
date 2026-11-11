@@ -26,11 +26,9 @@ apt_dir="${APT_DIR:-/etc/apt}"   # tests point it at a folder of their own
 other_mirror() {
   # GitHub's Ubuntu runners keep their mirrors in apt-mirrors.txt (the sources say mirror+file:): without it try 2 still fetched from azure (run 40389661253)
   for file in "$apt_dir"/sources.list "$apt_dir"/sources.list.d/*.sources "$apt_dir"/apt-mirrors.txt; do
-    # Why (11 Nov 2026, #3820): over HTTPS. 15:08-16:01Z every runner stalled on plain HTTP to both azure.archive and archive.ubuntu.com,
-    #   while packages.microsoft.com over HTTPS answered in the same `apt-get update`; Ubuntu's archive and security hosts serve HTTPS too.
-    [ -f "$file" ] && sudo perl -pi -e 's#https?://(azure\.)?archive\.ubuntu\.com#https://archive.ubuntu.com#g; s#http://security\.ubuntu\.com#https://security.ubuntu.com#g' "$file"
+    [ -f "$file" ] && sudo perl -pi -e 's#https?://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$file"
   done
-  echo "apt-install: try 2 on https://archive.ubuntu.com" >&2
+  echo "apt-install: try 2 on archive.ubuntu.com" >&2
 }
 buf=(); command -v stdbuf >/dev/null && buf=(stdbuf -oL)   # apt's lines reach the log as they come, so a cut try still shows its last one
 # One phase of a try: `apt-get update` (cut at 45 s) or `install` (90 s), -q so the log keeps apt's Hit/Get lines (-qq hid them: 26 Oct 2026,
