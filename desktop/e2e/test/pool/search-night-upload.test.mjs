@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {MAX_BYTES, SEARCH_NIGHT_SITE, uploadSearchNight} from '../../lib/search-night-upload.mjs';
+import {MAX_BYTES, SEARCH_NIGHT_SITE, SEARCH_WEEK_SITE, uploadSearchNight} from '../../lib/search-night-upload.mjs';
 
 const NOW = new Date('2026-11-07T04:10:00Z'), CI = {CI: 'true', GITHUB_REF_NAME: 'main', REPLAYS_PUBLISH_KEY: 'k'};
 const verdictFile = (body = JSON.stringify({state: 'success', head: 'measured 2 of 6', rows: [{persona: 1, kind: 'measured'}]})) => {
@@ -58,4 +58,13 @@ test('a by-hand run sends by_hand=1 and says it is stored beside the nights; the
   assert.doesNotMatch(calls[1], /by_hand/);
   assert.match(await uploadSearchNight(verdictFile(), '42133678718', {env: {...CI, JP_CI_ROWS_DRY: '1', SEARCH_NIGHT_BY_HAND: 'yes'}, fetcher, now: NOW}), /would send \d+ bytes for a by-hand run 2026-11-07/);
   assert.equal(calls.length, 2, 'the dry run sends nothing');
+});
+
+test('the week (5 runs a person, 2/3) goes to its own route, never the night\'s; a site without that route yet is one line', async () => {
+  const calls = [];
+  const fetcher = async url => { calls.push(url); return url.startsWith(SEARCH_WEEK_SITE) ? {ok: false, status: 404} : {ok: true, json: async () => ({})}; };
+  const line = await uploadSearchNight(verdictFile(), '42133678718', {env: {...CI, SEARCH_CHECK_SERIES: 'weekly', SEARCH_NIGHT_BY_HAND: 'no'}, fetcher, now: NOW});
+  assert.equal(calls[0], `${SEARCH_WEEK_SITE}?week=2026-11-07&run=42133678718`);
+  assert.doesNotMatch(calls[0], /\/search-check\/night/, 'a week filed as a night would replace it and alert');
+  assert.equal(line, 'search week: not sent (the site answered 404)');
 });

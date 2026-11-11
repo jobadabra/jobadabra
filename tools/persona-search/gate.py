@@ -428,7 +428,7 @@ def compare(pr, main_runs):
     modes = {(row or {}).get('eures') for row in pr.values()} - {None}
     # Why (10 Nov 2026, owner): the site compares a night only with nights of its own kind (jobadabra-web admin/search-night-judge.js euresOf); 'off' only when every press that said so said off.
     eures = 'off' if modes == {'off'} else 'on'
-    return {'state': state, 'head': head, 'eures': eures, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason, 'runs': runs_mod.night(pr.values())}
+    return {'state': state, 'head': head, 'eures': eures, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason, 'runs': runs_mod.night(pr.values()), 'by_run': runs_mod.by_run(pr.values())}
 
 
 def cost_label(verdict):

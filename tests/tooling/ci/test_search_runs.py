@@ -62,7 +62,7 @@ class Split(unittest.TestCase):
             every = json.loads((out / 'judged-all.json').read_text(encoding='utf-8'))
             listed = json.loads((out / 'jobs.json').read_text(encoding='utf-8'))
             listed_all = json.loads((out / 'jobs-all.json').read_text(encoding='utf-8'))
-        self.assertEqual(found, [{'run': 1, 'new_listed': 2, 'new_right': 2, 'seconds': 170}, {'run': 2, 'new_listed': 2, 'new_right': 1, 'seconds': 120}])
+        self.assertEqual(found, [{'run': 1, 'new_listed': 2, 'new_right': 2, 'right_after': 2, 'seconds': 170}, {'run': 2, 'new_listed': 2, 'new_right': 1, 'right_after': 3, 'seconds': 120}])
         self.assertEqual(sorted(r['title'] for r in kept['rows']), ['Joiner A', 'Joiner B'], 'judged.json: the first run only, so every older number stays the first run\'s')
         self.assertEqual(kept['judged_jobs'], 2)
         self.assertEqual({r['title']: r['run'] for r in every['rows']}, {'Joiner A': 1, 'Joiner B': 1, 'Joiner C': 2, 'Welder D': 2})
@@ -110,6 +110,16 @@ class Split(unittest.TestCase):
         self.assertEqual([r['run'] for r in found], [1])
         self.assertIn('press 2 has no start time', said.getvalue())
 
+    def test_each_run_says_the_right_jobs_found_so_far_each_job_once(self):
+        """The week (2/3; owner, 11 Nov 2026: "each of the runs should provide new jobs"): right_after is the right jobs of runs 1..n, a job listed again counted once."""
+        three = TWO + [{'press': 3, 'started': '2026-11-11T00:09:00Z', 'seconds': 100}]
+        one = lambda title, seen: {'title': title, 'company': 'Acme', 'location': 'Lyon', 'first_seen': seen}
+        rows = judged([one('A', '2026-11-11T00:01:00+00:00'), one('A', '2026-11-11T00:09:30+00:00'), one('B', '2026-11-11T00:05:00+00:00'),
+                       one('C', '2026-11-11T00:09:10+00:00'), one('D', '2026-11-11T00:10:00+00:00')], wrong={'D'})
+        with tempfile.TemporaryDirectory() as tmp:
+            found = runs.split(person(tmp, rows, three))
+        self.assertEqual([(r['new_right'], r['right_after']) for r in found], [(1, 1), (1, 2), (1, 3)])
+
     def test_the_cli_never_fails_the_person_without_a_judge_answer(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(os.system(f'python3 {ROOT}/tools/persona-search/runs.py split {tmp} > /dev/null'), 0)
@@ -123,6 +133,15 @@ class Night(unittest.TestCase):
         self.assertEqual(runs.night(rows), {'measured': 2, 'people_new_on_2': 1, 'right_after_2': 10})
         self.assertEqual(runs.night([{'runs': [{'run': 1, 'new_right': 0}, {'run': 2, 'new_right': 0}]}]), {'measured': 1, 'people_new_on_2': 0, 'right_after_2': 0})
         self.assertIsNone(runs.night([{'runs': [{'run': 1, 'new_right': 4}]}, {}]), 'a one-run night says nothing about run 2')
+
+    def test_the_week_says_for_each_run_how_many_people_it_gave_new_right_jobs(self):
+        """The week's 5 runs (2/3): per run, the people measured on it, how many got at least one new right job, and those jobs; a measured 0 is a 0."""
+        week = lambda *new: {'runs': [{'run': n, 'new_right': v} for n, v in enumerate(new, 1)]}
+        rows = [week(4, 1, 0, 0, 2), week(3, 0, 0, 1, 0), {**week(9, 9, 9, 9, 9), 'not_measured': True}, week(2, 0, 0)]
+        self.assertEqual(runs.by_run(rows), [{'run': 1, 'measured': 3, 'people_new': 3, 'new_right': 9}, {'run': 2, 'measured': 3, 'people_new': 1, 'new_right': 1},
+                                             {'run': 3, 'measured': 3, 'people_new': 0, 'new_right': 0}, {'run': 4, 'measured': 2, 'people_new': 1, 'new_right': 1},
+                                             {'run': 5, 'measured': 2, 'people_new': 1, 'new_right': 2}])
+        self.assertIsNone(runs.by_run([week(4), {}]), 'one run says nothing run by run')
 
     def test_the_floors_keep_a_two_run_night_in_its_own_series_and_read_new_on_two(self):
         verdict = {'eures': 'off', 'personas': {'1': {'runs': [{'run': 1, 'new_right': 3}, {'run': 2, 'new_right': 1}]}}}
