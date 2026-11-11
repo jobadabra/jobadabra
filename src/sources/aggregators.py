@@ -29,7 +29,7 @@ TAKEN = {}   # (search key, reader) -> {'jobs', 'sources'} of what the first-job
 SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
 # The countries the place-country decision and Google Jobs know, code -> the English name places.countries() answers (src/places.py: the AI says which
 # country each place word is in, in any language; 8 Oct 2026: a regex of ten countries' city names). Why (11 Nov 2026, owner: Adzuna and Jooble are
-# "non-existing in our codebase"; remove them): the table was Adzuna's country list and is kept, renamed, because those two readers use it.
+# "non-existing in our codebase"; remove them): the table was Adzuna's country list and outlived them, renamed, because _countries, the place-country decision and google_jobs.within_places read it.
 COUNTRY_NAMES = {'gb': 'United Kingdom', 'us': 'United States', 'at': 'Austria', 'au': 'Australia', 'be': 'Belgium', 'br': 'Brazil',
                     'ca': 'Canada', 'ch': 'Switzerland', 'de': 'Germany', 'es': 'Spain', 'fr': 'France', 'in': 'India', 'it': 'Italy',
                     'mx': 'Mexico', 'nl': 'Netherlands', 'nz': 'New Zealand', 'pl': 'Poland', 'sg': 'Singapore', 'za': 'South Africa'}
