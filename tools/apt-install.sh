@@ -20,8 +20,16 @@ cut() { timeout --kill-after=10 "$1" "${@:2}"; }   # a command, ended after $1 s
 # Why (11 Nov 2026, #3820 run 43069035134): apt leaves a root-only lock file and an _apt-only partial folder in the folder, so the cache's save
 #   (tar as the runner user) failed "Permission denied" and nothing was kept; the folder is handed back to the runner user before the save.
 mine() { [ -z "$debs" ] || sudo chown -R "$(id -u):$(id -g)" "$debs"; }
-installed() {   # every named package is installed (a package the runner image already has needs no .deb)
-  local p; for p in "$@"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' || return 1; done
+# Every named package is installed, by its name or by one an installed package provides; prints the missing ones.
+# Why (11 Nov 2026, #3820): on Ubuntu 24.04 libgtk-3-0 and others are only provided (by libgtk-3-0t64 …), so asking dpkg for the name
+#   alone called them missing and apt ran (`ready (try 1, 5 s)`, nothing downloaded) on runners that had everything.
+installed() {
+  local have p missing=()
+  have="$(dpkg-query -W -f='${db:Status-Abbrev}|${Package}|${Provides}\n' 2>/dev/null \
+    | awk -F'|' '$1 ~ /^ii/ { print $2; n = split($3, each, ", "); for (i = 1; i <= n; i++) { split(each[i], name, " "); print name[1] } }')"
+  for p in "$@"; do grep -qxF -- "$p" <<<"$have" || missing+=("$p"); done
+  [ ${#missing[@]} -eq 0 ] && return 0
+  echo "apt-install: not on the runner yet: ${missing[*]}"; return 1
 }
 # The second try uses Ubuntu's own archive instead of the runner's Azure mirror (26 Oct 2026: web #154 failed 3 times in a row on a stalled
 # mirror, 16:13-16:22): a mirror that is down stays down for minutes, so the same mirror again rarely helps.
