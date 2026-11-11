@@ -81,7 +81,8 @@ def environment(folder, site, token, base=None, started=None):
         del env[name]   # a hosted run holds no other credential, whatever the image or the host sets
     env.update({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(folder / 'config'),
                 'JOBADABRA_DATA_DIR': str(folder / 'data'), 'JOBADABRA_PROFILE_FILE': str(folder / 'config' / 'profile.md'),
-                'JOBADABRA_AI_BASE_URL': f'{site}/api/ai', 'ANTHROPIC_API_KEY': token, 'JOBADABRA_TRIGGER': 'hosted'})
+                'JOBADABRA_AI_BASE_URL': f'{site}/api/ai', 'ANTHROPIC_API_KEY': token, 'JOBADABRA_TRIGGER': 'hosted',
+                'JOBADABRA_EURES': '1'})   # Why (ap 4/6, 11 Nov 2026, owner: "We should replicate the entire functionality/settings on the Always on"; 10 Nov: "In the beta/stable releases it should be on"): the cloud run is the product, like the installed app (desktop/lib/eures-on.js); only source and CI stay off
     # Why (5 Nov 2026, the first production test, run_8d5151c3): without the press's time the budget started after 372 s of setup and ended
     # past the 14-minute kill; the app gives every step its press's time the same way (desktop/lib/search-steps.js).
     env['JOBADABRA_SEARCH_AT'] = str(started if started is not None else time.time())

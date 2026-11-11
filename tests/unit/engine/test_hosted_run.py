@@ -71,6 +71,7 @@ class HostedRun(unittest.TestCase):
         self.assertEqual(env['ANTHROPIC_API_KEY'], 'HR1.run.tok')
         self.assertEqual(env['JOBADABRA_AI_BASE_URL'], f'{self.site}/api/ai')
         self.assertEqual(env['JOBADABRA_STORE'], 'sqlite')
+        self.assertEqual(env['JOBADABRA_EURES'], '1')   # ap 4/6: the cloud reads EURES as the installed app does
         for name in ('NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY', 'JOBADABRA_TRIAL_KEY'):
             self.assertNotIn(name, env)
 
