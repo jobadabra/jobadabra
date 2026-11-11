@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'tools/persona-search'))
 import gate  # noqa: E402
 import sources_count as sc  # noqa: E402
 
-FREE = {'arbeitnow', 'himalayas', 'jobicy', 'jobs.ch', 'adzuna', 'jooble'}
+FREE = {'arbeitnow', 'himalayas', 'jobicy', 'jobs.ch'}
 
 
 def right(title, provider, kind, url='', also=(), company='Acme', location='Lyon'):
@@ -39,7 +39,7 @@ class Word(unittest.TestCase):
         cases = [(('EURES', 'job board', ''), 'eures'), (('x', 'job board', 'https://eures.europa.eu/jobs/1'), 'eures'),
                  (('LinkedIn Jobs', 'job board', ''), 'linkedin'), (('LinkedIn', 'employer feed', ''), 'employer_sites'),
                  (('Acme careers', 'employer feed', ''), 'employer_sites'), (('Himalayas', 'job board', ''), 'free_job_apis'),
-                 (('Jooble', 'job board', ''), 'free_job_apis'), (('Job boards found', 'job board', ''), 'job_boards'), (('Some board', 'job board', ''), 'job_boards'),
+                 (('Arbeitnow', 'job board', ''), 'free_job_apis'), (('Job boards found', 'job board', ''), 'job_boards'), (('Some board', 'job board', ''), 'job_boards'),
                  (('Indeed alert', 'job board', ''), 'other'), (('odd', 'something new', ''), 'other'),
                  (('mine', 'you', ''), None), (('mine', 'manual', ''), None), (('Imported link', 'job board', ''), None)]
         for (name, kind, url), want in cases:
@@ -48,8 +48,8 @@ class Word(unittest.TestCase):
     def test_without_the_reader_list_a_free_api_is_never_guessed(self):
         self.assertEqual(sc.word('Himalayas', 'job board', '', None), 'job_boards')
 
-    def test_the_parked_free_apis_are_in_the_engines_list(self):
-        self.assertTrue({'adzuna', 'jooble', 'himalayas'} <= (sc.free_api_names() or set()), 'read from src/sources/aggregators.py, parked readers included')
+    def test_the_free_apis_are_in_the_engines_list(self):
+        self.assertTrue({'arbeitnow', 'himalayas', 'jobicy'} <= (sc.free_api_names() or set()), 'read from src/sources/aggregators.py')
 
 
 class Count(unittest.TestCase):
