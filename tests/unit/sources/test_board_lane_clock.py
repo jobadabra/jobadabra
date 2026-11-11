@@ -94,7 +94,7 @@ class TheBoardsLane(unittest.TestCase):
             time_budget.start(BUDGET)
             lane, shown = boards_first.Beside(SEARCH), []
             started = time.monotonic()
-            taken = lane.take(self.db, shown.extend, until=started + 0.3)
+            taken = lane.take(self.db, shown.extend, until=time_budget.now() + 0.3)   # the run's one clock
             self.assertLess(time.monotonic() - started, 2, 'the gather does not wait for the lane\'s end')
             self.assertEqual([job['url'] for job in taken], [JOB['url']])
             self.assertFalse(lane.done.is_set(), 'positive control: the lane was still reading when the gather took it')

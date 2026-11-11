@@ -7,8 +7,6 @@ keeps only its best sites (src/sources/read_budget.py short). The full board rea
 run (it is asked weekly or monthly per search, src/sources/board_web.py _due) the known working boards are read. Every Find jobs run starts them
 at second 0 as a lane of their own (Beside), ending at the run's end, not at the employer sites' read cut (lanes 4a); a first run's own board
 list (src/first_jobs.py board_jobs) is read in the same lane. Tests: tests/unit/sources/test_boards_first.py, tests/unit/sources/test_board_lane_clock.py."""
-import time
-
 from ..press import budget, stage, step_yield
 from ..press.run import Run
 
@@ -162,9 +160,10 @@ class Beside:
         """Keeps and shows each group as it lands until the lane ends or, when given, the monotonic time `until`: every job these boards gave so far
         (the report's shape). Why (#3826, Gitar): the gather took it to the lane's end (~170 s), holding the import and every score behind the
         boards; the gather now takes it to the employer sites' cut, as before lanes 4a, and later groups are kept between the stages after it."""
-        while not self.done.wait(1 if until is None else max(0.0, min(1.0, until - time.monotonic()))):
+        from . import read_budget
+        while not self.done.wait(min(1.0, read_budget.seconds_left(until) if until is not None else 1.0)):
             self.deliver(feed_db, on_jobs)
-            if until is not None and time.monotonic() >= until:
+            if until is not None and not read_budget.seconds_left(until):
                 break
         self.deliver(feed_db, on_jobs)
         return self.matched
