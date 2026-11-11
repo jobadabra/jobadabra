@@ -17,6 +17,7 @@ import {paletteEntry as browserOfferEntry} from './browser-offer-rows.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
+import {scoreQueue} from './score-queue.js';
 import {stopShown} from '../session-state.js';
 import {knownOutdated, rescoring} from './rescore-run.js';
 import {noticeTitle, pressLabel} from '../rescore-words.js';
@@ -132,6 +133,11 @@ function addSessionExits(addNode) {
   });
   if (!$('ss-cancel-all').hidden) addNode($('ss-cancel-all'), 'Sessions', finalText('nav3'), finalText('nav4'), 'cancel all clear every applications sessions stop end close', () => openView('sessions'));
 }
+/** ⌘K "Score found jobs": listed only while found jobs have no score and no scoring queue runs; the same press as a row's "Score" (an event, as Re-score's: jobs.js answers it). */
+function addScoreFoundCommand(add) {
+  if (scoreQueue() || !shared.allJobs.some(job => job.fit == null && job.status === 'unreviewed' && !job.place_unclear)) return;
+  add('Jobs', t('pagesJobsHelp.queuePalette'), t('pagesJobsHelp.scoreTip'), 'score found jobs unscored fit queue scoring not scored', () => document.dispatchEvent(new Event('score-found-ask')));
+}
 function addOldScoresCommand(add) {
   const count = knownOutdated().count;
   if (!(count > 0) || rescoring()) return;
@@ -229,6 +235,7 @@ export function paletteCommands() {
   addSessionExits(addNode);
   button('jobs', 'refresh', 'find jobs scan');
   addOldScoresCommand(add);
+  addScoreFoundCommand(add);
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
   // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.
   add('Jobs', finalText('nav40'), finalText('nav41'), 'questions missing facts details contact name email phone notice period permit eligibility languages fill',

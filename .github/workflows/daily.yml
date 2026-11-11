@@ -20,7 +20,7 @@ on:
       mode:
         description: 'scheduled sends only when new jobs exist; run and today always send; apply marks a job applied; prepare drafts its application kit; insight sends an insight now; weekly sends the search analysis now; kits drafts kits for the top matches; interview analyses a transcript sent to the bot; add tracks an application made elsewhere'
         type: choice
-        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits, rescore, test]
+        options: [scheduled, run, today, apply, more, prepare, insight, weekly, interview, add, kits, rescore, score, test]
         default: scheduled
       job:
         description: 'job code from /apply_<code> (apply and prepare modes), or a job URL (add mode)'
@@ -218,7 +218,7 @@ jobs:
           if [ -n "$JOBADABRA_ENRICH_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
             ai="$ai --enrich-max 100"
           fi
-          if [ -n "$JOBADABRA_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ] || [ "$MODE" = rescore ]; }; then
+          if [ -n "$JOBADABRA_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ] || [ "$MODE" = rescore ] || [ "$MODE" = score ]; }; then
             ai="$ai --score-max 60"
           fi
           if [ -n "$JOBADABRA_AUTO_KIT_MAX" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then

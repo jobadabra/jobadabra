@@ -196,6 +196,7 @@ function rescoreNotice(run, locale) {
 }
 /** Present a completed run; omitted locale preserves canonical callers, explicit saved locale localizes only authored framing. */
 export function notice(run, locale) {
+  if (run.scoreQueue) return null;   // the scoring queue after a Find jobs run (lib/pipeline-tasks.js scoreQueue): the scores land in the list, the run itself already said it ended
   const said = run.rescore ? rescoreNotice(run, locale) : noticeText(run, locale);
   return said && (run.id == null ? said : {...said, target: {run: run.id}});   // no id, nothing to open
 }

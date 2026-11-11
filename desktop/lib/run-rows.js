@@ -5,7 +5,7 @@
 import {CRASH_LINE} from './crash-line.js';
 
 export const KIND = {scheduled: 'search', run: 'search', first: 'search', today: 'today', mail: 'mail', scout: 'scout', insight: 'insight',
-  weekly: 'weekly', kits: 'kits', tailor: 'tailor', visits: 'visits', prepare: 'prepare', interview: 'interview', add: 'add', rejection: 'rejection', prep: 'prep', import: 'import'};
+  weekly: 'weekly', kits: 'kits', tailor: 'tailor', visits: 'visits', prepare: 'prepare', interview: 'interview', add: 'add', rejection: 'rejection', prep: 'prep', import: 'import', score: 'today'};
 // What started it: the Mac's schedule, you (the app, Telegram, GitHub's Run button) or GitHub's schedule.
 const TRIGGER = {'Mac schedule': 'schedule', Schedule: 'schedule', 'Always on': 'schedule'};
 export const STALE_MS = 3 * 3600 * 1000;  // a row still "Running" after this long lost its job (the machine went away)

@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="add-dialog.css">
 <link rel="stylesheet" href="ui-menu.css">
 <link rel="stylesheet" href="chips.css">
+<link rel="stylesheet" href="score-queue.css">
 <link rel="stylesheet" href="card-shell.css">
 <link rel="stylesheet" href="page-parts.css">
 <link rel="stylesheet" href="profile-page.css">
@@ -376,6 +377,7 @@
       <!-- In the first paint (renderer/late-blocks.js): the card as last drawn, else this skeleton of the compact card holds its place until the runs answer. -->
       <div class="callout tone-warn" id="jobs-outdated" role="alert" hidden></div>
       <!-- Jobs not scored yet (pages/jobs-score-call.js); the previous strategy's old scores are a row of the Jobs bar above (rescore-entry.js, owner 5 Nov 2026). -->
+      <div class="score-queue-bar" id="score-queue-bar" role="status" hidden><span class="spinner" aria-hidden="true"></span><b id="score-queue-text"></b><span class="score-queue-track"><i id="score-queue-fill"></i></span><span class="muted" id="score-queue-note"></span></div>
       <div class="callout tone-warn" id="jobs-unscored" role="alert" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button" data-wand data-i18n="screenStaticMain.text52">Check now</button></div>
       <!-- A re-score has its own card (pages/jobs-score-call.js); <body data-rescoring> shows it in place of the Find jobs card (style.css), one state, no draw order. -->
       <section class="card find-card is-rescoring" id="rescore-card" aria-live="polite"></section>

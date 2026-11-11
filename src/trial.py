@@ -14,7 +14,7 @@ from . import notification_cards as cards
 from .stores.rules import EMPLOYER_STAGES
 
 APPLIED_OR_LATER = {'Applied', *EMPLOYER_STAGES}
-NEW_WORK_MODES = ('scheduled', 'run', 'today', 'kits', 'prepare', 'rescore')
+NEW_WORK_MODES = ('scheduled', 'run', 'today', 'kits', 'prepare', 'rescore', 'score')
 OVER_LINE = 'Your free trial is over: Always on paused new searches. Get Pro to continue.'
 SITE = 'https://www.jobadabra.top'
 

@@ -261,7 +261,7 @@ def score_candidates(args, stores, db, run, read_profile, hidden, dismissed, bat
 def sync_partial(args, stores, db, hidden, dismissed):
     # Owner, 7 Oct 2026: Job Matches was written only after the whole search, so a stopped one left nothing there. The scores
     # so far are written now and then; the end of the search still writes the rest and marks what is gone or applied.
-    if args.mode not in ('scheduled', 'run', 'today', 'rescore'):
+    if args.mode not in ('scheduled', 'run', 'today', 'rescore', 'score'):
         return
     try:
         print(stores.matches.sync(db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True) + ' (so far)', flush=True)
