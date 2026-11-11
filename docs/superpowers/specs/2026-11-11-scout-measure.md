@@ -10,13 +10,17 @@ Pane sm (of session sa), 11 Nov 2026. Owner's words (11 Nov 2026, to sa): "How m
 - Nothing on a job says which reader's feed it came from. In a press 1 on a fresh data folder the list is the only reader, so the origin is provable by construction for the 18 people, not on a real install.
 
 ## Design
-- **The list as the run saw it** (owner: the engine's own `employer_index.json`): `generated` (the publish id), feeds served in the search's regions, N in the person's places, K for the role. Written once per press into the check's per-run record (no user-facing text: log lines show in Live updates).
-- **The funnel per person** (owner: `tools/persona-search/funnel.py`, the one parser): list_in_places, kept_for_role, first_slice, read, unread_engine, jobs_read, titles_in_places, listed, right, employers_listed, employers_right, list_generated. Null when not seen, never 0. N → K split into "the AI says not their kind of role" and "kind unknown for this employer" where the data can tell.
+- **The list as the press saw it** (owner: `tools/persona-search/scout_list.py`, the engine's own `employer_index.relevant` and `role_kinds` on the press's cached list; the log's numbers, also when K == N): `generated` (the publish id), feeds served, with a counted mix, N in the person's places, K for the role, N - K split into "the scout counted their kind and it is not theirs" and "no kind mix yet" (missing data, not a no); right jobs of employers on the list. Counts only: employers' names are joined in memory and never written (the list is private learned data, the night's artifacts are downloadable). No log line, no engine file.
+- **Not in this plan:** the first-slice / read / unread funnel (funnel.py parses most of it already; the engine's "unread" looks overstated: a hypothesis for sf).
 - **Verdict rows carry what the Admin reads** (owner: `gate.compare`): `sources` now, `scout` with 2/3.
 - **A publish is compared on** the per-person cells (N, K, read, listed, right, employers right) before and after, with the spread of 3 runs.
 - **Not built:** the engine writing an `origin` on a job (real installs): parked, the question is the night's 18.
 
+## What the first measure found (11 Nov 2026, counts only)
+For each of the 18 people, 55-94% of the employers in their places have no counted kind of jobs yet (role_kinds.fits: "not read on a guess"); the central scout judges kinds for only ~255-370 of ~7,500 feeds a run (CENTRAL_AI_CAP 40). N reproduced the night's logged N exactly for 6 people. This is the card's first figure.
+
 ## Progress
-- [ ] 1/3 The Sources card shows the night's per-source counts (verdict rows carry `sources`; guard test)
-- [ ] 2/3 The night records what the Central Scout's list gave each person (funnel + list record) and the Admin card "Central Scout" (site PR, one Before | After picture, the owner's yes through sa)
-- [ ] 3/3 Parked: the engine records a feed's origin on the job (Work board draft)
+- [x] 1/3 The Sources card shows the night's per-source counts (verdict rows carry `sources`; guard test) (#3807)
+- [ ] 2/3 The night records what the Central Scout's list gave each person: `scout` on each result (served, served_with_mix, in_places, for_role, kind_not_theirs, no_kind_mix, publish id, listed/right from the list), rows[].scout, a night step (`tools/persona-search/scout_list.py`, counts only, names never written)
+- [ ] 3/3 Admin card "Central Scout" (jobadabra-web, on the Finish line page): first figure = the share of employers in the person's places with no counted kind, per person and the median of the 18, with the publish id; one Before | After picture and the owner's yes through sa
+- Parked, not numbered: the engine writes an `origin` on a job (Work board draft, Parked/Low)

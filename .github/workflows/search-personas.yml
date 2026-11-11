@@ -183,6 +183,15 @@ jobs:
       - name: The persona's numbers
         if: always() && steps.token.outputs.ok == 'yes'
         run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
+      # Why (11 Nov 2026, sm, owner: "How much the Central Scout is helping us? Do we measure this ?"): the press's own cached list is only here, so this person's counts of it (served, in places, for the role, why the rest was left out,
+      # right jobs of employers on the list) are set on result.json now; names are joined in memory and never written (the night's artifacts are downloadable). Report only: no AI, no network, never costs the night.
+      - name: What the Central Scout's list gave this person
+        if: always() && steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && hashFiles('out/result.json') != ''
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          base="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate"
+          JOBADABRA_DATA_DIR="$base/data" JOBADABRA_CONFIG_DIR="$base/config" JOBADABRA_NO_DOTENV=1 JOBADABRA_FOLLOW_APP=0 python3 tools/persona-search/scout_list.py out/result.json out/judged.json
       - name: This press is the night's second try
         if: always() && github.job == 'again' && hashFiles('out/result.json') != ''   # its own step (Gitar on #3716): a failed result step or a missing token never leaves a second try unmarked
         run: python3 tools/persona-search/again.py second out
