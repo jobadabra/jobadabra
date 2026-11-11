@@ -16,7 +16,7 @@ import scout_list as sl  # noqa: E402
 SECRET = 'Zorblax Hidden Employer'
 FEEDS = [
     {'company': SECRET, 'ats': 'greenhouse', 'slug': 'zorblax', 'places': ['Lyon'], 'kinds': {'trades': 1.0}},
-    {'company': 'Other Co', 'ats': 'lever', 'slug': 'other', 'places': ['Lyon'], 'kinds': {'software': 1.0}},
+    {'company': 'Other Co', 'ats': 'lever', 'slug': 'other', 'places': ['Lyon'], 'kinds': {'software': 1.0}, 'kind_counts': {'fr': {'software': 5}}},
     {'company': 'No Mix Co', 'ats': 'lever', 'slug': 'nomix', 'places': ['Lyon']},
     {'company': 'Faraway Co', 'ats': 'lever', 'slug': 'far', 'places': ['Oslo'], 'kinds': {'trades': 1.0}},
     {'company': 'Empty Co', 'ats': 'lever', 'slug': 'empty', 'fresh': {'ok': '2026-11-10', 'fails': 0, 'jobs': 0, 'trend': 'flat', 'new': None}},   # no open job, no place: in every person's places
@@ -32,11 +32,12 @@ def judged(*rows):
 
 
 class Counts(unittest.TestCase):
-    def test_n_k_and_why_the_rest_was_left_out(self):
-        out, kept = sl.split(FEEDS, here, {'trades'}, None)
+    def test_n_k_and_the_four_classes_of_the_rest(self):
+        out, kept = sl.split(FEEDS, here, {'trades'}, ['fr'])
         self.assertEqual((out['in_places'], out['for_role'], len(kept)), (4, 1, 1))
-        self.assertEqual((out['kind_not_theirs'], out['no_kind_mix'], out['empty_feeds']), (1, 1, 1), 'counted and not theirs; not counted yet; no open job')
-        self.assertEqual(out['in_places'], out['for_role'] + out['kind_not_theirs'] + out['no_kind_mix'] + out['empty_feeds'], 'every employer of N is somewhere')
+        self.assertEqual((out['empty_feeds'], out['no_kind_mix'], out['mix_only'], out['counted_per_country']), (1, 1, 1, 1), 'no open job; no kind counted; whole mix only (read); counted per country')
+        self.assertEqual(out['kind_not_theirs'], 1, 'Other Co has a mix and it is software, not trades')
+        self.assertEqual(out['in_places'], out['empty_feeds'] + out['no_kind_mix'] + out['mix_only'] + out['counted_per_country'], 'every employer of N is in one class')
 
     def test_a_feed_with_no_open_job_is_never_a_scout_gap(self):
         out, _ = sl.split([FEEDS[-1]], here, {'trades'}, None)
@@ -44,9 +45,10 @@ class Counts(unittest.TestCase):
 
     def test_an_undecided_kind_is_not_measured_never_zero(self):
         for kinds in (None, {'unknown'}):   # role_kinds.UNKNOWN: every word of the search unsure, no list is read in bulk whatever the scout counted (Gitar on #3809)
-            out, kept = sl.split(FEEDS, here, kinds, None)
+            out, kept = sl.split(FEEDS, here, kinds, ['fr'])
             self.assertEqual((out['in_places'], out['kinds_known'], kept), (4, False, []))
-            self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs', 'no_kind_mix', 'empty_feeds')))
+            self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs')))
+            self.assertEqual((out['empty_feeds'], out['no_kind_mix'], out['mix_only'], out['counted_per_country']), (1, 1, 1, 1), 'the classes do not depend on the person\'s kind')
             self.assertNotIn('served', out, 'a list-wide number never leaves the press')
 
     def test_the_join_counts_right_jobs_of_listed_employers_in_memory(self):

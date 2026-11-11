@@ -16,11 +16,11 @@ Pane sm (of session sa), 11 Nov 2026. Owner's words (11 Nov 2026, to sa): "How m
 - **A publish is compared on** the per-person cells (N, K, read, listed, right, employers right) before and after, with the spread of 3 runs.
 - **Not built:** the engine writing an `origin` on a job (real installs): parked, the question is the night's 18.
 
-## What the first measure found (11 Nov 2026, counts only)
-For each of the 18 people, 55-94% of the employers in their places have no counted kind of jobs yet (role_kinds.fits: "not read on a guess"); the central scout judges kinds for only ~255-370 of ~7,500 feeds a run (CENTRAL_AI_CAP was 40 in the checkout read, 200 now per sk; lab issue #87). N reproduced the night's logged N exactly for 6 people. This is the card's first figure.
+## What the first measure found (11 Nov 2026, counts only; corrected with sk the same day)
+The first reading said 55-94% of the employers in a person's places have no counted kind. That was wrong: it counted ~363 feeds that list no open job and carry no place, which sit in every person's N. Agreed with sk (lab issue #87): the N employers fall in four classes per person, whatever their kind: empty feed (no open job), open jobs and no kind counted (the real gap, 17-40% of the employers with open jobs per sk's count), the whole employer's mix only (READ:  falls back to it), counted per country. K (what the engine reads for the person's kind) and "the scout counted it and it is not theirs" depend on the person's kind. N reproduced the night's logged N exactly for 6 people.
 
 ## Progress
 - [x] 1/3 The Sources card shows the night's per-source counts (verdict rows carry `sources`; guard test) (#3807) (proof: tests/tooling/ci/test_search_sources_count.py @024f7496)
-- [ ] 2/3 The night records what the Central Scout's list gave each person: `scout` on each result (served, served_with_mix, in_places, for_role, kind_not_theirs, no_kind_mix, publish id, listed/right from the list), rows[].scout, a night step (`tools/persona-search/scout_list.py`, counts only, names never written)
-- [ ] 3/3 Admin card "Central Scout" (jobadabra-web, on the Finish line page): first figure = the share of employers in the person's places with no counted kind, per person and the median of the 18, with the publish id; one Before | After picture and the owner's yes through sa
+- [ ] 2/3 The night records what the Central Scout's list gave each person: `scout` on each result (in_places, empty_feeds, no_kind_mix, mix_only, counted_per_country, for_role, kind_not_theirs, listed/right from the list), rows[].scout, a night step (`tools/persona-search/scout_list.py`, counts only, names never written)
+- [ ] 3/3 Admin card "Central Scout" (jobadabra-web, on the Finish line page): first figure = the share of the person's employers with open jobs that have no counted kind (no_kind_mix over N - empty_feeds), per person and the median of the 18, empty feeds shown apart; one Before | After picture and the owner's yes through sa
 - Parked, not numbered: the engine writes an `origin` on a job (Work board draft, Parked/Low)
