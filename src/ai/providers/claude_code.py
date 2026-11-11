@@ -156,13 +156,17 @@ class ClaudeCode(CliAdapter):
             args += ['--tools', ''] if '--tools' in offered else ['--disallowedTools', ','.join(DENY)]
         if '--permission-mode' in offered:
             args += ['--permission-mode', 'dontAsk']  # anything not allowed above is refused, never asked
-        if schema is not None and '--json-schema' in offered:
+        # Why (sa, 11 Nov 2026, 12 timed calls of one 30-title sort on Claude Code 2.1.322): Claude Code's own structured answer takes Haiku two turns
+        # (4.8-7.0 s a call); the same question answered as JSON text in one turn took 3.4-4.5 s with the same answers. cli_base checks that text against
+        # the schema and repairs it once, as it does for a CLI with no schema flag. Only the short Haiku steps: a file or web call needs its turns.
+        plain = schema is not None and alias(model) == 'haiku' and not with_files and not web_search
+        if schema is not None and not plain and '--json-schema' in offered:
             args += ['--json-schema', json.dumps(schema)]
         if effort and '--effort' in offered:
             args += ['--effort', effort]
         if '--max-turns' in offered:
             # One turn for a plain answer; reading files or a structured answer takes Claude Code a few steps.
-            args += ['--max-turns', '8' if web_search else '1' if not with_files and schema is None else str(3 + 2 * with_files)]
+            args += ['--max-turns', '8' if web_search else '1' if not with_files and (schema is None or plain) else str(3 + 2 * with_files)]
         for flag in ('--no-session-persistence', '--strict-mcp-config', '--safe-mode'):
             if flag in offered:
                 args.append(flag)

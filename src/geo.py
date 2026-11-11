@@ -187,7 +187,7 @@ def _ask(client, keys):
 
     batches = [keys[start:start + BATCH] for start in range(0, len(keys), BATCH)]
     out = {}
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         for found in pool.map(slots.carry(one), batches):
             out.update(found)
     return out

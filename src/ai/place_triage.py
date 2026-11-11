@@ -131,7 +131,7 @@ def decide(locations, search, client=None):
     from .. import time_budget as budget
     key, decided = _key(search), dict(known(search))
     ask = list(dict.fromkeys(n for n in (norm(loc) for loc in locations) if n and n not in decided))
-    ask = ask[:budget.in_calls('place_rounds', len(ask), BATCH, engine.PARALLEL)]
+    ask = ask[:budget.in_calls('place_rounds', len(ask), BATCH, engine.at_once())]
     if not ask:
         return decided
     words = places_words(search, _preferences())
@@ -179,7 +179,7 @@ def decide(locations, search, client=None):
             sorted_[0] += len(batch)
             ticker.tick(sorted_[0])
     began = budget.now()
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     rights = words.get('work_rights') or []
     if countries and rights:
@@ -196,7 +196,7 @@ def decide(locations, search, client=None):
         except Exception as error:  # noqa: BLE001 — placed without the visa answer; asked with the next new places
             print(f'Warning: visa needs were not checked ({reason(error)}); they are asked again with the next new places', flush=True)
             detail('visa needs', error)
-    budget.record('place_rounds', budget.now() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_rounds', budget.now() - began, -(-sorted_[0] // (BATCH * max(1, engine.at_once()))))
     _keep(key, decided)
     asked = [loc for loc in ask if loc in decided]
     print(f'Places: {providers.who()} placed {len(asked)} location(s); {sum(1 for loc in asked if decided[loc] != "out")} are in your places', flush=True)
@@ -248,7 +248,7 @@ def vague(locations, search, client=None):
     ask = [n for n in ask if n not in floor]
     if floor and not ask:
         _save(key, decided)
-    ask = ask[:budget.in_calls('place_vague', len(ask), VAGUE_BATCH, engine.PARALLEL)]
+    ask = ask[:budget.in_calls('place_vague', len(ask), VAGUE_BATCH, engine.at_once())]
     if not ask:
         return decided
     client = client or engine.client(action='place_vague')
@@ -271,9 +271,9 @@ def vague(locations, search, client=None):
             done[0] += len(batch)
     began = budget.now()
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
-    budget.record('place_vague', budget.now() - began, -(-done[0] // (VAGUE_BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_vague', budget.now() - began, -(-done[0] // (VAGUE_BATCH * max(1, engine.at_once()))))
     _save(key, decided)
     found = [loc for loc in ask if decided.get(loc) == 'out:vague']
     if found:
@@ -333,7 +333,7 @@ def read(jobs, search, client=None):
     key, found = _key(search), dict(read_known(search))
     todo = [job for job in jobs if job.get('url') and job.get('description') and read_verdict(job, found) is None]
     todo = list({job['url']: job for job in todo}.values())
-    todo = todo[:budget.in_calls('place_reading', len(todo), READ_BATCH, engine.PARALLEL, noun='job(s) to read for their place')]
+    todo = todo[:budget.in_calls('place_reading', len(todo), READ_BATCH, engine.at_once(), noun='job(s) to read for their place')]
     if not todo:
         return found
     client = client or engine.client(action='place_reading')
@@ -362,9 +362,9 @@ def read(jobs, search, client=None):
             done[0] += len(batch)
     began = budget.now()
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.at_once()))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
-    budget.record('place_reading', budget.now() - began, -(-done[0] // (READ_BATCH * max(1, engine.PARALLEL))))
+    budget.record('place_reading', budget.now() - began, -(-done[0] // (READ_BATCH * max(1, engine.at_once()))))
     with LOCK:
         data = _load_read()
         data[key] = {**(data.get(key) or {}), **found}

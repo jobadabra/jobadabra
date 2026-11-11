@@ -165,7 +165,7 @@ def _together(calls):
     check: "Time is up for job boards: 5-6 boards wait"). A call is a whole _field/_proposal (their cache write is under STORE)."""
     from . import engine, slots
     out = [None] * len(calls)
-    with ThreadPoolExecutor(max_workers=max(1, min(len(calls), engine.PARALLEL))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(len(calls), engine.at_once()))) as pool:
         futures = {pool.submit(slots.carry(call)): n for n, call in enumerate(calls)}
         for future in as_completed(futures):
             try:

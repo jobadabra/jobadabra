@@ -102,6 +102,14 @@ def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0
             decided[title] = n in fit
 
 
+def _workers(budget):
+    """Title calls at once: every slot of the engine in use, or half of them (at least 1) while a scorer runs beside the search on an engine whose calls share
+    one slot queue (Claude Code 4 -> 2, Codex 2 -> 1); an API engine (your key, Free AI) has no shared slots to leave free, so the titles keep all their threads."""
+    from . import engine
+    n = max(1, engine.at_once())
+    return max(1, n // 2) if engine.queued() and budget.scored_beside() else n
+
+
 def decide(titles, search, client=None, local=False, nearness=None, land=None):
     """Ask about the titles not decided yet for this search, keep the answers; returns {title: fits} for all known. At most MAX_NEW of your places' titles and MAX_NEW others.
     local: True (all of `titles` are of jobs in the user's own places) or the titles that are: asked first in the same call, and the search's first few of them are sorted whatever the clock says (src/time_budget.py).
@@ -116,7 +124,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     ask = [t for t in ask if t in mine][:MAX_NEW] + [t for t in ask if t not in mine][:MAX_NEW]   # as the two passes did: each kind capped at MAX_NEW (Gitar on #3550: all-local input stops at MAX_NEW)
     # The rounds of calls that end by the titles' stop (src/time_budget.py); the rest is asked next time. 18 Oct 2026, persona runs: paced per title (0.5 s at least), a refresh
     # planned "28 of 600 titles" for its 3 minutes, sorted them in one 7 s call and left 572 waiting. 7 Nov 2026 (#2920): one pass for all, a round that fits starts.
-    taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.PARALLEL, noun='title(s)', stop='titles')
+    taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.at_once(), noun='title(s)', stop='titles')
     nearest_mine = sum(1 for t in ask if t in mine)
     forced = budget.local_titles(nearest_mine - taken) if taken < nearest_mine else 0   # past the clock: the titles of your own places only
     if nearness:
@@ -135,7 +143,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     batches = [ask[start:start + BATCH] for start in range(0, len(ask), BATCH)]
     nearest = [(rank.batch_nearest(map(nearness, batch)) if nearness else (1, 0.0), batch) for batch in batches]
     # Said before the first answer, then after each batch with the time left (owner, 7 Oct 2026: 6 batches ran ~2 min each with only
-    # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.PARALLEL at a time.
+    # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.at_once() at a time.
     print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
     ticker, lock, sorted_ = Ticker('Sorting job titles with AI', len(ask), every=0), threading.Lock(), [0]
 
@@ -178,9 +186,9 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
             land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
     # Why half the AI slots while a scorer runs beside the search (sa, 11 Nov 2026, three local p10 searches): a title call takes the next free slot (slots.TITLES), so with as many title workers as slots
     # the scores got none: 1,056 titles asked and 13 jobs scored instead of 32. Behind the scores instead, a batch waited 42-56 s and ~750 titles were never asked.
-    # Half the slots are the titles', at once; the other half stay with the scores and the board reads.
-    title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL // 2 if budget.scored_beside() else engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
-    budget.record('title_rounds', spent[0] / max(1, engine.PARALLEL), -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
+    # Half the slots are the titles', at once; the other half stay with the scores and the board reads (_workers: of the engine in use, and only where slots are shared).
+    title_queue.serve(nearest, one, landed, _workers(budget), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
+    budget.record('title_rounds', spent[0] / max(1, engine.at_once()), -(-sorted_[0] // (BATCH * max(1, engine.at_once()))))
     with slots.priority(slots.TITLES):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
         _second_look(client, ask, decided, search, words, mine, forced)
     with LOCK:

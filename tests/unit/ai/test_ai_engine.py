@@ -138,6 +138,19 @@ class CliClientTests(unittest.TestCase):
         self.assertEqual(args[args.index('--effort') + 1], 'low')
         self.assertEqual(args[args.index('--model') + 1], 'sonnet')
 
+    def test_a_short_haiku_step_answers_as_json_text_in_one_turn(self):
+        """sa, 11 Nov 2026: Claude Code's own structured answer took Haiku two turns (4.8-7.0 s for one 30-title sort); the same question as JSON text
+        in one turn took 3.4-4.5 s. The text is checked against the schema here (cli_base), with the one repair every CLI without a schema flag has."""
+        fake = FakeClaude(self, 'repair')
+        response = fake.client().messages.create(
+            model='claude-haiku-5-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Sort them'}],
+            output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}, 'effort': 'low'})
+        self.assertEqual(json.loads(response.content[0].text), {'answer': 'fixed', 'score': 1}, 'an answer that is not the schema\'s JSON is repaired once')
+        first = fake.calls[0]
+        self.assertNotIn('--json-schema', first['args'])
+        self.assertEqual(first['args'][first['args'].index('--max-turns') + 1], '1')
+        self.assertIn('matches this JSON schema', first['prompt'])
+
     def test_old_claude_code_gets_the_schema_in_the_prompt_and_one_repair(self):
         fake = FakeClaude(self, 'repair', old=True)
         logged = []
