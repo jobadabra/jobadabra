@@ -40,7 +40,7 @@ FAILED = [0]   # AI calls that failed in this process: a caller whose answer cam
 
 STOPPED = {'why': '', 'key': False, 'cause': ''}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
 WAITING = {'n': 0, 'said': False, 'calls': {}}   # items left unknown this run; model calls per topic
-# Why (11 Nov 2026, as 1/2, owner asked for more AI answers inside Find jobs' 3 minutes): in night 42927975750 (14 people, 186 decide calls of
+# Why (11 Nov 2026, as 1/1, owner asked for more AI answers inside Find jobs' 3 minutes): in night 42927975750 (14 people, 186 decide calls of
 # ~10 s each, 85 within 1 s of another decide), a person asked "job site kind for a field" 2-9 times and link-kind 7-10 times: up to 69 calls could
 # share another's. The same question's items asked within JOIN_S go in one call. JOIN_S bounds what a question asked alone pays: one wait of
 # 0.3 s against a 3-10 s call (tests/unit/ai/test_decide_join.py).
@@ -255,9 +255,10 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
         if client is None and not engine.ready():
             return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
         asked = {key: items[key] for key in todo}
-        # Why (11 Nov 2026, as 1/2): a search tape keys each AI answer by its whole request (src/search_tape.py), so a batch made of whoever asked
-        # within JOIN_S would differ between record and replay; on a tape every question is asked alone, as before.
-        if client is None and own and JOIN_S > 0 and not budget_tape.active():
+        # Why (11 Nov 2026, as 1/1): a search tape keys each AI answer by its whole request (src/search_tape.py), so a batch made of whoever asked
+        # within JOIN_S would differ between record and replay; on any tape every question is asked alone, as before. The tape's folder, not
+        # budget_tape.active(): the yardstick replays with JOBADABRA_TAPE_BUDGET=0 (active() False) and still reads AI answers from the tape (#3796: p13 60% -> 0%).
+        if client is None and own and JOIN_S > 0 and not os.getenv('JOBADABRA_SEARCH_TAPE'):
             found, unasked = _joined(topic, asked, answers, instructions, allowance)
         else:
             found, unasked = _ask(topic, asked, answers, instructions, client or engine.client(action='decide'), db, allowance)

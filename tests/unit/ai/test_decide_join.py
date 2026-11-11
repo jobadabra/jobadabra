@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src.ai import decide  # noqa: E402
 
 ANSWERS = ('yes', 'no')
+_real_active = decide.budget_tape.active   # setUp patches it; the replay test needs the real one
 
 
 class FakeClient:
@@ -41,6 +42,7 @@ class JoinTests(unittest.TestCase):
         self.path = str(Path(folder) / 'jobs.sqlite')   # never the app's jobs.sqlite: decide's own db is this temp file
         patches = [mock.patch.object(decide, '_db', lambda: sqlite3.connect(self.path, timeout=30)),
                    mock.patch.object(decide.engine, 'ready', return_value=True),
+                   mock.patch.dict(decide.os.environ, {k: v for k, v in decide.os.environ.items() if k != 'JOBADABRA_SEARCH_TAPE'}, clear=True),
                    mock.patch.object(decide.budget_tape, 'active', return_value=False)]
         for patch in patches:
             patch.start()
@@ -114,9 +116,19 @@ class JoinTests(unittest.TestCase):
 
     def test_on_a_search_tape_each_question_is_asked_alone(self):
         client = self.with_client(FakeClient())
-        with mock.patch.object(decide.budget_tape, 'active', return_value=True), mock.patch.object(decide.budget_tape, 'within', return_value=True):
+        with mock.patch.dict(decide.os.environ, {'JOBADABRA_SEARCH_TAPE': tempfile.mkdtemp(), 'JOBADABRA_SEARCH_TAPE_MODE': 'record'}), \
+                mock.patch.object(decide.budget_tape, 'within', return_value=True):
             self.ask_together([('t-tape', {'a': 'x'}), ('t-tape', {'b': 'y'})])
         self.assertEqual(len(client.calls), 2, 'a tape keys each answer by its whole request: no batch made of whoever came first')
+
+    def test_on_a_yardstick_replay_each_question_is_still_asked_alone(self):
+        """The yardstick replays a tape with JOBADABRA_TAPE_BUDGET=0, so budget_tape.active() is False there, but the AI answers still come from the
+        tape, keyed by whole request: a joined request is not on it (#3796 first yardstick: p13 coverage 60% -> 0%)."""
+        client = self.with_client(FakeClient())
+        env = {'JOBADABRA_SEARCH_TAPE': tempfile.mkdtemp(), 'JOBADABRA_SEARCH_TAPE_MODE': 'replay', 'JOBADABRA_TAPE_BUDGET': '0'}
+        with mock.patch.dict(decide.os.environ, env), mock.patch.object(decide.budget_tape, 'active', _real_active):
+            self.ask_together([('t-replay', {'a': 'x'}), ('t-replay', {'b': 'y'})])
+        self.assertEqual(len(client.calls), 2, 'a replayed tape has no joined request: each question alone')
 
     def test_a_full_batch_does_not_wait_and_the_next_asker_starts_another(self):
         client = self.with_client(FakeClient())
