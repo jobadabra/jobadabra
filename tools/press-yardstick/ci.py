@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -174,15 +175,15 @@ def newest_band():
         run = next((r['databaseId'] for r in runs if r['displayTitle'] == BAND_RUN), None)
         if run is None:
             return {}
-        folder = Path('band-download', str(run))
-        # Why (11 Nov 2026, #3805): the verdict reads the band again in the same job, and gh refuses to extract over the first download ("file exists"),
-        # so the second read was {} and every person read "no band on this recording": the band of that run is read once, then reused.
-        if not next(folder.rglob('band.json'), None):
-            subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
-        # Why (10 Nov 2026, ys 1/2): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json); this read band-download/band.json, found nothing in every PR run since #3594 (8 Nov)
-        # and every verdict read "not measured". Found by reading the first PR comment against the band's own artifact.
-        found = next(folder.rglob('band.json'), None)
-        return json.loads(found.read_text(encoding='utf-8')) if found else {}
+        # Why (11 Nov 2026, #3805): a fixed band-download/ in the working folder broke twice. The verdict's second read in a job hit gh's "file exists"
+        # (every person "no band on this recording"), and a by-hand run left 609 files in the repo that #3805 committed (web's ops test red).
+        # Each read gets its own folder outside the tree.
+        with tempfile.TemporaryDirectory(prefix='band-download-') as folder:
+            subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', folder], check=True, capture_output=True)
+            # Why (10 Nov 2026, ys 1/2; folder moved 11 Nov, #3805): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json);
+            # reading band.json at the download folder's top found nothing in every PR run since #3594 (8 Nov) and every verdict read "not measured".
+            found = next(Path(folder).rglob('band.json'), None)
+            return json.loads(found.read_text(encoding='utf-8')) if found else {}
     except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError, OSError):
         return {}
 

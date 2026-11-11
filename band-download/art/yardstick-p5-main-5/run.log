@@ -1,8 +1,0 @@
-{"family": "chef", "title": "Chef de Partie", "kind": "non-tech", "city": "Krakow", "country": "Poland", "language": "Polish", "reference": {"words": ["kucharz", "cook"], "nuts2": "PL21"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p5-main-5/tape/draft.json in 0 s
-Search: 7 roles; places krakow, poland
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (179 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 7 roles; places krakow, poland
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (169 s)
-PERSONA DONE draw

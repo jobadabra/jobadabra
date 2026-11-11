@@ -1,8 +1,0 @@
-{"family": "pharmacist", "title": "Pharmacist", "kind": "non-tech", "city": "Vienna", "country": "Austria", "language": "German", "reference": {"words": ["Apotheker"], "nuts2": "AT13"}}
-tape: recorded with model override claude-haiku-5-5, replayed with it
-draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p16-main-4/tape/draft.json in 0 s
-Search: 6 roles; places Vienna, Austria
-PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (176 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
-Search: 6 roles; places Vienna, Austria
-PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (175 s)
-PERSONA DONE draw
