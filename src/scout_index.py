@@ -196,7 +196,7 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
         except Exception as error:  # noqa: BLE001 — a dead feed is reported, not fatal
             return {'company': meta['company'], 'ats': system, 'slug': slug, 'error': f'{type(error).__name__}: {error}'}
 
-    items = scout_carry.order(db, list(known.items())) if carry else list(known.items())
+    items = scout_carry.order(db, list(known.items()), today) if carry else list(known.items())
     judged_before = scout_carry.mixes(db) if carry else {}
     pool = ThreadPoolExecutor(max_workers=workers)
     try:

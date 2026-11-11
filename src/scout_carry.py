@@ -16,11 +16,28 @@ def ensure(db):
                'PRIMARY KEY (ats, slug))')
 
 
-def order(db, items):
-    """The known feeds, never-verified first, then the longest unverified: a run that stops early has read the ones most due."""
+def needs_mix(entry):
+    """True when this stored entry lists open jobs but has no valid mix (kinds or per-country counts): the feeds the scout's few AI calls are for."""
+    if int((entry.get('fresh') or {}).get('jobs') or 0) <= 0:
+        return False
+    have = _mix(entry)
+    return not (have['kinds'] or have['kind_counts'])
+
+
+def order(db, items, today=None):
+    """The known feeds: never-verified first, then those with open jobs and no mix not read today, then the rest, each group longest unverified first: a run that stops early
+    (or runs out of AI calls) has read the feeds most due, and the calls went to the feeds that still have no mix.
+    Why (11 Nov 2026, sk 1/4): the order was by last read only and `keep` stamps a read with no AI answer as
+    verified, so a feed read after the run's cap was used went to the back with no mix, while the calls went to feeds that already had one (2,768 of 7,447 feeds, a third of
+    the employers with jobs in a person's places, had none). A no-mix feed already read today waits: the first sweep of thousands of them must not keep the others past CARRY_DAYS."""
     ensure(db)
-    seen = {(r[0], r[1]): r[2] for r in db.execute('SELECT ats, slug, verified_at FROM feed_entries')}
-    return sorted(items, key=lambda item: seen.get(item[0], ''))
+    today = today or datetime.now().date().isoformat()
+    seen = {(r[0], r[1]): (r[2], needs_mix(json.loads(r[3]))) for r in db.execute('SELECT ats, slug, verified_at, entry FROM feed_entries')}
+
+    def key(item):
+        at, unjudged = seen.get(item[0], ('', False))
+        return (bool(at), not (unjudged and at < today), at)
+    return sorted(items, key=key)
 
 
 def keep(db, entries, at):
