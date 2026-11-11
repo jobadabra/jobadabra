@@ -2,7 +2,7 @@
 # CI: installs apt packages without ever hanging (owner, 25 Oct 2026: the "ffmpeg for the hero media tests" step sat 11m51s on web #122, normally 15-30 s: "that's way too much"
 # ... "let's fix it"). apt itself retries a download 3 times and gives up on a silent mirror after 20 s; each try of `apt-get update` and `install` is cut by `timeout`;
 # a failed try is repeated once; then the step fails at once and says why. Worst case about 5 minutes, never 12. Usage: tools/apt-install.sh <package>...
-# The same script lives in the private site repo (tools/apt-install.sh). Tests: tests/tooling/ci/test_apt_install_cache.py.
+# The same script lives in the private site repo (tools/apt-install.sh). No committed test (tooling-test rule, 3 Nov 2026): checked with a fake apt, sudo and dpkg on PR 3820.
 # Why (11 Nov 2026, owner: "I build it now (Recommended)", asked via AskUserQuestion): the mirror still stalled after the two tries (#3798: 3 Linux jobs
 #   red at 15:09Z, ~1 red run a day); retries alone could not end it. With APT_DEBS (a folder the action .github/actions/apt-packages restores
 #   from the GitHub cache), the packages install from their .deb files with no download and no `apt-get update`; the mirror is reached
@@ -15,7 +15,7 @@ if [ -n "$debs" ]; then   # apt keeps what it downloads in the cached folder (ap
   sudo mkdir -p "$debs/partial" && sudo chmod -R a+rwX "$debs"
   conf+=("Dir::Cache::archives \"$debs\";" 'APT::Keep-Downloaded-Packages "true";')
 fi
-printf '%s\n' "${conf[@]}" | sudo tee "${APT_CONF:-/etc/apt/apt.conf.d/98ci-apt}" >/dev/null
+printf '%s\n' "${conf[@]}" | sudo tee "${APT_CONF:-/etc/apt/apt.conf.d/98ci-apt}" >/dev/null   # APT_CONF, like APT_DIR below: a check with a fake apt points it at its own file
 cut() { timeout --kill-after=10 "$1" "${@:2}"; }   # a command, ended after $1 seconds
 installed() {   # every named package is installed (a package the runner image already has needs no .deb)
   local p; for p in "$@"; do dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' || return 1; done
