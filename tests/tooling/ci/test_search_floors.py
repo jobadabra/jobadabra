@@ -64,6 +64,15 @@ class FloorsOnlyRise(unittest.TestCase):
         state, report = run([night({1: ('measured', {'local': 1, 'counters': {'firstS': 200}})})] * 2, state)
         self.assertEqual([(r['number'], r['floor'], r['now']) for r in report['red']], [('first_s', 60, 200)])
 
+    def test_no_first_job_at_all_is_the_worst_time_never_a_skipped_night(self):
+        """Gitar on #3719: a measured press that found no job in the person's places has no firstS; skipping it hid the worst case behind a green ceiling."""
+        import gate
+        self.assertEqual(floors.NO_FIRST_JOB_S, gate.PRESS_LIMIT)
+        state, _ = run([night({1: ('measured', {'local': 1, 'counters': {'firstS': 60}})})] * 3)
+        state, report = run([night({1: ('nothing', {'local': 0, 'counters': {'firstS': None}})})] * 2, state)
+        self.assertIn(('first_s', 60, floors.NO_FIRST_JOB_S), [(r['number'], r['floor'], r['now']) for r in report['red']])
+        self.assertIsNone(floors.first_s({'local': 0}), 'a press that wrote no counters says nothing')
+
     def test_eures_in_equals_out_is_a_share(self):
         rows = [night({2: ('measured', {'local': 1, 'inout': {'eures': {'in': 10, 'out': out, 'lost': {}}}})}) for out in (8, 9, 10)]
         state, _ = run(rows)

@@ -41,11 +41,23 @@ def eures_share(row):
     return round(eures['out'] / eures['in'], 3) if eures.get('in') else None
 
 
+NO_FIRST_JOB_S = 180   # Why (Gitar on #3719, 11 Nov 2026): gate.PRESS_LIMIT; a press past it is a fault, so "no first job" reads as the worst time a measured press can have
+
+
+def first_s(row):
+    """Seconds to the first job in the person's places; a measured press that found none reads NO_FIRST_JOB_S, never a skipped night (Gitar on #3719:
+    funnel.step_counters says a step that silently stopped must read as a fall). None only when the press wrote no counters."""
+    counters = row.get('counters')
+    if not isinstance(counters, dict):
+        return None
+    return counters['firstS'] if isinstance(counters.get('firstS'), (int, float)) else NO_FIRST_JOB_S
+
+
 # number: (how to read it from a person's raw row, +1 higher is better / -1 lower is better, the spread used before 5 levels)
 NUMBERS = {
     'right': (lambda row: row.get('local'), 1, 1),
     'eures_inout': (eures_share, 1, 0.1),
-    'first_s': (lambda row: (row.get('counters') or {}).get('firstS'), -1, 15),   # seconds to first job: its floor is a ceiling that only falls
+    'first_s': (first_s, -1, 15),   # seconds to first job: its floor is a ceiling that only falls
 }
 
 

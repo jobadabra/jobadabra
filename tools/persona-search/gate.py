@@ -266,14 +266,14 @@ def result(n, out):
 
 def grey_reason(row, out, starved_wait):
     """Why a press measured nothing about the code (no AI answered, AI queue full, AI slow), else ''. Only a clean press may be grey: a non-zero exit, a crash,
-    a step off the small tier or a run past 180 s stays a red fault (Gitar on #2955, /code-review on 2/6). A starved press is cut at the app's own stop."""
-    if row.get('code') or row.get('crashes') or row.get('non_haiku') or row.get('seconds', 0) > PRESS_LIMIT:
+    a step off the small tier, a press that wrote no numbers or a run past 180 s stays a red fault (Gitar on #2955, /code-review on 2/6, Gitar on #3714). A starved press is cut at the app's own stop."""
+    if row.get('error') or row.get('code') or row.get('crashes') or row.get('non_haiku') or row.get('seconds', 0) > PRESS_LIMIT:
         return ''
     if row.get('not_run'):   # no AI call answered (engine_calls.not_run): never a zero or a floor, every not_measured exclusion applies
         return f"not run: {row['not_run']}"
     if starved_wait is not None:
         return f'AI queue full (waited {starved_wait} s)'
-    if not row.get('error') and row.get('local') == 0 and read_of(row) == 0 \
+    if row.get('local') == 0 and read_of(row) == 0 \
             and (not row.get('cost_unmeasured') or row.get('cut')) and (row.get('usd') or 0) <= PERSONA_CAP_USD:   # judge_one's cost reds stay (Gitar on #3082)
         mean = mean_call_s(out / 'run.log')   # nothing scored, nothing right, and an AI this slow: what the press found says nothing about the code
         return f'AI slow (a call took {round(mean)} s on average)' if mean is not None and mean >= SLOW_CALL_S else ''
