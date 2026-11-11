@@ -214,9 +214,20 @@ class Clock:
 
     def reserve(self, step):
         """Seconds before the deadline at which `step` starts no new call (this run's part of them, the TAIL included)."""
+        if step == 'titles' and self.scored_beside():
+            return self.part(self.TAIL)
         if self.SCORE_FIRST:
             return self.part({'titles': self.RESERVE['titles'], 'enrich': 0}.get(step, 0) + self.TAIL)
         return self.part(self.RESERVE.get(step, 0) + self.TAIL)
+
+    def scored_beside(self):
+        """A scorer runs beside this search (src/press/scorer.py): the title sort keeps no seconds for it and plans its rounds on all the time left, to the run's
+        end (TAIL); a waiting score still takes the next free AI slot first (src/ai/slots.py SCORE before TITLES).
+        Why (sa, 11 Nov 2026, CI run 43020224640 p10): the 70 s kept after the titles (RESERVE, 26 Oct) and their fifth of the time (SHARE) date from when
+        scoring ran after the sort; since the scorer runs beside it (#3649, #3685) they stopped title calls at 95 s of 180 with AI slots free: 81 local
+        titles waited at 116 s, and one batch of 30 that did run took 4.7 s and gave 12 jobs."""
+        from . import scorer
+        return scorer.shared()
 
     def over(self, step='score', now=None, key=None):
         """True when `step` must not start another AI call: the run's budget, minus what the later steps keep, is spent. On a search tape the
@@ -258,7 +269,8 @@ class Clock:
         stop = self.end()   # a stage's own end comes first; scoring keeps no seconds for the facts (ts, 10 Nov 2026)
         left = stop - (now if now is not None else time.monotonic()) - self.part(self.TAIL)
         pace = max(0.5, self._paces().get(step, self.PACE[step]))
-        n = max(floor, min(wanted, int(left * self.SHARE[step] / pace)))
+        share = 1.0 if step == 'title_rounds' and self.scored_beside() else self.SHARE[step]
+        n = max(floor, min(wanted, int(left * share / pace)))
         if not say:
             return n
         if not n:

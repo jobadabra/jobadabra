@@ -70,16 +70,17 @@ def start(db, search, env=None, now=None, after=None):
     return Ahead(search, read, after)
 
 
-def scan_beside(sources, db, search, so_far, due, scan=None, first=None):
+def scan_beside(sources, db, search, so_far, due, scan=None, first=None, early=None):
     """The employer sites' read (feeds.scan), with the found boards read beside it when this search reads them (`due`): (report, Ahead or
     None). Each side's jobs go to the list as soon as they are read (src/jobs_so_far.py). first: a boards_first.Beside already reading; its jobs
-    are kept and shown after each employer site read, jobs or not (on_read), in this thread (the caller takes the rest when this ends)."""
+    are kept and shown after each employer site read, jobs or not (on_read), in this thread (the caller takes the rest when this ends).
+    early: the employer sites already being read since second 0 (feed_scan.EarlySites); the scan takes their answers."""
     import contextlib
     from ..ai import batch_scope
     from . import feeds
     scan = scan or feeds.scan
     sites, boards = so_far.listener('employer sites'), so_far.listener('job boards')
-    after_site = {} if first is None else {'on_read': lambda: first.deliver(db, boards)}
+    after_site = {**({} if first is None else {'on_read': lambda: first.deliver(db, boards)}), **({} if early is None else {'early': early})}
     if not due:
         with step_yield.span('employer_sites'):
             return scan(sources, db, on_jobs=sites, **after_site), None

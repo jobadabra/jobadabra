@@ -149,7 +149,7 @@ def _work():
                 return
             key, _, _, titles, ask, put, landed, _refresh = ranking.pop(_heap)
         try:
-            with slots.priority(slots.TITLES), slots.ranked(key):   # Why (#2918 review): order applies at the model's slots too, not only at the pop; TITLES: lanes 4b-1 (src/ai/slots.py)
+            with slots.priority(slots.TITLES), slots.ranked(key):   # Why (#2918 review; lanes 4b-1, 11 Nov 2026): a batch waits for the model's slot at the titles' own level (src/ai/slots.py TITLES), nearest first there too, not only at the pop
                 result = ask(titles)
         except BaseException as error:  # noqa: BLE001 — handed to the reader's thread, which raises it
             result = error

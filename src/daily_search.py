@@ -188,6 +188,7 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         # board list, beside the slice; before, the slice read that list itself to the read cut and the web search's boards came after it, past the cut:
         # board jobs on a first run in 1 of 49 runs since 26 Oct. A repeat run starts it inside the employer read's scope below, as before.
         first = start_boards_first(listed=first_jobs.board_jobs) if full_read and slice_first else None
+        early = start_early_sites(feed_list, feed_db) if full_read and slice_first else None   # the sites past the slice, downloaded beside it (feed_scan.EarlySites)
         try:   # Why (#3802, 11 Nov 2026): the lane's threads end with the whole gather, whatever raises before the APIs' stage (they were left running)
             if slice_first:
                 try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
@@ -208,7 +209,7 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                     first = start_boards_first()
                 discovery = boards_beside.start() if beside else None
                 try:
-                    report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'), first=first)
+                    report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'), first=first, **({} if early is None else {'early': early}))
                 finally:   # inside the scope: its answers join the shared copies before the scope ends
                     if discovery is not None:
                         discovery.finish()
@@ -225,7 +226,18 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         finally:
             if apis is not None:
                 apis.close()
+            if early is not None:
+                early.close()
     return report, so_far, first
+
+
+# Download the employer sites the first-jobs slice leaves, from second 0 (a failure here: the full read reads them, as before).
+def start_early_sites(feed_list, feed_db):
+    from .sources import feed_scan
+    with stage.guard('employer sites: read ahead') as caught:
+        return feed_scan.EarlySites(feed_list, feed_db, skip=first_jobs.pick(feed_list))
+    print(f'Warning: employer sites not read ahead: {caught.reason}', flush=True)
+    return None
 
 
 # Ask every due free job API now, beside the other lanes.

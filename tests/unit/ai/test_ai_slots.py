@@ -145,11 +145,12 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
         self.assertEqual(set(levels), {slots.TITLES}, "each batch is asked by the queue's worker, at one level for every reader")
 
 
-class TitlesTakeASlotBeforeNavigationAndAfterScores(unittest.TestCase):
-    def test_a_title_batch_waits_behind_a_score_and_goes_before_a_page_kind_call(self):
-        """Lanes 4b-1 (11 Nov 2026): p10 left 81 titles waiting at 116 s while page- and link-kind calls (NORMAL) ran to 118 s."""
-        order = _queue(slots.Slots(1), [slots.NORMAL, slots.TITLES, slots.SCORE, slots.NORMAL])
-        self.assertEqual(order, [2, 1, 0, 3], 'the score, then the titles, then the navigation calls in arrival order')
+class TitlesTakeTheNextFreeSlot(unittest.TestCase):
+    def test_a_title_batch_goes_before_a_board_read_a_score_and_a_page_kind_call(self):
+        """Lanes 4b-1 (11 Nov 2026): p10 left 81 titles waiting at 116 s while page- and link-kind calls (NORMAL) ran to 118 s. sa's local p10 search the same day,
+        titles behind the boards' reads (FIRST) and the scores: two title batches asked at 23-26 s waited 42 s for a slot; a batch judges ~30 jobs in a 3-9 s call."""
+        order = _queue(slots.Slots(1), [slots.NORMAL, slots.SCORE, slots.FIRST, slots.TITLES, slots.NORMAL])
+        self.assertEqual(order, [3, 2, 1, 0, 4], 'the titles, then the first boards\' read, then the score, then the navigation calls in arrival order')
 
 
 class SlotLog(unittest.TestCase):

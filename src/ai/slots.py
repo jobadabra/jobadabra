@@ -1,5 +1,5 @@
-"""The AI command-line engines' slots (Claude Code, Codex: processes at once) served by priority, then by arrival: a first press's local boards
-(their reads, titles and proposal) FIRST, the scores of the jobs this run found SCORE, every other call NORMAL, the board web search and the scores of earlier runs' jobs LATER. A thread's level is set with priority(); a pool
+"""The AI command-line engines' slots (Claude Code, Codex: processes at once) served by priority, then by arrival: the title batches and the place call
+that decide which jobs are yours TITLES, a first press's local boards (their reads and proposal) FIRST, the scores of the jobs this run found SCORE, every other call NORMAL, the board web search and the scores of earlier runs' jobs LATER. A thread's level is set with priority(); a pool
 thread takes its caller's level only through carry(). Used by src/ai/providers/cli_base.py; set by src/first_jobs.py, src/sources/found_boards.py
 and src/sources/board_web.py. Tests: tests/unit/ai/test_ai_slots.py.
 Why (#first-press-slots, owner, 27 Oct 2026: "Web search, combined with more AI slots, combined with local boards first"): on rerun 40450152414
@@ -14,11 +14,13 @@ import time
 
 from ..press import rank as order   # this file has its own rank()
 
-FIRST, SCORE, TITLES, NORMAL, LATER = 0, 1, 2, 3, 4
-NAMES = ('FIRST', 'SCORE', 'TITLES', 'NORMAL', 'LATER')
+TITLES, FIRST, SCORE, NORMAL, LATER = 0, 1, 2, 3, 4
+NAMES = ('TITLES', 'FIRST', 'SCORE', 'NORMAL', 'LATER')
 # Why TITLES (lanes 4b-1, owner, 11 Nov 2026, via sa: "Start it right away."): a title batch judges ~30 jobs in one 5-13 s call, yet it queued at
 # NORMAL with the page- and link-kind calls (13-20 s each, about two thirds of a search's calls): p10 left "81 title(s) wait" at 116 s while
-# those ran to 118 s. Every reader's titles share this one level (owner, 5 Nov 2026: "One clear order first"); a Kept job's score still goes first.
+# those ran to 118 s. Every reader's titles share this one level (owner, 5 Nov 2026: "One clear order first").
+# Why first of all (sa, 11 Nov 2026, local p10 search): behind the boards' reads (FIRST) and the scores, two title batches asked at 23-26 s waited 42 s for a slot;
+# a batch is the cheapest call of a search (3-9 s) and decides ~30 jobs, and every job a score could take comes out of one.
 _local = threading.local()
 _BORN = time.monotonic()   # the engine process's start, near enough: a Find jobs run is one process
 

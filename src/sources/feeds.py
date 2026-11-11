@@ -435,10 +435,10 @@ def _after_check(db, board, matched, now, search=None):
     db.execute('INSERT OR REPLACE INTO feed_rest (board, misses, rest_until, search) VALUES (?, ?, ?, ?)', (board, misses, until, _search_digest(search)))
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, on_read=None):
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, on_read=None, early=None):
     """Read every employer feed of a search; the code lives in src/sources/feed_scan.py (moved for the 500-line rule)."""
     from .feed_scan import scan as read_all
-    return read_all(sources, db, fetcher=fetcher, details=details, on_jobs=on_jobs, on_sorted=on_sorted, on_read=on_read)
+    return read_all(sources, db, fetcher=fetcher, details=details, on_jobs=on_jobs, on_sorted=on_sorted, on_read=on_read, early=early)
 
 
 def render(report):

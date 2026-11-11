@@ -37,7 +37,7 @@
  },
  "L10": {
   "gets": "every press starts the job boards at second 0 in their own lane; the first-jobs step reads employer sites and scores them without waiting for the boards",
-  "hash": "03ad52e4f0b6f139"
+  "hash": "1dcbdae5a43fdf79"
  },
  "L11": {
   "gets": "no AI round is forced per board, so scoring starts early",
@@ -49,7 +49,7 @@
  },
  "L13": {
   "gets": "jobs found earlier and never scored are scored from the run's first second, in one list with the new ones, the nearest first",
-  "hash": "45a5faf7c250309a"
+  "hash": "cf4b80aecdd6e012"
  },
  "L14": {
   "gets": "among jobs in your places, the ones nearest your best place come first",
@@ -81,7 +81,7 @@
  },
  "L21": {
   "gets": "a slow place call holds only the jobs whose place it is asking; jobs in places already known go to your list at once (owner, 10 Nov 2026, asked via AskUserQuestion in session sa: \"Only the asked jobs wait (Recommended)\")",
-  "hash": "04edf79a096f5a47"
+  "hash": "491eb0d1e9c967eb"
  },
  "L22": {
   "gets": "a city written with accents stays in the places a search reads",
@@ -137,7 +137,7 @@
  },
  "L35": {
   "gets": "a repeat Find jobs run scores its waiting jobs beside the search: the employer sites are read while they are scored",
-  "hash": "00709c9cc7abdd77"
+  "hash": "20636c195d146f60"
  },
  "L36": {
   "gets": "a repeat Find jobs run starts the job boards first and reads the employer sites beside them, not after them",

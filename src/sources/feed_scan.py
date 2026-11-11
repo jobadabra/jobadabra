@@ -2,7 +2,6 @@
 roles and places, record their seen history. Moved out of feeds.py (500-line rule); every name it uses is read from feeds at call time, so
 tests patch feeds.* as before. A timed search reads best first and stops at its time (src/sources/read_budget.py). Tests: tests/unit/sources/test_read_budget.py, tests/unit/sources/test_feed_scan_parallel.py, tests/unit/sources/test_coverage.py, tests/unit/sources/test_non_it_crawl.py."""
 import os
-import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from . import ats, feed_facts, feed_places, feeds, late_reads, read_budget
@@ -54,7 +53,81 @@ def _hander(db, sources, downloads, shown, now, on_sorted):
     return hand
 
 
-def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, on_read=None):  # noqa: C901 (Why (6 Nov 2026): far over the limit before this change; the hand-over only moved to _hander, no new branch; splitting scan is its own change)
+def _key(source):
+    return f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
+
+
+def _plan(sources, db, now):
+    """Which of `sources` this search reads, in the thread that owns `db` -> (resting, read minutes ago, to read in read order, rest dates, kept facts)."""
+    with db:   # the end-to-end journey's fixture feeds answer the same every run: nothing rests there, nothing is skipped as unchanged
+        db.execute(feeds.REST_TABLE)
+        rest, facts = ({}, {}) if os.getenv('JOBADABRA_FIXTURE_DIR') else (feeds.resting(db, now), feed_facts.load(db))
+    rested = [source for source in sources if _key(source) in rest]
+    same = [source for source in sources if _key(source) not in rest and feed_facts.fresh(facts.get(_key(source)), now)]   # judged for this search minutes ago
+    due = [source for source in sources if _key(source) not in rest and not feed_facts.fresh(facts.get(_key(source)), now)]
+    return rested, same, read_budget.left_first(read_budget.ranked(due), _key), rest, facts   # best first, then what the last timed read left
+
+
+def read_site(source, facts, fetcher, notes):
+    """Read one employer site, in any thread -> (jobs, failure); notes[its key] = (its "changed since?" state, seconds, True when the answer was read after the last search's cut)."""
+    key, started = _key(source), time_budget.now()
+    with read_methods.reading(key, 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
+        with ats.conditional(feed_facts.ask(facts.get(key))) as state:   # a 304 comes back as ats.Unchanged
+            late = late_reads.take('employer', key)   # read after the last search's cut: its answer, not a second read
+            got = (late, None) if late is not None else feeds._fetched(fetcher, source)
+        counted.failed = got[1] is not None   # a failed read is not a source read
+        counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
+    seconds = round(time_budget.now() - started, 1)
+    source_yield.timed('employer feed', source['company'], seconds)
+    notes[key] = (state, seconds, late is not None)
+    return got
+
+
+class EarlySites:
+    """The employer sites the first-jobs slice does not read, downloaded from second 0 beside it; the full read (scan, early=) takes each answer instead of
+    reading the site, so its titles are asked while the search still has time. Only downloads here: the job store stays with the thread that owns it.
+    Why (sa, 11 Nov 2026, 32 Search check logs): the full read started when the slice ended, 96-121 s into the press and past the read cut (90 s), and read
+    "0 of 130 sites" for every person with more than the slice's 15 employers (0 of 228, 0 of 147, 0 of 56)."""
+
+    def __init__(self, sources, db, skip=(), fetcher=None):
+        _, _, due, _, facts = _plan(sources, db, feed_facts._now().isoformat(timespec="seconds"))
+        skipped, stop, fetcher = {_key(source) for source in skip}, read_budget.deadline(), fetcher or feeds.fetch
+        due = [source for source in due if _key(source) not in skipped]
+
+        def read(n, source):   # None: its turn came after the read's time, so it is the next search's (read_budget.keep_left)
+            return None if read_budget.over(stop, n) else read_site(source, facts, fetcher, self.notes)
+        self.notes = {}
+        self.pool = ThreadPoolExecutor(max_workers=feeds.FETCH_WORKERS)
+        self.reads = {_key(source): self.pool.submit(slots.carry(read), n, source) for n, source in enumerate(due)}
+
+    def close(self):
+        """No site starts any more; one being read ends by itself."""
+        self.pool.shutdown(wait=False, cancel_futures=True)
+
+
+def _judge_read_ahead(pending, take, db, sources, downloads, shown, now, on_sorted, on_read):
+    """Take the sites read ahead that have ended and sort their titles now, before the scan waits for the ones still open; the pass after the scan's own sort
+    finds these titles decided. on_read() also runs as each batch lands: the boards' lane is shown meanwhile.
+    Why (sa, 11 Nov 2026, local p10 search): 149 of 154 sites were in at 45 s and the scan waited for the other 5 to the read's end (68 s) before it asked
+    about any title: 23 s of the press with nothing judged."""
+    for done in [future for future in pending if future.done()]:
+        take(done)
+    landed = [got if got is not None else ([], None) for got in downloads]
+    jobs = [job for found, failure in landed if not failure for job in found or []]
+    if not jobs:
+        return
+    hand = _hander(db, sources, landed, shown, now, on_sorted)
+
+    def handed(fit_jobs):
+        if hand:
+            hand(fit_jobs)
+        if on_read:
+            on_read()
+    with title_queue.handing_to(handed):
+        feed_places.triage_with_places(jobs)
+
+
+def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, on_read=None, early=None):  # noqa: C901 (Why (6 Nov 2026): far over the limit before this change; the hand-over only moved to _hander, no new branch; splitting scan is its own change)
     """Fetch every source, keep SRE-type titles in preferred locations, record seen history. report['funnel'] counts what the
     crawl saw and what the role keywords caught (src/coverage.py), so a search that is too narrow can be said out loud.
     on_jobs(jobs): called with each site's sure jobs as soon as that site is read (owner, 18 Oct 2026: jobs shown as quickly as possible;
@@ -63,80 +136,71 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None, on_sorted=None, 
     on_sorted(jobs): called, in this thread, with the jobs of each batch of titles the AI sorts as it lands (#2918): recorded as the sure ones are, kept in `shown`,
     so the pass after the whole sort takes them as they are.
     on_read(): called, in this thread, after each site is read, jobs or not: what another reader beside it handed meanwhile is shown then
-    (src/sources/boards_first.py Beside)."""
+    (src/sources/boards_first.py Beside).
+    early: an EarlySites already reading some of these sites: its answers are taken, a site it has is never read twice."""
     fetcher = fetcher or feeds.fetch
     now = feed_facts._now().isoformat(timespec="seconds")
-    key = lambda source: f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
-    with db:   # the end-to-end journey's fixture feeds answer the same every run: nothing rests there, nothing is skipped as unchanged
-        db.execute(feeds.REST_TABLE)
-        fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
-        rest, facts = ({}, {}) if fixtures else (feeds.resting(db, now), feed_facts.load(db))
-    rested = [source for source in sources if key(source) in rest]
-    same = [source for source in sources if key(source) not in rest and feed_facts.fresh(facts.get(key(source)), now)]   # judged for this search minutes ago
-    sources = [source for source in sources if key(source) not in rest and not feed_facts.fresh(facts.get(key(source)), now)]
-    sources = read_budget.left_first(read_budget.ranked(sources), key)   # best first, then what the last timed read left
+    key = _key
+    fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
+    rested, same, sources, rest, facts = _plan(sources, db, now)
     total = len(sources)
     if rested:   # said every run, so a short list is never a mystery
         print(f'Employers resting: {len(rested)} gave no match for your roles in your places {feeds.REST_AFTER} checks in a row; checked again after '
               f'{min(rest[key(source)] for source in rested)[:10]}.')
     from ..progress import Ticker
-    ticker, lock, read = Ticker('Reading employer job sites', len(sources)), threading.Lock(), [0, 0]   # [sites read, jobs listed]
-
-    took, asked, taken = {}, {}, []   # seconds per site read (source_yield.timed); each read's "changed since?" state; sites read after the last cut (late_reads)
-
-    def fetch(source):
-        started = time_budget.now()
-        with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
-            with ats.conditional(feed_facts.ask(facts.get(key(source)))) as asked[key(source)]:   # a 304 comes back as ats.Unchanged
-                late = late_reads.take('employer', key(source))   # read after the last search's cut: its answer, not a second read
-                got = (late, None) if late is not None else feeds._fetched(fetcher, source)
-                if late is not None:
-                    taken.append(key(source))
-            counted.failed = got[1] is not None   # a failed read is not a source read
-            counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
-        took[key(source)] = round(time_budget.now() - started, 1)
-        source_yield.timed('employer feed', source['company'], took[key(source)])
-        if cut_off[0]:   # read after the cut: left for the next run, not counted in this one
-            return got
-        with lock:
-            read[0] += 1
-            read[1] += len(got[0] or [])
-            ticker.tick(read[0], f' · {read[1]:,} jobs listed')
-        feeds.run_counts.looked(got[0] or [])   # this search's own number, each job once (src/run_counts.py)
-        return got
+    ticker, read = Ticker('Reading employer job sites', len(sources)), [0, 0]   # [sites read, jobs listed]
+    took, asked, taken, notes = {}, {}, [], {}   # seconds per site read (source_yield.timed); each read's "changed since?" state; sites read after the last cut (late_reads); read_site's notes
     downloads, shown = [None] * len(sources), {}
-    stop, begun, cut, cut_off = read_budget.deadline(), [0], read_budget.cut_at(), [False]   # no new site past its read's time, no wait past the cut
+    stop, cut, cut_off = read_budget.deadline(), read_budget.cut_at(), False   # no new site past its read's time, no wait past the cut
     pool = ThreadPoolExecutor(max_workers=feeds.FETCH_WORKERS)   # a few hundred feeds must fit in the job's time; not waited for at the cut
+    ahead = early.reads if early is not None else {}
+    pending = {ahead[key(source)]: index for index, source in enumerate(sources) if key(source) in ahead}   # begun at second 0: taken as they end
+    begun, at = set(pending.values()), [0]
     try:
-        def submit():   # the next site, in read order, unless its time is up: sites are started as others end, never all at once
-            if begun[0] < len(sources) and not read_budget.over(stop, begun[0]):
-                pending[pool.submit(slots.carry(fetch), sources[begun[0]])] = begun[0]
-                begun[0] += 1
-        pending = {}
-        for _ in range(feeds.FETCH_WORKERS * 2):
-            submit()
-        while pending:
-            finished, _ = wait(pending, timeout=read_budget.seconds_left(cut), return_when=FIRST_COMPLETED)
-            if not finished:   # the cut: the sites still open are left for the next run (src/sources/read_budget.py cut_at)
-                cut_off[0] = True
-                for open_read, index in pending.items():   # not killed: what they read when they end is the next search's (late_reads)
-                    late_reads.when_done(open_read, 'employer', key(sources[index]), lambda got: got[0] if got[1] is None and got[0] is not None else None)
-                break
-            for done in finished:   # the database work stays in this thread, one site at a time
-                index = pending.pop(done)
-                downloads[index] = done.result()
+        def take(done):   # one site that has ended: the counting and the database work stay in this thread, one site at a time
+            index = pending.pop(done)
+            downloads[index] = done.result()
+            if downloads[index] is not None:   # None: read ahead, and its turn came after the read's time
+                note = notes.get(key(sources[index])) or (early.notes.get(key(sources[index])) if early is not None else None) or (None, None, False)
+                asked[key(sources[index])], took[key(sources[index])], late = note
+                if late:
+                    taken.append(key(sources[index]))
+                read[0] += 1
+                read[1] += len(downloads[index][0] or [])
+                ticker.tick(read[0], f' · {read[1]:,} jobs listed')
+                feeds.run_counts.looked(downloads[index][0] or [])   # this search's own number, each job once (src/run_counts.py)
                 if on_jobs and (found := _sure(index, sources[index], downloads[index], db, now, shown)):
                     feeds.run_counts.matched(found)   # counted as each site is read; the full pass after the AI sort adds the rest, never takes one back
                     on_jobs(found)
-                if on_read:
-                    on_read()
+            if on_read:
+                on_read()
+
+        def submit():   # the next site, in read order, unless its time is up: sites are started as others end, never all at once
+            while at[0] in begun:
+                at[0] += 1
+            if at[0] < len(sources) and not read_budget.over(stop, len(begun)):
+                pending[pool.submit(slots.carry(read_site), sources[at[0]], facts, fetcher, notes)] = at[0]
+                begun.add(at[0])
+        for _ in range(feeds.FETCH_WORKERS * 2):
+            submit()
+        if early is not None:
+            _judge_read_ahead(pending, take, db, sources, downloads, shown, now, on_sorted, on_read)
+        while pending:
+            finished, _ = wait(pending, timeout=read_budget.seconds_left(cut), return_when=FIRST_COMPLETED)
+            if not finished:   # the cut: the sites still open are left for the next run (src/sources/read_budget.py cut_at)
+                cut_off = True
+                for open_read, index in pending.items():   # not killed: what they read when they end is the next search's (late_reads)
+                    late_reads.when_done(open_read, 'employer', key(sources[index]), lambda got: got[0] if got and got[1] is None and got[0] is not None else None)
+                break
+            for done in finished:
+                take(done)
                 submit()
     finally:
-        pool.shutdown(wait=not cut_off[0], cancel_futures=True)
+        pool.shutdown(wait=not cut_off, cancel_futures=True)
     if taken:
         print(f"Employers: {len(taken)} site(s) read after the last search's time taken from it, not read again", flush=True)
-    kept = [index for index in range(begun[0]) if downloads[index] is not None]
-    read_budget.keep_left([sources[index] for index in sorted(pending.values())] + sources[begun[0]:], key, len(kept), total)
+    kept = [index for index in range(len(sources)) if downloads[index] is not None]
+    read_budget.keep_left([source for index, source in enumerate(sources) if downloads[index] is None], key, len(kept), total)
     sources, downloads = [sources[index] for index in kept], [downloads[index] for index in kept]
     where = {old: new for new, old in enumerate(kept)}   # the jobs shown early follow their site to its place in the read list
     shown = {(where[index], job): item for (index, job), item in shown.items() if index in where}

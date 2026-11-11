@@ -27,7 +27,6 @@ ALLOWED = {
     ('src/sources/eures.py', 'sorted(c for c in table if len(c) > len(area) and c.startswith(area))'): "an area's parts listed by code in one request",
     ('src/ai/title_triage.py', "sorted(str(w) for w in search.get('role_keywords') or [])"): 'a cache key: the same words in any order',
     ('src/ai/title_triage.py', "sorted(str(w) for w in search.get('title_exclude_keywords') or [])"): 'a cache key: the same words in any order',
-    ('src/sources/feed_scan.py', 'sorted(pending.values())'): 'the unread sites put back in their list order',
     ('src/sources/feed_scan.py', 'report["jobs"].sort(key=lambda j: ({"new": 0, "changed": 1, "seen": 2}[j["status"]], j["company"], j["title"]))'): 'display: the report of what was read',
     ('src/sources/aggregators.py', "sorted(map(str, search.get('role_keywords') or []))"): 'a cache key',
     ('src/sources/aggregators.py', "sorted(map(str, search.get('jobs_board_search_queries') or []))"): 'a cache key',

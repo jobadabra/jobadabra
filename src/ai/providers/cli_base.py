@@ -100,6 +100,12 @@ class CliAdapter(Adapter):
         asked = time.monotonic()
         with self._slots:
             began = time.monotonic()
+            # Why (sa, 11 Nov 2026, local p10 search): calls asked at 36-46 s got their slot at 141-163 s, after the search's AI steps had stopped at 135 s, and
+            # ran the search to 173 s. The clock's rule is that no AI call starts once the run's time is over (src/press/clock.py ended): a call that was asked
+            # in time and waited past it is not started; its caller takes it as any failed call (the item waits for the next search).
+            from ... import time_budget
+            if time_budget.ended(now=began) and not time_budget.ended(now=asked):
+                raise CliError(f"the search's time was up before {self.tool} had a free slot")
             try:
                 out = self.run(args, input=prompt, capture_output=True, text=True, timeout=wait, cwd=folder, env=self.env(args))
             except subprocess.TimeoutExpired:

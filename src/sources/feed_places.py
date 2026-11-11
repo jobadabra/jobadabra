@@ -2,9 +2,9 @@
 Why (7 Nov 2026, #2920, runs 42386229424 vs 42315566393, p10 Amsterdam and p14 Gothenburg): the employer reader placed its new locations (one AI call, 20-21 s) IN the hub thread, which runs the
 other readers' hand-overs only while it waits in a title sort: EURES's 200 vacancies sat in the hub's box. The first title ask moved from 57-60 s to 101-124 s and the 2:15 clock allowed 2 title
 calls instead of ~8 (titles sorted 108 -> 60 and 185 -> 58). The call now runs in a worker and the hub serves the others' hand-overs while it waits.
-Why the reader's own titles still wait for the answers (review of #3512, 7 Nov 2026): `feeds.triage` marks the AI sort as run (feeds.ASKED), after which `wanted_title` stops using the role words, and
+Why the reader's own jobs still wait for the answers (review of #3512, 7 Nov 2026): `feeds.triage` marks the AI sort as run (feeds.ASKED), after which `wanted_title` stops using the role words, and
 `wanted_location` falls back to the place words for a location not placed yet: a sort beside the place call raced that flag (no place call at all on big lists) and handed words-yes, AI-out jobs
-("Paris, Texas") to scoring. Since sf's place PR a (10 Nov 2026) only the jobs at the locations the call asks about wait: the others' places are known (kept answers, the
+("Paris, Texas") to scoring. Since rj's side-by-side PR (11 Nov 2026) the held jobs' TITLES are sorted beside the call (title_triage.decide alone: no flag, no hand-over); the JOBS still wait. Since sf's place PR a (10 Nov 2026) only the jobs at the locations the call asks about wait: the others' places are known (kept answers, the
 map's cache), so their titles are sorted at once. Why (owner, 10 Nov 2026, asked via AskUserQuestion in session sa: "Only the asked jobs wait (Recommended)"): after #3676 a few remote locations nobody had placed
 started the call, and on main p9 Lyon's employer jobs at known Lyon places were listed at 127 s, behind a place call asked at 36 s and answered at 125 s (sa's Mac run). The race stays closed: the jobs to place are chosen before any sort sets the flag, and
 every job at an asked location, whatever its title, waits for the answer. Tests: tests/unit/ai/test_titles_with_places.py."""
@@ -37,14 +37,57 @@ def triage_with_places(jobs):
             placing.set_result(None)
         except BaseException as error:  # noqa: BLE001 — raised in the reader's thread below, where its caller handles it
             placing.set_exception(error)
-    threading.Thread(target=slots.carry(place), daemon=True, name='place-call').start()
+    # Why TITLES (sa, 11 Nov 2026, local p10 search): at the reader's own level this call was asked at 46 s and answered at 144 s behind the scores, and every job at
+    # its locations waited for it. It decides jobs as a title batch does, one short call for up to a batch of locations: the same place in the line.
+    threading.Thread(target=slots.carry(place, slots.TITLES), daemon=True, name='place-call').start()
     held = [job for job in jobs if place_triage.norm(job.get('location') or '') in asked]   # by location: no job at an asked place is sorted on the place words
     go = [job for job in jobs if place_triage.norm(job.get('location') or '') not in asked]
+    sorting = _titles_beside(held, views)
     if go:
         feeds.triage(go)
     title_queue.wait_for(placing)
+    if sorting is not None:
+        title_queue.wait_for(sorting)
     if held or not go:
-        feeds.triage(held)
+        feeds.triage(held)   # asks only what the sort beside the call left (its batches past the clock), and hands each batch that lands
+    _hand_sorted(held)
+
+
+def _titles_beside(held, views):
+    """Sort the held jobs' titles in a worker while their place call runs -> a Future, or None (nothing held, no AI). Nothing is handed from here: a held job reaches
+    scoring only after the place answer (_hand_sorted), so a title the AI likes at a place it then puts outside is never listed on the place words (#3512, "Paris, Texas").
+    Why (sa's read of CI run 43020224640 p10, 11 Nov 2026): one place call took 65.3 s (asked 30.4 s, answered 95.7 s) and the titles of its jobs were asked only after it:
+    at 116 s "81 title(s) wait for the next one". The price: the titles of jobs the answer puts outside are asked too (counted on the PR)."""
+    from . import feed_order, feeds
+    from .. import features
+    from ..ai import engine
+    if not held or features.disabled('title_triage') or not engine.ready():
+        return None
+    sorting = Future()
+
+    def sort():
+        from ..ai import title_triage
+        from ..press import stage
+        from ..time_budget import best_first
+        with stage.guard('titles: beside the place call') as caught, batch_scope.using(views):
+            ordered = best_first([job for job in held if job.get('title')])
+            nearness = feed_order.nearness(ordered, feeds._SEARCH, feeds.in_my_place)
+            feeds._triaged().update(title_triage.decide([job['title'] for job in ordered], feeds._SEARCH, nearness=nearness))
+        if caught:   # not sorted beside the call: they are asked after its answer, as before, said
+            print(f'Warning: job titles not sorted beside the place call ({reason(caught.error)}): asked after its answer', flush=True)
+            detail('sources', caught.error)
+        sorting.set_result(None)
+    threading.Thread(target=slots.carry(sort), daemon=True, name='titles-beside-place').start()
+    return sorting
+
+
+def _hand_sorted(held):
+    """Hand to scoring the held jobs whose title the sort beside the place call said fits and whose place the answer put in your places (title_queue.handing_to)."""
+    from . import feed_order, feeds
+    land = feed_order.handing(held, feeds.wanted_location)
+    if land:
+        from ..ai.title_triage import _norm
+        land({_norm(job['title']) for job in held if job.get('title') and feeds.judged_title(job['title']) is True}, None)
 
 
 def to_place(job):
