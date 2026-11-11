@@ -21,24 +21,33 @@ function refusal(env, run) {
   return /^\d{6,15}$/.test(String(run || '')) ? '' : 'no run id';
 }
 
+// What a sent verdict says in the log: the week, a by-hand run, or the night with the site's counts and alert.
+function sentLine({week, byHand}, night, told) {
+  if (week) return `search week: sent the week of ${night} (5 runs a person) to /admin/job-search/lab?tab=finish`;
+  if (byHand) return `search night: sent a by-hand run of ${night} (stored beside the nights, never replaces one) to /admin/job-search/lab?tab=night`;
+  const counts = Number.isInteger(told.measured) && Number.isInteger(told.total) ? `measured ${told.measured} of ${told.total}${told.dropped ? ', dropped' : ''}` : 'stored';
+  return `search night: sent night ${night} (${counts}${told.alert ? `; alert: ${String(told.alert).slice(0, 40)}` : ''}) to /admin/job-search/lab?tab=night`;
+}
+
+// Where this run goes: the week's route (SEARCH_CHECK_SERIES=weekly) or the night's, `&by_hand=1` when the run is not the scheduled one.
+function destination(env, run, night) {
+  const week = env.SEARCH_CHECK_SERIES === 'weekly', byHand = env.SEARCH_NIGHT_BY_HAND === 'yes';
+  const url = week ? `${SEARCH_WEEK_SITE}?week=${night}&run=${run}` : `${SEARCH_NIGHT_SITE}?night=${night}&run=${run}`;
+  return {week, byHand, label: week ? 'search week' : 'search night', url: `${url}${byHand ? '&by_hand=1' : ''}`, what: week ? 'the week of' : byHand ? 'a by-hand run' : 'night'};
+}
+
 /** Upload the verdict file `file` as GitHub run `run`, filed under the UTC night of `now` (SEARCH_CHECK_SERIES=weekly: as the week starting that day, on its own route). -> one line for the job's log. */
 export async function uploadSearchNight(file, run, {env = process.env, fetcher = fetch, now = new Date()} = {}) {
-  const week = env.SEARCH_CHECK_SERIES === 'weekly', label = week ? 'search week' : 'search night';
+  const night = now.toISOString().slice(0, 10), to = destination(env, run, night);
   const why = refusal(env, run);
-  if (why) return `${label}: not sent (${why})`;
-  if (!file || !fs.existsSync(file)) return `${label}: nothing to send (no verdict.json)`;
+  if (why) return `${to.label}: not sent (${why})`;
+  if (!file || !fs.existsSync(file)) return `${to.label}: nothing to send (no verdict.json)`;
   const body = fs.readFileSync(file);
-  if (body.length > MAX_BYTES) return `${label}: not sent (the verdict is ${body.length} bytes, over ${MAX_BYTES})`;
-  const night = now.toISOString().slice(0, 10), byHand = env.SEARCH_NIGHT_BY_HAND === 'yes';
-  if (['1', 'true'].includes(String(env.JP_CI_ROWS_DRY || '').toLowerCase())) return `${label}: dry run: would send ${body.length} bytes for ${week ? 'the week of' : byHand ? 'a by-hand run' : 'night'} ${night}`;
-  const url = week ? `${SEARCH_WEEK_SITE}?week=${night}&run=${run}` : `${SEARCH_NIGHT_SITE}?night=${night}&run=${run}`;
+  if (body.length > MAX_BYTES) return `${to.label}: not sent (the verdict is ${body.length} bytes, over ${MAX_BYTES})`;
+  if (['1', 'true'].includes(String(env.JP_CI_ROWS_DRY || '').toLowerCase())) return `${to.label}: dry run: would send ${body.length} bytes for ${to.what} ${night}`;
   try {
-    const answer = await fetcher(`${url}${byHand ? '&by_hand=1' : ''}`, {method: 'PUT', headers: {Authorization: `Bearer ${env.REPLAYS_PUBLISH_KEY}`, 'Content-Type': 'application/json', 'X-Caller': 'search-night-upload'}, body, signal: AbortSignal.timeout(60000)});
-    if (!answer.ok) return `${label}: not sent (the site answered ${answer.status})`;
-    const told = await answer.json().catch(() => ({}));
-    if (week) return `search week: sent the week of ${night} (5 runs a person) to /admin/job-search/lab?tab=finish`;
-    if (byHand) return `search night: sent a by-hand run of ${night} (stored beside the nights, never replaces one) to /admin/job-search/lab?tab=night`;
-    const counts = Number.isInteger(told.measured) && Number.isInteger(told.total) ? `measured ${told.measured} of ${told.total}${told.dropped ? ', dropped' : ''}` : 'stored';
-    return `search night: sent night ${night} (${counts}${told.alert ? `; alert: ${String(told.alert).slice(0, 40)}` : ''}) to /admin/job-search/lab?tab=night`;
-  } catch (error) { return `${label}: not sent (${String(error?.message || error).slice(0, 60)})`; }
+    const answer = await fetcher(to.url, {method: 'PUT', headers: {Authorization: `Bearer ${env.REPLAYS_PUBLISH_KEY}`, 'Content-Type': 'application/json', 'X-Caller': 'search-night-upload'}, body, signal: AbortSignal.timeout(60000)});
+    if (!answer.ok) return `${to.label}: not sent (the site answered ${answer.status})`;
+    return sentLine(to, night, await answer.json().catch(() => ({})));
+  } catch (error) { return `${to.label}: not sent (${String(error?.message || error).slice(0, 60)})`; }
 }
