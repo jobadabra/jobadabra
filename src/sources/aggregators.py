@@ -348,7 +348,7 @@ def _one(db, search, name, read, now, shown, ahead, lane, lately):
 
 
 def _said(report, late):
-    """The free job APIs' lane's one state: failed when some failed and none read (Gitar on #3802: also when others still wait, so a failure
+    """The free job APIs' lane's one state: failed when some failed and none read (Why, #3802, 11 Nov 2026: also when others still wait, so a failure
     is never hidden behind a wait), else cut when one of its sources waits for the next search, else done."""
     from . import api_lane
     own = [row for row in report['sources'] if row.get('company') not in (*api_lane.NOT_HERE, boards_ahead.NAME)]

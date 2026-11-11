@@ -103,7 +103,7 @@ class ScanTakesTheLaneTest(unittest.TestCase):
         self.assertEqual([j['id'] for j in report['jobs']], ['1'], 'the next API still reads')
         self.assertEqual({s['company']: s['ok'] for s in report['sources']}, {'Broken': False, 'A': True})
 
-    # Gitar on #3802: the cut and a lane read that raises, both through scan, and the lane's one state when they mix.
+    # The cut and a lane read that raises, both through scan, and the lane's one state when they mix (#3802).
     def lane_scan(self, reads, cut_in=None):
         """scan over a lane started with `reads` ([(name, read)]); the read cut `cut_in` seconds from now (None: no budget)."""
         def asked_again(search):
