@@ -40,7 +40,7 @@ def judge_prompt():
     for node in ast.parse(source).body:
         if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') in ('SYSTEM', 'MODEL', 'BATCH') for t in node.targets):
             kept.append(tokens(ast.get_source_segment(source, node)))
-        elif isinstance(node, ast.FunctionDef) and node.name in ('ask', 'judge'):
+        elif isinstance(node, ast.FunctionDef) and node.name in ('ask', 'judge', 'key', 'complete'):
             code = ast.get_source_segment(source, node)
             if node.body and isinstance(node.body[0], ast.Expr) and isinstance(getattr(node.body[0], 'value', None), ast.Constant):
                 code = code.replace(ast.get_source_segment(source, node.body[0]), '', 1)
