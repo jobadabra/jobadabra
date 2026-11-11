@@ -46,6 +46,23 @@ class GitarLabelStatesTest(unittest.TestCase):
         data['repository']['pullRequest']['commits']['nodes'][0]['commit']['checkSuites']['nodes'].append({'createdAt': '2026-11-11T00:01:00Z', 'app': {'slug': 'gitar'}, 'checkRuns': {'totalCount': 1}})
         self.assertTrue(node(f"m.fromGraphql({json.dumps(data)}).gitarOnHead"))
 
+    def test_a_stale_approval_keeps_the_working_mark_set_after_the_push(self):
+        """Gitar #3790: an approval older than the head can never be newer than a "working" mark set after that head, so the mark stays (and clears once the approval is current)."""
+        stale = "workingSince: '2026-11-11T02:00:00Z', headTime: '2026-11-11T01:00:00Z', verdictTime: '2026-11-11T00:30:00Z'"
+        self.assertEqual(node("m.wantedLabels({verdict: null, latest: 'Gitar: approved', gitarOnHead: true, " + stale + "})"),
+                         ['Gitar: approved', 'Gitar: reviewing', 'Working on PR comments'])
+        current = "workingSince: '2026-11-11T02:00:00Z', headTime: '2026-11-11T01:00:00Z', verdictTime: '2026-11-11T02:30:00Z'"
+        self.assertEqual(node("m.wantedLabels({verdict: 'Gitar: approved', " + current + "})"), ['Gitar: approved'])
+
+    def test_the_rest_read_is_by_suite_app_slug_only(self):
+        """Gitar #3790: a suite of another app is not Gitar (even one named "gitar-label"), an empty Gitar suite is not a run, a Gitar suite with a run is."""
+        def read(suites):
+            fake = json.dumps({'check_suites': suites})
+            return node(f"m.gitarOnHead('o/r', 'abc', () => {json.dumps(fake)})")
+        self.assertFalse(read([{'app': {'slug': 'github-actions', 'name': 'gitar-label'}, 'latest_check_runs_count': 4}]))
+        self.assertFalse(read([{'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 0}]))
+        self.assertTrue(read([{'app': {'slug': 'github-actions'}, 'latest_check_runs_count': 90}, {'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 1}]))
+
 
 if __name__ == '__main__':
     unittest.main()
