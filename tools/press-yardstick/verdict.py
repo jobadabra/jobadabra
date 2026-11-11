@@ -93,10 +93,11 @@ def right_cliff(cliff, replays):
 
 
 def pair_findings(art, rows, persona, run, pair, steady, noise, ids):
-    """What the PR side lost against main in one pair: ['job_boards did not run', 'right jobs 12 -> 3', ...]; None when a side has no row (not measured)."""
+    """What the PR side lost against main in one pair: ['job_boards did not run', 'right jobs 12 -> 3', ...]; None (that pair not measured) when a side has no row
+    or the PR side asked beyond what the recording holds (Gitar on #3805: every pair is gap-checked, so missing pages never finish a 3-of-3 red)."""
     main_side, pr_side = pair
     before, after = rows.get(main_side, {}).get(run, {}).get(persona), rows.get(pr_side, {}).get(run, {}).get(persona)
-    if before is None or after is None:
+    if before is None or after is None or ci.report_gap(Path(art, f'yardstick-{persona}-{pr_side}', 'tape-report.jsonl')):
         return None
     found, theirs, mine = [], lane_yield(art, persona, main_side).get(run, {}), lane_yield(art, persona, pr_side).get(run, {})
     for lane in ids:
@@ -134,7 +135,7 @@ def states(art, out, recordings, band, ids):
                 one['why'] = 'no band on this recording'
             elif persona in (band.get('cliff') or {}).get(run, []):
                 one['why'] = 'clock cliff on main\'s band'
-            elif persona in failed.get(run, {}) or pair_findings(art, rows, persona, run, PAIRS[0], {}, {}, []) is None:
+            elif persona in failed.get(run, {}) or any(rows.get(side, {}).get(run, {}).get(persona) is None for side in PAIRS[0]):
                 one['why'] = 'press failed or no jobs on a side'
             else:
                 gaps = [ci.report_gap(Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl')) for side in PAIRS[0]]
@@ -229,14 +230,19 @@ def final(art, out, recordings):
 
 
 def main(argv):
-    """The CLI: suspects | final (module docstring)."""
-    if argv[:1] == ['suspects'] and len(argv) == 5:
-        people = suspects(*argv[1:])
-        print(f"count={len(people)}")
-        print(f"replayed twice more on both sides: {', '.join(people) or 'nobody'}", file=sys.stderr)
+    """The CLI: suspects | final (module docstring). Only a confirmed red exits 1: the verdict's own crash (a partial file a crashed replay left) reads
+    "not measured" and exits 0 (Gitar on #3805: a measurement failure never blocks a PR)."""
+    try:
+        if argv[:1] == ['suspects'] and len(argv) == 5:
+            people = suspects(*argv[1:])
+            print(f"count={len(people)}")
+            print(f"replayed twice more on both sides: {', '.join(people) or 'nobody'}", file=sys.stderr)
+            return 0
+        if argv[:1] == ['final'] and len(argv) == 4:
+            return final(*argv[1:])
+    except Exception as error:   # noqa: BLE001 — any crash of the verdict itself is not measured, never red
+        print('count=0' if argv[:1] == ['suspects'] else f'### The verdict\n\n⚪ The verdict could not be read ({type(error).__name__}: {str(error)[:120]}): not measured, never red.')
         return 0
-    if argv[:1] == ['final'] and len(argv) == 4:
-        return final(*argv[1:])
     print(__doc__, file=sys.stderr)
     return 2
 

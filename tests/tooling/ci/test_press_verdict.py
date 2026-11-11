@@ -115,6 +115,27 @@ class Verdict(unittest.TestCase):
         self.assertIn('no recording 17', text)
         self.assertIn('fewer than half', text, 'a verdict that sees few people says it loudly')
 
+    def test_a_repeat_pair_whose_pr_side_asks_beyond_the_recording_never_completes_a_red(self):
+        """Gitar on #3805: pairs 2 and 3 were not gap-checked, so pages the recording lacks could finish a 3-of-3 red."""
+        lost = {'lanes': NO_BOARDS}
+        code, text = self.run_verdict(self.band(), [({}, lost), ({}, {**lost, 'gap': True}), ({}, {**lost, 'gap': True})])
+        self.assertEqual(code, 0, text)
+
+    def test_a_verdict_that_crashes_reads_not_measured_never_red(self):
+        """Gitar on #3805: a malformed file a crashed replay left must not block the PR; only a confirmed 3-of-3 loss may."""
+        band = self.band()
+        art, out = self.fresh('art'), self.fresh('out')
+        replay(art, 'main')
+        replay(art, 'pr')
+        (art / 'yardstick-p1-pr' / 'result' / 'jobs-1.json').write_text('[{not json')
+        out.mkdir()
+        (out / 'band-used.json').write_text(json.dumps(band))
+        said = io.StringIO()
+        with mock.patch.dict(os.environ, {'PR_BODY': ''}), redirect_stdout(said):
+            code = verdict.main(['final', str(art), str(out), str(self.root / 'recordings')])
+        self.assertEqual(code, 0)
+        self.assertIn('not measured', said.getvalue())
+
     def test_the_lanes_are_main_reader_rows_lanes(self):
         reader_rows = verdict._load('rr', ROOT / 'src' / 'sources' / 'reader_rows.py')
         self.assertEqual(verdict.lanes(self.root / 'no-main-here'), [lane.id for lane in reader_rows.LANES])
