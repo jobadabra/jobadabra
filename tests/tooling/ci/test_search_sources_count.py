@@ -118,12 +118,12 @@ class Files(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp, 'search-personas-p1')
             folder.mkdir()
-            self.write(folder, 'result.json', {'persona': 1, 'step_yield': [], 'counters': {'sites': 1}, 'relevant_sources': {'other': 1}, 'place': {'yes': 1}, 'role': {'yes': 1}})
+            self.write(folder, 'result.json', {'persona': 1, 'step_yield': [], 'counters': {'sites': 1}, 'relevant_sources': {'other': 1}, 'place': {'yes': 1}, 'role': {'yes': 1}, 'scout': {'served': 4, 'in_places': 3}})
             self.write(folder, 'judged.json', {'rows': [right('Cook', 'Acme', 'employer feed')]})
             sc.annotate(tmp)
             result = json.loads(Path(folder, 'result.json').read_text(encoding='utf-8'))
         row = gate.compare({1: result}, [])['rows'][0]
-        for field in ('sources', 'step_yield', 'counters', 'relevant_sources', 'place', 'role'):
+        for field in ('sources', 'scout', 'step_yield', 'counters', 'relevant_sources', 'place', 'role'):
             self.assertIsNotNone(result.get(field), f'the fixture result carries {field}')
             self.assertEqual(row[field], result[field], f'the verdict row passes {field} on to the Admin')
         self.assertEqual(row['sources']['employer_sites']['right'], 1)
