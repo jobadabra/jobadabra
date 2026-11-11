@@ -12,6 +12,18 @@ The description (or the commit message) must state, in a few words each:
 
 Each of these is a blocking finding (no approval) with file:line: the cause is missing, the change only treats the symptom and says nothing about the real fix and its owner, or the new test does not play the scenario that was reported.
 
+### The symptom's own number
+
+Why (owner, 11 Nov 2026, asked via AskUserQuestion: "Gitar: the symptom's own number (Recommended)", after his "How we can prevent this? Do we need Gitar rules? Do we need PR CI checks/guardrails?"): #2218 was reported as "0 board jobs on every persona"; its table moved "Boards start reading 63-88 s → 23-34 s" and press time, never the board jobs, and its "Not solved here… Next lever, for the owner" lived only in the PR body. It was "fixed" twice without removing the cause (#2928, #3517), and nobody watched the number. #3687 showed drafts with the whole country 16 of 18 → "on-site work: none (the AI's call, validated by the prompt case)", a case, not a count; #3800 measured 7 of 9 office roles still drafted with it the next day.
+
+This applies only when the description, the linked issue or the card states the reported symptom as a number (jobs a person gets, a count, a share, a time when the time is the complaint). Blocking findings:
+
+1. The Before → After does not show **that number, measured the same way** (same people or inputs, same counter): only a side number (a start time, a duration, a call count) or only a test. "Not measured yet" is fine only when the description names the run that will measure it and links the card or issue that will hold the number.
+2. The description says "not solved", "next lever", "follow-up" or "left for later" and links no Work board card or issue that owns the rest.
+3. The title or verdict line says the symptom is fixed while the body says part of it is not.
+
+Not a finding: a PR that says plainly it treats part of the symptom, shows the symptom's number as it stands (even unchanged), and links the card that owns the rest.
+
 ## On a PR that fixes a red test or check (flaky until shown otherwise)
 
 Why (owner, 3 Nov 2026): "we have a flaky test, but we fix it in the wrong way, which preserves the flakiness, instead of removing it". The same night, #3039's first version swapped one read for a 10 s poll after `closeApp` returned: it narrowed the window and hid the early return the test guards (Gitar caught it); #3036 (apply-1of3) is the model of the right fix.
