@@ -34,15 +34,23 @@ def prepare(work, env=os.environ):
     env.pop('ANTHROPIC_API_KEY', None)
 
 
-def titles_of(feeds, work, threads, fetch, say=print):
-    """{feed key: [titles]} of every feed with a public job API, cached in work/titles.json so a second run reads no feed twice."""
+def without_mix(feeds):
+    """The index feeds that list open jobs and have no mix (kinds or per-country counts): the ones the scout's few AI calls have not reached. Why (sk 3/4, 11 Nov 2026):
+    the tool judged every title of every feed (up to 2,000 a feed), well past what a scout read counts; the seed only has to hold what those feeds' counts need."""
+    return [f for f in feeds if int((f.get('fresh') or {}).get('jobs') or 0) > 0 and not f.get('kinds') and not f.get('kind_counts')]
+
+
+def titles_of(feeds, work, threads, fetch, say=print, pick=None):
+    """{feed key: [titles]} of every feed with a public job API, cached in work/titles.json so a second run reads no feed twice. `pick(jobs)` narrows a feed's jobs
+    (the scout's own sample, src/scout_kind_counts.py: the titles its counts judge, so the seed hits its keys); none: all of them, up to 2,000."""
     cache = work / 'titles.json'
     have = json.loads(cache.read_text(encoding='utf-8')) if cache.exists() else {}
     todo = [f for f in feeds if f.get('ats') not in SKIP_READERS and f"{f.get('ats')}:{f.get('slug')}" not in have]
 
     def one(feed):
         try:
-            return f"{feed['ats']}:{feed['slug']}", [str(j.get('title') or '').strip() for j in fetch(feed['ats'], feed['slug'])][:2000]
+            jobs = [j for j in fetch(feed['ats'], feed['slug']) if str(j.get('title') or '').strip()]
+            return f"{feed['ats']}:{feed['slug']}", [str(j['title']).strip() for j in (pick(jobs) if pick else jobs)][:2000]
         except Exception as error:  # noqa: BLE001 — a dead feed is skipped, as the scout does
             return f"{feed.get('ats')}:{feed.get('slug')}", {'error': f'{type(error).__name__}'}
     with ThreadPoolExecutor(threads) as pool:
@@ -94,6 +102,7 @@ def main(argv=None):
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--max-calls', type=int, default=2000)
     parser.add_argument('--limit', type=int, default=0, help='judge at most this many titles (a measured first slice)')
+    parser.add_argument('--all-feeds', action='store_true', help='every feed and every title, not only the scout sample of the feeds with no mix yet')
     args = parser.parse_args(argv)
     prepare(args.work)
     sys.path.insert(0, str(ROOT))
@@ -102,12 +111,15 @@ def main(argv=None):
     from src.paths import JOBS_DB
     from src.sources import ats
     decide.BATCH, decide.MAX_CALLS_PER_RUN = BATCH, args.max_calls
+    from src import scout_kind_counts
     feeds = json.loads(args.index.read_text(encoding='utf-8'))['feeds']
-    by_feed = titles_of(feeds, args.work, args.threads, ats.fetch)
+    if not args.all_feeds:
+        feeds = without_mix(feeds)
+    by_feed = titles_of(feeds, args.work, args.threads, ats.fetch, pick=None if args.all_feeds else scout_kind_counts.sample)
     titles = to_judge(by_feed, lambda title: meanings_pack.first('job-title-kind', title))
     if args.limit:
         titles = titles[:args.limit]
-    print(f'recount: {len(by_feed)} feeds, {len(titles)} titles the pack does not know; asking the Claude plan in parts of {BATCH}', flush=True)
+    print(f'recount: {len(by_feed)} feeds, {len(titles)} titles the pack does not know; asking the Claude plan in parts of {BATCH}: at most {-(-len(titles) // BATCH)} calls', flush=True)
     judge(titles, args.threads, role_kinds.judged)
     n = export(JOBS_DB, role_kinds.SINCE, args.out, role_kinds.KINDS)
     print(f'recount: wrote {n} title kinds to {args.out}', flush=True)
