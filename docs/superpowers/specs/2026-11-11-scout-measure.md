@@ -17,7 +17,7 @@ Pane sm (of session sa), 11 Nov 2026. Owner's words (11 Nov 2026, to sa): "How m
 - **Not built:** the engine writing an `origin` on a job (real installs): parked, the question is the night's 18.
 
 ## What the first measure found (11 Nov 2026, counts only)
-For each of the 18 people, 55-94% of the employers in their places have no counted kind of jobs yet (role_kinds.fits: "not read on a guess"); the central scout judges kinds for only ~255-370 of ~7,500 feeds a run (CENTRAL_AI_CAP 40). N reproduced the night's logged N exactly for 6 people. This is the card's first figure.
+For each of the 18 people, 55-94% of the employers in their places have no counted kind of jobs yet (role_kinds.fits: "not read on a guess"); the central scout judges kinds for only ~255-370 of ~7,500 feeds a run (CENTRAL_AI_CAP was 40 in the checkout read, 200 now per sk; lab issue #87). N reproduced the night's logged N exactly for 6 people. This is the card's first figure.
 
 ## Progress
 - [x] 1/3 The Sources card shows the night's per-source counts (verdict rows carry `sources`; guard test) (#3807)
