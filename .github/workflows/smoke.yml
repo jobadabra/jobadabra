@@ -25,7 +25,6 @@ on:
       - 'desktop/e2e/lib/**'
       - '.github/workflows/smoke.yml'
       - '.github/actions/electron-cache/**'
-      - '.github/actions/apt-packages/**'
 
 permissions:
   contents: read
@@ -69,8 +68,7 @@ jobs:
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5   # every apt step names its own limit
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: The app starts and every Settings section renders (the only try)
         working-directory: desktop/e2e
         timeout-minutes: 10

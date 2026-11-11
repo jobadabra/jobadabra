@@ -161,9 +161,9 @@ jobs:
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
       - name: A virtual display
+        working-directory: desktop/e2e
         timeout-minutes: 15
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "xvfb"}
+        run: bash ../../tools/apt-install.sh xvfb
       - name: Wait for the earlier pool runs (one at a time, oldest first, none dropped)
         env:
           GH_TOKEN: ${{ github.token }}

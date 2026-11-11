@@ -54,7 +54,6 @@ on:
       - '.github/workflows/integration.yml'
       - '.github/actions/playwright-browser/**'
       - '.github/actions/electron-cache/**'
-      - '.github/actions/apt-packages/**'
 
 permissions:
   contents: read
@@ -143,8 +142,7 @@ jobs:
       - name: A virtual display and Electron's libraries
         if: runner.os == 'Linux'
         timeout-minutes: 5
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       # `npm test` ran scripts/stage.mjs as its `pretest`; this job runs node directly, so it stages desktop/shared itself (the first run failed 7 files on Windows without it).
       - name: Stage the app's shared files
         working-directory: desktop

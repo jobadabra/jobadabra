@@ -41,8 +41,7 @@ jobs:
           node-version: '22'
       - name: libfaketime, a virtual display and Electron's libraries
         timeout-minutes: 5
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "faketime xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
+        run: bash tools/apt-install.sh faketime xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: The engine's packages
         if: matrix.area == 'python'
         run: pip install --quiet -r requirements.txt

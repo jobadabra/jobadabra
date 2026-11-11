@@ -341,7 +341,6 @@ jobs:
           path: lock-tools
           sparse-checkout: |
             tools/apt-install.sh
-            .github/actions/apt-packages
             tools/e2e-lock.sh
             tools/gh-ledger.sh
             tools/scan-e2e-artifacts.py
@@ -420,8 +419,7 @@ jobs:
       - name: A virtual display and Electron's libraries (Linux only)
         timeout-minutes: 5
         if: runner.os == 'Linux'
-        uses: ./lock-tools/.github/actions/apt-packages   # the workflow's own copy, like the script
-        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core", script: lock-tools/tools/apt-install.sh}
+        run: bash lock-tools/tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Write the mutant into the app (mutation test only)
         if: inputs.mutant != '' && inputs.mutant != 'baseline'
         timeout-minutes: 10
@@ -722,8 +720,7 @@ jobs:
           node node_modules/electron/install.js
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Stage the app's shared files
         timeout-minutes: 5
         working-directory: desktop

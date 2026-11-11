@@ -149,8 +149,7 @@ jobs:
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
-        uses: ./.github/actions/apt-packages   # cached .deb files: a down mirror only hits a cold cache (11 Nov 2026)
-        with: {packages: "xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core"}
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       # Why (26 Oct 2026, e2e.yml): the Free AI relay comes from this workflow's own commit; the checkout above is that commit, so the local action is used as it is here.
       - name: Free AI relay (the app under test answers through it; CI's own Workers AI token)
         timeout-minutes: 5
