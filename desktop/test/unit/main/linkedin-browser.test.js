@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {KEPT_FOLDER, sweepLinkedinLeftovers} from '../../../lib/linkedin-browser.js';
+import net from 'node:net';
+import {createBackgroundBrowser, holdStartsUntil} from '../../../lib/background-browser.js';
+import {KEPT_FOLDER, READ_FOLDER, sweepBeforeAnyStart, sweepLinkedinLeftovers} from '../../../lib/linkedin-browser.js';
 
 const FAKE_LI_AT = 'FAKE-LI-AT-sweep-0123456789abcdef';
 
@@ -32,4 +34,38 @@ test('the sweep removes LinkedIn rows from the kept profile and leaves none of t
   } finally {
     fs.rmSync(folder, {recursive: true, force: true});
   }
+});
+
+// A port nothing listens on: the sweep's "is a browser still using this profile" question waits on the network, as after a killed app.
+const deadPort = () => new Promise(resolve => { const server = net.createServer().listen(0, '127.0.0.1', () => { const {port} = server.address(); server.close(() => resolve(port)); }); });
+/** An app folder holding a read folder a killed app left; -> {storage, startNow() -> was the leftover still there when the browser's start reached its launch}. */
+async function leftoverHome(t) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-li-hold-'));
+  t.after(() => { holdStartsUntil(Promise.resolve()); fs.rmSync(home, {recursive: true, force: true}); });
+  const storage = {path: name => path.join(home, name)};
+  const profile = path.join(storage.path(READ_FOLDER), 'profile');
+  fs.mkdirSync(profile, {recursive: true});
+  fs.writeFileSync(path.join(profile, 'DevToolsActivePort'), `${await deadPort()}\n/devtools/browser/stand-in`);
+  const startNow = async () => {
+    let leftover = null;
+    const browser = createBackgroundBrowser(storage, {find: () => { leftover = fs.existsSync(storage.path(READ_FOLDER)); return null; },
+      fetchImpl: async () => { throw new Error('no browser in a unit test'); }, reaper: () => {}, spawn: () => { throw new Error('no spawn in a unit test'); }});
+    await assert.rejects(browser.start({port: 47999, token: 'stand-in'}), /Download the optional background browser first/);
+    return leftover;
+  };
+  return {storage, startNow};
+}
+
+// Why (#3773 review, 10 Nov 2026): the sweep and the hold were two calls that could come apart; the app start now calls one step, and this plays a browser started at once.
+test('at app start a hidden browser that starts at once finds the LinkedIn leftovers already swept; without the hold it would not (positive control)', async t => {
+  const bare = await leftoverHome(t);
+  const sweptBare = sweepLinkedinLeftovers(bare.storage);
+  assert.equal(await bare.startNow(), true, 'positive control: a sweep with no hold is still running when a browser starts');
+  await sweptBare;
+  const held = await leftoverHome(t);
+  const lines = [];
+  const swept = sweepBeforeAnyStart(held.storage, (...line) => lines.push(line));
+  assert.equal(await held.startNow(), false, 'the browser started only after the leftover read folder was removed');
+  assert.equal((await swept).readFolder, 'removed');
+  assert.deepEqual(lines.map(line => line[1]), ['leftover session removed']);
 });

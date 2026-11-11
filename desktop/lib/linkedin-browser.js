@@ -6,7 +6,7 @@
 // preferences are never forged). Guards: integration/extension/linkedin-session-on-disk.test.mjs, integration/extension/linkedin-read-browser-claims.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
-import {createBackgroundBrowser} from './background-browser.js';
+import {createBackgroundBrowser, holdStartsUntil} from './background-browser.js';
 
 export const READ_FOLDER = 'linkedin-read';
 export const KEPT_FOLDER = 'background-browser';
@@ -60,6 +60,18 @@ export async function sweepLinkedinLeftovers(storage, {fetchImpl = globalThis.fe
     try { out.rows += db.exec(`DELETE FROM cookies WHERE ${LINKEDIN_HOST}`); } finally { db.close(); }
   }
   return out;
+}
+
+/**
+ * At app start: sweep the LinkedIn leftovers and hold every hidden-browser start until that sweep is done, as one step so the two cannot come apart
+ * (#3717 Gitar review: the sweep ran unawaited and a browser could start during it). `log(area, message, fields)`. -> the sweep's promise; it never rejects.
+ */
+export function sweepBeforeAnyStart(storage, log, options = {}) {
+  const swept = sweepLinkedinLeftovers(storage, options).then(
+    done => { if (done.rows || done.readFolder === 'removed') log('linkedin-jobs', 'leftover session removed', done); return done; },
+    error => { log('linkedin-jobs', 'leftover sweep failed', {error: error.message}); return null; });
+  holdStartsUntil(swept);
+  return swept;
 }
 
 function openSqlite(file) {

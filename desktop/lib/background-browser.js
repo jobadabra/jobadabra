@@ -10,6 +10,7 @@ import {writePrivate} from './private-file.js';
 import {findBackgroundBrowser} from './background-browser-download.js';
 import {tabOfSession} from './session-tab.js';
 import {startReaper} from './browser-reaper.js';
+import {killTree} from './kill-tree.js';
 
 // Why (2026-10-28, e2e proof of Background automation): the test forms use real site names (boards.greenhouse.io), so the hidden browser under e2e must be
 // pointed at the fixture server or it would reach the real sites. The harness passes a JSON list in JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS; it counts only with
@@ -220,8 +221,8 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     if (!ownChild) return !live || within(10000, async () => !(await connect().catch(() => null)));
     if (await within(10000, exited)) return true;
     // Why (#3717 Gitar review, 10 Nov 2026): a browser that does not close keeps the LinkedIn session's folder open; the one this app started is ended with its helpers
-    // (it leads its own process group: spawned detached), so its folder can be deleted at once instead of waiting for the next app start.
-    try { if (process.platform === 'win32') ownChild.kill('SIGKILL'); else process.kill(-ownChild.pid, 'SIGKILL'); } catch { /* it ended meanwhile */ }
+    // (its whole tree: helpers hold the folder's files on Windows), so its folder can be deleted at once instead of waiting for the next app start.
+    killTree(ownChild, {signal: 'SIGKILL'});   // Windows: taskkill /T (its helpers too); elsewhere its process group
     return within(5000, exited);
   }
   // wake(): the owned worker polls the app now (extension/background-apply.js poll), for a queued Jobs-check read or queued applications; true when the app acknowledged that poll.
