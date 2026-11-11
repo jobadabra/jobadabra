@@ -29,6 +29,21 @@ from .providers.schema import parse_json, problems, without_limits  # noqa: F401
 ENGINES = tuple(providers.ENGINES)
 
 
+def at_once(env=None):
+    """How many AI calls the chosen engine runs at once: Claude Code's slots (PARALLEL, 4), Codex's (2); an API engine (your key, Free AI) has no slot queue,
+    so a step's own threads are its limit and it keeps Claude Code's number. Why (sa, 11 Nov 2026, owner: "we can either use Claude, Either Codex, either Free AI"):
+    every step sized its threads and planned its rounds on Claude Code's 4 whatever the engine, so on Codex's 2 slots the title sort alone could hold both."""
+    if providers.choice(env) == 'codex':
+        from .providers import codex_cli
+        return codex_cli.PARALLEL
+    return PARALLEL
+
+
+def queued(env=None):
+    """True when the chosen engine serves its calls from one priority queue of slots (src/ai/slots.py: Claude Code, Codex); an API engine takes every call at once."""
+    return providers.choice(env) in ('cli', 'codex')
+
+
 def missing_text(env=None):
     return providers.spec(env).missing
 

@@ -222,7 +222,7 @@ class Clock:
 
     def scored_beside(self):
         """A scorer runs beside this search (src/press/scorer.py): the title sort keeps no seconds for it and plans its rounds on all the time left, to the run's
-        end (TAIL); a waiting score still takes the next free AI slot first (src/ai/slots.py SCORE before TITLES).
+        end (TAIL); a title batch takes the next free AI slot before a waiting score (src/ai/slots.py TITLES before SCORE), on half the slots (title_triage._workers).
         Why (sa, 11 Nov 2026, CI run 43020224640 p10): the 70 s kept after the titles (RESERVE, 26 Oct) and their fifth of the time (SHARE) date from when
         scoring ran after the sort; since the scorer runs beside it (#3649, #3685) they stopped title calls at 95 s of 180 with AI slots free: 81 local
         titles waited at 116 s, and one batch of 30 that did run took 4.7 s and gave 12 jobs."""
