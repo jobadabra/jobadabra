@@ -72,15 +72,6 @@ class LetterChoicePlaces(unittest.TestCase):
         self.assertIn('krakow', client.asked, 'the city was asked about, as "krak[oó]w" was dropped before')
         self.assertEqual(calls[:2], ['pl21', 'pl'], f'the region first, the country last: {calls}')
 
-    def test_jooble_sees_the_city_too(self):
-        asked = []
-
-        def get(url, body=None, headers=None, **kw):
-            asked.append(json.loads(body)['location'])
-            return {'jobs': []}
-        with mock.patch.dict(os.environ, {'JOOBLE_API_KEY': 'key'}):
-            aggregators.jooble({**SEARCH, 'jobs_board_search_queries': ['chef']}, get=get)
-        self.assertEqual(set(asked), {'krakow'}, 'one query for the city\'s first spelling, not none and not both')
 
 class EveryReaderOfPlacesSeesTheCity(unittest.TestCase):
     """Review of the first version: readers still on terms() dropped the same fragment (jobs.ch asked all of Switzerland, the place triage had no city)."""
@@ -101,7 +92,7 @@ class EveryReaderOfPlacesSeesTheCity(unittest.TestCase):
             context = desktop_visits._visit_context(None, {})[0]
         self.assertEqual(context['places_first'], ['geneve', 'genève'])
 
-    def test_adzuna_keeps_the_swiss_market_for_a_pattern_with_no_plain_reading(self):
+    def test_the_users_countries_keep_the_swiss_market_for_a_pattern_with_no_plain_reading(self):
         for fragment in ('(zurich|bern|basel)', '\\b(zurich|z[uü]rich)\\b', 'zurich.*'):
             with mock.patch.object(places, 'countries', lambda search, limit=10: []):
                 self.assertIn('ch', aggregators._countries({'locations': {'top_tier': [fragment]}}), fragment)

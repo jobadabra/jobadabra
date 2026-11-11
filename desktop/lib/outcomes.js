@@ -30,7 +30,7 @@ export function anonymous({url, outcome, appliedOn}, now = Date.now()) {
 // Job boards and aggregators the app reads besides the ATS feeds (src/sources/*): a source kind of their own, so the product can see which
 // ones give useful jobs. Fixed names only.
 const SOURCE_HOSTS = [['jobsch', /(^|\.)jobs\.ch$/], ['swissdevjobs', /swissdevjobs\.ch$/], ['techtree', /techtree\.dev$/], ['arbeitnow', /arbeitnow\.com$/],
-  ['himalayas', /himalayas\.app$/], ['jobicy', /jobicy\.com$/], ['adzuna', /adzuna\./], ['jooble', /jooble\.org$/], ['join', /(^|\.)join\.com$/],
+  ['himalayas', /himalayas\.app$/], ['jobicy', /jobicy\.com$/], ['join', /(^|\.)join\.com$/],
   ['workday', /myworkdayjobs\.com$/], ['umantis', /umantis\.com$/], ['abacus', /abaservices\.ch$/]];
 
 const median = list => { const sorted = [...list].sort((a, b) => a - b); return sorted.length ? sorted[Math.floor(sorted.length / 2)] : null; };

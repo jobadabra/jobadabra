@@ -37,7 +37,7 @@ class FeaturesTest(unittest.TestCase):
             self.assertEqual(google_jobs.api_key(), '')
 
     def test_a_parked_source_leaves_its_saved_key_unused(self):
-        # Owner, 26 Oct 2026: Google Jobs (SerpApi) parked with Adzuna, Jooble and Brave (src/features.py PARKED).
+        # Owner, 26 Oct 2026: Google Jobs (SerpApi) parked with Brave (src/features.py PARKED; Adzuna and Jooble were deleted on 11 Nov 2026).
         with mock.patch.dict(features.os.environ, {'SERPAPI_API_KEY': 'k', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': ''}):
             self.assertEqual(google_jobs.api_key(), '')
         with mock.patch.dict(features.os.environ, {'SERPAPI_API_KEY': 'k', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': 'google_jobs'}):

@@ -25,7 +25,7 @@ export function ownSecretsPresent(storage) {
   return {...present, ANTHROPIC_API_KEY: present.ANTHROPIC_API_KEY && !OURS.test(storage.secret('ANTHROPIC_API_KEY'))};
 }
 // Saved keys as dots plus their last 4 characters (never the key), for the ones that are the person's own.
-export function ownSecretHints(storage, names = ['ANTHROPIC_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY', 'OPENAI_API_KEY', 'BRAVE_SEARCH_API_KEY']) {
+export function ownSecretHints(storage, names = ['ANTHROPIC_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'OPENAI_API_KEY', 'BRAVE_SEARCH_API_KEY']) {
   const own = ownSecretsPresent(storage);
   return Object.fromEntries(names.filter(name => own[name]).map(name => [name, `${'•'.repeat(12)}${storage.secret(name).slice(-4)}`]));
 }

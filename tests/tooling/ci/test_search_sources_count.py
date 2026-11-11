@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'tools/persona-search'))
 import gate  # noqa: E402
 import sources_count as sc  # noqa: E402
 
-FREE = {'arbeitnow', 'himalayas', 'jobicy', 'jobs.ch', 'adzuna', 'jooble'}
+FREE = {'arbeitnow', 'himalayas', 'jobicy', 'jobs.ch'}
 
 
 def right(title, provider, kind, url='', also=(), company='Acme', location='Lyon'):
@@ -39,7 +39,7 @@ class Word(unittest.TestCase):
         cases = [(('EURES', 'job board', ''), 'eures'), (('x', 'job board', 'https://eures.europa.eu/jobs/1'), 'eures'),
                  (('LinkedIn Jobs', 'job board', ''), 'linkedin'), (('LinkedIn', 'employer feed', ''), 'employer_sites'),
                  (('Acme careers', 'employer feed', ''), 'employer_sites'), (('Himalayas', 'job board', ''), 'free_job_apis'),
-                 (('Jooble', 'job board', ''), 'free_job_apis'), (('Job boards found', 'job board', ''), 'job_boards'), (('Some board', 'job board', ''), 'job_boards'),
+                 (('Arbeitnow', 'job board', ''), 'free_job_apis'), (('Job boards found', 'job board', ''), 'job_boards'), (('Some board', 'job board', ''), 'job_boards'),
                  (('Indeed alert', 'job board', ''), 'other'), (('odd', 'something new', ''), 'other'),
                  (('mine', 'you', ''), None), (('mine', 'manual', ''), None), (('Imported link', 'job board', ''), None)]
         for (name, kind, url), want in cases:
@@ -48,8 +48,8 @@ class Word(unittest.TestCase):
     def test_without_the_reader_list_a_free_api_is_never_guessed(self):
         self.assertEqual(sc.word('Himalayas', 'job board', '', None), 'job_boards')
 
-    def test_the_parked_free_apis_are_in_the_engines_list(self):
-        self.assertTrue({'adzuna', 'jooble', 'himalayas'} <= (sc.free_api_names() or set()), 'read from src/sources/aggregators.py, parked readers included')
+    def test_the_free_apis_are_in_the_engines_list(self):
+        self.assertTrue({'arbeitnow', 'himalayas', 'jobicy'} <= (sc.free_api_names() or set()), 'read from src/sources/aggregators.py')
 
 
 class Count(unittest.TestCase):
@@ -111,6 +111,22 @@ class Files(unittest.TestCase):
             self.assertEqual(json.loads(Path(good, 'result.json').read_text(encoding='utf-8'))['sources']['eures']['right'], 1)
             for folder in (odd, empty):
                 self.assertNotIn('sources', json.loads(Path(folder, 'result.json').read_text(encoding='utf-8')), 'nothing claimed for a row it could not read')
+
+    def test_the_verdict_rows_carry_what_the_admin_reads(self):
+        """11 Nov 2026: sources_count.py wrote `sources` on each result, gate.compare built rows from a fixed field list without it, and the Admin Sources card
+        (it reads verdict rows) said "No run has sent per-source counts". One loop over the fields the Admin reads: each one a result carries must reach its row."""
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp, 'search-personas-p1')
+            folder.mkdir()
+            self.write(folder, 'result.json', {'persona': 1, 'step_yield': [], 'counters': {'sites': 1}, 'relevant_sources': {'other': 1}, 'place': {'yes': 1}, 'role': {'yes': 1}})
+            self.write(folder, 'judged.json', {'rows': [right('Cook', 'Acme', 'employer feed')]})
+            sc.annotate(tmp)
+            result = json.loads(Path(folder, 'result.json').read_text(encoding='utf-8'))
+        row = gate.compare({1: result}, [])['rows'][0]
+        for field in ('sources', 'step_yield', 'counters', 'relevant_sources', 'place', 'role'):
+            self.assertIsNotNone(result.get(field), f'the fixture result carries {field}')
+            self.assertEqual(row[field], result[field], f'the verdict row passes {field} on to the Admin')
+        self.assertEqual(row['sources']['employer_sites']['right'], 1)
 
     def test_the_night_step_is_report_only(self):
         text = (ROOT / '.github/workflows/search-personas.yml').read_text(encoding='utf-8')

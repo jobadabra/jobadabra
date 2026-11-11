@@ -34,7 +34,7 @@ def next_sql():
     number = max(int(p.name[:4]) for p in MIGRATIONS.glob('[0-9][0-9][0-9][0-9]_*.sql')) + 1
     return MIGRATIONS / f'{number:04d}_meanings_seed.sql'
 REMOVED = '4df410c^'   # the last commit with the mail/calendar/round lists, before they became AI decisions
-PLACES = '10893d2'     # the place and role lists of the pool, Adzuna and Google Jobs, before they became AI decisions
+PLACES = '10893d2'     # the place and role lists of the pool and Google Jobs, before they became AI decisions
 PAGES = 'feb9595'      # the careers-page and job-site word lists (careers.py, boards.py, visits.py), before they became pack rows
 KINDS = 'e35860b'      # the kinds of role (role_kinds.py) and the tech words (coverage.py), before they became AI decisions
 
@@ -118,7 +118,7 @@ def rows():
     for topic, path, name in (('pool-country', 'src/pool_tags.py', 'COUNTRIES'), ('pool-metro', 'src/pool_tags.py', 'METROS'),
                               ('pool-family', 'src/pool_tags.py', 'FAMILIES'), ('pool-role', 'src/contribute.py', 'ROLES'),
                               ('pool-region', 'src/contribute.py', 'REGIONS'), ('job-region', 'src/contribute.py', 'REGIONS'),
-                              ('place-country', 'src/sources/aggregators.py', 'ADZUNA_COUNTRIES')):
+                              ('place-country', 'src/sources/aggregators.py', 'COUNTRY_NAMES')):
         for answer, pattern in assigned(PLACES, path, name).items():
             add(topic, pattern, answer, f'{path.rsplit("/", 1)[1]} {name}')
     add('job-region', assigned(PLACES, 'src/contribute.py', 'REMOTE'), 'remote', 'contribute.py REMOTE')

@@ -81,9 +81,6 @@ FEATURES = (
             'on in the installed app (desktop/lib/eures-on.js sets JOBADABRA_EURES=1); off from source and on CI, so our own sources are measured without it'),
     Feature('found_boards', 'Job boards found for your countries and roles: the AI proposes them once, their public search pages are read', (AI,), 'paid',
             'on with the AI key (one main-model call when your places or roles change); JOBADABRA_DISABLE=found_boards turns it off'),
-    Feature('adzuna', 'Adzuna job search (19 countries incl. Switzerland)', ('ADZUNA_APP_ID', 'ADZUNA_APP_KEY'), 'free tier',
-            'parked: JOBADABRA_ENABLE=adzuna with free keys from developer.adzuna.com'),
-    Feature('jooble', 'Jooble job search', ('JOOBLE_API_KEY',), 'free tier', 'parked: JOBADABRA_ENABLE=jooble with a free key from jooble.org/api/about'),
     Feature('job_alerts', 'Jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail', ('GOOGLE_REFRESH_TOKEN', AI), 'paid',
             'parked: JOBADABRA_ENABLE=job_alerts with Gmail connected and job alerts switched on at those sites; a fraction of a cent per alert email'),
 )
@@ -91,11 +88,11 @@ BY_NAME = {f.name: f for f in FEATURES}
 
 # Parked: off for everyone, and hidden in the app (index.html data-parked="<name>"), until listed in JOBADABRA_ENABLE.
 # job_alerts (owner, 26 Oct 2026): "let's park/disable/hid this functionality for now. It's too advanced."
-# adzuna, jooble, google_jobs, brave_search (owner, 26 Oct 2026, the Adzuna and Jooble card): "let's hide/disable this functionality for noow. Is to
-# hadr to use for my users." Each asks the user to register for an API key; a key already saved stays in the Keychain, unused. Web search itself is
+# google_jobs, brave_search (owner, 26 Oct 2026, the key cards): "let's hide/disable this functionality for noow. Is to hadr to use for my users."
+# Each asks the user to register for an API key; a key already saved stays in the Keychain, unused. (Adzuna and Jooble were deleted on 11 Nov 2026, owner.) Web search itself is
 # not parked: without a key it runs on the user's own plan (src/sources/web_search.py provider); only its Brave and SerpApi key paths are.
 # Guard: tests/guards/rules/test_parked_features.py (off, and no visible entry in the app, for every name here).
-PARKED = frozenset({'job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'})
+PARKED = frozenset({'job_alerts', 'google_jobs', 'brave_search'})
 
 
 def disabled_names(env=None):

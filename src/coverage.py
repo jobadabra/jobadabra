@@ -202,14 +202,12 @@ def verdict(summary, keywords=(), locations=(), excludes=None, by_ai=False, extr
 SOURCES = (
     {'id': 'brave', 'name': 'Web search (Brave)', 'effort': 'A free key, about 2 minutes', 'gain': "finds employers' own job sites when their name leads nowhere",
      'unused': lambda env: not env.get('BRAVE_SEARCH_API_KEY') and not _claude_code(env)},
-    {'id': 'aggregators', 'name': 'Adzuna and Jooble', 'effort': 'Two free keys, about 3 minutes', 'gain': 'job search engines across all trades and countries',
-     'unused': lambda env: not ((env.get('ADZUNA_APP_ID') and env.get('ADZUNA_APP_KEY')) or env.get('JOOBLE_API_KEY'))},
     {'id': 'serpapi', 'name': 'Google Jobs (SerpApi)', 'effort': 'A free key (250 searches a month); paid plans beyond', 'gain': 'jobs Google has collected from every site, LinkedIn included',
      'unused': lambda env: not env.get('SERPAPI_API_KEY')},
 )
 
 
-# Owner, 24 Oct 2026: "too much overhead, of configuration for the user"; the in-house scout and search do well without these keys. The three rows are not
+# Owner, 24 Oct 2026: "too much overhead, of configuration for the user"; the in-house scout and search do well without these keys. The two rows are not
 # offered anywhere while this is False (desktop/renderer/key-sources.js is the app's copy; desktop/test/key-sources.test.js ties them). A key already set still works.
 KEY_SOURCES_OFFERED = False
 
@@ -219,7 +217,7 @@ def _claude_code(env):
     return (env.get('JOBADABRA_AI_ENGINE') or '').lower() in ('cli', 'codex')
 
 
-BOARDS_OF = {'aggregators': ('adzuna', 'jooble'), 'serpapi': ('google_jobs',)}   # a source here -> its board ids in the shared pool
+BOARDS_OF = {'serpapi': ('google_jobs',)}   # a source here -> its board ids in the shared pool
 PEOPLE_MIN = 3   # people like you behind a rate, at least
 
 

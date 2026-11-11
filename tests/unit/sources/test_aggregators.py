@@ -185,24 +185,12 @@ class AggregatorTests(unittest.TestCase):
         report = aggregators.scan(db, {}, NOW, readers=[('Jobicy', cut), ('Arbeitnow', lambda search: [])])
         self.assertEqual([(s['company'], s['ok']) for s in report['sources']], [('Jobicy', False), ('Arbeitnow', True)])
 
-    def test_keyed_sources_only_with_their_keys_and_free_ones_can_be_switched_off(self):
+    def test_the_free_sources_can_be_switched_off_and_eures_is_the_installed_app_only(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
         self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found'], 'EURES only in the installed app (owner, 10 Nov 2026)')
-        keys = {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j', 'JOBADABRA_EURES': '1'}
-        # Parked (owner, 26 Oct 2026; src/features.py PARKED): saved keys are not used until JOBADABRA_ENABLE names the source.
-        self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
-        keys['JOBADABRA_ENABLE'] = 'adzuna,jooble'
-        self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found', 'Adzuna', 'Jooble'])
+        self.assertEqual(names({'JOBADABRA_EURES': '1'}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
         self.assertNotIn('Job boards found', names({'JOBADABRA_DISABLE': 'found_boards'}))
-        self.assertEqual(names({'JOBADABRA_DISABLE': 'aggregators', 'JOOBLE_API_KEY': 'j', 'JOBADABRA_ENABLE': 'jooble'}), ['Jooble'])
-
-    def test_adzuna_asks_per_country_of_your_places(self):
-        asked = []
-        search = {'role_keywords': ['devops'], 'locations': {'top_tier': ['\\bz[uü]rich\\b'], 'country_wide': [], 'abroad': ['\\blondon\\b']}}
-        known = {'london': {'kind': 'city', 'countries': ['United Kingdom']}}   # what the AI said (src/places.py); Zürich: the Swiss table
-        with mock.patch.dict('os.environ', {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k'}), mock.patch('src.places.load', return_value=known):
-            aggregators.adzuna(search, lambda url: asked.append(url) or {'results': []})
-        self.assertEqual([u.split('/jobs/')[1].split('/')[0] for u in asked], ['ch', 'gb'])
+        self.assertEqual(names({'JOBADABRA_DISABLE': 'aggregators'}), [])
 
 
 class LocalLanguageTests(unittest.TestCase):

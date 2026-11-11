@@ -8,9 +8,9 @@ import path from 'node:path';
 import {twinSecret} from './twin.js';
 import {writePrivate} from './private-file.js';
 
-// Why (#3122, 3 Nov 2026, owner): JOBADABRA_REPO_TRIAL_KEY is the repo key (JPT1.…) that GitHub's Always on sends instead of the Free AI key. It is written by
+// Why (#3122, 3 Nov 2026, owner; list trimmed 11 Nov 2026 when Adzuna and Jooble were deleted): JOBADABRA_REPO_TRIAL_KEY is the repo key (JPT1.…) that GitHub's Always on sends instead of the Free AI key. It is written by
 // ensureRepoKey() and read by payload() through the constant REPO_KEY (lib/ai-free.js, lib/github.js), so a text search for the literal name finds only this line.
-export const SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'BRAVE_SEARCH_API_KEY', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY', 'EXTENSION_TOKEN', 'GITHUB_TOKEN', 'REPORT_TOKEN', 'CLOUDFLARE_API_TOKEN', 'JOBADABRA_TRIAL_KEY', 'JOBADABRA_REPO_TRIAL_KEY',
+export const SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'SERPAPI_API_KEY', 'BRAVE_SEARCH_API_KEY', 'EXTENSION_TOKEN', 'GITHUB_TOKEN', 'REPORT_TOKEN', 'CLOUDFLARE_API_TOKEN', 'JOBADABRA_TRIAL_KEY', 'JOBADABRA_REPO_TRIAL_KEY',
   'DESKTOP_AI_TOKEN_HASH', 'DESKTOP_AI_PAIR'];   // the last two: lib/desktop-ai-pairing.js (the hash of the paired token and of a one-time code; never a token)
 
 export function createStorage(dir, crypto) {

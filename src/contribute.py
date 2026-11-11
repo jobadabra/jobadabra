@@ -23,13 +23,13 @@ EVERY = timedelta(0)   # no wait: shared as it is produced (owner, 6 Oct 2026; w
 MAX_FEEDS = 2000   # every feed a check read (7 Oct 2026); the most useful first, so a cut drops the quietest
 
 # Job boards and other non-employer sources, by fixed id (a run's own names can carry a search or a place: never sent).
-BOARDS = {'jobs.ch': 'jobsch', 'Arbeitnow': 'arbeitnow', 'Himalayas': 'himalayas', 'Jobicy': 'jobicy', 'Adzuna': 'adzuna', 'Jooble': 'jooble',
+BOARDS = {'jobs.ch': 'jobsch', 'Arbeitnow': 'arbeitnow', 'Himalayas': 'himalayas', 'Jobicy': 'jobicy',
           'Google Jobs': 'google_jobs', 'LinkedIn alerts': 'alerts_linkedin', 'jobs.ch alerts': 'alerts_jobsch', 'jobup.ch alerts': 'alerts_jobup',
           'Indeed alerts': 'alerts_indeed', 'Glassdoor alerts': 'alerts_glassdoor'}
 
 
 def board_id(name):
-    """The fixed id of a run source name ('Google Jobs: photographe / Genève' -> 'google_jobs', 'Adzuna CH' -> 'adzuna'), or None."""
+    """The fixed id of a run source name ('Google Jobs: photographe / Genève' -> 'google_jobs', 'Arbeitnow DE' -> 'arbeitnow'), or None."""
     base = str(name or '').split(':')[0].strip()
     base = f'{base}s' if base.endswith(' alert') else base   # the job store names alert jobs "LinkedIn alert"
     for known, ident in BOARDS.items():

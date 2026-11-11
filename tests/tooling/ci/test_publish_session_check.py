@@ -13,7 +13,7 @@ spec.loader.exec_module(publish)
 
 LOG = '''[66s] Job boards proposed for Croatia: MojPosao, Posao.hr
 [107s] Job boards found: MojPosao 34 job(s), 0 relevant
-[113s] Job boards found: Jooble Hrvatska 0 job(s), 0 relevant (refuses automated reading: offered as a visit)
+[113s] Job boards found: MojPosao Hrvatska 0 job(s), 0 relevant (refuses automated reading: offered as a visit)
 [166s] Job boards found: MojPosao 33 job(s), 0 relevant
 [298s] Job boards found: Posao.hr read from its own section (23 relevant against 2)
 [298s] Job boards found: Posao.hr 95 job(s), 23 relevant
@@ -27,7 +27,7 @@ class PublishTests(unittest.TestCase):
         found = {board['name']: board for board in publish.boards(LOG)}
         self.assertEqual((found['MojPosao']['listed'], found['MojPosao']['relevant']), (33, 0))
         self.assertEqual((found['Posao.hr']['listed'], found['Posao.hr']['relevant'], found['Posao.hr']['note']), (95, 23, 'own section read'))
-        self.assertIn('refuses automated reading', found['Jooble Hrvatska']['note'])
+        self.assertIn('refuses automated reading', found['MojPosao Hrvatska']['note'])
         self.assertNotIn("Töö24", found, 'a board that cannot be reached has no counts')
 
     def test_the_row_carries_counts_and_boards_only(self):
