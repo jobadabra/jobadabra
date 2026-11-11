@@ -38,6 +38,9 @@ A level, when given, is the seniority they want: leave out a title plainly far f
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
 Owner" is no pilot). When unsure, include it: a later step scores each job."""
 
+PROMPT = hashlib.sha1(SYSTEM.encode()).hexdigest()[:12]   # the SYSTEM a search's kept answers were sorted under (_current)
+STAMP = '#PROMPT'   # its key inside a search's entry: a kept title is lower-cased (_norm), so never this
+
 # Why (27 Oct 2026, owner "Ask again before closing"; quality run 40508145728): Free AI said no to 'Staff Platform Engineer, Kubernetes' and 'Cloud Infrastructure
 # Engineer' for an SRE/platform search after both were scored and listed; the sort's no closed them before their facts were read. A no on a title that holds
 # one of the search's own role words is asked once more, alone; the job leaves only when both say no.
@@ -68,7 +71,21 @@ batch_scope.watch('titles_store', _load)
 
 def known(search):
     """{title: True/False} decided for this search so far (for readers side by side: as it was when they began, src/ai/batch_scope.py)."""
-    return batch_scope.view('titles_store', _load).get(_key(search)) or {}
+    return _current(batch_scope.view('titles_store', _load).get(_key(search)))
+
+
+def _current(entry):
+    """A search's kept answers that still hold under this SYSTEM: all of them when its stamp is this PROMPT, else only its no's (the yes's are asked again).
+    Why (Gitar on #3803, 11 Nov 2026): answers are kept per search, not per prompt, so a title an install sorted yes under the old SYSTEM stayed listed and the new
+    leave-out examples reached only titles never seen. That change only adds leave-out cases, so a kept no stays a no; a SYSTEM change that lets more titles in must drop the no's here too."""
+    entry = entry or {}
+    fresh = entry.get(STAMP) == PROMPT
+    return {title: fits for title, fits in entry.items() if title != STAMP and (fresh or fits is False)}
+
+
+def _stamped(entry, decided):
+    """The entry kept for a search after a sort: what still holds (_current), this run's answers, and this SYSTEM's stamp."""
+    return {**_current(entry), **decided, STAMP: PROMPT}
 
 
 def _may_start(batch, mine, forced):
@@ -198,13 +215,14 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         _second_look(client, ask, decided, search, words, mine, forced)
     with LOCK:
         data = _load()
-        data[key] = {**(data.get(key) or {}), **decided}
+        data[key] = _stamped(data.get(key), decided)
         for old in list(data)[:-3]:   # the last few searches only
             data.pop(old)
         STORE.parent.mkdir(parents=True, exist_ok=True)
         STORE.write_text(json.dumps(data, ensure_ascii=False))
     if batch_scope.active():   # this reader's own answers, for its next call
-        batch_scope.view('titles_store', _load).setdefault(key, {}).update(decided)
+        view = batch_scope.view('titles_store', _load)
+        view[key] = _stamped(view.get(key), decided)
     asked = [t for t in ask if t in decided]
     if late[0]:
         print(budget.left_line('titles', late[0], 'title(s)'), flush=True)
