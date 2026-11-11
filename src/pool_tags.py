@@ -61,20 +61,24 @@ def places(texts):
     return found, metros
 
 
+COUNTRY_TASK = 'A place a job seeker searches in. Answer the country it is in.'
+
+
 def countries(texts):
     """The countries these place words name, as fixed-list ids: a search's places, or where an employer's jobs are (the central scout's
     kind × country coverage, 19 Oct 2026). Each place is asked once and kept (src/ai/decide.py)."""
     return countries_read(texts)[0]
 
 
-def countries_read(texts):
-    """(countries, unanswered): countries' ids, and the place words no table, cache or AI answered this run (the central scout keeps an earlier answer for those)."""
+def countries_read(texts, ask=None):
+    """(countries, unanswered): countries' ids, and the place words no table, cache or AI answered this run (the central scout keeps an earlier answer for those).
+    `ask(texts)` -> (ids, unanswered) answers the words the tables do not; none: the pool-country AI question (the scout passes its own place answers, src/scout_kind_counts.py)."""
     from . import places as places_
     cache = places_.load()
     swiss = {t for t in texts if places_.in_switzerland(t, cache)}
     # a region is every country it covers, each the same (26 Oct 2026: "europe" was labelled 'ch' alone)
     regions = {t: {code for name in places_.region_countries(t, cache) for code, known in COUNTRIES.items() if known == name} for t in texts}
-    asked, unanswered = meanings.labels_read('pool-country', texts, COUNTRIES, 'A place a job seeker searches in. Answer the country it is in.')
+    asked, unanswered = (ask or (lambda rest: meanings.labels_read('pool-country', rest, COUNTRIES, COUNTRY_TASK)))(texts)
     found = sorted({*(['ch'] if swiss else []), *(code for codes in regions.values() for code in codes), *asked})
     answered = {t.strip() for t in texts if t in swiss or regions.get(t)}   # labels_read strips its texts
     return found, [t for t in unanswered if t not in answered]

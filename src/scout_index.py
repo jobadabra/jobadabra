@@ -12,7 +12,7 @@ from collections import Counter
 from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
-from . import contribute, pool_tags, regions, scout_carry, scout_kind_counts, scout_title_seed
+from . import contribute, geo, pool_tags, regions, scout_carry, scout_kind_counts, scout_title_seed
 from .notion import cron_runs
 from .sources import ats, careers, feeds
 from .scout_core import OUTCOMES, ensure_tables, _get_text, clean_name, key_for, now
@@ -179,7 +179,7 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             # answer. Why (6 Nov 2026, owner: "coverage is still empty"): a capped or cache-less re-read rebuilt 3,614 entries without their countries.
             entry.update(scout_carry.answer_fields({
                 'regions': contribute.regions_read([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else [])),
-                'countries': pool_tags.countries_read(entry['places'])}, judged_before.get((system, slug), {}) if jobs else {}))
+                'countries': pool_tags.countries_read(job_places(jobs, width=geo.KEY_WIDTH), scout_kind_counts.country_ids)}, judged_before.get((system, slug), {}) if jobs else {}))
             # What it hires for, and per country: installs read one with jobs of their kind there.
             # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
             entry.update(scout_carry.mix_fields(*scout_kind_counts.of_jobs(jobs), judged_before.get((system, slug), {}) if jobs else {}))

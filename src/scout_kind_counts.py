@@ -31,6 +31,23 @@ def places(locations):
     return known
 
 
+def country_ids(texts):
+    """(country ids, unanswered texts) of these place words, from the same place answers the kind counts use (`places`: the cache, the shared pack, then the scout's AI
+    within its calls), so a place is judged once. A remote or unknown answer is an answer with no country. A word no place answer covers (the run's calls used, or the AI
+    gave none) still gets what the pool-country pack knows (the old lists and what installs taught it), as before; only that question's AI call is the one that is gone.
+    Why (sk 2/4, 11 Nov 2026): the same place words were also judged by the pool-country question, a second AI call each (12% of a run's calls); a place string is the
+    full location (the same key as the kind counts), never one cut to 60 characters (Gitar, #3812)."""
+    from .ai import meanings
+    texts = [t for t in dict.fromkeys(str(t).strip() for t in texts) if t]
+    where = places(texts)
+    ids = {str((where[geo.norm(t)] or {}).get('cc') or '').lower() for t in texts if geo.norm(t) in where and where[geo.norm(t)]['kind'] not in ('remote', 'unknown')}
+    left = [t for t in texts if geo.norm(t) not in where]
+    if left:
+        more, left = meanings.labels_read('pool-country', left, pool_tags.COUNTRIES, pool_tags.COUNTRY_TASK)
+        ids |= set(more)
+    return sorted(i for i in ids if i in pool_tags.COUNTRIES), left
+
+
 def sample(jobs):
     """Up to SAMPLE of these jobs, in list order: those whose own hash ranks first, so a list that alternates is seen whole (even steps would see one
     kind of it); every job of a smaller employer."""
