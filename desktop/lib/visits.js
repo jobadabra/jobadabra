@@ -345,10 +345,10 @@ function capPages(maxPages, pages, ticket, {jobs, added}) {
 // signal: Stop (lib/pipeline.js work): no further site opens, and the ones reading now end at once (their tabs are left as they are). maxPages: a site ends after that many pages (0 = the extension's own). Each result has `blocked`: 'login' | 'check' | ''.
 export async function runAll(sites, {hold = false, atOnce = 2, filter = true, tee = () => {}, openTab = open, waitMs = WAIT_MS, quietMs = QUIET_MS, siteMs = SITE_MS, prepare = null, signal = null, maxPages = 0} = {}) {
   const queue = [...sites], results = [];
-  const mine = new Set();   // this run's tickets still waiting, for Stop
+  const mine = new Map();   // this run's tickets still waiting -> what each read so far, for Stop
   signal?.addEventListener('abort', () => {
     queue.length = 0;
-    for (const ticket of mine) { const resolve = waiting.get(ticket); waiting.delete(ticket); resolve?.({stopped: 'Stopped by you', jobs: 0, added: 0}); }
+    for (const [ticket, sofar] of mine) { const resolve = waiting.get(ticket); waiting.delete(ticket); resolve?.({stopped: 'Stopped by you', ...sofar}); }   // Gitar on #3786: Stop keeps what was read too
   }, {once: true});
   taskTee = tee;
   let doneCount = 0;
@@ -366,7 +366,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     let openedAt = Date.now();   // a held board: from the person's Read (release below)
     let waitTimer = null, answered = false; const sofar = {jobs: 0, added: 0, pages: 0};   // Why (#3710): waitMs waits for the FIRST news only (a held board's: the person's Read); then quietMs/siteMs end it, and every end keeps what it read (LinkedIn's 40 s cut 33 s reads to 0)
     if (signal?.aborted) return {...site, start: chosen.url, ok: false, why: 'Stopped by you', jobs: 0, added: 0};
-    mine.add(ticket);
+    mine.set(ticket, sofar);
     if (hold) { held.set(ticket, () => { openedAt = Date.now(); clearTimeout(waitTimer); }); blocked.add(ticket); }   // "Read this board": waits for the person's Read, no clock runs
     const finished = new Promise(resolve => {
       waiting.set(ticket, resolve);
