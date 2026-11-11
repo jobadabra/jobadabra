@@ -38,6 +38,13 @@ on:
         type: choice
         options: ['small', 'small-high', 'mid', 'large']
         default: 'small'
+      # Why (11 Nov 2026, sa for the owner's "Did we decide if Luna is a too weak model for Find jobs ?"): a by-hand run can put the search's own AI steps (titles, places,
+      # scoring, job boards) on the mid tier (Codex gpt-6.1-sol) to compare with small on the same people; the judge stays as judge_tier says, and it is never a night.
+      search_tier:
+        description: "The search's AI steps: small (the night; Codex gpt-6-luna) or mid (gpt-6.1-sol) to measure it (never a night)"
+        type: choice
+        options: ['small', 'mid']
+        default: 'small'
       scheduled:
         description: 'The Worker started it (the name says so); leave off by hand'
         type: boolean
@@ -71,7 +78,10 @@ env:
   JOBADABRA_CHECK_CHAIN: ${{ inputs.chain || 'codex,claude' }}   # by hand, `chain: free-ai` runs every call on Free AI alone (its own series, never a night, owner 10 Nov 2026: one person first); Why (10 Nov 2026, owner on #3703: "Claude should be at any times a replacement. Free AI is good, except when we need higher intelligence models"): every call of the check (press, judge, reference, EURES comparison) on Codex, then Claude when Codex is out, never Free AI; each row counts its calls per engine (tools/persona-search/codex.mjs checkChain, gate.py)
   JOBADABRA_AI_CALL_LOG: '1'   # Why (7 Nov 2026, #2920): one run-log line per AI call (step, asked, slot wait, answered; src/ai/call_log.py) so a run says where the 2:15 clock went
   JOBADABRA_STAGE_LOG: '1'   # Why (10 Nov 2026, sa's plan WP3): one run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), links only; compare counts in = out from them
-  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
+  # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker for the night. A by-hand `search_tier: mid`
+  # (11 Nov 2026, owner: "Did we decide if Luna is a too weak model for Find jobs ?") moves every search step to the mid tier to measure it; the judge never reads this override.
+  JOBADABRA_MODEL_OVERRIDE: ${{ (inputs.search_tier || 'small') == 'mid' && 'claude-sonnet-5-5' || 'claude-haiku-5-5' }}
+  JOBADABRA_SEARCH_TIER: ${{ inputs.search_tier || 'small' }}
 
 jobs:
   # Why (10 Nov 2026, coordinator; escapes: 7 Nov 2026 four by-hand runs used the scheduled share, runs 42405227979 and 42418730931 measured nothing; 10 Nov 2026 run 42810522624 (eures_comparison, 18 x 2) hit
@@ -280,7 +290,7 @@ jobs:
   reference:
     name: EURES reference
     needs: [room, persona, again]   # after the second tries: one press or read at a time on the broker
-    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
+    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -393,7 +403,7 @@ jobs:
         if: always() && hashFiles('result/verdict.json') != '' && (inputs.presses || '2') != '5'   # the week keeps its own record, never floors
         env:
           GH_TOKEN: ${{ github.token }}
-          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small') && 'yes' || '' }}
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small') && 'yes' || '' }}
         run: |
           set +e
           python3 tools/persona-search/floors.py check result/verdict.json result/floors-state.json ${NIGHT:+--night} | tee -a result/table.md
@@ -408,7 +418,7 @@ jobs:
         if: always() && hashFiles('result/verdict.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}   # a run without the night's floors-state.json reads the open causes from refs/tags/search-floors (read only)
-          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small') && 'yes' || '' }}
+          NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small') && 'yes' || '' }}
         run: |
           set +e
           mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
@@ -420,10 +430,10 @@ jobs:
         with: {name: search-personas-floors-state, path: result/floors-state.json, retention-days: 7}
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: "${{ (inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small') && 'search-personas-result' || (inputs.presses || '2') == '5' && 'search-personas-weekly-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small') && 'search-personas-result' || (inputs.presses || '2') == '5' && 'search-personas-weekly-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
-        if: always() && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small'   # a by-hand subset or a 1-run look is not a night
+        if: always() && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small'   # a by-hand subset or a 1-run look is not a night
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -436,7 +446,7 @@ jobs:
       # Operations → Notifications), else the CI-alerts bot. Only the scheduled night tells (it alone moves the open causes; a by-hand run would tell them again);
       # a failed send never reds the night.
       - name: Tell the Engineering channel (G6)
-        if: always() && hashFiles('result/verdict.json') != '' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && github.ref == 'refs/heads/main'
+        if: always() && hashFiles('result/verdict.json') != '' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small' && github.ref == 'refs/heads/main'
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -446,7 +456,7 @@ jobs:
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node search-alert.mjs "$GITHUB_WORKSPACE/result/verdict.json"
       - name: Send the week to Admin → Job search → Finish line
-        if: always() && inputs.personas == '' && (inputs.presses || '2') == '5' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small'   # the whole 18 only, on the locked chain
+        if: always() && inputs.personas == '' && (inputs.presses || '2') == '5' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small'   # the whole 18 only, on the locked chain
         continue-on-error: true
         timeout-minutes: 2
         working-directory: desktop/e2e
@@ -460,7 +470,7 @@ jobs:
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - name: Red when a persona is below the earlier runs' range or a press is over 3 minutes
-        if: inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small'   # a by-hand subset or a 1-run look measures, it is no verdict
+        if: inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small'   # a by-hand subset or a 1-run look measures, it is no verdict
         env:
           CODE: ${{ steps.compare.outputs.code }}
           FLOORS: ${{ steps.floors.outputs.red }}
@@ -475,7 +485,7 @@ jobs:
   floors-save:
     name: Save the floors
     needs: compare
-    if: ${{ !cancelled() && needs.compare.result != 'skipped' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' }}   # a red night saves too: its below-streak is the state
+    if: ${{ !cancelled() && needs.compare.result != 'skipped' && inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small' }}   # a red night saves too: its below-streak is the state
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

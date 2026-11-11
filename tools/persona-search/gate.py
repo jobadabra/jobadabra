@@ -196,7 +196,8 @@ def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
     out = Path(out)
-    row = {'persona': int(n), 'label': label(n)}
+    # Why (11 Nov 2026, owner: "Did we decide if Luna is a too weak model for Find jobs ?"): a by-hand run on another search tier says so in its row; a night's row is unchanged.
+    row = {'persona': int(n), 'label': label(n), **({'search_tier': tier} if (tier := os.environ.get('JOBADABRA_SEARCH_TIER') or 'small') != 'small' else {})}
     press_billing = ''
     starved_wait = None
     press_usd = None   # None = the press's cost was not measured; never shown or counted as $0 (gitar on #2259)
