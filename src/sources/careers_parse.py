@@ -190,14 +190,28 @@ def _card_shape(path):
     return re.sub(r'\d{5,}', '#', path)
 
 
+def _query_shape(parts):
+    """The address with the long numbers of its query replaced by # and its other values dropped (/word/?name=#), '' when the query carries none: cards whose id
+    is a query value on one path.
+    Why (11 Nov 2026, #3835): a public employment service listed 84 carpenter jobs as /<word>/?<name>=<id>&<kind>; the path held no number,
+    so the board read 0 jobs."""
+    pairs = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+    if not any(re.fullmatch(r'\d{5,}', value) for _, value in pairs):
+        return ''
+    return parts.path + '?' + '&'.join(f'{name}=#' for name, value in pairs if re.fullmatch(r'\d{5,}', value))   # other values differ by card (its kind)
+
+
 def numbered_links(found, host, own):
-    """The links of a page that are one path shape with a different long number each (/word123456.html): a listing's cards, whatever the
-    site calls them. 18 Oct 2026: a job site listed 17 truck-driver jobs as /<word><id>.html; no word of ours matched, so the board read 0.
-    The biggest such group counts, when it has NUMBERED or more different ids; menus and categories carry no number."""
+    """The links of a page that are one address shape with a different long number each (/word123456.html, /word/?name=123456): a listing's
+    cards, whatever the site calls them. 18 Oct 2026: a job site listed 17 truck-driver jobs as /<word><id>.html; no word of ours matched,
+    so the board read 0. The biggest such group counts, when it has NUMBERED or more different ids; menus and categories carry no number.
+    Invariant: a link to the list's own path is never a card, whatever its query (a filter or an offset of the same list)."""
     groups = {}
     for url, _ in found:
         parts = urllib.parse.urlsplit(url)
         shape = _card_shape(parts.path)
+        if shape == parts.path:   # no number in the path: the id may be a value of the query
+            shape = _query_shape(parts) or shape
         if (parts.hostname or '').removeprefix('www.') != host or shape == parts.path or parts.path.rstrip('/') == own:
             continue
         groups.setdefault(shape, []).append(url.split('#')[0])
