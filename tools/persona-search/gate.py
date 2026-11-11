@@ -212,7 +212,7 @@ def result(n, out):
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row['eures'] = press.get('eures') or (press.get('funnel') or {}).get('eures')   # 'on'/'off' as run.mjs ran it (--with-eures); else the press's own 'off' line, else None (an older build)
-        row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press), step_yield=(press.get('funnel') or {}).get('step_yield'))
+        row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press), read=funnel_mod.step_read(press), step_yield=(press.get('funnel') or {}).get('step_yield'))
         if press.get('scored_in_places') is not None:   # a missing count stays unknown (read_of falls back to the judge's), never 0
             row['scored'] = int(press['scored_in_places'])
         cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
@@ -414,7 +414,7 @@ def compare(pr, main_runs):
         mark, why, kind = row_verdict(row)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'shown_local': (row or {}).get('shown_local'), 'shown_found': (row or {}).get('shown_found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
-                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources'), 'place': (row or {}).get('place'), 'role': (row or {}).get('role'),
+                     'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'read': (row or {}).get('read'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources'), 'place': (row or {}).get('place'), 'role': (row or {}).get('role'),
                      'sources': (row or {}).get('sources'), 'scout': (row or {}).get('scout')})   # Why (11 Nov 2026, owner: the Admin Sources card was empty): sources_count.py and scout_list.py set `sources` and `scout` on the result and the Admin reads rows, so a field left out here shows as "not sent"
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''

@@ -104,6 +104,15 @@ def step_counters(press):
     return {'eu': funnel.get('eu_jobs') or 0, 'sites': funnel.get('employer_sites_read') or 0, 'titles': funnel.get('titles_asked') or 0, 'ai': funnel.get('ai_calls') or 0, 'firstS': ttfr.get('first_in_places_s')}
 
 
+def step_read(press):
+    """What one search read for the Finish line's "What a search read" card (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Build as shown"): {listed: the jobs listed in the person's places (metrics.py local_jobs: the job's place
+    names their city or country, never worldwide remote), employers: the employers in their places (the funnel's employers_in_places)}, from the press row. Sites read and titles judged are already in step_counters. A number the press did
+    not write is None ("not sent yet" on the card), never 0: an employers line that never came is not "no employers"."""
+    funnel, listed = press.get('funnel') or {}, press.get('local_jobs')
+    employers = funnel.get('employers_in_places')
+    return {'listed': listed if type(listed) is int else None, 'employers': employers if type(employers) is int else None}
+
+
 def kinds():
     """The role kinds the search looked for (src/role_kinds.of_search, the engine's own answer, from its decision cache), or None outside an install."""
     import os
