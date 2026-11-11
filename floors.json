@@ -1,0 +1,281 @@
+{
+ "version": 1,
+ "series": {
+  "ade11f3ee9eb|codex,claude|eures-off": {
+   "people": {
+    "1": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "4": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "5": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        2
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        86
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "6": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        64
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "8": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        46
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "9": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        3
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        68
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "10": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        1
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        43
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "11": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        47
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "13": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "14": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        65
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "15": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        2
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        57
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "17": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "18": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        7
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-11",
+        71
+       ]
+      ],
+      "below": 0
+     }
+    }
+   },
+   "last_green": {
+    "run": "42927975750",
+    "sha": "c94a5aaa1eb1543e775a4dd6dfab5da10681b3a0"
+   }
+  }
+ }
+}
