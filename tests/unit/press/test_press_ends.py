@@ -3,7 +3,7 @@ Why (sf, 10-11 Nov 2026): the search ended at 135 s, but a scoring call still in
 or to the app's 175 s stop on CI (exit 143), and the employer finder lost its 45 s. The engine's own end, src/run_exit.py `finish` (src/__main__.py), waits
 for the open threads until the deadline and then exits without them, but it counted only non-daemon threads: the scorer runs in a daemon thread
 (src/daily_search_scoring.py), so the pool it opens (src/ai/score.py) got a daemon worker that `finish` did not see, while Python's exit
-(concurrent/futures/thread.py _python_exit) still joined it (lanes 2/5 counts it: src/run_exit.py held). Every place that leaves background work running when the search ends is one case of the
+(concurrent/futures/thread.py _python_exit) still joined it (lanes 2/5 counts it: src/run_exit.py holding). Every place that leaves background work running when the search ends is one case of the
 same class, so one loop plays them all: each child process starts the product's own work with a stand-in call that never returns by itself, ends
 its search as the product does, then ends the way the engine does (run_exit.finish) and must exit. Real time is fair here (a real process exit) but
 kept far from both sides: the deadline is 2 s, the call never returns, and the bound is 15 s after it."""
@@ -93,7 +93,7 @@ discovery = boards_beside.Beside(blocking)
 from src.sources import boards_ahead
 boards_ahead.Ahead({'roles': ['SRE']}, blocking)
 ''', ''),
-    'a pool with its own thread names, opened in a daemon thread (the shape behind the scorer: src/run_exit.py held)': ('''
+    'a pool with its own thread names, opened in a daemon thread (the shape behind the scorer: src/run_exit.py holding)': ('''
 from concurrent.futures import ThreadPoolExecutor
 
 def opener():

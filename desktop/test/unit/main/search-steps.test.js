@@ -131,5 +131,6 @@ test('the engine\'s plan and backlog lines do not make a search Partial; its "no
   assert.equal((await says('⏱ 3 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)')).endedByTime, false);
   assert.equal((await says('⏱ No time left in this refresh to score any: 12 jobs wait for the next one')).endedByTime, true);
   assert.equal((await says('⏱ 12 site read(s) still open at the run\'s time: the next search reads those sites')).endedByTime, true);
+  assert.equal((await says('⏱ 1 task(s) still running at the run\'s time (a call in flight or a pooled read): the next search redoes that work')).endedByTime, true);
   assert.equal((await says('⏱ Time is up for this refresh: 4 titles left for the next one (it stops at 3 min)')).endedByTime, true);
 });

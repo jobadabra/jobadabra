@@ -79,5 +79,11 @@ def finish(code):
     left = holding()
     if not left:
         return code
-    print(f"⏱ {len(left)} site read(s) still open at the run's time: the next search reads those sites", file=sys.stderr, flush=True)
+    workers = _pool_workers()
+    pooled = sum(1 for t in left if any(t is w for w in workers))
+    if len(left) > pooled:   # the app reads both lines as "ended by time" (desktop/lib/search-steps.js RAN_OUT)
+        print(f"⏱ {len(left) - pooled} site read(s) still open at the run's time: the next search reads those sites", file=sys.stderr, flush=True)
+    if pooled:   # Gitar on #3798: a scoring call in flight is no site read; its work is left for the next search
+        print(f"⏱ {pooled} task(s) still running at the run's time (a call in flight or a pooled read): the next search redoes that work",
+              file=sys.stderr, flush=True)
     leave(code)

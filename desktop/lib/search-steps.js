@@ -31,7 +31,7 @@ const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the
 // Why (27 Oct 2026, Gitar on #2285): the SIGTERM handler writes the row (a Notion call) and may wait EXIT_GRACE_S (3 s); the stop starts this long before 180 s
 // so the step is gone by the press's end.
 const STOP_MARGIN_S = 5;
-const RAN_OUT = /^⏱ (?:Time is up\b|No time left\b|\d+ site read\(s\) still open at the run's time)/;   // the engine's own ran-out-of-time lines, not its batch plans or backlogs
+const RAN_OUT = /^⏱ (?:Time is up\b|No time left\b|\d+ (?:site read\(s\) still open|task\(s\) still running) at the run's time)/;   // the engine's own ran-out-of-time lines, not its batch plans or backlogs
 const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
 
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {

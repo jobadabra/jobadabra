@@ -40,6 +40,16 @@ class HardStop(unittest.TestCase):
         self.assertIn('the exit handlers did not end within', run.stderr, run.stderr[-1500:])
         self.assertIn('an exit handler ran', run.stderr, 'the handlers registered after the hanging one ran first (atexit runs the last registered first)')
 
+    def test_a_call_in_flight_is_said_as_a_task_not_as_a_site_read(self):
+        """Why (Gitar on #3798, 11 Nov 2026): the scorer's call in flight is a pool worker, not a site read; the log said "site read(s)" for it."""
+        scoring = PROGRAM.replace("threading.Thread(target=lambda: time.sleep(30)).start()",
+                                  "from concurrent.futures import ThreadPoolExecutor\n"
+                                  "threading.Thread(target=lambda: ThreadPoolExecutor(1).submit(time.sleep, 30), daemon=True).start(); time.sleep(0.2)")
+        self.assertNotEqual(scoring, PROGRAM, 'positive control: the program opens a pool in a daemon thread, as the scorer does')
+        run = subprocess.run([sys.executable, '-c', scoring], capture_output=True, text=True, timeout=20)
+        self.assertIn('1 task(s) still running at the run\'s time', run.stderr, run.stderr[-1500:])
+        self.assertNotIn('site read(s)', run.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()
