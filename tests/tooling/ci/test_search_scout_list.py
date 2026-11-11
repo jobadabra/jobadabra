@@ -1,5 +1,5 @@
 """Guard: privacy — the night records what the Central Scout's list gave each person (scout measure, sm, 11 Nov 2026) from the press's cached list, which is private learned data and the
-night's artifacts are downloadable: tools/persona-search/scout_list.py may write counts and the publish id only, never an employer's name; it stops unless both of the persona's own folders are
+night's artifacts are downloadable: tools/persona-search/scout_list.py may write per-person counts only, never an employer's name or a list-wide number (feeds served, the publish id); it stops unless both of the persona's own folders are
 set (never the owner's app); and a person whose list or kind is unknown reads None, never 0."""
 import json
 import os
@@ -33,12 +33,13 @@ def judged(*rows):
 class Counts(unittest.TestCase):
     def test_n_k_and_why_the_rest_was_left_out(self):
         out = sl.split(FEEDS, here, {'trades'}, None)
-        self.assertEqual((out['served'], out['served_with_mix'], out['in_places'], out['for_role']), (4, 3, 3, 1))
+        self.assertEqual((out['in_places'], out['for_role']), (3, 1))
         self.assertEqual((out['kind_not_theirs'], out['no_kind_mix']), (1, 1), 'one employer the scout counted as not theirs, one it has not counted yet')
 
     def test_an_undecided_kind_is_not_measured_never_zero(self):
         out = sl.split(FEEDS, here, None, None)
         self.assertEqual((out['in_places'], out['kinds_known']), (3, False))
+        self.assertNotIn('served', out, 'a list-wide number never leaves the press')
         self.assertTrue(all(out[word] is None for word in ('for_role', 'kind_not_theirs', 'no_kind_mix')))
 
     def test_the_join_counts_right_jobs_of_listed_employers_in_memory(self):
@@ -70,7 +71,8 @@ class Written(unittest.TestCase):
         self.assertNotIn('Other Co', text)
         scout = json.loads(text)['scout']
         self.assertEqual(set(scout), set(sl.WORDS))
-        self.assertTrue(all(isinstance(value, (int, bool, str)) for value in scout.values()), 'counts, a flag and the publish id: nothing else leaves')
+        self.assertTrue(all(isinstance(value, (int, bool)) for value in scout.values()), 'per-person counts and a flag: nothing else leaves')
+        self.assertNotIn('2026-11-10', text, 'the publish id is list-wide: it stays out of the public artifact')
         self.assertEqual((scout['in_places'], scout['for_role'], scout['right_from_list']), (3, 1, 1))
 
     def test_no_cached_list_claims_nothing(self):

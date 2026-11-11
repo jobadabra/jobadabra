@@ -1,8 +1,9 @@
 """What the Central Scout's shared employer list gave one test person (scout measure, sm, owner 11 Nov 2026: "How much the Central Scout is helping us? Do we measure this ?").
-Sets `scout` on the person's result.json, counts only: the list served to the press, the employers of it in the person's places (N), the ones that hire for their kind of role (K),
-why N - K were left out (the scout knows their kind and it is not theirs, or it has not counted their kind yet: missing data, not a no), the publish id (`generated`), and the person's
-jobs and right jobs whose employer is on the list. It calls the engine's OWN functions (employer_index.relevant, role_kinds.fits) on the list the press cached, so the numbers are the ones
-the press logged ("Employers: K of N in your places"), also when K == N, where the log prints nothing.
+Sets `scout` on the person's result.json, per-person counts only: the employers of the list in the person's places (N), the ones that hire for their kind of role (K), why N - K were left out
+(the scout counted their kind and it is not theirs, or it has not counted their kind yet: missing data, not a no), and the person's jobs and right jobs whose employer is on the list. It calls the
+engine's OWN functions (employer_index.relevant, role_kinds.fits) on the list the press cached, so N and K are the numbers the press logged ("Employers: K of N in your places"), also when K == N,
+where the log prints nothing. List-wide numbers (feeds served, how many have a kind mix, the publish id) are NOT written: this repo is public and its artifacts are downloadable (sa, 11 Nov 2026);
+the site, which serves the list, knows them itself.
 Privacy (sa, 11 Nov 2026: the list is private learned data, the night's artifacts are downloadable): the employers' names are read in memory to join the person's jobs to the list and never
 written; only counts and the publish id leave this file. Safety: it reads the person's own temp folders (both JOBADABRA_DATA_DIR and JOBADABRA_CONFIG_DIR must be set, else it stops), makes no
 network or AI call, and a person it cannot read gets no `scout`, never zeros.
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-WORDS = ('served', 'served_with_mix', 'in_places', 'for_role', 'kind_not_theirs', 'no_kind_mix', 'kinds_known', 'generated', 'listed_from_list', 'right_from_list', 'employers_right_from_list', 'right_from_role')
+WORDS = ('in_places', 'for_role', 'kind_not_theirs', 'no_kind_mix', 'kinds_known', 'listed_from_list', 'right_from_list', 'employers_right_from_list', 'right_from_role')
 
 
 def key(feed):
@@ -27,7 +28,7 @@ def split(index, in_places, kinds, countries):
     (role_kinds.of_search) or None when not decided; countries: the person's countries. N, K and the split are the log's own numbers: relevant() with and without the kinds."""
     from src import employer_index, role_kinds
     places = employer_index.relevant(index, in_places)
-    out = {'served': len(index), 'served_with_mix': sum(1 for f in index if role_kinds.valid(f.get('kinds')) or role_kinds.valid_counts(f.get('kind_counts'))), 'in_places': len(places), 'for_role': None, 'kind_not_theirs': None, 'no_kind_mix': None, 'kinds_known': kinds is not None}
+    out = {'in_places': len(places), 'for_role': None, 'kind_not_theirs': None, 'no_kind_mix': None, 'kinds_known': kinds is not None}
     if kinds is None:
         return out
     kept = {key(f) for f in employer_index.relevant(index, in_places, kinds, countries=countries)}
@@ -48,7 +49,7 @@ def join(index, kept_names, judged):
 
 
 def measure(judged, env=None, places=None):
-    """-> {counts, generated, joined} for the person this process's folders belong to, or None when the press never cached a list. Reads the engine's own cache and decisions only."""
+    """-> the counts for the person this process's folders belong to, or None when the press never cached a list. Reads the engine's own cache and decisions only."""
     env = os.environ if env is None else env
     if not (env.get('JOBADABRA_DATA_DIR') and env.get('JOBADABRA_CONFIG_DIR')):
         raise SystemExit('scout_list: JOBADABRA_DATA_DIR and JOBADABRA_CONFIG_DIR must both be set to the persona\'s own folders')
@@ -70,7 +71,7 @@ def measure(judged, env=None, places=None):
     kept_names = set()
     if kinds is not None:
         kept_names = {store.label(f['company']).casefold() for f in employer_index.relevant(index, places, kinds, countries=me.get('countries'))}
-    return {**out, 'generated': cached.get('generated'), **join(index, kept_names, judged)}
+    return {**out, **join(index, kept_names, judged)}
 
 
 def annotate(result_path, judged_path, places=None):
