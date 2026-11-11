@@ -202,6 +202,16 @@ class Wiring(unittest.TestCase):
         self.assertIn('node search-alert.mjs', tell)
         self.assertLess(text.index('- name: A source lost (G6)'), text.index("path: result/floors-state.json, retention-days: 7"), 'the open causes are in the state before floors-save gets it')
 
+    def test_the_night_of_two_runs_is_the_night_g6_reads_and_tells(self):
+        """#3781 made a night 2 presses, but its rebase over #3770 left `inputs.presses != '2'` on G6's NIGHT and its Engineering card: every real night read as
+        not a night (its causes never opened) and never told the owner. Each night test is the one form `(inputs.presses || '2') == '2'`."""
+        text = (ROOT / '.github/workflows/search-personas.yml').read_text(encoding='utf-8')
+        self.assertNotIn("inputs.presses != ", text, 'a night is exactly 2 presses, the default')
+        lost = text[text.index('- name: A source lost (G6)'):text.index('- name: A source lost (G6)') + 900]
+        tell = text[text.index('- name: Tell the Engineering channel (G6)'):text.index("- name: The table in the run's summary")]
+        for step in (lost, tell):
+            self.assertIn("(inputs.presses || '2') == '2'", step)
+
 
 if __name__ == '__main__':
     unittest.main()
