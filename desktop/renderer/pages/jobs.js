@@ -141,7 +141,7 @@ async function showMore() {
 // then, without the loading state, so the counts move as it works (owner, 7 Oct 2026: "I want to see the 2971 decrease live").
 // Each scored job counts too (owner, 7 Oct 2026: the total stayed at 51 while a refresh scored), at most one read every RELOAD_MS, the last one
 // always made, so the number climbs as the refresh works.
-export const LIST_CHANGED = /^First jobs: [1-9]\d* (?:found|scored)|^Jobs so far: [1-9]\d* new|^Closed [1-9]\d* job\(s\)|^Job Matches: \d+ created, \d+ updated \(so far\)|^Scored [1-9]\d* of \d+ job\(s\)$/;
+export const LIST_CHANGED = /^First jobs: [1-9]\d* (?:found|scored)|^Jobs so far: [1-9]\d* new|^Closed [1-9]\d* job\(s\)|^Job Matches: \d+ created, \d+ updated \(so far\)|^Scored [1-9]\d* of \d+ job\(s\)$|^Score queue: done$/;
 export const RELOAD_MS = 10000;
 let quietReload = null, lastReload = 0, reloadLater = null;
 function reloadQuietly() {
@@ -254,7 +254,7 @@ async function runSearch(why) {
 /** A row's "Score" press: starts the scoring queue for the found jobs without a score (main: the 'refresh' channel's fixed reason 'score'); a refusal is said, never silent. */
 export async function startScoreQueue() {
   const result = await window.pilot.refresh({reason: 'score'}).catch(error => ({ok: false, error: error.message}));
-  if (refusal(result)) sayRefused(t('pagesJobsHelp.queueNotStarted'), result);
+  if (refusal(result)) sayRefused(t('pagesJobsHelp.queueNotStarted'), result, {place: {view: 'jobs'}});
   return result;
 }
 
@@ -370,7 +370,7 @@ export async function init() {
     keepRunLine(shared.logLines, line);   // as the app keeps it: the newest "Still running" of a row, the newest tick of each kind, every result
     refreshActivity();
     scoreQueueLine(line);   // the queue after a search: its state redraws the list (score-queue-state)
-    if (LIST_CHANGED.test(line) || line === 'Score queue: done') reloadQuietly();
+    if (LIST_CHANGED.test(line)) reloadQuietly();
   });
   // Running: its progress; done: the last Refresh jobs run itself, not whichever task happens to be running now.
   $('search-status').addEventListener('click', async () => {
@@ -386,10 +386,10 @@ export async function init() {
 
   wireProfileEmpty();
   wireScoreCall({find: () => $('refresh').click()});
-  document.addEventListener('rescore-state', () => renderJobs());
+  document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
   document.addEventListener('score-queue-state', () => renderJobs());
   document.addEventListener('score-found-ask', () => startScoreQueue());   // ⌘K "Score found jobs" (pages/nav.js)
-  shared.scoreFound = startScoreQueue;   // a row's "Score" press (pages/score-queue-draw.js)   // the call, the card and the muted rows follow the one state
+  shared.scoreFound = startScoreQueue;   // a row's "Score" press (pages/score-queue-draw.js)
   wireApplyDialog({startedApplying, openJob: openJobPanel});
   wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage, onStep: fn => window.pilot.onTriageStep?.(fn)});
 }

@@ -113,8 +113,9 @@ export function renderJobs() {
   // rows show "Not scored" and a friend took that for a bug (2 Oct 2026, a search whose AI calls had stalled).
   // A job whose place is unclear is not the AI failing: its row says why (unscoredWhy).
   const unscored = shared.allJobs.filter(job => job.fit == null && job.status === 'unreviewed' && !job.place_unclear).length;
-  paintScoreCall(unscored, searchingNow() || !!scoreQueue());   // while the queue after a search runs, its bar says it
-  paintQueueBar();   // the one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card
+  // The one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card. While the queue after a search runs, its bar says it instead.
+  paintScoreCall(unscored, searchingNow() || !!scoreQueue());
+  paintQueueBar();
   const body = $('jobs-body');
   body.replaceChildren();
   for (const job of rows) {

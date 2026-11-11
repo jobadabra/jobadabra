@@ -53,7 +53,7 @@ export const SCORE_QUEUE_END = 'Score queue: done';
  * Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"; "Keep 60, rest show 'Score' (Recommended)"): a search finds 170-280
  * jobs in a person's places and scored 9-32 of them in its 3 minutes; the rest waited for another press.
  * Invariant: its last line is SCORE_QUEUE_END however it ended (done, stopped, failed), so the window's queue state (renderer/pages/score-queue.js) always clears.
- * TODO(AI): a scoreVisits run going at the same moment is the same kind ('today') and this joins it instead of running (2026-11-11).
+ * Its row is of kind 'today' (a list refresh) but it is its own task (key 'score'): it waits its turn behind a visits read, never joins one, and none joins it.
  */
 export function scoreQueue(storage, onLine, trigger = 'you', {max = SCORE_CEILING} = {}) {
   return tracked(storage, 'today', trigger, onLine, async tee => {
@@ -61,7 +61,7 @@ export function scoreQueue(storage, onLine, trigger = 'you', {max = SCORE_CEILIN
       const {code, result} = await run(storage, scoreQueueArgs(storage, max), tee, triggerEnv(trigger));
       return {ok: code === 0, result};
     } finally { tee(SCORE_QUEUE_END); }
-  }, null, () => ({scoreQueue: true}), {note: SCORE_QUEUE_NOTE});
+  }, null, () => ({scoreQueue: true}), {note: SCORE_QUEUE_NOTE, key: 'score'});
 }
 /**
  * The Re-score run (Jobs call to action, Strategy's notice): new scores for the jobs that already have an old one, and nothing else: no job boards, no

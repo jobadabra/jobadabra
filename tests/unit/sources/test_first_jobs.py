@@ -189,9 +189,9 @@ class WiringTests(unittest.TestCase):
 
     def test_the_jobs_command_lists_found_jobs_before_their_score(self):
         # Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"): the list shows every found job at once and the scoring
-        # queue fills the scores in; before, the command hid them unless the first search was running (--first-run, still accepted).
+        # queue fills the scores in; before, the command hid them unless the first search was running (its --first-run flag is gone with that rule).
         source = open('src/desktop.py').read()
-        self.assertIn("--first-run", source)
+        self.assertNotIn("--first-run", source)
         self.assertIn('hide_unscored=False)', source)
         self.assertNotIn('hide_unscored=ai_engine.ready()', source)
 

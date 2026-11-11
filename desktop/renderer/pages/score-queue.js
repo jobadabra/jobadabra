@@ -1,6 +1,6 @@
 // The one owner, in the window, of "scores are arriving after a Find jobs run": which found jobs are in the queue, which are being scored now, how many are past it.
 // Fed only by the engine's own lines as the app relays them (src/daily_modes.py score_mode: "Score queue: {json}", "Scoring now: codes"; lib/pipeline-tasks.js
-// SCORE_QUEUE_END when the run ended, however it ended). The Jobs list READS it to draw a row's circle (queued, scoring) and the bar above the list; nothing else
+// SCORE_QUEUE_END when the run ended, however it ended; a new search's first line also ends it). The Jobs list READS it to draw a row's circle (queued, scoring) and the bar above the list; nothing else
 // keeps a copy. Why (11 Nov 2026, owner, asked via AskUserQuestion: "One by one, row stays (Recommended)" and, on the picture, "Yes, build it (Recommended)").
 // Guarded by test/unit/renderer/score-queue.test.js.
 let held = null;    // Map(job url -> its place in the list when the queue began): rows keep their place while scores land, until the person re-sorts
@@ -11,6 +11,8 @@ const changed = () => globalThis.document?.dispatchEvent(new Event('score-queue-
 export function scoreQueueLine(line) {
   const text = String(line);
   if (text === 'Score queue: done') { if (!state) return false; state = null; changed(); return true; }
+  // A new search: whatever queue ran before it is over (lib/pipeline-tasks.js refresh stops it), and its jobs take the order the person chose, not the held one.
+  if (/^Searching job boards/.test(text)) { const was = state || held; state = null; held = null; if (was) changed(); return !!was; }
   const told = /^Score queue: (\{.*\})$/.exec(text);
   if (told) {
     let said;
@@ -42,7 +44,7 @@ export function queuePlace(code) {
 }
 /**
  * The list's rows in the order they had when the queue began, so a row does not jump when its score lands (owner, 11 Nov 2026: "One by one, row stays").
- * Held from the first draw of a running queue until releaseOrder (the person re-sorts) or the next queue; a row that was not listed then goes after the held ones.
+ * Held from the first draw of a running queue until releaseOrder (the person re-sorts), the next queue or the next search; a row that was not listed then goes after the held ones.
  */
 export function heldOrder(rows) {
   if (!state && !held) return rows;

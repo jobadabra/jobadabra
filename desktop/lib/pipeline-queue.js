@@ -112,16 +112,17 @@ export function stopTask() {
 }
 // One tracked task (a search or a Gmail check): `running()` shows it while it runs, and it's kept in
 // runs.json afterwards (kind, trigger, times, ok, log and what summarize() adds) for the activity bar.
-export function tracked(storage, kind, trigger, onLine, work, resume, summarize, {first = false, note = ''} = {}) {
+export function tracked(storage, kind, trigger, onLine, work, resume, summarize, {first = false, note = '', key = kind} = {}) {
   // The same task already waiting, or already running: a second click joins it instead of queueing it again (a second search seconds after the first, with nothing
   // new to find, was run in full; 2 Oct 2026). Another task still waits its turn.
-  const twin = waiting.find(ticket => ticket.kind === kind) || (runningTicket?.kind === kind ? runningTicket : null);
+  // key: what makes two tasks "the same"; a task's kind unless it says another (the scoring queue: a row of kind 'today' that is not the same task as a visits read).
+  const twin = waiting.find(ticket => (ticket.key || ticket.kind) === key) || (runningTicket && (runningTicket.key || runningTicket.kind) === key ? runningTicket : null);
   if (twin) {
     // Joined: the run already queued or going says what this click wanted too (7 Oct 2026: Re-score joined a running refresh and nothing showed it).
     if (note && !twin.note) { twin.note = note; if (runningTicket === twin && current) current = {...current, note}; saveQueue(storage); }
     return twin.done;
   }
-  const ticket = {id: `q${++nextTicket}`, kind, trigger, queuedAt: new Date().toISOString(), resume, ...(note ? {note} : {})};
+  const ticket = {id: `q${++nextTicket}`, kind, ...(key !== kind ? {key} : {}), trigger, queuedAt: new Date().toISOString(), resume, ...(note ? {note} : {})};
   if (first) waiting.unshift(ticket); else waiting.push(ticket);
   saveQueue(storage);
   ticket.done = serial(async () => {

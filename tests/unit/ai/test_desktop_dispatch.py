@@ -381,7 +381,7 @@ import src.desktop
         self.call('jobs', JOBS_OUT, outside=True)
         # Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"): a found job is listed before its score, with an AI ready too.
         listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=False)
-        self.call('jobs', JOBS_OUT, '--limit', '7', '--first-run', outside=True)
+        self.call('jobs', JOBS_OUT, '--limit', '7', outside=True)
         listed.assert_called_with(self.db, 7, notion_jobs=[], kit_inputs=None, hide_unscored=False)
         ready.return_value = False
         self.tracker.notion_jobs.side_effect = OSError('offline')

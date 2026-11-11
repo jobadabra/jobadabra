@@ -178,7 +178,7 @@ def score_mode(args, stores=None):
     jobs past it stay listed, unscored, for the next Find jobs or the person's own "Score".
     Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"; "Keep 60, rest show 'Score' (Recommended)"): a search finds
     170-280 jobs in a person's places and one score takes 12-20 s, so the run's 3 minutes scored 9-32 of them and the rest waited for another press.
-    Says two fixed lines the app reads (desktop/lib/score-queue.js): `Score queue: {"queue": [job codes in order], "left": n}` once, and
+    Says two fixed lines the app reads (desktop/renderer/pages/score-queue.js): `Score queue: {"queue": [job codes in order], "left": n}` once, and
     `Scoring now: code,code` before each round."""
     _gate(stores, '--mode score requires NOTION_TOKEN', on_store=True)
     from .ai import score

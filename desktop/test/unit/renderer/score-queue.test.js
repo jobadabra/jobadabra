@@ -55,6 +55,40 @@ test('rows keep their place while scores land, until the person re-sorts', () =>
   assert.deepEqual(heldOrder(scored).map(row => row.url), ['z', 'new', 'x', 'y'], 'the sort menu sorts again');
 });
 
+// Why (Gitar on #3843): a queue whose end line never reached the window left rows Queued and "Score" unavailable, and the held order sent a new search's jobs to the bottom.
+test('a new search ends the queue in the window and gives the list back its own order', () => {
+  scoreQueueLine(SCORE_QUEUE_END);
+  releaseOrder();
+  assert.equal(scoreQueueLine('Searching job boards and employer sites'), false, 'no queue, no held order: nothing to redraw');
+  const before = [{url: 'x', fit: 80}, {url: 'y', fit: null}];
+  start();
+  heldOrder(before);
+  scoreQueueLine('Scoring now: a,b');
+  assert.equal(scoreQueueLine('Searching job boards and employer sites'), true, 'the queue was stopped for the search: its end line may never come');
+  assert.equal(scoreQueue(), null);
+  assert.equal(queuePlace('c'), null, 'no row stays Queued');
+  const after = [{url: 'fresh', fit: 95}, {url: 'x', fit: 80}, {url: 'y', fit: null}];
+  assert.equal(heldOrder(after), after, 'the new search\'s jobs take the order the person chose');
+});
+
+// Why (Gitar on #3843): the queue's row is a list refresh (kind 'today') like a visits read's; as the same task it joined a running one and never ran.
+test('the queue is its own task: it waits behind a list refresh, it does not join one', async () => {
+  const {tracked} = await import('../../../lib/pipeline-queue.js');
+  const files = {};
+  const storage = {readText: name => { if (!(name in files)) throw new Error('none'); return files[name]; }, writeText: (name, text) => { files[name] = text; }, settings: () => ({})};
+  const ran = [];
+  let free;
+  const first = tracked(storage, 'today', 'you', () => {}, async () => { ran.push('visits'); await new Promise(resolve => { free = resolve; }); return {ok: true}; }, null, () => ({}));
+  const queue = tracked(storage, 'today', 'you', () => {}, async () => { ran.push('queue'); return {ok: true}; }, null, () => ({scoreQueue: true}), {key: 'score'});
+  const again = tracked(storage, 'today', 'you', () => {}, async () => { ran.push('queue again'); return {ok: true}; }, null, () => ({}), {key: 'score'});
+  assert.notEqual(queue, first, 'not joined to the visits read');
+  assert.equal(again, queue, 'a second press of Score joins the queue already waiting');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  free();
+  assert.equal((await queue).run.scoreQueue, true);
+  assert.deepEqual(ran, ['visits', 'queue']);
+});
+
 test('the app starts the queue only when a search left found jobs unscored, and never past the run\'s 60', () => {
   assert.equal(waitingOf('⏱ 143 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)'), 143);
   assert.equal(waitingOf('⏱ Time is up for this refresh: 100 job(s) left for the next one (it stops at 2.2 min)'), 100);
