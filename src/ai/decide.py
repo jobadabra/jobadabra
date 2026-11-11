@@ -17,6 +17,7 @@ import json
 import os
 import sqlite3
 import sys
+import threading
 from datetime import datetime, timezone
 
 from .. import budget_tape
@@ -39,6 +40,11 @@ FAILED = [0]   # AI calls that failed in this process: a caller whose answer cam
 
 STOPPED = {'why': '', 'key': False, 'cause': ''}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
 WAITING = {'n': 0, 'said': False, 'calls': {}}   # items left unknown this run; model calls per topic
+# Why (11 Nov 2026, as 1/2, owner asked for more AI answers inside Find jobs' 3 minutes): in night 42927975750 (14 people, 186 decide calls of
+# ~10 s each, 85 within 1 s of another decide), a person asked "job site kind for a field" 2-9 times and link-kind 7-10 times: up to 69 calls could
+# share another's. The same question's items asked within JOIN_S go in one call. JOIN_S bounds what a question asked alone pays: one wait of
+# 0.3 s against a 3-10 s call (tests/unit/ai/test_decide_join.py).
+JOIN_S = 0.3
 
 
 def no_ai():
@@ -246,50 +252,135 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             return out or None
         if STOPPED['why']:
             return _wait(out, len(todo))
-        if client is None:
-            if not engine.ready():
-                return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
-            client = engine.client(action='decide')
-        schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
-            'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],
-            'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
-        stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
-        for start in range(0, len(todo), BATCH):
-            pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n'])
-            used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
-            if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
-                return _wait(out, len(todo) - start)
-            if pool:
-                _own[pool] = used + 1
-            else:
-                _calls['n'] += 1
-            WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
-            chunk = todo[start:start + BATCH]
-            text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
-                f'### Item {i}\n{items[key]}' for i, key in enumerate(chunk))
-            try:
-                response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
-                                                  messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
-                cost.side(MODEL, response.usage, topic)
-                if response.stop_reason != 'end_turn':
-                    raise RuntimeError(f'stopped with {response.stop_reason}')
-                results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
-            except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
-                if _is_limit(error):
-                    _stop(error)
-                detail(f'decide {topic}', error)
-                return _wait(out, len(todo) - start)   # unknown, not guessed: asked again next run
-            for result in results:
-                index, answer = result.get('index', -1), result.get('answer')
-                if 0 <= index < len(chunk) and answer in answers:
-                    out[chunk[index]] = answer
-                    meanings_pack.queue(topic, items[chunk[index]], answer)   # public wordings only: the site learns them (k>=3 installs)
-                    db.execute('INSERT OR REPLACE INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?)', (topic, chunk[index], answer, stamp))
-            db.commit()
+        if client is None and not engine.ready():
+            return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
+        asked = {key: items[key] for key in todo}
+        # Why (11 Nov 2026, as 1/2): a search tape keys each AI answer by its whole request (src/search_tape.py), so a batch made of whoever asked
+        # within JOIN_S would differ between record and replay; on a tape every question is asked alone, as before.
+        if client is None and own and JOIN_S > 0 and not budget_tape.active():
+            found, unasked = _joined(topic, asked, answers, instructions, allowance)
+        else:
+            found, unasked = _ask(topic, asked, answers, instructions, client or engine.client(action='decide'), db, allowance)
+        out.update(found)
+        if unasked:
+            return _wait(out, len(unasked))   # unknown, not guessed: asked again next run
         return out   # the AI ran: what it answered, {} when nothing (never None: that is 'no AI at all')
     finally:
         if own:
             db.close()
+
+
+def _ask(topic, asked, answers, instructions, client, db, allowance):
+    """The model's answers for `asked` ({key: text}), BATCH items a call -> ({key: answer}, [keys not asked: past the run's cap, or from a failed call on]).
+    Every answer is one of `answers`, kept in `db` and queued for the pack; an item the answer skips is left out (unknown, never guessed)."""
+    from . import meanings_pack
+    found, todo = {}, list(asked)
+    schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
+        'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],
+        'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
+    stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
+    for start in range(0, len(todo), BATCH):
+        pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n'])
+        used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
+        if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
+            return found, todo[start:]
+        if pool:
+            _own[pool] = used + 1
+        else:
+            _calls['n'] += 1
+        WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
+        chunk = todo[start:start + BATCH]
+        text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
+            f'### Item {i}\n{asked[key]}' for i, key in enumerate(chunk))
+        try:
+            response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
+                                              messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
+            cost.side(MODEL, response.usage, topic)
+            if response.stop_reason != 'end_turn':
+                raise RuntimeError(f'stopped with {response.stop_reason}')
+            results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
+        except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
+            if _is_limit(error):
+                _stop(error)
+            detail(f'decide {topic}', error)
+            return found, todo[start:]
+        for result in results:
+            index, answer = result.get('index', -1), result.get('answer')
+            if 0 <= index < len(chunk) and answer in answers:
+                found[chunk[index]] = answer
+                meanings_pack.queue(topic, asked[chunk[index]], answer)   # public wordings only: the site learns them (k>=3 installs)
+                db.execute('INSERT OR REPLACE INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?)', (topic, chunk[index], answer, stamp))
+        db.commit()
+    return found, []
+
+
+class _Join:
+    """One decide call being gathered: the items of every thread asking the same question, then the answers for all of them."""
+
+    def __init__(self):
+        self.items, self.levels = {}, []
+        self.full, self.ready = threading.Event(), threading.Event()
+        self.found, self.unasked, self.error = {}, set(), None
+
+
+class _Joins:
+    """The questions still taking items, one _Join per (topic, answers, instructions, allowance, scope). Its table and lock are its own attributes,
+    changed only by its methods: the process's threads meet here on purpose, and the Run reaches it as Run.ai (src/press/run.py, listed shared)."""
+
+    def __init__(self):
+        self.open, self.lock = {}, threading.Lock()
+
+    def take(self, key, asked, level):
+        """Adds `asked` to the open call for `key`, or opens one -> (the _Join, True when this asker leads it)."""
+        with self.lock:
+            batch = self.open.get(key)
+            lead = batch is None or len(batch.items) + len(asked) > BATCH
+            if lead:
+                batch = self.open[key] = _Join()
+            batch.items.update(asked)
+            batch.levels.append(level)
+            if len(batch.items) >= BATCH:
+                batch.full.set()
+        return batch, lead
+
+    def close(self, key, batch):
+        """No more items for `batch`: a later asker of `key` opens the next call."""
+        with self.lock:
+            if self.open.get(key) is batch:
+                del self.open[key]
+
+
+JOINS = _Joins()
+
+
+def _joined(topic, asked, answers, instructions, allowance):
+    """_ask() for `asked`, in one call with the same question's items other threads ask within JOIN_S. The first asker waits JOIN_S (less when
+    BATCH items arrive), then asks for all, at the most urgent slot level among them (src/ai/slots.py). Each asker gets back only its own items;
+    a failed call leaves every asker's items unasked, as their own call would have; an exception while asking is raised in every asker."""
+    from .slots import level, priority
+    key = (topic, tuple(answers), instructions, allowance, SCOPE['name'])
+    batch, lead = JOINS.take(key, asked, level())
+    if lead:
+        batch.full.wait(JOIN_S)
+        JOINS.close(key, batch)
+        try:
+            db = _table(_db())
+            try:
+                with priority(min(batch.levels)):
+                    batch.found, unasked = _ask(topic, dict(batch.items), answers, instructions, engine.client(action='decide'), db, allowance)
+                batch.unasked = set(unasked)
+            finally:
+                db.close()
+        finally:
+            # Why (11 Nov 2026, as 1/2): the error on its way out of the leader reaches the joined askers without a new catch-all
+            # (tests/guards/rules/test_catch_alls_only_shrink.py); sys.exc_info() inside finally is that error on Python 3.12 (CI and the app).
+            batch.error = sys.exc_info()[1]
+            batch.ready.set()
+    else:
+        batch.ready.wait()
+        if batch.error is not None:
+            raise batch.error
+    return {key: batch.found[key] for key in asked if key in batch.found}, [key for key in asked if key in batch.unasked]
 
 
 def one(topic, key, text, answers, instructions, client=None, db=None, allowance=None):
