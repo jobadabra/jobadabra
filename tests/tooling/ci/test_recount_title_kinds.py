@@ -2,11 +2,13 @@
 (src/scout_title_seed.py; owner, 26 Oct 2026: "do that from local, to rely on subscription. not costs")."""
 import gzip
 import json
+import os
 import sqlite3
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
@@ -93,6 +95,16 @@ class SeedTests(unittest.TestCase):
         with contextlib.redirect_stdout(said):
             self.assertEqual(scout_title_seed.load(Path('/nonexistent/title_kinds.json.gz')), 0)
         self.assertIn('no title seed', said.getvalue())
+
+    def test_no_variable_says_it_is_not_set(self):
+        import contextlib
+        import io
+        said = io.StringIO()
+        with mock.patch.dict('os.environ', {}, clear=False), contextlib.redirect_stdout(said):
+            os.environ.pop('SCOUT_TITLE_KINDS', None)
+            scout_title_seed._loaded.clear()   # it loads once a process; the earlier tests used that
+            self.assertEqual(scout_title_seed.load(None), 0)
+        self.assertIn('SCOUT_TITLE_KINDS not set', said.getvalue())
 
     def test_the_index_build_loads_the_seed(self):
         self.assertIn('scout_title_seed.load()', (ROOT / 'src' / 'scout_index.py').read_text(encoding='utf-8'))
