@@ -24,14 +24,22 @@ STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit'],
           'properties': {'fit': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'The numbers of the titles that could fit'}}}
+# Why (#3793, 11 Nov 2026; night 42927975750): a carpenter got "Open sollicitatie / Unsolicited application" and a software engineer two pre-sales "Solutions Engineer"
+# jobs; examples, not a word list, inside the owner's 7 Oct 2026 "Only the location should be strict" (a bare "Technicien" stays "when unsure, include it").
 SYSTEM = """You sort job titles for one job seeker. You get their search (the role words they wrote, and words that rule a title out) and a \
 numbered list of job titles, in any language. Answer with the numbers of the titles that could be the kind of job they look for: the same \
 work under another name or in another language counts ("Client Advisor" or "Collaborateur Magasin" for a shop seller; "Content Creator - \
 Photo" for a photographer), and so does a close neighbour of their work at a similar level. Leave out other kinds of work (software, \
 finance, marketing management, legal…), and titles of the work their ruled-out words name (the same word in another sense is no reason). \
+Leave out a posting that is no job of its own (an open or unsolicited application: "Open sollicitatie", "Candidature spontanée", \
+"Initiativbewerbung"), and selling or demonstrating a product to customers ("Solutions Engineer", "Sales Engineer", pre-sales) for \
+someone whose work is building it. \
 A level, when given, is the seniority they want: leave out a title plainly far from it (an internship for a lead); a rank that only sounds like \
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
 Owner" is no pilot). When unsure, include it: a later step scores each job."""
+
+PROMPT = hashlib.sha1(SYSTEM.encode()).hexdigest()   # the SYSTEM a search's kept answers were sorted under (_current)
+STAMP = '#PROMPT'   # its key inside a search's entry: a kept title is lower-cased (_norm), so never this
 
 # Why (27 Oct 2026, owner "Ask again before closing"; quality run 40508145728): Free AI said no to 'Staff Platform Engineer, Kubernetes' and 'Cloud Infrastructure
 # Engineer' for an SRE/platform search after both were scored and listed; the sort's no closed them before their facts were read. A no on a title that holds
@@ -63,7 +71,21 @@ batch_scope.watch('titles_store', _load)
 
 def known(search):
     """{title: True/False} decided for this search so far (for readers side by side: as it was when they began, src/ai/batch_scope.py)."""
-    return batch_scope.view('titles_store', _load).get(_key(search)) or {}
+    return _current(batch_scope.view('titles_store', _load).get(_key(search)))
+
+
+def _current(entry):
+    """A search's kept answers that still hold under this SYSTEM: all of them when its stamp is this PROMPT, else only its no's (the yes's are asked again).
+    Why (Gitar on #3803, 11 Nov 2026): answers are kept per search, not per prompt, so a title an install sorted yes under the old SYSTEM stayed listed and the new
+    leave-out examples reached only titles never seen. That change only adds leave-out cases, so a kept no stays a no; a SYSTEM change that lets more titles in must drop the no's here too."""
+    entry = entry or {}
+    fresh = entry.get(STAMP) == PROMPT
+    return {title: fits for title, fits in entry.items() if title != STAMP and (fresh or fits is False)}
+
+
+def _stamped(entry, decided):
+    """The entry kept for a search after a sort: what still holds (_current), this run's answers, and this SYSTEM's stamp."""
+    return {**_current(entry), **decided, STAMP: PROMPT}
 
 
 def _may_start(batch, mine, forced):
@@ -193,13 +215,14 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         _second_look(client, ask, decided, search, words, mine, forced)
     with LOCK:
         data = _load()
-        data[key] = {**(data.get(key) or {}), **decided}
+        data[key] = _stamped(data.get(key), decided)
         for old in list(data)[:-3]:   # the last few searches only
             data.pop(old)
         STORE.parent.mkdir(parents=True, exist_ok=True)
         STORE.write_text(json.dumps(data, ensure_ascii=False))
     if batch_scope.active():   # this reader's own answers, for its next call
-        batch_scope.view('titles_store', _load).setdefault(key, {}).update(decided)
+        view = batch_scope.view('titles_store', _load)
+        view[key] = _stamped(view.get(key), decided)
     asked = [t for t in ask if t in decided]
     if late[0]:
         print(budget.left_line('titles', late[0], 'title(s)'), flush=True)
