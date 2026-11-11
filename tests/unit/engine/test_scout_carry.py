@@ -267,9 +267,23 @@ class BoundedWaitTest(unittest.TestCase):
         from src import scout_index
         scout_index.FETCH_GRACE_S = 0.2
         self.addCleanup(setattr, scout_index, 'FETCH_GRACE_S', 20)
+        import threading   # here, not at the top: this file's imports are part of ledger proofs' lock (tests/unit/press/ledger.py source)
+        # Why (L21 flake, CI run 42947986693, 11 Nov 2026): the fetches slept 5 s and then judged their jobs with whatever AI the test running
+        # by then had patched in; one "Engineer" title sort landed in L21's fake model and turned it red. They are released when this test ends,
+        # come back with no jobs (nothing left to ask) and are waited for, so no work of this test outlives it.
+        release, fetching = threading.Event(), []
+
         def stuck(system, slug):
-            time.sleep(5)   # a fetch asleep behind a slow site
-            return job()
+            fetching.append(threading.current_thread())
+            release.wait(5)   # a fetch asleep behind a slow site, until this test ends (5 s: a hang guard)
+            return []
+
+        def end_the_fetches():
+            release.set()
+            for thread in fetching:
+                thread.join(5)   # the pool was shut down: each worker ends once its fetch returned (5 s: a hang guard)
+            self.assertFalse([t.name for t in fetching if t.is_alive()], 'a fetch of this test is still running after it')
+        self.addCleanup(end_the_fetches)
         began = time.monotonic()
         feeds, _ = scout.build_index(self.db, self.starter, stuck, today='2026-10-21', workers=3, carry=True, deadline=time.monotonic() + 0.1)
         self.assertLess(time.monotonic() - began, 2)
