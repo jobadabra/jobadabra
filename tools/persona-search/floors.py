@@ -229,9 +229,15 @@ def resets_on(ref='HEAD', valid=True):
     return [r for r in found if reset_ok(r)] if valid else found
 
 
+def floor_change_words(body):
+    """{words} of each `Floor-change: "<owner's words>"` line of a PR body: the one way a bar is lowered (the floors here, the replay's verdict in
+    tools/press-yardstick/verdict.py)."""
+    return {m.strip() for m in re.findall(r'^\s*[-*]?\s*Floor-change:\s*["“](.+?)["”]\s*$', body or '', re.M)}
+
+
 def reset_gaps(base_resets, head_resets, body):
     """New resets whose words are not in a `Floor-change: "<words>"` line of the PR body -> [text]."""
-    said = {m.strip() for m in re.findall(r'^\s*[-*]?\s*Floor-change:\s*["“](.+?)["”]\s*$', body or '', re.M)}
+    said = floor_change_words(body)
     new = [r for r in head_resets if r not in base_resets]
     return [f'an entry floors cannot apply (persona int, number in {sorted(NUMBERS)}, from YYYY-MM-DD, words): {json.dumps(r)[:120]}' for r in new if not reset_ok(r)] + \
         [f"p{r['persona']} {r['number']} from {r['from']}" for r in new if reset_ok(r) and str(r.get('words')).strip() not in said]
