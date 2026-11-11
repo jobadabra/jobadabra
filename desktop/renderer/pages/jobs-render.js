@@ -43,6 +43,8 @@ import {alsoOnTags, holdsAny, linksOf, onEveryCopy, setStatusOnCopies} from './j
 import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
+import {drawQueueRing, paintQueueBar} from './score-queue-draw.js';
+import {heldOrder, scoreQueue} from './score-queue.js';
 import {staleLabel, staleTip} from '../rescore-words.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
@@ -100,10 +102,10 @@ export function renderJobs() {
     : jobsState.statFilter?.urls ? shared.allJobs.filter(job => holdsAny(job, jobsState.statFilter.urls, fullKey))
     : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter) : null;
   const by = $('sort-by').value;
-  const rows = sorted((counted || shared.allJobs)
+  const rows = heldOrder(sorted((counted || shared.allJobs)
     .filter(job => (anyStatus && !counted) || (counted ? inFiltersLoose(job, filters, now) : inFilters(job, filters, now)))
     .filter(job => matches(job, text)),
-  filter === 'inbound' && !counted && by === 'best' ? 'activity' : by);
+  filter === 'inbound' && !counted && by === 'best' ? 'activity' : by));   // heldOrder: rows keep their place while the scoring queue's scores land (pages/score-queue.js)
   jobsState.visible = rows;   // pages/jobs-export.js saves these
   renderExport();
   renderTalking(!!counted || filters.includes('inbound') || filters.includes('everything') || hasViewOption(filters) || !!text);
@@ -111,7 +113,8 @@ export function renderJobs() {
   // rows show "Not scored" and a friend took that for a bug (2 Oct 2026, a search whose AI calls had stalled).
   // A job whose place is unclear is not the AI failing: its row says why (unscoredWhy).
   const unscored = shared.allJobs.filter(job => job.fit == null && job.status === 'unreviewed' && !job.place_unclear).length;
-  paintScoreCall(unscored, searchingNow());   // the one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card
+  paintScoreCall(unscored, searchingNow() || !!scoreQueue());   // while the queue after a search runs, its bar says it
+  paintQueueBar();   // the one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card
   const body = $('jobs-body');
   body.replaceChildren();
   for (const job of rows) {
@@ -133,7 +136,8 @@ export function renderJobs() {
     if (!parts.fit) {   // an applied, rejected or inbound job with no score: the same ring, saying N/A, never "Not scored" (job-row-model.js)
       ring.replaceChildren(el('span', '', NA));
     }
-    fit.title = !parts.fit ? t('pagesJobsHelp.noScore') : scoring ? t('pagesJobsHelp.scoring') : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? t('pagesControlStatus.clickWhy') : '')}`;
+    const inQueue = parts.fit && job.fit == null && !scoring && !job.place_unclear && drawQueueRing(fit, ring, job, shared.scoreFound || null);   // queued, scoring, or the Score press (pages/score-queue-draw.js)
+    if (!inQueue) fit.title = !parts.fit ? t('pagesJobsHelp.noScore') : scoring ? t('pagesJobsHelp.scoring') : job.fit == null ? unscoredWhy(job) : `${old ? `${staleTip} ` : ''}${fitTooltip(job.fit, canOpen ? t('pagesControlStatus.clickWhy') : '')}`;
     const live = sessionFor(job.url);
     const [statusLabel, statusTone] = live && !live.endedAt ? sessionState(live) : [statusPill(job).label, statusPill(job).tone];
 

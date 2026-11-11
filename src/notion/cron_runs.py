@@ -45,7 +45,7 @@ def new_run(mode):
 
 
 # The jobs that always end with a row (log_run), so opening one at the start is safe (see begin()).
-LOGGED_MODES = {'scheduled', 'run', 'today', 'prepare', 'add', 'interview', 'insight', 'weekly', 'mail', 'rejection', 'scout', 'prep', 'import', 'kits', 'rescore'}
+LOGGED_MODES = {'scheduled', 'run', 'today', 'prepare', 'add', 'interview', 'insight', 'weekly', 'mail', 'rejection', 'scout', 'prep', 'import', 'kits', 'rescore', 'score'}
 _auto = {}
 
 

@@ -379,7 +379,8 @@ import src.desktop
         self.patch('src.desktop.mark_outdated', side_effect=lambda result, db, profile=None: result)   # the old-score marks Jobs carries (JOB list payload); its own test is test_strategy_outdated.py
         JOBS_OUT = {**VALUE, 'profile_empty': False}
         self.call('jobs', JOBS_OUT, outside=True)
-        listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=True)
+        # Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"): a found job is listed before its score, with an AI ready too.
+        listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=False)
         self.call('jobs', JOBS_OUT, '--limit', '7', '--first-run', outside=True)
         listed.assert_called_with(self.db, 7, notion_jobs=[], kit_inputs=None, hide_unscored=False)
         ready.return_value = False

@@ -1,4 +1,4 @@
-// Owns: the tracked tasks the Mac starts: refresh (Find jobs), rescore (Re-score), syncMatches, checkMail, scout, work, task, scoreVisits, mailResult.
+// Owns: the tracked tasks the Mac starts: refresh (Find jobs), scoreQueue (the scores after it), rescore (Re-score), syncMatches, checkMail, scout, work, task, scoreVisits, mailResult.
 // Each runs its engine commands through run() and is queued, shown and recorded by tracked() (pipeline-queue.js).
 // Guarded by: test/unit/renderer/mail-report.test.js, test/unit/main/run-join.test.js, test/unit/main/run-note.test.js, test/unit/renderer/run-cards.test.js, test/unit/main/run-kinds.test.js, test/unit/main/stop-task.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
@@ -6,9 +6,9 @@ import {osText} from '../i18n/platform.js';
 import {engineOf, familyOfEngine} from './ai/names.js';
 import {deliveryProblem, mailProblem as mailProblemFrom} from './run-result.js';
 
-import {aiReadyOf, dailyArgs, insightArgs, mailArgs, SCOUT_BUDGET_S, SEARCH_BUDGET_S, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
+import {aiReadyOf, dailyArgs, insightArgs, mailArgs, SCOUT_BUDGET_S, SEARCH_BUDGET_S, scoreQueueArgs, syncMatchesArgs, deliveryReady, triggerEnv, visitsArgs} from './pipeline-args.js';
 import {appMessage, failedLine, taskSummary} from './pipeline-lines.js';
-import {tracked} from './pipeline-queue.js';
+import {running, stopTask, tracked} from './pipeline-queue.js';
 import {run} from './pipeline-run.js';
 import {searchSteps} from './search-steps.js';
 import {searchDone} from './search-report.js';
@@ -27,7 +27,41 @@ const searchSummary = storage => (record, log) => {
 };
 // note: what this search is for beyond a refresh ("Search wider"), shown on its row from queued to finished.
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
-  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, {employers, signal, note}), {mode}, searchSummary(storage), {note});
+  // A Find jobs press ends the scoring queue of the search before it: the engine runs one process at a time, and the new search scores the waiting jobs first itself.
+  if (running()?.note === SCORE_QUEUE_NOTE) stopTask();
+  let left = 0;   // found jobs this search said it did not reach
+  const seen = line => { left = waitingOf(line) ?? left; };
+  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, line => { seen(line); tee(line); }, mode, trigger, {employers, signal, note}), {mode}, searchSummary(storage), {note})
+    .then(done => {
+      const max = done?.run ? queueMax({left, scored: Number(done.run.scored) || 0, stopped: !!done.run.stopped, ai: aiReadyOf(storage)}) : 0;
+      if (max) scoreQueue(storage, onLine, trigger, {max}).catch(() => {});
+      return done;
+    });
+}
+// The engine's own lines for found jobs a search did not score (src/daily_search_scoring.py score_batches, src/press/clock.py).
+const WAITING = /^⏱ (?:Time is up for this refresh: )?(\d+) (?:found )?job\(s\) (?:wait for the next refresh|left for the next one)/;
+const SCORE_CEILING = 60;   // scores one Find jobs run makes, the search and its queue together (pipeline-args.js --score-max)
+/** How many found jobs a search's line says it did not score -> a number, or null for any other line. */
+export const waitingOf = line => { const waits = WAITING.exec(String(line)); return waits ? Number(waits[1]) : null; };
+/** How many scores the queue after a search may make -> 0 when it must not start: nothing waits, the person stopped the search, no AI, or the search already made the run's 60. */
+export const queueMax = ({left, scored, stopped, ai}) => (left > 0 && !stopped && ai ? Math.max(0, SCORE_CEILING - scored) : 0);
+export const SCORE_QUEUE_NOTE = 'Scoring the jobs it found';
+export const SCORE_QUEUE_END = 'Score queue: done';
+/**
+ * The scoring queue: when a Find jobs run ends with found jobs it did not score, their scores go on by themselves, best places first (engine mode score), up to the
+ * run's ceiling of 60 with the search's own scores; the jobs past it stay listed with "Score". Its own run row, no notification, stoppable like any task.
+ * Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"; "Keep 60, rest show 'Score' (Recommended)"): a search finds 170-280
+ * jobs in a person's places and scored 9-32 of them in its 3 minutes; the rest waited for another press.
+ * Invariant: its last line is SCORE_QUEUE_END however it ended (done, stopped, failed), so the window's queue state (renderer/pages/score-queue.js) always clears.
+ * TODO(AI): a scoreVisits run going at the same moment is the same kind ('today') and this joins it instead of running (2026-11-11).
+ */
+export function scoreQueue(storage, onLine, trigger = 'you', {max = SCORE_CEILING} = {}) {
+  return tracked(storage, 'today', trigger, onLine, async tee => {
+    try {
+      const {code, result} = await run(storage, scoreQueueArgs(storage, max), tee, triggerEnv(trigger));
+      return {ok: code === 0, result};
+    } finally { tee(SCORE_QUEUE_END); }
+  }, null, () => ({scoreQueue: true}), {note: SCORE_QUEUE_NOTE});
 }
 /**
  * The Re-score run (Jobs call to action, Strategy's notice): new scores for the jobs that already have an old one, and nothing else: no job boards, no

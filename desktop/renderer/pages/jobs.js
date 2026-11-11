@@ -14,6 +14,7 @@ import {paintFindCardFirst, renderFindCard, showFindRefused, wireFindCard} from 
 import {$, message, savedAgo} from './core.js';
 import {refreshSessions, sessionJob, sessionList} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
+import {releaseOrder, scoreQueueLine} from './score-queue.js';
 import {refusal} from '../refusal.js';
 import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
@@ -250,6 +251,13 @@ async function runSearch(why) {
   }
 }
 
+/** A row's "Score" press: starts the scoring queue for the found jobs without a score (main: the 'refresh' channel's fixed reason 'score'); a refusal is said, never silent. */
+export async function startScoreQueue() {
+  const result = await window.pilot.refresh({reason: 'score'}).catch(error => ({ok: false, error: error.message}));
+  if (refusal(result)) sayRefused(t('pagesJobsHelp.queueNotStarted'), result);
+  return result;
+}
+
 export async function init() {
   searchSelect($('lead-target'));
   try { $('jobs-talking').open = talkingStartsOpen(localStorage.getItem(TALKING_OPEN)); } catch {}
@@ -261,7 +269,7 @@ export async function init() {
     setFilters(['all']);
     renderJobs();
   });
-  $('sort-by').addEventListener('change', renderJobs);
+  $('sort-by').addEventListener('change', () => { releaseOrder(); renderJobs(); });   // the person re-sorts: the order held for the scoring queue ends
   wireFilterMenu();   // the one Show menu (pages/jobs-filter-menu.js): every filter, ticked together
   wireViews();   // saved views + List | Board (pages/jobs-views.js): they ask for a render through this event
   document.addEventListener('jobs-rerender', () => renderJobs());
@@ -361,7 +369,8 @@ export async function init() {
     if (shared.idleSeen || /^Searching job boards/.test(line)) { shared.logLines = []; shared.idleSeen = false; }
     keepRunLine(shared.logLines, line);   // as the app keeps it: the newest "Still running" of a row, the newest tick of each kind, every result
     refreshActivity();
-    if (LIST_CHANGED.test(line)) reloadQuietly();
+    scoreQueueLine(line);   // the queue after a search: its state redraws the list (score-queue-state)
+    if (LIST_CHANGED.test(line) || line === 'Score queue: done') reloadQuietly();
   });
   // Running: its progress; done: the last Refresh jobs run itself, not whichever task happens to be running now.
   $('search-status').addEventListener('click', async () => {
@@ -377,7 +386,10 @@ export async function init() {
 
   wireProfileEmpty();
   wireScoreCall({find: () => $('refresh').click()});
-  document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
+  document.addEventListener('rescore-state', () => renderJobs());
+  document.addEventListener('score-queue-state', () => renderJobs());
+  document.addEventListener('score-found-ask', () => startScoreQueue());   // ⌘K "Score found jobs" (pages/nav.js)
+  shared.scoreFound = startScoreQueue;   // a row's "Score" press (pages/score-queue-draw.js)   // the call, the card and the muted rows follow the one state
   wireApplyDialog({startedApplying, openJob: openJobPanel});
   wireTriage({read: job => readThroughStep(window.pilot, job), match: reads => window.pilot.applyReadinessMatch(reads), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage, onStep: fn => window.pilot.onTriageStep?.(fn)});
 }

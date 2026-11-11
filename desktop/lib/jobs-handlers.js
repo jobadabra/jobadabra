@@ -92,6 +92,8 @@ export function registerJobsHandlers(ctx) {
     if (blocked) return blocked;
     const count = Math.max(0, Math.round(Number(why?.count) || 0));
     const rescoring = why?.reason === 'rescore';
+    // A row's "Score" press: the scoring queue for found jobs without a score (lib/pipeline-tasks.js scoreQueue); on this Mac only, a cloud search scores in its own run.
+    if (why?.reason === 'score') return cloud() ? {ok: false, error: 'Scores come with the next Find jobs while Always on runs your searches'} : pipeline.scoreQueue(storage, log, 'you');
     const note = rescoring && count ? `Re-scoring ${count} older score${count === 1 ? '' : 's'}` : '';
     // Re-score is its own run (engine mode rescore), never a Find jobs search (owner, 3 Nov 2026: a job already in the list "should not be handled by find jobs at all").
     if (rescoring && !cloud()) return pipeline.rescore(storage, log, 'you', {note});

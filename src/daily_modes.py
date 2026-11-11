@@ -172,6 +172,54 @@ def rescore_mode(args, stores=None):
     return 0
 
 
+def score_mode(args, stores=None):
+    """The scoring queue (the app starts it when a Find jobs run ends): a score for the jobs a search found and had no time to score, best places and closest
+    jobs first, and nothing else: no crawl, no reading, no new job, no old score replaced (that is Re-score's). On its own clock, --score-max at most; the
+    jobs past it stay listed, unscored, for the next Find jobs or the person's own "Score".
+    Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"; "Keep 60, rest show 'Score' (Recommended)"): a search finds
+    170-280 jobs in a person's places and one score takes 12-20 s, so the run's 3 minutes scored 9-32 of them and the rest waited for another press.
+    Says two fixed lines the app reads (desktop/lib/score-queue.js): `Score queue: {"queue": [job codes in order], "left": n}` once, and
+    `Scoring now: code,code` before each round."""
+    _gate(stores, '--mode score requires NOTION_TOKEN', on_store=True)
+    from .ai import score
+    from .daily_helpers import to_score, save_run
+    from .daily_search import application_stages
+    from .daily_search_scoring import BATCH, _stay, add_stats, sync_partial
+    from .notion.client import job_code
+    run = new_cron_run('score')
+    run['score'] = {}
+    read_profile = profile_source(stores) if args.score_max else None
+    hidden, _, dismissed, _ = application_stages(stores, run)
+    if read_profile:
+        from . import time_budget
+        with store.connect(args.db) as db:
+            to_app = lambda: sync_partial(args, stores, db, hidden, dismissed)
+            profile, candidates = read_profile(), _stay(db, to_score(db, hidden))
+            waiting = score.queue(db, candidates, profile, scope='new')   # the one ranked list the search's own scorer takes from
+            mine = waiting[:args.score_max]
+            print('Score queue: ' + json.dumps({'queue': [job_code(job['url']) for job in mine], 'left': len(waiting) - len(mine)}), flush=True)
+            for at in range(0, len(mine), BATCH):   # a round is Claude Code's slots, as beside the search (src/daily_search_scoring.py BATCH)
+                if time_budget.over('score'):
+                    break
+                batch, more = mine[at:at + BATCH], {}
+                print('Scoring now: ' + ','.join(job_code(job['url']) for job in batch), flush=True)
+                print(score.run(db, candidates, profile, score.DEFAULT_MODEL, len(batch), stats=more, on_scored=to_app, scope='new',
+                                only_ids={job['id'] for job in batch}), flush=True)
+                add_stats(run['score'], more)
+                if not more.get('done'):   # a paused Profile, the AI down, a spent limit: the next round would score nothing either
+                    break
+            to_app()
+        done = run['score'].get('done') or 0
+        run['headline'] = f"Scored {done} found job{'' if done == 1 else 's'}"
+        print(f"Scored {done} of {len(mine)} job(s)", flush=True)
+    else:
+        run['headline'] = 'Scoring needs an AI'
+        print(run['headline'])
+    save_run(run)
+    log_ai_run(stores, run, args)
+    return 0
+
+
 def add_message_mode(args, stores=None):
     # A pasted message or screenshot (/add <message>, a forward or photo sent to the bot, the app's Log box):
     # the job it's about is updated, or created (src/ai/inbox.py).

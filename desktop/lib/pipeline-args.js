@@ -1,4 +1,4 @@
-// Owns: the command lines the app gives the engine: dailyArgs (the workflow's own command), mailArgs, visitsArgs, syncMatchesArgs,
+// Owns: the command lines the app gives the engine: dailyArgs (the workflow's own command), mailArgs, visitsArgs, syncMatchesArgs, scoreQueueArgs,
 // the search and scout budgets, and triggerEnv.
 // Guarded by: test/unit/main/pipeline-run.test.js, test/unit/renderer/mail-report.test.js, test/unit/main/run-kinds.test.js, test/unit/main/tune.test.js, test/unit/main/notion-trying.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
@@ -28,7 +28,7 @@ export function dailyArgs(storage, inputs = {}) {
   if (inputs.firstJobs) args.push('--first-jobs');   // a small slice of fast feeds is read and 3 jobs scored first (src/first_jobs.py)
   if (inputs.discoverBeside) args.push('--discover-beside');   // the job boards' employers discovered beside the employer sites (src/sources/boards_beside.py)
   if (ai && AI_MODES.includes(mode)) args.push('--enrich-max', '100', '--score-max', '60');
-  if (ai && mode === 'rescore') args.push('--score-max', '60');   // Re-score: new scores for the jobs that have an old one, nothing else (src/daily_modes.py rescore_mode)
+  if (ai && (mode === 'rescore' || mode === 'score')) args.push('--score-max', String(mode === 'score' ? Math.max(1, Math.min(60, Number(inputs.scoreMax) || 60)) : 60));   // Re-score: new scores for the jobs that have an old one, nothing else (src/daily_modes.py rescore_mode)
   // A search's AI steps stop at 3 minutes (owner, 7 Oct 2026: "never more than 2-3 minutes"); what is left waits for the next search (src/budget.py).
   // Every mode that runs AI steps has it: the first run's follow-up (mode today) had none from 16 Oct, so on a big market it sorted 600 titles and
   // placed 277 places for 15 minutes before the first jobs were scored (Cluj, 18 Oct 2026: first 70+ match after 23 minutes).
@@ -56,6 +56,10 @@ const CEILING = Number(process.env.JOBADABRA_PRESS_SECONDS) || 0;
 export const SEARCH_BUDGET_S = process.env.JOBADABRA_SEARCH_TAPE_MODE === 'record' && CEILING > 180 ? CEILING : 180;
 // Find new employers starts no new check after 3 minutes (owner, 7 Oct 2026: "runs for too long"); each check is saved as it ends (src/scout.py).
 export const SCOUT_BUDGET_S = 180;
+// The scoring queue's own clock: a hang guard, not a target (60 scores take ~4 min on Claude Code's 4 slots; a slower engine gets the same room).
+export const SCORE_QUEUE_S = 900;
+/** The scoring queue's command (src/daily_modes.py score_mode): scores for the jobs a search found and did not reach, `max` at most, on its own clock; no digest is sent. */
+export const scoreQueueArgs = (storage, max = 60) => dailyArgs(storage, {mode: 'score', scoreMax: max, budget: SCORE_QUEUE_S}).filter(arg => arg !== '--send');
 export const syncMatchesArgs = () => ['src', 'daily', '--mode', 'today', '--log-run', '--enrich-max', '0', '--score-max', '0', '--auto-kit-max', '0'];
 // Gmail and Calendar check (src/ai/mail.py): confirmations, replies, rejections and interviews -> Notion.
 // `updates` = what it recorded (the lines it prints under "Updates:"), shown in the app and the notification.
