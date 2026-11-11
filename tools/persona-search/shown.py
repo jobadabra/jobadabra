@@ -35,6 +35,11 @@ def keys(db_path):
     return set(json.loads(done.stdout.strip().splitlines()[-1]))
 
 
+def field(url, shown):
+    """The `shown` field of one extracted row (gate.py extract): {'shown': bool}, or {} when the list could not be read (keys() None: unknown, never "not shown")."""
+    return {} if shown is None else {'shown': url in shown}
+
+
 def counts(judged):
     """The shown jobs' numbers from the judged rows (each carries `shown` from gate.py extract): shown_found = jobs the list shows,
     shown_local = of them right role AND right place, shown_wrong_role = of them wrong role. None each when the rows do not say."""
@@ -55,6 +60,8 @@ def _list():
     from src.stores import open_stores
     from src.stores.base import url_key
     with store.connect(JOBS_DB) as db:
+        # Why (Gitar on #3823): the app also asks whether an AI is ready (src/desktop.py:284). The person counted ran Find jobs, which needs
+        # an AI, and their search has ended; this process runs on the check's runner after the presses, outside the AI wrapper, so ready() would read the runner, not them.
         listed = jobs(db, limit=1_000_000, notion_jobs=store_jobs(open_stores()), hide_unscored=True)
         shown = {url_key(row['url']) for row in listed['jobs'] if row.get('url')}
         links = [url for (url,) in db.execute("SELECT url FROM jobs WHERE state = 'open'")]

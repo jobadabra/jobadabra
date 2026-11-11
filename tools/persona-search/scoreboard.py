@@ -87,9 +87,9 @@ def chain():
 
 
 def listed():
-    """What counts as a listed job: the shown count's person and how it is read (shown.py ENV, keys(), counts(), _list()), as source tokens.
+    """What counts as a listed job: the shown count's person and how it is read (shown.py ENV, keys(), field(), counts(), _list()), as source tokens.
     Why (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Count what the list shows, then 4/5 (Recommended)"): which jobs count as listed moves every number of the check."""
-    return '\n'.join(_code('shown.py', ('ENV',), ('keys', 'counts', '_list')))
+    return '\n'.join(_code('shown.py', ('ENV',), ('keys', 'field', 'counts', '_list')))
 
 
 PARTS = (('S1', 'the 18 people the check measures', people),
