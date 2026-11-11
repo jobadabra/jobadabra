@@ -1,6 +1,6 @@
 """A source getting lost is red and alerted (finish-line G6; owner, 10 Nov 2026: "If a source is getting lost · We should have red CI · We should have alerts · on the
 Engineering channel"). Reads the night's verdict (after gate.py compare and floors.py check) and the earlier main runs' verdicts, and stores `lost` on the verdict:
-{causes, red, open, tell, back, merges}. tools/persona-search/search-alert.mjs turns `tell` and `back` into the one Telegram card; the "Red when" step reads the exit
+{causes, red, open, tell, back, merges}. desktop/e2e/search-alert.mjs turns `tell` and `back` into the one Telegram card; the "Red when" step reads the exit
 code. Causes ({kind, red, what, people, detail}), one per kind and what:
 - gone: a source word of `sources` (tools/persona-search/sources_count.py, #3749; until it lands no row carries `sources`, so this cause waits) whose right jobs, summed over the 18, were above 0 on each of the last 3 runs that carried it, and are 0
   (or left out) now; only runs where at least MIN_READ persons carry `sources` count, so a partly blind night is no evidence (arms by itself once 3 runs carry
@@ -124,16 +124,9 @@ def not_run(verdict):
 
 
 def merges(verdict):
-    """The merges since the floors were last green, only to help read the alert: floors.py's when a floor is red, else asked here from the floors' last green run;
-    [] when the floors were not checked (no last green) or GitHub does not answer: the alert is still sent, without them."""
-    floors = verdict.get('floors') or {}
-    if floors.get('merges'):
-        return floors['merges']
-    try:
-        import floors as floors_mod
-        return floors_mod.merges_since(os.environ.get('GITHUB_REPOSITORY', ''), floors.get('last_green'))
-    except Exception:   # noqa: BLE001 (Why: the merges only help read the alert; without them it is still sent)
-        return []
+    """The merges since the floors were last green, only to help read the alert: floors.py computes them once, when a floor is red (floors.check). A gone or unread
+    cause alone carries none (Gitar on #3770: a second lookup here would repeat floors.py and has no last green on a night whose floors were not checked)."""
+    return list(((verdict or {}).get('floors') or {}).get('merges') or [])
 
 
 def key(cause):
