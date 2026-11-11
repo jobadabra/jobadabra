@@ -17,5 +17,4 @@ export default {namespace: 'screenStaticExternal', messages: {
   "loadUnpacked": ["Load unpacked", "Entpackte Erweiterung laden", "Charger l’extension non empaquetée", "Carica estensione non pacchettizzata", "Cargar extensión descomprimida", "Încarcă extensia dezarhivată", "Загрузить распакованное расширение"],
   "options": ["Options", "Optionen (Options)", "Options", "Opzioni (Options)", "Opciones (Options)", "Opțiuni (Options)", "Параметры (Options)"],
   "connectApp": ["Connect to the Jobadabra app", "Mit der Jobadabra-App verbinden (Connect to the Jobadabra app)", "Connecter à Jobadabra (Connect to the Jobadabra app)", "Collega all’app Jobadabra (Connect to the Jobadabra app)", "Conectar a Jobadabra (Connect to the Jobadabra app)", "Conectează la Jobadabra (Connect to the Jobadabra app)", "Подключить к Jobadabra (Connect to the Jobadabra app)"],
-  "adzunaJooble": ["🔎 Adzuna and Jooble", "🔎 Adzuna und Jooble", "🔎 Adzuna et Jooble", "🔎 Adzuna e Jooble", "🔎 Adzuna y Jooble", "🔎 Adzuna și Jooble", "🔎 Adzuna и Jooble"],
 }};

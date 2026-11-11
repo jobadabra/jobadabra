@@ -30,13 +30,6 @@
    "name": "Web search (Brave)",
    "effort": "A free key, about 2 minutes",
    "gain": "finds employers' own job sites when their name leads nowhere"
-  },
-  {
-   "id": "aggregators",
-   "name": "Adzuna and Jooble",
-   "effort": "Two free keys, about 3 minutes",
-   "gain": "job search engines across all trades and countries",
-   "people": "gave a match to 6 in 10 people like you"
   }
  ],
  "excluded": [

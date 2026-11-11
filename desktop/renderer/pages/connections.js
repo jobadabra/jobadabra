@@ -377,8 +377,7 @@ export async function init() {
     // Connected with the data still on this Mac: the move, in the same prompt as every connect (pages/notion-connect.js "Move to Notion").
     if (result.stayedOnMac) { shared.state = await window.pilot.state(); openNotionConnect({reason: 'move', where: 'settings', from: 'settings', then: () => loadSettings()}); }
   });
-  for (const [id, name, check] of [['anthropic', 'ANTHROPIC_API_KEY', 'checkAnthropic'], ['openai', 'OPENAI_API_KEY', 'checkOpenAI'], ['serpapi', 'SERPAPI_API_KEY', false], ['adzuna-id', 'ADZUNA_APP_ID', false],
-    ['adzuna-key', 'ADZUNA_APP_KEY', false], ['jooble', 'JOOBLE_API_KEY', false], ['brave', 'BRAVE_SEARCH_API_KEY', false]]) {
+  for (const [id, name, check] of [['anthropic', 'ANTHROPIC_API_KEY', 'checkAnthropic'], ['openai', 'OPENAI_API_KEY', 'checkOpenAI'], ['serpapi', 'SERPAPI_API_KEY', false], ['brave', 'BRAVE_SEARCH_API_KEY', false]]) {
     $(`set-${id}-save`).addEventListener('click', async () => {
       const value = $(`set-${id}`).value.trim();
       if (!value) return;

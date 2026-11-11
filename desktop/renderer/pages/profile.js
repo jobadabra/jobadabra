@@ -120,8 +120,7 @@ export async function loadSettings() {
   showNotionPanel();
   const hints = await window.pilot.secretHints();
   for (const [id, name, empty] of [['set-anthropic', 'ANTHROPIC_API_KEY', 'sk-ant-…'], ['set-openai', 'OPENAI_API_KEY', 'sk-…'], ['set-notion', 'NOTION_TOKEN', 'ntn_…'],
-    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', t('pagesExtraLabels.serpapiKey')], ['set-brave', 'BRAVE_SEARCH_API_KEY', t('pagesExtraLabels.braveKey')], ['set-adzuna-id', 'ADZUNA_APP_ID', t('pagesExtraLabels.adzunaId')],
-    ['set-adzuna-key', 'ADZUNA_APP_KEY', t('pagesExtraLabels.adzunaKey')], ['set-jooble', 'JOOBLE_API_KEY', t('pagesExtraLabels.joobleKey')]]) {
+    ['set-telegram', 'TELEGRAM_BOT_TOKEN', '123456789:AA…'], ['set-serpapi', 'SERPAPI_API_KEY', t('pagesExtraLabels.serpapiKey')], ['set-brave', 'BRAVE_SEARCH_API_KEY', t('pagesExtraLabels.braveKey')]]) {
     if ($(id)) $(id).placeholder = hints[name] ? t('pagesDynamicProfileReady.m300', {"name": hints[name]}) : empty;
   }
   renderNotionLinks();

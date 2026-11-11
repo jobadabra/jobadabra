@@ -3,7 +3,7 @@ any difference is printed (owner, 8 Oct 2026: "I'd like my experience as Swiss/e
 data (never writes to it), no network, no AI.
 
     python3 tools/meanings_parity.py [baseline-rev]     default baseline: origin/main
-Checks: the search's role kinds, tech or not, level skips, Swiss detection, Adzuna countries, pool tags, the employers a run reads, the kind
+Checks: the search's role kinds, tech or not, level skips, Swiss detection, pool tags, the employers a run reads, the kind
 of every job title in jobs.sqlite (tools/parity/search_answers.py), and every careers/job-site list on the cached pages (page_answers.py)."""
 import json
 import shutil
