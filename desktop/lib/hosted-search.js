@@ -61,13 +61,16 @@ export async function pushConfig(storage, options) {
 }
 
 // "How often" (Settings → How often, hours between searches; 0 = off) as the cloud's schedule. Why (ap 2/6, 11 Nov 2026, owner: "replicate the entire functionality/settings on the Always on"): the hours never left this Mac, so the cloud
-// always ran at the site's default. The site owns the schedule and clamps it (Pro 4-24 h; a trial stays daily by the site's cost design, shared/hosted.js): this only says what the person chose. `{}` when off, so the site keeps its default.
+// always ran at the site's default. The site owns the schedule and clamps it (Pro 4-24 h; a trial stays daily by the site's cost design, shared/hosted.js): this only says what the person chose. `{}` when How often is Off.
+// Why (code review, 11 Nov 2026): Off is the Mac's schedule and does not pause the cloud: the site has no "pause" short of `on: false` (Always on's own switch, which is the person's call), so an Off after hours were sent leaves the site on its last hours. `pushSchedule` says so (`off: true`) instead of looking like a push.
 export const hoursOf = storage => { const hours = Number(cadence(storage.settings()).search); return hours > 0 ? {freqHours: hours} : {}; };
 
 // Sends the chosen hours to the site's schedule and remembers which hours it took. -> {ok, skipped?, error?}. Nothing to send while Always on is off; unchanged hours send nothing.
 export async function pushSchedule(storage, options = {}) {
   const wanted = hoursOf(storage);
-  if (!state(storage).on || !wanted.freqHours || state(storage).hoursSent === wanted.freqHours) return {ok: true, skipped: true};
+  if (!state(storage).on) return {ok: true, skipped: true};
+  if (!wanted.freqHours) return {ok: true, skipped: true, off: true};   // see hoursOf: Off never reaches the cloud
+  if (state(storage).hoursSent === wanted.freqHours) return {ok: true, skipped: true};
   const done = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, ...wanted}, ...options});
   if (done.ok) save(storage, {hoursSent: wanted.freqHours});
   return done;

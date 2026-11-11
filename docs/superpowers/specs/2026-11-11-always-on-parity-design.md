@@ -28,8 +28,8 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 - **CLAUDE.md "LinkedIn jobs":** this PR adds the one owner-approved cloud-probe exception sentence (owner's words in the commit); the "Keychain only" rule itself changes only when 5/6 is built.
 
 ## 2/6 Settings parity
-- "How often": the chosen hours reach the cloud schedule (the site owns the schedule; the app pushes the hours with the config). Built: `hosted-search.js pushSchedule` sends `freqHours` at turn-on, at app start and on a Settings change while on (`hoursSent` remembers what the site took); the site clamps it (Pro 4-24 h; a trial stays daily by its cost design, so a trial card must not promise the hours).
-- **Finder lane: missing in the cloud** (read from `src/hosted_run.py`: no scout or finder step; the app's "searching wider" is the Mac's). 6/6 says so on the card. The finder lane ("searching wider", `press-stages.js`): read its cloud counterpart and say works or missing.
+- "How often": the chosen hours reach the cloud schedule (the site owns the schedule; the app pushes the hours with the config). Built: `hosted-search.js pushSchedule` sends `freqHours` at turn-on, at app start and on a Settings change while on (`hoursSent` remembers what the site took); the site clamps it (Pro 4-24 h; a trial stays daily by its cost design, so a trial card must not promise the hours). "How often = Off" is the Mac's schedule and does not pause the cloud (the site's only pause is Always on's own switch); `pushSchedule` reports it as `off`.
+- **Finder lane: missing in the cloud** (read from `src/hosted_run.py`: no scout or finder step; the app's "searching wider" is the Mac's). 6/6 says so on the card.
 
 ## 3/6 Web search in the cloud (`board_web`, `boards_found`)
 - The container has no plan CLI and no Brave/SerpApi key. Options: the site's AI route with web search, or a site-held search key. **Ask before spending:** the measured cost per run goes to the owner first.
@@ -48,7 +48,7 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 ## Progress
 - [ ] Sketch and the owner's yes (sketch https://claude.ai/artifact/TdRGmaJvmB8oRbFXhs8zUs; yes 11 Nov 2026)
 - [ ] 1/6 LinkedIn cloud probe (app #3784 merged 14f9d37; site jobadabra-web #547; the owner's one read still to do): web PR first, then this repo's night file and the console-called IPC; the one read by the owner
-- [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane: missing in the cloud, said on the card in 6/6) (proof: desktop/test/unit/main/hosted-hours.test.js)
+- [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane reported missing; the card's wording is 6/6) (proof: desktop/test/unit/main/hosted-hours.test.js)
 - [ ] 3/6 Web search in the cloud (cost shown first)
 - [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each)
 - [ ] 5/6 LinkedIn lane in the cloud (only if the probe says go)

@@ -46,6 +46,17 @@ test('a change while on is sent once; the same hours again, and any change while
   assert.deepEqual(hours(mine.calls), []);
 });
 
+test('How often = Off after hours were sent does not reach the cloud, and says so', async () => {
+  const mine = site(), settings = store({schedule: {search: 6}});
+  await turnOn(settings, {email: 'me@example.com'}, {fetcher: mine.fetcher});
+  mine.calls.length = 0;
+  settings.saveSettings({schedule: {search: 0}});
+  const done = await pushSchedule(settings, {fetcher: mine.fetcher});
+  assert.deepEqual([done.skipped, done.off], [true, true]);
+  assert.deepEqual(hours(mine.calls), []);
+  assert.equal(state(settings).hoursSent, 6);   // the site still holds 6 h: the truth, not a guess
+});
+
 test('a refused push is not remembered, so the next start sends it again', async () => {
   const settings = store({schedule: {search: 6}, hostedSearch: {on: true, hoursSent: 4}});
   const refused = async () => Response.json({ok: false, error: 'no'}, {status: 500});
