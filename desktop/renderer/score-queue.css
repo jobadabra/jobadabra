@@ -9,5 +9,5 @@
 .fit-cell.is-scoring .fit-ring { background: conic-gradient(var(--signal-edge) 25%, var(--line) 0); animation: spin 1s linear infinite; }
 .fit-cell.is-scoring .fit-ring span { font-size: 0; }
 .fit-cell:is(.is-queued, .is-scoring, .can-score) .fit-label { display: block; color: var(--muted); font-weight: 500; }
-.fit-cell.can-score button.fit-label { border: 0; padding: 0; background: none; cursor: pointer; color: var(--signal-edge); font-weight: 600; }
+.fit-cell.can-score button.fit-label { border: 0; padding: 0; background: none; cursor: pointer; color: var(--signal); font-weight: 600; }   /* the text-link colour (style.css button.link): AA on the row's surface */
 @media (prefers-reduced-motion: reduce) { .fit-cell.is-scoring .fit-ring { animation: none; } }
