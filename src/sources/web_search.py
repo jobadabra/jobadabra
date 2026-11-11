@@ -100,9 +100,11 @@ def plan_client():
 
 
 def free_ai(env=None):
-    """True when the AI answering is Free AI (the app's JPF1 install key): an open model with no web search tool."""
+    """True when the AI answering is Free AI (the app's JPF1 install key) or the site's hosted run token (HR1., Always on's cloud run): an open model with no web search tool.
+    Why (ap 3/6, 11 Nov 2026, owner: "replicate the entire functionality ... on the Always on"; "Fund the lane, then enable it", asked via AskUserQuestion): the cloud run's key is the run
+    token, and the site's relay already serves it the shared board web search lane (jobadabra-web shared/free-ai.js who()); only this prefix test kept the cloud on the "your API key" path."""
     env = os.environ if env is None else env
-    return (env.get('ANTHROPIC_API_KEY') or '').startswith('JPF1.')
+    return (env.get('ANTHROPIC_API_KEY') or '').startswith(('JPF1.', 'HR1.'))
 
 
 def _claude_search(company, language, site=''):

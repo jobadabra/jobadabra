@@ -32,7 +32,9 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 - **Finder lane: missing in the cloud** (read from `src/hosted_run.py`: no scout or finder step; the app's "searching wider" is the Mac's). 6/6 says so on the card.
 
 ## 3/6 Web search in the cloud (`board_web`, `boards_found`)
-- The container has no plan CLI and no Brave/SerpApi key. Options: the site's AI route with web search, or a site-held search key. **Ask before spending:** the measured cost per run goes to the owner first.
+- **Found (11 Nov 2026):** the site already has the lane: `jobadabra-web shared/free-ai-web.js` serves the board web search to Free AI (one shared answer per roles × places for 30 days, about $0.035 a new cell, $10 a month for everyone, 2 a day per install), and its relay `who()` already accepts the cloud run token (`HR1.`). Only the engine's `web_search.free_ai()` knew Free AI by the `JPF1.` prefix, so the cloud took the "your API key" path.
+- **Built:** `free_ai()` also accepts `HR1.` (test: `tests/unit/ai/test_plan_search.py`). No new code path, no second lane.
+- **Cost, measured:** nothing yet: the lane has never run in production (no `freeai:web:*` keys in the KV; no `WEB_SEARCH_ANTHROPIC_KEY` on the `www` Worker, read 11 Nov). Owner, asked via AskUserQuestion: "Fund the lane, then enable it (Recommended)": the owner makes the separate Anthropic workspace key with a $10/month spend limit (money stays his); the Worker secret is set through the Cloudflare MCP; then one cloud run's `board_web` line is read to measure.
 
 ## 4/6 EURES, Adzuna, alert e-mails
 - EURES: `JOBADABRA_EURES=1` in the cloud env, as the installed app (owner, 10 Nov: off in development and CI, never the headline).
