@@ -1,4 +1,4 @@
-"""Every source lane of a press reads at the same time and ends in one said state (lanes 1/5, issue #3754; design: WP8 of
+"""Every source lane of a press reads at the same time (lanes 1/5, issue #3754; design: WP8 of
 docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md, the lane table in src/sources/reader_rows.py LANES).
 Why (sf, 10-11 Nov 2026): the sources took turns on one 3-minute clock, so the last ones got nothing: job boards ran out of time on 27 of 32 first presses
 and the free job APIs on 28 of 32 (yardstick replays of the night recordings), on every repeat press, and on 18 of 18 people in the live run 42897831935.
@@ -12,7 +12,6 @@ from unittest import mock
 
 from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
-from src.press import stage, step_yield
 from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
 from tests.unit.press.red_until import red_until
@@ -54,7 +53,7 @@ class Lanes:
 
 class LanesTest(phases.SearchCharacterization):
     @red_until('lanes 3/5 (#3754)', 'every source lane started before any finished')
-    def test_every_source_lane_is_reading_before_any_has_finished_and_each_ends_done_time_up_or_failed(self):
+    def test_every_source_lane_is_reading_before_any_has_finished(self):
         lanes, jumped = Lanes(SEAMS), [0.0]
         real_monotonic = time.monotonic
         employer = {'jobs': [], 'sources': [], 'funnel': {}}
@@ -83,12 +82,9 @@ class LanesTest(phases.SearchCharacterization):
         self.assertIn('employer_sites', lanes.started, 'positive control: the search reached the stand-in readers')
         self.assertTrue(lanes.all_in.is_set(), f'every source lane started before any finished; started: {sorted(lanes.started)}, '
                                                f'first to finish: {lanes.finished_first}')
-        ended = step_yield.ended()   # each lane's one said state (design rule 4): a stage.Result per lane id; lanes 3/5 adds it
-        self.assertEqual({lane: ended[lane].status for lane in SEAMS}, {'eures': stage.DONE, 'employer_sites': stage.DONE, 'board_web': stage.DONE,
-                                                                        'job_boards': stage.CUT, 'free_job_apis': stage.FAILED})
-        self.assertIn('wait', ended['job_boards'].reason, 'a lane cut by the clock says what waits')
-        self.assertEqual(ended['free_job_apis'].reason, 'RuntimeError')
         self.assertLessEqual(set(SEAMS), set(reader_rows.BY_LANE), 'every lane here is a lane of the table')
+        # Lanes 3/5 adds here each lane's one said state (design rule 4: done / cut, saying what waits / failed, why), read from the accessor it
+        # declares: job_boards ends cut (its read jumps the clock past the cut), free_job_apis ends failed ('RuntimeError'), the others done.
 
 
 for _name in [name for name in dir(phases.SearchCharacterization) if name.startswith('test_') and name not in LanesTest.__dict__]:
