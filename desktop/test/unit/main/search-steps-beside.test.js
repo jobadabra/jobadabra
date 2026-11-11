@@ -24,8 +24,8 @@ test('a later press starts the search at once and discovers employers from the j
   assert.deepEqual(lines.slice(0, 2), ['Searching job boards…', 'Checking employer career pages, then reading and scoring new jobs…'], 'the live log and its chips read the same lines');
 });
 
-test('the first press keeps its order: the slice, then the job boards, then their jobs scored', async () => {
+test('the first press is one engine process too: the slice, with the job boards read in its own lane', async () => {
   const steps = [];
   await searchSteps(storage({}), () => {}, 'run', 'first', async (_storage, args) => { steps.push(args.slice(1).filter(a => ['daily', 'discover', 'scout', '--first-jobs', '--discover-beside'].includes(a)).join(' ')); return {code: 0, result: {}}; });
-  assert.deepEqual(steps, ['daily --first-jobs', 'discover', 'daily', 'scout']);
+  assert.deepEqual(steps, ['daily --first-jobs', 'scout']);
 });
