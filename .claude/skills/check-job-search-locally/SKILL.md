@@ -8,6 +8,11 @@ description: Run ONE live job search of a fictional candidate (a fixed Lab one o
 The owner's job-search check is **real installs' results + the Random draws** (owner, 19 Oct 2026); the offline replay is parked. This skill is the one on-demand live run: a fictional
 candidate through the app's own path (CV → strategy → first "Find jobs"), on this Mac.
 
+**To prove a Find jobs change (before | after) in ~2.5 min a search, use `local-proof` instead** (owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins"):
+`node tools/persona-search/local-proof.mjs <person 1-18> --ref <before: worktree path or git ref> --ref <after>`. The CV and search plan are made once per person
+(`$TMPDIR/jp-local-proof/people/p<n>/`), a worktree path searches as it is (edits too), one table comes out; a run that hit the plan limit reads NOT COUNTED. The saved plan is reused, so a change to the strategy draft itself needs `--fresh-draft`.
+`--together` runs both at once (measured 11 Nov 2026: the 3-minute clock holds, 1st job +2-3 s; not 3 at once). One run a side is noisy (p10, same code: 46-60 listed).
+
 ## What it uses and costs
 - **AI: the owner's Claude subscription via `claude -p`: $0 API.** Never the Tests key, never any API key: the script removes `ANTHROPIC_API_KEY`, `LAB_HEAL_ANTHROPIC_KEY`,
   `RANDOM_DRAWS_ANTHROPIC_KEY`, `OPENAI_API_KEY`, `REPLAYS_PUBLISH_KEY` from its environment (`tools/persona-search/search-check.mjs`, test `tests/test_search_check.py`).
