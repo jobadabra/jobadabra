@@ -34,7 +34,7 @@ MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a b
 # "2,000 calls" (~$0.65 a run while the counts fill, about 2 days; kept answers make later runs cheap). Tests: tests/unit/ai/test_kind_counts.py.
 CENTRAL_MAX_CALLS = 2000
 _calls = {'n': 0}
-_own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), or per own_allowance() scope, outside limit()
+_own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), or per own_allowance() scope or the probe's pool, outside limit() (and the lock take() holds, under '\0lock')
 SCOPE = {'name': None, 'n': 0}   # own_allowance(): the calls inside count against this, not the run's cap
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
@@ -119,21 +119,19 @@ def own_allowance(name, n):
 # Why (sk 4/5, 11 Nov 2026, owner: "Counted feeds are worth more now than a few new sources a run"): a run's probe spent about half the relay's calls on careers-page reads (link-kind and the page reader) for a few new sources,
 # and the cap was gone minutes into the feed pass that counts the known employers (numbers: jobadabra-lab#87). A thread-local tag, not own_allowance(): the probe's late checks run on into the feed pass and that scope is process-wide.
 CENTRAL_PROBE_CALLS = 30
-_probe = threading.local()
 
 
 @contextlib.contextmanager
 def probe_allowance(n):
     """This thread is a probe check: its model calls (decide() and the page reader) are drawn from ONE pool of `n` calls a run, shared by every probe thread and outside the run's cap;
-    when it is spent the probe's later asks wait for the next run (unknown, never guessed). None: no pool, nothing changes."""
-    _probe.n = n
+    when it is spent the probe's later asks wait for the next run (unknown, never guessed). None: no pool, nothing changes. The tag is an attribute of the thread itself, so the module
+    keeps no new state (tests/guards/rules/test_run_state_only_shrinks.py): the pool's count and its lock live in `_own`, beside the other allowances."""
+    thread = threading.current_thread()
+    thread.probe_pool = n
     try:
         yield
     finally:
-        _probe.n = None
-
-
-_take_lock = threading.Lock()
+        thread.probe_pool = None
 
 
 def _pool(topic, allowance):
@@ -142,13 +140,13 @@ def _pool(topic, allowance):
         return topic, allowance
     if SCOPE['name']:
         return SCOPE['name'], SCOPE['n']
-    n = getattr(_probe, 'n', None)
+    n = getattr(threading.current_thread(), 'probe_pool', None)
     return ('probe', n) if n is not None else (None, 0)
 
 
 def take(topic, key, allowance=None, label='decide'):
     """Count one model call on its pool: True to make it, False when the pool is spent. One lock, as the feeds and the probe are checked side by side (Gitar, sk 4/5: a bare read then write overshot)."""
-    with _take_lock:
+    with _own.setdefault('\0lock', threading.Lock()):   # setdefault is atomic: every thread gets the one lock
         pool, cap = _pool(topic, allowance)
         used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
         if not budget_tape.within(label, f'{topic} {key}', used, cap):
@@ -162,7 +160,7 @@ def take(topic, key, allowance=None, label='decide'):
 
 def probe_take():
     """None when this thread is not a probe check; else True when it took one of the probe's calls (page_reader.read counts its call here), False when the pool is spent."""
-    return None if getattr(_probe, 'n', None) is None else take('page read', 'probe')
+    return None if getattr(threading.current_thread(), 'probe_pool', None) is None else take('page read', 'probe')
 
 
 CACHE_ONLY = {'on': False}   # cache_only(): every decide() inside answers from the cache and the pack, as ask=False does
