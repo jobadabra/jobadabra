@@ -14,7 +14,7 @@ import time
 
 from .press import budget
 
-HANDLERS = budget.value('run_exit.HANDLERS')   # the exit handlers' seconds at a hard stop, inside the run's share (src/press/budget.json)
+HANDLERS = budget.value('run_exit.HANDLERS')   # the exit handlers' limit at a hard stop, after the run's deadline (src/press/budget.json)
 _own = [None]
 
 
@@ -72,10 +72,11 @@ def finish(code):
     deadline = time_budget.end() or _own[0]   # a step with its share of the press ends at its stage, not at the press's deadline
     if deadline is None or not holding():
         return code
-    reads_end = deadline - HANDLERS   # the exit handlers' seconds come out of the run's share, never after it (sa, lanes 2/5)
+    # Why (#3798, owner 11 Nov 2026, asked via AskUserQuestion: "Wait to the deadline (Recommended)"): the open reads keep the run's time to its deadline;
+    # the exit handlers (under 1 s in the live runs) run after it on their own limit (`leave`). Ending the wait HANDLERS early cut every run's last 5 s.
     for thread in holding():
         if not thread.daemon:   # the open reads get what is left of the run's time and keep their answer (owner, 26 Oct 2026: "a soft stop")
-            thread.join(max(0.0, reads_end - time.monotonic()))
+            thread.join(max(0.0, deadline - time.monotonic()))
     left = holding()
     if not left:
         return code
