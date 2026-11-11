@@ -166,6 +166,15 @@ pr_keep_hold() {
   case "$2" in "["*) printf '%s' "$2" | sed -E 's/^((\[[^]]+\] )+)/\1DONT MERGE /' ;; *) printf 'DONT MERGE %s' "$2" ;; esac
 }
 
+# pr_new_title <repo> <n> <requested title>: the title to set on open PR #n: its current title is read and pr_keep_hold applied. Exit 1 (nothing printed) when the current title cannot be read:
+#   whether the PR is held is then unknown, so the caller keeps the old title rather than risk dropping the hold (Gitar, #3810: a failed lookup used to read as "not held").
+pr_new_title() {
+  local current
+  current="$(pr_view "$1" "$2" 2>/dev/null | jq -r '.title // empty' 2>/dev/null)" || return 1
+  [ -n "$current" ] || return 1
+  pr_keep_hold "$current" "$3"
+}
+
 # pr_set_text <repo> <n> <title> <body>: replaces the title and/or the description in ONE request (an empty argument is left as it is). Two PATCHes are two `edited` events,
 #   and two events on one commit make the Guard gate cancel one of its own runs, which stays red on the head (10 Nov 2026, fr; 79 PRs since 25 Oct).
 pr_set_text() {
