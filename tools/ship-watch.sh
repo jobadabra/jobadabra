@@ -118,8 +118,8 @@ while :; do
     # Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 sat 7+ min with no review): Gitar reviews a PR when it opens, not a push to an
     #   open PR, so a pushed head has no "Gitar" check and nobody asks. After SHIP_WATCH_GITAR_AFTER s (default 180) without one, this watcher posts ONE "Gitar review" per head (a second comment inside
     #   ~50 min locks the PR, so the head is written to the marker before the post and never asked twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
-    #   The check is named "Gitar" (live on #3723, 11 Nov 2026 00:55:52Z); an empty read (rate limit, 5xx) keeps the timer running and never asks, since it cannot show that Gitar has no check.
-    if [ -n "$checks" ] && jq -e 'any(.[]?; .name == "Gitar")' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
+    #   The check is named "Gitar" (live on #3723, 11 Nov 2026 00:55:52Z); matched like the label matches the app slug: case-insensitive "gitar" in the name; an empty read (rate limit, 5xx) keeps the timer running and never asks, since it cannot show that Gitar has no check.
+    if [ -n "$checks" ] && jq -e 'any(.[]?; (.name // "") | test("gitar"; "i"))' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
       if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
