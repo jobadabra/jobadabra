@@ -99,6 +99,17 @@ class Split(unittest.TestCase):
                 self.assertEqual((out / 'judged.json').read_text(encoding='utf-8'), before)
                 self.assertFalse((out / 'judged-all.json').exists())
 
+    def test_a_press_without_a_start_time_says_so_and_counts_every_job_as_run_one(self):
+        """Gitar on #3781: one press without `started` (a resumed run from an older run.mjs) cannot be split; the log says which press, never a silent one-run person."""
+        import contextlib
+        import io
+        rows = judged([{'title': 'A', 'company': 'Acme', 'location': 'Lyon', 'first_seen': '2026-11-11T00:06:00+00:00'}])
+        said = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(said):
+            found = runs.split(person(tmp, rows, [TWO[0], {'press': 2, 'seconds': 120}]))
+        self.assertEqual([r['run'] for r in found], [1])
+        self.assertIn('press 2 has no start time', said.getvalue())
+
     def test_the_cli_never_fails_the_person_without_a_judge_answer(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(os.system(f'python3 {ROOT}/tools/persona-search/runs.py split {tmp} > /dev/null'), 0)
@@ -123,6 +134,9 @@ class Night(unittest.TestCase):
         self.assertNotEqual(floors.validate({'version': 1, 'series': {key.replace('runs-2', 'runs-5'): {'people': {}, 'last_green': None}}}), [],
                             'the weekly 5 runs keep their own record, never a floors series')
         self.assertEqual(floors.NUMBERS['new_on_2'][0](verdict['personas']['1']), 1)
+        week = {'eures': 'off', 'personas': {'1': {'runs': [{'run': n, 'new_right': 1} for n in range(1, 6)]}}, 'rows': [{'persona': 1, 'kind': 'measured'}]}
+        state, report = floors.update(None, week, 'codex,claude', '1', '2026-11-12')
+        self.assertEqual((report['checked'], state['series']), (False, {}), 'Gitar on #3781: a 5-run week is never a floors series, so the save is never refused')
         self.assertIsNone(floors.NUMBERS['new_on_2'][0]({'runs': [{'run': 1, 'new_right': 3}]}))
 
     def test_the_lock_holds_how_many_runs_a_night_presses(self):

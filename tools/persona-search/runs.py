@@ -56,6 +56,8 @@ def split(out):
     out = Path(out)
     judged = json.loads((out / 'judged.json').read_text(encoding='utf-8'))
     rows, presses, begun = judged['rows'], _presses(out), starts(out)
+    if begun is None and len(presses) > 1:   # Why (Gitar on #3781): a resumed run whose older press has no start time cannot be split; say which, never a silent one-run person
+        print(f"runs: press {next(n for n, row in enumerate(presses, 1) if _when(row.get('started')) is None)} has no start time (an older run.mjs): every job counts as run 1")
     first = {}
     for row in rows:
         first[key(row)] = min(first.get(key(row), 10 ** 6), run_of(row.get('first_seen'), begun))
