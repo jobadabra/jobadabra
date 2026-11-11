@@ -24,6 +24,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import runs as runs_mod  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 REF = 'tags/search-floors'
 FILE = 'floors.json'
@@ -60,6 +63,7 @@ NUMBERS = {
     'right': (lambda row: row.get('local'), 1, 1),
     'eures_inout': (eures_share, 1, 0.1),
     'first_s': (first_s, -1, 15),   # seconds to first job: its floor is a ceiling that only falls
+    'new_on_2': (lambda row: runs_mod.new_right(row, 2), 1, 1),   # the right jobs the second run listed first (owner, 11 Nov 2026: "each of the runs should provide new jobs")
 }
 
 
@@ -69,8 +73,10 @@ def measure():
 
 
 def series_key(verdict, chain):
-    """The series a night belongs to: the lock's fingerprint, the check's AI chain (JOBADABRA_CHECK_CHAIN) and the verdict's EURES mode ('on' when unsaid)."""
-    return f"{measure()}|{chain}|eures-{verdict.get('eures') or 'on'}"
+    """The series a night belongs to: the lock's fingerprint, the check's AI chain (JOBADABRA_CHECK_CHAIN), the verdict's EURES mode ('on' when unsaid) and, for a
+    night of more than one run per person (runs.py), the runs: a 2-run night never shares a floor with a 1-run one. The older 3-part keys stay readable."""
+    count = len(next((row['runs'] for row in (verdict.get('personas') or {}).values() if isinstance(row, dict) and isinstance(row.get('runs'), list)), []))
+    return f"{measure()}|{chain}|eures-{verdict.get('eures') or 'on'}" + (f'|runs-{count}' if count > 1 else '')
 
 
 def worse(direction, now, floor, spread):
@@ -147,7 +153,7 @@ def validate(state):
             or not all(isinstance(k, str) and LOST_KEY.fullmatch(k) for k in lost['open']):
         out.append('lost')
     for key, series in state['series'].items():
-        if not re.fullmatch(r'[0-9a-f]{12}\|[\w,-]+\|eures-(on|off)', key) or set(series) != {'people', 'last_green'}:
+        if not re.fullmatch(r'[0-9a-f]{12}\|[\w,-]+\|eures-(on|off)(\|runs-[2-9])?', key) or set(series) != {'people', 'last_green'}:
             out.append(f'series {key[:40]!r}')
             continue
         for n, numbers in (series['people'] or {}).items() if isinstance(series['people'], dict) else [('?', None)]:

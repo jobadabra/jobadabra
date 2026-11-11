@@ -25,10 +25,14 @@ WHO = ('family', 'title', 'kind', 'city', 'country', 'language')   # a person's 
 
 
 def people():
-    """The 18 fixed people (who each one is) and the list a night runs."""
+    """The 18 fixed people (who each one is), the list a night runs and how many runs a night presses per person (the `presses` input's default; owner,
+    11 Nov 2026: "2 runs nightly, 5 runs weekly (Recommended)")."""
     rows = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
-    night = re.search(r"fromJSON\(inputs\.personas \|\| '(\[[^']*\])'\)", WORKFLOW.read_text(encoding='utf-8'))
-    return json.dumps({'people': [{k: p.get(k) for k in WHO} for p in rows], 'night': json.loads(night.group(1)) if night else None}, ensure_ascii=False, sort_keys=True)
+    text = WORKFLOW.read_text(encoding='utf-8')
+    night = re.search(r"fromJSON\(inputs\.personas \|\| '(\[[^']*\])'\)", text)
+    runs = re.search(r"\n      presses:\n(?:        .*\n)*?        default: '(\d+)'", text)
+    return json.dumps({'people': [{k: p.get(k) for k in WHO} for p in rows], 'night': json.loads(night.group(1)) if night else None,
+                       'runs': int(runs.group(1)) if runs else None}, ensure_ascii=False, sort_keys=True)
 
 
 def judge_prompt():

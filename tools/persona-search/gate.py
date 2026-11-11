@@ -21,6 +21,7 @@ from scores_rows import table_rows  # noqa: E402
 import funnel as funnel_mod  # noqa: E402
 import verdicts  # noqa: E402
 import engine_calls  # noqa: E402
+import runs as runs_mod  # noqa: E402
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/unit/sources/test_three_minutes.py)
 MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
@@ -73,11 +74,11 @@ def extract(db_path, out, *, include_urls=False):
         rows = []
     else:
         db = sqlite3.connect(db_path)
-        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url, s.kind, j.notes FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+        selected = table_rows(db, 'jobs', "SELECT j.title, co.name, j.location, s.name, j.url, s.kind, j.notes, j.first_seen_at FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
                               "LEFT JOIN sources s ON s.id = j.source_id WHERE j.state = 'open'")
         kinds = dict(table_rows(db, 'sources', 'SELECT name, kind FROM sources'))   # kind and `also` (each other reader that listed the job: src/store.py notes "also on <reader>"): sources_count.py
         rows = [{'title': t, 'company': c or '', 'location': loc or '', 'provider': source or '', 'kind': kind or '', 'also': [[name, kinds.get(name) or ''] for name in re.findall(r'also on (.+?)(?= · also on |$)', notes or '')],
-                 **({'url': url or ''} if include_urls else {})} for t, c, loc, source, url, kind, notes in selected]
+                 'first_seen': first_seen or '', **({'url': url or ''} if include_urls else {})} for t, c, loc, source, url, kind, notes, first_seen in selected]
     Path(out).write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     return rows
 
@@ -174,16 +175,6 @@ def funnel_note(funnel):
     return '; '.join(parts)
 
 
-def after_repeat(out):
-    """A by-hand presses=2 check (search-personas.yml): the numbers after the repeat press, or None (#3565 review). The counts are running totals:
-    metrics.py reads the whole jobs.sqlite."""
-    try:
-        again = json.loads((Path(out) / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[1])
-    except (OSError, IndexError, ValueError):
-        return None
-    return {k: again.get(k) for k in ('seconds', 'code', 'local_jobs', 'in_places', 'scored_in_places', 'fit70_in_places')} if isinstance(again, dict) else None
-
-
 def source_kind(row):
     """Fixed provenance category for counts: reader name or public EURES URL; never returns employer/source text."""
     if str(row.get('provider') or '').casefold() == 'eures':
@@ -225,7 +216,7 @@ def result(n, out):
         starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
-    row['after_repeat'] = after_repeat(out)   # None on a one-press night
+    row['after_repeat'], row['runs'] = runs_mod.after_repeat(out), runs_mod.read(out)   # None on a one-press night; runs: what each run added first (runs.py)
     engine = engines_of(out / 'run.log')
     if engine:
         row['engine'] = engine
@@ -437,7 +428,7 @@ def compare(pr, main_runs):
     modes = {(row or {}).get('eures') for row in pr.values()} - {None}
     # Why (10 Nov 2026, owner): the site compares a night only with nights of its own kind (jobadabra-web admin/search-night-judge.js euresOf); 'off' only when every press that said so said off.
     eures = 'off' if modes == {'off'} else 'on'
-    return {'state': state, 'head': head, 'eures': eures, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
+    return {'state': state, 'head': head, 'eures': eures, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason, 'runs': runs_mod.night(pr.values())}
 
 
 def cost_label(verdict):
