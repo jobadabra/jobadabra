@@ -31,6 +31,7 @@ jobs:
       E2E_CAUSE_CF_TOKEN: ${{ secrets.E2E_CAUSE_CF_TOKEN }}
       E2E_CAUSE_CF_ACCOUNT: ${{ secrets.E2E_CAUSE_CF_ACCOUNT }}
     steps:
+      # Why (11 Nov 2026): e2e-intel.mjs imports the app's small Free AI model name from desktop/lib/free-ai-models.js (#3634); without desktop/lib the job failed with ERR_MODULE_NOT_FOUND every hour from 10 Nov 00:21Z. No comment inside the block below: a '#' there is part of the path.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -38,7 +39,7 @@ jobs:
             tools/ci-intel
             desktop/e2e/lib
             desktop/e2e/suites
-            desktop/lib   # Why (11 Nov 2026): e2e-intel.mjs imports the app's small Free AI model name from desktop/lib/free-ai-models.js (#3634); without this folder the job failed with ERR_MODULE_NOT_FOUND every hour from 10 Nov 00:21Z
+            desktop/lib
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
