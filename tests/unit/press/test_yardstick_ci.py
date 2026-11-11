@@ -161,6 +161,15 @@ class YardstickCi(unittest.TestCase):
             self.assertEqual(json.loads(Path(root, 'out2', 'gaps.json').read_text())['personas'], [11])
             with redirect_stdout(io.StringIO()):
                 self.assertEqual(ci.main(['gaps', str(art)]), 2)
+            # Gitar on #3834: a person not asked for has no folder and is no gap; a recorded person main's replay left no report for is "not replayed", never an all-clear
+            with mock.patch.dict(os.environ, {'PERSONAS': '[1, 4, 11]'}), redirect_stdout(io.StringIO()):
+                self.assertEqual(ci.main(['gaps', str(art), str(Path(root, 'out3')), str(recs)]), 0)
+            found = json.loads(Path(root, 'out3', 'gaps.json').read_text())
+            self.assertEqual((found['personas'], found['no_recording'], found['not_replayed']), ([4, 11], ['p4'], ['p1']), 'p11 is the replay gap whatever was asked; p4 has no recording; p1 was not replayed')
+            nothing = Path(root, 'nothing')
+            with mock.patch.dict(os.environ, {'PERSONAS': '[1]'}), redirect_stdout(io.StringIO()) as said:
+                self.assertEqual(ci.main(['gaps', str(nothing), str(Path(root, 'out4')), str(recs)]), 1, 'the replay measured nobody: not an all-clear')
+            self.assertIn('no all-clear', said.getvalue())
 
 
 if __name__ == '__main__':

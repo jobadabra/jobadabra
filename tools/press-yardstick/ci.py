@@ -8,6 +8,7 @@ A persona with no recording has no artifact and is left out ("not measured"); a 
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -295,16 +296,27 @@ def band_mode(art, out):
 def gaps_mode(art, out, recordings=None):
     """mode=gaps (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Auto re-record after merge (Recommended)"): who press-tapes-auto.yml re-records, from ONE offline replay of main on the recordings:
     the people whose replay asked for more than the bounds (recording_gaps: the list the PR comment prints as "Re-record", never a second computation) plus, when `recordings` is given, the people
-    with no recording folder there. Writes <out>/gaps.json {personas: [n...], gap: {pN: [web missing, web asked, AI missing, AI asked]}, no_recording: [pN...]}; returns 0."""
-    gap, none = recording_gaps(art), [person for person in ALL_PEOPLE if recordings is not None and not Path(recordings, person).exists()]
+    with no recording folder there. Only the people the run was asked for count (env PERSONAS, a JSON list of numbers, default all 18): one never requested has no folder and is no gap.
+    Invariant (Gitar on #3834): a person with a recording but no tape report from main's replay was not replayed; it is named `not_replayed`, never counted as "within the bounds" and never re-recorded blind
+    (AI spend); when no recorded person was replayed at all the replay itself failed and this returns 1 instead of an all-clear.
+    Writes <out>/gaps.json {personas: [n...], gap: {pN: [web missing, web asked, AI missing, AI asked]}, no_recording: [pN...], not_replayed: [pN...]}; returns 0."""
+    asked = [f'p{n}' for n in json.loads(os.environ.get('PERSONAS') or 'null') or range(1, 19) if f'p{n}' in ALL_PEOPLE]
+    gap, none = recording_gaps(art), [person for person in asked if recordings is not None and not Path(recordings, person).exists()]
+    recorded = [person for person in asked if recordings is not None and Path(recordings, person).exists()]
+    unreplayed = [person for person in recorded if not Path(art, f'yardstick-{person}-main', 'tape-report.jsonl').exists()]
     people = sorted({int(person[1:]) for person in [*gap, *none]})
-    Path(out, 'gaps.json').write_text(json.dumps({'personas': people, 'gap': {person: list(counts) for person, counts in gap.items()}, 'no_recording': none}), encoding='utf-8')
+    Path(out, 'gaps.json').write_text(json.dumps({'personas': people, 'gap': {person: list(counts) for person, counts in gap.items()}, 'no_recording': none, 'not_replayed': unreplayed}), encoding='utf-8')
     print('## Find jobs recordings against main\'s code\n')
-    print(f"- Re-record: {', '.join(f'p{n}' for n in people) if people else 'nobody, every recording is within the bounds'}")
+    print(f"- Re-record: {', '.join(f'p{n}' for n in people) if people else 'nobody, every replayed recording is within the bounds'}")
     for person, (web_missing, web, ai_missing, ai) in sorted(gap.items(), key=lambda item: int(item[0][1:])):
         print(f'  - {person}: {web_missing} of {web} pages and {ai_missing} of {ai} AI answers missing')
     if none:
         print(f"  - no recording yet: {', '.join(none)}")
+    if unreplayed:
+        print(f"  - not replayed (main's replay left no tape report, so nothing is said about them): {', '.join(unreplayed)}")
+    if recorded and len(unreplayed) == len(recorded):
+        print("The replay of main measured nobody (see the replay step's log): this is no all-clear.")
+        return 1
     return 0
 
 

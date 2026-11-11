@@ -112,6 +112,11 @@ jobs:
       actions: read   # main's newest band, from its own run's artifact
       pull-requests: read   # the verdict reads the PR body as it is now (a `Moves:` or `Floor-change:` line added after the push counts on a re-run)
     steps:
+      # Why (Gitar on #3834): only a pull_request or a dispatch can run the PR and band modes; this workflow is also called (by press-tapes-auto.yml, event push or dispatch) and a call
+      # that asks for another mode than gaps would reach steps that need a pull request and leave the output empty.
+      - name: A call asks for mode=gaps only
+        if: github.event_name == 'push' && inputs.mode != 'gaps'
+        run: echo "::error::called with mode=${{ inputs.mode }}; a call supports mode=gaps only"; exit 1
       - uses: actions/checkout@v5   # this run's own commit: its actions and the yardstick's scripts
         with: {persist-credentials: false}
       - name: The src paths are what the Find jobs run reaches
@@ -193,13 +198,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.mode || 'pr' }}
+          PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}   # mode=gaps counts "no recording" only among the people asked for (Gitar on #3834)
         run: |
           if [ "$MODE" = gaps ]; then python3 tools/press-yardstick/ci.py gaps art out recordings >> "$GITHUB_STEP_SUMMARY"
           else python3 tools/press-yardstick/ci.py "$MODE" art out >> "$GITHUB_STEP_SUMMARY"; fi
       - name: The people to re-record (mode=gaps)
         id: gaps
         if: (inputs.mode || 'pr') == 'gaps'
-        run: echo "personas=$(node -p 'JSON.stringify(JSON.parse(require("fs").readFileSync("out/gaps.json", "utf8")).personas)')" >> "$GITHUB_OUTPUT"
+        run: |
+          [ -s out/gaps.json ] || { echo "::error::mode=gaps wrote no out/gaps.json (the replay or ci.py failed above)"; exit 1; }
+          echo "personas=$(node -p 'JSON.stringify(JSON.parse(require("fs").readFileSync("out/gaps.json", "utf8")).personas)')" >> "$GITHUB_OUTPUT"
       # Why (11 Nov 2026, owner, asked via AskUserQuestion in session sa: "Yes, block the PR (Recommended)"; "I want that once an improvement made, it will never be
       # overwrite"): the replay is a verdict. A person whose first pair shows a loss is replayed twice more on both sides, once (3 pairs, never a 4th); red only on 3 of 3
       # (tools/press-yardstick/verdict.py). The verdict runs main's own copy when main has one, so a PR cannot loosen the gate that judges it.
