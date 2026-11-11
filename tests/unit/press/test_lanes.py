@@ -14,7 +14,7 @@ from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
 from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
-from tests.unit.press.red_until import red_until
+from src.press import stage
 
 GUARD_S = 15   # a hang guard only: every lane starts within milliseconds of the press once none waits for another (the red run waits it out once)
 MONOTONIC = time.monotonic   # the real clock, for the hang guard: the test moves the stand-in clock the search reads
@@ -52,8 +52,7 @@ class Lanes:
 
 
 class LanesTest(phases.SearchCharacterization):
-    @red_until('lanes 3/5 (#3754)', 'every source lane started before any finished')
-    def test_every_source_lane_is_reading_before_any_has_finished(self):
+    def test_every_source_lane_is_reading_before_any_has_finished_and_each_ends_in_one_said_state(self):
         lanes, jumped = Lanes(SEAMS), [0.0]
         real_monotonic = time.monotonic
         employer = {'jobs': [], 'sources': [], 'funnel': {}}
@@ -71,9 +70,13 @@ class LanesTest(phases.SearchCharacterization):
         patches += [mock.patch.object(owner, name, lanes.reader(lane, then[lane])) for lane, (owner, name) in SEAMS.items()]
         patches += [mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}),   # EURES is a lane like any other here, behind its own gate
                     mock.patch.object(board_ideas, 'asked_for', return_value=['site reliability boards']),
+                    *[mock.patch.object(aggregators, api, side_effect=refuse) for api in ('himalayas', 'jobicy', 'jobsch')],   # every free API a stand-in: no live site
+                    mock.patch.object(aggregators, 'technical_search', return_value=True),   # Jobicy is asked too (IT searches only)
                     mock.patch.object(time_budget.time, 'monotonic', side_effect=lambda: real_monotonic() + jumped[0])]
         # Why (lanes 1/5, #3780's CI): the real starters turn the search's own tallies on; left so, they broke the next tests in the same process
         patches += [mock.patch.dict(read_methods._state)] + [mock.patch.object(feeds, name, getattr(feeds, name)) for name in ('PLACED', 'READ', 'TRIAGED')]
+        scans, real_scan = [], REAL[(aggregators, 'scan')]   # the real stage (the harness swaps in a stand-in)
+        patches += [mock.patch.object(aggregators, 'scan', side_effect=lambda *a, **k: scans.append(real_scan(*a, **k)) or scans[-1])]   # what the APIs' stage reports
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
@@ -83,8 +86,8 @@ class LanesTest(phases.SearchCharacterization):
         self.assertTrue(lanes.all_in.is_set(), f'every source lane started before any finished; started: {sorted(lanes.started)}, '
                                                f'first to finish: {lanes.finished_first}')
         self.assertLessEqual(set(SEAMS), set(reader_rows.BY_LANE), 'every lane here is a lane of the table')
-        # Lanes 3/5 adds here each lane's one said state (design rule 4: done / cut, saying what waits / failed, why), read from the accessor it
-        # declares: job_boards ends cut (its read jumps the clock past the cut), free_job_apis ends failed ('RuntimeError'), the others done.
+        said = [found['said'] for found in scans if 'said' in found]   # the lane's one said state (design rule 4): done / cut, saying what waits / failed, why
+        self.assertEqual(said, [stage.Result(stage.FAILED, 'RuntimeError')], 'a reader that raises is its lane failing, never the run')
 
 
 for _name in [name for name in dir(phases.SearchCharacterization) if name.startswith('test_') and name not in LanesTest.__dict__]:
