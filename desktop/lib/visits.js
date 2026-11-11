@@ -148,8 +148,8 @@ export async function read(storage, page, runEngine = pipeline.run) {
   heardFrom(page?.ticket);
   if (!/^https?:\/\//.test(String(page?.url || ''))) return {ok: false, error: 'no page address'};
   const file = path.join(os.tmpdir(), `jp-visit-${process.pid}-${Date.now()}.json`);
-  const body = {url: String(page.url), title: String(page.title || '').slice(0, 300), session: String(page.session || '').slice(0, 64), site: siteNames.get(String(page?.ticket || '')) || '',
-    html: String(page.html || '').slice(0, MAX_HTML), cards: Array.isArray(page.cards) ? page.cards.slice(0, 500) : [], known_list: !!page.knownList, place: String(page.place || '').slice(0, 80)};
+  const body = {url: String(page.url), title: String(page.title || '').slice(0, 300), session: String(page.session || '').slice(0, 64), site: siteNames.get(String(page?.ticket || ''))?.name || '',
+    html: String(page.html || '').slice(0, MAX_HTML), cards: Array.isArray(page.cards) ? page.cards.slice(0, 500) : [], known_list: !!page.knownList, place: String(page.place || siteNames.get(String(page?.ticket || ''))?.place || '').slice(0, 80)};
   fs.writeFileSync(file, JSON.stringify(body));
   try {
     // Saving a page can ask Claude too (a list whose links do not look like jobs: src/sources/careers.py _asked): that time is not silence
@@ -187,7 +187,7 @@ export const QUIET_MS = 30 * 1000;   // a site that sends no news (no page read,
 export const SITE_MS = 75 * 1000;
 let fitsLast = 0;
 export const lastFits = () => fitsLast;   // the last task's jobs that fit the search: main.js starts a search to score them
-const siteNames = new Map();   // ticket -> the site's name in the list ("Chanel"), for a job system found while reading it
+const siteNames = new Map();   // ticket -> {name: the site's name in the list ("Chanel"), for a job system found while reading it; place: where the engine searched it, given to placeless cards (#3710)}
 const fitsBy = new Map();   // ticket -> jobs of that site's visit that fit the search (role words and places), for the task's result
 const lastNews = new Map();   // ticket -> time of the extension's last report for that tab
 export function heardFrom(ticket) { if (ticket && lastNews.has(ticket)) lastNews.set(ticket, Date.now()); }
@@ -221,7 +221,7 @@ export function noteTabs({ids, boot, worker, reading} = {}) {
     if (renumbered) tabOf.clear();
     for (const {tab, ticket} of resume) {
       tabOf.set(ticket, tab);
-      log('visit', 'read handed back after the extension restarted', {ticket, tab, site: siteNames.get(ticket) || '', why: renumbered ? 'extension reloaded' : 'extension worker restarted'});
+      log('visit', 'read handed back after the extension restarted', {ticket, tab, site: siteNames.get(ticket)?.name || '', why: renumbered ? 'extension reloaded' : 'extension worker restarted'});
       stepOf({ticket, words: 'the extension restarted in Chrome: reading this tab again'});
     }
   }
@@ -360,7 +360,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
       site = {...chosen, ...(await prepare(chosen).catch(() => chosen))};
     }
     const ticket = crypto.randomBytes(4).toString('hex');   // in the tab's mark, reported back: matched even after a redirect
-    siteNames.set(ticket, site.name);
+    siteNames.set(ticket, {name: site.name, place: String(site.place || '')});
     active?.tickets.set(key(site.url), ticket);
     lastNews.set(ticket, Date.now());
     let openedAt = Date.now();   // a held board: from the person's Read (release below)

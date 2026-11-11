@@ -427,3 +427,19 @@ for (const [caller, options] of [['Find jobs using your browser', {filter: true}
     });
   }
 }
+
+// Why (#3710, owner via AskUserQuestion 11 Nov 2026, "Both, place first"): a read opened on an address the engine built with a place gives that place to the page's
+// placeless cards (src/sources/visits_read.py does it, as for a page the extension filtered); a place the page itself sent wins; no site place, no place.
+test('a site the engine searched in a place hands that place to its pages, unless the page sent its own', async () => {
+  const sent = [];
+  const engine = async (_, args) => { sent.push(JSON.parse((await import('node:fs')).readFileSync(args[args.length - 1], 'utf8')).place); return {code: 0, stdout: JSON.stringify({ok: true, jobs: 2, added: 2, fits: 1})}; };
+  const openTab = (own = '') => url => {
+    const ticket = /-([a-z0-9]+)$/.exec(url)[1];
+    setTimeout(async () => { await read({}, {url: `${url.split('#')[0]}?p=1`, ticket, cards: [], session: 's', place: own}, engine); done({url, ticket, jobs: 2, added: 2, pages: 1}); }, 5);
+    return {ok: true};
+  };
+  await runAll([{name: 'Searched', url: 'https://search.example/jobs', place: 'Lyon'}], {openTab: openTab(), filter: false, waitMs: 500});
+  await runAll([{name: 'Filtered', url: 'https://search.example/jobs', place: 'Lyon'}], {openTab: openTab('Villeurbanne'), filter: false, waitMs: 500});
+  await runAll([{name: 'Plain', url: 'https://search.example/jobs'}], {openTab: openTab(), filter: false, waitMs: 500});
+  assert.deepEqual(sent, ['Lyon', 'Villeurbanne', '']);
+});

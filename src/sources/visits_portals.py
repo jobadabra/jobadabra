@@ -75,7 +75,7 @@ def portals(search=None, kinds=None):
 
 
 def linkedin_searches(search=None, limit=3):
-    """Up to `limit` LinkedIn search pages for the app's own read on every Find jobs: [{name, url}].
+    """Up to `limit` LinkedIn search pages for the app's own read on every Find jobs: [{name, url, place}] (place: the place word the address was built with, '' for none).
     Invariant: only the strategy's own role and place words (the same `_plain_words` the portal list uses), never a list of its own. Several
     roles: one per role in the first place; one role: that role in each place. A search is listed once.
     Why (31 Oct 2026, owner: LinkedIn on every Find jobs, headless): portals() offers one search because a person presses it by hand; the
@@ -90,7 +90,8 @@ def linkedin_searches(search=None, limit=3):
         if url in seen:
             continue
         seen.add(url)
-        out.append({'name': f"LinkedIn: {role} in {place}" if place else f'LinkedIn: {role}', 'url': url})
+        # Why (#3710, owner via AskUserQuestion 11 Nov 2026, "Both, place first"): LinkedIn's result cards name no place; the read gives them the place searched in
+        out.append({'name': f"LinkedIn: {role} in {place}" if place else f'LinkedIn: {role}', 'url': url, 'place': place})
     return out[:max(0, int(limit))]
 
 
