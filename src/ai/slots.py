@@ -14,8 +14,11 @@ import time
 
 from ..press import rank as order   # this file has its own rank()
 
-FIRST, SCORE, NORMAL, LATER = 0, 1, 2, 3
-NAMES = ('FIRST', 'SCORE', 'NORMAL', 'LATER')
+FIRST, SCORE, TITLES, NORMAL, LATER = 0, 1, 2, 3, 4
+NAMES = ('FIRST', 'SCORE', 'TITLES', 'NORMAL', 'LATER')
+# Why TITLES (lanes 4b-1, owner, 11 Nov 2026, via sa: "Start it right away."): a title batch judges ~30 jobs in one 5-13 s call, yet it queued at
+# NORMAL with the page- and link-kind calls (13-20 s each, about two thirds of a search's calls): p10 left "81 title(s) wait" at 116 s while
+# those ran to 118 s. Every reader's titles share this one level (owner, 5 Nov 2026: "One clear order first"); a Kept job's score still goes first.
 _local = threading.local()
 _BORN = time.monotonic()   # the engine process's start, near enough: a Find jobs run is one process
 

@@ -335,9 +335,13 @@ def _one(db, search, name, read, now, shown, ahead, lane, lately):
     if ahead is not None and name == boards_ahead.NAME:
         return ahead.take(db, now)
     if lane is not None:
-        found = lane.take(name, read_budget.cut_at())
-        if found is None:
+        taken = lane.take(name, read_budget.cut_at())
+        if taken is None:
             raise _Cut
+        found, views = taken
+        from ..ai import batch_scope
+        with batch_scope.using(views):   # the lane's own title answers (api_lane._read): kept() asks nothing it judged
+            return found, kept(db, name, found, now, shown)
     elif name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
         found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
     else:

@@ -168,7 +168,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
             land({title for n, title in enumerate(batch, 1) if n in fit}, batch)
     title_queue.serve(nearest, one, landed, max(1, engine.PARALLEL), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
     budget.record('title_rounds', spent[0] / max(1, engine.PARALLEL), -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
-    with slots.priority(slots.NORMAL):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
+    with slots.priority(slots.TITLES):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
         _second_look(client, ask, decided, search, words, mine, forced)
     with LOCK:
         data = _load()
