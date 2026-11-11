@@ -35,3 +35,10 @@ test('an empty draft reads as nothing set, never throws', () => {
   assert.equal(data.remote_jobs, true);
   assert.deepEqual(data.lists.roles, []);
 });
+
+test('the Remote jobs word reads as the engine reads it (src/my_places.py remote_word), mixed lists too', () => {
+  // The same rows as tests/unit/sources/test_places_one_home.py WORDS (Gitar on #3814: the draft took the first word).
+  const rows = [[['No'], 'no'], [['none'], 'no'], [['Nein'], 'no'], [['Country'], 'country'], [['Yes'], 'yes'], [[], 'yes'],
+    [['yes', 'country'], 'country'], [['Country', 'None'], 'no']];
+  for (const [said, word] of rows) assert.equal(draftAsStrategy({search: {remote_jobs: said}}).remote_word, word, JSON.stringify(said));
+});

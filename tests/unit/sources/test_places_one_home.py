@@ -13,7 +13,8 @@ from src.sources import feeds
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 WORDS = [(['No'], 'no'), (['none'], 'no'), (['Nein'], 'no'), (['never'], 'no'), (['off'], 'no'), (['false'], 'no'), (['non'], 'no'),
-         (['Country'], 'country'), (['country'], 'country'), (['Yes'], 'yes'), ([], 'yes'), (None, 'yes')]
+         (['Country'], 'country'), (['country'], 'country'), (['Yes'], 'yes'), ([], 'yes'), (None, 'yes'),
+         (['yes', 'country'], 'country'), (['Country', 'None'], 'no')]   # the app's desktop/test/unit/renderer/draft-strategy.test.js reads the same rows
 TO_AI = {'no': 'no', 'country': 'only_their_country', 'yes': 'yes'}
 
 

@@ -304,9 +304,10 @@ def capture_engine(prompts=False):
         scope = NS(view=lambda *a: {}, active=lambda: False)
         bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time, resume=NS(ran=lambda stage: None),
                         title_queue=NS(serve=lambda batches, ask, land, parallel, rank=None: [land(titles, ask(titles)) for _, titles in batches]), LOCK=threading.Lock(), providers=NS(who=lambda: 'offline capture'),
-                        press_budget=NS(value={row['name']: row['value'] for row in json.loads(read('src/press/budget.json'))}.get))
+                        press_budget=NS(value={row['name']: row['value'] for row in json.loads(read('src/press/budget.json'))}.get),
+                        my_places=load('src/my_places.py', ['GROUPS', 'NO_WORDS', 'lists', 'remote_word']))
         place_search = {'locations': {'top_tier': ['zurich'], 'country_wide': ['switzerland']}, 'remote_jobs': ['yes']}
-        place_names = ['MODEL', 'BATCH', 'VERSION', 'SCHEMA', 'SYSTEM', 'VISA_SCHEMA', 'VISA_SYSTEM', 'places_words', '_key', 'norm', '_load', 'known', '_keep', 'decide']
+        place_names = ['MODEL', 'BATCH', 'VERSION', 'SCHEMA', 'SYSTEM', 'VISA_SCHEMA', 'VISA_SYSTEM', '_TO_AI', 'places_words', '_key', 'norm', '_load', 'known', '_keep', 'decide']
         location_reply = {'locations': [{'n': 1, 'where': 'Zurich', 'country': 'Switzerland', 'nearest': 'zurich', 'km': 0, 'answer': 'best'}]}
         triage = load('src/ai/place_triage.py', place_names, **bindings, STORE=temporary / 'locations.json', _preferences=lambda: {})
         client = Client(location_reply)
@@ -332,7 +333,7 @@ def capture_engine(prompts=False):
 
         # Why (30 Oct 2026, ap): jobs 5/5 declares app.placeVague rows, so the manifest needs the real vague() sender; its decided-places store is a one-word fixture.
         IMPORTS['geo'] = NS(verdicts=lambda *a, **k: {}, cannot_hold=lambda *a: False)
-        vague_names = ['MODEL', 'VERSION', 'VAGUE_BATCH', 'VAGUE_SCHEMA', 'VAGUE_SYSTEM', 'places_words', '_key', 'norm', 'vague']
+        vague_names = ['MODEL', 'VERSION', 'VAGUE_BATCH', 'VAGUE_SCHEMA', 'VAGUE_SYSTEM', '_TO_AI', 'places_words', '_key', 'norm', 'vague']
         vague_places = load('src/ai/place_triage.py', vague_names, **{k: v for k, v in bindings.items()}, known=lambda search: {'bern': 'out'}, _preferences=lambda: {},
                             _save=lambda key, decided: None, excluded_remote=lambda *a: False)
         client = Client({'vague': [1]})
@@ -361,7 +362,7 @@ def capture_engine(prompts=False):
             client = Client({'keep': [1, 2]})
             visits.relevant(sites, visit_search, client=client, unsure='leave')
             entries.append(dict(kind='app.visit', variant='leave', action='visit_relevant', request=client.request))
-            reading = load('src/ai/place_triage.py', ['MODEL', 'READ_BATCH', 'READ_SCHEMA', 'READ_SYSTEM', 'places_words', 'read'],
+            reading = load('src/ai/place_triage.py', ['MODEL', 'READ_BATCH', 'READ_SCHEMA', 'READ_SYSTEM', '_TO_AI', 'places_words', 'read'],
                            **bindings, _key=lambda search: 'fixture', read_known=lambda search: {}, read_verdict=lambda *a: None,
                            _preferences=lambda: {}, _load_read=lambda: {}, READ_STORE=temporary / 'read.json')
             client = Client({'jobs': []})
