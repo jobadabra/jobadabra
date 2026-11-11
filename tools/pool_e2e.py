@@ -30,7 +30,7 @@ INDEX = {'generated': GENERATED, 'feeds': [
     {'company': 'Netflix', 'ats': 'lever', 'slug': 'netflix', 'places': ['Geneva, Switzerland'], 'kinds': {'software': 0.95}},
     {'company': 'Manor', 'ats': 'lever', 'slug': 'manor', 'places': ['Geneva, Switzerland'], 'kinds': {'sales_retail': 0.5, 'creative_media': 0.2},
      'fits': {'countries': ['ch']}, 'pool': {'installs': 9, 'matched': 4, 'applied': 3, 'interview': 1}},
-], 'nofeed': [], 'boards': [{'board': 'jooble', 'installs': 12, 'matched': 6, 'by': {'families': {'photography': [5, 4]}, 'roles': {'creative_media': [10, 5]}}}]}
+], 'nofeed': [], 'boards': [{'board': 'arbeitnow', 'installs': 12, 'matched': 6, 'by': {'families': {'photography': [5, 4]}, 'roles': {'creative_media': [10, 5]}}}]}
 
 
 class Site(BaseHTTPRequestHandler):

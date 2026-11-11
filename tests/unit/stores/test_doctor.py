@@ -125,7 +125,7 @@ class ChecksTest(unittest.TestCase):
         self.assertIn('not set up: enrich', check.detail)
         self.assertIn('switched off: google_jobs', check.detail)
         parked = doctor.check_features({'GOOGLE_REFRESH_TOKEN': 'set', 'ANTHROPIC_API_KEY': 'set'}).detail.split('parked: ')[1]
-        for name in ('job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'):
+        for name in ('job_alerts', 'google_jobs', 'brave_search'):
             self.assertIn(name, parked)
         self.assertEqual(doctor.check_features({'JOBADABRA_DISABLE': 'all'}).state, INFO)
 

@@ -128,7 +128,7 @@ def plain_words(fragments):
 
 def place_words(search, groups=('top_tier', 'country_wide', 'abroad'), per_group=None, first_only=False):
     """The plain place words of a search, group by group in `groups` order, each once (at most `per_group` fragments that have a plain reading from each group; `first_only`: one word, the first spelling, of each fragment): the one reading every source uses
-    (EURES, Jooble, the employer-site reads): a fragment with no plain reading (a real regex) gives none."""
+    (EURES, the employer-site reads): a fragment with no plain reading (a real regex) gives none."""
     found = []
     for group in groups:
         read = 0

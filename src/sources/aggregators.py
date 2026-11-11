@@ -1,7 +1,6 @@
 """Job aggregators with public APIs: more jobs straight away, and every employer they name becomes a scout candidate (via the jobs table).
 
-Free, no key: Arbeitnow (Europe, mostly Germany), Himalayas and Jobicy (remote). Free with a key: Adzuna (`ADZUNA_APP_ID` +
-`ADZUNA_APP_KEY`, 16 countries incl. Switzerland) and Jooble (`JOOBLE_API_KEY`). Each one's terms are kept: the job's own address and the
+Free, no key: Arbeitnow (Europe, mostly Germany), Himalayas and Jobicy (remote). Each one's terms are kept: the job's own address and the
 source's name go with every job (Jobicy, Arbeitnow ask for that), each is asked at most every SPACING_HOURS for the same search (a changed
 search reads at once: 25 Oct 2026, a pilot search 8 minutes after a software one read no board), and only the roles and places of
 this user's search are kept. Remotive is not used: its terms forbid passing its jobs to another product. job-room.ch (the Swiss public
@@ -28,10 +27,10 @@ CHEAP_PAST_CUT = ('EURES',)   # readers that run even past the read cut: each bo
 TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_runs (source TEXT PRIMARY KEY, at TEXT NOT NULL)'
 TAKEN = {}   # (search key, reader) -> {'jobs', 'sources'} of what the first-jobs slice took earlier in this press (scan(early=True)): the free-API stage adds it to its report and does not read it again; cleared at the slice's start
 SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
-# Search-place country words -> Adzuna's country codes (the countries it covers).
-# Every country Adzuna serves (its API's endpoints), by the English name places.countries() answers (src/places.py: the AI says which
-# country each place word is in, in any language; 8 Oct 2026: a regex of ten countries' city names).
-ADZUNA_COUNTRIES = {'gb': 'United Kingdom', 'us': 'United States', 'at': 'Austria', 'au': 'Australia', 'be': 'Belgium', 'br': 'Brazil',
+# The countries the place-country decision and Google Jobs know, code -> the English name places.countries() answers (src/places.py: the AI says which
+# country each place word is in, in any language; 8 Oct 2026: a regex of ten countries' city names). Why (11 Nov 2026, owner: Adzuna and Jooble are
+# "non-existing in our codebase"; remove them): the table was Adzuna's country list and outlived them, renamed, because _countries, the place-country decision and google_jobs.within_places read it.
+COUNTRY_NAMES = {'gb': 'United Kingdom', 'us': 'United States', 'at': 'Austria', 'au': 'Australia', 'be': 'Belgium', 'br': 'Brazil',
                     'ca': 'Canada', 'ch': 'Switzerland', 'de': 'Germany', 'es': 'Spain', 'fr': 'France', 'in': 'India', 'it': 'Italy',
                     'mx': 'Mexico', 'nl': 'Netherlands', 'nz': 'New Zealand', 'pl': 'Poland', 'sg': 'Singapore', 'za': 'South Africa'}
 
@@ -91,7 +90,7 @@ def _queries(search):
 
 
 def _countries(search):
-    """The Adzuna countries of the user's places (at most four), from what places.countries() knows; [] before it knows any."""
+    """The countries of the user's places (at most four), by their codes in COUNTRY_NAMES, from what places.countries() knows; [] before it knows any. Google Jobs keeps its places by it (google_jobs.within_places)."""
     from .. import places
     names = places.countries(search, limit=10)
     words = places.place_words(search, tuple(group for group in (search.get('locations') or {}) if group != 'relocation'))   # the one reading of place fragments (#2920); "relocation" is yes/no, not a place
@@ -99,12 +98,12 @@ def _countries(search):
     raw = [str(f) for group, items in (search.get('locations') or {}).items() if group != 'relocation' for f in items or []]   # a pattern with no plain reading ("(zurich|bern)") still names the Swiss market (in_switzerland reads it as text)
     if any(places.in_switzerland(w, cache) for w in [*words, *raw]) and 'Switzerland' not in names:
         names = ['Switzerland', *names]   # the first market from its fixed table, before (or without) the AI's answer
-    codes = [code for name in names for code, country in ADZUNA_COUNTRIES.items() if country == name]
+    codes = [code for name in names for code, country in COUNTRY_NAMES.items() if country == name]
     codes += list((place_countries(words) or {}).values())   # the AI's country for each place word (kept per word); its words only without AI
-    return list(dict.fromkeys(c for c in codes if c in ADZUNA_COUNTRIES))[:4]
+    return list(dict.fromkeys(c for c in codes if c in COUNTRY_NAMES))[:4]
 
 
-PLACE_COUNTRY_TASK = 'A place name. Answer the code of the country it is in: ' + '; '.join(f'{c} = {n}' for c, n in ADZUNA_COUNTRIES.items())
+PLACE_COUNTRY_TASK = 'A place name. Answer the code of the country it is in: ' + '; '.join(f'{c} = {n}' for c, n in COUNTRY_NAMES.items())
 
 
 def place_countries(words):
@@ -113,34 +112,7 @@ def place_countries(words):
     None when nothing is known. Shared with Google Jobs (src/sources/google_jobs.py within_places), so each place is asked once."""
     from ..ai import decide
     items = {str(w).lower(): str(w) for w in words if str(w or '').strip()}
-    return decide.decide('place-country', items, (*ADZUNA_COUNTRIES, 'other'), PLACE_COUNTRY_TASK) if items else {}
-
-
-def adzuna(search, get=_get):
-    app_id, app_key = os.getenv('ADZUNA_APP_ID'), os.getenv('ADZUNA_APP_KEY')
-    jobs = []
-    for country in _countries(search):
-        for query in _queries(search):
-            params = urllib.parse.urlencode({'app_id': app_id, 'app_key': app_key, 'what': query, 'results_per_page': 50, 'content-type': 'application/json'})
-            for j in get(f'https://api.adzuna.com/v1/api/jobs/{country}/search/1?{params}').get('results', []):
-                salary = f"{j.get('salary_min') or ''}–{j.get('salary_max') or ''}".strip('–') if j.get('salary_min') or j.get('salary_max') else ''
-                jobs.append(_job('adzuna', j.get('id'), j.get('title'), (j.get('company') or {}).get('display_name'), (j.get('location') or {}).get('display_name'),
-                                 j.get('redirect_url'), str(j.get('created') or '')[:10], j.get('description'), False, salary))
-    return jobs
-
-
-def jooble(search, get=_get):
-    key = os.getenv('JOOBLE_API_KEY')
-    from ..places import place_words
-    places = place_words(search, ('top_tier',), 2, first_only=True) or ['']
-    jobs = []
-    for query in _queries(search):
-        for place in places:
-            body = json.dumps({'keywords': query, 'location': place}).encode()
-            for j in get(f'https://jooble.org/api/{urllib.parse.quote(key)}', body, {'Content-Type': 'application/json'}).get('jobs', []):
-                jobs.append(_job('jooble', j.get('id'), j.get('title'), j.get('company'), j.get('location'), j.get('link'), str(j.get('updated') or '')[:10],
-                                 j.get('snippet'), 'remote' in str(j.get('type') or '').lower(), j.get('salary') or ''))
-    return jobs
+    return decide.decide('place-country', items, (*COUNTRY_NAMES, 'other'), PLACE_COUNTRY_TASK) if items else {}
 
 
 def jobsch(search, get=None):
@@ -194,7 +166,7 @@ def technical_search(search):
 def sources(env=None):
     """[(name, reader)] of the aggregators this install may use now (free ones always; keyed ones when their keys are set)."""
     env = os.environ if env is None else env
-    from ..features import disabled, off
+    from ..features import disabled
     found = [] if disabled('aggregators', env) else [('Arbeitnow', lambda search: arbeitnow()), ('Himalayas', lambda search: himalayas()),
                                                       ('Jobicy', lambda search: jobicy() if technical_search(search) else [])]   # its tags are IT ones
     if not disabled('aggregators', env) and not disabled('jobsch', env):
@@ -205,10 +177,6 @@ def sources(env=None):
     if not disabled('aggregators', env) and not disabled('found_boards', env):   # boards found for your countries (src/sources/found_boards.py)
         from . import found_boards
         found.append(('Job boards found', found_boards.read))
-    if env.get('ADZUNA_APP_ID') and env.get('ADZUNA_APP_KEY') and not off('adzuna', env):   # parked (src/features.py PARKED): the key stays saved, unused
-        found.append(('Adzuna', adzuna))
-    if env.get('JOOBLE_API_KEY') and not off('jooble', env):
-        found.append(('Jooble', jooble))
     return found
 
 

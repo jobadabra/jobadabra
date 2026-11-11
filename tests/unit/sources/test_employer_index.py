@@ -381,12 +381,12 @@ class ForYouTests(unittest.TestCase):
     def test_board_rate_reads_the_most_specific_label_with_numbers(self):
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / 'index.json'
-            cache.write_text(json.dumps({'feeds': [], 'boards': [{'board': 'jooble', 'installs': 40, 'matched': 10,
+            cache.write_text(json.dumps({'feeds': [], 'boards': [{'board': 'google_jobs', 'installs': 40, 'matched': 10,
                                                                   'by': {'roles': {'creative_media': [12, 3]}, 'families': {'photography': [5, 4]}}}]}))
-            self.assertEqual(employer_index.board_rate('jooble', self.ME, cache), (5, 4))
-            self.assertIsNone(employer_index.board_rate('adzuna', self.ME, cache))
+            self.assertEqual(employer_index.board_rate('google_jobs', self.ME, cache), (5, 4))
+            self.assertIsNone(employer_index.board_rate('himalayas', self.ME, cache))
             from src import coverage
-            text = coverage.people_like_you('aggregators', self.ME, rate=lambda board, me: employer_index.board_rate(board, me, cache))
+            text = coverage.people_like_you('serpapi', self.ME, rate=lambda board, me: employer_index.board_rate(board, me, cache))
             self.assertEqual(text, 'gave a match to 8 in 10 people like you')
 
 
@@ -398,9 +398,9 @@ class CentralRankTests(unittest.TestCase):
         self.assertEqual(tags['quiet'], {'families': ['photography']}, 'software found jobs there: never quiet for it; video_film: too few installs')
         self.assertEqual(scout.pool_of(contribution), {'installs': 7, 'matched': 2, 'applied': 3, 'interview': 1})
         self.assertIsNone(scout.pool_of({'installs': 2}))
-        boards = scout.board_stats([{'board': 'jooble', 'installs': 10, 'matched_installs': 4, 'families': {'photography': {'installs': 5, 'matched': 4}, 'nursing_care': {'installs': 1, 'matched': 1}}},
+        boards = scout.board_stats([{'board': 'arbeitnow', 'installs': 10, 'matched_installs': 4, 'families': {'photography': {'installs': 5, 'matched': 4}, 'nursing_care': {'installs': 1, 'matched': 1}}},
                                     {'board': 'jobicy', 'installs': 2}])
-        self.assertEqual(boards, [{'board': 'jooble', 'installs': 10, 'matched': 4, 'by': {'families': {'photography': [5, 4]}}}])
+        self.assertEqual(boards, [{'board': 'arbeitnow', 'installs': 10, 'matched': 4, 'by': {'families': {'photography': [5, 4]}}}])
 
 
 class HourlyCheckTests(unittest.TestCase):
@@ -457,7 +457,7 @@ class DebuggableTests(unittest.TestCase):
 
     def test_the_central_publish_says_what_the_pool_added(self):
         feeds = [{'company': 'A', 'fits': {'families': ['photography']}, 'pool': {'installs': 3}}, {'company': 'B', 'fits': {'quiet': {'families': ['photography']}}}]
-        line = scout.publish_summary(feeds, [{}, {}, {}], [{'board': 'jooble'}])
+        line = scout.publish_summary(feeds, [{}, {}, {}], [{'board': 'arbeitnow'}])
         self.assertEqual(line, 'Pool in this publish: 3 shared feeds read, 1 feeds with labels, 1 quiet marks, 1 with outcome totals, 1 boards with stats | quiet for photography: B')
 
     def test_a_share_the_site_trimmed_is_a_warning_in_the_log(self):

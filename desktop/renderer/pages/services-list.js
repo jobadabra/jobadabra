@@ -24,7 +24,6 @@ const ALL_SERVICES = [
     why: t('pagesLinkedinServices.notificationWhy')},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: t('pagesDetails.moreResults'), connect: t('pagesDetails.addKey')},
   {id: 'brave', name: t('pagesLinkedinServices.webSearch'), icon: 'search', what: t('pagesLinkedinServices.findOwnSites'), connect: t('pagesDetails.addKey')},
-  {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: t('pagesLinkedinServices.moreFreeResults'), connect: t('pagesDetails.addKeys')},
   {id: 'cloud', name: t('pagesLinkedinServices.githubAlways'), icon: 'cloud', what: t('pagesLinkedinServices.runsMacOff'), connect: t('pagesCommon.setup')},
   {id: 'tg-cloud', name: t('pagesLinkedinServices.cloudflareButtons'), icon: 'zap', what: t('pagesLinkedinServices.botMacOff'), connect: t('pagesCommon.setup'),
     shown: () => !!shared.state.settings.cloud?.repo},  // it starts runs in the GitHub repository, so only with Always on

@@ -41,7 +41,7 @@ def places(config):
 
 
 # SerpApi's canonical names for the countries src/sources/aggregators.py can tell from the user's places.
-from .aggregators import ADZUNA_COUNTRIES as COUNTRY_NAMES   # code -> English name
+from .aggregators import COUNTRY_NAMES   # code -> English name
 from ..press import resume
 
 

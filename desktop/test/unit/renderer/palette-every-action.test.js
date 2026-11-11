@@ -21,7 +21,7 @@ const probe = () => {
   const names = new Set(entries.flatMap(entry => [entry.label, entry.label.replace(/^[^:]+: /, '')]));
   const headings = [...document.querySelectorAll('.view :is(h2, h3, h4)')].filter(node => !node.closest('dialog, [role="dialog"], [hidden]:not(.view):not([data-settings-page])')
     && !names.has(node.textContent.replace(/\s+/g, ' ').trim()) && /\p{L}{2}/u.test(node.textContent)).map(node => node.textContent.trim());
-  // A parked feature's card (data-parked: Adzuna and Jooble, Google Jobs, Brave web search, job alerts) is never in ⌘K (owner, 26 Oct 2026).
+  // A parked feature's card (data-parked: Google Jobs, Brave web search, job alerts) is never in ⌘K (owner, 26 Oct 2026).
   const parked = [...document.querySelectorAll('[data-parked] :is(h3, summary)')].map(node => node.textContent.replace(/\s+/g, ' ').trim())
     .filter(text => entries.some(entry => entry.label.includes(text.replace(/^\P{L}+/u, ''))));
   const running = document.getElementById('refresh');

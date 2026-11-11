@@ -3,7 +3,7 @@ normal person would do without Jobadabra)… should be the number what Jobadabra
 fixed list shows when a person searches it by hand, read OUTSIDE the app, judged by the nightly check's blind judge (gate_judge.py) in one pass, so a night and the market are judged by the same eyes.
 Sources counted so far: EURES's public API (the city's NUTS-2 region, the role in the place's own language) and the country's national job board (market_boards.py, one data row per country:
 sa's design, 10 Nov 2026), a web search (market_web.py: the AI's web search tool asked for postings of the role in the city, one call per person) and the employer
-career sites of the central index whose places name the region (market_employers.py: each employer's own public feed, no AI; a floor, with its shortfall as numbers). Free job APIs are "none (no query)" (none takes a role and a place; Adzuna and Jooble stay parked until the owner adds them); LinkedIn is "by hand" (never read here).
+career sites of the central index whose places name the region (market_employers.py: each employer's own public feed, no AI; a floor, with its shortfall as numbers). Free job APIs are "none (no query)" (none takes a role and a place); LinkedIn is "by hand" (never read here).
 Why no Google (owner, 6 Nov 2026: "I'd rather keep it for central scout. To gain more value out of it"): the SerpApi quota is the central scout's alone.
   node tools/persona-search/codex.mjs -- python3 tools/persona-search/reference.py run <out.json>   read every source, judge blind behind the Codex relay, write the counts
   python3 tools/persona-search/reference.py send <out.json>                                         PUT the counts to Admin (only a CI run on main; GITHUB_RUN_ID, REPLAYS_PUBLISH_KEY)
@@ -174,7 +174,7 @@ def collect(rows, sources, ahead):
             got = {'status': f'not counted: {type(error).__name__}', 'rows': []}
         rows += [{**r, 'source': source} for r in got['rows']]
         sources[source] = {'status': got['status'], 'read': len(got['rows']), **{k: got[k] for k in EMPLOYER_NUMBERS if k in got}}
-    sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026); Adzuna and Jooble stay parked (owner's word adds them)
+    sources['free_job_apis'] = {'status': 'none (no query)'}   # Arbeitnow, Himalayas, Jobicy take no role or place (sa, 10 Nov 2026)
     sources['linkedin'] = {'status': 'by hand'}   # never read by a tool (CLAUDE.md, login walls); sa's by-hand count fills it
     return rows, sources
 

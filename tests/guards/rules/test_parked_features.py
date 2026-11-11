@@ -1,8 +1,8 @@
 """Parked features (src/features.py PARKED): off unless JOBADABRA_ENABLE names them, and no visible entry in the app for any of them.
 
 Owner, 26 Oct 2026, of the job-alert emails in Connections: "let's park/disable/hid this functionality for now. It's too advanced."
-Owner, 26 Oct 2026, of the Adzuna and Jooble card: "let's hide/disable this functionality for noow. Is to hadr to use for my users." With its two
-siblings that ask for a key (Google Jobs via SerpApi, Brave web search). Web search itself stays: without a key it is the user's own plan.
+Owner, 26 Oct 2026, of the key cards: "let's hide/disable this functionality for noow. Is to hadr to use for my users." The two
+that ask for a key (Google Jobs via SerpApi, Brave web search) stay parked; Adzuna and Jooble were deleted on 11 Nov 2026 (owner). Web search itself stays: without a key it is the user's own plan.
 The class test loops over every parked feature, so a feature parked later gets the same checks.
 """
 import re
@@ -15,15 +15,13 @@ sys.path.insert(0, str(ROOT))
 from src import features  # noqa: E402
 
 # Everything a feature can need, so only the parking keeps it off.
-EVERYTHING = {'GOOGLE_REFRESH_TOKEN': 't', 'NOTION_TOKEN': 'n', 'ANTHROPIC_API_KEY': 'k', 'SERPAPI_API_KEY': 's', 'BRAVE_SEARCH_API_KEY': 'b',
-              'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'a', 'JOOBLE_API_KEY': 'j'}
+EVERYTHING = {'GOOGLE_REFRESH_TOKEN': 't', 'NOTION_TOKEN': 'n', 'ANTHROPIC_API_KEY': 'k', 'SERPAPI_API_KEY': 's', 'BRAVE_SEARCH_API_KEY': 'b'}
 RENDERER = ROOT / 'desktop' / 'renderer'
 # Each parked feature: the words its screens used, so a copy left visible (or a new one) is found. Case matters for the key sources:
-# their ids and variable names (serpapi, ADZUNA_APP_ID) are code, their names (SerpApi, Adzuna) are what a person reads.
-WORDS = {'job_alerts': re.compile(r'job[- ]alert', re.I), 'adzuna': re.compile(r'Adzuna'), 'jooble': re.compile(r'Jooble'),
-         'google_jobs': re.compile(r'Google Jobs|SerpApi'), 'brave_search': re.compile(r'Brave Search|Web search \(Brave\)')}
+# their ids and variable names (serpapi, SERPAPI_API_KEY) are code, their names (SerpApi, Brave) are what a person reads.
+WORDS = {'job_alerts': re.compile(r'job[- ]alert', re.I), 'google_jobs': re.compile(r'Google Jobs|SerpApi'), 'brave_search': re.compile(r'Brave Search|Web search \(Brave\)')}
 # The renderer's copy of the parked key sources: a script that names one draws it only through key-sources.js offered() (false while parked).
-KEY_SOURCES = {'serpapi': {'google_jobs'}, 'brave': {'brave_search'}, 'aggregators': {'adzuna', 'jooble'}}
+KEY_SOURCES = {'serpapi': {'google_jobs'}, 'brave': {'brave_search'}}
 GATED = re.compile(r"import \{[^}]*\boffered\b[^}]*\} from '\.\.?/(\.\./)?key-sources\.js'")
 START = re.compile(r'<(\w+)\b([^>]*\bdata-parked="([\w,]+)"[^>]*)>')
 
@@ -54,7 +52,7 @@ def outside_parked(html):
 
 class ParkedFeatureTests(unittest.TestCase):
     def test_job_alerts_and_the_key_sources_are_parked(self):
-        self.assertTrue({'job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'} <= features.PARKED)
+        self.assertTrue({'job_alerts', 'google_jobs', 'brave_search'} <= features.PARKED)
         self.assertNotIn('web_search', features.PARKED, "keyless web search (the user's own plan) is not parked, only its keys")
 
     def test_a_parked_feature_is_off_even_when_everything_it_needs_is_set(self):
@@ -102,7 +100,7 @@ class ParkedFeatureTests(unittest.TestCase):
             self.assertFalse(coverage.KEY_SOURCES_OFFERED)
 
     def test_a_parked_card_is_never_opened_or_listed_in_the_palette(self):
-        """Owner's screenshot (26 Oct 2026) was the Adzuna and Jooble card reached while it was hidden: ⌘K lists closed Connections cards."""
+        """Owner's screenshot (26 Oct 2026) was a parked key card reached while it was hidden: ⌘K lists closed Connections cards."""
         nav = (RENDERER / 'pages' / 'nav.js').read_text()
         settings = (RENDERER / 'pages' / 'settings.js').read_text()
         self.assertRegex(nav, r"onClosedPanel = section => section\.classList\.contains\('conn-panel'\) && !section\.dataset\.parked")

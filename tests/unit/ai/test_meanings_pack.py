@@ -66,7 +66,7 @@ class PlacesSameAsBeforeWithoutAI(NoAI):
         self.assertEqual(pool_tags.families(['photographer']), ['photography'])
         self.assertEqual(contribute.regions_of(['Zürich, Switzerland', 'Remote', 'San Francisco, CA']), ['europe', 'north_america', 'remote'])
 
-    def test_adzuna_and_jobsch(self):
+    def test_countries_and_jobsch(self):
         from src.sources import aggregators, boards
         search = {'locations': {'top_tier': ['Zürich', 'London'], 'country_wide': [], 'abroad': []}}
         self.assertEqual(aggregators._countries(search), ['ch', 'gb'])
