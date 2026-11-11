@@ -23,7 +23,7 @@ class Stage(NamedTuple):
 
 TABLE = (
     Stage('boards_step', 'Job boards step (discover)', ('src/sources/boards.py', 'src/sources/board_employers.py'), 'the person\'s search',
-          'job boards and their employers', ('boards.SHARE_S',), (), ('job boards', 'employer names'), 'discover'),
+          'job boards and their employers', ('boards.SHARE_S',), (), ('job boards', 'employer names')),   # no app key since 11 Nov 2026: the app starts no step of its own for the boards (desktop/lib/search-steps.js)
     Stage('early_reads', 'Board web search, EURES early', ('src/sources/board_web.py', 'src/sources/eures.py'), 'the search config', 'boards and EURES rows read from second 0',
           ('boards_first.WEB_WAIT', 'eures.SECONDS', 'eures.LAST_PAGE', 'eures.MOST', 'eures.KEEP'), ('employer_pick', 'first_slice'), ('web search',)),
     Stage('waiting_scored', 'Waiting jobs scored first', ('src/daily_search_scoring.py',), 'jobs found earlier and not scored', 'scores',

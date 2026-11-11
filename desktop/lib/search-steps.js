@@ -62,9 +62,9 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     // The first run: jobs in seconds, in one engine process. The engine reads a slice of fast feeds and scores 3 jobs first (src/first_jobs.py), then does
     // the full search; the job boards are read from second 0 in the search's own lane (src/sources/boards_first.py Beside, lanes 4a) and their jobs scored by it.
     // Why (11 Nov 2026, owner: "I approve. Move ahead." on "first search as one process, dead steps deleted"): the job boards' own step and a light run
-    // scoring their jobs came after the search; in 19 of 22 first searches (CI runs 43088269080, 43103313269) neither had time, so they only printed
-    // "Time is up", which made a whole first run read Partial; the 3 times the boards' step started, its share (src/sources/boards.py SHARE_S, counted
-    // from the press) was already over and it read no board.
+    // scoring their jobs came after the search; in 16 of 22 first searches (each person's first search in the search-personas runs 43088269080 and
+    // 43103313269) neither had any time and only printed "Time is up"; in the other 6 the search ended at 68-113 s, past the end of the boards' step
+    // (boards.SHARE_S, 60 s from the press), so it read no board, and no job waited for the light run to score.
     onLine('Finding your first jobs…');
     ({code, result} = await step(dailyArgs(storage, {mode, firstJobs: true, budget}), SEARCH.what, SEARCH.counts));
   } else {

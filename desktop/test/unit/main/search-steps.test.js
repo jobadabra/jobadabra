@@ -13,8 +13,8 @@ const commands = async (settings, trigger) => {
 
 test('the first run is one search (the slice first, the job boards inside it), then grows the sources', async () => {
   // Why (11 Nov 2026, owner: "I approve. Move ahead." on "first search as one process, dead steps deleted"): the job boards' own step and the
-  // scoring of their jobs came after the search and had no time in 19 of 22 first searches (CI runs 43088269080, 43103313269): they printed
-  // "Time is up" and made the run read Partial. The boards are read in the search's own lane (src/sources/boards_first.py Beside).
+  // scoring of their jobs came after the search; in 16 of 22 first searches (search-personas runs 43088269080, 43103313269) they had no time and only
+  // printed "Time is up", in the other 6 they read no board and scored no job. The boards are read in the search's own lane (src/sources/boards_first.py Beside).
   const seen = await commands({lastScoutAt: undefined}, 'first');
   assert.deepEqual(seen, ['src daily --first-jobs', 'src scout'], 'the engine goes first, and no step of its own for the job boards follows it');
 });
