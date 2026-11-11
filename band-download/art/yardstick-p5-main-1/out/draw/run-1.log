@@ -1,0 +1,26 @@
+[0s] Finding your first jobs…
+[18s] Places: worked out 2 place words with AI: krakow, poland
+[19s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[19s] Cronjob run logged: store:cron_runs/a33787ad592048f0b1e766d9fe191efe
+[19s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[19s] Job boards: searching the web for trade and local boards (your API key)
+[19s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[47s] Pool labels: roles hospitality; families kitchen; countries pl; metros pl-krakow
+[63s] Job boards: KUCHARZE.PL is not a job board: left out
+[63s] Job boards: a web search found praca.txo.pl
+[148s] Employers: 9 of 1309 in your places hire for your kind of role; the others are left out.
+[149s] First jobs: reading 9 of 9 employer sites first
+[149s] EURES: 200 vacancies in your places read
+[150s] ⏳ Reading employer job sites: 0 of 9
+[150s] Employers: read 0 of 9 sites in the time, best first; the other 9 are read first next time.
+[150s] ⏱ Time is up (2 min 30 s) for employer sites: 9 sites wait for the next search
+[151s] First jobs: 0 found
+[152s] ⏱ No time left in this refresh for these: 113 title(s) wait for the next one
+[152s] Job boards: done, 0 job(s) for your search
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[177s] Job boards of your field: HoReCaPraca.pl, Kucharze.pl
+[178s] Job boards of your field: HoReCaPraca.pl, Kucharze.pl
+[178s] ⏱ Time is up (2 min 58 s) for the search: what it has not reached waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for job boards: it waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for scoring the job boards' jobs: it waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for searching wider: it waits for the next search

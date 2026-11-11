@@ -155,3 +155,18 @@ jobs:
             out/judge.log
             out/draw/presses.jsonl
             out/draw/run-*.log
+  # Why (11 Nov 2026, cr, sa's design for the replay verdict): main's band is built on the recordings it replays; after a re-recording every person reads
+  # "not measured" (other recordings) until mode=band runs again, and the verdict sleeps. So the band is rebuilt as soon as the batch has published.
+  band:
+    name: Rebuild main's yardstick band on the new recordings
+    needs: record
+    if: ${{ !cancelled() && needs.record.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write   # dispatches press-yardstick.yml mode=band on main
+    steps:
+      - name: Dispatch the band
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run press-yardstick.yml --repo "$GITHUB_REPOSITORY" --ref main -f mode=band

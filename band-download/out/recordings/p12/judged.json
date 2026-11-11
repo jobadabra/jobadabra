@@ -1,0 +1,942 @@
+{
+ "persona": {
+  "family": "accountant",
+  "title": "Accountant",
+  "kind": "non-tech",
+  "city": "Milan",
+  "country": "Italy",
+  "language": "Italian",
+  "reference": {
+   "words": [
+    "contabile"
+   ],
+   "nuts2": "ITC4"
+  }
+ },
+ "judged_jobs": 115,
+ "model": "Codex small tier",
+ "billing": "subscription",
+ "usd": 0,
+ "rows": [
+  {
+   "title": "tributarista",
+   "company": "STUDIOEMME S.R.L.",
+   "location": "Varese, Italy",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "addetto ai controlli contabili /addetta ai controlli contabili",
+   "company": "GI GROUP S.P.A.",
+   "location": "Milano, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "addetto ai controlli contabili /addetta ai controlli contabili",
+   "company": "STUDIOEMME S.R.L.",
+   "location": "Varese, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "addetto ai controlli contabili /addetta ai controlli contabili",
+   "company": "EVOLUTION PROJECT DI GABRIELE LUONI & C. SAS",
+   "location": "Lecco, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "addetto ai controlli contabili /addetta ai controlli contabili",
+   "company": "STUDIO BONFIGLIO & VALORI DOTTORI COMMERCIALISTI ASSOCIATI",
+   "location": "Pisa, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Bergamo, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Milano, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Brescia, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Monza e della Brianza, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Vercelli, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Palermo, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Livorno, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "LA RISORSA UMANA.IT S.R.L.",
+   "location": "Prato, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "LA RISORSA UMANA.IT S.R.L.",
+   "location": "Parma, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "LA RISORSA UMANA.IT S.R.L.",
+   "location": "Arezzo, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Padova, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Pistoia, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "LA RISORSA UMANA.IT S.R.L.",
+   "location": "Ascoli Piceno, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Firenze, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Modena, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Napoli, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "LA RISORSA UMANA.IT S.R.L.",
+   "location": "Pisa, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Ascoli Piceno, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Fermo, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Piacenza, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Parma, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Roma, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Biella, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Alessandria, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Forlì-Cesena, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Treviso, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Macerata, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Vicenza, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Chieti, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "WYSER S.R.L.",
+   "location": "Genova, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "WYSER S.R.L.",
+   "location": "Grosseto, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Genova, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "GI GROUP S.P.A.",
+   "location": "Bologna, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "WYSER S.R.L.",
+   "location": "Napoli, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "analista contabile",
+   "company": "WYSER S.R.L.",
+   "location": "Alessandria, Italy",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Accounting AI Research Contributor",
+   "company": "Aptura AI",
+   "location": "Global",
+   "provider": "Aptura AI",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Portfolio analytics and forecasts actuary",
+   "company": "alan",
+   "location": "Anywhere in France",
+   "provider": "alan",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "COMMERCIALISTA JUNIOR",
+   "company": "via Trovolavoro",
+   "location": "Venezia, Perugia, Pescara",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "CONTABILE",
+   "company": "via Trovolavoro",
+   "location": "Bergamo, Prato",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATA/O CONTABILE AMMINISTRATIVA",
+   "company": "via Trovolavoro",
+   "location": "Brescia, Milano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Operatori Fiscali",
+   "company": "via Trovolavoro",
+   "location": "Prato, Treviso",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "OPERATORI FISCALI",
+   "company": "via Trovolavoro",
+   "location": "Pescara, Prato, Treviso",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Accounting Specialist",
+   "company": "via Trovolavoro",
+   "location": "Bolzano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Treasury Manager",
+   "company": "onhires",
+   "location": "Europe; Serbia; Poland; Georgia; Remote - Slovakia; Remote — Romania; Lithuania; Latvia; Ukraine; Estonia; Limassol; Slovenia",
+   "provider": "onhires",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Group Accountant (m/f/d)",
+   "company": "chaos",
+   "location": "Remote job",
+   "provider": "chaos",
+   "role": "yes",
+   "place": "remote"
+  },
+  {
+   "title": "contabile",
+   "company": "Jobtech",
+   "location": "Bologna, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "Jobtech",
+   "location": "Crema, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "contabile",
+   "company": "Jobtech",
+   "location": "Milano, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Impiegato /a Contabile",
+   "company": "Risorse SpA",
+   "location": "Brescia, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Amministrativo /a – Contabile",
+   "company": "Risorse SpA",
+   "location": "Isola Vicentina, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile Senior",
+   "company": "Risorse SpA",
+   "location": "Sala Baganza, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Addetto /a Gestione Contabile Cespiti",
+   "company": "Risorse SpA",
+   "location": "Cesena, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Contabile junior appartenente alle Categorie Protette (L.68/99 Art.1)",
+   "company": "Risorse SpA",
+   "location": "Rimini, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a amministrativo /a – Contabile",
+   "company": "Risorse SpA",
+   "location": "Parma, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile",
+   "company": "Risorse SpA",
+   "location": "Capriano del Colle, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile – Categorie protette Legge 68/1999",
+   "company": "Risorse SpA",
+   "location": "Bagno a Ripoli, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile",
+   "company": "Risorse SpA",
+   "location": "Bagno a Ripoli, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Amministrativo /a Contabile",
+   "company": "Risorse SpA",
+   "location": "Coriano, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile",
+   "company": "Risorse SpA",
+   "location": "Como, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile – Studio commercialista",
+   "company": "Risorse SpA",
+   "location": "Rimini, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a amministrativo /a – Contabile – Settore servizi",
+   "company": "Risorse SpA",
+   "location": "Bologna, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Responsabile Amministrativo – Contabile",
+   "company": "Risorse SpA",
+   "location": "Piacenza, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile – Part time",
+   "company": "Risorse SpA",
+   "location": "Fino Mornasco, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile – Gestione agenti",
+   "company": "Risorse SpA",
+   "location": "Bologna, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile – Ciclo Passivo",
+   "company": "Risorse SpA",
+   "location": "Novi Ligure, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile esperto – Sap",
+   "company": "Risorse SpA",
+   "location": "Alessandria, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a Contabile Senior",
+   "company": "Risorse SpA",
+   "location": "Vignole Borbera, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a amministrativo /a – Contabile",
+   "company": "Risorse SpA",
+   "location": "Vicenza, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Impiegato /a amministrativo /a – Contabile",
+   "company": "Studio Badaloni S.n.c. di Badaloni Vincenzo C.",
+   "location": "Ravenna, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Chief Accountant",
+   "company": "Risorse SpA",
+   "location": "Alessandria, Italy",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE SENIOR",
+   "company": "via UMANA — Contabilità",
+   "location": "Treviso",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "OPERATORI FISCALI",
+   "company": "via UMANA — Contabilità",
+   "location": "Venezia",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE",
+   "company": "via UMANA — Contabilità",
+   "location": "Milano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "IMPIEGATO OPERATORE FISCALE",
+   "company": "via UMANA — Contabilità",
+   "location": "Venezia",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATA CONTABILE PART-TIME",
+   "company": "via UMANA — Contabilità",
+   "location": "Milano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE",
+   "company": "via UMANA — Contabilità",
+   "location": "Catania",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE",
+   "company": "via UMANA — Contabilità",
+   "location": "Treviso",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE AMMINISTRATIVO",
+   "company": "via UMANA — Contabilità",
+   "location": "Perugia",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE",
+   "company": "via UMANA — Contabilità",
+   "location": "Piacenza, Milano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE",
+   "company": "via UMANA — Contabilità",
+   "location": "Bergamo, Roma, Milano",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "IMPIEGATA CONTABILE PART-TIME",
+   "company": "via UMANA — Contabilità",
+   "location": "Brescia",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "IMPIEGATO CONTABILE AMMINISTRATIVO",
+   "company": "via UMANA — Contabilità",
+   "location": "Bolzano, Bozen, Venezia",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lohn- und Finanzbuchhalter (m/w/d) 100% Home Office",
+   "company": "HWS",
+   "location": "Remote (DE)",
+   "provider": "HWS",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Credit Specialist",
+   "company": "METGroup",
+   "location": "Milano, it",
+   "provider": "METGroup",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Junior Accountant Accounts Receivable - Milano",
+   "company": "RHG",
+   "location": "Milano, it",
+   "provider": "RHG",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Night auditor - Palazzo Sanzio Roma",
+   "company": "RHG",
+   "location": "Roma, it",
+   "provider": "RHG",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Senior Accountant - Radisson Blu Hotel, Firenze",
+   "company": "RHG",
+   "location": "Firenze, it",
+   "provider": "RHG",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Senior Accountant Accounts Payable - Milano",
+   "company": "RHG",
+   "location": "Milano, it",
+   "provider": "RHG",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Senior Accountant Accounts Receivable - Milan",
+   "company": "RHG",
+   "location": "Milano, it",
+   "provider": "RHG",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Senior Finance Business Analyst (Safeguarding, Treasury & Accounting)",
+   "company": "careersdeltacapita",
+   "location": "Remote job",
+   "provider": "careersdeltacapita",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Senior Accountant (m/f/d)",
+   "company": "chaos",
+   "location": "Remote job",
+   "provider": "chaos",
+   "role": "yes",
+   "place": "remote"
+  },
+  {
+   "title": "Technical Accounting Manager",
+   "company": "evergreenservicesgroup",
+   "location": "Chicago, Illinois or Remote",
+   "provider": "evergreenservicesgroup",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Treasury Analyst",
+   "company": "fastspring",
+   "location": "Remote",
+   "provider": "fastspring",
+   "role": "no",
+   "place": "remote"
+  },
+  {
+   "title": "Accounting & Reporting Specialist",
+   "company": "hczw.us2.CX",
+   "location": "Italy",
+   "provider": "hczw.us2.CX",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Accounting & Reporting Specialist",
+   "company": "hczw.us2.CX_1001",
+   "location": "Italy",
+   "provider": "hczw.us2.CX_1001",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Addetto/a Back Office Amministrativo Sviluppo Clienti - Udine/Trieste",
+   "company": "hdbj.em2.CX_1",
+   "location": "UDINE, FRIULI VENEZIA GIULIA, Italy",
+   "provider": "hdbj.em2.CX_1",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Specialista Back Office (Categoria Protetta L. 68/99) - Bologna/Ferrara",
+   "company": "hdbj.em2.CX_1",
+   "location": "BOLOGNA, EMILIA ROMAGNA, Italy",
+   "provider": "hdbj.em2.CX_1",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Specialista Back Office (Categoria Protetta L. 68/99) - Cesena/Rimini",
+   "company": "hdbj.em2.CX_1",
+   "location": "FORLI-CESENA, EMILIA ROMAGNA, Italy",
+   "provider": "hdbj.em2.CX_1",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Specialista Reporting e Data Analytics - Imola",
+   "company": "hdbj.em2.CX_1",
+   "location": "Italy",
+   "provider": "hdbj.em2.CX_1",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Tirocinio Addetto/a Anagrafiche, Contabilità e Control Room Contenitori - Cesena",
+   "company": "hdbj.em2.CX_1",
+   "location": "FORLI-CESENA, EMILIA ROMAGNA, Italy",
+   "provider": "hdbj.em2.CX_1",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Senior Accountant - Fiat & EMI Entities",
+   "company": "onhires",
+   "location": "Europe; Europe",
+   "provider": "onhires",
+   "role": "yes",
+   "place": "remote"
+  },
+  {
+   "title": "Expert Support Technique et Comptable",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Expert Support Technique et Comptable (Télétravail Normandie / Nord)",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Expert Support Technique et Comptable (Télétravail complet possible - Bordeaux / Gironde / Landes)",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Profil Comptable - Candidature Spontanée",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Spécialiste Support Pilotage et Comptabilité (Télétravail complet possible - Aix en Provence)",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Spécialiste Support Services Financiers (Télétravail complet possible)",
+   "company": "pennylane",
+   "location": "All France (remote)",
+   "provider": "pennylane",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Customer Success Manager, Finance & Accounting",
+   "company": "rillet",
+   "location": "New York City; Remote; San Francisco",
+   "provider": "rillet",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Deployment Lead - Accounting Solutions",
+   "company": "rillet",
+   "location": "Remote; New York City; San Francisco; Chicago",
+   "provider": "rillet",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Manager, Deployment Team - Accounting Solutions",
+   "company": "rillet",
+   "location": "Remote; New York City; San Francisco; Chicago",
+   "provider": "rillet",
+   "role": "no",
+   "place": "remote"
+  }
+ ]
+}

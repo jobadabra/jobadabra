@@ -1,0 +1,8 @@
+{"family": "welder", "title": "Welder", "kind": "non-tech", "city": "Leipzig", "country": "Germany", "language": "German", "reference": {"words": ["Schweißer"], "nuts2": "DED5"}}
+tape: recorded with model override claude-haiku-5-5, replayed with it
+draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p8-main-1/tape/draft.json in 0 s
+Search: 8 roles; places Leipzig, Germany
+PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (179 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
+Search: 8 roles; places Leipzig, Germany
+PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (124 s)
+PERSONA DONE draw

@@ -1,0 +1,24 @@
+[0s] Finding your first jobs…
+[19s] Places: worked out 2 place words with AI: gothenburg, sweden
+[19s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[19s] Cronjob run logged: store:cron_runs/a06d57236166424184626a133cbb552c
+[19s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[19s] Job boards: searching the web for trade and local boards (your API key)
+[19s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[50s] Pool labels: roles trades; families electrical_mechanical; countries se; metros -
+[80s] Job boards: Verkstadsjobb is one employer's own site: left out
+[80s] Job boards: a web search found Mekanikerjobb.se, Framtid.se
+[164s] Employers: 18 of 1263 in your places hire for your kind of role; the others are left out.
+[165s] First jobs: reading 15 of 18 employer sites first
+[166s] EURES: 200 vacancies in your places read
+[169s] ⏳ Reading employer job sites: 0 of 15
+[169s] Employers: read 0 of 15 sites in the time, best first; the other 15 are read first next time.
+[169s] ⏱ Time is up (2 min 48 s) for employer sites: 15 sites wait for the next search
+[169s] First jobs: 0 found
+[172s] ⏱ No time left in this refresh for these: 148 title(s) wait for the next one
+[172s] Job boards: done, 0 job(s) for your search
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for the search: what it has not reached waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for job boards: it waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for scoring the job boards' jobs: it waits for the next search
+[178s] ⏱ Time is up (2 min 58 s) for searching wider: it waits for the next search

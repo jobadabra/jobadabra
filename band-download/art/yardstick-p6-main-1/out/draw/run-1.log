@@ -1,0 +1,51 @@
+[0s] Finding your first jobs…
+[19s] Places: worked out 2 place words with AI: zagreb, croatia
+[19s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[19s] Cronjob run logged: store:cron_runs/4b535524e0ca4dce832010dfc7af528d
+[19s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[19s] Job boards: searching the web for trade and local boards (your API key)
+[19s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[58s] Pool labels: roles creative_media; families marketing_social; countries hr; metros -
+[115s] Job boards: Marketing Magazin – Radna mjesta tjedna is not a job board: left out
+[115s] Job boards: a web search found PickJobs – Marketing i oglašavanje, JobHunter – Marketing, PR i mediji, posao.hr – Marketing, PR i mediji, Adorio, ZaposliSe.hr, StartupJobs.hr
+[132s] Employers: 82 of 1025 in your places hire for your kind of role; the others are left out.
+[133s] First jobs: reading 15 of 82 employer sites first
+[133s] EURES: 0 vacancies in your places read
+[134s] First jobs: reading posao.hr, the job board that gave people like you the most jobs
+[134s] ⏱ Time is up (2 min 14 s) for job boards: 1 board read waits for the next search
+[135s] ⏳ Reading employer job sites: 0 of 15
+[135s] Employers: read 0 of 15 sites in the time, best first; the other 15 are read first next time.
+[135s] ⏱ Time is up (2 min 14 s) for employer sites: 15 sites wait for the next search
+[135s] First jobs: 0 found
+[135s] ⏱ Time is up (2 min 15 s) for free job APIs: 1 source waits for the next search
+[135s] Job boards: done, 0 job(s) for your search
+[135s] First jobs: 0 found, none to score yet
+[135s] Job boards first: reading the 6 the web search found, before the employer sites: PickJobs – Marketing i oglašavanje, JobHunter – Marketing, PR i mediji, posao.hr – Marketing, PR i mediji, Adorio, ZaposliSe.hr, StartupJobs.hr
+[136s] ⏳ Reading employer job sites: 0 of 82
+[136s] Employers: read 0 of 82 sites in the time, best first; the other 82 are read first next time.
+[136s] Job boards: done, 0 job(s) for your search
+[136s] Expired 0 job(s) not seen for 7 days
+[136s] ⏱ Time is up (2 min 16 s) for descriptions: 1 round of posting reads waits for the next search
+[136s] 0 job(s) to score with claude-haiku-5-5
+[136s] 0 job(s) to enrich with claude-haiku-5-5
+[136s] Job Matches: 0 created, 0 updated
+[136s] Where your jobs came from: no source gave a job in your places yet
+[136s] Step yield: no step brought a job in your places
+[136s] Next plan (logged, not applied yet): 1 employer sites 0 fit 70+/min, 15 left · 2 web search not measured · 3 job boards not measured, 1 left · 4 free job APIs not measured, 1 left · +6 more · done: scoring, job facts, employer names
+[136s] <<<message
+[136s] ✈️ Job digest
+[136s] 0 new
+[136s] Tap a job number to mark it applied, save or dismiss it.
+[136s] message>>>
+[136s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[136s] Warning: run not logged to the run history: KeyError: 'free'
+[137s] Warning: run not logged to the run history: KeyError: 'free'
+[137s] AI decide calls: job site kind for a field 7, pool-country 1, pool-family 1, pool-metro 1, pool-region 1, pool-role 1, role-kind 1
+[137s] ⏱ Time is up (2 min 16 s) for job boards: it waits for the next search
+[137s] ⏱ Time is up (2 min 16 s) for scoring the job boards' jobs: it waits for the next search
+[137s] Searching wider…
+[140s] Cronjob run logged: store:cron_runs/edf3a49f243145508dad64586abb7d3e
+[140s] Scout: reading the employer lists (your roles are outside IT, so the tech company lists are left out)…
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[175s] Scout: checking employers took 35 s
+[175s] ⏱ Time is up (2 min 55 s) for searching wider: what it has not reached waits for the next search

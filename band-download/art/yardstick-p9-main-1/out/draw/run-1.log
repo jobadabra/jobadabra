@@ -1,0 +1,79 @@
+[0s] Finding your first jobs…
+[18s] Places: worked out 3 place words with AI: lyon, villeurbanne, france
+[19s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[19s] Cronjob run logged: store:cron_runs/efc926995c4e44b1981f4c2d999e5225
+[19s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[19s] Job boards: searching the web for trade and local boards (your API key)
+[19s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[45s] Pool labels: roles trades; families electrical_mechanical; countries fr; metros fr-lyon
+[87s] Technical: decide job site kind for a field: RuntimeError
+[93s] Employers: 26 of 1594 in your places hire for your kind of role; the others are left out.
+[95s] First jobs: reading 15 of 26 employer sites first
+[95s] EURES: 200 vacancies in your places read
+[99s] ⏳ Reading employer job sites: 0 of 15
+[99s] Employers: read 0 of 15 sites in the time, best first; the other 15 are read first next time.
+[99s] ⏱ Time is up (1 min 38 s) for employer sites: 15 sites wait for the next search
+[99s] First jobs: 0 found
+[100s] ⏱ No time left in this refresh for these: 53 title(s) wait for the next one
+[100s] Titles: asking Claude about 30 job title(s) in your places, in 1 batch(es) of up to 30
+[100s] ⏳ Sorting job titles with AI: 0 of 30
+[121s] Job boards of your field: ELECTRIJOB, CVBTP, PMEBTP, Un job dans le BTP
+[123s] Job boards of your field: ELECTRIJOB, CVBTP, PMEBTP, Un job dans le BTP
+[130s] Job boards proposed for France: France Travail, Hellowork, Jobijoba, Jooble, Météojob, Manpower France, Adecco France, Randstad France, Synergie, LIP Intérim, Aquila RH, Lyon Emplois
+[131s] Job boards proposed for France: France Travail, Hellowork, Jobijoba, Jooble, Météojob, Manpower France, Adecco France, Randstad France, Synergie, LIP Intérim, Aquila RH, Lyon Emplois
+[131s] First jobs: reading flightdeckfriend.com, ELECTRIJOB, CVBTP, PMEBTP, Un job dans le BTP, France Travail, job boards for your country
+[131s] ⏱ Time is up (2 min 11 s) for job boards: 6 boards wait for the next search
+[132s] ⏳ Sorting job titles with AI: 30 of 30
+[132s] Jobs so far: 125 new from employer sites
+[132s] First jobs: 155 found
+[147s] ⏳ Scoring jobs against your Profile: 0 of 3
+[147s] ⏳ Scoring jobs against your Profile: 3 of 3
+[147s] ⏱ Time is up for this refresh: 3 job(s) left for the next one (it stops at 2.2 min)
+[156s] Titles: Claude sorted 30 new title(s) in your places; 30 could fit your search
+[156s] Job boards: done, 157 job(s) for your search
+[156s] Jobs so far: 2 new from employer sites
+[156s] First jobs: 157 found on the job boards
+[156s] First jobs: 0 scored in 62 s; the full search goes on
+[156s] Job boards: the web search is still searching; its boards are read with the others
+[157s] ⏳ Reading employer job sites: 0 of 26
+[157s] Employers: read 0 of 26 sites in the time, best first; the other 26 are read first next time.
+[157s] ⏱ Time is up (2 min 37 s) for free job APIs: 4 sources wait for the next search
+[157s] Job boards: done, 157 job(s) for your search
+[158s] Added 127 new job(s): Rhône 24, Isère 15, Savoie 12, Haute-Savoie 8, Drôme 8, Ain 7, Ardèche 4, Nord 3 and 36 more
+[158s] New job: Technicien électricien-électronicien / Technicienne électricienne (H/F) | GME AUTOS | https://europa.eu/eures/portal/jv-se/jv-details/MjE1Q05QQiA5?lang=en
+[158s] New job: Électricien / Électricien frigoriste / Climaticien (H/F) | ATECH ELEC | https://europa.eu/eures/portal/jv-se/jv-details/MjE0Rk1RWSA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | Talents Construction | https://europa.eu/eures/portal/jv-se/jv-details/ODMxNzE4OSA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | DLSI | https://europa.eu/eures/portal/jv-se/jv-details/Nzg2NjA5NSA5?lang=en
+[158s] New job: Électricien / Électricienne automobile (H/F) | RANDSTAD INHOUSE SERVICES | https://europa.eu/eures/portal/jv-se/jv-details/MjE1V0JQViA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | Groupe ATOLL | https://europa.eu/eures/portal/jv-se/jv-details/ODI2MjgzNyA5?lang=en
+[158s] New job: Électricien / Électricienne automobile (H/F) | Groupe ATOLL | https://europa.eu/eures/portal/jv-se/jv-details/ODE3MTQzOCA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | Pi Intérim | https://europa.eu/eures/portal/jv-se/jv-details/ODEwODg1NCA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | Pi Intérim | https://europa.eu/eures/portal/jv-se/jv-details/ODAzNzYxMSA5?lang=en
+[158s] New job: Électricien / Électricienne tertiaire (H/F) | Le Cercle Intérimaire | https://europa.eu/eures/portal/jv-se/jv-details/NzEwOTk0OSA5?lang=en
+[158s] Expired 0 job(s) not seen for 7 days
+[158s] ⏱ Time is up (2 min 37 s) for descriptions: 1 round of posting reads waits for the next search
+[158s] Job boards: a web search found Electrijob, PMEBTP, Lyon Emplois, Emploi Lyon, BTP-Emploi, Job-BTP, Action BTP
+[158s] ⏱ No time left in this refresh to score any: 127 job(s) to score wait for the next one
+[158s] 0 job(s) to score with claude-haiku-5-5
+[158s] ⏱ 127 found job(s) wait for the next refresh, to be scored (best places and closest jobs first)
+[158s] Warning: 127 job(s) waiting, none scored this run
+[159s] ⏳ Reading new jobs with AI: 0 of 100
+[159s] ⏱ Time is up for this refresh: 100 job(s) left for the next one (it stops at 2.2 min)
+[159s] Enriched 0 of 0 job(s) with claude-haiku-5-5; 0 failed; tokens in 0, out 0
+[159s] Job Matches: 0 created, 0 updated
+[159s] Where your jobs came from: europa.eu (job board) 127 in your places
+[159s] Step yield: employer sites 127 local in 62.5 s (121.9/min)
+[159s] Next plan (logged, not applied yet): 1 job boards 0 fit 70+/min, 6 left · 2 employer sites 0 fit 70+/min, 15 left · 3 web search not measured · 4 free job APIs not measured, 4 left · +7 more · done: title sorting, employer names
+[159s] <<<message
+[159s] ✈️ Job digest
+[159s] 0 new
+[159s] Tap a job number to mark it applied, save or dismiss it.
+[159s] message>>>
+[159s] Digest ready: 0 jobs, 0 new. Telegram isn't connected, so nothing was sent.
+[159s] Warning: run not logged to the run history: KeyError: 'free'
+[159s] Warning: run not logged to the run history: KeyError: 'free'
+[159s] Warning: The AI could not judge 1 items this time; they wait for the next run
+[159s] AI decide calls: job site kind for a field 7, pool-country 1, pool-family 1, pool-metro 1, pool-region 1, pool-role 1, role-kind 1
+[162s] ⏱ Time is up (2 min 42 s) for job boards: it waits for the next search
+[162s] ⏱ Time is up (2 min 42 s) for scoring the job boards' jobs: it waits for the next search
+[162s] ⏱ Time is up (2 min 42 s) for searching wider: it waits for the next search

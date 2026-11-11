@@ -1,0 +1,17 @@
+[0s] Finding your first jobs…
+[17s] Places: worked out 2 place words with AI: lisbon, portugal
+[17s] Time budget: this search stops its AI steps at 2 min 15 s; what is left waits for the next one
+[17s] Cronjob run logged: store:cron_runs/f04a4635cb4b4a6cabc4526c98740428
+[17s] AI budget: $0.00 of $15 this month (0%, Jobadabra log)
+[17s] Job boards: searching the web for trade and local boards (your API key)
+[17s] Plan (logged, not applied yet): 1 web search not measured · 2 job boards not measured · 3 employer sites not measured · 4 free job APIs not measured · +9 more
+[90s] Job boards: Associação Portuguesa de Business Intelligence (APBI) – Empr is not a job board: left out
+[90s] Job boards: Rumos – Ofertas de emprego em Tecnologias de Informação is one employer's own site: left out
+[90s] Job boards: a web search found PortugalJobs.io, Just IT, DataRoles, ABL Jobs, ITJobs Portugal, Joblink, Emprego.com
+[104s] Pool labels: roles business_ops,data; families data_ai; countries pt; metros pt-lisbon
+[175s] Ended at the search's 3 minutes: what it had not reached waits for the next search
+[175s] AI decide calls: job site kind for a field 9, pool-country 1, pool-family 1, pool-metro 1, pool-region 1, pool-role 1, role-kind 1
+[176s] ⏱ Time is up (2 min 55 s) for the search: what it has not reached waits for the next search
+[176s] ⏱ Time is up (2 min 55 s) for job boards: it waits for the next search
+[176s] ⏱ Time is up (2 min 55 s) for scoring the job boards' jobs: it waits for the next search
+[176s] ⏱ Time is up (2 min 55 s) for searching wider: it waits for the next search

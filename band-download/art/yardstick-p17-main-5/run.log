@@ -1,0 +1,8 @@
+{"family": "hotel", "title": "Hotel Receptionist", "kind": "non-tech", "city": "Valencia", "country": "Spain", "language": "Spanish", "reference": {"words": ["recepcionista"], "nuts2": "ES52"}}
+tape: no recorded.json (recorded before it existed): the model override is the environment's
+draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p17-main-5/tape/draft.json in 0 s
+Search: 8 roles; places valencia, spain
+PRESS draw 1 (EURES: on): 90 in places, 20 scored, 0 fit 70+ (160 s; 1st/10th relevant at 52/52 s, 1st 70+ at — s)
+Search: 8 roles; places valencia, spain
+PRESS draw 2 (EURES: on): 92 in places, 75 scored, 0 fit 70+ (175 s)
+PERSONA DONE draw

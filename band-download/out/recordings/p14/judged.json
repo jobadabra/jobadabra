@@ -1,0 +1,1566 @@
+{
+ "persona": {
+  "family": "mechanic",
+  "title": "Car Mechanic",
+  "kind": "non-tech",
+  "city": "Gothenburg",
+  "country": "Sweden",
+  "language": "Swedish",
+  "reference": {
+   "words": [
+    "bilmekaniker"
+   ],
+   "nuts2": "SE23"
+  }
+ },
+ "judged_jobs": 193,
+ "model": "Codex small tier",
+ "billing": "subscription",
+ "usd": 0,
+ "rows": [
+  {
+   "title": "BILMEKANIKER - TORPAVALLEN BILSERVICE",
+   "company": "Torpavallen Bilservice AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Erfaren personbilsmekaniker sökes till Autoexperten Krokslätt",
+   "company": "Krokslätt bilvård & bilservice AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker - Norrköping - Heltid",
+   "company": "Simplex Bemanning AB",
+   "location": "Östergötlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker - Linköping - Heltid",
+   "company": "Simplex Bemanning AB",
+   "location": "Östergötlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren Bilmekaniker/Fordonstekniker",
+   "company": "SwedenMix AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren bilmekaniker/Fordonstekniker",
+   "company": "Limogroup Sweden AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker/ Personbilsmekaniker i Eksjö",
+   "company": "63 Motors AB",
+   "location": "Jönköpings län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren bilmekaniker / Fordonstekniker till RS Bil & Däckservice",
+   "company": "Sadiku, Ramiz",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personlig Servicetekniker - Skövde",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes till kund i Hisings Kärra",
+   "company": "Aura Personal AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Erfaren fordonsmekaniker sökes till kund i Strängnäs",
+   "company": "Aura Personal AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker till QAutos Uppsala",
+   "company": "QAutos AB",
+   "location": "Uppsala län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes!",
+   "company": "Bilhuset Halland AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren fordonsmekaniker sökes till kund i Eskilstuna",
+   "company": "Aura Personal AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker Jakobsberg",
+   "company": "Miljonbemanning AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker sökes behovsanställning med möjlighet till heltid",
+   "company": "Kastberga MC AB",
+   "location": "Skåne län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personlig servicetekniker - Lidköping",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker till Strängnäs",
+   "company": "Aura Personal AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren bilmekaniker/fordonsmekaniker till verkstad i Arboga",
+   "company": "TNS GAMING AB",
+   "location": "Västmanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personlig servicetekniker till Skövde",
+   "company": "Brandt Personbilar AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personbilsmekaniker utvecklas tillsammans med oss",
+   "company": "Enköping Servicecenter AB",
+   "location": "Uppsala län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker/servicetekniker",
+   "company": "Armens Bilverkstad AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker Personbilar Flygstaden Halmstad",
+   "company": "Motor Aktiebolaget Halland",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker / Service Technician - Gothenburg",
+   "company": "TM Sweden AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personbilsmekaniker - Kvällstid / Helger",
+   "company": "Bilsmidigt AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Air flex AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "ROBO BILSERVICE HANDELSBOLAG",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Bokenäs Bil & Maskin AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Jovi Konsult AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Aronssons Bilservice AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "AJR Car Recond Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Kom in Bilservice AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Skadeverkstaden i Varalöv AB",
+   "location": "Skåne län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Smajl Car Service AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Hammarö Motor AB",
+   "location": "Värmlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "KD Bil & Marin Service i Grängesberg AB",
+   "location": "Dalarnas län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "MEKIAN Bilverkstad AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Vännäs Taxi Aktiebolag",
+   "location": "Västerbottens län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "bilmekaniker",
+   "company": "MD Bilreparationer AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Atracco Auto AB",
+   "location": "Kronobergs län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "TK Motorgruppen AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "The We Select Company AB",
+   "location": "Östergötlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "SBO & GTA AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Åkes Bil och Motor i Stockholm Aktiebolag",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Märsta Bilakuten AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Svenska Avgasrör i Bredäng Aktiebolag",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "FG Auto Arboga AB",
+   "location": "Västmanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Eslövs Bilproffs AB",
+   "location": "Skåne län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Vård av bil Tumba AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Bilhuset Sverige Group AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Weda Bilmek & Rekond AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "Rix Fastigheter AB",
+   "location": "Uppsala län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker / Fordonstekniker",
+   "company": "Olssons Bilverkstad i Borås AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personbilsmekaniker Södertälje",
+   "company": "J Andersson Däck & Service AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker i Karlstad",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Värmlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker till Göteborg - Spontanansökan",
+   "company": "Fordonsakademin Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker - Skövde",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekakinker till Fordonsservice Halland",
+   "company": "Unique Consulting i Halland AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Torslanda Bilservice söker en engagerad fordonstekniker",
+   "company": "Fordonsakademin Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker | Göteborg",
+   "company": "Jobway AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker Hisingen",
+   "company": "Aura Personal AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fälttekniker / Transportbilstekniker",
+   "company": "Lion's Trucks AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Trailermekaniker",
+   "company": "Jovi Konsult AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker Göteborg",
+   "company": "2Complete AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Hamnmagasinet söker båtmekaniker",
+   "company": "Hamnmagasinet i Mariestad Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker sökes Göteborg",
+   "company": "DeXpress AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Mekaniker",
+   "company": "RIXBIL SVERIGE AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker till tunga fordon!",
+   "company": "Ikett Personalpartner AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker till Autoexperten/ Allbil Gruppen i Vårgårda",
+   "company": "Fordonsakademin Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Är du grym på tunga fordon? Vi söker en trailermekaniker!",
+   "company": "Jovi Konsult AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker - Uddevalla",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker – Vänersborg",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker Partille",
+   "company": "Aura Personal AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker - Norra Stockholm",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "ERFAREN BILMEKANIKER",
+   "company": "Jobcenter in Sweden AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Nynäshamn",
+   "company": "MEKO Services AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker/Personbilsmekaniker",
+   "company": "Centralens se Bilverkstad Uthyrning Handel Glasm",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Erfaren bilmekaniker sökes !",
+   "company": "Sam's Bilservice i Kungälv AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker/Bilmekaniker/Personbilsmekaniker",
+   "company": "Med Hela Resan AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker Scania Sverige AB - Hisingen",
+   "company": "Scania CV Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Oskarshamn",
+   "company": "MEKO Sales AB",
+   "location": "Kalmar län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Vaggeryd",
+   "company": "MEKO Sales AB",
+   "location": "Jönköpings län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker - Åseda Fordonsservice",
+   "company": "Human Solutions AB",
+   "location": "Kronobergs län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker, Personbilsmekaniker, Biltekniker",
+   "company": "Marcus Autocenter AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker mekonomen",
+   "company": "Bilverkstad på Kronoparken AB",
+   "location": "Västerbottens län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Västerås",
+   "company": "MEKO Sales AB",
+   "location": "Västmanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker/ Bilmekaniker / Fordonstekniker",
+   "company": "A Berggrens Bilservice i Floby Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonsmekaniker",
+   "company": "Peab AB",
+   "location": "Skåne län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker",
+   "company": "Boliden Mineral AB",
+   "location": "Dalarnas län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonsmekaniker",
+   "company": "Kharels Entreprenad AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Teamledare & Senior Personbilsmekaniker till Mekonomen / Smista Bil AB",
+   "company": "Cleverex Bemanning AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Nässjö",
+   "company": "MEKO Services AB",
+   "location": "Jönköpings län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Självständig bilmekaniker",
+   "company": "Annas Bilmek & Plåt AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker/Bilmekaniker",
+   "company": "Vallentuna Bilverkstad AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Uppsala",
+   "company": "MEKO Sales AB",
+   "location": "Uppsala län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "2-3 Bilmekaniker",
+   "company": "Arninge bilverkstad AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren Fordonsmekaniker sökes till Henån",
+   "company": "B KARLSSONS BILVERKSTAD AKTIEBOLAG",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Slite",
+   "company": "MEKO Sales AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Sölvesborg",
+   "company": "MEKO Services AB",
+   "location": "Blekinge län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Saltsjö-boo",
+   "company": "MEKO Sales AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personlig Servicetekniker - Bilia Personbilar Kungsbacka",
+   "company": "Bilia AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Falköping",
+   "company": "MECA Sweden AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker Borås",
+   "company": "2Complete AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Resande Servicetekniker",
+   "company": "Get Skills AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Resande servicetekniker",
+   "company": "SAPS Service Management AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker/Servicetekniker sökes till västra Frölunda",
+   "company": "Fiskebäcks Bil & Service AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "TSG Solutions Sweden AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "Jobway AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "unknown"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "Roy Andersson Bilbolaget AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "DOER Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "Continova Aktiebolag",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "OrangeGas Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "Jovi Konsult AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker",
+   "company": "EBO Hydraul AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker till Prowash – Göteborg",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonsmekaniker Kärranäs",
+   "company": "Benders Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Vänersborg",
+   "company": "MEKO Sales AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Skövde",
+   "company": "MEKO Sales AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Nödinge",
+   "company": "MEKO Services AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Nödinge",
+   "company": "SPEEDY AUTOSERVICE AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes till verkstad i Oslo",
+   "company": "TEMP-TEAM Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personbilsmekaniker",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personbilsmekaniker",
+   "company": "Eklunds Bildelslager i Skövde AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personbilsmekaniker",
+   "company": "Sigtuna Team Car AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Högsbo",
+   "company": "MEKO Services AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker till Göteborg",
+   "company": "2Complete AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker till Göteborg",
+   "company": "QSG Bevakning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Bilmekaniker sökes omgående till Mölndal",
+   "company": "MECA Sweden AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Personlig servicetekniker/Försteman sökes omgående till Nödinge!",
+   "company": "MEKO Services AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker- Skara",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker inriktning transportkyla",
+   "company": "FMR Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Personlig Servicetekniker till vår kund!",
+   "company": "adacto people AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker Scania Sverige AB - Arendal",
+   "company": "Scania CV Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker med inriktning mot fordon",
+   "company": "VÄSTRA GÖTALANDSREGIONEN",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonsmekaniker till kund i Borås | Heltid",
+   "company": "Manpower Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker | Göteborg",
+   "company": "Jobway AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Bussmekaniker till Borås Bil Lastvagnar",
+   "company": "Fordonsakademin Sverige AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker Mercedes-Benz",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker Nissan",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Hedin Performance Cars AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Toveks Personbilar AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "unknown"
+  },
+  {
+   "title": "Saltängen söker mekaniker",
+   "company": "Saltängens Mekaniska Verkstad Aktiebolag",
+   "location": "Östergötlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker sökes till Borås",
+   "company": "Randstad AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Mekaniker ( Fordon ) Vehicle Mechanic",
+   "company": "NP Carpartner AB",
+   "location": "Södermanlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker Skadeverkstad",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "FORDONSTEKNIKER VIKARIE Dagtid",
+   "company": "Kubikenborg Aluminium AB",
+   "location": "Västernorrlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bussmekaniker till JOPRA Bussteknik AB i Kungälv",
+   "company": "Sjötun Rekrytering AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker Göteborg",
+   "company": "Aura Personal AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker Din Bil Göteborg",
+   "company": "Aura Personal AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Påbyggnadstekniker / Fordonstekniker till Brandt Fordon",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Mekaniker till storkund inom fordonsindustrin",
+   "company": "Adecco Sweden Aktiebolag",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker till Brandt Personbilar",
+   "company": "Kraftsam Rekrytering & Bemanning AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Utrustningsmekaniker till kund i Halmstad!",
+   "company": "Fordonsakademin Sverige AB",
+   "location": "Hallands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker till Volvo i Hällered",
+   "company": "Randstad AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Erfarna bussmekaniker, se hit!",
+   "company": "Uniflex AB",
+   "location": "Stockholms län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilplåtslagare/mekaniker till Werksta Karlstad",
+   "company": "Werksta Sweden AB",
+   "location": "Värmlands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Malmgren Bil söker fler fordonstekniker!",
+   "company": "M MALMGREN - BIL AB",
+   "location": "Västra Götalands län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonsmekaniker till Bilbolaget Lastvagnar i Ljusdal",
+   "company": "Bilbolaget Lastvagnar, Persson & Co AB",
+   "location": "Gävleborgs län, Sweden",
+   "provider": "EURES",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Mercedesttekniker till Biltjänst i Arvika",
+   "company": "warnestadgruppen",
+   "location": "Arvika, Sweden",
+   "provider": "warnestadgruppen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker (Vikariat 6 månader) – Sweden Recycling, Spånga",
+   "company": "RentokilInitial1",
+   "location": "Spånga, se",
+   "provider": "RentokilInitial1",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Automotive Diagnostics Specialist",
+   "company": "MSXInternational",
+   "location": "Malmö, se",
+   "provider": "MSXInternational",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Automotive Diagnostics Specialist",
+   "company": "MSXInternational",
+   "location": "Stockholm, se",
+   "provider": "MSXInternational",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Automotive Diagnostics Specialist",
+   "company": "MSXInternational",
+   "location": "Gothenburg, se",
+   "provider": "MSXInternational",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonsmekaniker till ATV",
+   "company": "borjessonkoncernen",
+   "location": "Alingsås, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Servicetekniker med brinnande intresse för service till Rentokil Luleå med omnejd",
+   "company": "RentokilInitial1",
+   "location": "Luleå, se",
+   "provider": "RentokilInitial1",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker/Lastbilstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Hässleholm, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker/Lastbilstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Karlskrona, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker/Lastbilstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Alingsås, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "yes"
+  },
+  {
+   "title": "Lastbilsmekaniker/Lastbilstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Östra Ljungby, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Lastbilsmekaniker/Lastbilstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Alingsås, Sweden; Hässleholm, Sweden; Karlshamn, Sweden; Karlskrona, Sweden; Kristianstad, Sweden; Östra Ljungby, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Reservdelstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Östra Ljungby, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Reservdelstekniker",
+   "company": "borjessonkoncernen",
+   "location": "Kristianstad, Sweden",
+   "provider": "borjessonkoncernen",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Reperatör i produktion – containerombyggnation",
+   "company": "dfdsprofessionals",
+   "location": "Gothenburg, Sweden",
+   "provider": "dfdsprofessionals",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Teknisk Support inom fordonsteknik",
+   "company": "MSXInternational",
+   "location": "Gothenburg, se",
+   "provider": "MSXInternational",
+   "role": "no",
+   "place": "yes"
+  },
+  {
+   "title": "Fordonstekniker till Wafab Bils verkstad i Kristinehamn",
+   "company": "warnestadgruppen",
+   "location": "Kristinehamn, Sweden",
+   "provider": "warnestadgruppen",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Mekaniker",
+   "company": "via Verkstadsjobb",
+   "location": "Kristianstad",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Mekaniker",
+   "company": "via Verkstadsjobb",
+   "location": "Stockholm, Kristianstad",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "via Verkstadsjobb",
+   "location": "Kristianstad",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Personbilstekniker",
+   "company": "via Verkstadsjobb",
+   "location": "Stockholm, Kristianstad",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Bilmekaniker",
+   "company": "via Verkstadsjobb",
+   "location": "Kristianstad",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Skadetekniker",
+   "company": "via Verkstadsjobb",
+   "location": "Kristianstad",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker till Atlas Copco Compressor",
+   "company": "Atlas Copco Compressor",
+   "location": "Kristianstad, Sweden",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Servicetekniker till Atlas Copco Compressor",
+   "company": "Atlas Copco Compressor",
+   "location": "Stockholm, Sweden",
+   "provider": "Job boards found",
+   "role": "no",
+   "place": "no"
+  },
+  {
+   "title": "Motor Mechanic",
+   "company": "Driveloop AB",
+   "location": "JÄRFÄLLA, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Hedin Automotive Göteborg AB",
+   "location": "Luleå, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker till Wafab Bils verkstad i Kristinehamn",
+   "company": "WAFAB Bil Aktiebolag",
+   "location": "Kristinehamn, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Bergkvara Group AB",
+   "location": "STOCKHOLM, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Mekaniker",
+   "company": "Malte Månson Verkstäder AB",
+   "location": "Borlänge, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Erfaren bilmekaniker/Fordonstekniker",
+   "company": "Limogroup Sweden AB",
+   "location": "Hässelby, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "ERFAREN BILMEKANIKER",
+   "company": "Jobcenter in Sweden AB",
+   "location": "Tranemo, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  },
+  {
+   "title": "Fordonstekniker",
+   "company": "Motor Trend AB",
+   "location": "Arvika, Sweden",
+   "provider": "Job boards found",
+   "role": "yes",
+   "place": "no"
+  }
+ ]
+}

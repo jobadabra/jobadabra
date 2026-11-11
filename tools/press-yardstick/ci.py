@@ -52,25 +52,35 @@ GAP_WEB_SHARE = 0.02
 GAP_AI_SHARE = 0.10
 
 
+def report_gap(report):
+    """(web missing, web asked, AI missing, AI asked) when one replay's tape-report.jsonl (src/search_tape.py: one 'replay' line per process) asked more than the bounds
+    for what its recording lacks, else None (also for a replay that left no report)."""
+    if not Path(report).exists():
+        return None
+    total = dict.fromkeys(('web_tape', 'web_missing', 'ai_tape', 'ai_missing', 'ai_rebuilt'), 0)
+    for line in Path(report).read_text(encoding='utf-8').splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if entry.get('mode') == 'replay':
+            for name in total:
+                total[name] += entry.get(name) or 0
+    web, ai = total['web_tape'] + total['web_missing'], total['ai_tape'] + total['ai_missing'] + total['ai_rebuilt']
+    if (web and total['web_missing'] / web > GAP_WEB_SHARE) or (ai and total['ai_missing'] / ai > GAP_AI_SHARE):
+        return total['web_missing'], web, total['ai_missing'], ai
+    return None
+
+
 def recording_gaps(art):
-    """{persona: (web missing, web asked, AI missing, AI asked)} for each persona whose replay on main (else on this ref) asked more than the bounds for what its recording lacks.
-    Read from art/yardstick-<persona>-<side>/tape-report.jsonl (src/search_tape.py writes one 'replay' line per process)."""
+    """{persona: (web missing, web asked, AI missing, AI asked)} for each persona whose replay on main (else on this ref) asked more than the bounds for what its recording lacks
+    (art/yardstick-<persona>-<side>/tape-report.jsonl)."""
     gaps = {}
     for side in ('pr', 'main'):   # main last: the recording against main's code is the better witness of a stale recording
         for report in sorted(Path(art).glob(f'yardstick-p*-{side}/tape-report.jsonl')):
-            total = dict.fromkeys(('web_tape', 'web_missing', 'ai_tape', 'ai_missing', 'ai_rebuilt'), 0)
-            for line in report.read_text(encoding='utf-8').splitlines():
-                try:
-                    entry = json.loads(line)
-                except ValueError:
-                    continue
-                if entry.get('mode') == 'replay':
-                    for name in total:
-                        total[name] += entry.get(name) or 0
-            web, ai = total['web_tape'] + total['web_missing'], total['ai_tape'] + total['ai_missing'] + total['ai_rebuilt']
-            persona = report.parent.name[len('yardstick-'):].split('-', 1)[0]
-            if (web and total['web_missing'] / web > GAP_WEB_SHARE) or (ai and total['ai_missing'] / ai > GAP_AI_SHARE):
-                gaps[persona] = (total['web_missing'], web, total['ai_missing'], ai)
+            persona, gap = report.parent.name[len('yardstick-'):].split('-', 1)[0], report_gap(report)
+            if gap:
+                gaps[persona] = gap
             elif side == 'main':
                 gaps.pop(persona, None)
     return gaps
@@ -164,8 +174,11 @@ def newest_band():
         run = next((r['databaseId'] for r in runs if r['displayTitle'] == BAND_RUN), None)
         if run is None:
             return {}
-        folder = Path('band-download')
-        subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
+        folder = Path('band-download', str(run))
+        # Why (11 Nov 2026, #3805): the verdict reads the band again in the same job, and gh refuses to extract over the first download ("file exists"),
+        # so the second read was {} and every person read "no band on this recording": the band of that run is read once, then reused.
+        if not next(folder.rglob('band.json'), None):
+            subprocess.run(['gh', 'run', 'download', str(run), '-n', 'press-yardstick-band', '-D', str(folder)], check=True, capture_output=True)
         # Why (10 Nov 2026, ys 1/2): the artifact keeps its folders (the upload names out/ and art/..., so the file is out/band.json); this read band-download/band.json, found nothing in every PR run since #3594 (8 Nov)
         # and every verdict read "not measured". Found by reading the first PR comment against the band's own artifact.
         found = next(folder.rglob('band.json'), None)
@@ -255,18 +268,25 @@ def band_mode(art, out):
     {number: [low, high] or None}}}) and a short summary; returns 0. A number fewer than 2 replays measured has no band (None)."""
     sides = lay_out(art, out)
     recordings = Path(out) / 'recordings'
-    band = {'recordings': stamps(recordings), 'personas': {}, 'runs': {}}
+    band, every = {'recordings': stamps(recordings), 'personas': {}, 'runs': {}}, {}
     for run in RUNS:
-        replays = [found for side, folder in sorted(sides.items()) if side.startswith('main-') and (found := rows(recordings, folder, run))]
+        replays = every[run] = [found for side, folder in sorted(sides.items()) if side.startswith('main-') and (found := rows(recordings, folder, run))]
         # A persona counts in the band only when every replay of main measured it, so each replay's mean is over the same personas.
         common = set.intersection(*({row['persona'] for row in found} for found in replays)) if replays else set()
         band['personas'][run] = sorted(common)
         band.setdefault('people', {})[run] = numbers.person_noise([[row for row in found if row['persona'] in common] for found in replays]) if common else {}
         band['runs'][run] = numbers.band([numbers.summary([row for row in found if row['persona'] in common]) for found in replays if common])
+    # The verdict's inputs (tools/press-yardstick/verdict.py): which lanes ran in every replay of main, and who is on a clock cliff (said here, once, not per PR).
+    verdict = importlib.util.module_from_spec(spec := importlib.util.spec_from_file_location('press_verdict', HERE / 'verdict.py'))
+    spec.loader.exec_module(verdict)
+    band['lanes'], cliff = verdict.band_lanes(art, sorted(side for side in sides if side.startswith('main-')), verdict.lanes())
+    band['cliff'] = verdict.right_cliff(cliff, every)
     Path(out, 'band.json').write_text(json.dumps(band), encoding='utf-8')
     print('## Find jobs pipeline yardstick: main\'s noise band\n')
     for run, label in RUNS.items():
         print(f"- {label} ({len(band['personas'][run])} personas): " + ', '.join(f"{name} {band['runs'][run].get(name)}" for name in numbers.NUMBERS))
+        if band['cliff'].get(run):
+            print(f"  - on a clock cliff (main's own replays disagree; the verdict reads them not measured): {', '.join(band['cliff'][run])}")
     return 0
 
 

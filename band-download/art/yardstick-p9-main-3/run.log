@@ -1,0 +1,8 @@
+{"family": "electrician", "title": "Electrician", "kind": "non-tech", "city": "Lyon", "country": "France", "language": "French", "reference": {"words": ["électricien"], "nuts2": "FRK2"}}
+tape: recorded with model override claude-haiku-5-5, replayed with it
+draw: strategy from /home/runner/work/jobadabra/jobadabra/art/yardstick-p9-main-3/tape/draft.json in 0 s
+Search: 6 roles; places lyon, villeurbanne, france
+PRESS draw 1 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (176 s; 1st/10th relevant at —/— s, 1st 70+ at — s)
+Search: 6 roles; places lyon, villeurbanne, france
+PRESS draw 2 (EURES: on): 0 in places, 0 scored, 0 fit 70+ (137 s)
+PERSONA DONE draw
