@@ -36,12 +36,13 @@ on:
         default: false
       # Why (11 Nov 2026, owner, asked via AskUserQuestion in session sa: "2 runs nightly, 5 runs weekly (Recommended)"; "each of the runs should provide new jobs"): a night is
       # 2 runs per person in the same install (tools/persona-search/runs.py: what each run listed first; every older number stays the first run's). A run of
-      # other presses or a subset (a plain by-hand run of all 18 with 2 is still a night) is not sent to Admin, its verdict is stored under another name (the history reads search-personas-result only)
-      # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565).
+      # other presses or a subset (a plain by-hand run of all 18 with 2 is still a night) is not sent to Admin as a night, its verdict is stored under another name (the history reads search-personas-result only)
+      # and it never goes red (a subset leaves the other personas without a result, Gitar on #3565). 5 = the week (2/3): all 18, 5 runs each, what each run added (`by_run`), sent on its own
+      # route (/search-check/weekly), never a night, never floors, never red; about 7 h of the one-at-a-time group, so the Worker starts it away from the 00:00Z night.
       presses:
-        description: 'Runs per person in one install (2 = the night check; 1 = a quick look, not a night)'
+        description: 'Runs per person in one install (2 = the night check; 5 = the week; 1 = a quick look, not a night)'
         type: choice
-        options: ['1', '2']
+        options: ['1', '2', '5']
         default: '2'
       personas:
         description: 'Only these personas, a JSON list such as [7] (empty = all 18)'
@@ -93,7 +94,7 @@ jobs:
     needs: room
     if: ${{ !cancelled() && (needs.room.result == 'success' || needs.room.result == 'skipped') }}   # the nightly skips the room check; a by-hand run with no room stops before any persona
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.eures_comparison && 25 || (inputs.presses || '2') == '2' && 18 || 12 }}   # a second press takes up to ~5 more minutes
+    timeout-minutes: ${{ inputs.eures_comparison && 25 || (inputs.presses || '2') == '5' && 35 || (inputs.presses || '2') == '2' && 18 || 12 }}   # each press after the first takes up to ~5 more minutes
     # Why (8 Nov 2026, owner: "Fix Free AI + PR lane now (Recommended)": "by-hand Search checks may use the 30% PR reserve (about 1 run a day)"): the run token's environment is the only signed
     # sign of a by-hand run (the Worker's nightly is workflow_dispatch by the same account); the broker puts this one environment of this workflow on its PR lane (jobadabra-web lib/lanes.mjs).
     # The nightly names no environment and stays on the scheduled lane. No deployment record: it deploys nothing.
@@ -241,7 +242,7 @@ jobs:
     needs: [room, again-list]
     if: ${{ !cancelled() && needs.again-list.outputs.personas != '' && needs.again-list.outputs.personas != '[]' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ (inputs.presses || '2') == '2' && 18 || 12 }}
+    timeout-minutes: ${{ (inputs.presses || '2') == '5' && 35 || (inputs.presses || '2') == '2' && 18 || 12 }}
     environment:
       name: ${{ !inputs.scheduled && 'search-check-by-hand' || '' }}
       deployment: false
@@ -370,7 +371,7 @@ jobs:
       # floors' state and computes; the floors-save job below alone writes refs/tags/search-floors. Only a scheduled night on the locked chain gets --night (red + a new state).
       - name: Floors that only rise (G2)
         id: floors
-        if: always() && hashFiles('result/verdict.json') != ''
+        if: always() && hashFiles('result/verdict.json') != '' && (inputs.presses || '2') != '5'   # the week keeps its own record, never floors
         env:
           GH_TOKEN: ${{ github.token }}
           NIGHT: ${{ (inputs.scheduled && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'yes' || '' }}
@@ -400,7 +401,7 @@ jobs:
         with: {name: search-personas-floors-state, path: result/floors-state.json, retention-days: 7}
       - uses: actions/upload-artifact@v6
         if: always()
-        with: {name: "${{ (inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
+        with: {name: "${{ (inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude') && 'search-personas-result' || (inputs.presses || '2') == '5' && 'search-personas-weekly-result' || 'search-personas-byhand-result' }}", path: result/verdict.json, retention-days: 90}
       # Why (6 Nov 2026, owner: "I see nowhere in Admin... I'm not alerted"): the Worker stores the night, judges it and tells the owner (jobadabra-web #461), so this is the only call; a failed upload is one line, never a red run. A local run sends nothing.
       - name: Send the night to Admin → Job search → Night search
         if: always() && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude'   # a by-hand subset or a 1-run look is not a night
@@ -425,6 +426,17 @@ jobs:
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
         run: node search-alert.mjs "$GITHUB_WORKSPACE/result/verdict.json"
+      - name: Send the week to Admin → Job search → Finish line
+        if: always() && inputs.personas == '' && (inputs.presses || '2') == '5' && (inputs.chain || 'codex,claude') == 'codex,claude'   # the whole 18 only, on the locked chain
+        continue-on-error: true
+        timeout-minutes: 2
+        working-directory: desktop/e2e
+        env:
+          REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
+          SEARCH_CHECK_SERIES: weekly   # its own route: a week is never filed as a night
+          SEARCH_NIGHT_BY_HAND: ${{ inputs.scheduled && 'no' || 'yes' }}
+        shell: bash
+        run: node search-night-upload.mjs "$GITHUB_WORKSPACE/result/verdict.json" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The table in the run's summary
         if: always()
         run: cat result/table.md >> "$GITHUB_STEP_SUMMARY"

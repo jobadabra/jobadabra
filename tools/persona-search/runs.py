@@ -64,6 +64,7 @@ def split(out):
     right = {key(row) for row in rows if row.get('role') == 'yes' and row.get('place') == 'yes'}
     count = len(begun) if begun else 1
     found = [{'run': n, 'new_listed': sum(1 for run in first.values() if run == n), 'new_right': sum(1 for k, run in first.items() if run == n and k in right),
+              'right_after': sum(1 for k, run in first.items() if run <= n and k in right),   # each job once, at its first run (the week's line, 2/3)
               'seconds': presses[n - 1].get('seconds') if len(presses) >= n else None} for n in range(1, count + 1)]
     (out / 'runs.json').write_text(json.dumps(found), encoding='utf-8')
     if count > 1:
@@ -104,6 +105,21 @@ def night(rows):
         return None
     return {'measured': len(rows), 'people_new_on_2': sum(1 for row in rows if new_right(row, 2) >= 1),
             'right_after_2': sum((new_right(row, 1) or 0) + new_right(row, 2) for row in rows)}
+
+
+def by_run(rows):
+    """The verdict's numbers run by run (the week's 5 runs, 2/3; owner, 11 Nov 2026: "each of the runs should provide new jobs"): for each run n, the measured
+    persons whose row carries it, how many of them it gave at least one new right job, and those jobs: [{run, measured, people_new, new_right}]; None when no
+    measured row carries a second run. A measured 0 is a 0, never grey."""
+    rows = [row for row in rows if isinstance(row, dict) and not row.get('not_run') and not row.get('not_measured') and new_right(row, 2) is not None]
+    if not rows:
+        return None
+    last = max(len(row['runs']) for row in rows)
+    found = []
+    for n in range(1, last + 1):
+        new = [new_right(row, n) for row in rows if new_right(row, n) is not None]
+        found.append({'run': n, 'measured': len(new), 'people_new': sum(1 for value in new if value >= 1), 'new_right': sum(new)})
+    return found
 
 
 def after_repeat(out):
