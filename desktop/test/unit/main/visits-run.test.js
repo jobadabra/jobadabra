@@ -27,7 +27,7 @@ test('Stop: the sites reading now end at once, no further one opens, and every s
   const stop = new AbortController(), opened = [];
   const openTab = url => { opened.push(url); if (opened.length === 2) setTimeout(() => stop.abort(), 20); return {ok: true}; };   // nobody answers
   const sites = ['a', 'b', 'c', 'd'].map(name => ({name, url: `https://${name}.example/jobs`}));
-  const results = await runAll(sites, {atOnce: 2, openTab, waitMs: 5000, quietMs: 5000, siteMs: 5000, signal: stop.signal});   // waited for the open tabs = a timer's words below, not Stop's
+  const results = await runAll(sites, {atOnce: 2, openTab, waitMs: 5000, quietMs: 5000, siteMs: 5000, signal: stop.signal});   // Why (#3795, 11 Nov 2026: red at load 91): no wall-clock bound; a run that waited for its tabs ends with a timer's words, not 'Stopped by you'
   assert.equal(opened.length, 2, 'c and d never open');
   assert.deepEqual(results.map(result => [result.name, result.ok, result.why]), ['a', 'b', 'c', 'd'].map(name => [name, false, 'Stopped by you']));
   assert.match(resultMessage(results), /Read 0 of 4 sites/);
@@ -102,7 +102,7 @@ test('a read tab you close ends that site at once, said in its row, and the next
     return {ok: true};
   };
   const results = await runAll([{name: 'Closeme', url: 'https://closeme.example'}, {name: 'Next', url: 'https://next.example'}],
-    {atOnce: 1, openTab, tee: line => lines.push(line), waitMs: 5000, quietMs: 5000, siteMs: 5000});   // a timeout that ended it = its own words below, not the close's
+    {atOnce: 1, openTab, tee: line => lines.push(line), waitMs: 5000, quietMs: 5000, siteMs: 5000});   // Why (#3795, 11 Nov 2026: red at load 91): no wall-clock bound; a timer that ended Closeme gives its own words, not 'You closed the tab'
   assert.deepEqual(results.map(result => [result.name, result.ok, result.why]), [['Closeme', false, 'You closed the tab'], ['Next', true, '']]);
   assert.ok(lines.includes(siteLine('closed', 'Closeme', 'You closed the tab')));
   noteTabs({ids: [], boot: 'b1', reading: {}});   // an older extension's report (no reading) changes nothing either way
@@ -247,7 +247,7 @@ test('each site finds its job page in its own lane, just before its tab opens: t
     setTimeout(() => done({url: url.split('#')[0], ticket, jobs: 1, added: 1, pages: 1}), 5);
     return {ok: true};
   };
-  const guard = () => new Promise(resolve => { setTimeout(resolve, 5000, 'hang guard').unref(); });
+  const guard = () => new Promise(resolve => { setTimeout(resolve, 2000, 'hang guard').unref(); });   // a hang guard only, well under runAll's waitMs; a failure reads 'hang guard'
   const prepare = async site => {
     if (site.name === 'Slow') slowEndedBy = await Promise.race([quickOpen, guard()]);
     return {...site, url: `${site.url}/careers`};
