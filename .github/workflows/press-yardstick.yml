@@ -68,14 +68,28 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'pr = this ref against main; band = 5 replays of main per persona (the noise band the PR runs compare with)'
+        description: 'pr = this ref against main; band = 5 replays of main per persona (the noise band the PR runs compare with); gaps = one replay of main: who needs a new recording'
         type: choice
-        options: [pr, band]
+        options: [pr, band, gaps]
         default: pr
       personas:
         description: 'JSON list of night personas (default all 18)'
         type: string
         default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]'
+  # Why (11 Nov 2026, owner, asked via AskUserQuestion by sa: "Auto re-record after merge (Recommended)"): press-tapes-auto.yml asks main's own replay who has a recording gap (mode=gaps), so the
+  # list is the one the PR comment prints as "Re-record", never a second computation. Called with mode gaps; its output is the JSON list of the people to re-record.
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        default: gaps
+      personas:
+        type: string
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]'
+    outputs:
+      personas:
+        description: 'mode=gaps: the JSON list of people whose recording has a gap or does not exist'
+        value: ${{ jobs.replay.outputs.personas }}
 
 permissions:
   contents: read
@@ -91,11 +105,18 @@ jobs:
     if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50   # a hang guard: setup ~5 min, 36 replays side by side ~7 min; replay.py's own deadline (30 min, every wave) ends first
+    outputs:
+      personas: ${{ steps.gaps.outputs.personas }}
     permissions:
       contents: read
       actions: read   # main's newest band, from its own run's artifact
       pull-requests: read   # the verdict reads the PR body as it is now (a `Moves:` or `Floor-change:` line added after the push counts on a re-run)
     steps:
+      # Why (Gitar on #3834): only a pull_request or a dispatch can run the PR and band modes; this workflow is also called (by press-tapes-auto.yml, event push or dispatch) and a call
+      # that asks for another mode than gaps would reach steps that need a pull request and leave the output empty.
+      - name: A call asks for mode=gaps only
+        if: github.event_name == 'push' && inputs.mode != 'gaps'
+        run: echo "::error::called with mode=${{ inputs.mode }}; a call supports mode=gaps only"; exit 1
       - uses: actions/checkout@v5   # this run's own commit: its actions and the yardstick's scripts
         with: {persist-credentials: false}
       - name: The src paths are what the Find jobs run reaches
@@ -171,13 +192,22 @@ jobs:
         if: steps.rec.outputs.count != '0'
         continue-on-error: true   # a measurement, never a red PR: a replay that crashed is named in the summary
         env:
-          SIDES: ${{ (inputs.mode || 'pr') == 'band' && '{"main-1":"sides/main","main-2":"sides/main","main-3":"sides/main","main-4":"sides/main","main-5":"sides/main"}' || '{"main":"sides/main","pr":"sides/pr"}' }}
+          SIDES: ${{ (inputs.mode || 'pr') == 'band' && '{"main-1":"sides/main","main-2":"sides/main","main-3":"sides/main","main-4":"sides/main","main-5":"sides/main"}' || (inputs.mode || 'pr') == 'gaps' && '{"main":"sides/main"}' || '{"main":"sides/main","pr":"sides/pr"}' }}
         run: python3 tools/press-yardstick/replay.py recordings "$SIDES" art | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The three numbers against main's band
         env:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.mode || 'pr' }}
-        run: python3 tools/press-yardstick/ci.py "$MODE" art out >> "$GITHUB_STEP_SUMMARY"
+          PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}   # mode=gaps counts "no recording" only among the people asked for (Gitar on #3834)
+        run: |
+          if [ "$MODE" = gaps ]; then python3 tools/press-yardstick/ci.py gaps art out recordings >> "$GITHUB_STEP_SUMMARY"
+          else python3 tools/press-yardstick/ci.py "$MODE" art out >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: The people to re-record (mode=gaps)
+        id: gaps
+        if: (inputs.mode || 'pr') == 'gaps'
+        run: |
+          [ -s out/gaps.json ] || { echo "::error::mode=gaps wrote no out/gaps.json (the replay or ci.py failed above)"; exit 1; }
+          echo "personas=$(node -p 'JSON.stringify(JSON.parse(require("fs").readFileSync("out/gaps.json", "utf8")).personas)')" >> "$GITHUB_OUTPUT"
       # Why (11 Nov 2026, owner, asked via AskUserQuestion in session sa: "Yes, block the PR (Recommended)"; "I want that once an improvement made, it will never be
       # overwrite"): the replay is a verdict. A person whose first pair shows a loss is replayed twice more on both sides, once (3 pairs, never a 4th); red only on 3 of 3
       # (tools/press-yardstick/verdict.py). The verdict runs main's own copy when main has one, so a PR cannot loosen the gate that judges it.
@@ -205,7 +235,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: ${{ (inputs.mode || 'pr') == 'band' && 'press-yardstick-band' || 'press-yardstick-numbers' }}
+          name: ${{ (inputs.mode || 'pr') == 'band' && 'press-yardstick-band' || (inputs.mode || 'pr') == 'gaps' && 'press-yardstick-gaps' || 'press-yardstick-numbers' }}
           retention-days: 90
           if-no-files-found: ignore
           path: |
