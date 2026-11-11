@@ -11,16 +11,15 @@ import {log as appLog} from './log.js';
 import {newer} from './updater.js';
 import {registerRefusedReadsHandlers} from './refused-reads-handlers.js';
 import {linkedinSeams} from './linkedin-beside.js';
-import {sweepLinkedinLeftovers} from './linkedin-browser.js';
-import {holdStartsUntil} from './background-browser.js';
+import {sweepBeforeAnyStart} from './linkedin-browser.js';
 import {setLinkedinStep} from './search-beside.js';
 import {demoPath} from './demo.js';
 
 export function registerVisitsHandlers(ctx) {
   const {DEMO, allowanceBlock, here, ipcMain, log, readSites, shell, storage} = ctx;
-  // Why (#3711, 10 Nov 2026; ordered by #3717's Gitar review): a LinkedIn session an earlier version or a killed read left on disk is removed at start, and every hidden-browser
-  // start waits for that sweep (holdStartsUntil), so no browser holds the Cookies file while it runs (lib/linkedin-browser.js).
-  if (!DEMO) { holdStartsUntil(sweepLinkedinLeftovers(storage).then(done => { if (done.rows || done.readFolder === 'removed') appLog('linkedin-jobs', 'leftover session removed', done); }).catch(error => appLog('linkedin-jobs', 'leftover sweep failed', {error: error.message}))); }
+  // Why (#3711, 10 Nov 2026; one step since #3773's review): a LinkedIn session an earlier version or a killed read left on disk is removed at start, and every
+  // hidden-browser start waits for that sweep (lib/linkedin-browser.js sweepBeforeAnyStart), so no browser holds the Cookies file while it runs.
+  if (!DEMO) sweepBeforeAnyStart(storage, appLog);
   if (!DEMO) { const linkedin = linkedinSeams(storage); setLinkedinStep(linkedin.step, linkedin.score); }   // LinkedIn jobs beside every Find jobs, only while its switch is on (lib/search-beside.js)
   registerRefusedReadsHandlers({allowanceBlock, log, storage});   // refused sites read in the browser after the person's press: lib/refused-reads.js
   ipcMain.handle('openExternal', (_, url) => shell.openExternal(url));   // opening a job reads nothing in the browser: only the button does (lib/refused-now.js)
