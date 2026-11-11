@@ -66,7 +66,7 @@ export function gitarOnHead(repo, sha, run = gh) {
 export function wantedLabels({verdict, latest = null, workingSince, headTime, verdictTime, gitarOnHead = true}) {
   // Why (11 Nov 2026, owner: "the label is not reflecting gitar"; 7 Nov: "the label = what Gitar's latest comment says"): a verdict older than the head still shows, beside a second label saying the newest push has no review yet (gray: Gitar has a check on it, orange: it has none). READY reads the pair, so a stale approval never reads as ready.
   const names = verdict ? [verdict] : [...(latest ? [latest] : []), gitarOnHead ? WAITING.name : NOT_STARTED.name];
-  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && (verdict !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
+  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && ((verdict ?? latest) !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
