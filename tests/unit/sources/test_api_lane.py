@@ -8,8 +8,18 @@ import time
 import unittest
 from unittest import mock
 
-from src.press import stage, step_yield
-from src.sources import aggregators, api_lane, boards_ahead
+from src.press import stage
+from src.sources import aggregators, api_lane, boards_ahead, careers
+
+_READER = careers.READER
+
+
+def setUpModule():   # no page read reaches a real model from this file (tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 JOB = {'company': 'A', 'id': '1', 'title': 'Engineer', 'url': 'https://x/1', 'date_posted': '', 'description': '', 'location': 'Town',
        'remote': False, 'salary': ''}
@@ -23,8 +33,6 @@ class LaneTest(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
         os.environ.pop('JOBADABRA_FIXTURE_DIR', None)
-        step_yield.reset()
-        self.addCleanup(step_yield.reset)
 
     def start(self, readers, lately=()):
         with mock.patch.object(aggregators, 'read_lately', lambda db, name, now=None, search=None: 'at' if name in lately else None):
@@ -78,8 +86,6 @@ class ScanTakesTheLaneTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         os.environ.pop('JOBADABRA_FIXTURE_DIR', None)
-        step_yield.reset()
-        self.addCleanup(step_yield.reset)
 
     def test_the_stage_takes_the_lanes_reads_never_asks_again_and_says_one_state(self):
         def asked_again(search):
@@ -88,7 +94,7 @@ class ScanTakesTheLaneTest(unittest.TestCase):
         self.addCleanup(lane.close)
         report = aggregators.scan(self.db, SEARCH, readers=[('A', asked_again)], lane=lane)
         self.assertEqual([j['id'] for j in report['jobs']], ['1'])
-        self.assertEqual(step_yield.ended()['free_job_apis'], stage.Result(stage.DONE))
+        self.assertEqual(report['said'], stage.Result(stage.DONE))
 
     def test_one_api_that_raises_any_error_fails_alone_and_the_next_still_reads(self):
         def broken(search):
@@ -96,6 +102,42 @@ class ScanTakesTheLaneTest(unittest.TestCase):
         report = aggregators.scan(self.db, SEARCH, readers=[('Broken', broken), ('A', lambda search: [JOB])])
         self.assertEqual([j['id'] for j in report['jobs']], ['1'], 'the next API still reads')
         self.assertEqual({s['company']: s['ok'] for s in report['sources']}, {'Broken': False, 'A': True})
+
+    # Gitar on #3802: the cut and a lane read that raises, both through scan, and the lane's one state when they mix.
+    def lane_scan(self, reads, cut_in=None):
+        """scan over a lane started with `reads` ([(name, read)]); the read cut `cut_in` seconds from now (None: no budget)."""
+        def asked_again(search):
+            raise AssertionError('asked again')
+        lane = api_lane.start(self.db, SEARCH, readers=reads)
+        self.addCleanup(lane.close)
+        cut = None if cut_in is None else time.monotonic() + cut_in
+        with mock.patch('src.sources.read_budget.cut_at', lambda: cut), mock.patch('src.sources.read_budget.past_cut', lambda now=None: False):
+            return aggregators.scan(self.db, SEARCH, readers=[(name, asked_again) for name, _ in reads], lane=lane)
+
+    def test_a_lane_read_still_running_at_the_cut_waits_for_the_next_search_unmarked(self):
+        go = threading.Event()
+        self.addCleanup(go.set)
+        report = self.lane_scan([('Slow', lambda search: go.wait(5) and [JOB]), ('A', lambda search: [JOB])], cut_in=0.2)
+        self.assertEqual([s['company'] for s in report['sources']], ['A'], 'the slow one is not listed as read')
+        self.assertIsNone(aggregators.read_lately(self.db, 'Slow', search=SEARCH), 'not marked read: the next search asks it')
+        self.assertEqual(report['said'], stage.Result(stage.CUT, '1 wait for the next search'))
+
+    def test_a_lane_read_that_raises_fails_alone_and_the_next_lane_read_is_kept(self):
+        def broken(search):
+            raise RuntimeError('boom')
+        report = self.lane_scan([('Broken', broken), ('A', lambda search: [JOB])])
+        self.assertEqual([j['id'] for j in report['jobs']], ['1'])
+        self.assertEqual({s['company']: s['ok'] for s in report['sources']}, {'Broken': False, 'A': True})
+        self.assertEqual(report['said'], stage.Result(stage.DONE))
+
+    def test_every_finished_read_failed_and_one_waits_is_failed_not_cut(self):
+        go = threading.Event()
+        self.addCleanup(go.set)
+
+        def broken(search):
+            raise RuntimeError('boom')
+        report = self.lane_scan([('Broken', broken), ('Slow', lambda search: go.wait(5) and [JOB])], cut_in=0.2)
+        self.assertEqual(report['said'], stage.Result(stage.FAILED, 'RuntimeError; 1 wait for the next search'))
 
 
 if __name__ == '__main__':
