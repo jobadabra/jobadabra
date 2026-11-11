@@ -409,7 +409,7 @@ def compare(pr, main_runs):
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
                      'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
                      'funnel_note': (row or {}).get('funnel_note', ''), 'counters': (row or {}).get('counters'), 'step_yield': (row or {}).get('step_yield'), 'relevant_sources': (row or {}).get('relevant_sources'), 'place': (row or {}).get('place'), 'role': (row or {}).get('role'),
-                     'sources': (row or {}).get('sources'), 'scout': (row or {}).get('scout')})   # Why (11 Nov 2026, owner: the Admin Sources card was empty): sources_count.py sets `sources` on the result and the Admin reads rows, so a field left out here shows as "not sent"
+                     'sources': (row or {}).get('sources'), 'scout': (row or {}).get('scout')})   # Why (11 Nov 2026, owner: the Admin Sources card was empty): sources_count.py and scout_list.py set `sources` and `scout` on the result and the Admin reads rows, so a field left out here shows as "not sent"
     quality_ = quality(pr, main_runs)
     red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
