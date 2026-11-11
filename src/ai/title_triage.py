@@ -24,11 +24,16 @@ STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit'],
           'properties': {'fit': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'The numbers of the titles that could fit'}}}
+# Why (#3793, 11 Nov 2026; night 42927975750): a carpenter got "Open sollicitatie / Unsolicited application" and a software engineer two pre-sales "Solutions Engineer"
+# jobs; examples, not a word list, inside the owner's 7 Oct 2026 "Only the location should be strict" (a bare "Technicien" stays "when unsure, include it").
 SYSTEM = """You sort job titles for one job seeker. You get their search (the role words they wrote, and words that rule a title out) and a \
 numbered list of job titles, in any language. Answer with the numbers of the titles that could be the kind of job they look for: the same \
 work under another name or in another language counts ("Client Advisor" or "Collaborateur Magasin" for a shop seller; "Content Creator - \
 Photo" for a photographer), and so does a close neighbour of their work at a similar level. Leave out other kinds of work (software, \
 finance, marketing management, legal…), and titles of the work their ruled-out words name (the same word in another sense is no reason). \
+Leave out a posting that is no job of its own (an open or unsolicited application: "Open sollicitatie", "Candidature spontanée", \
+"Initiativbewerbung"), and selling or demonstrating a product to customers ("Solutions Engineer", "Sales Engineer", pre-sales) for \
+someone whose work is building it. \
 A level, when given, is the seniority they want: leave out a title plainly far from it (an internship for a lead); a rank that only sounds like \
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
 Owner" is no pilot). When unsure, include it: a later step scores each job."""

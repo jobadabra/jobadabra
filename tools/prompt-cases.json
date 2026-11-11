@@ -95,6 +95,14 @@
       "cases": ["desktop/test/fixtures/learnings-cases.json"],
       "prompts": {"desktop/lib/learnings.js": ["INSTRUCTIONS"]}
     },
+    "title": {
+      "live": false,
+      "about": "which job titles could fit a search (src/ai/title_triage.py): lenient by the owner's 7 Oct 2026 \"Only the location should be strict\"; an open or unsolicited application and pre-sales titles for someone who builds the product are left out (rj #3793, 11 Nov 2026: night 42927975750, carpenter in Brussels, software engineer in Amsterdam)",
+      "cases": ["tests/unit/ai/test_title_not_a_job_of_theirs.py", "tests/unit/ai/test_title_triage.py"],
+      "prompts": {
+        "src/ai/title_triage.py": ["SYSTEM", "RECHECK_SYSTEM"]
+      }
+    },
     "place": {
       "live": false,
       "about": "where a job is, for one person's places (src/ai/place_triage.py): a city list without theirs and remote limited elsewhere are out; remote from anywhere inside an anywhere place is in (Zagreb, Helsinki, quality golden 3003/3010; 27 Oct 2026)",
