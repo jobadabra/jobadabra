@@ -1,4 +1,4 @@
-// Owns: the steps of one "Find jobs" run (the search task): the first run's order (jobs in seconds: a slice of fast feeds, 3 scored, then the rest), a later
+// Owns: the steps of one "Find jobs" run (the search task): the first run as one search (jobs in seconds: a slice of fast feeds, 3 scored, then the rest), a later
 // press as one search (waiting jobs scored first, the job boards read inside it beside the employers' pages), and the employer finder (the scout) at the end when it is due, so one action grows the sources and crawls them.
 // Guarded by: test/unit/main/search-steps.test.js, search-steps-beside.test.js, test/unit/main/app-scenarios.test.js. Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md.
 import * as claudeCode from './claude-code.js';
@@ -22,10 +22,10 @@ export const searchTrigger = settings => (settings.lastSearchAt ? 'you' : 'first
 
 // One deadline for the whole press (owner, 26 Oct 2026: "A find jobs session should take at most 3min"; the 06:21 press took 269 s: the job
 // boards' step 177 s with no clock, then the search's own 3 minutes). Every engine step gets the press's time (JOBADABRA_SEARCH_AT) and counts
-// from it (src/time_budget.py): on the first press the job boards' step ends at its share (src/sources/boards.py SHARE_S), the search at the press's end, minus
-// the finder's share when it is due; the finder gets what is left. A step with no time left waits for the next search and says so.
+// from it (src/time_budget.py): the search ends at the press's end, minus the finder's share when it is due; the finder gets what is left. A step with
+// no time left waits for the next search and says so.
 export const SCOUT_SHARE_S = 45;   // the employer finder's seconds at the press's end, when it is due
-const {discover: DISCOVER, search: SEARCH, scoreBoards: SCORE_BOARDS, scout: SCOUT} = APP_STEPS;   // the steps' wording: src/press/stages.py's rows, mirrored in press-stages.js
+const {search: SEARCH, scout: SCOUT} = APP_STEPS;   // the steps' wording: src/press/stages.py's rows, mirrored in press-stages.js
 const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the next search (an engine step needs a few to start)
 
 // Why (27 Oct 2026, Gitar on #2285): the SIGTERM handler writes the row (a Notion call) and may wait EXIT_GRACE_S (3 s); the stop starts this long before 180 s
@@ -56,21 +56,17 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     return done;
   });
   const timeUp = (what, partial = true) => { if (partial) endedByTime = true; onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`); };   // partial=false: the employer finder is an add-on, the search itself was whole
-  const discover = async () => {
-    if (budget - spent() < STEP_MIN_S) return timeUp(DISCOVER.what, DISCOVER.counts);
-    onLine('Searching job boards…');
-    await step(['src', 'discover', '--pages', '5', '--max-companies', '40', '--budget', String(budget)], DISCOVER.what, DISCOVER.counts);
-  };
   let code;
   let result;
   if (trigger === 'first' && ai) {
-    // The first run: jobs in seconds. The engine reads a slice of fast feeds and scores 3 jobs first (src/first_jobs.py), then does the full search;
-    // the job boards come after it, and the jobs they find are scored by a light run (mode today), so nothing in front of the first job waits for them.
+    // The first run: jobs in seconds, in one engine process. The engine reads a slice of fast feeds and scores 3 jobs first (src/first_jobs.py), then does
+    // the full search; the job boards are read from second 0 in the search's own lane (src/sources/boards_first.py Beside, lanes 4a) and their jobs scored by it.
+    // Why (11 Nov 2026, owner: "I approve. Move ahead." on "first search as one process, dead steps deleted"): the job boards' own step and a light run
+    // scoring their jobs came after the search; in 16 of 22 first searches (each person's first search in the search-personas runs 43088269080 and
+    // 43103313269) neither had any time and only printed "Time is up"; in the other 6 the search ended at 68-113 s, past the end of the boards' step
+    // (boards.SHARE_S, 60 s from the press), so it read no board, and no job waited for the light run to score.
     onLine('Finding your first jobs…');
     ({code, result} = await step(dailyArgs(storage, {mode, firstJobs: true, budget}), SEARCH.what, SEARCH.counts));
-    await discover();
-    if (budget - spent() < STEP_MIN_S) timeUp(SCORE_BOARDS.what, SCORE_BOARDS.counts);
-    else await step(dailyArgs(storage, {mode: 'today', budget}), SCORE_BOARDS.what, SCORE_BOARDS.counts);
   } else {
     // Why (8 Nov 2026, owner: "One process, discovery inside (Recommended)"; "If there are jobs waiting to be scored, that should be the first new thing a
     // repeated press does"): the job boards' own step in front of the search held the run lock (src/paths.py) to ~60 s while the employer read stops
