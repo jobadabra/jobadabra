@@ -11,11 +11,12 @@ const commands = async (settings, trigger) => {
   return seen;
 };
 
-test('the first run reads the slice and scores 3 jobs before the job boards, then grows the sources', async () => {
+test('the first run is one search (the slice first, the job boards inside it), then grows the sources', async () => {
+  // Why (11 Nov 2026, owner: "I approve. Move ahead." on "first search as one process, dead steps deleted"): the job boards' own step and the
+  // scoring of their jobs came after the search; in 16 of 22 first searches (search-personas runs 43088269080, 43103313269) they had no time and only
+  // printed "Time is up", in the other 6 they read no board and scored no job. The boards are read in the search's own lane (src/sources/boards_first.py Beside).
   const seen = await commands({lastScoutAt: undefined}, 'first');
-  assert.equal(seen[0], 'src daily --first-jobs', 'the engine goes first: nothing stands in front of the first job');
-  assert.ok(seen.findIndex(c => c.startsWith('src discover')) > 0);
-  assert.equal(seen.at(-1), 'src scout');
+  assert.deepEqual(seen, ['src daily --first-jobs', 'src scout'], 'the engine goes first, and no step of its own for the job boards follows it');
 });
 
 test('a later press is one search, and runs the finder only when none ran today', async () => {
@@ -73,10 +74,11 @@ test('the scout keeps its share when due, gets what is left, and waits (still du
   assert.match(late.lines, /^⏱ Time is up \(2 min 55 s\) for searching wider: it waits for the next search$/m);
 });
 
-test('on the first run, a step with no time left waits for the next search and says so', async () => {
-  const {calls, lines} = await press({lastScoutAt: undefined}, 'first', {'daily --first-jobs': 178});
-  assert.deepEqual(calls.map(c => c.step), ['daily --first-jobs']);
-  assert.match(lines, /^⏱ Time is up \(2 min 58 s\) for job boards: it waits for the next search$/m);
+test('a first run that ended whole in its time is not cut short by steps that never start', async () => {
+  const whole = await press({lastScoutAt: undefined}, 'first', {'daily --first-jobs': 178});
+  assert.deepEqual(whole.calls.map(c => c.step), ['daily --first-jobs']);
+  assert.doesNotMatch(whole.lines, /for job boards: it waits|scoring the job boards' jobs/, 'no step of the job boards after the search');
+  assert.match(whole.lines, /^⏱ Time is up \(2 min 58 s\) for searching wider: it waits for the next search$/m, 'the employer finder still says when it had no time');
 });
 
 // The app ends every step at the press's 180 s (27 Oct 2026, main's search check: persona 4 pressed for 181 s). The engine's own clock is only asked

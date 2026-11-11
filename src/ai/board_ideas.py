@@ -286,10 +286,17 @@ def proven(search, limit=2):
 
 
 def _merge(own, shared):
-    """Shared boards first (ranked), then Claude's own proposals; a board in both keeps its rank and the shared link (the page measured to give
-    local jobs, maybe a section of the board), with Claude's own kinds and place words."""
-    merged = {board['host']: board for board in shared}
+    """The shared boards that gave people in this field jobs in their places (rank above 0), best first; then Claude's own proposals; then the
+    shared boards with no record for this field. A board in both keeps its rank and the shared link (the page measured to give local jobs,
+    maybe a section of the board), with Claude's own kinds and place words.
+    Why (11 Nov 2026, #3835, owner: "A: read boards to 180 s", asked via AskUserQuestion): every shared board went first, so a pilots' board
+    with no record for the field was the first board read for a carpenter, an electrician, a hospitality worker and a data person, ahead of
+    their field's boards and the public employment service, and a search reads only the top of this list."""
+    theirs = {board['host']: board for board in shared}
+    merged = {board['host']: board for board in shared if board.get('rank')}
     for board in own:
-        known = merged.get(board['host'], {})
+        known = theirs.get(board['host'], {})
         merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}
+    for board in shared:
+        merged.setdefault(board['host'], board)
     return list(merged.values())[:MAX_BOARDS * 2]

@@ -30,11 +30,9 @@ export function focusDisplayReply(value) {
 // limit: how many of the best rows to send (the list's "Show more" raises it); the counts cover every row (src/desktop.py jobs).
 // One read at a time per limit, for every caller (17 Oct 2026: a card asked for the list on every activity event, each read took ~60 s on a slow Notion day and 187 Python runs piled up): a second ask joins the running one.
 export const jobs = sharedRead('engine jobs', async (storage, limit = 200, run = engineRun) => {
-  // Until the first search has ended, the jobs it found and has not scored yet are listed too (they say "Scoring…"): the list grows while it runs.
-  const firstRun = !storage.settings().lastSearchAt;
   // Why (2 Nov 2026, owner): an engine newer than this app refuses the run (src/paths.py OUTDATED_APP); the list says "Restart it", never a wrong or an empty list.
   let outdated = false;
-  const {code, stdout} = await run(storage, ['src.desktop', 'jobs', '--limit', String(limit), ...(firstRun ? ['--first-run'] : [])], line => { if (/was updated while it was open/.test(line)) outdated = true; });
+  const {code, stdout} = await run(storage, ['src.desktop', 'jobs', '--limit', String(limit)], line => { if (/was updated while it was open/.test(line)) outdated = true; });
   if (code !== 0) throw new Error(outdated ? OUTDATED_LINE : 'Could not read the job list');
   return viewCache.withHeldWrites(storage, markFinished(storage, JSON.parse(stdout.trim().split('\n').pop())));   // Why (#2758): the app's own recent writes, for every caller of the list (view-cache.js)
 }, {keyOf: (storage, limit) => limit ?? 200});

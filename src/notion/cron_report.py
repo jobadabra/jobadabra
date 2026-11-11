@@ -145,7 +145,7 @@ def mail_lines(run):
 
 # One-off jobs (not crawls): their name when they finish without a result line of their own.
 ONE_OFF = {'visits': 'Find jobs using your browser', 'tailor': 'Tailor CVs for top matches', 'add': 'Logged activity', 'insight': 'Insight', 'weekly': 'Search analysis', 'interview': 'Interview review',
-           'prepare': 'Application kit', 'kits': 'Prepare top matches', 'apply': 'Marked applied', 'scout': 'Find new employers', 'prep': 'Interview prep kit', 'rescore': 'Re-score jobs'}
+           'prepare': 'Application kit', 'kits': 'Prepare top matches', 'apply': 'Marked applied', 'scout': 'Find new employers', 'prep': 'Interview prep kit', 'rescore': 'Re-score jobs', 'score': 'Score found jobs'}
 # A job whose AI step has no queue needs a verb, not a column's label: the "Stages" line of a Gmail check.
 STEP_NAME = {'mail': 'Read job emails'}
 
@@ -199,7 +199,7 @@ CRAWL_MODES = {'scheduled', 'run', 'today'}
 KINDS = {'scheduled': 'Refresh jobs', 'run': 'Refresh jobs', 'today': 'Refresh jobs', 'mail': 'Gmail check', 'scout': 'Find new employers',
          'add': 'Log activity', 'interview': 'Interview review', 'prepare': 'Application kit', 'prep': 'Interview prep',
          'rejection': 'Rejection review', 'insight': 'Insight', 'weekly': 'Search analysis', 'import': 'Add a job',
-         'kits': 'Prepare top matches', 'rescore': 'Re-score jobs'}
+         'kits': 'Prepare top matches', 'rescore': 'Re-score jobs', 'score': 'Score found jobs'}
 TZ = tz.local_zone()
 SUBJECT_MAX = 60
 
@@ -296,7 +296,7 @@ def run_page(run, final=True):
         'New jobs': only(crawl, run.get('new', 0)),
         'Changed jobs': only(crawl, run.get('changed', 0)),
         'Closed stale': only(crawl, run.get('closed_stale', 0)),
-        'Scored': only(crawl or run['mode'] == 'rescore', (run.get('score') or {}).get('done', 0)),
+        'Scored': only(crawl or run['mode'] in ('rescore', 'score'), (run.get('score') or {}).get('done', 0)),
         'Kits': only(crawl or run['mode'] in ('prepare', 'kits'), (run.get('kits') or {}).get('done', 0)),
         'Top new score': only(crawl and run.get('top_new'), run['top_new'][0][2] if run.get('top_new') else None),
         # A Gmail check

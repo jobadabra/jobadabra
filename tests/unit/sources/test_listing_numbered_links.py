@@ -23,7 +23,8 @@ def tearDownModule():
 
 
 HOST = 'listings.example'
-SHAPES = ['/vaga{id}.html', '/emploi/{id}', '/p/x{id}', '/{id}-poste.php', '/angebot-{id}/ansehen']   # invented words and places of the id
+# invented words and places of the id; the last two carry it in the address's query (11 Nov 2026: a public employment service's 84 cards were /<word>/?<name>=<id>&<kind>, read as 0)
+SHAPES = ['/vaga{id}.html', '/emploi/{id}', '/p/x{id}', '/{id}-poste.php', '/angebot-{id}/ansehen', '/detalhe/?ref={id}&amp;tipo=Direto', '/ver.php?id={id}']
 SEARCH = {'jobs_board_search_queries': ['motorista'], 'role_keywords': ['motorista'], 'locations': {'top_tier': ['Porto'], 'country_wide': [], 'abroad': []}}
 BOARD = {'name': 'Listings', 'host': HOST, 'search_url': f'https://{HOST}/busca?q={{role}}&local={{place}}', 'countries': ['Portugal'], 'kinds': ['any']}
 
@@ -75,6 +76,15 @@ class NumberedLinksTests(unittest.TestCase):
 
     def test_a_menu_and_categories_with_no_numbers_are_not_jobs(self):
         self.assertEqual(careers_parse.job_links(MENU + '<a href="/cat/a">A</a><a href="/cat/b">B</a><a href="/cat/c">C</a>' * 3, f'https://{HOST}/busca'), [])
+
+    def test_filters_of_the_list_itself_with_a_number_are_not_jobs(self):
+        """The list's own address with another number in its query (a category, an offset) is the same list, not a job page."""
+        filters = ''.join(f'<a href="/busca?categoria={1000000 + n}">Categoria {n}</a>' for n in range(6))
+        self.assertEqual(careers_parse.job_links(MENU + filters, f'https://{HOST}/busca'), [])
+
+    def test_one_number_repeated_in_every_query_is_not_a_list(self):
+        same = ''.join(f'<a href="/pagina-{word}?origem=1234567">{word}</a>' for word in 'abcdef')
+        self.assertEqual(careers_parse.job_links(MENU + same, f'https://{HOST}/busca'), [])
 
     def test_fewer_than_five_numbers_are_not_a_list(self):
         self.assertEqual(careers_parse.job_links(self.listing('/vaga{id}.html', count=4), f'https://{HOST}/busca'), [])

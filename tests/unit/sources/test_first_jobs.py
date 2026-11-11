@@ -187,10 +187,13 @@ class WiringTests(unittest.TestCase):
         self.assertEqual((len(shown['jobs']), shown['waiting']), (1, 0))
         self.assertIsNone(shown['jobs'][0]['score'] if 'score' in shown['jobs'][0] else None, 'no score yet: the window says Scoring…')
 
-    def test_the_jobs_command_takes_first_run(self):
+    def test_the_jobs_command_lists_found_jobs_before_their_score(self):
+        # Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"): the list shows every found job at once and the scoring
+        # queue fills the scores in; before, the command hid them unless the first search was running (its --first-run flag is gone with that rule).
         source = open('src/desktop.py').read()
-        self.assertIn("--first-run", source)
-        self.assertIn('hide_unscored=ai_engine.ready() and not args.first_run', source)
+        self.assertNotIn("--first-run", source)
+        self.assertIn('hide_unscored=False)', source)
+        self.assertNotIn('hide_unscored=ai_engine.ready()', source)
 
 
 if __name__ == '__main__':

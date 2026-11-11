@@ -66,7 +66,6 @@ def _parse_args(argv):
     sub = parser.add_subparsers(dest='command', required=True)
     listing = sub.add_parser('jobs')
     listing.add_argument('--limit', type=int, default=200)
-    listing.add_argument('--first-run', action='store_true', help='the first search is still running: list the jobs waiting for a score too')
     sub.add_parser('delete').add_argument('url')   # a dismissed job: its Notion pages to the trash, the local copy a marker (delete_job)
     marking = sub.add_parser('status')
     marking.add_argument('url')
@@ -280,8 +279,11 @@ def _jobs(db, args):
             current = provenance.kit_inputs(stores.texts.plain('profile'), answers)   # as kits read it (texts.plain)
         except Exception:  # noqa: BLE001 — kits then show as "inputs unknown"
             pass
-    from .ai import engine as ai_engine
-    result = jobs(db, args.limit, notion_jobs=found, kit_inputs=current, hide_unscored=ai_engine.ready() and not args.first_run)
+    # Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)": "all found jobs listed at once, unscored"): a found job is listed
+    # before its score; the scoring queue (src/daily_modes.py score_mode) gives it one and the row shows Queued, Scoring, then the number. Replaces 7 Oct 2026's rule
+    # (found jobs hidden until scored), made when nothing scored them without another press.
+    # TODO(AI): drop jobs()' hide_unscored parameter, which only its own tests still pass (2026-11-11).
+    result = jobs(db, args.limit, notion_jobs=found, kit_inputs=current, hide_unscored=False)
     mark_outdated(result, db, profile_for_scores(notion, stores))   # the fits of the previous strategy stay, marked, with Strategy's own count (src/desktop_strategy.py)
     fresh = found is not None
     if notion and not fresh:

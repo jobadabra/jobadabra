@@ -21,13 +21,16 @@ from pathlib import Path
 from .paths import JOBS_DB, CONFIG, DATA, REPORTS, load_search_config, local_profile
 from .sources import ats, describe, feeds, google_jobs
 from .daily_args import build_parser
-from .daily_modes import add_link_mode, add_message_mode, apply_mode, import_mode, insight_mode, interview_mode, kits_mode, prepare_mode, rescore_mode
+from .daily_modes import add_link_mode, add_message_mode, apply_mode, import_mode, insight_mode, interview_mode, kits_mode, prepare_mode, rescore_mode, score_mode
 from .daily_search import search
 from .store_access import open_run
 from .daily_helpers import (  # noqa: F401 -- re-exported: other modules and tests use `daily.<name>`
     ACTIONS, KITS_DEFAULT, MODES, NO_PROFILE, STALE_DAYS, _job_arg, _url_key, apply_message, apply_switches, crawl_counts, digest_note,
     downloaded_index, find_job, for_job_matches, kits_message, left_out, log_ai_run, log_crawl, log_text, new_cron_run, no_profile, plural,
     prepare_kit, queue_mail_check, run_stores, save_run, scored_companies, starter_sources, time_budget_on, to_score, top_new, tracked_job)
+
+
+SCORING_MODES = {'rescore': rescore_mode, 'score': score_mode}
 
 
 def main():
@@ -58,8 +61,8 @@ def main():
         return prepare_mode(args, stores)
     if args.mode == 'kits':
         return kits_mode(args, stores)
-    if args.mode == 'rescore':
-        return rescore_mode(args, stores)
+    if args.mode in SCORING_MODES:   # scores for jobs already found, and nothing else: old scores (Re-score) or none yet (the queue after a search)
+        return SCORING_MODES[args.mode](args, stores)
     if args.mode == 'add' and not args.job:
         return add_message_mode(args, stores)
     if args.mode == 'add':

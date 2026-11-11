@@ -1,0 +1,13 @@
+/* Scores arriving after a Find jobs run (pages/score-queue-draw.js): the bar above the Jobs list and the two waiting states of a row's score ring. */
+.score-queue-bar { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface); font: 500 var(--fs-base) var(--font-sans); }
+.score-queue-bar[hidden] { display: none; }
+.score-queue-track { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.score-queue-track i { display: block; height: 100%; width: 0; background: var(--good-bright); transition: width .3s; }
+.fit-cell.is-queued .fit-ring { background: none; border: 2px dashed var(--line-strong); }
+.fit-cell.is-queued .fit-ring span { background: none; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.fit-cell.is-scoring .fit-ring { background: conic-gradient(var(--signal-edge) 25%, var(--line) 0); animation: spin 1s linear infinite; }
+.fit-cell.is-scoring .fit-ring span { font-size: 0; }
+.fit-cell:is(.is-queued, .is-scoring, .can-score) .fit-label { display: block; color: var(--muted); font-weight: 500; }
+.fit-cell.can-score button.fit-label { border: 0; padding: 0; background: none; cursor: pointer; color: var(--signal); font-weight: 600; }   /* the text-link colour (style.css button.link): AA on the row's surface */
+@media (prefers-reduced-motion: reduce) { .fit-cell.is-scoring .fit-ring { animation: none; } }

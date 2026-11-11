@@ -150,7 +150,13 @@ class RankTests(Fixture):
 
     def test_a_ranked_board_claude_also_proposed_keeps_its_rank(self):
         merged = board_ideas._merge([board(2), board(7)], [{**board(2), 'rank': 4.0}, board(1)])
-        self.assertEqual([(b['host'], b.get('rank')) for b in merged], [('b2.example', 4.0), ('b1.example', None), ('b7.example', None)])
+        self.assertEqual([(b['host'], b.get('rank')) for b in merged], [('b2.example', 4.0), ('b7.example', None), ('b1.example', None)],
+                         'a shared board with no record for this field comes after the proposals (11 Nov 2026, #3835)')
+
+    def test_a_shared_board_with_no_record_for_the_field_is_read_after_the_proposals(self):
+        """11 Nov 2026, #3835: a pilots' board the pool serves for the country was the first board read for a carpenter."""
+        merged = board_ideas._merge([board(7), board(8)], [{**board(1), 'rank': 0}, {**board(2), 'rank': 0, 'rank_fit70': 0}, {**board(3), 'rank': 2.5}])
+        self.assertEqual([b['host'] for b in merged], ['b3.example', 'b7.example', 'b8.example', 'b1.example', 'b2.example'])
 
     def test_the_index_cells_are_read_in_their_fixed_shape_only(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
