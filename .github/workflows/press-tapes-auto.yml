@@ -78,7 +78,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-      pull-requests: read
+      pull-requests: write   # Why (11 Nov 2026, CI red on this PR): press-yardstick.yml's comment job asks it, and GitHub refuses to start a call that grants less, though mode=gaps posts no comment
 
   guard:
     name: No by-hand run holds the broker, and how many may record at once
