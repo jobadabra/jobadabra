@@ -5,7 +5,7 @@ made, it will never be overwrite"). It holds a gain from the moment the recordin
   python3 tools/press-yardstick/verdict.py final <art> <out> <recordings>              the verdict: markdown on stdout, at the top of <out>/summary.md; exit 1 = red
 Each person and Find jobs run reads one state, in this order (the one owner of these states):
   not measured (never red): no recording; main's band built on another recording; a press failed or a replay left no jobs on a side; a clock cliff on main's
-    own band (its replays disagree: some read 0 right jobs or skip a lane, others not); both sides ask beyond the recording's bounds (re-record).
+    own band (its replays disagree: some read 0 right jobs or skip a lane, others not); main's side asks beyond the recording's bounds (re-record, said loudly).
   recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them; the PR changed the path. Held,
     never "worse": the PR passes only with a live `Moves:` line (numbers, 3 runs a side; "Moves: nothing (...)" does not hold it). Re-recorded after the merge.
   lost a source: a lane of src/sources/reader_rows.py LANES (main's file, looped) that ran, or read jobs, in all of main's band replays and in main's replay
@@ -139,8 +139,8 @@ def states(art, out, recordings, band, ids):
                 one['why'] = 'press failed or no jobs on a side'
             else:
                 gaps = [ci.report_gap(Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl')) for side in PAIRS[0]]
-                if gaps[0] and gaps[1]:
-                    one['why'] = 'recording stale on both sides (re-record)'
+                if gaps[0]:   # main itself asks what the recording lacks (both sides, or a merged path change): the comparison means nothing
+                    one['why'] = 'recording stale, re-record'
                 elif gaps[1]:
                     one.update(state='too old', why='recording too old for this PR')
                 else:
@@ -195,6 +195,9 @@ def verdict(found, body):
             why[reason] = why.get(reason, 0) + 1
     lines = ['### The verdict', '', f"**Verdict covers {len(measured)} of {len(ci.ALL_PEOPLE)} people** ({len(ci.ALL_PEOPLE) - len(measured)} not measured: "
              + ', '.join([f'{reason} {count}' for reason, count in sorted(why.items())] + ([f'recording too old {len(old)}'] if old else [])) + ')', '']
+    stale = sorted((p for p, runs in found.items() if any(one['why'] == 'recording stale, re-record' for one in runs.values())), key=lambda n: int(n[1:]))
+    if stale:
+        lines += [f"⚠️ Re-record: {', '.join(stale)} (main's own replay asks what the recording lacks; their numbers say nothing until press-tapes runs again).", '']
     if len(measured) < len(ci.ALL_PEOPLE) // 2:
         lines += [f'⚠️ The verdict sees fewer than half the people: a loss in the other {len(ci.ALL_PEOPLE) - len(measured)} would pass unseen.', '']
     for persona in red:

@@ -115,6 +115,15 @@ class Verdict(unittest.TestCase):
         self.assertIn('no recording 17', text)
         self.assertIn('fewer than half', text, 'a verdict that sees few people says it loudly')
 
+    def test_once_main_asks_beyond_the_recording_it_reads_re_record_loudly_never_worse(self):
+        """sa, 11 Nov 2026 (#3803's title prompt: the tapes key each AI answer by the whole request): after such a PR merges, main fails the same way;
+        that is "not measured: re-record", said with the people, never fewer right jobs."""
+        code, text = self.run_verdict(self.band(), [({'gap': True, 'right': False}, {'right': False})] * 3)
+        self.assertEqual(code, 0, text)
+        self.assertIn('recording stale, re-record 1', text)
+        self.assertIn('Re-record: p1', text)
+        self.assertNotIn('right jobs', text)
+
     def test_a_repeat_pair_whose_pr_side_asks_beyond_the_recording_never_completes_a_red(self):
         """Gitar on #3805: pairs 2 and 3 were not gap-checked, so pages the recording lacks could finish a 3-of-3 red."""
         lost = {'lanes': NO_BOARDS}
