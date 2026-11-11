@@ -41,7 +41,7 @@ class HardStop(unittest.TestCase):
         self.assertIn('an exit handler ran', run.stderr, 'the handlers registered after the hanging one ran first (atexit runs the last registered first)')
 
     def test_a_call_in_flight_is_said_as_a_task_not_as_a_site_read(self):
-        """Why (Gitar on #3798, 11 Nov 2026): the scorer's call in flight is a pool worker, not a site read; the log said "site read(s)" for it."""
+        """Why (#3798, 11 Nov 2026): the scorer's call in flight is a pool worker, not a site read; the log said "site read(s)" for it."""
         scoring = PROGRAM.replace("threading.Thread(target=lambda: time.sleep(30)).start()",
                                   "from concurrent.futures import ThreadPoolExecutor\n"
                                   "threading.Thread(target=lambda: ThreadPoolExecutor(1).submit(time.sleep, 30), daemon=True).start(); time.sleep(0.2)")
