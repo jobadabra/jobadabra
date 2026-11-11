@@ -107,6 +107,15 @@ test('the cap per search is three pages, one search at a time', async () => {
   assert.deepEqual(seen, [[1, 3, 1, false], [1, 3, 1, false], [1, 3, 1, false]]);
 });
 
+test('each search hands its place to the read, so LinkedIn\'s placeless cards carry where they were searched (#3710)', async () => {
+  const r = rig({searches: [{...SEARCHES[0], place: 'Genève'}, {...SEARCHES[1], place: ''}]});
+  const seen = [];
+  const run = r.args.run;
+  r.args.run = (sites, options) => { seen.push(sites.map(site => site.place)); return run(sites, options); };
+  await linkedinStep(r.args);
+  assert.deepEqual(seen, [['Genève'], ['']]);
+});
+
 test('a sign-in page ends the step: no retry, no further search, the session leaves the browser', async () => {
   const r = rig({results: [{ok: false, jobs: 0, added: 0, why: 'x', blocked: 'login'}]});
   const result = await linkedinStep(r.args);

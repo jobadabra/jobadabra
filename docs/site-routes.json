@@ -310,6 +310,13 @@
    "kind": "ci"
   },
   {
+   "path": "/search-check/weekly",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/search-check/reference",
    "methods": [
     "PUT"

@@ -84,7 +84,7 @@ async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}
     if (signal?.aborted) { total.verdict = 'stopped'; break; }
     if (index) await pause(3000 + Math.random() * 2000);   // a gap between searches, like a person: the extension also waits 2-3 s between pages
     tee(`LinkedIn: reading search ${index + 1} of ${list.length}`);
-    const [result] = await run([{name: search.name, url: search.url}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
+    const [result] = await run([{name: search.name, url: search.url, place: search.place || ''}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
       tee: line => { if (/^\s*[✓✗]/.test(line)) tee(line); }, waitMs: 40000, quietMs: 30000, siteMs: 75000});
     await closeTabs();
     total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1; total.answered += result?.answered ? 1 : 0;

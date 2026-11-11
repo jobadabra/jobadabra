@@ -27,9 +27,7 @@ test('Stop: the sites reading now end at once, no further one opens, and every s
   const stop = new AbortController(), opened = [];
   const openTab = url => { opened.push(url); if (opened.length === 2) setTimeout(() => stop.abort(), 20); return {ok: true}; };   // nobody answers
   const sites = ['a', 'b', 'c', 'd'].map(name => ({name, url: `https://${name}.example/jobs`}));
-  const started = Date.now();
-  const results = await runAll(sites, {atOnce: 2, openTab, waitMs: 5000, quietMs: 5000, siteMs: 5000, signal: stop.signal});
-  assert.ok(Date.now() - started < 1000, 'it did not wait for the open tabs');
+  const results = await runAll(sites, {atOnce: 2, openTab, waitMs: 5000, quietMs: 5000, siteMs: 5000, signal: stop.signal});   // Why (#3795, 11 Nov 2026: red at load 91): no wall-clock bound; a run that waited for its tabs ends with a timer's words, not 'Stopped by you'
   assert.equal(opened.length, 2, 'c and d never open');
   assert.deepEqual(results.map(result => [result.name, result.ok, result.why]), ['a', 'b', 'c', 'd'].map(name => [name, false, 'Stopped by you']));
   assert.match(resultMessage(results), /Read 0 of 4 sites/);
@@ -103,10 +101,8 @@ test('a read tab you close ends that site at once, said in its row, and the next
     } else setTimeout(() => done({url: url.split('#')[0], ticket, jobs: 2, added: 2, pages: 1}), 10);
     return {ok: true};
   };
-  const started = Date.now();
   const results = await runAll([{name: 'Closeme', url: 'https://closeme.example'}, {name: 'Next', url: 'https://next.example'}],
-    {atOnce: 1, openTab, tee: line => lines.push(line), waitMs: 5000, quietMs: 5000, siteMs: 5000});
-  assert.ok(Date.now() - started < 1000, 'no timeout waited');
+    {atOnce: 1, openTab, tee: line => lines.push(line), waitMs: 5000, quietMs: 5000, siteMs: 5000});   // Why (#3795, 11 Nov 2026: red at load 91): no wall-clock bound; a timer that ended Closeme gives its own words, not 'You closed the tab'
   assert.deepEqual(results.map(result => [result.name, result.ok, result.why]), [['Closeme', false, 'You closed the tab'], ['Next', true, '']]);
   assert.ok(lines.includes(siteLine('closed', 'Closeme', 'You closed the tab')));
   noteTabs({ids: [], boot: 'b1', reading: {}});   // an older extension's report (no reading) changes nothing either way
@@ -241,17 +237,23 @@ test('a tab whose Claude is still answering is not skipped as silent, its time i
 });
 
 test('each site finds its job page in its own lane, just before its tab opens: the first tab does not wait for every lookup', async () => {
-  const opened = [];
+  // Why (11 Nov 2026, sf: 3 of 3 red at load 91 on unchanged code): ordered by events, not by wall time. Slow's lookup ends only once Quick's tab has opened;
+  // if the lanes waited for every lookup, Quick could never open first and Slow's lookup ends on its hang guard instead.
+  let quickOpened, slowEndedBy = '';
+  const quickOpen = new Promise(resolve => { quickOpened = resolve; });
   const openTab = url => {
-    opened.push([url.split('#')[0], Date.now()]);
+    if (url.startsWith('https://quick.example/careers')) quickOpened('Quick opened');
     const ticket = /-([a-z0-9]+)$/.exec(url)[1];
     setTimeout(() => done({url: url.split('#')[0], ticket, jobs: 1, added: 1, pages: 1}), 5);
     return {ok: true};
   };
-  const prepare = site => new Promise(resolve => setTimeout(() => resolve({...site, url: `${site.url}/careers`}), site.name === 'Slow' ? 200 : 10));
-  const started = Date.now();
+  const guard = () => new Promise(resolve => { setTimeout(resolve, 2000, 'hang guard').unref(); });   // a hang guard only, well under runAll's waitMs; a failure reads 'hang guard'
+  const prepare = async site => {
+    if (site.name === 'Slow') slowEndedBy = await Promise.race([quickOpen, guard()]);
+    return {...site, url: `${site.url}/careers`};
+  };
   const results = await runAll([{name: 'Quick', url: 'https://quick.example'}, {name: 'Slow', url: 'https://slow.example'}], {atOnce: 2, openTab, prepare, waitMs: 5000});
-  assert.ok(opened.find(([url]) => url === 'https://quick.example/careers')[1] - started < 150, 'Quick opened before Slow\'s lookup ended');
+  assert.equal(slowEndedBy, 'Quick opened', 'Quick\'s tab opened while Slow was still looking up its job page');
   assert.deepEqual(results.map(result => [result.name, result.url, result.start]), [['Quick', 'https://quick.example/careers', 'https://quick.example'], ['Slow', 'https://slow.example/careers', 'https://slow.example']]);
 });
 
@@ -425,3 +427,19 @@ for (const [caller, options] of [['Find jobs using your browser', {filter: true}
     });
   }
 }
+
+// Why (#3710, owner via AskUserQuestion 11 Nov 2026, "Both, place first"): a read opened on an address the engine built with a place gives that place to the page's
+// placeless cards (src/sources/visits_read.py does it, as for a page the extension filtered); a place the page itself sent wins; no site place, no place.
+test('a site the engine searched in a place hands that place to its pages, unless the page sent its own', async () => {
+  const sent = [];
+  const engine = async (_, args) => { sent.push(JSON.parse((await import('node:fs')).readFileSync(args[args.length - 1], 'utf8')).place); return {code: 0, stdout: JSON.stringify({ok: true, jobs: 2, added: 2, fits: 1})}; };
+  const openTab = (own = '') => url => {
+    const ticket = /-([a-z0-9]+)$/.exec(url)[1];
+    setTimeout(async () => { await read({}, {url: `${url.split('#')[0]}?p=1`, ticket, cards: [], session: 's', place: own}, engine); done({url, ticket, jobs: 2, added: 2, pages: 1}); }, 5);
+    return {ok: true};
+  };
+  await runAll([{name: 'Searched', url: 'https://search.example/jobs', place: 'Lyon'}], {openTab: openTab(), filter: false, waitMs: 500});
+  await runAll([{name: 'Filtered', url: 'https://search.example/jobs', place: 'Lyon'}], {openTab: openTab('Villeurbanne'), filter: false, waitMs: 500});
+  await runAll([{name: 'Plain', url: 'https://search.example/jobs'}], {openTab: openTab(), filter: false, waitMs: 500});
+  assert.deepEqual(sent, ['Lyon', 'Villeurbanne', '']);
+});

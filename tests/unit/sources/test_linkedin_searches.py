@@ -22,6 +22,13 @@ class LinkedinSearchesTest(unittest.TestCase):
                          [url('photographe', 'gen%C3%A8ve'), url('retouche', 'gen%C3%A8ve'), url('directeur%20artistique', 'gen%C3%A8ve')])
         self.assertEqual([item['name'] for item in found], ['LinkedIn: photographe in genève', 'LinkedIn: retouche in genève', 'LinkedIn: directeur artistique in genève'])
 
+    def test_each_search_carries_the_place_its_address_was_built_with(self):
+        # Why (#3710, owner via AskUserQuestion 11 Nov 2026, "Both, place first"): LinkedIn's result cards name no place, so the read gives them the
+        # place the engine searched in (src/sources/visits_read.py, as for a page the extension filtered); '' for a search with no place.
+        found = visits_portals.linkedin_searches({'role_keywords': ['photographe'], 'locations': PLACES})
+        self.assertEqual([item['place'] for item in found], ['genève', 'lausanne', 'zürich'])
+        self.assertEqual([item['place'] for item in visits_portals.linkedin_searches({'role_keywords': ['photographe'], 'locations': {}})], [''])
+
     def test_one_role_goes_through_the_places_instead(self):
         found = visits_portals.linkedin_searches({'role_keywords': ['photographe'], 'locations': PLACES})
         self.assertEqual([item['url'] for item in found], [url('photographe', 'gen%C3%A8ve'), url('photographe', 'lausanne'), url('photographe', 'z%C3%BCrich')])

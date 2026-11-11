@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {AGENT_SLOT, CRONS, STORE_WEEKLY, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
+import {AGENT_SLOT, CRONS, SEARCH_WEEKLY, STORE_WEEKLY, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -122,6 +122,18 @@ test('failed verdict sweep ticks fail the cron without paging and still allow st
     assert.deepEqual(told, [], 'a sustained sweep failure must not page Telegram 144 times a day');
     assert.deepEqual(reported, [], 'the ten-minute sweep must not churn the watchdog issue');
   }
+});
+
+test('the Search check week (5 runs a person) starts once a week, Thursday 03:00 UTC, after the night; every other start of it stays the 2-run night (owner, 11 Nov 2026: "2 runs nightly, 5 runs weekly")', () => {
+  const starts = [];
+  for (let minutes = 0; minutes < 14 * 24 * 60; minutes += 10) {
+    const now = new Date(Date.UTC(2026, 10, 9) + minutes * 60000);   // Monday 9 Nov, two weeks
+    for (const job of jobsFor('*/10 * * * *', now)) if (job.workflow === 'search-personas.yml') starts.push([now.toISOString().slice(5, 16), job.inputs.presses || 'night']);
+  }
+  assert.deepEqual(starts.filter(([, presses]) => presses === '5').map(([at]) => at), ['11-12T03:00', '11-19T03:00'], 'the AI cost of 5 runs a person, once a week');
+  assert.equal(starts.filter(([at, presses]) => presses === 'night' && at.endsWith('T00:00')).length, 14, 'the night is unchanged');
+  assert.equal(starts.length, 16);
+  assert.equal(SEARCH_WEEKLY.day, 4);
 });
 
 test('the Microsoft Store submission starts once a week, Monday 07:00 UTC, on the ten-minute trigger (7 Nov 2026, owner: weekly, a fixed day)', () => {

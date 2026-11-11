@@ -193,6 +193,18 @@ class VisitsTest(unittest.TestCase):
         unfiltered = visits.read('https://other.example/jobs', '<html></html>', [{'title': 'Verkäufer', 'url': '/jobs/3234567', 'lines': []}], now=NOW)
         self.assertEqual(unfiltered['jobs'][0]['location'], '', 'not filtered: unknown stays unknown')
 
+    def test_a_search_result_page_read_with_the_place_it_was_searched_in_fits_a_matching_person(self):
+        # Why (#3710, press of 11 Nov 2026): a search-results page's cards named no place, so 0 of 10 matched and none reached the list. The engine
+        # built the search with a place and hands it to the read (visits_portals.linkedin_searches -> the app -> place=): the same cards now fit.
+        cards = [{'title': 'Électricien', 'url': '/jobs/view/4300000001/', 'lines': ['Entreprise A']}, {'title': 'Électricien bâtiment', 'url': '/jobs/view/4300000002/', 'lines': ['Entreprise B']}]
+        from src.sources import feeds
+        with mock.patch.object(feeds, 'wanted_title', lambda title: 'électricien' in title.lower()), mock.patch.object(feeds, 'triage_places', lambda jobs: None), \
+                mock.patch.object(feeds, 'wanted_location', lambda job: (job.get('location') or '').lower() == 'lyon'):
+            searched = visits.read('https://jobs.example/jobs/search-results/?p=1', '<html></html>', cards, now=NOW, session='s1', place='lyon')
+            plain = visits.read('https://other.example/jobs/search-results/?p=1', '<html></html>', cards, now=NOW, session='s2')
+        self.assertEqual((len(searched['jobs']), searched['fits'], searched['in_places'], searched['placed']), (2, 2, 2, 2), 'read with the place searched in: both fit')
+        self.assertEqual((len(plain['jobs']), plain['fits'], plain['placed']), (2, 0, 0), 'the control: without it, no place and nothing fits (the press)')
+
     def test_a_job_page_that_is_a_404_is_forgotten_at_once(self):
         with mock.patch('src.sources.web_search.provider', lambda: 'claude'):
             visits.find_job_pages([{'name': 'FM', 'url': 'https://www.fm.example', 'kind': 'employer'}], [], search=lambda name: ['https://www.fm.example/careers'], now=NOW)

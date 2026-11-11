@@ -7,15 +7,23 @@ import {forWindow} from '../../../lib/settings-native-display.js';
 
 test('the draft schema carries remote_jobs next to the locations, as a list of words', () => {
   const search = DRAFT_SCHEMA.properties.search.properties;
-  assert.deepEqual(search.remote_jobs, {type: 'array', items: {type: 'string'}});
+  assert.deepEqual(search.remote_jobs, {type: 'array', items: {type: 'string', enum: ['No', 'Country', 'Yes']}}, 'the three words only: a country\'s name reads as Yes in the engine (#3792)');
   assert.ok(DRAFT_SCHEMA.properties.search.required.includes('remote_jobs'), 'every draft answers it');
 });
 
 test('the prompt no longer fills the whole country for every role, and names the three Remote jobs words', () => {
   assert.ok(!/country_wide the rest of that country,/.test(INSTRUCTIONS), 'the old sentence filled the whole country for every draft (16 of 18 on 10 Nov 2026)');
-  assert.match(INSTRUCTIONS, /country_wide the rest of that country ONLY when their work can be done anywhere in it/);
-  assert.match(INSTRUCTIONS, /leave it \[\] for work that needs them in one place/);
   for (const word of ['["No"]', '["Country"]', '["Yes"]']) assert.ok(INSTRUCTIONS.includes(word), word);
+});
+
+// rj 1/2 (#3792; night 42927975750, 11 Nov 2026): after #3687 the draft still gave the whole country to an HR generalist in Cluj, a software engineer in Amsterdam,
+// a data analyst in Lisbon (Claude, by hand, same day) and a welder in Leipzig (Codex): the goals line still said "then the rest of that country", and the search rule let
+// "office" roles have it, though an office in another city is a move. The country alone is the person's own choice (Settings → Locations, Notion) or the CV's or note's words.
+test('the draft leaves the rest of the country out unless the CV or note says they would work anywhere in it; remote in the country is Remote jobs "Country"', () => {
+  assert.ok(!/then the rest of that country/.test(INSTRUCTIONS), 'the goals line proposed the whole country for every person');
+  assert.ok(!/office, remote-friendly or nationwide roles/.test(INSTRUCTIONS), 'an office job in another city is not one they can take without moving');
+  assert.match(INSTRUCTIONS, /country_wide stays \[\] unless the CV or note says they would work anywhere in that country/);
+  assert.match(INSTRUCTIONS, /remote work in their country is remote_jobs \["Country"\] \(that word itself, never the country's name\), never country_wide/);
 });
 
 // Retro review of #3687 (Gitar, 10 Nov 2026; owner 11 Nov 2026, asked via AskUserQuestion: "Show 'Yes → Country' (Recommended)"): a rebuild's draft always carries Remote jobs, and keeping the saved value
