@@ -36,20 +36,27 @@ def people():
 
 
 def judge_prompt():
-    """The judge's words and how a batch is asked: SYSTEM, MODEL, BATCH and the code of ask() and judge(), as their source tokens without comments or docstrings
-    (a reworded comment is not a new measure). Why (10 Nov 2026, #3708 red): ast.unparse prints the same code differently across Python builds (3.12.6 here, 3.12.16 on CI,
-    3.9), so the fingerprint is the source's own text, which no Python version rewrites."""
-    source = (HERE / 'gate_judge.py').read_text(encoding='utf-8')
+    """The judge's words and how a batch is asked and voted: SYSTEM, MODEL, BATCH, TIERS and the code of ask(), judge(), key() and complete() in gate_judge.py, and how many
+    answers make a verdict (judge_three.py), as their source tokens without comments or docstrings (a reworded comment is not a new measure).
+    Why (10 Nov 2026, #3708 red): ast.unparse prints the same code differently across Python builds (3.12.6 here, 3.12.16 on CI, 3.9), so the fingerprint is the source's own
+    text, which no Python version rewrites. Why (11 Nov 2026, the owner's majority of 3): the vote decides each verdict as much as the prompt does, so it is the same part."""
+    return '\n'.join(_code('gate_judge.py', ('SYSTEM', 'MODEL', 'BATCH', 'TIERS'), ('ask', 'judge', 'key', 'complete')) +
+                     _code('judge_three.py', ('ANSWERS', 'AGREE', 'ROLE', 'PLACE', 'UNJUDGED'), ('answered_three', '_vote', 'majority')))
+
+
+def _code(name, constants, functions):
+    """The named constants' and functions' source tokens of one file next to this one, in file order, each function without its docstring."""
+    source = (HERE / name).read_text(encoding='utf-8')
     kept = []
     for node in ast.parse(source).body:
-        if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') in ('SYSTEM', 'MODEL', 'BATCH') for t in node.targets):
+        if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') in constants for t in node.targets):
             kept.append(tokens(ast.get_source_segment(source, node)))
-        elif isinstance(node, ast.FunctionDef) and node.name in ('ask', 'judge', 'key', 'complete'):
+        elif isinstance(node, ast.FunctionDef) and node.name in functions:
             code = ast.get_source_segment(source, node)
             if node.body and isinstance(node.body[0], ast.Expr) and isinstance(getattr(node.body[0], 'value', None), ast.Constant):
                 code = code.replace(ast.get_source_segment(source, node.body[0]), '', 1)
             kept.append(tokens(code))
-    return '\n'.join(kept)
+    return kept
 
 
 def tokens(code):

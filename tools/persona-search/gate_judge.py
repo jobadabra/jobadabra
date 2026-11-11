@@ -3,7 +3,8 @@ no source, no score), shuffled. The same prompt and rules as the benchmark round
 on the Codex subscription through the same local broker relay as the press; no API key or CLI sign-in is used.
 Why (owner, 27 Oct 2026, "Right role + place"): the engine's own "in places" count called 16 jobs right for p3 that the blind judge called 0
 (an interior architect for a carpenter); a check that trusts the engine's count can't see the engine get it wrong.
-  node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py <persona n> <jobs.json> <judged.json>      Tests: tests/test_search_personas_gate.py"""
+Each list is asked ANSWERS times and the majority per job counts (judge_three.py); the result keeps the answers and names the AI that gave each.
+  node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py <persona n> <jobs.json> <judged.json>      Tests: tests/tooling/ci/test_judge_majority.py"""
 import json
 import random
 import re
@@ -18,9 +19,13 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from gate import PERSONAS  # noqa: E402
+from judge_three import ANSWERS, agreement, answered_three, majority  # noqa: E402
 
 BATCH = 60
 MODEL = 'claude-haiku-5-5'   # Why (30 Oct 2026, owner): retain the small tier; the broker maps Haiku to Codex on the ChatGPT plan.
+# Why (11 Nov 2026, sa for the owner's "What LLM model does the blind judge use? It is because it uses Haiku instead of Sonnet?"): a by-hand run may name a larger tier
+# to measure it (JOBADABRA_JUDGE_TIER, search-personas.yml input judge_tier); the night never sets it, and making another tier the default is a Scoreboard-change of its own.
+TIERS = {'small': MODEL, 'mid': 'claude-sonnet-5-5', 'large': 'claude-opus-5-5'}
 SYSTEM = ('You check a job search for one job seeker. You get their short profile and a numbered list of jobs (title, employer, place). For EACH job decide two things on their own. '
           'role: would a person with this profile see it as their kind of job? yes = same occupation (any seniority, any employer, any language of the title); no = a different occupation. '
           'place: yes = in their city or a short commute from it, or remote and the text names their country; remote = says remote and names no country, or names many countries (a list such as "Remote - Moldova; Remote - Canada; ..." is worldwide remote, never yes); no = another city or country (including remote limited to another country); unknown = no place given. '
@@ -38,14 +43,18 @@ def ask(profile, jobs, open_url=urlopen, env=None):
     address = urlparse(base)
     if env.get('JOBADABRA_PERSONA_CODEX') != '1' or address.scheme != 'http' or address.hostname != '127.0.0.1':
         raise ValueError('the judge requires the local Codex relay')
+    tier = env.get('JOBADABRA_JUDGE_TIER') or 'small'
+    if tier not in TIERS:
+        raise ValueError(f'JOBADABRA_JUDGE_TIER "{tier[:20]}" is not one of {sorted(TIERS)}')
     prompt = profile + '\n\nJOBS\n' + '\n'.join(f'{j["n"]}. {j["title"]} | {j["company"] or "?"} | {j["location"] or "(no place)"}' for j in jobs)
-    body = {'model': MODEL, 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}]}
+    body = {'model': TIERS[tier], 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}]}
     request = Request(base + '/v1/messages', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
     with open_url(request, timeout=600) as response:
         reply = json.loads(response.read())
     text = ''.join(part.get('text', '') for part in reply['content'] if part.get('type') == 'text')
     data = json.loads(re.search(r'\{.*\}', text, re.S).group(0))
-    return complete({r['n']: r for r in data['jobs']}, jobs)
+    # Why (11 Nov 2026, cr): the result said "Codex small tier" on 27 of 187 saved calls that Qwen, Haiku or Gemma answered; the relay's reply names the model that did.
+    return complete({r['n']: {**r, 'ai': reply.get('model') or '?'} for r in data['jobs']}, jobs)
 
 
 def complete(got, jobs):
@@ -58,7 +67,9 @@ def complete(got, jobs):
 
 
 def judge(n, pool, asker=ask):
-    """The pool with role and place set on every row: one verdict per distinct job, in a seeded shuffle."""
+    """The pool with role and place set on every row: the majority of ANSWERS answers per distinct job, in a seeded shuffle; each row keeps its answers.
+    Why (11 Nov 2026, owner, asked via AskUserQuestion: "Ask 3 times, take the majority (Recommended)"): one answer per job changed its verdict on 11.5% of
+    1,406 jobs judged twice for the same person (p9's identical 3-job list: yes ×4 at night, no ×4 at midday); every "right jobs" number rests on the judge."""
     p = PERSONAS[int(n) - 1]
     profile = f'Profile: {p["title"]}, 6 years of experience, living in {p["city"]}, {p["country"]}; on-site or hybrid; speaks {p["language"]} and English.'
     unique = {}
@@ -69,13 +80,14 @@ def judge(n, pool, asker=ask):
     verdicts = {}
     for start in range(0, len(jobs), BATCH):
         chunk = jobs[start:start + BATCH]
-        got = asker(profile, [{'n': i + 1, **{k: j.get(k, '') for k in ('title', 'company', 'location')}} for i, j in enumerate(chunk)])
+        asked = [{'n': i + 1, **{k: j.get(k, '') for k in ('title', 'company', 'location')}} for i, j in enumerate(chunk)]
+        replies = answered_three(lambda asked=asked: asker(profile, asked))
         for i, j in enumerate(chunk):
-            v = got.get(i + 1, {})
-            verdicts[key(j)] = (v.get('role', 'missing'), v.get('place', 'missing'))
+            verdicts[key(j)] = majority([reply.get(i + 1, {}) for reply in replies])
     for row in pool:
-        row['role'], row['place'] = verdicts.get(key(row), ('not-judged', 'not-judged'))
-    return {'persona': p, 'judged_jobs': len(jobs), 'model': 'Codex small tier', 'billing': 'subscription', 'usd': 0, 'rows': pool}
+        row['role'], row['place'], row['answers'], row['ai'] = verdicts.get(key(row), ('not-judged', 'not-judged', [], ''))
+    return {'persona': p, 'judged_jobs': len(jobs), 'model': 'the AI each answer names (rows: ai, answers)', 'tier': os.environ.get('JOBADABRA_JUDGE_TIER') or 'small',
+            'answers': ANSWERS, 'agreement': agreement(verdicts.values()), 'billing': 'subscription', 'usd': 0, 'rows': pool}
 
 
 def main(argv):
@@ -85,7 +97,9 @@ def main(argv):
     verdict = judge(n, pool)
     Path(out).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
     local = sum(1 for r in verdict['rows'] if r['role'] == 'yes' and r['place'] == 'yes')
-    print(f"p{n}: judge cost ${verdict['usd']:.3f}; judged {verdict['judged_jobs']} distinct jobs, {local} right role and place")
+    split = verdict.get('agreement') or {}
+    print(f"p{n}: judge cost ${verdict['usd']:.3f}; judged {verdict['judged_jobs']} distinct jobs, {local} right role and place; "
+          f"{split.get('not_unanimous', 0)} of {split.get('jobs', 0)} not unanimous over {ANSWERS} answers; AI: {', '.join(split.get('ai', [])) or 'none'}")
 
 
 if __name__ == '__main__':
