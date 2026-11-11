@@ -42,6 +42,8 @@ if argv[:2] == ['api', 'graphql']:
             body['data']['repository']['pullRequest'].pop(name, None)
     print(json.dumps(body))
     sys.exit(0)
+if argv[:2] == ['pr', 'comment']:   # logged above; a posted comment changes nothing the watcher reads
+    sys.exit(0)
 if argv[:1] != ['api'] or '-i' not in argv:
     print(f'fake gh: unknown call {argv}', file=sys.stderr)
     sys.exit(1)
@@ -90,6 +92,7 @@ if (d / 'states').exists() and re.search(r'/commits/[^/]+/check-runs\?per_page=1
         print('HTTP/2.0 403 Forbidden\n\n{"message":"API rate limit exceeded"}')
         sys.exit(1)
     if runs == 'none': answer({'check_runs': []})
+    if runs == 'gitar': answer({'check_runs': [{'name': 'Gitar', 'head_sha': line('heads', n) or 'new1', 'status': 'in_progress', 'conclusion': None}]})   # Gitar's check on the head: it has started
     if runs == 'running' or check == 'pending': answer({'check_runs': [{'name': 'x', 'head_sha': line('heads', n) or 'new1', 'status': 'in_progress', 'conclusion': None}]})
     one = {'name': check, 'status': 'completed', 'conclusion': 'failure'} if check else {'name': 'x', 'status': 'completed', 'conclusion': 'success'}
     gate = [{'name': 'All checks passed', 'status': 'completed', 'conclusion': 'success'}] if runs == 'gate' else []

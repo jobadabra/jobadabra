@@ -19,6 +19,7 @@ repo="${4:-$(pr_repo .)}"; start_dir="$PWD"
 # Why (2 Nov 2026, owner: "let's check every 1 imnute"; PRs sat red for minutes): a look every 60 s, not 120; the ETag reads below made an unchanged look free, so the 27 Oct limit no longer sets the pace.
 #   Each look reads REST with the last ETag (tools/pr-rest-lib.sh): an unchanged answer is free, so a look costs about one call.
 poll="${SHIP_WATCH_POLL:-60}"; cap="${SHIP_WATCH_CAP:-172800}"; backoff_max="${SHIP_WATCH_BACKOFF_MAX:-900}"; backoff=0
+gitar_head=""; gitar_t0=0   # the head the Gitar-ask timer runs for, and when it began (below)
 old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
@@ -27,6 +28,12 @@ trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 #   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
 #   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Without an owning session those notifiers exit 0; the log stays the channel.
 # Why (7 Nov 2026, #3421): the independent coordinator notifier can fail even without an owning cmux session; keep its retry/result separate from worker delivery.
+# gitar_locked: true while Gitar's own newest "wait about N minutes" reply (issue comment or inline thread, any session's: replies in its threads count too, #3785 11 Nov 2026) is under 10 min old;
+#   a comment inside the lock restarts it, so the ask waits. A failed read says "not locked": the marker still allows one comment per head.
+gitar_locked() {
+  local c r; c="$(pr_get "repos/$repo/issues/$n/comments?per_page=100")" || c="[]"; r="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100")" || r="[]"
+  jq -es '[.[][]? | select((.user.login // "") | test("gitar"; "i")) | select(.body | test("Please wait about")) | (now - (.created_at | fromdateiso8601))] | any(. < 600)' <<<"$c $r" >/dev/null 2>&1
+}
 notify_worker() {
   if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
   else python3 "$here/claude-pr-events.py" "$log"; fi
@@ -108,6 +115,18 @@ while :; do
     #   GREEN also needs the required "All checks passed" green on it: a status pr-verdict.yml writes since 26 Oct 2026 (before: a check-run of pr-gate.yml with that name).
     checks="$(pr_checks "$repo" "$head")" || checks=""
     now="$(jq -r '[.[]? | select(.bucket == "fail") | .name] | first // empty' <<<"${checks:-[]}" 2>/dev/null)" || now=""
+    # Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 sat 7+ min with no review): Gitar reviews a PR when it opens, not a push to an
+    #   open PR, so a pushed head has no "Gitar" check and nobody asks. After SHIP_WATCH_GITAR_AFTER s (default 180) without one, this watcher posts ONE "Gitar review" per head (a second comment inside
+    #   ~50 min locks the PR, so the head is written to the marker before the post and never asked twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
+    #   The check is named "Gitar" (live on #3723, 11 Nov 2026 00:55:52Z); matched like the label matches the app slug: case-insensitive "gitar" in the name; an empty read (rate limit, 5xx) keeps the timer running and never asks, since it cannot show that Gitar has no check.
+    if [ -n "$checks" ] && jq -e 'any(.[]?; (.name // "") | test("gitar"; "i"))' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
+    else
+      [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
+      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
+        printf '%s\n' "$head" > "$seen.gitar-asked"
+        if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi
+      fi
+    fi
     key="${now:+$head:$now}"
     [ "$key" = "$red" ] || { [ -z "$now" ] || say "RED #$n $now $head"; red="$key"; }   # once per red check; green again re-arms it
     if jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping") and any(.[]; .name == "All checks passed")' <<<"${checks:-[]}" >/dev/null 2>&1; then
