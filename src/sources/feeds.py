@@ -14,7 +14,8 @@ import unicodedata
 import urllib.request
 
 from . import ats, posting_text
-from .. import country_codes, coverage, my_places, run_counts
+from .. import country_codes, coverage, run_counts
+from .. import my_places
 from ..paths import CONFIG, DATA, REPORTS, keyword_regex, load_search_config, place_regex
 from ..ai import batch_scope, providers
 from ..ai.providers.contract import detail, reason
