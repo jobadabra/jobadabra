@@ -1,4 +1,4 @@
-"""The job boards the run's web search found, read at once, before the first-jobs slice and the employer sites (owner, 26 Oct 2026: "START A
+"""The job boards the run's web search found, read at once, beside the first-jobs slice and the employer sites (owner, 26 Oct 2026: "START A
 JOB SEARCH WITH SEARCHING ON GOOGLE!"; the pilot search's web search found 4 aviation boards at 37 s that were read after 1,123 employer
 sites, or never). It reads the boards that gave this install jobs in this field and places before (board_yield.working) at once, then
 waits for the web search started with the run (src/sources/board_web.py early) up to WEB_WAIT seconds and reads what it found; each group's
@@ -13,19 +13,6 @@ from ..press.run import Run
 WEB_WAIT = budget.value('boards_first.WEB_WAIT')   # seconds the run waits for its web search before any employer site (the pilot search's answered at 37 s on the plan)
 
 
-def run(feed_db, search, on_jobs, wait=WEB_WAIT):
-    """The known working boards read now, then the web search's: their first pages' jobs in your roles and places (the report's shape), each
-    group given to on_jobs at once. The full read reads their next pages beside the employer sites, from the pages fetched here (found_boards).
-    TODO(AI): no run calls it since lanes 4a (every run reads them in Beside); deleted with sf 8/8 "what never runs" (2026-11-11)."""
-    from . import board_reader, read_budget
-    read_budget.short(False)
-    matched = []
-    for _said, found in board_reader.read(Run.current(), search, early=True, wait=wait, where='before'):
-        matched += _keep(feed_db, found, on_jobs)
-    _enough(matched)
-    return matched
-
-
 def _enough(matched):
     """When the boards gave board_yield.ENOUGH jobs, the employer read starts no new site past its best READ_FLOOR (read_budget.over reads it live);
     True then."""
@@ -35,17 +22,6 @@ def _enough(matched):
         print(f'Job boards first: {len(matched)} jobs in your roles and places; the employer sites read only their best {read_budget.READ_FLOOR}', flush=True)
         return True
     return False
-
-
-def _keep(feed_db, found, on_jobs):
-    """Of one group of boards' first pages (early: one page per search, as the first-jobs slice; owner's pilot run, 26 Oct 2026: a board's 5 pages,
-    each judged by the AI before the next, held its 16 jobs until 163 s), the new jobs in your roles and places, given to on_jobs.
-    TODO(AI): this kept() moves into the run core with sf's cutover; the board reader only reads (2026-11-10)."""
-    from . import aggregators, boards_ahead
-    matched = aggregators.kept(feed_db, boards_ahead.NAME, found)
-    if matched:
-        on_jobs(matched)
-    return matched
 
 
 class Beside:

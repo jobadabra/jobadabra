@@ -19,7 +19,7 @@ from src.press import stage
 GUARD_S = 15   # a hang guard only: every lane starts within milliseconds of the press once none waits for another (the red run waits it out once)
 MONOTONIC = time.monotonic   # the real clock, for the hang guard: the test moves the stand-in clock the search reads
 # The real starters the harness replaces with stand-ins; this test puts them back (taken before any test patches them).
-REAL = {(board_web, 'early'): board_web.early, (eures, 'start_early'): eures.start_early, (boards_first, 'run'): boards_first.run,
+REAL = {(board_web, 'early'): board_web.early, (eures, 'start_early'): eures.start_early,
         (boards_first, 'Beside'): boards_first.Beside, (first_jobs, 'propose_early'): first_jobs.propose_early, (first_jobs, 'run'): first_jobs.run,
         (boards_ahead, 'scan_beside'): boards_ahead.scan_beside, (aggregators, 'scan'): aggregators.scan,
         (daily_search, 'start_apis'): daily_search.start_apis}

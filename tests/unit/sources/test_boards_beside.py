@@ -9,7 +9,7 @@ from unittest import mock
 
 from src import daily_search
 from src.ai import batch_scope
-from src.sources import boards, boards_ahead, boards_beside, boards_first, board_yield
+from src.sources import boards, boards_ahead, boards_beside, board_yield
 
 REAL_START = boards_beside.start
 
@@ -42,7 +42,6 @@ class GatherSourcesTest(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             stack.enter_context(mock.patch.object(daily_search.feeds, 'database', lambda _path: contextlib.nullcontext(object())))
             stack.enter_context(mock.patch.object(daily_search.jobs_so_far, 'SoFar', lambda _db: mock.MagicMock()))
-            stack.enter_context(mock.patch.object(boards_first, 'run', lambda *_a, **_k: []))
             stack.enter_context(mock.patch.object(daily_search.first_jobs, 'run', lambda *_a, **_k: None))
             stack.enter_context(mock.patch.object(boards_ahead, 'scan_beside', scan_beside))
             stack.enter_context(mock.patch.object(boards_beside, 'start', start))

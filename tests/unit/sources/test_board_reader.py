@@ -1,7 +1,7 @@
 """Job boards as one reader (src/sources/board_reader.py, contract C3 of docs/superpowers/specs/2026-11-10-find-jobs-code-shape.md, cr 3/5): the
 boards' first pages come as Listed jobs in today's order, and the reader keeps, judges and scores nothing (a reader never decides what is kept).
 Half 1 of the proof (cr): the same boards in the same order give the same Listed jobs, and keeping them (aggregators.kept, as the run does)
-gives the jobs boards_first.run keeps today. Half 2 (sf's cutover: kept()/triage() called from src/daily_search.py) reuses the setUp of
+gives the jobs the boards' lane keeps today (boards_first.Beside). Half 2 (sf's cutover: kept()/triage() called from src/daily_search.py) reuses the setUp of
 test_boards_first.OldState and listed_then_kept below. Offline: the fixture of tests/unit/sources/test_boards_first.py (fake web search, fixture boards, fake jobs only)."""
 import io
 import unittest
@@ -56,10 +56,10 @@ class BoardReaderTest(unittest.TestCase):
         _, out = listed(where='beside')
         self.assertIn('Job boards first: reading the 3 the web search found, beside the employer sites', out)
 
-    def test_keeping_what_the_reader_listed_keeps_what_boards_first_keeps(self):
+    def test_keeping_what_the_reader_listed_keeps_what_the_boards_lane_keeps(self):
         with mock.patch.object(board_web, '_searcher', return_value=FakeClient()), redirect_stdout(io.StringIO()):
             searching = board_web.early(SEARCH, fetch=fetch)
-            today = boards_first.run(self.db, SEARCH, lambda jobs: None)
+            today = boards_first.Beside(SEARCH).take(self.db, lambda jobs: None)
             searching.exception(timeout=10)
         self.setUp()   # the same old state again: a fresh job cache, no board read early
         self.assertEqual([job['url'] for job in listed_then_kept(self.db)], [job['url'] for job in today])

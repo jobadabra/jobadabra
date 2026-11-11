@@ -65,7 +65,6 @@ class SearchCharacterization(unittest.TestCase):
             mock.patch.object(eures, 'start_early', side_effect=lambda *a: self.event('eures')),
             # Why (11 Nov 2026, flaky test_read_methods on sf's push): #3802 starts the free job APIs at second 0; unstubbed, every search test read the live APIs in a thread that outlived it.
             mock.patch.object(daily_search, 'start_apis', return_value=None),
-            mock.patch.object(boards_first, 'run', side_effect=lambda *a: self.event('boards first', [])),
             mock.patch.object(boards_first, 'Beside', side_effect=self.boards_beside),
             mock.patch.object(daily_search.first_jobs, 'propose_early', side_effect=lambda: self.event('proposal')),
             mock.patch.object(daily_search.first_jobs, 'run', side_effect=lambda *a, **k: self.event('slice')),

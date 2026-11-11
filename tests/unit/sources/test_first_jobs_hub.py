@@ -30,7 +30,8 @@ NEAR, FAR, SAME = job('near'), job('far'), job('same', 'https://x/same')
 
 
 class Slice:
-    """One press of the slice with fakes: `scan` and `boards` as given; the job store is the list of jobs imported; the scorer records which it scored."""
+    """One press of the slice with fakes: `scan` as given and `boards`, another reader started with the search (the path EURES's early read takes:
+    a future joined by the hub, its titles kept by `kept`); the job store is the list of jobs imported; the scorer records which it scored."""
 
     def __init__(self, scan, boards, kept=None, fits=None):
         self.imported, self.scored, self.events, self.said = [], [], [], []
@@ -46,13 +47,25 @@ class Slice:
         self.store = [{'id': j['id'], 'company': j['company'], 'title': j['title'], 'location': j['location']} for j in getattr(self, 'store', [])]
         self.store += [{'id': j['id'], 'company': j['company'], 'title': j['title'], 'location': j['location']} for j in report['jobs']]
 
+    def taken(self, feed_db, search, readers=None, early=False, shown=None, **kw):
+        """The free-API stage's taking of one reader (aggregators.scan), as the hub calls it: its titles kept by `kept`."""
+        (name, read), = readers
+        return {'jobs': self.kept(feed_db, name, read(search), shown)}
+
     def run(self, others=None):
+        from concurrent.futures import ThreadPoolExecutor
         self.store = []
-        with mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [j for j in self.store if j['id'] not in self.scored]), \
-                mock.patch.object(first_jobs, 'to_score', return_value=[]), mock.patch.object(first_jobs, 'aggregators_kept', side_effect=self.kept):
-            return first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
-                                  sync=lambda: None, say=self.said.append, scan=self.scan, scorer=self.scorer, fits=self.fits, boards=self.boards,
-                                  import_jobs=self.import_jobs, others=others or {})
+        pool = ThreadPoolExecutor(max_workers=1)
+        readers = {'boards': pool.submit(self.boards, self.said.append)} if self.boards else {}
+        try:
+            with mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a, **k: [j for j in self.store if j['id'] not in self.scored]), \
+                    mock.patch.object(first_jobs, 'to_score', return_value=[]), mock.patch('src.sources.aggregators.scan', side_effect=self.taken), \
+                    mock.patch('src.paths.load_search_config', return_value={}):
+                return first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
+                                      sync=lambda: None, say=self.said.append, scan=self.scan, scorer=self.scorer, fits=self.fits,
+                                      import_jobs=self.import_jobs, others={**readers, **(others or {})})
+        finally:
+            pool.shutdown(wait=False)
 
 
 def sort(batches, ask, land):
