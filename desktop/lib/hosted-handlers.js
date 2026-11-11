@@ -53,6 +53,6 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, powerM
     const {canceled, filePath} = await dialog.showSaveDialog(win && !win.isDestroyed() ? win : undefined, {defaultPath: 'jobadabra-hosted-data.json', filters: [{name: 'JSON', extensions: ['json']}]});
     return canceled || !filePath ? {ok: false, cancelled: true} : hosted.exportTo(storage, filePath);
   });
-  if (!DEMO && hosted.state(storage).on) hosted.pushConfig(storage).catch(() => {});   // the profile and search settings as they are now (they may have changed since)
+  if (!DEMO && hosted.state(storage).on) { hosted.pushConfig(storage).catch(() => {}); hosted.pushSchedule(storage).catch(() => {}); }   // the profile, search settings and How-often hours as they are now (they may have changed since)
   if (!DEMO) hosted.keepFresh(storage, engine, pulled => toWindow('hostedArrived', pulled));
 }

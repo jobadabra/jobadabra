@@ -5,6 +5,7 @@ import {t} from '../i18n/native.js';
 import {setupText} from '../i18n/setup-notices.js';
 import {displayText} from '../i18n/display-values.js';
 import * as aiFree from './ai-free.js';
+import * as hosted from './hosted-search.js';
 import * as claudeCode from './claude-code.js';
 import * as atUpload from './cv-import-at-upload.js';
 import * as cvChange from './cv-change.js';
@@ -63,6 +64,7 @@ export function registerSetupHandlers(ctx) {
     const before = storage.settings();
     const saved = storage.saveSettings(patch);
     trackSetup(patch, before);
+    if (!DEMO && patch?.schedule && 'search' in patch.schedule) hosted.pushSchedule(storage).catch(() => {});   // Why (ap 2/6, 11 Nov 2026): How often reaches the cloud schedule; a failed push is retried at the next start (hoursSent says what the site took)
     return forWindow(saved);   // the same shape as the window's state: the account switch must not flip to ON for an unset (assist) setting
   });
   ipcMain.handle('saveSecret', (_, name, pasted) => {

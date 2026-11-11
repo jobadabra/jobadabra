@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {FREE_BASE, TRIAL_KEY, isFreeKey} from './ai-free.js';
 import {siteOffForUser} from './recipes.js';
+import {cadence} from './cadence.js';
 
 const BASE = FREE_BASE.replace(/\/api\/ai$/, '');
 const EVERY = 10 * 60 * 1000;
@@ -59,13 +60,26 @@ export async function pushConfig(storage, options) {
   return done;
 }
 
+// "How often" (Settings → How often, hours between searches; 0 = off) as the cloud's schedule. Why (ap 2/6, 11 Nov 2026, owner: "replicate the entire functionality/settings on the Always on"): the hours never left this Mac, so the cloud
+// always ran at the site's default. The site owns the schedule and clamps it (Pro 4-24 h; a trial stays daily by the site's cost design, shared/hosted.js): this only says what the person chose. `{}` when off, so the site keeps its default.
+export const hoursOf = storage => { const hours = Number(cadence(storage.settings()).search); return hours > 0 ? {freqHours: hours} : {}; };
+
+// Sends the chosen hours to the site's schedule and remembers which hours it took. -> {ok, skipped?, error?}. Nothing to send while Always on is off; unchanged hours send nothing.
+export async function pushSchedule(storage, options = {}) {
+  const wanted = hoursOf(storage);
+  if (!state(storage).on || !wanted.freqHours || state(storage).hoursSent === wanted.freqHours) return {ok: true, skipped: true};
+  const done = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, ...wanted}, ...options});
+  if (done.ok) save(storage, {hoursSent: wanted.freqHours});
+  return done;
+}
+
 // Turn on: the schedule (the e-mail makes the trial account), then the config. -> {ok, error?}
 export async function turnOn(storage, {email}, options = {}) {
   const address = String(email || '').trim();
   if (!EMAIL.test(address)) return {ok: false, error: 'Enter an email address like you@example.com.'};
-  const set = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, email: address}, ...options});
+  const set = await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: true, email: address, ...hoursOf(storage)}, ...options});
   if (!set.ok) return set;
-  save(storage, {on: true, skipped: false, email: address, after: state(storage).after || 0});
+  save(storage, {on: true, skipped: false, email: address, after: state(storage).after || 0, hoursSent: hoursOf(storage).freqHours || 0});
   const pushed = await pushConfig(storage, options);
   return pushed.ok ? {ok: true} : {ok: true, warning: 'On, but your profile was not sent yet; it is sent again at the next start.'};
 }
@@ -87,7 +101,7 @@ async function erase(storage, options) {
   const gone = await call(storage, '/api/hosted/data', {method: 'DELETE', ...options});
   if (!gone.ok && gone.status !== 401) return gone;
   await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: false}, ...options});
-  save(storage, {on: false, skipped: true, after: 0, copiedAt: '', deletedAt: new Date().toISOString()});
+  save(storage, {on: false, skipped: true, after: 0, copiedAt: '', hoursSent: 0, deletedAt: new Date().toISOString()});
   return {ok: true, receipt: gone.receipt || null};
 }
 
