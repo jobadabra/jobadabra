@@ -2,7 +2,7 @@
 // goals, relocation, remote_jobs, level, digest_min_score), so step 3 draws the same cards from the draft instead of the saved settings. Pure; guarded by
 // test/unit/renderer/draft-strategy.test.js.
 import {fragmentWords} from './fragment-words.js';
-import {isNoWord} from './remote-word.js';
+import {isNoWord, remoteWordOf} from './remote-word.js';
 import {searchLevel} from './goal-kinds.js';
 
 const SEARCHED = 5;   // lib/target-roles.js: the first titles are also searched on job boards
@@ -29,7 +29,7 @@ export function draftAsStrategy(draft = {}) {
     },
     digest_min_score: preferences.digest_min_score,
     remote_jobs: ![search.remote_jobs].flat().some(isNoWord),
-    remote_word: String([search.remote_jobs].flat()[0] ?? '').trim().toLowerCase(),
+    remote_word: remoteWordOf([search.remote_jobs].flat(), 'yes'),   // Why (Gitar on #3814): the same rule as the engine's src/my_places.py remote_word, not the first word
     relocation: first(places.relocation) || 'unspecified',
     goals, details: {}, level: level || (goals.seniority ? searchLevel(goals.seniority) : ''), compensation: goals.minimum_salary || '',
     avoid: [], components: [], scored: 0, previous: 0, counts: {matches: 0, kits: 0, saved: 0, sent: 0}, insight: null, profile_empty: false,

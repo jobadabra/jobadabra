@@ -11,6 +11,7 @@ import hashlib
 import json
 import threading
 
+from .. import my_places
 from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots
@@ -52,14 +53,17 @@ VISA_SYSTEM = """You get a job seeker's work rights in their own words (a permit
 countries where those work rights do not let them work without a visa or sponsorship. When they gave no work rights, answer an empty list."""
 
 
+# Why (#3808, 11 Nov 2026): "None", "Nein" or "never" was No for Find jobs but "yes" here; both now read src/my_places.py.
+_TO_AI = {'no': 'no', 'country': 'only_their_country', 'yes': 'yes'}
+
+
 def places_words(search, preferences=None):
     """The places as the user wrote them (readable words, not patterns)."""
     from ..notion.search_settings import terms
     from ..places import plain_words
-    places = search.get('locations') or {}
-    remote = [str(v).strip().lower() for v in search.get('remote_jobs') or []]
-    return {'best_places': plain_words(places.get('top_tier'))[:20], 'anywhere_in': plain_words(places.get('country_wide'))[:20],
-            'cities_abroad': plain_words(places.get('abroad'))[:20], 'remote_jobs': 'no' if 'no' in remote else 'only_their_country' if 'country' in remote else 'yes',
+    places = my_places.lists(search)
+    return {'best_places': plain_words(places['top_tier'])[:20], 'anywhere_in': plain_words(places['country_wide'])[:20],
+            'cities_abroad': plain_words(places['abroad'])[:20], 'remote_jobs': _TO_AI[my_places.remote_word(search)],
             'remote_limited_to_regions_they_cannot_work_from': terms(search.get('remote_excluded_regions'))[:20],
             'work_rights': [str(w) for w in (preferences or {}).get('work_rights') or []][:10]}
 

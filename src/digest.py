@@ -6,10 +6,10 @@ import os
 import random
 import re
 
-from . import store, digest_render, notification_language
+from . import store, digest_render, my_places, notification_language
 from .ai import enrich, score, score_search
 from .notion import client as notion
-from .paths import CONFIG, keyword_regex, load_search_config, place_regex
+from .paths import CONFIG, keyword_regex, load_search_config
 
 WORK_MODE_BADGES = {'Hybrid': '🔀 Hybrid', 'Remote (stated)': '🌍 Remote', 'Remote mentioned': '🌍 Remote?'}
 TELEGRAM_LIMIT = 4096
@@ -17,7 +17,7 @@ TELEGRAM_LIMIT = 4096
 CHUNK_LIMIT = TELEGRAM_LIMIT - 200
 PAGE_SIZE = 10  # Jobs per digest message; '➕ Next' loads the following page.
 _SEARCH = load_search_config()
-HOME = place_regex([*_SEARCH['locations']['top_tier'], *_SEARCH['locations']['country_wide']])
+HOME = my_places.words_regex(_SEARCH, ('top_tier', 'country_wide'))
 RELEVANT = keyword_regex(_SEARCH['role_keywords'])
 PREFERENCES = json.loads((CONFIG / 'preferences.json').read_text())
 MIN_DIGEST_SCORE = PREFERENCES.get('digest_min_score', 50)
@@ -70,8 +70,8 @@ def in_places(job):
     return place_rank(job) is not None
 
 
-BEST_PLACES = place_regex(_SEARCH['locations']['top_tier'])
-PREFERRED_ABROAD = place_regex(_SEARCH['locations']['abroad'])
+BEST_PLACES = my_places.words_regex(_SEARCH, ('top_tier',))
+PREFERRED_ABROAD = my_places.words_regex(_SEARCH, ('abroad',))
 # Where the user may work without a visa beyond their own places (citizenship / work rights): ⚙️ Search settings → "Where you
 # can work without a visa", e.g. "EU" for an EU citizen. "EU" stands for every EU member state.
 EU_PLACES = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech', 'denmark', 'estonia', 'finland', 'france', 'germany', 'greece',
@@ -105,7 +105,7 @@ def needs_sponsorship(job):
     if WORK_RIGHTS and _mentions(WORK_RIGHTS, where):
         return False
     # No places abroad: none needs a visa (7 Oct 2026: the empty pattern matched every place, and each Geneva job said "visa sponsorship needed").
-    return bool(_SEARCH['locations'].get('abroad')) and _mentions(PREFERRED_ABROAD, where)
+    return bool(my_places.lists(_SEARCH)['abroad']) and _mentions(PREFERRED_ABROAD, where)
 
 
 def location_points(job):
