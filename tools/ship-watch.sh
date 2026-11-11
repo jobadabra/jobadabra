@@ -28,6 +28,12 @@ trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 #   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
 #   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Without an owning session those notifiers exit 0; the log stays the channel.
 # Why (7 Nov 2026, #3421): the independent coordinator notifier can fail even without an owning cmux session; keep its retry/result separate from worker delivery.
+# gitar_locked: true while Gitar's own newest "wait about N minutes" reply (issue comment or inline thread, any session's: replies in its threads count too, #3785 11 Nov 2026) is under 10 min old;
+#   a comment inside the lock restarts it, so the ask waits. A failed read says "not locked": the marker still allows one comment per head.
+gitar_locked() {
+  local c r; c="$(pr_get "repos/$repo/issues/$n/comments?per_page=100")" || c="[]"; r="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100")" || r="[]"
+  jq -es '[.[][]? | select((.user.login // "") | test("gitar"; "i")) | select(.body | test("Please wait about")) | (now - (.created_at | fromdateiso8601))] | any(. < 600)' <<<"$c $r" >/dev/null 2>&1
+}
 notify_worker() {
   if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
   else python3 "$here/claude-pr-events.py" "$log"; fi
@@ -116,7 +122,7 @@ while :; do
     if [ -n "$checks" ] && jq -e 'any(.[]?; .name == "Gitar")' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
-      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ]; then
+      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
         printf '%s\n' "$head" > "$seen.gitar-asked"
         if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi
       fi
