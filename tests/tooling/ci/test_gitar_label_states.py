@@ -46,9 +46,9 @@ class GitarLabelStatesTest(unittest.TestCase):
         data['repository']['pullRequest']['commits']['nodes'][0]['commit']['checkSuites']['nodes'].append({'createdAt': '2026-11-11T00:01:00Z', 'app': {'slug': 'gitar'}, 'checkRuns': {'totalCount': 1}})
         self.assertTrue(node(f"m.fromGraphql({json.dumps(data)}).gitarOnHead"))
 
-    def test_a_null_check_suite_or_label_event_does_not_crash_the_read(self):
+    def test_a_null_node_in_any_list_does_not_crash_the_read(self):
         # 11 Nov 2026, #3817 run 43026926353: GitHub answered a null check suite and the label run crashed ("reading 'createdAt'"); the owner saw the PR red.
-        data = {'repository': {'pullRequest': {'state': 'OPEN', 'comments': {'pageInfo': {'hasPreviousPage': False}, 'nodes': []}, 'labels': {'nodes': [{'name': 'Working on PR comments'}]},
+        data = {'repository': {'pullRequest': {'state': 'OPEN', 'comments': {'pageInfo': {'hasPreviousPage': False}, 'nodes': [None]}, 'labels': {'nodes': [None, {'name': 'Working on PR comments'}]},
                 'timelineItems': {'nodes': [None, {'createdAt': '2026-11-11T00:02:00Z', 'label': {'name': 'Working on PR comments'}}]},
                 'commits': {'nodes': [{'commit': {'committedDate': '2026-11-11T00:00:00Z', 'checkSuites': {'nodes': [None, {'createdAt': '2026-11-11T00:00:01Z', 'app': {'slug': 'gitar'}, 'checkRuns': {'totalCount': 1}}]}}}]}}}}
         read = node(f"m.fromGraphql({json.dumps(data)})")
