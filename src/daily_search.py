@@ -23,7 +23,7 @@ from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
 
 from . import time_budget
-from .press import plan, resume, scorer, step_yield
+from .press import plan, resume, scorer, stage, step_yield
 from .daily_search_scoring import score_jobs, score_beside
 from .daily_search_reporting import finish_search, scheduled_updates
 
@@ -182,6 +182,7 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
         first_boards = []
         full_read = args.mode in ('scheduled', 'run') and not args.only_visits
         slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
+        apis = start_apis(feed_db) if full_read else None   # every lane from second 0: the free APIs no longer wait for the employer sites (lanes 3/5)
         from .sources import boards_first
         if slice_first:
             try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
@@ -219,8 +220,23 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
             crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
         run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
         coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
-        gather_apis(args, feed_db, report, so_far, ahead)
+        try:
+            gather_apis(args, feed_db, report, so_far, ahead, apis)
+        finally:
+            if apis is not None:
+                apis.close()
     return report, so_far
+
+
+# Ask every due free job API now, beside the other lanes.
+def start_apis(feed_db):
+    """The free job APIs' lane, asked from the press's start (src/sources/api_lane.py); None when none is due or it cannot start.
+    Why (lanes 3/5, #3754, 11 Nov 2026): asked after the employer sites, past the read cut, they gave 0 jobs for 14 of 14 people (night 42927975750)."""
+    from .sources import api_lane
+    with stage.guard('free job APIs: start') as caught:
+        return api_lane.start(feed_db, load_search_config())
+    print(f'Warning: free job APIs not started early: {caught.reason}', flush=True)   # the free-API stage asks them itself
+    return None
 
 
 # Start the web search's boards before the employer sites, read beside them.
@@ -249,12 +265,12 @@ def take_boards_first(first, feed_db, so_far):
 
 
 # Append paid and free API results in their original order.
-def gather_apis(args, feed_db, report, so_far, ahead):
+def gather_apis(args, feed_db, report, so_far, ahead, apis=None):
     with step_yield.span('free_job_apis'):
-        _gather_apis(args, feed_db, report, so_far, ahead)
+        _gather_apis(args, feed_db, report, so_far, ahead, apis)
 
 
-def _gather_apis(args, feed_db, report, so_far, ahead):
+def _gather_apis(args, feed_db, report, so_far, ahead, apis=None):
     # Paid per search, so only full crawls use it; off without SERPAPI_API_KEY.
     if args.mode in ('scheduled', 'run') and google_jobs.api_key():
         google = google_jobs.scan(feed_db, google_jobs.api_key(),
@@ -264,7 +280,7 @@ def _gather_apis(args, feed_db, report, so_far, ahead):
     # Aggregators with public APIs (src/sources/aggregators.py): free ones always, keyed ones with their keys; each at most every 6 hours.
     if args.mode in ('scheduled', 'run'):
         from .sources import aggregators
-        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards', 'free_job_apis'), ahead=ahead)
+        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards', 'free_job_apis'), ahead=ahead, lane=apis)
         report['jobs'] += found['jobs']
         report['sources'] += found['sources']
         gather_alerts(feed_db, report)

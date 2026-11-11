@@ -1,0 +1,59 @@
+"""The free job APIs' lane: every due API is asked at the press's start, each in its own thread, beside the employer sites and the boards
+(lanes 3/5, #3754; design: WP8 of docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md, rules 1 and 4). The threads only fetch; the
+thread that owns the job cache keeps their jobs (aggregators.scan takes each read, `take`). EURES and the boards the web search found start
+at second 0 through their own early reads (eures.start_early, boards_ahead), so they are not started here.
+Why (sf, 11 Nov 2026): the APIs were asked one after another once the employer sites had ended, past the read cut, so they read nothing:
+0 jobs for 14 of 14 people in the night 42927975750 (EURES off), "Time is up" on 28 of 32 first presses of the yardstick replays.
+Invariants: a read never touches the job cache; `take` waits no later than the read cut; a read that raises is that source failing, never the run.
+Tests: tests/unit/press/test_lanes.py, tests/unit/sources/test_api_lane.py."""
+import os
+from concurrent.futures import ThreadPoolExecutor, wait
+
+from .. import read_methods, time_budget
+from ..ai import slots
+
+NOT_HERE = ('EURES',)   # read from second 0 by its own early read (eures.start_early); the found boards: boards_ahead.NAME
+
+
+class Lane:
+    """The started reads: name -> future of the jobs as listed."""
+
+    def __init__(self, reads, pool):
+        self.reads, self._pool = reads, pool
+
+    def take(self, name, until):
+        """The jobs `name` listed, once its read ended; None while it is still reading at `until` (time.monotonic(), the read cut; None:
+        wait for it). Raises the read's own error."""
+        future = self.reads[name]
+        wait([future], timeout=None if until is None else max(0.0, until - time_budget.now()))
+        if not future.done():
+            return None
+        return future.result()
+
+    def close(self):
+        """No new read starts; one still reading is not waited for (the process's end bounds it, src/run_exit.py)."""
+        self._pool.shutdown(wait=False, cancel_futures=True)
+
+
+def start(db, search, now=None, readers=None):
+    """A Lane reading every due free API now, or None when nothing is due (the fixture mode reads no live site, as aggregators.scan).
+    readers: [(name, read)] in the table's order (default: aggregators.sources())."""
+    from . import aggregators, boards_ahead
+    if readers is None and os.getenv('JOBADABRA_FIXTURE_DIR'):
+        return None
+    now = now or time_budget.wall()
+    db.execute(aggregators.TABLE)
+    due = [(name, read) for name, read in (readers if readers is not None else aggregators.sources())
+           if name not in NOT_HERE and name != boards_ahead.NAME and not aggregators.read_lately(db, name, now, search)]
+    if not due:
+        return None
+    pool = ThreadPoolExecutor(max_workers=len(due), thread_name_prefix='free-api')
+    return Lane({name: pool.submit(slots.carry(_read), name, read, search) for name, read in due}, pool)
+
+
+def _read(name, read, search):
+    """One API's jobs as listed, counted as a feed read (src/read_methods.py)."""
+    with read_methods.reading(name, 'feed_api') as counted:
+        found = read(search)
+        counted.jobs = read_methods.in_places(found)
+    return found

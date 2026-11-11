@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from .. import read_methods, time_budget
 from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
-from ..press import resume
+from ..press import resume, stage, step_yield
 
 SPACING_HOURS = 6
 PAGES = 2
@@ -263,11 +263,12 @@ def kept(db, name, found, now=None, shown=None):
     return matched
 
 
-def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=False, shown=None):
+def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=False, shown=None, lane=None):
     """A feeds.scan-style report ({'jobs', 'sources'}) from the aggregators that are due; your roles and places only, source named on each job.
     on_jobs(jobs): each reader's jobs as soon as it is read (owner, 18 Oct 2026: jobs shown as quickly as possible). ahead: the found boards
     already read beside the employer sites (src/sources/boards_ahead.py), taken instead of read again. early: the first-jobs slice takes `readers` now (TAKEN).
-    shown: {url: item} of the jobs the slice handed early (kept)."""
+    shown: {url: item} of the jobs the slice handed early (kept). lane: the APIs already asked from the press's start (src/sources/api_lane.py),
+    taken here, never asked again; one still reading at the read cut waits for the next search. The lane ends in one said state (step_yield.end)."""
     resume.ran('free job APIs')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     report = {'jobs': [], 'sources': []}
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
@@ -288,22 +289,22 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
             continue
-        # Why (27 Oct 2026, benchmark run 40451692782): the free APIs start after the employers and boards, past the read cut (~72 s), so EURES was queued
-        # ("5 sources wait for the next search") in every persona and gave no local job; it is a few requests with its own time limit, so it reads anyway.
-        if read_budget.past_cut() and name not in CHEAP_PAST_CUT and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
+        # Why (27 Oct 2026, benchmark run 40451692782; lanes 3/5, #3754, 11 Nov 2026): asked after the employers and boards, past the read cut, EURES
+        # was queued in every persona (it reads anyway: a few requests on its own clock) and every other free API gave 0 jobs for 14 of 14 people
+        # (night 42927975750); so the lane asks them at second 0 (api_lane.py) and its reads are taken past the cut; one still reading waits (_Cut).
+        started = lane is not None and name in lane.reads
+        if read_budget.past_cut() and name not in CHEAP_PAST_CUT and not started and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
             late.append(name)
             continue
-        try:
-            if ahead is not None and name == boards_ahead.NAME:
-                found, matched = ahead.take(db, now)
-            else:
-                if name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
-                    found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
-                else:
-                    with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
-                        found = read(search)
-                        counted.jobs = read_methods.in_places(found)
-                matched = kept(db, name, found, now, shown)
+        with stage.guard('free job APIs: read') as caught:   # Why (lanes 3/5, 11 Nov 2026): any error of one reader is that source failing, never the run (a RuntimeError ended it)
+            try:
+                found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately)
+            except _Cut:   # still reading at the read cut: not marked read, the next search takes it
+                late.append(name)
+                continue
+            except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
+                _source_failed(report, name, error)
+                continue
             if name == 'EURES' and eures.CUT[0]:   # stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
                 late.append(name)
             else:
@@ -314,11 +315,49 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
             report['sources'].append({'company': name, 'ok': True, 'total': len(found), 'matches': len(matched)})
             if early:   # only a read that worked is taken; a failed one is the free-API stage's to try
                 TAKEN[(key, name)] = {'jobs': list(matched), 'sources': list(report['sources'][-1:])}
-        except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
-            _source_failed(report, name, error)
+        if caught:
+            _source_failed(report, name, caught.error)
     if late:
         time_budget.later('free job APIs', len(late), 'sources' if len(late) != 1 else 'source')
+    if not early:
+        step_yield.end('free_job_apis', _said(report, late))   # the lane's own sources only: EURES and the found boards are lanes of their own
     return _done(report)
+
+
+class _Cut(Exception):
+    """A read started from the press's start is still reading at the read cut."""
+
+
+def _one(db, search, name, read, now, shown, ahead, lane, lately):
+    """(jobs listed, jobs kept) of one reader: the found boards read beside the employers taken, a read the lane started taken (raises _Cut
+    while it still reads at the cut), any other read now."""
+    from . import read_budget
+    if ahead is not None and name == boards_ahead.NAME:
+        return ahead.take(db, now)
+    if lane is not None:
+        found = lane.take(name, read_budget.cut_at())
+        if found is None:
+            raise _Cut
+    elif name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
+        found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
+    else:
+        with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
+            found = read(search)
+            counted.jobs = read_methods.in_places(found)
+    return found, kept(db, name, found, now, shown)
+
+
+def _said(report, late):
+    """The free job APIs' lane's one state: cut when one of its sources waits for the next search, failed when every one asked failed, else done."""
+    from . import api_lane
+    own = [row for row in report['sources'] if row.get('company') not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
+    late = [name for name in late if name not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
+    failed = [row for row in own if not row.get('ok')]
+    if late:
+        return stage.Result(stage.CUT, f'{len(late)} wait for the next search')
+    if failed and len(failed) == len(own):
+        return stage.Result(stage.FAILED, failed[0].get('error', '').split(':')[0] or 'failed')
+    return stage.Result(stage.DONE)
 
 
 def ai_errors():
