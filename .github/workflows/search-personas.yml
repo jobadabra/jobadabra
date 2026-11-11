@@ -8,7 +8,7 @@ name: CI · Search check (18 personas)
 # The app and engine keep their Messages contract; codex.mjs sends every call to the existing OIDC broker, including the blind judge. No secret or API fallback.
 # Tools: tools/persona-search/gate.py (cv, result, compare), gate_judge.py (the blind judge), run.mjs (the press). Guard: tests/test_search_personas_gate.py.
 # The Worker starts it once a night (app-core/src/scheduler.js SEARCH_SLOT); a person can start it any time.
-run-name: ${{ inputs.scheduled && inputs.presses == '5' && 'Search check · weekly, 5 runs (Worker cron)' || inputs.scheduled && 'Search check · nightly (Worker cron)' || 'Search check · by hand' }}
+run-name: ${{ inputs.scheduled && inputs.presses == '5' && 'Search check · weekly, 5 runs (Worker cron)' || inputs.scheduled && 'Search check · nightly (Worker cron)' || (inputs.at_once || '1') != '1' && format('Search check · by hand, {0} people at once', inputs.at_once) || 'Search check · by hand' }}
 
 on:
   workflow_dispatch:
@@ -56,6 +56,13 @@ on:
         description: 'Only these personas, a JSON list such as [7] (empty = all 18)'
         type: string
         default: ''
+      # Why (11 Nov 2026, owner to sa: "Why we cannot parallelize runs?" · "Let's increase the AI Broker's slot limit"): a by-hand proof run of 7 people took ~35 min one at a time;
+      # with the broker's 8 slots (web#558; one person used at most 4 at once on 11 Nov) 2-3 people may search side by side, ~12-15 min. The night and its series stay one at a time.
+      at_once:
+        description: 'People searching at once, by hand only (1 = one at a time, as the night; 2-3 share the broker''s 8 slots)'
+        type: choice
+        options: ['1', '2', '3']
+        default: '1'
 
 permissions:
   contents: read
@@ -114,9 +121,9 @@ jobs:
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: ${{ !inputs.scheduled && fromJSON(inputs.at_once || '1') || 1 }}   # the night always 1; a by-hand run, its at_once
       matrix:
-        persona: ${{ fromJSON(inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]') }}   # Why (6 Nov 2026, owner: "6 personas is too narrow and could not tell the full story"; 4 Nov: "Night run, off PRs"; 7 Nov, ps 2/6): a night runs the 18 fixed personas (tools/persona-search/gate-personas.json), each with its own 7-night usual on the Admin tab; still one at a time, so a slow call is the AI's and never another press's queue; a by-hand run may name a subset, to measure one persona's repeat press
+        persona: ${{ fromJSON(inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]') }}   # Why (6 Nov 2026, owner: "6 personas is too narrow and could not tell the full story"; 4 Nov: "Night run, off PRs"; 7 Nov, ps 2/6): a night runs the 18 fixed personas (tools/persona-search/gate-personas.json), each with its own 7-night usual on the Admin tab; the night one at a time, so a slow call is the AI's and never another press's queue; a by-hand run may name a subset, to measure one persona's repeat press
     steps: &persona-steps   # the `again` job runs these same steps (WP5 3/6)
       - name: This run can use the Codex broker
         id: token

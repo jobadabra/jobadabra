@@ -39,7 +39,10 @@ class TheEighteenPersonas(unittest.TestCase):
         matrix = re.search(r"^\s+persona: \$\{\{ fromJSON\(inputs\.personas \|\| '\[([\d, ]+)\]'\) \}\}", WORKFLOW, re.M)
         self.assertIsNotNone(matrix, 'the matrix line was not found')
         self.assertEqual([int(n) for n in matrix.group(1).split(',')], list(range(1, len(gate.PERSONAS) + 1)))
-        self.assertIn('max-parallel: 1', WORKFLOW, 'one press at a time: a slow call is the AI\'s, never another press\'s queue')
+        # Why (11 Nov 2026, owner: "Why we cannot parallelize runs?"): a by-hand run may run 2-3 people at once (at_once); the night (scheduled) stays one at a time
+        self.assertIn("max-parallel: ${{ !inputs.scheduled && fromJSON(inputs.at_once || '1') || 1 }}", WORKFLOW,
+                      'the night: one press at a time, so a slow call is the AI\'s, never another press\'s queue')
+        self.assertRegex(WORKFLOW, r"at_once:\n(?:.*\n){2}\s+options: \['1', '2', '3'\]\n\s+default: '1'", 'a by-hand run is one at a time unless it asks')
         self.assertIn(f'({len(gate.PERSONAS)} personas)', WORKFLOW.splitlines()[0], 'the workflow name says how many')
 
     def test_a_cv_can_be_made_for_each_persona(self):
