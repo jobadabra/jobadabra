@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / '.github' / 'workflows' / 'press-yardstick.yml'
+AUTO = ROOT / '.github' / 'workflows' / 'press-tapes-auto.yml'   # starts on a push to main with the same src lines (11 Nov 2026, auto re-record after a merge)
 CALLERS = ('src/daily.py', 'src/daily_args.py', 'src/daily_modes.py', 'src/daily_search.py')   # the run's entry (desktop/lib/pipeline-args.js `src daily`) and the file that calls the stages in order (stages.py says so): their own edits move the run
 
 
@@ -57,28 +58,29 @@ def entries():
     return ['src/**'] + ([] if found is None else [f'!{file}' for file in every if file not in found])
 
 
-def listed():
-    """The src entries of the workflow's pull_request paths, as written."""
-    text = WORKFLOW.read_text(encoding='utf-8')
-    start = text.index('  pull_request:')
+def listed(workflow=WORKFLOW, trigger='  pull_request:'):
+    """The src entries of the workflow's `trigger` paths, as written."""
+    text = workflow.read_text(encoding='utf-8')
+    start = text.index(trigger)
     block = text[start:text.index('\n  workflow_dispatch:', start)]
     return [found for found in re.findall(r"^\s+- '(!?src/[^']+)'", block, re.M)]
 
 
 def check():
-    """'' when the workflow lists exactly entries(); else what drifted and the line to run."""
-    wanted, have = entries(), listed()
-    missing, extra = [e for e in wanted if e not in have], [e for e in have if e not in wanted]
-    if not missing and not extra:
-        return ''
-    return (f"press-yardstick.yml: its src paths drifted from what the Find jobs run reaches. Missing: {', '.join(missing) or 'none'}. Extra: {', '.join(extra) or 'none'}.\n"
-            'Run: python3 tools/press-yardstick/paths.py and put the lines in its pull_request paths (in place of every src/ entry).')
+    """'' when both workflows list exactly entries(); else what drifted and the line to run."""
+    wanted, out = entries(), []
+    for workflow, trigger in ((WORKFLOW, '  pull_request:'), (AUTO, '  push:')):
+        have = listed(workflow, trigger)
+        missing, extra = [e for e in wanted if e not in have], [e for e in have if e not in wanted]
+        if missing or extra:
+            out.append(f"{workflow.name}: its src paths drifted from what the Find jobs run reaches. Missing: {', '.join(missing) or 'none'}. Extra: {', '.join(extra) or 'none'}.")
+    return '\n'.join(out + ['Run: python3 tools/press-yardstick/paths.py and put the lines in each paths list (in place of every src/ entry).'] if out else [])
 
 
 def main(argv):
     if argv == ['--check']:
         drift = check()
-        print(drift or f'press-yardstick.yml: its src paths are what the Find jobs run reaches ({len(entries()) - 1} files left out)')
+        print(drift or f'press-yardstick.yml and press-tapes-auto.yml: their src paths are what the Find jobs run reaches ({len(entries()) - 1} files left out)')
         return 1 if drift else 0
     if argv:
         print(__doc__, file=sys.stderr)
