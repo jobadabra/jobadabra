@@ -47,8 +47,8 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 
 ## Progress
 - [ ] Sketch and the owner's yes (sketch https://claude.ai/artifact/TdRGmaJvmB8oRbFXhs8zUs; yes 11 Nov 2026)
-- [x] 1/6 LinkedIn cloud probe (app #3784 merged 14f9d37; site jobadabra-web #547; the owner's one read still to do): web PR first, then this repo's night file and the console-called IPC; the one read by the owner
-- [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane: missing in the cloud, said on the card in 6/6)
+- [ ] 1/6 LinkedIn cloud probe (app #3784 merged 14f9d37; site jobadabra-web #547; the owner's one read still to do): web PR first, then this repo's night file and the console-called IPC; the one read by the owner
+- [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane: missing in the cloud, said on the card in 6/6) (proof: desktop/test/unit/main/hosted-hours.test.js)
 - [ ] 3/6 Web search in the cloud (cost shown first)
 - [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each)
 - [ ] 5/6 LinkedIn lane in the cloud (only if the probe says go)
