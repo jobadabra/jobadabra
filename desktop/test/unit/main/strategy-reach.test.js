@@ -28,6 +28,10 @@ test('a rebuild lists "Remote work: Yes → My country" in Search criteria; an o
   assert.ok(forWindow(lines({}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'), 'missing = Yes (an old strategy)');
   assert.ok(forWindow(lines({remote_jobs: ['No']}, {remote_jobs: ['Yes']})).includes('Remote work: No → Yes'));
   assert.deepEqual(lines({remote_jobs: ['Country']}, {remote_jobs: ['Country']}).filter(line => /Remote work/.test(line)), []);
+  // Code review: the engine reads none/never/off/false/non/nein as No (src/sources/feeds.py remote_wanted), and a saved value may be one string.
+  assert.ok(forWindow(lines({remote_jobs: ['none']}, {remote_jobs: ['Country']})).includes('Remote work: No → My country'), 'a saved "none" is No, as the engine reads it');
+  assert.ok(forWindow(lines({remote_jobs: 'No'}, {remote_jobs: ['Yes']})).includes('Remote work: No → Yes'), 'a string value does not break the review');
+  assert.deepEqual(lines({remote_jobs: ['No']}, {remote_jobs: ['None']}).filter(line => /Remote work/.test(line)), [], 'the same word in another spelling is no change');
   assert.deepEqual(lines({remote_jobs: ['Yes']}, {remote_jobs: []}).filter(line => /Remote work/.test(line)), [], 'a draft that says nothing changes nothing');
 });
 
@@ -36,6 +40,8 @@ test('a rebuild takes the draft\'s Remote jobs when Search criteria is accepted 
   assert.deepEqual(accepted.search.remote_jobs, ['Country']);
   const silent = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['No']}), {search: {target_roles: ['nurse'], remote_jobs: []}});
   assert.deepEqual(silent.search.remote_jobs, ['No'], 'an empty answer never wipes the person\'s word');
+  const same = settingsAfter(storageOf({role_keywords: ['nurse'], remote_jobs: ['none']}), {search: {target_roles: ['nurse'], remote_jobs: ['']}});
+  assert.deepEqual(same.search.remote_jobs, ['none'], 'a draft word that is no word keeps theirs');
   const first = settingsAfter(storageOf({role_keywords: []}), {search: {target_roles: ['nurse'], remote_jobs: ['Country']}});
   assert.deepEqual(first.search.remote_jobs, ['Country'], 'nothing chosen yet: the draft decides');
 });

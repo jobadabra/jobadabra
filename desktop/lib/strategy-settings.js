@@ -8,6 +8,7 @@ import * as contactDetails from './contact.js';
 import * as notion from './notion.js';   // Notion-only: the Profile/answers texts and ⚙️ Search settings page when Notion is the store
 import * as notionGate from './notion-gate.js';
 import {withoutNotes} from './config-text.js';
+import {remoteWordOf} from './strategy-rebuild.js';
 import {writePrivate} from './private-file.js';
 import {log as appLog} from './log.js';
 import {dropFragment, editTitles, hasFragment, titlesOf, view as viewRoles, withDerived} from './target-roles.js';
@@ -272,7 +273,7 @@ export function settingsAfter(storage, accepted) {
     const current = JSON.parse(storage.readText('config/search.json') || '{}');
     const google = {...(current.google_jobs || {}), ...accepted.search.google_jobs,
       searches_per_run: current.google_jobs?.searches_per_run ?? 1, min_searches_left: current.google_jobs?.min_searches_left ?? 20};
-    const kept = accepted.search.remote_jobs?.length || !current.remote_jobs?.length ? {} : {remote_jobs: current.remote_jobs};   // Why (retro review of #3687, owner 11 Nov 2026, "Show 'Yes → Country'"): the draft's Remote jobs is a listed line of the review (lib/strategy-rebuild.js remoteChange), so accepting Search criteria takes it; only a draft that said nothing keeps the person's word
+    const kept = remoteWordOf(accepted.search.remote_jobs) || !current.remote_jobs?.length ? {} : {remote_jobs: current.remote_jobs};   // Why (retro review of #3687, owner 11 Nov 2026, "Show 'Yes → Country'"): the draft's Remote jobs is a listed line of the review (lib/strategy-rebuild.js remoteChange), so accepting Search criteria takes it; only a draft that said nothing keeps the person's word
     out.search = withoutNotes(withDerived({...current, ...accepted.search, ...kept, google_jobs: google}));   // the one list of roles gives role_keywords and the searches   // a note is never a setting (lib/config-text.js)
   }
   if (accepted.preferences) {

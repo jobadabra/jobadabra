@@ -75,10 +75,11 @@ function listChanges(label, before = [], after = [], displayKey) {
   return changes;
 }
 const REMOTE_WORDS = {yes: 'remoteYes', no: 'remoteNo', country: 'remoteCountry'};
-/** The word of a saved or drafted "Remote jobs" list: yes | no | country; '' when it says nothing (a draft that did not answer). A saved list with no word is an old strategy: Yes. */
-const remoteWordOf = (list, missing = '') => {
-  const said = (list || []).map(value => String(value).trim().toLowerCase());
-  return said.includes('no') ? 'no' : said.includes('country') ? 'country' : said.includes('yes') ? 'yes' : missing;
+const NO_WORDS = new Set(['no', 'non', 'nein', 'none', 'never', 'off', 'false']);   // the words src/sources/feeds.py remote_wanted reads as No (and renderer/draft-strategy.js): one reading of the saved list
+/** The word of a saved or drafted "Remote jobs" (a list or one string): yes | no | country as the engine reads it; '' when it says nothing (a draft that did not answer). A saved value with no word is an old strategy: `missing`. */
+export const remoteWordOf = (list, missing = '') => {
+  const said = [].concat(list ?? []).map(value => String(value).trim().toLowerCase());
+  return said.some(value => NO_WORDS.has(value)) ? 'no' : said.includes('country') ? 'country' : said.includes('yes') ? 'yes' : missing;
 };
 /** "Remote work: Yes → My country": the draft's Remote jobs against the saved one, one line of Search criteria (retro review of #3687, owner 11 Nov 2026), so ticking the group is the person's yes. */
 function remoteChange(before, after) {
