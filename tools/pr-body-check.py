@@ -58,12 +58,11 @@ def moves_gap(body, changed):
 
 
 def changed_files(base):
-    """The files this PR changes against `base` (from the merge base, so main moving on is not this PR's change), None when git cannot say: then no admission check, a note on stderr."""
+    """The files this PR changes against `base` (from the merge base, so main moving on is not this PR's change), None when git cannot say (the caller refuses)."""
     try:
         start = subprocess.run(['git', 'merge-base', base, 'HEAD'], capture_output=True, text=True, check=True).stdout.strip() or base
         return subprocess.run(['git', 'diff', '--name-only', start, 'HEAD'], capture_output=True, text=True, check=True).stdout.split()
     except (subprocess.CalledProcessError, OSError):
-        print(f'pr-description: could not read the changed files against {base}: the admission line was not checked', file=sys.stderr)
         return None
 
 
@@ -97,8 +96,10 @@ if __name__ == '__main__':
         print('pr-title: ' + gap, file=sys.stderr)
         sys.exit(1)
     if '--base' in sys.argv[1:]:
-        files = changed_files(sys.argv[sys.argv.index('--base') + 1])
-        admission = moves_gap(text, files) if files is not None else None
+        base = (sys.argv[sys.argv.index('--base') + 1:] or [''])[0]
+        files = changed_files(base) if base else None
+        # Why (Gitar on #3704, 11 Nov 2026): the caller asked for the admission check, so no answer from git is a refusal, never a silent pass (a shallow clone, a stale origin/main)
+        admission = moves_gap(text, files) if files is not None else f'could not read the changed files against {base or "(no base given)"}, so the "Moves:" line was not checked: fetch the base and run again'
         if admission:
             print('pr-description: ' + admission, file=sys.stderr)
             sys.exit(1)

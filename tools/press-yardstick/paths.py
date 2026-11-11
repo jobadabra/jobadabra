@@ -41,7 +41,7 @@ def reached():
     affected = _load('affected_tests_for_paths', 'affected-tests.py')
     reach = _load('affected_reach', 'affected_reach.py')
     graph = affected.py_graph()
-    found = set(CALLERS)
+    found = set(CALLERS) | {'src/press/stages.py'}   # Why (Gitar on #3684, 11 Nov 2026): its TABLE decides the roots above, so an edit to it moves the run and this list
     for root in stage_roots():
         files = reach.closure(ROOT / root, graph)
         if files is None:   # an unreadable file reaches everything: so does the yardstick

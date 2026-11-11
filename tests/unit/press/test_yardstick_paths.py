@@ -27,7 +27,7 @@ class YardstickPaths(unittest.TestCase):
     def test_the_files_that_decide_what_is_kept_or_read_start_it(self):
         left_out = {entry[1:] for entry in paths.entries() if entry.startswith('!')}
         for file in ('src/sources/feeds.py', 'src/features.py', 'src/sources/aggregators.py', 'src/geo.py', 'src/places.py', 'src/job_rank.py',
-                     'src/first_jobs.py', 'src/press/clock.py', 'src/daily_search.py'):
+                     'src/first_jobs.py', 'src/press/clock.py', 'src/daily_search.py', 'src/press/stages.py'):
             self.assertNotIn(file, left_out, f'{file} decides what a Find jobs run keeps, reads or scores')
         self.assertIn('src/ai/inbox.py', left_out, 'positive control: the inbox reader is never imported by a Find jobs run')
 
