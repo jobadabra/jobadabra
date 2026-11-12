@@ -43,10 +43,31 @@ def _fail(self, result, message):
         result.addFailure(self, sys.exc_info())
 
 
+# A search run's own caches (src/sources/feeds.py: titles judged, places judged, postings read), filled by any test that runs the search.
+# Why (12 Nov 2026, #3874): test_daily_search_beside left TRIAGED = {}, test_lanes patched it to that same dict, the run marked it asked, and the
+# "restore" put it back mutated: later files' wanted_title said no to every title (12 reds in #3862's python shard, by file order alone).
+RUN_CACHES = ('PLACED', 'READ', 'TRIAGED')
+
+
+def _empty_run_caches():
+    """Every test starts with the run caches empty; -> a function that puts the ones it found back (only when feeds is loaded: no import here)."""
+    feeds = sys.modules.get('src.sources.feeds')
+    if feeds is None:
+        return lambda: None
+    found = {name: getattr(feeds, name, None) for name in RUN_CACHES}
+    for name in RUN_CACHES:
+        setattr(feeds, name, None)
+    return lambda: [setattr(feeds, name, value) for name, value in found.items()]
+
+
 def run_without_a_chosen_store(self, result=None):
     _clear()
     before = _notion()
-    outcome = _run(self, result)
+    put_back = _empty_run_caches()
+    try:
+        outcome = _run(self, result)
+    finally:
+        put_back()
     left, after = _clear(), _notion()
     if after != before:
         _restore(before)
