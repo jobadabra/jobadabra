@@ -8,7 +8,7 @@ import {log as appLog} from './log.js';
 /** Starts the preparation with the app's engine runner (lib/pipeline.js run). -> a promise of true when the engine finished it; a save does not wait for it. */
 export function prepareSearch(storage, run) {
   if (typeof run !== 'function') return Promise.resolve(false);
-  return Promise.resolve().then(() => run(storage, ['src.search_prepared']))
+  return Promise.resolve().then(() => run(storage, ['src.search_prepared', 'prepare']))
     .then(result => { const ok = result?.code === 0; if (!ok) appLog('strategy', 'search not prepared; the next search asks for itself', {code: result?.code ?? null}); return ok; })
     .catch(error => { appLog('strategy', 'search not prepared; the next search asks for itself', {error: error.message}); return false; });
 }

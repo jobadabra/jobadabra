@@ -15,6 +15,7 @@ import sys
 
 WAIT = 60   # seconds a starting search waits for a preparation in flight: about what the same questions take when it asks them itself
 LOCK = 'prepared'
+SEARCHES = ('scheduled', 'run', 'today', 'more')   # the modes src/daily.py sends to search(); logging, kits, scores and insights never wait for a preparation
 
 
 def prepare(out=print):

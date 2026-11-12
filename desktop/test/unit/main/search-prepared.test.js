@@ -8,7 +8,7 @@ function setup(run) {
   const files = {'config/search.json': JSON.stringify({role_keywords: ['example role']}), 'config/preferences.json': '{}'};
   const calls = [];
   const storage = {readText: name => files[name] || '', writeText: (name, text) => { files[name] = text; calls.push(`write:${name}`); }, secret: () => '', settings: () => ({}), saveSettings() {}};
-  const deps = {run: run || (async (_, args) => { calls.push(`run:${args[0]}`); return {code: 0, stdout: ''}; }), ensurePage: async () => '', writePage: async () => {}};
+  const deps = {run: run || (async (_, args) => { calls.push(`run:${args.join(' ')}`); return {code: 0, stdout: ''}; }), ensurePage: async () => '', writePage: async () => {}};
   return {files, calls, storage, deps};
 }
 const settled = () => new Promise(resolve => setImmediate(resolve));
@@ -17,7 +17,7 @@ test('saving the search settings prepares the next search, after the copy is wri
   const t = setup();
   await saveSettings(t.storage, {search: {role_keywords: ['another example role']}}, t.deps);
   await settled();
-  assert.deepEqual(t.calls, ['write:config/search.json', 'run:src.search_prepared']);
+  assert.deepEqual(t.calls, ['write:config/search.json', 'run:src.search_prepared prepare']);
 });
 
 test('a save of the preferences alone prepares nothing: places and roles did not change', async () => {

@@ -20,7 +20,7 @@ test('terms are added to the role keywords and published to the Notion page, aft
   assert.deepEqual(result.added, ['backend', 'distributed systems', 'c++']);
   assert.deepEqual(roles(t.files), ['\\bsre\\b', 'devops', 'backend', 'distributed systems', 'c\\+\\+']);   // regex-safe fragments
   assert.deepEqual(JSON.parse(t.files['config/search.json']).locations, {top_tier: ['zurich']}, 'nothing else changes');
-  assert.deepEqual(t.calls.map(c => c[0] + ':' + c[1]), ['run:sync', 'run:render', 'publish:settings', 'write:config/search.json']);   // read, render from the new settings, write the page, then the copy (owner, 3 Nov 2026: Notion first)
+  assert.deepEqual(t.calls.map(c => c[0] + ':' + c[1]), ['run:sync', 'run:render', 'publish:settings', 'write:config/search.json', 'run:prepare']);   // read, render from the new settings, write the page, then the copy (owner, 3 Nov 2026: Notion first)
 });
 
 test('when Notion refuses, the copy is never written, so the two never disagree', async () => {
@@ -77,7 +77,7 @@ test('an offered place joins the "abroad" places one name per bullet, and the No
   const search = JSON.parse(t.files['config/search.json']);
   assert.deepEqual(search.locations, {top_tier: ['zurich'], abroad: ['\\bireland\\b', '\\bdublin\\b']});
   assert.deepEqual(search.role_keywords, ['\\bsre\\b', 'devops'], 'roles do not change');
-  assert.deepEqual(t.calls.map(c => c[0] + ':' + c[1]), ['run:sync', 'run:render', 'publish:settings', 'write:config/search.json']);
+  assert.deepEqual(t.calls.map(c => c[0] + ':' + c[1]), ['run:sync', 'run:render', 'publish:settings', 'write:config/search.json', 'run:prepare']);
 });
 
 test('a place already there, anything that is not a plain fragment, and an empty offer change nothing', async () => {

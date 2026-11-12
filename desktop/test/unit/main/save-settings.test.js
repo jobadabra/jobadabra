@@ -27,7 +27,7 @@ function setup({notion = true, writeFails = false, renderFails = false} = {}) {
 test('Notion first: the page is rendered from the new settings (the other file as it is now), written, and only then the copy', async () => {
   const t = setup();
   await saveSettings(t.storage, {search: {role_keywords: ['sre', 'devops']}}, t.deps);
-  assert.deepEqual(t.calls, ['run:render', 'page', 'write:config/search.json']);
+  assert.deepEqual(t.calls, ['run:render', 'page', 'write:config/search.json', 'run:prepare']);   // then the next search is prepared, never before the copy (lib/search-prepared.js)
   assert.deepEqual(t.given[0].content, {search: {role_keywords: ['sre', 'devops']}, preferences: {digest_min_score: 50}});
   assert.equal(t.files['config/preferences.json'], '{"digest_min_score":50}', 'a file not given is left alone');
   assert.deepEqual(JSON.parse(t.files['config/search.json']).role_keywords, ['sre', 'devops']);
