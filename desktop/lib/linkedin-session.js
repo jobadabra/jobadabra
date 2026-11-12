@@ -36,7 +36,7 @@ export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {on: true});
+  save(storage, {on: true});   // Why (Gitar on #3914, 12 Nov 2026): a saved copy is no verdict, so `signin` stays: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 
@@ -62,14 +62,43 @@ export function readSession({keychain = realKeychain} = {}) {
 /** Switch off: the Keychain item goes, the ask counters stay. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {on: false, last: undefined, pauseUntil: undefined});   // a new yes starts clean: no old result, no old pause
+  save(storage, {on: false, last: undefined, pauseUntil: undefined, signin: undefined, noticedAt: undefined});   // a new yes starts clean: no old result, no old pause
   return {ok: true};
 }
 
-/** The one writer of a run's result (the step's verdict): {state, jobs, at} kept as `last`; a 429 also keeps `pauseUntil` (an ISO time). Never a cookie. */
-export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
-  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? {pauseUntil: String(pauseUntil)} : {})});
+// Design (#3911, owner, 12 Nov 2026: "Why I don't get any notification or feedback"): "is the person's LinkedIn sign-in working" has ONE owner, settings.linkedinJobs.signin, moved only by a read's
+// verdict (noteRun -> nextSignin). States: ok (Working, or nothing read yet) | needs-you with one reason: missing (no copy kept), signed-out (LinkedIn showed its sign-in page), check (LinkedIn asked for a
+// check), empty (two reads in a row loaded no page). The step line, the notice, the Settings card and ⌘K all read signinView; the extension's copy at a press is no verdict (it feeds the read).
+// Why (12 Nov 2026, #3911, evidence #3710 of 10 Nov): one empty read is not "dead": a working signed-in session also got all searches failed once (the reader could not read the results page), so only a 2nd in a row is Needs you.
+const NEEDS = {'no-session': 'missing', 'signed-out': 'signed-out', check: 'check'};
+const WORKING = {state: 'ok', why: '', empties: 0};
+/** The sign-in state of a stored `signin` (or none). Always the same three keys. */
+export const signinView = storage => ({...WORKING, ...(storage.settings().linkedinJobs?.signin || {})});
+/** Pure: the state after one read's verdict. done -> ok; no-session / signed-out / check -> needs-you; failed -> one more empty, the 2nd is needs-you; anything else (stopped, limited, no-browser) changes nothing. */
+export function nextSignin(prev, verdict) {
+  if (verdict === 'done') return WORKING;
+  if (NEEDS[verdict]) return {state: 'needs-you', why: NEEDS[verdict], empties: 0};
+  if (verdict !== 'failed') return prev;
+  const empties = (prev.empties || 0) + 1;
+  return empties >= 2 ? {state: 'needs-you', why: 'empty', empties} : {...prev, empties};
 }
+
+/**
+ * The one writer of a run's result (the step's verdict): {state, jobs, at} kept as `last`; a 429 also keeps `pauseUntil` (an ISO time); the sign-in state moves by nextSignin. Never a cookie.
+ * -> {event, why}: 'needs-you' (this press ended in Needs you: raise the notice, again at every such press), 'renewed' (Needs you, then a read that worked), or null; always null while the switch is off.
+ */
+export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
+  const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = state(storage).on;
+  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? {pauseUntil: String(pauseUntil)} : {}), ...(live ? {signin: next} : {})});
+  if (!live) return {event: null, why: ''};
+  if (verdict === 'done' && prev.state === 'needs-you') return {event: 'renewed', why: ''};
+  const told = next.state === 'needs-you' && (NEEDS[verdict] || verdict === 'failed');
+  return told ? {event: 'needs-you', why: next.why} : {event: null, why: ''};
+}
+/** When (epoch ms, 0 = never) the last "needs you" notice was raised (lib/linkedin-notice.js: one a day). */
+export const noticedAt = storage => Number(storage.settings().linkedinJobs?.noticedAt) || 0;
+/** Remember when a "needs you" notice was raised (`at` epoch ms), or forget it (`at` 0, after "renewed": the next failure is told at once). Writes only that key; the other linkedinJobs keys stay. */
+export const noteNoticed = (storage, at) => save(storage, {noticedAt: at || undefined});
 /** Epoch ms until which LinkedIn is left alone (a 429 asked us to slow down), or 0. */
 export const pausedUntil = storage => Date.parse(storage.settings().linkedinJobs?.pauseUntil || '') || 0;
 

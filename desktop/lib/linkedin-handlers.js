@@ -19,7 +19,7 @@ export function linkedinRoutes(storage, deps = {}) {
 /** What the window needs: the state, whether the ask is due on this Find jobs press, and whether a session is held (never its value). */
 export function linkedinView(storage, deps = {}) {
   const mine = session.state(storage);
-  return {...mine, ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps)};
+  return {...mine, ask: session.shouldAsk(mine), hasSession: !!session.readSession(deps), signin: session.signinView(storage)};   // signin: the one state (#3911)
 }
 
 /**
@@ -32,7 +32,7 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, signIn
   server.setVisitRoute('/extension/linkedin-session', payload => routes.session(payload));
   server.setVisitRoute('/extension/linkedin-pending', () => routes.pending());
   server.setVisitRoute('/extension/linkedin-refresh', payload => routes.refresh(payload));
-  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, asked: 0, declined: 0, ask: true, hasSession: false, extension: false} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.()}));
+  ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, asked: 0, declined: 0, ask: true, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}} : {...linkedinView(storage, deps), extension: !!server.extensionSeen?.()}));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });
   ipcMain.handle('linkedinJobsConnect', () => (DEMO ? {opened: true} : openPage()));   // the shortcut: the extension's own consent page (browser-handlers.js), where Chrome asks for a permission on a click; no extension = {opened: null}

@@ -125,3 +125,15 @@ test('#2731 the refresh wait is cut by the press\'s deadline, not only by its ow
   assert.deepEqual(outcomes, ['main', 'stopped'], 'the engine ran at once; the wait ended with the deadline');
   assert.ok(Date.now() - started < 5000, 'seconds, not the 70 s cap');
 });
+
+test('the verdict\'s event (#3911) goes to the one notice raiser; no event, a boards-only press or a raiser that throws never changes the search', async () => {
+  const told = [], event = {event: 'needs-you', why: 'signed-out'};
+  const run = (step, record, tell) => withBeside(storage, () => {}, null, async () => ({code: 0}), {step, deadlineMs: 500, record, tell});
+  assert.deepEqual(await run(async () => ({state: 'signed-out', jobs: 0}), () => event, e => told.push(e)), {code: 0});
+  assert.deepEqual(told, [event]);
+  await run(async () => ({state: 'done', jobs: 1}), () => ({event: null, why: ''}), e => told.push(e));
+  assert.equal(told.length, 2, 'the raiser is called with whatever the writer returned: it decides, not this function');
+  assert.deepEqual(await run(async () => ({state: 'off', jobs: 0}), () => { throw new Error('not recorded'); }, () => told.push('off')), {code: 0});
+  assert.equal(told.length, 2, 'a step that is off tells nothing');
+  assert.deepEqual(await run(async () => ({state: 'signed-out', jobs: 0}), () => event, () => { throw new Error('notify broke'); }), {code: 0});
+});

@@ -170,7 +170,7 @@ test('LinkedIn on: a press reads the guest list in the app\'s hidden browser wit
 });
 
 for (const [kind, verdict, words, name] of [
-  ['login', 'signed-out', /sign in again \(Settings → Connections → LinkedIn\)/, 'LinkedIn sends the read to its sign-in page: one search is opened, the read stops and says to sign in again'],
+  ['login', 'signed-out', /sign in again in Chrome \(⌘K → Renew LinkedIn sign-in\)/, 'LinkedIn sends the read to its sign-in page: one search is opened, the read stops and says to sign in again'],
   ['check', 'check', /asked for a check: not answered/, 'LinkedIn shows a check: one search is opened, the read stops, the check is not answered'],
   ['limited', 'limited', /asked us to slow down/, 'LinkedIn answers 429: one search is opened, LinkedIn is left alone for a day and the next press asks it for nothing'],
 ]) {

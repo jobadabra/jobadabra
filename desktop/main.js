@@ -308,7 +308,7 @@ function handlers() {
   registerPortraitHandlers({DEMO, ipcMain, storage});   // lib/portrait-handlers.js
   registerCvBuildHandlers({dialog, getWindow: () => window, ipcMain, printPdf, shell, storage, syncCv});   // lib/cv-build-handlers.js
   registerExperienceHandlers({DEMO, dialog, getWindow: () => window, ipcMain, shell, storage});   // lib/experience-handlers.js
-  registerVisitsHandlers({DEMO, allowanceBlock, here, ipcMain, log, readSites, shell, storage});   // lib/visits-handlers.js
+  registerVisitsHandlers({DEMO, allowanceBlock, here, ipcMain, log, notify, readSites, shell, storage});   // lib/visits-handlers.js
   registerBrowserHandlers({app, BrowserWindow, clipboard, DEMO, HIDDEN, ipcMain, openNotion, shell, showForm, storage});   // lib/browser-handlers.js
 }
 

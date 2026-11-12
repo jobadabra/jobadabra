@@ -28,6 +28,15 @@ export default {
     "other": "🔎 Tu última búsqueda encontró {shown} ofertas nuevas. Abre Jobadabra → Estrategia: flexibiliza un filtro, añade palabras o lugares, conecta fuentes de ofertas y abre sitios a los que solo tú puedes acceder.",
     "many": "🔎 Tu última búsqueda encontró {shown} ofertas nuevas. Abre Jobadabra → Estrategia: flexibiliza un filtro, añade palabras o lugares, conecta fuentes de ofertas y abre sitios a los que solo tú puedes acceder."
   },
+  "linkedinTitleMissing": "Empleos de LinkedIn: no hay sesión guardada",
+  "linkedinTitleSignedOut": "LinkedIn cerró tu sesión",
+  "linkedinTitleCheck": "LinkedIn pide una comprobación",
+  "linkedinTitleEmpty": "No se pudieron leer los empleos de LinkedIn",
+  "linkedinBodyStep": "Abre LinkedIn en Chrome e inicia sesión si te lo pide, deja activa la extensión de Jobadabra y pulsa Buscar empleos.",
+  "linkedinBodyCheck": "Responde tú mismo a la comprobación de LinkedIn en Chrome (Jobadabra nunca lo hace), deja activa la extensión de Jobadabra y pulsa Buscar empleos.",
+  "linkedinBodyEmpty": "Tus dos últimas búsquedas de LinkedIn no cargaron ninguna página. Abre LinkedIn en Chrome e inicia sesión si te lo pide, deja activa la extensión de Jobadabra y pulsa Buscar empleos.",
+  "linkedinRenewedTitle": "Sesión de LinkedIn renovada",
+  "linkedinRenewedBody": "Los empleos de LinkedIn se vuelven a leer en cada búsqueda.",
   "testSubject": "Prueba de Jobadabra",
   "testMessage": "Prueba de Jobadabra: así te avisará Siempre activo de las nuevas ofertas."
 };

@@ -2,6 +2,7 @@
 // searches in the app's own hidden browser. Every state of the spec's table, the copied session leaving the browser on every way out, and the secret
 // never in any output. All seams are fakes: nothing here touches a real browser, Keychain or LinkedIn (no test uses anyone's session).
 import assert from 'node:assert/strict';
+import {messages as linkedinWords} from '../../../i18n/catalogs/pages/linkedin-services.js';
 import {test} from 'node:test';
 import {linkedinStep} from '../../../lib/linkedin-headless.js';
 
@@ -67,7 +68,7 @@ test('on without a copied session: says what to do and starts nothing', async ()
   const r = rig({session: null});
   const result = await linkedinStep(r.args);
   assert.equal(result.state, 'no-session');
-  assert.match(r.lines.join('\n'), /sign in to LinkedIn \(Settings → Connections → LinkedIn\)/i);
+  assert.match(r.lines.join('\n'), new RegExp(`sign in to LinkedIn in Chrome \\(⌘K → ${linkedinWords.en.renewLabel}\\), then press Find jobs`, 'i'));
   assert.equal(r.calls.includes('start'), false);
 });
 
@@ -121,7 +122,7 @@ test('a sign-in page ends the step: no retry, no further search, the session lea
   const result = await linkedinStep(r.args);
   assert.equal(result.state, 'signed-out');
   assert.equal(r.opened.length, 1);
-  assert.match(r.lines.join('\n'), /sign in again \(Settings → Connections → LinkedIn\)/i);
+  assert.match(r.lines.join('\n'), new RegExp(`sign in again in Chrome \\(⌘K → ${linkedinWords.en.renewLabel}\\)`, 'i'));
   assert.equal(cookieCalls(r.calls).length, 2);
 });
 
@@ -263,7 +264,7 @@ test('#2731: a copy that never arrives leaves the held one in use, so an expired
   r.args.refresh = async () => 'late';
   const result = await linkedinStep(r.args);
   assert.equal(result.state, 'signed-out');
-  assert.match(r.lines.join('\n'), /sign in again \(Settings → Connections → LinkedIn\), then press Find jobs/);
+  assert.match(r.lines.join('\n'), new RegExp(`sign in again in Chrome \\(⌘K → ${linkedinWords.en.renewLabel}\\), then press Find jobs`));
 });
 
 test('#2731 (Gitar on #2849) the step hands its own signal to refresh, so Stop and the press\'s deadline end the wait', async () => {

@@ -124,3 +124,56 @@ test('#2731 the refresh copy: replaces the Keychain item while on; Chrome signed
   assert.equal(readSession({keychain: kc}), null, 'signed out in Chrome: the copy goes, the step will say no-session');
   assert.equal(state(settings).on, true, "the switch is the person's, not the refresh's");
 });
+
+// #3911 (owner, 12 Nov 2026: "Why I don't get any notification or feedback"): the ONE owner of "is the person's LinkedIn sign-in working", written only by a read's verdict (noteRun).
+import {nextSignin, signinView} from '../../../lib/linkedin-session.js';
+
+const run = (settings, verdict) => noteRun(settings, {state: verdict, jobs: 0, at: '2026-11-12T18:00:00Z'});
+const on = () => store({linkedinJobs: {on: true}});
+
+test('a dead copy is told once per press: signed-out, missing and check each move Working to Needs you with their reason', () => {
+  for (const [verdict, why] of [['signed-out', 'signed-out'], ['no-session', 'missing'], ['check', 'check']]) {
+    const settings = on();
+    assert.deepEqual(signinView(settings), {state: 'ok', why: '', empties: 0}, 'working before any read');
+    assert.deepEqual(run(settings, verdict), {event: 'needs-you', why});
+    assert.deepEqual(signinView(settings), {state: 'needs-you', why, empties: 0});
+    assert.deepEqual(run(settings, verdict), {event: 'needs-you', why}, 'still dead at the next press: the same notice again');
+  }
+});
+
+test('an empty read is a one-off until it repeats: the 2nd in a row is Needs you (empty), a read that worked in between starts over', () => {
+  const settings = on();
+  assert.deepEqual(run(settings, 'failed'), {event: null, why: ''}, 'one empty read: the step line only (issue #3710: a working session also read nothing once)');
+  assert.deepEqual(run(settings, 'failed'), {event: 'needs-you', why: 'empty'});
+  const again = on();
+  run(again, 'failed'); run(again, 'done'); run(again, 'failed');
+  assert.equal(signinView(again).state, 'ok', 'failed, done, failed is not two in a row');
+  const cut = on();
+  run(cut, 'failed'); run(cut, 'stopped'); run(cut, 'limited'); run(cut, 'no-browser');
+  assert.equal(signinView(cut).empties, 1, 'a stop, a slow-down or a missing browser says nothing about the sign-in');
+  assert.equal(run(cut, 'failed').event, 'needs-you');
+});
+
+test('a read that worked after Needs you is "renewed", once; a read that worked while Working says nothing', () => {
+  const settings = on();
+  assert.deepEqual(run(settings, 'done'), {event: null, why: ''});
+  run(settings, 'signed-out');
+  assert.deepEqual(run(settings, 'done'), {event: 'renewed', why: ''});
+  assert.deepEqual(signinView(settings), {state: 'ok', why: '', empties: 0});
+  assert.equal(run(settings, 'done').event, null);
+});
+
+test('the switch off says nothing; a new yes and Turn off start clean; the state never holds a cookie', () => {
+  const off = store({linkedinJobs: {on: false}});
+  assert.deepEqual(run(off, 'signed-out'), {event: null, why: ''});
+  const settings = on(), kc = keychain();
+  run(settings, 'signed-out');
+  saveSession(settings, good(), {keychain: kc});
+  assert.equal(signinView(settings).state, 'needs-you', 'a saved copy is no verdict (Gitar on #3914): the read after it decides');
+  assert.deepEqual(run(settings, 'done'), {event: 'renewed', why: ''}, 'signing in again (Renew dialog) then a read that works: "renewed" is told');
+  run(settings, 'check');
+  turnOff(settings, {keychain: kc});
+  assert.equal(signinView(settings).state, 'ok');
+  assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false);
+  assert.deepEqual(nextSignin({state: 'ok', why: '', empties: 0}, 'weird-verdict'), {state: 'ok', why: '', empties: 0}, 'an unknown verdict changes nothing');
+});
