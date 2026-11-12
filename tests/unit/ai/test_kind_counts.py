@@ -203,6 +203,14 @@ class CentralCapAndSampleTest(Fixtures):
         line = published_line(2, [], [{'ats': 'lever', 'kind_counts': {'ch': {'software': 3}}}, {'ats': 'lever'}])
         self.assertIn('Kind counts by country on 1 of 2 feeds', line)
 
+    def test_the_run_log_says_how_many_employers_with_open_jobs_have_no_mix(self):
+        # Why (12 Nov 2026, jobadabra-lab #87): the gap itself had no line; only feeds with open jobs and neither kinds nor counts are in it.
+        from src.scout_index import published_line
+        feeds = [{'ats': 'lever', 'fresh': {'jobs': 4}}, {'ats': 'lever', 'fresh': {'jobs': 0}},
+                 {'ats': 'lever', 'fresh': {'jobs': 9}, 'kinds': {'software': 1.0}, 'checked': '2026-11-12'},
+                 {'ats': 'lever', 'fresh': {'jobs': 2}, 'kind_counts': {'ch': {'software': 2}}, 'checked': '2026-11-12'}]
+        self.assertIn('Open jobs, no mix: 1 of 4 feeds', published_line(4, [], feeds))
+
 
 class ScoutUsesTheBrokerTest(unittest.TestCase):
     def test_the_run_cap_is_one_env_value_and_items_past_it_stay_unjudged(self):
