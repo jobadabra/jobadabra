@@ -1,8 +1,10 @@
-"""National employment services (src/sources/national.py): Sweden's and Belgium's public feeds are read for a person with a place in that country, by their place's
-point and radius, from recorded answers (tests/fixtures/sources/platsbanken-stockholm.json, forem-brussels.json: each feed's shape, employers made up), and each is
-one of the free job APIs. No network, no AI."""
+"""National employment services (src/sources/national.py): Sweden's and Belgium's public feeds, and Norway's through our site, are read for a person with a place in
+that country, by their place's point and radius, from recorded answers (tests/fixtures/sources/platsbanken-stockholm.json, forem-brussels.json,
+national-site-oslo.json: each feed's shape, employers and ids made up), and each is one of the free job APIs. Norway's read asks nothing and says nothing
+without our site's yes. No network, no AI."""
 import io
 import json
+import tempfile
 import unittest
 import urllib.error
 import urllib.parse
@@ -11,15 +13,17 @@ from unittest import mock
 
 from src import geo, time_budget
 from src.notion.search_settings import fragment_of
-from src.sources import aggregators, api_lane, national, reader_rows
+from src.sources import aggregators, api_lane, host_pace, national, reader_rows
 
 ROOT = Path(__file__).resolve().parents[3]
 ANSWER = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'platsbanken-stockholm.json').read_text())
 FOREM = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'forem-brussels.json').read_text())
-SWEDEN, BELGIUM = national.SERVICES
-RECORDED = {'Platsbanken': (ANSWER, 'Stockholm'), 'Le Forem': (FOREM, 'Brussels')}   # each service's recorded answer and the place it was asked for: a new row adds its own
+NAV = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'national-site-oslo.json').read_text())
+SWEDEN, BELGIUM, NORWAY = national.SERVICES
+RECORDED = {'Platsbanken': (ANSWER, 'Stockholm'), 'Le Forem': (FOREM, 'Brussels'), 'arbeidsplassen.no': (NAV, 'Oslo')}   # each service's recorded answer and the place it was asked for: a new row adds its own
 MAP = {'stockholm': {'kind': 'city', 'cc': 'SE', 'lat': 59.33, 'lon': 18.07, 'r': 30}, 'sweden': {'kind': 'country', 'cc': 'SE', 'lat': 0, 'lon': 0, 'r': 0},
-       'lyon': {'kind': 'city', 'cc': 'FR', 'lat': 45.76, 'lon': 4.84, 'r': 30}, 'brussels': {'kind': 'city', 'cc': 'BE', 'lat': 50.85, 'lon': 4.35, 'r': 30}}
+       'lyon': {'kind': 'city', 'cc': 'FR', 'lat': 45.76, 'lon': 4.84, 'r': 30}, 'brussels': {'kind': 'city', 'cc': 'BE', 'lat': 50.85, 'lon': 4.35, 'r': 30},
+       'oslo': {'kind': 'city', 'cc': 'NO', 'lat': 59.91, 'lon': 10.75, 'r': 30}, 'norway': {'kind': 'country', 'cc': 'NO', 'lat': 0, 'lon': 0, 'r': 0}}
 
 
 def search(*places, words=('Customer Support Agent',), boards=('kundtjänst',)):
@@ -46,12 +50,13 @@ class Feed:
         return page
 
 
-class NationalTest(unittest.TestCase):
+class Placed(unittest.TestCase):
+    """The map and the place cache answer from MAP; what the read prints is kept in self.out."""
     def setUp(self):
         resolve = mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): MAP[geo.norm(w)] for w in words if geo.norm(w) in MAP})
         resolve.start()
         self.addCleanup(resolve.stop)
-        named = {'SE': 'Sweden', 'BE': 'Belgium', 'FR': 'France'}
+        named = {'SE': 'Sweden', 'BE': 'Belgium', 'FR': 'France', 'NO': 'Norway'}
         known = mock.patch('src.places.countries', lambda search, cache=None, limit=3: list(dict.fromkeys(
             named[MAP[geo.norm(w)]['cc']] for w in search['locations']['top_tier'] if geo.norm(w) in MAP)))   # the place cache's countries, as the search's preparation leaves them
         known.start()
@@ -60,6 +65,8 @@ class NationalTest(unittest.TestCase):
         self.out = quiet.start()
         self.addCleanup(quiet.stop)
 
+
+class NationalTest(Placed):
     def test_a_stockholm_search_lists_swedens_public_ads_near_stockholm(self):
         feed = Feed()
         jobs = national.read(SWEDEN, search('Stockholm'), get=feed)
@@ -133,13 +140,89 @@ class NationalTest(unittest.TestCase):
             self.assertEqual(len(national.read(service, search('Stockholm'))), 4)
             national.read(SWEDEN, search('Stockholm'))
         self.assertEqual((len(through.urls), len(plain.urls) > 0), (2, True), "the service's own fetch, never the plain one; a service without it fetches plainly")
-        self.assertTrue(all(service.get is None for service in national.SERVICES), "Sweden and Belgium are read with the plain public fetch")
+        self.assertEqual((SWEDEN.get, BELGIUM.get), (None, None), "Sweden and Belgium are read with the plain public fetch")
 
     def test_no_page_is_asked_past_the_read_cut_less_its_grace(self):
         feed = Feed()
         with mock.patch('src.sources.read_budget.cut_at', return_value=100.0), mock.patch.object(time_budget, 'now', return_value=100.0):
             self.assertEqual(national.read(SWEDEN, search('Stockholm'), get=feed), [])
         self.assertEqual(feed.urls, [])
+
+
+class Answer(io.BytesIO):
+    """One answer of our site as urlopen gives it: a status and a JSON body."""
+    def __init__(self, status, body=None):
+        super().__init__(json.dumps(body).encode() if body is not None else b'')
+        self.status = status
+
+
+class NorwayThroughOurSiteTest(Placed):
+    """Norway's feed needs a key the app never holds: our site reads it and installs ask the site with their index token (jobadabra-web api/national.js)."""
+    def site(self, *answers, off='', token='index-token'):
+        """Our site for one read: `answers` in turn (an Answer, or an exception raised for that request); each request kept."""
+        sent, left = [], list(answers)
+        def urlopen(request, timeout=None):
+            sent.append(request)
+            answer = left.pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        for target, value in (('src.service.site_off', mock.Mock(return_value=off)), ('src.service.install_id', mock.Mock(return_value='example-install-01')),
+                              ('src.employer_index.index_token', mock.Mock(return_value=token)), ('urllib.request.urlopen', urlopen)):
+            patch = mock.patch(target, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+        folder, now = tempfile.TemporaryDirectory(), [1000.0]   # the pace's own file and clock: never the data folder, never a real wait
+        self.addCleanup(folder.cleanup)
+        for name, value in (('FILE', Path(folder.name) / 'host_pace.json'), ('clock', lambda: now[0]), ('sleep', lambda s: now.__setitem__(0, now[0] + s))):
+            patch = mock.patch.object(host_pace, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+        host_pace.reset()
+        self.addCleanup(host_pace.reset)
+        return sent
+
+    def test_an_oslo_search_lists_navs_ads_from_our_site_near_oslo(self):
+        sent = self.site(Answer(200, NAV), Answer(200, NAV))
+        jobs = national.read(NORWAY, search('Oslo'))
+        self.assertEqual([(asked(r.full_url)['country'], asked(r.full_url)['q'], asked(r.full_url)['lat'], asked(r.full_url)['lon'], asked(r.full_url)['r']) for r in sent],
+                         [('no', 'kundtjänst', '59.91', '10.75', '30'), ('no', 'Customer Support Agent', '59.91', '10.75', '30')], "the place's point and radius, each word once")
+        self.assertTrue(all(r.full_url.startswith('https://www.jobadabra.top/api/index/national?') for r in sent), 'our own site, never NAV with a key')
+        self.assertEqual({(r.get_header('Authorization'), r.get_header('X-install-id')) for r in sent}, {('Bearer index-token', 'example-install-01')}, "the install's index token")
+        self.assertEqual([(j['title'], j['company'], j['location'], j['date_posted']) for j in jobs], [
+            ('Kundeservicemedarbeider', 'Example Service A AS', 'Oslo, Norway', '2026-11-02'), ('Kundesenter, deltid', 'Example Service B AS', 'Bærum, Norway', '2026-11-01'),
+            ('Customer Support Agent', 'Unknown employer', 'Norway', '2026-10-30')], 'a row without a NAV ad id or with an address elsewhere is dropped')
+        self.assertEqual(jobs[0]['url'], 'https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-000000000001', "the ad's own page at NAV")
+
+    def test_the_whole_country_asks_no_point_and_an_odd_total_counts_as_none(self):
+        self.assertNotIn('lat', asked(NORWAY.url('kokk', None, 0)))
+        self.assertEqual(national._norway_rows({'total': '9', 'rows': 'x'}), ([], 0))
+        self.assertEqual(national._norway_rows({'total': 5, 'rows': NAV['rows']})[1], 5)
+
+    def test_off_for_this_install_asks_nothing_more_and_says_nothing(self):
+        refused = urllib.error.HTTPError('https://www.jobadabra.top/api/index/national', 401, 'Unauthorized', {}, None)
+        for case, answers, options in (('a test, smoke or CI run', (), {'off': 'CI'}), ('no token', (), {'token': ''}),
+                                       ("the site's 204: the country off or no key there", (Answer(204),), {}), ('the token refused', (refused,), {})):
+            with self.subTest(case):
+                self.out.truncate(0)
+                sent = self.site(*answers, **options)
+                self.assertEqual(national.read(NORWAY, search('Oslo')), [])
+                self.assertEqual(len(sent), len(answers), 'at most one request, never asked again for the next word or page')
+                self.assertEqual(self.out.getvalue(), '', 'nothing said to the person')
+
+    def test_a_slow_down_is_waited_out_and_an_answer_that_is_no_object_fails_the_read(self):
+        busy = urllib.error.HTTPError('https://www.jobadabra.top/api/index/national', 503, 'Busy', {'Retry-After': '0'}, None)
+        sent = self.site(busy, Answer(200, NAV), Answer(200, NAV))
+        self.assertEqual(len(national.read(NORWAY, search('Oslo'))), 3, 'asked again after the wait the site asked for (src/sources/host_pace.py)')
+        self.assertEqual(len(sent), 3)
+        self.site(Answer(200, None))
+        with self.assertRaises(ValueError):
+            national.read(NORWAY, search('Oslo'))
+
+    def test_a_person_with_no_place_in_norway_never_asks_our_site(self):
+        sent = self.site()
+        self.assertEqual(national.read(NORWAY, search('Stockholm')), [])
+        self.assertEqual(sent, [])
 
 
 class InTheFreeApisTest(unittest.TestCase):

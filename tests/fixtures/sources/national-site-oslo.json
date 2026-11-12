@@ -1,0 +1,7 @@
+{"ok": true, "total": 5, "rows": [
+ {"id": "00000000-0000-4000-8000-000000000001", "title": "Kundeservicemedarbeider", "employer": "Example Service A AS", "place": "Oslo", "date": "2026-11-02", "url": "https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-000000000001"},
+ {"id": "00000000-0000-4000-8000-000000000002", "title": "Kundesenter, deltid", "employer": "Example Service B AS", "place": "Bærum", "date": "2026-11-01", "url": "https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-000000000002"},
+ {"id": "00000000-0000-4000-8000-000000000003", "title": "Customer Support Agent", "employer": "", "place": "", "date": "2026-10-30", "url": "https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-000000000003"},
+ {"id": "not-an-ad-id", "title": "Kundeservice", "employer": "Example Service C AS", "place": "Oslo", "date": "2026-10-29", "url": "https://arbeidsplassen.nav.no/stillinger/stilling/not-an-ad-id"},
+ {"id": "00000000-0000-4000-8000-000000000005", "title": "Kundeservice", "employer": "Example Service D AS", "place": "Oslo", "date": "2026-10-28", "url": "https://example.test/elsewhere"}
+]}
