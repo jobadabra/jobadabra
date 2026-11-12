@@ -75,6 +75,7 @@ function stepOn(each, browser, {kill = null} = {}) {
     searches: async () => [{name: 'LinkedIn: stand-in', url: 'https://www.linkedin.com/jobs/search/?keywords=stand-in'}],
     run: async () => {
       await browser.send('Storage.setCookies', {cookies: SITE_SETS()});
+      // TODO(AI): this wait and the one in the kill test below poll Chrome's ~30 s cookie batch write under a 60 s cap, the class #3888 fixed for the sweep test; fix the same way if one goes red (#3888)
       await until(() => rowsOnDisk(each.storage.path(READ_FOLDER)).filter(row => /^li_at@/.test(row)).length >= 4, 'the session reached the read profile on disk during the read', 60000);   // positive control
       if (kill) await kill();
       return [{jobs: 3, ok: true, pages: 1, answered: true}];   // as runAll returns a read the extension answered with a page read (ok, pages: #3710)
@@ -130,10 +131,22 @@ test('the start-up sweep removes the LinkedIn rows an earlier version left in th
     const cdp = await openCdpSession(webSocketDebuggerUrl);
     await cdp.send('Storage.setCookies', {cookies: [...SITE_SETS(), {name: 'li_at', value: FAKE.li_at, domain: '.linkedin.com', path: '/', secure: true, expires: YEAR()},
       {name: 'session', value: 'kept', domain: '.boards.example', path: '/', secure: true, expires: YEAR()}]});
-    await until(() => rowsOnDisk(each.appHome).length >= 7 && rowsOnDisk(each.appHome, "host_key = '.boards.example'").length === 1, 'the cookies reached the kept profile on disk', 60000);
+    // Why (12 Nov 2026, #3888): #3886's red (run 43223438625, the Integration `extension` job; last green run 43222335339 on #3884; no change in desktop/lib, desktop/integration,
+    // desktop/e2e/lib or extension between their heads): "never happened: the cookies reached the kept profile on disk" after 60 s. The old wait polled the Cookies file for Chrome's own
+    // batch write (a timer of about 30 s that CDP cannot observe or trigger), so a loaded runner read a file Chrome had not written yet. Now the test waits for states it can see: the
+    // browser reports it holds the cookies, a graceful Browser.close, the process's exit, then one read of the file. That a quitting Chrome writes its pending cookies first was measured
+    // on the Mac only (7 rows on disk 0.9 s after the close); on Linux CI it is proven by this test's own runs, not yet measured. The rows before the quit are logged as evidence, never
+    // asserted: on a loaded runner the 30 s timer may already have fired, and asserting "not yet written" would bring the flake back.
+    const held = await until(async () => { const {cookies} = await cdp.send('Storage.getCookies'); return cookies.length >= 7 && cookies.some(cookie => cookie.domain === '.boards.example') && cookies; }, 'the browser reports the cookies it was given');
+    assert.ok(held.length >= 7, 'positive control: the browser holds the LinkedIn cookies and the other site\'s sign-in');
+    // Why: a quitting browser may drop the socket before it answers Browser.close; the exit wait below is the check (as lib/background-browser.js close()).
+    console.log(`before the quit: ${rowsOnDisk(each.appHome).length} LinkedIn rows on disk`);   // evidence for a later red
+    void cdp.send('Browser.close').catch(error => console.log(`Browser.close: ${error.message}`));
+    await until(() => child.exitCode !== null || child.signalCode !== null, 'the browser quit after Browser.close', 30000);   // a hang guard: the quit took 0.9 s measured
     await cdp.detach();
-    killGroup(child);
+    killGroup(child);   // its helper processes, if any outlived it
     await each.close();
+    assert.ok(rowsOnDisk(each.appHome).length >= 7 && rowsOnDisk(each.appHome, "host_key = '.boards.example'").length === 1, `the quit browser wrote the cookies to the kept profile: ${JSON.stringify(rowsOnDisk(each.appHome))}`);
     at('the next app start');
     const opened = [];
     const swept = await sweepLinkedinLeftovers(each.storage, {openDb: file => {
