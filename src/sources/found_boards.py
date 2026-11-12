@@ -422,8 +422,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
     feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
-    # Why (#3892, 12 Nov 2026): kept in the list's order, a slow first board held the others' titles and places past the AI's time;
-    # the boards named meanwhile (feeders) join this same loop as they start, never a second read
+    # Why (#3892, 12 Nov 2026): boards are kept as they end (in the list's order a slow first board held the others' titles and places
+    # past the AI's time); the boards named meanwhile (feeders) join this same loop as they start, never a second read
     for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
