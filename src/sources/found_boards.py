@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_employers, board_owed, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_form_read, board_terms, board_employers, board_owed, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -41,9 +41,8 @@ REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 
 _early = {}               # {host: (monotonic time, {url: page})}: the pages this search's first-jobs slice fetched
 
 
-def _terms(search, limit=MAX_SEARCHES):
-    from ..notion.search_settings import terms
-    return (terms(search.get('jobs_board_search_queries')) or terms(search.get('role_keywords')))[:limit]
+def _terms(search, limit=MAX_SEARCHES, early=False):
+    return board_terms.terms(search, limit, early)   # own words and the AI's local-language ones (src/sources/board_terms.py)
 
 
 def _places(search):
@@ -75,7 +74,7 @@ def _read(board, search, fetch, route, early, show=None):
     except board_routes.Stop as stop:
         return [], board_yield.refused(stop.__cause__), None
     seen, idle = set(), 0
-    terms = _terms(search, MAX_SEARCHES if early else FULL_SEARCHES)
+    terms = _terms(search, MAX_SEARCHES if early else FULL_SEARCHES, early)
     for number, term in enumerate(terms if '{role}' in board['search_url'] else terms[:1]):   # a category page is the same page for every word
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
@@ -188,7 +187,11 @@ def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=N
     (26 Oct 2026, a proof run: a board with 3 relevant jobs read its section from 99 s to 190 s)."""
     entry['few_for'] = f'{proposed}|{LADDER}'
     fetch, show = _until_cut(fetch), show and _until_cut(show)
-    listed, section, scripted = _section(board, board_forms.home(board, fetch), search, fetch, judge, show)
+    page = board_forms.home(board, fetch)
+    made = board_form_read.through_forms(board, entry, search, fetch, judge, show, read_board, board_forms.home_templates(board, fetch, page), len(before[2]), [], read_budget.past_cut)
+    if made and made is not board_form_read.CUT:   # its own search form gives more relevant jobs than the list that gave few
+        return made
+    listed, section, scripted = _section(board, page, search, fetch, judge, show)
     more = judge(listed) if listed else []
     if len(more) <= len(before[2]):
         return before
@@ -256,20 +259,11 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
             page = (page[0], show(page[0]))
         except Exception:  # noqa: BLE001 — refused or no browser: the plain home page stands
             pass
-    for template in board_forms.home_templates(board, fetch, page):
-        if cut():
-            return stands(before)
-        with stage.guard('found boards: form link') as caught:
-            again, state, _ = read_board({**board, 'search_url': template}, search, fetch, None, show=show)
-        if caught:   # a form link that fails: the next one, or the proposed link's result
-            continue
-        relevant = judge(again) if again else []
-        if state == 'browser':
-            refused.append(template)
-        if relevant:
-            entry['form_url'] = entry['search_url'] = template
-            print(f"Job boards found: {board['name']} read through its own search form", flush=True)
-            return again, state, relevant
+    made = board_form_read.through_forms(board, entry, search, fetch, judge, show, read_board, board_forms.home_templates(board, fetch, page), 0, refused, cut)
+    if made is board_form_read.CUT:
+        return stands(before)
+    if made:
+        return made
     if cut():
         return stands(before)
     listed, section, scripted = _section(board, page, search, fetch, judge, show)   # the board's own section for this kind of work (board_sections.py)
