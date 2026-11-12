@@ -1,4 +1,4 @@
-"""The central scout's publish path end to end with every network piece replaced (seconds, no CI run): the checks, the board pass, the publish.
+"""The central scout's publish path end to end with every network piece replaced (seconds, no CI run): the checks, the publish, and the board pass's own job.
 Why: 24 Oct 2026 the board pass was merged without ever running its path; CI showed it silently skipped (the checks used all the time) and a first fix
 used a name before its import. This drives scout.main's --publish-index branch, so both would have failed here. Skill: check-central-scout-locally."""
 import contextlib
@@ -62,19 +62,30 @@ class PublishPathTest(unittest.TestCase):
         self.assertEqual(len(at_the_leave), 1, 'the run reached the leave')
         self.assertIn('AI calls by topic: geo 3', at_the_leave[0])
 
-    def test_the_run_reaches_the_publish_and_gives_the_board_pass_its_time(self):
-        calls = []
-        seen = self.run_main(lambda db, **kwargs: calls.append(kwargs) or [])
-        self.assertEqual(len(calls), 1, 'the board pass ran once')
-        self.assertLessEqual(seen['check_deadline'], calls[0]['until'] - scout_boards.RESERVE_S + 1,
-                             'the feed checks end RESERVE_S before the pass must have started')
+    def test_the_run_publishes_the_kept_board_facts_and_never_runs_the_board_pass(self):
+        """Why (12 Nov 2026, owner: "own job"): run last inside this run, the pass found the run's AI calls spent by the passes before it (lab France run,
+        "its AI calls: 1 of 24", then every call refused at the relay's cap). The board pass is its own job; this run only publishes what it kept."""
+        db_facts = [{'host': 'a.example', 'url': 'https://a.example/q={role}', 'country': 'md', 'families': ['sales_retail'], 'local_jobs': 4}]
+        with mock.patch.object(scout_boards, 'facts', lambda db: db_facts):
+            seen = self.run_main(lambda db, **kwargs: self.fail('the scout run ran the board pass'))
+        self.assertEqual(seen['board_facts'], db_facts, 'the facts the board pass job kept go out with the index')
+        self.assertGreater(seen['check_deadline'], scout_overrun.publish_deadline(time.monotonic()) - 5, 'the feed checks keep the time up to the publish: no reserve for a pass')
+
+    def test_the_board_pass_job_runs_the_pass_alone(self):
+        calls, flags = [], []
+        build = mock.patch.object(scout, 'build_index', lambda *a, **k: flags.append('feeds') or ([], []))
+        with build, mock.patch.dict(os.environ, {'SCOUT_BOARD_COUNTRY': 'Moldova'}), mock.patch.object(scout_boards, 'run', lambda db, **kwargs: calls.append(kwargs) or []), \
+                tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--board-pass', '--db', str(Path(tmp) / 'jobs.sqlite')]):
+            self.addCleanup(setattr, scout_core, 'CENTRAL', scout_core.CENTRAL)
+            self.assertEqual(scout.main(), 0)
+            self.assertTrue(scout_core.CENTRAL, "the pass asks the AI as the central scout, on the cap its job's relay sets")
+        self.assertEqual((calls, flags), ([{'named': 'md'}], []), 'the pass ran once, for the country named by hand, and no feed was checked')
 
     def test_a_trial_run_does_everything_but_upload_the_index(self):
         """Why (sk, 11 Nov 2026): a by-hand trial of an unmerged branch (lab central-scout.yml engine_ref) reads the live index and must never write it. Guard: data."""
-        calls, out = [], io.StringIO()
+        out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            trial_seen = self.run_main(lambda db, **kwargs: calls.append(kwargs) or [], flags=['--no-upload'])
-        self.assertEqual(len(calls), 1, 'the board pass ran as in a real run')
+            trial_seen = self.run_main(lambda db, **kwargs: [], flags=['--no-upload'])
         self.assertIn('check_deadline', trial_seen, 'the feeds were checked as in a real run')
         self.assertNotIn('board_facts', trial_seen, 'publish_index was never called')
         self.assertIn('nothing was uploaded', out.getvalue())

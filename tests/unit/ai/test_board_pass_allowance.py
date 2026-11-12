@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import scout_boards, scout_cells
+from src import scout_boards, scout_cells, scout_google_boards
 from src.ai import decide
 from src.sources import careers
 
@@ -118,6 +118,57 @@ class BoardPassAllowance(unittest.TestCase):
         self.assertTrue(leftover_done.is_set())
         self.assertEqual([(fact['host'], fact['families']) for fact in got], [('a.md', ['retail_sales'])], out)
         self.assertIn(f'its AI calls: 1 of {scout_boards.PASS_CALLS}', out[-1], "the line counts the pass's own calls only: the next run shows who spent them")
+
+    def test_its_own_job_behind_a_relay_capped_at_job_calls_keeps_every_board(self):
+        """Owner, 12 Nov 2026: "own job". Lab France run 43149389454: the pass ran last in the scout's run, the relay had counted 281 calls of the passes
+        before it, and refused every call of the pass ("its AI calls: 1 of 24"): boards with local jobs were not kept. Its own job's relay counts every
+        model call from zero and refuses past JOB_CALLS; with each step at its own brake (Google's judge past its 15, places, a board's country, kinds of
+        work), the pass stays inside the cap and keeps every board. Example names only."""
+        relay = {'calls': 0, 'refused': 0}
+
+        class Refused(Exception):
+            status_code = 429
+
+        class Client:
+            from types import SimpleNamespace as N
+
+            def __init__(self):
+                self.messages = self.N(create=self.create)
+
+            def create(self, **kw):
+                if relay['calls'] >= scout_boards.JOB_CALLS:   # the relay's cap (desktop/e2e/lib/broker-relay-serve.mjs)
+                    relay['refused'] += 1
+                    raise Refused("AI limit reached: this run's cap is used")
+                relay['calls'] += 1
+                text = kw['messages'][0]['content']
+                answers = [a.strip() for a in text.split('Allowed answers: ', 1)[1].split('\n', 1)[0].split(',')]
+                pick = next((a for a in ('this country', 'field board', 'md', 'Moldova') if a in answers), next(a for a in answers if a != 'none'))
+                return self.N(stop_reason='end_turn', usage=None, content=[self.N(type='text', text=json.dumps(
+                    {'results': [{'index': i, 'answer': pick} for i in range(text.count('### Item'))]}))])
+
+        def ideas(search):
+            relay['calls'] += 1   # the board ideas: one call for one country
+            return [board(f'b{n}.example') for n in range(scout_boards.MAX_BOARDS)]
+
+        def google(db, country, kinds, out):   # more sites than the judge's allowance: the ones past it wait, unasked
+            for n in range(scout_google_boards.MAX_JUDGED + 5):
+                decide.one('job site kind for a field', f'site{n}.example', 'a job site', ('field board', 'job board', 'one employer', 'other'), 'task',
+                           allowance=scout_google_boards.MAX_JUDGED)
+            return []
+
+        def read(item, *a):   # half the boards name a town of their own, half name no place (the AI then names the board's country)
+            n = int(item['host'][1:].split('.')[0])
+            place = f'Town {n}' if n % 2 else ''
+            return [{'title': f'Role {n} {k}', 'location': place, 'url': f'https://{item["host"]}/{k}'} for k in range(4)], 'ok', None
+        out = []
+        with mock.patch('src.ai.engine.ready', return_value=True), mock.patch('src.ai.engine.client', lambda **kw: Client()), \
+                mock.patch('src.ai.meanings_pack.first', return_value=None), mock.patch('src.ai.meanings_pack.every', return_value=[]), \
+                mock.patch('src.ai.cost.side'), mock.patch.object(decide, 'MODEL', 'fake'), mock.patch('src.sources.careers.get_text', lambda url: '<title>Board</title>'):
+            got = scout_boards.run(self.db, ideas=ideas, read_board=read, out=out.append, google=google)
+        self.assertEqual(relay['refused'], 0, out)
+        self.assertLessEqual(relay['calls'], scout_boards.JOB_CALLS)
+        self.assertEqual(len(got), scout_boards.MAX_BOARDS, out)
+        self.assertIn(f'of {scout_boards.JOB_CALLS} in all', out[-1])
 
     def test_a_board_with_local_jobs_but_no_kinds_of_work_says_so(self):
         jobs = [{'title': 'Vânzător', 'location': 'Chișinău', 'url': f'https://x/{n}'} for n in range(4)]

@@ -4,21 +4,26 @@ which boards the AI happened to name, because the shared-board facts need instal
 (board_ideas), the engine reads each by rules only (no AI page reader: the owner chose "rules only" on 24 Oct 2026), the jobs whose place is in that country
 are counted, and a board with MIN_LOCAL of them is kept as a fact. The index publish sends the facts (site: api/employers.js board_facts), where they are
 served as the same board fact installs share. Never worldwide remote: only a job whose place names the country counts.
-Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/unit/sources/test_scout_boards.py."""
+Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/unit/sources/test_scout_boards.py.
+Why (12 Nov 2026, owner: "own job"): the pass ran last inside the scout's run and found the run's AI calls spent by the passes before it (lab France run
+43149389454: "its AI calls: 1 of 24", every later call refused at the relay's cap). It is its own job now (`python -m src scout --board-pass`, jobadabra-lab
+central-scout.yml), behind its own relay with its own cap (JOB_CALLS); the scout's run only publishes the facts kept (facts())."""
 import time
 from datetime import datetime, timedelta, timezone
 
-from . import pool_tags, role_kinds, scout_cells
+from . import pool_tags, role_kinds, scout_cells, scout_google_boards
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
 MAX_BOARDS = 12         # boards read per country and run
 BUDGET_S = 240          # the pass gives up starting new boards after this long
-PASS_CALLS = 2 * MAX_BOARDS   # the board pass's own AI calls a run (places and kinds of work, batched), outside the scout's cap
+PASS_CALLS = 2 * MAX_BOARDS   # the AI calls a run for the boards' places and kinds of work (batched): the pass's own allowance
+IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
+# The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's.
+JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PASS_CALLS
 KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
 RECENT = 4              # countries done lately wait their turn
 PASS = 'central scout board pass'   # the allowance's name
-RESERVE_S = 5 * 60      # the feed checks stop this long before the publish deadline, so the pass (a few minutes) always has its time
 
 
 def ensure(db):
@@ -84,14 +89,11 @@ def measure(board, jobs, country, local=None):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None, google=None, country_of=None):
-    """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
-    from .ai import board_ideas, decide
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None):
+    """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept."""
+    from .ai import board_ideas, cost, decide
     from .sources import careers, found_boards
     ensure(db)
-    if until is not None and clock() >= until:
-        out('Board pass skipped: no time left before the index must be published')
-        return []
     country = next_country(db, named)
     if not country:
         return []
@@ -132,7 +134,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
         out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
-            + f"; its AI calls: {decide.spent(PASS)} of {PASS_CALLS}")   # Why (12 Nov 2026): France's "no kinds of work" could not show who spent the calls
+            + f"; its AI calls: {decide.spent(PASS)} of {PASS_CALLS} for places and kinds, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's "no kinds of work" hid who spent the calls; the total says whether the job's own cap held
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
         out(f'Warning: board pass skipped: {type(error).__name__}: {error}')
