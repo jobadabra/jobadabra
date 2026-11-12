@@ -129,7 +129,7 @@ def row(pid, out):
     return {**result, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
             'first_relevant_s': round((min(seen) - started).total_seconds()) if seen and started else None,
             'boards_read': len(boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards), 'time_ran_out_for': ran_out,
-            'engine': ', '.join(engines) or 'not said', 'judge': ', '.join((judged.get('agreement') or {}).get('ai') or []) or 'not said',
+            'engine': (', '.join(engines) or 'not said') + (' (no renderer)' if (out / 'no-renderer.txt').exists() else ''), 'judge': ', '.join((judged.get('agreement') or {}).get('ai') or []) or 'not said',
             'judge_tier': judged.get('tier', 'small')}
 
 

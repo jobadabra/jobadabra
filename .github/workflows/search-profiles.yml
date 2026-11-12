@@ -125,6 +125,22 @@ jobs:
         if: steps.free.outputs.ok == 'yes'
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
+      # Why (13 Nov 2026, sa from hb's night finding; owner approved the same for the night, asked via AskUserQuestion: "Yes, night reads like the app (Recommended)"): without the engine's
+      # Python renderer careers.renderer() is None, so a job board whose list is built by script reads as "offered as a visit" = 0 jobs, while the app (and the Mac rows) render it. As daily.yml.
+      - name: The engine's headless renderer (script-built job boards, as the app reads them)
+        id: render
+        if: steps.free.outputs.ok == 'yes'
+        continue-on-error: true   # never red: a row without the renderer says so in its engine column
+        run: pip install --quiet -r requirements-render.txt
+      - name: Chromium for the engine's renderer (cached)
+        id: render_browser
+        if: steps.free.outputs.ok == 'yes'
+        continue-on-error: true
+        uses: ./.github/actions/playwright-browser
+        with: {runtime: python, mode: both}
+      - name: A row searched without the renderer is marked
+        if: steps.free.outputs.ok == 'yes' && (steps.render.outcome != 'success' || steps.render_browser.outcome != 'success')
+        run: echo "the engine's renderer did not install" > out/no-renderer.txt
       - name: The profile's fictional CV, then its first Find jobs search (small tier through the Codex relay)
         if: steps.free.outputs.ok == 'yes'
         env:
