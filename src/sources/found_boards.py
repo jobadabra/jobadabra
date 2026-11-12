@@ -307,7 +307,14 @@ def _kept_spares(taken, lock, read_items, keep):
             keep(spare_item, result, read_item)
 
 
-def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None):
+def _hand(turn, found, on_board):
+    """One kept board's jobs: kept at its turn in the list (turn), and handed to on_board(jobs) at once when given and not empty."""
+    turn.extend(found)
+    if on_board is not None and found:
+        on_board(found)
+
+
+def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
     full read, which asks the board in full and serves the pages the slice fetched from them instead of fetching them again. workers: boards
@@ -419,7 +426,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             late_reads.keep('board', board['host'], [answer[0], answer[1], route])
             print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
             run_counts.looked(answer[0])
-            hand(turn, answer[0])
+            _hand(turn, answer[0], on_board)
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
             return wait((found, state))
@@ -444,16 +451,12 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else ' (refuses automated reading: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
-        hand(turn, found)
-
-    def hand(turn, found):
-        turn.extend(found)
-        if on_board is not None and found:
-            on_board(found)
+        _hand(turn, found, on_board)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
     order = {read_item[0]['host']: n for n, read_item in enumerate(reads)}
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
-    # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST for each board's AI calls
+    # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
+    # each board, whose future maps to its item so it is kept as it ends (bj, 12 Nov 2026)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     # Why (bj, 12 Nov 2026): each board kept as it ends, not in the list's order: a slow first board held the others' titles past the AI's time
     for done, (future, result) in enumerate(read_budget.as_done(futures, cut), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
