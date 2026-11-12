@@ -136,16 +136,16 @@ def retry_after(headers):
         return None
 
 
-def answer(url, status, wait=None):
+def answer(url, status, wait=None, burst=True):
     """What the site answered. A slow-down (429, or 503 with a Retry-After) widens its gap; a run of good answers narrows it.
-    True when it was a slow-down."""
+    True when it was a slow-down. burst=False: a 403 is a refusal even right after a fast burst (a source whose owner said any 403 ends it)."""
     slow = status == 429 or (status == 503 and wait is not None)
     key = domain(url)
     with _lock:
         state = _load()
         line = _line(state, key)
         now = clock()
-        if status == 403 and line['gap'] < BURST_GAP and len([t for t in line.get('recent', []) if t > now - BURST_WINDOW]) >= BURST_MIN:
+        if burst and status == 403 and line['gap'] < BURST_GAP and len([t for t in line.get('recent', []) if t > now - BURST_WINDOW]) >= BURST_MIN:
             slow, wait = True, BURST_GAP   # a refusal right after a fast burst: slow down once before it counts
             line['recent'] = []
         line['at'] = now
@@ -163,15 +163,16 @@ def answer(url, status, wait=None):
     return slow
 
 
-def open(request, timeout=15, opener=None):  # noqa: A001 — the readers' urlopen
-    """urllib.request.urlopen at the site's pace: waits its turn, retries a slow-down, raises Busy when the site needs longer."""
+def open(request, timeout=15, opener=None, burst=True):  # noqa: A001 — the readers' urlopen
+    """urllib.request.urlopen at the site's pace: waits its turn, retries a slow-down, raises Busy when the site needs longer.
+    burst=False: a 403 right after a fast burst is raised at once, never asked again (answer)."""
     url = request.full_url if isinstance(request, urllib.request.Request) else str(request)
     for attempt in range(RETRIES + 1):
         turn(url)
         try:
             response = (opener or urllib.request.urlopen)(request, timeout=timeout)
         except urllib.error.HTTPError as error:
-            if not answer(url, error.code, retry_after(error.headers)):
+            if not answer(url, error.code, retry_after(error.headers), burst):
                 raise
             if attempt == RETRIES:
                 raise Busy(url, max(waiting(url), clock())) from error

@@ -175,7 +175,7 @@ def _switzerland_url(word, place, offset):
 
 
 class Refused(OSError):
-    """Job-Room said 401 or 403. Not an HTTPError, so host_pace's burst slow-down (a 403 right after 3 fast requests) never asks a second time."""
+    """Job-Room said 401 or 403: the read fails as "source failed" and the source stays off (_jobroom_refused)."""
 
 
 def _jobroom_refused():
@@ -184,21 +184,16 @@ def _jobroom_refused():
     return DATA / 'jobroom_refused.json'
 
 
-def _jobroom_open(request, timeout):
-    """urllib's urlopen for host_pace, where a 401 or 403 is kept in _jobroom_refused() and raised as Refused, said in one line of the run's log."""
+def _jobroom_refuse(error):
+    """Keep Job-Room's 401 or 403 in _jobroom_refused(), say it in one line of the run's log, and raise it as Refused."""
+    kept = _jobroom_refused()
     try:
-        return urllib.request.urlopen(request, timeout=timeout)
-    except urllib.error.HTTPError as error:
-        if error.code not in (401, 403):
-            raise
-        kept = _jobroom_refused()
-        try:
-            kept.parent.mkdir(parents=True, exist_ok=True)
-            kept.write_text(json.dumps({'status': error.code, 'at': time.strftime('%Y-%m-%d %H:%M:%S')}) + '\n')
-        except OSError:
-            pass   # the read still fails now; the next run asks once more and is refused again
-        print(f'Job-Room: refused ({error.code}); not asked again on this install until permission is asked from SECO and {kept.name} is removed', flush=True)
-        raise Refused(f'Job-Room refused ({error.code})') from error
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        kept.write_text(json.dumps({'status': error.code, 'at': time.strftime('%Y-%m-%d %H:%M:%S')}) + '\n')
+    except OSError:
+        pass   # the read still fails now; the next run asks once more and is refused again
+    print(f'Job-Room: refused ({error.code}); not asked again on this install until permission is asked from SECO and {kept.name} is removed', flush=True)
+    raise Refused(f'Job-Room refused ({error.code})') from error
 
 
 def _jobroom_get(request):
@@ -211,8 +206,13 @@ def _jobroom_get(request):
     from . import host_pace
     if _jobroom_refused().exists():
         return OFF
-    with host_pace.open(request, 20, opener=_jobroom_open) as response:
-        rows, total = json.load(response), response.headers.get('x-total-count')
+    try:
+        with host_pace.open(request, 20, burst=False) as response:
+            rows, total = json.load(response), response.headers.get('x-total-count')
+    except urllib.error.HTTPError as error:
+        if error.code in host_pace.REFUSED:
+            _jobroom_refuse(error)
+        raise
     if not isinstance(rows, list):
         raise ValueError('Job-Room answered something other than a list of ads')
     if str(total).isdigit():
@@ -293,7 +293,8 @@ def read(service, search, get=None, client=None):
                     if answer is OFF:   # Why (12 Nov 2026, sa): a service off for this install reads nothing and says nothing to the person
                         return jobs[:MOST]
                     listed, total = service.rows(answer)
-                    if len(listed) < service.size or (page + 1) * service.size >= total:
+                    # Why (#3920, Gitar): a page whose ads the rows function dropped (another country, no id) is not the last while the total says more follow
+                    if (page + 1) * service.size >= total or (not total and len(listed) < service.size):
                         left.remove(word)
                     for job in listed:
                         if job['url'] not in seen:

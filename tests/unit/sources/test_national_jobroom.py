@@ -120,7 +120,9 @@ class JobRoomTest(Placed):
             if isinstance(answer, Exception):
                 raise answer
             return answer
-        with mock.patch.object(host_pace, 'turn'), mock.patch('urllib.request.urlopen', side_effect=opened):   # no wait between the four: a burst
+        stopped = mock.patch.object(host_pace, 'clock', lambda: 1_800_000_000.0)   # the four within one instant: a burst, as host_pace counts it
+        with stopped, mock.patch.object(host_pace, 'FILE', self.kept.with_name('host_pace.json')), mock.patch.object(host_pace, 'sleep'), \
+                mock.patch('urllib.request.urlopen', side_effect=opened):
             for page in range(3):
                 national._jobroom_get(national._switzerland_url('Lagerist', None, page * national.PAGE))
             with self.assertRaises(national.Refused):
@@ -131,6 +133,17 @@ class JobRoomTest(Placed):
             self.assertEqual(national.read(JOBROOM, search('Zurich')), [])
         self.assertEqual(len(sent), 4)
         self.assertIn('refused (403)', self.out.getvalue())
+
+    def test_a_full_page_with_an_ad_abroad_dropped_still_asks_the_next_page(self):   # #3920, Gitar: near a border a radius returns foreign ads
+        abroad = json.loads(json.dumps(RECORDED['rows'][0]))
+        abroad['jobAdvertisement']['jobContent']['location']['countryIsoCode'] = 'DE'
+        full = {'rows': [abroad] + [RECORDED['rows'][0]] * (national.PAGE - 1), 'total': 150}
+        feed = Feed(full, {'rows': [], 'total': 150}, {'rows': [], 'total': 0})
+        with mock.patch.object(national, 'PAGES', 2):
+            national.read(JOBROOM, search('Zurich'), get=feed)
+        self.assertEqual([(json.loads(r.data)['keywords'], urllib.parse.parse_qs(urllib.parse.urlsplit(r.full_url).query)['page']) for r in feed.sent][:2],
+                         [(['kundtjänst'], ['0']), (['Customer Support Agent'], ['0'])])
+        self.assertIn((['kundtjänst'], ['1']), [(json.loads(r.data)['keywords'], urllib.parse.parse_qs(urllib.parse.urlsplit(r.full_url).query)['page']) for r in feed.sent])
 
     def test_with_no_total_header_a_full_page_asks_the_next_and_a_short_one_is_the_last(self):   # #3920, Gitar
         full = [RECORDED['rows'][0]] * national.PAGE
