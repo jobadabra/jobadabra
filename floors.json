@@ -276,6 +276,577 @@
     "run": "42927975750",
     "sha": "c94a5aaa1eb1543e775a4dd6dfab5da10681b3a0"
    }
+  },
+  "03683086fe4a|codex,claude|eures-off|runs-2": {
+   "people": {
+    "1": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        180
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        1
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "2": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        180
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        16
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "3": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        34
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "4": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        12
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        60
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        9
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "5": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        2
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        20
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        16
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "6": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        4
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        23
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        2
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "7": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        7
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        92
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        16
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "8": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        180
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "10": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        137
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        19
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        46
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "11": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        14
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        22
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        7
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "12": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        5
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        23
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        17
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "13": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        12
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        103
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        19
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "14": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        32
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "15": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        11
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        23
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "16": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        180
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        1
+       ]
+      ],
+      "below": 0
+     }
+    },
+    "18": {
+     "right": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        1
+       ]
+      ],
+      "below": 0
+     },
+     "first_s": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        38
+       ]
+      ],
+      "below": 0
+     },
+     "new_on_2": {
+      "floor": null,
+      "since": null,
+      "levels": [
+       [
+        "2026-11-12",
+        0
+       ]
+      ],
+      "below": 0
+     }
+    }
+   },
+   "last_green": {
+    "run": "43124127967",
+    "sha": "3d39c97f89c581ed2ef41830b20e64b83b7e6737"
+   }
   }
+ },
+ "lost": {
+  "open": []
  }
 }
