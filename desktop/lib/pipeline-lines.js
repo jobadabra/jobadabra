@@ -4,6 +4,7 @@
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {readable} from './pipeline-env.js';
 import {CRASH_LINE} from './crash-line.js';
+import {MACHINE_LINE} from '../renderer/run-lines.js';
 
 // How long a run was silent, for the watchdog's message: minutes for a real run, seconds when the journey shortens the limit.
 export const quietText = ms => (ms < 90 * 1000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60000)} min`);
@@ -48,7 +49,8 @@ export function taskSummary(kind, log) {
 // A line of the engine's output that says what it is doing now (the banner's and the activity's step): not an indented line, a warning, a long line, or the traceback
 // and exception line of a crash (its row is still being closed while those print, and the run shows as running until then), or a Claude Code timing line
 // (7 Oct 2026: "Claude Code haiku: answered in 146 s…" stood as the search's step for 10 min while it sorted job titles).
-export const isProgressStep = line => !/^\s|^Warning|^Cronjob run logged|^Claude Code \S+: answered in /.test(line) && line.length < 120 && !CRASH_LINE.test(line);
+// A machine line (run-lines.js MACHINE_LINE: "Run counts: looked=…") is not one either: the step stays the last readable one (#3923, 12 Nov 2026).
+export const isProgressStep = line => !/^\s|^Warning|^Cronjob run logged|^Claude Code \S+: answered in /.test(line) && line.length < 120 && !CRASH_LINE.test(line) && !MACHINE_LINE.test(line);
 
 // STATUS_LINE and keepRunLine: shared with the window's own live log (renderer/run-lines.js).
 export {STATUS_LINE, keepRunLine} from '../renderer/run-lines.js';

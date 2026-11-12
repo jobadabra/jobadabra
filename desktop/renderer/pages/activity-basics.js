@@ -28,6 +28,7 @@ import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard
 import {storeName} from '../store-words.js';
 import {WORDS} from '../run-result-card.js';
 import {runCommand} from './actions.js';
+import {MACHINE_LINE} from '../run-lines.js';
 
 // ---------- runs ----------
 export const clockTime = iso => displayDate(new Date(iso), {weekday: 'short', hour: '2-digit', minute: '2-digit'});
@@ -60,12 +61,14 @@ export const PHASES = [
 // A running task's step as words, wherever it is shown (Actions banner and summary, header, bottom bar): a known phrase, else the engine's line
 // without its technical tail (7 Oct 2026: "Scored 60 of 60 job(s) with claude-sonnet-5-5; 0 failed; tokens in 120 (+173594 cached), out 22743").
 export function stepWords(step = '') {
+  if (MACHINE_LINE.test(step)) return '';   // Why (#3923, 12 Nov 2026): never the engine's number lines raw; the caller says "starting" or keeps its last step
   return searchPhase(step) || String(step).split(';')[0].replace(/\s+with claude-[\w.-]+/g, '').replace(/\s*\(\+?[\d,]+ cached\)/g, '').trim();
 }
 // A "⏳ <step>: N of M …" counter line as its words, or '' (the app's own "⏳ Still running" heartbeat is not a counter).
 export const liveCount = (line = '') => (/^⏳\s*(?!Still running)(.+: \d[\d,]* of \d[\d,]*.*)$/.exec(line) || [])[1] || '';
 // A search's current log line as a short phrase for the header and the bottom bar (the raw line is in the log).
 export function searchPhase(step = '') {
+  if (MACHINE_LINE.test(step)) return '';
   const live = liveCount(step);   // the engine's own counter (src/progress.py): "Reading employer job sites: 120 of 202 · 3,412 jobs listed"
   if (live) return live;
   const phase = PHASES.find(item => item.match.test(step));
