@@ -6,7 +6,9 @@
 // the page's tables and nothing read it back, so it is not opened any more; before that it was filed here (2 Nov 2026) and by tools/e2e_weekly.py (its own classifier).
 import {pathToFileURL} from 'node:url';
 import {telegramText, weekly} from '../lib/e2e-weekly.mjs';
-import {tellOwner} from '../lib/ai-refusal.mjs';
+import {tellOwner as tellOwnerAbout} from '../lib/ai-refusal.mjs';
+
+const tellOwner = (message, options) => tellOwnerAbout(message, {...options, event: 'e2e-weekly'});   // the registry alert the owner switches in Admin → Notifications (jobadabra-web shared/notify-registry.js)
 
 const base = process.env.E2E_INTEL_URL || 'https://www.jobpilotto.top/e2e/data', key = process.env.SELFHEAL_PUBLISH_KEY;
 

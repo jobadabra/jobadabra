@@ -4,6 +4,7 @@
 // Guard: desktop/test/ci-intel-ai-refusal.test.js. The Telegram bot is the CI alerts one when this repo has it, else the Build Log bot (the secrets this repo holds).
 import {causeOf} from '../../../desktop/e2e/lib/ai-failure-words.mjs';
 import {card} from '../../../desktop/e2e/lib/tg-card.mjs';
+import {postTelegram} from '../../../desktop/e2e/lib/telegram-post.mjs';
 
 export class AiRefused extends Error {
   constructor(status, reason) { super(`broker answered ${status}: ${reason}`); this.name = 'AiRefused'; this.status = status; this.reason = reason; this.kind = kindOf(status, reason); }
@@ -51,14 +52,14 @@ export function previousConclusion(workflow, {env = process.env, run}) {
 }
 
 // Never throws: a Telegram failure must not hide the real one. -> {sent} | {skipped: why}
-export async function tellOwner(message, {env = process.env, fetch: doFetch = fetch} = {}) {
-  // A card payload ({text, parse_mode, ...}, desktop/e2e/lib/tg-card.mjs) or a plain string.
-  const payload = typeof message === 'string' ? {text: message, disable_web_page_preview: true} : message;
-  const token = env.CI_ALERTS_TELEGRAM_BOT_TOKEN || env.BUILDLOG_TELEGRAM_TOKEN, chat = env.CI_ALERTS_TELEGRAM_CHAT_ID || env.BUILDLOG_TELEGRAM_CHAT;
-  if (!token || !chat) return {skipped: 'no Telegram bot token / chat in this run'};
+// Why (12 Nov 2026, owner: "Still getting on old telegram bots: CI Alerts, Build Log"): this posted with the old bot only, so no switch could stop it; it goes through the switchboard first (`event`, 'ai-credit' by default;
+// the weekly e2e summary passes its own), and the old bot sends only when the switchboard cannot deliver (lib/telegram-post.mjs, fail-open). A message the owner's switch holds on purpose is told as sent.
+export async function tellOwner(message, {env = process.env, fetch: doFetch = fetch, event = 'ai-credit'} = {}) {
+  const bot = {token: env.CI_ALERTS_TELEGRAM_BOT_TOKEN || env.BUILDLOG_TELEGRAM_TOKEN, chat: env.CI_ALERTS_TELEGRAM_CHAT_ID || env.BUILDLOG_TELEGRAM_CHAT};
   try {
-    const response = await doFetch(`https://api.telegram.org/bot${token}/sendMessage`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({chat_id: chat, ...payload})});
-    return response.ok ? {sent: true} : {skipped: `Telegram answered ${response.status}`};
+    const line = await postTelegram(message, {env, fetcher: doFetch, event, bot});
+    if (/^telegram: (sent|held)/.test(line)) return {sent: true};
+    return {skipped: /not sent/.test(line) ? 'no Telegram bot token / chat in this run' : line.replace(/^telegram: /, 'Telegram ')};
   } catch (error) { return {skipped: `Telegram unreachable (${error.name})`}; }
 }
 

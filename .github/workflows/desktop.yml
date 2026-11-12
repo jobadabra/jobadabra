@@ -122,8 +122,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NIGHTLY: ${{ inputs.nightly }}
-          ALERT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          ALERT_CHAT: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |
           if [ "$NIGHTLY" != true ]; then echo "build=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           # Against the newest release that reached someone (a stable, or a build a platform's gate approved as beta), never a build that failed
