@@ -1,0 +1,174 @@
+name: CI · Search profiles (30, by hand)
+# By hand only: the 30 fictional profiles of the owner's profile round each press Find jobs once on a fresh CI install (the first search, EURES off, Codex through the
+# broker as search-personas.yml does), the same blind judge counts their right jobs, and one table says, per profile: relevant, shown, first relevant at, boards read and
+# with relevant jobs, what ran out of time, the engine and judge, the commit. Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Move it to CI"): the round ran on
+# the owner's Mac and its numbers followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). A new series: never mixed with the Mac rows.
+# Never a night, never sent to Admin, never red, no floors, no reference, no scoreboard.lock change (the 18 locked people and gate.py are only read); the Worker never starts it.
+# Tools: tools/persona-search/profiles.py (ids, free, cv, judge, row, table), search-profiles.json (the 30), run.mjs (the press), gate.py extract, gate_judge.judge (the judge).
+run-name: ${{ format('Search profiles · {0} · {1} at once', inputs.profiles || 'all 30', inputs.at_once || '2') }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: 'Only these profile ids, a JSON list such as ["b02", "c06"] (empty = all 30)'
+        type: string
+        default: ''
+      at_once:
+        description: 'Profiles searching at once (the broker has 8 slots; one person used up to 4 on 11 Nov)'
+        type: choice
+        options: ['1', '2', '3']
+        default: '2'
+
+# Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
+concurrency:
+  group: search-profiles
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CI_AI_PROVIDER: codex
+  E2E_AI_PROVIDER: codex
+  JOBADABRA_CHECK_CHAIN: codex,claude   # the night's AIs (Codex, Claude as its replacement), so a profile row and a night row use the same chain
+
+jobs:
+  room:
+    name: The broker is free and has room
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read   # gh run list: whether the night or a tape is queued or running
+    outputs:
+      profiles: ${{ steps.list.outputs.profiles }}
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - name: The profiles of this run
+        id: list
+        env:
+          PROFILES: ${{ inputs.profiles }}
+        run: python3 tools/persona-search/profiles.py ids "$PROFILES" >> "$GITHUB_OUTPUT"
+      - name: No night or press tape holds the broker, and this run ends before the night (00:00 UTC)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROFILES: ${{ steps.list.outputs.profiles }}
+          AT_ONCE: ${{ inputs.at_once || '2' }}
+        run: python3 tools/persona-search/profiles.py free "$PROFILES" "$AT_ONCE"
+      - name: The broker's by-hand lane has room for every profile (~300 calls each, as search-personas.yml counts a press)
+        env:
+          PROFILES: ${{ steps.list.outputs.profiles }}
+        run: |
+          set -o pipefail
+          calls=$(python3 -c "import json,os; print(len(json.loads(os.environ['PROFILES'])) * 300)")
+          curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py byhand 4 "$calls"
+
+  profile:
+    name: Profile ${{ matrix.profile }}
+    needs: room
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The run token's environment puts these calls on the broker's by-hand lane (jobadabra-web workers/ai-broker/lib/lanes.mjs, web #599). No deployment record.
+    environment:
+      name: search-check-by-hand
+      deployment: false
+    permissions:
+      contents: read
+      actions: read   # the re-check before the press
+      id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(inputs.at_once || '2') }}
+      matrix:
+        profile: ${{ fromJSON(needs.room.outputs.profiles) }}
+    steps:
+      - uses: actions/checkout@v5   # first: a later checkout cleans the folder and would remove out/
+        with: {persist-credentials: false}
+      - name: This run can use the Codex broker
+        id: token
+        run: |
+          mkdir -p out
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+            echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "no trusted GitHub OIDC token for Codex" > out/not-run.txt
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.ok == 'yes'
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
+      - name: Still no night or press tape on the broker (a night may have started while this profile waited)
+        id: free
+        if: steps.token.outputs.ok == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          if python3 tools/persona-search/profiles.py free "[\"$PROFILE\"]" 1 > out/free.txt; then echo "ok=yes" >> "$GITHUB_OUTPUT"; else cp out/free.txt out/not-run.txt; fi
+          cat out/free.txt
+      - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
+        if: steps.free.outputs.ok == 'yes'
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
+      - name: The engine, the app's libraries and a browser
+        if: steps.free.outputs.ok == 'yes'
+        run: |
+          pip install --quiet -r requirements.txt
+          (cd desktop && npm ci && node scripts/stage.mjs --files-only)   # the API engine imports desktop/shared/app-core/ai.js, which stage.mjs generates (#2259)
+          (cd desktop/e2e && (npm ci || npm install))
+      - name: The browser (cached; a stalled mirror is cut and retried)
+        if: steps.free.outputs.ok == 'yes'
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: The profile's fictional CV, then its first Find jobs search (small tier through the Codex relay)
+        if: steps.free.outputs.ok == 'yes'
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set -o pipefail
+          python3 tools/persona-search/profiles.py cv "$PROFILE" out
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --first-only --fresh --engine api --tag profiles 2>&1 | tee out/run.log || true
+          python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-profiles/data/jobs.sqlite" out/jobs.json
+      - name: The blind judge (right role, right place; 3 answers, the majority counts)
+        if: steps.free.outputs.ok == 'yes'
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set -o pipefail
+          node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$PROFILE" out/jobs.json out/judged.json 2>&1 | tee out/judge.log || true
+      - name: The profile's row
+        if: always()
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: python3 tools/persona-search/profiles.py row "$PROFILE" out
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: search-profile-${{ matrix.profile }}
+          retention-days: 30
+          path: out/
+
+  table:
+    name: The table
+    needs: [room, profile]
+    if: ${{ always() && needs.room.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v7
+        with: {pattern: 'search-profile-*', path: results}
+      - name: One table for every profile of this run (also on the run's summary page)
+        run: |
+          python3 tools/persona-search/profiles.py table results results/table.md
+          cat results/table.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: search-profiles-table
+          retention-days: 30
+          path: |
+            results/table.md
+            results/rows.json
