@@ -24,7 +24,7 @@ export default {
   "logins": "Carry my logins when a job opens from the app in my browser",
   "loginsHint": "Used by \"Open in my browser\": the app hands over the cookies of that job's site so you land signed in. With this on, Chrome asks once to let Jobadabra set cookies. Off, the page opens and is filled without them. Never passwords.",
   "consents": "Tick consent and data-notice boxes for me",
-  "consentsHint": "Privacy notices, \"I acknowledge\", data-processing consents: ticked after filling (listed on the page so you can read them), and Submit is left ready for you. Jobadabra never presses Submit.",
+  "consentsHint": "Privacy notices, \"I acknowledge\", data-processing consents: ticked after filling (listed on the page so you can read them), and Submit is left ready for you. Jobadabra presses Submit only if you turned on Full automation.",
   "details": "Your details and CV",
   "detailsHint": "They live in the Jobadabra app (Settings → Your details for application forms), and the extension asks the app for them each time it fills a form. Change them there.",
   "save": "Save connection details",

@@ -49,7 +49,7 @@ def load(file, names, **bindings):
     for node in tree.body:
         assigned = {part.id for target in node.targets for part in ast.walk(target)
                     if isinstance(part, ast.Name)} if isinstance(node, ast.Assign) else set()
-        declared = {node.name} if isinstance(node, ast.FunctionDef) else assigned
+        declared = {node.name} if isinstance(node, (ast.FunctionDef, ast.ClassDef)) else assigned
         if declared & set(names):
             selected.append(node)
             found |= declared
@@ -234,8 +234,8 @@ def capture_engine(prompts=False):
     pack = NS(ai_first=lambda topic: False, first=lambda *a, **k: None, queue=lambda *a: None)
     IMPORTS['meanings_pack'] = pack
     decide = load('src/ai/decide.py', ['MODEL', 'BATCH', 'MAX_TEXT', 'MAX_CALLS_PER_RUN', 'CENTRAL_MAX_CALLS', '_calls', '_own',
-                  '_pool', 'take', 'STOPPED', 'WAITING', 'CACHE_ONLY', 'SYSTEM', 'limit', '_table', 'kept', 'decide'],
-                  threading=threading, SMALL_MODEL=models.SMALL_MODEL, budget_tape=NS(within=lambda *a: True), cost=cost, engine=engine)
+                  '_pool', 'take', 'STOPPED', 'WAITING', 'CACHE_ONLY', 'SYSTEM', 'limit', '_table', 'kept', 'GATES', '_ask', 'decide'],
+                  threading=threading, decide_gate=load('src/ai/decide_gate.py', ['LANES', 'WAIT_S', 'UNASKED', '_Caller', 'Gates'], threading=threading), SMALL_MODEL=models.SMALL_MODEL, budget_tape=NS(within=lambda *a: True), cost=cost, engine=engine)
     captured = json.loads(read('desktop/e2e/fixtures/golden/interviews-decide.json'))['requests'][0]
     task, choices, blocks = re.fullmatch(r'Task: ([\s\S]+)\nAllowed answers: ([^\n]+)\n\n([\s\S]+)', captured['messages'][0]['content']).groups()
     items = {'fixture-0': blocks.split('\n', 1)[1]}

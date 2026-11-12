@@ -21,7 +21,7 @@ import threading
 from datetime import datetime, timezone
 
 from .. import budget_tape
-from . import cost, engine
+from . import cost, decide_gate, engine
 from .models import SMALL_MODEL
 from .providers.contract import detail, error_facts
 
@@ -286,6 +286,43 @@ def remember(topic, found, answers, older_than='', db=None):
             db.close()
 
 
+GATES = decide_gate.Gates()   # the questions being asked right now, shared by every caller of decide(); it keeps its own state (src/ai/decide_gate.py)
+
+
+def _ask(topic, pairs, answers, instructions, client, allowance):
+    """The model call(s) for these (key, wording) pairs, BATCH a call -> an answer, None (asked, not answered) or decide_gate.UNASKED (the cap or a
+    failure: unknown, asked again next run) for each; never raises. One caller's pairs, or several callers' at once (src/ai/decide_gate.py)."""
+    schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
+        'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],
+        'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
+    got = [decide_gate.UNASKED] * len(pairs)
+    for start in range(0, len(pairs), BATCH):
+        if not take(topic, pairs[start][0], allowance):
+            return got
+        WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
+        chunk = pairs[start:start + BATCH]
+        text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
+            f'### Item {i}\n{wording}' for i, (_, wording) in enumerate(chunk))
+        try:
+            response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
+                                              messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
+            cost.side(MODEL, response.usage, topic)
+            if response.stop_reason != 'end_turn':
+                raise RuntimeError(f'stopped with {response.stop_reason}')
+            results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
+        except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
+            if _is_limit(error):
+                _stop(error)
+            detail(f'decide {topic}', error)
+            return got
+        got[start:start + len(chunk)] = [None] * len(chunk)
+        for result in results:
+            index, answer = result.get('index', -1), result.get('answer')
+            if 0 <= index < len(chunk) and answer in answers:
+                got[start + index] = answer
+    return got
+
+
 def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True, ask=True, allowance=None):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none. An 'ai_first' topic (meanings_pack.ai_first) asks the AI before the
@@ -317,40 +354,25 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             return out or None
         if STOPPED['why']:
             return _wait(out, len(todo))
+        given = client is not None
         if client is None:
             if not engine.ready():
                 return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
             client = engine.client(action='decide')
-        schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
-            'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],
-            'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
-        stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
-        for start in range(0, len(todo), BATCH):
-            if not take(topic, todo[start], allowance):
-                return _wait(out, len(todo) - start)
-            WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
-            chunk = todo[start:start + BATCH]
-            text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
-                f'### Item {i}\n{items[key]}' for i, key in enumerate(chunk))
-            try:
-                response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
-                                                  messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
-                cost.side(MODEL, response.usage, topic)
-                if response.stop_reason != 'end_turn':
-                    raise RuntimeError(f'stopped with {response.stop_reason}')
-                results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
-            except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
-                if _is_limit(error):
-                    _stop(error)
-                detail(f'decide {topic}', error)
-                return _wait(out, len(todo) - start)   # unknown, not guessed: asked again next run
-            for result in results:
-                index, answer = result.get('index', -1), result.get('answer')
-                if 0 <= index < len(chunk) and answer in answers:
-                    out[chunk[index]] = answer
-                    meanings_pack.queue(topic, items[chunk[index]], answer)   # public wordings only: the site learns them (k>=3 installs)
-                    db.execute('INSERT OR REPLACE INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?)', (topic, chunk[index], answer, stamp))
-            db.commit()
+        # Callers asking this same question at the same moment share one call (src/ai/decide_gate.py): a caller alone asks at once, as before.
+        same = (topic, tuple(answers), instructions, _pool(topic, allowance), id(client) if given else None)   # the same pool pays (this thread's allowance): a caller never spends another's
+        got = GATES.shared(same, [(key, items[key]) for key in todo], lambda pairs: _ask(topic, pairs, answers, instructions, client, allowance))
+        stamp, unasked = datetime.now(timezone.utc).isoformat(timespec='seconds'), 0
+        for key, answer in zip(todo, got):
+            if answer is decide_gate.UNASKED:
+                unasked += 1
+            elif answer is not None:
+                out[key] = answer
+                meanings_pack.queue(topic, items[key], answer)   # public wordings only: the site learns them (k>=3 installs)
+                db.execute('INSERT OR REPLACE INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?)', (topic, key, answer, stamp))
+        db.commit()
+        if unasked:
+            return _wait(out, unasked)
         return out   # the AI ran: what it answered, {} when nothing (never None: that is 'no AI at all')
     finally:
         if own:

@@ -4,6 +4,10 @@
 // A line that says "still here" (the engine's wait for the run lock, or the app's own heartbeat): one in a row is kept, the newest, so a long
 // quiet stretch reads as one live line, not a wall of them (the window does the same, renderer/pages/jobs.js).
 export const STATUS_LINE = /^(?:⏳ Still running|Another Jobadabra search is running)/;
+// The engine's machine lines: numbers and per-job records for the Find jobs card and the Search check, never words for a person (src/run_counts.py,
+// src/sources/job_stage.py). Why (#3923, 12 Nov 2026, owner saw "Run counts: looked=61300 matches=17 scored=5 g…" in the bottom bar): one list, read by the
+// step (lib/pipeline-lines.js isProgressStep) and by the screens' step words (pages/activity-basics.js), so a new machine line is added here once.
+export const MACHINE_LINE = /^(?:Run counts|Stages?): /;
 // A counter line ("⏳ Reading employer job sites: 419 of 1057", "Run counts: looked=…") replaces the earlier one of its kind wherever it is: only
 // the newest value is read, and a long search's ~900 ticks pushed its step results ("Job boards: a web search found …") out of the last 300
 // lines the window gets (owner's run 578c360d2620, 26 Oct 2026). Results are never dropped. Guarded by: test/unit/renderer/live-updates.test.js.

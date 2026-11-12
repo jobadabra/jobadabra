@@ -24,7 +24,7 @@ export default {
   "logins": "Transférer mes connexions à l’ouverture dans mon navigateur",
   "loginsHint": "Pour « Ouvrir dans mon navigateur » : l’application transfère les cookies du site pour rester connecté. Chrome demande l’autorisation une fois. Désactivé : ouverture et remplissage sans cookies. Jamais de mots de passe.",
   "consents": "Cocher les consentements et avis de données pour moi",
-  "consentsHint": "Avis de confidentialité, accusés de lecture et consentements aux données : cochés après remplissage et listés sur la page pour lecture. L’envoi reste à votre charge. Jobadabra n’appuie jamais sur Envoyer.",
+  "consentsHint": "Avis de confidentialité, accusés de lecture et consentements aux données : cochés après remplissage et listés sur la page pour lecture. L’envoi reste à votre charge, sauf si vous avez activé « Automatisation complète ».",
   "details": "Vos coordonnées et votre CV",
   "detailsHint": "Ils sont dans Jobadabra (Réglages → Vos coordonnées pour les candidatures). L’extension les demande à chaque remplissage. Modifiez-les là-bas.",
   "save": "Enregistrer la connexion",

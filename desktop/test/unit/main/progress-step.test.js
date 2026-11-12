@@ -15,6 +15,12 @@ test('a traceback line, an exception line, an indented line or a warning is not'
     assert.equal(isProgressStep(line), false, line);
 });
 
+// Why (#3923, 12 Nov 2026): the bottom bar showed "Run counts: looked=61300 matches=17 scored=5 g…"; the engine's machine lines are the Find card's numbers, never a step.
+test('a machine line (Run counts, Stage, Stages) is not a step, so the bar keeps the last readable one', () => {
+  for (const line of ['Run counts: looked=1 matches=1 scored=1 good=1', 'Run counts: looked=61300 matches=17 scored=5 good=2', 'Stages: EURES read 200 · kept 40 · ai_no 60', 'Stage: EURES read https://example.com/job/1'])
+    assert.equal(isProgressStep(line), false, line);
+});
+
 // The watchdog says how long a run was silent: minutes for a real run (15 min limit), seconds for the end-to-end journey's shortened limit ("no output for 0 min" said nothing).
 import {quietText} from '../../../lib/pipeline.js';
 test('the silence is told in seconds when short and in minutes when long', () => {
