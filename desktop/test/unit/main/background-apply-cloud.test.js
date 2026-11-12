@@ -90,3 +90,20 @@ test('the poll leaves a cloud item alone, and the person\'s Stop on it stops tha
   assert.deepEqual(stopped, ['a'], 'Cancel after a restart');
   assert.deepEqual([handed, stopped], [['stopped'], ['a']]);
 });
+
+// Why (#3815): "the store write failed" must not look like "not a cloud item any more": cloud-auto drops an outcome on null and keeps it on a retry answer.
+test('a failed store write answers retry, not null; an item the store no longer holds still answers null', async () => {
+  const r = rig();
+  const a = await r.add('a'), gone = await r.add('g');
+  await r.side.send(a.session);
+  const real = r.store.fromCloud;
+  let down = true;
+  r.store.fromCloud = (...args) => (down ? Promise.reject(new Error('store down')) : real(...args));
+  assert.deepEqual(await r.side.take(a.session, {state: 'submitted', attempt: 'att'}), {ok: false, retry: true});
+  assert.deepEqual(r.mails, [], 'nothing is recorded or mailed from a failed write');
+  down = false;
+  assert.equal((await r.side.take(a.session, {state: 'submitted', attempt: 'att'})).state, 'receipt_confirmed', 'the same outcome written on the next try');
+  assert.equal(await r.side.take(gone.session, {state: 'submitted', attempt: 'att'}), null, 'never sent: not a cloud item');
+  r.records.delete(a.session);
+  assert.equal(await r.side.take(a.session, {state: 'submitted', attempt: 'att'}), null, 'no session record: gone');
+});
