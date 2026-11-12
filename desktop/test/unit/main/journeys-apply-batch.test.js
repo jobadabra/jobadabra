@@ -41,3 +41,20 @@ test('scenario: Apply answers after its job is marked Applying: a list read aske
   assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
   terminals._reset();
 });
+
+test('scenario: Apply to 3 jobs, the top 3 kits come back not eligible: the next 3 eligible jobs start (8 Nov 2026, owner screenshot)', async () => {
+  const jobs = [1, 2, 3, 4, 5, 6].map(number => ({code: `j${number}`, url: `https://jobs.example.test/${number}`, title: `Role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 99 - number}));
+  const queued = [], prepare = async ({code}) => { const job = jobs.find(row => row.code === code); job.kit = true; if (+code.slice(1) <= 3) job.ineligible = 'Needs a work permit.'; return {ok: true}; };   // the verdict reaches the app through the re-read list
+  const result = await apply.start({}, {n: 3, mode: 'background', applyMode: 'fill'}, undefined, async () => ({jobs}), undefined, undefined, prepare, undefined, {enqueue: async chosen => { queued.push(...chosen.map(job => job.code)); return {ok: true}; }});
+  assert.deepEqual(queued, ['j4', 'j5', 'j6']); assert.equal(result.ok, true);
+  assert.deepEqual(result.outcomes.filter(item => item.status === 'ineligible').map(item => item.reason), ['Needs a work permit.', 'Needs a work permit.', 'Needs a work permit.']);
+});
+
+test('scenario: Apply in Chrome to 4 jobs, a drafted one comes back not eligible: the dialog stays open and its counts match the 3 tabs opened (#3617)', {skip: process.platform === 'win32' && 'Mac launcher'}, async () => {
+  const jobs = [1, 2, 3, 4].map(n => ({code: `c${n}`, url: `https://jobs.example.test/c${n}`, title: `Fictional role ${n}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - n, kit: n <= 2}));
+  const tabs = [], prepare = async ({code}) => { const job = jobs.find(row => row.code === code); job.kit = true; if (code === 'c4') job.ineligible = 'Needs a work permit.'; return {ok: true}; };
+  const result = await apply.start({}, {n: 4, mode: 'chrome'}, (...args) => { tabs.push(args.flat().filter(arg => /jobs\.example\.test/.test(arg)).length); return {unref() {}}; }, async () => ({jobs}), undefined, undefined, prepare);
+  const dialog = applyDialogOutcome(result), counts = resultView(result).counts.map(item => [item.group, item.count]);
+  assert.equal(dialog.close, false, 'a skipped job keeps the result open');
+  assert.deepEqual(counts.find(([group]) => group === 'started'), ['started', tabs[0]], 'started = tabs opened, not only the drafted job');
+});
