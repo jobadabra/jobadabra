@@ -7,6 +7,7 @@
 //   e2e.yml      -night_pass: n/5  the night burn-in: five full runs at fixed UTC times (NIGHT_SLOTS below), each on the commit of pass 1
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
 //   search-personas.yml           the Search check's night run (SEARCH_SLOT below) and its week, 5 runs a person (SEARCH_WEEKLY)
+//   press-tapes-auto.yml          the day's one re-record of the Find jobs recordings (TAPES_SLOT below)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   pr-labels.yml                 sets every open PR's Gitar label from Gitar's latest comment every 10 minutes (7 Nov 2026, gl): Gitar closes a finding by editing its comment, which starts no event
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
@@ -25,6 +26,9 @@ export const AGENT_SLOT = '04:40';
 // The night's Search check (search-personas.yml), UTC HH:MM. Why (4 Nov 2026, owner: "Night run, off PRs"): it rides the ten-minute trigger too, at the broker's quietest hour: 0 and 2 calls in the 00 hour of the last two nights.
 // Six presses in a row took 26-29 min on 5-6 Nov 2026 (runs 41938128120, 42133678718; 33-44 min on 4 Nov), so 18 take about 80-85 min and it ends about 01:25: close to the 01:30 pass (6 Nov 2026, 4/5). TODO(AI): move this slot earlier or start the pass later if the two overlap (6 Nov 2026); the scout at about 02:30 and AGENT_SLOT come later.
 export const SEARCH_SLOT = '00:00';
+// The day's one re-record of the Find jobs recordings (press-tapes-auto.yml), UTC HH:MM. Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)": "recordings are renewed
+// once after a day's merges instead of after each merge"): it rides the ten-minute trigger, after the night's passes (the last starts 05:30) and before the day's PRs read the recordings; its own guard waits while a Search check holds the broker.
+export const TAPES_SLOT = '06:30';
 export const STORE_WATCH_MINUTE = 20;
 // The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
 // one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).
@@ -53,6 +57,7 @@ export function jobsFor(cron, now = new Date()) {
     if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
     if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
     if (hhmm(now) === SEARCH_SLOT) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true'}});
+    if (hhmm(now) === TAPES_SLOT) jobs.push({workflow: 'press-tapes-auto.yml'});
     if (now.getUTCDay() === SEARCH_WEEKLY.day && hhmm(now) === SEARCH_WEEKLY.time) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true', presses: '5'}});
     // Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days, so an hourly look (minute 20) tells him within the hour;
     // it rides this trigger (no 4th trigger can be registered) and costs one Ubuntu minute unless a submitted version waits (msix-store-watch.yml).
