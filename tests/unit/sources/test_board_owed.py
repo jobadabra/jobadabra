@@ -2,7 +2,6 @@
 never_asked) is read again by the next press, not rested 6 h; a board whose jobs were all judged still rests (the same rule as #3893's
 aggregators.mark_read_unless_waiting for the free APIs, owner-accepted as its rule 6, bound owed_reads.MOST). The first test fails on main (`[] != ['b1.example']`); the second is the positive control. No AI call, no live site."""
 import tempfile
-import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +10,7 @@ from unittest import mock
 from src.ai import board_ideas
 from src.sources import board_yield, careers, feeds, found_boards, owed_reads
 
+NOW = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)   # pinned: the read's own time, so the 6 h rest is computed from it
 SEARCH = {'role_keywords': ['data analyst'], 'locations': {'top_tier': ['Nuremberg'], 'country_wide': [], 'abroad': []}}
 BOARD = {'name': 'Board 1', 'host': 'b1.example', 'search_url': 'https://b1.example/?q={role}', 'countries': ['Germany'], 'kinds': ['any'],
          'source_kind': 'general'}
@@ -34,11 +34,11 @@ class ABoardWithJobsNeverAsked(unittest.TestCase):
 
     def read(self, place_answer):
         with mock.patch.object(feeds, 'place_of', return_value=place_answer):
-            found_boards.read(SEARCH, [BOARD], early=False, web=False, workers=1, is_relevant=lambda jobs: [], dead=set())
+            found_boards.read(SEARCH, [BOARD], early=False, web=False, workers=1, is_relevant=lambda jobs: [], dead=set(), now=NOW)
 
     def read_then_press_an_hour_later(self, place_answer):
         self.read(place_answer)
-        since = datetime.now(timezone.utc) - timedelta(hours=1)   # the next press, 1 h later, asks what was read in the last 6 h
+        since = NOW - timedelta(hours=1)   # the next press, 1 h later, asks what was read in the last 6 h
         return board_yield.not_read_since([BOARD], self.data['boards'], since - timedelta(hours=5))
 
     def test_its_jobs_never_asked_it_is_read_again_by_the_next_press(self):
@@ -51,9 +51,9 @@ class ABoardWithJobsNeverAsked(unittest.TestCase):
     def test_it_is_read_again_by_at_most_owed_reads_most_searches_then_rests(self):
         self.read(None)
         for press in range(owed_reads.MOST):
-            self.assertEqual(len(board_yield.not_read_since([BOARD], self.data['boards'], datetime.now(timezone.utc) - timedelta(hours=6))), 1, f'press {press + 2} reads it again')
+            self.assertEqual(len(board_yield.not_read_since([BOARD], self.data['boards'], NOW - timedelta(hours=6))), 1, f'press {press + 2} reads it again')
             self.read(None)
-        self.assertEqual(board_yield.not_read_since([BOARD], self.data['boards'], datetime.now(timezone.utc) - timedelta(hours=6)), [],
+        self.assertEqual(board_yield.not_read_since([BOARD], self.data['boards'], NOW - timedelta(hours=6)), [],
                          'the AI never answered for its jobs: after the bound it rests 6 h like any board')
 
     def test_a_read_that_left_jobs_waiting_is_not_a_yield_row_but_the_judged_one_is(self):
