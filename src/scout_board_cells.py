@@ -5,8 +5,10 @@ had a turn. A cell is (country, family) because a board fact carries its familie
 The cell with the fewest boards of MIN_LOCAL+ local jobs goes first (the lab's priority cells first among equals); a run takes its country and that
 country's PER_RUN weakest families. A cell that kept no board rests REST_DAYS (1, 2, 4, 8, then 30 days); a kept board clears its rest. A fact older
 than REFRESH_DAYS is read again before the site drops it at FACT_DAYS. Memory: scout_meta key CELLS. Tests: tests/unit/sources/test_scout_board_cells.py."""
+import sqlite3
 from collections import Counter
 from datetime import date, timedelta
+from pathlib import Path
 
 from . import pool_tags, scout_cells
 
@@ -127,3 +129,34 @@ def line(db, today=None, priority=()):
     wanted = list(dict.fromkeys(priority))
     return (f'Board cells: {sum(1 for n in counted.values() if n)} of {total} have a board'
             + (f', priority {sum(1 for cell in wanted if counted.get(cell))} of {len(wanted)}' if wanted else '') + f'; {resting} resting')
+
+
+def seed(db, path, out=print):
+    """Board discovery's own database starts from the Scout's facts, once: while it holds no fact, every fact of the database at `path` is copied in
+    (a missing or unreadable file copies nothing). Why (12 Nov 2026, bd): the discovery job saving the Scout's whole database would lose one side's
+    memory whenever the two ran at once; its own database starting empty would read the covered countries first again."""
+    from . import scout_boards
+    scout_boards.ensure(db)
+    if not path or not Path(path).is_file() or db.execute('SELECT 1 FROM scout_board_facts LIMIT 1').fetchone():
+        return 0
+    try:
+        with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
+            rows = source.execute('SELECT host, country, url, families, local_jobs, read_at FROM scout_board_facts').fetchall()
+    except sqlite3.Error:
+        return 0
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)', rows)
+    db.commit()
+    out(f'Board discovery: started from the Scout\'s {len(rows)} board facts')
+    return len(rows)
+
+
+def facts_beside(path):
+    """The facts board discovery's own database kept (src/scout_boards.py facts), for the Scout's publish; [] without the file."""
+    from . import scout_boards
+    if not path or not Path(path).is_file():
+        return []
+    try:
+        with sqlite3.connect(path) as source:   # not read-only: facts() makes its tables when missing (a new table in ensure())
+            return scout_boards.facts(source)
+    except sqlite3.Error:
+        return []

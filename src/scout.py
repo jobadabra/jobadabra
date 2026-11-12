@@ -224,10 +224,12 @@ def board_pass(db_path):
 
 def discover(db, run=None, out=print, today=None):
     """Board discovery's turn (src/scout_board_cells.py): the weakest cells' country, their families, and the facts due to be read again; the
-    cells' rest is kept after. SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
+    cells' rest is kept after. Its database is its own (the lab passes --db), started once from the Scout's facts (SCOUT_BOARD_SEED_DB), so the two
+    jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
     equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
     by employers never gave a turn to the countries with no measured board."""
     from . import scout_board_cells as cells, scout_boards
+    cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
     priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
     turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')))
     if not turn:
@@ -319,7 +321,7 @@ def main():
             if not key:
                 raise SystemExit('--publish-index needs INDEX_PUBLISH_KEY')
             index_url = os.getenv('JOBADABRA_INDEX_URL') or employer_index.URL
-            from . import scout_boards, scout_cells
+            from . import scout_board_cells, scout_boards, scout_cells
             deadline = min(scout_overrun.publish_deadline(started), time.monotonic() + scout_core.VERIFY_BUDGET_S)
             with scout_overrun.phase('reading what installs shared'):
                 contributions, shared_dead = fetched or fetch_contributions(index_url, key, with_nofeed=True)
@@ -331,7 +333,7 @@ def main():
                                                 boards=json.loads(SEEDS.read_text()).get('boards', []), swiss_titles=swiss_titles, deadline=deadline, carry=True)
             scout_cells.keep(db, feeds_out)   # the next run's ideas aim at the thinnest kind × country
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
-            board_facts = scout_boards.facts(db)   # what the board pass job measured in the last 30 days (its own job: --board-pass)
+            board_facts = scout_boards.facts(db) + scout_board_cells.facts_beside(os.environ.get('SCOUT_BOARD_DB'))   # the board pass's facts, the 30 days' (board discovery's own copy last: the site keeps the last fact per host and country)
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))
             with scout_overrun.phase('reading the job boards'):

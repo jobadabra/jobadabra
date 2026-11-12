@@ -2,7 +2,10 @@
 rests a cell that found nothing, and reads a fact again before the site drops it.
 12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)", "Every 2 h (Recommended)": the pass picked the country with the
 fewest employers, so countries with many employers and no measured board never had a turn. Fake reads only: no network, no AI."""
+import os
+import shutil
 import sqlite3
+import tempfile
 import unittest
 from datetime import date, timedelta
 from unittest import mock
@@ -105,6 +108,33 @@ class Discover(unittest.TestCase):
         self.assertTrue(any(line.startswith(f"Board pass: Slovakia ({', '.join(FAMILIES[:cells.PER_RUN])})") for line in out), out)
         self.assertTrue(out[-1].startswith('Board cells: '), out[-1])
         self.assertEqual(scout_cells._meta(self.db, scout_boards.ASKED_KINDS, None), None, "cells keep their own turns: the kinds' turn list is untouched")
+
+
+class OwnDatabase(unittest.TestCase):
+    """Discovery keeps its own database so it never saves over the Scout's memory; it starts once from the Scout's facts, and the Scout publishes both."""
+    def setUp(self):
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder, True)
+        self.scout_path, self.own_path = os.path.join(folder, 'jobs.sqlite'), os.path.join(folder, 'boards.sqlite')
+        with sqlite3.connect(self.scout_path) as scout_db:
+            fact(scout_db, 'a.example', 'fr', ['kitchen'])
+            scout_db.commit()
+
+    def test_it_starts_from_the_scout_s_facts_once(self):
+        own = sqlite3.connect(self.own_path)
+        self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 1)
+        self.assertEqual(cells.strength(own, TODAY)[('fr', 'kitchen')], 1, 'a covered cell is not read first again')
+        fact(own, 'b.example', 'de', ['kitchen'])
+        own.commit()
+        self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
+        self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
+
+    def test_the_scout_publishes_the_discovery_s_facts_too(self):
+        own = sqlite3.connect(self.own_path)
+        fact(own, 'b.example', 'de', ['kitchen'], read_at=date.today())
+        own.commit()
+        self.assertEqual([item['host'] for item in cells.facts_beside(self.own_path)], ['b.example'])
+        self.assertEqual(cells.facts_beside(''), [])
 
 
 if __name__ == '__main__':
