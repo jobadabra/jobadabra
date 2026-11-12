@@ -117,6 +117,8 @@ class BoardPassTest(unittest.TestCase):
                 self.assertEqual((jobs, state, why), ([], 'browser', stop))
         with mock.patch.object(plain, 'renderer', lambda: None):
             self.assertIsNone(scout_boards.browse(board('a.md'), search), 'no browser here: not measured')
+        with mock.patch.object(plain, 'renderer', lambda: lands_on('/jobs')), mock.patch.object(render, '_app', lambda: ('http://127.0.0.1:1', 'k')):
+            self.assertIsNone(scout_boards.browse(board('a.md'), search), "the app's renderer says no landed address: not measured, never read past a sign-in page")
         loads = []
 
         def once(url):

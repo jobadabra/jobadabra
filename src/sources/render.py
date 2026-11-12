@@ -29,7 +29,7 @@ class Refused(Exception):
 
 # Playwright's sync API belongs to the thread that started it: every browser call runs on this one worker thread, one page at a time.
 _worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix='render')
-_state = {'playwright': None, 'browser': None, 'pages': 0, 'last': {}, 'landed': {}}   # landed: address asked -> address the page ended on (at most MAX_PAGES)
+_state = {'playwright': None, 'browser': None, 'pages': 0, 'last': {}, 'landed': {}}   # landed: address asked -> address the page ended on (Playwright path only; emptied by close())
 
 
 def _app():
@@ -60,6 +60,7 @@ def _browser():
 def close():
     """Stop the browser (on its own thread). Safe to call when it never started."""
     def stop():
+        _state['landed'].clear()
         for key in ('browser', 'playwright'):
             thing = _state[key]
             _state[key] = None
@@ -83,7 +84,8 @@ def render(url):
 
 
 def landed(url):
-    """The address the headless browser's page for `url` ended on (after its redirects), '' when it never loaded here: a caller tells a sign-in page by it."""
+    """The address the headless browser's page for `url` ended on (after its redirects), '' when it never loaded here or went through the app's
+    renderer (which answers no address): a caller tells a sign-in page by it."""
     return _state['landed'].get(url, '')
 
 

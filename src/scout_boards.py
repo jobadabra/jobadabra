@@ -55,7 +55,7 @@ def browse(board, search):
     (a refusal, a bot check, a sign-in page) or ''. None when no browser is here (the pass carries on as before)."""
     from .sources import board_yield, careers, found_boards, refused_reads, render
     show = careers.renderer()
-    if show is None:
+    if show is None or render._app():   # the app's renderer answers no landed address, so a sign-in page could not stop the read: CI's own Playwright only
         return None
     stopped = {'why': ''}
 
