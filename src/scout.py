@@ -205,10 +205,12 @@ def sync_store_only(db_path):
     return 1 if failed and not written else 0
 
 
-def board_pass(db_path):
+def board_pass(db_path, lanes=0, merge=None):
     """The central scout's board pass alone (--board-pass): one country's boards measured and kept. Returns the exit code.
     Why (12 Nov 2026, sa): a by-hand SCOUT_BOARD_COUNTRY the list does not know ends the run with the accepted names; it used to read the thinnest country instead."""
-    from . import scout_board_cells, scout_boards
+    from . import scout_board_cells, scout_board_lanes, scout_boards
+    if merge or lanes:   # several lanes at once (src/scout_board_lanes.py): a round's countries, or its lanes brought back; no pass here
+        return scout_board_lanes.merge_all(db_path, merge) if merge else scout_board_lanes.plan(db_path, lanes)
     scout_core.CENTRAL = True
     with store.connect(db_path) as db:
         try:
@@ -287,11 +289,8 @@ def main():
         return sync_store_only(args.db)
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
-    if args.board_lanes or args.board_merge:
-        from . import scout_board_lanes
-        return scout_board_lanes.merge_all(args.db, args.board_merge) if args.board_merge else scout_board_lanes.plan(args.db, args.board_lanes)
-    if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
-        return board_pass(args.db)
+    if args.board_pass or args.board_lanes or args.board_merge:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
+        return board_pass(args.db, lanes=args.board_lanes, merge=args.board_merge)
     if args.export_sources:
         kept, failed = export_sources(employer_store())
         print(f'Wrote {len(kept)} feeds ({sum(k["jobs"] for k in kept):,} open jobs) to config/sources.json')
