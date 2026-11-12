@@ -12,6 +12,7 @@ export const messages = {
   "keepOn": "Păstrează activat",
   "linkedinSuggestion": "Caută și pe LinkedIn",
   "linkedinSuggestionDetail": "În fundal, fără fereastră. Te autentifici o dată în LinkedIn într-o fereastră Jobadabra.",
+  "linkedinSuggestionEvidence": "Căutarea LinkedIn este oprită, deci Caută locuri de muncă nu citește căutările tale din LinkedIn.",
   "extensionNeeded": "Este necesară extensia Chrome",
   "linkedinExtensionHelp": "LinkedIn folosește extensia Chrome Jobadabra. Conecteaz-o în Setări → Conexiuni → Extensie Chrome, apoi reîncearcă.",
   "extensionUnknown": "Jobadabra nu poate deschide această copie a extensiei",

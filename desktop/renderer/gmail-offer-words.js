@@ -23,5 +23,5 @@ export function offerWords({why, employer = '', host = ''} = {}) {
 export function gmailEntries({view} = {}) {
   if (!view?.loaded || view.connected) return [];
   return [{kind: 'gmail', home: 'focus', topic: 'applying', key: KEY, title: t('helperMore.gmailSuggestTitle'), source: '',
-    detail: t('helperMore.gmailSuggestDetail'), evidence: [], answers: [], actions: [{label: t('helperMore.gmailConnect'), do: 'connect_gmail'}]}];
+    detail: t('helperMore.gmailSuggestDetail'), evidence: [t('helperMore.gmailSuggestEvidence')], answers: [], actions: [{label: t('helperMore.gmailConnect'), do: 'connect_gmail'}]}];
 }

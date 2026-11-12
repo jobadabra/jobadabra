@@ -17,7 +17,7 @@ export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held
   const email = hosted.email || hosted.shared || '';
   return [{kind: 'hosted', home: 'focus', topic: 'profile', key: KEY, title: SUBTITLE, source: '',
     detail: email ? t('helperMore.hostedEmailSummaryTo', {email}) : t('helperMore.hostedEmailSummary'), email,
-    evidence: [], answers: ['Not now'], alsoJobs: true, actions: [{label: t('helperMore.hostedTurnOn'), do: 'turn_on_hosted'}]}];
+    evidence: [t('helperMore.hostedSuggestEvidence')], answers: ['Not now'], alsoJobs: true, actions: [{label: t('helperMore.hostedTurnOn'), do: 'turn_on_hosted'}]}];
 }
 
 /** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; it never sends a news answer; a shared draft paints replies into the latest row. */
