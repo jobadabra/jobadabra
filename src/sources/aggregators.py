@@ -244,6 +244,9 @@ def kept(db, name, found, now=None, shown=None):
     from . import job_stage
     now, matched, fresh, shown, stages, places = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter(), {}
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
+    if name == boards_ahead.NAME:   # a board was searched for your place: what it lists one town over is asked about after the search (src/sources/places_later.py)
+        from . import places_later
+        places_later.note(found)
     with db:
         for job in found:
             if job.get('url') in shown:

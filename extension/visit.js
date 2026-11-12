@@ -17,8 +17,8 @@ const NO_CARDS_AI = ", none of them jobs by Claude's reading";
 export const MAX_PAGES = 20;
 const PAUSE_MS = [1800, 3200];   // between pages, like a person reading: not to look like one, to be gentle with the site
 
-import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible} from './visit-page.js';
-export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible};
+import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress, linklessCards} from './visit-page.js';
+export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress, linklessCards};
 // (the functions that run inside the page are in visit-page.js; the visit itself is here)
 
 
@@ -31,6 +31,26 @@ const badge = (tabId, text, title) => {
 const run = async (tabId, func, args = []) => (await chrome.scripting.executeScript({target: {tabId}, func, args}))[0]?.result;
 // Template code where an address should be (DHL, 7 Oct 2026: careers.dhl.com/global/${getUrl(linkEle,): never a place to go.
 const TEMPLATE = /\$\{|\{\{|%7B/i;
+// B of #3710 (owner, 12 Nov 2026: "A first, then B"): cards with no link and no id are pressed one by one, each press like a person's (a gap of 0.5-0.75 s), within this budget a page.
+const PRESS = {budgetMs: 20000, gapMs: 500};
+/** A page's cards: the ones read with an address, plus the pressable ones given the address the page shows when each is pressed (extension/visit-page.js addressByPress). */
+/** A page as the extension sees it (extractPage); when its links give no list, plus the cards drawn with no link (linklessCards, #3710). */
+async function readPage(tabId) {
+  const seen = await run(tabId, extractPage);
+  if (!seen || seen.login || seen.challenge || seen.cards.length >= 3) return seen;
+  const loose = await run(tabId, linklessCards).catch(() => null);
+  return loose ? {...seen, cards: [...seen.cards, ...loose.cards], pressCards: loose.pressCards} : seen;
+}
+async function withPressed(tabId, seen, say = () => {}) {
+  if (!seen?.pressCards?.length) return seen?.cards || [];
+  const pressed = await run(tabId, addressByPress, [{keys: seen.pressCards.map(card => card.key), ...PRESS}]).catch(() => null);
+  // Why (Gitar on #3866): how many presses placed a card is said in the site's row, so a page whose cards never get an address is not a silent 0.
+  await say(readWords(`pressing the cards gave ${Object.keys(pressed?.addresses || {}).length} of ${seen.pressCards.length} an address`, 'read.pressed',
+    {placed: Object.keys(pressed?.addresses || {}).length, cards: seen.pressCards.length}));
+  if (pressed?.left) { await moveTab(tabId, seen.url); await waitForPage(tabId).catch(() => {}); }   // a press that opened another page: back to the list
+  const addresses = pressed?.addresses || {};
+  return [...seen.cards, ...seen.pressCards.filter(card => addresses[card.key]).map(({title, lines, key}) => ({title, url: addresses[key], lines}))];
+}
 export const FILTER_ROUNDS = 3;
 export const UNBLOCK_TRIES = 2;   // a page with no job list: at most this many times Claude picks a way on, then the site says why it stopped   // filter panels open more filters: look again, at most this often
 
@@ -97,17 +117,17 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
   try {
     // Not a job list (a home page, an "about" page): go to the site's job list first, as a person would, then filter and read there.
     await consent();
-    let first = await run(tabId, extractPage).catch(() => null);
+    let first = await readPage(tabId).catch(() => null);
     if (first?.blank) {   // a page that draws nothing: a few seconds more, then loaded once again, then said and stopped (not skipped as silent)
       await tellStep(tabId, config, ticket, readWords('the page is still blank: waiting a few seconds…','read.blank'));
       await wait(5000);
-      first = await run(tabId, extractPage).catch(() => null);
+      first = await readPage(tabId).catch(() => null);
       if (first?.blank) {
         await tellStep(tabId, config, ticket, readWords('still blank: loading it again…','read.reload'));
         await chrome.tabs.reload(tabId);
         await waitForPage(tabId).catch(() => {});
         await wait(3000);
-        first = await run(tabId, extractPage).catch(() => null);
+        first = await readPage(tabId).catch(() => null);
       }
       if (first?.blank) throw Object.assign(new Error('the page stayed blank, even loaded again: open it yourself once (it may want you to sign in), then Open again'),{displayKey:'read.stayedBlank'});
     }
@@ -117,7 +137,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       applyReadReason(state,readBlockedReason(first.login));
       pages = 0;   // the read loop below has nothing to do
     }
-    if (first && !first.login && !first.challenge && !plausible(first.cards)) {
+    if (first && !first.login && !first.challenge && !plausible([...first.cards, ...(first.pressCards || [])])) {
       await tellStep(tabId, config, ticket, readWords('looking for this site\'s job list…','read.find'));
       const found = await thinking(() => api(config, '/extension/visit-jobpage', {method: 'POST', body: JSON.stringify({url: first.url, html: first.html, ticket})}).catch(() => null));
       if (found?.url && found.url.split('#')[0] !== first.url.split('#')[0]) {
@@ -154,10 +174,10 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     for (let page = 0; page < pages; page++) {
       if (Date.now() - thought > deadline) { setReadReason(state,`${SITE_MS / 1000} s are up after ${state.pages} page${state.pages === 1 ? '' : 's'}: the rest of the list was not read`,'read.deadline',{seconds:SITE_MS/1000,pages:readWords('','pages',{count:state.pages})}); break; }
       await tellStep(tabId, config, ticket, readWords(`reading page ${page + 1}…`,'read.page',{page:page+1}));
-      const seen = await run(tabId, extractPage);
+      const seen = await readPage(tabId);
       if (!seen) { setReadReason(state,'the page could not be read','read.unread'); break; }
       if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; applyReadReason(state,readBlockedReason(seen.login)); break; }
-      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : seen.cards;
+      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : await withPressed(tabId, seen, words => tellStep(tabId, config, ticket, words));
       if (recipe && !cards.length && page === 0) {
         if (plausible(seen.cards)) {   // the quick guess reads a list the recipe misses: it no longer fits this site, forgotten and read afresh
           await api(config, '/extension/visit-recipe', {method: 'POST', body: JSON.stringify({url: seen.url, forget: true})}).catch(() => {});

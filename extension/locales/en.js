@@ -375,6 +375,7 @@ export default {
   "read.limit": "{pages} read: the most at once",
   "read.scroll": "scrolling for more jobs…",
   "read.goPage": "going to page {page}…",
+  "read.pressed": "pressing the cards gave {placed} of {cards} an address",
   "read.ai": "AI: {reason}",
   "read.tryJobs": "trying a way to the jobs",
   "read.signIn": "Sign in to {host} in this tab, then press Read",

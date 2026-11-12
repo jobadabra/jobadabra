@@ -157,6 +157,8 @@ def scan(db, api_key, config, opener=urllib.request.urlopen, now=None):
             results = [normalise(r) for r in data.get('jobs_results', [])]
             matched = []
             feeds.triage(results)   # titles judged by the AI first (owner, 26 Oct 2026: "The AI decides")
+            from . import places_later
+            places_later.note(results)   # searched for your place: its other towns are asked about after the search
             with db:
                 for job in results:
                     if job['id'] in seen or not (feeds.wanted_title(job['title']) and feeds.wanted_location(job)):

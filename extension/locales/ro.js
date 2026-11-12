@@ -381,6 +381,7 @@ export default {
   "read.limit": "Limita unei citiri a fost atinsă ({pages})",
   "read.scroll": "Derulăm pentru mai multe joburi…",
   "read.goPage": "Deschidem pagina {page}…",
+  "read.pressed": "Apăsând cardurile, {placed} din {cards} au primit o adresă",
   "read.ai": "AI: {reason}",
   "read.tryJobs": "Încercăm o cale către joburi",
   "read.signIn": "Autentifică-te pe {host} în această filă, apoi apasă Citește",

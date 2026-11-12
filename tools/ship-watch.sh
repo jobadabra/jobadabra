@@ -19,7 +19,7 @@ repo="${4:-$(pr_repo .)}"; start_dir="$PWD"
 # Why (2 Nov 2026, owner: "let's check every 1 imnute"; PRs sat red for minutes): a look every 60 s, not 120; the ETag reads below made an unchanged look free, so the 27 Oct limit no longer sets the pace.
 #   Each look reads REST with the last ETag (tools/pr-rest-lib.sh): an unchanged answer is free, so a look costs about one call.
 poll="${SHIP_WATCH_POLL:-60}"; cap="${SHIP_WATCH_CAP:-172800}"; backoff_max="${SHIP_WATCH_BACKOFF_MAX:-900}"; backoff=0
-gitar_head=""; gitar_t0=0   # the head the Gitar-ask timer runs for, and when it began (below)
+gitar_head=""; gitar_t0=0; opened_head=""; first_look=1   # the head the Gitar-ask timer runs for, when it began, and the head ship.sh opened the PR with (below)
 old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
@@ -116,13 +116,17 @@ while :; do
     checks="$(pr_checks "$repo" "$head")" || checks=""
     now="$(jq -r '[.[]? | select(.bucket == "fail") | .name] | first // empty' <<<"${checks:-[]}" 2>/dev/null)" || now=""
     # Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 sat 7+ min with no review): Gitar reviews a PR when it opens, not a push to an
-    #   open PR, so a pushed head has no "Gitar" check and nobody asks. After SHIP_WATCH_GITAR_AFTER s (default 180) without one, this watcher posts ONE "Gitar review" per head (a second comment inside
+    #   open PR, so a pushed head has no "Gitar" check and nobody asks. After the wait below without one, this watcher posts ONE "Gitar review" per head (a second comment inside
     #   ~50 min locks the PR, so the head is written to the marker before the post and never asked twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
     #   The check is named "Gitar" (live on #3723, 11 Nov 2026 00:55:52Z); matched like the label matches the app slug: case-insensitive "gitar" in the name; an empty read (rate limit, 5xx) keeps the timer running and never asks, since it cannot show that Gitar has no check.
+    # Why (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"): a push to an open PR is asked after SHIP_WATCH_GITAR_AFTER s (default 30, was 180 for every head), so the
+    #   label reads "reviewing" about half a minute after the push; only the head ship.sh OPENED the PR with keeps SHIP_WATCH_GITAR_OPENED s (default 180), since Gitar starts on an open by itself.
+    [ -z "$first_look" ] || { first_look=""; grep -q '^ship: .*opened the pull request' "$log" 2>/dev/null && opened_head="$head"; }
+    gitar_wait="${SHIP_WATCH_GITAR_AFTER:-30}"; [ "$head" != "$opened_head" ] || gitar_wait="${SHIP_WATCH_GITAR_OPENED:-180}"
     if [ -n "$checks" ] && jq -e 'any(.[]?; (.name // "") | test("gitar"; "i"))' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
-      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "${SHIP_WATCH_GITAR_AFTER:-180}" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
+      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
         printf '%s\n' "$head" > "$seen.gitar-asked"
         if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi
       fi
