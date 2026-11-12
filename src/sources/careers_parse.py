@@ -182,9 +182,24 @@ def hiring_organisation(posting):
     return re.sub(r'\s+', ' ', _words(hiring)).strip()[:120]
 
 
+def _page_town(markup, posting, memo):
+    """The town a list page's own app data gives a posting whose schema.org address names only the country: the posting's identifier is an id there, and the id's data
+    block has a set "place" (ats_jobsch.jobsch_towns reads it; memo holds that read, made once per page). '' when the posting has no such id or the data names none.
+    Why (12 Nov 2026, ch): jobup.ch, jobs.ch's sibling, listed a Zurich warehouse search's ads with the country only in JSON-LD, their towns only in the page data: 3 of 13 ads had a
+    town the place check could use (10 with this), and 13 jobs read gave 2 in the person's places. jobs.ch's own reader did this already (boards.parse_jobs); the page's data is the proof, a posting with no id there is left as it was."""
+    ident = posting.get('identifier')
+    ident = str(ident.get('value') if isinstance(ident, dict) else ident or '')
+    if not re.fullmatch(r'[0-9a-f-]{36}', ident):
+        return ''
+    if 'towns' not in memo:
+        from .ats_jobsch import jobsch_towns
+        memo['towns'] = jobsch_towns(markup)
+    return memo['towns'].get(ident, '')
+
+
 def jsonld_jobs(markup, url):
     """The JobPosting entries a page publishes, in the common job shape (ats._job)."""
-    jobs = []
+    jobs, memo = [], {}
     for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', markup, re.S | re.I):
         try:
             data = json.loads(html.unescape(block) if '&quot;' in block else block)
@@ -210,7 +225,7 @@ def jsonld_jobs(markup, url):
                 if not isinstance(address, dict):
                     continue
                 country = _words(address.get('addressCountry'))
-                where.append(', '.join(part for part in (_words(address.get('addressLocality')) or _words(address.get('addressRegion')), COUNTRIES.get(country.upper()) or country_codes.name(country)) if part))
+                where.append(', '.join(part for part in (_words(address.get('addressLocality')) or _words(address.get('addressRegion')) or _page_town(markup, posting, memo), COUNTRIES.get(country.upper()) or country_codes.name(country)) if part))
             remote = 'telecommute' in str(posting.get('jobLocationType') or '').lower()
             salary = posting.get('baseSalary') or {}
             value = salary.get('value') if isinstance(salary, dict) else None
