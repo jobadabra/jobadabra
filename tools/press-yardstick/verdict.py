@@ -128,12 +128,12 @@ def side_rows(out, recordings, sides):
 
 
 def too_old(art, persona):
-    """The PR side of the first pair asked beyond the recording's bounds: does that stand? Yes until the 2 more pairs ran (suspects replays the person), then
-    only when the PR side asked beyond them in all 3: the same rule as every other red.
-    Why (12 Nov 2026, sa, #3878): p9's PR-side replay read 10 pages and asked 10 AI questions its recording lacks while main's asked none, on a PR that changes
-    no file a search runs; one replay on the runner's wall clock got further than the other, and one pair alone held the PR."""
-    again = [Path(art, f'yardstick-{persona}-{pr_side}', 'tape-report.jsonl') for _, pr_side in PAIRS[1:]]
-    return not all(report.exists() for report in again) or all(ci.report_gap(report) for report in again)
+    """Whether "only the PR side asks beyond the recording" stands for the person: yes until the 2 more pairs ran, then only when all 3 pairs show it.
+    Why (#3878, 12 Nov 2026): one pair alone held a PR that changes no file a search runs; a replay runs on the runner's wall clock."""
+    again = [[Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl') for side in pair] for pair in PAIRS[1:]]
+    if not all(report.exists() for pair in again for report in pair):
+        return True
+    return all(ci.report_gap(pr_side) and not ci.report_gap(main_side) for main_side, pr_side in again)
 
 
 def states(art, out, recordings, band, ids):

@@ -113,6 +113,9 @@ class Verdict(unittest.TestCase):
         code, text = self.run_verdict(self.band(), [({}, {'gap': True})] * 3)
         self.assertEqual(code, 1, 'positive control: beyond the recording in all 3 pairs is a changed path, held')
         self.assertIn('recording too old for this PR', text)
+        code, text = self.run_verdict(self.band(), [({}, {'gap': True}), ({'gap': True}, {'gap': True}), ({'gap': True}, {'gap': True})])
+        self.assertEqual(code, 0, 'main asks beyond the recording too in the 2 more pairs: an aged recording, never this PR\'s path')
+        self.assertNotIn('recording too old for this PR', text)
 
     def test_a_recording_too_old_for_this_pr_is_held_by_a_live_moves_line_only(self):
         old = [({}, {'gap': True, 'right': False})]
