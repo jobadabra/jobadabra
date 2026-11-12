@@ -51,8 +51,9 @@ main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
 repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
 log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 # Why (8 Nov 2026, ac's R1): a refusal before the background run starts (a bad --body, uncommitted files) wrote nothing to the log, so the
-# caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there.
-[ "$background" != 1 ] || trap 'code=$?; [ "$code" -eq 0 ] || echo "ship: FAILED (exit $code) refused before starting, nothing was pushed: see its message" >> "$log"' EXIT
+# caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there (12 Nov 2026, sl: the line is `refusal_line` when the refusal is the live-run lock, else the generic one).
+refusal_line=""
+[ "$background" != 1 ] || trap 'code=$?; [ "$code" -eq 0 ] || echo "${refusal_line:-ship: FAILED (exit $code) refused before starting, nothing was pushed: see its message}" >> "$log"' EXIT
 [ -z "$arg_err" ] || { echo "$arg_err" >&2; exit 2; }   # an argument refusal waits for the trap (Gitar on #3575)
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
 [ -n "$branch" ] || { echo "ship: no branch is checked out (detached HEAD). Finish or abort a rebase or merge in progress, else name one: git switch -c <topic>; then run this again." >&2; exit 2; }
@@ -70,6 +71,46 @@ if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools
     echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
   export SHIP_BODY_CHECKED=1
 fi
+# One live ship run per worktree (Work board card, 12 Nov 2026; 3 escapes in 30 days: #3370 on 7 Nov closed empty, #3803 on 11 Nov, #3917 on 12 Nov).
+# Why (12 Nov 2026, sl): the REVIEW line reads as finished while its run may still be alive, and a 2nd ship.sh beside it rebased and pushed the same checkout and
+# truncated its log. The lock is a pid file in this worktree's own git dir (not the common dir: another worktree is not blocked; line 1 the pid, line 2 the log),
+# live = kill -0 and the process is a ship.sh (a reused pid is stale). A stale file is replaced; the run's EXIT trap removes it before it prints REVIEW or DONE.
+lockfile="$(git rev-parse --path-format=absolute --git-dir)/ship-run.pid"
+ship_run_alive() {  # <pid>: a live tools/ship.sh process
+  kill -0 "$1" 2>/dev/null || return 1
+  case "$(ps -o command= -p "$1" 2>/dev/null)" in *ship.sh*) return 0 ;; esac
+  return 1
+}
+ship_lock_write() { printf '%s\n%s\n' "$1" "$log" > "$lockfile"; }
+ship_lock_create() { ( set -C; printf '%s\n%s\n' "$1" "$log" > "$lockfile" ) 2>/dev/null; }   # atomic: noclobber fails when the file exists
+ship_lock_release() { [ "$(sed -n 1p "$lockfile" 2>/dev/null)" != "$$" ] || rm -f "$lockfile"; }   # only this run's own file: a newer run's stays
+ship_lock_refuse() {  # <holder pid> <holder log>
+  refusal_line="ship: FAILED refused: a ship run (pid $1) is alive on this worktree; this call pushed nothing and that run goes on, its log: ${2:-unknown}"
+  echo "ship: refused: a ship run for this worktree is alive (pid $1, log ${2:-unknown}); a second run beside it would rebase and push the same checkout." >&2
+  echo "ship: wait for it: until ! kill -0 $1 2>/dev/null; do sleep 5; done (or its log's ^ship: (DONE|FAILED|MERGED|CLOSED) line), then ship once. A REVIEW line is not its end: only the pid being gone is." >&2
+  exit 2
+}
+# Why (12 Nov 2026, sl; Gitar on #3921): two runs reading one stale file could each rm the other's fresh lock and both go on (6 racing runs: 3 went through).
+# The look at the holder and the replacing of a stale file happen under a mkdir guard (atomic, held for milliseconds), so the second run sees the first run's live pid.
+ship_lock_take() {
+  ship_lock_create "$$" && return 0
+  local guard="$lockfile.guard" tries=0 holder holder_log
+  until mkdir "$guard" 2>/dev/null; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 50 ]; then rmdir "$guard" 2>/dev/null || true; mkdir "$guard" 2>/dev/null && break; refusal_line="ship: FAILED refused: the lock guard $guard is held"; echo "ship: refused: another run is taking this worktree's lock ($guard); try again in a moment." >&2; exit 2; fi   # past 5 s a guard is a dead run's leftover
+    sleep 0.1
+  done
+  holder="$(sed -n 1p "$lockfile" 2>/dev/null || true)"; holder_log="$(sed -n 2p "$lockfile" 2>/dev/null || true)"
+  if [ -n "$holder" ] && ship_run_alive "$holder"; then rmdir "$guard"; ship_lock_refuse "$holder" "$holder_log"; fi
+  rm -f "$lockfile"   # stale: its run is gone
+  if ship_lock_create "$$"; then rmdir "$guard"; return 0; fi
+  rmdir "$guard"; holder="$(sed -n 1p "$lockfile" 2>/dev/null || true)"; ship_lock_refuse "${holder:-unknown}" "$(sed -n 2p "$lockfile" 2>/dev/null || true)"
+}
+if [ -n "${SHIP_LOCK_HELD:-}" ]; then ship_lock_write "$$"; unset SHIP_LOCK_HELD   # the detached child: the background parent took the lock for it (below)
+else ship_lock_take; fi
+if [ "$background" != 1 ]; then   # the real run (foreground, or the detached child): free the lock on any end, a signal included, even before the closing trap below exists
+  trap ship_lock_release EXIT; trap 'exit 143' TERM; trap 'exit 130' INT; trap 'exit 129' HUP
+fi
 [ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || { session_name() { echo "${JOBADABRA_SESSION:-?}"; }; session_short() { echo "${JOBADABRA_SESSION_SHORT:-?}"; }; }
 if [ "$background" = 1 ]; then
   export JOBADABRA_SESSION="$(session_name)" JOBADABRA_SESSION_SHORT="$(session_short)"   # the detached run has no Claude session among its parents any more
@@ -77,10 +118,11 @@ if [ "$background" = 1 ]; then
   # Its own session (setsid; macOS has no such command, python's os.setsid does the same): the caller's process-group kill or hangup when its
   # call ends (a tool timeout, a closed terminal) must not reach the run. nohup alone only ignores SIGHUP (10 Oct 2026: a killed run logged DONE).
   if command -v setsid >/dev/null; then
-    SHIP_LOG="$log" setsid "$0" ${args[@]+"${args[@]}"} > /dev/null 2>&1 < /dev/null &   # the child's own tee writes the log
+    SHIP_LOCK_HELD=1 SHIP_LOG="$log" setsid "$0" ${args[@]+"${args[@]}"} > /dev/null 2>&1 < /dev/null &   # the child's own tee writes the log
   else
-    SHIP_LOG="$log" python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "$0" ${args[@]+"${args[@]}"} > /dev/null 2>&1 < /dev/null &
+    SHIP_LOCK_HELD=1 SHIP_LOG="$log" python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "$0" ${args[@]+"${args[@]}"} > /dev/null 2>&1 < /dev/null &
   fi
+  for _ in $(seq 100); do [ "$(sed -n 1p "$lockfile" 2>/dev/null)" != "$$" ] && break; sleep 0.1; done   # the lock stays this parent's until the child has written its own pid: never a gap
   trap - EXIT   # the run has started and writes its own end; a closed pipe on the lines below (ship.sh | head) is not a refusal
   echo "ship: started in the background (pid $!). Log: $log"
   gh_repo="$(git remote get-url origin 2>/dev/null | sed -E 's#^.*github.com[:/]##; s#\.git$##')"   # Why (#2462, Gitar): the mark-work hint runs as printed in any repo ship.sh lands (jobadabra-web too); ship_repo's parse, sourced only later
@@ -120,7 +162,7 @@ gate_stats_tail() {  # the very last step, after every "ship:" line the watchers
   [ "${GATE_STATS_UPLOAD:-1}" != 0 ] && [ -f "$tools/gate-stats-upload.mjs" ] && command -v node >/dev/null || return 0
   node "$tools/gate-stats-upload.mjs" >/dev/null 2>&1 || true
 }
-trap 'code=$?; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; then echo "ship: FAILED ${fail_reason:-(exit $code)}, log: $log"; elif [ -n "${review_n:-}" ]; then echo "ship: REVIEW #$review_n ${review_url:-} (every check green; the owner reviews and merges)"; ship_watch_start "$review_n"; elif [ -n "$finished" ]; then echo "ship: DONE ${sha:-nothing to push}"; else echo "ship: FAILED (ended early without pushing or finishing), log: $log"; fi; gate_stats_tail' EXIT   # from the PR's opening, tools/ship-watch.sh adds MERGED / CLOSED / RED / GREEN / READY to the log
+trap 'code=$?; ship_lock_release; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; then echo "ship: FAILED ${fail_reason:-(exit $code)}, log: $log"; elif [ -n "${review_n:-}" ]; then echo "ship: REVIEW #$review_n ${review_url:-} (every check green; the owner reviews and merges)"; ship_watch_start "$review_n"; elif [ -n "$finished" ]; then echo "ship: DONE ${sha:-nothing to push}"; else echo "ship: FAILED (ended early without pushing or finishing), log: $log"; fi; gate_stats_tail' EXIT   # from the PR's opening, tools/ship-watch.sh adds MERGED / CLOSED / RED / GREEN / READY to the log
 
 # Several sessions fetch into one shared repo: a fetch can lose the race for a ref lock ("cannot lock ref 'refs/remotes/origin/main'", 12 Oct 2026, a merged PR reported FAILED). Try again.
 ship_fetch() { local try; for try in 1 2 3 4 5; do git fetch -q origin 2>/dev/null && return 0; sleep 1; done; git fetch -q origin; }
