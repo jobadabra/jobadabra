@@ -83,8 +83,26 @@ test('an Apply batch drafts the missing kits for the best jobs first, quietly, a
   const result = await apply.start(storage, {n: 2, mode: 'chrome'}, fakeSpawn, async () => ({jobs}), undefined, undefined, prepare);
   assert.deepEqual(prepared, ['b']);  // only the shortfall, best fit first
   assert.match(result.message, /^Prepared 1 application first\. Opened 2 job/);
-  assert.deepEqual(result.outcomes, [{url: jobs[1].url, title: jobs[1].title, company: jobs[1].company, status: 'started', reason: ''}], 'a successfully opened Chrome batch reports the drafted kit as started');
+  // #3617 (12 Nov 2026): every job the batch opened has a row, not only the drafted one, so the dialog's counts match the tabs.
+  assert.deepEqual(result.outcomes, [jobs[1], jobs[0]].map(job => ({url: job.url, title: job.title, company: job.company, status: 'started', reason: ''})), 'a successfully opened Chrome batch reports the drafted job and the one that already had a kit as started');
   assert.equal(spawned[0].length, 3 + 2);
+});
+
+test('a Chrome batch lists every job it opened beside a drafted job that came back not eligible, so the counts add up (#3617)', {skip: process.platform === 'win32' && 'Mac launcher'}, async () => {
+  const spawned = [];
+  const fakeSpawn = (cmd, args) => { spawned.push([cmd, ...args]); return {unref() {}}; };
+  const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index, kit: number <= 2}));
+  const result = await apply.start(tempStorage(), {n: 4, mode: 'chrome'}, fakeSpawn, async () => ({jobs}), undefined, undefined, async ({code}) => {
+    const job = jobs.find(row => row.code === code);
+    job.kit = true;
+    if (code === '4') job.ineligible = 'Needs a work permit.';
+    return code === '4' ? {ok: true, ineligible: job.ineligible} : {ok: true};
+  });
+  assert.equal(result.ok, true);
+  const tabs = spawned[0].filter(arg => /jobs\.example\.test/.test(arg)).length;
+  assert.equal(tabs, 3, 'three tabs opened: two with kits, one drafted');
+  assert.deepEqual(result.outcomes.map(item => [item.url.slice(-1), item.status]).sort(), [['1', 'started'], ['2', 'started'], ['3', 'started'], ['4', 'ineligible']], 'a row per tab, plus the skipped one');
+  assert.equal(result.outcomes.filter(item => item.status === 'started').length, tabs, 'started rows = tabs opened');
 });
 
 test('a background batch keeps mixed eligibility and preparation failures beside the eligible job it queued', async () => {

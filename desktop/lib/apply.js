@@ -359,8 +359,13 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   }
   await releaseEndedRuns(release, chosen.map(job => job.url));   // ended hidden-browser runs leave the list first, as in applyOne (7 Nov 2026, review of the owner's HYPE fix)
   const result = openBatchInChrome(chosen, drafted, {open, focus});
+  // Why (#3617, 12 Nov 2026): with a drafted job the dialog counts only outcomes, so a job that already had a kit and got a tab needs its row too (the background branch lists every chosen job the same way); with none drafted the batch closes to its toast as before.
   const opened = new Set(chosen.map(job => job.url));
-  if (result.ok) outcomes = outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, status: 'started'} : item);
+  if (outcomes.length) {
+    const listed = new Set(outcomes.map(item => item.url));
+    const row = job => ({url: job.url, title: job.title || '', company: job.company || '', status: result.ok ? 'started' : 'not-started', reason: result.ok ? '' : result.error});
+    outcomes = [...outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, ...(result.ok ? {status: 'started'} : {status: 'not-started', reason: result.error})} : item), ...chosen.filter(job => !listed.has(job.url)).map(row)];
+  }
   return outcomes.length ? {...result, outcomes} : result;
 }
 
