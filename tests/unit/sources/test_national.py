@@ -146,6 +146,14 @@ class InTheFreeApisTest(unittest.TestCase):
                 self.assertNotIn('Platsbanken', [name for name, _ in aggregators.sources(off)])
         self.assertNotIn('Platsbanken', api_lane.NOT_HERE, 'the lane asks it at second 0')
 
+    def test_the_rows_name_every_service_in_order_and_the_row_file_loads_on_its_own(self):
+        self.assertEqual(reader_rows.NATIONAL, tuple(service.name for service in national.SERVICES), 'a new service is named in reader_rows.NATIONAL too')
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('reader_rows_alone', ROOT / 'src' / 'sources' / 'reader_rows.py')
+        alone = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(alone)   # as tools/press-yardstick/verdict.py loads it (#3887): no sibling import at load
+        self.assertEqual([row.name for row in alone.ROWS], ['EURES', *reader_rows.NATIONAL])
+
     def test_each_row_reads_its_service_through_national_read(self):
         for service in national.SERVICES:
             with self.subTest(service.name), mock.patch.object(national, 'read', return_value=['job']) as read:
