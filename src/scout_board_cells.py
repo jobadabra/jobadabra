@@ -17,7 +17,6 @@ PER_RUN = 3                    # families one run asks a country's boards for (o
 REST_DAYS = (1, 2, 4, 8, 30)   # an empty cell's rest after its 1st, 2nd, ... empty try; the last one repeats
 REFRESH_DAYS = 20              # a fact this old is read again (the site drops it at src/scout_boards.py FACT_DAYS)
 TARGET = 2                     # boards a cell needs before it leaves the queue (only a refresh reads it again)
-STOPS = ('scout_browser_final',)   # src/scout_boards.py (#3910): boards the browser must never open again; copied on every run by seed()
 SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
 
@@ -141,7 +140,6 @@ def seed(db, path, out=print):
     scout_boards.ensure(db)
     if not path or not Path(path).is_file():
         return 0
-    _keep_stops(db, path)
     if db.execute('SELECT 1 FROM scout_board_facts LIMIT 1').fetchone():
         return 0
     try:
@@ -161,22 +159,6 @@ def seed(db, path, out=print):
     db.commit()
     out(f'Board discovery: started from the Scout\'s {len(rows)} board facts')
     return len(rows)
-
-
-def _keep_stops(db, path):
-    """Every board the browser was stopped at in the Scout's database stays stopped here, on every run: a refusal is final whichever job met it
-    (CLAUDE.md, refused sites: "a check, captcha, sign-in page or 401/403 stops that board ... for good"). Tables of STOPS that either side lacks: none."""
-    have = lambda connection, table: connection.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone()
-    try:
-        with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
-            for table in STOPS:
-                if have(source, table) and have(db, table):
-                    columns = [row[1] for row in source.execute(f'PRAGMA table_info({table})')]
-                    rows = source.execute(f'SELECT {", ".join(columns)} FROM {table}').fetchall()
-                    db.executemany(f'INSERT OR IGNORE INTO {table} ({", ".join(columns)}) VALUES ({", ".join("?" * len(columns))})', rows)
-    except sqlite3.Error:
-        return
-    db.commit()
 
 
 def facts_beside(path, today=None):
