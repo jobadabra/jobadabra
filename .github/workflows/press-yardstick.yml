@@ -166,29 +166,47 @@ jobs:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
           NET_RECORDS_READ_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_READ_TOKEN }}
           PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
+        # Why (12 Nov 2026, owner on #3929: "I don't believe that we cannot make it faster than 12m"): the 18 fetches were one after the other (33 s of a ~8.6 min run); each one lists the
+        # release, downloads and decrypts into its own folder, so 6 run side by side (the key stays in this one step's environment: PR code still starts only after it ends).
         run: |
           mkdir -p recordings
-          for n in $(node -e 'const p = JSON.parse(process.env.PERSONAS); if (!Array.isArray(p) || !p.every(Number.isInteger)) process.exit(1); console.log(p.join(" "))'); do
-            node sides/main/tools/persona-search/tape-store.mjs fetch "night-p$n" "recordings/p$n" || { rm -rf "recordings/p$n"; echo "p$n has no Find jobs recording yet: not measured"; }
-          done
+          fetch_one() { node sides/main/tools/persona-search/tape-store.mjs fetch "night-p$1" "recordings/p$1" || { rm -rf "recordings/p$1"; echo "p$1 has no Find jobs recording yet: not measured"; }; }
+          export -f fetch_one
+          node -e 'const p = JSON.parse(process.env.PERSONAS); if (!Array.isArray(p) || !p.every(Number.isInteger)) process.exit(1); console.log(p.join("\n"))' | xargs -P 6 -I{} bash -c 'fetch_one {}'
           echo "count=$(ls recordings | wc -l)" >> "$GITHUB_OUTPUT"
       - name: Electron's zip from the cache (a GitHub 504 only hits a cold cache)
         timeout-minutes: 5
         uses: ./.github/actions/electron-cache
       - name: The engine, the app's libraries and a browser for each side
         if: steps.rec.outputs.count != '0'
+        # Why (12 Nov 2026, same words): the two sides were installed one after the other (31 s); they share nothing, so they install side by side. After the recordings step on purpose:
+        # this is the first step that runs the PR's code (its package scripts), and the recordings' key is gone by then (#3594).
         run: |
-          for side in sides/*; do
+          install_side() {
+            side=$1
             python3 -m venv "$side/.venv"   # each side replays with its own packages (Gitar on #3598); replay.py puts it first on PATH
             "$side/.venv/bin/pip" install --quiet -r "$side/requirements.txt"
             (cd "$side/desktop" && npm ci && node scripts/stage.mjs --files-only)
             (cd "$side/desktop/e2e" && (npm ci || npm install))
-          done
+          }
+          pids=()
+          for side in sides/*; do install_side "$side" > "$RUNNER_TEMP/${side##*/}.install.log" 2>&1 & pids+=($!); done
+          failed=0
+          for i in "${!pids[@]}"; do wait "${pids[$i]}" || failed=1; done
+          for log in "$RUNNER_TEMP"/*.install.log; do echo "::group::$log"; cat "$log"; echo "::endgroup::"; done
+          exit $failed
       - uses: ./.github/actions/playwright-browser
         if: steps.rec.outputs.count != '0'
         with: {working-directory: sides/main/desktop/e2e, mode: both}
-      - uses: ./.github/actions/playwright-browser   # the PR's own Playwright version, if it changed it
+      # Why (12 Nov 2026, same words): the browser install keys on the Playwright version; a second install of the same version was a cache hit that still cost ~10 s.
+      - name: Does the PR's side use another Playwright version?
+        id: pw
         if: steps.rec.outputs.count != '0' && (inputs.mode || 'pr') == 'pr'
+        run: |
+          version() { (cd "$1/desktop/e2e" && npx --no-install playwright --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); }
+          [ -n "$(version sides/main)" ] && [ "$(version sides/main)" = "$(version sides/pr)" ] && echo "differs=false" >> "$GITHUB_OUTPUT" || echo "differs=true" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/playwright-browser   # the PR's own Playwright version, only if it changed it
+        if: steps.rec.outputs.count != '0' && (inputs.mode || 'pr') == 'pr' && steps.pw.outputs.differs == 'true'
         with: {working-directory: sides/pr/desktop/e2e, mode: both}
       - name: Every recording replayed by every side at once (offline, no AI)
         if: steps.rec.outputs.count != '0'
