@@ -6,8 +6,9 @@ made, it will never be overwrite"). It holds a gain from the moment the recordin
 Each person and Find jobs run reads one state, in this order (the one owner of these states):
   not measured (never red): no recording; main's band built on another recording; a press failed or a replay left no jobs on a side; a clock cliff on main's
     own band (its replays disagree: some read 0 right jobs or skip a lane, others not); main's side asks beyond the recording's bounds (re-record, said loudly).
-  recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them; the PR changed the path. Held,
-    never "worse": the PR passes only with a live `Moves:` line (numbers, 3 runs a side; "Moves: nothing (...)" does not hold it). Re-recorded after the merge.
+  recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them, in all 3 pairs (too_old); the PR
+    changed the path. Held, never "worse": the PR passes only with a live `Moves:` line (numbers, 3 runs a side; "Moves: nothing (...)" does not hold it).
+    Re-recorded after the merge.
   lost a source: a lane of src/sources/reader_rows.py LANES (main's file, looped) that ran, or read jobs, in all of main's band replays and in main's replay
     here, and on the PR side did not run or read 0 jobs. eures counts only on a tape recorded with it on.
   fewer right jobs: the person's coverage reads "worse" (three_numbers.person_verdict: beyond one job and beyond the person's 2-sd band).
@@ -126,6 +127,15 @@ def side_rows(out, recordings, sides):
     return {side: {run: {row['persona']: row for row in ci.rows(recordings, folder, run)} for run in ci.RUNS} for side, folder in sides.items()}
 
 
+def too_old(art, persona):
+    """Whether "only the PR side asks beyond the recording" stands for the person: yes until the 2 more pairs ran, then only when all 3 pairs show it.
+    Why (#3878, 12 Nov 2026): one pair alone held a PR that changes no file a search runs; a replay runs on the runner's wall clock."""
+    again = [[Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl') for side in pair] for pair in PAIRS[1:]]
+    if not all(report.exists() for pair in again for report in pair):
+        return True
+    return all(ci.report_gap(pr_side) and not ci.report_gap(main_side) for main_side, pr_side in again)
+
+
 def states(art, out, recordings, band, ids):
     """{persona: {run: {'state', 'why', 'pairs'}}} for the 18 night people. states: not measured, too old, red, ok."""
     sides = ci.lay_out(art, out)
@@ -148,7 +158,7 @@ def states(art, out, recordings, band, ids):
                 gaps = [ci.report_gap(Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl')) for side in PAIRS[0]]
                 if gaps[0]:   # main itself asks what the recording lacks (both sides, or a merged path change): the comparison means nothing
                     one['why'] = 'recording stale, re-record'
-                elif gaps[1]:
+                elif gaps[1] and too_old(art, persona):
                     one.update(state='too old', why='recording too old for this PR')
                 else:
                     steady = ((band.get('lanes') or {}).get(run) or {}).get(persona, {})
@@ -161,11 +171,11 @@ def states(art, out, recordings, band, ids):
 
 
 def suspects(art, out, recordings, again):
-    """The people whose first pair shows a loss: their recordings copied to <again> for the 2 more pairs. Returns them."""
+    """The people whose first pair shows a loss or a recording too old for the PR: their recordings copied to <again> for the 2 more pairs. Returns them."""
     band = ci.newest_band()
     Path(out, 'band-used.json').write_text(json.dumps(band), encoding='utf-8')
     found = states(art, out, recordings, band, lanes())
-    people = sorted({p for p, runs in found.items() for one in runs.values() if one['pairs'] and one['pairs'][0]}, key=lambda n: int(n[1:]))
+    people = sorted({p for p, runs in found.items() for one in runs.values() if one['state'] == 'too old' or (one['pairs'] and one['pairs'][0])}, key=lambda n: int(n[1:]))
     for persona in people:
         shutil.copytree(Path(recordings, persona), Path(again, persona), dirs_exist_ok=True)
     return people

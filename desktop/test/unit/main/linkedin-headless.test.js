@@ -182,6 +182,19 @@ test('whatever throws, the cookies are cleared and the words never carry the ses
   noSecret(r.lines, result);
 });
 
+test('#3710 (press of 12 Nov 2026): three searches that only said "has the tab" and read no page end as failed, never "none new"', async () => {
+  // The real result of a search whose tab never loaded: the extension's "has the tab" ping made runAll say answered:true, the quiet timer ended it with no page read.
+  const stalled = {ok: false, jobs: 0, added: 0, fits: 0, pages: 0, quiet: true, blocked: '', why: 'it stopped answering (nothing for 30 s) (last step: the extension has the tab: waiting for the page to load): skipped, you can close its tab'};
+  const r = rig({results: [stalled, stalled, stalled]});
+  const result = await linkedinStep(r.args);
+  assert.equal(result.state, 'failed');
+  assert.equal(r.lines.some(line => /none new/.test(line)), false, 'no false "none new"');
+  assert.ok(r.lines.includes('LinkedIn: could not be read this time') || r.lines.some(line => /could not be read/.test(line)));
+  // One search that did read a page (an empty list in the person's places) still counts as answered: "none new" stays true for it.
+  const one = rig({results: [{ok: true, jobs: 0, pages: 1, empty: true}, stalled, stalled]});
+  assert.equal((await linkedinStep(one.args)).state, 'done');
+});
+
 test('a browser that will not start is a plain failure, nothing was set', async () => {
   const r = rig({startError: Object.assign(new Error('x'), {code: 'BACKGROUND_BROWSER_MISSING'})});
   assert.equal((await linkedinStep(r.args)).state, 'no-browser');

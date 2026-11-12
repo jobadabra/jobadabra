@@ -87,11 +87,12 @@ async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}
     const [result] = await run([{name: search.name, url: search.url, place: search.place || ''}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
       tee: line => { if (/^\s*[✓✗]/.test(line)) tee(line); }, waitMs: 40000, quietMs: 30000, siteMs: 75000});
     await closeTabs();
-    total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1; total.answered += result?.answered ? 1 : 0;
+    total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1; total.answered += result?.ok || result?.pages > 0 ? 1 : 0;
     const ended = endOf(result, seen, signal);
     if (ended) { total.verdict = ended; break; }
   }
-  // Why (#3710, owner: "I never saw a LinkedIn job"): searches the extension never answered are not "none new"; when none answered the read failed (a lane's done / cut / failed).
+  // Why (#3710, owner: "I never saw a LinkedIn job"; press of 12 Nov 2026): a search is answered only when a page was read (or its list was read empty), not when the extension merely said it had the tab
+  // (visits.js sets `answered` on any step, so 3 tabs that never loaded said done / "none new"); when none answered the read failed (a lane's done / cut / failed).
   if (total.verdict === 'done' && total.read && !total.answered) total.verdict = 'failed';
   return total;
 }
