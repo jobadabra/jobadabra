@@ -307,7 +307,7 @@
       "messages": [
         {
           "role": "user",
-          "content": "Task: A place a job seeker searches in. Answer the country it is in. Ids: ch = Switzerland; de = Germany; at = Austria; fr = France; it = Italy; gb = United Kingdom; ie = Ireland; nl = Netherlands; be = Belgium; lu = Luxembourg; es = Spain; pt = Portugal; se = Sweden; dk = Denmark; no = Norway; fi = Finland; pl = Poland; cz = Czechia; ro = Romania; md = Moldova; gr = Greece; us = United States; ca = Canada; au = Australia; sg = Singapore; in = India; ae = United Arab Emirates; il = Israel; br = Brazil; mx = Mexico; jp = Japan; bg = Bulgaria; hr = Croatia; ee = Estonia; hu = Hungary; none = none of these.\nAllowed answers: ch, de, at, fr, it, gb, ie, nl, be, lu, es, pt, se, dk, no, fi, pl, cz, ro, md, gr, us, ca, au, sg, in, ae, il, br, mx, jp, bg, hr, ee, hu, none\n\n### Item 0\nz[uü]rich\n\n### Item 1\nswitzerland\n\n### Item 2\nschweiz"
+          "content": "Task: A place a job seeker searches in. Answer the country it is in. Ids: ch = Switzerland; de = Germany; at = Austria; fr = France; it = Italy; gb = United Kingdom; ie = Ireland; nl = Netherlands; be = Belgium; lu = Luxembourg; es = Spain; pt = Portugal; se = Sweden; dk = Denmark; no = Norway; fi = Finland; pl = Poland; cz = Czechia; ro = Romania; md = Moldova; gr = Greece; us = United States; ca = Canada; au = Australia; sg = Singapore; in = India; ae = United Arab Emirates; il = Israel; br = Brazil; mx = Mexico; jp = Japan; bg = Bulgaria; hr = Croatia; ee = Estonia; hu = Hungary; sk = Slovakia; si = Slovenia; lt = Lithuania; lv = Latvia; cy = Cyprus; mt = Malta; none = none of these.\nAllowed answers: ch, de, at, fr, it, gb, ie, nl, be, lu, es, pt, se, dk, no, fi, pl, cz, ro, md, gr, us, ca, au, sg, in, ae, il, br, mx, jp, bg, hr, ee, hu, sk, si, lt, lv, cy, mt, none\n\n### Item 0\nz[uü]rich\n\n### Item 1\nswitzerland\n\n### Item 2\nschweiz"
         }
       ],
       "model": "claude-haiku-5-5",
@@ -372,6 +372,12 @@
                         "hr",
                         "ee",
                         "hu",
+                        "sk",
+                        "si",
+                        "lt",
+                        "lv",
+                        "cy",
+                        "mt",
                         "none"
                       ]
                     }
@@ -480,8 +486,8 @@
       {
         "operation": "app.decide",
         "context": {
-          "task": "A place a job seeker searches in. Answer the country it is in. Ids: ch = Switzerland; de = Germany; at = Austria; fr = France; it = Italy; gb = United Kingdom; ie = Ireland; nl = Netherlands; be = Belgium; lu = Luxembourg; es = Spain; pt = Portugal; se = Sweden; dk = Denmark; no = Norway; fi = Finland; pl = Poland; cz = Czechia; ro = Romania; md = Moldova; gr = Greece; us = United States; ca = Canada; au = Australia; sg = Singapore; in = India; ae = United Arab Emirates; il = Israel; br = Brazil; mx = Mexico; jp = Japan; bg = Bulgaria; hr = Croatia; ee = Estonia; hu = Hungary; none = none of these.",
-          "allowedAnswers": "ch, de, at, fr, it, gb, ie, nl, be, lu, es, pt, se, dk, no, fi, pl, cz, ro, md, gr, us, ca, au, sg, in, ae, il, br, mx, jp, bg, hr, ee, hu, none",
+          "task": "A place a job seeker searches in. Answer the country it is in. Ids: ch = Switzerland; de = Germany; at = Austria; fr = France; it = Italy; gb = United Kingdom; ie = Ireland; nl = Netherlands; be = Belgium; lu = Luxembourg; es = Spain; pt = Portugal; se = Sweden; dk = Denmark; no = Norway; fi = Finland; pl = Poland; cz = Czechia; ro = Romania; md = Moldova; gr = Greece; us = United States; ca = Canada; au = Australia; sg = Singapore; in = India; ae = United Arab Emirates; il = Israel; br = Brazil; mx = Mexico; jp = Japan; bg = Bulgaria; hr = Croatia; ee = Estonia; hu = Hungary; sk = Slovakia; si = Slovenia; lt = Lithuania; lv = Latvia; cy = Cyprus; mt = Malta; none = none of these.",
+          "allowedAnswers": "ch, de, at, fr, it, gb, ie, nl, be, lu, es, pt, se, dk, no, fi, pl, cz, ro, md, gr, us, ca, au, sg, in, ae, il, br, mx, jp, bg, hr, ee, hu, sk, si, lt, lv, cy, mt, none",
           "schema": {
             "type": "object",
             "additionalProperties": false,
@@ -540,6 +546,12 @@
                         "hr",
                         "ee",
                         "hu",
+                        "sk",
+                        "si",
+                        "lt",
+                        "lv",
+                        "cy",
+                        "mt",
                         "none"
                       ]
                     }
@@ -553,17 +565,17 @@
           {
             "index": 0,
             "text": "zürich",
-            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e"
+            "key": "default/56d3745f6040bdea08514faf5e3163eeac9c63f4b300d213bc7e9ff55f1026e2/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e"
           },
           {
             "index": 1,
             "text": ": <!w zurich !w",
-            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a"
+            "key": "default/56d3745f6040bdea08514faf5e3163eeac9c63f4b300d213bc7e9ff55f1026e2/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a"
           },
           {
             "index": 2,
             "text": ":z :ürich winterthur uster dübendorf wallisellen opfikon kloten glattbrugg schlieren dietikon wädenswil horgen thalwil pfäffikon volketswil regensdorf basel bâle liestal muttenz pratteln allschwil riehen binningen reinach arlesheim rheinfelden bern berne biel bienne thun köniz burgdorf langenthal solothurn aarau olten <!w baden !- fribourg freiburg !s :ims breisgau schwarzenburg genèva genf lausanne nyon morges vevey montreux renens yverdon pully meyrin carouge neuchâtel sion sitten delémont delémont martigny sierre monthey la chaux-de-fonds lücerne luzern zug cham baar schwyz altdorf stans sa",
-            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0"
+            "key": "default/56d3745f6040bdea08514faf5e3163eeac9c63f4b300d213bc7e9ff55f1026e2/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0"
           }
         ]
       },
