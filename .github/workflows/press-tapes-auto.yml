@@ -11,11 +11,23 @@ run-name: Press tapes auto · the day's re-record
 #    writes the table in its job summary of this run; the PR's proof is the live same-minute pair plus the Search night.
 # A day's merges end in ONE re-record of the newest main: this workflow's group keeps one running and one pending run, the pending one recomputes the gaps on the newest main when it starts. It never uses the `search-personas` group (a
 # pending run there would replace a queued by-hand run).
-# Trigger = once a day, from the site Worker's timer (app-core/src/scheduler.js TAPES_SLOT), or by hand; no longer each merge. 10:30 UTC: after the night's passes and Thursday's Search week.
+# Trigger = the site Worker's timer (app-core/src/scheduler.js), or by hand; never each merge. Two kinds of start (owner, 13 Nov 2026, asked via AskUserQuestion by mac-9a: "When the replay finds many empty": "The daily replay re-records by itself when it sees
+# several people with 0 jobs, then re-runs. It only spends a run when the recordings are stale."; rejected: "By hand after merge batches", "Add a second daily slot"):
+#    the day's run, 10:30 UTC (TAPES_SLOT; after the night's passes and Thursday's Search week), no input: the catch-all, it records any gap and its table always runs;
+#    the hourly look (TAPES_CHECK), input min_gaps = the line: the gap check is offline and free, `decide` records only when at least that many of the 18 people have a gap AND the last automatic re-record started 6 h or more ago
+#    (owner, 13 Nov 2026, asked via AskUserQuestion by mac-9a: "At most one every 6 h"; read from this workflow's past runs, tools/press-yardstick/rerecord_decision.py), else the run ends there with one summary line (no recording, no AI call, no table).
+#    The 10:30 run does not wait for the 6 h (any gap records), and its recording starts the 6 h for the looks after it.
+#    After a recording the band and the table replay main again, as always.
 # Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)": "recordings are renewed once after a day's merges instead of after each merge, which saves Codex-plan calls"):
 # about 11 search merges that day aged the recordings faster than 8 re-records renewed them (the replay measured 3 of 18 people), and the replay no longer decides a PR (tools/press-yardstick/verdict.py).
 on:
   workflow_dispatch:
+    inputs:
+      min_gaps:
+        description: 'The hourly look (the Worker): record only when at least this many people have a gap. Empty = 1: the daily run, which records any gap and always replays the table'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -34,10 +46,34 @@ jobs:
       contents: read
       actions: read
 
+  decide:
+    name: Are the recordings stale enough to record now (tools/press-yardstick/rerecord_decision.py)
+    needs: gaps
+    if: ${{ needs.gaps.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read   # the last re-record's start, from this workflow's past runs (the 6 h rule)
+    outputs:
+      record: ${{ steps.line.outputs.record }}
+      daily: ${{ steps.line.outputs.daily }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: tools/press-yardstick
+      - id: line
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PERSONAS: ${{ needs.gaps.outputs.personas }}
+          MIN_GAPS: ${{ inputs.min_gaps }}
+        run: python3 -I tools/press-yardstick/rerecord_decision.py
+
   guard:
     name: No by-hand run holds the broker, and how many may record at once
-    needs: gaps
-    if: ${{ needs.gaps.outputs.personas != '' && needs.gaps.outputs.personas != '[]' }}
+    needs: [gaps, decide]
+    if: ${{ needs.decide.outputs.record == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 320
     permissions:
@@ -136,8 +172,9 @@ jobs:
 
   table:
     name: The 18-person table (main's replay on the renewed recordings, offline)
-    needs: [gaps, guard, record, band]
-    if: ${{ !cancelled() && needs.gaps.result == 'success' && (needs.band.result == 'success' || needs.band.result == 'skipped') }}
+    needs: [gaps, decide, guard, record, band]
+    # Why (13 Nov 2026, owner: "then re-runs. It only spends a run when the recordings are stale"): the hourly look that records nobody ends without a table (24 replays a day otherwise); the day's run (daily) and any run that recorded replay main again.
+    if: ${{ !cancelled() && needs.gaps.result == 'success' && needs.decide.result == 'success' && (needs.decide.outputs.daily == 'true' || needs.record.result != 'skipped') && (needs.band.result == 'success' || needs.band.result == 'skipped') }}
     uses: ./.github/workflows/press-yardstick.yml
     with: {mode: pr}
     secrets: inherit
@@ -147,7 +184,7 @@ jobs:
 
   summary:
     name: What the automatic re-record did
-    needs: [gaps, guard, record, band, table]
+    needs: [gaps, decide, guard, record, band, table]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
