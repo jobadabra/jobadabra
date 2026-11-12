@@ -1,10 +1,14 @@
 // One command proves a Find jobs change on this Mac in about 2.5 minutes a search and prints one table (sa for the owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins. 3 mins.").
-//   node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--together] [--fresh-draft]
+//   node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together] [--fresh-draft]
 //   --ref: the code to search with, any number (two = before | after side by side): a checkout folder (`.` = this one, the default; or a session's worktree path) searches as it is, edits too;
 //          Any other ref gets its own detached worktree under <os temp>/jp-local-proof/trees/<sha>, made once and never edited (the repo's post-checkout hook links node_modules).
 //   --runs N: N searches a side (default 1), round by round (side 1, side 2, then again), all with the same saved plan; the table then says per side each run, the median and the range,
 //          and one verdict: gain shown, loss shown, inside the noise or not enough runs (the rule: local-proof-table.mjs verdict()). A run that hit the Claude plan limit is NOT COUNTED and
 //          the rounds left are not started (a plan limit is not retried).
+//   --same-draw: both sides get the same job-board draw: side 1's code records one extra search (not counted) on a tape (run.mjs --tape, src/search_tape.py), and every counted run
+//          replays its own copy of that tape at the recorded pace (--wait-scale 1): the same web pages, AI answers and time-budget decisions; an AI question the tape lacks (a change that asks
+//          something else) is asked live, and a page the tape lacks fails as unreachable (nothing new is read). The table says per run whether the boards proposed match the recording
+//          ("draw not shared" when they do not), how many AI answers were live and how many pages were not on the tape. Off by default.
 //   --together: the refs search at the same time instead of one after the other (to measure whether two local searches move the 3-minute clock); at most 2 refs, so at most 2 searches at once.
 //   --fresh-draft: make the person's saved search plan again.
 // What it cuts (a full local run, search-check.mjs, is 5-12 min): the CV (gate.py cv) and the strategy draft (one AI call of ~1 min) are made ONCE per person and kept in
@@ -25,7 +29,7 @@ const refs = args.flatMap((arg, i) => (arg === '--ref' ? [args[i + 1]] : []));
 const runs = args.includes('--runs') ? Number(args[args.indexOf('--runs') + 1]) : 1;
 // Why (12 Nov 2026, brief sa-pane-ns): at most 2 local searches at once on this Mac, so --together pairs two refs and no more.
 if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2)) {
-  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--together (at most 2 refs)] [--fresh-draft]');
+  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--fresh-draft]');
   process.exit(2);
 }
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
@@ -77,11 +81,25 @@ if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json
 
 console.log(`${name}: search plan saved ${fs.statSync(path.join(home, 'draft.json')).mtime.toISOString().slice(0, 16)}Z (a change to the strategy draft is NOT tested; --fresh-draft remakes it)`);
 console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}${runs > 1 ? `, ${runs} rounds` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
-const {table, noise, read} = await import('./local-proof-table.mjs');
+const {table, noise, read, notCounted} = await import('./local-proof-table.mjs');
+const plan = ['--presses', '1', '--draft', path.join(home, 'draft.json')];
+let draw = null;   // --same-draw: the recording's folder, its tape and its read
+if (args.includes('--same-draw')) {
+  const out = path.join(work, 'runs', `${stamp}-draw`), tape = path.join(out, 'tape');
+  console.log(`  the shared draw: ${trees[0].label} records one search (not counted): ${out}`);
+  const r = await press(trees[0].dir, out, [...plan, '--tape', tape, '--record']);
+  draw = {out, tape, read: read({...r, out, name, label: 'recording'})};
+  // Why (Gitar on #3848): a crashed or failed recording leaves a cut tape, and every replay would then miss what came after the cut; it is refused by the rule counted runs use
+  const bad = r.code !== 0 ? `exit ${r.code}` : notCounted(draw.read);
+  if (bad) { console.error(`no shared draw: the recording does not count (${bad}); see ${path.join(out, 'run.out')}`); process.exit(1); }
+}
 const go = (t, i, round) => {
   const out = path.join(work, 'runs', `${stamp}-${runs > 1 ? `r${round}-` : ''}${i + 1}`);
   console.log(`  ${runs > 1 ? `round ${round}, ` : ''}${i + 1}. ${t.label}: ${out}`);
-  return press(t.dir, out, ['--presses', '1', '--draft', path.join(home, 'draft.json')]).then(r => ({...r, out, label: t.label, side: i, name}));
+  // Why (12 Nov 2026, sa-pane-ns): a replay keeps each answer it asked live on the tape it reads, so every run replays its own copy and no run answers another's question
+  if (draw) fs.cpSync(draw.tape, path.join(out, 'tape'), {recursive: true});
+  const extra = draw ? [...plan, '--tape', path.join(out, 'tape'), '--replay', '--wait-scale', '1'] : plan;
+  return press(t.dir, out, extra).then(r => ({...r, out, label: t.label, side: i, name, draw: draw?.read}));
 };
 const ran = [];
 for (let round = 1; round <= runs; round++) {
@@ -92,4 +110,4 @@ for (let round = 1; round <= runs; round++) {
 }
 
 if (runs === 1) console.log(`\n${table(ran)}`);
-else console.log(`\n${noise(trees.map((t, i) => ({label: t.label, runs: ran.filter(r => r.side === i)})), name)}`);
+else console.log(`\n${noise(trees.map((t, i) => ({label: t.label, runs: ran.filter(r => r.side === i)})), name, draw)}`);
