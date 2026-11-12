@@ -20,6 +20,7 @@ from pathlib import Path
 AT_ONCE = 36       # one PR's 18 personas x 2 sides; the band's 18 x 5 runs in waves of this size
 HANG_S = 15 * 60   # a replay still running after this is killed and counted as crashed (two 180 s runs take ~6 min)
 DEADLINE_S = 30 * 60   # every wave together: past it, what is still running is killed, so ci.py always gets to run (Gitar on #3598)
+PROGRESS_S = 30   # a progress line on stderr this often (a multiple of the 10 s machine read)
 
 
 def runs(recordings, sides):
@@ -104,20 +105,37 @@ def collect(art, persona, side):
 
 
 class Machine:
-    """The lowest free memory (MB) and highest 1-min load seen every 10 s while the replays run (Linux /proc; elsewhere nothing)."""
-    def __init__(self):
+    """The lowest free memory (MB) and highest 1-min load seen every 10 s while the replays run (Linux /proc; elsewhere nothing), and a progress line
+    on stderr every PROGRESS_S. Why (12 Nov 2026, owner: "i get no live logs/updates … for 6 minutes"): the step printed one line only after the last
+    replay ended; stderr shows in the live log and stays out of the job summary, which reads stdout through tee."""
+    def __init__(self, total=0):
         self.free_mb, self.load, self.stop = None, None, threading.Event()
+        self.total, self.live, self.ended, self.t0 = total, [], 0, time.monotonic()
         threading.Thread(target=self.watch, daemon=True).start()
 
     def watch(self):
+        ticks = 0
         while not self.stop.wait(10):
+            ticks += 1
+            free = load = None
             try:
                 free = int(next(line for line in open('/proc/meminfo') if line.startswith('MemAvailable')).split()[1]) // 1024
                 load = float(open('/proc/loadavg').read().split()[0])
             except (OSError, StopIteration, ValueError):
-                return
-            self.free_mb = free if self.free_mb is None else min(self.free_mb, free)
-            self.load = load if self.load is None else max(self.load, load)
+                pass
+            if free is not None:
+                self.free_mb = free if self.free_mb is None else min(self.free_mb, free)
+                self.load = load if self.load is None else max(self.load, load)
+            if ticks % (PROGRESS_S // 10) == 0:
+                print(self.progress(free, load), file=sys.stderr, flush=True)
+
+    def progress(self, free=None, load=None):
+        """One line: replays ended of all, minutes, the machine now, and who still runs (at most 6 named)."""
+        running = [f'{persona} {side}' for persona, side, process, _ in list(self.live) if process.poll() is None]
+        done = self.ended + len(self.live) - len(running)
+        machine = f' · free {free} MB, load {load}' if free is not None else ''
+        more = f' +{len(running) - 6}' if len(running) > 6 else ''
+        return f'replay: {done} of {self.total} ended · {int(time.monotonic() - self.t0) // 60}m{int(time.monotonic() - self.t0) % 60:02d}s{machine} · running: {", ".join(running[:6]) or "none"}{more}'
 
 
 def main(argv):
@@ -129,10 +147,12 @@ def main(argv):
     if not todo:
         print('No persona has a Find jobs recording yet: not measured.')
         return 0
-    machine, crashed, started = Machine(), [], time.monotonic()
+    machine, crashed, started = Machine(len(todo)), [], time.monotonic()
+    print(f'replay: {len(todo)} replays, {min(len(todo), AT_ONCE)} at once; a line every {PROGRESS_S} s', file=sys.stderr, flush=True)
     deadline = started + DEADLINE_S
     for wave in range(0, len(todo), AT_ONCE):
         live = [(persona, side, *start(recordings, art, persona, side, checkout)) for persona, side, checkout in todo[wave:wave + AT_ONCE]]
+        machine.live = live
         for persona, side, process, log in live:
             try:
                 process.wait(timeout=max(1, min(HANG_S - (time.monotonic() - started), deadline - time.monotonic())))
@@ -143,6 +163,7 @@ def main(argv):
             ended_with_jobs = collect(art, persona, side)   # always laid out: ci.py names a crashed replay only when its recording is there
             if process.returncode != 0 or not ended_with_jobs:
                 crashed.append(f'{persona} {side}')
+        machine.ended, machine.live = machine.ended + len(live), []
         started = time.monotonic()
         if started >= deadline:
             crashed += [f'{persona} {side}' for persona, side, _ in todo[wave + AT_ONCE:]]   # never started: past the deadline
