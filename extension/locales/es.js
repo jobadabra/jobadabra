@@ -24,7 +24,7 @@ export default {
   "logins": "Transferir mis sesiones al abrir un puesto en mi navegador",
   "loginsHint": "Para «Abrir en mi navegador»: la aplicación transfiere las cookies del sitio para mantener la sesión. Chrome pide permiso una vez. Desactivado: abre y rellena sin cookies. Nunca contraseñas.",
   "consents": "Marcar por mí las casillas de consentimiento y avisos de datos",
-  "consentsHint": "Avisos de privacidad, confirmaciones y consentimientos: se marcan tras rellenar y se enumeran para leerlos. Tú decides el envío. Jobadabra nunca pulsa Enviar.",
+  "consentsHint": "Avisos de privacidad, confirmaciones y consentimientos: se marcan tras rellenar y se enumeran para leerlos. Tú decides el envío, salvo que hayas activado «Automáticamente».",
   "details": "Tus datos y CV",
   "detailsHint": "Están en Jobadabra (Ajustes → Tus datos para formularios). La extensión los solicita cada vez que rellena. Cámbialos allí.",
   "save": "Guardar datos de conexión",

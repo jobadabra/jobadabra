@@ -24,7 +24,7 @@ export default {
   "logins": "Transferă autentificările când un job se deschide în browser",
   "loginsHint": "Pentru „Deschide în browserul meu”: aplicația transferă cookie-urile site-ului pentru autentificare. Chrome cere permisiunea o dată. Dezactivat: deschide și completează fără ele. Niciodată parole.",
   "consents": "Bifează pentru mine acordurile și notificările privind datele",
-  "consentsHint": "Notificări de confidențialitate, confirmări și acorduri: bifate după completare și listate pe pagină pentru a le citi. Trimiterea rămâne la tine. Jobadabra nu apasă niciodată Trimite.",
+  "consentsHint": "Notificări de confidențialitate, confirmări și acorduri: bifate după completare și listate pe pagină pentru a le citi. Trimiterea rămâne la tine, dacă nu ai activat «Automat».",
   "details": "Datele și CV-ul tău",
   "detailsHint": "Se află în Jobadabra (Setări → Datele tale pentru formulare). Extensia le cere la fiecare completare. Modifică-le acolo.",
   "save": "Salvează datele conexiunii",

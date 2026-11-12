@@ -24,7 +24,7 @@ export default {
   "logins": "Trasferisci gli accessi quando un lavoro si apre nel browser",
   "loginsHint": "Per «Apri nel mio browser»: l’app trasferisce i cookie del sito per mantenere l’accesso. Chrome chiede il permesso una volta. Disattivato: apertura e compilazione senza cookie. Mai password.",
   "consents": "Spunta per me consensi e informative sui dati",
-  "consentsHint": "Informative privacy, conferme e consensi al trattamento: spuntati dopo la compilazione ed elencati nella pagina per leggerli. L’invio resta a te. Jobadabra non preme mai Invia.",
+  "consentsHint": "Informative privacy, conferme e consensi al trattamento: spuntati dopo la compilazione ed elencati nella pagina per leggerli. L’invio resta a te, a meno che tu non abbia attivato «Automaticamente».",
   "details": "I tuoi dati e CV",
   "detailsHint": "Sono in Jobadabra (Impostazioni → I tuoi dati per i moduli). L’estensione li richiede a ogni compilazione. Modificali lì.",
   "save": "Salva i dati di connessione",

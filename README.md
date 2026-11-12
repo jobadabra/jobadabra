@@ -351,7 +351,7 @@ doesn't.
 - ✅ **Live checklist on the page**: what's left, grouped (legal choices, answers, dropdowns to click,
   answers to read), updated as you fill, green "Ready to submit" at the end. Answers written by AI are
   outlined so you read them first.
-- 🖐️ **Never presses Submit.** Terms and consent boxes are ticked only with the "Tick terms and consent
+- 🖐️ **Submit is yours unless you turn on Automatically.** Terms and consent boxes are ticked only with the "Tick terms and consent
   boxes for me" setting or the checklist's "Accept all" button.
 - 🔗 **Follows the Apply hop**: a job board's Apply that opens the employer's own form (jobs.ch → the
   employer's site) fills with the same job's kit; any other site works with one click on the icon, or
@@ -549,7 +549,7 @@ a measured accuracy or success-rate benchmark.
 | ✍️ Cover letter and answers to each employer's own form | ✅ | ➖ | ✅ | ➖ | ➖ | ➖ | ➖ |
 | 📄 Tailored CV, every change shown and fact-checked | ✅ | ⚠️ | ⚠️ | ➖ | ⚠️ | ➖ | ⚠️ |
 | 🤖 Fills real application forms | ✅ | ✅ | ❌ | ✅ | ⚠️ | ✅ | ⚠️ |
-| 🛡️ You always click Submit | ✅ | ⚠️ | ➖ | ❌ | ➖ | ❌ | ➖ |
+| 🛡️ You choose who presses Submit | ✅ | ⚠️ | ➖ | ❌ | ➖ | ❌ | ➖ |
 | 📬 Gmail and Calendar update each application | ✅ | ➖ | ➖ | ✅ | ➖ | ➖ | ➖ |
 | 📊 Funnel and the step to improve | ✅ | ➖ | ➖ | ✅ | ➖ | ➖ | ⚠️ |
 | 🎤 Records, transcribes and reviews real interviews | ✅ | ⚠️ | ⚠️ | ➖ | ➖ | ➖ | ➖ |
