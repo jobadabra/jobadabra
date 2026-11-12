@@ -103,7 +103,7 @@ def _read(board, search, fetch, route, early, show=None):
                     return declared, 'ok', found_route   # board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:
-                        return jobs, 'browser', None
+                        return jobs, board_yield.scripted(), None
                     try:
                         page = show(url)
                     except Exception as error:  # noqa: BLE001 — refused (401/403, a bot check), not allowed or no browser: a visit
@@ -463,9 +463,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
-        board_yield.record(entry, len(found), len(relevant), state)
+        board_yield.record(entry, len(found), len(relevant), state, board_yield.refusal(board['host']))
         board_yield.paid(entry, len(relevant), search)   # read first by the next search in this field (boards_first)
-        print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else ' (refuses automated reading: offered as a visit)'}", flush=True)
+        print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
         jobs.extend(found)
