@@ -89,9 +89,11 @@ def cli_env(parent=None):
 
 
 def call_env(args, parent=None):
-    """cli_env for one call. Haiku answers without extended thinking: through the API the engine keeps Haiku's thinking short too
-    (effort_for: low). Claude Code turns thinking on by default: on 7 Oct 2026 sorting 100 job titles spent 8,656 of 9,110 output
-    tokens thinking and took 84 s; without it 8 s, with comparable answers (a later step scores each job)."""
+    """cli_env for one call: a Haiku call asks Claude Code for no extended thinking (MAX_THINKING_TOKENS=0). Why (7 Oct 2026): sorting 100 job
+    titles spent 8,656 of 9,110 output tokens thinking and took 84 s; without it 8 s, with comparable answers (a later step scores each job).
+    It no longer holds (am, 12 Nov 2026, Claude Code 2.1.322): Haiku thought on 4,701 of 6,240 one-turn calls (1.85M of 4.3M output tokens,
+    ~30 s a search) with this variable set; alwaysThinkingEnabled false and CLAUDE_CODE_DISABLE_THINKING=1 did not stop it either.
+    TODO(AI): find what turns Haiku's thinking off in Claude Code, or drop the variable (12 Nov 2026)."""
     env = cli_env(parent)
     if '--model' in args and args[args.index('--model') + 1] == 'haiku':
         env['MAX_THINKING_TOKENS'] = '0'
