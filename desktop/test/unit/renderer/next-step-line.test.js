@@ -70,6 +70,16 @@ test('only a plan this run made: an earlier run\'s plan, a Re-score or Sync that
   assert.equal(line(list, {run: {...RUN, endedAt: undefined}}), 'Next: employer sites (561 left to read)', 'no end yet: now is the end');
 });
 
+test('a run stopped before it planned says nothing, even when it began minutes after the last run planned (#3668)', () => {
+  const list = [{step: 'employer_sites', left: 561}];
+  const stopped = {kind: 'search', id: 6, live: false, startedAt: '2026-11-08T11:02:00+00:00', endedAt: '2026-11-08T11:02:30+00:00'};   // began 2 min after the plan (AT = 11:00) was saved by run 5, stopped before planning
+  assert.equal(line(list, {run: stopped, runs: [RUN, stopped]}), '', 'the plan is run 5\'s, saved before this run began');
+  const justBefore = {...stopped, startedAt: '2026-11-08T11:00:01+00:00'};
+  assert.equal(line(list, {run: justBefore, runs: [RUN, justBefore]}), '', 'one second after is still an earlier run\'s plan');
+  const planned = {...stopped, startedAt: '2026-11-08T10:59:59+00:00'};
+  assert.equal(line(list, {run: planned, runs: [planned]}), 'Next: employer sites (561 left to read)', 'a plan saved after the run began is its own');
+});
+
 test('every language has every word and every sentence, with the same blanks (class check)', async () => {
   const catalogs = {};
   for (const locale of SUPPORTED_LOCALES) catalogs[locale] = (await import(`../../../i18n/catalogs/next-step/${locale}.js`)).default;
