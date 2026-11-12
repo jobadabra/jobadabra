@@ -25,3 +25,18 @@ test("lines fed to the window during a task are kept in its log, the task's own 
   pipeline.keep('after the task: kept nowhere');
   assert.ok(!pipeline.runs(storage)[0].log.includes('after the task: kept nowhere'));
 });
+
+// #3639: Tailor CVs with nothing to tailor ended "Completed" + "See the CVs in Jobs". The row records how many things the run made (`made`), so the banner can tell.
+test('an app task that returns {ok, made} keeps made on its row; a plain true records none', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-made-'));
+  const files = {};
+  const storage = {settings: () => ({}), secret: () => '', saveSettings: () => {}, path: (...parts) => path.join(dir, ...parts),
+    readText: name => files[name] || '', writeText: (name, text) => { files[name] = text; }};
+  await pipeline.work(storage, 'tailor', () => {}, async () => ({ok: true, made: 0}));
+  assert.equal(pipeline.runs(storage)[0].made, 0);
+  assert.equal(pipeline.runs(storage)[0].ok, true, 'nothing to do is not a failure');
+  await pipeline.work(storage, 'tailor', () => {}, async () => ({ok: true, made: 3}));
+  assert.equal(pipeline.runs(storage)[0].made, 3);
+  await pipeline.work(storage, 'visits', () => {}, async () => true);
+  assert.ok(!('made' in pipeline.runs(storage)[0]));
+});

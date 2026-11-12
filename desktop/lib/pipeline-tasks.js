@@ -125,8 +125,13 @@ export function insight(storage, onLine, trigger = 'schedule') {
 export function work(storage, kind, onLine, doWork, trigger = 'you') {
   // A task that failed says why: its first "✗ <what>: <why>" line (7 Oct 2026: a browser run where Tiffany never started read "stopped
   // unexpectedly · No final result was recorded", though its reason was right under it).
-  return tracked(storage, kind, trigger, onLine, async (tee, signal) => ({ok: !!(await doWork(tee, signal))}), null,
-    (record, log) => ({summary: taskSummary(kind, log), message: appMessage(log), ...(record.ok ? {} : {problem: failedLine(log)})}));
+  // `doWork` returns true/false, or {ok, made}: made = how many things the run made (Tailor CVs: CVs). The row keeps it, so a run that made none never links to "what it made" (#3639).
+  let made = null;
+  return tracked(storage, kind, trigger, onLine, async (tee, signal) => {
+    const out = await doWork(tee, signal);
+    if (out && typeof out === 'object') { made = Number(out.made) || 0; return {ok: !!out.ok}; }
+    return {ok: !!out};
+  }, null, (record, log) => ({summary: taskSummary(kind, log), message: appMessage(log), ...(made === null ? {} : {made}), ...(record.ok ? {} : {problem: failedLine(log)})}));
 }
 export function task(storage, kind, args, onLine, trigger = 'you', {note = ''} = {}) {
   return tracked(storage, kind, trigger, onLine, async tee => {

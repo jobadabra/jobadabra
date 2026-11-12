@@ -4,6 +4,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import '../../../i18n/screens-helpers.js';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {compactRun, NEXT, NO_NEXT} from '../../../renderer/run-compact.js';
 
@@ -85,6 +86,18 @@ test('every kind has its own next step, or a reason it has none (a new kind fail
   assert.equal(compactRun({kind: 'insight', ok: true, result: 'done'}, {name: 'Analyze'}).next, null);
   const pages = new Set([...read('index.html').matchAll(/data-view="([a-z-]+)"/g)].map(match => match[1]));
   for (const [kind, step] of Object.entries(NEXT)) assert.ok(pages.has(step.view), `${kind}: its next step opens "${step.view}", not a page`);
+});
+
+// #3639: Tailor CVs with nothing to tailor ended "Completed" with "See the CVs in Jobs": the run made no CV. A step whose label says a thing was made shows only when the run recorded it made one (`made`, set by pipeline.work).
+test('a run that made nothing never offers a link to what it made (#3639)', () => {
+  const next = (kind, run) => compactRun({kind, ok: true, result: 'done', ...run}, {name: 'Task', kind}).next;
+  assert.equal(next('tailor', {made: 0}), null, 'nothing tailored: no "See the CVs in Jobs"');
+  assert.deepEqual(next('tailor', {made: 3}), {label: 'See the CVs in Jobs', view: 'jobs'});
+  assert.equal(next('tailor', {made: 0, ok: false}), null);
+  // The two fixture states of the e2e Activity page: both end with no CV made.
+  const {states} = JSON.parse(readFileSync(new URL('../../../e2e/fixtures/activity-states.json', import.meta.url), 'utf8'));
+  for (const name of ['tailor--nothing-to-tailor', 'tailor--no-jobs-yet']) assert.equal(next('tailor', states.find(state => state.name === name).run), null, name);
+  for (const name of ['tailor--5-of-5-tailored', 'tailor--3-of-5-partial']) assert.equal(next('tailor', states.find(state => state.name === name).run)?.view, 'jobs', name);
 });
 
 test('the banner draws up to three buttons and Dismiss: the next step, Run again, View details', () => {

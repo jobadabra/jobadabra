@@ -185,7 +185,7 @@ export function registerKitHandlers(ctx) {
       if (!picked.length) {
         const none = apply.nothingToTailor(jobs);
         tee(none); tee('<<<message'); tee(none); tee('message>>>');
-        return true;
+        return {ok: true, made: 0};   // nothing to do is not a failure, and it made no CV: its row links to none (#3639)
       }
       tee(`Tailoring ${picked.length} CV${picked.length === 1 ? '' : 's'} for your best matches (1-2 minutes each)`);
       for (const [index, job] of picked.entries()) {
@@ -209,7 +209,7 @@ export function registerKitHandlers(ctx) {
         for (const job of tailored) { tee(''); tee(`${job.title} (${job.url})`); tee(job.company); }
       } else tee(text);
       tee('message>>>');
-      return done > 0;
+      return {ok: done > 0, made: done};
     }).catch(error => log(`Tailor CVs failed: ${error.message}`));
     return {ok: true, started: true, text: 'Tailoring started.'};
   });
