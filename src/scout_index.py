@@ -3,6 +3,7 @@ sites, dead ends) built from the installs' contributions, and `publish_index`.
 Tests: tests/unit/sources/test_scout_stats.py, tests/unit/sources/test_employer_index.py, tests/unit/sources/test_contribute.py, tests/unit/sources/test_scout.py.
 """
 
+import contextlib
 import json
 import re
 import time
@@ -12,7 +13,7 @@ from collections import Counter
 from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
-from . import geo, pool_tags, regions, scout_carry, scout_kind_counts, scout_title_seed
+from . import geo, pool_tags, regions, scout_carry, scout_kind_counts, scout_timing, scout_title_seed
 from .notion import cron_runs
 from .sources import ats, careers, feeds
 from .scout_core import OUTCOMES, ensure_tables, _get_text, clean_name, key_for, now
@@ -123,6 +124,8 @@ def published_line(count, failed, feeds_out):
              # installs read only counted employers: 26 Oct 2026, 9 of 2,517 had counts and no line said so (src/scout_kind_counts.py)
              f"Kind counts by country on {sum(1 for f in feeds_out if f.get('kind_counts'))} of {len(feeds_out)} feeds" + (f' ({kept} kept from an earlier run, not judged today)' if kept else '')]
     lines.append(scout_carry.answers_line(feeds_out))
+    # Why (12 Nov 2026, jobadabra-lab #87): the gap #87 is about (an employer with open jobs and no kinds judged) had no line; kind counts by country only stood in for it.
+    lines.append(f"Open jobs, no mix: {sum(1 for f in feeds_out if scout_carry.needs_mix(f))} of {len(feeds_out)} feeds")
     for system, n in by_system.most_common():
         kind, same = Counter(re.sub(r'\d+', 'N', str(f.get('error') or ''))[:80] for f in failed if f['ats'] == system).most_common(1)[0]
         if same >= BROKEN_MIN and same >= BROKEN_SHARE * (n + listed[system]):
@@ -202,17 +205,19 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
     items = scout_carry.order(db, list(known.items()), today) if carry else list(known.items())
     judged_before = scout_carry.mixes(db) if carry else {}
     pool = ThreadPoolExecutor(max_workers=workers)
+    timing = scout_timing.feed_pass(workers) if carry else contextlib.nullcontext()   # the central run only: where the workers' time goes (jobadabra-lab #87)
     try:
-        futures = [(item, pool.submit(check, item)) for item in items]
-        # No waiting past the deadline (+ a short grace): a fetch already under way may sit for minutes behind a slow site, and the job's limit does not
-        # wait for it (23 Oct 2026: 20 workers were in a fetch when the run was cancelled). Such a feed is skipped, and carried over when `carry` is on.
-        stop = None if deadline is None else deadline + FETCH_GRACE_S
-        results = []
-        for ((system, slug), _), future in futures:
-            try:
-                results.append(future.result(timeout=None if stop is None else max(0.0, stop - time.monotonic())))
-            except FutureTimeout:
-                results.append({'skipped': True, 'ats': system, 'slug': slug})
+        with timing:
+            futures = [(item, pool.submit(check, item)) for item in items]
+            # No waiting past the deadline (+ a short grace): a fetch already under way may sit for minutes behind a slow site, and the job's limit does not
+            # wait for it (23 Oct 2026: 20 workers were in a fetch when the run was cancelled). Such a feed is skipped, and carried over when `carry` is on.
+            stop = None if deadline is None else deadline + FETCH_GRACE_S
+            results = []
+            for ((system, slug), _), future in futures:
+                try:
+                    results.append(future.result(timeout=None if stop is None else max(0.0, stop - time.monotonic())))
+                except FutureTimeout:
+                    results.append({'skipped': True, 'ats': system, 'slug': slug})
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
     skipped = sum(1 for r in results if r.get('skipped'))
