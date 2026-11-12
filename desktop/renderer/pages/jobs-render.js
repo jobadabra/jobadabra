@@ -43,7 +43,7 @@ import {renderTalking} from './jobs-talking.js';
 import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 import {paintScoreCall} from './jobs-score-call.js';
 import {drawQueueRing, paintQueueBar} from './score-queue-draw.js';
-import {heldOrder, scoreQueue} from './score-queue.js';
+import {heldOrder, queueRuns} from './score-queue.js';
 import {staleLabel, staleTip} from '../rescore-words.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
@@ -113,7 +113,7 @@ export function renderJobs() {
   // A job whose place is unclear is not the AI failing: its row says why (unscoredWhy).
   const unscored = shared.allJobs.filter(job => job.fit == null && job.status === 'unreviewed' && !job.place_unclear).length;
   // The one callout: scores from the previous strategy (Re-score), else jobs not scored yet; the re-score's own card. While the queue after a search runs, its bar says it instead.
-  paintScoreCall(unscored, searchingNow() || !!scoreQueue());
+  paintScoreCall(unscored, searchingNow() || queueRuns());
   paintQueueBar();
   const body = $('jobs-body');
   body.replaceChildren();

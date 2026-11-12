@@ -52,9 +52,10 @@ class PlacesAskedAfterTheSearch(unittest.TestCase):
         with title_queue.hub(), batch_scope.concurrent(), batch_scope.reader('job boards'):
             return sorted(item['location'] for item in aggregators.kept(self.db, name or aggregators.boards_ahead.NAME, board()))
 
-    def test_the_search_notes_the_next_town_the_queue_asks_and_the_next_search_lists_its_jobs(self):
-        self.assertEqual(self.search(), ['Known town'], 'the first search lists the city only, as before')
-        self.assertEqual(self.model.asked('place asked'), [], 'and asks no place question for the board inside the search')
+    def test_a_noted_town_is_asked_by_the_queue_and_the_next_search_lists_its_jobs(self):
+        """The readers outside aggregators.kept (the web search, alerts, visits) note their towns; a board's own jobs wait whole in src/sources/waiting_jobs.py."""
+        self.assertEqual(self.search(), ['Known town'], 'the search lists the city only')
+        places_later.note(board())
         self.assertEqual(places_later.waiting(SEARCH), ['late town'], 'the town two of its jobs share waits; the known one does not')
         said = []
         self.assertEqual(places_later.ask(SEARCH, out=said.append), (1, 1))
@@ -65,11 +66,6 @@ class PlacesAskedAfterTheSearch(unittest.TestCase):
         self.db.execute('DELETE FROM feed_jobs')
         self.assertEqual(self.search(), ['Known town', 'Late town', 'Late town'], "the next search lists the next town's jobs")
         self.assertEqual(len(self.model.asked('place asked')), asked, 'from the kept answer: no place call in that search')
-
-    def test_a_reader_of_the_whole_world_notes_nothing(self):
-        """A free job API's locations are the whole world's: noted, the queue would ask hundreds a search for nobody."""
-        self.search('Example jobs API')
-        self.assertEqual(places_later.waiting(SEARCH), [])
 
     def test_a_title_the_ai_refused_and_a_place_already_decided_are_not_noted(self):
         with mock.patch.object(feeds, 'judged_title', lambda title: False if title == 'Late role 0' else None):

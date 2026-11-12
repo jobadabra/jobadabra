@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_form_read, board_terms, board_employers, board_owed, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -160,7 +160,7 @@ def read_since(stamp):
     from ..ai import board_ideas
     from .careers_parse import registrable
     return {registrable(host): int(entry.get('relevant') or 0) for host, entry in (board_ideas.load().get('boards') or {}).items()
-            if (entry.get('last_read') or '') >= stamp and not entry.get('owed')}   # a read that left jobs waiting measured nothing yet (board_owed)
+            if (entry.get('last_read') or '') >= stamp}
 
 
 def _section(board, page, search, fetch, judge, show=None):
@@ -444,10 +444,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
-        if not early and board_owed.waits(board['host'], search, found, relevant, stamp):   # jobs wait for the AI's answer: read again by the next press, up to the bound (owed_reads)
-            entry['owed'] = stamp
-        else:
-            entry.pop('owed', None)
+        entry.pop('owed', None)   # a mark of the removed re-read (owed_reads): the jobs the AI had no answer for wait in src/sources/waiting_jobs.py instead
         board_yield.record(entry, len(found), len(relevant), state)
         board_yield.paid(entry, len(relevant), search)   # read first by the next search in this field (boards_first)
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)

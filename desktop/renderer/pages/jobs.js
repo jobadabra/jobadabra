@@ -141,7 +141,7 @@ async function showMore() {
 // then, without the loading state, so the counts move as it works (owner, 7 Oct 2026: "I want to see the 2971 decrease live").
 // Each scored job counts too (owner, 7 Oct 2026: the total stayed at 51 while a refresh scored), at most one read every RELOAD_MS, the last one
 // always made, so the number climbs as the refresh works.
-export const LIST_CHANGED = /^First jobs: [1-9]\d* (?:found|scored)|^Jobs so far: [1-9]\d* new|^Closed [1-9]\d* job\(s\)|^Job Matches: \d+ created, \d+ updated \(so far\)|^Scored [1-9]\d* of \d+ job\(s\)$|^Score queue: done$/;
+export const LIST_CHANGED = /^First jobs: [1-9]\d* (?:found|scored)|^Jobs so far: [1-9]\d* new|^Closed [1-9]\d* job\(s\)|^Job Matches: \d+ created, \d+ updated \(so far\)|^Scored [1-9]\d* of \d+ job\(s\)$|^Score queue: done$|^Check queue: done$/;   // the last: the queue listed the jobs the search had no time to check (src/press/after_search.py)
 export const RELOAD_MS = 10000;
 let quietReload = null, lastReload = 0, reloadLater = null;
 function reloadQuietly() {
@@ -387,7 +387,7 @@ export async function init() {
   wireProfileEmpty();
   wireScoreCall({find: () => $('refresh').click()});
   document.addEventListener('rescore-state', () => renderJobs());   // the call, the card and the muted rows follow the one state
-  document.addEventListener('score-queue-state', () => renderJobs());
+  document.addEventListener('score-queue-state', () => { renderJobs(); renderFindCard(); });   // the Find card's lead says the check runs (jobs-find.js)
   document.addEventListener('score-found-ask', () => startScoreQueue());   // ⌘K "Score found jobs" (pages/nav.js)
   shared.scoreFound = startScoreQueue;   // a row's "Score" press (pages/score-queue-draw.js)
   wireApplyDialog({startedApplying, openJob: openJobPanel});

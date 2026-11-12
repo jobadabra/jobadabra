@@ -4,7 +4,7 @@ import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {el} from '../components.js';
 import {$, show} from './core.js';
-import {queuePlace, scoreQueue} from './score-queue.js';
+import {checkQueue, queuePlace, queueRuns, scoreQueue} from './score-queue.js';
 
 /**
  * One unscored candidate's circle while no search runs. -> true when it drew a state (the caller then leaves the circle alone).
@@ -26,18 +26,24 @@ export function drawQueueRing(fit, ring, job, score) {
     fit.title = t('pagesJobsHelp.queuedTip', {place: place.place});
     return true;
   }
-  if (scoreQueue() || !score) return false;   // a queue runs and this job is past it (or its score is on its way in): the plain unscored circle
+  if (queueRuns() || !score) return false;   // a queue runs and this job is past it (or its score is on its way in): the plain unscored circle
   fit.classList.add('can-score');
   const press = Object.assign(el('button', 'fit-label', t('pagesJobsHelp.queueScore')), {type: 'button', title: t('pagesJobsHelp.scoreTip')});
   press.addEventListener('click', event => { event.stopPropagation(); score(); });
   fit.append(press);
   return true;
 }
-/** The bar above the list: shown only while a queue runs. */
+/** The bar above the list: shown only while a queue runs. One bar, its words say the step: first the jobs the search had no time to check (a count), then the scores. */
 export function paintQueueBar() {
-  const queue = scoreQueue(), bar = $('score-queue-bar');
+  const queue = scoreQueue(), checking = checkQueue(), bar = $('score-queue-bar');
   if (!bar) return;
-  show(bar, !!queue);
+  show(bar, !!(queue || checking));
+  if (checking) {
+    $('score-queue-text').textContent = t('pagesJobsHelp.checkBar', {done: checking.done, total: checking.waiting});
+    $('score-queue-fill').style.width = `${Math.round(checking.done / checking.waiting * 100)}%`;
+    $('score-queue-note').textContent = t('pagesJobsHelp.checkNote');
+    return;
+  }
   if (!queue) return;
   $('score-queue-text').textContent = t('pagesJobsHelp.queueBar', {done: queue.done, total: queue.total});
   $('score-queue-fill').style.width = `${Math.round(queue.done / queue.total * 100)}%`;
