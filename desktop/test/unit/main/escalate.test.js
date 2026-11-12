@@ -120,3 +120,18 @@ test('an application page: "Let me check each step" stays off, and the picture g
   await escalate(storageOf({}), askForm({url: 'https://apply.example/Pic', image: Buffer.from('jpeg').toString('base64')}), {client: fake({action: 'wait', control: '', why: 'x', confidence: 1}, seen)});
   assert.ok(JSON.stringify(seen[0]).includes('"type":"image"'));
 });
+
+// 12 Nov 2026 (benchmarks run 43270689648): a closer look asked claude-opus-5-5 in a CI round pinned to Haiku, because this rung hard-coded its model.
+// Every other AI step honours JOBADABRA_MODEL_OVERRIDE (the end-to-end journey, desktop/e2e: every step on one cheap model).
+test('the model override (CI journeys and benchmarks) also pins the closer look; without it the strongest model answers', async () => {
+  const seen = [];
+  const answer = {action: 'wait', control: '', why: 'x', confidence: 1};
+  const before = process.env.JOBADABRA_MODEL_OVERRIDE;
+  try {
+    process.env.JOBADABRA_MODEL_OVERRIDE = 'claude-haiku-5-5';
+    await escalate(storageOf(), ask(), {client: fake(answer, seen)});
+    delete process.env.JOBADABRA_MODEL_OVERRIDE;
+    await escalate(storageOf(), ask(), {client: fake(answer, seen)});
+  } finally { if (before === undefined) delete process.env.JOBADABRA_MODEL_OVERRIDE; else process.env.JOBADABRA_MODEL_OVERRIDE = before; }
+  assert.deepEqual(seen.map(body => body.model), ['claude-haiku-5-5', 'claude-opus-5-5']);
+});

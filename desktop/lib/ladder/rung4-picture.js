@@ -10,6 +10,7 @@ import {automationOf} from '../site-accounts.js';
 import {validateAlias} from '../../shared/alias-schema.js';
 
 export const MODEL = 'claude-opus-5-5';
+const modelOf = () => process.env.JOBADABRA_MODEL_OVERRIDE || MODEL;   // Why (12 Nov 2026, benchmarks run 43270689648): every other AI step honours the override (CI journeys and benchmarks: every step on one cheap model); this one asked Opus in a Haiku-pinned round
 const PRICE = {input: 4, output: 20};   // USD per million tokens, claude-opus-5-5 (e2e/lib/vision.mjs PRICES)
 const usdOf = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * PRICE.input + (usage?.output_tokens || 0) * PRICE.output) / 1e2) / 1e4);   // four places
 export const CAPS = {perShape: 2, perDay: 10};
@@ -122,7 +123,7 @@ export async function escalate(storage, body, {client, now = Date.now()} = {}) {
   if (!client) return {ok: true, action: 'none', why: 'no AI'};
   fs.writeFileSync(file, JSON.stringify({...memo, days: {[dayKey(now)]: {total: day.total + 1, shapes: {...day.shapes, [memoKey]: (day.shapes[memoKey] || 0) + 1}}}, recipes: memo.recipes || {}}));   // counted before the call: a failure still counts
   try {
-    const response = await client.messages.create({model: MODEL, max_tokens: 1000, system: page ? PAGE_INSTRUCTIONS : form ? FORM_INSTRUCTIONS : INSTRUCTIONS, output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
+    const response = await client.messages.create({model: modelOf(), max_tokens: 1000, system: page ? PAGE_INSTRUCTIONS : form ? FORM_INSTRUCTIONS : INSTRUCTIONS, output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
       messages: [{role: 'user', content: [...(picture ? [{type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: image}}] : []), {type: 'text', text: [
         `Why asked: ${String(body.reason || '').slice(0, 80)}`, `Address path: ${sketch.path || '(none)'}`, `Title: ${sketch.title || '(none)'}`, `Headings: ${sketch.headings.join(' | ') || '(none)'}`,
         `Controls (type · label · required · state · position x,y of 100):\n${sketch.controls.map(item => `- ${item.type} · ${item.label || '(no label)'}${item.required ? ' · required' : ''}${item.state ? ` · ${item.state}` : ''}${item.at ? ` · ${item.at}` : ''}${item.options?.length ? ` · options: ${item.options.join(' | ')}` : ''}`).join('\n') || '(none)'}`,
