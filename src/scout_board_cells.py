@@ -17,6 +17,7 @@ PER_RUN = 3                    # families one run asks a country's boards for (o
 REST_DAYS = (1, 2, 4, 8, 30)   # an empty cell's rest after its 1st, 2nd, ... empty try; the last one repeats
 REFRESH_DAYS = 20              # a fact this old is read again (the site drops it at src/scout_boards.py FACT_DAYS)
 TARGET = 2                     # boards a cell needs before it leaves the queue (only a refresh reads it again)
+SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
 
 
@@ -145,18 +146,26 @@ def seed(db, path, out=print):
     except sqlite3.Error:
         return 0
     db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)', rows)
+    for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
+        try:
+            with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
+                found = source.execute('SELECT value FROM scout_meta WHERE key = ?', (key,)).fetchone()
+        except sqlite3.Error:
+            found = None
+        if found and scout_cells._meta(db, key, None) is None:
+            db.execute('INSERT OR REPLACE INTO scout_meta (key, value) VALUES (?, ?)', (key, found[0]))
     db.commit()
     out(f'Board discovery: started from the Scout\'s {len(rows)} board facts')
     return len(rows)
 
 
-def facts_beside(path):
+def facts_beside(path, today=None):
     """The facts board discovery's own database kept (src/scout_boards.py facts), for the Scout's publish; [] without the file."""
     from . import scout_boards
     if not path or not Path(path).is_file():
         return []
     try:
         with sqlite3.connect(path) as source:   # not read-only: facts() makes its tables when missing (a new table in ensure())
-            return scout_boards.facts(source)
+            return scout_boards.facts(source, today)
     except sqlite3.Error:
         return []

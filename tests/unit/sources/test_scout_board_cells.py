@@ -118,12 +118,14 @@ class OwnDatabase(unittest.TestCase):
         self.scout_path, self.own_path = os.path.join(folder, 'jobs.sqlite'), os.path.join(folder, 'boards.sqlite')
         with sqlite3.connect(self.scout_path) as scout_db:
             fact(scout_db, 'a.example', 'fr', ['kitchen'])
+            scout_cells._set(scout_db, 'serp_waiting', {'ee': [{'host': 'wait.example'}]})
             scout_db.commit()
 
     def test_it_starts_from_the_scout_s_facts_once(self):
         own = sqlite3.connect(self.own_path)
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 1)
         self.assertEqual(cells.strength(own, TODAY)[('fr', 'kitchen')], 1, 'a covered cell is not read first again')
+        self.assertEqual(scout_cells._meta(own, 'serp_waiting', {}), {'ee': [{'host': 'wait.example'}]}, "Google's sites waiting to be judged come along")
         fact(own, 'b.example', 'de', ['kitchen'])
         own.commit()
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
@@ -131,9 +133,9 @@ class OwnDatabase(unittest.TestCase):
 
     def test_the_scout_publishes_the_discovery_s_facts_too(self):
         own = sqlite3.connect(self.own_path)
-        fact(own, 'b.example', 'de', ['kitchen'], read_at=date.today())
+        fact(own, 'b.example', 'de', ['kitchen'])
         own.commit()
-        self.assertEqual([item['host'] for item in cells.facts_beside(self.own_path)], ['b.example'])
+        self.assertEqual([item['host'] for item in cells.facts_beside(self.own_path, TODAY)], ['b.example'])
         self.assertEqual(cells.facts_beside(''), [])
 
 
