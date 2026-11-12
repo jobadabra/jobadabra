@@ -67,9 +67,13 @@ test('a board judged a page is read once with the headless step and its jobs are
 test('a 401, 403 or 429 goes to the engine with no AI asked; the engine keeps the stop or the wait', async () => {
   for (const status of [401, 403, 429]) {
     const b = board(status);
-    const {judged, outcomes} = await run([b], {[b.url]: {status, html: ''}}, {outcomeFor: () => ({ok: true, state: 'stopped', why: `HTTP ${status}`})});
+    const answer = status === 429 ? {ok: true, state: 'waiting', why: 'asked us to slow down'} : {ok: true, state: 'stopped', why: `HTTP ${status}`, final: true};
+    const {judged, outcomes, lines} = await run([b], {[b.url]: {status, html: ''}}, {outcomeFor: () => answer});
     assert.deepEqual(judged, [], `${status}: no AI call`);
     assert.equal(outcomes[0].status, status);
+    assert.equal(lines.at(-1), status === 429 ? `Job boards: Board ${status}: asked us to slow down`
+      : `Job boards: Board ${status}: turned Jobadabra's browser away, so its browser will not open this board again`, 'Recent activity says it in the person\'s words');
+    assert.ok(!lines.some(line => /HTTP \d/.test(line)), 'no status code in Recent activity');
   }
 });
 

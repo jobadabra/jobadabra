@@ -46,15 +46,26 @@ DAY_SITES = 5       # Why (12 Nov 2026, owner: "5 boards, each once a day (Recom
 
 
 def _days(entry):
-    """How long a site rests after its last read: opened 7 (a board read headless: 1, its jobs change daily), every step stopped 30, "slow down" 1."""
+    """How long a site rests after its last read: opened 7 (a board read headless: 1, its jobs change daily), every step stopped 30 (a board stopped
+    headless: for good, final()), "slow down" 1."""
     state = entry.get('state')
     if state in ('read', 'empty'):
         return WAIT_DAYS if entry.get('step') == HEADLESS else OPENED_DAYS
     return WAIT_DAYS if state == 'waiting' else READ_DAYS
 
 
+def final(entry):
+    """True for a board that stopped Jobadabra's headless browser (401/403, a check or captcha, a sign-in page): that browser never asks it again,
+    the plain reader keeps its own 30-day look (found_boards). A 429 is kept as 'waiting' (1 day), never final."""
+    # Why (12 Nov 2026, sa for the owner, "final stop"): the stricter reading of "stops that site with no retry"; a 30-day return asked the same refusing
+    # board twice a cycle, once by each reader
+    return entry.get('step') == HEADLESS and entry.get('state') == 'stopped'
+
+
 def _recent(kept, host, now):
     entry = kept.get(host) or {}
+    if final(entry):
+        return True
     days = _days(entry)
     return bool(entry.get('at')) and entry['at'] >= (now - timedelta(days=days)).isoformat(timespec='seconds')
 
@@ -235,12 +246,12 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
         _keep(host, url, 'stopped', why, now, step=step)
         visits.refused(host, url, why, now=now)   # listed with the sites only you can open
         print(f'Refused sites: {host} shows a captcha; waiting for you to open it and solve it')
-        return {'ok': True, 'state': 'stopped', 'why': 'needs a quick check from you', 'needs_check': True, 'name': host}
+        return {'ok': True, 'state': 'stopped', 'why': 'needs a quick check from you', 'needs_check': True, 'name': host, 'final': step == HEADLESS}
     why = _stop_why(int(status or 0), html, final) or JUDGED_STOPS.get(judged, '')
     if why:
         _keep(host, url, 'stopped', why, now, step=step)
-        print(f'Refused sites: {host} stopped ({why}); not asked again for {READ_DAYS} days')
-        return {'ok': True, 'state': 'stopped', 'why': why, 'name': host}
+        print(f'Refused sites: {host} stopped ({why}); ' + ('not asked again in Jobadabra\'s browser' if step == HEADLESS else f'not asked again for {READ_DAYS} days'))
+        return {'ok': True, 'state': 'stopped', 'why': why, 'name': host, 'final': step == HEADLESS}
     if not 200 <= int(status or 0) < 400:   # no answer (0), gone (404), a server error: a blip, not a page; never read as 'opened' or shared (#1639). Asked again after WAIT_DAYS.
         _keep(host, url, 'waiting', 'the page did not load', now)
         print(f'Refused sites: {host} did not load (HTTP {int(status or 0)}); asked again in {WAIT_DAYS} day(s)')

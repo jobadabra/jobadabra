@@ -19,6 +19,7 @@ const WORDS = {
   'no-browser': 'Job boards: download Jobadabra\'s browser (one time) to read the boards that refuse plain reading',
   failed: 'Job boards: Jobadabra\'s browser could not start; the boards wait for the next Find jobs',
   spent: 'Job boards: today\'s reads in Jobadabra\'s browser are used; the rest wait for tomorrow',
+  final: 'turned Jobadabra\'s browser away, so its browser will not open this board again',
 };
 
 /** True for a board the engine queued at a plain https address that is not a login-wall site (checked here too, whatever the engine says). */
@@ -78,6 +79,8 @@ async function readOne({browser, openCdp, url, judge, signal, now, sleep}) {
 const line = (name, answer) => {
   if (answer?.state === 'read') return `Job boards: ${name}: ${answer.jobs} job${answer.jobs === 1 ? '' : 's'} read in Jobadabra's browser`;
   if (answer?.state === 'empty') return `Job boards: ${name}: no jobs on the page in Jobadabra's browser`;
+  // Why (12 Nov 2026, sa for the owner, "final stop"): the engine's reason ("HTTP 403", "a login page") stays in the log; Recent activity says what happened
+  if (answer?.state === 'stopped' && answer.final && !answer.needs_check) return `Job boards: ${name}: ${WORDS.final}`;
   return `Job boards: ${name}: ${answer?.why || 'not read'}`;
 };
 

@@ -77,14 +77,25 @@ class HeadlessBoardsTest(unittest.TestCase):
         self.assertEqual((answer['state'], answer.get('needs_check')), ('stopped', True))
         self.assertIn(BOARD_HOSTS[0], {visits.host_of(item['url']) for item in visits.visit_list(SEARCH, now=NOW)}, 'listed with the sites only you can open')
 
-    def test_a_board_that_opened_is_read_again_the_next_day_one_that_stopped_rests_thirty(self):
-        refused_reads.outcome(f'https://{BOARD_HOSTS[0]}/jobs', 200, JOBS, now=NOW, step=refused_reads.HEADLESS)
-        refused_reads.outcome(f'https://{BOARD_HOSTS[1]}/jobs', 403, '', now=NOW, step=refused_reads.HEADLESS)
-        tomorrow = hosts(refused_reads.board_queue(now=NOW + timedelta(days=1, minutes=1)))
-        self.assertIn(BOARD_HOSTS[0], tomorrow)
-        self.assertNotIn(BOARD_HOSTS[1], tomorrow)
-        self.assertNotIn(BOARD_HOSTS[1], hosts(refused_reads.board_queue(now=NOW + timedelta(days=29))))
-        self.assertIn(BOARD_HOSTS[1], hosts(refused_reads.board_queue(now=NOW + timedelta(days=31))))
+    def test_a_board_that_opened_is_read_again_the_next_day_one_that_stopped_is_never_asked_again(self):
+        """sa for the owner, 12 Nov 2026, "final stop": a 401/403, a check or captcha, a sign-in page ends the headless reads of that board for good;
+        a 429 is "slow down", not a refusal: back the next day."""
+        due = lambda days: hosts(refused_reads.queue(now=NOW + timedelta(days=days), kinds=('board',)))   # what is due, past the day's share of 5
+        url = lambda n: f'https://{BOARD_HOSTS[n]}/jobs'
+        refused_reads.outcome(url(0), 200, JOBS, now=NOW, step=refused_reads.HEADLESS)
+        stops = {1: refused_reads.outcome(url(1), 401, '', now=NOW, step=refused_reads.HEADLESS),
+                 2: refused_reads.outcome(url(2), 403, '', now=NOW, step=refused_reads.HEADLESS),
+                 3: refused_reads.outcome(url(3), 200, '<html>check</html>', now=NOW, step=refused_reads.HEADLESS, judged='captcha'),
+                 4: refused_reads.outcome(url(4), 200, JOBS, now=NOW, step=refused_reads.HEADLESS, judged='login'),
+                 5: refused_reads.outcome(url(5), 200, JOBS, now=NOW, step=refused_reads.HEADLESS, judged='passive_check')}
+        slow = refused_reads.outcome(url(6), 429, '', now=NOW, step=refused_reads.HEADLESS)
+        self.assertEqual({n: (answer['state'], answer['final']) for n, answer in stops.items()}, {n: ('stopped', True) for n in stops})
+        self.assertEqual((slow['state'], slow.get('final')), ('waiting', None), 'a 429 is no refusal')
+        self.assertEqual(due(1.01) & set(BOARD_HOSTS), {BOARD_HOSTS[0], BOARD_HOSTS[6]}, 'the opened board and the 429 one come back the next day')
+        for days in (31, 365):
+            self.assertFalse(due(days) & {BOARD_HOSTS[n] for n in stops}, f'{days} days on: a stopped board is never asked again')
+        refused_reads.outcome(url(0), 403, '', now=NOW, step='download')   # the employer button's steps keep their 30 days
+        self.assertFalse(refused_reads.final(visits._load()['refused_reads'][BOARD_HOSTS[0]]))
 
     def test_the_browsers_login_refused_or_lasting_check_verdict_is_a_stop_and_nothing_is_read(self):
         for judged, why in [('login', 'a login page'), ('refused', 'refused in the browser'), ('passive_check', 'a bot check')]:
