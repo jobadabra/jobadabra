@@ -131,6 +131,19 @@ class OwnDatabase(unittest.TestCase):
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
         self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
 
+    def test_a_board_the_browser_was_stopped_at_stays_stopped_on_every_run(self):
+        # a refusal is final (CLAUDE.md, refused sites): the stop list follows into discovery's database even after its first run
+        for path in (self.scout_path, self.own_path):
+            with sqlite3.connect(path) as connection:
+                connection.execute('CREATE TABLE IF NOT EXISTS scout_browser_final (host TEXT PRIMARY KEY, why TEXT)')
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_db.execute("INSERT INTO scout_browser_final VALUES ('refused.example', '403')")
+        own = sqlite3.connect(self.own_path)
+        fact(own, 'b.example', 'de', ['kitchen'])   # not the first run: the facts are not copied, the stops are
+        own.commit()
+        cells.seed(own, self.scout_path, out=lambda line: None)
+        self.assertEqual(own.execute('SELECT host, why FROM scout_browser_final').fetchall(), [('refused.example', '403')])
+
     def test_the_scout_publishes_the_discovery_s_facts_too(self):
         own = sqlite3.connect(self.own_path)
         fact(own, 'b.example', 'de', ['kitchen'])
