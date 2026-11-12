@@ -17,13 +17,17 @@ MIN_LOCAL = 3           # local jobs a board needs before it is published (the s
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
 MAX_BOARDS = 12         # boards read per country and run
 BUDGET_S = 240          # the pass gives up starting new boards after this long
-PASS_CALLS = 2 * MAX_BOARDS   # the AI calls a run for the boards' places and kinds of work (batched): the pass's own allowance
+# Why (12 Nov 2026, owner: "Reserve kinds + batch places"): France trial 43154452142 asked one call per place, its 24 calls for places and kinds all went to
+# places, and three boards with local jobs were never asked their kinds of work. Two allowances, each its one owner: places never spend the kinds' calls.
+PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.countries_each): a board's search page names at most ~100 distinct places
+KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
-# The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's.
-JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PASS_CALLS
+# The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
+# ideas 1 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 64.
+JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
 KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
 RECENT = 4              # countries done lately wait their turn
-PASS = 'central scout board pass'   # the allowance's name
+PLACES, KINDS = 'central scout board places', 'central scout board kinds'   # the allowances' names
 
 
 def ensure(db):
@@ -73,20 +77,23 @@ def search_for(db, country):
 
 
 def local_of(jobs, country):
-    """The jobs whose place is in `country`."""
-    places = list(dict.fromkeys(str(job.get('location') or '') for job in jobs if job.get('location')))
-    where = {place: country in pool_tags.countries([place]) for place in places} if places else {}
-    return [job for job in jobs if where.get(str(job.get('location') or ''))]
+    """The jobs whose place is in `country`: every distinct place asked in one batch (pool_tags.countries_each); a place left unanswered is not local."""
+    places = list(dict.fromkeys(str(job.get('location') or '').strip() for job in jobs if str(job.get('location') or '').strip()))
+    where = pool_tags.countries_each(places)[0] if places else {}
+    return [job for job in jobs if country in where.get(str(job.get('location') or '').strip(), ())]
 
 
-def measure(board, jobs, country, local=None):
-    """The fact for one board's read: jobs whose place is in `country` (or `local`, when given), their role families by title; None under MIN_LOCAL."""
-    local = local_of(jobs, country) if local is None else local
-    if len(local) < MIN_LOCAL:
-        return None
+def kinds_of(local):
+    """(families, unanswered) of these jobs' titles (the first 40, one question): unanswered titles mean "not asked", never "no kinds"."""
     titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
-    families = pool_tags.families(titles) if titles else []
-    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
+    return pool_tags.families_read(titles) if titles else ([], [])
+
+
+def measure(board, local, country, families):
+    """The fact for one board's read: its jobs in `country` and their role families; None under MIN_LOCAL or without families."""
+    if len(local) < MIN_LOCAL or not families:
+        return None
+    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)}
 
 
 def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None):
@@ -105,25 +112,28 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
-        # every AI answer the reads need (places, kinds of work) on the pass's own calls: title sorting spends the scout's cap first (run 40384536845:
-        # posao.hr 40/37 local, no fact, its kinds of work never asked)
         try:
-            with decide.own_allowance(PASS, PASS_CALLS):
-                for board in proposed:
-                    if clock() - began > BUDGET_S:
-                        break
-                    jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
-                    local, placeless = local_of(jobs, country), [job for job in jobs if not str(job.get('location') or '').strip()]
-                    # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
-                    whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
-                    fact = measure(board, jobs, country, local + placeless if whole else local)
-                    counted = len(local) + (len(placeless) if whole else 0)
-                    counts.append(f"{board['host']} {len(jobs)}/{counted}" + (' (no places; the AI: this country)' if whole else '')
-                                  + (' (no kinds of work from the AI: not kept)' if not fact and counted >= MIN_LOCAL else ''))
-                    if fact:
-                        kept.append(fact)
-                    elif state in ('empty', 'browser'):
-                        unread.append(board['host'])
+            for board in proposed:
+                if clock() - began > BUDGET_S:
+                    break
+                jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
+                with decide.own_allowance(PLACES, PLACE_CALLS):
+                    local = local_of(jobs, country)
+                placeless = [job for job in jobs if not str(job.get('location') or '').strip()]
+                # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
+                whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
+                counted = local + placeless if whole else local
+                families, unasked = [], []
+                if len(counted) >= MIN_LOCAL:
+                    with decide.own_allowance(KINDS, KIND_CALLS):
+                        families, unasked = kinds_of(counted)
+                fact = measure(board, counted, country, families)
+                why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
+                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + why)
+                if fact:
+                    kept.append(fact)
+                elif state in ('empty', 'browser'):
+                    unread.append(board['host'])
         finally:
             careers.READER = reader
         stamp = datetime.now(timezone.utc).date().isoformat()
@@ -134,7 +144,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
-            + f"; its AI calls: {decide.spent(PASS)} of {PASS_CALLS} for places and kinds, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's "no kinds of work" hid who spent the calls; the total says whether the job's own cap held
+            + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's lines showed neither which question spent the calls nor whether the job's cap held
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
         out(f'Warning: board pass skipped: {type(error).__name__}: {error}')

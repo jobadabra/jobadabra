@@ -84,6 +84,29 @@ def countries_read(texts, ask=None):
     return found, [t for t in unanswered if t not in answered]
 
 
+def countries_each(texts):
+    """({place word: its country ids}, unanswered): countries() per word, every word in ONE batch (meanings.labels_each, 50 words a model call), never a
+    call per word. A word nothing answered has no ids and is listed in unanswered: unknown, never a guess.
+    Why (12 Nov 2026, owner: "Reserve kinds + batch places"): the central scout's board pass asked one call per place, and in the France trial its 24 calls
+    went to places, none to the kinds of work its boards needed (src/scout_boards.py local_of)."""
+    from . import places as places_
+    cache = places_.load()
+    each, unanswered = meanings.labels_each('pool-country', texts, COUNTRIES, COUNTRY_TASK)
+    found = {}
+    for text in texts:
+        regions = {code for name in places_.region_countries(text, cache) for code, known in COUNTRIES.items() if known == name}
+        found[text] = set(each.get(str(text).strip(), ())) | regions | ({'ch'} if places_.in_switzerland(text, cache) else set())
+    return found, [t for t in unanswered if not found.get(t)]
+
+
+FAMILY_TASK = 'A role a job seeker looks for, in any language. Answer its family of jobs.'
+
+
 def families(texts):
     """Role families named by these role words, as fixed-list ids."""
-    return meanings.labels('pool-family', texts, FAMILIES, 'A role a job seeker looks for, in any language. Answer its family of jobs.')
+    return meanings.labels('pool-family', texts, FAMILIES, FAMILY_TASK)
+
+
+def families_read(texts):
+    """(families, unanswered): families' ids, and the role words nothing answered this run (the AI capped or failed): "not asked" is not "none"."""
+    return meanings.labels_read('pool-family', texts, FAMILIES, FAMILY_TASK)
