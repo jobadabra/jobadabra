@@ -48,6 +48,27 @@ def country_ids(texts):
     return sorted(i for i in ids if i in pool_tags.COUNTRIES), left
 
 
+def region_ids(texts):
+    """(region ids, unanswered texts) of a feed's places, the scout's form of contribute.regions_read: a place the place answers already put in a country takes
+    the AI's job-region answer for that country's name, one ask per country, kept like every answer; a remote, unknown or unplaced place, or one whose country
+    got no answer, is asked as before. 'remote' alone is the feed's own flag. Run after `places` judged the feed (src/scout_index.py), so its answers are here.
+    Why (sa-pane-kp, 12 Nov 2026): job-region asked again about places geo had judged, 93 of a run's 200 calls on place strings (jobadabra-lab #87)."""
+    from . import contribute
+    from .ai import meanings
+    texts = [t for t in dict.fromkeys(str(t).strip() for t in texts) if t]
+    flag, texts = [t for t in texts if t == 'remote'], [t for t in texts if t != 'remote']
+    where = geo.resolve(texts, ask=False)   # only what is known: the cache and the shared pack, no new place question
+    placed = {t: where[geo.norm(t)]['cc'] for t in texts if (where.get(geo.norm(t)) or {}).get('kind') in ('city', 'area', 'country')}
+    names = {}
+    for text, cc in placed.items():   # the country's own name, else the first of its places: what the region question is asked about
+        names.setdefault(cc, geo.country_name(cc) or text)
+    each, unanswered = meanings.labels_each('job-region', list(dict.fromkeys(names.values())), contribute.REGION_CHOICES, contribute.REGION_TASK)
+    found = {a for text, cc in placed.items() if names[cc] not in unanswered for a in each.get(names[cc], [])}
+    rest = [t for t in texts if t not in placed or names[placed[t]] in unanswered]
+    more, left = contribute.regions_read(rest + flag)
+    return sorted(found | set(more)), left
+
+
 def sample(jobs):
     """Up to SAMPLE of these jobs, in list order: those whose own hash ranks first, so a list that alternates is seen whole (even steps would see one
     kind of it); every job of a smaller employer."""

@@ -132,6 +132,8 @@ TRADE_ROLES = ['sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthc
 REGIONS = {'europe': 'Europe (EU, EMEA, UK, Switzerland, ...)', 'north_america': 'North America', 'latin_america': 'Latin America',
            'asia_pacific': 'Asia-Pacific', 'middle_east_africa': 'Middle East and Africa'}
 # Which of these a role or place word is, in any language, is decided by AI (src/ai/meanings.py labels); without AI: none (8 Oct 2026).
+REGION_CHOICES = {**REGIONS, 'remote': 'remote or anywhere, no region named'}   # the job-region question: a job's place -> its region (also src/scout_kind_counts.py)
+REGION_TASK = 'Where a job is, as its posting writes it. Answer its region.'
 
 
 def _plain(fragment):
@@ -149,8 +151,7 @@ def regions_read(places):
     """(regions, unanswered): regions_of's ids, and the places the AI did not answer this run (the central scout keeps an earlier answer for those)."""
     from .ai import meanings
     places = [p for p in places if p]
-    found, unanswered = meanings.labels_read('job-region', [p for p in places if p != 'remote'], {**REGIONS, 'remote': 'remote or anywhere, no region named'},
-                                             'Where a job is, as its posting writes it. Answer its region.')
+    found, unanswered = meanings.labels_read('job-region', [p for p in places if p != 'remote'], REGION_CHOICES, REGION_TASK)
     return sorted(set(found) | ({'remote'} if 'remote' in places else set())), unanswered
 
 
