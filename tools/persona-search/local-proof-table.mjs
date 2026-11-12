@@ -104,10 +104,17 @@ const LUCK = 0.05;   // Why (12 Nov 2026, sa-pane-ns): the usual 1-in-20 bar, fi
  * a gain or loss is SHOWN only when the two ranges do not overlap (every run of one side above every run of the other) AND the same code would land that far apart by
  * luck less than 1 time in 20 (apartByLuck). Ranges that overlap or touch are inside the noise for any number of runs (more runs only widen a range); ranges apart
  * on too few runs are inside the noise until K more runs a side, the fewest that could pass the luck bar if they stay apart. Fewer than 2 counted runs a side: not enough runs.
+ * `sameDraw` (both sides replayed one recorded draw, --same-draw): when EVERY run of each side lists the same number (no spread on either side), two different numbers are
+ * a gain or loss SHOWN and two equal ones no difference, whatever the run count; any spread on either side falls back to the rule above.
  */
-export function verdict(a, b) {
+export function verdict(a, b, sameDraw = false) {
   if (a.length < 2 || b.length < 2) return `not enough runs: ${a.length} and ${b.length} counted runs (2 a side at least)`;
   const [aLo, aHi, bLo, bHi] = [Math.min(...a), Math.max(...a), Math.min(...b), Math.max(...b)];
+  // Why (12 Nov 2026, coordinator sa on #3848): the luck rule assumes runs that vary; a replay of one draw repeats exactly (p9: 34 four times), so an exact repeat on both sides is proof by itself
+  if (sameDraw && aLo === aHi && bLo === bHi) {
+    return aLo === bLo ? `no difference: both sides repeat exactly (${aLo} listed) under the same draw`
+      : `${bLo > aLo ? 'gain' : 'loss'} shown: ${bLo > aLo ? '+' : ''}${bLo - aLo} listed (${aLo} → ${bLo}); both sides repeat exactly under the same draw (${a.length} and ${b.length} runs)`;
+  }
   if (bLo <= aHi && aLo <= bHi) return `inside the noise: the ranges overlap (${aLo}-${aHi} and ${bLo}-${bHi}); more runs only widen a range, so any effect is smaller than the search's own spread`;
   const luck = apartByLuck(a.length, b.length), way = bLo > aHi ? 'gain' : 'loss';
   if (luck < LUCK) return `${way} shown: ${median(b) - median(a) > 0 ? '+' : ''}${median(b) - median(a)} listed (median), every run apart; the same code lands this far apart 1 time in ${Math.round(1 / luck)}`;
@@ -140,8 +147,14 @@ export function noise(sides, name, draw) {
     for (const p of r.proposed) rows.push(`  side ${j + 1} run ${i + 1} proposed ${p.slice(0, 150)}`);
   });
   rows.push('', 'Rule: on "Jobs listed in your places", a gain or loss is shown only when the two sides\' ranges do not overlap AND the same code would land that far apart by luck under 1 time in 20 (2·n!·m!/(n+m)!); fewer than 2 counted runs a side is not enough.');
+  if (draw) rows.push('Same draw: when every run of each side lists the same number, two different numbers are shown as a gain or loss (and equal ones as no difference) from 2 runs a side; any spread on a side uses the rule above.');
   const base = counted(s[0]).map(r => r.row.in_places);
-  for (let j = 1; j < s.length; j++) rows.push(`Verdict (side ${j + 1} against side 1): ${verdict(base, counted(s[j]).map(r => r.row.in_places))}`);
+  // Why (12 Nov 2026, coordinator sa): a run that asked the AI live or missed pages read something the recording lacks, which the replay cannot judge; said on the verdict line itself
+  const offTape = j => [...counted(s[0]), ...counted(s[j])].filter(r => r.tape && (r.tape.live.length || r.tape.pagesMissing)).length;
+  for (let j = 1; j < s.length; j++) {
+    const warn = draw && offTape(j) ? ` · ⚠️ ${offTape(j)} run(s) asked the AI live or read pages the recording lacks: the replay cannot judge that part; run without --same-draw` : '';
+    rows.push(`Verdict (side ${j + 1} against side 1): ${verdict(base, counted(s[j]).map(r => r.row.in_places), Boolean(draw))}${warn}`);
+  }
   if (s.length === 1) rows.push(`One side: the same code listed ${spread(base)} jobs; no verdict without a second --ref`);
   rows.push('', `Run files (one run's full table: node tools/persona-search/local-proof-table.mjs ${name} <folder>...):`, ...s.flatMap((x, j) => x.runs.map((r, i) => `  side ${j + 1} run ${i + 1}: ${r.out}`)));
   return rows.join('\n');
