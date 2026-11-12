@@ -22,6 +22,7 @@ from ..ai import slots
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
+from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from ..press import resume, stage
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
@@ -160,17 +161,6 @@ def _read_by_ai(board, search, fetch):
     if caught:   # the page does not answer now: the other ways stand
         return []
     return _shaped(board, careers._asked(url, page, [], fetch)) if page and not careers._shell(page) else []
-
-
-def _bare(url):
-    """The proposed link with only the query parts that carry {role} or {place}, or None when it has nothing else: a filter the proposer added
-    can empty every search (owner, 19 Oct 2026: Arbeitsagentur's "&branche=Medien" gave "Keine Ergebnisse" for Musiker in Berlin)."""
-    parts = urllib.parse.urlsplit(url)
-    pairs = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
-    kept = [(key, value) for key, value in pairs if '{role}' in value or '{place}' in value]
-    if len(kept) == len(pairs):
-        return None
-    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(kept, safe='{}')))
 
 
 def _retry_due(entry, now):
@@ -332,6 +322,17 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
 
 
+def _kept_spares(taken, lock, read_items, keep):
+    """Keep, right after each of `read_items`, the boards read in its place (taken: {host: [(spare item, result)]}), in the order they were read.
+    Why (12 Nov 2026): they were kept after the whole read loop, which waits for the slowest board up to the cut: a replacement read at 19 s
+    reached the title judge at 124 s, after its AI time was gone, and its titles went unjudged. Each board's replacements follow it in its turn."""
+    for read_item in read_items:
+        with lock:
+            chain = taken.pop(read_item[0]['host'], [])
+        for spare_item, result in chain:
+            keep(spare_item, result)
+
+
 def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None):
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
@@ -377,7 +378,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     hosts = {board['host'] for board in todo}
     spares = list(enumerate(item(board) for board in (board_yield.pick(spare, kept, retry, dropped, remember=False) if spare else [])
                             if board['host'] not in hosts))
-    taken, lock = [], threading.Lock()   # taken: (spare order, item, result) of the boards read in place of one that refused
+    taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
 
     def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
@@ -410,11 +411,11 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             with lock:
                 if not spares:
                     break
-                order, spare_item = spares.pop(0)
+                _, spare_item = spares.pop(0)
             print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
             result = one(spare_item)
             with lock:
-                taken.append((order, spare_item, result))
+                taken.setdefault(read_item[0]['host'], []).append((spare_item, result))
             name = spare_item[0]['name']
         return first
 
@@ -478,13 +479,14 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
             continue
         keep(read_item, result)
+        _kept_spares(taken, lock, [read_item], keep)
         ticker.tick(done, f" · {read_item[0]['name']}")
     pool.shutdown(wait=not left, cancel_futures=True)
     if left:
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
         waiting += left
-    for _, spare_item, result in sorted(taken, key=lambda entry: entry[0]):   # after the others, in the spares' order: a replay sees one order
-        keep(spare_item, result)
+    for read_item in reads:   # a board still open at the cut: its replacements read before it
+        _kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
     board_ideas.save(data)
     board_employers.note(jobs, 'Job boards found')

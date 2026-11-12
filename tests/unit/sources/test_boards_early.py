@@ -84,12 +84,13 @@ class SpareTests(unittest.TestCase):
         found = [line.split(': ', 1)[1].split(' ')[0:2] for line in said if line.startswith('Job boards found:')]
         return jobs, [' '.join(name) for name in found], said
 
-    def test_each_refusing_board_is_replaced_at_once_and_kept_after_the_others(self):
-        jobs, kept_order, said = self.read(refusing={'b1.example', 'b3.example', 'b7.example'}, slow='b2.example')
-        self.assertEqual(kept_order, [f'Board {n}' for n in range(1, 10)], 'the first boards in their order, then the spares in theirs')
-        self.assertEqual(sorted(job['url'] for job in jobs), sorted(f'https://b{n}.example/1' for n in (2, 4, 5, 6, 8, 9)))
-        self.assertTrue(any('Board 7 refuses automated reading; reading Board 9 in its place' in line or
-                            'Board 7 refuses automated reading; reading Board 8 in its place' in line for line in said), said)
+    def test_each_refusing_board_is_replaced_at_once_and_its_replacements_follow_it(self):
+        """12 Nov 2026 (vb): the replacements were kept after every board, when the AI time was gone. Board 1 refuses, takes Board 7 (refuses
+        too), then Board 8: each follows Board 1 and Board 2, still open then, comes after them."""
+        jobs, kept_order, said = self.read(refusing={'b1.example', 'b7.example'}, slow='b2.example')
+        self.assertEqual(kept_order, [f'Board {n}' for n in (1, 7, 8, 2, 3, 4, 5, 6)], 'a board, then the boards read in its place')
+        self.assertEqual(sorted(job['url'] for job in jobs), sorted(f'https://b{n}.example/1' for n in (2, 3, 4, 5, 6, 8)))
+        self.assertTrue(any('Board 1 refuses automated reading; reading Board 7 in its place' in line for line in said), said)
 
     def test_no_refusal_reads_no_spare(self):
         jobs, kept_order, _ = self.read(refusing=set())
