@@ -71,8 +71,8 @@ def _read(board, search, fetch, route, early, show=None):
             jobs = board_routes.follow(route, fetch, board, _terms(search))
             if jobs:
                 return jobs, 'ok', route
-    except board_routes.Stop:
-        return [], 'browser', None
+    except board_routes.Stop as stop:
+        return [], board_yield.refused(stop.__cause__), None
     seen, idle = set(), 0
     terms = _terms(search, MAX_SEARCHES if early else FULL_SEARCHES)
     for number, term in enumerate(terms if '{role}' in board['search_url'] else terms[:1]):   # a category page is the same page for every word
@@ -86,29 +86,29 @@ def _read(board, search, fetch, route, early, show=None):
             except urllib.error.HTTPError as error:
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
-                    return jobs, 'browser', None
+                    return jobs, board_yield.refused(error), None
                 continue
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
-                    return jobs, 'browser', None
+                    return jobs, board_yield.refused(error), None
                 continue
             found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
                 asked_routes = True
                 try:
                     declared, found_route = board_routes.discover(page, url, fetch, board, _terms(search))
-                except board_routes.Stop:
-                    return jobs, 'browser', None
+                except board_routes.Stop as stop:
+                    return jobs, board_yield.refused(stop.__cause__), None
                 if declared and (careers.READER is None or found_route['kind'] not in ('feed', 'json') or board_yield.is_relevant(declared)):   # a feed of news, not of jobs (26 Oct 2026: a pilot
                     return declared, 'ok', found_route   # board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:
-                        return jobs, 'browser', None
+                        return jobs, board_yield.scripted(), None
                     try:
                         page = show(url)
                     except Exception as error:  # noqa: BLE001 — refused (401/403, a bot check), not allowed or no browser: a visit
                         careers.note_refusal(url, error)
-                        return jobs, 'browser', None
+                        return jobs, board_yield.refused(error), None
                     fetch = show   # this board's other searches and next pages are built by scripts too
                     found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
             if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
@@ -465,7 +465,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
         board_yield.record(entry, len(found), len(relevant), state)
         board_yield.paid(entry, len(relevant), search)   # read first by the next search in this field (boards_first)
-        print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else ' (refuses automated reading: offered as a visit)'}", flush=True)
+        print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
         jobs.extend(found)
