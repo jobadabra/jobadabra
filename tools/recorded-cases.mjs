@@ -16,7 +16,7 @@ import {replayFiles} from './replay-files.mjs';
 
 export const PROOF = /^desktop\/(e2e\/recorded\/|e2e\/ladder-fixtures\/|test\/unit\/main\/journeys\.test\.js$)/;   // a recorded page, a ladder fixture (a decision fix) or a scenario
 // Why (#3710 PR 2, 12 Nov 2026): reading a job list (extension/visit.js, visit-page.js) has its own recorded pages, desktop/e2e/fixtures/visits/, read by the extension's
-// page functions in integration/extension/; a push that changes only those two files proves its fix with one of them. Any other acting file still needs the proofs above.
+// page functions in integration/extension/; a commit that changes only those two files is proven by one in the same push. Any other acting file still needs the proofs above.
 export const READ_PROOF = /^desktop\/e2e\/fixtures\/visits\/[^/]+\.html$/;
 export const READ_FILES = /^extension\/visit(-page)?\.js$/;
 export const TRAILER = /^Recorded-unneeded:\s*\S/m;
@@ -88,12 +88,14 @@ Add to a commit message: "Pool-row: <the row's name as /admin/form-filling/lab s
 export function missingCase(commits, covered) {
   const cover = new Set(covered), acting = commit => commit.files.filter(file => cover.has(file));
   const touched = commits.flatMap(acting);
-  const readProof = touched.every(file => READ_FILES.test(file)) && commits.some(commit => commit.files.some(file => READ_PROOF.test(file)));
-  const proof = readProof || commits.some(commit => commit.files.some(file => PROOF.test(file)));
+  const proof = commits.some(commit => commit.files.some(file => PROOF.test(file)));
   if (!touched.length || proof) return '';
+  // A commit whose acting files are only the list read's is proven by a list page the push brings (per commit: a words-only commit beside it still says why).
+  const readProven = commits.some(commit => commit.files.some(file => READ_PROOF.test(file)));
+  const readOnly = commit => readProven && acting(commit).every(file => READ_FILES.test(file));
   const excused = commits.filter(commit => acting(commit).length && TRAILER.test(commit.message));
   const refused = excused.find(commit => NAMES_A_FAILURE.test(commit.message));
-  const bare = commits.filter(commit => acting(commit).length && !TRAILER.test(commit.message));
+  const bare = commits.filter(commit => acting(commit).length && !TRAILER.test(commit.message) && !readOnly(commit));
   if (refused) return `"Recorded-unneeded:" is refused: this commit changes how the app acts on pages (${acting(refused).slice(0, 3).join(', ')}) AND names a failure it fixes (a Pool-row or an issue).
 A fix to a seen failure lands with its recorded page, seen failing before the fix: cd desktop/e2e && npm run row-to-case -- "<row>" <case> --old-commit <the fix's sha> (see tools/recorded-cases.mjs).
 "Recorded-unneeded: <why>" stays for a commit that touches no file a replay loads (harness, tools, tests), or a covered file with no seen failure behind it (a log line, a comment, a refactor).`;

@@ -27,6 +27,10 @@ test('a fill or flow change without a case is stopped; a case, a scenario or a s
   assert.equal(missingCase([commit(['extension/visit-page.js', 'extension/visit.js', 'desktop/e2e/fixtures/visits/button-cards.html'], 'Read link-less cards')], covered), '');
   assert.match(missingCase([commit(['extension/visit-page.js'], 'Read link-less cards')], covered), /recorded page/);
   assert.match(missingCase([commit(['extension/visit-page.js', 'extension/fill-flow.js', 'desktop/e2e/fixtures/visits/button-cards.html'], 'Both')], covered), /fill-flow\.js/);
+  // Per commit: a words-only commit beside the proven read commit still needs its own reason (#3866: the read.pressed words in 7 locales).
+  const read = commit(['extension/visit-page.js', 'desktop/e2e/fixtures/visits/button-cards.html'], 'Read link-less cards');
+  assert.match(missingCase([read, commit(['extension/visit.js', 'extension/locales/en.js'], 'Say it')], covered), /locales\/en\.js/);
+  assert.equal(missingCase([read, commit(['extension/visit.js', 'extension/locales/en.js'], 'Say it\n\nRecorded-unneeded: a display line only')], covered), '');
 });
 
 test('a Display-only marked file needs no recorded page; every file that fills or judges still does (owner, 22 Oct 2026)', () => {
