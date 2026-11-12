@@ -15,6 +15,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from src.ai import board_ideas  # noqa: E402
 from src.sources import board_yield, careers, found_boards  # noqa: E402
 
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
 SEARCH = {'jobs_board_search_queries': ['programador'], 'role_keywords': ['developer'],
           'locations': {'top_tier': ['Lisboa'], 'country_wide': [], 'abroad': []}}
 BOARD = {'name': 'Empregos', 'host': 'empregos.example', 'search_url': 'https://empregos.example/procura?q={role}&local={place}',
@@ -31,7 +41,7 @@ class RefusalReasonTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}),
-                      mock.patch.object(careers, 'READER', None), mock.patch.object(careers, 'RENDER', None),
+                      mock.patch.object(careers, 'RENDER', None),
                       mock.patch.dict(careers.REFUSALS, clear=True)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -72,18 +82,26 @@ class RefusalReasonTests(unittest.TestCase):
         self.assertNotIn('refused', entry)
         self.assertFalse(any('refuses automated reading' in line for line in lines), lines)
 
+    def test_the_reason_is_the_marking_reads_own_never_an_earlier_one(self):
+        """Gitar on #3895: careers.REFUSALS keeps every refusal of the process; an earlier one on this host must not name a later read's reason."""
+        careers.REFUSALS[BOARD['host']] = 'HTTP 401'   # e.g. the scout's read of the same host, earlier in this process
+        entry, lines = self._read(lambda url: SHELL)
+        self.assertEqual(entry['refused'], 'a page built by scripts')
+
     def test_only_fixed_words_are_kept_and_an_old_board_reads_unknown(self):
-        careers.REFUSALS['empregos.example'] = 'Access denied by Example Shield <b>ref 1234</b>'   # anything not ours: never kept as is
-        self.assertEqual(board_yield.refusal('empregos.example'), 'unknown')
-        self.assertEqual(board_yield.refusal('never-asked.example'), 'unknown')
-        careers.REFUSALS['empregos.example'] = 'bot check page'   # src/sources/render.py's own words
-        self.assertEqual(board_yield.refusal('empregos.example'), 'a bot check page')
+        class Refused(Exception):   # a reader's own refusal (src/sources/render.py, describe.py)
+            pass
+        said = lambda error: board_yield.refused(error).why
+        self.assertEqual(said(urllib.error.HTTPError('https://x.example/', 403, 'Forbidden', None, None)), 'HTTP 403')
+        self.assertEqual(said(Refused('bot check page')), 'a bot check page')
+        self.assertEqual(said(Refused('Access denied by Example Shield <b>ref 1234</b>')), 'unknown', 'never a page\'s or a vendor\'s words')
+        self.assertEqual(said(None), 'unknown', 'a stop with no cause kept')
         self.assertEqual(board_yield.scripted(), 'browser', 'every reader of the state sees a plain browser state')
         entry = {'state': 'browser'}   # stored before reasons were kept
         self.assertEqual(board_yield.refused_why(entry), 'unknown')
-        board_yield.record(entry, 0, 0, 'browser', 'whatever the page said')
+        board_yield.record(entry, 0, 0, 'browser')   # a step that rebuilt a plain 'browser'
         self.assertEqual(entry['refused'], 'unknown')
-        board_yield.record(entry, 3, 1, 'ok', 'HTTP 403')   # it lists jobs now: no reason is left behind
+        board_yield.record(entry, 3, 1, 'ok')   # it lists jobs now: no reason is left behind
         self.assertNotIn('refused', entry)
 
 
