@@ -153,8 +153,8 @@ export const engineCases = [
   spec('score', 'app.score', 'You rank job postings for one candidate. The candidate profile follows.', {}, postUser, {score: 82}, {action: 'score', first: '3001'}),
   spec('places', 'app.places', w.SYSTEM, w.SCHEMA, 'Place words (JSON): ["Zürich", "Paris"]', {places: [{word: 'Zürich', countries: ['Switzerland'], kind: 'city', names: ['Zurich']}, {word: 'Paris', countries: ['France'], kind: 'city', names: []}]}, {action: 'scout', shared: true, first: 'zurich'}),
   spec('geo', 'app.geo', g.SYSTEM, g.SCHEMA, 'Strings:\n1. zurich, switzerland\n2. remote', {places: [{n: 1, kind: 'city', cc: 'CH', lat: 47.37, lon: 8.54, r_km: 15}, {n: 2, kind: 'remote', cc: '', lat: 0, lon: 0, r_km: 0}]}, {action: 'place_triage', shared: true, first: 'zurich, switzerland'}),
-  spec('title', 'app.title', t.SYSTEM, t.SCHEMA, `The search (JSON): ${JSON.stringify(search)}\nThe titles:\n1. senior sre\n2. cashier`, {fit: [1]}, {action: 'title_triage', first: 'senior sre'}),
-  spec('title recheck', 'app.title', t.RECHECK_SYSTEM, t.SCHEMA, `The search (JSON): ${JSON.stringify(search)}\nThe titles:\n1. senior sre\n2. cashier`, {fit: []}, {action: 'title_triage', first: 'senior sre'}),
+  spec('title', 'app.title', t.SYSTEM, t.SCHEMA, `The search (JSON): ${JSON.stringify(search)}\nThe titles:\n1. senior sre\n2. cashier`, {fit: [1], near: []}, {action: 'title_triage', first: 'senior sre'}),
+  spec('title recheck', 'app.title', t.RECHECK_SYSTEM, t.SCHEMA, `The search (JSON): ${JSON.stringify(search)}\nThe titles:\n1. senior sre\n2. cashier`, {fit: [], near: []}, {action: 'title_triage', first: 'senior sre'}),
   spec('enrich', 'app.enrich', e.SYSTEM, e.SCHEMA, postUser, enrichAnswer, {action: 'enrich', first: posting.title}),
   spec('enrich retry', 'app.enrich', e.SYSTEM, narrow(['seniority', 'technologies']), postUser + '\n\nYour last answer left seniority, technologies empty. Read the posting again.', {seniority: enrichAnswer.seniority, technologies: []}, {action: 'enrich', first: posting.title}),
   spec('enrich role', 'app.enrich', roleContract.system, roleContract.schema, postUser, {role_family: 'sre'}, {action: 'enrich', first: posting.title}),
@@ -222,7 +222,7 @@ function reorderedNumberedCase(c) {
   const root = Object.keys(c.reply)[0], values = c.reply[root];
   if (['geo', 'reading'].includes(c.name)) {
     expected = {[root]: [{...values[1], n: 1}, {...values[0], n: 2}]}; subsetExpected = {[root]: [{...values[1], n: 1}]};
-  } else { expected = {[root]: values.length ? [2] : []}; subsetExpected = {[root]: []}; }
+  } else { const rest = Object.fromEntries(Object.keys(c.reply).slice(1).map(key => [key, []])); expected = {[root]: values.length ? [2] : [], ...rest}; subsetExpected = {[root]: [], ...rest}; }
   return {user, expected, subsetUser, subsetExpected};
 }
 

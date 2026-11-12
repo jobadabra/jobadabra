@@ -24,24 +24,33 @@ BATCH_THINKING = press_budget.value('title_triage.BATCH_THINKING')
 MAX_NEW = press_budget.value('title_triage.MAX_NEW')       # titles asked about in one run at most, of each kind: your own places' titles and the others (a first run on a big list is spread over the next ones)
 STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
-SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit'],
-          'properties': {'fit': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'The numbers of the titles that could fit'}}}
+SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['fit', 'near'],
+          'properties': {'fit': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'The numbers of the titles that are the kind of job they look for'},
+                         'near': {'type': 'array', 'items': {'type': 'integer'}, 'description': 'The numbers of the titles that are a close neighbour of it'}}}
+# Why three groups (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Three answers, neighbours wait (Recommended)"; then "improve the instruction ... Let's do it"): the sort was told
+# "when unsure, include it: a later step scores each job", and since #3843 a job is listed before its score, so a data analyst's list was 75-90% other work (three live
+# searches of one fictional person, 12 Nov 2026; every wrong one had been answered "fits"). Replaying that person's 357 listed titles: 67 passed, 30 of them wrong;
+# with `fit` and `near` apart 17 are listed at once (3 wrong) and 65 wait for their score, no right title left out. A neighbour is kept and scored like a fit one (the
+# answer stays True for every reader); it is only not listed before its score (NEAR below, src/desktop_jobs.py) and scored after the fit ones (src/ai/score.py).
 # Why (#3793, 11 Nov 2026; night 42927975750): a carpenter got "Open sollicitatie / Unsolicited application" and a software engineer two pre-sales "Solutions Engineer"
 # jobs; examples, not a word list, inside the owner's 7 Oct 2026 "Only the location should be strict" (a bare "Technicien" stays "when unsure, include it").
 SYSTEM = """You sort job titles for one job seeker. You get their search (the role words they wrote, and words that rule a title out) and a \
-numbered list of job titles, in any language. Answer with the numbers of the titles that could be the kind of job they look for: the same \
+numbered list of job titles, in any language. Sort each title into one of three groups. `fit`: the kind of job they look for: the same \
 work under another name or in another language counts ("Client Advisor" or "Collaborateur Magasin" for a shop seller; "Content Creator - \
-Photo" for a photographer), and so does a close neighbour of their work at a similar level. Leave out other kinds of work (software, \
+Photo" for a photographer); each role word they wrote is a job they look for, at any seniority and in any language. `near`: a close neighbour \
+of their work at a similar level, work they could also apply to with the same skills. Leave out other kinds of work (software, \
 finance, marketing management, legal…), and titles of the work their ruled-out words name (the same word in another sense is no reason). \
 Leave out a posting that is no job of its own (an open or unsolicited application: "Open sollicitatie", "Candidature spontanée", \
 "Initiativbewerbung"), and selling or demonstrating a product to customers ("Solutions Engineer", "Sales Engineer", pre-sales) for \
 someone whose work is building it. \
 A level, when given, is the seniority they want: leave out a title plainly far from it (an internship for a lead); a rank that only sounds like \
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
-Owner" is no pilot). When unsure, include it: a later step scores each job."""
+Owner" is no pilot). When unsure between `fit` and `near`, say `fit` if the daily work is what one of their role words names, else `near`; when \
+unsure whether to leave a title out, say `near`: a later step scores each neighbour before it is shown."""
 
 PROMPT = hashlib.sha1(SYSTEM.encode()).hexdigest()   # the SYSTEM a search's kept answers were sorted under (_current)
 STAMP = '#PROMPT'   # its key inside a search's entry: a kept title is lower-cased (_norm), so never this
+NEAR = '#NEAR'   # the key of a search's neighbour titles (a list): kept True like a fit one, and named here so the list and the scorer can tell them apart
 
 # Why (27 Oct 2026, owner "Ask again before closing"; quality run 40508145728): Free AI said no to 'Staff Platform Engineer, Kubernetes' and 'Cloud Infrastructure
 # Engineer' for an SRE/platform search after both were scored and listed; the sort's no closed them before their facts were read. A no on a title that holds
@@ -82,12 +91,21 @@ def _current(entry):
     leave-out examples reached only titles never seen. That change only adds leave-out cases, so a kept no stays a no; a SYSTEM change that lets more titles in must drop the no's here too."""
     entry = entry or {}
     fresh = entry.get(STAMP) == PROMPT
-    return {title: fits for title, fits in entry.items() if title != STAMP and (fresh or fits is False)}
+    return {title: fits for title, fits in entry.items() if title not in (STAMP, NEAR) and (fresh or fits is False)}
 
 
-def _stamped(entry, decided):
-    """The entry kept for a search after a sort: what still holds (_current), this run's answers, and this SYSTEM's stamp."""
-    return {**_current(entry), **decided, STAMP: PROMPT}
+def near(search):
+    """The titles of this search the sort called a close neighbour of the person's work (kept True, so every reader keeps and scores them): the Jobs list shows such a
+    job only once it is scored, and the scorer takes the fit ones first. Empty under another SYSTEM (those titles are asked again)."""
+    entry = batch_scope.view('titles_store', _load).get(_key(search)) or {}
+    return set(entry.get(NEAR) or ()) if entry.get(STAMP) == PROMPT else set()
+
+
+def _stamped(entry, decided, neighbours=()):
+    """The entry kept for a search after a sort: what still holds (_current), this run's answers, its neighbour titles (NEAR: those still kept True) and this SYSTEM's stamp."""
+    kept = {**_current(entry), **decided}
+    was = (entry or {}).get(NEAR) or () if (entry or {}).get(STAMP) == PROMPT else ()
+    return {**kept, NEAR: sorted(title for title in {*was, *neighbours} if kept.get(title) is True), STAMP: PROMPT}
 
 
 def _may_start(batch, mine, forced):
@@ -180,6 +198,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {size}', flush=True)
     ticker, lock, sorted_ = Ticker('Sorting job titles with AI', len(ask), every=0), threading.Lock(), [0]
 
+    neighbours = set()   # the titles answered `near` this run (kept True; NEAR in the store)
     spent = [0.0]   # seconds the AI took, summed over the asks (not the queue's waiting, nor the scoring the hub does meanwhile: #2918 review)
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them
 
@@ -206,7 +225,11 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         cost.side(MODEL, response.usage)
         with lock:
             spent[0] += budget.now() - asked_at
-        return {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
+        answer = json.loads(next(b.text for b in response.content if b.type == 'text'))
+        fit, close = ({int(n) for n in answer.get(group) or [] if str(n).isdigit()} for group in ('fit', 'near'))
+        with lock:
+            neighbours.update(batch[n - 1] for n in close - fit if 0 < n <= len(batch))
+        return fit | close
 
     def landed(batch, fit):
         if fit is None:
@@ -226,14 +249,14 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
         _second_look(client, ask, decided, search, words, mine, forced, size)
     with LOCK:
         data = _load()
-        data[key] = _stamped(data.get(key), decided)
+        data[key] = _stamped(data.get(key), decided, neighbours)
         for old in list(data)[:-3]:   # the last few searches only
             data.pop(old)
         STORE.parent.mkdir(parents=True, exist_ok=True)
         STORE.write_text(json.dumps(data, ensure_ascii=False))
     if batch_scope.active():   # this reader's own answers, for its next call
         view = batch_scope.view('titles_store', _load)
-        view[key] = _stamped(view.get(key), decided)
+        view[key] = _stamped(view.get(key), decided, neighbours)
     asked = [t for t in ask if t in decided]
     if late[0]:
         print(budget.left_line('titles', late[0], 'title(s)'), flush=True)

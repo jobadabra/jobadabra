@@ -115,6 +115,7 @@
         ["Duales Studium Bachelor of Arts BWL – Risk and Insurance Management (m/w/d)", "no"],
         ["Senior Full Stack Developer (.NET & Azure) (w/m/d)", "no"]
       ]
-    }
-  ]
+    },
+  {"id": "data-analyst-lisbon-other-work", "search": {"role_words": ["data analyst", "business intelligence analyst", "reporting analyst", "operations analyst", "sales analyst", "analista de dados"], "words_ruled_out": ["\\bintern(ship)?\\b", "recruit(er|ing)", "\\bestagi(o|ário)\\b"]}, "titles": [["Data Analyst", "yes"], ["Investment Associate", "no"], ["Customer Support Senior Associate", "no"], ["Analista de Dados Sénior", "yes"], ["Strategy Consultant", "either"], ["Business Analyst", "either"], ["Customer Service Representative - German and English", "no"], ["Reporting Analyst", "yes"], ["Influencer Marketing Intern - (French Speaker)", "no"], ["Settlements & Matching Back Officer 2pm 11pm", "no"], ["Data Engineer", "either"], ["CRM Specialist", "no"], ["Founder's Associate", "no"], ["Business Intelligence Analyst", "yes"], ["Senior Machine Learning Engineer", "either"], ["Sales Operations Analyst", "yes"]]}
+ ]
 }

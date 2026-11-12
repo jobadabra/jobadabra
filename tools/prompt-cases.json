@@ -98,7 +98,7 @@
     "title": {
       "live": false,
       "about": "which job titles could fit a search (src/ai/title_triage.py): lenient by the owner's 7 Oct 2026 \"Only the location should be strict\"; an open or unsolicited application and pre-sales titles for someone who builds the product are left out (rj #3793, 11 Nov 2026: night 42927975750, carpenter in Brussels, software engineer in Amsterdam); a batch where no title fits is answered with none (gp, 12 Nov 2026: replay with tools/pick-cases.py on the Claude plan)",
-      "cases": ["tests/unit/ai/test_title_not_a_job_of_theirs.py", "tests/unit/ai/test_title_triage.py", "tests/fixtures/title-cases.json"],
+      "cases": ["tests/unit/ai/test_title_not_a_job_of_theirs.py", "tests/unit/ai/test_title_triage.py", "tests/unit/ai/test_title_three_answers.py", "tests/fixtures/title-cases.json"],
       "prompts": {
         "src/ai/title_triage.py": ["SYSTEM", "RECHECK_SYSTEM"]
       }

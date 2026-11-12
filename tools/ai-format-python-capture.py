@@ -343,15 +343,15 @@ def capture_engine(prompts=False):
 
         pack.patterns = lambda *a: []
         IMPORTS['levels'] = load('src/levels.py', ['SENIOR', 'ENTRY', 'LEVELS', '_BY_WORD', '_named', 'level_of', 'title_skips'])
-        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'BATCH_THINKING', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'PROMPT', 'STAMP', 'RECHECK_SYSTEM', '_key', '_norm', '_workers',
-                     '_load', 'known', '_current', '_stamped', '_may_start', 'batch_size', '_second_look', 'decide'], **bindings, STORE=temporary / 'titles.json')
+        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'BATCH_THINKING', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'PROMPT', 'STAMP', 'NEAR', 'RECHECK_SYSTEM', '_key', '_norm', '_workers',
+                     '_load', 'known', '_current', 'near', '_stamped', '_may_start', 'batch_size', '_second_look', 'decide'], **bindings, STORE=temporary / 'titles.json')
         title_search = {'role_keywords': ['site reliability'], 'title_exclude_keywords': ['intern'], 'level': ['senior']}
         titles = ['Senior Site Reliability Engineer']
         client = Client({'fit': [1]})
         title.decide(titles, title_search, client=client)
         keep('app.title', client, {'subrequest': 'sort', 'titles': titles, 'search': title_search}, 'src/ai/title_triage.py',
              'response = client.messages.create(model=MODEL, max_tokens=1500, system=',
-             'src/ai/title_triage.py', 'return {int(n) for n in json.loads', action='title_triage',
+             'src/ai/title_triage.py', 'answer = json.loads(next(b.text', action='title_triage',
              source_after='def decide(titles', validator_after='def decide(titles')
         if prompts:
             # Why (JOB-44, 30 Oct 2026, owner): one family stamp covers every fixed instruction variant, not just the manifest's first request.
