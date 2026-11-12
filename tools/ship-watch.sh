@@ -128,7 +128,13 @@ while :; do
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
       if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
         printf '%s\n' "$head" > "$seen.gitar-asked"
-        if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi
+        # Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886): a head that only merged main in keeps Gitar's verdict (tools/gitar-label.mjs
+        #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before.
+        kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
+        case "$kept" in
+          "Gitar: approved"*|"Gitar: changes requested") say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";;
+          *) if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi;;
+        esac
       fi
     fi
     key="${now:+$head:$now}"

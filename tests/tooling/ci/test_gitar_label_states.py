@@ -105,3 +105,50 @@ class GitarLabelStatesTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# 12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)": #3886 was approved at 13:05:50 on 0eb842f (pushed 13:01), then took in main at 13:10:27
+# with its own diff unchanged; the label read "Gitar: not started" and Gitar refused the ask for 30 min. A merge of main that leaves the own diff byte-identical keeps the verdict.
+FAKE = """((answers) => (...args) => { const a = answers[args[1]]; if (a === undefined) throw new Error('unexpected ' + args[1]); return JSON.stringify(a); })(%s)"""
+OWN = [{'filename': 'src/scout_boards.py', 'status': 'modified', 'patch': '@@ -1 +1 @@\n-a\n+b'}]
+
+
+def answers(after_files=OWN, theirs_status='behind'):
+    return {
+        'repos/o/r/compare/main...P2': {'status': theirs_status},
+        'repos/o/r/compare/P2...P1': {'files': OWN},
+        'repos/o/r/compare/P2...M': {'files': after_files},
+        'repos/o/r/commits/P1': {'parents': [{'sha': 'P0'}], 'commit': {'committer': {'date': '2026-11-12T13:01:21Z'}}},
+        'repos/o/r/commits/P1/check-suites': {'check_suites': [{'created_at': '2026-11-12T13:01:30Z'}]},
+    }
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs node')
+class MainOnlyMergeKeepsTheVerdictTest(unittest.TestCase):
+    def own(self, ans, parents=('P1', 'P2')):
+        return node(f"m.ownHeadTime('o/r', {{sha: 'M', parents: {json.dumps(list(parents))}}}, 'main', {FAKE % json.dumps(ans)})")
+
+    def test_the_3886_merge_of_main_keeps_the_approval(self):
+        own = self.own(answers())
+        self.assertEqual(own, '2026-11-12T13:01:30Z')
+        body = '<summary><b>Code Review</b> <kbd>✅ Approved</kbd>'
+        verdict = node(f"m.wantedLabel({json.dumps(body)}, '2026-11-12T13:05:50Z', {json.dumps(own)})")
+        self.assertEqual(node(f"m.wantedLabels({{verdict: {json.dumps(verdict)}, verdictTime: '2026-11-12T13:05:50Z', headTime: {json.dumps(own)}, gitarOnHead: false}})"), ['Gitar: approved'])
+
+    def test_a_merge_that_changes_the_own_diff_needs_a_new_review(self):
+        changed = [{**OWN[0], 'patch': '@@ -1 +1 @@\n-a\n+c'}]
+        self.assertIsNone(self.own(answers(after_files=changed)))
+        self.assertIsNone(self.own(answers(after_files=OWN + [{'filename': 'x.py', 'status': 'added', 'patch': '+x'}])))
+
+    def test_a_merge_of_a_branch_that_is_not_the_base_needs_a_new_review(self):
+        self.assertIsNone(self.own(answers(theirs_status='diverged')))
+
+    def test_an_ordinary_push_is_its_own_head(self):
+        self.assertIsNone(self.own({}, parents=('P1',)))
+
+    def test_same_own_change_compares_files_status_and_patch(self):
+        self.assertTrue(node(f"m.sameOwnChange({json.dumps(OWN)}, {json.dumps(OWN)})"))
+        self.assertFalse(node(f"m.sameOwnChange({json.dumps(OWN)}, [])"))
+        self.assertFalse(node(f"m.sameOwnChange({json.dumps(OWN)}, {json.dumps([{**OWN[0], 'status': 'renamed'}])})"))
+        moved = [{**OWN[0], 'patch': '@@ -2,3 +2,3 @@ def f():\n x\n-a\n+b'}]   # #3886: main added a line above, the hunk moved, context differs; the own lines did not
+        self.assertTrue(node(f"m.sameOwnChange({json.dumps(OWN)}, {json.dumps(moved)})"))

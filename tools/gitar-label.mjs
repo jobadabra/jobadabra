@@ -5,6 +5,7 @@
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
 //   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026), plus the gray "working" mark a session sets.
+//   A head that only merged the base branch in, own diff byte-identical, keeps the verdict of the change before it (12 Nov 2026, owner: "Keep the verdict (Recommended)"; ownHeadTime()).
 //   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
 //   A verdict older than the head is dropped, never shown beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
 //   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
@@ -54,15 +55,42 @@ const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 
 const pages = path => JSON.parse(gh('api', path, '--paginate', '--slurp')).flat();
 
 /** When the head became the head: the later of its commit date and the first check suite created for it (a commit made at 10:00 and pushed at 11:00 counts as 11:00; Why (#2386, 28 Oct 2026): Gitar flagged commit date as push time). */
-function headTime(repo, sha) {
-  const committed = JSON.parse(gh('api', `repos/${repo}/commits/${sha}`)).commit.committer.date;
-  const suites = JSON.parse(gh('api', `repos/${repo}/commits/${sha}/check-suites`)).check_suites.map(c => c.created_at);
+function headTime(repo, sha, run = gh) {
+  const committed = JSON.parse(run('api', `repos/${repo}/commits/${sha}`)).commit.committer.date;
+  const suites = JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites`)).check_suites.map(c => c.created_at);
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
 /** True when Gitar has a check RUN on the head (REST path). Why (11 Nov 2026, owner: "why the label is not right?"): GitHub queues an empty check SUITE for every installed app on each push, so a Gitar suite exists even when Gitar never starts; only a run proves it started. Read from the suites (one per app, so no 100-run cap) and match the app slug only, as the GraphQL read does (Gitar, #3790). */
 export function gitarOnHead(repo, sha, run = gh) {
   return JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.latest_check_runs_count ?? 0) > 0);
+}
+
+/** True when two GitHub compare file lists hold the same own change: the same files, each with the same status and the same added and removed lines, byte for byte
+ * (blob sha when GitHub sends no patch). Line numbers and context lines are left out: #3886's merge of main moved found_boards.py's hunks by one line and nothing else. */
+export function sameOwnChange(before, after) {
+  const own = patch => patch.split('\n').filter(l => /^[+-]/.test(l) && !/^(\+\+\+|---) /.test(l)).join('\n');
+  const key = f => `${f.filename}\0${f.status}\0${f.patch == null ? f.sha : own(f.patch)}`;
+  const a = before.map(key).sort(), b = after.map(key).sort();
+  return a.length === b.length && a.every((k, i) => k === b[i]);
+}
+
+// Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886 approved at 13:05, merged main at 13:10, read "not started", Gitar refused the
+//   re-ask for 30 min): a head that only merged the base branch in, the PR's own diff byte-identical, is not a new change to review. Up to 3 such merges are walked back.
+const COMPARE_CAP = 300;   // GitHub's compare lists at most 300 files: a list that long may be cut, so it never counts as the same change
+/** The push time of the PR's own change when the head (`{sha, parents}`) only merged `base` in, else null (the head's own time counts). Own diff before: compare
+ * theirs...mine (from their merge base to the branch's previous tip); after: theirs...head (from the merged base commit to the head). */
+export function ownHeadTime(repo, head, base, run = gh) {
+  let sha = head.sha, parents = head.parents;
+  for (let i = 0; i < 3 && parents?.length === 2; i++) {
+    const [mine, theirs] = parents;
+    if (!['behind', 'identical'].includes(JSON.parse(run('api', `repos/${repo}/compare/${base}...${theirs}`)).status)) break;   // theirs is not in the base branch
+    const files = to => JSON.parse(run('api', `repos/${repo}/compare/${theirs}...${to}`)).files || [];
+    const before = files(mine), after = files(sha);
+    if (before.length >= COMPARE_CAP || !sameOwnChange(before, after)) break;
+    sha = mine; parents = JSON.parse(run('api', `repos/${repo}/commits/${mine}`)).parents.map(p => p.sha);
+  }
+  return sha === head.sha ? null : headTime(repo, sha, run);
 }
 
 // Why (12 Nov 2026, #3870 and #3859): a "Gitar review" ask is answered in ~1 min; past 15 min with no verdict and no Gitar run it was lost, so the label says "not started" and the watcher may ask again.
@@ -127,11 +155,11 @@ function main(pr) {
 }
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
-  state headRefOid
+  state headRefOid baseRefName
   comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body createdAt updatedAt } }
   labels(first: 30) { nodes { name } }
   timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
-  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 1) { totalCount } } } } } }
+  commits(last: 1) { nodes { commit { committedDate parents(first: 2) { nodes { oid } } checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 1) { totalCount } } } } } }
 } } }`;
 
 /** The PR's state, Gitar's newest Code Review comment, head time, labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit
@@ -149,6 +177,7 @@ export function fromGraphql(data) {
   const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e?.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
   return {
     state: pr.state.toLowerCase(),
+    headSha: pr.headRefOid, base: pr.baseRefName, parents: (commit.parents?.nodes || []).filter(Boolean).map(p => p.oid),
     headTime: [commit.committedDate, suites.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
     review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
     labels,
@@ -171,19 +200,26 @@ function readPrByRest(repo, pr, info) {
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true,
+  return {state: info.state, headSha: info.head.sha, base: info.base.ref, parents: JSON.parse(gh('api', `repos/${repo}/commits/${info.head.sha}`)).parents.map(p => p.sha), headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true,
     asked: askedAt(comments.map(c => ({login: c.user.login, body: c.body, createdAt: c.created_at})))};
 }
 
 const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
 
+/** The read and the labels the PR should hold; the head time is that of the PR's own change (ownHeadTime) when the head only merged the base branch in. */
+function wantedFor(repo, pr) {
+  const read = readLive(repo, pr);
+  if (read.state !== 'open') return {read, wanted: null};
+  const at = (read.parents?.length === 2 && ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base)) || read.headTime;
+  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at) : null;
+  return {read, wanted: wantedLabels({verdict, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
+}
+
 /** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
 function syncOnce(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const read = readLive(repo, pr);
-  if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
-  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked});
+  const {read, wanted} = wantedFor(repo, pr);
+  if (!wanted) { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
@@ -218,6 +254,8 @@ function cli() {
   try {
     if (process.argv[2] === 'working') return markWorking(process.argv[3]);
     if (process.argv[2] === 'all') return syncAll();
+    // peek <n>: print the labels the PR should hold, write nothing (tools/ship-watch.sh asks Gitar only when no verdict counts on the head).
+    if (process.argv[2] === 'peek') return console.log((wantedFor(process.env.GITHUB_REPOSITORY, process.argv[3]).wanted || []).join('\n'));
     // Why (7 Nov 2026, gl, code review): jobadabra-web and -lab run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is synced to templates/org-repo/pr-labels.yml; that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once both repos carry the synced workflow (14 Nov 2026)
     if (!process.argv[2]) return console.log('gitar-label: no PR number given (an event that no longer labels), nothing to do');
     main(process.argv[2]);
