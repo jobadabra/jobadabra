@@ -4,6 +4,7 @@
 country and installs read the best boards first. No AI call and no live site here."""
 import json
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -173,6 +174,25 @@ class RankTests(Fixture):
         merged = board_ideas._merge([board(7), board(8)], [{**board(1), 'rank': 0}, {**board(2), 'rank': 0, 'rank_fit70': 0}, {**board(3), 'rank': 2.5}])
         self.assertEqual([b['host'] for b in merged], ['b3.example', 'b7.example', 'b8.example', 'b1.example', 'b2.example'])
 
+    def test_a_board_the_scout_measured_for_your_field_is_proven_without_a_fit_count(self):
+        """12 Nov 2026 (owner: "We should now from the start what boards/employers we should read first"): 6 of 154 recorded first searches started
+        from a proven board; the Central Scout's own cells carry fit70 0 and never proved one. Its read of another field, or in a browser, proves nothing."""
+        measured = lambda family: {**self.cell(family, 1, 14), 'measured': True}
+        facts = self.served({1: [measured('nursing_care')], 2: [measured('software_dev')], 3: [measured('nursing_care')], 4: [self.cell('nursing_care', 1, 40)]})
+        facts['board']['b3.example']['browser'] = True
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'nursing_care'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            self.assertEqual([b['host'] for b in board_ideas.proven(SEARCH, limit=6)], ['b1.example'])
+
+    def test_the_scouts_mark_on_a_cell_survives_the_index_read_only_as_true(self):
+        index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
+                            'relevant': [{**self.cell('nursing_care', 1, 14), 'measured': True}, {**self.cell('software_dev', 1, 9), 'measured': 'yes'}]}]}
+        cache = self.data / 'employer_index.json'
+        cache.write_text(json.dumps(index))
+        with mock.patch('src.employer_index.CACHE', cache):
+            cells = POOL_FACTS()['board']['b1.example']['relevant']
+        self.assertEqual(cells, [{**self.cell('nursing_care', 1, 14), 'measured': True}, self.cell('software_dev', 1, 9)])
+
     def test_the_index_cells_are_read_in_their_fixed_shape_only(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
                             'relevant': [self.cell('accounting_finance', 3, 6), {'family': 'x', 'country': 'nl', 'installs': 'many'}, 'junk']}]}
@@ -231,6 +251,58 @@ class FirstSliceTests(Fixture):
             self.assertEqual(first_jobs.board_jobs(said.append, SEARCH), [])
         read.assert_not_called()
         self.assertEqual(said, [])
+
+    def test_measured_boards_are_read_at_once_and_the_ais_boards_join_the_same_read_when_named(self):
+        """Owner, 12 Nov 2026: "We should now from the start what boards/employers we should read first"; a France nurse's proven boards
+        kept the AI's boards out of the first search (3 boards read instead of 6: 16 relevant jobs against 19)."""
+        named, reading, order = threading.Event(), threading.Event(), []
+        jobs = {f'b{n}.example': [job('Controller', 'Amsterdam', n, host=f'b{n}.example')] for n in (1, 2, 3)}
+
+        def fake(b, search, fetch, route=None, early=False, **kwargs):
+            order.append(b['host'])
+            if b['host'] == 'b1.example':
+                reading.set()
+                self.assertTrue(named.wait(5), 'the measured board is still being read when the AI names its boards')
+            return jobs[b['host']], 'ok', None
+
+        def ideas(search):   # the AI answers only once the measured board is being read, and caches its answer as the real one does
+            self.assertTrue(reading.wait(5), 'positive control: the measured board started before the AI answered')
+            with board_ideas.STORE:
+                data = board_ideas.load()
+                data.setdefault('ideas', {})['k'] = [board(2)]
+                board_ideas.save(data)
+            named.set()
+            return [board(1), board(2), board(3)]
+        said = []
+        with mock.patch.object(board_ideas, 'proven', return_value=[board(1)]), mock.patch.object(board_ideas, 'ideas', ideas), \
+                mock.patch.object(found_boards, 'read_board', fake), mock.patch.object(found_boards, '_dead', return_value=set()), \
+                mock.patch.object(board_employers, 'fill_missing'), mock.patch.object(board_employers, 'note'), mock.patch('builtins.print'):
+            found = first_jobs.board_jobs(said.append, SEARCH)
+        self.assertEqual(order[0], 'b1.example', 'the measured board is read first, before any AI answer')
+        self.assertEqual(sorted(order), ['b1.example', 'b2.example', 'b3.example'], 'each board once: the measured one is not read again')
+        self.assertEqual(sorted(j['url'] for j in found), sorted(j['url'] for group in jobs.values() for j in group), 'one read returns all three boards\' jobs')
+        kept = board_ideas.load()
+        self.assertEqual(sorted(kept['boards']), ['b1.example', 'b2.example', 'b3.example'], 'one board memory: every board\'s read is kept')
+        self.assertEqual(kept['ideas'], {'k': [board(2)]}, 'the answer the AI cached while the read ran is not written over')
+
+    def test_the_ais_boards_fill_only_the_places_the_measured_boards_left(self):
+        order = []
+        def fake(b, search, fetch, route=None, early=False, **kwargs):
+            order.append(b['host'])
+            return [], 'empty', None
+        measured = [board(n) for n in range(1, first_jobs.SLICE_BOARDS)]   # one place left
+        with mock.patch.object(board_ideas, 'proven', return_value=measured), mock.patch.object(found_boards, '_dead', return_value=set()), \
+                mock.patch.object(board_ideas, 'ideas', return_value=[board(1), board(21), board(22)]), mock.patch.object(found_boards.board_check, 'kind', return_value=('', '')), \
+                mock.patch.object(found_boards, 'read_board', fake), mock.patch.object(board_employers, 'note'), mock.patch('builtins.print'):
+            first_jobs.board_jobs(lambda line: None, SEARCH)
+        self.assertEqual(sorted(order), sorted([b['host'] for b in measured] + ['b21.example']))
+
+    def test_a_full_slice_of_measured_boards_waits_for_no_ai_answer(self):
+        measured = [board(n) for n in range(1, first_jobs.SLICE_BOARDS + 1)]
+        with mock.patch.object(board_ideas, 'proven', return_value=measured), mock.patch.object(found_boards, 'read', return_value=[]) as read, \
+                mock.patch.object(board_ideas, 'ideas', side_effect=AssertionError('no place is left for the AI\'s boards')):
+            first_jobs.board_jobs(lambda line: None, SEARCH)
+        self.assertIsNone(read.call_args.kwargs.get('later'))
 
     def test_the_search_slice_reads_proven_boards_without_an_ai_call(self):
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value={}), \

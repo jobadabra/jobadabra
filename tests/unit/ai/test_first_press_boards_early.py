@@ -93,10 +93,18 @@ class TheProposalIsAskedAtTheSearchsStart(unittest.TestCase):
             first_jobs.propose_early(SEARCH)
         self.assertLess(time.monotonic() - started, 1, 'the search goes on while the proposal is asked')
 
-    def test_proven_boards_need_no_proposal(self):
-        with mock.patch.object(board_ideas, 'proven', lambda search, limit=2: [SHARED]):
+    def test_a_full_slice_of_proven_boards_needs_no_proposal(self):
+        with mock.patch.object(board_ideas, 'proven', lambda search, limit=2: [SHARED] * limit):
             self.assertIsNone(first_jobs.propose_early(SEARCH))
         self.assertEqual(self.asks, [])
+
+    def test_fewer_proven_boards_than_the_slice_reads_still_ask_the_proposal(self):
+        """12 Nov 2026: one or two measured boards skipped the proposal, so a first search read 3 boards instead of 6."""
+        with mock.patch.object(board_ideas, 'proven', lambda search, limit=2: [SHARED]), mock.patch('builtins.print'):
+            self.assertTrue(first_jobs.propose_early(SEARCH), 'asked in the background: its boards fill the places left')
+            self.release.set()
+            first_jobs._early['future'].result(5)
+        self.assertTrue(self.asks)
 
     def test_the_search_starts_it_once_the_employers_are_named_not_inside_the_slice(self):
         body = (Path(__file__).resolve().parents[3] / 'src' / 'daily_search.py').read_text()

@@ -8,22 +8,21 @@ cache's source_yield table: src/sources/board_yield.py dead). The outcome of eac
 ('boards'), a cache. Wired as one aggregator, "Job boards found" (src/sources/aggregators.py). The boards that gave other installs like
 this one their jobs are read first, the top 2 in the first-jobs slice (src/first_jobs.py; their jobs are handed to the full read, not
 fetched twice: the full read reuses the slice's pages). Tests: tests/unit/sources/test_found_boards.py, tests/unit/sources/test_proven_boards.py."""
-import sqlite3
 import threading
 import time
 import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
 from datetime import datetime, timezone
 
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
+from .board_history import BROWSER_RETRY_DAYS, _dead, _retry_due, _retry_when_unjudged, read_since  # noqa: F401 -- moved out (500-line rule); tests and callers use found_boards._dead, .read_since
 from ..press import resume, stage
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
@@ -31,7 +30,6 @@ FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up t
 AI_ASKS = 2           # search words whose page the AI page reader may read per board, until one answer has jobs (an empty first page is no sure "none")
 IDLE_STOP = 2         # the full read stops a board after this many queries in a row that add no new job
 MAX_PLACES = 2        # and places
-BROWSER_RETRY_DAYS = 30   # a board marked 'browser' is looked at again after this long (its page or routes may have changed)
 LADDER = 2   # the version of the other ways below: a board that went up an older ladder without a relevant job goes up this one once (24 Oct 2026: sections, scripts)
 FEW_RELEVANT = 5   # a general board's list giving fewer relevant jobs than this also gets its own section tried, once (24 Oct 2026: a list gave 1-2, its section 5)
 BOARD_WORKERS = 4         # boards read at once (each its own site, its own pages one after another): the slice ends with its slowest board, not their sum
@@ -124,43 +122,6 @@ def _read(board, search, fetch, route, early, show=None):
         seen |= new
         idle = 0 if new else idle + 1
     return jobs, state, None
-
-
-def _retry_when_unjudged(entry, relevant, ai_failed=False):
-    """The other ways found nothing relevant while the refresh's time for sorting titles was spent, or an AI call of theirs failed: the titles or the
-    link were not judged, not rejected (24 Oct 2026: a Moldovan board's IT field was read at 163 s, "Time is up for this refresh: 10 title(s) left",
-    0 relevant, and the board was not looked at again for that link; check #10, Rabota: "decide board field link: CliError", 3 jobs, never retried).
-    The board is tried again next refresh; the pages it read are kept (page_reads), so that costs no model."""
-    from .. import time_budget
-    if not relevant and (ai_failed or time_budget.over('titles')):
-        entry.pop('form_for', None)
-
-
-def _retry_due(entry, now):
-    try:
-        last = datetime.fromisoformat(entry['last_read'])
-    except (KeyError, ValueError):
-        return True
-    return ((now or datetime.now(timezone.utc)) - last).days >= BROWSER_RETRY_DAYS
-
-
-def _dead():
-    """The boards dropped by their history (board_yield.dead) in this install's job cache; none before its first search."""
-    from .. import paths
-    from . import board_yield
-    path = paths.DATA / 'jobs.sqlite'
-    if not path.exists():
-        return set()
-    with closing(sqlite3.connect(path)) as db:
-        return board_yield.dead(db)
-
-
-def read_since(stamp):
-    """{board host: relevant jobs} of the found boards read at or after `stamp` (ISO, UTC): this search's reads, for source_yield."""
-    from ..ai import board_ideas
-    from .careers_parse import registrable
-    return {registrable(host): int(entry.get('relevant') or 0) for host, entry in (board_ideas.load().get('boards') or {}).items()
-            if (entry.get('last_read') or '') >= stamp}
 
 
 def _section(board, page, search, fetch, judge, show=None):
@@ -311,7 +272,7 @@ def _hand(turn, found, on_board):
         on_board(found)
 
 
-def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
+def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None, later=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
     full read, which asks the board in full and serves the pages the slice fetched from them instead of fetching them again. workers: boards
@@ -320,6 +281,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
     since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
     Each board is kept (and its titles and places judged) as soon as its own read ends; on_board(jobs) then gets its jobs, once per board kept.
+    later(): more boards, named while these are read (the AI's proposal beside the measured boards, first_jobs.board_jobs); the ones not
+    being read join this same read in the places left, as soon as they are named: one read, one board memory, one save.
     The jobs returned are in the list's order, whatever the threads' timing. Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/unit/sources/test_three_minutes.py)."""
     resume.ran('job boards')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     if read_budget.past_cut():
@@ -457,8 +420,11 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
     # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
-    # Why (#3892, 12 Nov 2026): kept in the list's order, a slow first board held the others' titles and places past the AI's time
-    for done, (future, result) in enumerate(read_budget.as_done(futures, cut), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
+    start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
+    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
+    # Why (#3892, 12 Nov 2026): boards are kept as they end (in the list's order a slow first board held the others' titles and places
+    # past the AI's time); the boards named meanwhile (feeders) join this same loop as they start, never a second read
+    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])
@@ -475,7 +441,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     for read_item in reads:   # a board still open at the cut: its replacements read before it
         _kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
-    board_ideas.save(data)
+    board_ideas.save_read(data)
     jobs = [job for turn in by_turn for job in turn]
     board_employers.note(jobs, 'Job boards found')
     if more and read_budget.past_cut():   # found too late for this search: kept with the web search's boards, read by the next one
