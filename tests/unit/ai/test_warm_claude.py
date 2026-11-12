@@ -39,6 +39,12 @@ FAKE = textwrap.dedent('''
         f.write(line)
     if mode == 'mute':
         sys.exit(0)
+    if mode == 'silent':   # takes the question, never answers: only a timeout ends the call
+        time.sleep(3600)
+    if mode == 'limit':   # Claude Code's error answer: the reason on stderr, a non-zero exit
+        print(json.dumps({'type': 'result', 'subtype': 'success', 'is_error': True, 'result': '', 'num_turns': 1, 'usage': {}}), flush=True)
+        sys.stderr.write("You've hit your usage limit, resets 3am")
+        sys.exit(1)
     content = json.loads(line)['message']['content']
     print(json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'x'}]}}), flush=True)
     print(json.dumps({'type': 'result', 'subtype': 'success', 'is_error': False, 'result': 'answer to ' + content, 'num_turns': 1,
@@ -181,6 +187,34 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(client.cold, ['Say ok.'])
         self.assertEqual(len(fake.seen('question')), 1, 'positive control: the spare did take the question')
 
+    def test_an_error_answer_is_read_with_its_stderr_and_exit_code_as_a_cold_call(self):
+        """Gitar on #3931: the warm path returned exit 0 and no stderr, so a plan limit could be read as a plain failure."""
+        fake = Fake(self, 'limit')
+        client = Client(self, warm.Warm(4, spawn=fake.spawn))
+        with self.assertRaises(cli_base.CliLimitError) as said:
+            client.ask('Say ok.')
+        self.assertIn('usage limit', str(said.exception) + said.exception.said)
+        self.assertEqual(client.cold, [], 'the error came from the process started ahead, not a second ask')
+
+    def test_a_spare_that_never_answers_is_killed_at_the_timeout(self):
+        fake = Fake(self, 'silent')
+        client = Client(self, warm.Warm(4, spawn=fake.spawn))
+        client.client.timeout = 1   # a real process, a real 1 s limit: the timeout is what is tested
+        with self.assertRaises(cli_base.CliError) as said:
+            client.ask('Say ok.')
+        self.assertIn('did not answer within 1 s', str(said.exception))
+        self.assertIsNotNone(fake.processes[0].wait(timeout=30), 'the silent process was killed')
+        self.assertEqual(client.cold, [], 'a timeout is not asked again (as a cold call that times out)')
+
+    def test_a_call_that_never_reaches_its_slot_stops_waiting(self):
+        """Gitar on #3931: any way out between coming() and take() (not only the deadline) must release the call, or the pool never shrinks."""
+        pool, _ = stub_pool()
+        client = Client(self, pool)
+        with mock.patch.object(type(client.client._slots), '__enter__', side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                client.ask('Say ok.')
+        self.assertEqual(sum(pool.waiting.values()), 0)
+
     def test_a_call_with_other_flags_never_takes_a_spare(self):
         pool, started = stub_pool()
         sonnet = pool.asked(['claude', '--model', 'sonnet'], {})
@@ -256,6 +290,7 @@ class OrphanTests(unittest.TestCase):
             print('STARTED', process.pid, flush=True)
             os.kill(os.getpid(), signal.SIGKILL) if hasattr(signal, 'SIGKILL') else os._exit(9)
         ''')
+        # On Windows there is no SIGKILL: os._exit is the abrupt end there (no exit hooks, no close()), so the pipe closing is still what ends the spare.
         out = subprocess.run([sys.executable, '-c', child], capture_output=True, text=True, timeout=60)
         self.assertIn('STARTED', out.stdout, out.stderr)   # positive control: the spare was started before the kill
         until = time.monotonic() + 30   # a hang guard only: it ends within a second

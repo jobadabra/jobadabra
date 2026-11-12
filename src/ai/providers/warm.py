@@ -220,5 +220,16 @@ class Warm:
                 continue
             said = said or event.get('type') in ('assistant', 'result')
             if event.get('type') == 'result':
+                if event.get('is_error') or str(event.get('subtype', 'success')).startswith('error'):
+                    # An error answer is read as the cold call reads it (claude_code.parse, classify): its stderr and exit code, so a plan
+                    # limit or a signed-out CLI is told apart the same way; only a good answer returns before the process ends (Gitar on #3931).
+                    try:
+                        code = spare.process.wait(timeout=max(1.0, until - self.clock()))
+                    except subprocess.TimeoutExpired:
+                        spare.process.kill()
+                        code = spare.process.wait()
+                    errors = spare.stderr()   # read before end(): its reaper removes the folder, stderr file included
+                    spare.end()
+                    return json.dumps(event), errors, code
                 spare.end()
                 return json.dumps(event), '', 0

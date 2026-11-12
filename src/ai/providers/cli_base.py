@@ -111,24 +111,29 @@ class CliAdapter(Adapter):
         wait = max(self.timeout, FILES_TIMEOUT_S) if self.reads_files(args) and not os.getenv(self.timeout_env) else self.timeout
         asked = time.monotonic()
         key = self.coming(args)   # a warm engine starts this call's process now, while it waits for its slot
-        with self._slots:
-            began = time.monotonic()
-            # Why (sa, 11 Nov 2026, local p10 search): calls asked at 36-46 s got their slot at 141-163 s, after the search's AI steps had stopped at 135 s, and
-            # ran the search to 173 s. The clock's rule is that no AI call starts once the run's time is over (src/press/clock.py ended): a call that was asked
-            # in time and waited past it is not started; its caller takes it as any failed call (the item waits for the next search).
-            from ... import time_budget
-            if time_budget.ended(now=began) and not time_budget.ended(now=asked):
+        reached = False   # whether ask() (which takes the call's process) was reached: on every other way out, the call stops waiting
+        try:
+            with self._slots:
+                began = time.monotonic()
+                # Why (sa, 11 Nov 2026, local p10 search): calls asked at 36-46 s got their slot at 141-163 s, after the search's AI steps had stopped at 135 s, and
+                # ran the search to 173 s. The clock's rule is that no AI call starts once the run's time is over (src/press/clock.py ended): a call that was asked
+                # in time and waited past it is not started; its caller takes it as any failed call (the item waits for the next search).
+                from ... import time_budget
+                if time_budget.ended(now=began) and not time_budget.ended(now=asked):
+                    raise CliError(f"the search's time was up before {self.tool} had a free slot")
+                reached = True
+                try:
+                    out = self.ask(args, prompt, folder, wait, key)
+                except subprocess.TimeoutExpired:
+                    self._timeouts += 1
+                    if self._timeouts >= TIMEOUTS_BEFORE_STOP:
+                        raise CliLimitError(self.not_answering_text.format(seconds=wait), stopped=f'{self.tool} did not answer') from None
+                    raise CliError(f'{self.tool} did not answer within {wait} s') from None
+                except OSError as error:
+                    raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed') from error
+        finally:
+            if not reached:
                 self.left(key)
-                raise CliError(f"the search's time was up before {self.tool} had a free slot")
-            try:
-                out = self.ask(args, prompt, folder, wait, key)
-            except subprocess.TimeoutExpired:
-                self._timeouts += 1
-                if self._timeouts >= TIMEOUTS_BEFORE_STOP:
-                    raise CliLimitError(self.not_answering_text.format(seconds=wait), stopped=f'{self.tool} did not answer') from None
-                raise CliError(f'{self.tool} did not answer within {wait} s') from None
-            except OSError as error:
-                raise CliLimitError(self.missing_text, final=True, stopped=f'{self.tool} is not installed') from error
         self._timeouts = 0
         return self.parse(out, args, began - asked, time.monotonic() - began)
 
