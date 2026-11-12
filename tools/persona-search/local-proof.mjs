@@ -47,21 +47,24 @@ function pinClaude() {
   // (its own folder, never one another proof is running from), as the fictional-candidate-runs skill's pinbin.
   const real = realClaude(env);
   if (!real) return console.log('Claude Code: no install found on PATH; the runs will say so');
-  const dir = path.join(work, 'pinbin', stamp), pin = path.join(dir, 'claude');
-  // A copy is ~320 MB: this proof's goes when it ends (Ctrl-C and a kill too), and one a proof left behind goes once that proof's process is gone (its pid file).
+  // The folder is named <stamp>-<pid>: unique per proof (two can start in the same second) and its owner is known the moment it exists.
+  const dir = path.join(work, 'pinbin', `${stamp}-${process.pid}`), pin = path.join(dir, 'claude');
+  // A copy is ~320 MB: this proof's goes when it ends (Ctrl-C and a kill too), and one a proof left behind goes once that proof's process is gone
+  // (only ESRCH says gone; EPERM is a live process of another user). A folder with no pid in its name goes after 10 minutes.
   for (const old of fs.existsSync(path.dirname(dir)) ? fs.readdirSync(path.dirname(dir)) : []) {
-    const at = path.join(path.dirname(dir), old);
-    let owner = 0;
-    try { owner = Number(fs.readFileSync(path.join(at, 'pid'), 'utf8')); } catch { /* no pid file: an old copy */ }
-    let alive = false;
-    try { alive = owner > 0 && process.kill(owner, 0); } catch { /* that proof has ended */ }
-    if (!alive) fs.rmSync(at, {recursive: true, force: true});
+    const at = path.join(path.dirname(dir), old), owner = Number(/-(\d+)$/.exec(old)?.[1] || 0);
+    let gone;
+    if (owner) {
+      try { process.kill(owner, 0); gone = false; } catch (error) { gone = error.code === 'ESRCH'; }
+    } else {
+      try { gone = Date.now() - fs.statSync(at).mtimeMs > 600000; } catch { gone = false; }
+    }
+    if (gone) fs.rmSync(at, {recursive: true, force: true});
   }
   process.on('exit', () => fs.rmSync(dir, {recursive: true, force: true}));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => process.exit(signal === 'SIGINT' ? 130 : 143));
   try {
     fs.mkdirSync(dir, {recursive: true});
-    fs.writeFileSync(path.join(dir, 'pid'), String(process.pid));
     fs.copyFileSync(fs.realpathSync(real), pin);
     fs.chmodSync(pin, 0o755);
     const version = execFileSync(pin, ['--version'], {encoding: 'utf8', timeout: 30000, env: {...env, PATH: `${dir}${path.delimiter}${env.PATH}`}}).trim();
