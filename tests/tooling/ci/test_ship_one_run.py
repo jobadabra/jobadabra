@@ -58,6 +58,26 @@ class ShipOneRunTest(ShipFixture):
         self.wait_for(log, r'^ship: DONE')
         self.assertFalse(self.pidfile(self.tree).exists())
 
+    def test_runs_racing_for_one_stale_lock_let_exactly_one_through(self):
+        # Gitar on #3921: two runs reading the same stale file could each rm the other's fresh lock and both go on.
+        self.change(self.tree, 'tools/pre-push-check.sh', '#!/bin/sh\ncat > /dev/null\nsleep 6\n', 'Slow hook')
+        for round_ in range(3):
+            dead = subprocess.Popen(['true']); dead.wait()
+            self.pidfile(self.tree).write_text(f'{dead.pid}\n')
+            logs = [self.tmp / f'race-{round_}-{n}.log' for n in range(6)]
+            runs = [subprocess.Popen(['bash', str(self.tree / 'tools' / 'ship.sh'), '--background'], cwd=self.tree, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                     env={**os.environ, 'SHIP_LOG': str(log)}) for log in logs]
+            codes = [run.wait(timeout=60) for run in runs]
+            self.assertEqual(codes.count(0), 1, f'round {round_}: {codes}: more or fewer than one run took the stale lock')
+            for run in runs:
+                run.stdout.close(); run.stderr.close()
+            owner = int(self.pidfile(self.tree).read_text().split()[0])
+            os.kill(owner, signal.SIGTERM)
+            for _ in range(40):
+                if not self.pidfile(self.tree).exists():
+                    break
+                time.sleep(0.25)
+
     def test_a_live_pid_that_is_not_a_ship_run_does_not_block(self):
         other = subprocess.Popen(['sleep', '30'])   # a reused pid: alive, but not tools/ship.sh
         self.addCleanup(other.kill)

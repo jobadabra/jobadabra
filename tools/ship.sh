@@ -84,17 +84,27 @@ ship_run_alive() {  # <pid>: a live tools/ship.sh process
 ship_lock_write() { printf '%s\n%s\n' "$1" "$log" > "$lockfile"; }
 ship_lock_create() { ( set -C; printf '%s\n%s\n' "$1" "$log" > "$lockfile" ) 2>/dev/null; }   # atomic: noclobber fails when the file exists
 ship_lock_release() { [ "$(sed -n 1p "$lockfile" 2>/dev/null)" != "$$" ] || rm -f "$lockfile"; }   # only this run's own file: a newer run's stays
+ship_lock_refuse() {  # <holder pid> <holder log>
+  refusal_line="ship: FAILED refused: a ship run (pid $1) is alive on this worktree; this call pushed nothing and that run goes on, its log: ${2:-unknown}"
+  echo "ship: refused: a ship run for this worktree is alive (pid $1, log ${2:-unknown}); a second run beside it would rebase and push the same checkout." >&2
+  echo "ship: wait for it: until ! kill -0 $1 2>/dev/null; do sleep 5; done (or its log's ^ship: (DONE|FAILED|MERGED|CLOSED) line), then ship once. A REVIEW line is not its end: only the pid being gone is." >&2
+  exit 2
+}
+# Why (12 Nov 2026, sl; Gitar on #3921): two runs reading one stale file could each rm the other's fresh lock and both go on (6 racing runs: 3 went through).
+# The look at the holder and the replacing of a stale file happen under a mkdir guard (atomic, held for milliseconds), so the second run sees the first run's live pid.
 ship_lock_take() {
   ship_lock_create "$$" && return 0
-  local holder holder_log; holder="$(sed -n 1p "$lockfile" 2>/dev/null || true)"; holder_log="$(sed -n 2p "$lockfile" 2>/dev/null || true)"
-  if [ -n "$holder" ] && ship_run_alive "$holder"; then
-    refusal_line="ship: FAILED refused: a ship run (pid $holder) is alive on this worktree; this call pushed nothing and that run goes on, its log: ${holder_log:-unknown}"
-    echo "ship: refused: a ship run for this worktree is alive (pid $holder, log ${holder_log:-unknown}); a second run beside it would rebase and push the same checkout." >&2
-    echo "ship: wait for it: until ! kill -0 $holder 2>/dev/null; do sleep 5; done (or its log's ^ship: (DONE|FAILED|MERGED|CLOSED) line), then ship once. A REVIEW line is not its end: only the pid being gone is." >&2
-    exit 2
-  fi
+  local guard="$lockfile.guard" tries=0 holder holder_log
+  until mkdir "$guard" 2>/dev/null; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 50 ]; then rmdir "$guard" 2>/dev/null || true; mkdir "$guard" 2>/dev/null && break; refusal_line="ship: FAILED refused: the lock guard $guard is held"; echo "ship: refused: another run is taking this worktree's lock ($guard); try again in a moment." >&2; exit 2; fi   # past 5 s a guard is a dead run's leftover
+    sleep 0.1
+  done
+  holder="$(sed -n 1p "$lockfile" 2>/dev/null || true)"; holder_log="$(sed -n 2p "$lockfile" 2>/dev/null || true)"
+  if [ -n "$holder" ] && ship_run_alive "$holder"; then rmdir "$guard"; ship_lock_refuse "$holder" "$holder_log"; fi
   rm -f "$lockfile"   # stale: its run is gone
-  ship_lock_create "$$" || { refusal_line="ship: FAILED refused: another ship run took this worktree's lock a moment ago ($lockfile)"; echo "ship: refused: another ship run took this worktree's lock a moment ago ($lockfile); try again when it ends." >&2; exit 2; }
+  if ship_lock_create "$$"; then rmdir "$guard"; return 0; fi
+  rmdir "$guard"; holder="$(sed -n 1p "$lockfile" 2>/dev/null || true)"; ship_lock_refuse "${holder:-unknown}" "$(sed -n 2p "$lockfile" 2>/dev/null || true)"
 }
 if [ -n "${SHIP_LOCK_HELD:-}" ]; then ship_lock_write "$$"; unset SHIP_LOCK_HELD   # the detached child: the background parent took the lock for it (below)
 else ship_lock_take; fi
