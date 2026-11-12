@@ -28,6 +28,40 @@ class StoreEnvGuardTests(unittest.TestCase):
         self.assertIn("'JOBADABRA_STORE': 'sqlite'", result.failures[0][1])
         self.assertNotIn('JOBADABRA_STORE', os.environ)
 
+    def test_a_search_run_cache_never_reaches_the_next_test(self):
+        """#3874, the shape that reddened #3862's shard: one test leaves feeds.TRIAGED = {}, the next patches it to that same dict and the run marks
+        it asked, the "restore" puts it back mutated, and a later test's wanted_title reads the mark. Through the guard the reader sees None."""
+        import suite_store_guard
+        from unittest import mock
+        from src.sources import feeds
+
+        class Order(unittest.TestCase):
+            seen = []
+
+            def test_a_fills(self):
+                feeds.TRIAGED = {}
+
+            def test_b_patches_to_the_same_dict(self):
+                with mock.patch.object(feeds, 'TRIAGED', feeds.TRIAGED):
+                    feeds._triaged_shared()[feeds.ASKED] = True
+
+            def test_c_reads(self):
+                Order.seen.append(feeds.TRIAGED)
+
+        def run(through):
+            Order.seen = []
+            with mock.patch.object(unittest.TestCase, 'run', through):
+                unittest.defaultTestLoader.loadTestsFromTestCase(Order).run(unittest.TestResult())
+            return Order.seen[0]
+
+        before = feeds.TRIAGED
+        try:
+            self.assertEqual(run(suite_store_guard._run), {feeds.ASKED: True}, 'positive control: without the guard the asked mark leaks')
+        finally:
+            feeds.TRIAGED = before
+        self.assertIsNone(run(suite_store_guard.run_without_a_chosen_store), 'through the guard each test starts with the run caches empty')
+        self.assertIs(feeds.TRIAGED, before, 'and the cache is left as this test found it')
+
     def test_a_test_that_changes_the_notion_connection_fails_and_it_is_put_back(self):
         from unittest import mock
         class Leaks(unittest.TestCase):
