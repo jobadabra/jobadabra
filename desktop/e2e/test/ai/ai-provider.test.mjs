@@ -150,8 +150,8 @@ test('a network failure on the way to the run token is not called a job without 
 });
 
 // 12 Nov 2026, press-tapes-auto run 43232268713: GitHub's token service answered "upstream connect error…" (not JSON) on 18 calls; each became a refused AI call and
-// tapes 10, 11 and 14 were not kept. GitHub's own 5xx gets one more try after ~10 s (the owner's "One retry on GitHub errors", 3 Nov 2026, tools/gh_retry.py).
-test('a run token: GitHub\'s own 5xx is asked once more; a second one names the status and GitHub\'s words', async () => {
+// tapes 10, 11 and 14 were not kept. A gateway 502/503/504 gets one more try after ~10 s (the owner's "One retry on GitHub errors", 3 Nov 2026, tools/gh_retry.py).
+test('a run token: a gateway 502/503/504 is asked once more; a second one names the status and GitHub\'s words', async () => {
   const slept = [], sleep = async ms => { slept.push(ms); };
   const reply = (status, body) => new Response(body, {status});
   let answers = [reply(503, 'upstream connect error or disconnect/reset before headers'), reply(200, JSON.stringify({value: 'tok'}))];
@@ -160,8 +160,14 @@ test('a run token: GitHub\'s own 5xx is asked once more; a second one names the 
   answers = [reply(503, 'upstream connect error'), reply(502, 'upstream reset')];
   await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 502: upstream reset/);
   answers = [reply(403, 'forbidden'), reply(200, JSON.stringify({value: 'never'}))];
-  await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 403: forbidden/);   // not GitHub's 5xx: never asked again
+  await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 403: forbidden/);   // not a gateway status: never asked again
   assert.equal(answers.length, 1);
+  answers = [reply(500, 'internal error'), reply(200, JSON.stringify({value: 'never'}))];
+  await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 500: internal error/);   // 500 is not in tools/gh_retry.py's gateway set
+  assert.equal(answers.length, 1);
+  assert.deepEqual(slept, [10000, 10000], 'only the two gateway answers waited');
+  const unreadable = {ok: false, status: 403, text: async () => { throw new Error('socket hang up'); }};
+  await assert.rejects(runToken(env, async () => unreadable, sleep), /HTTP 403: \(body unreadable: socket hang up\)/);
 });
 
 test('the judges on codex: an answer returns in Messages shape; a broker refusal is a skip with its reason, said by the runner\'s cap path', async () => {

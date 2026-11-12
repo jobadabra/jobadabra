@@ -4,7 +4,8 @@
 // Job: report health
 // Why (2 Nov 2026, ai-broker 6/7): the broker accepts both audiences until 7/7; the old one is dropped there.
 export const AUDIENCE = 'jobadabra-ai-broker';
-const GITHUB_RETRY_MS = 10000;   // GitHub's own 5xx on the run token: one more try, as tools/gh_retry.py does for gh
+const GITHUB_RETRY_MS = 10000;   // GitHub's gateway 502/503/504 on the run token: one more try, as tools/gh_retry.py does for gh
+const GITHUB_GATEWAY = [502, 503, 504];   // tools/gh_retry.py GATEWAY: a 500 is GitHub's own fault and would fail again
 const RETRY_AFTER_MS = 30000;   // the one retry of a 5xx the broker gave no reason for (see askBroker's Why)
 /** The broker's address: takes env, returns AI_BROKER_URL when set, else the old CODEX_BROKER_URL (still honoured), else the deployed workers.dev address (jobadabra-web workers/ai-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.AI_BROKER_URL || env.CODEX_BROKER_URL || 'https://jobadabra-ai-broker.jobpilotto.workers.dev';
@@ -39,15 +40,15 @@ export function toBrokerCall(body) {
 }
 
 /** This run's OIDC token for the broker (the workflow needs `permissions: id-token: write`), or null outside such a job. Throws on a refusal, naming GitHub's status and words.
- * Invariant: GitHub's own 5xx is asked once more after GITHUB_RETRY_MS; any other status is never asked again. */
+ * Invariant: a gateway 502/503/504 is asked once more after GITHUB_RETRY_MS; any other status, a 500 included, is never asked again. */
 export async function runToken(env = process.env, fetchImpl = fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))) {
   if (!env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) return null;
   const ask = () => fetchImpl(`${env.ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}`, {headers: {authorization: `Bearer ${env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`}});
   let answer = await ask();
   // Why (12 Nov 2026, press-tapes-auto run 43232268713): GitHub's token service answered "upstream connect error…" on 18 calls and tapes 10, 11, 14 were thrown away;
   //   the owner's "One retry on GitHub errors" (3 Nov 2026, tools/gh_retry.py) never reached this fetch, which also read the error page as JSON.
-  if (answer.status >= 500) { await sleep(GITHUB_RETRY_MS); answer = await ask(); }
-  if (!answer.ok) throw new Error(`HTTP ${answer.status}: ${(await answer.text().catch(() => '')).slice(0, 80)}`);
+  if (GITHUB_GATEWAY.includes(answer.status)) { await sleep(GITHUB_RETRY_MS); answer = await ask(); }
+  if (!answer.ok) throw new Error(`HTTP ${answer.status}: ${(await answer.text().catch(error => `(body unreadable: ${error.message})`)).slice(0, 80)}`);
   return (await answer.json()).value || null;
 }
 
