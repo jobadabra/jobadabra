@@ -36,7 +36,7 @@ export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
   const clean = cleanCookies(cookies);
   if (!clean) return {ok: false, error: 'No LinkedIn sign-in found. Sign in to LinkedIn, then try again.'};
   if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in, so LinkedIn jobs stays off.'};
-  save(storage, {on: true, signin: undefined, noticedAt: undefined});   // a fresh sign-in is Working again
+  save(storage, {on: true});   // Why (Gitar on #3914, 12 Nov 2026): a saved copy is no verdict, so `signin` stays: the next read that works after Needs you is what says "renewed"
   return {ok: true};
 }
 

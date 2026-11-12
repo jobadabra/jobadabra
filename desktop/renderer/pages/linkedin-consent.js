@@ -40,21 +40,23 @@ async function watchUntilOn() {
 
 // The default way in: a Jobadabra window on LinkedIn's own sign-in page (lib/linkedin-signin-window.js). The answer comes when the window ends, so no watching is needed.
 let signingIn = false;   // Why (independent review, 3 Nov 2026): the dialog is closed while the window is open, so a Find jobs press must not ask again (and count a decline) meanwhile
-async function signInHere() {
+async function signInHere(renew = false) {
   signingIn = true;
   const answer = await window.pilot.linkedinJobsSignIn().catch(() => null);
   signingIn = false;
   await refreshLinkedin().catch(() => {});
-  if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
+  // Why (Gitar on #3914, 12 Nov 2026): a renewal is no "LinkedIn jobs is on" (it was on); the next read that works is what says "renewed", so this only says the copy is saved.
+  if (answer?.ok && renew) toast(t('pagesLinkedinServices.savedTitle'), t('pagesLinkedinServices.savedBody'), NO_PLACE.itself, 'good');
+  else if (answer?.ok) toast(t('pagesFinalLabels.linkedinOn'), t('pagesAuditSecond.a127'), NO_PLACE.itself, 'good');
   else toast(...signInEnded(answer, view));
 }
 
 // The shortcut while the Chrome extension is connected: its own page in Chrome copies the sign-in Chrome already has.
-async function turnOnWithChrome() {
+async function turnOnWithChrome(renew = false) {
   const opened = await window.pilot.linkedinJobsConnect().catch(() => null);
   if (opened?.opened) {
     toast(t('pagesFinalLabels.finishChrome'), t('pagesAuditPunct.a41'), NO_PLACE.itself, 'info');
-    watchUntilOn();
+    if (!renew) watchUntilOn();   // a renewal has nothing to wait for: the switch is already on (Gitar on #3914: the watch ended at once and said "on")
   } else toast(...notOpened(opened));
 }
 
@@ -84,8 +86,8 @@ export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
   return new Promise(resolve => {
     dialog.addEventListener('close', async () => {
       const yes = dialog.returnValue === 'default', chrome = dialog.returnValue === 'chrome';
-      if (chrome) await turnOnWithChrome();
-      else if (yes) await (mode === 'manage' ? turnOff() : signInHere());
+      if (chrome) await turnOnWithChrome(mode === 'renew');
+      else if (yes) await (mode === 'manage' ? turnOff() : signInHere(mode === 'renew'));
       else if (counts) await window.pilot.linkedinJobsAnswer('not-now').catch(() => {});
       resolve(yes || chrome);
     }, {once: true});
@@ -111,3 +113,8 @@ export function linkedinCommand() {
 
 /** The ⌘K command "Renew LinkedIn sign-in" (pages/nav.js) while LinkedIn jobs is on, else null; it opens the renew dialog, the same one the card's Renew opens. */
 export const linkedinRenewCommand = () => renewCommandOf(view, () => openLinkedinConsent({mode: 'renew'}));
+
+/** Adds the LinkedIn jobs commands to ⌘K through `add(group, label, hint, keywords, run)` (pages/nav.js): the switch's, then "Renew LinkedIn sign-in" while it is on. */
+export function addLinkedinCommands(add) {
+  for (const command of [linkedinCommand(), linkedinRenewCommand()]) if (command) add('Settings', command.label, command.hint, command.keywords, command.run);
+}

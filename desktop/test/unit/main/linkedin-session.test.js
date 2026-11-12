@@ -169,7 +169,8 @@ test('the switch off says nothing; a new yes and Turn off start clean; the state
   const settings = on(), kc = keychain();
   run(settings, 'signed-out');
   saveSession(settings, good(), {keychain: kc});
-  assert.equal(signinView(settings).state, 'ok', 'a fresh sign-in is Working again');
+  assert.equal(signinView(settings).state, 'needs-you', 'a saved copy is no verdict (Gitar on #3914): the read after it decides');
+  assert.deepEqual(run(settings, 'done'), {event: 'renewed', why: ''}, 'signing in again (Renew dialog) then a read that works: "renewed" is told');
   run(settings, 'check');
   turnOff(settings, {keychain: kc});
   assert.equal(signinView(settings).state, 'ok');

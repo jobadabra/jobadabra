@@ -52,8 +52,8 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
 });
 
 test('every door opens the one consent: Settings row, ask on Find jobs, Suggestions entry, ⌘K', () => {
-  // nav.js (⌘K) takes the command from the same module: linkedinCommand() opens the consent (kept out of nav.js's long function: clean-code complexity)
-  const doors = {'renderer/pages/settings.js': 'openLinkedinConsent', 'renderer/pages/jobs.js': 'askLinkedinOnPress', 'renderer/pages/focus-suggestions.js': 'openLinkedinConsent', 'renderer/pages/nav.js': 'linkedinCommand'};
+  // nav.js (⌘K) takes the command from the same module: addLinkedinCommands() adds the consent's commands (kept out of nav.js's long function: clean-code complexity)
+  const doors = {'renderer/pages/settings.js': 'openLinkedinConsent', 'renderer/pages/jobs.js': 'askLinkedinOnPress', 'renderer/pages/focus-suggestions.js': 'openLinkedinConsent', 'renderer/pages/nav.js': 'addLinkedinCommands'};
   for (const [file, name] of Object.entries(doors)) {
     const source = readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
     assert.match(source, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '[./]*(pages/)?linkedin-consent\\.js'`), `${file} imports ${name} from the one consent module`);
@@ -98,7 +98,15 @@ test('⌘K finds "Renew LinkedIn sign-in" for "link", "renew" and "sign in" whil
 
 test('the renew dialog is the third mode of the one consent: its yes signs in, never turns off', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /mode === 'manage' \? turnOff\(\) : signInHere\(\)/, 'only manage turns off; renew and turn-on sign in');
+  assert.match(page, /mode === 'manage' \? turnOff\(\) : signInHere\(mode === 'renew'\)/, 'only manage turns off; renew and turn-on sign in');
   const settings = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
   assert.match(settings, /mode: needsYou \? .renew. :/, 'the card\'s button opens renew while it needs you');
+});
+
+test('a renewal never says "LinkedIn jobs is on" and never waits for the switch (Gitar on #3914): it says the copy is saved; the next good read says "renewed"', () => {
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  assert.match(page, /answer\?\.ok && renew\) toast\(.LinkedIn sign-in saved./, 'the sign-in window path');
+  assert.match(page, /if \(!renew\) watchUntilOn\(\)/, 'the Chrome path does not wait for an "on" that is already true');
+  assert.match(page, /turnOnWithChrome\(mode === 'renew'\)/);
+  assert.match(page, /signInHere\(mode === 'renew'\)/);
 });
