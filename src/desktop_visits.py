@@ -136,7 +136,19 @@ def _visit_jobpage(db, args):
 # -> the refused sites due for the requested browser read.
 def _refused_queue(db, args):
     from .sources import refused_reads
-    return {'ok': True, 'sites': refused_reads.queue(now_hosts=args.now, everything=args.all)}, False
+    return {'ok': True, 'sites': refused_reads.queue(now_hosts=args.now, everything=args.all, **({'kinds': tuple(args.kind)} if args.kind else {}))}, False
+
+
+# -> the refused job boards due for the Find jobs press's headless Chrome, within today's share (desktop/lib/headless-boards.js).
+def _headless_boards(db, args):
+    from .sources import refused_reads
+    return {'ok': True, 'sites': refused_reads.board_queue()}, False
+
+
+# -> whether the headless Chrome may load this board now (today's share), spending it first (src/sources/refused_reads.py headless_begin).
+def _headless_begin(db, args):
+    from .sources import refused_reads
+    return {'ok': True, 'go': refused_reads.headless_begin(args.url)}, False
 
 
 # -> the state of the page read in the real browser tab.

@@ -1,9 +1,11 @@
-"""Refused sites read in the user's own browser (owner, 19 Oct 2026; rule: CLAUDE.md "Never past a login wall", the opt-in exception). Only after the person pressed
-"Find jobs using your browser" (owner, 26 Oct 2026; the app's one gate is desktop/lib/refused-now.js, no Settings switch): the employer career sites and job boards that refused the engine
-(401/403, a bot check) are fetched ONCE by the extension from the user's Chrome, without cookies or logins, at most every READ_DAYS, one at a time, and the page it brings
-is read like a page the person opened (visits_read.read). A bot check, a refusal or a login page in the browser means stop and record: never retried, never solved. A 429 ("slow down") is kept
-as 'waiting' for WAIT_DAYS and widens the site's pace (host_pace), never a refusal.
-Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit or any login wall. Guarded by tests/unit/sources/test_refused_reads.py and desktop/test/unit/main/refused-reads.test.js."""
+"""Refused sites read in a browser (owner, 19 Oct 2026; rule: CLAUDE.md, the refused-sites exception). Employer career sites that refused the engine (401/403, a bot check) are
+fetched ONCE by the extension from the user's Chrome, only after the person pressed "Find jobs using your browser" (owner, 26 Oct 2026; the app's one gate is desktop/lib/refused-now.js).
+Job boards that refused are read during the person's own Find jobs press in Jobadabra's own headless Chrome (owner, 12 Nov 2026: "Yes, as boards (Recommended)",
+"Boards now, employers next (Recommended)", "5 boards, each once a day (Recommended)"; the app side is desktop/lib/headless-boards.js): board_queue().
+Both read without cookies or logins, one site at a time, and the page is read like a page the person opened (visits_read.read). A bot check, a refusal or a login page means
+stop and record: never retried, never solved. A 429 ("slow down") is kept as 'waiting' for WAIT_DAYS and widens the site's pace (host_pace), never a refusal.
+Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit or any login wall. Guarded by tests/unit/sources/test_refused_reads.py, tests/unit/sources/test_headless_boards.py
+and desktop/test/unit/main/refused-reads.test.js."""
 import re
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -38,16 +40,32 @@ def allowed(url):
 
 
 STEPS = ('engine', 'download', 'tab')   # the ladder, in order; the step that opened a site is remembered and shared
+HEADLESS = 'headless'   # a board read in Jobadabra's own headless Chrome during a Find jobs press: kept per host, not shared (the pool's step list stays the ladder's)
+KEPT_STEPS = (*STEPS, HEADLESS)
+DAY_SITES = 5       # Why (12 Nov 2026, owner: "5 boards, each once a day (Recommended)"): headless board reads per install per day
 
 
 def _days(entry):
-    """How long a site rests after its last read: opened 7, every step stopped 30, "slow down" 1."""
+    """How long a site rests after its last read: opened 7 (a board read headless: 1, its jobs change daily), every step stopped 30 (a board stopped
+    headless: for good, final()), "slow down" 1."""
     state = entry.get('state')
-    return WAIT_DAYS if state == 'waiting' else OPENED_DAYS if state in ('read', 'empty') else READ_DAYS
+    if state in ('read', 'empty'):
+        return WAIT_DAYS if entry.get('step') == HEADLESS else OPENED_DAYS
+    return WAIT_DAYS if state == 'waiting' else READ_DAYS
+
+
+def final(entry):
+    """True for a board that stopped Jobadabra's headless browser (401/403, a check or captcha, a sign-in page): that browser never asks it again,
+    the plain reader keeps its own 30-day look (found_boards). A 429 is kept as 'waiting' (1 day), never final."""
+    # Why (12 Nov 2026, sa for the owner, "final stop"): the stricter reading of "stops that site with no retry"; a 30-day return asked the same refusing
+    # board twice a cycle, once by each reader
+    return entry.get('step') == HEADLESS and entry.get('state') == 'stopped'
 
 
 def _recent(kept, host, now):
     entry = kept.get(host) or {}
+    if final(entry):
+        return True
     days = _days(entry)
     return bool(entry.get('at')) and entry['at'] >= (now - timedelta(days=days)).isoformat(timespec='seconds')
 
@@ -61,9 +79,10 @@ def _board_url(board, search):
     return board_paths.forms(board['search_url'], terms[0], place)[0]   # a person's browser opens one link: the plus form, as before
 
 
-def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
+def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False, kinds=('employer', 'board')):
     """[{url, name, kind: 'employer'|'board', step?}]: refused employer sites, then boards marked 'browser', that are due (see _days). A host in `now_hosts`
-    ("Read now", the person opened a job there or pressed Check for new jobs) is due at once; `step` is where the ladder starts (the one that worked last time)."""
+    ("Read now", the person opened a job there or pressed Check for new jobs) is due at once; `step` is where the ladder starts (the one that worked last time).
+    `kinds`: which of the two to list (the button reads employer sites, the Find jobs press's headless Chrome reads boards: board_queue)."""
     now = now or _now()
     data = visits._load()
     kept = data.get('refused_reads') or {}
@@ -72,12 +91,12 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
     due = lambda host: everything or host.lower().removeprefix('www.') in force or not _recent(kept, host, now)
     pool = visits.pool_facts().get('browser_read') or {}   # what other installs' browsers met there
     elsewhere = lambda host: (pool.get(host.lower().removeprefix('www.')) or {}).get('outcome')
-    for site in (data.get('sites') or {}).values():
+    for site in (data.get('sites') or {}).values() if 'employer' in kinds else ():
         host = visits.host_of(site['url'])
         if allowed(site['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
             out.append({'url': site['url'], 'name': site['company'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
-    for pick in visits.unread_picks():   # the scout's picks with no readable job site: tried here before they are ever left to the person
+    for pick in visits.unread_picks() if 'employer' in kinds else ():   # the scout's picks with no readable job site: tried here before they are ever left to the person
         host = visits.host_of(pick['url'])
         if allowed(pick['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
@@ -85,7 +104,7 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
                         **({'found': pick['origin']} if pick.get('origin') else {})})
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
     search = search_config()
-    for board in (board_ideas.load().get('boards') or {}).values():
+    for board in (board_ideas.load().get('boards') or {}).values() if 'board' in kinds else ():
         if board.get('state') != 'browser':
             continue
         url = _board_url(board, search)
@@ -104,12 +123,41 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
     return out[:limit]
 
 
+def board_queue(now=None):
+    """The boards that refused the plain reader and are due, for the Find jobs press's headless Chrome: at most DAY_SITES headless reads a day
+    (UTC day), so the list is what is left of today's share. -> [{url, name, kind: 'board', step}]."""
+    now = now or _now()
+    spent = visits._load().get('headless_day') or {}
+    left = DAY_SITES - (int(spent.get('n') or 0) if spent.get('day') == now.date().isoformat() else 0)
+    return queue(now=now, limit=left, kinds=('board',)) if left > 0 else []
+
+
+def headless_begin(url, now=None):
+    """Before Jobadabra's headless Chrome loads a board: True when it may (an allowed address, today's DAY_SITES not spent). The read is spent and the board
+    kept as 'waiting' (asked again the next day) BEFORE the page loads, so a read the app never finishes (killed, the engine's answer lost) is neither
+    repeated today nor left out of the day's count; outcome() then keeps what the page brought."""
+    now = now or _now()
+    if not allowed(url):
+        return False
+    with visits.LOCK:
+        data = visits._load()
+        day = now.date().isoformat()
+        spent = data.get('headless_day') or {}
+        used = int(spent.get('n') or 0) if spent.get('day') == day else 0
+        if used >= DAY_SITES:
+            return False
+        data['headless_day'] = {'day': day, 'n': used + 1}
+        data.setdefault('refused_reads', {})[visits.host_of(url)] = {'at': now.isoformat(timespec='seconds'), 'url': url, 'state': 'waiting', 'why': 'read started, no answer kept', 'step': HEADLESS}
+        visits._save(data)
+    return True
+
+
 def _keep(host, url, state, why, now, jobs=None, kinds=None, step=None, route=None):
     with visits.LOCK:
         data = visits._load()
         data.setdefault('refused_reads', {})[host] = {'at': now.isoformat(timespec='seconds'), 'url': url, 'state': state, 'why': why,
                                                       **({'jobs': jobs} if jobs is not None else {}), **({'kinds': kinds} if kinds else {}),
-                                                      **({'step': step} if step in STEPS else {}), **({'route': route} if route else {})}
+                                                      **({'step': step} if step in KEPT_STEPS else {}), **({'route': route} if route else {})}
         visits._save(data)
 
 
@@ -177,9 +225,15 @@ def _stop_why(status, html, final):
     return ''
 
 
-def outcome(url, status, html, title='', final='', now=None, step='download', captcha=False):
-    """What the extension's fetch of `url` brought: {ok, state: 'read'|'empty'|'stopped'|'skipped', jobs, why, name, feed}. Every answer is kept so the site is not asked again for READ_DAYS."""
+# The AI's page_state verdicts (refused_state.STATES) that are stops when a browser's caller passes them (a passive check still there after the wait is a bot check); the why words are what _word() shares.
+JUDGED_STOPS = {'login': 'a login page', 'refused': 'refused in the browser', 'passive_check': 'a bot check'}
+
+
+def outcome(url, status, html, title='', final='', now=None, step='download', captcha=False, judged=None):
+    """What a browser's read of `url` brought: {ok, state: 'read'|'empty'|'stopped'|'skipped', jobs, why, name, feed}. Every answer is kept so the site is not asked again for READ_DAYS.
+    `judged`: the page's state the browser's caller had the AI say (refused_state.page_state): 'captcha' is a captcha, a verdict in JUDGED_STOPS a stop like the floors below."""
     now = now or _now()
+    captcha = captcha or judged == 'captcha'   # words-ok: the engine AI's fixed page_state answer, not a page's words
     host = visits.host_of(url)
     if not allowed(url):
         return {'ok': True, 'state': 'skipped', 'why': 'a site that is only read through your own visit', 'name': host}
@@ -192,12 +246,12 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
         _keep(host, url, 'stopped', why, now, step=step)
         visits.refused(host, url, why, now=now)   # listed with the sites only you can open
         print(f'Refused sites: {host} shows a captcha; waiting for you to open it and solve it')
-        return {'ok': True, 'state': 'stopped', 'why': 'needs a quick check from you', 'needs_check': True, 'name': host}
-    why = _stop_why(int(status or 0), html, final)
+        return {'ok': True, 'state': 'stopped', 'why': 'needs a quick check from you', 'needs_check': True, 'name': host, 'final': step == HEADLESS}
+    why = _stop_why(int(status or 0), html, final) or JUDGED_STOPS.get(judged, '')
     if why:
         _keep(host, url, 'stopped', why, now, step=step)
-        print(f'Refused sites: {host} stopped ({why}); not asked again for {READ_DAYS} days')
-        return {'ok': True, 'state': 'stopped', 'why': why, 'name': host}
+        print(f'Refused sites: {host} stopped ({why}); ' + ('not asked again in Jobadabra\'s browser' if step == HEADLESS else f'not asked again for {READ_DAYS} days'))
+        return {'ok': True, 'state': 'stopped', 'why': why, 'name': host, 'final': step == HEADLESS}
     if not 200 <= int(status or 0) < 400:   # no answer (0), gone (404), a server error: a blip, not a page; never read as 'opened' or shared (#1639). Asked again after WAIT_DAYS.
         _keep(host, url, 'waiting', 'the page did not load', now)
         print(f'Refused sites: {host} did not load (HTTP {int(status or 0)}); asked again in {WAIT_DAYS} day(s)')

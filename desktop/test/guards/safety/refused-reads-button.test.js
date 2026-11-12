@@ -28,7 +28,7 @@ test('a Find jobs run that leaves refused sites offers the button and reads noth
   assert.equal(await offer(storage, f.run), 2);
   assert.deepEqual(storage.kept.refusedOffer.names, ['Coop', 'Monsterboard'], 'the run offers the two sites');
   for (let look = 0; look < 3; look++) assert.deepEqual((await queue(storage, {run: f.run, work: f.work})).sites, [], 'the extension asks: nothing without a press');
-  assert.deepEqual(f.asked, ['src.desktop refused-queue'], 'only the offer\'s count asked the engine');
+  assert.deepEqual(f.asked, ['src.desktop refused-queue --kind employer'], 'only the offer\'s count asked the engine, for employer sites (boards: the Find jobs press, lib/headless-boards.js)');
   now.press();
   assert.deepEqual((await queue(storage, {run: f.run, work: f.work})).sites.map(site => site.name), ['Coop', 'Monsterboard']);
   assert.equal(storage.kept.refusedOffer, null, 'pressed: the offer is used up');
@@ -72,7 +72,8 @@ test('no Settings switch: nothing reads it, and the rule and Settings say so', (
   for (const file of ['desktop/lib/refused-reads.js', 'desktop/lib/refused-offer.js', 'desktop/lib/refused-reads-handlers.js', 'desktop/renderer/pages/check-rows.js', 'desktop/renderer/pages/incognito-rows.js']) {
     assert.doesNotMatch(read(file), /readRefusedSites/, `${file} still reads the removed switch`);
   }
-  assert.match(read('CLAUDE.md'), /It starts only when the person presses "Find jobs using your browser"/);
+  // Why (12 Nov 2026, owner: "Boards now, employers next (Recommended)"): job boards moved to the Find jobs press's headless Chrome; employer sites keep the button.
+  assert.match(read('CLAUDE.md'), /a public employer page that refused the engine is read by the extension \*\*only when the person presses "Find jobs using your browser"\*\*, never in the background/);
   assert.doesNotMatch(read('CLAUDE.md'), /unless the user turned off Settings → "Read refused sites in my browser"/);
 });
 
