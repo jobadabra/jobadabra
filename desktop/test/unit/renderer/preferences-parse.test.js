@@ -73,10 +73,32 @@ test('a rejected answer is asked again once with the reason; two misses are an e
   const client = reply([{...base, countries: ['Switzerland']}, good]);
   assert.deepEqual((await ask(client, {countries: 'Switzerland'})).parse.countries, ['CH']);
   assert.equal(client.calls.length, 2);
-  assert.match(client.calls[1].messages[0].content[0].text, /rejected: "Switzerland" is not an ISO country code/);
+  assert.match(client.calls[1].messages[0].content[0].text, /rejected: countries: "Switzerland" is not an ISO country code/);
   const broken = reply([{...base, seniority: 'x'}, {...base, seniority: 'y'}]);
   await assert.rejects(ask(broken, {seniority: 'Senior'}), /outside the expected shape/);
   assert.equal(broken.calls.length, 2);
+});
+
+// #3666: Free AI left a list out; the retry said only "not a list", so it could not fix it, and the card showed that text.
+test('a rejected answer names the field it got wrong, so the second ask can fix it', async () => {
+  const {notes: _left, ...withoutNotes} = base;
+  assert.throws(() => cleanAnswer(withoutNotes), /^Error: notes: not a list$/);
+  const client = reply([withoutNotes, {...base, countries: ['CH']}]);
+  assert.deepEqual((await ask(client, {countries: 'Switzerland'})).parse.countries, ['CH']);
+  assert.match(client.calls[1].messages[0].content[0].text, /rejected: notes: not a list/);
+});
+
+test('two rejected answers: the card is told "unreadable", the raw reason goes to the log only', async () => {
+  const storage = memoryStorage(), logged = [];
+  const {notes: _left, ...withoutNotes} = base;
+  const result = await forFields(storage, {fields: {seniority: 'Senior'}, client: reply([withoutNotes, withoutNotes]), log: (...line) => logged.push(line)});
+  assert.equal(result.error, 'unreadable');
+  assert.equal(JSON.parse(storage.files['profile/preferences-parse.json']).error, 'unreadable');
+  assert.match(JSON.stringify(logged), /expected shape \(notes: not a list\)/, 'app.log keeps the reason');
+  // A failure saved by an older build keeps its raw words on disk: it is read back as the same token.
+  const old = memoryStorage();
+  old.files['profile/preferences-parse.json'] = JSON.stringify({key: inputKey({seniority: 'Senior'}), parse: null, error: "Free AI's answer was outside the expected shape (not a list)"});
+  assert.equal((await forFields(old, {fields: {seniority: 'Senior'}, client: null})).error, 'unreadable');
 });
 
 test('asked once per text: the same text reads from the kept answer, a change asks again, a failure is kept and not paid twice', async () => {
@@ -93,7 +115,7 @@ test('asked once per text: the same text reads from the kept answer, a change as
   assert.notEqual(inputKey(fields), inputKey({...fields, home: 'Geneva'}));
   const broken = reply([{...base, seniority: 'x'}]);
   const failed = await forFields(storage, {fields: {seniority: 'Senior'}, client: broken});
-  assert.match(failed.error, /outside the expected shape/);
+  assert.equal(failed.error, 'unreadable', 'the card gets a fixed token, never the engine\'s words (#3666)');
   await forFields(storage, {fields: {seniority: 'Senior'}, client: broken});
   assert.equal(broken.calls.length, 2, 'the failure is kept for this text');
   assert.equal((await forFields(storage, {fields: {}, client})).parse, null, 'nothing typed: nothing asked');
