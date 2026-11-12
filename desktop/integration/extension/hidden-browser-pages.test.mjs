@@ -69,9 +69,11 @@ test('every hidden application page is laid out at desktop width and stays visib
     for (const page of pages) {
       // Why (12 Nov 2026, #3880): a page replaced while it counted (its measure answered "Inspected target navigated or closed") has no count yet: the state to wait for is a page that
       // reports its count, so that measure is taken again on the page that stays (`until` keeps the last error for the failure). A page that draws too few frames still gives a number: judged below.
+      // Why (12 Nov 2026, Gitar on #3885): each read is capped by what is left of this wait, so three reads cannot outrun it and the failure names the last error, not "hung".
+      const stop = Date.now() + capOf(20000), left = () => Math.max(1000, stop - Date.now());
       seen.push(await until(async () => {
-        const width = await evaluate(page.webSocketDebuggerUrl, 'document.readyState === "complete" && innerWidth');
-        return width ? {width, frames: await evaluate(page.webSocketDebuggerUrl, DRAWS), visibility: await evaluate(page.webSocketDebuggerUrl, 'document.visibilityState')} : null;
+        const width = await evaluate(page.webSocketDebuggerUrl, 'document.readyState === "complete" && innerWidth', left());
+        return width ? {width, frames: await evaluate(page.webSocketDebuggerUrl, DRAWS, left()), visibility: await evaluate(page.webSocketDebuggerUrl, 'document.visibilityState', left())} : null;
       }, 'the page loaded and reported its frame count'));
     }
     assert.ok(seen.every(page => page.width === HIDDEN_WINDOW.width), `every page at desktop width (sites switch to their phone/tablet layout below ~1024 px): ${JSON.stringify(seen)}`);

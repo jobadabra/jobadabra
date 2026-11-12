@@ -6,14 +6,14 @@
 import {capOf} from './test-clock.mjs';
 
 /**
- * Evaluate `expression` (awaiting a promise) in the target behind `socketUrl` -> its value. A socket that closes or says nothing for 15 s rejects (a hang guard, never a verdict),
+ * Evaluate `expression` (awaiting a promise) in the target behind `socketUrl` -> its value. A socket that closes or says nothing for `ms` (15 s) rejects (a hang guard, never a verdict),
  * and so does a CDP error or an exception in the page: the message names it. Invariant: never resolves undefined for an error.
  */
-export function evaluate(socketUrl, expression) {
+export function evaluate(socketUrl, expression, ms = 15000) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(socketUrl);
     const fail = why => { clearTimeout(guard); socket.close(); reject(new Error(`${why}: ${socketUrl}`)); };
-    const guard = setTimeout(() => fail('no answer in time'), capOf(15000));
+    const guard = setTimeout(() => fail('no answer in time'), capOf(ms));
     socket.onerror = () => fail('no connection');
     socket.onclose = () => fail('closed before answering');
     socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {expression, awaitPromise: true, returnByValue: true}}));
