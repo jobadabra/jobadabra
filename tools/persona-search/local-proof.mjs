@@ -1,8 +1,11 @@
 // One command proves a Find jobs change on this Mac in about 2.5 minutes a search and prints one table (sa for the owner, 11 Nov 2026: "Make the feedback loow to be local and to be few mins. 3 mins.").
-//   node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--together] [--fresh-draft]
+//   node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--together] [--fresh-draft]
 //   --ref: the code to search with, any number (two = before | after side by side): a checkout folder (`.` = this one, the default; or a session's worktree path) searches as it is, edits too;
 //          Any other ref gets its own detached worktree under <os temp>/jp-local-proof/trees/<sha>, made once and never edited (the repo's post-checkout hook links node_modules).
-//   --together: the refs search at the same time instead of one after the other (to measure whether two local searches move the 3-minute clock).
+//   --runs N: N searches a side (default 1), round by round (side 1, side 2, then again), all with the same saved plan; the table then says per side each run, the median and the range,
+//          and one verdict: gain shown, loss shown, inside the noise or not enough runs (the rule: local-proof-table.mjs verdict()). A run that hit the Claude plan limit is NOT COUNTED and
+//          the rounds left are not started (a plan limit is not retried).
+//   --together: the refs search at the same time instead of one after the other (to measure whether two local searches move the 3-minute clock); at most 2 refs, so at most 2 searches at once.
 //   --fresh-draft: make the person's saved search plan again.
 // What it cuts (a full local run, search-check.mjs, is 5-12 min): the CV (gate.py cv) and the strategy draft (one AI call of ~1 min) are made ONCE per person and kept in
 // <os temp>/jp-local-proof/people/p<n>/ (outside the repo and the app's folder; kept until macOS clears its temp folder), so every run searches for exactly the same thing
@@ -19,8 +22,10 @@ import {cleanEnv} from './search-check.mjs';
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2), person = Number(args[0]);
 const refs = args.flatMap((arg, i) => (arg === '--ref' ? [args[i + 1]] : []));
-if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--'))) {
-  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--together] [--fresh-draft]');
+const runs = args.includes('--runs') ? Number(args[args.indexOf('--runs') + 1]) : 1;
+// Why (12 Nov 2026, brief sa-pane-ns): at most 2 local searches at once on this Mac, so --together pairs two refs and no more.
+if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2)) {
+  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--together (at most 2 refs)] [--fresh-draft]');
   process.exit(2);
 }
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
@@ -71,11 +76,20 @@ if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json
 }
 
 console.log(`${name}: search plan saved ${fs.statSync(path.join(home, 'draft.json')).mtime.toISOString().slice(0, 16)}Z (a change to the strategy draft is NOT tested; --fresh-draft remakes it)`);
-console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
-const go = (t, i) => { const out = path.join(work, 'runs', `${stamp}-${i + 1}`); console.log(`  ${i + 1}. ${t.label}: ${out}`); return press(t.dir, out, ['--presses', '1', '--draft', path.join(home, 'draft.json')]).then(r => ({...r, out, label: t.label})); };
+console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}${runs > 1 ? `, ${runs} rounds` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
+const {table, noise, read} = await import('./local-proof-table.mjs');
+const go = (t, i, round) => {
+  const out = path.join(work, 'runs', `${stamp}-${runs > 1 ? `r${round}-` : ''}${i + 1}`);
+  console.log(`  ${runs > 1 ? `round ${round}, ` : ''}${i + 1}. ${t.label}: ${out}`);
+  return press(t.dir, out, ['--presses', '1', '--draft', path.join(home, 'draft.json')]).then(r => ({...r, out, label: t.label, side: i, name}));
+};
 const ran = [];
-if (args.includes('--together')) ran.push(...await Promise.all(trees.map(go)));
-else for (const [i, t] of trees.entries()) ran.push(await go(t, i));
+for (let round = 1; round <= runs; round++) {
+  if (args.includes('--together')) ran.push(...await Promise.all(trees.map((t, i) => go(t, i, round))));
+  else for (const [i, t] of trees.entries()) ran.push(await go(t, i, round));
+  const limit = ran.map(read).find(x => x.limit);
+  if (limit && round < runs) { console.log(`  the Claude plan limit was hit (${limit.label}): rounds ${round + 1}-${runs} are not started`); break; }
+}
 
-const {table} = await import('./local-proof-table.mjs');
-console.log(`\n${table(ran.map(r => ({...r, name})))}`);
+if (runs === 1) console.log(`\n${table(ran)}`);
+else console.log(`\n${noise(trees.map((t, i) => ({label: t.label, runs: ran.filter(r => r.side === i)})), name)}`);
