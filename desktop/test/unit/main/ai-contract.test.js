@@ -28,14 +28,16 @@ const PNG = {type: 'image', source: {type: 'base64', media_type: 'image/png', da
 const params = (extra = {}) => ({model: 'claude-sonnet-5-5', max_tokens: 500, system: [{type: 'text', text: 'Be brief.', cache_control: {type: 'ephemeral'}}],
   messages: [{role: 'user', content: [PDF, PNG, {type: 'text', text: 'Summarise.'}]}], output_config: {format: {type: 'json_schema', schema: SCHEMA}}, ...extra});
 
-// A spawned process that answers from respond({args, prompt, cwd, files}) -> {stdout, stderr, code}; every call is kept.
+// A spawned process that answers from respond({args, prompt, cwd, folder, files}) -> {stdout, stderr, code}; every call is kept. folder: the
+// call's folder (Codex's `-C`, else the working directory), where its files are.
 function fakeSpawn(respond) {
   const calls = [];
   const spawnFn = (binary, args, {cwd}) => {
     const child = new EventEmitter();
     child.stdout = new EventEmitter(); child.stderr = new EventEmitter(); child.kill = () => {};
     child.stdin = {on: () => {}, end: prompt => setImmediate(() => {
-      const call = {binary, args, prompt, cwd, files: fs.readdirSync(cwd).sort(),
+      const folder = args.includes('-C') ? args[args.indexOf('-C') + 1] : cwd;
+      const call = {binary, args, prompt, cwd, folder, files: fs.readdirSync(folder).sort(),
         schema: args.includes('--output-schema') ? JSON.parse(fs.readFileSync(args[args.indexOf('--output-schema') + 1], 'utf8')) : null};
       calls.push(call);
       const {stdout = '', stderr = '', code = 0} = respond(call, calls.length);
@@ -137,7 +139,7 @@ test('Codex: its own folder, read-only, user config and the shell off, strict sc
   const disabled = name => call.args.some((arg, i) => arg === name && call.args[i - 1] === '--disable');
   assert.deepEqual(call.args.slice(0, 5), ['exec', '--json', '--ephemeral', '--skip-git-repo-check', '-s']);
   assert.equal(flag('-s'), 'read-only');
-  assert.equal(flag('-C'), call.cwd);
+  assert.ok(call.folder.includes('jobadabra-codex-') && call.cwd !== call.folder, 'Codex runs in a folder of its own; -C names the call folder');
   assert.ok(call.args.includes('--ignore-user-config') && call.args.includes('--ignore-rules'));
   assert.equal(flag('-m'), 'gpt-6.1-sol');
   assert.ok(disabled('plugins') && !call.args.includes('something_new'));   // only features this Codex lists, only from OFF
@@ -151,8 +153,8 @@ test('Codex: its own folder, read-only, user config and the shell off, strict sc
   assert.equal(call.args.at(-1), '-');
   assert.match(call.prompt, /^\[attached PDF \.\/document-1\.pdf, its text:\]\nNine years at Acme/);   // the question only: the system prompt is a file
   assert.ok(call.files.includes('instructions.md'));
-  assert.equal(call.args[call.args.lastIndexOf('-c') + 1], `model_instructions_file=${JSON.stringify(path.join(call.cwd, 'instructions.md'))}`);
-  assert.ok(!fs.existsSync(call.cwd), 'the call folder is removed');
+  assert.equal(call.args[call.args.lastIndexOf('-c') + 1], `model_instructions_file=${JSON.stringify(path.join(call.folder, 'instructions.md'))}`);
+  assert.ok(!fs.existsSync(call.folder), 'the call folder is removed');
   // No PDF reader (a process without windows): the call fails before Codex runs, saying why.
   const none = fakeSpawn(() => ({stdout: codexEvents('x')}));
   await assert.rejects(new Codex({binary: '/fake/codex', run: codexFeatures, env: {}, spawnFn: none.spawnFn, pdfReader: null}).messages.create(params()),

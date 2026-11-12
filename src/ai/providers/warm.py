@@ -22,6 +22,7 @@ import os
 import queue
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -32,10 +33,11 @@ MAX_AGE_S = 600    # a spare this old is replaced, not used (its sign-in or the 
 
 class Spare:
     """One started CLI process (a Claude Code spare here; a Codex call in codex_cli.answer_line): its output lines go to `lines` (a daemon thread
-    reads them: works on Windows too), its input is written by feed(), end() lets it exit and removes its folder."""
+    reads them: works on Windows too), its input is written by feed(), end() lets it exit and removes its folder. end(answered=True): the call
+    already returned its answer; a non-zero exit or stderr after it is printed as a warning, never dropped (Gitar on #3937): the answer stands."""
 
-    def __init__(self, process, folder, born):
-        self.process, self.folder, self.born = process, folder, born
+    def __init__(self, process, folder, born, tool='Claude Code'):
+        self.process, self.folder, self.born, self.tool = process, folder, born, tool
         self.lines = queue.Queue()
         threading.Thread(target=self._read, daemon=True, name='cli-reader').start()
 
@@ -61,19 +63,24 @@ class Spare:
     def alive(self):
         return self.process.poll() is None
 
-    def end(self):
+    def end(self, answered=False):
         """Close its input (it exits by itself) and remove its folder once it has."""
+        said = len(self.stderr()) if answered else 0
         try:
             self.process.stdin.close()
         except OSError:
             pass
-        threading.Thread(target=self._reap, daemon=True, name='cli-reaper').start()
+        threading.Thread(target=self._reap, args=(answered, said), daemon=True, name='cli-reaper').start()
 
-    def _reap(self):
+    def _reap(self, answered=False, said=0):
         try:
-            self.process.wait(timeout=30)
+            code = self.process.wait(timeout=30)
         except subprocess.TimeoutExpired:
             self.process.kill()
+            code = 'killed'
+        after = self.stderr()[said:].strip() if answered else ''
+        if answered and (code != 0 or after):
+            print(f"Warning: {self.tool} closed with exit code {code} after its answer{': ' + after[:500] if after else ''}", file=sys.stderr)
         shutil.rmtree(self.folder, ignore_errors=True)
 
     def stderr(self):
@@ -238,5 +245,6 @@ class Warm:
                     errors = spare.stderr()   # read before end(): its reaper removes the folder, stderr file included
                     spare.end()
                     return json.dumps(event), errors, code
-                spare.end()
-                return json.dumps(event), '', 0
+                errors = spare.stderr()   # what it wrote so far; anything after is said by end(answered=True)
+                spare.end(answered=True)
+                return json.dumps(event), errors, 0

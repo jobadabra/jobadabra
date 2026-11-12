@@ -2,6 +2,7 @@
 Why (as, 12 Nov 2026; owner: "we should optimize any of the local Claude, local Codex and AI-broker"): `codex exec` exited 1-1.5 s after its
 answer line on the owner's plan. A fake `codex` (a Python script run through this Python, any OS) plays each case; nothing here reaches a real Codex.
 """
+import io
 import json
 import os
 import subprocess
@@ -40,10 +41,16 @@ FAKE = textwrap.dedent('''
         say({'type': 'turn.failed', 'error': {'message': 'You have hit your usage limit'}})
         sys.stderr.write('usage limit reached')
         sys.exit(1)
+    if mode == 'late':   # stderr before its answer, then a failure while it closes down
+        sys.stderr.write('reading config\\n')
+        sys.stderr.flush()
     say({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'answer to ' + prompt}})
     say({'type': 'turn.completed', 'usage': {'input_tokens': 9, 'cached_input_tokens': 4, 'output_tokens': 2}})
     while not os.path.exists(os.path.join(folder, 'RELEASE')):
         time.sleep(0.02)
+    if mode == 'late':
+        sys.stderr.write('telemetry upload failed')
+        sys.exit(1)
 ''')
 
 
@@ -115,6 +122,19 @@ class AnswerLineTests(unittest.TestCase):
         while _alive(pid) and time.monotonic() < deadline:
             time.sleep(0.05)
         self.assertFalse(_alive(pid))
+
+    def test_a_failure_after_the_answer_is_printed_never_dropped_and_the_stderr_before_it_stays_on_the_result(self):
+        """Gitar on #3937: the answer-line return said stderr '' and dropped what Codex did after its answer. The answer stands (Codex said
+        its turn completed); a non-zero exit or stderr while it closes down is printed as a warning."""
+        with mock.patch('sys.stderr', new_callable=io.StringIO) as printed:
+            out = self.run_fake('late')
+            self.assertEqual((out.returncode, out.stderr), (0, 'reading config\n'))
+            self.assertEqual(printed.getvalue(), '')   # positive control: nothing said while it still runs
+            (self.dir / 'RELEASE').write_text('1')
+            deadline = time.monotonic() + 20   # a hang guard only: the reaper prints within a tick of the exit
+            while 'after its answer' not in printed.getvalue() and time.monotonic() < deadline:
+                time.sleep(0.05)
+        self.assertIn('Warning: Codex closed with exit code 1 after its answer: telemetry upload failed', printed.getvalue())
 
 
 class RunnerTests(unittest.TestCase):

@@ -5,13 +5,14 @@
 // Codex lists (`codex features list`, once per binary). The system prompt leads the prompt (no flag for it); a schema goes in --output-schema
 // in OpenAI's strict form; images go in -i; a PDF goes as its pages' pictures (-i) and its text in the prompt (pdf-pages.js), the shell always off. It never reads or
 // copies ~/.codex and never signs in for the user; the env drops the API keys the app holds. Billing 'subscription'.
+// A call returns at Codex's answer line (turn.completed); the process closes down by itself (runCall).
 // Guarded by test/unit/main/ai-contract.test.js (recorded `codex exec --json` output, no real Codex).
 import {execFile} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {AiError, usage as usageOf} from './contract.js';
-import {CliAdapter, cliError, conversation, runProcess, slots} from './cli-base.js';
+import {CliAdapter, cliError, conversation, jsonLine, runProcess, slots} from './cli-base.js';
 import {chosenFile} from '../cli-files.js';
 import {failureOf} from '../plan-failure.js';
 import {loginStatus} from '../plan-login.js';
@@ -128,6 +129,16 @@ export class Codex extends CliAdapter {
   constructor({run = execFile, env: parentEnv = process.env, pdfReader: read, ...options} = {}) { super(options); Object.assign(this, {run, parentEnv, pdfReader: read}); }
 
   env() { return codexEnv(this.parentEnv); }
+
+  // Returns at Codex's answer line, not at its exit. It runs in a folder of its own (`-C` keeps Codex's own folder the call's), so removing the
+  // call's folder never races a Codex still closing down (Windows refuses to remove a running process's working directory).
+  // Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): `codex exec` closed down 0.7-1.5 s after its answer line (13 calls,
+  // the owner's plan). A long-lived `codex app-server` was measured too and is not used: no faster (3.46 vs 3.49 s to the answer) and it loads
+  // the person's own ~/.codex config (+57 input tokens). The engine does the same (#3936: src/ai/providers/codex_cli.py answer_line).
+  runCall(args, prompt) {
+    return runProcess(this.binary, args, prompt, {env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
+      own: 'jobadabra-codex-run-', late: text => this.log(`Warning: ${text}`), answered: line => jsonLine(line).type === 'turn.completed'});
+  }
 
   async complete(request) { return super.complete(await withPdfsAsPages(request, this.pdfReader ?? pdfReader)); }
 

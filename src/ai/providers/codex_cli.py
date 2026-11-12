@@ -90,7 +90,7 @@ def classify(text):
 
 
 def answer_line(args, prompt, wait, env, clock=time.monotonic):
-    """One `codex exec` call, returned at its answer line (`turn.completed`) as a finished run (stdout so far, '', 0); the process exits by
+    """One `codex exec` call, returned at its answer line (`turn.completed`) as a finished run (stdout and stderr so far, 0); the process exits by
     itself in the background. A call that ends without that line (a failed turn, a crash) is returned as it ended, with its stderr and exit
     code, so classify() reads it as before. Raises subprocess.TimeoutExpired as subprocess.run does (the process is killed).
 
@@ -109,7 +109,7 @@ def answer_line(args, prompt, wait, env, clock=time.monotonic):
     except OSError:
         shutil.rmtree(own, ignore_errors=True)
         raise
-    run = Spare(process, own, clock())   # reads its output in a daemon thread; end() lets it exit and removes its folder after
+    run = Spare(process, own, clock(), tool='Codex')   # reads its output in a daemon thread; end() lets it exit and removes its folder after
     lines, until = [], clock() + wait
     run.feed(prompt)   # from a thread: the deadline runs while the prompt is written
     while True:
@@ -130,8 +130,9 @@ def answer_line(args, prompt, wait, env, clock=time.monotonic):
             return subprocess.CompletedProcess(args, code, ''.join(lines), errors)
         lines.append(line)
         if _kind(line) == 'turn.completed':
-            run.end()
-            return subprocess.CompletedProcess(args, 0, ''.join(lines), '')
+            errors = run.stderr()   # what it wrote so far; anything after is said by end(answered=True) (Gitar on #3937)
+            run.end(answered=True)
+            return subprocess.CompletedProcess(args, 0, ''.join(lines), errors)
 
 
 def _kind(line):
