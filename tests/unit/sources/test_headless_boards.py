@@ -57,6 +57,34 @@ class HeadlessBoardsTest(unittest.TestCase):
         self.assertNotIn('open.example.org', hosts(listed), 'a board the plain reader reads is not a browser read')
         self.assertFalse(any('indeed' in host for host in hosts(listed)))
 
+    def test_boards_the_scout_read_only_in_its_browser_come_first_then_this_installs_own_refusals(self):
+        # sa for the owner, 12 Nov 2026: "Scout-flagged boards first, then this install's own refused boards, inside the same 5 a day, each once a day".
+        from src import places
+        from src.ai import board_ideas
+        served = [{'name': 'scout1.example.net', 'host': 'scout1.example.net', 'search_url': 'https://scout1.example.net/jobs?q={role}', 'browser': True},
+                  {'name': 'scout2.example.net', 'host': 'scout2.example.net', 'search_url': 'https://scout2.example.net/jobs?q={role}', 'browser': True},
+                  {'name': 'plain.example.net', 'host': 'plain.example.net', 'search_url': 'https://plain.example.net/jobs?q={role}'}]   # read by the plain reader
+        asked = []
+        with mock.patch.object(board_ideas, 'served', lambda countries: asked.append(countries) or served), \
+                mock.patch.object(places, 'countries', lambda search, cache=None, limit=3: ['Switzerland']):
+            listed = [item['url'].split('/')[2] for item in refused_reads.board_queue(now=NOW)]
+            self.assertEqual(asked, [['Switzerland']], "the search's countries")
+            self.assertEqual(listed[:2], ['scout1.example.net', 'scout2.example.net'], 'the Scout-marked boards first')
+            self.assertEqual(len(listed), refused_reads.DAY_SITES, 'then this install\'s own refused boards, inside the same 5')
+            self.assertNotIn('plain.example.net', listed, 'a board the Scout read without a browser is not a browser read')
+            refused_reads.outcome('https://scout1.example.net/jobs', 403, '', now=NOW, step=refused_reads.HEADLESS)
+            later = [item['url'].split('/')[2] for item in refused_reads.board_queue(now=NOW + timedelta(days=2))]
+            self.assertNotIn('scout1.example.net', later, 'stopped in this install\'s browser: never again, whatever the Scout says')
+            self.assertEqual(later[0], 'scout2.example.net')
+
+    def test_without_the_scouts_list_the_queue_is_this_installs_own_refusals(self):
+        from src.ai import board_ideas
+
+        def unread(countries):
+            raise OSError('no pack yet')
+        with mock.patch.object(board_ideas, 'served', unread):
+            self.assertEqual(set(hosts(refused_reads.queue(now=NOW, kinds=('board',)))), set(BOARD_HOSTS))
+
     def test_the_buttons_queue_keeps_employer_sites_only(self):
         self.assertEqual(hosts(refused_reads.queue(now=NOW, kinds=('employer',))), {'careers.example.com'})
 

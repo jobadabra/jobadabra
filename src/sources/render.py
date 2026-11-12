@@ -29,7 +29,7 @@ class Refused(Exception):
 
 # Playwright's sync API belongs to the thread that started it: every browser call runs on this one worker thread, one page at a time.
 _worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix='render')
-_state = {'playwright': None, 'browser': None, 'pages': 0, 'last': {}}
+_state = {'playwright': None, 'browser': None, 'pages': 0, 'last': {}, 'landed': {}}   # landed: address asked -> address the page ended on (Playwright path only; emptied by close())
 
 
 def _app():
@@ -60,6 +60,7 @@ def _browser():
 def close():
     """Stop the browser (on its own thread). Safe to call when it never started."""
     def stop():
+        _state['landed'].clear()
         for key in ('browser', 'playwright'):
             thing = _state[key]
             _state[key] = None
@@ -80,6 +81,12 @@ def render(url):
     from .. import read_methods
     read_methods.mark('browser')   # the source being read now was shown by the headless browser
     return _worker.submit(_render, url, parts).result()
+
+
+def landed(url):
+    """The address the headless browser's page for `url` ended on (after its redirects), '' when it never loaded here or went through the app's
+    renderer (which answers no address): a caller tells a sign-in page by it."""
+    return _state['landed'].get(url, '')
 
 
 def _through_app(url):
@@ -122,6 +129,7 @@ def _render(url, parts):
             raise host_pace.Busy(url, host_pace.waiting(url))
         if response is not None and response.status in host_pace.REFUSED:
             raise Refused(f'HTTP {response.status}')
+        _state['landed'][url] = page.url
         try:
             page.wait_for_load_state('networkidle', timeout=IDLE_MS)
         except Exception:  # noqa: BLE001 — a page that never goes quiet (a poll, a tracker): read as it stands

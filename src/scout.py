@@ -208,17 +208,24 @@ def sync_store_only(db_path):
 def board_pass(db_path):
     """The central scout's board pass alone (--board-pass): one country's boards measured and kept. Returns the exit code.
     Why (12 Nov 2026, sa): a by-hand SCOUT_BOARD_COUNTRY the list does not know ends the run with the accepted names; it used to read the thinnest country instead."""
-    from . import scout_boards
+    from . import scout_board_cells, scout_boards
     scout_core.CENTRAL = True
     with store.connect(db_path) as db:
         try:
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
-        if named:
-            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
-        else:
-            discover(db)
+        scout_boards.ensure(db)
+        scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
+        scout_board_cells.keep_stops(db, os.environ.get('SCOUT_BOARD_SEED_DB'))   # the Scout's own stops: discovery keeps its own database
+        try:
+            if named:
+                scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+            else:
+                discover(db)
+        finally:
+            from .sources import render
+            render.close()   # the browser a refused board was measured in (scout_boards.browse); nothing when it never started
     return 0
 
 
@@ -258,7 +265,8 @@ def main():
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
                              '(its own job and AI cap in jobadabra-lab board-discovery.yml; the country: SCOUT_BOARD_COUNTRY with SCOUT_BOARD_KINDS, '
-                             'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py)')
+                             'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py; boards the headless browser must never open: '
+                             'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab board-discovery.yml\'s browser_final input)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')

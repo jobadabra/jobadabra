@@ -63,6 +63,97 @@ class BoardPassTest(unittest.TestCase):
         _, out, _ = self.run_pass({'a.md': ([], 'empty', None), 'b.md': ([], 'browser', None)})
         self.assertIn('not measured (rules could not read the page): a.md, b.md', out[0])
 
+    def browser_pass(self, reads, browsed):
+        """One pass where `reads` is each board's plain read and `browsed` its headless browser read (host -> (jobs, state, stop)); -> (facts, line, browsed hosts)."""
+        out, asked = [], []
+
+        def browser(item, search):
+            asked.append(item['host'])
+            return browsed[item['host']]
+        got = scout_boards.run(self.db, ideas=lambda search: [board(host) for host in reads], read_board=lambda item, *a: reads[item['host']],
+                               out=out.append, google=lambda *a: [], browser=browser, named='md')
+        return got, out[0], asked
+
+    def test_a_board_that_refuses_the_plain_reader_is_measured_once_in_the_browser_and_published_marked(self):
+        # Owner, 12 Nov 2026 (asked via AskUserQuestion by sa): "Boards now, employers next (Recommended)": the scout's browser reads it, installs see "needs a browser".
+        from src.sources import board_yield
+        refused = ([], board_yield.Needs('HTTP 403'), None)
+        got, line, asked = self.browser_pass({'a.md': refused, 'b.md': ([job('Chisinau')] * 3, 'ok', None), 'c.md': ([], board_yield.scripted(), None)},
+                                             {'a.md': ([job('Chisinau')] * 4, 'ok', '')})
+        self.assertEqual(asked, ['a.md'], 'only the refused board: a readable one and a page built by scripts are not opened in the browser')
+        self.assertEqual({f['host']: f.get('browser') for f in got}, {'a.md': True, 'b.md': None})
+        self.assertEqual({f['host']: f.get('browser') for f in scout_boards.facts(self.db)}, {'a.md': True, 'b.md': None}, 'the publish sends the mark, true only')
+        self.assertIn('a.md 4/4 (read in the browser)', line)
+
+    def test_a_refusal_bot_check_or_sign_in_page_in_the_browser_is_final(self):
+        # Owner, 12 Nov 2026: "Final, never again (Recommended)".
+        from src.sources import board_yield
+        refused = ([], board_yield.Needs('HTTP 403'), None)
+        _, line, asked = self.browser_pass({'a.md': refused, 'b.md': refused}, {'a.md': ([], board_yield.Needs('HTTP 401'), 'HTTP 401'), 'b.md': ([], board_yield.Needs('unknown'), 'a login page')})
+        self.assertEqual(asked, ['a.md', 'b.md'])
+        self.assertIn('the browser was stopped, never asked again: a.md (HTTP 401), b.md (a login page)', line)
+        _, _, again = self.browser_pass({'a.md': refused, 'b.md': refused}, {})
+        self.assertEqual(again, [], 'a later pass never opens them in the browser again')
+        self.assertEqual(scout_boards.facts(self.db), [])
+
+    def test_a_stop_seen_in_a_trial_and_named_by_hand_is_never_opened_by_the_next_real_pass(self):
+        # sa for the owner, 12 Nov 2026: "Final, never again" and "never retry a 401 or 403"; a trial saves no memory, so its stop is named by hand.
+        from src.sources import board_yield
+        scout_boards.ensure(self.db)
+        lines = []
+        kept = scout_boards.seed_final(self.db, 'Refusing.example, www.other.example  not a host, refusing.example', out=lines.append)
+        self.assertEqual(kept, ['refusing.example', 'other.example'])
+        self.assertIn('never opened: refusing.example, other.example', lines[0])
+        _, _, asked = self.browser_pass({'refusing.example': ([], board_yield.Needs('HTTP 403'), None)}, {})
+        self.assertEqual(asked, [], 'the real pass never opens it in the browser')
+        self.assertEqual(scout_boards.seed_final(self.db, ''), [], 'no input: nothing kept')
+
+    def test_with_no_browser_here_the_pass_reads_as_before(self):
+        from src.sources import board_yield
+        got, line, _ = self.browser_pass({'a.md': ([], board_yield.Needs('HTTP 403'), None)}, {'a.md': None})
+        self.assertEqual(got, [])
+        self.assertIn('not measured (rules could not read the page): a.md', line)
+        self.assertFalse(scout_boards.browser_final(self.db, 'a.md'), 'not measured is not final: the next pass with a browser reads it')
+
+    def test_the_browser_read_stops_at_a_sign_in_page_it_lands_on_and_at_a_refusal(self):
+        from src.sources import careers as plain, render
+        search = {'role_keywords': ['developer'], 'locations': {'top_tier': [], 'country_wide': ['Moldova'], 'abroad': []}}
+
+        def lands_on(path):
+            def show(url):
+                render._state['landed'][url] = f'https://a.md{path}'
+                return '<html><body>Sign in to continue</body></html>'
+            return show
+
+        def refuses(url):
+            raise render.Refused('HTTP 403')
+        self.addCleanup(render._state['landed'].clear)
+        for show, stop in ((lands_on('/account/login'), 'a login page'), (refuses, 'HTTP 403')):
+            with self.subTest(stop), mock.patch.object(plain, 'renderer', lambda: show):
+                jobs, state, why = scout_boards.browse(board('a.md'), search)
+                self.assertEqual((jobs, state, why), ([], 'browser', stop))
+        with mock.patch.object(plain, 'renderer', lambda: None):
+            self.assertIsNone(scout_boards.browse(board('a.md'), search), 'no browser here: not measured')
+        with mock.patch.object(plain, 'renderer', lambda: lands_on('/jobs')), mock.patch.object(render, '_app', lambda: ('http://127.0.0.1:1', 'k')):
+            self.assertIsNone(scout_boards.browse(board('a.md'), search), "the app's renderer says no landed address: not measured, never read past a sign-in page")
+        loads = []
+
+        def once(url):
+            loads.append(url)
+            raise render.Refused('HTTP 403')
+        from src.sources import found_boards
+
+        def swallowing(item, search, fetch, show=None):   # a reader that catches the error and asks the next page anyway
+            for url in ('https://a.md/1', 'https://a.md/2'):
+                try:
+                    fetch(url)
+                except render.Refused:
+                    pass
+            return [], 'empty', None
+        with mock.patch.object(plain, 'renderer', lambda: once), mock.patch.object(found_boards, 'read_board', swallowing):
+            self.assertEqual(scout_boards.browse(board('a.md'), search)[2], 'HTTP 403')
+        self.assertEqual(loads, ['https://a.md/1'], 'after a stop no other page of the board is loaded')
+
     def test_facts_are_kept_for_the_publish_and_expire_after_thirty_days(self):
         self.run_pass({'a.md': ([job('Chisinau')] * 3, 'ok', None)})
         self.assertEqual([f['host'] for f in scout_boards.facts(self.db)], ['a.md'])

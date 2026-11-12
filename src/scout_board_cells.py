@@ -144,10 +144,12 @@ def seed(db, path, out=print):
         return 0
     try:
         with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
-            rows = source.execute('SELECT host, country, url, families, local_jobs, read_at FROM scout_board_facts').fetchall()
+            marked = 'browser' in {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser
+            rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if marked else '0')
+                                  + ' FROM scout_board_facts').fetchall()
     except sqlite3.Error:
         return 0
-    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)', rows)
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser) VALUES (?, ?, ?, ?, ?, ?, ?)', rows)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
@@ -158,6 +160,24 @@ def seed(db, path, out=print):
             db.execute('INSERT OR REPLACE INTO scout_meta (key, value) VALUES (?, ?)', (key, found[0]))
     db.commit()
     out(f'Board discovery: started from the Scout\'s {len(rows)} board facts')
+    return len(rows)
+
+
+def keep_stops(db, path):
+    """Every board the Scout's browser was stopped at in the database at `path` (src/scout_boards.py scout_browser_final) stays stopped in `db`, on every
+    run: board discovery keeps its own database, and a refusal is final whichever job met it (CLAUDE.md, the refused-sites exception: "stops that board
+    in Jobadabra's browser for good, with no retry"). Returns the stops copied; a missing or unreadable file copies none."""
+    from . import scout_boards
+    scout_boards.ensure(db)
+    if not path or not Path(path).is_file() or Path(path).resolve() == Path(db.execute('PRAGMA database_list').fetchone()[2] or ':memory:').resolve():
+        return 0
+    try:
+        with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
+            rows = source.execute('SELECT host, why, at FROM scout_browser_final').fetchall()
+    except sqlite3.Error:
+        return 0
+    db.executemany('INSERT OR IGNORE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', rows)
+    db.commit()
     return len(rows)
 
 

@@ -131,6 +131,38 @@ class OwnDatabase(unittest.TestCase):
         self.assertEqual(cells.seed(own, self.scout_path, out=lambda line: None), 0, 'only while it holds no fact')
         self.assertEqual(cells.seed(sqlite3.connect(':memory:'), os.path.join(os.path.dirname(self.own_path), 'none.sqlite'), out=lambda line: None), 0)
 
+    def test_a_board_the_scout_s_browser_was_stopped_at_stays_stopped_in_discovery_on_every_run(self):
+        # a refusal is final (CLAUDE.md, refused sites); the stop is written by the Scout's own writer (src/scout_boards.py seed_final), not by hand
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_boards.ensure(scout_db)
+            scout_boards.seed_final(scout_db, 'refused.example', out=lambda line: None)
+        own = sqlite3.connect(self.own_path)
+        fact(own, 'b.example', 'de', ['kitchen'])   # not discovery's first run: the facts are not copied again, the stops are
+        own.commit()
+        self.assertEqual(cells.keep_stops(own, self.scout_path), 1)
+        self.assertTrue(scout_boards.browser_final(own, 'refused.example'))
+
+    def test_the_board_pass_keeps_the_scout_s_stops_before_it_reads_also_for_a_country_named_by_hand(self):
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_boards.seed_final(scout_db, 'refused.example', out=lambda line: None)
+        seen = {}
+
+        def run(db, **options):
+            seen['stopped'] = scout_boards.browser_final(db, 'refused.example')
+            return []
+        with mock.patch.dict('os.environ', {'SCOUT_BOARD_COUNTRY': 'Moldova', 'SCOUT_BOARD_KINDS': '', 'SCOUT_BROWSER_FINAL': '',
+                                            'SCOUT_BOARD_SEED_DB': self.scout_path}), mock.patch.object(scout_boards, 'run', run):
+            scout.board_pass(self.own_path)
+        self.assertEqual(seen, {'stopped': True})
+
+    def test_a_fact_measured_in_the_browser_keeps_its_mark_when_discovery_starts_from_it(self):
+        with sqlite3.connect(self.scout_path) as scout_db:
+            scout_boards.ensure(scout_db)
+            scout_db.execute("UPDATE scout_board_facts SET browser = 1 WHERE host = 'a.example'")
+        own = sqlite3.connect(self.own_path)
+        cells.seed(own, self.scout_path, out=lambda line: None)
+        self.assertEqual(own.execute("SELECT browser FROM scout_board_facts WHERE host = 'a.example'").fetchone(), (1,))
+
     def test_the_scout_publishes_the_discovery_s_facts_too(self):
         own = sqlite3.connect(self.own_path)
         fact(own, 'b.example', 'de', ['kitchen'])
