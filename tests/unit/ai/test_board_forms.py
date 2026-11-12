@@ -53,6 +53,75 @@ class TemplateTests(unittest.TestCase):
         self.assertEqual(board_forms.templates('<html><body><a href="/x">Jobs</a></body></html>', HOME), [])
 
 
+class PostedFormTests(unittest.TestCase):
+    """A search form sent by POST (12 Nov 2026, ch: a Swiss board's search form is a POST naming the field SearchWhat; its list page answers ?SearchWhat= and ignored the guessed ?keywords=)."""
+    LIST = 'https://vacatures.example/jobs/?keywords={role}&location={place}'
+
+    def test_a_posted_form_is_asked_as_a_get_link_at_the_search_page_not_its_action(self):
+        token = 'ut0l3J0cZL6u3-7fFhdFrDgkORZ-8ySXMgVeHvexpJC8CMZVgKCBwf'
+        page = form(f'<input type="hidden" name="SearchWhere" value=""><input type="hidden" name="lang" value="de">'
+                    f'<input type="hidden" name="__token" value="{token}"><input name="SearchWhat" type="text">', action='/search/', method='post')
+        self.assertEqual(board_forms.templates(page, HOME, self.LIST), ['https://vacatures.example/jobs/?SearchWhere=&lang=de&SearchWhat={role}'],
+                         'a short constant stays as the form sends it; a token never goes into the kept link')
+        self.assertEqual(board_forms.templates(page, HOME), [], 'with no search page to ask, a POST form is still never used')
+
+    def test_a_posted_form_with_a_password_or_to_another_site_is_still_left_alone(self):
+        self.assertEqual(board_forms.templates(form('<input name="u"><input type="password" name="p">', method='post'), HOME, self.LIST), [])
+        self.assertEqual(board_forms.templates(form('<input name="q">', action='https://elsewhere.example/s', method='post'), HOME, self.LIST), [])
+
+    def test_a_board_whose_home_form_posts_is_read_through_its_field_names(self):
+        board = {**BOARD, 'search_url': 'https://vacatures.example/jobs/?keywords={role}&location={place}'}
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+
+        def fetch(url):
+            if 'SearchWhat=' in url:
+                return posting('Financial Analyst', 1)
+            if url == HOME:
+                return form('<input name="SearchWhat">', action='/search/', method='post')
+            return posting('Magazijnmedewerker', 2)   # the guessed link: its words ignored
+        relevant = lambda jobs: [job for job in jobs if 'Financial' in job['title']]
+        with mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}):
+            jobs = found_boards.read(SEARCH, [board], fetch=fetch, is_relevant=relevant, dead=set())
+        self.assertEqual([job['title'] for job in jobs], ['Financial Analyst'])
+
+
+    def test_a_list_that_gave_only_a_few_relevant_jobs_is_read_through_its_form_when_that_gives_more(self):
+        """The guessed link is ignored and the unfiltered list holds 1 relevant job by chance (12 Nov 2026: JobScout24, 2 of 45): the form's list has 3."""
+        board = {**BOARD, 'search_url': 'https://vacatures.example/jobs/?keywords={role}&location={place}'}
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+
+        def many(titles):
+            jobs = [{'@context': 'https://schema.org', '@type': 'JobPosting', 'title': title, 'url': f'https://vacatures.example/v/{n}-{title[:3]}',
+                     'hiringOrganization': {'@type': 'Organization', 'name': 'Acme'}, 'jobLocation': {'@type': 'Place', 'address': {'addressLocality': 'Amsterdam', 'addressCountry': 'NL'}}}
+                    for n, title in enumerate(titles)]
+            return '<html>' + ''.join(f'<script type="application/ld+json">{json.dumps(job)}</script>' for job in jobs) + '<body>x</body></html>'
+
+        def fetch(url):
+            if 'SearchWhat=' in url:
+                return many(['Financial Analyst', 'Financial Controller', 'Financial Planner'])
+            if url == HOME:
+                return form('<input name="SearchWhat">', action='/search/', method='post')
+            return many(['Financial Analyst', 'Magazijnmedewerker', 'Chauffeur', 'Kok', 'Bakker', 'Schilder'])
+        relevant = lambda jobs: [job for job in jobs if 'Financial' in job['title']]
+        with mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}), \
+                mock.patch.object(found_boards.board_sections, 'read', return_value=([], None, False)):
+            jobs = found_boards.read(SEARCH, [board], fetch=fetch, is_relevant=relevant, dead=set())
+        self.assertEqual(sorted(job['title'] for job in jobs if 'Financial' in job['title']), ['Financial Analyst', 'Financial Controller', 'Financial Planner'])
+
+
+    def test_a_read_cut_before_the_form_leaves_the_few_list_and_lets_the_next_search_try(self):
+        entry = {'few_for': 'x'}
+        before = ([{'title': 'Financial Analyst'}], 'ok', [{'title': 'Financial Analyst'}])
+        with mock.patch.object(found_boards.board_forms, 'home', return_value=(HOME, form('<input name="SearchWhat">', method='post'))), \
+                mock.patch.object(found_boards.read_budget, 'past_cut', return_value=True), \
+                mock.patch.object(found_boards, '_section', side_effect=AssertionError('no page past the cut')):
+            got = found_boards._fuller_section({**BOARD, 'search_url': self.LIST}, entry, self.LIST, SEARCH, lambda url: '', lambda jobs: jobs, before)
+        self.assertEqual(got, before)
+        self.assertNotIn('few_for', entry, 'not marked as tried: the next search tries its form')
+
+
 GUESSED = 'https://vacatures.example/vacatures?q={role}&location={place}'
 LEARNED = 'https://vacatures.example/zoeken?wat={role}&waar={place}'
 SEARCH = {'jobs_board_search_queries': ['financial analyst'], 'role_keywords': ['financial analyst'],

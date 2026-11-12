@@ -11,6 +11,8 @@ from ..press import stage
 
 TEXT_BOXES = ('', 'text', 'search')   # an <input> a person types words into
 MAX_TEMPLATES = 2                     # forms tried per board: the home page's search box is among the first
+TOKEN = 24                            # a POST form's hidden value longer than this is a token (an anti-forgery one runs to 100+), never put in a kept link;
+                                      # a short constant (lang=de, a search kind) stays, as the board's own form sends it (Gitar, #3917)
 
 
 class _Forms(HTMLParser):
@@ -37,8 +39,11 @@ class _Forms(HTMLParser):
             self.open = None
 
 
-def templates(markup, page_url):
-    """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first."""
+def templates(markup, page_url, posted_at=None):
+    """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first.
+    posted_at: a form sent by POST counts too, its field names asked as a GET link at this address (the board's own search page), not at its action, which answers a POST only.
+    Why (12 Nov 2026, ch): JobScout24's search form is a POST (SearchWhat, anti-forgery token) and its list page answers ?SearchWhat=<words> with the filtered list,
+    while the guessed ?keywords= was ignored (the unfiltered 84,421 jobs, 0 right). The link stays only when it brings relevant jobs (found_boards._another_way)."""
     parser = _Forms()
     with stage.guard('job boards: form parse') as caught:
         parser.feed(str(markup or ''))
@@ -47,13 +52,16 @@ def templates(markup, page_url):
     home = urllib.parse.urlsplit(page_url).hostname or ''
     out = []
     for found in sorted(parser.forms, key=lambda f: -min(len(f['boxes']), 2)):
-        if found['method'] != 'get' or found['password'] or not found['boxes']:
+        if (found['method'] != 'get' and not posted_at) or found['password'] or not found['boxes']:
             continue
         action = urllib.parse.urljoin(page_url, found['action'] or page_url)
         parts = urllib.parse.urlsplit(action)
         if parts.scheme not in ('http', 'https') or registrable(parts.hostname or '') != registrable(home):
             continue
-        fields = [*(f'{urllib.parse.quote_plus(name)}={urllib.parse.quote_plus(value)}' for name, value in found['hidden']),
+        hidden = found['hidden']
+        if found['method'] != 'get':   # sent to the board's own site, asked at its search page; Why (12 Nov 2026, ch): a POST form's long hidden values (a token) never go into a link that is kept and shared
+            parts, hidden = urllib.parse.urlsplit(posted_at.split('?')[0]), [(name, value) for name, value in hidden if len(value) <= TOKEN]
+        fields = [*(f'{urllib.parse.quote_plus(name)}={urllib.parse.quote_plus(value)}' for name, value in hidden),
                   f'{urllib.parse.quote_plus(found["boxes"][0])}={{role}}',
                   *([f'{urllib.parse.quote_plus(found["boxes"][1])}={{place}}'] if len(found['boxes']) > 1 else [])]
         url = urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path or '/', '&'.join([*([parts.query] if parts.query else []), *fields]), ''))
@@ -74,5 +82,5 @@ def home(board, fetch):
 def home_templates(board, fetch, page=None):
     """The search links the board's home page forms make (page: home()'s answer, fetched once)."""
     address, markup = page or home(board, fetch)
-    found = templates(markup, address) if markup else []
+    found = templates(markup, address, board['search_url']) if markup else []
     return [url for url in found if url != board['search_url']]
