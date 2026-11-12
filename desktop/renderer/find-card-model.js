@@ -36,8 +36,35 @@ export function stepChips(log = []) {
   const employers = order.findIndex(step => step.match === EMPLOYERS);
   const state = i => (i < active ? 'done' : i === active ? 'active' : 'pending');
   const web = webSearchChip(log), last = active === order.length - 1;   // a search that never said a word about it, at its last step: not run
-  return steps.map(step => (step.web ? (web.state === 'pending' && last ? {label: t('helperGuide.webNotRun'), state: 'skipped'} : web) : {label: step.label, state: !step.beside ? state(order.indexOf(step))
-    : boardsDone || last ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'}));
+  return [...steps.map(step => (step.web ? (web.state === 'pending' && last ? {label: t('helperGuide.webNotRun'), state: 'skipped'} : web) : {label: step.label, state: !step.beside ? state(order.indexOf(step))
+    : boardsDone || last ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'})), ...laneChips(log)];
+}
+
+// Lanes: a source read beside the engine's steps (lib/search-beside.js) that speaks in lines starting with its name. Why (#3705, owner 10 Nov 2026: "It should be a separated
+// lane/progress showing me feedback about how many roles it found from the Linkedin Jobs"): a lane gets one chip and ONE Live updates line (its newest: progress, then its result)
+// only when it said something in this run, so a lane that is off draws nothing. The next source is one more row here. `states`: [the lane's own sentence, chip state, chip words];
+// the first that matches the lane's newest line wins; an unknown line is the lane working. Guarded by: integration/app/find-card-lanes.test.js.
+const LANES = [{name: 'LinkedIn', line: /^LinkedIn(?:: | asked )/, states: [   // lib/linkedin-headless.js: WORDS and its result lines
+  [/^LinkedIn: reading search (\d+) of (\d+)/, 'active', (m, name) => t('helperGuide.laneSearch', {name, n: m[1], total: m[2]})],
+  [/^LinkedIn: (\d+) jobs? read/, 'done', (m, name) => t('helperGuide.laneRead', {name, count: Number(m[1])})],
+  [/^LinkedIn: none new/, 'done', (m, name) => t('helperGuide.laneNoneNew', {name})],
+  [/^LinkedIn: no search to read/, 'skipped', (m, name) => t('helperGuide.laneNoSearch', {name})],
+  [/^LinkedIn: sign in/, 'failed', (m, name) => t('helperGuide.laneSignIn', {name})],
+  [/^LinkedIn asked for a check/, 'failed', (m, name) => t('helperGuide.laneCheck', {name})],
+  [/^LinkedIn asked us to slow down/, 'skipped', (m, name) => t('helperGuide.laneSlowDown', {name})],
+  [/^LinkedIn: download /, 'failed', (m, name) => t('helperGuide.laneBrowser', {name})],
+  [/^LinkedIn: could not be read/, 'failed', (m, name) => t('helperGuide.laneNotRead', {name})],
+  [/^LinkedIn: stopped/, 'skipped', (m, name) => t('helperGuide.laneStopped', {name})],
+]}];
+const laneOf = line => LANES.find(lane => lane.line.test(line));
+/** The chips of the lanes that spoke in this run's log, one each, from its newest line: {label, state, note: the lane's own sentence}. */
+export function laneChips(log = []) {
+  const newest = new Map();
+  for (const raw of log) { const line = String(raw), lane = laneOf(line); if (lane) newest.set(lane, line); }
+  return [...newest].map(([lane, line]) => {
+    for (const [match, state, words] of lane.states) { const m = match.exec(line); if (m) return {label: words(m, lane.name), state, note: line}; }
+    return {label: lane.name, state: 'active', note: line};
+  });
 }
 
 // The web search's own chip (owner, 26 Oct 2026: "why I don't see here a chip with Web Search?"), its state in words from the engine's lines
@@ -73,11 +100,12 @@ export function webSearchChip(log = []) {
 // ("Job boards: done, N jobs for your search") stays. Guarded by: test/unit/renderer/live-updates.test.js.
 const RESULT = /^((First jobs|Job boards|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready|⏱ Time is up \()/;
 export function liveLines(log = []) {
-  const results = [], tick = [];
-  let matches = 0;
+  let results = [], matches = 0;
+  const tick = [], said = new Map();   // a lane's one line: its newest replaces its earlier one and moves to where it was said, so the fold (which follows the end) shows it rise in
   for (const raw of log) {
-    const line = String(raw);
-    if (/^⏳ (?!Still running)/.test(line)) tick[0] = line;
+    const line = String(raw), lane = laneOf(line);
+    if (lane) { results = results.filter(old => old !== said.get(lane)); results.push(line); said.set(lane, line); }
+    else if (/^⏳ (?!Still running)/.test(line)) tick[0] = line;
     else if (RESULT.test(line) && !SAME_RUN.test(line)) results.push(line);
     else if (COUNTS.test(line)) matches = Number(COUNTS.exec(line)[2]);
   }

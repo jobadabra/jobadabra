@@ -138,6 +138,14 @@ test('a per-board line is not in Live updates, and is in the technical log; the 
   assert.match(technical, /Acme Jobs read after its scripts ran/);
 });
 
+test('a lane read beside the engine (LinkedIn jobs) is one Live updates line, its newest, at the end; its per-search lines are the technical log\'s', () => {
+  const log = ['LinkedIn: reading search 1 of 3', '  ✓ role1 · 10 jobs', 'Job boards: done, 15 job(s) for your search', 'LinkedIn: reading search 2 of 3', '  ✓ role2 · 8 jobs',
+    'Scored 2 of 2 job(s)', 'LinkedIn: 18 jobs read'];
+  assert.deepEqual(liveLines(log), ['Job boards: done, 15 jobs for your search', '🎯 Scored 2 of 2 jobs', 'LinkedIn: 18 jobs read']);
+  assert.deepEqual(liveLines(log.slice(0, 4)), ['Job boards: done, 15 jobs for your search', 'LinkedIn: reading search 2 of 3']);
+  assert.deepEqual(liveLines(['Job boards: done, 15 job(s) for your search']).filter(line => /LinkedIn/.test(line)), [], 'a lane that said nothing has no line');
+});
+
 test('the Live updates fold is three rows high, one line each, and scrolls', () => {
   const css = fs.readFileSync(new URL('../../../renderer/find-card.css', import.meta.url), 'utf8');
   assert.match(css, /\.find-live > \.run-card-rows \{[^}]*max-height: calc\(3 \* var\(--live-row\)\)[^}]*overflow-y: auto/);
