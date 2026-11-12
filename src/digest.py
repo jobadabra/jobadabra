@@ -72,38 +72,24 @@ def in_places(job):
 
 BEST_PLACES = my_places.words_regex(_SEARCH, ('top_tier',))
 PREFERRED_ABROAD = my_places.words_regex(_SEARCH, ('abroad',))
-# Where the user may work without a visa beyond their own places (citizenship / work rights): Profile → Work eligibility (src/work_rights.py),
-# e.g. "EU" for an EU citizen. "EU" stands for every EU member state.
-EU_PLACES = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech', 'denmark', 'estonia', 'finland', 'france', 'germany', 'greece',
-             'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 'netherlands', 'poland', 'portugal', 'romania',
-             'slovakia', 'slovenia', 'spain', 'sweden', 'berlin', 'munich', 'hamburg', 'frankfurt', 'amsterdam', 'paris', 'dublin',
-             'madrid', 'barcelona', 'lisbon', 'vienna', 'brussels', 'copenhagen', 'stockholm', 'warsaw', 'prague', 'milan', 'rome']
-_EU_FRAGMENT = re.compile(r'(?:\\b)?(?:eu|european\\ union|european union)(?:\\b)?', re.I)
-
-
-def work_rights_regex(fragments):
-    """Regex for the places the user may work without sponsorship (None when none are given)."""
-    parts = []
-    for fragment in fragments or []:
-        parts += [rf'\b{place}\b' for place in EU_PLACES] if _EU_FRAGMENT.fullmatch(fragment) else [fragment]
-    return keyword_regex(parts) if parts else None
-
-
-WORK_RIGHTS = work_rights_regex(work_rights.load()['work_rights'])   # Why (#3850, owner 12 Nov 2026): Profile → Work eligibility owns them (src/work_rights.py)
+# Whether the person said anywhere they may work without a visa: Profile → Work eligibility (src/work_rights.py, #3850).
+HAS_WORK_RIGHTS = any(work_rights.load().values())
 
 
 def needs_sponsorship(job):
     """True when the job is in one of your places abroad and your citizenship / work rights do not cover it, so you would need a
-    visa. Your own places never do; with no work rights set, every place abroad does."""
+    visa. Your own places never do. With work rights set, only the place AI's answer can say so; with none set, every place abroad does."""
     from .sources import feeds
     visa = feeds.needs_visa(job)   # Claude's answer from your work rights as you wrote them, when it placed the location
     if visa is not None:
         return visa
     if in_places(job):
         return False
-    where = f"{job.get('location') or ''} {job.get('city') or ''}"
-    if WORK_RIGHTS and _mentions(WORK_RIGHTS, where):
+    # Why (#3862, owner 12 Nov 2026, asked via AskUserQuestion: "No AI answer, no flag"): a name match was a guess ("United Kingdom" never
+    # matched "London, UK"), so with work rights set and no AI answer the flag waits for the AI (CLAUDE.md: a busy AI leaves the item unknown).
+    if HAS_WORK_RIGHTS:
         return False
+    where = f"{job.get('location') or ''} {job.get('city') or ''}"
     # No places abroad: none needs a visa (7 Oct 2026: the empty pattern matched every place, and each Geneva job said "visa sponsorship needed").
     return bool(my_places.lists(_SEARCH)['abroad']) and _mentions(PREFERRED_ABROAD, where)
 

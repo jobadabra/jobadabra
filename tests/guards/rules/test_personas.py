@@ -1,6 +1,7 @@
 """Nothing is hard-coded to the owner (a Swiss SRE, EU citizen): the visa flag, the digest's places, Google Jobs and the time zone follow
 each user's own places and citizenship / work rights. Two fictional users: a data analyst in Austin (US citizen), a marketing manager in
 São Paulo (Brazilian, open to Portugal and Spain). Run end to end by desktop/e2e/suites/personas.mjs."""
+import contextlib
 import os
 import unittest
 from pathlib import Path
@@ -8,21 +9,29 @@ from unittest import mock
 
 from src import digest, tz, notification_language
 from src.paths import keyword_regex
-from src.sources import google_jobs
+from src.ai.place_triage import norm
+from src.sources import feeds, google_jobs
 
 AUSTIN = {'search': {'locations': {'top_tier': ['austin'], 'country_wide': ['united states', 'texas'], 'abroad': ['portugal', 'spain']}},
           'work_rights': ['united states']}
 SAO_PAULO = {'search': {'locations': {'top_tier': ['s[aã]o paulo'], 'country_wide': ['brazil', 'brasil'], 'abroad': ['portugal', 'spain', 'lisbon']}},
              'work_rights': ['brazil']}
 OWNER = {'search': {'locations': {'top_tier': ['z[uü]rich'], 'country_wide': ['switzerland'], 'abroad': ['berlin', 'london', 'dubai']}},
-         'work_rights': ['\\beu\\b']}
+         'work_rights': ['EU']}
 
 
-def as_user(user):
+# The place AI's answers for these fictional users' jobs (feeds.PLACED): ':visa' = their work rights do not cover that place.
+AI_SAYS = {'Austin, TX': 'best', 'Remote, United States': 'in', 'Lisbon, Portugal': 'in:visa', 'Madrid, Spain': 'in:visa', 'São Paulo, Brazil': 'best',
+           'Berlin, Germany': 'in', 'Dubai, UAE': 'in:visa', 'London, UK': 'in:visa'}
+
+
+@contextlib.contextmanager
+def as_user(user, ai_says=AI_SAYS):
     places = user['search']['locations']
-    return mock.patch.multiple(
-        digest, HOME=keyword_regex([*places['top_tier'], *places['country_wide']]), BEST_PLACES=keyword_regex(places['top_tier']),
-        PREFERRED_ABROAD=keyword_regex(places['abroad']), WORK_RIGHTS=digest.work_rights_regex(user['work_rights']))
+    with mock.patch.multiple(digest, HOME=keyword_regex([*places['top_tier'], *places['country_wide']]), BEST_PLACES=keyword_regex(places['top_tier']),
+                             PREFERRED_ABROAD=keyword_regex(places['abroad']), HAS_WORK_RIGHTS=bool(user['work_rights'])), \
+            mock.patch.object(feeds, 'PLACED', {norm(where): verdict for where, verdict in ai_says.items()}):
+        yield
 
 
 def job(location, **extra):
@@ -49,15 +58,17 @@ class SponsorshipFollowsTheUser(unittest.TestCase):
             self.assertTrue(digest.needs_sponsorship(job('Dubai, UAE')))
             self.assertTrue(digest.needs_sponsorship(job('London, UK')))
 
-    def test_no_work_rights_set_means_every_place_abroad_needs_it(self):
-        with as_user({**OWNER, 'work_rights': []}):
-            self.assertTrue(digest.needs_sponsorship(job('Berlin, Germany')))
+    def test_with_work_rights_and_no_ai_answer_nothing_is_flagged(self):
+        """#3862, owner 12 Nov 2026 (asked via AskUserQuestion: "No AI answer, no flag"): a name match was a guess, so it waits for the AI."""
+        with as_user(OWNER, ai_says={}):
+            self.assertFalse(digest.needs_sponsorship(job('London, UK')))
+            self.assertFalse(digest.needs_sponsorship(job('Dubai, UAE')))
+        with as_user(AUSTIN, ai_says={}):
+            self.assertFalse(digest.needs_sponsorship(job('Lisbon, Portugal')))
 
-    def test_eu_means_member_states_not_anything_with_the_letters(self):
-        rights = digest.work_rights_regex(['\\beu\\b'])
-        self.assertTrue(rights.search('Lisbon, Portugal'))
-        self.assertFalse(rights.search('Lima, Peru'))
-        self.assertIs(digest.work_rights_regex([]), None)
+    def test_no_work_rights_set_means_every_place_abroad_needs_it(self):
+        with as_user({**OWNER, 'work_rights': []}, ai_says={}):
+            self.assertTrue(digest.needs_sponsorship(job('Berlin, Germany')))
 
     def test_the_badge_follows(self):
         ai = {'english_is_enough': {'value': 'yes'}, 'languages': [], 'salary': {'stated': False, 'text': ''}, 'employer_type': {'value': 'direct_employer'}}

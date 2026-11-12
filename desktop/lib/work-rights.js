@@ -6,7 +6,7 @@ import {log} from './log.js';
 import {OLDER, STATUSES, ZONES, eligibilityOf, isAsked, isOldLine, zoneOfLabel} from '../renderer/work-eligibility.js';
 
 export const FILE = 'config/work-rights.json';
-// The words a freely open zone stands for: "EU" is every EU member state to the engine (src/digest.py EU_PLACES, the place AI), plus the EEA and Switzerland.
+// The words a freely open zone stands for, as the place AI reads them: "EU" is every EU member state, plus the EEA and Switzerland.
 const ZONE_WORDS = {eu: ['EU', 'Switzerland', 'Norway', 'Iceland', 'Liechtenstein'], uk: ['United Kingdom'], us: ['United States']};
 const [FREELY, PERMIT] = STATUSES;
 const unique = list => [...new Set(list)];
