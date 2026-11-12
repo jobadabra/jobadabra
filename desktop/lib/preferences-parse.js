@@ -10,6 +10,9 @@ import {inFlight} from './in-flight.js';
 
 export const MODEL = 'claude-haiku-5-5';
 export const FILE = 'profile/preferences-parse.json';
+// What the card is given when the AI's answer could not be used (outside the shape twice, or declined): a fixed word the window turns into its own sentence in the person's language,
+// never the engine's text (#3666, 12 Nov 2026: the card read "Free AI's answer was outside the expected shape (not a list)"); the reason stays in app.log.
+export const UNREADABLE = 'unreadable';
 export const KEYS = ['countries', 'cities', 'mode', 'relocation', 'languages', 'roles', 'employment', 'seniority'];
 const CEFR = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'native', 'unknown'];
 const SENIORITY = ['junior', 'mid', 'senior', 'staff', 'unknown'];
@@ -44,6 +47,8 @@ const SCHEMA = {type: 'object', additionalProperties: false, required: ['countri
 
 const text = (value, max = 80) => (typeof value === 'string' ? value.replace(/[❓?]+/g, '').replace(/\s+/g, ' ').trim().slice(0, max) : null);
 const list = (value, each) => { if (!Array.isArray(value) || value.length > 40) throw new Error('not a list'); return value.map(each); };
+// Why (#3666, 12 Nov 2026): "not a list" named no field, so the second ask could not fix it; a reason now starts with the key it is about.
+const about = (key, read) => { try { return read(); } catch (failure) { throw new Error(`${key}: ${failure.message}`); } };
 const oneOf = (value, allowed) => { if (!allowed.includes(value)) throw new Error(`"${String(value).slice(0, 30)}" is not one of ${allowed.join('/')}`); return value; };
 const named = value => { const clean = text(value); if (clean === null || !clean) throw new Error('an empty name'); return clean; };
 const region = code => {
@@ -63,16 +68,16 @@ export function cleanAnswer(raw) {
   if (!raw || typeof raw !== 'object') throw new Error('not an object');
   const unique = (items, key) => items.filter((item, i) => items.findIndex(other => other[key].toLowerCase() === item[key].toLowerCase()) === i);
   return {
-    countries: [...new Set(list(raw.countries, region))],
-    cities: unique(list(raw.cities, city => ({name: named(city?.name), country: city?.country ? region(city.country) : ''})), 'name'),
-    remote: oneOf(raw.remote, ANSWER),
-    languages: unique(list(raw.languages, each => ({name: named(each?.name), level: oneOf(each?.level, CEFR)})), 'name'),
-    relocation: {answer: oneOf(raw.relocation?.answer, ANSWER), where: text(raw.relocation?.where) ?? ''},
-    roles: unique(list(raw.roles, role => ({title: named(role?.title), certainty: oneOf(role?.certainty, ['sure', 'maybe'])})), 'title'),
-    seniority: seniorityRange(raw.seniority),
-    employment: [...new Set(list(raw.employment, kind => oneOf(kind, EMPLOYMENT)))],
-    notes: list(raw.notes, note => ({field: oneOf(note?.field, KEYS), text: named(note?.text)})),
-    unparsed: [...new Set(list(raw.unparsed, key => oneOf(key, KEYS)))],
+    countries: about('countries', () => [...new Set(list(raw.countries, region))]),
+    cities: about('cities', () => unique(list(raw.cities, city => ({name: named(city?.name), country: city?.country ? region(city.country) : ''})), 'name')),
+    remote: about('remote', () => oneOf(raw.remote, ANSWER)),
+    languages: about('languages', () => unique(list(raw.languages, each => ({name: named(each?.name), level: oneOf(each?.level, CEFR)})), 'name')),
+    relocation: about('relocation', () => ({answer: oneOf(raw.relocation?.answer, ANSWER), where: text(raw.relocation?.where) ?? ''})),
+    roles: about('roles', () => unique(list(raw.roles, role => ({title: named(role?.title), certainty: oneOf(role?.certainty, ['sure', 'maybe'])})), 'title')),
+    seniority: about('seniority', () => seniorityRange(raw.seniority)),
+    employment: about('employment', () => [...new Set(list(raw.employment, kind => oneOf(kind, EMPLOYMENT)))]),
+    notes: about('notes', () => list(raw.notes, note => ({field: oneOf(note?.field, KEYS), text: named(note?.text)}))),
+    unparsed: about('unparsed', () => [...new Set(list(raw.unparsed, key => oneOf(key, KEYS)))]),
   };
 }
 
@@ -88,11 +93,11 @@ export async function ask(client, fields) {
       messages: [{role: 'user', content: [{type: 'text', text: brief(fields) + (problem ? `\nYour previous answer was rejected: ${problem}. Answer again in the exact shape.` : '')}]}],
       output_config: {format: {type: 'json_schema', schema: SCHEMA}},
     }, {headers: {'x-jp-action': 'preferences_parse'}});   // Why (30 Oct 2026, bb 3/9): every sibling sender names its step; without it Free AI cannot count this step and the e2e answer table cannot key it (interactions red, run 41091251455).
-    if (response.stop_reason === 'refusal') throw new Error(`${nameOfClient(client)} declined to read the preferences`);
+    if (response.stop_reason === 'refusal') throw Object.assign(new Error(`${nameOfClient(client)} declined to read the preferences`), {unreadable: true});
     if (response.stop_reason === 'max_tokens') { problem = 'it was cut short'; continue; }
     try { return {parse: cleanAnswer(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}'))}; } catch (failure) { problem = failure.message; }
   }
-  throw new Error(`${nameOfClient(client)}'s answer was outside the expected shape (${problem})`);
+  throw Object.assign(new Error(`${nameOfClient(client)}'s answer was outside the expected shape (${problem})`), {unreadable: true});
 }
 
 // The parse for these field texts: the kept one when the text is the same (a failure is kept too, so opening the tab never pays twice; `again` asks anew).
@@ -106,13 +111,13 @@ async function forFieldsNow(storage, {fields, client, again = false, log = () =>
   if (!KEYS.some(name => String(fields?.[name] || '').trim())) return {parse: null, key, fresh: false};
   let saved = null;
   try { saved = JSON.parse(storage.readText(FILE) || 'null'); } catch {}
-  if (saved?.key === key && !again) return {parse: saved.parse || null, key, fresh: false, error: saved.error || ''};
+  if (saved?.key === key && !again) return {parse: saved.parse || null, key, fresh: false, error: /expected shape|declined to read/.test(saved.error || '') ? UNREADABLE : saved.error || ''};   // a row an older build saved keeps the engine's words on disk
   if (!client) return {parse: null, key, fresh: false, error: 'no AI'};
   const started = Date.now();
-  let parse = null, error = '';
-  try { ({parse} = await ask(client, fields)); } catch (failure) { error = String(failure?.message || failure).slice(0, 200); }
+  let parse = null, error = '', reason = '';
+  try { ({parse} = await ask(client, fields)); } catch (failure) { reason = String(failure?.message || failure).slice(0, 200); error = failure?.unreadable ? UNREADABLE : reason; }
   storage.writeText(FILE, JSON.stringify({key, at: new Date().toISOString(), parse, ...(error ? {error} : {})}));
   // Which fields, never their values (lib/log.js).
-  log('profile', error ? `preferences read: failed: ${error}` : `preferences read: ${parse.unparsed.length} field(s) look unparsed`, {unparsed: parse?.unparsed || [], ms: Date.now() - started});
+  log('profile', error ? `preferences read: failed: ${reason}` : `preferences read: ${parse.unparsed.length} field(s) look unparsed`, {unparsed: parse?.unparsed || [], ms: Date.now() - started});
   return {parse, key, fresh: true, error};
 }

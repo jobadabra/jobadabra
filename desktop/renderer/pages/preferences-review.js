@@ -10,6 +10,7 @@ import {el} from '../components.js';
 import {FIELDS} from '../preferences-model.js';
 import {reviewOf} from '../preferences-review-model.js';
 
+const UNREADABLE = 'unreadable';   // lib/preferences-parse.js UNREADABLE (a test holds the two equal): the read failed and the engine's words stay in app.log
 const KEEP = 'preferences-review-kept';
 const memory = new Set();   // also kept here for the window's life when localStorage is unavailable
 const kept = () => { try { return new Set([...JSON.parse(localStorage.getItem(KEEP) || '[]'), ...memory]); } catch { return new Set(memory); } };
@@ -28,6 +29,7 @@ export function reviewCard({fields, state, handled, apply, note, redraw}) {
   box.id = 'preferences-review-card';
   const head = el('div', 'qa-section-head pref-head'), words = el('div', 'pref-words');
   words.append(el('h4', '', t('pagesJobs.reviewPreferences')), el('span', 'muted small', state.busy ? t('pagesCommon.readingProfile')
+    : state.error === UNREADABLE ? t('pagesProfileMore.preferencesUnreadable', {button: t('pagesJobs.reviewPreferences')})   // the AI's answer could not be used: our sentence, never the engine's (#3666)
     : state.error ? t('pagesDynamicProfileReady.m294', {"plainError": plainError(state.error)}) : t('pagesProfileMore.plainAnswers')));
   head.append(words);
   box.append(head);

@@ -1,7 +1,9 @@
 // Preferences: the "Review your preferences" card and the Workload rule, drawn from a Notion-shaped Profile (tiny DOM). Accept drafts the clean value plus an
 // "Original wording" line into the one save bar and writes nothing until Save; Keep mine drafts nothing; Workload shows only for CH, DE or AT countries.
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
+import {UNREADABLE} from '../../../lib/preferences-parse.js';
 import {pageBar, pressSave} from '../../page-bar.js';
 import {install} from '../../tiny-dom.js';
 import {showWorkload} from '../../../renderer/preferences-review-model.js';
@@ -119,4 +121,24 @@ test('each side folds its other rules under a summary line; with none it says so
     let up = each; while (up && !up.dataset?.side) up = up.parentNode; return up.dataset.side === side; }).textContent;
   assert.equal(summary('rank'), 'On-call: No on-call · Company size: Under 500 · 1 more', 'the set rules, an open one left out');
   assert.equal(summary('must'), 'None set');
+});
+
+// #3666: the card said "Couldn't read it: Free AI's answer was outside the expected shape (not a list)". It says what happened and what to do, in every language.
+test('a failed read says in plain words what to do, in all seven languages, never the engine\'s words', async () => {
+  const {reviewCard} = await import('../../../renderer/pages/preferences-review.js');
+  const {t, setLocale} = await import('../../../i18n/index.js');
+  const shown = locale => { setLocale(locale); const card = reviewCard({fields: {}, state: {error: 'unreadable', parse: null}, handled: new Set(), apply() {}, note() {}, redraw() {}}); return card.textContent; };
+  const english = shown('en');
+  assert.match(english, /couldn't read your preferences this time/i);
+  assert.match(english, /try again/i);
+  const seen = new Set();
+  for (const locale of ['en', 'de', 'fr', 'it', 'es', 'ro', 'ru']) {
+    const text = shown(locale);
+    assert.ok(!/expected shape|not a list|Couldn't read it/i.test(text), `${locale}: ${text}`);
+    seen.add(text);
+  }
+  assert.match(readFileSync(new URL('../../../renderer/pages/preferences-review.js', import.meta.url), 'utf8'), new RegExp(`const UNREADABLE = '${UNREADABLE}'`), 'the card and the engine use the same word');
+  assert.equal(seen.size, 7, 'each language has its own words');
+  setLocale('en');
+  assert.ok(t);
 });
