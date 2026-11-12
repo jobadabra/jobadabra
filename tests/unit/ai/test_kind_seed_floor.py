@@ -39,8 +39,8 @@ class FakeClient:
         content = kwargs['messages'][0]['content']
         allowed = content.split('Allowed answers: ', 1)[1].split('\n', 1)[0].split(', ')
         items = content.split('### Item ')[1:]
-        results = [{'index': i, 'answer': answer(item.split('\n', 1)[1], allowed)} for i, item in enumerate(items)]
-        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'results': results}))])
+        results = {str(i): answer(item.split('\n', 1)[1], allowed) for i, item in enumerate(items)}
+        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps(results))])
 
 
 class AiFirst(unittest.TestCase):

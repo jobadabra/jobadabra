@@ -26,7 +26,7 @@ class Client:
         content = kwargs['messages'][0]['content']
         count = content.count('### Item ')
         return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(
-            type='text', text=json.dumps({'results': [{'index': i, 'answer': 'other'} for i in range(count)]}))])
+            type='text', text=json.dumps({str(i): 'other' for i in range(count)}))])
 
 
 class GmailTopicsAiFirst(unittest.TestCase):

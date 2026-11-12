@@ -26,7 +26,7 @@ class FakeClient:
         if text.startswith('Careers page'):
             answer = {'page': 'jobs', 'jobs': [{'name': 'Site Reliability Engineer', 'place': 'Zürich', 'link': '/jobs/1', 'employer': ''}]}
         else:
-            answer = {'results': [{'index': i, 'answer': 'job_title'} for i in range(text.count('### Item'))]}
+            answer = {str(i): 'job_title' for i in range(text.count('### Item'))}
         return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(answer))], usage=None)
 
 

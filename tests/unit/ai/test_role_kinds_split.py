@@ -155,7 +155,7 @@ class JudgedTests(unittest.TestCase):
                 def create(**kwargs):
                     items = re.findall(r'### Item (\d+)\n', kwargs['messages'][0]['content'])
                     asked.append(len(items))
-                    text = json.dumps({'results': [{'index': int(i), 'answer': 'engineering'} for i in items]})
+                    text = json.dumps({str(int(i)): 'engineering' for i in items})
                     return SimpleNamespace(content=[SimpleNamespace(type='text', text=text)], stop_reason='end_turn', usage=None)
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)

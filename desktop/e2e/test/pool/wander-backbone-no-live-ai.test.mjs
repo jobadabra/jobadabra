@@ -53,7 +53,7 @@ test('wander resolves all seven inventoried kinds at both answer seams with no l
       await assert.rejects(modelFetch('http://127.0.0.1:1/v1/messages', init, h.options), /invalid-key/);
     } else {
       assert.ok(found.reply, `${kind} needs a real stored reply`);
-      assert.deepEqual(JSON.parse(found.reply.content[0].text), empty[kind] || {results: [{index: 0, answer: 'software'}]});
+      assert.deepEqual(JSON.parse(found.reply.content[0].text), empty[kind] || {0: 'software'});
       assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), found.reply);
     }
     const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
@@ -73,7 +73,7 @@ test('every seeded title passes the real role-kind caller and decide parser with
     const body = structuredClone(captured);
     body.messages[0].content = body.messages[0].content.replace(/### Item 0\n[\s\S]+$/, `### Item 0\n${title}`);
     replies[title] = storedAnswer(request('decide', body), h.env).reply;
-    assert.deepEqual(JSON.parse(replies[title].content[0].text), {results: [{index: 0, answer: 'software'}]});
+    assert.deepEqual(JSON.parse(replies[title].content[0].text), {0: 'software'});
   }
   const result = execFileSync(python(), ['-c', `
 import json, socket, sys

@@ -5,6 +5,10 @@ import {canonical, hash as sha, object, replyData, textOf} from './ai-answers-en
 
 const unkeyable = reason => ({unkeyable: `decide: ${reason}`});
 
+/** The engine's answer schema for `count` items (src/ai/decide.py answer_shape): one required property per item number, one allowed answer each. */
+export const decideSchema = (allowed, count) => ({type: 'object', additionalProperties: false, required: Array.from({length: count}, (_, n) => String(n)),
+  properties: Object.fromEntries(Array.from({length: count}, (_, n) => [String(n), {type: 'string', enum: [...allowed]}]))});
+
 /** Parse only the engine's decide layout; item text and context retain their exact bytes. */
 export function decideQuestion(body, persona) {
   if (!object(body)) return unkeyable('expected a request object');
@@ -14,11 +18,11 @@ export function decideQuestion(body, persona) {
   const match = /^Task: ([\s\S]+)\nAllowed answers: ([^\n]+)\n\n([\s\S]+)$/.exec(textOf(messages[0].content));
   if (!match || !match[1].trim()) return unkeyable('expected Task, Allowed answers and item blocks');
   const [, task, allowedAnswers, blocks] = match, schema = body.output_config?.format?.schema ?? body.text?.format?.schema;
-  const allowed = allowedAnswers.split(', '), enumValues = schema?.properties?.results?.items?.properties?.answer?.enum;
-  if (!object(schema) || !Array.isArray(enumValues) || !allowed.every(value => value.trim() && enumValues.includes(value)) ||
-      allowed.length !== enumValues.length || new Set(allowed).size !== allowed.length) return unkeyable('missing schema or inconsistent allowed answers');
-  const context = {task, allowedAnswers, schema}, contextSHA = sha(canonical(context));
-  const markers = [...blocks.matchAll(/^### Item [^\n]*(?:\n|$)/gm)];
+  const allowed = allowedAnswers.split(', '), markers = [...blocks.matchAll(/^### Item [^\n]*(?:\n|$)/gm)];
+  if (!object(schema) || !allowed.every(value => value.trim()) || new Set(allowed).size !== allowed.length ||
+      canonical(schema) !== canonical(decideSchema(allowed, markers.length))) return unkeyable('missing schema or inconsistent allowed answers');
+  // Why (12 Nov 2026, am): the schema names one property per item, so it follows the batch size; an item's identity is its task and choices, never how many neighbours it was asked with.
+  const context = {task, allowedAnswers, schema}, contextSHA = sha(canonical({task, allowedAnswers}));
   // Why (#2450 slice 3): accept only batches the engine can actually send, rather than keying malformed asks.
   if (!markers.length || markers.length > 50 || markers[0].index !== 0) return unkeyable('expected 1 to 50 item blocks');
   const items = [];
@@ -36,14 +40,10 @@ export function decideQuestion(body, persona) {
 /** Return every validated item candidate, or none; index order in a live reply is immaterial. */
 export function decideCandidates(question, reply) {
   const data = replyData(reply);
-  if (!object(data) || Object.keys(data).length !== 1 || !Array.isArray(data.results) || data.results.length !== question.items.length) return [];
-  const found = new Map(), allowed = question.context.allowedAnswers.split(', ');
-  for (const result of data.results) {
-    // Why (#2450 slice 3): a partial, duplicate or out-of-contract live answer must never leave even one review candidate.
-    if (!object(result) || Object.keys(result).length !== 2 || !Number.isInteger(result.index) || result.index < 0 || result.index >= question.items.length || found.has(result.index) || !allowed.includes(result.answer)) return [];
-    found.set(result.index, result.answer);
-  }
-  return question.items.map(item => ({...item, answer: found.get(item.index)}));
+  const allowed = question.context.allowedAnswers.split(', ');
+  // Why (#2450 slice 3): a partial or out-of-contract live answer must never leave even one review candidate.
+  if (!object(data) || Object.keys(data).length !== question.items.length || !question.items.every(item => allowed.includes(data[item.index]))) return [];
+  return question.items.map(item => ({...item, answer: data[item.index]}));
 }
 
 /** Give each item a filesystem-safe candidate name covering persona, context and text. */

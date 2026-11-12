@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {answerFor, loadTable, questionOf, storedAnswer} from '../../lib/ai-answers.mjs';
+import {decideSchema} from '../../lib/ai-answers-decide.mjs';
 import {canonical, hash, requestParts, valid} from '../../lib/ai-answers-engine-items.mjs';
 import {FAILURES} from '../../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../../lib/backbone-harness.mjs';
@@ -16,7 +17,7 @@ const {request: captured, requests: capturedMore, seededPlaceQuestions} = JSON.p
 // organize_lines is authored (empty items) since wander (30 Oct 2026); activityfailures asks it too and gets that reply.
 const kinds = ['contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft', 'places'];
 const expected = [['z[uü]rich', 'ch-zurich'], ['switzerland', 'none'], ['schweiz', 'none']];
-const results = {results: [{index: 0, answer: 'ch-zurich'}, {index: 1, answer: 'none'}, {index: 2, answer: 'none'}]};
+const results = {0: 'ch-zurich', 1: 'none', 2: 'none'};
 const request = (action, body = {model: 'test', messages: [{role: 'user', content: 'Background read'}]}) => ({
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
 });
@@ -141,7 +142,7 @@ test('activityfailures raw seeded Zurich country and metro have authored answers
     assert.ok(reply, `missing seeded Zurich ${index === 0 ? 'country' : 'metro'} answer`);
     const data = JSON.parse(reply.content[0].text);
     assert.ok(validScore(question.context.schema, data));
-    assert.deepEqual(data, {results: question.items.map(item => ({index: item.index, answer: index === 0 ? 'ch' : item.index === 2 ? 'none' : 'ch-zurich'}))});
+    assert.deepEqual(data, Object.fromEntries(question.items.map(item => [item.index, index === 0 ? 'ch' : item.index === 2 ? 'none' : 'ch-zurich'])));
   }
 });
 
@@ -179,8 +180,9 @@ test('activityfailures resolves every captured metro item and its batch before a
     assert.deepEqual(table.items['app.decide'][question.items[index].key], {text, answer});
     const body = structuredClone(captured);
     body.messages[0].content = `${captured.messages[0].content.split('### Item 0\n')[0]}### Item 0\n${text}`;
+    body.output_config.format.schema = decideSchema(question.context.allowedAnswers.split(', '), 1);   // its schema names one item
     const {reply} = storedAnswer(request('decide', body), h.env);
-    assert.deepEqual(JSON.parse(reply.content[0].text), {results: [{index: 0, answer}]});
+    assert.deepEqual(JSON.parse(reply.content[0].text), {0: answer});
   }
   const {reply} = storedAnswer(init, h.env);
   assert.deepEqual(JSON.parse(reply.content[0].text), results);
@@ -214,10 +216,11 @@ test('activityfailures resolves captured role and place verdicts per item and ba
       assert.deepEqual(table.items['app.decide'][item.key], {text: item.text, answer}, `${topic}: ${item.text}`);
       const single = structuredClone(body);
       single.messages[0].content = `${body.messages[0].content.split('### Item 0\n')[0]}### Item 0\n${item.text}`;
+      single.output_config.format.schema = decideSchema(single.output_config.format.schema.properties[0].enum, 1);   // its schema names one item
       const {reply} = storedAnswer(request('decide', single), h.env);
-      assert.deepEqual(JSON.parse(reply.content[0].text), {results: [{index: 0, answer}]});
+      assert.deepEqual(JSON.parse(reply.content[0].text), {0: answer});
     }
-    const expectedBatch = {results: texts.map((_text, index) => ({index, answer}))};
+    const expectedBatch = Object.fromEntries(texts.map((_text, index) => [index, answer]));
     const {reply} = storedAnswer(init, h.env);
     assert.deepEqual(JSON.parse(reply.content[0].text), expectedBatch);
     const direct = await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options);

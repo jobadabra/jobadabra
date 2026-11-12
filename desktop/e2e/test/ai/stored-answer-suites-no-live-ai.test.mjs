@@ -56,11 +56,11 @@ for (const suite of ['interactions', 'activityfailures']) {
       const init = request('decide', body), question = questionOf(init, h.env, table);
       assert.equal(question.operation, 'app.decide');
       assert.ok(question.items.length);
-      const expected = {results: question.items.map(item => {
+      const expected = Object.fromEntries(question.items.map(item => {
         const row = table.items['app.decide'][item.key];
         assert.equal(row.text, item.text);
-        return {index: item.index, answer: row.answer};
-      })};
+        return [item.index, row.answer];
+      }));
       assert.deepEqual(JSON.parse(storedAnswer(init, h.env).reply.content[0].text), expected);
       assert.deepEqual(JSON.parse((await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json()).content[0].text), expected);
       const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);

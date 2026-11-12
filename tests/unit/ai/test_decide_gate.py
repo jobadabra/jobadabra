@@ -29,7 +29,7 @@ class Model:
         assert self.go.wait(10), 'the test never let the model answer'
         if self.fail:
             raise RuntimeError('the model is down')
-        body = json.dumps({'results': [{'index': n, 'answer': 'job_list'} for n in range(len(wordings))]})
+        body = json.dumps({str(n): 'job_list' for n in range(len(wordings))})
         return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=body)], usage=SimpleNamespace(input_tokens=1, output_tokens=1))
 
 

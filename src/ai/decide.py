@@ -289,13 +289,22 @@ def remember(topic, found, answers, older_than='', db=None):
 GATES = decide_gate.Gates()   # the questions being asked right now, shared by every caller of decide(); it keeps its own state (src/ai/decide_gate.py)
 
 
+def answer_shape(answers, count):
+    """The schema of one call's answer for `count` items: {"0": answer, "1": answer, ...}, every item's number required, one allowed answer each.
+    Invariant: an item is named by its number, never by its place in the answer, so a left-out item moves no other item's answer."""
+    # Why (12 Nov 2026, am; owner: "we fixed only the AI calls. What about the others?"): the model's seconds follow what it writes (2 s + 3 ms an
+    # output token over 6,240 calls), and {"index": 12, "answer": "job_page"} per item was 18 tokens for one word. 11 recorded link-kind calls
+    # (543 wordings of 6 installs), twice each: 55-63 s -> 26-31 s of model time, 14-17k -> 6-7k output tokens, the same job-link-or-not as the
+    # install kept on 98.7-99.4% (the old shape: 95.2-99.3%). Not shorter still: answers in item order gave 54, 0 and 49 answers for 50 items;
+    # "number:answer" strings and item numbers listed under each answer saved nothing (the model thought first on 10-11 of 11 calls).
+    return {'type': 'object', 'additionalProperties': False, 'required': [str(n) for n in range(count)],
+            'properties': {str(n): {'type': 'string', 'enum': list(answers)} for n in range(count)}}
+
+
 def _ask(topic, pairs, answers, instructions, client, allowance):
     """The model call(s) for these (key, wording) pairs, BATCH a call -> an answer, None (asked, not answered) or decide_gate.UNASKED (the cap or a
     failure: unknown, asked again next run) for each; never raises. One caller's pairs, or several callers' at once (src/ai/decide_gate.py)."""
-    schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
-        'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],
-        'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
-    got = [decide_gate.UNASKED] * len(pairs)
+    got, numbers = [decide_gate.UNASKED] * len(pairs), [str(n) for n in range(BATCH)]
     for start in range(0, len(pairs), BATCH):
         if not take(topic, pairs[start][0], allowance):
             return got
@@ -304,22 +313,21 @@ def _ask(topic, pairs, answers, instructions, client, allowance):
         text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
             f'### Item {i}\n{wording}' for i, (_, wording) in enumerate(chunk))
         try:
-            response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}],
-                                              messages=[{'role': 'user', 'content': text}], output_config=engine.structured(schema, MODEL, 'low'))
+            response = client.messages.create(model=MODEL, max_tokens=4000, system=[{'type': 'text', 'text': SYSTEM}], messages=[
+                {'role': 'user', 'content': text}], output_config=engine.structured(answer_shape(answers, len(chunk)), MODEL, 'low'))
             cost.side(MODEL, response.usage, topic)
             if response.stop_reason != 'end_turn':
                 raise RuntimeError(f'stopped with {response.stop_reason}')
-            results = json.loads(next(block.text for block in response.content if block.type == 'text')).get('results') or []
+            results = json.loads(next(block.text for block in response.content if block.type == 'text'))
         except Exception as error:  # noqa: BLE001 — the caller's rule decides this time
             if _is_limit(error):
                 _stop(error)
             detail(f'decide {topic}', error)
             return got
         got[start:start + len(chunk)] = [None] * len(chunk)
-        for result in results:
-            index, answer = result.get('index', -1), result.get('answer')
-            if 0 <= index < len(chunk) and answer in answers:
-                got[start + index] = answer
+        for number, answer in (results.items() if isinstance(results, dict) else ()):   # another layout: nothing kept, every item unknown
+            if number in numbers[:len(chunk)] and isinstance(answer, str) and answer in answers:
+                got[start + int(number)] = answer
     return got
 
 

@@ -17,33 +17,17 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "results"
+              "0"
             ],
             "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "index",
-                    "answer"
-                  ],
-                  "properties": {
-                    "index": {
-                      "type": "integer"
-                    },
-                    "answer": {
-                      "type": "string",
-                      "enum": [
-                        "recruiter_screen",
-                        "technical",
-                        "hiring_manager",
-                        "other"
-                      ]
-                    }
-                  }
-                }
+              "0": {
+                "type": "string",
+                "enum": [
+                  "recruiter_screen",
+                  "technical",
+                  "hiring_manager",
+                  "other"
+                ]
               }
             }
           }
@@ -73,49 +57,163 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "results"
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5"
             ],
             "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "index",
-                    "answer"
-                  ],
-                  "properties": {
-                    "index": {
-                      "type": "integer"
-                    },
-                    "answer": {
-                      "type": "string",
-                      "enum": [
-                        "software",
-                        "sales_b2b",
-                        "sales_retail",
-                        "logistics",
-                        "hospitality",
-                        "healthcare",
-                        "creative_media",
-                        "finance_admin",
-                        "education",
-                        "trades",
-                        "engineering",
-                        "business_ops",
-                        "manufacturing",
-                        "science",
-                        "customer_service",
-                        "legal",
-                        "aviation_transport",
-                        "public_security",
-                        "other",
-                        "unsure"
-                      ]
-                    }
-                  }
-                }
+              "0": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
+              },
+              "1": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
+              },
+              "2": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
+              },
+              "3": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
+              },
+              "4": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
+              },
+              "5": {
+                "type": "string",
+                "enum": [
+                  "software",
+                  "sales_b2b",
+                  "sales_retail",
+                  "logistics",
+                  "hospitality",
+                  "healthcare",
+                  "creative_media",
+                  "finance_admin",
+                  "education",
+                  "trades",
+                  "engineering",
+                  "business_ops",
+                  "manufacturing",
+                  "science",
+                  "customer_service",
+                  "legal",
+                  "aviation_transport",
+                  "public_security",
+                  "other",
+                  "unsure"
+                ]
               }
             }
           }
@@ -145,33 +243,17 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "results"
+              "0"
             ],
             "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "index",
-                    "answer"
-                  ],
-                  "properties": {
-                    "index": {
-                      "type": "integer"
-                    },
-                    "answer": {
-                      "type": "string",
-                      "enum": [
-                        "recruiter_screen",
-                        "technical",
-                        "hiring_manager",
-                        "other"
-                      ]
-                    }
-                  }
-                }
+              "0": {
+                "type": "string",
+                "enum": [
+                  "recruiter_screen",
+                  "technical",
+                  "hiring_manager",
+                  "other"
+                ]
               }
             }
           }
@@ -201,33 +283,17 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "results"
+              "0"
             ],
             "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "index",
-                    "answer"
-                  ],
-                  "properties": {
-                    "index": {
-                      "type": "integer"
-                    },
-                    "answer": {
-                      "type": "string",
-                      "enum": [
-                        "recruiter_screen",
-                        "technical",
-                        "hiring_manager",
-                        "other"
-                      ]
-                    }
-                  }
-                }
+              "0": {
+                "type": "string",
+                "enum": [
+                  "recruiter_screen",
+                  "technical",
+                  "hiring_manager",
+                  "other"
+                ]
               }
             }
           }
@@ -257,33 +323,17 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "results"
+              "0"
             ],
             "properties": {
-              "results": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "index",
-                    "answer"
-                  ],
-                  "properties": {
-                    "index": {
-                      "type": "integer"
-                    },
-                    "answer": {
-                      "type": "string",
-                      "enum": [
-                        "recruiter_screen",
-                        "technical",
-                        "hiring_manager",
-                        "other"
-                      ]
-                    }
-                  }
-                }
+              "0": {
+                "type": "string",
+                "enum": [
+                  "recruiter_screen",
+                  "technical",
+                  "hiring_manager",
+                  "other"
+                ]
               }
             }
           }

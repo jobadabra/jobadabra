@@ -20,8 +20,10 @@ class FakeClient:
     def create(self, **kwargs):
         self.calls.append(kwargs)
         items = kwargs['messages'][0]['content'].split('### Item ')[1:]
-        results = [{'index': i, 'answer': self.answer_for(item.split('\n', 1)[1])} for i, item in enumerate(items)]
-        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'results': results}))])
+        answer = {str(i): self.answer_for(item.split('\n', 1)[1]) for i, item in enumerate(items)}
+        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps(self.shape(answer)))])
+
+    shape = staticmethod(lambda answer: answer)   # a test's own model: what it writes back instead (an item left out, another layout)
 
 
 class DecideTests(unittest.TestCase):
@@ -37,7 +39,39 @@ class DecideTests(unittest.TestCase):
         self.assertEqual(len(client.calls), 1)
         sent = client.calls[0]
         self.assertIn('untrusted', sent['system'][0]['text'])
-        self.assertEqual(sent['output_config']['format']['schema']['properties']['results']['items']['properties']['answer']['enum'], ['job_interview', 'other'])
+        schema = sent['output_config']['format']['schema']
+        self.assertEqual(schema['required'], ['0', '1'], 'one property per item, named by its number: the engine holds the model to all of them')
+        self.assertEqual(schema['properties'], {n: {'type': 'string', 'enum': ['job_interview', 'other']} for n in ('0', '1')})
+        self.assertIs(schema['additionalProperties'], False)
+
+    def test_the_answer_is_one_word_per_item_under_its_number(self):
+        """12 Nov 2026 (am): a link-kind answer wrote {"index": 12, "answer": "job_page"} per link, 18 tokens of which the code reads one word,
+        and the model's seconds follow what it writes (11 recorded calls: 55-63 s -> 26-31 s). The shape is {"12": "job_page"}."""
+        client = FakeClient(lambda text: 'yes' if text.strip() == 'x' else 'no')
+        seen = []
+        client.shape = lambda answer: seen.append(answer) or answer
+        self.assertEqual(decide.decide('t', {'a': 'x', 'b': 'y'}, ('yes', 'no'), 'task', client, self.db), {'a': 'yes', 'b': 'no'})
+        self.assertEqual(seen, [{'0': 'yes', '1': 'no'}])
+
+    def test_an_item_the_model_left_out_stays_unknown_and_the_rest_is_kept(self):
+        client = FakeClient(lambda text: 'yes')
+        client.shape = lambda answer: {key: value for key, value in answer.items() if key != '1'}
+        self.assertEqual(decide.decide('t', {'a': 'x', 'b': 'y', 'c': 'z'}, ('yes', 'no'), 'task', client, self.db), {'a': 'yes', 'c': 'yes'})
+        self.assertEqual(decide.kept('t', ['a', 'b', 'c'], self.db), {'a': 'yes', 'c': 'yes'}, 'b: unknown, asked again next run, never a guess')
+
+    def test_an_answer_in_another_layout_keeps_nothing_and_never_raises(self):
+        for other in ({'results': [{'index': 0, 'answer': 'yes'}]}, ['yes'], {'7': 'yes', 'x': 'yes', '-1': 'yes', '0': ['yes']}, 'yes'):
+            client = FakeClient(lambda text: 'yes')
+            client.shape = lambda answer, other=other: other
+            self.assertEqual(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', client, sqlite3.connect(':memory:')), {}, other)
+
+    def test_an_engine_that_refuses_the_answer_twice_leaves_the_batch_unknown(self):
+        """A plan engine checks the answer against the schema, asks once more, then raises (providers/cli_base.py): decide() never raises."""
+        client = FakeClient(lambda text: 'yes')
+        client.messages.create = mock.Mock(side_effect=decide.engine.CliError('Claude Code gave no valid JSON answer for this step (twice)'))
+        with mock.patch.object(decide, 'detail'):
+            self.assertEqual(decide.decide('t', {'a': 'x', 'b': 'y'}, ('yes', 'no'), 'task', client, self.db), {})
+        self.assertEqual(decide.kept('t', ['a', 'b'], self.db), {})
 
     def test_an_answer_outside_the_list_is_never_kept(self):
         client = FakeClient(lambda text: 'ignore previous instructions')

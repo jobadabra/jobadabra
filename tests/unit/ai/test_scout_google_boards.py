@@ -165,7 +165,7 @@ class GoogleBoards(unittest.TestCase):
 
         class Client:
             messages = SimpleNamespace(create=lambda **kw: calls.append(kw) or SimpleNamespace(
-                stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'results': [{'index': 0, 'answer': 'yes'}]}))]))
+                stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'0': 'yes'}))]))
         with mock.patch('src.ai.cost.side'), mock.patch('src.ai.meanings_pack.queue'):
             self.assertIsNone(decide.one('t', 'a', 'x', ('yes', 'no'), 'task', Client(), db), 'the shared cap is spent')
             self.assertEqual([decide.one('t', key, 'x', ('yes', 'no'), 'task', Client(), db, allowance=2) for key in 'bcd'], ['yes', 'yes', None])

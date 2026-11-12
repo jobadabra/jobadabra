@@ -36,15 +36,15 @@ function validateEngineEntry(kind, operation, entry, key) {
 }
 
 function decideAnswerFor(question, table) {
-  const results = [], allowed = question.context.allowedAnswers.split(', ');
+  const data = {}, allowed = question.context.allowedAnswers.split(', ');
   for (const item of question.items) {
     const entries = table.items?.['app.decide'];
     const entry = object(entries) && Object.hasOwn(entries, item.key) ? entries[item.key] : null;
     // Why (30 Oct 2026, qu; #2450 slice 3): moving decide dispatch preserves the requirement that every exact item has an allowed answer.
     if (!entry || entry.text !== item.text || !allowed.includes(entry.answer)) return {missing: `app.decide item ${item.index} ${JSON.stringify(item.text.slice(0, 80))} key ${item.key}`};
-    results.push({index: item.index, answer: entry.answer});
+    data[item.index] = entry.answer;
   }
-  return {data: {results}};
+  return {data};
 }
 
 // Why (30 Oct 2026, qu): one operation registry owns validation, replay and recording; engine registrations add all three without new dispatch branches.

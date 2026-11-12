@@ -165,14 +165,17 @@ function inventory(table) {
 function rowSchema(question, body) {
   const schema = schemaOf(body);
   if (!question.items || question.operation === 'app.enrich') return schema;
+  if (question.operation === 'app.decide') return schema?.properties?.[0];   // one property per item, all alike (src/ai/decide.py answer_shape)
   const row = Object.values(schema?.properties || {}).find(value => value.type === 'array')?.items;
-  return row?.properties?.answer && question.operation === 'app.decide' ? row.properties.answer : row;
+  return row;
 }
 
 // An invalid typed row can still explain a numeric delta or missing field. It is diagnostic only:
 // the registry still owns validity, and an invalid batch contributes zero exact agreement votes.
 function diagnosticRows(question, body, reply) {
   const data = object(reply) ? replyData(reply) : undefined, schema = schemaOf(body);
+  // A decide answer names each item by its number: the items it did answer still explain a missing or extra one.
+  if (question.operation === 'app.decide') return new Map(question.items.filter(item => object(data) && Object.hasOwn(data, item.index)).map(item => [item.key, data[item.index]]));
   const root = Object.keys(schema?.properties || {}).find(key => Array.isArray(data?.[key]) && schema.properties[key].items?.type === 'object');
   if (!root) return new Map();
   const properties = schema.properties[root].items.properties;
@@ -184,8 +187,7 @@ function diagnosticRows(question, body, reply) {
     seen.add(row[selector]);
     const item = question.items.find(item => (selector === 'word' ? item.raw : item[selector]) === row[selector]);
     if (!item) return new Map();
-    const answer = question.operation === 'app.decide' ? row.answer : Object.fromEntries(Object.entries(row).filter(([key]) => key !== selector));
-    found.set(item.key, answer);
+    found.set(item.key, Object.fromEntries(Object.entries(row).filter(([key]) => key !== selector)));
   }
   return found;
 }
