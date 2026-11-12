@@ -29,11 +29,13 @@ The PR's yardstick comment and job summary (`press-yardstick.yml`): 18 people ×
 | Measure | Sees | Cannot see |
 |---|---|---|
 | Press ledger (`test_ledger.py`) | order and clock rules a past fix set | what a person gets from it |
-| Yardstick table | recorded runs replayed offline, per person, main beside PR | the product's speed (recordings carry CI's slow AI: a Mac scored 15 jobs a run against 2), a change in what a site lists now, people with no recording |
+| Yardstick table | recorded runs replayed offline, per person, main beside PR | the product's speed (recordings carry CI's slow AI: a Mac scored 15 jobs a run against 2), an AI call made slower or larger (answers replay at the recorded pace), a change in what a site lists now, people with no recording |
 | Night check (`search-personas.yml`) | live sites, judge through the relay, one press at a time | some people unmeasured, report only, a day late |
 | Mac run (skills `check-job-search-locally`, `fictional-candidate-runs`) | fast AI, live sites, one person | the judge, other people |
 
 ## When the replay is not enough
+A change that makes an AI call on the press path slower or larger is invisible to the replay (12 Nov 2026, #3891: a think-first title call took ~5 s against ~3 s, a press sorted 947 titles against 1,169 and listed ~24 fewer right jobs; the yardstick said no person below main): put titles sorted per press, or per second on the fixed set (`tools/pick-cases.py`, both paths), main beside the PR, and run the live proof on a person whose title queue fills the budget (p10).
+
 A change in **what is kept or scored** (filters, place tests, ranking weights) changes jobs the recordings never listed: the replay can only reuse what was recorded. Re-run live on the Mac for the people it touches (`check-job-search-locally`, or a batch with `fictional-candidate-runs`), put the numbers next to the table in the PR, and say which people you ran.
 
 ## Never
