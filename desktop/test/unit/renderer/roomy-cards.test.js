@@ -50,7 +50,6 @@ test('cardHead: icon tile, title with its status pill, one-line lead, the action
 test('one layout: every label on its own line over its value, no heading-over-chips block or inline label column beside it', () => {
   const css = read('roomy-cards.css') + read('strategy-cards.css');
   assert.match(css, /\.roomy-cards \.summary-rows\.is-lined, \.roomy-cards \.summary-rows\.is-lined\.has-icons \{ grid-template-columns: minmax\(0, 1fr\);/);
-  assert.match(css, /\.which-row \{ display: grid; grid-template-columns: minmax\(0, 1fr\);/);
   assert.doesNotMatch(css, /label-col|setting-block|pref-read-head/, 'no inline label column, list block or section heading left');
   for (const file of ['pages/strategy-targets.js', 'pages/job-preferences.js', 'pages/main-goals.js', 'gallery-cards.js']) {
     assert.doesNotMatch(read(file), /settingBlock|pref-read-head/, file);

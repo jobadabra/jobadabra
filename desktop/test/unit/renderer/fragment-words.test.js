@@ -24,8 +24,7 @@ test('every real pattern shape reads as plain words, no regex syntax and no quot
 // Every screen or helper that turns a crawl pattern into words uses this one rule (a new copy fails here).
 test('the screens and helpers that show crawl patterns all use the one rule', () => {
   const read = file => fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
-  for (const file of ['renderer/pages/core.js', 'lib/strategy-rebuild.js', 'lib/locations-move.js', 'renderer/pages/locations-which.js', 'renderer/pages/strategy-review.js'])
+  for (const file of ['renderer/pages/core.js', 'lib/strategy-rebuild.js', 'renderer/pages/strategy-review.js'])
     assert.match(read(file), /fragment-words\.js/, file);
-  assert.match(read('lib/locations-store.js'), /readSide\(before\[key\]\)\.shown/, 'a set-aside list shows place names');
   // the Strategy data's Python side: tests/unit/engine/test_fragment_words.py (same cases, read from this file)
 });

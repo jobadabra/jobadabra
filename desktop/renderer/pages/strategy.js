@@ -16,12 +16,8 @@ import {ADVANCED, CARD_TONE, TARGET_CARDS, entriesOf, inColumns, renderCards, re
 import {strategyBar} from './strategy-cards.js';
 import {loadCoverage} from './strategy-suggestions.js';
 import {loadPreferences} from './job-preferences.js';
-import {loadLocationsWhich} from './locations-which.js';
 export {TARGET_CARDS, TARGET_LISTS, editedList} from './strategy-targets.js';
 export {reviewSuggestion, loadCoverage} from './strategy-suggestions.js';
-
-// A Which-locations pick or Undo changed the Locations section: read and draw the page again (pages/locations-which.js).
-document.addEventListener('locations-changed', () => loadStrategy());
 
 export async function loadStrategy() {
   if (inDraft()) { reloadDraft(); return; }   // setup step 3 draws these cards from the draft (pages/setup-strategy.js)
@@ -29,7 +25,6 @@ export async function loadStrategy() {
   message('strategy-message', '');
   loadCoverage({first: true});   // beside the strategy read, so the cards are there when the page first shows
   loadPreferences();   // Job preferences: the Profile's must-haves and ranking preferences
-  loadLocationsWhich();   // Which locations are right?: shown only while the old lists and the Profile disagree
   // The last good read at once (lib/view-cache.js), then the fresh one.
   const saved = await window.pilot.cached('strategy');
   if (saved?.result?.ok && !strategyState.strategyShown) {

@@ -10,7 +10,6 @@ import * as goals from './goals.js';
 import {levelFollowsGoal} from './goal-level.js';
 import * as benchmarkLib from './benchmarks.js';
 import {settingsDepsFor} from './settings-deps.js';
-import {registerLocationsHandlers} from './locations-handlers.js';
 import {registerListMeaningsHandlers} from './list-meanings-handlers.js';
 import * as viewCache from './view-cache.js';
 import fs from 'node:fs';
@@ -55,7 +54,6 @@ export function registerSearchTuningHandlers(ctx) {
     try { return {ok: true, ...JSON.parse(stdout.trim().split('\n').pop())}; } catch { return {ok: false, error: aiText(storage, '{AI}\'s answer could not be read')}; }
   });
   const settingsDeps = settingsDepsFor(toWindow);   // lib/settings-deps.js, shared with main.js
-  registerLocationsHandlers({ipcMain, storage, DEMO, needsNotion, settingsDeps, log: appLog});   // Strategy → Which locations are right? (lib/locations-handlers.js)
   registerListMeaningsHandlers({ipcMain, storage, DEMO, log: appLog});   // Strategy's chips: one per meaning, typos flagged (lib/list-meanings-handlers.js)
   // Every change to the search (Strategy edits and suggestions, Tune) says "Your search changed · Refresh jobs" until a refresh applies it
   // (renderer/search-changed.js). 7 Oct 2026: only Edit did, so a role added from a suggestion left no next step.

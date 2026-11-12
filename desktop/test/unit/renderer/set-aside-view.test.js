@@ -1,5 +1,5 @@
-// "Set aside" rows (renderer/pages/set-aside.js) appear under both Which-is-right cards, each with Undo wired to undoSetAside, and both handlers send the
-// list with their answer (the class: every card that resolves a conflict shows what its pick set aside).
+// "Set aside" rows (renderer/pages/set-aside.js) appear under the Which-is-right card, with Undo wired to undoSetAside, and its handler sends the
+// list with its answer (the class: every card that resolves a conflict shows what its pick set aside; Strategy's Locations card left with #3850).
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -7,7 +7,7 @@ import {test} from 'node:test';
 const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 
 test('every Which-is-right card draws the set-aside rows and its handler sends them', () => {
-  const cards = [['renderer/pages/details-to-check.js', 'lib/details-facts-handlers.js', 'facts-set-aside'], ['renderer/pages/locations-which.js', 'lib/locations-handlers.js', 'locations-set-aside']];
+  const cards = [['renderer/pages/details-to-check.js', 'lib/details-facts-handlers.js', 'facts-set-aside']];
   for (const [screen, handler, box] of cards) {
     assert.match(read(screen), /setAsideRows\(/, screen);
     assert.match(read(screen), new RegExp(`\\$\\('${box}'\\)`), screen);
@@ -16,5 +16,5 @@ test('every Which-is-right card draws the set-aside rows and its handler sends t
   }
   assert.match(read('renderer/pages/set-aside.js'), /window\.pilot\.undoSetAside\(entry\.id\)/);
   assert.match(read('preload.cjs'), /undoSetAside: call\('undoSetAside'\)/);
-  assert.match(read('lib/locations-handlers.js'), /ipcMain\.handle\('undoSetAside'/);
+  assert.match(read('lib/details-facts-handlers.js'), /ipcMain\.handle\('undoSetAside'/);
 });

@@ -12,7 +12,6 @@ export const messages = {
   "typeOrKeep": "Type the answer, or keep it as is",
   "heading": "That is a heading, not an answer: it is not kept",
   "choiceClosed": "That choice is no longer open",
-  "restoreMissing": "That list has no place to go back to",
   "restoreFailed": "It did not save",
   "typeAnswerNow": "Type the answer",
   "restoreFactMissing": "That fact has no place to go back to"

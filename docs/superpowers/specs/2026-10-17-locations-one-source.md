@@ -19,3 +19,10 @@ Both originals are kept until the person confirms. Cost estimate shown only when
 - [x] b. Consumers: crawl derived from Locations, scoring reads it, scores marked "based on previous preferences", explicit refresh for active jobs, per-job mark in the drawer (#1234, #1242, #1249) (proof: tests/test_locations_search.py @0be8837, tests/test_score_locations.py @c3f7867, desktop/test/locations-drawer.test.js @c3f7867)
 - [x] c. Strategy → Locations card (⌘K), Preferences location rows removed, override visible when collapsed (#1255) (proof: desktop/test/locations-card.test.js @5c32fba, desktop/test/locations-model.test.js @5c32fba, tests/test_strategy_locations.py @5c32fba)
 - [ ] Open: Home base → Your details needs a profile-move step like 3b (it stays in Job preferences); the Workload rule still reads the Profile's Countries text
+
+## Superseded in part (12 Nov 2026, #3850)
+Owner: "Location in the strategy, should not be conflicted/mixed with the location from the profile… I can have one location in profile, but looking for another location in my search strategy" · "We should drop/delete the code".
+- The one-time move and the "Which locations are right?" card (correction 2) are gone: the Profile's places are never compared with or copied into Strategy → Locations. Waiting conflicts were dropped (nothing had been written for them).
+- The fit score no longer reads the Profile's hidden Countries / Preferred cities / Relocation rows (`src/ai/locations.py without_place_rows`); the score's input hash is unchanged, so nothing is re-scored.
+- Work rights move to Profile → Work eligibility only (#3850 2/2).
+- PRs (#3850): 1/2 Strategy places never conflict with the Profile (card, move, queue removed; scorer skips the hidden rows) · 2/2 Work rights live only in the Profile (Strategy field removed, the engine reads rights derived from Work eligibility, one-time move; a "with a permit" zone clears only the countries of the person's own search places).

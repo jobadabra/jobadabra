@@ -102,7 +102,6 @@ export default {
   "nav51": "Bevorzugte und akzeptierte Orte, Umzug und Remote-Arbeit",
   "nav52": "Suchabdeckung zurücksetzen",
   "nav53": "Suchen verwenden deine Wünsche erneut",
-  "nav55": "Suchprofil und Profil nennen unterschiedliche Orte",
   "nav57": "Die KI liest deine Jobwünsche und schlägt bereinigte Werte vor",
   "nav58": "Gespräch aufnehmen (alle haben zugestimmt)",
   "nav59": "Meine Angaben aus dem Lebenslauf übernehmen",

@@ -10,7 +10,7 @@ const ALLOWED = new Set([
   'desktop/lib/contact-review.js', 'desktop/lib/contact.js', 'desktop/lib/queue-wording.js',
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
   'desktop/lib/question-formats.js', 'desktop/lib/contact-from-cv.js', 'desktop/lib/cv-queue.js',
-  'desktop/lib/cv-check.js', 'desktop/lib/list-meanings.js', 'desktop/lib/preferences-parse.js', 'desktop/lib/locations-move.js', 'desktop/renderer/fragment-words.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
+  'desktop/lib/cv-check.js', 'desktop/lib/list-meanings.js', 'desktop/lib/preferences-parse.js', 'desktop/renderer/fragment-words.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
   'desktop/lib/learnings.js', 'desktop/lib/open-wording.js', 'desktop/renderer/question-sense.js', 'extension/alias-schema.js', 'desktop/renderer/preferences-model.js',
   'desktop/renderer/profile-model.js', 'desktop/renderer/answers-model.js',
   'desktop/renderer/question-kind.js', 'desktop/renderer/question-filter.js',
@@ -131,9 +131,6 @@ export async function captureDesktop(root) {
   await capture('preferences_parse', {fields: typed}, 'desktop/lib/preferences-parse.js', 'const response = await client.messages.create',
     'desktop/lib/preferences-parse.js', 'export function cleanAnswer', client => load('desktop/lib/preferences-parse.js').ask(
       {messages: {create: async (body, options) => { await client.messages.create(body, options); return emptyRead; }}}, typed));
-  const rows = [{label: 'Countries', value: 'Switzerland (anywhere), remote within Europe'}, {label: 'Preferred cities', value: 'Zurich'}];
-  await capture('locations_move', {rows}, 'desktop/lib/locations-move.js', 'const response = await ai.messages.create',
-    'desktop/lib/locations-move.js', 'let answer;', client => load('desktop/lib/locations-move.js').judgeProfile(rows, {client}));
   const learning = {answers: [{label: 'Notice period', value: 'Three months, negotiable'}],
     learnings: [{question: 'Notice period', answer: 'Three months'}], owned: ['Email'],
     job: {company: 'Gamma Freight', place: 'Zurich, Switzerland'}};

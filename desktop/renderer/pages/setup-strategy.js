@@ -36,7 +36,6 @@ export function showCards({changed}) {
   if (!live || !slot) return;
   returnTo ||= live.parentNode;
   slot.append(live);
-  $('strategy-locations-which').hidden = true;   // compares saved settings with the saved Profile: nothing to compare in a draft
   useDraft(source(changed));
   reset();
   strategyState.strategyShown = true;

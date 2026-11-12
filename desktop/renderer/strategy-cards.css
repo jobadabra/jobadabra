@@ -48,23 +48,3 @@
   border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; }
 .strategy-page .roomy-cards .advanced-settings[open] > summary::after { content: ''; transform: rotate(-135deg); }
 .strategy-page .roomy-cards .advanced-settings > .review-grid { padding: 0 var(--card-pad) var(--card-pad); }
-
-/* Which locations are right? (pages/locations-which.js): the kind in the label column, the two sides as equal boxes in their colour
-   (violet = Strategy, teal = Profile), the quiet ways out under them. Rows split by full-width dividers. */
-#locations-which-message:empty, #locations-set-aside:empty { display: none; }
-.which-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); padding: var(--sp-4) 0; border-top: 1px solid var(--line); }
-.which-label { font-size: var(--fs-base); }   /* on its own line over the two choices, like every Strategy row */
-.which-body { display: grid; gap: var(--sp-3); min-width: 0; }
-.which-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: var(--sp-3); }
-.which-option { display: grid; align-content: start; gap: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--line); border-left: 3px solid var(--tone);
-  border-radius: var(--r-md); background: color-mix(in srgb, var(--tone-soft) 55%, var(--surface)); }
-.which-side { font-size: var(--fs-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--tone); }
-.which-option .chip-tag.tone-violet, .which-option .chip-tag.tone-teal { border-color: var(--tone); color: var(--tone); background: var(--tone-soft); }
-.which-option button.which-use { justify-self: start; border-color: var(--tone); color: var(--tone); font-weight: 600; }
-.which-option button.which-use:hover { background: var(--tone-soft); }
-.which-choose { margin-bottom: var(--sp-4); }   /* level with the boxes' Use buttons */
-.which-more { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
-.which-more:not(:has(> :not([hidden]))) { display: none; }
-.which-more input.add { flex: 1 1 260px; }
-@container (max-width: 640px) { .which-options { grid-template-columns: minmax(0, 1fr); } .which-choose { justify-self: start; } }
-.roomy-cards .which-option > .chips:has(> .chip-tag:first-child) { margin-left: calc(-1 * (var(--chip-pad-x) + 1px)); }   /* chip text under the side's name */

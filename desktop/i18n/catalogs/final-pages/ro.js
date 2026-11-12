@@ -103,7 +103,6 @@ export default {
   "nav51": "Locuri preferate și acceptabile, relocare și lucru la distanță",
   "nav52": "Resetează acoperirea căutării",
   "nav53": "Căutările folosesc din nou preferințele tale",
-  "nav55": "Setările de căutare și profilul indică locuri diferite",
   "nav57": "AI citește preferințele și propune valori clare",
   "nav58": "Înregistrează un apel (toți au fost de acord)",
   "nav59": "Completează datele din CV",

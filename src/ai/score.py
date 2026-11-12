@@ -272,6 +272,7 @@ def unread_parts(components, facts, basis=None):
 
 
 def score_one(client, model, job, profile, effort=None):
+    profile = locations.without_place_rows(profile)   # what the AI reads; the caller's hash keeps the text it was given
     data, usage = _score_once(client, model, job, profile, effort)   # on Free AI a job that can show is asked twice (score_agree)
     return score_agree.steady(data, usage, lambda: _score_once(client, model, job, profile, effort), RESCORE_MIN)
 
