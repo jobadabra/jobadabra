@@ -17,8 +17,8 @@ const NO_CARDS_AI = ", none of them jobs by Claude's reading";
 export const MAX_PAGES = 20;
 const PAUSE_MS = [1800, 3200];   // between pages, like a person reading: not to look like one, to be gentle with the site
 
-import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible} from './visit-page.js';
-export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible};
+import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress} from './visit-page.js';
+export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress};
 // (the functions that run inside the page are in visit-page.js; the visit itself is here)
 
 
@@ -31,6 +31,16 @@ const badge = (tabId, text, title) => {
 const run = async (tabId, func, args = []) => (await chrome.scripting.executeScript({target: {tabId}, func, args}))[0]?.result;
 // Template code where an address should be (DHL, 7 Oct 2026: careers.dhl.com/global/${getUrl(linkEle,): never a place to go.
 const TEMPLATE = /\$\{|\{\{|%7B/i;
+// B of #3710 (owner, 12 Nov 2026: "A first, then B"): cards with no link and no id are pressed one by one, each press like a person's (a gap of 0.5-0.75 s), within this budget a page.
+const PRESS = {budgetMs: 20000, gapMs: 500};
+/** A page's cards: the ones read with an address, plus the pressable ones given the address the page shows when each is pressed (extension/visit-page.js addressByPress). */
+async function withPressed(tabId, seen) {
+  if (!seen?.pressCards?.length) return seen?.cards || [];
+  const pressed = await run(tabId, addressByPress, [{keys: seen.pressCards.map(card => card.key), ...PRESS}]).catch(() => null);
+  if (pressed?.left) { await moveTab(tabId, seen.url); await waitForPage(tabId).catch(() => {}); }   // a press that opened another page: back to the list
+  const addresses = pressed?.addresses || {};
+  return [...seen.cards, ...seen.pressCards.filter(card => addresses[card.key]).map(({title, lines, key}) => ({title, url: addresses[key], lines}))];
+}
 export const FILTER_ROUNDS = 3;
 export const UNBLOCK_TRIES = 2;   // a page with no job list: at most this many times Claude picks a way on, then the site says why it stopped   // filter panels open more filters: look again, at most this often
 
@@ -117,7 +127,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       applyReadReason(state,readBlockedReason(first.login));
       pages = 0;   // the read loop below has nothing to do
     }
-    if (first && !first.login && !first.challenge && !plausible(first.cards)) {
+    if (first && !first.login && !first.challenge && !plausible([...first.cards, ...(first.pressCards || [])])) {
       await tellStep(tabId, config, ticket, readWords('looking for this site\'s job list…','read.find'));
       const found = await thinking(() => api(config, '/extension/visit-jobpage', {method: 'POST', body: JSON.stringify({url: first.url, html: first.html, ticket})}).catch(() => null));
       if (found?.url && found.url.split('#')[0] !== first.url.split('#')[0]) {
@@ -157,7 +167,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       const seen = await run(tabId, extractPage);
       if (!seen) { setReadReason(state,'the page could not be read','read.unread'); break; }
       if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; applyReadReason(state,readBlockedReason(seen.login)); break; }
-      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : seen.cards;
+      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : await withPressed(tabId, seen);
       if (recipe && !cards.length && page === 0) {
         if (plausible(seen.cards)) {   // the quick guess reads a list the recipe misses: it no longer fits this site, forgotten and read afresh
           await api(config, '/extension/visit-recipe', {method: 'POST', body: JSON.stringify({url: seen.url, forget: true})}).catch(() => {});

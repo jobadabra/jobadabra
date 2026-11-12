@@ -9,9 +9,12 @@ export function extractPage() {
   const JOB = /\/jobs?\/view\/|\/jobs?\/\d|\/job\/|viewjob|[?&]jk=|\/stellen?|\/offres?[-/]|\/emplois?\/|\/vacanc|\/positions?\/|jobid=|job_id=|\/jobs\/[\w-]+-\d+/i;
   const seen = new Set();
   const cards = [];
+  const here = new URL(location.href);
+  // Why (#3710, the structural copy of 12 Nov 2026): a link to the page's own path (the selected job's header on a results page) is the page, not a posting.
+  const toPage = href => { const at = new URL(href); return at.host === here.host && at.pathname === here.pathname; };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];
-    if (!/^https?:/.test(href) || seen.has(href) || !JOB.test(href)) continue;
+    if (!/^https?:/.test(href) || seen.has(href) || !JOB.test(href) || toPage(href)) continue;
     seen.add(href);
     const box = link.closest('li, article, [data-job-id], [data-occludable-job-id], [class*="job-card"], [class*="jobCard"], [class*="JobCard"], [class*="result"]') || link.parentElement;
     const lines = (box?.innerText || link.innerText || '').split('\n').map(line => line.trim()).filter(Boolean).slice(0, 8);
@@ -19,9 +22,40 @@ export function extractPage() {
     if (title.length >= 3) cards.push({title: title.slice(0, 160), url: href, lines});
     if (cards.length >= 300) break;
   }
+  // Why (#3710, owner, 12 Nov 2026, asked via AskUserQuestion: "A first, then B"): a results list can draw each card as a pressable block with no link (25 such
+  // cards on the structural copy; 1 read before). When the links give no list, 3+ alike siblings, each pressable, with no link and 2+ lines, are the cards.
+  // A: a card's own attribute holds the id that the page's address gives the selected job; its address is the page's with that id. Cards A cannot place
+  // are marked (data-jp-card) for addressByPress (B). Only the structure decides: no word, no site.
+  const pressCards = [];
+  if (cards.length < 3) {
+    const linesOf = node => (node.innerText || '').split('\n').map(line => line.trim()).filter(Boolean);
+    const pressable = node => (node.matches('[role="button"], [tabindex]') ? node : node.querySelector('[role="button"], [tabindex]'));
+    const runsOf = node => [node, ...node.querySelectorAll('*')].flatMap(el => el.getAttributeNames().filter(name => !name.startsWith('data-jp'))
+      .flatMap(name => [...(el.getAttribute(name) || '').matchAll(/\d{5,}/g)].map(match => ({name, value: match[0]}))));
+    const ids = [...here.searchParams].filter(([, value]) => /^\d{5,}$/.test(value));
+    for (const old of document.querySelectorAll('[data-jp-card]')) delete old.dataset.jpCard;   // a list drawn again in place (the next page) is read afresh
+    const groups = [];
+    for (const parent of document.querySelectorAll('body *')) {
+      if (parent.closest('[data-jp-card]')) continue;
+      const kids = [...parent.children].filter(kid => pressable(kid) && !kid.querySelector('a[href]') && linesOf(kid).length >= 2);
+      const bySign = {};
+      for (const kid of kids) (bySign[`${kid.tagName}.${[...kid.classList].sort().join('.')}`] ||= []).push(kid);
+      for (const group of Object.values(bySign).filter(list => list.length >= 3)) { groups.push(group); for (const kid of group) kid.dataset.jpCard = ''; }   // marked: no card is looked for inside a card
+    }
+    const found = groups.flat();
+    let key = null;
+    for (const card of found) for (const run of runsOf(card)) { const hit = ids.find(([, value]) => value === run.value); if (hit && !key) key = {param: hit[0], attr: run.name}; }
+    found.forEach((card, index) => {
+      card.dataset.jpCard = String(index);
+      const lines = linesOf(card).slice(0, 8), title = lines[0].slice(0, 160);
+      const id = key && runsOf(card).find(run => run.name === key.attr)?.value;
+      const url = id ? `${here.origin}${here.pathname}?${key.param}=${id}` : '';
+      if (url && !seen.has(url) && cards.length < 300) { seen.add(url); cards.push({title, url, lines}); } else if (!url) pressCards.push({key: String(index), title, lines});
+    });
+  }
   const text = `${document.title} ${(document.body?.innerText || '').slice(0, 3000)}`;
   return {
-    url: location.href, title: document.title.slice(0, 300), cards,
+    url: location.href, title: document.title.slice(0, 300), cards, pressCards,
     html: document.documentElement.outerHTML.slice(0, 3_000_000),
     challenge: CHALLENGE.test(text) && cards.length === 0,
     login: /\/(login|signin|sign-in|authwall|checkpoint|uas\/login)\b/i.test(location.pathname),
@@ -124,7 +158,7 @@ export function nextByRecipe(recipe) {
   const controls = [...document.querySelectorAll('a[href], button, [role=button]')].filter(visible);
   if (recipe.next === 'scroll') { const before = document.documentElement.scrollHeight; window.scrollTo(0, before); return before > window.innerHeight + 50 ? 'scroll' : 'none'; }
   if (recipe.next === 'number') {
-    const current = document.querySelector('[aria-current="page"], [aria-current="true"]');
+    const current = [...document.querySelectorAll('[aria-current="page"], [aria-current="true"]')].find(node => /^\d+$/.test((node.innerText || '').trim()));   // the pager's mark, not a menu's (#3710)
     const number = Number((current?.innerText || '').trim());
     const following = number && controls.find(node => (node.innerText || '').trim() === String(number + 1));
     if (following) { (globalThis.__jobadabraPress?.(following) || following.click()); return 'page number'; }
@@ -329,10 +363,44 @@ export async function applyFilters(steps) {
   return done;
 }
 
+/**
+ * Runs inside the page (B of #3710): presses each card that extractPage marked (data-jp-card) but could not give an address, as a person goes down a list,
+ * and keeps the address the page then shows: its path with the one query value that became a digit run. Stops at the budget, after 3 presses in a row that
+ * changed nothing (the page does not show the selected card in its address), or when a press leaves the page's path (`left`).
+ * @param {{keys: string[], budgetMs: number, gapMs: number}} ask -> {addresses: {key: url}, left: boolean}
+ */
+export async function addressByPress({keys, budgetMs, gapMs}) {
+  const began = Date.now(), here = new URL(location.href), addresses = {};
+  const wait = ms => new Promise(done => setTimeout(done, ms));
+  const shown = [...here.searchParams].filter(([, value]) => /^\d{5,}$/.test(value));
+  let still = 0;
+  for (const key of keys) {
+    if (Date.now() - began > budgetMs || still >= 3) break;
+    const card = document.querySelector(`[data-jp-card="${CSS.escape(key)}"]`);
+    const target = card && (card.matches('[role="button"], [tabindex]') ? card : card.querySelector('[role="button"], [tabindex]'));
+    if (!target) continue;
+    const before = location.href;
+    (globalThis.__jobadabraPress?.(target) || target.click());
+    for (let n = 0; n < 40 && location.href === before; n++) await wait(50);
+    const now = new URL(location.href);
+    if (now.pathname !== here.pathname) return {addresses, left: true};
+    const changed = [...now.searchParams].find(([name, value]) => /^\d{5,}$/.test(value) && new URL(before).searchParams.get(name) !== value);
+    // The card already shown when the page opened changes nothing when pressed: it is the one the address names (when it names exactly one).
+    const pair = changed || (location.href === before && shown.length === 1 && !Object.values(addresses).some(url => url.endsWith(`=${shown[0][1]}`)) ? shown[0] : null);
+    if (pair) addresses[key] = `${now.origin}${now.pathname}?${pair[0]}=${pair[1]}`;
+    still = changed ? 0 : still + 1;
+    if (gapMs) await wait(gapMs + Math.random() * gapMs / 2);
+  }
+  return {addresses, left: false};
+}
+
 // Runs inside the page: the next page of the same list. A "next" link or button, else the next page number, else a "more jobs" button,
 // else scroll to the end (lists that load as you scroll). Returns how it went on, or 'none'.
 export function goNext() {
-  const visible = node => node && node.offsetParent !== null && !node.disabled && node.getAttribute('aria-disabled') !== 'true'
+  // Why (#3710, 11 Nov 2026 press): a "next" once went to a company page. A link that leaves the list's folder (another host, or a path outside it) is not its next page.
+  const folder = location.pathname.replace(/[^/]*$/, '');
+  const stays = node => node.tagName !== 'A' || !node.getAttribute('href') || (new URL(node.href).host === location.host && new URL(node.href).pathname.startsWith(folder));
+  const visible = node => node && node.offsetParent !== null && !node.disabled && node.getAttribute('aria-disabled') !== 'true' && stays(node)
     && !/\$\{|\{\{|%7B/i.test(node.getAttribute('href') || '');   // a link to template code (DHL's "${getUrl(") goes nowhere
   const labels = node => [node.innerText, node.getAttribute('aria-label'), node.getAttribute('title')].map(text => (text || '').trim()).filter(Boolean);
   const rel = document.querySelector('a[rel="next"], link[rel="next"]');
@@ -341,7 +409,8 @@ export function goNext() {
   const controls = [...document.querySelectorAll('a, button, [role="button"]')].filter(visible);
   const next = controls.find(node => labels(node).some(text => NEXT.test(text)));
   if (next) { (globalThis.__jobadabraPress?.(next) || next.click()); return 'next button'; }
-  const current = document.querySelector('[aria-current="page"], [aria-current="true"], .active > a, li.selected');
+  // Why (#3710, the structural copy): the site's top menu marks its own current link first; the pager's current page is the marked one that is a number.
+  const current = [...document.querySelectorAll('[aria-current="page"], [aria-current="true"], .active > a, li.selected')].find(node => /^\d+$/.test((node.innerText || '').trim()));
   const number = Number((current?.innerText || '').trim());
   if (number) {
     const following = controls.find(node => (node.innerText || '').trim() === String(number + 1));
