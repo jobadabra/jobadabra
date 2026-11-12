@@ -104,6 +104,16 @@ class Verdict(unittest.TestCase):
         self.assertEqual(code, 0, text)
         self.assertIn("clock cliff on main's band 1", text)
 
+    def test_a_pr_side_that_asks_beyond_the_recording_in_one_pair_of_three_is_the_runners_clock_never_held(self):
+        """#3878, 12 Nov 2026: a PR that changes no file a search runs was held because one PR-side replay of one person got further than main's."""
+        once = [({}, {'gap': True}), ({}, {}), ({}, {})]
+        code, text = self.run_verdict(self.band(), once)
+        self.assertEqual(code, 0, text)
+        self.assertNotIn('recording too old for this PR', text)
+        code, text = self.run_verdict(self.band(), [({}, {'gap': True})] * 3)
+        self.assertEqual(code, 1, 'positive control: beyond the recording in all 3 pairs is a changed path, held')
+        self.assertIn('recording too old for this PR', text)
+
     def test_a_recording_too_old_for_this_pr_is_held_by_a_live_moves_line_only(self):
         old = [({}, {'gap': True, 'right': False})]
         code, text = self.run_verdict(self.band(), old)
