@@ -103,18 +103,15 @@ def answer_line(args, prompt, wait, env, clock=time.monotonic):
     own = tempfile.mkdtemp(prefix='jobadabra-codex-run-')
     try:
         with open(os.path.join(own, 'stderr.txt'), 'w', encoding='utf-8') as errors:
-            process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, cwd=own, env=env,
-                                       close_fds=True)
+            # UTF-8 both ways, as warm._spawn: Codex reads and writes UTF-8, a locale codec (cp1252 on Windows) mangles accents (Gitar on #3936).
+            process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, encoding='utf-8',
+                                       errors='replace', cwd=own, env=env, close_fds=True)
     except OSError:
         shutil.rmtree(own, ignore_errors=True)
         raise
     run = Spare(process, own, clock())   # reads its output in a daemon thread; end() lets it exit and removes its folder after
-    try:
-        process.stdin.write(prompt)
-        process.stdin.close()
-    except (OSError, ValueError):
-        pass   # it ended before reading its question: its output and exit code say why
     lines, until = [], clock() + wait
+    run.feed(prompt)   # from a thread: the deadline runs while the prompt is written
     while True:
         try:
             line = run.lines.get(timeout=max(0.0, until - clock()))

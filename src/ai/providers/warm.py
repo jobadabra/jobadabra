@@ -14,7 +14,7 @@ Invariants:
 - A spare that is dead or refuses the question is dropped and the caller asks a fresh process (cli_base.call): an answer is never lost or doubled.
 - No orphan: a spare's stdin is held only by this process (close_fds), so when the engine ends, however it ends, the spare reads end-of-input and exits
   (0.8 s measured); `close()` and the exit hook end them sooner. Timer and reader threads are daemons: they never hold the engine's exit.
-Guarded by tests/unit/ai/test_warm_claude.py and tests/unit/press/test_press_ends.py.
+Guarded by tests/unit/ai/test_warm_claude.py and tests/unit/press/test_press_ends.py; Spare also by tests/unit/ai/test_codex_answer_line.py.
 """
 import atexit
 import json
@@ -31,12 +31,13 @@ MAX_AGE_S = 600    # a spare this old is replaced, not used (its sign-in or the 
 
 
 class Spare:
-    """One started process waiting for its question; its output lines go to `lines` (a daemon thread reads them: works on Windows too)."""
+    """One started CLI process (a Claude Code spare here; a Codex call in codex_cli.answer_line): its output lines go to `lines` (a daemon thread
+    reads them: works on Windows too), its input is written by feed(), end() lets it exit and removes its folder."""
 
     def __init__(self, process, folder, born):
         self.process, self.folder, self.born = process, folder, born
         self.lines = queue.Queue()
-        threading.Thread(target=self._read, daemon=True, name='warm-claude-reader').start()
+        threading.Thread(target=self._read, daemon=True, name='cli-reader').start()
 
     def _read(self):
         try:
@@ -45,6 +46,17 @@ class Spare:
         except (OSError, ValueError):
             pass
         self.lines.put(None)   # end of output
+
+    def feed(self, text):
+        """Write its input and close it from a daemon thread, so the caller's deadline runs at once: a process that never reads its input cannot
+        hold the caller on a full pipe (a prompt over the pipe's 4-64 KB; Gitar on #3936); killing it ends the write too."""
+        def write():
+            try:
+                self.process.stdin.write(text)
+                self.process.stdin.close()
+            except (OSError, ValueError):
+                pass   # it ended before reading: its output and exit code say why
+        threading.Thread(target=write, daemon=True, name='cli-writer').start()
 
     def alive(self):
         return self.process.poll() is None
@@ -55,7 +67,7 @@ class Spare:
             self.process.stdin.close()
         except OSError:
             pass
-        threading.Thread(target=self._reap, daemon=True, name='warm-claude-reaper').start()
+        threading.Thread(target=self._reap, daemon=True, name='cli-reaper').start()
 
     def _reap(self):
         try:
@@ -197,12 +209,7 @@ class Warm:
         as its result line arrives (the process ends by itself after it). None when the spare took no question (dead, or its input closed): the
         caller asks a fresh process instead. Raises subprocess.TimeoutExpired as subprocess.run does (the process is killed)."""
         message = json.dumps({'type': 'user', 'message': {'role': 'user', 'content': prompt}}, ensure_ascii=False)
-        try:
-            spare.process.stdin.write(message + '\n')
-            spare.process.stdin.close()
-        except (OSError, ValueError):
-            spare.end()
-            return None
+        spare.feed(message + '\n')   # a spare that took no question (dead, input closed) ends its output unsaid: None below
         until, said = self.clock() + timeout, False
         while True:
             try:

@@ -24,6 +24,10 @@ FAKE = textwrap.dedent('''
     mode, folder = os.environ['FAKE_CODEX_MODE'], os.environ['FAKE_CODEX_DIR']
     if mode == 'crash':
         sys.exit(3)
+    if mode == 'deaf':   # never reads its input: a large prompt fills the pipe
+        with open(os.path.join(folder, 'seen.json'), 'w') as f:
+            json.dump({'pid': os.getpid()}, f)
+        time.sleep(3600)
     prompt = sys.stdin.read()
     with open(os.path.join(folder, 'seen.json'), 'w') as f:
         json.dump({'prompt': prompt, 'cwd': os.getcwd(), 'pid': os.getpid()}, f)
@@ -50,10 +54,10 @@ class AnswerLineTests(unittest.TestCase):
         (self.dir / 'fake_codex.py').write_text(FAKE)
         self.call_folder = tempfile.mkdtemp(prefix='codex-call-')
 
-    def run_fake(self, mode, wait=20):
+    def run_fake(self, mode, wait=20, prompt='Is SRE an engineering role?'):
         args = [sys.executable, str(self.dir / 'fake_codex.py'), 'exec', '--json', '-C', self.call_folder, '-']
         env = dict(os.environ, FAKE_CODEX_MODE=mode, FAKE_CODEX_DIR=str(self.dir))
-        return codex_cli.answer_line(args, 'Is SRE an engineering role?', wait, env)
+        return codex_cli.answer_line(args, prompt, wait, env)
 
     def seen(self):
         return json.loads((self.dir / 'seen.json').read_text())
@@ -98,6 +102,19 @@ class AnswerLineTests(unittest.TestCase):
         while _alive(pid) and time.monotonic() < deadline:
             time.sleep(0.05)
         self.assertFalse(_alive(pid), 'a silent Codex outlived its timeout')
+
+
+    def test_a_prompt_larger_than_the_pipe_to_a_codex_that_never_reads_still_times_out(self):
+        """Gitar on #3936: the prompt was written before the deadline started, so a full pipe held the call for ever."""
+        began = time.monotonic()
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.run_fake('deaf', wait=1, prompt='x' * 1_000_000)   # far over any pipe buffer (4-64 KB)
+        self.assertLess(time.monotonic() - began, 15, 'the call waited past its deadline on a full pipe')
+        pid = self.seen()['pid']
+        deadline = time.monotonic() + 20   # a hang guard only: the kill lands at once
+        while _alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(_alive(pid))
 
 
 class RunnerTests(unittest.TestCase):
