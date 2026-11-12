@@ -79,7 +79,7 @@ class Beside:
         # group past the titles' time); the whole group, when it ends, gives the list's order take() returns
         for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._hand):
             with self.count:
-                rest = [job for job in found if id(job) not in self.handed]   # a reader that hands no board on its own: its whole group
+                rest = [job for job in found if id(job) not in self.handed and job.get('url') not in self.urls]   # not handed board by board, by the other source either
                 self.order += [job.get('url') for job in found]
             if rest:
                 self._put(rest)
@@ -99,6 +99,7 @@ class Beside:
         # ended, which with one board still open is the search's own end, after the last hand-over: Vienna read 41 fitting jobs from three
         # boards and listed 0, Krakow 24 and 0. Each board is handed as it is kept; what the whole list still holds follows once.
         import inspect
+        # TODO(AI): pass on_board always once L10's proof stand-in (test_board_lane_clock board_list, a locked ledger proof) takes it (#3915)
         by_board = 'on_board' in inspect.signature(listed).parameters   # a stand-in list without boards of its own gives its whole list
         found = listed(on_board=self._hand) if by_board else listed()
         with self.count:
