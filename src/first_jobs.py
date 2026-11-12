@@ -42,7 +42,12 @@ def to_score(db, hidden):
 def board_jobs(say=print, search=None, on_board=None):
     """The jobs (as read) of the job boards that gave installs like this one the most jobs in their places (no AI call: the pool's
     ranking, src/ai/board_ideas.py proven), else of the first boards proposed for this search's countries that never refused us; read now,
-    and the full search's board read reuses the pages fetched here. Touches no job cache: it runs beside the employer sites' read.
+    and the full search's board read reuses the pages fetched here.
+    Why (12 Nov 2026, owner: "We should now from the start what boards/employers we should read first"; "let's tackle this" on "Measured
+    boards read at once, AI-named boards fill the rest"): proven boards used to replace the proposal, so one measured board meant a first
+    search of 1-3 boards instead of 6 (a France nurse: 16 relevant jobs against 19). Design, one owner each: the measured boards start at
+    once, with no AI answer; the proposal is asked beside them (propose_early); when it answers, its boards that are not being read take the
+    places left (SLICE_BOARDS in all) in the same read (found_boards.read `later`), never a second read or a second board memory. Touches no job cache: it runs beside the employer sites' read.
     on_board(jobs): each board's jobs as soon as that board is kept (found_boards.read), so one slow board holds back none of the others."""
     if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return []
@@ -50,10 +55,12 @@ def board_jobs(say=print, search=None, on_board=None):
     from .paths import load_search_config
     from .sources import found_boards
     search = search or load_search_config()
-    top, spare = board_ideas.proven(search, limit=SLICE_BOARDS), []
+    top, spare, later = board_ideas.proven(search, limit=SLICE_BOARDS), [], None
     if top:
         say(f"First jobs: reading {', '.join(board['name'] for board in top)}, the job board{'s' if len(top) > 1 else ''} that gave people "
             'like you the most jobs')
+        if len(top) < SLICE_BOARDS:   # the places left go to the boards the AI names meanwhile (propose_early), in this same read
+            later = lambda: _named_meanwhile(board_ideas, search)
     else:
         _wait_early(search)
         proposed = _proposed(board_ideas, search)
@@ -63,7 +70,7 @@ def board_jobs(say=print, search=None, on_board=None):
         say(f"First jobs: reading {', '.join(board['name'] for board in top)}, job board{'s' if len(top) > 1 else ''} for your country")
     # a board that refuses gives its place to the next proposed one at once, in the same read (19 Oct 2026: a second wave after the first
     # made Finance's slice wait 35 s)
-    return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare, on_board=on_board)
+    return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare, on_board=on_board, later=later)
 
 
 _early = {}   # the slice's board proposal asked once the employers are named (propose_early): {'search': ..., 'future': ...}
@@ -71,7 +78,7 @@ _early = {}   # the slice's board proposal asked once the employers are named (p
 
 def propose_early(search=None):
     """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, once the search has
-    named its employers (src/daily_search.py start_proposal), beside the reading -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
+    named its employers (src/daily_search.py start_proposal), beside the reading -> its future, or None when the slice needs none (proven boards for every place of the slice, the end-to-end fixture mode). The slice waits for
     it (_wait_early) and builds its list then, from the cached answers and the boards the pool serves at that time.
     Why (#2913, 2 Nov 2026): no longer asked at second 0. Its serial calls (field, then slice: 73 s on the Codex relay) held the shared AI while
     the employer pick's calls waited 15-25 s each, so the employers were named at 122 s and 0 of 15 were read (zero run 41346903877; the same step
@@ -86,7 +93,7 @@ def propose_early(search=None):
     from .ai import board_ideas
     from .paths import load_search_config
     search = search or load_search_config()
-    if board_ideas.proven(search, limit=SLICE_BOARDS):
+    if len(board_ideas.proven(search, limit=SLICE_BOARDS)) >= SLICE_BOARDS:   # every place of the slice is taken: no board of the proposal would be read
         return None
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
     future = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search)   # its boards are the slice's local boards
@@ -108,6 +115,14 @@ def _wait_early(search):
         future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
     except Exception:  # noqa: BLE001 — late or failed: the slice asks itself (a late answer is cached when it comes)
         pass
+
+
+def _named_meanwhile(board_ideas, search):
+    """The boards the AI proposed while the measured boards were being read (propose_early), for the places they left; none once the
+    search's read cut has come: nothing is asked or started past it."""
+    from .sources import read_budget
+    _wait_early(search)
+    return [] if read_budget.past_cut() else _proposed(board_ideas, search)
 
 
 def _refused(board_ideas):

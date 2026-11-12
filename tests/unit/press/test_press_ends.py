@@ -81,7 +81,7 @@ board_web._submit({}, {}, None, None)
     "the slice's board proposal (src/first_jobs.py propose_early)": ('''
 from src import first_jobs
 from src.ai import board_ideas
-board_ideas.proven = lambda *args, **kwargs: False
+board_ideas.proven = lambda *args, **kwargs: []
 board_ideas.ideas = blocking
 first_jobs.propose_early({'roles': ['SRE']})
 ''', ''),

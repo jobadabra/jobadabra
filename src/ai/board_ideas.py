@@ -99,6 +99,16 @@ def save(data):
     write_whole(file, json.dumps(data, ensure_ascii=False, indent=1))
 
 
+def save_read(data):
+    """Save the board memory a read held since it started, keeping the proposals cached while it ran.
+    Why (12 Nov 2026): a read loads the file, reads its boards for a minute and saves it whole; the proposal now answers during that read
+    (first_jobs.board_jobs `later`), and its cached answer was written over, so the search's full read asked the AI again."""
+    with STORE:
+        for key, answer in (load().get('ideas') or {}).items():
+            data.setdefault('ideas', {}).setdefault(key, answer)
+        save(data)
+
+
 SLICE = 5   # countries per proposal call; a region's countries are split into equal slices, each asked (26 Oct 2026: Europe = its first 5 only)
 
 
@@ -299,7 +309,7 @@ def ranked(boards, search):
 
 def proven(search, limit=2):
     """The boards that gave installs like this one jobs that FIT (rank_fit70 > 0), best first, without any AI call: read in the first-jobs
-    slice (src/first_jobs.py), and their existence is why no board proposal is asked at second 0 (first_jobs.propose_early).
+    slice (src/first_jobs.py) at once; the board proposal is asked beside them and fills the places they leave (first_jobs.board_jobs).
     Why (12 Nov 2026): jobs in places alone were enough, and a pool cell is one install's whole list credited to each of its families
     (installs 1, fit70 0): an electrician in Madrid and a car mechanic in Seville were "proven" an IT board, so no proposal was ever asked
     for Spain and the full board stage (which asks it) started past the read cut. Jobs in places without a fit job rank the board

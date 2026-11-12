@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -272,7 +272,7 @@ def _hand(turn, found, on_board):
         on_board(found)
 
 
-def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
+def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None, later=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
     full read, which asks the board in full and serves the pages the slice fetched from them instead of fetching them again. workers: boards
@@ -281,6 +281,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
     since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
     Each board is kept (and its titles and places judged) as soon as its own read ends; on_board(jobs) then gets its jobs, once per board kept.
+    later(): more boards, named while these are read (the AI's proposal beside the measured boards, first_jobs.board_jobs); the ones not
+    being read join this same read in the places left, as soon as they are named: one read, one board memory, one save.
     The jobs returned are in the list's order, whatever the threads' timing. Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/unit/sources/test_three_minutes.py)."""
     resume.ran('job boards')   # this process ran the step: its end-of-run count may say 0 (src/press/resume.py)
     if read_budget.past_cut():
@@ -418,8 +420,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
     # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
+    start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
+    feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
     # Why (#3892, 12 Nov 2026): kept in the list's order, a slow first board held the others' titles and places past the AI's time
-    for done, (future, result) in enumerate(read_budget.as_done(futures, cut), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
+    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])
@@ -436,7 +440,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     for read_item in reads:   # a board still open at the cut: its replacements read before it
         _kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
-    board_ideas.save(data)
+    board_ideas.save_read(data)
     jobs = [job for turn in by_turn for job in turn]
     board_employers.note(jobs, 'Job boards found')
     if more and read_budget.past_cut():   # found too late for this search: kept with the web search's boards, read by the next one

@@ -96,13 +96,16 @@ def result(future, at):
         return LEFT
 
 
-def as_done(futures, at):
+def as_done(futures, at, feeders=None):
     """(future, its result) for each of `futures` as it ends, until the cut `at`; then (future, LEFT) for each still open, in the given order.
     Futures that end together come in the given order. A failed read raises out of the loop once every read that ended with it is given (Gitar,
     #3892: none of them lost with it); the reads still open are not taken (the caller's stage guard reports the source). Not waiting for the
     slowest is the point:
-    Why (#3892, 12 Nov 2026): taken in the list's order, a slow first board held the boards read before it ended past the titles' time."""
-    pending = list(futures)
+    Why (#3892, 12 Nov 2026): taken in the list's order, a slow first board held the boards read before it ended past the titles' time.
+    feeders {future: join}: a future that names more reads; when it ends, join(its result) -> their futures, which are waited for with the
+    rest. A feeder is never given to the caller, ended or still open (found_boards.read `later`)."""
+    feeders = feeders or {}
+    pending = [*futures, *feeders]
     while pending:
         ended, _ = wait(pending, timeout=seconds_left(at), return_when=FIRST_COMPLETED)
         if not ended:
@@ -112,12 +115,15 @@ def as_done(futures, at):
             pending.remove(future)
         failed = [future for future in batch if future.exception() is not None]
         for future in batch:
-            if future not in failed:
+            if future in feeders and future not in failed:
+                pending.extend(feeders[future](future.result()))
+            elif future not in failed:
                 yield future, future.result()
         if failed:
             raise failed[0].exception()
     for future in pending:
-        yield future, LEFT
+        if future not in feeders:
+            yield future, LEFT
 
 
 def over(at, index, now=None):
