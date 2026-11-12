@@ -34,10 +34,14 @@ export function read({out, name, code, seconds, label}) {
       boards[b[1]] = {jobs: Math.max(was.jobs, jobs), relevant: Math.max(was.relevant, relevant)}; }   // a board read twice keeps its best read, as funnel.py
     if (p) proposed.push(`${p[1].replace('proposed for ', '')}: ${p[2]}`);
   }
+  const lines = f => text(path.join(out, 'tape', f)).split('\n').filter(Boolean).flatMap(l => { try { return [JSON.parse(l)]; } catch { return []; } });
+  // A replayed run (--same-draw): the AI answers it asked live (not on the tape: src/search_tape.py keeps them with live: true) and the pages the tape lacked (missing.jsonl, served as unreachable)
+  const tape = fs.existsSync(path.join(out, 'tape')) ? {live: lines('ai.jsonl').filter(a => a.live).map(a => String(a.texts?.[0] ?? '').replace(/\s+/g, ' ').slice(0, 80)),
+    pagesMissing: lines('missing.jsonl').filter(m => m.web).length} : null;
   const kinds = {};
   for (const s of row?.sources || []) { const k = (kinds[s.kind || 'other'] ||= {sources: 0, open: 0, listed: 0, fit70: 0}); k.sources++; k.open += s.open || 0; k.listed += s.in_places || 0; k.fit70 += s.fit70 || 0; }
   const limit = all.split('\n').find(l => LIMIT.test(l));
-  return {label, code, wall: seconds, row, calls, steps, stages, kinds, boards, proposed, limit: limit ? limit.trim().slice(0, 160) : null,
+  return {label, code, wall: seconds, row, calls, steps, stages, kinds, boards, proposed, tape, limit: limit ? limit.trim().slice(0, 160) : null,
     tail: all.trim().split('\n').at(-1) || ''};
 }
 
@@ -45,6 +49,12 @@ export function read({out, name, code, seconds, label}) {
 export function notCounted(x) {
   return x.limit ? `the Claude plan limit was hit (${x.limit.slice(0, 80)})` : !x.row ? `no press row (${x.tail.slice(0, 60)})` : x.row.crashes?.length ? `${x.row.crashes.length} crash(es)` : null;
 }
+
+/** Whether a replayed run was proposed the same boards as the recording it replays (`draw`, its read), else 'draw NOT shared'. */
+export function drawShared(x, draw) {
+  return [...x.proposed].sort().join('\n') === [...draw.proposed].sort().join('\n') ? 'shared' : 'draw NOT shared';
+}
+const tapeCell = (x, draw) => (x.tape ? `${drawShared(x, draw)} · ${x.tape.live.length} live · ${x.tape.pagesMissing} off tape` : '–');
 
 /** The printed table: one column per run (before | after when two). */
 export function table(runs) {
@@ -59,6 +69,7 @@ export function table(runs) {
   const kinds = [...new Set(r.flatMap(x => Object.keys(x.kinds)))].sort();
   for (const k of kinds) add(`Listed from ${k} (sources · open → in places · 70+)`, x => (x.kinds[k] ? `${x.kinds[k].sources} · ${x.kinds[k].open} → ${x.kinds[k].listed} · ${x.kinds[k].fit70}` : 0));
   add('Employer sites read · jobs looked at', x => `${x.row.funnel?.employer_sites_read ?? '–'} · ${x.row.funnel?.looked ?? '–'}`);
+  if (runs[0].draw) add('Same draw? (boards proposed · AI live · pages off tape)', x => tapeCell(x, runs[0].draw));
   add('Job boards read · their jobs · relevant', x => `${x.row.funnel?.boards_read ?? '–'} · ${x.row.funnel?.board_jobs ?? '–'} · ${x.row.funnel?.board_relevant ?? '–'}`);
   add('Web searches · found', x => `${x.row.funnel?.web_searches ?? '–'} · ${x.row.funnel?.web_found ?? '–'}`);
   add('Titles asked by the title step · matched', x => `${x.row.funnel?.titles_asked ?? '–'} · ${x.row.funnel?.matches ?? '–'}`);
@@ -105,7 +116,7 @@ export function verdict(a, b) {
 }
 
 /** The --runs table: per side each run's listed jobs and boards, the median and range of the counted runs, the boards each run read and the AI proposed, and the verdict of every side against side 1. */
-export function noise(sides, name) {
+export function noise(sides, name, draw) {
   const s = sides.map(side => ({...side, read: side.runs.map(run => read({...run, name}))}));
   const cell = x => (notCounted(x) ? 'NOT COUNTED' : `${x.row.in_places} · ${x.row.funnel?.boards_read ?? '–'} · ${x.row.funnel?.board_jobs ?? '–'} · ${x.row.funnel?.board_relevant ?? '–'}`);
   const counted = side => side.read.filter(x => !notCounted(x));
@@ -113,10 +124,15 @@ export function noise(sides, name) {
   const width = [44, ...s.map(() => 36)], fmt = cells => cells.map((c, i) => String(c).padEnd(width[i])).join(' │ ').trimEnd();
   const rows = [fmt([`${name} · ${Math.max(...s.map(x => x.runs.length))} runs a side`, ...s.map((x, i) => `side ${i + 1}: ${x.label}`.slice(0, 36))]), '─'.repeat(width.reduce((t, w) => t + w + 3, 0))];
   for (let i = 0; i < Math.max(...s.map(x => x.read.length)); i++) rows.push(fmt([`Run ${i + 1}: listed · boards read · jobs · relevant`, ...s.map(x => (x.read[i] ? cell(x.read[i]) : '–'))]));
+  if (draw) for (let i = 0; i < Math.max(...s.map(x => x.read.length)); i++) rows.push(fmt([`Run ${i + 1}: same draw? · AI live · pages off tape`, ...s.map(x => (x.read[i] ? tapeCell(x.read[i], draw.read) : '–'))]));
   rows.push(fmt(['Jobs listed in your places: median (range)', ...s.map(x => spread(counted(x).map(r => r.row.in_places)))]));
   rows.push(fmt(['Board jobs relevant: median (range)', ...s.map(x => spread(counted(x).map(r => r.row.funnel?.board_relevant ?? 0)))]));
   rows.push(fmt(['Runs counted', ...s.map(x => `${counted(x).length} of ${x.read.length}`)]));
   for (const x of s) x.read.forEach((r, i) => notCounted(r) && rows.push(`⛔ NOT COUNTED (side ${s.indexOf(x) + 1}, run ${i + 1}): ${notCounted(r)}; left out of the median, not re-run`));
+  if (draw) {
+    rows.push('', `The shared draw (recorded by side 1's code, not counted: listed ${draw.read.row.in_places}): ${draw.out}`, ...draw.read.proposed.map(p => `  proposed ${p.slice(0, 150)}`));
+    for (const [j, x] of s.entries()) x.read.forEach((r, i) => r.tape?.live.forEach(a => rows.push(`  side ${j + 1} run ${i + 1} AI answered live (not on the tape): ${a}`)));
+  }
   rows.push('', 'Job boards read (relevant/jobs) and the boards the AI proposed, per run:');
   for (const [j, x] of s.entries()) x.read.forEach((r, i) => {
     rows.push(`  side ${j + 1} run ${i + 1} read: ${Object.entries(r.boards).map(([b, n]) => `${b.replace(/ \(.*$/, '')} ${n.relevant}/${n.jobs}`).join(', ') || 'none'}`);
