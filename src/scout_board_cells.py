@@ -79,6 +79,10 @@ def pick(db, today=None, priority=(), named=(), only=None):
     only: the countries this pick may give (a lane of src/scout_board_lanes.py reads its own country or nothing); None = any."""
     today = today or date.today()
     again = {country: boards for country, boards in stale(db, today).items() if only is None or country in only}
+    if named and only is not None:   # a lane: cells named for another country are not its own, and its merge would drop them
+        named = [cell for cell in named if cell[0] in only]
+        if not named:
+            return None
     if named:
         country = named[0][0]
         return country, [family for code, family in named if code == country][:PER_RUN], again.get(country, [])

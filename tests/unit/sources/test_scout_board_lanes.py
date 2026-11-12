@@ -58,6 +58,14 @@ class Countries(unittest.TestCase):
         self.assertEqual(families, FAMILIES[:cells.PER_RUN])
         self.assertIsNone(cells.pick(self.db, TODAY, only={'de'}), 'a lane whose country has nothing open reads nothing, never another lane\'s country')
 
+    def test_a_lane_never_reads_cells_or_a_country_named_for_another_lane(self):
+        self.assertIsNone(cells.pick(self.db, TODAY, named=[('nl', FAMILIES[0])], only={'sk'}), 'its merge would drop them: nothing is read')
+        self.assertEqual(cells.pick(self.db, TODAY, named=[('nl', FAMILIES[0]), ('sk', FAMILIES[1])], only={'sk'})[:2], ('sk', [FAMILIES[1]]))
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {lanes.ONLY_ENV: 'sk', 'SCOUT_BOARD_COUNTRY': 'nl'}), \
+                mock.patch.object(scout_boards, 'run') as run, self.assertRaises(SystemExit):
+            scout.board_pass(os.path.join(folder, 'boards.sqlite'))
+        run.assert_not_called()
+
     def test_the_lane_s_country_comes_from_the_environment_and_an_unknown_one_stops_the_pass(self):
         self.assertIsNone(lanes.only(''))
         self.assertEqual(lanes.only('Slovakia'), {'sk'})

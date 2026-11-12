@@ -217,6 +217,8 @@ def board_pass(db_path, lanes=0, merge=None):
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
+        if named and (scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV)) or {named}) != {named}:   # its merge keeps the lane's own country only
+            raise SystemExit('Board pass: SCOUT_BOARD_COUNTRY names another country than this lane\'s SCOUT_BOARD_ONLY')
         scout_boards.ensure(db)
         scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
         scout_board_cells.keep_stops(db, os.environ.get('SCOUT_BOARD_SEED_DB'))   # the Scout's own stops: discovery keeps its own database
