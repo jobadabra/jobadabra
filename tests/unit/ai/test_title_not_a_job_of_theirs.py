@@ -26,8 +26,9 @@ class NotAJobOfTheirsTest(unittest.TestCase):
         self.assertIn('pre-sales', title_triage.SYSTEM)
 
     def test_the_lenient_rule_still_holds(self):
-        self.assertIn('When unsure, include it: a later step scores each job.', title_triage.SYSTEM)
-        self.assertIn('a close neighbour of their work at a similar level', title_triage.SYSTEM)
+        # Why-changed (12 Nov 2026, owner: "Three answers, neighbours wait (Recommended)"): an unsure title is still kept and scored, as a neighbour (`near`), no longer listed as a fit one.
+        self.assertIn('when unsure whether to leave a title out, say `near`: a later step scores each neighbour before it is shown.', ' '.join(title_triage.SYSTEM.split()))
+        self.assertIn('a close neighbour of their work at a similar level', ' '.join(title_triage.SYSTEM.split()))
 
 
 class AnswersKeptUnderTheOldPromptTest(unittest.TestCase):

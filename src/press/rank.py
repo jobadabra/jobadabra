@@ -88,6 +88,12 @@ def fresh(job):
     return job.get('first_seen_at') or ''
 
 
+def fit_before_neighbour(is_near):
+    """0 for a job whose title is the person's own kind of work, 1 for a close neighbour of it (src/ai/title_triage.py near): a search's scores go to the fit ones first,
+    since a neighbour is listed only once it is scored (owner, 12 Nov 2026: "Three answers, neighbours wait")."""
+    return lambda job: 1 if is_near(job) else 0
+
+
 def waiting_for_score(group):
     """The group of the job in `group` ({id(job): key}): a new job (0, 0), a changed one (1, 0), a Profile edit's best previous score first (2, -score). Reproduces: score.pending_jobs's
     last stable sort (3 Nov 2026, #3074, #3089)."""

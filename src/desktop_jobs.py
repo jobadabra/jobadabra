@@ -3,6 +3,7 @@
 Guarded by tests/unit/stores/test_desktop.py, tests/unit/notion/test_desktop_notion_list.py, tests/unit/ai/test_refresh_batch.py, tests/unit/sources/test_places_strict.py.
 """
 import sqlite3
+import sys
 from datetime import datetime, timedelta, timezone
 
 from . import digest, store
@@ -56,6 +57,24 @@ def has_kit(stage, step):
 _place_unclear = digest.place_unclear   # one rule for the Jobs list and the digest
 
 
+def _neighbours():
+    """The title keys the AI title sort called a close neighbour of the person's work, not the work itself (src/ai/title_triage.py near), and the key of a title. Read from
+    the store at each list: the search that sorted the titles ran in another process. Nothing for a store read without the search."""
+    try:
+        from .ai import title_triage
+        from .sources import feeds
+        return title_triage.near(feeds._SEARCH), feeds.title_key
+    except Exception as error:  # noqa: BLE001 — the list never fails on a sort it cannot read
+        print(f'Jobs: the title sort\'s close neighbours could not be read ({type(error).__name__}); they are listed before their score this time', file=sys.stderr, flush=True)
+        return set(), str
+
+
+def _waits(job, fit, held):
+    """True for a job that is counted as waiting instead of listed: held back (`held`: every unscored one, or a close neighbour of the person's work), not scored yet,
+    never looked at by the person and not imported by them. One rule for both list modes."""
+    return bool(held) and not fit and (job.get('application_status') or 'unreviewed') == 'unreviewed' and (job.get('notes') or '') != 'imported'
+
+
 def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=None, hide_unscored=False):
     """The Jobs list, best fit first (unscored after scored, then the rule-based rank).
 
@@ -65,6 +84,7 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
     stages: job URL -> (Stage, Next step, page URL), for the cache-only list."""
     stages = stages or {}
     waiting = 0
+    close, key_of = _neighbours()
     candidates, blocked = digest.eligible_jobs(db)
     fits = score.load(db)
     facts = enrich.load(db)   # the AI's reading of each posting: the skills shown as tags under a job
@@ -131,7 +151,8 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                 # Found, not read and scored yet: a refresh takes them a batch at a time (src/daily.py), so they wait, counted, not listed as
                 # matches (owner, 7 Oct 2026: half the list showed "–"). Without an AI nothing would ever score them: then they are listed.
                 unclear = not fit and _place_unclear(job)
-                if hide_unscored and not fit and not unclear and (job.get('application_status') or 'unreviewed') == 'unreviewed' and (job.get('notes') or '') != 'imported':
+                # Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Three answers, neighbours wait (Recommended)"): a close neighbour of the person's work is listed once its score is in, never before.
+                if not unclear and _waits(job, fit, hide_unscored or key_of(job.get('title')) in close):
                     waiting += 1
                     continue
                 rows.append(row(job, fit.get('score') if fit else None, (fit.get('summary') or fit.get('reason')) if fit else '',
@@ -150,6 +171,9 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                 if truth != (job.get('application_status') or 'unreviewed'):
                     store.set_application_status(db, job['id'], truth)
                     job = {**job, 'application_status': truth}
+            if _waits(job, fit, key_of(job.get('title')) in close) and not _place_unclear(job):
+                waiting += 1   # a close neighbour of the person's work, not scored yet: listed with its score, as in the branch above (12 Nov 2026)
+                continue
             rows.append(row(job, fit.get('score') if fit else None, (fit.get('summary') or fit.get('reason')) if fit else '',
                             job.get('application_status') or 'unreviewed', stage, step, page, fit_detail=_fit_detail(fit),
                             place_unclear=not fit and _place_unclear(job)))

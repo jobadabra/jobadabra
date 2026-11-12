@@ -19,7 +19,7 @@ import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {endBrowser} from '../../e2e/lib/browser-end.mjs';
 import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 import {boardReadBrowser, FOLDER} from '../../lib/headless-boards-beside.js';
-import {boardsStep} from '../../lib/headless-boards.js';
+import {LOAD_MS, boardsStep, nap} from '../../lib/headless-boards.js';
 import {POST_CORS, jsonBody, jsonHeaders, preflight} from '../../lib/server-http.js';
 
 const TEST_MS = 90000;   // a hang guard: the start takes ~1-3 s, each board a second or two
@@ -42,7 +42,7 @@ test('a board that refuses plain reading is read in the headless Chrome, honestl
     const host = String(request.headers.host || '').split(':')[0];
     seen.push({host, path: request.url, agent: String(request.headers['user-agent'] || ''), cookie: request.headers.cookie || ''});
     const browser = request.headers['sec-fetch-mode'] === 'navigate';
-    if (host === OPEN && browser) { response.writeHead(200, {'content-type': 'text/html', 'set-cookie': 'visit=1; Secure; Path=/'}); response.end(PAGE); return; }
+    if (host === OPEN && browser) { response.writeHead(200, {'content-type': 'text/html', 'set-cookie': 'visit=1; Secure; Path=/'}); response.flushHeaders(); setTimeout(() => response.end(PAGE), 400); return; }   // the body arrives after the headers, as on a slow runner: the read must wait for the page's load, not for luck
     response.writeHead(host === OPEN || host === SHUT ? 403 : 404, {'content-type': 'text/plain'}); response.end('refused');
   });
   const app = http.createServer((request, response) => { if (preflight(request, response, POST_CORS)) return; request.resume(); request.on('end', () => { jsonHeaders(response, 200, POST_CORS); jsonBody(response, {ok: true, jobs: []}); }); });
@@ -61,11 +61,14 @@ test('a board that refuses plain reading is read in the headless Chrome, honestl
     seen.length = 0;
     at('the step reads both boards in the real headless browser');
     const browser = boardReadBrowser(storage, {root, find: () => chromium.executablePath(), reaper: () => {}, spawn: (file, args, options) => spawn(file, args, {...options, env: {...process.env, ...env}})});
-    const judged = [], outcomes = [];
+    const judged = [], outcomes = [], waits = new AbortController();
     const result = await boardsStep({browser, start: () => browser.start({port: app.address().port, token: 'stand-in-token'}),
       queue: async () => [{url: `https://${OPEN}/jobs?q=nurse`, name: 'Open board', kind: 'board'}, {url: `https://${SHUT}/jobs?q=nurse`, name: 'Shut board', kind: 'board'}],
       begin: async () => true, judge: async page => { judged.push(page.url); return 'page'; }, outcome: async page => { outcomes.push(page); return {ok: true, state: page.status === 200 ? 'read' : 'stopped', jobs: page.status === 200 ? 2 : 0}; },
-      sleep: async () => {}});
+      // Why (12 Nov 2026, sa; #3908's red on unchanged code): a sleep that returns at once also ended the read's wait for the page's load (lib/headless-boards.js readOne),
+      // so the snapshot raced the page: '' on a slow runner. Only the pause between boards is skipped; the load wait stays, ended by the load event (LOAD_MS is its hang guard).
+      sleep: ms => (ms >= LOAD_MS ? nap(ms, waits.signal) : Promise.resolve())});
+    waits.abort();   // the load waits that lost their race end here, not 15 s later
     assert.equal(result.state, 'done');
     assert.equal(outcomes[0].status, 200);
     assert.match(outcomes[0].html, /Nurse, day shift.*Nurse, night shift/s, 'the jobs the page\'s own script drew reached the engine');
