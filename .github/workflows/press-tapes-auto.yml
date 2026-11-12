@@ -14,7 +14,9 @@ run-name: Press tapes auto · the day's re-record
 # Trigger = the site Worker's timer (app-core/src/scheduler.js), or by hand; never each merge. Two kinds of start (owner, 13 Nov 2026, asked via AskUserQuestion by mac-9a: "When the replay finds many empty": "The daily replay re-records by itself when it sees
 # several people with 0 jobs, then re-runs. It only spends a run when the recordings are stale."; rejected: "By hand after merge batches", "Add a second daily slot"):
 #    the day's run, 10:30 UTC (TAPES_SLOT; after the night's passes and Thursday's Search week), no input: the catch-all, it records any gap and its table always runs;
-#    the hourly look (TAPES_CHECK), input min_gaps = the line: the gap check is offline and free, `decide` records only when at least that many of the 18 people have a gap, else the run ends there with one summary line (no recording, no AI call, no table).
+#    the hourly look (TAPES_CHECK), input min_gaps = the line: the gap check is offline and free, `decide` records only when at least that many of the 18 people have a gap AND the last automatic re-record started 6 h or more ago
+#    (owner, 13 Nov 2026, asked via AskUserQuestion by mac-9a: "At most one every 6 h"; read from this workflow's past runs, tools/press-yardstick/rerecord_decision.py), else the run ends there with one summary line (no recording, no AI call, no table).
+#    The 10:30 run does not wait for the 6 h (any gap records), and its recording starts the 6 h for the looks after it.
 #    After a recording the band and the table replay main again, as always.
 # Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)": "recordings are renewed once after a day's merges instead of after each merge, which saves Codex-plan calls"):
 # about 11 search merges that day aged the recordings faster than 8 re-records renewed them (the replay measured 3 of 18 people), and the replay no longer decides a PR (tools/press-yardstick/verdict.py).
@@ -52,6 +54,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read   # the last re-record's start, from this workflow's past runs (the 6 h rule)
     outputs:
       record: ${{ steps.line.outputs.record }}
       daily: ${{ steps.line.outputs.daily }}
@@ -61,6 +64,8 @@ jobs:
           sparse-checkout: tools/press-yardstick
       - id: line
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           PERSONAS: ${{ needs.gaps.outputs.personas }}
           MIN_GAPS: ${{ inputs.min_gaps }}
         run: python3 -I tools/press-yardstick/rerecord_decision.py
