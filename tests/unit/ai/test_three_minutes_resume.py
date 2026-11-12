@@ -98,14 +98,17 @@ class ARunResumesWhereTheLastOneStopped(Isolated):
 
         def read_board(b, *a, **k):
             reads[run[0]].append(b['host'])
-            time.sleep({'b3.test': 3, 'b4.test': 1.2}.get(b['host'], 0))   # b3: open at the cut; b4: read, its other ways due past it
+            time.sleep({'b3.test': 3, 'b4.test': 1.2, 'b5.test': 0.3}.get(b['host'], 0))   # b3: open at the cut (1.5 s); b4: read before it
             return [job(b['host'])], 'ok', None
 
         def another_way(b, entry, proposed, search, fetch, judge, before, show=None):
             ladders[run[0]].append(b['host'])
             return before
         boards = [board(i) for i in range(6)]
-        relevant = lambda found: [j for j in found if j['id'] != 'b4.test']   # noqa: E731 — b4 gives no job in your roles: its ladder is due
+        def relevant(found):   # b4 gives no job in your roles: its ladder is due
+            if run[0] == 1 and any(j['id'] == 'b5.test' for j in found):   # b5's judging holds the one keeping thread past the cut, so b4,
+                time.sleep(1.6)   # read before the cut, is kept after it: its other ways wait (boards are kept as they end, bj 12 Nov 2026)
+            return [j for j in found if j['id'] != 'b4.test']
         with mock.patch('src.ai.board_ideas.load', return_value=store), mock.patch.object(found_boards, 'read_board', side_effect=read_board), \
                 mock.patch.object(found_boards, '_another_way', side_effect=another_way):
             time_budget.start(BUDGET)

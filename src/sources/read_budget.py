@@ -10,7 +10,7 @@ Tests: tests/unit/sources/test_three_minutes.py, tests/unit/sources/test_read_cu
 A lane of its own (src/ai/slots.py in_lane: the job boards, src/sources/boards_first.py Beside) reads to the run's end instead of this cut; every
 read in its threads (slots.carry) sees that end as its cut. Tests: tests/unit/sources/test_board_lane_clock.py."""
 import json
-from concurrent.futures import TimeoutError as Late
+from concurrent.futures import FIRST_COMPLETED, TimeoutError as Late, wait
 from datetime import datetime
 
 from .. import paths, time_budget
@@ -94,6 +94,22 @@ def result(future, at):
         return future.result(timeout=seconds_left(at))
     except Late:
         return LEFT
+
+
+def as_done(futures, at):
+    """(future, its result) for each of `futures` as it ends, until the cut `at`; then (future, LEFT) for each still open, in the given order.
+    Futures that end together come in the given order. A failed read raises as result() does. Not waiting for the slowest is the point:
+    Why (bj, 12 Nov 2026): taken in the list's order, a slow first board held 4 boards read at 13-59 s to 118 s of a 135 s run, after the titles' time."""
+    pending = list(futures)
+    while pending:
+        ended, _ = wait(pending, timeout=seconds_left(at), return_when=FIRST_COMPLETED)
+        if not ended:
+            break
+        for future in [future for future in pending if future in ended]:
+            pending.remove(future)
+            yield future, future.result()
+    for future in pending:
+        yield future, LEFT
 
 
 def over(at, index, now=None):

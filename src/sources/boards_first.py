@@ -73,8 +73,10 @@ class Beside:
         if wait is None:
             left = read_budget.seconds_left(read_budget.cut_at())
             wait = WEB_WAIT if left is None else max(0.0, left)
-        for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside'):
-            self._put(found)
+        # Why (bj, 12 Nov 2026): each board handed as it is kept, not its group at its slowest board's end (a board kept at 103 s waited to 142 s)
+        for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._put):
+            if found:   # a reader that hands no board on its own gives its group here
+                self._put(found)
 
     def _listed(self, listed):
         """A first run's own boards (the pool's proven ones, else the ones proposed for your country), read as the first-jobs step read them.
