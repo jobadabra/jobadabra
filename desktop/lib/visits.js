@@ -435,7 +435,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     tee(siteLine(ok ? 'done' : state.closed ? 'closed' : 'stopped', site.name, ok ? `${state.jobs} job${state.jobs === 1 ? '' : 's'} read (${state.added || 0} new), ${fits} matching your search${cut}` : state.stopped || 'nothing read'));
     tee(`⏳ Finding jobs in your browser: ${doneCount} of ${sites.length} · ${percent(doneCount, sites.length)}% · ${site.name}: ${ok ? `${state.jobs} jobs` : 'stopped'}`);   // the window's running step
     log('visit', 'site read by the Actions task', {host: new URL(site.url).hostname, jobs: state.jobs || 0, added: state.added || 0, fits, pages: state.pages || 0, stopped: String(state.stopped || '').slice(0, 80)});
-    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state), answered: answered || !!state.answered};
+    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: blockedOf(state), pages: state.pages || 0, answered: answered || !!state.answered};
   };
   active = {queue, sites, lastPage: new Map(), tickets: new Map(), back: site => {   // "Open again": the site is next once more, and no longer counted as finished
     if (queue.includes(site)) return;
