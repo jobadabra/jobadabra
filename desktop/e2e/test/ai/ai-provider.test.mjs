@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {aiProvider, providerLine} from '../../lib/ai-provider.mjs';
-import {AUDIENCE, BROKER_URL, aiLine, askBroker, failureOf, resetTold, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
+import {AUDIENCE, BROKER_URL, aiLine, askBroker, failureOf, resetTold, runToken, tierOf, toBrokerCall} from '../../lib/broker-client.mjs';
 
 test('the switch: input beats a job override beats the repo variable beats the default; nothing silently changes provider', () => {
   const ci = {CI: 'true'};
@@ -147,6 +147,21 @@ test('every address failing still names a cause, and no cause leaves the message
 test('a network failure on the way to the run token is not called a job without id-token', async () => {
   const answer = await askBroker({model: 'x', messages: []}, {env, fetchImpl: async () => { throw Object.assign(new TypeError('fetch failed'), {cause: {code: 'EAI_AGAIN', message: 'getaddrinfo EAI_AGAIN'}}); }});
   assert.deepEqual(answer, {ok: false, status: 'unreachable', detail: 'no run token from GitHub: fetch failed (EAI_AGAIN: getaddrinfo EAI_AGAIN)'});
+});
+
+// 12 Nov 2026, press-tapes-auto run 43232268713: GitHub's token service answered "upstream connect error…" (not JSON) on 18 calls; each became a refused AI call and
+// tapes 10, 11 and 14 were not kept. GitHub's own 5xx gets one more try after ~10 s (the owner's "One retry on GitHub errors", 3 Nov 2026, tools/gh_retry.py).
+test('a run token: GitHub\'s own 5xx is asked once more; a second one names the status and GitHub\'s words', async () => {
+  const slept = [], sleep = async ms => { slept.push(ms); };
+  const reply = (status, body) => new Response(body, {status});
+  let answers = [reply(503, 'upstream connect error or disconnect/reset before headers'), reply(200, JSON.stringify({value: 'tok'}))];
+  assert.equal(await runToken(env, async () => answers.shift(), sleep), 'tok');
+  assert.deepEqual(slept, [10000]);
+  answers = [reply(503, 'upstream connect error'), reply(502, 'upstream reset')];
+  await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 502: upstream reset/);
+  answers = [reply(403, 'forbidden'), reply(200, JSON.stringify({value: 'never'}))];
+  await assert.rejects(runToken(env, async () => answers.shift(), sleep), /HTTP 403: forbidden/);   // not GitHub's 5xx: never asked again
+  assert.equal(answers.length, 1);
 });
 
 test('the judges on codex: an answer returns in Messages shape; a broker refusal is a skip with its reason, said by the runner\'s cap path', async () => {

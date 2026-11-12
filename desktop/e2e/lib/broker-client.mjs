@@ -4,6 +4,7 @@
 // Job: report health
 // Why (2 Nov 2026, ai-broker 6/7): the broker accepts both audiences until 7/7; the old one is dropped there.
 export const AUDIENCE = 'jobadabra-ai-broker';
+const GITHUB_RETRY_MS = 10000;   // GitHub's own 5xx on the run token: one more try, as tools/gh_retry.py does for gh
 const RETRY_AFTER_MS = 30000;   // the one retry of a 5xx the broker gave no reason for (see askBroker's Why)
 /** The broker's address: takes env, returns AI_BROKER_URL when set, else the old CODEX_BROKER_URL (still honoured), else the deployed workers.dev address (jobadabra-web workers/ai-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.AI_BROKER_URL || env.CODEX_BROKER_URL || 'https://jobadabra-ai-broker.jobpilotto.workers.dev';
@@ -37,10 +38,16 @@ export function toBrokerCall(body) {
   return {tier: tierOf(body.model), ...(effort ? {effort} : {}), ...(search ? {search: true} : {}), ...(body.engine ? {engine: body.engine, ...(body.only ? {only: true} : {}), ...(body.subs ? {subs: true} : {})} : {}), ...(body.session ? {session: body.session, ...(body.delta ? {delta: body.delta} : {}), ...(body.endSession ? {endSession: true} : {})} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
 }
 
-/** This run's OIDC token for the broker (the workflow needs `permissions: id-token: write`), or null outside such a job. */
-export async function runToken(env = process.env, fetchImpl = fetch) {
+/** This run's OIDC token for the broker (the workflow needs `permissions: id-token: write`), or null outside such a job. Throws on a refusal, naming GitHub's status and words.
+ * Invariant: GitHub's own 5xx is asked once more after GITHUB_RETRY_MS; any other status is never asked again. */
+export async function runToken(env = process.env, fetchImpl = fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))) {
   if (!env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) return null;
-  const answer = await fetchImpl(`${env.ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}`, {headers: {authorization: `Bearer ${env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`}});
+  const ask = () => fetchImpl(`${env.ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}`, {headers: {authorization: `Bearer ${env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`}});
+  let answer = await ask();
+  // Why (12 Nov 2026, press-tapes-auto run 43232268713): GitHub's token service answered "upstream connect error…" on 18 calls and tapes 10, 11, 14 were thrown away;
+  //   the owner's "One retry on GitHub errors" (3 Nov 2026, tools/gh_retry.py) never reached this fetch, which also read the error page as JSON.
+  if (answer.status >= 500) { await sleep(GITHUB_RETRY_MS); answer = await ask(); }
+  if (!answer.ok) throw new Error(`HTTP ${answer.status}: ${(await answer.text().catch(() => '')).slice(0, 80)}`);
   return (await answer.json()).value || null;
 }
 
@@ -81,7 +88,7 @@ export function failureOf(error) {
  * Invariant: a 5xx with no `why` of the broker's is asked once more after RETRY_AFTER_MS; a 502 `codex-failed:` on a conversation call (a Codex turn that crashed or stalled; the broker restarts the conversation from the full prompt, which the body carries) is asked once more at once; any other reason is never asked again. At most two HTTP calls, never both rules.
  */
 export async function askBroker(body, {env = process.env, fetchImpl = fetch, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))} = {}) {
-  const token = await runToken(env, fetchImpl).catch(error => error);
+  const token = await runToken(env, fetchImpl, sleep).catch(error => error);
   // Why (4 Nov 2026): a network failure on the way to GitHub's token service is not a job without id-token; the old catch said it was.
   if (token instanceof Error) return {ok: false, status: 'unreachable', detail: `no run token from GitHub: ${failureOf(token)}`};
   if (!token) return {ok: false, status: 'no-token', detail: 'no GitHub OIDC token here (the job needs permissions: id-token: write; a fork run has none)'};
