@@ -25,7 +25,7 @@ class ScorePlacesApart(unittest.TestCase):
         self.assertNotIn('Switzerland', text)
         self.assertNotIn('Zurich', text)
         self.assertNotIn('Within Europe', text)
-        self.assertIn('| Home base | Geneva |', text, 'where the person lives stays: the commute is scored from it')
+        self.assertNotIn('Home base', text, 'owner, 12 Nov 2026: the Profile location fills forms; the Strategy is the search')
         self.assertIn('Site reliability engineer, 8 years.', text)
 
     def test_the_search_places_come_from_strategy(self):
@@ -34,7 +34,7 @@ class ScorePlacesApart(unittest.TestCase):
         self.assertIn('Acceptable places: germany.', block)
 
     def test_a_profile_without_place_rows_is_sent_as_it_was(self):
-        plain = '# Profile\n\n| Home base | Geneva |\n\n# Experience\n\nRelocation assistance was part of my last move.\n'
+        plain = '# Profile\n\n| Languages | English, French |\n\n# Experience\n\nRelocation assistance was part of my last move.\n'
         self.assertEqual(self.sent(plain), plain.rstrip('\n'))
 
     def test_only_a_rows_form_is_dropped_never_the_persons_own_lines(self):
@@ -44,6 +44,11 @@ class ScorePlacesApart(unittest.TestCase):
         self.assertNotIn('Countries | Switzerland', text)
         self.assertIn('Relocation: moved the team from Zurich to Berlin, 2022', text)
         self.assertIn('- Countries: led rollouts in DE, FR, IT', text)
+
+    def test_the_score_judges_location_from_the_search_places_not_where_the_person_lives(self):
+        self.assertNotIn('commute from the home base', score.SYSTEM)
+        self.assertIn('outside the places they search is a location', score.SYSTEM)
+        self.assertIn('Only when no places are given, judge from the home base', score.SYSTEM)
 
     def test_with_no_strategy_places_the_profile_rows_stay_the_scorers_only_places(self):
         self.assertEqual(self.sent(PROFILE, strategy={}), PROFILE)
