@@ -175,12 +175,12 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             entry = {'company': clean_name(meta['company']) or meta['company'], 'ats': system, 'slug': slug, 'kind': kind, 'tier': meta['tier'], 'quality': score,
                      'jobs': len(jobs), 'relevant': relevant_roles(jobs), 'checked': today, 'places': job_places(jobs),
                      }
-            # What it hires for, and per country: installs read one with jobs of their kind there. Judged first: its place answers are what the regions read.
-            # Why (5 Nov 2026, #2915): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed with no mix is still not read
+            # What it hires for, and per country: installs read one with jobs of their kind there.
+            # Why (5 Nov 2026, #2915; 12 Nov, sa-pane-kp): a re-read the AI could not judge rebuilt the entry without its mix (31 Oct: 47 feeds to 0 in a run with no calls); a feed
+            # with no mix is still not read. Judged before countries and regions, so they read its place answers and a place string is judged once (jobadabra-lab #87).
             mix = scout_carry.mix_fields(*scout_kind_counts.of_jobs(jobs), judged_before.get((system, slug), {}) if jobs else {})
             # Where its jobs are, as fixed ids (regions; countries for /admin/job-search/scouting's kind × country coverage): a place the AI did not answer keeps its last
             # answer. Why (6 Nov 2026, owner: "coverage is still empty"): a capped or cache-less re-read rebuilt 3,614 entries without their countries.
-            # Why (sa-pane-kp, 12 Nov 2026): countries, then regions, read the place answers made above, so a place string is judged once (jobadabra-lab #87).
             countries = pool_tags.countries_read(job_places(jobs, width=geo.KEY_WIDTH), scout_kind_counts.country_ids)
             entry.update(scout_carry.answer_fields({
                 'regions': scout_kind_counts.region_ids([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else [])),
