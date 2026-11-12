@@ -4,8 +4,22 @@ the places are not part of a score's input hash, each new score records the fing
 refresh queues the ACTIVE ones again (refresh). Guarded by tests/guards/data/test_score_locations.py."""
 import hashlib
 import json
+import re
 
 from ..notion.search_settings import readable
+
+
+# The Profile's older place rows (the template's "| Countries | … |", "Preferred cities", "Relocation"; desktop/renderer/preferences-model.js
+# FIELDS editedIn 'locations'), as a table row or a "- **Label:** value" line. Why (#3850, owner 12 Nov 2026: "I can have one location in profile, but
+# looking for another location in my search strategy" · "We should drop/delete the code"): the app hides these rows since 17 Oct and Strategy →
+# Locations owns where the person searches (block below), so the scorer never reads them beside it.
+PLACE_ROW = re.compile(r'^\s*(?:[-*]\s*)?\|?\s*\**\s*(?:countries|preferred cities|relocation)\s*\**\s*[:|]', re.I)
+
+
+def without_place_rows(profile):
+    """The scoring text without the Profile's older place rows (PLACE_ROW). Only the text the AI reads: a score's input hash still covers the whole
+    scoring text, so dropping these rows re-scores nothing (no paid re-run); a later edit of a hidden row re-scores as any Profile edit did."""
+    return '\n'.join(line for line in (profile or '').splitlines() if not PLACE_ROW.match(line))
 
 
 def current():

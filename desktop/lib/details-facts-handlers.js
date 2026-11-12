@@ -10,6 +10,7 @@ import * as kinds from './details-kinds.js';
 import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
+import {undo as undoSetAside} from './set-aside-undo.js';
 import {beforeSave, undoFold} from './eligibility-older.js';
 import {settle} from './eligibility-settle.js';
 import {suggest as suggestZones} from './zone-suggest.js';
@@ -98,6 +99,12 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       for (const key of Object.keys(sections.SECTIONS)) if (Array.isArray(facts?.[key])) await sections.save(storage, key, facts[key].map(line => ({label: String(line?.label || ''), value: String(line?.value || ''), ...(kinds.COMPOSITE_KINDS.includes(line?.kind) ? {kind: line.kind} : {}), ...(String(line?.note || '').trim() ? {note: String(line.note)} : {})})));
       return {ok: true};
     } catch (error) { return {ok: false, error: error.message}; }
+  });
+  // Undo of a Profile fact a "Which is right?" pick set aside (lib/set-aside-undo.js); it lived with the Locations card until #3850 removed that card.
+  ipcMain.handle('undoSetAside', async (_, id) => {
+    if (DEMO) return {ok: true};
+    const gate = needsNotion('profile');
+    return gate || undoSetAside(storage, String(id || '')).catch(error => ({ok: false, error: error.message}));
   });
   ipcMain.handle('resolveDetailsConflict', async (_, topic, pick) => {
     if (DEMO) return {ok: true};

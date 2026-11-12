@@ -1,5 +1,5 @@
 // "Which is right?" never deletes (owner, 17 Oct 2026: a card paired "Target ~CHF 10,000 net/month" with "Minimum CHF 150,000/year gross" and picking one
-// deleted the other): a different amount is two facts, not a conflict, and every pick (Profile facts and Locations) sets the other value aside where
+// deleted the other): a different amount is two facts, not a conflict, and every pick of Profile facts sets the other value aside where
 // "Set aside" shows it with Undo. The class test loops over every resolve path and checks each old value is still somewhere.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,8 +10,6 @@ import {createStorage} from '../../../lib/storage.js';
 import * as store from '../../../lib/store/index.js';
 import * as sections from '../../../lib/profile-sections.js';
 import {move, planOf, resolve} from '../../../lib/profile-move.js';
-import {moveLocations, resolveLocation} from '../../../lib/locations-store.js';
-import {CHOICES} from '../../../lib/locations-move.js';
 import {list} from '../../../lib/set-aside.js';
 import {undo} from '../../../lib/set-aside-undo.js';
 
@@ -49,32 +47,5 @@ for (const pick of [0, 1]) {
     assert.deepEqual((await sections.read(storage)).availability.map(line => line.value).sort(), [...values].sort(), 'Undo: both are lines again');
     assert.deepEqual(list(storage), []);
     assert.deepEqual(await undo(storage, aside[0].id), {ok: false, error: 'That is no longer set aside'});
-  });
-}
-
-const SEARCH = {locations: {top_tier: ['zurich'], country_wide: ['netherlands', 'germany'], abroad: []}};
-const ANSWER = {preferred: ['Zurich', 'Zug'], acceptable: ['Switzerland'], relocation: 'yes', destinations: ['Europe']};
-const ai = {client: {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify(ANSWER)}]})}}};
-const PROFILE = '## Hard constraints\n\n| Constraint | Value |\n|---|---|\n| Countries | Switzerland (anywhere) |\n| Preferred cities | Zurich, Zug |\n| Relocation | Within Europe |\n';
-
-for (const choice of CHOICES) {
-  test(`Locations: "${choice}" keeps every old value in the search settings or sets it aside; Undo restores the list`, async () => {
-    const storage = fresh();
-    await store.openStore(storage).page('profile').write(PROFILE);
-    storage.writeText('config/search.json', JSON.stringify(SEARCH));
-    await moveLocations(storage, {ai, backup: () => ({file: 'b'})});
-    const read = () => JSON.parse(storage.readText('config/search.json')).locations;
-    const before = read();
-    const result = await resolveLocation(storage, 'acceptable', choice, {places: ['Austria']});
-    assert.equal(result.ok, true);
-    const now = read(), aside = list(storage);
-    for (const place of before.country_wide) {
-      const kept = [...now.country_wide, ...(now.search_override || [])].includes(place) || aside.some(each => each.value.includes(place));
-      assert.ok(kept, `"${place}" is gone after ${choice}`);
-    }
-    for (const each of aside) {
-      assert.equal((await undo(storage, each.id)).ok, true);
-      assert.deepEqual(read().country_wide, before.country_wide, `Undo after ${choice}`);
-    }
   });
 }

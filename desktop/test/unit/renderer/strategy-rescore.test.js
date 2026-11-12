@@ -42,7 +42,7 @@ test('the re-score starts only from a dialog\'s own button, once at a time, unti
 
 test('no other path re-scores: saving settings never starts one by itself', () => {
   const renderer = ['renderer/pages/strategy.js', 'renderer/pages/strategy-targets.js', 'renderer/pages/strategy-cards.js', 'renderer/pages/main-goals.js', 'renderer/pages/strategy-suggestions.js', 'renderer/pages/job-preferences.js',
-    'renderer/pages/locations-which.js', 'renderer/pages/locations-card.js'];
+    'renderer/pages/locations-card.js'];
   for (const file of renderer) assert.doesNotMatch(read(file), /rescoreOutdated|reason: 'rescore'/, `${file} must not start a re-score`);
 });
 

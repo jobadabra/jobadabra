@@ -255,8 +255,6 @@ export function paletteCommands() {
     () => { openView('strategy'); setTimeout(() => { const box = $('strategy-advanced'); if (box) { box.open = true; box.scrollIntoView({block: 'start'}); } }, 300); });
   add('Strategy', finalText('nav50'), finalText('nav51'), 'locations places cities countries relocation remote preferred acceptable search coverage', locationsCard);
   if (shared.coverageActive) add('Strategy', finalText('nav52'), finalText('nav53'), 'reset search coverage override custom locations places', locationsCard);
-  if (shared.locationsOpen) add('Strategy', finalText('nav54'), finalText('nav55'), 'locations places conflict which right preferred acceptable relocation cities countries',
-    () => { openView('strategy'); setTimeout(() => $('strategy-locations-which')?.scrollIntoView({block: 'start'}), 300); });
   // Review your preferences lives in Job preferences' editor: opened first, then the AI reads the fields (pages/job-preferences.js).
   add('Strategy', finalText('nav56'), finalText('nav57'), 'job preferences review clean values ai',
     () => { openView('strategy'); setTimeout(() => { openCard('prefs'); reviewPreferences(); $('strategy-job-prefs')?.scrollIntoView({block: 'start'}); }, 300); });

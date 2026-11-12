@@ -12,7 +12,6 @@ export const messages = {
   "typeOrKeep": "Saisissez la réponse ou conservez-la telle quelle",
   "heading": "C’est un titre, pas une réponse : il n’est pas conservé",
   "choiceClosed": "Ce choix n’est plus ouvert",
-  "restoreMissing": "Cette liste n’a aucun emplacement où être restaurée",
   "restoreFailed": "L’enregistrement a échoué",
   "typeAnswerNow": "Saisissez la réponse",
   "restoreFactMissing": "Ce fait n’a aucun emplacement où être restauré"

@@ -1,4 +1,4 @@
-// Actual review and location callbacks preserve write safety and raw values while localizing owned display instructions.
+// Actual review callbacks preserve write safety and raw values while localizing owned display instructions.
 import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import {test,afterEach} from 'node:test';
@@ -15,13 +15,13 @@ const modules={
   'open-wording.js':{worded:forbidden('AI wording')},'missing-facts.js':{byId:()=>null},'fact-asks.js':{},
   'answer-clarity.js':{keepAsIs:(_s,ref)=>state().kept.push(ref)},'contact-review.js':{answer:async()=>state().delegated},'contact.js':{},'cv-queue.js':{answer:async()=>state().delegated},
   'eligibility-older.js':{folded:pass},'ai/anthropic-api.js':{anthropicApi:forbidden('paid AI')},'log.js':{log:pass},'profile-routing.js':{organize:forbidden('AI organize')},
-  'locations-same.js':{settleSame:forbidden('AI same places')},'strategy-settings.js':{saveSettings:forbidden('shared settings write')},
+  'strategy-settings.js':{saveSettings:forbidden('shared settings write')},
   'backup.js':{run:forbidden('backup')},'set-aside.js':{keep:(_s,entries)=>state().aside.push(...entries),list:()=>[]},
   'question-ai.js':{claudeAi:forbidden('account AI')},'set-aside-undo.js':{undo:async()=>{throw Error(state().raw);}},
   'shared-read.js':{afterWrite:fn=>fn},
 };
 globalThis.__detailNoticeModules=modules;
-const actual=new Set(['details-review.js','locations-store.js','locations-handlers.js','locations-move.js']);
+const actual=new Set(['details-review.js']);
 // Why (7 Nov 2026): real exported callbacks run with every external dependency replaced; assertions after callbacks catch swallowed boundary failures.
 registerHooks({load(url,context,next){
   if(!url.startsWith(lib)||actual.has(url.slice(lib.length)))return next(url,context);
@@ -31,18 +31,15 @@ registerHooks({load(url,context,next){
   return{format:'module',shortCircuit:true,source};
 }});
 const review=await import('../../../lib/details-review.js');
-const locations=await import('../../../lib/locations-store.js');
-const {registerLocationsHandlers}=await import('../../../lib/locations-handlers.js');
 afterEach(()=>setLocale('en'));
 function rig(t) {
-  const s={forbidden:[],writes:[],aside:[],kept:[],sections:{availability:[{label:'原文 {count}',value:'Müller this Mac <keep>',kind:'text',note:'raw note'}]},settings:{locationsMovedAt:'already',locationsConflicts:[]},search:{locations:{country_wide:['old raw']}}};
+  const s={forbidden:[],writes:[],aside:[],kept:[],sections:{availability:[{label:'原文 {count}',value:'Müller this Mac <keep>',kind:'text',note:'raw note'}]},settings:{},search:{}};
   globalThis.__detailNotices=s;
   t.mock.method(globalThis,'fetch',forbidden('network'));
   t.after(()=>assert.deepEqual(s.forbidden,[],'caught callbacks cannot hide forbidden access'));
   const storage={settings:()=>s.settings,saveSettings:patch=>{s.writes.push(['settings',patch]);Object.assign(s.settings,patch);},
     secret:forbidden('secret'),readText:()=>JSON.stringify(s.search),writeText:(_file,text)=>{s.writes.push(['search',JSON.parse(text)]);if(!s.failWrite)s.search=JSON.parse(text);}};
-  const handlers={};registerLocationsHandlers({ipcMain:{handle:(name,fn)=>handlers[name]=(...args)=>fn(null,...args)},storage,DEMO:false,needsNotion:()=>false,ai:()=>({}),log:pass});
-  return{s,storage,handlers};
+  return{s,storage};
 }
 const key=(kind,ref={})=>'details:'+kind+':'+JSON.stringify(ref);
 test('real review errors switch languages and stale choices never write',async t=>{
@@ -66,21 +63,6 @@ test('machine values and keep decisions remain canonical',async t=>{
   assert.deepEqual(await review.answer(storage,key('where',{page:'profile'}),review.KEEP),{ok:true,homeName:'Profile'});
   const ref={home:'availability',label:'A fact',value:'Raw fact'};
   assert.deepEqual(await review.answer(storage,key('unclear',ref),review.KEEP_AS_IS),{ok:true,homeName:'Availability & compensation'});assert.deepEqual(s.kept,[ref]);
-});
-test('actual location IPC preserves choices, raw errors, write values and queue safety',async t=>{
-  const {s,handlers}=rig(t);setLocale('fr');
-  assert.deepEqual(await handlers.resolveLocationConflict('acceptable','nonsense'),{ok:false,error:'Unknown choice'});
-  const stale=await handlers.resolveLocationConflict('acceptable','profile');assert.equal(stale.ok,false);assert.notEqual(stale.error,'That choice is no longer open');assert.deepEqual(s.writes,[]);
-  const conflict={kind:'acceptable',strategy:['old raw'],strategyFragments:['old raw'],profile:['東京 {count} this Mac']};s.settings.locationsConflicts=[conflict];s.failWrite=true;
-  const failed=await handlers.resolveLocationConflict('acceptable','profile');assert.equal(failed.ok,false);assert.notEqual(failed.error,'It did not save; nothing else changed');assert.deepEqual(s.settings.locationsConflicts,[conflict]);assert.equal(s.settings.searchChangedAt,undefined);
-  s.failWrite=false;assert.deepEqual(await handlers.resolveLocationConflict('acceptable','profile'),{ok:true});assert.deepEqual(s.search.locations.country_wide,conflict.profile);assert.deepEqual(s.settings.locationsConflicts,[]);assert.ok(s.settings.searchChangedAt);
-  s.raw='Provider 原文 {count} this Mac <keep>';assert.deepEqual(await handlers.undoSetAside('raw-id'),{ok:false,error:s.raw});
-});
-test('actual restore methods localize UI failures without changing restore values',async t=>{
-  const {s,storage}=rig(t);setLocale('it');const missing=await locations.restoreLocation(storage,{});assert.equal(missing.ok,false);assert.notEqual(missing.error,'That list has no place to go back to');assert.deepEqual(s.writes,[]);
-  const entry={restore:{key:'country_wide',list:['原文 {count}'],relocation:['yes']}};s.failWrite=true;
-  const failed=await locations.restoreLocation(storage,entry);assert.equal(failed.ok,false);assert.notEqual(failed.error,'It did not save');
-  s.failWrite=false;assert.deepEqual(await locations.restoreLocation(storage,entry),{ok:true});assert.deepEqual(s.search.locations.country_wide,entry.restore.list);assert.deepEqual(s.search.locations.relocation,['yes']);
 });
 test('seven catalogs have exact key, placeholder and plural parity at invocation time',async t=>{
   rig(t);const {catalogs,t:message}=await import('../../../i18n/detail-notices.js');
@@ -109,12 +91,6 @@ test('all authored review guards use display catalogs while heading and line saf
     }
   }
   assert.deepEqual(s.writes,[]);assert.deepEqual(s.kept,[]);
-});
-test('actual location errors preserve external failures and unknown validation text',async t=>{
-  const {s,storage}=rig(t);s.settings.locationsConflicts=[{kind:'acceptable',strategy:['A'],profile:['B']}];setLocale('es');
-  const raw='Provider 原文 {count} this Mac <keep>';
-  await assert.rejects(locations.resolveLocation(storage,'acceptable','profile',{write:async()=>{throw Error(raw);}}),error=>error.message===raw);
-  const invalid=await locations.resolveLocation(storage,'acceptable','invalid');setLocale('en');assert.deepEqual(await locations.resolveLocation(storage,'acceptable','invalid'),invalid);assert.equal(invalid.ok,false);assert.deepEqual(s.writes,[]);
 });
 
 test('delegated producer errors pass through unchanged after producer-owned localization',async t=>{

@@ -10,7 +10,6 @@ import * as sections from '../../../lib/profile-sections.js';
 import {_trees} from '../../../lib/notion-core.js';
 import {registerTextOutlineHandlers} from '../../../lib/text-outline-handlers.js';
 import {createStorage} from '../../../lib/storage.js';
-import * as locations from '../../../lib/locations-store.js';
 import {pageTree} from '../../../lib/notion.js';
 import * as questions from '../../../lib/questions.js';
 import * as strategySettings from '../../../lib/strategy-settings.js';
@@ -57,7 +56,6 @@ function readers(made) {
     'Application answers outline': () => outline('answers'),
     'Your details facts': () => sections.read(made),
     'Contact details': () => contact.read(made),
-    'Locations (Strategy)': () => locations.profileRows(made),
     'Questions drawer': () => questions.list(made),
     'Standard answers': () => questions.standardAnswers(made),
     'Strategy texts': () => strategySettings.profileTexts(made),

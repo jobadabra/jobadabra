@@ -103,7 +103,6 @@ export default {
   "nav51": "Lieux préférés et acceptables, mobilité et télétravail",
   "nav52": "Réinitialiser la couverture de recherche",
   "nav53": "Les recherches utilisent à nouveau vos préférences",
-  "nav55": "Vos paramètres de recherche et votre profil indiquent des lieux différents",
   "nav57": "L’IA lit vos préférences et propose des valeurs normalisées",
   "nav58": "Enregistrer un appel (accord de tous)",
   "nav59": "Remplir mes informations depuis mon CV",

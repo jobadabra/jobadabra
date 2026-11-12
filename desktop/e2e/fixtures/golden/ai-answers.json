@@ -141,25 +141,6 @@
         }
       }
     },
-    "locations_move": {
-      "answer": {
-        "reply": {
-          "id": "msg_e2e",
-          "type": "message",
-          "role": "assistant",
-          "model": "e2e-canned",
-          "stop_reason": "end_turn",
-          "stop_sequence": null,
-          "content": [
-            {
-              "type": "text",
-              "text": "{\"preferred\":[],\"acceptable\":[],\"relocation\":\"unspecified\",\"destinations\":[]}"
-            }
-          ],
-          "usage": {"input_tokens": 1, "output_tokens": 1}
-        }
-      }
-    },
     "contact_asks": {
       "answer": {
         "refuse": "invalid-key"

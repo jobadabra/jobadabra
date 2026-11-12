@@ -17,8 +17,7 @@ const refused = ['contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraf
 const empty = {answer_home: {items: []}, organize_lines: {items: []}, list_meanings: {lists: []},
   // Why (30 Oct 2026, bb 3/9): the Profile's two header-named reads that interactions reaches; an authored empty read keeps the chips and rows as typed.
   preferences_parse: {countries: [], cities: [], remote: 'unknown', languages: [], relocation: {answer: 'unknown', where: ''}, roles: [],
-    seniority: {min: 'unknown', max: 'unknown', open_ended: false}, employment: [], notes: [], unparsed: []},
-  locations_move: {preferred: [], acceptable: [], relocation: 'unspecified', destinations: []}};
+    seniority: {min: 'unknown', max: 'unknown', open_ended: false}, employment: [], notes: [], unparsed: []}};
 const table = loadTable(new URL('../../fixtures/golden/ai-answers.json', import.meta.url));
 const request = (action, body = {model: 'test', messages: [{role: 'user', content: 'Setup background read'}]}) => ({
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
