@@ -111,6 +111,10 @@ class JobsJudgedAfterTheSearch(unittest.TestCase):
         self.assertEqual([item['location'] for item in items], ['Known town'], 'the two that name no town are not listed on a guess')
         self.assertEqual(read.call_count, 0, 'no posting text: nothing to read, they wait')
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 2)
+        with mock.patch.object(feeds, 'place_of', lambda job: 'vague' if job['location'] == 'Late town' else None), mock.patch.object(place_triage, 'read', return_value={}):
+            for _ in range(3):   # #3924 review: with no posting text nothing was asked about their place, so no try is spent
+                waiting_jobs.judge(self.db, SEARCH, NOW)
+        self.assertEqual(waiting_jobs.count(self.db, SEARCH), 2)
 
     def test_a_changed_search_and_an_old_row_start_a_new_list(self):
         self.late_search()

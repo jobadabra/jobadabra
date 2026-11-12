@@ -98,8 +98,8 @@ class ScoreModeTests(unittest.TestCase):
                 'date_posted': '', 'remote': False, 'salary': ''}
         with closing(feeds.database(self.db_path)) as feed_db, mock.patch.object(waiting_jobs, '_worth', return_value=True):
             waiting_jobs.keep(feed_db, 'Example board', [late], datetime(2026, 11, 12, tzinfo=timezone.utc), search=load_search_config())
-        with mock.patch.object(title_triage, 'decide', return_value={}), mock.patch.object(feed_places, 'place_jobs'), mock.patch.object(feeds, 'placing', return_value=True), \
-                mock.patch.object(feeds, 'wanted_title', return_value=True), mock.patch.object(feeds, 'wanted_location', return_value=True):
+        with mock.patch.object(title_triage, 'decide', lambda titles, search, **kw: {feeds.title_key(title): True for title in titles}), \
+                mock.patch.object(feed_places, 'place_jobs'), mock.patch.object(feeds, 'placing', return_value=True), mock.patch.object(feeds, 'wanted_location', return_value=True):   # the AI's own yes lists it
             code, lines = self.run_mode()
         self.assertEqual(code, 0)
         checks = [line for line in lines if line.startswith('Check queue: ')]

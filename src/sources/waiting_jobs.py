@@ -92,7 +92,9 @@ def judge(db, search, now, out=print, land=None):
         feeds._triaged()[feeds.ASKED] = True
         feeds._triaged().update(title_triage.decide(open_titles, search, local=True, land=land))
     # Why (#3924 review, 12 Nov 2026): every row lost a try in every run, so three queues during an AI outage dropped jobs nobody was asked about.
-    answered = {job['url'] for job in jobs if feeds.judged_title(job['title']) is not None}
+    # A fitting job that names no town and has no posting text yet was asked nothing about its place: no try either (it leaves with DAYS).
+    unasked = lambda job: feeds.place_of(job) == 'vague' and not job.get('description')
+    answered = {job['url'] for job in jobs if feeds.judged_title(job['title']) is not None and not unasked(job)}
     # The AI's yes only, never the role words: a title it has not answered stays waiting (tests/unit/sources/test_titles_ai_first.py).
     fitting = [job for job in jobs if feeds.judged_title(job['title']) is True]
     feed_places.place_jobs(fitting, chosen=True)
