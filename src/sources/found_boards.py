@@ -189,7 +189,10 @@ def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=N
     fetch, show = _until_cut(fetch), show and _until_cut(show)
     page = board_forms.home(board, fetch)
     made = board_form_read.through_forms(board, entry, search, fetch, judge, show, read_board, board_forms.home_templates(board, fetch, page), len(before[2]), [], read_budget.past_cut)
-    if made and made is not board_form_read.CUT:   # its own search form gives more relevant jobs than the list that gave few
+    if made is board_form_read.CUT:   # the read cut came before its form was tried: no further page, and the next search tries again (Gitar, #3917)
+        entry.pop('few_for', None)
+        return before
+    if made:   # its own search form gives more relevant jobs than the list that gave few
         return made
     listed, section, scripted = _section(board, page, search, fetch, judge, show)
     more = judge(listed) if listed else []

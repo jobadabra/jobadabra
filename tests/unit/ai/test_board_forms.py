@@ -58,8 +58,11 @@ class PostedFormTests(unittest.TestCase):
     LIST = 'https://vacatures.example/jobs/?keywords={role}&location={place}'
 
     def test_a_posted_form_is_asked_as_a_get_link_at_the_search_page_not_its_action(self):
-        page = form('<input type="hidden" name="SearchWhere" value=""><input type="hidden" name="__token" value="abc123"><input name="SearchWhat" type="text">', action='/search/', method='post')
-        self.assertEqual(board_forms.templates(page, HOME, self.LIST), ['https://vacatures.example/jobs/?SearchWhere=&SearchWhat={role}'], 'no token value in the link')
+        token = 'ut0l3J0cZL6u3-7fFhdFrDgkORZ-8ySXMgVeHvexpJC8CMZVgKCBwf'
+        page = form(f'<input type="hidden" name="SearchWhere" value=""><input type="hidden" name="lang" value="de">'
+                    f'<input type="hidden" name="__token" value="{token}"><input name="SearchWhat" type="text">', action='/search/', method='post')
+        self.assertEqual(board_forms.templates(page, HOME, self.LIST), ['https://vacatures.example/jobs/?SearchWhere=&lang=de&SearchWhat={role}'],
+                         'a short constant stays as the form sends it; a token never goes into the kept link')
         self.assertEqual(board_forms.templates(page, HOME), [], 'with no search page to ask, a POST form is still never used')
 
     def test_a_posted_form_with_a_password_or_to_another_site_is_still_left_alone(self):
@@ -106,6 +109,17 @@ class PostedFormTests(unittest.TestCase):
                 mock.patch.object(found_boards.board_sections, 'read', return_value=([], None, False)):
             jobs = found_boards.read(SEARCH, [board], fetch=fetch, is_relevant=relevant, dead=set())
         self.assertEqual(sorted(job['title'] for job in jobs if 'Financial' in job['title']), ['Financial Analyst', 'Financial Controller', 'Financial Planner'])
+
+
+    def test_a_read_cut_before_the_form_leaves_the_few_list_and_lets_the_next_search_try(self):
+        entry = {'few_for': 'x'}
+        before = ([{'title': 'Financial Analyst'}], 'ok', [{'title': 'Financial Analyst'}])
+        with mock.patch.object(found_boards.board_forms, 'home', return_value=(HOME, form('<input name="SearchWhat">', method='post'))), \
+                mock.patch.object(found_boards.read_budget, 'past_cut', return_value=True), \
+                mock.patch.object(found_boards, '_section', side_effect=AssertionError('no page past the cut')):
+            got = found_boards._fuller_section({**BOARD, 'search_url': self.LIST}, entry, self.LIST, SEARCH, lambda url: '', lambda jobs: jobs, before)
+        self.assertEqual(got, before)
+        self.assertNotIn('few_for', entry, 'not marked as tried: the next search tries its form')
 
 
 GUESSED = 'https://vacatures.example/vacatures?q={role}&location={place}'

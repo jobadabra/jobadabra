@@ -290,12 +290,17 @@ German in Zurich), that together find the jobs of all their roles: one word per 
 "Vendeuse en boutique"), a separate word where a role's titles use another one ("caissier", "magasinier", "photographe"). No place names."""
 
 
-def kept_queries(search):
-    """The searches already worked out for this person's roles and places (data/board_queries.json), [] when none: never asks the AI."""
+def _queries_key(search):
+    """(roles, key) of a person's board searches in data/board_queries.json: the role words (at most 40) and the hash of them with the places."""
     from ..notion.search_settings import terms
-    from ..paths import DATA
     roles = terms((search or {}).get('role_keywords'))[:40]
-    key = hashlib.sha256(json.dumps([sorted(roles), jobsch_places(search)], ensure_ascii=False).encode()).hexdigest()[:12]
+    return roles, hashlib.sha256(json.dumps([sorted(roles), jobsch_places(search)], ensure_ascii=False).encode()).hexdigest()[:12]
+
+
+def kept_queries(search, key=None):
+    """The searches already worked out for this person's roles and places (data/board_queries.json), [] when none: never asks the AI."""
+    from ..paths import DATA
+    roles, key = _queries_key(search) if key is None else (True, key)
     try:
         return json.loads((DATA / 'board_queries.json').read_text()).get(key) or [] if roles else []
     except (OSError, ValueError):
@@ -305,13 +310,11 @@ def kept_queries(search):
 def board_queries(search, client=None):
     """Searches for every role the user has (7 Oct 2026: 30 roles, and the board was asked about 5 words), by Claude once per set of roles
     and places, kept in data/board_queries.json; [] without AI. Claude sees the role words and places only."""
-    from ..notion.search_settings import terms
     from ..paths import DATA
-    roles = terms((search or {}).get('role_keywords'))[:40]
+    roles, key = _queries_key(search)
     if not roles:
         return []
-    key = hashlib.sha256(json.dumps([sorted(roles), jobsch_places(search)], ensure_ascii=False).encode()).hexdigest()[:12]
-    kept = kept_queries(search)
+    kept = kept_queries(search, key)
     if kept:
         return kept
     store = DATA / 'board_queries.json'

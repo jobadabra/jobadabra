@@ -11,6 +11,8 @@ from ..press import stage
 
 TEXT_BOXES = ('', 'text', 'search')   # an <input> a person types words into
 MAX_TEMPLATES = 2                     # forms tried per board: the home page's search box is among the first
+TOKEN = 24                            # a POST form's hidden value longer than this is a token (an anti-forgery one runs to 100+), never put in a kept link;
+                                      # a short constant (lang=de, a search kind) stays, as the board's own form sends it (Gitar, #3917)
 
 
 class _Forms(HTMLParser):
@@ -57,8 +59,8 @@ def templates(markup, page_url, posted_at=None):
         if parts.scheme not in ('http', 'https') or registrable(parts.hostname or '') != registrable(home):
             continue
         hidden = found['hidden']
-        if found['method'] != 'get':   # sent to the board's own site, asked at its search page; Why (12 Nov 2026, ch): a POST form's hidden values (an anti-forgery token) never go into a link that is kept and shared
-            parts, hidden = urllib.parse.urlsplit(posted_at.split('?')[0]), [(name, value) for name, value in hidden if not value]
+        if found['method'] != 'get':   # sent to the board's own site, asked at its search page; Why (12 Nov 2026, ch): a POST form's long hidden values (a token) never go into a link that is kept and shared
+            parts, hidden = urllib.parse.urlsplit(posted_at.split('?')[0]), [(name, value) for name, value in hidden if len(value) <= TOKEN]
         fields = [*(f'{urllib.parse.quote_plus(name)}={urllib.parse.quote_plus(value)}' for name, value in hidden),
                   f'{urllib.parse.quote_plus(found["boxes"][0])}={{role}}',
                   *([f'{urllib.parse.quote_plus(found["boxes"][1])}={{place}}'] if len(found['boxes']) > 1 else [])]
@@ -82,4 +84,3 @@ def home_templates(board, fetch, page=None):
     address, markup = page or home(board, fetch)
     found = templates(markup, address, board['search_url']) if markup else []
     return [url for url in found if url != board['search_url']]
-
