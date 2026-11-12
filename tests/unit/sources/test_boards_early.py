@@ -46,7 +46,7 @@ class SliceTests(unittest.TestCase):
         self.assertLessEqual(first_jobs.SLICE_BOARDS, board_yield.MAX_UNTRIED, 'one read takes this many untried boards')
         reads = []
 
-        def read(search, boards, early=False, workers=found_boards.BOARD_WORKERS, spare=(), on_board=None):
+        def read(search, boards, early=False, workers=found_boards.BOARD_WORKERS, spare=(), on_board=None, later=None):
             reads.append(([b['host'] for b in boards], workers, [b['host'] for b in spare]))
             return []
         with mock.patch.object(board_ideas, 'proven', return_value=[]), mock.patch.object(board_ideas, 'ideas', return_value=[board(n) for n in range(1, 14)]), \
