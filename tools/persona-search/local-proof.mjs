@@ -17,7 +17,7 @@
 // (its own 3-minute clock, desktop/lib/search-steps.js) plus the engine's start-up. The search runs through run.mjs: a throwaway install under the OS temp folder, the Claude plan
 // via `claude -p` ($0), API keys removed from the environment, never the person's app folder, Keychain, Notion or Telegram; telemetry and pool sharing off.
 // The model is Haiku (JOBADABRA_MODEL_OVERRIDE, as the CI Search check) unless the environment names another. A run whose log says the AI stopped is marked NOT COUNTED, with why.
-// Claude Code runs from a private copy made at the start (<os temp>/jp-local-proof/pinbin/<stamp>/claude, first on PATH), so its own update mid-search cannot remove it.
+// Claude Code runs from a private copy made at the start (<os temp>/jp-local-proof/pinbin/<stamp>-<pid>/claude, first on PATH), so its own update mid-search cannot remove it.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
