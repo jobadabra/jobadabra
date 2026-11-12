@@ -1,5 +1,5 @@
 {
-  "_": "The title step's fixed case set (src/ai/title_triage.py SYSTEM; tools/prompt-cases.json 'title'; replay: tools/title-cases.py on the Claude plan, $0). Each case is one search's words and a numbered batch of titles as the step asks them; each title must get its answer: yes (kept), no (unrelated work: a yes is the failure gp measured on 12 Nov 2026, where one-turn Haiku answers said yes to 7-14 of 30 unrelated titles), either (a neighbour; not counted). Example titles only, no employer names.",
+  "_": "The title step's fixed case set (src/ai/title_triage.py SYSTEM; tools/prompt-cases.json 'title'; replay: tools/pick-cases.py on the Claude plan, $0). Each case is one search's words and a numbered batch of titles as the step asks them; each title must get its answer: yes (kept), no (unrelated work: a yes is the failure gp measured on 12 Nov 2026, where one-turn Haiku answers said yes to 7-14 of 30 unrelated titles), either (a neighbour; not counted). Example titles only, no employer names.",
   "cases": [
     {
       "id": "data-analyst-nuremberg",

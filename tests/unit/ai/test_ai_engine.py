@@ -151,23 +151,25 @@ class CliClientTests(unittest.TestCase):
         self.assertEqual(first['args'][first['args'].index('--max-turns') + 1], '1')
         self.assertIn('matches this JSON schema', first['prompt'])
 
-    def test_the_title_sort_keeps_claude_codes_own_structured_answer(self):
+    def test_steps_that_pick_numbers_keep_claude_codes_own_structured_answer(self):
         """gp, 12 Nov 2026 (GTM 6 round: b08 Data Analyst listed 67 jobs, 65 of other work): answered as text in one turn, Haiku skipped its thinking on
         about 7 of 10 sorts of a batch where no title fits and named 2-14 unrelated titles anyway; Claude Code's own structured answer thought on 10 of 10
-        and named none (tests/fixtures/title-cases.json, tools/title-cases.py). The title sort's client asks with the schema flag; other short Haiku steps keep one turn."""
+        and named none (tests/fixtures/title-cases.json, tools/pick-cases.py). Each step in THINK_FIRST asks with the schema flag; the others keep one turn."""
+        from src.ai.providers import claude_code
+        self.assertIn('title_triage', claude_code.THINK_FIRST)
         fake = FakeClaude(self, 'schema')
-        titles = fake.client()
-        titles.action = 'title_triage'   # as providers.build names the client the title sort makes (engine.client(action='title_triage'))
-        ask = dict(model='claude-haiku-5-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Sort them'}],
+        ask = dict(model='claude-haiku-5-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Pick them'}],
                    output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}, 'effort': 'low'})
-        self.assertEqual(json.loads(titles.messages.create(**ask).content[0].text), {'answer': 'yes', 'score': 7})
-        first = fake.calls[0]['args']
-        self.assertEqual(json.loads(first[first.index('--json-schema') + 1]), SCHEMA)
-        self.assertNotEqual(first[first.index('--max-turns') + 1], '1', 'a structured answer takes Claude Code more than one turn')
-        places = fake.client()
-        places.action = 'place_triage'
-        places.messages.create(**ask)
-        self.assertNotIn('--json-schema', fake.calls[1]['args'], 'the other short Haiku steps keep their one turn (#3836)')
+        for step in sorted(claude_code.THINK_FIRST) + ['place_triage']:   # the place sort writes its reasoning per item and keeps its one turn (#3836)
+            client = fake.client()
+            client.action = step   # as providers.build names a step's client (engine.client(action=...))
+            self.assertEqual(json.loads(client.messages.create(**ask).content[0].text), {'answer': 'yes', 'score': 7}, step)
+            args = fake.calls[-1]['args']
+            if step in claude_code.THINK_FIRST:
+                self.assertEqual(json.loads(args[args.index('--json-schema') + 1]), SCHEMA, step)
+                self.assertNotEqual(args[args.index('--max-turns') + 1], '1', f'{step}: a structured answer takes Claude Code more than one turn')
+            else:
+                self.assertNotIn('--json-schema', args, f'{step}: the other short Haiku steps keep their one turn (#3836)')
 
     def test_old_claude_code_gets_the_schema_in_the_prompt_and_one_repair(self):
         fake = FakeClaude(self, 'repair', old=True)

@@ -1,0 +1,28 @@
+{
+  "_": "The visit list's fixed case set (src/sources/visits.py RELEVANT_SYSTEM; tools/prompt-cases.json 'visit-relevant'; replay: tools/pick-cases.py --step visit on the Claude plan, $0). Each case is one person's roles and places and a numbered list of sites as the step asks them; each site must get its answer: yes (kept), no (no jobs of their kind: a keep is the failure gp measured on 12 Nov 2026, where one-turn Haiku answers kept 3-15 of 15 such sites on 8 of 10 calls), either (not counted). Fictional sites on .example addresses.",
+  "cases": [
+    {
+      "id": "photographer-geneva-nothing-fits",
+      "unsure": "keep",
+      "roles": ["photographer", "photo studio assistant"],
+      "places": ["Geneva"],
+      "sites": [
+        ["Northbank Private Wealth", "https://northbank-private.example", "employer", "no"],
+        ["Kestrel Aerospace Software", "https://kestrel-soft.example", "employer", "no"],
+        ["SalaryLens for Tech", "https://salarylens.example", "portal", "no"],
+        ["Ferro Legal Partners", "https://ferro-legal.example", "employer", "no"],
+        ["Quantix Trading", "https://quantix.example", "employer", "no"],
+        ["Helios Cloud Platform", "https://helios-cloud.example", "employer", "no"],
+        ["Brightledger Accounting Software", "https://brightledger.example", "employer", "no"],
+        ["DevJobs Remote Board", "https://devjobs-remote.example", "portal", "no"],
+        ["Atlas Reinsurance", "https://atlas-re.example", "employer", "no"],
+        ["Corvid Cybersecurity", "https://corvid-sec.example", "employer", "no"],
+        ["Meridian Asset Management", "https://meridian-am.example", "employer", "no"],
+        ["Orbit Payments", "https://orbit-pay.example", "employer", "no"],
+        ["Lumen Biotech Research", "https://lumen-bio.example", "employer", "no"],
+        ["FinTalent Jobs", "https://fintalent.example", "portal", "no"],
+        ["Vertex Chip Design", "https://vertex-chips.example", "employer", "no"]
+      ]
+    }
+  ]
+}
