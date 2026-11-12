@@ -40,14 +40,16 @@ export function read({out, name, code, seconds, label}) {
     pagesMissing: lines('missing.jsonl').filter(m => m.web).length} : null;
   const kinds = {};
   for (const s of row?.sources || []) { const k = (kinds[s.kind || 'other'] ||= {sources: 0, open: 0, listed: 0, fit70: 0}); k.sources++; k.open += s.open || 0; k.listed += s.in_places || 0; k.fit70 += s.fit70 || 0; }
-  const limit = all.split('\n').find(l => LIMIT.test(l));
+  // Why (gp, 12 Nov 2026): the first matching line was a bare "CliLimitError" and every stop read as the plan's limit; two p10 runs had lost Claude Code for a
+  // second while it updated itself. The run's own "AI stopped: <why>" / "AI limit reached: <why>" line (src/ai/cost.py) names the cause, so it comes first.
+  const limit = all.split('\n').find(l => /AI (?:stopped|limit reached): /.test(l)) || all.split('\n').find(l => LIMIT.test(l));
   return {label, code, wall: seconds, row, calls, steps, stages, kinds, boards, proposed, tape, limit: limit ? limit.trim().slice(0, 160) : null,
     tail: all.trim().split('\n').at(-1) || ''};
 }
 
-/** Why a run does not count (the plan limit, no press row, a crash), or null when it counts. */
+/** Why a run does not count (the AI stopped, in the run's own words: the plan's limit, Claude Code missing or signed out; no press row; a crash), or null when it counts. */
 export function notCounted(x) {
-  return x.limit ? `the Claude plan limit was hit (${x.limit.slice(0, 80)})` : !x.row ? `no press row (${x.tail.slice(0, 60)})` : x.row.crashes?.length ? `${x.row.crashes.length} crash(es)` : null;
+  return x.limit ? `the AI stopped (${x.limit.replace(/^\[\d+s\] (?:AI stopped: )?/, '').slice(0, 100)})` : !x.row ? `no press row (${x.tail.slice(0, 60)})` : x.row.crashes?.length ? `${x.row.crashes.length} crash(es)` : null;
 }
 
 /** Whether a replayed run was proposed the same boards as the recording it replays (`draw`, its read): 'shared', 'draw NOT shared', or 'draw unchecked' when the recording logged no proposed boards. */

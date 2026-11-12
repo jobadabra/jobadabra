@@ -217,6 +217,49 @@ class ErrorFactsTests(unittest.TestCase):
         with self.assertRaises(sdk):
             api.create(**PARAMS)
 
+    def test_each_reason_claude_code_stopped_reads_differently_in_the_technical_line(self):
+        """gp, 12 Nov 2026: two local p10 proofs read "Technical: decide link-kind: CliLimitError (model claude-haiku-5-5, engine cli)" and were taken
+        for the plan's limit; the binary was gone for a second while Claude Code updated itself. The line now names why the AI stopped, and a real
+        limit keeps Claude Code's own words there, never in the person's text."""
+        import subprocess
+        from src.ai.providers import claude_code
+        from src.ai.providers.cli_base import CliLimitError
+
+        def stopped(run, binary='claude-stand-in'):
+            claude_code._help[binary] = set()   # no `claude --help` call
+            with self.assertRaises(CliLimitError) as caught:
+                claude_code.ClaudeCode(binary=binary, run=run, timeout=1).create(**PARAMS)
+            return caught.exception
+
+        def gone(*args, **kwargs):
+            raise FileNotFoundError('claude-stand-in')
+
+        def silent(*args, **kwargs):
+            raise subprocess.TimeoutExpired('claude', 1)
+
+        def says(text):
+            return lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout=json.dumps({'is_error': True, 'result': text}), stderr='')
+
+        limit = stopped(says("You've hit your usage limit · resets 5pm (Europe/Zurich)"))
+        signed_out = stopped(says('Not logged in · Please run /login'))
+        missing = stopped(gone)
+        claude_code._help['claude-stand-in'] = set()
+        client = claude_code.ClaudeCode(binary='claude-stand-in', run=silent, timeout=1)
+        for _ in range(2):   # the second time out in a row stops the run
+            with self.assertRaises(contract.AiError) as caught:
+                client.create(**PARAMS)
+        quiet = caught.exception
+        self.assertIsInstance(quiet, CliLimitError)
+        lines = {why: contract.named(error) for why, error in
+                 (('limit', limit), ('signed out', signed_out), ('not installed', missing), ('not answering', quiet))}
+        self.assertEqual(len(set(lines.values())), 4, lines)
+        self.assertIn('not installed', lines['not installed'])
+        self.assertIn('did not answer', lines['not answering'])
+        self.assertIn('not signed in', lines['signed out'])
+        self.assertIn('hit your usage limit', lines['limit'])   # Claude Code's own words: which limit, when it resets
+        self.assertNotIn('hit your usage limit', str(limit))   # the person's text stays the product's sentence
+        self.assertEqual(str(limit), claude_code.LIMIT_TEXT)
+
 
 class RegistryTests(unittest.TestCase):
     def test_every_engine_is_covered(self):

@@ -3,8 +3,8 @@
 //   --ref: the code to search with, any number (two = before | after side by side): a checkout folder (`.` = this one, the default; or a session's worktree path) searches as it is, edits too;
 //          Any other ref gets its own detached worktree under <os temp>/jp-local-proof/trees/<sha>, made once and never edited (the repo's post-checkout hook links node_modules).
 //   --runs N: N searches a side (default 1), round by round (side 1, side 2, then again), all with the same saved plan; the table then says per side each run, the median and the range,
-//          and one verdict: gain shown, loss shown, inside the noise or not enough runs (the rule: local-proof-table.mjs verdict()). A run that hit the Claude plan limit is NOT COUNTED and
-//          the rounds left are not started (a plan limit is not retried).
+//          and one verdict: gain shown, loss shown, inside the noise or not enough runs (the rule: local-proof-table.mjs verdict()). A run whose AI stopped (the plan's limit, Claude Code missing or
+//          signed out: the run's own words) is NOT COUNTED and the rounds left are not started (it is not retried).
 //   --same-draw: both sides get the same job-board draw: side 1's code records one extra search (not counted) on a tape (run.mjs --tape, src/search_tape.py), and every counted run
 //          replays its own copy of that tape at the recorded pace (--wait-scale 1): the same web pages, AI answers and time-budget decisions; an AI question the tape lacks (a change that asks
 //          something else) is asked live, and a page the tape lacks fails as unreachable (nothing new is read). The table says per run whether the boards proposed match the recording
@@ -16,12 +16,14 @@
 // (a change to the strategy draft itself is therefore NOT tested unless --fresh-draft remakes the plan with the first ref); no judge, no second press. What is left is the press itself
 // (its own 3-minute clock, desktop/lib/search-steps.js) plus the engine's start-up. The search runs through run.mjs: a throwaway install under the OS temp folder, the Claude plan
 // via `claude -p` ($0), API keys removed from the environment, never the person's app folder, Keychain, Notion or Telegram; telemetry and pool sharing off.
-// The model is Haiku (JOBADABRA_MODEL_OVERRIDE, as the CI Search check) unless the environment names another. A run whose log says the plan's limit was hit is marked NOT COUNTED.
+// The model is Haiku (JOBADABRA_MODEL_OVERRIDE, as the CI Search check) unless the environment names another. A run whose log says the AI stopped is marked NOT COUNTED, with why.
+// Claude Code runs from a private copy made at the start (<os temp>/jp-local-proof/pinbin/<stamp>/claude, first on PATH), so its own update mid-search cannot remove it.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawn} from 'node:child_process';
 import {cleanEnv} from './search-check.mjs';
+import {realClaude} from '../../desktop/e2e/lib/real-claude.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2), person = Number(args[0]);
@@ -37,6 +39,43 @@ const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
 const env = {...cleanEnv(process.env), JOBADABRA_NO_DOTENV: '1', JOBADABRA_AI_CALL_LOG: '1', JOBADABRA_STAGE_LOG: '1',
   JOBADABRA_MODEL_OVERRIDE: process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-haiku-5-5'};
 const git = (...a) => execFileSync('git', a, {cwd: ROOT, encoding: 'utf8'}).trim();
+
+/** Puts a private copy of the Claude Code install first on env.PATH; says so, or why the runs use the install itself (none found, or a copy that does not start). */
+function pinClaude() {
+  // Why (gp, 12 Nov 2026, sa: "every remaining run of yours uses a pinned copy"): Claude Code updates itself and its binary is gone for about a second; a p10 run at
+  // second 28 and one at second 88 lost every AI step ("AI stopped: Claude Code is not installed"), and both were counted as the plan's limit. One copy per proof
+  // (its own folder, never one another proof is running from), as the fictional-candidate-runs skill's pinbin.
+  const real = realClaude(env);
+  if (!real) return console.log('Claude Code: no install found on PATH; the runs will say so');
+  // The folder is named <stamp>-<pid>: unique per proof (two can start in the same second) and its owner is known the moment it exists.
+  const dir = path.join(work, 'pinbin', `${stamp}-${process.pid}`), pin = path.join(dir, 'claude');
+  // A copy is ~320 MB: this proof's goes when it ends (Ctrl-C and a kill too), and one a proof left behind goes once that proof's process is gone
+  // (only ESRCH says gone; EPERM is a live process of another user). A folder with no pid in its name goes after 10 minutes.
+  for (const old of fs.existsSync(path.dirname(dir)) ? fs.readdirSync(path.dirname(dir)) : []) {
+    const at = path.join(path.dirname(dir), old), owner = Number(/-(\d+)$/.exec(old)?.[1] || 0);
+    let gone;
+    if (owner) {
+      try { process.kill(owner, 0); gone = false; } catch (error) { gone = error.code === 'ESRCH'; }
+    } else {
+      try { gone = Date.now() - fs.statSync(at).mtimeMs > 600000; } catch { gone = false; }
+    }
+    if (gone) fs.rmSync(at, {recursive: true, force: true});
+  }
+  process.on('exit', () => fs.rmSync(dir, {recursive: true, force: true}));
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => process.exit(signal === 'SIGINT' ? 130 : 143));
+  try {
+    fs.mkdirSync(dir, {recursive: true});
+    fs.copyFileSync(fs.realpathSync(real), pin);
+    fs.chmodSync(pin, 0o755);
+    const version = execFileSync(pin, ['--version'], {encoding: 'utf8', timeout: 30000, env: {...env, PATH: `${dir}${path.delimiter}${env.PATH}`}}).trim();
+    env.PATH = `${dir}${path.delimiter}${env.PATH}`;
+    env.JOBADABRA_CLAUDE_BIN = pin;   // the engine's find_binary reads it before PATH (Gitar on #3897)
+    console.log(`Claude Code: a private copy for these runs (${version}): ${pin}`);
+  } catch (error) {
+    fs.rmSync(dir, {recursive: true, force: true});
+    console.log(`Claude Code: the install itself (${real}); a copy did not start (${String(error.message).split('\n')[0].slice(0, 80)}), so an update mid-search can still stop a run`);
+  }
+}
 
 /** The folder whose code searches: this checkout for `.`, else a detached worktree of the ref's commit, made once (staged: desktop/shared is generated). */
 function tree(ref) {
@@ -71,6 +110,7 @@ if (!fs.existsSync(path.join(home, 'cv.pdf'))) {
   execFileSync('python3', ['tools/persona-search/gate.py', 'cv', String(person), made], {cwd: ROOT, env, stdio: 'ignore'});
   fs.copyFileSync(path.join(made, 'draw', 'cv.pdf'), path.join(home, 'cv.pdf'));
 }
+pinClaude();
 const trees = (refs.length ? refs : ['.']).map(tree);
 if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json'))) {
   console.log(`${name}: making the saved search plan once (one AI call, ~1 min) with ${trees[0].label}`);
@@ -106,7 +146,7 @@ for (let round = 1; round <= runs; round++) {
   if (args.includes('--together')) ran.push(...await Promise.all(trees.map((t, i) => go(t, i, round))));
   else for (const [i, t] of trees.entries()) ran.push(await go(t, i, round));
   const limit = ran.map(read).find(x => x.limit);
-  if (limit && round < runs) { console.log(`  the Claude plan limit was hit (${limit.label}): rounds ${round + 1}-${runs} are not started`); break; }
+  if (limit && round < runs) { console.log(`  the AI stopped in ${limit.label} (${limit.limit.replace(/^\[\d+s\] (?:AI stopped: )?/, '').slice(0, 100)}): rounds ${round + 1}-${runs} are not started`); break; }
 }
 
 if (runs === 1) console.log(`\n${table(ran)}`);
