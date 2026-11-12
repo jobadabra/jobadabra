@@ -21,7 +21,7 @@ JUDGED = {'rows': [{'title': 'Nurse', 'company': 'St Mary', 'location': 'Dublin'
 JOBS = [{'title': 'Nurse', 'company': 'St Mary', 'location': 'Dublin', 'seen_s': 10, 'fit': 80, 'scored_s': 20}]
 BOARDS = {'job_boards': (30, 5), 'employer_sites': (40, 1)}
 NO_BOARDS = {'job_boards': (0, 0), 'employer_sites': (40, 1)}
-LIVE_MOVES = 'Moves: p1 coverage 0.40 → 0.55 (3 runs a side, spread 0.03)\n'
+LIVE_MOVES = 'Moves: p1 coverage 0.40 → 0.55 (1 run a side, same minute, usual difference 0.03)\n'
 LOSS = 'To check live:'   # the report's words for a loss the replay shows and the body does not answer
 
 
@@ -74,7 +74,7 @@ class Verdict(unittest.TestCase):
     def test_a_loss_is_reported_and_never_reds_the_pr(self):
         code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS})] * 3)
         self.assertEqual((code, self.exit), (1, 0), 'the report names the loss; its exit is 0: the live proof decides, not the replay')
-        self.assertIn('Run the live proof (3 searches a side)', text)
+        self.assertIn('Run the live proof (one search a side, both started in the same minute)', text)
 
     def test_a_source_main_reads_that_the_pr_stops_reading_in_all_3_pairs_is_named(self):
         code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS})] * 3)

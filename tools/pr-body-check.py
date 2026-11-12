@@ -45,16 +45,18 @@ def title_gap(title):
 SEARCH_FILES = re.compile(r'^src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots)\.py$|(ai/)?(time_budget|job_rank)\.py$)')
 # Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Accept your measure (Recommended)"): a move from saved runs (before) to the owner's
 # chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the PR is then a DONT MERGE draft).
-MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*\S*\d\S*\s*\(3 runs a side, spread\s+[^)\s]*\d[^)]*\)'
+# Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): a search PR's live proof is one search a side, started in the same minute, with the person's usual run-to-run difference beside it;
+#   more runs a side with their spread still pass.
+MOVES = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*(?:p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*\S*\d\S*\s*\([1-9]\d* runs? a side,[^)]*?\b(?:spread|usual difference)\s+[^)\s]*\d[^)]*\)'
                    r'|p\d{1,2}\s+\S.*\d\S*\s*(?:→|->)\s*(?:\S*\d\S*|pending)\s*\([1-9]\d* saved runs? before, [1-9]\d* runs? after\b[^)]*\)'
                    r'|nothing\s*\([^)<>]*\w[^)<>]*\))', re.M)
-MOVES_FIX = ('add a line `Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)` (the person, the number it moves, 3 runs before and 3 after, their spread), '
+MOVES_FIX = ('add a line `Moves: p<n> <number> <before> → <after> (1 run a side, same minute, usual difference <d>)` (the person, the number it moves, one search before and one after started in the same minute, and that person\'s usual run-to-run difference: a larger loss holds the PR, a gain needs its mechanism proven by a test), '
              '`Moves: p<n> <number> <before> → <after or pending> (<N> saved runs before, <M> run(s) after)` for a measure the owner chose, '
              'or `Moves: nothing (<why>)` for a change no person feels; skill check-job-search-locally step 10, spec docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md')
 
 
 def moves_gap(body, changed):
-    """Find jobs admission line (owner, 10 Nov 2026, finish line, guardrail G4): a PR that changes a search file says which person and number it moves, 3 runs a side, or that it moves nothing.
+    """Find jobs admission line (owner, 10 Nov 2026, finish line, guardrail G4): a PR that changes a search file says which person and number it moves, one search a side (owner, 12 Nov 2026), or that it moves nothing.
     Why (10 Nov 2026, sa): 246 of 647 PRs in 30 days changed the search engine and each was graded by its author on one run (4 claims withdrawn on 10 Nov alone); ±10 jobs of spread per person hides any single run."""
     hit = sorted(f for f in changed if SEARCH_FILES.match(f))
     if not hit or MOVES.search(body or ''):

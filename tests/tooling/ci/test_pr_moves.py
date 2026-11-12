@@ -11,7 +11,7 @@ SPEC = importlib.util.spec_from_file_location('pr_body_check', TOOL)
 check = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(check)
 
-GOOD = 'Moves: p5 in = out EURES 14/24 → 22/24 (3 runs a side, spread 3)'
+GOOD = 'Moves: p5 in = out EURES 14/24 → 22/24 (1 run a side, same minute, usual difference 3)'
 
 
 class MovesLine(unittest.TestCase):
@@ -25,8 +25,11 @@ class MovesLine(unittest.TestCase):
     def test_other_files_need_no_moves_line(self):
         self.assertIsNone(check.moves_gap('## docs', ['docs/map/search.md', 'tests/unit/press/test_x.py', 'src/ai/score.py', 'src/daily.py', 'desktop/main.js']))
 
-    def test_a_person_a_number_and_three_runs_a_side_pass(self):
-        for line in (GOOD, '- Moves: p13 coverage 40% -> 61% (3 runs a side, spread 4%)', '**Moves:** nothing (a comment fix, no behaviour)'):
+    def test_a_person_a_number_and_one_search_a_side_pass(self):
+        """Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): one search a side with the
+        person's usual difference is the line; 3 a side with their spread still passes."""
+        for line in (GOOD, '- Moves: p10 right jobs 130 -> 152 (1 run a side, same minute, usual difference 15)',
+                     '- Moves: p13 coverage 40% -> 61% (3 runs a side, spread 4%)', '**Moves:** nothing (a comment fix, no behaviour)'):
             self.assertIsNone(check.moves_gap('## x\n' + line + '\n', ['src/press/run.py']), line)
 
     def test_saved_runs_before_and_the_owners_after_run_pass_with_a_number_or_pending(self):
@@ -40,7 +43,8 @@ class MovesLine(unittest.TestCase):
 
     def test_a_half_filled_line_is_refused(self):
         for line in ('Moves: p5 EURES (3 runs a side, spread 3)', 'Moves: p5 x 1 → 2 (1 run, spread 3)', 'Moves: nothing ()', 'Moves: nothing (<why>)',
-                     'Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)', 'Moves: <a PR that changes a search file ...>'):
+                     'Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)', 'Moves: p<n> <number> <before> → <after> (1 run a side, same minute, usual difference <d>)',
+                     'Moves: p10 right jobs 130 → 152 (1 run a side, same minute)', 'Moves: <a PR that changes a search file ...>'):
             self.assertIsNotNone(check.moves_gap('## x\n' + line, ['src/sources/feeds.py']), line)
 
     def test_the_command_line_reads_the_diff_against_base(self):

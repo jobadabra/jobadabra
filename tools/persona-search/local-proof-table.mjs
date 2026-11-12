@@ -86,8 +86,9 @@ export function table(runs) {
   const fmt = cells => cells.map((c, i) => String(c).slice(0, width[i] + 30).padEnd(width[i])).join(' │ ').trimEnd();
   const lines = [fmt(rows[0]), '─'.repeat(width.reduce((s, w) => s + w + 3, 0)), ...rows.slice(1).map(fmt)];
   for (const x of r) for (const s of x.stages) lines.push(`Stages (${x.label}): ${s}`);
-  // Why (11 Nov 2026, as, measured): the same code on p10 listed 46, 60 and 59 jobs in three runs, because the job-board web search found 3 or 5 boards: one run a side cannot judge a small difference
-  if (r.length > 1) lines.push('Noise: one run a side. The same code listed 46-60 jobs for p10 (11 Nov 2026, boards and web search vary): a difference under ~15 listed jobs needs 2-3 runs a side.');
+  // Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): one search a side, started together, is a search PR's proof;
+  //   its difference is read against the person's usual one (11 Nov 2026, as, measured: the same code on p10 listed 46, 60 and 59 jobs as the web search found 3 or 5 boards)
+  if (r.length > 1) lines.push('Rule (one search a side, owner 12 Nov 2026): a loss larger than this person\'s usual run-to-run difference holds the PR (p10: the same code listed 46-60, boards and web search vary); a gain is claimed only with its mechanism proven by a test.');
   // Why (Gitar on #3831): the table reads the engine's log lines (src/ai/call_log.py, src/sources/job_stage.py); a run with a press row but no AI call line read means their format changed, said aloud instead of dashes
   for (const x of r) if (x.row && !x.calls.length) lines.push(`\n⚠️ ${x.label}: no "AI call:" line read from run-1.log: the log format changed (src/ai/call_log.py), so the AI rows are blank; fix local-proof-table.mjs AI_CALL`);
   for (const x of r) if (x.limit) lines.push(`\n⛔ NOT COUNTED (${x.label}): ${x.limit}`);
@@ -105,11 +106,14 @@ const LUCK = 0.05;   // Why (12 Nov 2026, sa-pane-ns): the usual 1-in-20 bar, fi
  * The verdict of side `b` against side `a` on their counted numbers (two arrays). The rule, printed with it:
  * a gain or loss is SHOWN only when the two ranges do not overlap (every run of one side above every run of the other) AND the same code would land that far apart by
  * luck less than 1 time in 20 (apartByLuck). Ranges that overlap or touch are inside the noise for any number of runs (more runs only widen a range); ranges apart
- * on too few runs are inside the noise until K more runs a side, the fewest that could pass the luck bar if they stay apart. Fewer than 2 counted runs a side: not enough runs.
+ * on too few runs are inside the noise until K more runs a side, the fewest that could pass the luck bar if they stay apart. One counted run a side: the search PR's proof (the difference, read against
+ * the person's usual run-to-run difference). Other counts under 2 a side: not enough runs.
  * `sameDraw` (both sides replayed one recorded draw, --same-draw): when EVERY run of each side lists the same number (no spread on either side), two different numbers are
  * a gain or loss SHOWN and two equal ones no difference, whatever the run count; any spread on either side falls back to the rule above.
  */
 export function verdict(a, b, sameDraw = false) {
+  // Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after"): one run a side is a search PR's proof; the luck rule below is for measuring a small effect
+  if (a.length === 1 && b.length === 1) return `one run a side: ${b[0] - a[0] >= 0 ? '+' : ''}${b[0] - a[0]} listed (${a[0]} → ${b[0]}); a loss larger than this person's usual run-to-run difference holds the PR, a gain needs its mechanism proven by a test`;
   if (a.length < 2 || b.length < 2) return `not enough runs: ${a.length} and ${b.length} counted runs (2 a side at least)`;
   const [aLo, aHi, bLo, bHi] = [Math.min(...a), Math.max(...a), Math.min(...b), Math.max(...b)];
   // Why (12 Nov 2026, coordinator sa on #3848): the luck rule assumes runs that vary; a replay of one draw repeats exactly (p9: 34 four times), so an exact repeat on both sides is proof by itself
@@ -148,7 +152,7 @@ export function noise(sides, name, draw) {
     rows.push(`  side ${j + 1} run ${i + 1} read: ${Object.entries(r.boards).map(([b, n]) => `${b.replace(/ \(.*$/, '')} ${n.relevant}/${n.jobs}`).join(', ') || 'none'}`);
     for (const p of r.proposed) rows.push(`  side ${j + 1} run ${i + 1} proposed ${p.slice(0, 150)}`);
   });
-  rows.push('', 'Rule: on "Jobs listed in your places", a gain or loss is shown only when the two sides\' ranges do not overlap AND the same code would land that far apart by luck under 1 time in 20 (2·n!·m!/(n+m)!); fewer than 2 counted runs a side is not enough.');
+  rows.push('', 'Rule: on "Jobs listed in your places", a gain or loss is shown only when the two sides\' ranges do not overlap AND the same code would land that far apart by luck under 1 time in 20 (2·n!·m!/(n+m)!); one run a side reads as a search PR\'s proof (owner, 12 Nov 2026): a loss larger than the person\'s usual difference holds it.');
   if (draw) rows.push('Same draw: when every run of each side lists the same number, two different numbers are shown as a gain or loss (and equal ones as no difference) from 2 runs a side; any spread on a side uses the rule above.');
   const base = counted(s[0]).map(r => r.row.in_places);
   // Why (12 Nov 2026, coordinator sa): a run that asked the AI live or missed pages read something the recording lacks, which the replay cannot judge; said on the verdict line itself
