@@ -118,12 +118,12 @@ class GoogleBoards(unittest.TestCase):
                   'kinds': ['aviation_transport'], 'source_kind': 'sector'}]
         proposed = [{'name': f'B{n}', 'host': f'b{n}.example', 'search_url': f'https://b{n}.example/?q={{role}}', 'countries': ['Austria'],
                      'kinds': ['any'], 'source_kind': 'general'} for n in range(20)]
-        asked = []
+        asked, turn = [], scout_boards.kinds_for(self.db, 'at')   # read before the run: the run moves the country's turn on
         scout_boards.run(self.db, ideas=lambda search: proposed, read_board=lambda board, *a: read.append(board['host']) or ([], 'empty', None),
                          out=self.out.append, named='at', google=lambda db, country, kinds, out: asked.append(kinds) or found)
         self.assertEqual(read[0], 'pilot-board.example')
         self.assertEqual(len(read), scout_boards.MAX_BOARDS)
-        self.assertEqual(asked, [[kind for kind in scout_boards.kinds_for(self.db, 'at') if kind != 'software']],
+        self.assertEqual(asked, [[kind for kind in turn if kind != 'software']],
                          "Google's few free searches go to the country's thinnest kinds of work, never software (owner, 19 Oct 2026: global, not tech)")
 
 
