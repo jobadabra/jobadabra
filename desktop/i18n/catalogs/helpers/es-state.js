@@ -42,6 +42,7 @@ export const messages = {
   "automationLost": " La automatización completa sigue funcionando, pero nada puede avisarte cuando una solicitud te necesita.",
   "getMessage": "Recibe un mensaje cuando algo te necesita",
   "offerDetails": "Una solicitud que espera, una buena oferta, una respuesta: por correo o Telegram.{lost}",
+  "notifyOfferEvidence": "Aún no hay un correo ni Telegram confirmados, así que nada te llega fuera de la app.",
   "emailsStopped": "Tus correos están detenidos",
   "offerUnsubscribed": "Los detuviste con un enlace de nuestros correos. Actívalos con «Ajustes de correo» al pie de cualquiera de ellos.{lost}",
   "mailConfirmHyphen": "Envío detenido: confirma tu correo",

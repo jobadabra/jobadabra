@@ -12,6 +12,7 @@ export const messages = {
   "keepOn": "Eingeschaltet lassen",
   "linkedinSuggestion": "Bei der Stellensuche auch LinkedIn durchsuchen",
   "linkedinSuggestionDetail": "Im Hintergrund, ohne Fenster. Sie melden sich einmal in einem Jobadabra-Fenster bei LinkedIn an.",
+  "linkedinSuggestionEvidence": "LinkedIn-Stellensuche ist aus, deshalb liest „Stellen suchen“ Ihre LinkedIn-Suchen nicht.",
   "extensionNeeded": "Chrome-Erweiterung erforderlich",
   "linkedinExtensionHelp": "LinkedIn nutzt die Jobadabra-Chrome-Erweiterung. Verbinden Sie sie unter Einstellungen → Verbindungen → Chrome-Erweiterung und versuchen Sie es erneut.",
   "extensionUnknown": "Jobadabra kann diese Erweiterungskopie nicht öffnen",

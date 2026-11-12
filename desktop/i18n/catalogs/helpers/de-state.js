@@ -42,6 +42,7 @@ export const messages = {
   "automationLost": " Vollautomatik läuft weiter, aber niemand kann dich benachrichtigen, wenn eine Bewerbung dich braucht.",
   "getMessage": "Nachricht erhalten, wenn du gebraucht wirst",
   "offerDetails": "Eine wartende Bewerbung, eine passende Stelle, eine Antwort: per E-Mail oder Telegram.{lost}",
+  "notifyOfferEvidence": "Noch keine bestätigte E-Mail oder Telegram, deshalb erreicht Sie nichts außerhalb der App.",
   "emailsStopped": "Deine E-Mails sind gestoppt",
   "offerUnsubscribed": "Du hast sie über einen Link in einer unserer E-Mails gestoppt. Aktiviere sie über „E-Mail-Einstellungen“ am Ende einer E-Mail erneut.{lost}",
   "mailConfirmHyphen": "Versand gestoppt: E-Mail bestätigen",

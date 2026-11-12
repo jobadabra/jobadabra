@@ -42,6 +42,7 @@ export const messages = {
   "automationLost": " Full automation keeps running, but nothing can tell you when an application needs you.",
   "getMessage": "Get a message when something needs you",
   "offerDetails": "An application that waits for you, a good match, a reply: by e-mail or Telegram.{lost}",
+  "notifyOfferEvidence": "No confirmed e-mail or Telegram yet, so nothing reaches you outside the app.",
   "emailsStopped": "Your e-mails are stopped",
   "offerUnsubscribed": "You stopped them with the link in one of our e-mails. Turn them on again with \"Email settings\" at the bottom of any of them.{lost}",
   "mailConfirmHyphen": "Mail stopped: confirm your e-mail",

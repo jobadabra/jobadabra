@@ -42,6 +42,7 @@ export const messages = {
   "automationLost": " L'automatisation complète continue, mais rien ne peut vous prévenir quand une candidature a besoin de vous.",
   "getMessage": "Recevez un message quand votre intervention est nécessaire",
   "offerDetails": "Une candidature en attente, une bonne offre, une réponse : par e-mail ou Telegram.{lost}",
+  "notifyOfferEvidence": "Pas encore d'e-mail ni de Telegram confirmé, donc rien ne vous parvient hors de l'app.",
   "emailsStopped": "Vos e-mails sont arrêtés",
   "offerUnsubscribed": "Vous les avez arrêtés avec le lien d'un de nos e-mails. Réactivez-les via « Paramètres e-mail » au bas de l'un d'eux.{lost}",
   "mailConfirmHyphen": "Envoi arrêté : confirmez votre e-mail",
