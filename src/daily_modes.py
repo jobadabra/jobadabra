@@ -173,8 +173,9 @@ def rescore_mode(args, stores=None):
 
 
 def score_mode(args, stores=None):
-    """The scoring queue (the app starts it when a Find jobs run ends): a score for the jobs a search found and had no time to score, best places and closest
-    jobs first, and nothing else: no crawl, no reading, no new job, no old score replaced (that is Re-score's). On its own clock, --score-max at most; the
+    """The queue after a search (the app starts it when a Find jobs run ends): first the jobs the search read and had no time to judge are judged and listed, and the
+    postings a score needs are read (src/press/after_search.py; owner, 12 Nov 2026: "Yes, build it (Recommended)"); then a score for the jobs it had no time to score, best
+    places and closest jobs first. No crawl, no source read again, no old score replaced (that is Re-score's). On its own clock, --score-max at most; the
     jobs past it stay listed, unscored, for the next Find jobs or the person's own "Score".
     Why (11 Nov 2026, owner, asked via AskUserQuestion: "After the run, own queue (Recommended)"; "Keep 60, rest show 'Score' (Recommended)"): a search finds
     170-280 jobs in a person's places and one score takes 12-20 s, so the run's 3 minutes scored 9-32 of them and the rest waited for another press.
@@ -194,19 +195,15 @@ def score_mode(args, stores=None):
         from . import time_budget
         with store.connect(args.db) as db:
             to_app = lambda: sync_partial(args, stores, db, hidden, dismissed)
+            # Why here (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommended)"; before it "Ask places after the search, like scoring (Recommended)"): what the
+            # search read and had no time for is judged, placed and read now, off its 3 minutes (src/press/after_search.py), then scored with the rest. A failure costs no score.
+            from .paths import load_search_config
+            from .press import after_search
+            after_search.run(args, db, load_search_config(), out=lambda line: print(line, flush=True))
             profile, candidates = read_profile(), _stay(db, to_score(db, hidden))
             waiting = score.queue(db, candidates, profile, scope='new')   # the one ranked list the search's own scorer takes from
             mine = waiting[:args.score_max]
             print('Score queue: ' + json.dumps({'queue': [job_code(job['url']) for job in mine], 'left': len(waiting) - len(mine)}), flush=True)
-            # Why here (12 Nov 2026, owner, asked via AskUserQuestion: "Ask places after the search, like scoring (Recommended)"): the locations the search met in towns
-            # nobody placed are asked now, off the search's 3 minutes; one round at most, then the scores. A failure costs no score.
-            from .paths import load_search_config
-            from .press import stage
-            from .sources import places_later
-            with stage.guard('places asked after the search') as caught:
-                places_later.ask(load_search_config())
-            if caught.error:
-                print(f'Warning: the locations of the last search were not asked about ({caught.reason}); they wait for the next queue', flush=True)
             for at in range(0, len(mine), BATCH):   # a round is Claude Code's slots, as beside the search (src/daily_search_scoring.py BATCH)
                 if time_budget.over('score'):
                     break

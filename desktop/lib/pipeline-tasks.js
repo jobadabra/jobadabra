@@ -29,11 +29,11 @@ const searchSummary = storage => (record, log) => {
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
   // A Find jobs press ends the scoring queue of the search before it: the engine runs one process at a time, and the new search scores the waiting jobs first itself.
   if (running()?.note === SCORE_QUEUE_NOTE) stopTask();
-  let left = 0;   // found jobs this search said it did not reach
-  const seen = line => { left = waitingOf(line) ?? left; };
+  let left = 0, waits = false;   // found jobs this search said it did not score; whether it kept jobs or postings waiting for the check after it
+  const seen = line => { left = waitingOf(line) ?? left; waits = waits || waitsOf(line); };
   return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, line => { seen(line); tee(line); }, mode, trigger, {employers, signal, note}), {mode}, searchSummary(storage), {note})
     .then(done => {
-      const max = done?.run ? queueMax({left, scored: Number(done.run.scored) || 0, stopped: !!done.run.stopped, ai: aiReadyOf(storage)}) : 0;
+      const max = done?.run ? queueMax({left, waits, scored: Number(done.run.scored) || 0, stopped: !!done.run.stopped, ai: aiReadyOf(storage)}) : 0;
       if (max) scoreQueue(storage, onLine, trigger, {max}).catch(() => {});
       return done;
     });
@@ -43,8 +43,17 @@ const WAITING = /^⏱ (?:Time is up for this refresh: )?(\d+) (?:found )?job\(s\
 const SCORE_CEILING = 60;   // scores one Find jobs run makes, the search and its queue together (pipeline-args.js --score-max)
 /** How many found jobs a search's line says it did not score -> a number, or null for any other line. */
 export const waitingOf = line => { const waits = WAITING.exec(String(line)); return waits ? Number(waits[1]) : null; };
-/** How many scores the queue after a search may make -> 0 when it must not start: nothing waits, the person stopped the search, no AI, or the search already made the run's 60. */
-export const queueMax = ({left, scored, stopped, ai}) => (left > 0 && !stopped && ai ? Math.max(0, SCORE_CEILING - scored) : 0);
+// The engine's lines for jobs a search read and had no time to judge (src/sources/waiting_jobs.py SAID) and for postings it had no time to read (src/press/clock.py later).
+const WAITS = /^(?:Waiting to be checked after this search: \d+ job|⏱ Time is up \(.*\) for descriptions: )/;
+/** Whether a search's line says it kept work for the check after it (jobs to judge, postings to read). */
+export const waitsOf = line => WAITS.test(String(line));
+/**
+ * How many scores the queue after a search may make -> 0 when it must not start: nothing waits (no unscored job, no job to check, no posting to read), the person
+ * stopped the search, no AI, or the search already made the run's 60.
+ * Why `waits` (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommended)"): the queue also judges what the search read too late and reads the postings a
+ * score needs; a Paris search listed 30 jobs, 23 without their posting, said no "jobs left" line, and the queue never started.
+ */
+export const queueMax = ({left, waits = false, scored, stopped, ai}) => ((left > 0 || waits) && !stopped && ai ? Math.max(0, SCORE_CEILING - scored) : 0);
 export const SCORE_QUEUE_NOTE = 'Scoring the jobs it found';
 export const SCORE_QUEUE_END = 'Score queue: done';
 /**

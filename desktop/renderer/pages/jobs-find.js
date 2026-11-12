@@ -15,6 +15,7 @@ import {keepBlock, keptBlock} from '../late-blocks.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
 import {showFullReport} from './full-report.js';
+import {checkQueue} from './score-queue.js';
 import {openSetting} from './settings.js';
 import {openTopupDialog} from './topup-dialog.js';
 import {refusalAction} from '../refusal.js';
@@ -102,9 +103,11 @@ function draw(model) {
     card.replaceChildren(findHead(t('pagesControlStatus.findingJobs'), model, model.added ? t('pagesAuditSecond.a98') : t('pagesControlStatus.firstJobs'), {spinner: true}), readProgress(model), steps);
     if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
+    // Why (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, one bar, a count (Recommended)"): while the queue checks the jobs this search had no time for, the card says so; the bar above the list counts them.
+    const checking = checkQueue(), still = checking ? t('pagesJobsHelp.checkLead', {total: checking.waiting}) : '';
     const head = model.partial
-      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, t('pagesDynamicJobs.m223', {"value1": limitWords(model.partial).replace(/^./, c => c.toUpperCase())}), {done: true})
-      : findHead(t('pagesControlStatus.searchDone'), model, t('pagesAuditSecond.a99'), {done: true});
+      ? findHead(t('pagesControlStatus.searchTimeLimit'), model, still || t('pagesDynamicJobs.m223', {"value1": limitWords(model.partial).replace(/^./, c => c.toUpperCase())}), {done: true})
+      : findHead(t('pagesControlStatus.searchDone'), model, still || t('pagesAuditSecond.a99'), {done: true});
     if (model.runId) head.append(wand(button(t('pagesJobs.fullReport'), () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
     card.replaceChildren(head, again(t('pagesCommon.findAgain')));
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")

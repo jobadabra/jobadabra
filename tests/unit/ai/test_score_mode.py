@@ -86,6 +86,35 @@ class ScoreModeTests(unittest.TestCase):
         self.assertEqual((code, self.client.titles), (0, []))
         self.assertEqual(json.loads(next(line for line in lines if line.startswith('Score queue: '))[len('Score queue: '):]), {'queue': [], 'left': 0})
 
+    def test_a_job_the_search_had_no_time_to_judge_is_checked_listed_and_scored_by_the_queue(self):
+        """Owner, 12 Nov 2026 (asked via AskUserQuestion: "Yes, build it (Recommended)"): a board that came back after the AI's stop had its jobs dropped; they wait now and the
+        queue lists them before it scores. The app is told the count for its bar (owner: "Yes, one bar, a count (Recommended)")."""
+        from contextlib import closing
+        from datetime import datetime, timezone
+        from src.ai import title_triage
+        from src.paths import load_search_config
+        from src.sources import feed_places, feeds, waiting_jobs
+        late = {'company': 'Example', 'id': 'late', 'title': 'SRE late', 'location': 'Zurich', 'url': 'https://board.example.test/late', 'description': 'Kubernetes.',
+                'date_posted': '', 'remote': False, 'salary': ''}
+        with closing(feeds.database(self.db_path)) as feed_db, mock.patch.object(waiting_jobs, '_worth', return_value=True):
+            waiting_jobs.keep(feed_db, 'Example board', [late], datetime(2026, 11, 12, tzinfo=timezone.utc), search=load_search_config())
+        with mock.patch.object(title_triage, 'decide', lambda titles, search, **kw: {feeds.title_key(title): True for title in titles}), \
+                mock.patch.object(feed_places, 'place_jobs'), mock.patch.object(feeds, 'placing', return_value=True), mock.patch.object(feeds, 'wanted_location', return_value=True):   # the AI's own yes lists it
+            code, lines = self.run_mode()
+        self.assertEqual(code, 0)
+        checks = [line for line in lines if line.startswith('Check queue: ')]
+        self.assertEqual((checks[0], checks[-1]), ('Check queue: {"waiting": 1, "done": 0}', 'Check queue: done'))
+        self.assertLess(lines.index(checks[-1]), next(n for n, line in enumerate(lines) if line.startswith('Score queue: ')), 'checked first: the queue scores what it just listed')
+        with store.connect(self.db_path) as db:
+            listed = {job['title']: (score.load(db).get(job['id']) or {}).get('score') for job in store.digest_jobs(db, only_new=False)}
+            self.assertEqual(listed.get('SRE late'), 70, 'listed and scored in the same queue')
+        with closing(feeds.database(self.db_path)) as feed_db:
+            self.assertEqual(waiting_jobs.count(feed_db, load_search_config()), 0)
+
+    def test_with_nothing_waiting_the_app_is_still_told_the_check_ended(self):
+        _, lines = self.run_mode()
+        self.assertEqual([line for line in lines if line.startswith('Check queue: ')], ['Check queue: done'])
+
 
 if __name__ == '__main__':
     unittest.main()

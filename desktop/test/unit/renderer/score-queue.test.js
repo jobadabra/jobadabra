@@ -3,8 +3,8 @@
 // unscored row reads its place from that one state, and the state always clears when the run ends. Also the two rules of when the app starts the queue.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {heldOrder, queuePlace, releaseOrder, scoreQueue, scoreQueueLine} from '../../../renderer/pages/score-queue.js';
-import {queueMax, waitingOf, SCORE_QUEUE_END} from '../../../lib/pipeline-tasks.js';
+import {checkQueue, heldOrder, queuePlace, releaseOrder, scoreQueue, scoreQueueLine} from '../../../renderer/pages/score-queue.js';
+import {queueMax, waitingOf, waitsOf, SCORE_QUEUE_END} from '../../../lib/pipeline-tasks.js';
 import {scoreQueueArgs} from '../../../lib/pipeline-args.js';
 import {notice} from '../../../lib/run-history.js';
 
@@ -98,6 +98,24 @@ test('the app starts the queue only when a search left found jobs unscored, and 
   assert.equal(queueMax({left: 143, scored: 60, stopped: false, ai: true}), 0, 'the search made the 60 itself');
   assert.equal(queueMax({left: 143, scored: 8, stopped: true, ai: true}), 0, 'the person stopped the search: nothing goes on by itself');
   assert.equal(queueMax({left: 143, scored: 8, stopped: false, ai: false}), 0, 'no AI, no scores');
+});
+
+test('a search that kept jobs to check or postings to read starts the queue too, and the bar counts the check before the scores', () => {
+  // Owner, 12 Nov 2026 (asked via AskUserQuestion: "Yes, build it (Recommended)"; "Yes, one bar, a count (Recommended)"): Paris listed 30 jobs, 23 with no posting read, no "jobs left" line: the queue never started.
+  assert.equal(waitsOf('Waiting to be checked after this search: 24 job(s) of Job boards found'), true);
+  assert.equal(waitsOf('⏱ Time is up (2 min 05 s) for descriptions: 1 round of posting reads waits for the next search'), true);
+  assert.equal(waitsOf('⏱ Time is up (2 min 05 s) for job boards: 2 boards wait for the next search'), false);
+  assert.equal(queueMax({left: 0, waits: true, scored: 7, stopped: false, ai: true}), 53);
+  assert.equal(queueMax({left: 0, waits: true, scored: 7, stopped: true, ai: true}), 0, 'a stopped search starts nothing');
+  assert.equal(scoreQueueLine('Check queue: {"waiting": 24, "done": 0}'), true);
+  assert.deepEqual(checkQueue(), {waiting: 24, done: 0});
+  scoreQueueLine('Check queue: {"waiting": 24, "done": 30}');
+  assert.deepEqual(checkQueue(), {waiting: 24, done: 24}, 'never more than waits');
+  assert.equal(scoreQueueLine('Check queue: done'), true);
+  assert.equal(checkQueue(), null);
+  scoreQueueLine('Check queue: {"waiting": 3, "done": 0}');
+  assert.equal(scoreQueueLine('Score queue: done'), true, 'the queue ended however it ended: the check clears with it');
+  assert.equal(checkQueue(), null);
 });
 
 test('the queue\'s command scores and nothing else, and its end sends no second notification', () => {
