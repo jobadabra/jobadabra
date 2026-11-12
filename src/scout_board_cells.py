@@ -72,12 +72,17 @@ def _resting(memory, cell, today):
     return str((memory.get(f'{cell[0]}|{cell[1]}') or {}).get('until') or '') > today.isoformat()
 
 
-def pick(db, today=None, priority=(), named=()):
+def pick(db, today=None, priority=(), named=(), only=None):
     """(country, families, boards to read again) for the next run, or None when every cell under TARGET rests.
     named: cells given by hand (their first country, its named families). Else a country with a fact due for a refresh goes first, its weakest
-    families asked beside the refresh; else the weakest cell's country. Weakest: fewest boards, then a priority cell, then the country's fewest boards, then asked longest ago."""
+    families asked beside the refresh; else the weakest cell's country. Weakest: fewest boards, then a priority cell, then the country's fewest boards, then asked longest ago.
+    only: the countries this pick may give (a lane of src/scout_board_lanes.py reads its own country or nothing); None = any."""
     today = today or date.today()
-    again = stale(db, today)
+    again = {country: boards for country, boards in stale(db, today).items() if only is None or country in only}
+    if named and only is not None:   # a lane: cells named for another country are not its own, and its merge would drop them
+        named = [cell for cell in named if cell[0] in only]
+        if not named:
+            return None
     if named:
         country = named[0][0]
         return country, [family for code, family in named if code == country][:PER_RUN], again.get(country, [])
@@ -92,7 +97,7 @@ def pick(db, today=None, priority=(), named=()):
     def rank(cell):   # the country's own boards break ties: a country with none goes before one gap in a covered country
         return (counted.get(cell, 0), cell not in wanted, whole[cell[0]], str((memory.get(f'{cell[0]}|{cell[1]}') or {}).get('asked') or ''),
                 scout_cells.EUROPE.index(cell[0]), families.index(cell[1]))
-    open_cells = sorted((cell for cell in ((country, family) for country in scout_cells.EUROPE for family in families)
+    open_cells = sorted((cell for cell in ((country, family) for country in scout_cells.EUROPE if only is None or country in only for family in families)
                          if counted.get(cell, 0) < TARGET and not _resting(memory, cell, today)), key=rank)
     country = next(iter(again), None) or (open_cells[0][0] if open_cells else None)
     if not country:

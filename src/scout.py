@@ -205,16 +205,20 @@ def sync_store_only(db_path):
     return 1 if failed and not written else 0
 
 
-def board_pass(db_path):
+def board_pass(db_path, lanes=0, merge=None):
     """The central scout's board pass alone (--board-pass): one country's boards measured and kept. Returns the exit code.
     Why (12 Nov 2026, sa): a by-hand SCOUT_BOARD_COUNTRY the list does not know ends the run with the accepted names; it used to read the thinnest country instead."""
-    from . import scout_board_cells, scout_boards
+    from . import scout_board_cells, scout_board_lanes, scout_boards
+    if merge or lanes:   # several lanes at once (src/scout_board_lanes.py): a round's countries, or its lanes brought back; no pass here
+        return scout_board_lanes.merge_all(db_path, merge) if merge else scout_board_lanes.plan(db_path, lanes)
     scout_core.CENTRAL = True
     with store.connect(db_path) as db:
         try:
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
+        if named and (scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV)) or {named}) != {named}:   # its merge keeps the lane's own country only
+            raise SystemExit('Board pass: SCOUT_BOARD_COUNTRY names another country than this lane\'s SCOUT_BOARD_ONLY')
         scout_boards.ensure(db)
         scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
         scout_board_cells.keep_stops(db, os.environ.get('SCOUT_BOARD_SEED_DB'))   # the Scout's own stops: discovery keeps its own database
@@ -235,10 +239,14 @@ def discover(db, run=None, out=print, today=None):
     jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
     equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
     by employers never gave a turn to the countries with no measured board."""
-    from . import scout_board_cells as cells, scout_boards
+    from . import scout_board_cells as cells, scout_board_lanes, scout_boards
     cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
     priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
-    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')))
+    try:
+        only = scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV))   # one lane of several at once: its own country or nothing
+    except ValueError as wrong:
+        raise SystemExit(f'Board discovery: {wrong}') from None
+    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')), only=only)
     if not turn:
         out('Board discovery: every cell under its target rests; nothing to read this run')
         return []
@@ -267,6 +275,10 @@ def main():
                              '(its own job and AI cap in jobadabra-lab board-discovery.yml; the country: SCOUT_BOARD_COUNTRY with SCOUT_BOARD_KINDS, '
                              'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py; boards the headless browser must never open: '
                              'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab board-discovery.yml\'s browser_final input)')
+    parser.add_argument('--board-lanes', type=int, default=0, metavar='N',
+                        help='board discovery in several lanes at once: print the N different countries one round reads side by side (src/scout_board_lanes.py), then stop')
+    parser.add_argument('--board-merge', nargs='+', metavar='COUNTRY=PATH',
+                        help="after a round's lanes: copy each lane's own country from its copy of the memory into --db, then stop")
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -279,8 +291,9 @@ def main():
         return sync_store_only(args.db)
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
+    args.board_pass = args.board_pass or bool(args.board_lanes or args.board_merge)   # the lanes' two commands enter where a pass does (board_pass)
     if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
-        return board_pass(args.db)
+        return board_pass(args.db, lanes=args.board_lanes, merge=args.board_merge)
     if args.export_sources:
         kept, failed = export_sources(employer_store())
         print(f'Wrote {len(kept)} feeds ({sum(k["jobs"] for k in kept):,} open jobs) to config/sources.json')
