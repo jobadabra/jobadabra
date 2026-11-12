@@ -17,7 +17,7 @@ from src import desktop
 COMMANDS = ('jobs delete status unapply not-submitted posting calendar clear-jobs strategy rescore-outdated '
             'refresh-locations places-now tune explain-coverage visit-outcome visit-hide stuck-jobs stuck-dismiss '
             'set-description visit-list linkedin-searches visit-unblock visit-filters visit-context visit-session visit-jobpages '
-            'visit-jobpage visit-read refused-queue refused-judge refused-outcome visit-understand visit-recipe role-ideas next-step coverage').split()
+            'visit-jobpage visit-read refused-queue headless-boards refused-judge refused-outcome visit-understand visit-recipe role-ideas next-step coverage').split()
 URL = 'https://example.test/jobs'
 VALUE = {'text': 'Zürich'}
 ERROR = 'Your job tracker could not be updated (OSError); nothing changed. Try again.'
@@ -256,21 +256,26 @@ import src.desktop
         queue.assert_called_once_with(now_hosts=[], everything=False)
         self.call('refused-queue', {'ok': True, 'sites': [VALUE]}, '--now', URL, '--now', 'other', '--all')
         queue.assert_called_with(now_hosts=[URL, 'other'], everything=True)
+        self.call('refused-queue', {'ok': True, 'sites': [VALUE]}, '--kind', 'employer')   # the button's read: employer sites only (boards: headless-boards)
+        queue.assert_called_with(now_hosts=[], everything=False, kinds=('employer',))
+        boards = self.patch('src.sources.refused_reads.board_queue', return_value=[VALUE])
+        self.call('headless-boards', {'ok': True, 'sites': [VALUE]})
+        boards.assert_called_once_with()
         state = self.patch('src.sources.refused_state.page_state', return_value=VALUE)
         self.call('refused-judge', {'ok': True, 'state': VALUE}, str(self.page), ascii=True)
         state.assert_called_once_with(None, '<p>é</p>', 'Jobs', '')
         outcome = self.patch('src.sources.refused_reads.outcome', return_value={'ok': True, **VALUE})
         self.call('refused-outcome', {'ok': True, **VALUE}, str(self.page))
-        outcome.assert_called_once_with(URL, None, '<p>é</p>', 'Jobs', '', step='download', captcha=False)
+        outcome.assert_called_once_with(URL, None, '<p>é</p>', 'Jobs', '', step='download', captcha=False, judged=None)
         ensure = self.patch('src.scout.ensure_tables')
         self.patch('src.desktop.datetime').now.return_value.isoformat.return_value = 'now'
         outcome.return_value = {'feed': 'feed', 'name': 'Zürich', 'ok': True}
-        for step in ('engine', 'download', 'tab', 'invalid'):
-            self.page.write_text(json.dumps({'url': URL, 'step': step, 'captcha': True}))
+        for step, judged in (('engine', None), ('download', 'login'), ('tab', 'refused'), ('headless', 'passive_check'), ('invalid', 'page')):
+            self.page.write_text(json.dumps({'url': URL, 'step': step, 'captcha': True, 'judged': judged}))
             self.call('refused-outcome', {'name': 'Zürich', 'ok': True}, str(self.page))
-            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True)
+            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'page' else None)
         ensure.assert_called_with(self.db)
-        self.assertEqual(self.db.commit.call_count, 4)
+        self.assertEqual(self.db.commit.call_count, 5)
         self.assertEqual(self.db.execute.call_args.args[1], ('feed', 'Zürich', 'now'))
 
     # Pin browser-read inputs and sequential feed registration effects.
