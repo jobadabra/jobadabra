@@ -29,12 +29,15 @@ MOST = budget.value('national.MOST')   # per read: the titles' AI after it keeps
 @dataclass(frozen=True)
 class Service:
     """One country's public employment service. url(word, place, offset) -> the search page for a role word in one place entry (geo: kind, lat, lon, r) or the whole
-    country (place None); rows(answer) -> (jobs as listed, the answer's total); size: rows a page holds (a shorter page is the last)."""
+    country (place None); rows(answer) -> (jobs as listed, the answer's total); size: rows a page holds (a shorter page is the last); get(url) -> the parsed
+    answer, for a service read through our site with the install's token (None: the plain public fetch, aggregators._get).
+    Why (12 Nov 2026, fw via sa): a country whose feed needs a key the app never holds is read through our site, never with a key in the app."""
     name: str
     country: str
     url: Callable
     rows: Callable
     size: int
+    get: Callable = None
 
 
 def _sweden_url(word, place, offset):
@@ -121,7 +124,7 @@ def read(service, search, get=None, client=None):
     """The service's jobs for the person's role words in their places in its country, as listed (never kept or sorted here; aggregators.kept does).
     [] when no place is in the country. A failure ends the read: what was read is kept and said in one line; one that read nothing raises."""
     from . import aggregators, eures
-    get = get or aggregators._get
+    get = get or service.get or aggregators._get   # a caller's own fetch (a test) first, then the service's
     areas = places(search, service.country, client)
     words = eures._words(search)   # the one reading of a public search's role words (EURES's)
     if not areas or not words:

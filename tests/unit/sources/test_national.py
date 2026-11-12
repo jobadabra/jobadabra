@@ -120,6 +120,15 @@ class NationalTest(unittest.TestCase):
                 jobs = national.read(service, search(place), get=Feed(answer, answer))
                 self.assertTrue(jobs and all(job['date_posted'][:4] == '2026' for job in jobs), 'the posting date stays on each job: how many a repeat search adds needs it')
 
+    def test_a_service_with_its_own_fetch_is_read_through_it(self):
+        through, plain = Feed(), Feed()
+        service = national.Service('Example service', 'SE', SWEDEN.url, SWEDEN.rows, national.PAGE, get=through)
+        with mock.patch.object(aggregators, '_get', plain):
+            self.assertEqual(len(national.read(service, search('Stockholm'))), 4)
+            national.read(SWEDEN, search('Stockholm'))
+        self.assertEqual((len(through.urls), len(plain.urls) > 0), (2, True), "the service's own fetch, never the plain one; a service without it fetches plainly")
+        self.assertTrue(all(service.get is None for service in national.SERVICES), "Sweden and Belgium are read with the plain public fetch")
+
     def test_no_page_is_asked_past_the_read_cut_less_its_grace(self):
         feed = Feed()
         with mock.patch('src.sources.read_budget.cut_at', return_value=100.0), mock.patch.object(time_budget, 'now', return_value=100.0):
