@@ -198,6 +198,15 @@ def score_mode(args, stores=None):
             waiting = score.queue(db, candidates, profile, scope='new')   # the one ranked list the search's own scorer takes from
             mine = waiting[:args.score_max]
             print('Score queue: ' + json.dumps({'queue': [job_code(job['url']) for job in mine], 'left': len(waiting) - len(mine)}), flush=True)
+            # Why here (12 Nov 2026, owner, asked via AskUserQuestion: "Ask places after the search, like scoring (Recommended)"): the locations the search met in towns
+            # nobody placed are asked now, off the search's 3 minutes; one round at most, then the scores. A failure costs no score.
+            from .paths import load_search_config
+            from .press import stage
+            from .sources import places_later
+            with stage.guard('places asked after the search') as caught:
+                places_later.ask(load_search_config())
+            if caught.error:
+                print(f'Warning: the locations of the last search were not asked about ({caught.reason}); they wait for the next queue', flush=True)
             for at in range(0, len(mine), BATCH):   # a round is Claude Code's slots, as beside the search (src/daily_search_scoring.py BATCH)
                 if time_budget.over('score'):
                     break

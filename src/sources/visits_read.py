@@ -61,8 +61,9 @@ def _has_job_id(link):
 def fitting(jobs):
     """The jobs a jobs check would keep: your role words and your places (src/sources/feeds.py, the same filter), so a read says
     honestly how many of its jobs reach your list (owner, 7 Oct 2026: "Read 5 jobs from Indeed, but my Jobs count never grows")."""
-    from . import feeds
+    from . import feeds, places_later
     feeds.triage(jobs)
+    places_later.note(jobs)   # a page you opened: its other towns are asked about after the search
     return [job for job in jobs if feeds.wanted_title(job.get('title') or '') and feeds.wanted_location(job)]
 
 
