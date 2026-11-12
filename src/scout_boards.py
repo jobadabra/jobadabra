@@ -1,7 +1,8 @@
 """The central scout's board pass: per thin country, the boards that give jobs located there, published as board facts.
 Why: 24 Oct 2026 (owner, "A. Central scout measures boards"): a first search in a country with no installs (Moldova) found 7 to 22 local jobs depending on
 which boards the AI happened to name, because the shared-board facts need installs in the country. One country a run: the AI proposes its boards
-(board_ideas), the engine reads each by rules only (no AI page reader: the owner chose "rules only" on 24 Oct 2026), the jobs whose place is in that country
+(board_ideas), the engine reads each by rules first (the owner chose "rules only" on 24 Oct 2026; since 12 Nov a board they read as empty gets one AI page
+read, PAGE_CALLS a run), the jobs whose place is in that country
 are counted, and a board with MIN_LOCAL of them is kept as a fact. The index publish sends the facts (site: api/employers.js board_facts), where they are
 served as the same board fact installs share. Never worldwide remote: only a job whose place names the country counts.
 Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/unit/sources/test_scout_boards.py.
@@ -31,9 +32,13 @@ PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.co
 KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
 WORD_CALLS = 1          # board discovery: its families' search words in the country's language, one call (src/ai/board_words.py)
+# Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" for this case): a Slovak
+# board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards). A board the rules read as empty is read once more with the AI page
+# reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe reads the same page with no AI later in that run.
+PAGE_CALLS = 6
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
-# ideas 1 + words 1 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 65.
-JOB_CALLS = IDEA_CALLS + WORD_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
+# ideas 1 + words 1 + pages 6 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 71.
+JOB_CALLS = IDEA_CALLS + WORD_CALLS + PAGE_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
@@ -238,7 +243,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
         proposed = _first(list(again), found, proposed)
         began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
-        reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
+        reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
+        from .ai import page_reader
+        ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
             for board in proposed:
                 if clock() - began > BUDGET_S:
@@ -253,6 +260,15 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                         if stop:
                             db.execute('INSERT OR REPLACE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', (board['host'], stop, datetime.now(timezone.utc).isoformat(timespec='seconds')))
                             final.append(f"{board['host']} ({stop})")
+                read_by_ai = False
+                if not jobs and state == 'empty' and ai_boards and decide.probe_spent() < PAGE_CALLS:
+                    careers.READER, ai_boards = reader, ai_boards - 1
+                    try:   # one pool for the page reader and any judgment inside the read (src/ai/decide.py probe_allowance), so the job's cap holds
+                        with decide.probe_allowance(PAGE_CALLS):
+                            jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
+                    finally:
+                        careers.READER = None
+                    read_by_ai = bool(jobs)
                 with decide.own_allowance(PLACES, PLACE_CALLS):
                     local = local_of(jobs, country)
                 placeless = [job for job in jobs if not str(job.get('location') or '').strip()]
@@ -265,7 +281,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                         families, unasked = kinds_of(counted)
                 fact = measure(board, counted, country, families, browser=browsed)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
-                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + why)
+                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why)
                 if fact:
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
@@ -280,11 +296,12 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
+        # Why (12 Nov 2026): each allowance's calls are named, so a run shows which question spent them and that the job's cap held (France's lines showed neither); pages: the AI page reads' pool (owner, 12 Nov 2026: "AI reads once, recipe after")
         out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
             + (f"; the browser was stopped, never asked again: {', '.join(final)}" if final else '')
-            + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's lines showed neither which question spent the calls nor whether the job's cap held
+            + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, pages {decide.probe_spent()} of {PAGE_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")
         if by_cells:   # Why (12 Nov 2026, bd): nl and sk runs read 9 of 12 boards as empty and the log named neither the words searched nor the address read
             out(f"Board pass: searched with {', '.join(search['jobs_board_search_queries'][:found_boards.FULL_SEARCHES])}"
                 + (f"; read empty at: {', '.join(addresses)}" if addresses else ''))
