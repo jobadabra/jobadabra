@@ -48,11 +48,16 @@ export function conversation(request, names = []) {
 // returns there, as a run that ended well, and the process closes down by itself (killed if it has not after ANSWERED_CLOSE_MS).
 // Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): `codex exec` closed down 0.7-1.5 s after its answer line, Claude Code
 // ~0.25-0.8 s after its result (telemetry, then exit) on the owner's Mac. A failed answer is never cut short: it waits for the exit code and stderr.
-export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null, answered = null} = {}) {
+// own: the process's working directory is a folder of its own, removed once it has closed (a process that answers before it closes must not
+// run in the call's folder, which the call removes at once: Windows refuses to remove a running process's working directory).
+export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null, answered = null, own = ''} = {}) {
   return new Promise(resolve => {
     let child = started;
-    try { child ||= spawnFn(binary, args, {cwd, env, stdio: ['pipe', 'pipe', 'pipe']}); }
-    catch (error) { resolve({error: {kind: 'missing', text: `${tool} could not start: ${error.message}`}}); return; }
+    const folder = !child && own ? fs.mkdtempSync(path.join(os.tmpdir(), own)) : '';
+    const tidy = () => { if (folder) fs.rmSync(folder, {recursive: true, force: true}); };
+    try { child ||= spawnFn(binary, args, {cwd: folder || cwd, env, stdio: ['pipe', 'pipe', 'pipe']}); }
+    catch (error) { tidy(); resolve({error: {kind: 'missing', text: `${tool} could not start: ${error.message}`}}); return; }
+    if (folder) child.on('close', tidy);
     let stdout = '', stderr = '', done = false, seen = 0;
     const finish = value => { if (!done) { done = true; clearTimeout(timer); resolve(value); } };
     const timer = setTimeout(() => { child.kill('SIGKILL'); finish({error: {kind: 'timeout', text: `${tool} did not answer within ${Math.round(timeout / 1000)} s`}}); }, timeout);

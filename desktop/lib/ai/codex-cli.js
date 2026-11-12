@@ -134,19 +134,10 @@ export class Codex extends CliAdapter {
   // call's folder never races a Codex still closing down (Windows refuses to remove a running process's working directory).
   // Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): `codex exec` closed down 0.7-1.5 s after its answer line (13 calls,
   // the owner's plan). A long-lived `codex app-server` was measured too and is not used: no faster (3.46 vs 3.49 s to the answer) and it loads
-  // the person's own ~/.codex config (+57 input tokens). The engine does the same: src/ai/providers/codex_cli.py answer_line.
+  // the person's own ~/.codex config (+57 input tokens). The engine does the same (#3936: src/ai/providers/codex_cli.py answer_line).
   runCall(args, prompt) {
-    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-codex-run-'));
-    let child;
-    try {
-      child = this.spawnFn(this.binary, args, {cwd, env: this.env(), stdio: ['pipe', 'pipe', 'pipe']});
-      child.on?.('close', () => fs.rmSync(cwd, {recursive: true, force: true}));
-    } catch (error) {
-      fs.rmSync(cwd, {recursive: true, force: true});
-      return Promise.resolve({error: {kind: 'missing', text: `${this.constructor.tool} could not start: ${error.message}`}});   // as runProcess says it
-    }
-    return runProcess(this.binary, args, prompt, {cwd, env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
-      started: child, answered: line => jsonLine(line).type === 'turn.completed'});
+    return runProcess(this.binary, args, prompt, {env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
+      own: 'jobadabra-codex-run-', answered: line => jsonLine(line).type === 'turn.completed'});
   }
 
   async complete(request) { return super.complete(await withPdfsAsPages(request, this.pdfReader ?? pdfReader)); }

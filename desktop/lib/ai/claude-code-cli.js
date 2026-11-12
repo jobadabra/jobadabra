@@ -142,14 +142,12 @@ export class ClaudeCode extends CliAdapter {
     } catch (error) { fs.rmSync(cwd, {recursive: true, force: true}); throw error; }
   }
 
-  // The call's process: the one started ahead for its key if one waits, else one started now; it returns at its result line.
+  // The call's process: the one started ahead for its key if one waits, else one started now in a folder of its own; it returns at its result line.
   runCall(args, prompt, folder, key) {
     if (!key) return super.runCall(args, prompt, folder);
-    let started = this.constructor.spares.take(key);
-    if (!started) { try { started = this.startAhead(args); } catch { started = null; } }   // a start that fails is said by runProcess, as before
     const message = `${JSON.stringify({type: 'user', message: {role: 'user', content: prompt}})}\n`;
-    return runProcess(this.binary, args, message, {cwd: folder, env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
-      started, answered: line => { const event = jsonLine(line); return event.type === 'result' && !event.is_error && !String(event.subtype || 'success').startsWith('error'); }});
+    return runProcess(this.binary, args, message, {env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
+      started: this.constructor.spares.take(key), own: 'jobadabra-claude-', answered: line => { const event = jsonLine(line); return event.type === 'result' && !event.is_error && !String(event.subtype || 'success').startsWith('error'); }});
   }
 
   parse(finished) {
