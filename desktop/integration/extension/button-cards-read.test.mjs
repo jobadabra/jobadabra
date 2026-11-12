@@ -91,7 +91,16 @@ test('when the cards hold no id, pressing each one, as a person does, gives the 
   } finally { await page.close(); }
 });
 
-test('the next page is the pager\'s next number, never another place on the site', async () => {
+test('a link on the page\'s own path naming another id is still a posting; only the one naming the job the page shows is dropped (Gitar on #3866)', async () => {
+  const {page} = await open('attribute');
+  try {
+    await page.evaluate(`document.body.insertAdjacentHTML('beforeend', '<ul><li><a href="${'?jobId=900077'}">Stand-in other posting</a></li></ul>')`);
+    const linked = await call(page, 'extractPage');
+    assert.deepEqual(linked.cards.map(card => new URL(card.url).search), ['?jobId=900077']);
+  } finally { await page.close(); }
+});
+
+test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {
     assert.equal(await call(page, 'goNext'), 'page number');

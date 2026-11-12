@@ -10,8 +10,10 @@ export function extractPage() {
   const seen = new Set();
   const cards = [];
   const here = new URL(location.href);
-  // Why (#3710, the structural copy of 12 Nov 2026): a link to the page's own path (the selected job's header on a results page) is the page, not a posting.
-  const toPage = href => { const at = new URL(href); return at.host === here.host && at.pathname === here.pathname; };
+  // Why (#3710, the structural copy of 12 Nov 2026; narrowed on Gitar's review): a link to the page's own path whose ids are all ids the page's own address
+  // already holds (the selected job's header on a results page) is the page, not a posting; a link on the same path naming another id is still one.
+  const ownIds = new Set([...here.searchParams.values()].filter(value => /^\d{5,}$/.test(value)));
+  const toPage = href => { const at = new URL(href); return at.host === here.host && at.pathname === here.pathname && [...at.searchParams.values()].filter(value => /^\d{5,}$/.test(value)).every(value => ownIds.has(value)); };
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.href.split('#')[0];
     if (!/^https?:/.test(href) || seen.has(href) || !JOB.test(href) || toPage(href)) continue;
@@ -401,10 +403,7 @@ export async function addressByPress({keys, budgetMs, gapMs}) {
 // Runs inside the page: the next page of the same list. A "next" link or button, else the next page number, else a "more jobs" button,
 // else scroll to the end (lists that load as you scroll). Returns how it went on, or 'none'.
 export function goNext() {
-  // Why (#3710, 11 Nov 2026 press): a "next" once went to a company page. A link that leaves the list's folder (another host, or a path outside it) is not its next page.
-  const folder = location.pathname.replace(/[^/]*$/, '');
-  const stays = node => node.tagName !== 'A' || !node.getAttribute('href') || (new URL(node.href).host === location.host && new URL(node.href).pathname.startsWith(folder));
-  const visible = node => node && node.offsetParent !== null && !node.disabled && node.getAttribute('aria-disabled') !== 'true' && stays(node)
+  const visible = node => node && node.offsetParent !== null && !node.disabled && node.getAttribute('aria-disabled') !== 'true'
     && !/\$\{|\{\{|%7B/i.test(node.getAttribute('href') || '');   // a link to template code (DHL's "${getUrl(") goes nowhere
   const labels = node => [node.innerText, node.getAttribute('aria-label'), node.getAttribute('title')].map(text => (text || '').trim()).filter(Boolean);
   const rel = document.querySelector('a[rel="next"], link[rel="next"]');
