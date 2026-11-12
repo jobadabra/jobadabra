@@ -137,3 +137,12 @@ test('the verdict\'s event (#3911) goes to the one notice raiser; no event, a bo
   assert.equal(told.length, 2, 'a step that is off tells nothing');
   assert.deepEqual(await run(async () => ({state: 'signed-out', jobs: 0}), () => event, () => { throw new Error('notify broke'); }), {code: 0});
 });
+
+test('the steps are told when the engine\'s steps ended, so a step waiting for the engine\'s news ends with them, not at the deadline', async () => {
+  let told = null;
+  const boards = async (signal, onLine, ended) => { await new Promise(resolve => (ended.aborted ? resolve() : ended.addEventListener('abort', resolve, {once: true}))); told = signal.aborted; return {state: 'off', jobs: 0}; };
+  const started = Date.now();
+  await withBeside(storage, () => {}, null, async () => { await wait(5); return {code: 0}; }, {step: null, boards, deadlineMs: 5000});
+  assert.equal(told, false, 'ended is not Stop: the step may still finish what it began');
+  assert.ok(Date.now() - started < 2000, 'not held to the deadline');
+});

@@ -28,16 +28,19 @@ const SCORE_NEEDS_MS = 40000;   // under this much of the press left, the jobs w
 /**
  * Run `main` (the engine's steps) with the LinkedIn step and the job boards step beside it, each in its own browser, on one deadline. -> main's result, whatever the steps do.
  * signal: Stop. deadlineMs: when the steps must end (the press's end, less a margin, so the session has left the browser before the press does).
+ * Each step is called (signal, onLine, ended): `ended` aborts when the engine's steps ended (or failed), so a step that waits for the engine's news
+ * (the boards step: boards refused during this press) stops waiting then, not at the deadline; it is not Stop, what a step began it may finish.
  */
 export async function withBeside(storage, onLine, signal, main, {step = registered, boards = registeredBoards, score = registeredScore, tell = registeredTell, deadlineMs = 170000, budgetMs = 180000, now = Date.now, record = noteRun} = {}) {
   if (!step && !boards) return main();
   const startedAt = now(), own = new AbortController(), stop = () => own.abort();
   if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
-  const timer = setTimeout(stop, deadlineMs);
-  const beside = fn => (fn ? Promise.resolve().then(() => fn(own.signal, onLine)).catch(() => null) : Promise.resolve(null));
+  const timer = setTimeout(stop, deadlineMs), ended = new AbortController();
+  const beside = fn => (fn ? Promise.resolve().then(() => fn(own.signal, onLine, ended.signal)).catch(() => null) : Promise.resolve(null));
   const aside = Promise.all([beside(step), beside(boards)]);
   let outcome;
-  try { outcome = await main(); } catch (error) { stop(); await aside; clearTimeout(timer); signal?.removeEventListener('abort', stop); throw error; }   // Stop stays wired until the steps end: it can come after the engine's steps
+  try { outcome = await main(); } catch (error) { stop(); ended.abort(); await aside; clearTimeout(timer); signal?.removeEventListener('abort', stop); throw error; }   // Stop stays wired until the steps end: it can come after the engine's steps
+  ended.abort();
   const [result, read] = await aside;
   clearTimeout(timer);
   signal?.removeEventListener('abort', stop);
