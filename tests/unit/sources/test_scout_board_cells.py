@@ -139,7 +139,9 @@ class OwnDatabase(unittest.TestCase):
         own = sqlite3.connect(self.own_path)
         fact(own, 'b.example', 'de', ['kitchen'])   # not discovery's first run: the facts are not copied again, the stops are
         own.commit()
-        self.assertEqual(cells.keep_stops(own, self.scout_path), 1)
+        said = []
+        self.assertEqual(cells.keep_stops(own, self.scout_path, out=said.append), 1)
+        self.assertEqual(said, ["Board pass: kept as stopped for the browser, from the Scout's memory, never opened: refused.example"])
         self.assertTrue(scout_boards.browser_final(own, 'refused.example'))
 
     def test_the_board_pass_keeps_the_scout_s_stops_before_it_reads_also_for_a_country_named_by_hand(self):

@@ -163,7 +163,7 @@ def seed(db, path, out=print):
     return len(rows)
 
 
-def keep_stops(db, path):
+def keep_stops(db, path, out=print):
     """Every board the Scout's browser was stopped at in the database at `path` (src/scout_boards.py scout_browser_final) stays stopped in `db`, on every
     run: board discovery keeps its own database, and a refusal is final whichever job met it (CLAUDE.md, the refused-sites exception: "stops that board
     in Jobadabra's browser for good, with no retry"). Returns the stops copied; a missing or unreadable file copies none."""
@@ -178,6 +178,8 @@ def keep_stops(db, path):
         return 0
     db.executemany('INSERT OR IGNORE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', rows)
     db.commit()
+    if rows:   # the run's proof that the Scout's stops reached this database (sa, 12 Nov 2026: checked before a stopped country is read)
+        out(f"Board pass: kept as stopped for the browser, from the Scout's memory, never opened: {', '.join(sorted(host for host, _, _ in rows))}")
     return len(rows)
 
 
