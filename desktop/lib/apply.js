@@ -363,8 +363,7 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   const opened = new Set(chosen.map(job => job.url));
   if (outcomes.length) {
     const listed = new Set(outcomes.map(item => item.url));
-    const row = job => ({url: job.url, title: job.title || '', company: job.company || '', status: result.ok ? 'started' : 'not-started', reason: result.ok ? '' : result.error});
-    outcomes = [...outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, ...(result.ok ? {status: 'started'} : {status: 'not-started', reason: result.error})} : item), ...chosen.filter(job => !listed.has(job.url)).map(row)];
+    outcomes = [...outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, ...chromeStatus(result)} : item), ...chosen.filter(job => !listed.has(job.url)).map(job => chromeRow(job, result))];
   }
   return outcomes.length ? {...result, outcomes} : result;
 }
@@ -378,8 +377,12 @@ export async function openInChrome(storage, jobs, {open = openBrowser, focus = o
   if (!jobs.length) return {ok: true, outcomes: []};
   await releaseEndedRuns(release, jobs.map(job => job.url));
   const result = openBatchInChrome(jobs, 0, {open, focus});
-  return {...result, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: result.ok ? 'started' : 'not-started', reason: result.ok ? '' : result.error}))};
+  return {...result, outcomes: jobs.map(job => chromeRow(job, result))};
 }
+
+/** A Chrome open's answer as one job's status: 'started', or 'not-started' with the reason Chrome could not open. */
+const chromeStatus = result => result.ok ? {status: 'started', reason: ''} : {status: 'not-started', reason: result.error};
+const chromeRow = (job, result) => ({url: job.url, title: job.title || '', company: job.company || '', ...chromeStatus(result)});
 
 /** The Apply-to-N batch in Chrome: a form session per job, then one launch with a tab for each job whose tab is not open yet. -> the start() answer. */
 function openBatchInChrome(chosen, drafted, {open, focus}) {

@@ -105,6 +105,18 @@ test('a Chrome batch lists every job it opened beside a drafted job that came ba
   assert.equal(result.outcomes.filter(item => item.status === 'started').length, tabs, 'started rows = tabs opened');
 });
 
+test('a Chrome batch that cannot find Chrome marks every chosen job not started with the reason (#3617 review)', async () => {
+  const jobs = [1, 2, 3].map((number, index) => ({code: String(number), url: `https://jobs.example.test/n${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index, kit: number <= 2}));
+  const realExists = fs.existsSync, platform = Object.getOwnPropertyDescriptor(process, 'platform');
+  fs.existsSync = () => false; Object.defineProperty(process, 'platform', {value: 'win32'});   // only the Windows lookup answers nothing when no browser is installed
+  let result;
+  try { result = await apply.start(tempStorage(), {n: 3, mode: 'chrome'}, () => assert.fail('nothing may open'), async () => ({jobs}), undefined, undefined, async ({code}) => { jobs.find(row => row.code === code).kit = true; return {ok: true}; }); }
+  finally { fs.existsSync = realExists; Object.defineProperty(process, 'platform', platform); }
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.outcomes.map(item => item.status).sort(), ['not-started', 'not-started', 'not-started'], 'the drafted job and the two with kits are all not started');
+  assert.ok(result.outcomes.every(item => item.reason === result.error && item.reason), 'each row carries the reason');
+});
+
 test('a background batch keeps mixed eligibility and preparation failures beside the eligible job it queued', async () => {
   const jobs = [1, 2, 3, 4].map((number, index) => ({code: String(number), url: `https://jobs.example.test/${number}`, title: `Fictional role ${number}`, company: 'Example Air', status: 'saved', stage: 'Saved', fit: 90 - index}));
   const prepared = [], enqueued = [];
