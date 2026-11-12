@@ -14,7 +14,7 @@ const ENGINE = ['⏳ Searching job boards', 'Job boards: done, 15 job(s) for you
   'Employers: read 120 of 120 sites in the time, best first; the other 0 are read first next time.'];
 
 // One Find jobs press with LinkedIn jobs on: the engine's lines and the step's lines in one run log, the card drawn from it. `during` sees the card while a search is read.
-async function press({on = true, session = {li_at: 'FAKE-LI-AT-1'}, ready = true, results = [], status = 0, runError = null, aborted = false, during = null} = {}) {
+async function press({on = true, session = {li_at: 'FAKE-LI-AT-1'}, ready = true, results = [], status = 0, runError = null, aborted = false, during = null, refresh = null} = {}) {
   const settings = {linkedinJobs: {on}}, log = [];
   const storage = {settings: () => settings, saveSettings: patch => Object.assign(settings, patch)};
   const say = line => keepRunLine(log, line);
@@ -36,7 +36,7 @@ async function press({on = true, session = {li_at: 'FAKE-LI-AT-1'}, ready = true
   const controller = new AbortController();
   if (aborted) controller.abort();
   const result = await linkedinStep({storage, browser, openCdp, run, end: () => {}, tee: say, signal: controller.signal, searches: async () => SEARCHES, readSession: () => session,
-    port: 1, token: 't', pause: async () => {}});
+    port: 1, token: 't', pause: async () => {}, refresh: refresh && (options => refresh(options, card))});
   return {result, card: card()};
 }
 
@@ -76,6 +76,15 @@ test('LinkedIn jobs on, while it reads: the chip says which search, and Live upd
   assert.ok(seen, 'the card was drawn while the second search was read');
   assert.deepEqual(linkedinChips(seen).map(chip => [chip.state, chip.label]), [['active', 'LinkedIn · search 2 of 3']]);
   assert.deepEqual(linkedinLines(seen), ['LinkedIn: reading search 2 of 3']);
+});
+
+test('LinkedIn jobs on, the sign-in copied again first: the chip works while it is copied, then says the result', async () => {
+  let seen = null;   // lib/linkedin-refresh.js says its one note through the step's tee before any search (Gitar on #3860)
+  const {card} = await press({refresh: async ({say}, draw) => { say('LinkedIn: copying your sign-in from Chrome again'); seen = draw(); }});
+  assert.deepEqual(linkedinChips(seen).map(chip => [chip.state, chip.label]), [['active', 'LinkedIn']]);
+  assert.deepEqual(linkedinLines(seen), ['LinkedIn: copying your sign-in from Chrome again']);
+  assert.deepEqual(linkedinChips(card).map(chip => [chip.state, chip.label]), [['done', 'LinkedIn · 30 jobs read']], 'the note never stays as the lane\'s newest line');
+  assert.deepEqual(linkedinLines(card), ['LinkedIn: 30 jobs read']);
 });
 
 test('LinkedIn jobs off: the card says nothing about LinkedIn', async () => {
