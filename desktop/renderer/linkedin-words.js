@@ -12,6 +12,8 @@ const LEAD = t('helperFlow.linkedinLead', {where: WHERE});
 export const CONSENT = {
   ask: {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
   'turn-on': {title: t('helperFlow.linkedinAsk'), lead: LEAD, line: LINE, yes: t('helperFlow.linkedinSignin'), no: t('helperState.notNow'), chrome: t('helperFlow.linkedinChrome')},
+  // #3911: the way to renew a dead sign-in (⌘K, the card's Renew); its yes signs in here, the Chrome shortcut copies Chrome's.
+  renew: {title: t('pagesLinkedinServices.renewTitle'), lead: t('pagesLinkedinServices.renewLead'), line: '', yes: t('helperFlow.linkedinSignin'), no: t('pagesCommon.close'), chrome: t('helperFlow.linkedinChrome')},
   manage: {title: t('helperFlow.linkedinOn'), lead: t('helperFlow.linkedinManage'), line: '', yes: t('helperFlow.turnOff'), no: t('helperFlow.keepOn')},
 };
 
@@ -58,3 +60,10 @@ export function signInEnded(answer, view = {}) {
   if (answer?.reason === 'popup-ended') return [title, `${body} ${view.extension ? CHROME_WAY.connected : CHROME_WAY.missing}`, NO_PLACE.itself, tone];
   return [title, answer?.reason === 'not-kept' && answer.error ? answer.error : body, NO_PLACE.itself, tone];
 }
+
+const SIGNIN_LINES = {missing: 'signinMissing', 'signed-out': 'signinSignedOut', check: 'signinCheck', empty: 'signinEmpty'};
+/** The Settings card's state line while LinkedIn jobs is on and its sign-in needs the person (the one state: lib/linkedin-session.js signinView), else ''. */
+export const signinLine = view => (view?.loaded && view.on && view.signin?.state === 'needs-you' ? t(`pagesLinkedinServices.${SIGNIN_LINES[view.signin.why] || 'signinEmpty'}`) : '');
+/** The ⌘K command "Renew LinkedIn sign-in" while LinkedIn jobs is on (it opens the renew dialog with `run`), else null. */
+export const renewCommandOf = (view, run = () => {}) => (view?.loaded && view.on
+  ? {label: t('pagesLinkedinServices.renewLabel'), hint: t('pagesLinkedinServices.renewHint'), keywords: 'linkedin link sign in sign-in login renew expired signed out session connection', run} : null);

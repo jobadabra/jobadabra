@@ -11,9 +11,9 @@ export const SEARCHES = 3, PAGES = 3;
 const LIMITED = new Set([401, 403, 429, 999]);   // 999 is the status LinkedIn answers automated reads with
 const DAY_MS = 24 * 3600 * 1000;
 const WORDS = {
-  'no-session': 'LinkedIn: sign in to LinkedIn (Settings → Connections → LinkedIn), then press Find jobs',
+  'no-session': 'LinkedIn: sign in to LinkedIn in Chrome (⌘K → Renew LinkedIn sign-in), then press Find jobs',
   'no-browser': 'LinkedIn: download Jobadabra\'s browser (one time) to read LinkedIn in the background',
-  'signed-out': 'LinkedIn: sign in again (Settings → Connections → LinkedIn), then press Find jobs',
+  'signed-out': 'LinkedIn: sign in again in Chrome (⌘K → Renew LinkedIn sign-in), then press Find jobs',
   check: 'LinkedIn asked for a check: not answered, nothing more is read this time',
   limited: 'LinkedIn asked us to slow down: left alone for now',
   failed: 'LinkedIn: could not be read this time',

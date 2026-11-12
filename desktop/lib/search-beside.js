@@ -6,9 +6,11 @@
 // Guards: test/unit/main/search-beside.test.js, test/guards/safety/headless-boards-gate.test.js.
 import {noteRun} from './linkedin-session.js';
 
-let registered = null, registeredScore = null, registeredBoards = null;
+let registered = null, registeredScore = null, registeredBoards = null, registeredTell = null;
 /** Register the LinkedIn step: (signal, onLine) -> Promise<{state, jobs, fits?, ...}>, and the light scoring (fits, onLine). null removes them (tests, tools). */
 export const setLinkedinStep = (fn, score = null) => { registered = fn; registeredScore = score; };
+/** Register what raises the LinkedIn sign-in notice from a verdict's event (lib/linkedin-notice.js linkedinTell). null removes it (tests, tools, demo). */
+export const setLinkedinTell = fn => { registeredTell = fn; };
 /** Register the job boards' step: (signal, onLine) -> Promise<{state, jobs, fits?}>. null removes it (tests, tools). */
 export const setBoardsStep = fn => { registeredBoards = fn; };
 
@@ -27,7 +29,7 @@ const SCORE_NEEDS_MS = 40000;   // under this much of the press left, the jobs w
  * Run `main` (the engine's steps) with the LinkedIn step and the job boards step beside it, each in its own browser, on one deadline. -> main's result, whatever the steps do.
  * signal: Stop. deadlineMs: when the steps must end (the press's end, less a margin, so the session has left the browser before the press does).
  */
-export async function withBeside(storage, onLine, signal, main, {step = registered, boards = registeredBoards, score = registeredScore, deadlineMs = 170000, budgetMs = 180000, now = Date.now, record = noteRun} = {}) {
+export async function withBeside(storage, onLine, signal, main, {step = registered, boards = registeredBoards, score = registeredScore, tell = registeredTell, deadlineMs = 170000, budgetMs = 180000, now = Date.now, record = noteRun} = {}) {
   if (!step && !boards) return main();
   const startedAt = now(), own = new AbortController(), stop = () => own.abort();
   if (signal?.aborted) stop(); else signal?.addEventListener('abort', stop, {once: true});
@@ -39,7 +41,10 @@ export async function withBeside(storage, onLine, signal, main, {step = register
   const [result, read] = await aside;
   clearTimeout(timer);
   signal?.removeEventListener('abort', stop);
-  if (result && result.state !== 'off') record(storage, {...result, at: new Date(now()).toISOString()});
+  if (result && result.state !== 'off') {
+    const noted = record(storage, {...result, at: new Date(now()).toISOString()});
+    try { tell?.(noted); } catch { /* a notice that cannot be shown never changes the search */ }   // #3911
+  }
   const fits = (result?.fits || 0) + (read?.fits || 0);   // one light scoring run for the jobs both steps added
   if (fits && score && !own.signal.aborted && now() - startedAt < budgetMs - SCORE_NEEDS_MS) await score(fits, onLine).catch(() => {});
   return outcome;

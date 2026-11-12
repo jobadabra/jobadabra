@@ -28,6 +28,15 @@ export default {
     "other": "🔎 Ultima căutare a găsit {shown} de locuri de muncă noi. Deschide Jobadabra → Strategie: relaxează un filtru, adaugă cuvinte sau locuri, conectează surse de anunțuri și deschide site-urile accesibile doar ție.",
     "few": "🔎 Ultima căutare a găsit {shown} locuri de muncă noi. Deschide Jobadabra → Strategie: relaxează un filtru, adaugă cuvinte sau locuri, conectează surse de anunțuri și deschide site-urile accesibile doar ție."
   },
+  "linkedinTitleMissing": "Joburi LinkedIn: nicio autentificare păstrată",
+  "linkedinTitleSignedOut": "LinkedIn te-a deconectat",
+  "linkedinTitleCheck": "LinkedIn cere o verificare",
+  "linkedinTitleEmpty": "Joburile LinkedIn nu au putut fi citite",
+  "linkedinBodyStep": "Deschide LinkedIn în Chrome și autentifică-te dacă ți se cere, lasă extensia Jobadabra pornită, apoi apasă Caută joburi.",
+  "linkedinBodyCheck": "Răspunde tu la verificarea LinkedIn în Chrome (Jobadabra nu o face niciodată), lasă extensia Jobadabra pornită, apoi apasă Caută joburi.",
+  "linkedinBodyEmpty": "Ultimele două căutări LinkedIn nu au încărcat nicio pagină. Deschide LinkedIn în Chrome și autentifică-te dacă ți se cere, lasă extensia Jobadabra pornită, apoi apasă Caută joburi.",
+  "linkedinRenewedTitle": "Autentificarea LinkedIn a fost reînnoită",
+  "linkedinRenewedBody": "Joburile LinkedIn sunt din nou citite la fiecare căutare.",
   "testSubject": "Test Jobadabra",
   "testMessage": "Test Jobadabra: așa te va anunța Mereu activ despre rezultatele noi."
 };

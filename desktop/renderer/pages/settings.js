@@ -19,6 +19,7 @@ import {startDefault} from '../tab-choice.js';
 import {byStore} from '../store-words.js';
 import {SERVICES, isRequired} from './services-list.js';
 import {openLinkedinConsent, refreshLinkedin, view as linkedinView} from './linkedin-consent.js';
+import {signinLine} from '../linkedin-words.js';
 import {emailSetupCard} from './setup-email-card.js';
 import {plainError} from '../run-warnings.js';
 import {beforeOpen} from './open-hooks.js';
@@ -92,9 +93,10 @@ function statusFrom({extension, google}) {
   const detail = {ai: aiReady() && {cli: t('pagesFinalLabels.claudePlan'), codex: t('pagesFinalLabels.codexPlan'), openai: t('pagesFinalLabels.openaiApiKey'), api: t('pagesFinalLabels.anthropicApiKey'), free: t('helperMore.free')}[aiSource(shared.state)], google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
-  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': t('pagesCommon.off'), ai: ai.words};
+  const needs = signinLine(linkedinView);   // #3911: LinkedIn jobs is on but its sign-in needs the person: the card says so, never "Connected"
+  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': needs || t('pagesCommon.off'), ai: ai.words};
   const checking = {google: !google, extension: extension.checking};
-  return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
+  return {on, detail, words, checking, needsYou: {'linkedin-jobs': !!needs}, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
 // The extension's state: renderer/service-status.js extensionFrom (a kept record is judged at the time it was kept).
 // The extension card's first paint reads the same kept record (pages/extension-setup.js), so there is one copy.
@@ -168,11 +170,12 @@ function renderConnections(status) {
     box.dataset.service = service.id;   // ⌘K folds its Manage under its card (nav.js)
     const text = el('span', 'service-text');
     text.append(el('b', '', service.name), el('span', 'muted small', service.what));
-    const button = el('button', on[service.id] ? 'secondary' : 'secondary is-signal', on[service.id] ? t('pagesCommon.manage') : service.connect || t('pagesCommon.connect'));
-    button.addEventListener('click', () => (service.id === 'linkedin-jobs' ? openLinkedinConsent({mode: on['linkedin-jobs'] ? 'manage' : 'turn-on'}) : connectsNow(service, status) ? connectExtension() : openSetting(service.id)));
+    const needsYou = !!status.needsYou?.[service.id];   // #3911: LinkedIn jobs is on and its sign-in needs the person: Renew, not Manage
+    const button = el('button', on[service.id] && !needsYou ? 'secondary' : 'secondary is-signal', needsYou ? t('pagesLinkedinServices.renewButton') : on[service.id] ? t('pagesCommon.manage') : service.connect || t('pagesCommon.connect'));
+    button.addEventListener('click', () => (service.id === 'linkedin-jobs' ? openLinkedinConsent({mode: needsYou ? 'renew' : on['linkedin-jobs'] ? 'manage' : 'turn-on'}) : connectsNow(service, status) ? connectExtension() : openSetting(service.id)));
     const actions = el('span', 'service-actions');
-    actions.append(stateLine(on[service.id], detail[service.id], checking[service.id], words[service.id]), button);  // state, then the way in
-    box.append(tile(service.icon, on[service.id] ? 'good' : 'warn'), text, actions);
+    actions.append(stateLine(on[service.id] && !needsYou, detail[service.id], checking[service.id], words[service.id]), button);  // state, then the way in
+    box.append(tile(service.icon, on[service.id] && !needsYou ? 'good' : 'warn'), text, actions);
     return box;
   };
   // A service still being checked sits with the connected ones until it answers (it usually is).

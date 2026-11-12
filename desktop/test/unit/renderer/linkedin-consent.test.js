@@ -3,7 +3,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CONSENT, KEY, LINE, askOnPress, linkedinEntries} from '../../../renderer/linkedin-words.js';
+import {CONSENT, KEY, LINE, askOnPress, linkedinEntries, renewCommandOf, signinLine} from '../../../renderer/linkedin-words.js';
 import {LOOK} from '../../../renderer/suggestions.js';
 
 const off = {loaded: true, on: false, asked: 0, declined: 0, ask: true, hasSession: false};
@@ -68,4 +68,37 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
   assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
   assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
+});
+
+// #3911 (owner, 12 Nov 2026: "how to renew the linkedin sign-in?" … searched ⌘K for "link" and found no way): the card says "Needs you", ⌘K has "Renew LinkedIn sign-in", and one dialog says the one step.
+const ok = {loaded: true, on: true, signin: {state: 'ok', why: '', empties: 0}};
+const needs = why => ({loaded: true, on: true, signin: {state: 'needs-you', why, empties: why === 'empty' ? 2 : 0}});
+
+test('the Settings card says "Needs you" with the reason while the sign-in needs the person; Working and off say nothing extra', () => {
+  assert.equal(signinLine(ok), '');
+  assert.equal(signinLine({...needs('signed-out'), on: false}), '', 'off: the card is the offer, not a warning');
+  assert.equal(signinLine({loaded: false}), '');
+  const seen = new Set();
+  for (const why of ['missing', 'signed-out', 'check', 'empty']) { const line = signinLine(needs(why)); assert.match(line, /^Needs you: /, why); seen.add(line); }
+  assert.equal(seen.size, 4, 'one line per reason');
+});
+
+test('⌘K finds "Renew LinkedIn sign-in" for "link", "renew" and "sign in" while LinkedIn jobs is on, and it opens the one dialog', () => {
+  assert.equal(renewCommandOf({loaded: true, on: false}), null, 'off: nothing to renew');
+  const command = renewCommandOf(needs('signed-out'));
+  assert.equal(command.label, 'Renew LinkedIn sign-in');
+  for (const word of ['link', 'renew', 'sign in', 'sign-in', 'expired', 'signed out']) assert.ok(command.keywords.toLowerCase().includes(word) || command.label.toLowerCase().includes(word), word);
+  assert.ok(renewCommandOf(ok), 'also while it works: the person may want to renew before it breaks');
+  const words = CONSENT.renew;
+  assert.match(words.title, /Renew/);
+  for (const part of [/Chrome/, /extension/, /Find jobs/]) assert.match(words.lead, part, 'the one step');
+  assert.equal(words.yes, 'Sign in to LinkedIn', 'the sign-in window works without Chrome');
+  assert.equal(words.chrome, 'Use my Chrome sign-in');
+});
+
+test('the renew dialog is the third mode of the one consent: its yes signs in, never turns off', () => {
+  const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
+  assert.match(page, /mode === 'manage' \? turnOff\(\) : signInHere\(\)/, 'only manage turns off; renew and turn-on sign in');
+  const settings = readScreenSource(new URL('../../../renderer/pages/settings.js', import.meta.url), 'utf8');
+  assert.match(settings, /mode: needsYou \? .renew. :/, 'the card\'s button opens renew while it needs you');
 });

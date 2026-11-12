@@ -6,10 +6,10 @@
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {$} from './core.js';
-import {CONSENT, askOnPress, notOpened, signInEnded} from '../linkedin-words.js';
+import {CONSENT, askOnPress, notOpened, renewCommandOf, signInEnded} from '../linkedin-words.js';
 import {NO_PLACE} from '../targets.js';
 
-export const view = {loaded: false, on: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false};
+export const view = {loaded: false, on: false, asked: 0, declined: 0, ask: false, hasSession: false, extension: false, signin: {state: 'ok', why: '', empties: 0}};
 // Why (31 Oct 2026, push gate no-circular): startup.js imports the pages that import this module, so it hands its toast in (bindToast) instead of being imported here.
 let toast = () => {};
 /** Startup gives this module its toast function once; before that a message is dropped, never thrown. */
@@ -17,9 +17,9 @@ export const bindToast = fn => { toast = fn; };
 
 /** Read the switch's state from the app; tells the pages (Settings row, Suggestions) when it changed. */
 export async function refreshLinkedin() {
-  const before = view.on;
+  const before = `${view.on}:${view.signin?.state}`;
   Object.assign(view, await window.pilot.linkedinJobsState(), {loaded: true});
-  if (before !== view.on) window.dispatchEvent(new Event('linkedin-changed'));
+  if (before !== `${view.on}:${view.signin?.state}`) window.dispatchEvent(new Event('linkedin-changed'));
   return view;
 }
 const WATCH_MS = 2000, WATCH_FOR_MS = 150000;
@@ -65,7 +65,7 @@ async function turnOff() {
 }
 
 /**
- * Show the consent. mode: 'ask' (Find jobs press), 'turn-on' (Settings, Suggestions, ⌘K) or 'manage' (it is on: Keep on / Turn off). counts: "Not now" counts as an answer (the ask only).
+ * Show the consent. mode: 'ask' (Find jobs press), 'turn-on' (Settings, Suggestions, ⌘K), 'manage' (it is on: Keep on / Turn off) or 'renew' (#3911: it is on and needs the person: sign in again). counts: "Not now" counts as an answer (the ask only).
  * Resolves when the dialog closed and what it chose did its first step.
  */
 export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
@@ -108,3 +108,6 @@ export function linkedinCommand() {
   const mode = view.on ? 'manage' : 'turn-on';
   return {label: view.on ? t('pagesLinkedinServices.turnOff') : t('pagesLinkedinServices.turnOn'), hint: t('pagesLinkedinServices.searchLinkedin'), keywords: 'linkedin jobs search background sign in connection', run: () => openLinkedinConsent({mode})};
 }
+
+/** The ⌘K command "Renew LinkedIn sign-in" (pages/nav.js) while LinkedIn jobs is on, else null; it opens the renew dialog, the same one the card's Renew opens. */
+export const linkedinRenewCommand = () => renewCommandOf(view, () => openLinkedinConsent({mode: 'renew'}));

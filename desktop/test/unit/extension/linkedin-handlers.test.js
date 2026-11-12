@@ -27,10 +27,10 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
 
 test('the window\'s view has the state and the ask, never a cookie value', () => {
   const settings = store(), kc = keychain();
-  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, ask: true, hasSession: false});
+  assert.deepEqual(linkedinView(settings, {keychain: kc}), {on: false, asked: 0, declined: 0, ask: true, hasSession: false, signin: {state: 'ok', why: '', empties: 0}});
   linkedinRoutes(settings, {keychain: kc}).session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
   const view = linkedinView(settings, {keychain: kc});
-  assert.deepEqual(view, {on: true, asked: 0, declined: 0, ask: false, hasSession: true});
+  assert.deepEqual(view, {on: true, asked: 0, declined: 0, ask: false, hasSession: true, signin: {state: 'ok', why: '', empties: 0}});
   assert.equal(JSON.stringify(view).includes(SECRET), false);
 });
 

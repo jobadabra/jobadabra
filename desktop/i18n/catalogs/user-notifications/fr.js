@@ -28,6 +28,15 @@ export default {
     "other": "🔎 Votre dernière recherche a trouvé {shown} nouvelles offres. Ouvrez Jobadabra → Stratégie : assouplir un filtre, ajouter des mots ou des lieux, connecter des sources d’offres et ouvrir les sites accessibles uniquement par vous.",
     "many": "🔎 Votre dernière recherche a trouvé {shown} nouvelles offres. Ouvrez Jobadabra → Stratégie : assouplir un filtre, ajouter des mots ou des lieux, connecter des sources d’offres et ouvrir les sites accessibles uniquement par vous."
   },
+  "linkedinTitleMissing": "Offres LinkedIn : aucune connexion conservée",
+  "linkedinTitleSignedOut": "LinkedIn vous a déconnecté",
+  "linkedinTitleCheck": "LinkedIn demande une vérification",
+  "linkedinTitleEmpty": "Les offres LinkedIn n’ont pas pu être lues",
+  "linkedinBodyStep": "Ouvrez LinkedIn dans Chrome et connectez-vous si on vous le demande, laissez l’extension Jobadabra activée, puis cliquez sur Trouver des offres.",
+  "linkedinBodyCheck": "Répondez vous-même à la vérification de LinkedIn dans Chrome (Jobadabra ne le fait jamais), laissez l’extension Jobadabra activée, puis cliquez sur Trouver des offres.",
+  "linkedinBodyEmpty": "Vos deux dernières recherches LinkedIn n’ont chargé aucune page. Ouvrez LinkedIn dans Chrome et connectez-vous si on vous le demande, laissez l’extension Jobadabra activée, puis cliquez sur Trouver des offres.",
+  "linkedinRenewedTitle": "Connexion LinkedIn renouvelée",
+  "linkedinRenewedBody": "Les offres LinkedIn sont de nouveau lues à chaque recherche.",
   "testSubject": "Test Jobadabra",
   "testMessage": "Test Jobadabra : voici comment Toujours actif vous informera des nouvelles offres."
 };

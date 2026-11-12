@@ -32,6 +32,15 @@ export default {
     "few": "🔎 Последний поиск нашёл {shown} новые вакансии. Откройте Jobadabra → Стратегия: ослабьте фильтр, добавьте слова или места, подключите источники вакансий и откройте сайты, доступные только вам.",
     "many": "🔎 Последний поиск нашёл {shown} новых вакансий. Откройте Jobadabra → Стратегия: ослабьте фильтр, добавьте слова или места, подключите источники вакансий и откройте сайты, доступные только вам."
   },
+  "linkedinTitleMissing": "Вакансии LinkedIn: вход не сохранён",
+  "linkedinTitleSignedOut": "LinkedIn вывел вас из аккаунта",
+  "linkedinTitleCheck": "LinkedIn просит проверку",
+  "linkedinTitleEmpty": "Вакансии LinkedIn не удалось прочитать",
+  "linkedinBodyStep": "Откройте LinkedIn в Chrome и войдите, если попросит, не выключайте расширение Jobadabra, затем нажмите Найти вакансии.",
+  "linkedinBodyCheck": "Пройдите проверку LinkedIn сами в Chrome (Jobadabra этого не делает), не выключайте расширение Jobadabra, затем нажмите Найти вакансии.",
+  "linkedinBodyEmpty": "Два последних поиска LinkedIn не загрузили ни одной страницы. Откройте LinkedIn в Chrome и войдите, если попросит, не выключайте расширение Jobadabra, затем нажмите Найти вакансии.",
+  "linkedinRenewedTitle": "Вход в LinkedIn обновлён",
+  "linkedinRenewedBody": "Вакансии LinkedIn снова читаются при каждом поиске.",
   "testSubject": "Проверка Jobadabra",
   "testMessage": "Проверка Jobadabra: так режим постоянной работы сообщит вам о новых совпадениях."
 };

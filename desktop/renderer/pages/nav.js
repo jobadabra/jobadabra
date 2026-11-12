@@ -2,7 +2,7 @@ import {stageText} from '../jobs-board-rules.js';
 import {finalText, paletteGroup} from '../final-pages-copy.js';
 // Navigation: pages, ⌘R memory, the ⌘K palette.
 import {t} from '../../i18n/index.js';
-import {linkedinCommand} from './linkedin-consent.js';
+import {linkedinCommand, linkedinRenewCommand} from './linkedin-consent.js';
 import {addGmailCommand} from './gmail-offer.js';
 import {addNotifyCommands} from './notify-commands.js';
 import {addDesktopAiCommands} from './desktop-ai.js';
@@ -286,6 +286,8 @@ export function paletteCommands() {
   // LinkedIn jobs (owner, 31 Oct 2026: "Register it in ⌘K"): the action itself, not only its Settings card; the consent behind every door.
   const linkedin = linkedinCommand();
   add('Settings', linkedin.label, linkedin.hint, linkedin.keywords, linkedin.run);
+  const renew = linkedinRenewCommand();   // #3911: the way to renew a dead LinkedIn sign-in
+  if (renew) add('Settings', renew.label, renew.hint, renew.keywords, renew.run);
   addGmailCommand(add);   // only while Gmail is not connected (owner, 2 Nov 2026)
   addNotifyCommands(add);   // only while no e-mail or Telegram works (owner, 2 Nov 2026)
   addDesktopAiCommands(add);   // only while the Claude or ChatGPT desktop app is here and What we learned has open questions (owner, 2 Nov 2026)
