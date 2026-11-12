@@ -137,6 +137,44 @@ test("the row's Apply pressed while a ⋯ menu pick on the same job gets ready s
   assert.deepEqual(calls[1][2], {mode: 'fill', autoConfirmedAt: ''}, 'the start is the pick\'s, in the picked mode (Gitar on #3630)');
 });
 
+// #3638 (12 Nov 2026): the kitless row's Apply took no lock, so pressing it while a ⋯ menu pick's readiness (which drafts the kit) ran drafted the kit twice (AI credit twice).
+test("a kitless row's Apply pressed while a ⋯ menu pick on the same job gets ready asks readiness once", async () => {
+  const {createRowApply} = await import('../../../renderer/pages/jobs-apply-row.js');
+  const {job} = draw({background: true, ok: true, message: '1 application queued in the background.'});
+  job.kit = false; job.code = 'JOB-3638'; job.status = 'saved'; job.stage = 'Saved';
+  renderJobs();
+  const button = $('jobs-body').querySelector('button.row-main');
+  assert.match(button.className, /state-apply/, 'a kitless row offers Apply');
+  let release;
+  held = new Promise(done => { release = done; });
+  const pick = createRowApply(job, {rerender: () => {}}).modeItems().find(item => item.label === 'Background automation').run();
+  for (let turn = 0; turn < 50 && !calls.length; turn++) await Promise.resolve();
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness'], 'the pick is drafting the kit');
+  const press = button.listeners.click[0]({});
+  release();
+  await Promise.all([pick, press]);
+  held = Promise.resolve();
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'one readiness (one draft), one start');
+});
+
+// The row's own press still shows Preparing while it drafts (the row redraws from the shared tracker).
+test("a kitless row's Apply shows Preparing while it drafts, then starts", async () => {
+  const {job} = draw({ok: true});
+  job.kit = false; job.code = 'JOB-3638b'; job.url = 'https://jobs.example.test/kitless-b'; job.stage = 'Saved';
+  renderJobs();
+  const button = $('jobs-body').querySelector('button.row-main');
+  let release;
+  held = new Promise(done => { release = done; });
+  const press = button.listeners.click[0]({});
+  for (let turn = 0; turn < 50 && !calls.length; turn++) await Promise.resolve();
+  assert.match($('jobs-body').querySelector('button.row-main').className, /state-prepare/, 'the row reads Preparing while the draft runs');
+  release();
+  await press;
+  held = Promise.resolve();
+  assert.deepEqual(calls.map(call => call[0]), ['applyReadiness', job.url], 'then it starts');
+  assert.equal(job.kit, true);
+});
+
 // Code review of R2 (8 Nov 2026): a form filled on the server opens its hand-off (Review and submit); the ⋯ menu's per-job modes would start it afresh and skip those answers.
 test("a job filled on the server offers no per-job Apply modes; a job with a kit does", async () => {
   const menuOf = more => {

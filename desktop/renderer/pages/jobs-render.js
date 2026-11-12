@@ -2,7 +2,6 @@
 import {counted as countedLabel} from './page-counts.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
-import {kitThroughStep} from '../apply-readiness-read.js';
 import {createRowApply} from './jobs-apply-row.js';
 import '../../i18n/focus-cards.js';
 import {copyField} from '../../i18n/display-copy.js';
@@ -21,7 +20,7 @@ import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
-import {sayRefused, toastMessage} from './startup.js';
+import {toastMessage} from './startup.js';
 import {rowApply} from '../apply-settings-model.js';
 import {jobPlace} from '../targets.js';
 import {openFeedback} from './feedback.js';
@@ -247,14 +246,9 @@ export function renderJobs() {
         title: state === 'local' ? t('pagesJobsHelp.preparingHelp')
           : t('pagesJobsHelp.prepareFillHelp')});
       if (busy) { prepare.disabled = true; prepare.classList.add('busy', 'state-busy'); }  // spinner only; the fixed width keeps the row still
-      prepare.addEventListener('click', async () => {
-        preparing.set(job.code, 'local');
-        renderJobs();  // the row is rebuilt as Preparing, and stays so through any later re-render
-        const result = await kitThroughStep(window.pilot, job);
-        if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await applier.start(null, {ready: true}); return; }
-        else { preparing.set(job.code, 'failed'); sayRefused(t('pagesControlStatus.applyNotStarted'), result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
-        renderJobs();
-      });
+      // The press takes the job's one lock (applier.start): a ⋯ pick still drafting the kit makes this press start nothing (#3638). The row rebuilds from `preparing` while the draft runs.
+      const track = next => { if (next) preparing.set(job.code, next); else preparing.delete(job.code); renderJobs(); };
+      prepare.addEventListener('click', () => applier.start(null, {track}));
       box.append(prepare);
       modes.push(...applier.modeItems());
     }
