@@ -84,7 +84,7 @@ function draftOf(profile) {
     profile_markdown: markdown, answers_markdown: `# Eligibility\n\n- Work authorisation: ${profile.citizenship} citizen\n`, open_questions: [],
     search: {...withRoles({}, profile.roles), title_exclude_keywords: ['\\bintern(ship)?\\b', '\\bsales\\b', 'est[aá]gio', 'designer'], board_discovery_keywords: [profile.board],
       jobs_board_search_queries: profile.roles.slice(0, 2), quality_stack_keywords: [], locations: profile.places, remote_excluded_regions: [], google_jobs: profile.google},
-    preferences: {disqualifying_languages: [], excluded_companies: [], work_rights: profile.work_rights, digest_min_score: 0}, contact: {location: profile.city}};   // digest_min_score 0: every job is shown, so what the digest says about places and visas does not depend on AI scores; the contact details of the first, default-CV setup are replaced by theirs
+    preferences: {disqualifying_languages: [], excluded_companies: [], digest_min_score: 0}, contact: {location: profile.city}};   // digest_min_score 0: every job is shown, so what the digest says about places and visas does not depend on AI scores; the contact details of the first, default-CV setup are replaced by theirs
 }
 
 // All the text a person could read in the window: every view, every hidden step, tooltips and placeholders.
@@ -110,7 +110,7 @@ export async function run(ctx) {
       fs.mkdirSync(path.join(ctx.profile, 'config'), {recursive: true});
       fs.copyFileSync(path.join(feeds, 'sources.json'), path.join(ctx.profile, 'config', 'sources.json'));
     }, {needs: ctx.needs});
-    await ctx.run(`${label}: their strategy is saved the way the wizard's review saves it, with places, languages and citizenship / work rights`, async () => {
+    await ctx.run(`${label}: their strategy is saved the way the wizard's review saves it, with places and languages; citizenship / work rights from the Profile`, async () => {
       const saved = await page.evaluate(draft => window.pilot.saveStrategy(draft), draftOf(profile));
       if (saved?.ok === false) throw new Error(`the strategy was not saved: ${saved.error}`);
       await page.reload();
@@ -119,11 +119,13 @@ export async function run(ctx) {
       const search = JSON.parse(fs.readFileSync(path.join(config, 'search.json'), 'utf8'));
       const prefs = JSON.parse(fs.readFileSync(path.join(config, 'preferences.json'), 'utf8'));
       if (JSON.stringify(search.locations) !== JSON.stringify(profile.places)) throw new Error(`the places were not kept: ${JSON.stringify(search.locations)}`);
-      if (JSON.stringify(prefs.work_rights) !== JSON.stringify(profile.work_rights)) throw new Error(`citizenship / work rights were not kept: ${JSON.stringify(prefs.work_rights)}`);
-      // ⚙️ Search settings is a Notion page on the Notion store; on this Mac's store the settings are the files just read (config/*.json).
-      const settingsPage = ctx.store === 'sqlite' ? null : await pageText(NOTION, 'Search settings');
-      if (settingsPage !== null && !/Where you can work without a visa/i.test(settingsPage)) throw new Error('⚙️ Search settings in Notion has no "Where you can work without a visa" section');
-      if (settingsPage !== null && !new RegExp(profile.work_rights[0], 'i').test(settingsPage.split(/Where you can work without a visa/i)[1] || '')) throw new Error(`Notion's work-rights section does not list ${profile.work_rights[0]}`);
+      if (prefs.work_rights?.length) throw new Error(`the Strategy still wrote work rights: ${JSON.stringify(prefs.work_rights)}`);
+      // Why (#3850, owner 12 Nov 2026: "They should be only in the Profile"): citizenship / work rights are saved in Profile → Work eligibility, and the
+      // engine reads the copy the app writes from it (config/work-rights.json, desktop/lib/work-rights.js).
+      const facts = await page.evaluate(nationality => window.pilot.saveDetailsFacts({eligibility: [{label: 'Nationality', value: nationality}]}), profile.citizenship);
+      if (facts?.ok === false) throw new Error(`Work eligibility was not saved: ${facts.error}`);
+      const rights = JSON.parse(fs.readFileSync(path.join(config, 'work-rights.json'), 'utf8'));
+      if (!rights.work_rights.some(right => new RegExp(profile.work_rights[0], 'i').test(right))) throw new Error(`the engine's work rights do not list ${profile.work_rights[0]}: ${JSON.stringify(rights)}`);
     }, {needs: ctx.needs});
     await ctx.run(`${label}: a jobs check keeps the roles in their places and drops the wrong ones`, async () => {
       await page.click('.nav[data-view="jobs"]');

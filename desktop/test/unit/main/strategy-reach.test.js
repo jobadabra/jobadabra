@@ -30,6 +30,11 @@ test('the draft leaves the rest of the country out unless the CV or note says th
 // silently meant a person on an older "Yes" never got the draft's Country. The review now lists the change as a line of Search criteria; ticking that group saves it, leaving it unticked keeps the person's.
 const storageOf = search => ({readText: name => (name === 'config/search.json' ? JSON.stringify(search) : '{}')});
 
+test('the draft no longer asks where the person may work: work rights live only in the Profile (#3850)', () => {
+  assert.ok(!('work_rights' in DRAFT_SCHEMA.properties.preferences.properties), 'owner, 12 Nov 2026: "They should be only in the Profile"');
+  assert.ok(!/work_rights/.test(INSTRUCTIONS));
+});
+
 test('a rebuild lists "Remote work: Yes → My country" in Search criteria; an older strategy with no word counts as Yes; nothing is listed when the word is the same', () => {
   const lines = (current, draft) => rebuildGroups({search: current}, {search: draft}).find(group => group.id === 'search')?.changes || [];
   assert.ok(forWindow(lines({remote_jobs: ['Yes']}, {remote_jobs: ['Country']})).includes('Remote work: Yes → My country'));

@@ -6,7 +6,7 @@ import os
 import random
 import re
 
-from . import store, digest_render, my_places, notification_language
+from . import store, digest_render, my_places, notification_language, work_rights
 from .ai import enrich, score, score_search
 from .notion import client as notion
 from .paths import CONFIG, keyword_regex, load_search_config
@@ -72,8 +72,8 @@ def in_places(job):
 
 BEST_PLACES = my_places.words_regex(_SEARCH, ('top_tier',))
 PREFERRED_ABROAD = my_places.words_regex(_SEARCH, ('abroad',))
-# Where the user may work without a visa beyond their own places (citizenship / work rights): ⚙️ Search settings → "Where you
-# can work without a visa", e.g. "EU" for an EU citizen. "EU" stands for every EU member state.
+# Where the user may work without a visa beyond their own places (citizenship / work rights): Profile → Work eligibility (src/work_rights.py),
+# e.g. "EU" for an EU citizen. "EU" stands for every EU member state.
 EU_PLACES = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech', 'denmark', 'estonia', 'finland', 'france', 'germany', 'greece',
              'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 'netherlands', 'poland', 'portugal', 'romania',
              'slovakia', 'slovenia', 'spain', 'sweden', 'berlin', 'munich', 'hamburg', 'frankfurt', 'amsterdam', 'paris', 'dublin',
@@ -89,7 +89,7 @@ def work_rights_regex(fragments):
     return keyword_regex(parts) if parts else None
 
 
-WORK_RIGHTS = work_rights_regex(PREFERENCES.get('work_rights'))
+WORK_RIGHTS = work_rights_regex(work_rights.load()['work_rights'])   # Why (#3850, owner 12 Nov 2026): Profile → Work eligibility owns them (src/work_rights.py)
 
 
 def needs_sponsorship(job):

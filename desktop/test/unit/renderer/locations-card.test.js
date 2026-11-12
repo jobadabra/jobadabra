@@ -8,7 +8,7 @@ import {FIELDS} from '../../../renderer/preferences-model.js';
 const read = file => readScreenSource(new URL(`../../../${file}`, import.meta.url), 'utf8');
 const card = read('renderer/pages/strategy-targets.js'), nav = read('renderer/pages/nav.js');
 // The card's lists as [name, label], read from the source (importing the page needs the whole app's DOM).
-const lists = [...card.matchAll(/\['(places|country|abroad|rights)', '([^']+)', '[^']+'\]/g)].map(([, name, label]) => [name, label]);
+const lists = [...card.matchAll(/\['(places|country|abroad)', '([^']+)', '[^']+'\]/g)].map(([, name, label]) => [name, label]);
 
 // The Profile row each Locations list or choice replaced: Countries → acceptable, Preferred cities → preferred, Relocation → the Yes / No / Not specified choice.
 const OWNER = {countries: 'country', cities: 'places', relocation: 'abroad'};
@@ -45,7 +45,7 @@ test('⌘K reaches Locations; Reset search coverage only while it is active; Job
 test('Preferred and Acceptable carry a "?" tooltip, Locations lists have no whole-word box, Remote work has three buttons', () => {
   assert.match(card, /hint = \{places: 'The cities or areas where you most want to work\. Jobs there match best\.', country: 'A wider region or country where any town is fine/);
   assert.match(card, /helpDot\(hint\)/);
-  assert.match(card, /const LOCATION_LISTS = new Set\(\['places', 'country', 'abroad', 'rights'\]\)/);
+  assert.match(card, /const LOCATION_LISTS = new Set\(\['places', 'country', 'abroad'\]\)/);
   assert.match(card, /const whole = PLAIN\.has\(name\) \|\| LOCATION_LISTS\.has\(name\) \? null/);
   assert.match(card, /const REMOTE_WORDS = \[\['No'.*\['Country', \(\) => 'My country'\].*\['Yes'/);
 });

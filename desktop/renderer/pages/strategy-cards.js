@@ -17,7 +17,7 @@ import {inDraft, sink} from '../strategy-sink.js';
 // card key → what its draft holds: lists and one-value settings (Search settings, lib/strategy-edit.js) and goals (the Profile, lib/goals.js).
 export const CARDS = {
   goals: {title: t('pagesCommon.mainGoals'), lists: ['roles'], values: [], goals: ['seniority', 'work_mode', 'minimum_salary']},
-  places: {title: t('pagesStrategy.locations'), lists: ['places', 'country', 'abroad', 'rights'], values: ['remote', 'relocation']},
+  places: {title: t('pagesStrategy.locations'), lists: ['places', 'country', 'abroad'], values: ['remote', 'relocation']},
   stack: {title: t('pagesStrategy.skillsExperience'), lists: ['stack'], values: []},
   languages: {title: t('pagesStrategy.exclusions'), lists: ['languages'], values: []},
   search: {title: t('pagesStrategy.moreSearch'), lists: ['titleSkip', 'skip', 'remoteSkip', 'finders', 'gqueries', 'gplaces'], values: ['level', 'minScore']},

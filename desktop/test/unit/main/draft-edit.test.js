@@ -8,7 +8,7 @@ const draft = {search: {target_roles: [{title: 'Nurse', also: []}], locations: {
 test('list edits land in the draft exactly as they would in the saved settings', () => {
   const out = editDraftLists(draft, {places: {add: ['Ostrava'], remove: ['brno']}, rights: {add: ['EU'], remove: []}, relocation: {set: 'yes'}, minScore: {set: 55}});
   assert.deepEqual(out.search.locations.top_tier, ['ostrava']);
-  assert.deepEqual(out.preferences.work_rights, ['eu']);
+  assert.deepEqual(out.preferences.work_rights, [], 'work rights live only in the Profile (#3850): an older "rights" edit changes nothing');
   assert.deepEqual(out.search.locations.relocation, ['yes']);
   assert.equal(out.preferences.digest_min_score, 55);
   assert.deepEqual(draft.search.locations.top_tier, ['brno'], 'the input draft is not changed');

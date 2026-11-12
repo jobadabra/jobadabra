@@ -2,7 +2,7 @@
 // and place labels are renderer/match-groups.js. Drawn by pages/strategy-chips.js. Guarded by test/unit/renderer/strategy-chips.test.js.
 
 // The lists read by lib/list-meanings.js LISTS (the same names; test/unit/renderer/strategy-chips.test.js keeps them equal).
-export const MEANING_LISTS = ['places', 'country', 'rights', 'stack', 'titleSkip', 'skip', 'remoteSkip', 'finders'];
+export const MEANING_LISTS = ['places', 'country', 'stack', 'titleSkip', 'skip', 'remoteSkip', 'finders'];
 
 // A list's labels as shown: the entries of one meaning become one {main, others}, in the place of its first entry; the rest as they are.
 export function meaningLabels(groups, labels) {

@@ -244,7 +244,7 @@ def strategy(db, tracker=None, stores=None):
                          for item in items or [] if _readable(item)]
                   for name, items in (('places', places.get('top_tier')),
                                       ('country', places.get('country_wide')), ('abroad', places.get('abroad')), ('searchOverride', places.get('search_override')),
-                                      ('stack', search.get('quality_stack_keywords')), ('rights', prefs.get('work_rights')),
+                                      ('stack', search.get('quality_stack_keywords')),
                                       ('remoteSkip', search.get('remote_excluded_regions')), ('titleSkip', search.get('title_exclude_keywords')), ('finders', search.get('board_discovery_keywords')))}},
         # Plain lists, shown as written: board search phrases and the languages that hide a job.
         'texts': {'languages': [str(q) for q in prefs.get('disqualifying_languages') or []],

@@ -4,6 +4,7 @@
 // Guarded by test/unit/main/profile-sections.test.js.
 import {openStore} from './store/index.js';
 import {splitMark, withMark} from '../renderer/question-kind.js';
+import {writeRights} from './work-rights.js';
 
 export const SECTIONS = {
   eligibility: '🛂 Work eligibility',
@@ -54,8 +55,10 @@ export async function save(storage, key, items, fetcher) {
   const found = grouped(await page.blocks())[key];
   for (const line of [...(found?.lines || [])].reverse()) await page.remove(line);   // last first: this Mac's ids are line numbers
   const lines = (items || []).filter(item => item?.label && String(item.value ?? '').trim()).map(item => withMark(`${String(item.label).replace(/[\s:]+$/, '').trim()}: ${String(item.value).trim()}${String(item.note || '').trim() ? ` (note: ${String(item.note).trim()})` : ''}`, {kind: item.kind || 'text'}));
-  if (!lines.length) return [];
+  // Why (#3850, owner 12 Nov 2026): Work eligibility is where work rights live; every write of it refreshes the engine's copy (lib/work-rights.js), once written.
+  const written = () => { if (key === 'eligibility') writeRights(storage, lines.map(parseLine)); return lines; };
+  if (!lines.length) return written();
   const heading = found?.heading.id || await page.appendHeading(SECTIONS[key]);
   await page.insertAfter(heading, lines);
-  return lines;
+  return written();
 }

@@ -70,8 +70,6 @@ const rows = {
   addCity: ["Add a city or region","Stadt oder Region hinzufügen","Ajouter une ville ou région","Aggiungi città o regione","Añadir ciudad o región","Adaugă oraș sau regiune","Добавить город или регион"],
   addCountry: ["Add a country or region","Land oder Region hinzufügen","Ajouter un pays ou région","Aggiungi paese o regione","Añadir país o región","Adaugă țară sau regiune","Добавить страну или регион"],
   addCityAbroad: ["Add a city abroad","Stadt im Ausland hinzufügen","Ajouter une ville à l’étranger","Aggiungi città all’estero","Añadir ciudad extranjera","Adaugă oraș în străinătate","Добавить город за рубежом"],
-  rightsHelp: ["Work rights: where you can work without a visa","Arbeitsrecht: Wo du ohne Visum arbeiten kannst","Droit au travail : où travailler sans visa","Diritto al lavoro: dove lavori senza visto","Derecho laboral: dónde trabajar sin visado","Drept de muncă: unde poți lucra fără viză","Право на работу: где можно работать без визы"],
-  addCountryEu: ["Add a country or EU","Land oder EU hinzufügen","Ajouter un pays ou UE","Aggiungi paese o UE","Añadir país o UE","Adaugă țară sau UE","Добавить страну или ЕС"],
   addSkill: ["Add a skill or tool","Fähigkeit oder Werkzeug hinzufügen","Ajouter une compétence ou outil","Aggiungi competenza o strumento","Añadir habilidad o herramienta","Adaugă competență sau instrument","Добавить навык или инструмент"],
   addLanguage: ["Add a language","Sprache hinzufügen","Ajouter une langue","Aggiungi lingua","Añadir idioma","Adaugă limbă","Добавить язык"],
   skipTitles: ["Job titles to skip","Ausgeschlossene Jobtitel","Intitulés à ignorer","Titoli da saltare","Cargos que omitir","Titluri de omis","Пропускаемые должности"],

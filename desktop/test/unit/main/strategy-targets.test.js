@@ -36,7 +36,7 @@ test('Notion refusing leaves the cached settings as they were', async () => {
 });
 
 test('only the fixed lists, sane words, escaped as text', () => {
-  assert.deepEqual(Object.keys(EDITABLE_LISTS).sort(), ['abroad', 'country', 'finders', 'gplaces', 'gqueries', 'languages', 'places', 'remoteSkip', 'rights', 'roles', 'searchOverride', 'skip', 'stack', 'titleSkip']);
+  assert.deepEqual(Object.keys(EDITABLE_LISTS).sort(), ['abroad', 'country', 'finders', 'gplaces', 'gqueries', 'languages', 'places', 'remoteSkip', 'roles', 'searchOverride', 'skip', 'stack', 'titleSkip']);
   assert.deepEqual(cleanEdits({title_exclude_keywords: {add: ['x y']}, roles: {add: ['a', 'c++ dev', 'x'.repeat(61), 'two\nlines']}}),
     {roles: {add: ['c++ dev'], remove: []}});
   assert.deepEqual(cleanEdits({roles: {add: [], remove: []}}), {});
@@ -47,10 +47,10 @@ test('search phrases and hidden languages are kept as written, in their own file
   t.files['config/preferences.json'] = JSON.stringify({disqualifying_languages: ['english', 'german'], work_rights: [], digest_min_score: 50});
   const result = await editLists(t.storage, {roles: {add: ['Vendeur Magasin']}, languages: {remove: ['english']}, rights: {add: ['EU']},
     remote: {set: 'No'}}, t.deps);
-  assert.deepEqual(result.changed.sort(), ['languages', 'remote', 'rights', 'roles']);
+  assert.deepEqual(result.changed.sort(), ['languages', 'remote', 'roles']);
   const prefs = JSON.parse(t.files['config/preferences.json']);
   assert.deepEqual(prefs.disqualifying_languages, ['german']);
-  assert.deepEqual(prefs.work_rights, ['eu']);
+  assert.deepEqual(prefs.work_rights, [], 'work rights live only in the Profile (#3850): an older "rights" edit changes nothing');
   assert.equal(prefs.digest_min_score, 50, 'the rest of the preferences untouched');
   assert.deepEqual(search(t.files).jobs_board_search_queries, ['/vendeu(r|se)/', 'store manager', 'Vendeur Magasin']);   // a role title is a job board search too
   assert.deepEqual(search(t.files).remote_jobs, ['No']);

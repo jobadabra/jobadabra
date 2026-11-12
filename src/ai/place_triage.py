@@ -11,7 +11,7 @@ import hashlib
 import json
 import threading
 
-from .. import my_places
+from .. import my_places, work_rights
 from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers, slots
@@ -65,15 +65,12 @@ def places_words(search, preferences=None):
     return {'best_places': plain_words(places['top_tier'])[:20], 'anywhere_in': plain_words(places['country_wide'])[:20],
             'cities_abroad': plain_words(places['abroad'])[:20], 'remote_jobs': _TO_AI[my_places.remote_word(search)],
             'remote_limited_to_regions_they_cannot_work_from': terms(search.get('remote_excluded_regions'))[:20],
-            'work_rights': [str(w) for w in (preferences or {}).get('work_rights') or []][:10]}
+            'work_rights': work_rights.words(preferences or {}, plain_words(places['top_tier']) + plain_words(places['country_wide']))[:10]}
 
 
 def _preferences():
-    from ..paths import CONFIG
-    try:
-        return json.loads((CONFIG / 'preferences.json').read_text())
-    except (OSError, ValueError):
-        return {}
+    """The person's work rights (src/work_rights.py: Profile → Work eligibility, the one owner since #3850)."""
+    return work_rights.load()
 
 
 def _key(search):

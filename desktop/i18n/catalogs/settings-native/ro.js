@@ -81,7 +81,6 @@ export default {
   "labelSkills": "Competențe și instrumente cheie",
   "labelLanguages": "Limbi în care nu lucrezi",
   "labelCompanies": "Companii excluse",
-  "labelWorkRights": "Lucrezi fără viză în",
   "groupsearch": "Criterii de căutare",
   "groupfilters": "Filtre",
   "groupprofile": "Profil (citit de scorul de potrivire)",

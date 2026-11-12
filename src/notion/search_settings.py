@@ -54,7 +54,6 @@ SECTIONS = [
     ('Remote jobs', 'search', ('remote_jobs',), 'text'),   # "No": only jobs in your places (7 Oct 2026); missing or "Yes": remote counts as a place
     ('Remote jobs: regions to skip', 'search', ('remote_excluded_regions',), 'match'),
     ('Companies to skip', 'preferences', ('excluded_companies',), 'text'),
-    ('Where you can work without a visa', 'preferences', ('work_rights',), 'match'),
     ('Languages that rule a job out', 'preferences', ('disqualifying_languages',), 'text'),
     ('Minimum fit score for the digest', 'preferences', ('digest_min_score',), 'number'),
     ('Daily applications target', 'preferences', ('daily_applications_target',), 'number'),
