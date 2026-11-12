@@ -130,10 +130,19 @@ test('the start-up sweep removes the LinkedIn rows an earlier version left in th
     const cdp = await openCdpSession(webSocketDebuggerUrl);
     await cdp.send('Storage.setCookies', {cookies: [...SITE_SETS(), {name: 'li_at', value: FAKE.li_at, domain: '.linkedin.com', path: '/', secure: true, expires: YEAR()},
       {name: 'session', value: 'kept', domain: '.boards.example', path: '/', secure: true, expires: YEAR()}]});
-    await until(() => rowsOnDisk(each.appHome).length >= 7 && rowsOnDisk(each.appHome, "host_key = '.boards.example'").length === 1, 'the cookies reached the kept profile on disk', 60000);
+    // Why (12 Nov 2026, #3886's red 43223438625: "never happened: the cookies reached the kept profile on disk" after 60 s on code unchanged since a green 8 min earlier; 1 red in ~200 runs):
+    // the old wait polled the Cookies file for Chrome's own batch write (a timer of about 30 s that CDP cannot observe or trigger), so a loaded runner read a file Chrome had not
+    // written yet. Now the test waits for states it can see: the browser reports it holds the cookies, then a graceful Browser.close, then the process's exit; a quitting Chrome
+    // writes its pending cookies before it exits (7 rows on disk 0.9 s after the close on the Mac, 12 Nov 2026), so the file is read once, after the exit.
+    const held = await until(async () => { const {cookies} = await cdp.send('Storage.getCookies'); return cookies.length >= 7 && cookies.some(cookie => cookie.domain === '.boards.example') && cookies; }, 'the browser reports the cookies it was given');
+    assert.ok(held.length >= 7, 'positive control: the browser holds the LinkedIn cookies and the other site\'s sign-in');
+    // Why: a quitting browser may drop the socket before it answers Browser.close; the exit wait below is the check (as lib/background-browser.js close()).
+    void cdp.send('Browser.close').catch(error => console.log(`Browser.close: ${error.message}`));
+    await until(() => child.exitCode !== null || child.signalCode !== null, 'the browser quit after Browser.close', 30000);   // a hang guard: the quit took 0.9 s measured
     await cdp.detach();
-    killGroup(child);
+    killGroup(child);   // its helper processes, if any outlived it
     await each.close();
+    assert.ok(rowsOnDisk(each.appHome).length >= 7 && rowsOnDisk(each.appHome, "host_key = '.boards.example'").length === 1, `the quit browser wrote the cookies to the kept profile: ${JSON.stringify(rowsOnDisk(each.appHome))}`);
     at('the next app start');
     const opened = [];
     const swept = await sweepLinkedinLeftovers(each.storage, {openDb: file => {
