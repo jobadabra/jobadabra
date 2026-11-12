@@ -51,6 +51,11 @@ class NationalTest(unittest.TestCase):
         resolve = mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): MAP[geo.norm(w)] for w in words if geo.norm(w) in MAP})
         resolve.start()
         self.addCleanup(resolve.stop)
+        named = {'SE': 'Sweden', 'BE': 'Belgium', 'FR': 'France'}
+        known = mock.patch('src.places.countries', lambda search, cache=None, limit=3: list(dict.fromkeys(
+            named[MAP[geo.norm(w)]['cc']] for w in search['locations']['top_tier'] if geo.norm(w) in MAP)))   # the place cache's countries, as the search's preparation leaves them
+        known.start()
+        self.addCleanup(known.stop)
         quiet = mock.patch('sys.stdout', new_callable=io.StringIO)
         self.out = quiet.start()
         self.addCleanup(quiet.stop)
@@ -68,9 +73,10 @@ class NationalTest(unittest.TestCase):
         self.assertEqual(jobs[0]['url'], 'https://arbetsformedlingen.se/platsbanken/annonser/90000001')
         self.assertEqual(jobs[0]['date_posted'], '2026-11-01')
 
-    def test_a_person_with_no_place_in_sweden_asks_nothing(self):
+    def test_a_person_with_no_place_in_sweden_asks_nothing_not_even_the_map(self):
         feed = Feed()
-        self.assertEqual(national.read(SWEDEN, search('Lyon'), get=feed), [])
+        with mock.patch.object(geo, 'resolve', side_effect=AssertionError('the map was asked')):
+            self.assertEqual(national.read(SWEDEN, search('Lyon'), get=feed), [])
         self.assertEqual(feed.urls, [])
 
     def test_the_country_word_alone_asks_the_whole_country_and_a_town_wins_over_it(self):

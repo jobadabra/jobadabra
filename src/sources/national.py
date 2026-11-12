@@ -104,7 +104,12 @@ SERVICES = (
 def places(search, country, client=None):
     """The person's places in this country, nearest first: geo entries of their towns and areas, or [None] (the whole country) when they name the country
     itself and no town or area in it. [] when none of their places is in it (the service is not asked)."""
+    from .. import places as known
     from ..places import place_words
+    # Why (#3887, 12 Nov 2026, Gitar and the yardstick's p10): the countries already known for the person's places (the place cache, filled when the search is
+    # prepared) decide first, so the map is asked about their words only for a person with a place in this country, never by every service for everyone.
+    if (geo.country_name(country) or country) not in known.countries(search, limit=None):
+        return []
     words = place_words(search, per_group=6)   # the one reading of the place fragments (src/places.py), in the person's place order
     mapped = geo.resolve(words, client)
     mine = [mapped[geo.norm(word)] for word in words if (mapped.get(geo.norm(word)) or {}).get('cc') == country]
