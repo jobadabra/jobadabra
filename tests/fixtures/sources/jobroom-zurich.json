@@ -1,0 +1,157 @@
+{
+ "total": 21,
+ "rows": [
+  {
+   "jobAdvertisement": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "status": "PUBLISHED_PUBLIC",
+    "jobContent": {
+     "externalUrl": "https://example.test/x",
+     "jobDescriptions": [
+      {
+       "languageIsoCode": "de",
+       "title": "<em>Lagerist</em>/-in 100%",
+       "description": "Ad text that is never kept."
+      }
+     ],
+     "company": {
+      "name": "Example Logistik AG",
+      "surrogate": false
+     },
+     "location": {
+      "city": "Dietikon",
+      "countryIsoCode": "CH",
+      "cantonCode": "ZH",
+      "coordinates": {
+       "lon": "8.5",
+       "lat": "47.4"
+      }
+     }
+    },
+    "publication": {
+     "startDate": "2026-11-10",
+     "companyAnonymous": false
+    }
+   },
+   "favouriteItem": null
+  },
+  {
+   "jobAdvertisement": {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "status": "PUBLISHED_PUBLIC",
+    "jobContent": {
+     "externalUrl": "https://example.test/x",
+     "jobDescriptions": [
+      {
+       "languageIsoCode": "de",
+       "title": "Allrounder Logistik",
+       "description": "Ad text that is never kept."
+      }
+     ],
+     "company": {
+      "name": "Example Personal AG",
+      "surrogate": false
+     },
+     "location": {
+      "city": "Baden",
+      "countryIsoCode": "CH",
+      "cantonCode": "ZH",
+      "coordinates": {
+       "lon": "8.5",
+       "lat": "47.4"
+      }
+     }
+    },
+    "publication": {
+     "startDate": "2026-11-09",
+     "companyAnonymous": false
+    }
+   },
+   "favouriteItem": null
+  },
+  {
+   "jobAdvertisement": {
+    "id": "00000000-0000-4000-8000-000000000003",
+    "status": "PUBLISHED_PUBLIC",
+    "jobContent": {
+     "externalUrl": "https://example.test/x",
+     "jobDescriptions": [
+      {
+       "languageIsoCode": "de",
+       "title": "Magazin Assistent",
+       "description": "Ad text that is never kept."
+      }
+     ],
+     "company": {
+      "name": "Example Logistik AG",
+      "surrogate": false
+     },
+     "location": {
+      "city": "Anonymous",
+      "countryIsoCode": "CH",
+      "cantonCode": "ZH",
+      "coordinates": {
+       "lon": "8.5",
+       "lat": "47.4"
+      }
+     }
+    },
+    "publication": {
+     "startDate": "2026-11-10",
+     "companyAnonymous": true
+    }
+   },
+   "favouriteItem": null
+  },
+  {
+   "jobAdvertisement": {
+    "id": "00000000-0000-4000-8000-000000000004",
+    "status": "PUBLISHED_PUBLIC",
+    "jobContent": {
+     "externalUrl": "https://example.test/x",
+     "jobDescriptions": [
+      {
+       "languageIsoCode": "de",
+       "title": "Lagerist (Ausland)",
+       "description": "Ad text that is never kept."
+      }
+     ],
+     "company": {
+      "name": "Example Logistik AG",
+      "surrogate": false
+     },
+     "location": {
+      "city": "Konstanz",
+      "countryIsoCode": "DE",
+      "cantonCode": "ZH",
+      "coordinates": {
+       "lon": "8.5",
+       "lat": "47.4"
+      }
+     }
+    },
+    "publication": {
+     "startDate": "2026-11-10",
+     "companyAnonymous": false
+    }
+   },
+   "favouriteItem": null
+  },
+  {
+   "jobAdvertisement": {
+    "id": "not-an-id",
+    "jobContent": {
+     "jobDescriptions": [
+      {
+       "title": "Bad id"
+      }
+     ],
+     "location": {
+      "city": "Zug",
+      "countryIsoCode": "CH"
+     }
+    }
+   }
+  }
+ ]
+}

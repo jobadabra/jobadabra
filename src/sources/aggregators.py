@@ -4,7 +4,7 @@ Free, no key: Arbeitnow (Europe, mostly Germany), Himalayas and Jobicy (remote).
 source's name go with every job (Jobicy, Arbeitnow ask for that), each is asked at most every SPACING_HOURS for the same search (a changed
 search reads at once: 25 Oct 2026, a pilot search 8 minutes after a software one read no board), and only the roles and places of
 this user's search are kept. Remotive is not used: its terms forbid passing its jobs to another product. job-room.ch (the Swiss public
-employment service) is not used either until it offers a documented public API.
+employment service) is read as a national service (src/sources/national.py, owner 12 Nov 2026), not here.
 """
 import http.client
 import json

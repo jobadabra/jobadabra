@@ -76,9 +76,9 @@ def _national_on(env):
     return not disabled('aggregators', env) and not disabled('national', env)
 
 
-# Why (#3887 and Norway's row, 12 Nov 2026): named here, not imported: tools/press-yardstick/verdict.py loads this file on its own (no package) for LANES, so nothing at import may
+# Why (#3887, Norway's and Switzerland's rows, 12 Nov 2026): named here, not imported: tools/press-yardstick/verdict.py loads this file on its own (no package) for LANES, so nothing at import may
 # import a sibling. src/sources/national.py SERVICES' names, in its order; tests/unit/sources/test_national.py pins the two equal.
-NATIONAL = ('Platsbanken', 'Le Forem', 'arbeidsplassen.no')
+NATIONAL = ('Platsbanken', 'Le Forem', 'arbeidsplassen.no', 'Job-Room')
 
 
 ROWS = (
