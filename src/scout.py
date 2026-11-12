@@ -208,7 +208,7 @@ def sync_store_only(db_path):
 def board_pass(db_path):
     """The central scout's board pass alone (--board-pass): one country's boards measured and kept. Returns the exit code.
     Why (12 Nov 2026, sa): a by-hand SCOUT_BOARD_COUNTRY the list does not know ends the run with the accepted names; it used to read the thinnest country instead."""
-    from . import scout_boards
+    from . import scout_board_cells, scout_boards
     scout_core.CENTRAL = True
     with store.connect(db_path) as db:
         try:
@@ -217,12 +217,36 @@ def board_pass(db_path):
             raise SystemExit(f'Board pass: {wrong}') from None
         scout_boards.ensure(db)
         scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
+        scout_board_cells.keep_stops(db, os.environ.get('SCOUT_BOARD_SEED_DB'))   # the Scout's own stops: discovery keeps its own database
         try:
-            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+            if named:
+                scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+            else:
+                discover(db)
         finally:
             from .sources import render
             render.close()   # the browser a refused board was measured in (scout_boards.browse); nothing when it never started
     return 0
+
+
+def discover(db, run=None, out=print, today=None):
+    """Board discovery's turn (src/scout_board_cells.py): the weakest cells' country, their families, and the facts due to be read again; the
+    cells' rest is kept after. Its database is its own (the lab passes --db), started once from the Scout's facts (SCOUT_BOARD_SEED_DB), so the two
+    jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
+    equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
+    by employers never gave a turn to the countries with no measured board."""
+    from . import scout_board_cells as cells, scout_boards
+    cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
+    priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
+    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')))
+    if not turn:
+        out('Board discovery: every cell under its target rests; nothing to read this run')
+        return []
+    country, families, again = turn
+    kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out)
+    cells.record(db, country, families, kept, today, again=again)
+    out(cells.line(db, today, priority))
+    return kept
 
 
 def main():
@@ -240,9 +264,9 @@ def main():
                         help='with --publish-index: a trial of an unmerged change (jobadabra-lab central-scout.yml engine_ref): every step runs and logs as the central scout does, and nothing is uploaded')
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
-                             '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest; '
-                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn; boards the headless browser must never open: '
-                             'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab central-scout.yml\'s browser_final input)')
+                             '(its own job and AI cap in jobadabra-lab board-discovery.yml; the country: SCOUT_BOARD_COUNTRY with SCOUT_BOARD_KINDS, '
+                             'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py; boards the headless browser must never open: '
+                             'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab board-discovery.yml\'s browser_final input)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -305,7 +329,7 @@ def main():
             if not key:
                 raise SystemExit('--publish-index needs INDEX_PUBLISH_KEY')
             index_url = os.getenv('JOBADABRA_INDEX_URL') or employer_index.URL
-            from . import scout_boards, scout_cells
+            from . import scout_board_cells, scout_boards, scout_cells
             deadline = min(scout_overrun.publish_deadline(started), time.monotonic() + scout_core.VERIFY_BUDGET_S)
             with scout_overrun.phase('reading what installs shared'):
                 contributions, shared_dead = fetched or fetch_contributions(index_url, key, with_nofeed=True)
@@ -317,7 +341,7 @@ def main():
                                                 boards=json.loads(SEEDS.read_text()).get('boards', []), swiss_titles=swiss_titles, deadline=deadline, carry=True)
             scout_cells.keep(db, feeds_out)   # the next run's ideas aim at the thinnest kind × country
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
-            board_facts = scout_boards.facts(db)   # what the board pass job measured in the last 30 days (its own job: --board-pass)
+            board_facts = scout_boards.facts(db) + scout_board_cells.facts_beside(os.environ.get('SCOUT_BOARD_DB'))   # the board pass's facts, the 30 days' (board discovery's own copy last: the site keeps the last fact per host and country)
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))
             with scout_overrun.phase('reading the job boards'):
