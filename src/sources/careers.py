@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from . import ats, host_pace
+from . import ats, careers_parse, host_pace
 from ..press import stage
 
 MAX_BYTES = 2_000_000
@@ -82,9 +82,7 @@ def job_from_page(markup, url):
     """A job from a page with no job data: the main heading is the title, the page text the description, the place is any of your places
     the text names. Rough on purpose: read_page_from asks the AI whether the page is one posting (one_posting.py; the title filter alone kept a
     board's "3,531 Assistant Psychology jobs" category, 26 Oct 2026), and the crawl's title filter keeps only the roles you look for."""
-    heading = re.search(r'<h1[^>]*>(.*?)</h1>', markup, re.S | re.I)
-    title = ats.plain(heading.group(1) if heading else (re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
-    title = re.split(r'\s+[|\u2013\u2014-]\s+', title)[0].strip()
+    title = _page_title(markup, url)
     if not 4 <= len(title) <= 120:
         return None
     body = re.sub(r'<(script|style|noscript|nav|header|footer)\b.*?</\1>', ' ', markup, flags=re.S | re.I)
@@ -95,6 +93,24 @@ def job_from_page(markup, url):
         if word not in found:
             found.append(word)
     return ats._job(url, title, ', '.join(found[:3]), url, '', text, bool(re.search(r'\bremote\b|home.?office', text[:3000], re.I)))
+
+
+def _page_title(markup, url):
+    """The page's title: its first <h1> that is not the site's own name as the page declares it (careers_parse.site_names), else the first
+    part of <title> that is not. '' when the only heading is the site's name: that page is said in the log and not read as a job."""
+    names = careers_parse.site_names(markup)
+    headings = [ats.plain(text) for text in re.findall(r'<h1[^>]*>(.*?)</h1>', markup, re.S | re.I)]
+    kept = [text for text in headings if careers_parse.plain_name(text) not in names]
+    if headings and not kept:
+        print(f"Job page: its only heading is the site's own name, not a job title; not read as a job: {url}", flush=True)
+        return ''
+    if len(kept) < len(headings) and len(kept) > 1:   # Why (#3901, 12 Nov 2026, sa): the first is taken, said so a wrong pick can be found
+        print(f"Job page: {len(kept)} headings besides the site's name, the first taken as the title: {url}", flush=True)
+    if kept:
+        return re.split(r'\s+[|\u2013\u2014-]\s+', kept[0])[0].strip()
+    page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
+    parts = [part.strip() for part in re.split(r'\s+[|\u2013\u2014-]\s+', page)]
+    return next((part for part in parts if careers_parse.plain_name(part) not in names), '')
 
 
 def read_page(url, fetch=None):
