@@ -81,7 +81,7 @@ if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json
 
 console.log(`${name}: search plan saved ${fs.statSync(path.join(home, 'draft.json')).mtime.toISOString().slice(0, 16)}Z (a change to the strategy draft is NOT tested; --fresh-draft remakes it)`);
 console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}${runs > 1 ? `, ${runs} rounds` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
-const {table, noise, read} = await import('./local-proof-table.mjs');
+const {table, noise, read, notCounted} = await import('./local-proof-table.mjs');
 const plan = ['--presses', '1', '--draft', path.join(home, 'draft.json')];
 let draw = null;   // --same-draw: the recording's folder, its tape and its read
 if (args.includes('--same-draw')) {
@@ -89,7 +89,9 @@ if (args.includes('--same-draw')) {
   console.log(`  the shared draw: ${trees[0].label} records one search (not counted): ${out}`);
   const r = await press(trees[0].dir, out, [...plan, '--tape', tape, '--record']);
   draw = {out, tape, read: read({...r, out, name, label: 'recording'})};
-  if (draw.read.limit || !draw.read.row) { console.error(`no shared draw: the recording does not count (${draw.read.limit || draw.read.tail}); see ${path.join(out, 'run.out')}`); process.exit(1); }
+  // Why (Gitar on #3848): a crashed or failed recording leaves a cut tape, and every replay would then miss what came after the cut; it is refused by the rule counted runs use
+  const bad = r.code !== 0 ? `exit ${r.code}` : notCounted(draw.read);
+  if (bad) { console.error(`no shared draw: the recording does not count (${bad}); see ${path.join(out, 'run.out')}`); process.exit(1); }
 }
 const go = (t, i, round) => {
   const out = path.join(work, 'runs', `${stamp}-${runs > 1 ? `r${round}-` : ''}${i + 1}`);

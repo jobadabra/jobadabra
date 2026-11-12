@@ -50,8 +50,9 @@ export function notCounted(x) {
   return x.limit ? `the Claude plan limit was hit (${x.limit.slice(0, 80)})` : !x.row ? `no press row (${x.tail.slice(0, 60)})` : x.row.crashes?.length ? `${x.row.crashes.length} crash(es)` : null;
 }
 
-/** Whether a replayed run was proposed the same boards as the recording it replays (`draw`, its read), else 'draw NOT shared'. */
+/** Whether a replayed run was proposed the same boards as the recording it replays (`draw`, its read): 'shared', 'draw NOT shared', or 'draw unchecked' when the recording logged no proposed boards. */
 export function drawShared(x, draw) {
+  if (!draw.proposed.length) return 'draw unchecked (no boards proposed)';   // Why (Gitar on #3848): two empty lists are equal without anything compared
   return [...x.proposed].sort().join('\n') === [...draw.proposed].sort().join('\n') ? 'shared' : 'draw NOT shared';
 }
 const tapeCell = (x, draw) => (x.tape ? `${drawShared(x, draw)} · ${x.tape.live.length} live · ${x.tape.pagesMissing} off tape` : '–');
