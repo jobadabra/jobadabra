@@ -109,7 +109,8 @@ test('tellOwner (the AI-refusal alert of web\'s digest and changelog jobs, the w
   assert.deepEqual(await tellOwner('x', {env: KEY, fetch: down.fetcher}), {sent: true});
   assert.deepEqual([down.bot().length, down.bot()[0].url.includes('/bot1:OLD/'), down.site().at(-1).body], [1, true, {event: 'ai-credit', fallback: true}]);
   const keyless = net({status: 200, body: {}});
-  const {SELFHEAL_PUBLISH_KEY, ...noKey} = KEY;
+  const noKey = {...KEY};
+  delete noKey.SELFHEAL_PUBLISH_KEY;
   assert.deepEqual(await tellOwner('x', {env: noKey, fetch: keyless.fetcher}), {sent: true});
   assert.deepEqual([keyless.site().length, keyless.bot().length], [0, 1]);
   assert.match((await tellOwner('x', {env: {}, fetch: keyless.fetcher})).skipped, /no Telegram bot token/);

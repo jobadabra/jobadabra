@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Sends the weekly e2e summary (tools/ci-intel/lib/e2e-weekly.mjs) as one Telegram message on the CI alerts bot (e2e-weekly.yml, Mondays); the numbers live on the page it links.
+// Sends the weekly e2e summary (tools/ci-intel/lib/e2e-weekly.mjs) as one Telegram message: the owner's Notifications switchboard first (event e2e-weekly), the CI alerts bot only when it cannot deliver (e2e-weekly.yml, Mondays); the numbers live on the page it links.
 //   node tools/ci-intel/jobs/e2e-weekly.mjs [--dry-run]      --dry-run prints the message instead of sending it
 // Reads the snapshot /admin/testing/e2e draws (GET /e2e/data?snapshot=1, SELFHEAL_PUBLISH_KEY), so the page and Telegram show the same numbers.
 // Why (5 Nov 2026, owner: "turn this pinned issues into dashboards/tabs/pages in Admin … and will remove them from GH issue list"): the weekly issue (E2E root causes · week) repeated

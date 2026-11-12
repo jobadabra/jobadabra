@@ -1,7 +1,7 @@
 // What a job does when the AI refuses (owner, 24 Oct 2026: the Anthropic workspace hit its monthly limit; the changelog job stayed green and "retried at the next run" for a day, the daily digest failed 7 of 8 runs unseen).
 // One place for every job that asks the AI broker from here (since 31 Oct 2026 no scheduled job calls the Anthropic API: owner, "We should use fully the Codex"): name the refusal (limit / auth / rate / overloaded),
 // say "AI skipped", tell the owner on Telegram (once per outage, not every hour), never print a token.
-// Guard: desktop/test/ci-intel-ai-refusal.test.js. The Telegram bot is the CI alerts one when this repo has it, else the Build Log bot (the secrets this repo holds).
+// Guard: desktop/test/ci-intel-ai-refusal.test.js. The owner's Notifications switchboard gets the message first (event ai-credit); the fail-open fallback bot is the CI alerts one when this repo has it, else the Build Log bot (the secrets this repo holds).
 import {causeOf} from '../../../desktop/e2e/lib/ai-failure-words.mjs';
 import {card} from '../../../desktop/e2e/lib/tg-card.mjs';
 import {postTelegram} from '../../../desktop/e2e/lib/telegram-post.mjs';
