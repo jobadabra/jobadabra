@@ -16,7 +16,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from .. import read_methods, time_budget
-from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text
+from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, owed_reads, posting_text
 from ..press import resume, stage
 
 SPACING_HOURS = 6
@@ -218,9 +218,11 @@ def mark_read_unless_waiting(db, name, now, search, owed, cut=False):
     search reads it again; the one place scan and keep_late decide it.
     Why (#3754, wj, WP8 rule 6): resting a source 6 h while its jobs wait for their place or title answer dropped them for 6 h (p10 on main: Arbeitnow 600 read, 9 kept, 495 never asked).
     Each re-read costs three GETs and AI calls only for what has no stored answer yet (feeds.triage and the place call skip the answered), so a search that answers more leaves less owed;
-    once nothing is owed the source rests as before. An answer the AI never gives is asked again each search, at the price of one batch (Gitar on #3893, answered there)."""
-    if cut or owed:
+    once nothing is owed the source rests as before. An answer the AI never gives is bounded (owner, 12 Nov 2026: "Add a limit first"): owed_reads.MOST further searches read the source again, then it rests 6 h
+    like the others (owed_reads.another_read, the one owner of the count)."""
+    if cut or (owed and owed_reads.another_read(db, name, search_key(search) if search is not None else '')):
         return True
+    owed_reads.clear(db, name)   # at most owed_reads.MOST re-reads for jobs that keep waiting (owner, 12 Nov 2026), then the source rests as any other
     mark_read(db, name, now, search)
     return False
 
@@ -324,7 +326,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
                 _source_failed(report, name, error)
                 continue
             # EURES stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251); a job the AI has not answered for yet (stage never_asked) waits too, WP8 rule 6 (#3754)
-            if mark_read_unless_waiting(db, name, now, search, owed, cut=name == 'EURES' and eures.CUT[0]):
+            cut_now = name == 'EURES' and eures.CUT[0]
+            if mark_read_unless_waiting(db, name, now, search, owed, cut=cut_now) and (cut_now or not matched):   # a read whose matched jobs were kept is not "cut" (owner, 12 Nov 2026; Gitar on #3893)
                 late.append(name)
             if on_jobs and matched and not (ahead is not None and name == boards_ahead.NAME and ahead.shown):   # shown already
                 on_jobs(matched)

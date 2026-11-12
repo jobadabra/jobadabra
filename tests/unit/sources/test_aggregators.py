@@ -174,6 +174,37 @@ class AggregatorTests(unittest.TestCase):
             self.assertEqual([job['title'] for job in again['jobs']], [TITLE])
             aggregators.scan(db, {}, NOW + timedelta(hours=2), readers=[('Arbeitnow', lambda search: self.fail('every job answered: it rests 6 h'))])
 
+    def test_a_source_with_one_job_that_never_gets_an_answer_rests_after_two_further_searches(self):
+        """Owner, 12 Nov 2026 (asked via AskUserQuestion by sa: "Add a limit first"; Gitar on #3893): a source with jobs waiting for an answer is read again at most 2 more searches, then
+        rests 6 h like the others; an answer the AI never gives must not keep it out of the rest for ever."""
+        from src.sources import feed_facts
+        db = sqlite3.connect(':memory:')
+        db.row_factory = sqlite3.Row
+        jobs = [aggregators._job('x', 1, TITLE, 'Acme', PLACE, 'https://a.example/1')]
+        reads = []
+        with mock.patch.object(feeds, 'record', return_value='new'), mock.patch.object(feed_facts, '_triage_on', return_value=True), \
+                mock.patch.object(feeds, '_triaged', return_value={}), mock.patch.object(feeds, 'triage'), mock.patch.object(feeds, 'asked', return_value=True):
+            for hours in (0, 1, 2):
+                aggregators.scan(db, {}, NOW + timedelta(hours=hours), readers=[('Arbeitnow', lambda search: reads.append(hours) or jobs)])
+            self.assertEqual(reads, [0, 1, 2], 'read again twice, though no answer came')
+            aggregators.scan(db, {}, NOW + timedelta(hours=3), readers=[('Arbeitnow', lambda search: reads.append(3) or jobs)])
+            self.assertEqual(reads, [0, 1, 2], 'a 4th search does not read it: it rests 6 h after the 2 further searches (a failing reader is caught by the scan, so count the reads)')
+
+    def test_a_source_read_with_its_matched_jobs_kept_is_not_said_as_cut(self):
+        """Gitar on #3893 / owner, 12 Nov 2026: the read finished and its answered jobs were kept; the ones still waiting are not "cut" (no "N wait for the next search" line)."""
+        from src.press import stage
+        from src.sources import feed_facts
+        db = sqlite3.connect(':memory:')
+        db.row_factory = sqlite3.Row
+        other = 'Data Analyst'
+        jobs = [aggregators._job('x', 1, TITLE, 'Acme', PLACE, 'https://a.example/1'), aggregators._job('x', 2, other, 'Acme', PLACE, 'https://a.example/2')]
+        judged = {feeds.title_key(TITLE): True}   # one answered, one not
+        with mock.patch.object(feeds, 'record', return_value='new'), mock.patch.object(feed_facts, '_triage_on', return_value=True), \
+                mock.patch.object(feeds, '_triaged', return_value=judged), mock.patch.object(feeds, 'triage'), mock.patch.object(feeds, 'asked', return_value=True):
+            report = aggregators.scan(db, {}, NOW, readers=[('Arbeitnow', lambda search: jobs)])
+        self.assertEqual([job['title'] for job in report['jobs']], [TITLE], 'positive control: one kept, one waits')
+        self.assertEqual(report['said'].status, stage.DONE)
+
     def test_a_failing_source_is_reported_not_raised(self):
         db = sqlite3.connect(':memory:')
         def broken(search):
