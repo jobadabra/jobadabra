@@ -62,7 +62,7 @@ class KeptInItsTurn(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def read_board(self, waits_for):
-        def read_board(b, search, fetch, route=None, early=False, show=None):
+        def read_board(b, search, fetch, route=None, early=False, show=None, on_round=None):
             if b['host'] == 'b1.example':   # the first board in the list is the slow one
                 waits_for.wait(5)   # hang guard: 5 s; the assertion below says whether it was released in time
             return [job(b['host'][1])], 'ok', None
@@ -86,7 +86,7 @@ class KeptInItsTurn(unittest.TestCase):
         """Gitar on #3892: turns keyed by host put both items of one host at the later turn."""
         first, third = dict(board(1), search_url='https://b1.example/a?q={role}'), dict(board(1), search_url='https://b1.example/b?q={role}')
 
-        def read_board(b, search, fetch, route=None, early=False, show=None):
+        def read_board(b, search, fetch, route=None, early=False, show=None, on_round=None):
             return [{'title': 'Sales', 'url': b['search_url'].split('?')[0]}], 'ok', None
         with mock.patch.object(found_boards, 'read_board', read_board), \
                 mock.patch.object(found_boards.board_yield, 'pick', side_effect=lambda boards, *a, **k: list(boards)):
