@@ -39,11 +39,13 @@ class WorkRights(unittest.TestCase):
         self.assertEqual(work_rights.words(rights, []), ['United Kingdom'], 'no own places: the permit clears nothing')
 
     def test_many_free_rights_never_crowd_out_the_permit(self):
-        """#3862 review: the cap of 10 applied after the permit was added, so a person open in a whole zone lost the permit sentence."""
-        rights = {'work_rights': [f'Country {n}' for n in range(12)], 'permit_zones': ['EU / EEA + Switzerland'], 'unread': []}
+        """#3862 review: one cap over everything let many free rights crowd out the permit sentence and the person's unread Profile lines."""
+        rights = {'work_rights': [f'Country {n}' for n in range(12)], 'permit_zones': ['EU / EEA + Switzerland'],
+                  'unread': ['Work rights: Swiss B permit', 'Visa: none', 'Third line']}
         words = place_triage.places_words(GENEVA, rights)['work_rights']
         self.assertEqual(words[-1], 'a work permit in EU / EEA + Switzerland, valid only in the country of: geneva')
-        self.assertEqual(len(words), 11, 'ten plain words, then the permit')
+        self.assertEqual(words[8:10], ['Work rights: Swiss B permit', 'Visa: none'], 'the unread lines keep their room')
+        self.assertEqual(len(words), 11, 'eight plain words, two unread lines, then the permit')
 
     def test_the_visa_question_reads_the_profiles_rights(self):
         """Read at call time: a patched src.paths.CONFIG holds (#3862: a CONFIG bound at import ignored it)."""
