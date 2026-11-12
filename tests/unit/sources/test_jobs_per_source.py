@@ -123,6 +123,25 @@ class SoFarTest(unittest.TestCase):
         so_far.statuses({'jobs': []}, [])
         self.assertEqual(lines[3:], ['Jobs so far: 1 new from job boards'])
 
+    def test_the_free_job_apis_jobs_are_said_as_from_free_job_apis_not_job_boards(self):
+        """Why (#3893, wj, 12 Nov 2026, Gitar): Jobicy, Himalayas and Arbeitnow jobs were said as "from job boards"; both hand-overs (the scan and the late keep) name their own kind."""
+        from src import daily_search
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        db = store.connect(Path(folder.name) / 'jobs.sqlite')
+        self.addCleanup(db.close)
+        lines = []
+        so_far = jobs_so_far.SoFar(db, say=lines.append)
+        heard = []
+        with mock.patch.object(daily_search, 'load_search_config', return_value={}), mock.patch.object(aggregators, 'scan', side_effect=lambda *a, on_jobs=None, **k: heard.append(on_jobs) or {'jobs': []}), \
+                mock.patch.object(aggregators, 'keep_late', side_effect=lambda db_, search, lane, on_jobs, until: heard.append(on_jobs) or []), \
+                mock.patch.object(daily_search.feeds, 'database', return_value=mock.MagicMock()):
+            daily_search.keep_late_apis(object(), so_far)
+        self.assertEqual(len(heard), 1)
+        heard[0]([{**job(7), 'company': 'Jobicy Co'}])
+        so_far.flush()
+        self.assertEqual(lines, ['Jobs so far: 1 new from free job APIs'])
+
     def test_the_jobs_list_reads_again_on_that_line(self):
         page = (Path(__file__).resolve().parents[3] / 'desktop' / 'renderer' / 'pages' / 'jobs.js').read_text()
         pattern = re.search(r'export const LIST_CHANGED = /(.+)/;', page).group(1)

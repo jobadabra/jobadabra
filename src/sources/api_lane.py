@@ -4,8 +4,8 @@ thread that owns the job cache keeps their jobs (aggregators.scan takes each rea
 at second 0 through their own early reads (eures.start_early, boards_ahead), so they are not started here.
 Why (sf, 11 Nov 2026): the APIs were asked one after another once the employer sites had ended, past the read cut, so they read nothing:
 0 jobs for 14 of 14 people in the night 42927975750 (EURES off), "Time is up" on 28 of 32 first presses of the yardstick replays.
-Each read's titles are judged in its own thread as soon as it is read (lanes 4b-1), as the boards' lane does: the stage keeps them with that
-thread's answers. Invariants: a read never touches the job cache; `take` waits no later than the read cut; a read that raises is that source failing, never the run.
+Each read's locations are placed and its titles judged in its own thread as soon as it is read (lanes 4b-1; places: WP8 4/5, #3754), as the boards' lane does:
+the stage keeps them with that thread's answers. Invariants: a read never touches the job cache; `take` waits no later than the read cut; a read that raises is that source failing, never the run.
 Tests: tests/unit/press/test_lanes.py, tests/unit/sources/test_api_lane.py."""
 import os
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -21,6 +21,7 @@ class Lane:
 
     def __init__(self, reads, pool):
         self.reads, self._pool = reads, pool
+        self.taken = set()   # the names whose read was handed over (a result is taken once: the scan, else aggregators.keep_late)
 
     def take(self, name, until):
         """(the jobs `name` listed, its reader's answers: src/ai/batch_scope.py current()), once its read ended; None while it is still reading at
@@ -29,10 +30,12 @@ class Lane:
         wait([future], timeout=None if until is None else max(0.0, until - time_budget.now()))
         if not future.done():
             return None
+        self.taken.add(name)
         return future.result()
 
     def close(self):
-        """No new read starts; one still reading is not waited for (the process's end bounds it, src/run_exit.py)."""
+        """No new read starts; one still reading is not waited for (the process's end bounds it, src/run_exit.py). Results stay takeable after close: every read is submitted at once
+        (max_workers = the reads), so none is pending to be cancelled, and aggregators.keep_late takes the late ones after the gather has closed the lane (tests/unit/sources/test_api_lane.py)."""
         self._pool.shutdown(wait=False, cancel_futures=True)
 
 
@@ -59,10 +62,13 @@ def _read(name, read, search):
     (seconds), in title_queue's one nearest-first order with every other reader's titles."""
     import copy
     from ..ai import batch_scope
-    from . import feeds
+    from . import feed_places
     with read_methods.reading(name, 'feed_api') as counted:
         found = read(search)
         counted.jobs = read_methods.in_places(found)
     with batch_scope.reader(f'free job API: {name}'):   # its answers its own until kept, as the boards' lane (boards_first.Beside._read)
-        feeds.triage(found)
+        # Why (#3754, wj, WP8 rule 7; owner, 12 Nov 2026, asked via AskUserQuestion: "Places that unlock most first (Recommended)"): titles only, so a job at a location nobody had
+        # placed never became known: p10 on main, 695 of 708 waiting API jobs (Jobicy 250 jobs at 38 locations, "Remote (Europe)" among them), press after press. The place call
+        # asks the locations that decide the most jobs first (feed_places._place), as every other reader's does.
+        feed_places.triage_with_places(found)
         return found, copy.deepcopy(batch_scope.current())
