@@ -10,15 +10,20 @@ from ..notion.search_settings import readable
 
 
 # The Profile's older place rows (the template's "| Countries | … |", "Preferred cities", "Relocation"; desktop/renderer/preferences-model.js
-# FIELDS editedIn 'locations'), as a table row or a "- **Label:** value" line. Why (#3850, owner 12 Nov 2026: "I can have one location in profile, but
-# looking for another location in my search strategy" · "We should drop/delete the code"): the app hides these rows since 17 Oct and Strategy →
-# Locations owns where the person searches (block below), so the scorer never reads them beside it.
-PLACE_ROW = re.compile(r'^\s*(?:[-*]\s*)?\|?\s*\**\s*(?:countries|preferred cities|relocation)\s*\**\s*[:|]', re.I)
+# FIELDS editedIn 'locations'), only in a row's form: a table row whose first cell is the label (Notion writes it without outer pipes, "Countries | …")
+# or a "- **Label:** value" bullet. Why (#3850, owner 12 Nov 2026: "I can have one location in profile, but looking for another location in my search
+# strategy" · "We should drop/delete the code"): the app hides these rows since 17 Oct and Strategy → Locations owns where the person searches (block
+# below), so the scorer never reads them beside it. Why the form (#3857 review): a plain "Relocation: moved the team to Berlin" line is the person's
+# own experience and stays.
+PLACE_ROW = re.compile(r'^\s*(?:\|?\s*\**\s*(?:countries|preferred cities|relocation)\s*\**\s*\||[-*]\s*\*\*\s*(?:countries|preferred cities|relocation)\s*:?\s*\*\*)', re.I)
 
 
-def without_place_rows(profile):
-    """The scoring text without the Profile's older place rows (PLACE_ROW). Only the text the AI reads: a score's input hash still covers the whole
-    scoring text, so dropping these rows re-scores nothing (no paid re-run); a later edit of a hidden row re-scores as any Profile edit did."""
+def without_place_rows(profile, strategy_block=None):
+    """The scoring text without the Profile's older place rows (PLACE_ROW), once Strategy → Locations names a place (strategy_block, default block_now()).
+    Why (#3857 review): with no Strategy places the rows are the only place the scorer has, and nothing beside them can conflict, so they stay.
+    Only the text the AI reads: a score's input hash still covers the whole scoring text, so dropping these rows re-scores nothing (no paid re-run)."""
+    if not (block_now() if strategy_block is None else strategy_block):
+        return profile
     return '\n'.join(line for line in (profile or '').splitlines() if not PLACE_ROW.match(line))
 
 
