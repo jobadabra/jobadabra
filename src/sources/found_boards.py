@@ -22,6 +22,7 @@ from ..ai import slots
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
+from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from ..press import resume, stage
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
@@ -160,17 +161,6 @@ def _read_by_ai(board, search, fetch):
     if caught:   # the page does not answer now: the other ways stand
         return []
     return _shaped(board, careers._asked(url, page, [], fetch)) if page and not careers._shell(page) else []
-
-
-def _bare(url):
-    """The proposed link with only the query parts that carry {role} or {place}, or None when it has nothing else: a filter the proposer added
-    can empty every search (owner, 19 Oct 2026: Arbeitsagentur's "&branche=Medien" gave "Keine Ergebnisse" for Musiker in Berlin)."""
-    parts = urllib.parse.urlsplit(url)
-    pairs = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
-    kept = [(key, value) for key, value in pairs if '{role}' in value or '{place}' in value]
-    if len(kept) == len(pairs):
-        return None
-    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(kept, safe='{}')))
 
 
 def _retry_due(entry, now):
