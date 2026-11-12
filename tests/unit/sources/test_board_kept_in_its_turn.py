@@ -1,5 +1,6 @@
 """Each job board is kept, and so its titles and places judged, as soon as ITS read ends, not after the boards listed before it (12 Nov 2026, bj:
-a slow first board held 4 boards read at 13-59 s until 118 s of a 135 s run, past the titles' time: 97 of 113 jobs never asked). A board still
+in the GTM 6 round's stored run c15 press 1, a slow first board held 4 boards read at 13-59 s until 118 s of a 135 s run, past the titles'
+time: 97 of 113 jobs never asked). A board still
 open at the read cut is left for the next search exactly as before. No AI call and no live site here."""
 import tempfile
 import threading
@@ -67,6 +68,17 @@ class KeptInItsTurn(unittest.TestCase):
         self.assertEqual(judged, [['https://b2.example/1'], ['https://b1.example/1']], 'board 2 judged while board 1 was still being read')
         self.assertEqual([j['url'] for j in jobs], ['https://b1.example/1', 'https://b2.example/1'], 'the read returns the list\'s order, '
                          'whatever the threads\' timing')
+
+    def test_two_items_of_one_host_keep_their_own_turns(self):
+        """Gitar on #3892: turns keyed by host put both items of one host at the later turn."""
+        first, third = dict(board(1), search_url='https://b1.example/a?q={role}'), dict(board(1), search_url='https://b1.example/b?q={role}')
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            return [{'title': 'Sales', 'url': b['search_url'].split('?')[0]}], 'ok', None
+        with mock.patch.object(found_boards, 'read_board', read_board), \
+                mock.patch.object(found_boards.board_yield, 'pick', side_effect=lambda boards, *a, **k: list(boards)):
+            jobs = found_boards.read(SEARCH, [first, board(2), third], early=True, workers=1, is_relevant=list, dead=set())
+        self.assertEqual([j['url'] for j in jobs], ['https://b1.example/a', 'https://b2.example/', 'https://b1.example/b'], 'the list\'s order')
 
     def test_each_board_is_handed_over_as_it_is_kept(self):
         handed, released = [], threading.Event()

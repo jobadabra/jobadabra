@@ -73,7 +73,8 @@ class Beside:
         if wait is None:
             left = read_budget.seconds_left(read_budget.cut_at())
             wait = WEB_WAIT if left is None else max(0.0, left)
-        # Why (bj, 12 Nov 2026): each board handed as it is kept, not its group at its slowest board's end (a board kept at 103 s waited to 142 s)
+        # Why (bj, 12 Nov 2026, GTM 6 round's stored run b08 press 2): each board handed as it is kept, not its group at its slowest board's end
+        # (a board kept at 103 s waited for its group to 142 s)
         for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._put):
             if found:   # a reader that hands no board on its own gives its group here
                 self._put(found)
