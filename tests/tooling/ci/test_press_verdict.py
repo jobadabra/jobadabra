@@ -73,6 +73,13 @@ class Verdict(unittest.TestCase):
         self.assertIn('job_boards did not run', text)
         self.assertIn('pair 3: job_boards did not run', text, 'all 3 pairs are printed for the person')
 
+    def test_a_source_that_took_one_rounding_step_on_main_and_none_on_the_pr_is_the_clock_never_red(self):
+        """#3859, 12 Nov 2026: p1's sources answered from the recording in 0.1 s on main and under 0.05 s on the PR, 0 jobs on both sides, in all 3 pairs."""
+        quick, none = {'job_boards': (0.1, 0), 'employer_sites': (40, 1)}, {'job_boards': (0, 0), 'employer_sites': (40, 1)}
+        code, text = self.run_verdict(self.band(lanes=(quick, quick)), [({'lanes': quick}, {'lanes': none})] * 3)
+        self.assertEqual(code, 0, text)
+        self.assertNotIn('did not run', text)
+
     def test_a_loss_in_one_pair_of_three_is_the_runners_load_never_red(self):
         code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS}), ({}, {}), ({}, {})])
         self.assertEqual(code, 0, text)

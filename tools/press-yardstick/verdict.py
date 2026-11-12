@@ -49,11 +49,15 @@ def lanes(main_root=None):
     return [lane.id for lane in _load('reader_rows_main', found).LANES]
 
 
+RESOLUTION = 0.1   # seconds: step_yield rounds a step's wall time to this (src/press/step_yield.py _seconds)
+
+
 def lane_yield(art, persona, side):
     """{run: {step: (ran, jobs)}} from the replay's presses.jsonl (funnel.step_yield, src/press/step_yield.py); {} when the replay left none.
-    ran: 1 when the step has a time at all, 0 when it only brought a job.
-    Why (12 Nov 2026, #3859 red on unchanged search code): "ran" was `seconds > 0`, and the seconds are wall time rounded to 0.1 s, so a step that ran
-    for 0.04 s read as "did not run" on one side and 0.1 s as "ran" on the other: p1's three pairs each lost a different source to the clock."""
+    ran: 1 when the step's seconds are more than RESOLUTION, the one rule the pair check and the band both read.
+    Why (12 Nov 2026, #3859 red on unchanged search code): "ran" was `seconds > 0`, and the seconds are wall time rounded to 0.1 s, so a step that answers
+    from the recording in 0.04 s read as "did not run" on one side and, at 0.06 s, as "ran" on the other: p1's three pairs each lost a different source to
+    the clock, with 0 jobs and the same log on both sides. A step that took no more than the rounding step did no reading the check could lose."""
     path = Path(art, f'yardstick-{persona}-{side}', 'out', 'draw', 'presses.jsonl')
     out = {}
     for line in path.read_text(encoding='utf-8').splitlines() if path.exists() else []:
@@ -61,7 +65,7 @@ def lane_yield(art, persona, side):
             press = json.loads(line)
         except ValueError:
             continue
-        out[str(press.get('press'))] = {row['step']: (int(row.get('seconds') is not None), row.get('jobs') or 0)
+        out[str(press.get('press'))] = {row['step']: (int((row.get('seconds') or 0) > RESOLUTION), row.get('jobs') or 0)
                                         for row in (press.get('funnel') or {}).get('step_yield') or [] if isinstance(row, dict) and row.get('step')}
     return out
 
