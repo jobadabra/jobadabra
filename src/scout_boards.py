@@ -152,8 +152,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
     if not country:
         return []
     try:
-        kinds = list(families) if families is not None else kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
-        search = family_search(country, kinds) if families is not None else search_for(db, country, kinds)
+        by_cells = families is not None   # Gitar on #3913: the per-board loop below rebinds `families`; decide here
+        kinds = list(families) if by_cells else kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
+        search = family_search(country, kinds) if by_cells else search_for(db, country, kinds)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
@@ -188,7 +189,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         for fact in kept:
             db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
                        (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
-        if families is None:
+        if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
         out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"

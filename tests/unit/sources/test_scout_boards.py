@@ -44,6 +44,11 @@ class BoardPassTest(unittest.TestCase):
         self.assertIn('2 boards proposed, 1 with 3+ local jobs', out[0])
         self.assertTrue(out[0].startswith('Board pass: Moldova (software, '), 'the line names the kinds of work the boards were asked for')
 
+    def test_the_kinds_turn_moves_on_after_a_pass_that_read_boards(self):
+        # Gitar on #3913: the per-board loop rebound `families`, so a pass by kinds that read a board never moved the country's turn on
+        self.run_pass({'a.md': ([job('Chisinau')] * 3, 'ok', None)})
+        self.assertEqual(len(scout_cells._meta(self.db, scout_boards.ASKED_KINDS, {}).get('md') or []), scout_boards.KINDS_PER_COUNTRY)
+
     def test_worldwide_remote_and_other_countries_do_not_count(self):
         got, _, _ = self.run_pass({'a.md': ([job('Remote')] * 10 + [job('Chisinau')] * 2, 'ok', None)})
         self.assertEqual(got, [], '2 local jobs are under the floor however many remote ones there are')
