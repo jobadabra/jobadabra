@@ -132,7 +132,7 @@ class BoardPassTest(unittest.TestCase):
         import sys
         from src import scout
         with mock.patch.dict(os.environ, {'SCOUT_BOARD_COUNTRY': 'Narnia'}), mock.patch.object(sys, 'argv', ['scout', '--board-pass', '--db', ':memory:']), \
-                mock.patch.object(scout_boards, 'run') as ran:
+                mock.patch.object(scout_boards, 'run') as ran, mock.patch.object(scout.scout_core, 'CENTRAL', False):   # main() and the pass set it; restored on exit so no later test sees central mode
             with self.assertRaises(SystemExit) as stopped:
                 scout.main()
         self.assertIn('unknown country', str(stopped.exception))
