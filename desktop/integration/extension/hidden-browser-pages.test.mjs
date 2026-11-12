@@ -15,24 +15,13 @@ import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {endBrowser} from '../../e2e/lib/browser-end.mjs';
 import {CLOSE_MS, at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
+import {evaluate} from '../../e2e/lib/cdp-evaluate.mjs';
 import {HIDDEN_WINDOW, browserArguments} from '../../lib/background-browser.js';
 
 const SESSIONS = 3;
 const TEST_MS = 60000;   // a hang guard: the browser starts in ~1 s and each page draws its 120 frames in ~2 s
 
 async function json(url) { return (await fetch(url)).json(); }
-// One CDP evaluate on a page or worker; a socket that closes or says nothing for 15 s rejects (a hang guard, never a verdict).
-function evaluate(socketUrl, expression) {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(socketUrl);
-    const fail = why => { clearTimeout(guard); socket.close(); reject(new Error(`${why}: ${socketUrl}`)); };
-    const guard = setTimeout(() => fail('no answer in time'), capOf(15000));
-    socket.onerror = () => fail('no connection');
-    socket.onclose = () => fail('closed before answering');
-    socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {expression, awaitPromise: true, returnByValue: true}}));
-    socket.onmessage = event => { const row = JSON.parse(event.data); if (row.id === 1) { clearTimeout(guard); socket.onclose = null; socket.close(); resolve(row.result?.result?.value); } };
-  });
-}
 async function until(read, what, ms = 20000) {   // 20 s: the app gives its browser as long to start (lib/background-browser.js)
   let last = null;
   for (const end = Date.now() + capOf(ms); Date.now() < end;) {
@@ -78,8 +67,12 @@ test('every hidden application page is laid out at desktop width and stays visib
     at('reading each page\'s width and drawing');
     const seen = [];
     for (const page of pages) {
-      const width = await until(() => evaluate(page.webSocketDebuggerUrl, 'document.readyState === "complete" && innerWidth'), 'the page loaded');
-      seen.push({width, frames: await evaluate(page.webSocketDebuggerUrl, DRAWS), visibility: await evaluate(page.webSocketDebuggerUrl, 'document.visibilityState')});
+      // Why (12 Nov 2026, #3880): a page replaced while it counted (its measure answered "Inspected target navigated or closed") has no count yet: the state to wait for is a page that
+      // reports its count, so that measure is taken again on the page that stays (`until` keeps the last error for the failure). A page that draws too few frames still gives a number: judged below.
+      seen.push(await until(async () => {
+        const width = await evaluate(page.webSocketDebuggerUrl, 'document.readyState === "complete" && innerWidth');
+        return width ? {width, frames: await evaluate(page.webSocketDebuggerUrl, DRAWS), visibility: await evaluate(page.webSocketDebuggerUrl, 'document.visibilityState')} : null;
+      }, 'the page loaded and reported its frame count'));
     }
     assert.ok(seen.every(page => page.width === HIDDEN_WINDOW.width), `every page at desktop width (sites switch to their phone/tablet layout below ~1024 px): ${JSON.stringify(seen)}`);
     assert.ok(seen.every(page => page.frames >= 120 && page.visibility === 'visible'), `every page visible and drawing, for its live preview and its fill: ${JSON.stringify(seen)}`);

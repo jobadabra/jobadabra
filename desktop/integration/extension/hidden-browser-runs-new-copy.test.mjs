@@ -17,7 +17,8 @@ import http from 'node:http';
 import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {endBrowser} from '../../e2e/lib/browser-end.mjs';
-import {CLOSE_MS, at, capOf, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
+import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
+import {evaluate} from '../../e2e/lib/cdp-evaluate.mjs';
 import {createBackgroundBrowser} from '../../lib/background-browser.js';
 import {POST_CORS, jsonBody, jsonHeaders, jsonPayload, preflight} from '../../lib/server-http.js';
 
@@ -26,19 +27,6 @@ const DESKTOP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..',
 const EXTENSION = path.resolve(DESKTOP, '..', 'extension');
 
 async function json(url) { return (await fetch(url)).json(); }
-// One CDP evaluate on the worker; a socket that closes or says nothing for 15 s rejects (a hang guard, never a verdict).
-function evaluate(socketUrl, expression) {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(socketUrl);
-    const fail = why => { clearTimeout(guard); socket.close(); reject(new Error(`${why}: ${socketUrl}`)); };
-    const guard = setTimeout(() => fail('no answer in time'), capOf(15000));
-    socket.onerror = () => fail('no connection');
-    socket.onclose = () => fail('closed before answering');
-    socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {expression, awaitPromise: true, returnByValue: true}}));
-    socket.onmessage = event => { const row = JSON.parse(event.data); if (row.id === 1) { clearTimeout(guard); socket.onclose = null; socket.close(); resolve(row.result?.result?.value); } };
-  });
-}
-
 /** One app home with a kept hidden-browser profile; `release` ships an edition of the real extension, `app()` is one app process's start, `edition()` what its worker runs. */
 function home() {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-hidden-new-copy-'));
