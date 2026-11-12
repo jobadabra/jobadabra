@@ -8,7 +8,7 @@ import {failureHead, runPill} from './run-status.js';
 export {unsavedRun} from './run-status.js';
 
 // Each kind's one next step after it worked (owner, 25 Oct 2026: "Add per-kind next steps"): the page where its result lives, or none when the run panel
-// (View details) is the place to read it. `when` keeps a step to the runs that have something to see. Every kind is listed: test/unit/renderer/run-compact.test.js fails on a
+// (View details) is the place to read it. `when` keeps a step to the runs that have something to see (`added`: new jobs a find saved; `made`: what an app task made, e.g. CVs). Every kind is listed: test/unit/renderer/run-compact.test.js fails on a
 // new kind until it is placed here or in NO_NEXT.
 export const NEXT = {
   search: {when: c => c.added > 0, label: c => t('helperState.seeNewJobs', {count: c.added}), view: 'jobs'},
@@ -16,7 +16,7 @@ export const NEXT = {
   scout: {label: () => t('helperState.seeEmployers'), view: 'employers'},
   today: {label: () => t('helperState.seeMatches'), view: 'jobs'},
   kits: {label: () => t('helperState.seeApplications'), view: 'jobs'},
-  tailor: {label: () => t('helperState.seeCvs'), view: 'jobs'},
+  tailor: {when: c => c.made !== 0, label: () => t('helperState.seeCvs'), view: 'jobs'},   // Why (#3639, 12 Nov 2026): a run with nothing to tailor ended "See the CVs in Jobs"; `made` is what the run recorded (pipeline.work), 0 = none; a run that recorded none (older rows) keeps the link
   prepare: {label: () => t('helperState.seeApplication'), view: 'jobs'},
   mail: {when: c => c.asks > 0, label: c => t('helperState.answerQuestions', {count: c.asks}), view: 'focus'},
   interview: {label: () => t('helperState.openInterviews'), view: 'interviews'},
@@ -42,7 +42,7 @@ export function compactRun(run, {name = t('helperState.aTask'), kind = run?.kind
   const [label, tone] = runPill({...run, kind}, {long: true});   // "No result" for a run that saved nothing (run-status.js unsavedRun), as everywhere
   const failed = failureHead({...run, kind}, name);
   const added = Number(run.new) || 0;
-  const counts = {added, asks: Number(asks) || 0}, step = NEXT[kind];
+  const counts = {added, asks: Number(asks) || 0, made: run.made == null ? null : Number(run.made) || 0}, step = NEXT[kind];
   const worked = run.ok && !run.off && label !== t('helperState.noResult');
   // Up to three buttons once it ended (owner, 25 Oct 2026: "2-3 action buttons… View details… If an action failed we should have Run again"): the kind's next
   // step or a failure's fix, Run again for any run that did not end well, and View details (always, drawn by pages/run-banner.js).

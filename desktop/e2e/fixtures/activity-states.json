@@ -294,6 +294,7 @@
      "Tailoring 5 CVs for your best matches (1-2 minutes each)"
     ],
     "kind": "tailor",
+    "made": 5,
     "ok": true,
     "summary": "Tailored 5 of 5 CVs. Open each job's 📄 Tailored CV to check it before you apply.",
     "message": "✂️ Tailored CVs ready\n5 of 5 tailored · check each before you apply\n\nSite Reliability Engineer (https://jobs.example.test/northwind-sre)\nNorthwind Robotics\n\nPlatform Engineer (https://jobs.example.test/alpenglow-platform)\nAlpenglow Logistics\n\nSenior SRE (https://jobs.example.test/lumen-sre)\nLumen Data\n\nStaff Platform Engineer (https://jobs.example.test/orbit-staff)\nOrbit Labs\n\nCloud Engineer (https://jobs.example.test/kestrel-cloud)\nKestrel Health"
@@ -309,6 +310,7 @@
      "  ✗ Cloud Engineer · Kestrel Health: the posting could not be fetched (404)"
     ],
     "kind": "tailor",
+    "made": 3,
     "ok": true,
     "summary": "Tailored 3 of 5 CVs, 2 failed. Open each job's 📄 Tailored CV to check it before you apply.",
     "message": "✂️ Tailored CVs ready\n3 of 5 tailored · 2 failed · check each before you apply\n\nSite Reliability Engineer (https://jobs.example.test/northwind-sre)\nNorthwind Robotics\n\nPlatform Engineer (https://jobs.example.test/alpenglow-platform)\nAlpenglow Logistics\n\nSenior SRE (https://jobs.example.test/lumen-sre)\nLumen Data"
@@ -322,6 +324,7 @@
      "Every one of your best matches already has a tailored CV."
     ],
     "kind": "tailor",
+    "made": 0,
     "ok": true,
     "summary": "Every one of your best matches already has a tailored CV.",
     "message": "Every one of your best matches already has a tailored CV."
@@ -335,6 +338,7 @@
      "There are no jobs to tailor CVs for yet. Run Find jobs first."
     ],
     "kind": "tailor",
+    "made": 0,
     "ok": true,
     "summary": "There are no jobs to tailor CVs for yet. Run Find jobs first.",
     "message": "There are no jobs to tailor CVs for yet. Run Find jobs first."
