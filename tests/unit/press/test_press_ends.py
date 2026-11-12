@@ -93,6 +93,22 @@ discovery = boards_beside.Beside(blocking)
 from src.sources import boards_ahead
 boards_ahead.Ahead({'roles': ['SRE']}, blocking)
 ''', ''),
+    'a Claude Code call answered by a process started ahead (src/ai/providers/warm.py; as, 12 Nov 2026)': ('''
+import os
+from src.ai.providers import claude_code, warm
+NEVER_ANSWERS = 'import sys, time\\nsys.stdin.readline()\\ntime.sleep(3600)'   # takes its question, never answers: only the engine's end ends the call
+pool = warm.Warm(2, spawn=lambda args, env: warm._spawn([sys.executable, '-c', NEVER_ANSWERS], env))
+asked = pool.ask
+
+def ask(*args, **kwargs):
+    ENTERED.set()
+    return asked(*args, **kwargs)
+pool.ask = ask
+claude_code.flags = lambda *args: set()
+client = claude_code.ClaudeCode(binary=sys.executable, warm=pool)
+threading.Thread(target=lambda: client.messages.create(model='claude-haiku-4-5', max_tokens=10, messages=[{'role': 'user', 'content': 'x'}]),
+                 daemon=True).start()
+''', ''),
     'a pool with its own thread names, opened in a daemon thread (the shape behind the scorer: src/run_exit.py holding)': ('''
 from concurrent.futures import ThreadPoolExecutor
 

@@ -90,7 +90,7 @@ def build(env=None, action='', log=None):
     fallback = (lambda: build(dict(env, JOBADABRA_AI_ENGINE=ENGINES[name].fallback), action, log)) if fallback_allowed(env) else None
     if name == 'cli':
         from .claude_code import ClaudeCode, find_binary
-        client = ClaudeCode(binary=find_binary(env), log=log, fallback=fallback)
+        client = ClaudeCode(binary=find_binary(env), log=log, fallback=fallback, warm=ClaudeCode._warm)
     elif name == 'codex':
         from .codex_cli import Codex, find_binary
         client = Codex(binary=find_binary(env), log=log, fallback=fallback)

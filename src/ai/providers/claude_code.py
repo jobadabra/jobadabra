@@ -13,6 +13,7 @@ from pathlib import Path
 from ..slots import Slots
 from .cli_base import CliAdapter, CliError, CliLimitError
 from .contract import Usage, SUBSCRIPTION
+from .warm import Warm
 
 # Claude Code's model aliases for our model ids (the alias follows Claude Code's own latest model of that family).
 ALIASES = (('claude-haiku', 'haiku'), ('claude-sonnet', 'sonnet'), ('claude-opus', 'opus'))
@@ -29,6 +30,7 @@ THINK_FIRST = frozenset({'title_triage', 'visit_relevant'})
 # Tools a text call never needs, for a Claude Code too old for --tools.
 DENY = ('Bash', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch', 'Task', 'Glob', 'Grep', 'Read')
 _help = {}
+REAL_RUN = subprocess.run   # the runner a client gets by default: only such a client uses processes started ahead (coming)
 
 LIMIT = re.compile(r'usage limit|hit your (?:usage )?limit|limit reached|limit will reset|rate.?limit|out of (?:extra )?usage'
                    r'|too many requests|\b429\b', re.I)
@@ -112,7 +114,15 @@ def classify(text):
     return CliError(f'Claude Code failed: {(text or "no output").strip()[:300]}')
 
 
-def timing_line(args, data, queued_s, ran_s):
+def warm_args(args):
+    """The same call as a process that waits for its question on stdin (providers/warm.py): the one change is how the question arrives and the
+    answer leaves (`stream-json`, which needs `--verbose`); model, system prompt, tools and turns stay exactly as `args` says."""
+    out = list(args)
+    out[out.index('--output-format') + 1] = 'stream-json'
+    return out[:2] + ['--input-format', 'stream-json', '--verbose'] + out[2:]
+
+
+def timing_line(args, data, queued_s, ran_s, ahead=False):
     """Where a Claude Code answer's time went (7 Oct 2026: Haiku took 40-128 s to choose a page's filters, and nothing said whether the model or
     Claude Code was slow): the model's own time (its API calls), the rest (Claude Code starting, its turns, a rate limit's wait), and the wait for a
     free slot in this process. Counts only, never the prompt or the answer."""
@@ -122,7 +132,7 @@ def timing_line(args, data, queued_s, ran_s):
     total_s = (data.get('duration_ms') or ran_s * 1000) / 1000
     return (f'Claude Code {model}: answered in {ran_s:.0f} s (model {api_s:.0f} s, Claude Code itself {max(0, ran_s - api_s):.0f} s'
             f'{f", waited {queued_s:.0f} s for a free slot" if queued_s >= 1 else ""}; turns {data.get("num_turns", "?")}; reported {total_s:.0f} s'
-            f'{f"; thinking {thinking:,} of {output:,} output tokens" if (thinking := thinking_tokens(data)) else ""})')
+            f'{f"; thinking {thinking:,} of {output:,} output tokens" if (thinking := thinking_tokens(data)) else ""}{"; started ahead" if ahead else ""})')
 
 
 def thinking_tokens(data):
@@ -145,9 +155,11 @@ class ClaudeCode(CliAdapter):
     fallback_label = 'your Anthropic API key'
     missing_text, not_answering_text = MISSING_TEXT, NOT_ANSWERING_TEXT
     _slots = Slots(PARALLEL)
+    _warm = Warm(PARALLEL)   # processes started ahead, one engine's worth (as _slots): providers/warm.py
 
-    def __init__(self, binary=None, fallback=None, run=subprocess.run, timeout=None, log=None):
+    def __init__(self, binary=None, fallback=None, run=subprocess.run, timeout=None, log=None, warm=None):
         super().__init__(binary if binary is not None else find_binary(), fallback=fallback, run=run, timeout=timeout, log=log)
+        self.warm = warm   # the engine's own clients get the shared pool (providers.build); one made by hand starts nothing ahead
 
     def command(self, model, system, schema=None, effort=None, with_files=False, web_search=False):
         offered = flags(self.binary, self.run)
@@ -205,6 +217,28 @@ class ClaudeCode(CliAdapter):
     def env(self, args):
         return call_env(args)
 
+    def coming(self, args):
+        """Every call but one that reads files (they are written into the call's own folder) has a process started ahead. A client whose `run`
+        was replaced (a test's stand-in) never does: the pool would start the real program behind its back."""
+        if self.warm is None or self.run is not REAL_RUN or self.reads_files(args) or '--output-format' not in args:
+            return None
+        return self.warm.asked(warm_args(args), self.env(args))
+
+    def left(self, key):
+        if key is not None:
+            self.warm.gone(key)
+
+    def ask(self, args, prompt, folder, wait, key=None):
+        """The answer of the process started ahead for this call; today's own process when there is none, or it took no question."""
+        if key is not None:
+            spare = self.warm.take(key)
+            answer = self.warm.ask(spare, prompt, wait) if spare is not None else None
+            if answer is not None:
+                out = subprocess.CompletedProcess(args, answer[2], answer[0], answer[1])
+                out.ahead = True
+                return out
+        return super().ask(args, prompt, folder, wait)
+
     def parse(self, out, args, queued_s, ran_s):
         try:
             data = json.loads(out.stdout)
@@ -212,7 +246,7 @@ class ClaudeCode(CliAdapter):
                 data = next(item for item in reversed(data) if item.get('type') == 'result')
         except (ValueError, StopIteration, AttributeError):
             raise classify(f'{out.stdout}\n{out.stderr}'.strip() or f'exit code {out.returncode}') from None
-        self.log(timing_line(args, data, queued_s, ran_s))
+        self.log(timing_line(args, data, queued_s, ran_s, ahead=getattr(out, 'ahead', False)))
         if data.get('is_error') or out.returncode != 0 or str(data.get('subtype', 'success')).startswith('error'):
             if data.get('subtype') == 'error_max_turns':
                 return data, 'max_turns'
