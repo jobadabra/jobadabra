@@ -409,7 +409,9 @@ export function goNext() {
   const rel = document.querySelector('a[rel="next"], link[rel="next"]');
   if (rel?.href && rel.tagName === 'A' && visible(rel)) { (globalThis.__jobadabraPress?.(rel) || rel.click()); return 'next link'; }
   const NEXT = /^(next|suivant|weiter|nächste|siguiente|successivo|›|»|>)$|next page|page suivante|nächste seite/i;
-  const controls = [...document.querySelectorAll('a, button, [role="button"]')].filter(visible);
+  // Why (Gitar on #3866): a control that goes to another site is never this list's next page; the site's own rel="next" (above) is not filtered.
+  const sameHost = node => node.tagName !== 'A' || !node.getAttribute('href') || new URL(node.href).host === location.host;
+  const controls = [...document.querySelectorAll('a, button, [role="button"]')].filter(node => visible(node) && sameHost(node));
   const next = controls.find(node => labels(node).some(text => NEXT.test(text)));
   if (next) { (globalThis.__jobadabraPress?.(next) || next.click()); return 'next button'; }
   // Why (#3710, the structural copy): the site's top menu marks its own current link first; the pager's current page is the marked one that is a number.

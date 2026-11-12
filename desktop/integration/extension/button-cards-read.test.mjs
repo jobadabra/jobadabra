@@ -103,6 +103,7 @@ test('a link on the page\'s own path naming another id is still a posting; only 
 test('the next page is the pager\'s next number, never the top menu\'s marked link', async () => {
   const {page} = await open('attribute');
   try {
+    await page.evaluate(`document.body.insertAdjacentHTML('afterbegin', '<a href="https://other.example/next">Next</a>')`);   // a "Next" to another site comes first (Gitar on #3866)
     assert.equal(await call(page, 'goNext'), 'page number');
     assert.equal(await page.evaluate('document.body.dataset.pressed'), 'page 2');
   } finally { await page.close(); }
