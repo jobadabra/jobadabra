@@ -22,6 +22,11 @@ test('a fill or flow change without a case is stopped; a case, a scenario or a s
   assert.match(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html'], 'Fix a group')], covered), /does not count/);
   assert.equal(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html', 'desktop/e2e/recorded/acme-1/case.json'])], covered), '');
   assert.equal(missingCase([commit(['extension/fill-flow.js'], 'Log the press\n\nRecorded-unneeded: a log line only')], covered), '');
+  // A list read's own recorded page proves a change to the list read only (#3710 PR 2), never a fill change pushed with it.
+  assert.ok(covered.has('extension/visit-page.js'), 'positive control: the list read acts on pages');
+  assert.equal(missingCase([commit(['extension/visit-page.js', 'extension/visit.js', 'desktop/e2e/fixtures/visits/button-cards.html'], 'Read link-less cards')], covered), '');
+  assert.match(missingCase([commit(['extension/visit-page.js'], 'Read link-less cards')], covered), /recorded page/);
+  assert.match(missingCase([commit(['extension/visit-page.js', 'extension/fill-flow.js', 'desktop/e2e/fixtures/visits/button-cards.html'], 'Both')], covered), /fill-flow\.js/);
 });
 
 test('a Display-only marked file needs no recorded page; every file that fills or judges still does (owner, 22 Oct 2026)', () => {

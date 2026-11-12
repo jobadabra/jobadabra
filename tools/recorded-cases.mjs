@@ -15,6 +15,10 @@ import fs from 'node:fs';
 import {replayFiles} from './replay-files.mjs';
 
 export const PROOF = /^desktop\/(e2e\/recorded\/|e2e\/ladder-fixtures\/|test\/unit\/main\/journeys\.test\.js$)/;   // a recorded page, a ladder fixture (a decision fix) or a scenario
+// Why (#3710 PR 2, 12 Nov 2026): reading a job list (extension/visit.js, visit-page.js) has its own recorded pages, desktop/e2e/fixtures/visits/, read by the extension's
+// page functions in integration/extension/; a push that changes only those two files proves its fix with one of them. Any other acting file still needs the proofs above.
+export const READ_PROOF = /^desktop\/e2e\/fixtures\/visits\/[^/]+\.html$/;
+export const READ_FILES = /^extension\/visit(-page)?\.js$/;
 export const TRAILER = /^Recorded-unneeded:\s*\S/m;
 export const NAMES_A_FAILURE = /^Pool-row:[ \t]*(?!none\b)\S|^(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?|refs?)[ \t]+#\d+/im;   // a pool row (not "none <why>"), or an issue, the commit answers to
 export const RECORDED_CASE = /^desktop\/e2e\/recorded\/([^/]+)\//;
@@ -83,8 +87,9 @@ Add to a commit message: "Pool-row: <the row's name as /admin/form-filling/lab s
 // -> '' when fine, else the message. commits: [{files, message}] of the push; covered: the files a replay loads.
 export function missingCase(commits, covered) {
   const cover = new Set(covered), acting = commit => commit.files.filter(file => cover.has(file));
-  const proof = commits.some(commit => commit.files.some(file => PROOF.test(file)));
   const touched = commits.flatMap(acting);
+  const readProof = touched.every(file => READ_FILES.test(file)) && commits.some(commit => commit.files.some(file => READ_PROOF.test(file)));
+  const proof = readProof || commits.some(commit => commit.files.some(file => PROOF.test(file)));
   if (!touched.length || proof) return '';
   const excused = commits.filter(commit => acting(commit).length && TRAILER.test(commit.message));
   const refused = excused.find(commit => NAMES_A_FAILURE.test(commit.message));
