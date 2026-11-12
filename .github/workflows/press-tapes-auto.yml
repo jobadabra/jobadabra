@@ -6,6 +6,9 @@ run-name: Press tapes auto · the day's re-record
 # 2. guard: waits (up to 5 h, a free runner, no AI call) while a Search check, a by-hand tape run or the night Search check's hour holds the broker, stands down (green) when a newer automatic run is pending, ends RED if the broker is still held; reads how many people may record at once (3 when nothing else is on the broker, else 2; owner, 11 Nov 2026).
 # 3. record: press-tapes.yml's own job, lane scheduled (never the by-hand lane's 800 calls a day), 180 s presses, a per-person room check that stops it when the scheduled lane has no room (never another AI), a tape with a refused or Free AI call is not published.
 # 4. summary: what was recorded, the broker's calls by press tapes today and yesterday, and a by-hand run that started during the recording named as the likely cause of a tape that was not published.
+# 5. band + table (owner, 12 Nov 2026, asked via AskUserQuestion by sa: "Off PRs, nightly on main": "I feel Like I'm not getting any value of this. It never failed. It's just slow."): the Find jobs replay no longer runs on a PR.
+#    Once the recordings are renewed it waits for the band that press-tapes.yml dispatches on them, then press-yardstick.yml mode=pr measures main against that band on all 18 people (the one moment every person is measured) and
+#    writes the table in its job summary of this run; the PR's proof is the live same-minute pair plus the Search night.
 # A day's merges end in ONE re-record of the newest main: this workflow's group keeps one running and one pending run, the pending one recomputes the gaps on the newest main when it starts. It never uses the `search-personas` group (a
 # pending run there would replace a queued by-hand run).
 # Trigger = once a day, from the site Worker's timer (app-core/src/scheduler.js TAPES_SLOT), or by hand; no longer each merge. 10:30 UTC: after the night's passes and Thursday's Search week.
@@ -30,7 +33,6 @@ jobs:
     permissions:
       contents: read
       actions: read
-      pull-requests: write   # Why (11 Nov 2026, CI red on this PR): press-yardstick.yml's comment job asks it, and GitHub refuses to start a call that grants less, though mode=gaps posts no comment
 
   guard:
     name: No by-hand run holds the broker, and how many may record at once
@@ -103,9 +105,49 @@ jobs:
       id-token: write   # the Codex broker: GitHub OIDC, no stored secret
       actions: write    # press-tapes.yml's band job dispatches press-yardstick.yml mode=band
 
+  band:
+    name: The band on the renewed recordings (press-tapes.yml dispatched it)
+    needs: [gaps, record]
+    if: ${{ !cancelled() && needs.gaps.result == 'success' && needs.record.result != 'skipped' }}   # Why (12 Nov 2026, Gitar on #3939): press-tapes.yml's own band job runs on `record.result != 'skipped'`, so one unpublished tape (record red) still dispatches a band on the tapes that were published; the table waits for it too, never reads the old band
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Why (12 Nov 2026, owner: "Off PRs, nightly on main"): the table compares main with a band built on the recordings it replays; a table started beside the band would read "no band on this recording" for every renewed person.
+          # press-tapes.yml's band job (it ran inside `record`) dispatched the band on main: find it by its title and wait for it.
+          # Why (12 Nov 2026, Gitar on #3939): the band run is the first one dispatched after press-tapes.yml's band job started inside `record`, so a by-hand mode=band started during the hours-long guard and record window is not taken for it.
+          start=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID/jobs" --paginate --jq '[.jobs[] | select(.name | test("Rebuild main.s yardstick band")) | .started_at][0] // empty')
+          [ -n "$start" ] || start=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
+          id=""
+          for _ in $(seq 1 20); do
+            id=$(gh run list --repo "$REPO" --workflow press-yardstick.yml --event workflow_dispatch --created ">=$start" --json databaseId,displayTitle,createdAt --jq '[.[] | select(.displayTitle == "Find jobs pipeline yardstick band")] | sort_by(.createdAt) | .[0].databaseId // empty')
+            [ -n "$id" ] && break
+            sleep 30
+          done
+          [ -n "$id" ] || { echo "::error::press-tapes.yml dispatched no band run in 10 min, so the table would read the old band"; exit 1; }
+          echo "Waiting for the band run $id: https://github.com/$REPO/actions/runs/$id" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh run watch "$id" --repo "$REPO" --interval 30 --exit-status > /dev/null
+
+  table:
+    name: The 18-person table (main's replay on the renewed recordings, offline)
+    needs: [gaps, guard, record, band]
+    if: ${{ !cancelled() && needs.gaps.result == 'success' && (needs.band.result == 'success' || needs.band.result == 'skipped') }}
+    uses: ./.github/workflows/press-yardstick.yml
+    with: {mode: pr}
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+
   summary:
     name: What the automatic re-record did
-    needs: [gaps, guard, record]
+    needs: [gaps, guard, record, band, table]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -119,11 +161,13 @@ jobs:
           GAPS: ${{ needs.gaps.outputs.personas }}
           GAPS_RESULT: ${{ needs.gaps.result }}
           RECORD_RESULT: ${{ needs.record.result }}
+          TABLE_RESULT: ${{ needs.table.result }}
         run: |
           {
             echo "### Automatic re-record"
             echo "- Gap check (main's replay, offline): ${GAPS_RESULT}; people to re-record: ${GAPS:-none named}"
             echo "- Recording: ${RECORD_RESULT}"
+            echo "- The 18-person table (main's replay on the renewed recordings): ${TABLE_RESULT}, in this run's \"Find jobs replay\" job summary"
             # The budget line (sa, 11 Nov 2026): the broker's own per-workflow tally by UTC day, no new store; the lane stops each person under its own line (recording_room.py), never under a threshold of this file.
             curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | node -e '
               const days = (JSON.parse(require("fs").readFileSync(0, "utf8")).tally || {}).days || {}, names = ["jobadabra/press-tapes.yml", "jobadabra/press-tapes-auto.yml"];

@@ -1,6 +1,6 @@
 ---
 name: change-find-jobs
-description: Before and after changing what Find jobs reads, keeps, scores or orders (src/press, first_jobs, job_rank, feeds, places, sources, the clock): what to read first, how to read the 18-person yardstick table on the PR, what each measure can and cannot see, when to re-run on the Mac, and what never to do. Use before editing any Find jobs stage and before saying a Find jobs PR is done.
+description: Before and after changing what Find jobs reads, keeps, scores or orders (src/press, first_jobs, job_rank, feeds, places, sources, the clock): what to read first, how to read the 18-person yardstick table (the daily one on main since 12 Nov 2026, no longer on PRs), what each measure can and cannot see, when to re-run on the Mac, and what never to do. Use before editing any Find jobs stage and before saying a Find jobs PR is done.
 ---
 
 # Changing Find jobs without worsening another person
@@ -17,13 +17,13 @@ Owner, 10 Nov 2026: "each session that tries to improve a case, does this withou
 3. Say the intended behaviour for the person it helps, and name the people it could hurt (same role family, same country, remote-heavy, small city).
 
 ## Read the table
-The PR's yardstick comment and job summary (`press-yardstick.yml`): 18 people × coverage, quality, speed, listed in the right place. Each cell reads `main → PR`.
+The daily yardstick table (`press-yardstick.yml`, called by `press-tapes-auto.yml` once a day on main after the recordings are renewed; the job summary of that run; owner, 12 Nov 2026, "Off PRs, nightly on main"): 18 people × coverage, quality, speed, listed in the right place. A PR no longer gets it: its proof is the live same-minute pair plus the Search night; to replay your branch by hand: `gh workflow run press-yardstick.yml --ref <branch> -f mode=pr`. Each cell reads `main → this ref` (on main, main again).
 - First line: `N better, N no change, N worse, N not measured; worse: <people>`. Then the lowest listed-in-the-right-place shares, how many people repeat exactly on main, and any press that failed (that person is left out of both sides).
 - **Worse** = beyond one job (5 s of speed) and beyond the person's own band (2 sd of main's 5 replays). A 1-job change still shows in the cell even when it reads "no change".
 - **Noisy** people (their replays do not repeat on main) carry their band: read their "worse" with it. "Not measured" (no recording, no band yet) is no proof either way.
 - Report only, no red. Your PR names each worse person's cause or says why it is fine; a person who got worse and you did not look is the gap this table exists to close.
 - EURES is on only in the installed app (`JOBADABRA_EURES=1`, `src/features.py`); source and CI runs have it off. A replay uses it when the recording was made with it (`recorded.json` `eures`, replay `--with-eures`), so compare like with like: a recording made without it never shows what EURES adds.
-- It starts on every src file the run reaches (`python3 tools/press-yardstick/paths.py --check`). If it did not start, your change is not in the run's reach or the list drifted: say which.
+- It no longer starts on a PR (the paths list and `paths.py` are gone, 12 Nov 2026).
 
 ## What each measure can and cannot see
 | Measure | Sees | Cannot see |
