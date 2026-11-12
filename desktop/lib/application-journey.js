@@ -23,6 +23,9 @@ export const ACCOUNT_STEPS = ['sign_in', 'sign_up'];
 export const STEPS = ['posting', 'account', 'confirm', 'form', 'ended'];
 
 const BROKEN = 'The site did not answer: try again later';   // site_broken with no sentence from the extension (an older one)
+// Why (#3408, 12 Nov 2026): a Chrome form's "What happened" is derived, so what clear-stuck wipes (the Stop) and a Reopen form press were gone from it; they are kept here as `earlier`, newest last.
+const EARLIER_KEEP = 6;
+const addEarlier = (session, what, at) => [...(session.earlier || []), {at: String(at || ''), what}].slice(-EARLIER_KEEP);
 const label = needs => String(needs || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 const noteFor = (why, need) => (why === 'email' && need ? `Send your application to ${need}` : why === 'told' && need ? `The page says: ${need}` : why === 'other' ? 'Jobadabra could not tell how to apply: open the page' : why === 'site_broken' ? need || BROKEN : need ? `Needs you: ${need}` : why === 'account' ? 'This site needs an account' : 'The extension can\'t reach the form');
 
@@ -35,9 +38,11 @@ export function journey(session, event) {
   const none = {set: {}, result: false};
   if (!session) return none;
   if (event.type === 'clear-stuck') {   // no outcome guard: a submitted form that was stuck still loses its stale "needs you"
-    return session.stuck ? {set: {stuck: '', accountNeeds: '', note: 'Form open in Chrome'}, result: true} : none;
+    const stopped = session.stuck === 'stopped' ? {earlier: addEarlier(session, session.stopSource === 'user' ? 'stopped' : 'stopped-other', event.at)} : {};
+    return session.stuck ? {set: {stuck: '', accountNeeds: '', note: 'Form open in Chrome', ...stopped}, result: true} : none;
   }
   if (session.outcome) return none;   // invariant 1
+  if (event.type === 'reopened') return {set: {earlier: addEarlier(session, 'reopened', event.at)}, result: true};   // Reopen form opened a new tab (session-handlers.js sessionReopen)
   if (event.type === 'stage') {
     const stage = STAGES.includes(event.stage) ? event.stage : '';
     if (!stage || (session.stage === stage && (!event.host || session.accountHost === event.host))) return none;

@@ -20,6 +20,14 @@ test('a session\'s steps, for every state its card shows', () => {
   assert.equal(texts(sessionSteps({status: 'done'}, report, {submitted: true})).at(-1), 'done: Submitted · marked Applied');
 });
 
+test('a reopened form keeps what came before: the Stop, then the reopen with its time (#3408)', () => {
+  const time = () => '02:17';
+  const earlier = [{at: '2026-11-07T01:30:00Z', what: 'stopped'}, {at: '2026-11-07T01:17:00Z', what: 'reopened'}];
+  assert.deepEqual(texts(sessionSteps({startedAt: 'x', status: 'running', note: 'Filling the form…', earlier}, null, {time})),
+    ['done: Opened the job in Chrome · 02:17', 'done: Stopped by you', 'done: Reopened the form in Chrome · 02:17', 'now: Filling the form…']);
+  assert.deepEqual(texts(sessionSteps({earlier: [{at: '', what: 'stopped-other'}, {at: '', what: 'nonsense'}]})), ['done: Opened the job in Chrome', 'done: Stopped (by Chrome or the extension)']);
+});
+
 test('the terminal is only for a Claude conversation with the takeover on (resumeOffered); elsewhere the steps, and the terminal one click away', () => {
   const page = readScreenSource(new URL('../../../renderer/pages/session-steps.js', import.meta.url), 'utf8');
   assert.match(page, /export const terminalShown = item => \(resumeOffered\(\) && \(item\.kind \|\| 'claude'\) === 'claude'\) \|\| logAsked\.has\(item\.id\);/);

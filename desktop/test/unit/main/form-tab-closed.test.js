@@ -65,6 +65,35 @@ for (const kind of ['form', 'claude']) {
   });
 }
 
+// #3408 (desktop tester, 7 Nov 2026): after Reopen form "What happened" kept only "Opened the job" and the Stop line was gone. The reopen and what it cleared stay as history (`earlier`).
+test('Reopen form on a stopped session keeps the Stop and the reopen as history', async () => {
+  const s = setup();
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  terminals.noteStopped(id, 'user');
+  assert.deepEqual(await s.reopen(id, false), {ok: true, reset: true});
+  assert.equal(terminals.get(id).stuck, '', 'the card no longer says Stopped');
+  assert.deepEqual(terminals.get(id).earlier.map(step => step.what), ['stopped', 'reopened']);
+});
+
+test('Reopen form on a form that was not stopped is logged too, and a refused reopen is not', async () => {
+  const s = setup();
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  await s.reopen(id, false);
+  assert.deepEqual(terminals.get(id).earlier.map(step => step.what), ['reopened']);
+  const failing = setup({launchError: 'Chrome is not available'}), other = terminals.startForm({id: 'f2', url: URL, company: 'Beta'});
+  assert.equal((await failing.reopen(other.id, false)).ok, false);
+  assert.deepEqual(terminals.get(other.id).earlier || [], [], 'nothing opened: nothing logged');
+});
+
+test('the extension starting a stopped form again also keeps the Stop as history (the sibling of Reopen form)', async () => {
+  const {startForm} = await import('../../../lib/stop-all.js');
+  terminals._reset();
+  const {id} = terminals.startForm({id: 'f1', url: URL, company: 'Acme'});
+  terminals.noteStopped(id, 'user');
+  assert.equal(startForm(terminals, () => id, 7), id);
+  assert.deepEqual(terminals.get(id).earlier.map(step => step.what), ['stopped']);
+});
+
 // The class: every place in the session pages that looks for the form's tab hands a closed one to reopenClosedTab, and no
 // button opens a fresh tab or tells you to open it yourself.
 test('every caller of the form-tab lookup reopens a closed tab through reopenClosedTab', () => {

@@ -31,9 +31,14 @@ function stuckStep(item) {
   return '';
 }
 
+// What the session lived through before now (`earlier`, lib/application-journey.js): a Stop that Reopen form or a new Fill cleared, and each reopen (#3408).
+const EARLIER = {stopped: () => t('helperState.stoppedYou'), 'stopped-other': () => t('helperState.stoppedOther'),
+  reopened: (step, time) => t('helperState.reopenedChrome', {when: step.at ? ` · ${time(step.at)}` : ''})};
+
 // The steps the window derives from the session and its form report: a Chrome session, or a hidden one whose log is gone (the app restarted).
 function derivedSteps(item, state, submitted, time) {
   const steps = [{tone: 'done', text: t('helperState.openedChrome', {when: item.startedAt ? ` · ${time(item.startedAt)}` : ''})}];
+  for (const step of item.earlier || []) if (EARLIER[step.what]) steps.push({tone: 'done', text: EARLIER[step.what](step, time)});
   const stuck = stuckStep(item);
   if (stuck) steps.push({tone: 'warn', text: stuck});
   const total = Number(state?.total) || 0, left = Math.max(0, Number(state?.left) || 0);

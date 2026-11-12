@@ -171,6 +171,8 @@ export const messages = {
   "readAgain": "Citește din nou",
   "outcomeProblems": "a avut probleme · {result}",
   "stoppedYou": "Oprit de tine",
+  "stoppedOther": "Oprit (de Chrome sau de extensie)",
+  "reopenedChrome": "Formular redeschis în Chrome{when}",
   "stopped": "Oprit",
   "partial": "Parțial",
   "completedWarnings": "Finalizat cu avertismente",

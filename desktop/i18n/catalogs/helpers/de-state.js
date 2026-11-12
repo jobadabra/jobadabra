@@ -171,6 +171,8 @@ export const messages = {
   "readAgain": "Erneut lesen",
   "outcomeProblems": "hatte Probleme · {result}",
   "stoppedYou": "Von dir gestoppt",
+  "stoppedOther": "Gestoppt (durch Chrome oder die Erweiterung)",
+  "reopenedChrome": "Formular in Chrome erneut geöffnet{when}",
   "stopped": "Gestoppt",
   "partial": "Teilweise",
   "completedWarnings": "Mit Warnungen abgeschlossen",
