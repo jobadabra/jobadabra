@@ -35,8 +35,9 @@ WORD_CALLS = 1          # board discovery: its families' search words in the cou
 # Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" here; the cap raised the same
 # day on his "Let's make it more efficient"): a Slovak board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards), so a board the
 # rules read as empty is read once more with the AI page reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe
-# reads the same page with no AI later in that run. 12, not 6: six calls (3 boards) were all spent in 8 of 12 runs with 2-5 boards a run left
-# "not measured", while a pass used 18-31 of its cap; 12 reads 6 boards, half of MAX_BOARDS.
+# reads the same page with no AI later in that run. 12, not 6: six calls (3 boards) were all spent in 7 of the 11 lab runs that had the reader
+# (43300216888, 43303531806, 43308056859, 43317574914, 43319365565, 43320153606, 43321482016), which left up to 5 boards a run "not measured",
+# while a pass used 12-47 of its 71 calls; 12 reads 6 boards, half of MAX_BOARDS (pinned by tests/unit/sources/test_scout_boards.py).
 PAGE_CALLS = 12
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
 # ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 77.
