@@ -187,8 +187,8 @@ class AggregatorTests(unittest.TestCase):
 
     def test_the_free_sources_can_be_switched_off_and_eures_is_the_installed_app_only(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
-        self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Platsbanken', 'Job boards found'], 'EURES only in the installed app (owner, 10 Nov 2026)')
-        self.assertEqual(names({'JOBADABRA_EURES': '1'}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Platsbanken', 'Job boards found'])
+        self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Platsbanken', 'Le Forem', 'Job boards found'], 'EURES only in the installed app (owner, 10 Nov 2026)')
+        self.assertEqual(names({'JOBADABRA_EURES': '1'}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Platsbanken', 'Le Forem', 'Job boards found'])
         self.assertNotIn('Job boards found', names({'JOBADABRA_DISABLE': 'found_boards'}))
         self.assertEqual(names({'JOBADABRA_DISABLE': 'aggregators'}), [])
 
