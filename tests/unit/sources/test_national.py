@@ -19,11 +19,13 @@ ROOT = Path(__file__).resolve().parents[3]
 ANSWER = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'platsbanken-stockholm.json').read_text())
 FOREM = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'forem-brussels.json').read_text())
 NAV = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'national-site-oslo.json').read_text())
-SWEDEN, BELGIUM, NORWAY = national.SERVICES
-RECORDED = {'Platsbanken': (ANSWER, 'Stockholm'), 'Le Forem': (FOREM, 'Brussels'), 'arbeidsplassen.no': (NAV, 'Oslo')}   # each service's recorded answer and the place it was asked for: a new row adds its own
+SWEDEN, BELGIUM, NORWAY, SWITZERLAND = national.SERVICES
+JOBROOM = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'jobroom-zurich.json').read_text())
+RECORDED = {'Platsbanken': (ANSWER, 'Stockholm'), 'Le Forem': (FOREM, 'Brussels'), 'arbeidsplassen.no': (NAV, 'Oslo'), 'Job-Room': (JOBROOM, 'Zurich')}   # each service's recorded answer and the place it was asked for: a new row adds its own
 MAP = {'stockholm': {'kind': 'city', 'cc': 'SE', 'lat': 59.33, 'lon': 18.07, 'r': 30}, 'sweden': {'kind': 'country', 'cc': 'SE', 'lat': 0, 'lon': 0, 'r': 0},
        'lyon': {'kind': 'city', 'cc': 'FR', 'lat': 45.76, 'lon': 4.84, 'r': 30}, 'brussels': {'kind': 'city', 'cc': 'BE', 'lat': 50.85, 'lon': 4.35, 'r': 30},
-       'oslo': {'kind': 'city', 'cc': 'NO', 'lat': 59.91, 'lon': 10.75, 'r': 30}, 'norway': {'kind': 'country', 'cc': 'NO', 'lat': 0, 'lon': 0, 'r': 0}}
+       'oslo': {'kind': 'city', 'cc': 'NO', 'lat': 59.91, 'lon': 10.75, 'r': 30}, 'norway': {'kind': 'country', 'cc': 'NO', 'lat': 0, 'lon': 0, 'r': 0},
+       'zurich': {'kind': 'city', 'cc': 'CH', 'lat': 47.37, 'lon': 8.54, 'r': 30}, 'switzerland': {'kind': 'country', 'cc': 'CH', 'lat': 0, 'lon': 0, 'r': 0}}
 
 
 def search(*places, words=('Customer Support Agent',), boards=('kundtjänst',)):
@@ -56,7 +58,7 @@ class Placed(unittest.TestCase):
         resolve = mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): MAP[geo.norm(w)] for w in words if geo.norm(w) in MAP})
         resolve.start()
         self.addCleanup(resolve.stop)
-        named = {'SE': 'Sweden', 'BE': 'Belgium', 'FR': 'France', 'NO': 'Norway'}
+        named = {'SE': 'Sweden', 'BE': 'Belgium', 'FR': 'France', 'NO': 'Norway', 'CH': 'Switzerland'}
         known = mock.patch('src.places.countries', lambda search, cache=None, limit=3: list(dict.fromkeys(
             named[MAP[geo.norm(w)]['cc']] for w in search['locations']['top_tier'] if geo.norm(w) in MAP)))   # the place cache's countries, as the search's preparation leaves them
         known.start()

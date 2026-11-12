@@ -1,4 +1,4 @@
-"""National public employment services, one row per country (Sweden's Arbetsförmedlingen, Belgium's Le Forem, Norway's NAV): where small local employers post.
+"""National public employment services, one row per country (Sweden's Arbetsförmedlingen, Belgium's Le Forem, Norway's NAV, Switzerland's Job-Room): where small local employers post.
 Owner, 12 Nov 2026, asked via AskUserQuestion by sa ("Shall I add these national services to Find jobs' source list as our own sources, reading their
 official open feeds where they exist?"): "Yes, add them (Recommended)". Why: in 30 fictional profiles (GTM 6 re-measure, EURES off) EURES's jobs and ours
 overlapped in 0; Stockholm · Customer Support Agent: 8 right jobs found, 45 in Sweden's public feed. This reader is not EURES and never waits for it.
@@ -154,10 +154,61 @@ def _where(town, country):
     return f'{town}, {name}' if town else name
 
 
+JOBROOM = 'https://www.job-room.ch'
+JOBROOM_SEARCH = JOBROOM + '/jobadservice/api/jobAdvertisements/_search'   # the public job search's own backend (job-room.ch is a script-built page): undocumented, not offered for reuse
+JOBROOM_AD = JOBROOM + '/job-search/'   # an ad's own page at Job-Room: the only address a Swiss row may carry
+JOBROOM_RECENT = 60   # days back an ad may be published (the site's own widest choice)
+
+
+def _switzerland_url(word, place, offset):
+    """The Confederation's public job platform (SECO/RAV, job-room.ch, arbeit.swiss), read at the address its own search page asks (a POST with a JSON body; no key,
+    no login, no cookie): returned as the request, not a string, so national.read carries it to _jobroom_get. A place is its point and radius in km, as above."""
+    body = {'permanent': None, 'workloadPercentageMin': 10, 'workloadPercentageMax': 100, 'onlineSince': JOBROOM_RECENT, 'displayRestricted': False,
+            'keywords': [word], 'communalCodes': [], 'cantonCodes': []}
+    if place:
+        body['radiusSearchRequest'] = {'geoPoint': {'lat': place['lat'], 'lon': place['lon']}, 'distance': max(int(place['r'] or 0), 1)}
+    query = urllib.parse.urlencode({'page': offset // PAGE, 'size': PAGE, 'sort': 'date_desc'})
+    from . import ats
+    return urllib.request.Request(f'{JOBROOM_SEARCH}?{query}', data=json.dumps(body).encode(), method='POST',
+                                  headers={'User-Agent': ats.USER_AGENT, 'Content-Type': 'application/json', 'Accept': 'application/json'})
+
+
+def _jobroom_get(request):
+    """{'rows': the page's ads, 'total': all that match} for one Job-Room page, at the site's pace (host_pace). Why (12 Nov 2026, owner, asked via AskUserQuestion by sa:
+    "Read it now"; typed: "Let's try to read. ONly if we'll get 401 or 403, we'll ask for permission"): the address is undocumented and SECO has not offered it for reuse, so a
+    401 or 403 ends the source for good (host_pace never retries it; the read fails as "source failed", never as 0 jobs) and is the owner's cue to write to SECO. Only the title,
+    employer, place, date and link of an ad are kept, never its text. An answer that is not a list of ads is the read's failure."""
+    from . import host_pace
+    with host_pace.open(request, 20) as response:
+        rows, total = json.load(response), response.headers.get('x-total-count')
+    if not isinstance(rows, list):
+        raise ValueError('Job-Room answered something other than a list of ads')
+    return {'rows': rows, 'total': int(total) if str(total).isdigit() else len(rows)}
+
+
+def _switzerland_rows(answer):
+    """The ads of one page as jobs: title (its highlight marks removed), employer, town, publication date and the ad's own Job-Room page; no ad text. An ad outside
+    Switzerland, with no title or no id is dropped."""
+    from . import aggregators
+    jobs = []
+    for item in answer.get('rows') or []:
+        ad = (item or {}).get('jobAdvertisement') or {}
+        content = ad.get('jobContent') or {}
+        where = content.get('location') or {}
+        title = next((re.sub(r'<[^>]+>', '', str(d.get('title') or '')).strip() for d in content.get('jobDescriptions') or [] if d.get('title')), '')
+        if not (_UUID.fullmatch(str(ad.get('id') or '')) and title and (where.get('countryIsoCode') or 'CH') == 'CH'):
+            continue
+        company = (content.get('company') or {}).get('name') if not (ad.get('publication') or {}).get('companyAnonymous') else ''
+        jobs.append(aggregators._job('jobroom', ad['id'], title[:300], str(company or '')[:200], _where(str(where.get('city') or '')[:80], 'CH'), JOBROOM_AD + ad['id'],
+                                     str((ad.get('publication') or {}).get('startDate') or '')[:10]))
+    return jobs, int(answer.get('total') or 0)
+
+
 SERVICES = (
     Service('Platsbanken', 'SE', _sweden_url, _sweden_rows, PAGE),
     Service('Le Forem', 'BE', _belgium_url, _belgium_rows, PAGE),
     Service('arbeidsplassen.no', 'NO', _norway_url, _norway_rows, PAGE, get=_site_get),
+    Service('Job-Room', 'CH', _switzerland_url, _switzerland_rows, PAGE, get=_jobroom_get),
 )
 
 

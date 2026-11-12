@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 LISTED = [{'id': f'eures:{n}', 'title': title, 'location': 'Lyon, France', 'url': f'https://example.test/{n}'} for n, title in enumerate(('Électricien', 'Aide', 'Chef'))]
 # Each row's network seam, patched with the jobs it lists: a new row adds its own here (the loop below fails on a row it does not know).
-SEAMS = {'EURES': 'src.sources.eures.eures', 'Platsbanken': 'src.sources.national.read', 'Le Forem': 'src.sources.national.read', 'arbeidsplassen.no': 'src.sources.national.read'}
+SEAMS = {'EURES': 'src.sources.eures.eures', 'Platsbanken': 'src.sources.national.read', 'Le Forem': 'src.sources.national.read', 'arbeidsplassen.no': 'src.sources.national.read', 'Job-Room': 'src.sources.national.read'}
 
 
 class ReaderRowsTest(unittest.TestCase):
@@ -37,7 +37,7 @@ class ReaderRowsTest(unittest.TestCase):
     def test_the_free_api_list_reads_eures_through_its_row_in_todays_place(self):
         on = {'JOBADABRA_EURES': '1'}
         names = [name for name, _ in aggregators.sources(on)]
-        self.assertEqual(names[names.index('jobs.ch') + 1:names.index('Job boards found') + 1], ['EURES', 'Platsbanken', 'Le Forem', 'arbeidsplassen.no', 'Job boards found'],
+        self.assertEqual(names[names.index('jobs.ch') + 1:names.index('Job boards found') + 1], ['EURES', 'Platsbanken', 'Le Forem', 'arbeidsplassen.no', 'Job-Room', 'Job boards found'],
                          'the rows after jobs.ch, before the found boards, in the table\'s order')
         with mock.patch.object(eures, 'read', return_value=LISTED[:1]) as read:
             self.assertEqual(dict(aggregators.sources(on))['EURES']({'roles': ['x']}), LISTED[:1])
