@@ -11,7 +11,7 @@ import {editTitles, titlesOf} from './target-roles.js';
 // roles is the one list of titles (lib/target-roles.js: the first five also searched on job boards): plain titles, kept as target_roles.
 export const EDITABLE_LISTS = {roles: ['search', ['target_roles'], true, 'roles'], places: ['search', ['locations', 'top_tier']], country: ['search', ['locations', 'country_wide']],
   abroad: ['search', ['locations', 'abroad']], searchOverride: ['search', ['locations', 'search_override']], stack: ['search', ['quality_stack_keywords']],
-  languages: ['preferences', ['disqualifying_languages'], true], rights: ['preferences', ['work_rights']],
+  languages: ['preferences', ['disqualifying_languages'], true],
   // What only the ⚙️ Search settings page had (P8, 9 Oct 2026): every store edits them here. A Google Jobs place is stored as
   // {location, language} and edited as "Location · language", as the page writes it (src/notion/search_settings.py 'place').
   skip: ['preferences', ['excluded_companies'], true], titleSkip: ['search', ['title_exclude_keywords']], remoteSkip: ['search', ['remote_excluded_regions']], finders: ['search', ['board_discovery_keywords']],

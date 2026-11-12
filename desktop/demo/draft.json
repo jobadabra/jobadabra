@@ -73,9 +73,6 @@
    ],
    "excluded_companies": [
     "Acme Corp"
-   ],
-   "work_rights": [
-    "\\beu\\b"
    ]
   },
   "contact": {

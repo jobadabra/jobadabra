@@ -81,7 +81,6 @@ export default {
   "labelSkills": "Key skills and tools",
   "labelLanguages": "Languages you don't work in",
   "labelCompanies": "Excluded companies",
-  "labelWorkRights": "Work without a visa in",
   "groupsearch": "Search criteria",
   "groupfilters": "Filters",
   "groupprofile": "Profile (what the fit score reads)",

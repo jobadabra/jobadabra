@@ -34,11 +34,20 @@ test('a rebuild is told the current places, work rights and languages, and keeps
   assert.match(prompt, /<current_settings>/);
   assert.match(prompt, /Places: geneva, switzerland/);
   assert.match(prompt, /Work rights \(no visa needed\): swiss b permit authorized to work in switzerland, eu/);
-  assert.deepEqual(result.preferences.work_rights, ['swiss b permit \\(authorized to work in switzerland\\)\\.', 'eu']);   // never dropped by a rebuild
+  assert.deepEqual(result.preferences.work_rights, ['swiss b permit \\(authorized to work in switzerland\\)\\.', 'eu']);   // never dropped by a rebuild before the move into the Profile
   assert.deepEqual(result.preferences.disqualifying_languages, ['german']);   // english and italian were guesses: not added
   assert.doesNotMatch(result.profile_markdown, /GitHub/);
   assert.match(result.profile_markdown, /LinkedIn: ❓/);                        // only GitHub is dropped
   assert.equal(result.answers_markdown, '| Website | me.example |');
+});
+
+test('after the work rights moved into the Profile, a rebuild neither hears nor keeps the older Strategy list (#3850)', async () => {
+  const storage = rebuilt(), seen = [];
+  storage.saveSettings({workRightsMovedAt: '2026-11-12T00:00:00Z'});
+  const client = {messages: {create: async request => { seen.push(request); return reply({preferences: {disqualifying_languages: [], excluded_companies: []}}); }}};
+  const result = await strategy.draft(storage, {}, 'sk-ant-x', client);
+  assert.doesNotMatch(seen[0].messages[0].content[1].text, /Work rights/);
+  assert.equal(result.preferences.work_rights, undefined);
 });
 
 test('a first setup gets no current settings, and the rules say a missing language is unknown, not disqualifying', async () => {

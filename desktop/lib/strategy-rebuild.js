@@ -93,8 +93,7 @@ export function rebuildGroups({search = {}, preferences = {}, profile = '', answ
     listChanges('Key skills and tools', search.quality_stack_keywords, next.quality_stack_keywords, 'labelSkills'));
   const prefs = draft.preferences || {};
   const filterChanges = concatDisplay(listChanges('Languages you don\'t work in', preferences.disqualifying_languages, prefs.disqualifying_languages, 'labelLanguages'),
-    listChanges('Excluded companies', preferences.excluded_companies, prefs.excluded_companies, 'labelCompanies'),
-    listChanges('Work without a visa in', preferences.work_rights, prefs.work_rights, 'labelWorkRights'));
+    listChanges('Excluded companies', preferences.excluded_companies, prefs.excluded_companies, 'labelCompanies'));
   const profileChanges = sectionChanges(profile, draft.profile_markdown, true);
   const answerChanges = sectionChanges(answers, draft.answers_markdown, false);
   const linked = where.length > 0 && profileChanges.length > 0;

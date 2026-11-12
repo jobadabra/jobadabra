@@ -90,7 +90,7 @@ test('Discard all drops every card\'s draft and writes nothing', () => {
 test('class: every list and value the target cards edit belongs to exactly one card', () => {
   const source = readScreenSource(new URL('../../../renderer/pages/strategy-targets.js', import.meta.url), 'utf8');
   const lists = [...source.matchAll(/\['(\w+)', '[^']*', 'Add [^']*'\]/g)].map(([, name]) => name);
-  assert.ok(lists.length >= 12, `read the lists: ${lists}`);
+  assert.ok(lists.length >= 11, `read the lists: ${lists}`);   // 11 since Work rights left Strategy (#3850)
   for (const name of [...lists, 'roles', 'remote', 'relocation', 'minScore']) {
     const owners = Object.keys(CARDS).filter(key => CARDS[key].lists.includes(name) || CARDS[key].values.includes(name));
     assert.equal(owners.length, 1, `${name}: owned by ${owners}`);

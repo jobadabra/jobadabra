@@ -81,7 +81,6 @@ export default {
   "labelSkills": "Competenze e strumenti principali",
   "labelLanguages": "Lingue in cui non lavori",
   "labelCompanies": "Aziende escluse",
-  "labelWorkRights": "Lavorare senza visto in",
   "groupsearch": "Criteri di ricerca",
   "groupfilters": "Filtri",
   "groupprofile": "Profilo (letto dal punteggio di compatibilità)",

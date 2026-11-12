@@ -81,7 +81,6 @@ export default {
   "labelSkills": "Основные навыки и инструменты",
   "labelLanguages": "Языки, на которых вы не работаете",
   "labelCompanies": "Исключённые компании",
-  "labelWorkRights": "Работа без визы в",
   "groupsearch": "Критерии поиска",
   "groupfilters": "Фильтры",
   "groupprofile": "Профиль (для оценки соответствия)",

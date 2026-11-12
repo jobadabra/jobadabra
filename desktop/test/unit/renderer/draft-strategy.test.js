@@ -15,7 +15,7 @@ test('lists carry the fragment and its words, roles the first five as searched',
   assert.deepEqual(data.lists.roles.map(role => role.label), ['Nurse', 'Ward Nurse']);
   assert.ok(data.lists.roles.every(role => role.searched));
   assert.deepEqual(data.lists.places, [{fragment: '\\bbrno\\b', label: 'brno'}]);
-  assert.deepEqual(data.lists.rights.map(entry => entry.label), ['eu']);
+  assert.equal(data.lists.rights, undefined, 'work rights live only in the Profile (#3850)');
   assert.deepEqual(data.texts, {languages: ['German'], skip: ['Acme'], gqueries: ['nurse brno'], gplaces: ['Brno · cs']});
 });
 

@@ -20,7 +20,7 @@ export function draftAsStrategy(draft = {}) {
     lists: {
       roles: roles.map((title, i) => ({fragment: title, label: title, searched: i < SEARCHED})),
       places: entries(places.top_tier), country: entries(places.country_wide), abroad: entries(places.abroad), searchOverride: entries(places.search_override),
-      stack: entries(search.quality_stack_keywords), rights: entries(preferences.work_rights), remoteSkip: entries(search.remote_excluded_regions),
+      stack: entries(search.quality_stack_keywords), remoteSkip: entries(search.remote_excluded_regions),
       titleSkip: entries(search.title_exclude_keywords), finders: entries(search.board_discovery_keywords),
     },
     texts: {

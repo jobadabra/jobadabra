@@ -5,7 +5,7 @@ import {number as displayNumber} from '../../i18n/format.js';
 import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {withSaveProgress} from '../save-progress.js';
-import {el, pill, tile} from '../components.js';
+import {el, tile} from '../components.js';
 import {readRows} from '../card-shell.js';
 import {icon} from '../icons.js';
 import {shared} from './shared.js';
@@ -39,7 +39,7 @@ import {GROUPS, asWholeWord, matchGroups, placeLabel, shownGroups, shownWord} fr
 export const CARD_TONE = {roles: 'violet', places: 'teal', stack: 'info', languages: 'warn', search: 'neutral'};   // the colours of each kind's suggestions
 export const TARGET_CARDS = [
   ['places', 'pin', t('pagesStrategy.locations'), [['places', t('pagesCommon.preferredPlaces'), t('pagesFinalLabels.addCity')], ['country', t('pagesCommon.acceptablePlaces'), t('pagesFinalLabels.addCountry')],
-    ['abroad', t('pagesStrategyMore.relocatePlaces'), t('pagesFinalLabels.addCityAbroad')], ['rights', t('pagesFinalLabels.rightsHelp'), t('pagesFinalLabels.addCountryEu')]]],
+    ['abroad', t('pagesStrategyMore.relocatePlaces'), t('pagesFinalLabels.addCityAbroad')]]],
   ['stack', 'layers', t('pagesStrategy.skillsExperience'), [['stack', t('pagesAuditThird.a214'), t('pagesFinalLabels.addSkill')]]],
   ['languages', 'shield', t('pagesStrategy.exclusions'), [['languages', t('pagesStrategyMore.languageExclusions'), t('pagesFinalLabels.addLanguage')]]],
   // What only the ⚙️ Search settings page had (P8, 9 Oct 2026), so every store edits it here (lib/strategy-edit.js), with the level and the digest's minimum.
@@ -126,7 +126,7 @@ function helpDot(text) {
   return dot;
 }
 const labelWithHelp = (label, text) => { const line = el('p', 'sub', label); line.append(helpDot(text)); return line; };
-const LOCATION_LISTS = new Set(['places', 'country', 'abroad', 'rights']);
+const LOCATION_LISTS = new Set(['places', 'country', 'abroad']);
 const wholeWords = {};   // the "Whole word only" box per list while editing
 // Remote jobs (Search settings "Remote jobs"): No, My country (only remote that names your country), Yes (any; a bare "Remote" lists only here). lj 3/4, owner 10 Nov 2026:
 // "Small: add a third Remote work button"; the whole-country part is the Acceptable places row (empty = only your area).
@@ -243,7 +243,7 @@ const VIEWS = {
   // Roomy (mockup 03): one row per setting, icon · label on its own line over the value (a list's chips or one value) (owner, 18 Oct 2026: "Either
   // we're fully inline, either we're fully on the new line"); every divider full width.
   places() {
-    const places = labelsOf('places'), regions = labelsOf('country'), rights = labelsOf('rights'), abroad = draftEntries('abroad');
+    const places = labelsOf('places'), regions = labelsOf('country'), abroad = draftEntries('abroad');
     const mode = relocationNow(strategyState.lastStrategy, drafts().targetEdits);
     const none = words => el('span', 'muted', words);
     // The goal "Work mode" (what you accept) and Remote work (where remote jobs are searched) read as a contradiction side by side (owner, 7 Oct 2026):
@@ -256,8 +256,7 @@ const VIEWS = {
       {icon: 'globe', label: t('pagesCommon.acceptablePlaces'), value: regions.length ? withHints('country', labels => folded(labels, 10, t('pagesCommon.showAll'))) : none(t('pagesCommon.onlyYourArea'))},
       mode === 'yes' && abroad.length ? {icon: 'send', label: t('pagesStrategyMore.relocatePlaces'), value: folded(abroad.map(entry => entry.label), 10, t('pagesCommon.showAll'))}
         : {icon: 'send', label: t('pagesCommon.relocation'), value: relocationWords(mode, abroad)},
-      {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote},
-      {icon: 'shield', label: t('pagesStrategyMore.workRights'), value: rights.length ? withHints('rights', chipsOf) : pill(t('pagesCommon.notSet'), 'warn', {title: t('pagesStrategyMore.visaFlag')})}],
+      {icon: 'building', label: t('pagesCommon.remoteWork'), value: remote}],
     {lined: true})];
   },
   stack() {

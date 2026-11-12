@@ -14,6 +14,8 @@ import {undo as undoSetAside} from './set-aside-undo.js';
 import {beforeSave, undoFold} from './eligibility-older.js';
 import {settle} from './eligibility-settle.js';
 import {suggest as suggestZones} from './zone-suggest.js';
+import {writeRights} from './work-rights.js';
+import {moveRights} from './work-rights-move.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
 const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit', kind: 'per_country'},
@@ -32,6 +34,13 @@ const DEMO_WHICH = [{home: 'availability', topic: 'notice period', choices: [{la
 const empty = () => Object.fromEntries(Object.keys(sections.SECTIONS).map(key => [key, []]));
 
 // ai/copy: a test passes its own.
+/** The one-time move of the older Strategy rights (lib/work-rights-move.js), logged as a count. -> lines added; 0 when it stopped (logged, never thrown). */
+async function carryRights(storage, copy, log) {
+  const carried = await moveRights(storage, copy ? {copy} : {}).catch(failed => { log('profile', 'the work rights move stopped', {error: failed.message}); return 0; });
+  if (carried) log('profile', 'work rights moved into Work eligibility', {carried});   // a count, never a value
+  return carried;
+}
+
 export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected, needsNotion, log, ai = () => claudeAi(storage), copy}) {
   const tidied = () => {
     const {detailsTidy: lines, surveyTidy: survey, eligibilityFold: fold} = storage.settings(), live = [lines, survey, fold].filter(done => done && !done.undone);
@@ -63,11 +72,14 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       // The AI's word on each answer not judged yet, after the tidy and split changed what they change (lib/details-review.js judgeNew): unclear ones are queued.
       const judged = await judgeNew(storage, {ai: ai()}).catch(failed => { log('profile', 'the answers check stopped', {error: failed.message}); return {judged: 0}; });
       if (judged.judged) log('profile', 'answers checked', {judged: judged.judged, unclear: judged.unclear, unsure: judged.queued});   // counts, never a value
+      // Why (#3850, owner 12 Nov 2026: work rights "should be only in the Profile"): the older Strategy rights join Work eligibility once, before the conclusion folds them.
+      changed += await carryRights(storage, copy, log);
       // Why (owner, 28 Oct 2026, "Save them automatically", reversing #2322's and #2346's drafts): what the AI concludes about Work eligibility is saved now, a backup first and an Undo after.
       const concluded = await settle(storage, {ai: ai(), ...(copy ? {copy} : {})}).catch(failed => { log('profile', 'the eligibility conclusion stopped', {error: failed.message}); return 0; });
       if (concluded) log('profile', 'Work eligibility concluded', {concluded});   // a count, never a value
       changed += concluded;
       const found = await sections.read(storage);
+      writeRights(storage, found.eligibility);   // the engine's copy follows the Profile, also after an edit made in Notion itself
       if (changed || Date.now() - started > 2000) log('profile', 'Your details settled', {ms: Date.now() - started, changed});   // (only when something moved or it was slow) timing and a count, never a value
       return {ok: !error, error, changed, sections: found, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
     } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }

@@ -8,7 +8,7 @@ import {anthropicApi} from './ai/anthropic-api.js';
 
 export const MODEL = 'claude-haiku-5-5';
 // The chip lists shown on Strategy (roles are grouped by family elsewhere; search phrases are shown as written).
-export const LISTS = ['places', 'country', 'rights', 'stack', 'titleSkip', 'skip', 'remoteSkip', 'finders'];
+export const LISTS = ['places', 'country', 'stack', 'titleSkip', 'skip', 'remoteSkip', 'finders'];
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['lists'], properties: {lists: {type: 'array', items: {
   type: 'object', additionalProperties: false, required: ['name', 'groups', 'typos'], properties: {
     name: {type: 'string'},
