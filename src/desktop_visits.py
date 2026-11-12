@@ -145,6 +145,12 @@ def _headless_boards(db, args):
     return {'ok': True, 'sites': refused_reads.board_queue()}, False
 
 
+# -> whether the headless Chrome may load this board now (today's share), spending it first (src/sources/refused_reads.py headless_begin).
+def _headless_begin(db, args):
+    from .sources import refused_reads
+    return {'ok': True, 'go': refused_reads.headless_begin(args.url)}, False
+
+
 # -> the state of the page read in the real browser tab.
 def _refused_judge(db, args):
     from .sources import refused_state

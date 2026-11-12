@@ -64,7 +64,7 @@ test('a board that refuses plain reading is read in the headless Chrome, honestl
     const judged = [], outcomes = [];
     const result = await boardsStep({browser, start: () => browser.start({port: app.address().port, token: 'stand-in-token'}),
       queue: async () => [{url: `https://${OPEN}/jobs?q=nurse`, name: 'Open board', kind: 'board'}, {url: `https://${SHUT}/jobs?q=nurse`, name: 'Shut board', kind: 'board'}],
-      judge: async page => { judged.push(page.url); return 'page'; }, outcome: async page => { outcomes.push(page); return {ok: true, state: page.status === 200 ? 'read' : 'stopped', jobs: page.status === 200 ? 2 : 0}; },
+      begin: async () => true, judge: async page => { judged.push(page.url); return 'page'; }, outcome: async page => { outcomes.push(page); return {ok: true, state: page.status === 200 ? 'read' : 'stopped', jobs: page.status === 200 ? 2 : 0}; },
       sleep: async () => {}});
     assert.equal(result.state, 'done');
     assert.equal(outcomes[0].status, 200);

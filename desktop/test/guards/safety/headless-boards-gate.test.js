@@ -46,7 +46,7 @@ test('never a login-wall site, an address that is not https, or an employer site
   assert.equal(mayRead(BOARD), true);
   const opened = [];
   const browser = {ready: () => true, send: async (method, params) => { opened.push(params?.url); return {targetId: 't'}; }, targetSocket: async () => 'ws://127.0.0.1:9/t'};
-  await boardsStep({browser, start: async () => {}, queue: async () => [{...BOARD, url: 'https://www.linkedin.com/jobs'}], judge: async () => 'page', outcome: async () => ({}), sleep: async () => {}});
+  await boardsStep({browser, start: async () => {}, queue: async () => [{...BOARD, url: 'https://www.linkedin.com/jobs'}], begin: async () => true, judge: async () => 'page', outcome: async () => ({}), sleep: async () => {}});
   assert.deepEqual(opened, [], 'a queue that names a login-wall site opens nothing');
 });
 

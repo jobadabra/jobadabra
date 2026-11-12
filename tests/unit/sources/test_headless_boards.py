@@ -60,13 +60,22 @@ class HeadlessBoardsTest(unittest.TestCase):
     def test_the_buttons_queue_keeps_employer_sites_only(self):
         self.assertEqual(hosts(refused_reads.queue(now=NOW, kinds=('employer',))), {'careers.example.com'})
 
-    def test_at_most_five_headless_reads_a_day_whatever_they_brought(self):
+    def test_at_most_five_headless_reads_a_day_spent_before_each_page_loads(self):
         self.assertEqual(len(refused_reads.board_queue(now=NOW)), refused_reads.DAY_SITES)
-        answers = [(200, JOBS), (403, ''), (429, ''), (0, ''), (200, '<html>Please verify you are human</html>')]
-        for host, (status, html) in zip(BOARD_HOSTS, answers):
-            refused_reads.outcome(f'https://{host}/jobs', status, html, now=NOW, step=refused_reads.HEADLESS)
-        self.assertEqual(refused_reads.board_queue(now=NOW + timedelta(hours=2)), [], "today's five are spent")
-        self.assertEqual(hosts(refused_reads.board_queue(now=NOW + timedelta(days=1))) & set(BOARD_HOSTS[5:]), set(BOARD_HOSTS[5:]), 'a new day, a new share')
+        for host in BOARD_HOSTS[:5]:   # five reads started; the app never brought an answer for any (killed, the engine call lost)
+            self.assertTrue(refused_reads.headless_begin(f'https://{host}/jobs', now=NOW))
+        self.assertFalse(refused_reads.headless_begin(f'https://{BOARD_HOSTS[5]}/jobs', now=NOW), "today's five are spent, whatever the queue said")
+        self.assertEqual(refused_reads.board_queue(now=NOW + timedelta(hours=2)), [], 'and the queue says so')
+        self.assertNotIn(BOARD_HOSTS[0], hosts(refused_reads.board_queue(now=NOW + timedelta(hours=23))), 'a started read is not repeated the same day')
+        tomorrow = hosts(refused_reads.board_queue(now=NOW + timedelta(days=1, minutes=1)))
+        self.assertIn(BOARD_HOSTS[0], tomorrow, 'a read that never finished is asked again the next day')
+        self.assertFalse(refused_reads.headless_begin('https://www.indeed.com/jobs', now=NOW + timedelta(days=2)), 'never a login-wall site')
+
+    def test_a_captcha_board_is_offered_on_the_visit_list_for_the_person_to_open(self):
+        refused_reads.headless_begin(f'https://{BOARD_HOSTS[0]}/jobs', now=NOW)
+        answer = refused_reads.outcome(f'https://{BOARD_HOSTS[0]}/jobs', 200, '<html>check</html>', now=NOW, step=refused_reads.HEADLESS, judged='captcha')
+        self.assertEqual((answer['state'], answer.get('needs_check')), ('stopped', True))
+        self.assertIn(BOARD_HOSTS[0], {visits.host_of(item['url']) for item in visits.visit_list(SEARCH, now=NOW)}, 'listed with the sites only you can open')
 
     def test_a_board_that_opened_is_read_again_the_next_day_one_that_stopped_rests_thirty(self):
         refused_reads.outcome(f'https://{BOARD_HOSTS[0]}/jobs', 200, JOBS, now=NOW, step=refused_reads.HEADLESS)

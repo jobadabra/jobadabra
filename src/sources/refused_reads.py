@@ -121,14 +121,24 @@ def board_queue(now=None):
     return queue(now=now, limit=left, kinds=('board',)) if left > 0 else []
 
 
-def _spend(now):
-    """One headless read of today's DAY_SITES, whatever it brought (a page, a stop, a 429, a failed load)."""
+def headless_begin(url, now=None):
+    """Before Jobadabra's headless Chrome loads a board: True when it may (an allowed address, today's DAY_SITES not spent). The read is spent and the board
+    kept as 'waiting' (asked again the next day) BEFORE the page loads, so a read the app never finishes (killed, the engine's answer lost) is neither
+    repeated today nor left out of the day's count; outcome() then keeps what the page brought."""
+    now = now or _now()
+    if not allowed(url):
+        return False
     with visits.LOCK:
         data = visits._load()
         day = now.date().isoformat()
         spent = data.get('headless_day') or {}
-        data['headless_day'] = {'day': day, 'n': (int(spent.get('n') or 0) if spent.get('day') == day else 0) + 1}
+        used = int(spent.get('n') or 0) if spent.get('day') == day else 0
+        if used >= DAY_SITES:
+            return False
+        data['headless_day'] = {'day': day, 'n': used + 1}
+        data.setdefault('refused_reads', {})[visits.host_of(url)] = {'at': now.isoformat(timespec='seconds'), 'url': url, 'state': 'waiting', 'why': 'read started, no answer kept', 'step': HEADLESS}
         visits._save(data)
+    return True
 
 
 def _keep(host, url, state, why, now, jobs=None, kinds=None, step=None, route=None):
@@ -204,19 +214,18 @@ def _stop_why(status, html, final):
     return ''
 
 
-# The AI's page_state verdicts a browser's caller passes as stops (a passive check still there after the wait is a bot check); the why words are what _word() shares.
+# The AI's page_state verdicts (refused_state.STATES) that are stops when a browser's caller passes them (a passive check still there after the wait is a bot check); the why words are what _word() shares.
 JUDGED_STOPS = {'login': 'a login page', 'refused': 'refused in the browser', 'passive_check': 'a bot check'}
 
 
 def outcome(url, status, html, title='', final='', now=None, step='download', captcha=False, judged=None):
     """What a browser's read of `url` brought: {ok, state: 'read'|'empty'|'stopped'|'skipped', jobs, why, name, feed}. Every answer is kept so the site is not asked again for READ_DAYS.
-    `judged`: the page's state the browser's caller had the AI say (refused_state.page_state); a verdict in JUDGED_STOPS is a stop like the floors below."""
+    `judged`: the page's state the browser's caller had the AI say (refused_state.page_state): 'captcha' is a captcha, a verdict in JUDGED_STOPS a stop like the floors below."""
     now = now or _now()
+    captcha = captcha or judged == 'captcha'   # words-ok: the engine AI's fixed page_state answer, not a page's words
     host = visits.host_of(url)
     if not allowed(url):
         return {'ok': True, 'state': 'skipped', 'why': 'a site that is only read through your own visit', 'name': host}
-    if step == HEADLESS:
-        _spend(now)
     if host_pace.answer(url, int(status or 0)):   # "slow down": asked again after WAIT_DAYS, not a refusal
         _keep(host, url, 'waiting', 'asked us to slow down', now)
         print(f'Refused sites: {host} asked us to slow down; asked again in {WAIT_DAYS} day(s)')

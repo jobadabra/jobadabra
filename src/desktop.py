@@ -47,6 +47,7 @@ from .desktop_visits import (
     _visit_jobpage,
     _refused_queue,
     _headless_boards,
+    _headless_begin,
     _refused_judge,
     _visit_understand,
     _visit_recipe,
@@ -102,6 +103,7 @@ def _parse_args(argv):
     refused.add_argument('--all', action='store_true')   # Check for new jobs: every refused site, resting or not
     refused.add_argument('--kind', action='append', choices=('employer', 'board'), default=[])   # which sites (none: both); the button's read asks employer only (lib/refused-offer.js)
     sub.add_parser('headless-boards')   # refused job boards due for the Find jobs press's headless Chrome (src/sources/refused_reads.py board_queue; lib/headless-boards.js)
+    sub.add_parser('headless-begin').add_argument('url')   # before that browser loads one: may it (today's share), spent first (refused_reads.headless_begin)
     # refused-queue: refused employer sites and boards due now (src/sources/refused_reads.py); the app asks to count them after a Find jobs run and to hand them out after the person's press
     sub.add_parser('refused-judge').add_argument('file')   # what a page in the real tab is now (JSON: url, status, html, title, final): page, passive_check, captcha, login or refused
     sub.add_parser('refused-outcome').add_argument('file')   # what the extension's fetch of one of them brought (JSON: url, status, html, title, final)
@@ -183,10 +185,10 @@ def _role_ideas(db, args):
 
 # -> the refused read result after registering any new feed.
 def _refused_outcome(db, args):
-    from .sources import refused_reads
+    from .sources import refused_reads, refused_state
     page = json.loads(Path(args.file).read_text())
     result = refused_reads.outcome(str(page.get('url') or ''), page.get('status'), str(page.get('html') or ''), str(page.get('title') or ''), str(page.get('final') or ''), step=page.get('step') if page.get('step') in refused_reads.KEPT_STEPS else 'download', captcha=page.get('captcha') is True,
-                                   judged=page.get('judged') if page.get('judged') in refused_reads.JUDGED_STOPS else None)
+                                   judged=page.get('judged') if page.get('judged') in refused_state.STATES else None)
     if result.get('feed'):   # like a page the person opened: the next jobs check reads, filters and scores it
         with store.connect(JOBS_DB) as db:
             from . import scout
@@ -358,6 +360,7 @@ _COMMANDS = {
     'visit-read': _visit_read,
     'refused-queue': _refused_queue,
     'headless-boards': _headless_boards,
+    'headless-begin': _headless_begin,
     'refused-judge': _refused_judge,
     'refused-outcome': _refused_outcome,
     'visit-understand': _visit_understand,

@@ -38,13 +38,14 @@ function fakeBrowser(pages, {ready = true} = {}) {
   return {browser, openCdp, calls, tabCalls};
 }
 
-function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2})} = {}) {
+function run(list, pages, {judgeStates = {}, signal = null, ready = true, now = Date.now, outcomeFor = () => ({ok: true, state: 'read', jobs: 3, fits: 2}), share = Infinity} = {}) {
   const fake = fakeBrowser(pages, {ready});
   const judged = [], outcomes = [], lines = [];
-  let started = 0;
-  const judge = async page => { judged.push(page.url); const answer = judgeStates[page.url]; return Array.isArray(answer) ? answer.shift() : answer ?? 'page'; };
+  let started = 0, begun = 0;
+  const begin = async () => begun++ < share;
+  const judge = async page => { judged.push(page.url); if (!(page.url in judgeStates)) return 'page'; const answer = judgeStates[page.url]; return Array.isArray(answer) ? answer.shift() : answer; };
   const outcome = async page => { outcomes.push(page); return outcomeFor(page); };
-  const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, judge, outcome, openCdp: fake.openCdp,
+  const done = boardsStep({browser: fake.browser, start: async () => { started++; }, queue: async () => list, begin, judge, outcome, openCdp: fake.openCdp,
     tee: line => lines.push(line), signal, now, sleep: async () => {}});
   return done.then(result => ({result, judged, outcomes, lines, started: () => started, ...fake}));
 }
@@ -57,7 +58,7 @@ test('a board judged a page is read once with the headless step and its jobs are
   assert.equal(outcomes[0].step, 'headless');
   assert.equal(outcomes[0].status, 200);
   assert.equal(outcomes[0].html, JOBS);
-  assert.ok(!('judged' in outcomes[0]) && !('captcha' in outcomes[0]));
+  assert.equal(outcomes[0].judged, 'page', 'the AI\'s answer as it came: the engine says what it means');
   assert.ok(lines.some(line => line.includes('Board 1: 3 jobs read')), 'each read is a line of the Find jobs run (Recent activity)');
   assert.deepEqual([...new Set(tabCalls)].sort(), ['Network.enable', 'Page.enable', 'Page.navigate', 'Runtime.evaluate', 'detach'].sort(), 'only loading and reading the page: no click, key or cookie');
   assert.ok(calls.includes('Target.closeTarget'), 'the tab is closed after the board');
@@ -76,18 +77,18 @@ test('a passive check is only waited for: judged again until it is a page; one t
   const b = board(1);
   const cleared = await run([b], {[b.url]: {status: 200, html: JOBS}}, {judgeStates: {[b.url]: ['passive_check', 'passive_check', 'page']}});
   assert.equal(cleared.judged.length, 3);
-  assert.ok(!('judged' in cleared.outcomes[0]));
+  assert.equal(cleared.outcomes[0].judged, 'page');
   let clock = 0;
   const lasting = await run([b], {[b.url]: {status: 200, html: JOBS}}, {judgeStates: {[b.url]: 'passive_check'}, now: () => (clock += 10000)});
   assert.equal(lasting.outcomes[0].judged, 'passive_check');
   assert.ok(!lasting.tabCalls.some(method => /^Input\./.test(method)), 'never a click or a key');
 });
 
-test('a captcha is passed on for the person, a sign-in or refused page as a stop; a busy AI is never a guess', async () => {
+test('a captcha, a sign-in or refused page go to the engine as the AI said them; a busy AI is never a guess', async () => {
   const [a, b, c, d] = [1, 2, 3, 4].map(board);
   const pages = Object.fromEntries([a, b, c, d].map(item => [item.url, {status: 200, html: JOBS}]));
   const {outcomes} = await run([a, b, c, d], pages, {judgeStates: {[a.url]: 'captcha', [b.url]: 'login', [c.url]: 'refused', [d.url]: null}});
-  assert.equal(outcomes[0].captcha, true);
+  assert.equal(outcomes[0].judged, 'captcha');
   assert.equal(outcomes[1].judged, 'login');
   assert.equal(outcomes[2].judged, 'refused');
   assert.ok(!('judged' in outcomes[3]) && !('captcha' in outcomes[3]), 'not judged: the engine floors decide, no verdict is made up');
@@ -119,4 +120,18 @@ test('at most MAX_BOARDS boards a press, and only boards the gate allows', async
   const {outcomes} = await run(list, {});
   assert.equal(outcomes.length, MAX_BOARDS);
   assert.equal(mayRead(list[8]), false, 'employer sites stay with the button until PR 2');
+});
+
+test('today\'s share is spent before each page loads: when the engine says it is used, nothing more is opened', async () => {
+  const list = [board(1), board(2), board(3)];
+  const {outcomes, lines, tabCalls} = await run(list, {}, {share: 1});
+  assert.equal(outcomes.length, 1);
+  assert.equal(tabCalls.filter(method => method === 'Page.navigate').length, 1);
+  assert.match(lines.at(-1), /today's reads in Jobadabra's browser are used/);
+});
+
+test('an engine answer that never came is not counted as a board read', async () => {
+  const {result, lines} = await run([board(1)], {}, {outcomeFor: () => { throw new Error('the engine broke'); }});
+  assert.deepEqual(result, {state: 'done', jobs: 0, fits: 0, read: 0, of: 1});
+  assert.match(lines.at(-1), /Board 1: not read/);
 });

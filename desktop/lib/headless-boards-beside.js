@@ -27,6 +27,10 @@ export function boardsSeams(storage, {makeBrowser = boardReadBrowser, run = pipe
     const {code, stdout} = await run(storage, ['src.desktop', 'headless-boards']).catch(() => ({code: 1, stdout: ''}));
     try { return code === 0 ? JSON.parse(String(stdout).trim().split('\n').pop()).sites || [] : []; } catch { return []; }
   };
+  const begin = async item => {
+    const {code, stdout} = await run(storage, ['src.desktop', 'headless-begin', item.url]).catch(() => ({code: 1, stdout: ''}));
+    try { return code === 0 && JSON.parse(String(stdout).trim().split('\n').pop()).go === true; } catch { return false; }
+  };
   const judge = page => engineJson(storage, 'refused-judge', {...page, html: page.html.slice(0, 60000)}, run).then(answer => (answer?.ok ? answer.state : null));   // no answer: not judged, never a guess
   const outcome = page => engineJson(storage, 'refused-outcome', page, run);
   // Why (12 Nov 2026, owner: "fresh profile, no cookies or logins"): the folder is deleted before the read (a killed app's leftover) and after it, whatever ended it.
@@ -34,7 +38,7 @@ export function boardsSeams(storage, {makeBrowser = boardReadBrowser, run = pipe
     const own = makeBrowser(storage);
     await removeFolder(own.folder);
     try {
-      return await boardsStep({browser: own, start: () => own.start({port, token: extensionToken(storage)}), queue, judge, outcome, ...(openCdp ? {openCdp} : {}), tee: onLine, signal});
+      return await boardsStep({browser: own, start: () => own.start({port, token: extensionToken(storage)}), queue, begin, judge, outcome, ...(openCdp ? {openCdp} : {}), tee: onLine, signal});
     } finally {
       if (!(await own.dispose())) appLog('job-boards', 'the board read browser\'s folder was not removed; the next read removes it', {folder: FOLDER});
     }

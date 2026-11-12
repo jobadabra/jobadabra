@@ -17,7 +17,7 @@ from src import desktop
 COMMANDS = ('jobs delete status unapply not-submitted posting calendar clear-jobs strategy rescore-outdated '
             'refresh-locations places-now tune explain-coverage visit-outcome visit-hide stuck-jobs stuck-dismiss '
             'set-description visit-list linkedin-searches visit-unblock visit-filters visit-context visit-session visit-jobpages '
-            'visit-jobpage visit-read refused-queue headless-boards refused-judge refused-outcome visit-understand visit-recipe role-ideas next-step coverage').split()
+            'visit-jobpage visit-read refused-queue headless-boards headless-begin refused-judge refused-outcome visit-understand visit-recipe role-ideas next-step coverage').split()
 URL = 'https://example.test/jobs'
 VALUE = {'text': 'Zürich'}
 ERROR = 'Your job tracker could not be updated (OSError); nothing changed. Try again.'
@@ -261,6 +261,9 @@ import src.desktop
         boards = self.patch('src.sources.refused_reads.board_queue', return_value=[VALUE])
         self.call('headless-boards', {'ok': True, 'sites': [VALUE]})
         boards.assert_called_once_with()
+        begin = self.patch('src.sources.refused_reads.headless_begin', return_value=True)
+        self.call('headless-begin', {'ok': True, 'go': True}, URL)
+        begin.assert_called_once_with(URL)
         state = self.patch('src.sources.refused_state.page_state', return_value=VALUE)
         self.call('refused-judge', {'ok': True, 'state': VALUE}, str(self.page), ascii=True)
         state.assert_called_once_with(None, '<p>é</p>', 'Jobs', '')
@@ -270,10 +273,10 @@ import src.desktop
         ensure = self.patch('src.scout.ensure_tables')
         self.patch('src.desktop.datetime').now.return_value.isoformat.return_value = 'now'
         outcome.return_value = {'feed': 'feed', 'name': 'Zürich', 'ok': True}
-        for step, judged in (('engine', None), ('download', 'login'), ('tab', 'refused'), ('headless', 'passive_check'), ('invalid', 'page')):
+        for step, judged in (('engine', None), ('download', 'login'), ('tab', 'captcha'), ('headless', 'page'), ('invalid', 'bogus')):
             self.page.write_text(json.dumps({'url': URL, 'step': step, 'captcha': True, 'judged': judged}))
             self.call('refused-outcome', {'name': 'Zürich', 'ok': True}, str(self.page))
-            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'page' else None)
+            outcome.assert_called_with(URL, None, '', '', '', step=step if step != 'invalid' else 'download', captcha=True, judged=judged if judged != 'bogus' else None)
         ensure.assert_called_with(self.db)
         self.assertEqual(self.db.commit.call_count, 5)
         self.assertEqual(self.db.execute.call_args.args[1], ('feed', 'Zürich', 'now'))
