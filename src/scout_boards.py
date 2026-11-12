@@ -244,6 +244,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         proposed = _first(list(again), found, proposed)
         began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
+        from .ai import page_reader
+        ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
             for board in proposed:
                 if clock() - began > BUDGET_S:
@@ -259,8 +261,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                             db.execute('INSERT OR REPLACE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', (board['host'], stop, datetime.now(timezone.utc).isoformat(timespec='seconds')))
                             final.append(f"{board['host']} ({stop})")
                 read_by_ai = False
-                if not jobs and state == 'empty' and reader is not None and decide.probe_spent() < PAGE_CALLS:
-                    careers.READER = reader
+                if not jobs and state == 'empty' and ai_boards and decide.probe_spent() < PAGE_CALLS:
+                    careers.READER, ai_boards = reader, ai_boards - 1
                     try:   # one pool for the page reader and any judgment inside the read (src/ai/decide.py probe_allowance), so the job's cap holds
                         with decide.probe_allowance(PAGE_CALLS):
                             jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)

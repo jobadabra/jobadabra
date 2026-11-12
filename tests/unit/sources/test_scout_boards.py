@@ -74,7 +74,7 @@ class BoardPassTest(unittest.TestCase):
             readers.append(careers.READER)
             return ([job('Chisinau')] * 3, 'ok', None) if careers.READER else ([], 'empty', None)
         out = []
-        with mock.patch.object(careers, 'READER', 'auto'):
+        with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=True):
             got = scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=read_board, out=out.append, google=lambda *a: [])
             self.assertEqual(careers.READER, 'auto', 'the reader is back as it was after the pass')
         self.assertEqual(readers, [None, 'auto'], 'rules first, then the AI page reader once')
@@ -93,10 +93,25 @@ class BoardPassTest(unittest.TestCase):
             return [], 'browser' if item['host'] == 'script.md' else 'empty', None
         hosts = ['script.md'] + [f'{n}.md' for n in range(5)]
         out = []
-        with mock.patch.object(careers, 'READER', 'auto'):
+        with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=True):
             scout_boards.run(self.db, ideas=lambda search: [board(host) for host in hosts], read_board=read_board, out=out.append, google=lambda *a: [])
         self.assertEqual(ai_reads, ['0.md', '1.md', '2.md'], f'{scout_boards.PAGE_CALLS} calls, two a board; no AI read for a page built by scripts')
         self.assertIn(f'pages {scout_boards.PAGE_CALLS} of {scout_boards.PAGE_CALLS}', out[0])
+
+    def test_without_a_usable_page_reader_an_empty_board_is_not_fetched_again(self):
+        # #3922's first CI: every empty board was read twice when no AI could read it (a read with no call never drew from the pool)
+        readers = []
+        with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=False):
+            scout_boards.run(self.db, ideas=lambda search: [board('a.md'), board('b.md')], read_board=lambda item, *a: readers.append(careers.READER) or ([], 'empty', None),
+                             out=lambda line: None, google=lambda *a: [])
+        self.assertEqual(readers, [None, None])
+
+    def test_a_board_read_by_the_ai_with_no_call_still_counts_as_one_of_its_boards(self):
+        readers = []
+        with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=True):
+            scout_boards.run(self.db, ideas=lambda search: [board(f'{n}.md') for n in range(6)], read_board=lambda item, *a: readers.append(careers.READER) or ([], 'empty', None),
+                             out=lambda line: None, google=lambda *a: [])
+        self.assertEqual(readers.count('auto'), scout_boards.PAGE_CALLS // 2, 'at most PAGE_CALLS / 2 boards a run, even when the reader answers from its cache')
 
     def test_a_reader_kept_off_stays_off(self):
         readers = []
