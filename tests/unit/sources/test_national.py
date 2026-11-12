@@ -4,6 +4,7 @@ national-site-oslo.json: each feed's shape, employers and ids made up), and each
 without our site's yes. No network, no AI."""
 import io
 import json
+import tempfile
 import unittest
 import urllib.error
 import urllib.parse
@@ -12,7 +13,7 @@ from unittest import mock
 
 from src import geo, time_budget
 from src.notion.search_settings import fragment_of
-from src.sources import aggregators, api_lane, national, reader_rows
+from src.sources import aggregators, api_lane, host_pace, national, reader_rows
 
 ROOT = Path(__file__).resolve().parents[3]
 ANSWER = json.loads((ROOT / 'tests' / 'fixtures' / 'sources' / 'platsbanken-stockholm.json').read_text())
@@ -167,10 +168,18 @@ class NorwayThroughOurSiteTest(Placed):
                 raise answer
             return answer
         for target, value in (('src.service.site_off', mock.Mock(return_value=off)), ('src.service.install_id', mock.Mock(return_value='example-install-01')),
-                              ('src.employer_index._mint', mock.Mock(return_value=token)), ('urllib.request.urlopen', urlopen)):
+                              ('src.employer_index.index_token', mock.Mock(return_value=token)), ('urllib.request.urlopen', urlopen)):
             patch = mock.patch(target, value)
             patch.start()
             self.addCleanup(patch.stop)
+        folder, now = tempfile.TemporaryDirectory(), [1000.0]   # the pace's own file and clock: never the data folder, never a real wait
+        self.addCleanup(folder.cleanup)
+        for name, value in (('FILE', Path(folder.name) / 'host_pace.json'), ('clock', lambda: now[0]), ('sleep', lambda s: now.__setitem__(0, now[0] + s))):
+            patch = mock.patch.object(host_pace, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+        host_pace.reset()
+        self.addCleanup(host_pace.reset)
         return sent
 
     def test_an_oslo_search_lists_navs_ads_from_our_site_near_oslo(self):
@@ -200,6 +209,15 @@ class NorwayThroughOurSiteTest(Placed):
                 self.assertEqual(national.read(NORWAY, search('Oslo')), [])
                 self.assertEqual(len(sent), len(answers), 'at most one request, never asked again for the next word or page')
                 self.assertEqual(self.out.getvalue(), '', 'nothing said to the person')
+
+    def test_a_slow_down_is_waited_out_and_an_answer_that_is_no_object_fails_the_read(self):
+        busy = urllib.error.HTTPError('https://www.jobadabra.top/api/index/national', 503, 'Busy', {'Retry-After': '0'}, None)
+        sent = self.site(busy, Answer(200, NAV), Answer(200, NAV))
+        self.assertEqual(len(national.read(NORWAY, search('Oslo'))), 3, 'asked again after the wait the site asked for (src/sources/host_pace.py)')
+        self.assertEqual(len(sent), 3)
+        self.site(Answer(200, None))
+        with self.assertRaises(ValueError):
+            national.read(NORWAY, search('Oslo'))
 
     def test_a_person_with_no_place_in_norway_never_asks_our_site(self):
         sent = self.site()

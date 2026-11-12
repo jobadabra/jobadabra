@@ -123,23 +123,29 @@ def _norway_rows(answer):
 
 def _site_get(url):
     """One page from our site with this install's index token, or OFF: a run that must not ask the site (service.site_off: tests, CI, smoke), no token, or the
-    site's 204 (the country off, or NAV's key not on the site) or 401 (the token refused). Never retried; any other error is the read's failure as usual."""
+    site's 204 (the country off, or NAV's key not on the site) or 401 (the token refused). At the site's pace (host_pace: a 429 waits as asked, a 401/403 is never
+    retried); any other error, or an answer that is not a JSON object, is the read's failure as usual."""
     from .. import employer_index, service
-    from . import ats
+    from . import ats, host_pace
     if service.site_off():
         return OFF
     install = service.install_id()
-    token = employer_index._mint(service.SITE, install)
+    token = employer_index.index_token(install)
     if not token:
         return OFF
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Authorization': f'Bearer {token}', 'X-Install-Id': install, 'Accept': 'application/json'})
     try:
-        with urllib.request.urlopen(request, timeout=service.TIMEOUT) as response:
-            return OFF if response.status == 204 else json.load(response)
+        with host_pace.open(request, service.TIMEOUT) as response:
+            if response.status == 204:
+                return OFF
+            answer = json.load(response)
     except urllib.error.HTTPError as error:
         if error.code == 401:
             return OFF
         raise
+    if not isinstance(answer, dict):
+        raise ValueError('our site answered something other than a JSON object')
+    return answer
 
 
 def _where(town, country):

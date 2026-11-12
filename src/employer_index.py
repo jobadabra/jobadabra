@@ -53,6 +53,12 @@ def _mint(base, install):
     return service.site_token(install, 'index', ask)   # kept once given; quiet the rest of the day after a refusal (the download is then tried without)
 
 
+def index_token(install):
+    """This install's index token for our site ('' when it cannot be had): the employer index's, also the national services read through our site
+    (src/sources/national.py _site_get)."""
+    return _mint(service.SITE, install)
+
+
 def fresh_of(fresh):
     """A feed's freshness as the index carries it (src/scout.py health): fixed fields, or None."""
     if not isinstance(fresh, dict) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(fresh.get('ok') or '')):
