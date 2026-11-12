@@ -5,7 +5,17 @@ import urllib.error
 from unittest import mock
 
 from src.ai import board_ideas
-from src.sources import board_paths, found_boards
+from src.sources import board_paths, careers, found_boards
+
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 SEARCH = {'role_keywords': ['sales representative'], 'locations': {'top_tier': ['wien'], 'country_wide': [], 'abroad': []}}
 PATH_BOARD = {'name': 'Path Board', 'host': 'path.example', 'search_url': 'https://path.example/jobs/{role}/{place}', 'countries': ['Austria'],
