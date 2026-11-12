@@ -1,7 +1,7 @@
 # Jobadabra — Chrome extension
 
-Fills a job application from the kit Jobadabra drafted for it. **Submit is yours unless you turn on Automatically.** In Chrome, after
-filling, the page shows *Unlock for my review*; you check every field, unlock, and submit yourself. Only the app's **Automatically** level (off until you turn it on and set your checks) submits for you, once those checks pass.
+Fills a job application from the kit Jobadabra drafted for it. **Submit is yours unless you turn on Full automation.** In Chrome, after
+filling, the page shows *Unlock for my review*; you check every field, unlock, and submit yourself. Only the app's **Full automation** level (off until you turn it on and set your checks) submits for you, once those checks pass.
 
 ## What it does
 
@@ -20,7 +20,7 @@ Everything happens in **the panel**, bottom right of every application form (the
   you make here are ticked off on the app's session page; its *Show it in the form* scrolls here. Without the app
   (not open, or your own Worker) the panel still shows what's left and fills through your connection.
 - **You choose who submits:** the panel reads the form and scrolls to fields; the extension's own fill leaves Submit to you.
-  Only the app's Automatically level presses it, for a job you queued under it. Which job to apply to next is the desktop app's.
+  Only the app's Full automation level presses it, for a job you queued under it. Which job to apply to next is the desktop app's.
 - **Up to date by itself:** an older copy in Chrome reloads itself from the app's folder, and joins the forms
   already open without reloading them.
 

@@ -68,7 +68,7 @@ const rows = {
   reloadTab: ["Reload the tab","Tab neu laden","Recharger l’onglet","Ricarica la scheda","Recargar la pestaña","Reîncarcă fila","Перезагрузить вкладку"],
   reloadedWaiting: ["Reloaded, but no answer yet","Neu geladen, aber noch keine Antwort","Rechargé, mais pas encore de réponse","Ricaricato, ma ancora nessuna risposta","Recargado, pero aún sin respuesta","Reîncărcat, dar încă fără răspuns","Перезагружено, ответа пока нет"],
   reloadFailed: ["Couldn't reload the form tab","Formular-Tab konnte nicht neu geladen werden","Impossible de recharger l’onglet du formulaire","Impossibile ricaricare la scheda del modulo","No se pudo recargar la pestaña del formulario","Fila formularului nu a putut fi reîncărcată","Не удалось перезагрузить вкладку с формой"],
-  neverSubmit: ["Submitting this one is up to you.","Absenden liegt bei dir.","L’envoi de celle-ci vous revient.","L’invio di questa spetta a te.","Enviar esta solicitud te toca a ti.","Trimiterea acesteia îți revine ție.","Отправка этой заявки — за вами."],
+  submitIsYours: ["Submitting this one is up to you.","Absenden liegt bei dir.","L’envoi de celle-ci vous revient.","L’invio di questa spetta a te.","Enviar esta solicitud te toca a ti.","Trimiterea acesteia îți revine ție.","Отправка этой заявки — за вами."],
   removeList: ["Remove from the list","Aus der Liste entfernen","Retirer de la liste","Rimuovi dall’elenco","Quitar de la lista","Elimină din listă","Убрать из списка"],
   ownWords: ["Answer in your own words","Mit eigenen Worten antworten","Répondez avec vos mots","Rispondi con parole tue","Responde con tus palabras","Răspunde cu propriile cuvinte","Ответьте своими словами"],
   pause: ["Pause","Pausieren","Mettre en pause","Pausa","Pausar","Pauză","Приостановить"],

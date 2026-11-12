@@ -15,7 +15,7 @@ terminal, with a Chrome extension that fills the forms. Website:
 
 <p align="center">
   <img src="docs/images/architecture.png" width="100%"
-       alt="Jobadabra architecture. 1 Discover: job sources (jobs.ch, TechTree, 29 employer feeds, optional Google Jobs; a daily scout finds new feeds) feed a crawler on GitHub Actions every 4 hours, with seen postings kept in SQLite. 2 Process and rank: Claude Haiku 5.5 extracts job facts, Claude Sonnet 5 scores fit against your profile and drafts an application kit for your best matches. 3 Deliver and act: a Telegram digest with buttons, your private Notion workspace, and an optional application assistant on your Mac that fills the form in Chrome; you review and click Submit, never automated. A Cloudflare Worker turns Telegram buttons into GitHub Actions runs and Notion updates. 4 Learn: the application record frozen at Submit, read-only Gmail and Calendar (confirmations, replies, rejections, interview prep), interview reviews from transcripts, and a daily insight plus weekly report that loop back to Telegram.">
+       alt="Jobadabra architecture. 1 Discover: job sources (jobs.ch, TechTree, 29 employer feeds, optional Google Jobs; a daily scout finds new feeds) feed a crawler on GitHub Actions every 4 hours, with seen postings kept in SQLite. 2 Process and rank: Claude Haiku 5.5 extracts job facts, Claude Sonnet 5 scores fit against your profile and drafts an application kit for your best matches. 3 Deliver and act: a Telegram digest with buttons, your private Notion workspace, and an optional application assistant on your Mac that fills the form in Chrome; by default you review and click Submit; Full automation, off until you turn it on, submits for you. A Cloudflare Worker turns Telegram buttons into GitHub Actions runs and Notion updates. 4 Learn: the application record frozen at Submit, read-only Gmail and Calendar (confirmations, replies, rejections, interview prep), interview reviews from transcripts, and a daily insight plus weekly report that loop back to Telegram.">
 </p>
 
 <sub>Discover → rank with Claude → deliver to Telegram and Notion → you submit → learn from every reply.
@@ -351,7 +351,7 @@ doesn't.
 - ✅ **Live checklist on the page**: what's left, grouped (legal choices, answers, dropdowns to click,
   answers to read), updated as you fill, green "Ready to submit" at the end. Answers written by AI are
   outlined so you read them first.
-- 🖐️ **Submit is yours unless you turn on Automatically.** Terms and consent boxes are ticked only with the "Tick terms and consent
+- 🖐️ **Submit is yours unless you turn on Full automation.** Terms and consent boxes are ticked only with the "Tick terms and consent
   boxes for me" setting or the checklist's "Accept all" button.
 - 🔗 **Follows the Apply hop**: a job board's Apply that opens the employer's own form (jobs.ch → the
   employer's site) fills with the same job's kit; any other site works with one click on the icon, or
@@ -641,7 +641,7 @@ You can also reach for specific Telegram commands on demand, not as a daily ritu
 **Putting it together, a realistic week looks like:** Telegram pings you a few times a day; you
 tap ⭐/❌ on maybe a dozen jobs without leaving the app; a couple of times that week you open your
 laptop, run `apply-batch-chatgpt.sh` or `apply-batch-claude.sh`, review 3-5 filled forms over
-coffee, and submit the good ones — marking them applied happens by itself. The system never applies on its own initiative — it just makes sure that by the time
+coffee, and submit the good ones — marking them applied happens by itself. Unless you turn on Full automation, the system never applies on its own initiative — it just makes sure that by the time
 you sit down to apply, the tedious part (finding the posting, writing the letter, answering the
 same 15 form questions again) is already done.
 

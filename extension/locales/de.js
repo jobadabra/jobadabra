@@ -24,7 +24,7 @@ export default {
   "logins": "Anmeldungen beim Öffnen im Browser übernehmen",
   "loginsHint": "Für „In meinem Browser öffnen“: Die App überträgt die Cookies der Jobseite, damit du angemeldet bleibst. Chrome fragt einmal um Erlaubnis. Aus: Öffnen und Ausfüllen ohne Cookies. Nie Passwörter.",
   "consents": "Zustimmungs- und Datenschutzhinweise für mich ankreuzen",
-  "consentsHint": "Datenschutzhinweise, Bestätigungen und Datenverarbeitung: nach dem Ausfüllen angekreuzt und auf der Seite zum Lesen aufgeführt. Absenden bleibt dir überlassen, außer du hast „Automatisch“ eingeschaltet.",
+  "consentsHint": "Datenschutzhinweise, Bestätigungen und Datenverarbeitung: nach dem Ausfüllen angekreuzt und auf der Seite zum Lesen aufgeführt. Absenden bleibt dir überlassen, außer du hast „Vollautomatik“ eingeschaltet.",
   "details": "Deine Daten und dein Lebenslauf",
   "detailsHint": "Sie liegen in Jobadabra (Einstellungen → Deine Daten für Bewerbungsformulare). Die Erweiterung fragt sie bei jedem Ausfüllen ab. Ändere sie dort.",
   "save": "Verbindungsdaten speichern",
