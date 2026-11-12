@@ -322,6 +322,17 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
 
 
+def _kept_spares(taken, lock, read_items, keep):
+    """Keep, right after each of `read_items`, the boards read in its place (taken: {host: [(spare item, result)]}), in the order they were read.
+    Why (12 Nov 2026): they were kept after the whole read loop, which waits for the slowest board up to the cut: a replacement read at 19 s
+    reached the title judge at 124 s, after its AI time was gone, and its titles went unjudged. Each board's replacements follow it in its turn."""
+    for read_item in read_items:
+        with lock:
+            chain = taken.pop(read_item[0]['host'], [])
+        for spare_item, result in chain:
+            keep(spare_item, result)
+
+
 def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None):
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
@@ -458,14 +469,6 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         run_counts.looked(found)
         run_counts.matched(relevant)
         jobs.extend(found)
-    # Why (12 Nov 2026): the replacements were kept after the whole loop, which waits for the slowest board up to the cut: a replacement read
-    # at 19 s reached the title judge at 124 s, after its AI time was gone, and its titles went unjudged. Now each board's replacements
-    # follow it in its turn, in the order they were read.
-    def kept_spares(read_item):   # the boards read in place of this one, kept right after it
-        with lock:
-            chain = taken.pop(read_item[0]['host'], [])
-        for spare_item, result in chain:
-            keep(spare_item, result)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST for each board's AI calls
     for done, (read_item, future) in enumerate([(read_item, pool.submit(slots.carry(one_or_spare), read_item)) for read_item in reads], 1):
@@ -476,14 +479,14 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
             continue
         keep(read_item, result)
-        kept_spares(read_item)
+        _kept_spares(taken, lock, [read_item], keep)
         ticker.tick(done, f" · {read_item[0]['name']}")
     pool.shutdown(wait=not left, cancel_futures=True)
     if left:
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
         waiting += left
     for read_item in reads:   # a board still open at the cut: its replacements read before it
-        kept_spares(read_item)
+        _kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
     board_ideas.save(data)
     board_employers.note(jobs, 'Job boards found')
