@@ -17,7 +17,7 @@ test('the due starts are the latest of each workflow, by the Worker\'s own crons
     ['desktop.yml', '2026-10-06T02:00:00.000Z'],   // 04:00 Zurich in summer; the 03:00 UTC firing starts nothing
     ['e2e.yml', '2026-10-06T01:47:00.000Z'],
     ['e2e.yml', '2026-10-06T05:30:00.000Z'],   // the night burn-in's 5th pass is a start of its own: it does not replace the three-a-day one
-    ['press-tapes-auto.yml', '2026-10-06T06:30:00.000Z'],   // the day's one re-record of the Find jobs recordings (12 Nov 2026)
+    ['press-tapes-auto.yml', '2026-10-06T10:30:00.000Z'],   // the day's one re-record of the Find jobs recordings (12 Nov 2026)
     ['search-personas.yml', '2026-10-06T00:00:00.000Z'],   // the Search check's night run (4 Nov 2026)
     ['self-heal-stats.yml', '2026-10-06T09:40:00.000Z'],
   ]);

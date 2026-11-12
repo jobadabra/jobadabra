@@ -27,8 +27,9 @@ export const AGENT_SLOT = '04:40';
 // Six presses in a row took 26-29 min on 5-6 Nov 2026 (runs 41938128120, 42133678718; 33-44 min on 4 Nov), so 18 take about 80-85 min and it ends about 01:25: close to the 01:30 pass (6 Nov 2026, 4/5). TODO(AI): move this slot earlier or start the pass later if the two overlap (6 Nov 2026); the scout at about 02:30 and AGENT_SLOT come later.
 export const SEARCH_SLOT = '00:00';
 // The day's one re-record of the Find jobs recordings (press-tapes-auto.yml), UTC HH:MM. Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)": "recordings are renewed
-// once after a day's merges instead of after each merge"): it rides the ten-minute trigger, after the night's passes (the last starts 05:30) and before the day's PRs read the recordings; its own guard waits while a Search check holds the broker.
-export const TAPES_SLOT = '06:30';
+// once after a day's merges instead of after each merge"): it rides the ten-minute trigger, after the night's passes (the last starts 05:30) and after Thursday's Search week (SEARCH_WEEKLY below: 03:00, about 7 h, ends about 10:00), which would
+// hold the broker past the re-record guard's 5 h wait and end that day's run red (Gitar on #3899, 12 Nov 2026); a by-hand Search check still makes its guard wait.
+export const TAPES_SLOT = '10:30';
 export const STORE_WATCH_MINUTE = 20;
 // The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
 // one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).

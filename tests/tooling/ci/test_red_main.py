@@ -64,7 +64,7 @@ CLASSIFIED = {
     'CI · Search reference (18 personas)': 'ignored: a report on a live public job portal (EURES), started by hand; never by a push to main',
     'Press tapes': 'ignored: records the 18 personas\' tapes, started by hand; never by a push to main',
     # Why (11 Nov 2026, owner asked via AskUserQuestion: "Auto re-record after merge"): it runs on a push to main but records tapes; a red run (broker busy, a by-hand run in the way) says nothing about the push itself, its run summary names the cause.
-    'Press tapes auto': 'ignored: re-records the stale people after a push to main that the search reaches; a red run is its own summary, never a broken push',
+    'Press tapes auto': 'ignored: re-records the stale people once a day (the site timer; until 12 Nov 2026 after each push to main that the search reaches); a red run is its own summary, never a broken push',
     'Find jobs pipeline yardstick': 'ignored: replays the Find jobs recordings on pipeline pull requests (on: paths:) and by hand (main\'s band); never by a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
