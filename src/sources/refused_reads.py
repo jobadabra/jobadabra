@@ -53,12 +53,12 @@ def _recent(kept, host, now):
 
 
 def _board_url(board, search):
-    from . import found_boards
+    from . import board_paths, found_boards
     place = (found_boards._places(search) or [''])[0] if '{place}' in board['search_url'] else ''
     terms = found_boards._terms(search, 1)
     if not terms:
         return None
-    return board['search_url'].replace('{role}', urllib.parse.quote_plus(terms[0])).replace('{place}', urllib.parse.quote_plus(place))
+    return board_paths.forms(board['search_url'], terms[0], place)[0]   # a person's browser opens one link: the plus form, as before
 
 
 def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):

@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from ..press import resume, stage
@@ -79,9 +79,10 @@ def _read(board, search, fetch, route, early, show=None):
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):
-            url = board['search_url'].replace('{role}', urllib.parse.quote_plus(term)).replace('{place}', urllib.parse.quote_plus(place))
+            links = board_paths.forms(board['search_url'], term, place)
+            url = links[0]
             try:
-                page = (listing or fetch)(url)
+                url, page = board_paths.get(listing or fetch, links)   # Why (#3886): a path-style board answers the plus form 404 and was skipped; its slug link has the jobs
             except urllib.error.HTTPError as error:
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
@@ -155,9 +156,8 @@ def _read_by_ai(board, search, fetch):
     if careers.READER is None:   # the page reader is off (tests, a user who keeps pages from the AI): nothing is fetched
         return []
     place = (_places(search) or [''])[0] if '{place}' in board['search_url'] else ''
-    url = board['search_url'].replace('{role}', urllib.parse.quote_plus(_terms(search, 1)[0])).replace('{place}', urllib.parse.quote_plus(place))
     with stage.guard('found boards: AI page read') as caught:
-        page = fetch(url)
+        url, page = board_paths.get(fetch, board_paths.forms(board['search_url'], _terms(search, 1)[0], place))
     if caught:   # the page does not answer now: the other ways stand
         return []
     return _shaped(board, careers._asked(url, page, [], fetch)) if page and not careers._shell(page) else []
