@@ -1,5 +1,5 @@
 {
- "_": "The fit score's fixed case set (src/ai/score.py SYSTEM, score_bands.py, score_search.py), replayed by tools/score-cases.py on the person's Claude plan ($0). Fictional people and postings only. Expect: score_max / score_min bound the final score (after the search part), fit_max bounds the AI's own fit to the search, gap says the cv_gap line must be filled. Added 7 Nov 2026 (owner: a Cessna Citation captain job, licence required, scored 85 while the card said Not eligible).",
+ "_": "The fit score's fixed case set (src/ai/score.py SYSTEM, score_bands.py, score_search.py), replayed by tools/score-cases.py on the person's Claude plan ($0). Fictional people and postings only. Expect: score_max / score_min bound the final score (after the search part), fit_max bounds the AI's own fit to the search, gap says the cv_gap line must be filled. Added 7 Nov 2026 (owner: a Cessna Citation captain job, licence required, scored 85 while the card said Not eligible). location_min bounds the location part; a case's places stand in for Strategy → Locations and profile_add is appended to the golden profile (12 Nov 2026).",
  "profile": "golden",
  "cases": [
   {
@@ -94,6 +94,30 @@
    "expect": {
     "score_min": 65,
     "needs_credential": false
+   }
+  },
+  {
+   "id": "home-base-is-for-forms",
+   "why": "Owner, 12 Nov 2026 (#3850): \"Profile is having Location details in the Your Details. This should be used for filling forms.. The location in the strategy, should be only for the search\". A person whose Profile says Iasi and whose Strategy searches Geneva: a Geneva office job is not a commute gap.",
+   "search": [
+    "Site Reliability Engineer"
+   ],
+   "places": {
+    "top_tier": [
+     "geneva"
+    ],
+    "country_wide": [],
+    "abroad": []
+   },
+   "profile_add": "\n\n# Hard constraints\n\n| Constraint | Value |\n|---|---|\n| Home base | Iasi, Romania |\n",
+   "job": {
+    "title": "Senior Site Reliability Engineer",
+    "company": "Example Bank SA",
+    "location": "Geneva, Switzerland",
+    "description": "Run our Kubernetes platform on AWS EKS, own observability with Datadog and OpenTelemetry, and lead incident response for 300 services. Terraform for all infrastructure. On-site in our Geneva office four days a week, one day remote. English is the working language."
+   },
+   "expect": {
+    "location_min": 70
    }
   }
  ]

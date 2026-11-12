@@ -21,7 +21,7 @@ os.environ['ANTHROPIC_API_KEY'] = ''
 os.environ['JOBADABRA_CONFIG_DIR'] = str(ROOT / 'tests' / 'fixtures' / 'config')   # the fictional SRE in Zurich, never the person's settings or places
 os.environ['JOBADABRA_DATA_DIR'] = tempfile.mkdtemp(prefix='jobadabra-score-cases-')   # a throwaway store: the replay never reads or writes the app's data
 
-from src.ai import engine, score, score_search  # noqa: E402
+from src.ai import engine, locations, score, score_search  # noqa: E402
 
 GOLDEN = ROOT / 'desktop' / 'e2e' / 'fixtures' / 'golden'
 
@@ -38,6 +38,9 @@ def failures(case, data):
         out.append(f"search fit {fit} above {want['fit_max']}")
     if want.get('gap') and not (data.get('search') or {}).get('cv_gap'):
         out.append('cv_gap empty')
+    location = (data.get('components') or {}).get('location')
+    if 'location_min' in want and isinstance(location, (int, float)) and location < want['location_min']:
+        out.append(f"location {location} under {want['location_min']}")
     if 'needs_credential' in want and (data.get('search') or {}).get('needs_credential') is not want['needs_credential']:
         out.append(f"needs_credential {(data.get('search') or {}).get('needs_credential')!r}, wanted {want['needs_credential']!r}")
     return out
@@ -61,13 +64,14 @@ def main():
     profile = (GOLDEN / 'candidate.txt').read_text(encoding='utf-8')
     client = engine.client(action='score')
     lock_roles = {}
+    places_now = locations.block_now
     score_search._roles = lambda search=None: lock_roles.get('roles', [])
     score_search._search_role = lambda job: not args.no_lift   # the AI's title check, stubbed: no call, no store
 
     def one(task):
         case, run = task
         try:
-            data, usage = score.score_one(client, args.model, dict(job_of(case), ai={}), profile)
+            data, usage = score.score_one(client, args.model, dict(job_of(case), ai={}), profile + case.get('profile_add', ''))
         except Exception as error:   # one failed call is a failed case, the others still run
             return case['id'], run, [f'error: {type(error).__name__}: {error}'], ''
         return case['id'], run, failures(case, data), f"score {data['score']}, fit {(data.get('search') or {}).get('asked')}, gap {(data.get('search') or {}).get('cv_gap')!r}"
@@ -75,6 +79,8 @@ def main():
     results = []
     for case in fixture['cases']:   # one case's roles at a time: the search block is a module-level read
         lock_roles['roles'] = case['search']
+        # A case's own Strategy places (else the fixture config's): the places block is a module-level read too, so one case at a time.
+        locations.block_now = (lambda places: lambda: locations.block({'locations': places}))(case['places']) if case.get('places') else places_now
         with ThreadPoolExecutor(max_workers=3) as pool:
             results += list(pool.map(one, [(case, run) for run in range(1, args.runs + 1)]))
     for case_id, run, failed, seen in results:

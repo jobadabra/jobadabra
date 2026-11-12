@@ -19,7 +19,7 @@ export const CONSENT = {
 export function linkedinEntries({view, hidden = new Set(), held = new Set()} = {}) {
   if (!view?.loaded || view.on || hidden.has(KEY) || held.has(KEY)) return [];
   return [{kind: 'linkedin', home: 'focus', topic: 'profile', key: KEY, title: t('helperFlow.linkedinSuggestion'), source: '',
-    detail: t('helperFlow.linkedinSuggestionDetail'), evidence: [], answers: ['Not now'], actions: [{label: t('helperFlow.linkedinSignin'), do: 'turn_on_linkedin'}]}];
+    detail: t('helperFlow.linkedinSuggestionDetail'), evidence: [t('helperFlow.linkedinSuggestionEvidence')], answers: ['Not now'], actions: [{label: t('helperFlow.linkedinSignin'), do: 'turn_on_linkedin'}]}];
 }
 
 /** The ask on Find jobs: only a real Find jobs press (a re-score or Find employers goes through the same call), and only while the app says it is due. */

@@ -95,11 +95,12 @@ Score each posting for fit, using only the profile and the posting.
 Rules:
 - Role fit compares the posting's responsibilities and required skills with the candidate's real \
 experience. Name concrete matches (e.g. "Datadog + Terraform monitoring"), not generic praise.
-- Location covers commute from the home base, remote policy and workload. Needing visa sponsorship is not \
+- Location covers whether the job's place is where the candidate wants to work (the places they search, given \
+below), remote policy and workload. Needing visa sponsorship is not \
 a location penalty by itself (the candidate may be open to sponsored roles); the digest already flags it \
 separately, from the candidate's citizenship and work rights in the profile. Do not state commute times or \
-distances. A role that needs the office several days a week in another city than the home base is a location \
-gap, never "close" or "no relocation".
+distances. A role that needs the office several days a week outside the places they search is a location \
+gap, never "close" or "no relocation". Only when no places are given, judge from the home base in the profile.
 - Every figure, place and requirement you write must appear in the posting, the extracted facts or the profile. \
 Credit the candidate only with skills, tools and experience the profile names: a related tool is not the same tool, \
 and never say a posting's level matches a level the profile does not state. What the posting leaves out is an unknown, said as such \

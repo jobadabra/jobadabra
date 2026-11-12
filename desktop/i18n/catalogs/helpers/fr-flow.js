@@ -12,6 +12,7 @@ export const messages = {
   "keepOn": "Laisser activé",
   "linkedinSuggestion": "Cherchez aussi sur LinkedIn",
   "linkedinSuggestionDetail": "En arrière-plan, sans fenêtre. Connectez-vous une fois à LinkedIn dans une fenêtre Jobadabra.",
+  "linkedinSuggestionEvidence": "La recherche LinkedIn est désactivée, donc Rechercher des offres ne lit pas vos recherches LinkedIn.",
   "extensionNeeded": "Extension Chrome nécessaire",
   "linkedinExtensionHelp": "LinkedIn utilise l’extension Chrome Jobadabra. Connectez-la dans Paramètres → Connexions → Extension Chrome, puis réessayez.",
   "extensionUnknown": "Jobadabra ne peut pas ouvrir cette copie de l’extension",

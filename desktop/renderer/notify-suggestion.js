@@ -12,7 +12,7 @@ export function notifyEntries({state, hidden = new Set(), held = new Set()} = {}
   if (!card || hidden.has(KEY) || held.has(KEY)) return [];
   const actions = card.state === 'none' ? [{label: t('helperState.sendLink'), do: 'add_email'}, {label: t('helperState.useTelegram'), do: 'open_notifications'}]
     : card.resend ? [{label: t('helperState.resend'), do: 'resend_confirm'}, {label: t('helperState.changeAddress'), do: 'open_notifications'}] : [{label: t('helperState.openNotifications'), do: 'open_notifications'}];
-  return [{kind: 'notify', home: 'focus', topic: 'profile', key: KEY, title: card.title, source: '', detail: card.detail, email: '', state: card.state, evidence: [],
+  return [{kind: 'notify', home: 'focus', topic: 'profile', key: KEY, title: card.title, source: '', detail: card.detail, email: '', state: card.state, evidence: [card.evidence],
     answers: ['Not now'], alsoJobs: true, actions}];
 }
 

@@ -446,7 +446,7 @@ class ScoringPromptGroundingTests(unittest.TestCase):
     def test_the_prompt_forbids_made_up_numbers_and_distances(self):
         text = score.SYSTEM.lower()
         for rule in ('do not compute percentages', 'commute times or distances', 'minimum and the target are different figures',
-                     'in the target range', 'in another city', 'credit the candidate only with', 'level the profile does not state'):
+                     'in the target range', 'outside the places they search', 'credit the candidate only with', 'level the profile does not state'):
             self.assertIn(rule, text)
 
 

@@ -9,13 +9,14 @@ import re
 from ..notion.search_settings import readable
 
 
-# The Profile's older place rows (the template's "| Countries | … |", "Preferred cities", "Relocation"; desktop/renderer/preferences-model.js
-# FIELDS editedIn 'locations'), only in a row's form: a table row whose first cell is the label (Notion writes it without outer pipes, "Countries | …")
+# The Profile's place rows (the template's "| Countries | … |", "Preferred cities", "Relocation"; desktop/renderer/preferences-model.js FIELDS editedIn
+# 'locations'; and "Home base": Why (12 Nov 2026, owner: "Profile is having Location details in the Your Details. This should be used for filling
+# forms.. The location in the strategy, should be only for the search", then via AskUserQuestion "Strategy only")), only in a row's form: a table row whose first cell is the label (Notion writes it without outer pipes, "Countries | …")
 # or a "- **Label:** value" bullet. Why (#3850, owner 12 Nov 2026: "I can have one location in profile, but looking for another location in my search
 # strategy" · "We should drop/delete the code"): the app hides these rows since 17 Oct and Strategy → Locations owns where the person searches (block
 # below), so the scorer never reads them beside it. Why the form (#3857 review): a plain "Relocation: moved the team to Berlin" line is the person's
 # own experience and stays.
-PLACE_ROW = re.compile(r'^\s*(?:\|?\s*\**\s*(?:countries|preferred cities|relocation)\s*\**\s*\||[-*]\s*\*\*\s*(?:countries|preferred cities|relocation)\s*:?\s*\*\*)', re.I)
+PLACE_ROW = re.compile(r'^\s*(?:\|?\s*\**\s*(?:countries|preferred cities|relocation|home base)\s*\**\s*\||[-*]\s*\*\*\s*(?:countries|preferred cities|relocation|home base)\s*:?\s*\*\*)', re.I)
 
 
 def without_place_rows(profile, strategy_block=None):
