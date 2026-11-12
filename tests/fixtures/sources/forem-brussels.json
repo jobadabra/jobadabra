@@ -1,0 +1,152 @@
+{
+ "_recorded": "odwb.be/api/explore/v2.1/catalog/datasets/offres-d-emploi-forem/records?where=search(\"menuisier\") and within_distance(lieuxtravailgeo, geom'POINT(4.35 50.85)', 30km)&limit=100, 12 Nov 2026: its shape kept, 4 of its 36 offers, employers and ids made up (a public repo); the last one names no town",
+ "total_count": 4,
+ "results": [
+  {
+   "numerooffreforem": "9000001",
+   "titreoffre": "Menuisier (H/F/X)",
+   "lieuxtravaillocalite": [
+    "WAVRE"
+   ],
+   "lieuxtravailregion": [
+    "Province du Brabant Wallon",
+    "Belgique",
+    "RÉGION WALLONNE"
+   ],
+   "lieuxtravailcodepostal": [
+    "1300"
+   ],
+   "lieuxtravailregionnuts": [
+    "BE31",
+    "BE",
+    "BE3"
+   ],
+   "lieuxtravailgeo": [
+    {
+     "lon": 4.607744,
+     "lat": 50.716418
+    }
+   ],
+   "typecontrat": "Durée indéterminée",
+   "nomemployeur": "Example Wood A",
+   "regimetravail": "Temps plein",
+   "langues": [
+    "Français"
+   ],
+   "secteurs": [
+    "Travaux de menuiserie"
+   ],
+   "source": "Via site Forem",
+   "url": "https://www.leforem.be/recherche-offres/offre-detail/9000001",
+   "datedebutdiffusion": "2026-11-01",
+   "datefindiffusion": "2026-12-01",
+   "metier": "Menuisier / Menuisière d'atelier"
+  },
+  {
+   "numerooffreforem": "9000002",
+   "titreoffre": "Menuisier poseur",
+   "lieuxtravaillocalite": [
+    "NIVELLES"
+   ],
+   "lieuxtravailregion": [
+    "Belgique",
+    "Province du Brabant Wallon",
+    "RÉGION WALLONNE"
+   ],
+   "lieuxtravailcodepostal": [
+    "1400"
+   ],
+   "lieuxtravailregionnuts": [
+    "BE",
+    "BE31",
+    "BE3"
+   ],
+   "lieuxtravailgeo": [
+    {
+     "lon": 4.323421,
+     "lat": 50.597
+    }
+   ],
+   "typecontrat": "Durée indéterminée",
+   "nomemployeur": "Example Wood B",
+   "regimetravail": "Temps plein",
+   "langues": [
+    "Français"
+   ],
+   "secteurs": [
+    "Travaux de menuiserie"
+   ],
+   "source": "Via site Forem",
+   "url": "https://www.leforem.be/recherche-offres/offre-detail/9000002",
+   "datedebutdiffusion": "2026-11-02",
+   "datefindiffusion": "2026-12-01",
+   "metier": "Menuisier / Menuisière d'atelier"
+  },
+  {
+   "numerooffreforem": "9000003",
+   "titreoffre": "Schrijnwerker / Menuisier",
+   "lieuxtravaillocalite": [
+    "NEDER-OVER-HEEMBEEK",
+    "BRUXELLES"
+   ],
+   "lieuxtravailregion": [
+    "Belgique",
+    "RÉGION DE BRUXELLES-CAPITALE"
+   ],
+   "lieuxtravailcodepostal": [
+    "1120"
+   ],
+   "lieuxtravailregionnuts": [
+    "BE",
+    "BE1"
+   ],
+   "lieuxtravailgeo": [
+    {
+     "lon": 4.390488,
+     "lat": 50.897796
+    }
+   ],
+   "typecontrat": "Durée indéterminée",
+   "nomemployeur": "Example Wood C",
+   "regimetravail": "Temps plein",
+   "langues": [
+    "Français"
+   ],
+   "secteurs": [
+    "Travaux de menuiserie"
+   ],
+   "source": "Via site Forem",
+   "url": "https://www.leforem.be/recherche-offres/offre-detail/9000003",
+   "datedebutdiffusion": "2026-11-03",
+   "datefindiffusion": "2026-12-01",
+   "metier": "Menuisier / Menuisière d'atelier"
+  },
+  {
+   "numerooffreforem": "9000004",
+   "titreoffre": "Menuisier d'atelier",
+   "lieuxtravaillocalite": [],
+   "lieuxtravailregion": [
+    "Belgique"
+   ],
+   "lieuxtravailcodepostal": [],
+   "lieuxtravailregionnuts": [
+    "BE"
+   ],
+   "lieuxtravailgeo": [],
+   "typecontrat": "Durée indéterminée",
+   "nomemployeur": "Example Wood D",
+   "regimetravail": "Temps plein",
+   "langues": [
+    "Français"
+   ],
+   "secteurs": [
+    "Travaux de menuiserie"
+   ],
+   "source": "Via site Forem",
+   "url": "https://www.leforem.be/recherche-offres/offre-detail/9000004",
+   "datedebutdiffusion": "2026-11-04",
+   "datefindiffusion": "2026-12-01",
+   "metier": "Menuisier / Menuisière d'atelier"
+  }
+ ]
+}
