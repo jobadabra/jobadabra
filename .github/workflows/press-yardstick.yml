@@ -166,7 +166,7 @@ jobs:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
           NET_RECORDS_READ_TOKEN: ${{ steps.records_app.outputs.token || secrets.NET_RECORDS_READ_TOKEN }}
           PERSONAS: ${{ inputs.personas || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]' }}
-        # Why (12 Nov 2026, owner on #3929: "I don't believe that we cannot make it faster than 12m"): the 18 fetches were one after the other (33 s of a ~8.6 min run); each one lists the
+        # Why (12 Nov 2026, owner on #3929: "I don't believe that we cannot make it faster than 12m"): the 18 fetches were one after the other (33 s of a ~8.6 min run: step times of 19 PR runs, e.g. 43310686060 recordings 41 s, libraries 27 s, browsers 49 s, job 591 s); each one lists the
         # release, downloads and decrypts into its own folder, so 6 run side by side (the key stays in this one step's environment: PR code still starts only after it ends).
         run: |
           mkdir -p recordings
@@ -179,7 +179,7 @@ jobs:
         uses: ./.github/actions/electron-cache
       - name: The engine, the app's libraries and a browser for each side
         if: steps.rec.outputs.count != '0'
-        # Why (12 Nov 2026, same words): the two sides were installed one after the other (31 s); they share nothing, so they install side by side. After the recordings step on purpose:
+        # Why (12 Nov 2026, same words): the two sides were installed one after the other (27-38 s, same 19 runs); they share nothing, so they install side by side. After the recordings step on purpose:
         # this is the first step that runs the PR's code (its package scripts), and the recordings' key is gone by then (#3594).
         run: |
           install_side() {
@@ -190,15 +190,14 @@ jobs:
             (cd "$side/desktop/e2e" && (npm ci || npm install))
           }
           pids=()
-          for side in sides/*; do install_side "$side" > "$RUNNER_TEMP/${side##*/}.install.log" 2>&1 & pids+=($!); done
+          for side in sides/*; do ( set -o pipefail; install_side "$side" 2>&1 | sed -u "s|^|[${side##*/}] |" ) & pids+=($!); done
           failed=0
-          for i in "${!pids[@]}"; do wait "${pids[$i]}" || failed=1; done
-          for log in "$RUNNER_TEMP"/*.install.log; do echo "::group::$log"; cat "$log"; echo "::endgroup::"; done
+          for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
           exit $failed
       - uses: ./.github/actions/playwright-browser
         if: steps.rec.outputs.count != '0'
         with: {working-directory: sides/main/desktop/e2e, mode: both}
-      # Why (12 Nov 2026, same words): the browser install keys on the Playwright version; a second install of the same version was a cache hit that still cost ~10 s.
+      # Why (12 Nov 2026, same words): the browser install keys on the Playwright version; a second install of the same version was a cache hit that still cost ~8-11 s (43310686060, 43302536987, 43290603562).
       - name: Does the PR's side use another Playwright version?
         id: pw
         if: steps.rec.outputs.count != '0' && (inputs.mode || 'pr') == 'pr'
