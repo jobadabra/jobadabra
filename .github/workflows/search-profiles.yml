@@ -195,7 +195,7 @@ jobs:
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python3 tools/persona-search/profiles.py tell results/rows.json "$RUN_URL" "$RUNNER_TEMP/message.txt"
+          python3 tools/persona-search/profiles.py tell results/rows.json "$RUN_URL" "$RUNNER_TEMP/message.txt" || true   # never red (Gitar on #3945)
           node desktop/e2e/tell-owner.mjs --event search-profiles --file "$RUNNER_TEMP/message.txt" || true
       - uses: actions/upload-artifact@v6
         with:

@@ -165,6 +165,10 @@ def tell(rows_path, url, out):
     Why (13 Nov 2026, sa for the owner: "<k> of 30 got 0 right jobs", then "<m> meet target (N >= X)", then the link): a row not run or not measured is counted apart, never as 0."""
     rows = json.loads(Path(rows_path).read_text(encoding='utf-8')) if Path(rows_path).exists() else []
     measured = [r for r in rows if 'relevant' in r]
+    if not measured:   # Why (13 Nov 2026, Gitar on #3945): "0 of 0 got 0 right jobs" reads as a clean run; nothing measured is said as such
+        lines = [f'🧪 Search profiles on CI · nothing measured ({len(rows)} profile{"" if len(rows) == 1 else "s"}: ' + (', '.join(r.get('id', '?') for r in rows) or 'no rows') + ')', url]
+        Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        return lines
     zero = sum(r['relevant'] == 0 for r in measured)
     meets = sum(r.get('target') == 'meets' for r in measured)
     judged = sum(r.get('target') in ('meets', 'below') for r in measured)
@@ -172,7 +176,7 @@ def tell(rows_path, url, out):
              f'{zero} of {len(measured)} got 0 right jobs',
              f'{meets} of {judged} meet target (N ≥ X, X = EURES)' + (f' · {len(measured) - judged} without an X' if len(measured) > judged else '')]
     if len(rows) > len(measured):
-        lines.append(f'{len(rows) - len(measured)} not run or not measured: ' + ', '.join(r['id'] for r in rows if 'relevant' not in r))
+        lines.append(f'{len(rows) - len(measured)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in rows if 'relevant' not in r))
     lines.append(url)
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return lines
