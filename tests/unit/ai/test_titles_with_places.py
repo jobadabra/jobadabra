@@ -203,6 +203,21 @@ class PlaceCallBesideTitles(unittest.TestCase):
         self.assertEqual(len(self.model.asked('place asked')), 1, 'the place call still asked')
         self.assertTrue(all(len(self.model.asked(title)) == 1 for title in LATE), 'and the titles sorted after it')
 
+    def test_a_free_job_api_read_asks_where_its_remote_jobs_are_and_keeps_the_answers(self):
+        """WP8 rule 7 (#3754, wj; p10 Amsterdam on main, 12 Nov 2026): the free APIs' lane judged only titles, so 695 of 708 waiting jobs of Jobicy, Himalayas and Arbeitnow stayed at a
+        location nobody placed (Jobicy: 250 jobs at 38 locations, "Remote (Europe)" among them) press after press: no other reader asks the places of jobs that are not in the list yet."""
+        from src.sources import api_lane
+        jobs = [{'company': 'A', 'id': str(n), 'title': f'Role {n}', 'url': f'https://x.test/{n}', 'location': 'Remote (Europe)', 'remote': True, 'salary': '', 'description': '', 'date_posted': ''}
+                for n in range(3)]
+        self.model.gate.set()
+        with title_queue.hub(), batch_scope.concurrent():
+            found, views = api_lane._read('Jobicy', lambda search: jobs, {})
+            with batch_scope.using(views):
+                verdicts = {feeds.place_of(job) for job in found}
+        self.assertTrue(self.model.asked('place asked'), 'the lane sent its jobs\' locations to the place call')
+        self.assertEqual(verdicts, {'in'}, 'and the answers are in the views the stage keeps its jobs with')
+
+
 class RealTitleWordsStillSeeTheNewLocations(unittest.TestCase):
     """Review of #3512: beside the sort, the place call raced feeds.ASKED (after it `wanted_title` stops using the role words) and, on a few thousand jobs, placed nothing."""
 

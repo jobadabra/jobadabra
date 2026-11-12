@@ -236,10 +236,10 @@ def early_items(db, name, jobs, shown, now=None):
     return items
 
 
-def kept(db, name, found, now=None, shown=None):
+def kept(db, name, found, now=None, shown=None, owed=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
     (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py). shown: {url: item} of the jobs handed early (early_items),
-    taken as they are, not recorded again."""
+    taken as they are, not recorded again. owed: a list that gets each job still waiting for an answer the AI owes it (stage never_asked): their source is not rested (scan)."""
     from collections import Counter
     from . import job_stage
     now, matched, fresh, shown, stages, places = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter(), {}
@@ -259,6 +259,8 @@ def kept(db, name, found, now=None, shown=None):
             else:
                 stage = job_stage.of(job, places)   # Why (sa's plan WP3 and #3709's yardstick, 10 Nov 2026): each job read gets a stage, none unseen; one `places` per pass keeps the place words to once per location
             stages[stage] += 1
+            if stage == 'never_asked' and owed is not None:
+                owed.append(job)
             job_stage.say_one(name, stage, job)
     job_stage.say(name, len(found), stages)
     board_employers.fill_missing(fresh)   # the page's own hiringOrganization, a few per run
@@ -301,7 +303,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
             continue
         with stage.guard('free job APIs: read') as caught:   # Why (lanes 3/5, 11 Nov 2026): any error of one reader is that source failing, never the run (a RuntimeError ended it)
             try:
-                found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately)
+                owed = []   # this reader's jobs still waiting for the AI's answer
+                found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately, owed)
             except _Cut:   # still reading at the read cut: not marked read, the next search takes it
                 late.append(name)
                 continue
@@ -309,6 +312,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
                 _source_failed(report, name, error)
                 continue
             if name == 'EURES' and eures.CUT[0]:   # stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
+                late.append(name)
+            elif owed:   # Why (#3754, wj, WP8 rule 6): a job the AI has not answered for yet (stage never_asked) is not kept now; resting the source 6 h would drop it for 6 h
                 late.append(name)
             else:
                 mark_read(db, name, now, search)
@@ -327,11 +332,41 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
     return _done(report)
 
 
+def keep_late(db, search, lane, on_jobs, until, now=None):
+    """The jobs of the lane's reads that ended after the scan's read cut (scan left them: _Cut), kept as the scan keeps one and shown through on_jobs; each read once.
+    `until`: time.monotonic() to wait for a read still going (a time already past takes only the ended ones). A source whose jobs still wait for an answer is not
+    marked read, as in scan.
+    Why (#3754, wj, WP8 rule 6; p10's press 2 on main, 12 Nov 2026): a read judges its own titles in its thread, so 600 titles done at 165 s of 180 ended its read after the
+    cut; the scan left it and the lane closed, so the read was dropped and asked again next search, the same way each time. Called between the stages after the gather
+    and at the run's end (daily_search.keep_late_apis), as the boards' groups are (keep_late_boards)."""
+    if lane is None:
+        return []
+    from ..ai import batch_scope
+    now, jobs = now or time_budget.wall(), []
+    for name in [name for name in lane.reads if name not in lane.taken]:
+        with stage.guard('free job APIs: late read') as caught:
+            taken = lane.take(name, until)
+            if taken is None:   # still reading: the run ends first, the next search asks again
+                continue
+            found, views = taken
+            owed = []
+            with batch_scope.using(views):
+                matched = kept(db, name, found, now, None, owed)
+            if not owed:
+                mark_read(db, name, now, search)
+            if matched:
+                on_jobs(matched)
+            jobs.extend(matched)
+        if caught:
+            print(f'Warning: free job API {name}: its late read failed: {caught.reason}', flush=True)
+    return jobs
+
+
 class _Cut(Exception):
     """A read started from the press's start is still reading at the read cut."""
 
 
-def _one(db, search, name, read, now, shown, ahead, lane, lately):
+def _one(db, search, name, read, now, shown, ahead, lane, lately, owed):
     """(jobs listed, jobs kept) of one reader: the found boards read beside the employers taken, a read the lane started taken (raises _Cut
     while it still reads at the cut), any other read now."""
     from . import read_budget
@@ -344,14 +379,14 @@ def _one(db, search, name, read, now, shown, ahead, lane, lately):
         found, views = taken
         from ..ai import batch_scope
         with batch_scope.using(views):   # the lane's own title answers (api_lane._read): kept() asks nothing it judged
-            return found, kept(db, name, found, now, shown)
+            return found, kept(db, name, found, now, shown, owed)
     elif name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
         found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
     else:
         with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
             found = read(search)
             counted.jobs = read_methods.in_places(found)
-    return found, kept(db, name, found, now, shown)
+    return found, kept(db, name, found, now, shown, owed)
 
 
 def _said(report, late):

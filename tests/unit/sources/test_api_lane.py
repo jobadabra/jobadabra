@@ -81,7 +81,7 @@ class LaneTest(unittest.TestCase):
 class ScanTakesTheLaneTest(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(':memory:', check_same_thread=False)
-        for patch in (mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None: [dict(j, source=name) for j in found]),
+        for patch in (mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None, owed=None: [dict(j, source=name) for j in found]),
                       mock.patch.dict(os.environ)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -121,6 +121,25 @@ class ScanTakesTheLaneTest(unittest.TestCase):
         self.assertEqual([s['company'] for s in report['sources']], ['A'], 'the slow one is not listed as read')
         self.assertIsNone(aggregators.read_lately(self.db, 'Slow', search=SEARCH), 'not marked read: the next search asks it')
         self.assertEqual(report['said'], stage.Result(stage.CUT, '1 wait for the next search'))
+
+    def test_a_lane_read_that_ends_after_the_cut_is_kept_by_the_late_hand_over_once(self):
+        """WP8 rule 6 (#3754, wj): a read the scan left at the cut (its jobs judged in its own thread, p10's press 2: 600 titles done at 165 s of 180) was dropped with the
+        lane; its jobs now land in the list when it ends and its source is marked read then, once."""
+        go, shown = threading.Event(), []
+        self.addCleanup(go.set)
+        lane = api_lane.start(self.db, SEARCH, readers=[('Slow', lambda search: go.wait(5) and [JOB])])
+        self.addCleanup(lane.close)
+        cut = time.monotonic() + 0.1
+        with mock.patch('src.sources.read_budget.cut_at', lambda: cut), mock.patch('src.sources.read_budget.past_cut', lambda now=None: False):
+            report = aggregators.scan(self.db, SEARCH, readers=[('Slow', None)], lane=lane)
+        self.assertEqual(report['jobs'], [], 'positive control: the scan left it at the cut')
+        self.assertEqual(aggregators.keep_late(self.db, SEARCH, lane, shown.extend, time.monotonic()), [], 'still reading: nothing is waited for between stages')
+        go.set()
+        kept = aggregators.keep_late(self.db, SEARCH, lane, shown.extend, time.monotonic() + 5)
+        self.assertEqual([j['id'] for j in kept], ['1'])
+        self.assertEqual([j['id'] for j in shown], ['1'], 'shown in the list now')
+        self.assertIsNotNone(aggregators.read_lately(self.db, 'Slow', search=SEARCH), 'kept: it rests now')
+        self.assertEqual(aggregators.keep_late(self.db, SEARCH, lane, shown.extend, time.monotonic() + 5), [], 'a read is kept once')
 
     def test_a_lane_read_that_raises_fails_alone_and_the_next_lane_read_is_kept(self):
         def broken(search):

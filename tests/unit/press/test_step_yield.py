@@ -126,7 +126,7 @@ class StepYieldTests(unittest.TestCase):
             return {'jobs': []}
         with tempfile.TemporaryDirectory() as tmp, _db(tmp) as db, \
                 mock.patch.object(jobs_so_far.store, 'import_watch_report', side_effect=lambda _db, report: ['new'] * len(report['jobs'])), \
-                mock.patch.object(aggregators, 'kept', side_effect=lambda _db, _name, found, now=None, shown=None: found), \
+                mock.patch.object(aggregators, 'kept', side_effect=lambda _db, _name, found, now=None, shown=None, owed=None: found), \
                 mock.patch.object(boards_ahead, 'start', side_effect=lambda *a, **k: boards_ahead.Ahead({}, read)):
             report, ahead = boards_ahead.scan_beside([], db, {}, jobs_so_far.SoFar(db, say=lambda _: None), due=True, scan=scan)
             rows = {row['step']: row for row in step_yield.measure(db, in_my_place=_here)}

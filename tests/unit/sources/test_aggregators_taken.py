@@ -24,7 +24,7 @@ class TakenTest(unittest.TestCase):
         aggregators.TAKEN.clear()
         self.addCleanup(aggregators.TAKEN.clear)
         self.db = sqlite3.connect(':memory:')
-        patch = mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None: [dict(j, source=name) for j in found])
+        patch = mock.patch.object(aggregators, 'kept', lambda db, name, found, now=None, shown=None, owed=None: [dict(j, source=name) for j in found])
         patch.start()
         self.addCleanup(patch.stop)
 

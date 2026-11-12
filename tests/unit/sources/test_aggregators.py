@@ -155,6 +155,25 @@ class AggregatorTests(unittest.TestCase):
         self.assertEqual(again['sources'], [])
         self.assertEqual(later['sources'][0]['ok'], True)
 
+    def test_a_source_with_jobs_the_ai_has_not_answered_yet_is_read_again_not_rested_six_hours(self):
+        """Design rule 6 of WP8 (#3754, wj): a job read but not yet placed or sorted waits; its source is not marked read. Before, `scan` rested the source 6 h
+        after listing jobs whose title the AI had not judged yet (stage never_asked, dropped from this run's list), so those jobs came back in 6 h at the soonest."""
+        from src.sources import feed_facts
+        db = sqlite3.connect(':memory:')
+        db.row_factory = sqlite3.Row
+        jobs = [aggregators._job('x', 1, TITLE, 'Acme', PLACE, 'https://a.example/1')]
+        reads = []
+        judged = {}   # the AI's answers for this search: none yet, then this title's
+        with mock.patch.object(feeds, 'record', return_value='new'), mock.patch.object(feed_facts, '_triage_on', return_value=True), \
+                mock.patch.object(feeds, '_triaged', return_value=judged), mock.patch.object(feeds, 'triage'), mock.patch.object(feeds, 'asked', return_value=True):
+            first = aggregators.scan(db, {}, NOW, readers=[('Arbeitnow', lambda search: reads.append(1) or jobs)])
+            self.assertEqual((first['jobs'], reads), ([], [1]), 'positive control: the read happened and the unjudged title was not kept')
+            judged[feeds.title_key(TITLE)] = True   # the AI answered by the next search
+            again = aggregators.scan(db, {}, NOW + timedelta(hours=1), readers=[('Arbeitnow', lambda search: reads.append(2) or jobs)])
+            self.assertEqual(reads, [1, 2], 'its jobs wait for their answer: the source is read again at once, not after 6 h')
+            self.assertEqual([job['title'] for job in again['jobs']], [TITLE])
+            aggregators.scan(db, {}, NOW + timedelta(hours=2), readers=[('Arbeitnow', lambda search: self.fail('every job answered: it rests 6 h'))])
+
     def test_a_failing_source_is_reported_not_raised(self):
         db = sqlite3.connect(':memory:')
         def broken(search):

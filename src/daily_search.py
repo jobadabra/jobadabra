@@ -48,7 +48,7 @@ def search(args, stores=None):
     start_sources(args, read_profile)
     hidden, saved, dismissed, stages = application_stages(stores, run)
     sources = starter_sources()
-    report, imported, lane, so_far = {'jobs': [], 'sources': []}, [], None, None   # lane: the job boards' (gather_sources), handed over after it
+    report, imported, lane, apis, so_far = {'jobs': [], 'sources': []}, [], None, None, None   # lane: the job boards', apis: the free job APIs' lane (gather_sources), handed over after it
     with store.connect(args.db) as db:
         # A '➕ Next' page reads the stored list as is: importing would mark new jobs
         # as seen and reorder the list between pages.
@@ -61,7 +61,7 @@ def search(args, stores=None):
             try:
                 feed_list = plan_sources(args, stores, db, sources, run)
                 start_proposal(args, read_profile)   # the employers are named: the boards' AI calls start now, beside the reading
-                report, so_far, lane = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
+                report, so_far, lane, apis = gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed, run)
             except Exception:   # an error waits for the round in flight; a Stop (SystemExit) ends at once, the daemon thread with it
                 scored()
                 leave_early_reads(args)
@@ -71,11 +71,13 @@ def search(args, stores=None):
             imported = import_sources(db, report, so_far, run)
             scored()   # before the closing pass: run['score'] is whole when score_jobs reads it
             keep_late_boards(lane, so_far)   # the boards' groups that landed while the run scored (lanes 4a)
+            keep_late_apis(apis, so_far)   # the free APIs' reads that ended after the read cut (WP8 4/5)
             contribute_sources(args, stores, db, feed_list, report, stages)
             close_sources(args, db, feed_list, run)
         imported = filter_jobs(args, db, imported)
         backfill_descriptions(db)
         score_jobs(args, stores, db, run, read_profile, hidden, dismissed, time_budget)
+        keep_late_apis(apis, so_far, wait=True)
         keep_late_boards(lane, so_far, wait=True)   # the last of the boards' groups before the run's matches are saved (lanes 4a), waited for to the run's end
         open_urls = save_matches(args, stores, db, run, report, hidden, dismissed, started)
         scheduled_updates(args, stores, run, open_urls, datetime)
@@ -228,7 +230,7 @@ def gather_sources(args, stores, db, feed_list, read_profile, hidden, dismissed,
                 apis.close()
             if early is not None:
                 early.close()
-    return report, so_far, first
+    return report, so_far, first, apis
 
 
 # Download the employer sites the first-jobs slice leaves, from second 0 (a failure here: the full read reads them, as before).
@@ -297,6 +299,22 @@ def keep_late_boards(lane, so_far, wait=False):
         so_far.flush()
     except Exception as error:  # noqa: BLE001 — late groups are a bonus; the run goes on
         print(f'Warning: late job boards not kept: {type(error).__name__}: {error}', flush=True)
+
+
+def keep_late_apis(apis, so_far, wait=False):
+    """The free APIs' reads that ended after the gather's read cut, kept and shown now (aggregators.keep_late; the main thread owns the job cache): between the stages only the
+    ended ones, wait: the run's last hand-over, which waits for the rest to the run's own end at most. Not scored this run when it has no time left: they wait in the list
+    for the next run's scoring (WP8 rule 6, #3754)."""
+    if apis is None:
+        return
+    from .sources import aggregators, read_budget
+    with stage.guard('free job APIs: late hand-over') as caught:   # late reads are a bonus; the run goes on
+        until = (read_budget.run_end() if wait else None) or time_budget.now()
+        with feeds.database(DATA / 'jobs.sqlite') as feed_db:
+            aggregators.keep_late(feed_db, load_search_config(), apis, so_far.listener('job boards', 'free_job_apis'), until)
+        so_far.flush()
+    if caught:
+        print(f'Warning: late free job APIs not kept: {caught.reason}', flush=True)
 
 
 # Append paid and free API results in their original order.

@@ -158,5 +158,9 @@
  "L40": {
   "gets": "the part of a Find jobs run that collects jobs never waits for a score: the one scorer beside it takes each job, ranked again at each new arrival",
   "hash": "ef3632ac7c8c281a"
+ },
+ "L41": {
+  "gets": "free job API jobs are never dropped or left at a location nobody asked about: their locations are placed first by the jobs they decide, a source whose jobs wait for the AI is read again at the next search, and a read that ends after the cut is kept when it ends",
+  "hash": "caee1b8b02fe4f7e"
  }
 }
