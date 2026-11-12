@@ -27,8 +27,8 @@ class Model:
         self.calls += 1
         text = kwargs['messages'][0]['content']
         allowed = text.split('Allowed answers: ', 1)[1].split('\n', 1)[0].split(', ')
-        results = [{'index': i, 'answer': allowed[0]} for i in range(text.count('### Item '))]
-        return SimpleNamespace(usage=None, stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps({'results': results}))])
+        results = {str(i): allowed[0] for i in range(text.count('### Item '))}
+        return SimpleNamespace(usage=None, stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(results))])
 
 
 class PreparedAtSave(unittest.TestCase):

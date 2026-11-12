@@ -86,7 +86,7 @@ for (const [topic, ask, answers] of aliasAsks) test(`quality serves the captured
   };
   const init = {method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'decide'}, body: JSON.stringify(body)};
   assert.deepEqual(questionOf(init, h.env, loadTable(tableFile)), question);
-  const expected = {results: answers.map((answer, index) => ({index, answer}))};
+  const expected = Object.fromEntries(answers.map((answer, index) => [index, answer]));
   assert.deepEqual(JSON.parse(storedAnswer(init, h.env).reply.content[0].text), expected);
   const direct = await modelFetch(`${h.target}/v1/messages`, init, h.options);
   assert.deepEqual(JSON.parse((await direct.json()).content[0].text), expected);

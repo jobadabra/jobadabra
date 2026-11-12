@@ -8,10 +8,12 @@ import {python, pythonEnv} from './python.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 let current;
+const decideItems = properties => !!properties && Object.keys(properties).length > 0 && Object.entries(properties).every(([key, value], n) => key === String(n) && Array.isArray(value?.enum));
 function contract(body, template) {
   const {system, user, schema: rawSchema} = requestParts(body), schema = structuredClone(rawSchema);
-  // Why (JOB-44, 30 Oct 2026, owner): decide task/choices/schema remain semantic context; only its generic instruction layout belongs to the family.
-  if (template.family === 'app.decide' && schema?.properties?.results?.items?.properties?.answer?.enum) schema.properties.results.items.properties.answer.enum = ['{allowedAnswers}'];
+  // Why (JOB-44, 30 Oct 2026, owner; 12 Nov 2026, am): decide task and choices remain semantic context; only its generic instruction layout belongs to the family,
+  // and that layout is one item property (src/ai/decide.py answer_shape names one per item), whatever the batch size and the choices.
+  if (template.family === 'app.decide' && decideItems(schema?.properties)) Object.assign(schema, {required: ['{item}'], properties: {'{item}': {type: 'string', enum: ['{allowedAnswers}']}}});
   const framing = (text, pattern) => new RegExp(`^${pattern.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{\w+\}/g, '[\\s\\S]*?')}$`).test(text) ? pattern : '{unrecognized framing}';
   // Invariant: mixed SYSTEM text is matched as a template; assembled profiles never enter the hashed contract.
   return {action: template.action, system: template.systemTemplate ? framing(system, template.systemTemplate) : system,
@@ -44,7 +46,7 @@ function familyHintOf(properties) {
   const hint = Object.keys(roots).find(key => Object.hasOwn(properties, key));
   if (hint) return roots[hint];
   if (properties.places) return properties.places.items?.properties?.word ? 'app.places' : 'app.geo';
-  if (properties.results?.items?.properties?.answer) return 'app.decide';
+  if (decideItems(properties)) return 'app.decide';
   if (properties.score) return 'app.score';
   if (properties.questions) return 'app.interview';
   if (properties.role_family) return 'app.enrich';

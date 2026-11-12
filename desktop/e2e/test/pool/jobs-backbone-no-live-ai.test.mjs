@@ -69,7 +69,7 @@ for (const family of ['claude', 'openai']) test(`jobs answers every keyable capt
     const expected = answerFor(question, table);
     assert.ok(expected.reply, `${row.provenance}: ${JSON.stringify(expected)}`);
     if (row.expectedId) assert.equal(question.id, row.expectedId);
-    if (row.answers) assert.deepEqual(payload(expected.reply), {results: row.answers.map((answer, index) => ({index, answer}))});
+    if (row.answers) assert.deepEqual(payload(expected.reply), Object.fromEntries(row.answers.map((answer, index) => [index, answer])));
     await atEverySeam(h, row, expected); checked++;
   }
   assert.equal(checked, asks.length + decisions.length, 'every captured and reconstructed ask resolves at every seam, feed scores and enrichments included');

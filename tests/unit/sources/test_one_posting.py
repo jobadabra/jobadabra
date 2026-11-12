@@ -68,8 +68,8 @@ class FakeModel:
         items = kwargs['messages'][0]['content'].split('### Item ')[1:]
         addresses = [item.split('Address: ', 1)[1].split('\n', 1)[0] for item in items]
         self.asked += addresses
-        results = [{'index': i, 'answer': 'one_posting' if a in REAL else 'other'} for i, a in enumerate(addresses)]
-        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'results': results}))])
+        results = {str(i): 'one_posting' if a in REAL else 'other' for i, a in enumerate(addresses)}
+        return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps(results))])
 
 
 class OnePostingTests(unittest.TestCase):

@@ -52,7 +52,7 @@ class Relay:
         answers = [a.strip() for a in text.split('Allowed answers: ', 1)[1].split('\n', 1)[0].split(',')]
         pick = next((a for a in ('this country', 'field board', 'md', 'Moldova') if a in answers), next(a for a in answers if a != 'none'))
         return self.N(stop_reason='end_turn', usage=self.N(input_tokens=1, output_tokens=1), content=[self.N(type='text', text=json.dumps(
-            {'results': [{'index': i, 'answer': pick} for i in range(text.count('### Item'))]}))])
+            {str(i): pick for i in range(text.count('### Item'))}))])
 
     def idea(self):
         """The board ideas: one call for one country, counted as src/ai/board_ideas.py counts it."""
@@ -109,7 +109,7 @@ class BoardPassAllowance(unittest.TestCase):
         class Client:
             from types import SimpleNamespace as N
             messages = N(create=lambda **kw: asked.append(kw) or Client.N(stop_reason='end_turn', usage=None, content=[
-                Client.N(type='text', text='{"results": [{"index": 0, "answer": "yes"}]}')]))
+                Client.N(type='text', text='{"0": "yes"}')]))
         with mock.patch('src.ai.cost.side'):
             self.assertIsNone(decide.one('t', 'a', 'x', ('yes', 'no'), 'task', Client(), self.db), 'outside: the spent cap')
             with decide.own_allowance('pass', 2):
@@ -135,7 +135,7 @@ class BoardPassAllowance(unittest.TestCase):
                 answer = 'retail_sales' if 'family of jobs' in kw['messages'][0]['content'] else 'md'
                 asked.append(answer)
                 return self.N(stop_reason='end_turn', usage=None, content=[self.N(type='text', text=json.dumps(
-                    {'results': [{'index': i, 'answer': answer} for i in range(n)]}))])
+                    {str(i): answer for i in range(n)}))])
         inside, leftover_done = threading.Event(), threading.Event()
 
         def leftover_feed_check():   # a feed check the feed pass no longer waits for: it keeps asking while the pass runs

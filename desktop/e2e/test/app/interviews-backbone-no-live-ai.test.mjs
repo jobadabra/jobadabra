@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../../lib/ai-answers.mjs';
+import {decideSchema} from '../../lib/ai-answers-decide.mjs';
 import {DUMMY_KEY} from '../../lib/engine.mjs';
 import {FAILURES} from '../../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../../lib/backbone-harness.mjs';
@@ -46,17 +47,18 @@ test('interviews resolves all ten captured decide items through the real validat
   for (const body of decideRequests) {
     const init = {...request('decide'), body: JSON.stringify(body)}, question = questionOf(init, h.env, table);
     assert.equal(question.operation, 'app.decide');
-    const expected = {results: question.items.map(({index, text, key}) => {
+    const expected = Object.fromEntries(question.items.map(({index, text, key}) => {
       const answer = new Map(verdicts).get(text);
       assert.ok(answer, `unexpected captured item: ${text}`);
       assert.deepEqual(table.items['app.decide'][key], {text, answer});
       seen.push([text, answer]);
       const single = structuredClone(body);
       single.messages[0].content = `${body.messages[0].content.split('### Item 0\n')[0]}### Item 0\n${text}`;
+      single.output_config.format.schema = decideSchema(question.context.allowedAnswers.split(', '), 1);   // its schema names one item
       const {reply} = storedAnswer({...init, body: JSON.stringify(single)}, h.env);
-      assert.deepEqual(JSON.parse(reply.content[0].text), {results: [{index: 0, answer}]});
-      return {index, answer};
-    })};
+      assert.deepEqual(JSON.parse(reply.content[0].text), {0: answer});
+      return [index, answer];
+    }));
     const {reply} = storedAnswer(init, h.env);
     assert.deepEqual(JSON.parse(reply.content[0].text), expected);
     const direct = await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options);
