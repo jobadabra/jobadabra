@@ -74,12 +74,12 @@ class PublishPathTest(unittest.TestCase):
     def test_the_board_pass_job_runs_the_pass_alone(self):
         calls, flags = [], []
         build = mock.patch.object(scout, 'build_index', lambda *a, **k: flags.append('feeds') or ([], []))
-        with build, mock.patch.dict(os.environ, {'SCOUT_BOARD_COUNTRY': 'Moldova'}), mock.patch.object(scout_boards, 'run', lambda db, **kwargs: calls.append(kwargs) or []), \
+        with build, mock.patch.dict(os.environ, {'SCOUT_BOARD_COUNTRY': 'Moldova', 'SCOUT_BOARD_KINDS': 'Trades, education'}), mock.patch.object(scout_boards, 'run', lambda db, **kwargs: calls.append(kwargs) or []), \
                 tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['scout', '--board-pass', '--db', str(Path(tmp) / 'jobs.sqlite')]):
             self.addCleanup(setattr, scout_core, 'CENTRAL', scout_core.CENTRAL)
             self.assertEqual(scout.main(), 0)
             self.assertTrue(scout_core.CENTRAL, "the pass asks the AI as the central scout, on the cap its job's relay sets")
-        self.assertEqual((calls, flags), ([{'named': 'md'}], []), 'the pass ran once, for the country named by hand, and no feed was checked')
+        self.assertEqual((calls, flags), ([{'named': 'md', 'kinds': ['trades', 'education']}], []), 'the pass ran once, for the country and the kinds of work named by hand, and no feed was checked')
 
     def test_a_trial_run_does_everything_but_upload_the_index(self):
         """Why (sk, 11 Nov 2026): a by-hand trial of an unmerged branch (lab central-scout.yml engine_ref) reads the live index and must never write it. Guard: data."""

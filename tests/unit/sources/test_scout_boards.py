@@ -41,7 +41,8 @@ class BoardPassTest(unittest.TestCase):
     def test_a_board_with_enough_jobs_located_in_the_country_becomes_a_fact(self):
         got, out, _ = self.run_pass({'a.md': ([job('Chisinau')] * 3 + [job('Berlin')], 'ok', None), 'b.md': ([job('Berlin')] * 9, 'ok', None)})
         self.assertEqual([(f['host'], f['country'], f['local_jobs'], f['families']) for f in got], [('a.md', 'md', 3, ['software_dev'])])
-        self.assertIn('Moldova: 2 boards proposed, 1 with 3+ local jobs', out[0])
+        self.assertIn('2 boards proposed, 1 with 3+ local jobs', out[0])
+        self.assertTrue(out[0].startswith('Board pass: Moldova (software, '), 'the line names the kinds of work the boards were asked for')
 
     def test_worldwide_remote_and_other_countries_do_not_count(self):
         got, _, _ = self.run_pass({'a.md': ([job('Remote')] * 10 + [job('Chisinau')] * 2, 'ok', None)})
@@ -61,6 +62,35 @@ class BoardPassTest(unittest.TestCase):
         self.run_pass({'a.md': ([job('Chisinau')] * 3, 'ok', None)})
         self.assertEqual([f['host'] for f in scout_boards.facts(self.db)], ['a.md'])
         self.assertEqual(scout_boards.facts(self.db, today=date(2099, 1, 1)), [])
+
+    def test_a_countrys_kinds_of_work_take_turns_run_after_run(self):
+        """A by-hand pass of one country, 12 Nov 2026: every run asked for software and the same 2 thinnest kinds, so the boards of the other kinds were never asked for."""
+        asked = []
+        ideas = lambda search: asked.append(search['role_keywords']) or []
+        every = ('software', *scout_cells.AIMED)
+        seen = []
+        for _ in range(-(-len(every) // scout_boards.KINDS_PER_COUNTRY)):
+            seen += scout_boards.kinds_for(self.db, 'md')
+            scout_boards.run(self.db, ideas=ideas, read_board=lambda *a: ([], 'empty', None), out=lambda line: None, named='md', google=lambda *a: [])
+        self.assertEqual(sorted(seen[:len(every)]), sorted(every), 'every kind of work is asked once before any is asked twice')
+        self.assertEqual(seen[0], 'software', 'a country nobody asked yet starts as before: software first')
+        self.assertNotEqual(asked[0], asked[1], 'positive control: the second run asked the AI for other roles than the first')
+
+    def test_kinds_named_by_hand_are_the_ones_asked_and_a_wrong_name_falls_back_to_the_turn(self):
+        asked, googled = [], []
+        ideas = lambda search: asked.append(search['role_keywords']) or []
+        scout_boards.run(self.db, ideas=ideas, read_board=lambda *a: ([], 'empty', None), out=lambda line: None, named='md',
+                         google=lambda db, country, kinds, out: googled.append(kinds) or [], kinds=scout_boards.named_kinds(' Trades, education ,nonsense'))
+        self.assertEqual(googled, [['trades', 'education']])
+        self.assertEqual(scout_boards.named_kinds('nonsense'), [])
+        self.assertEqual(scout_boards.kinds_for(self.db, 'md', [])[0], 'software', 'no valid name: the turn, and software has not been asked yet')
+
+    def test_a_pass_that_fails_before_its_reads_keeps_the_kinds_turn(self):
+        before = scout_boards.kinds_for(self.db, 'md')
+        def broken(search):
+            raise RuntimeError('no AI')
+        scout_boards.run(self.db, ideas=broken, out=lambda line: None, named='md', google=lambda *a: [])
+        self.assertEqual(scout_boards.kinds_for(self.db, 'md'), before)
 
     def test_one_thin_country_a_run_then_the_next(self):
         first = scout_boards.next_country(self.db)
@@ -93,7 +123,8 @@ class BoardPassTest(unittest.TestCase):
         reads = {'a.md': [job('Chisinau')] * 4 + [job('Paris')], 'b.md': []}
         scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None),
                          out=out.append, named='md')
-        self.assertIn('Board pass: Moldova: 2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4, b.md 0/0', out[-1])
+        self.assertIn('2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4, b.md 0/0', out[-1])
+        self.assertTrue(out[-1].startswith('Board pass: Moldova ('))
         self.assertIn('md', scout_cells._meta(self.db, 'boards_aimed', []))   # it counts as done: the rotation moves on
 
 

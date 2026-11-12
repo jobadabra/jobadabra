@@ -220,7 +220,8 @@ def main():
                         help='with --publish-index: a trial of an unmerged change (jobadabra-lab central-scout.yml engine_ref): every step runs and logs as the central scout does, and nothing is uploaded')
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
-                             '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest)')
+                             '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest; '
+                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -237,7 +238,7 @@ def main():
         from . import scout_boards
         scout_core.CENTRAL = True
         with store.connect(args.db) as db:
-            scout_boards.run(db, named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')))
+            scout_boards.run(db, named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')), kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
         return 0
     if args.export_sources:
         kept, failed = export_sources(employer_store())
