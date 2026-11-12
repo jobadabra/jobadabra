@@ -1,0 +1,149 @@
+{
+ "_recorded": "jobsearch.api.jobtechdev.se/search?q=kundtj%C3%A4nst&position=59.33,18.07&position.radius=30&limit=100, 12 Nov 2026: its shape kept, 4 of its 45 ads, employers and ids made up (a public repo)",
+ "total": {
+  "value": 4
+ },
+ "positions": 4,
+ "hits": [
+  {
+   "id": "90000001",
+   "headline": "Kundtjänstmedarbetare",
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/90000001",
+   "publication_date": "2026-11-01T09:00:00",
+   "employer": {
+    "name": "Example Support A AB",
+    "workplace": "Example Support A",
+    "url": null,
+    "email": null,
+    "phone_number": null,
+    "organization_number": null
+   },
+   "workplace_address": {
+    "municipality": "Stockholm",
+    "region": "Stockholms län",
+    "country": "Sverige",
+    "street_address": null,
+    "postcode": null,
+    "city": null
+   },
+   "description": {
+    "text": "Vi söker en kundtjänstmedarbetare som svarar på frågor via telefon, chatt och mejl."
+   },
+   "occupation": {
+    "concept_id": "8Uhp_XYo_z5f",
+    "label": "Kundtjänstmedarbetare",
+    "legacy_ams_taxonomy_id": "2291"
+   },
+   "working_hours_type": {
+    "concept_id": "6YE1_gAC_R2G",
+    "label": "Heltid",
+    "legacy_ams_taxonomy_id": "1"
+   }
+  },
+  {
+   "id": "90000002",
+   "headline": "Kundsupport med svenska och engelska",
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/90000002",
+   "publication_date": "2026-11-02T09:00:00",
+   "employer": {
+    "name": "Example Support B AB",
+    "workplace": "Example Support B",
+    "url": null,
+    "email": null,
+    "phone_number": null,
+    "organization_number": null
+   },
+   "workplace_address": {
+    "municipality": "Solna",
+    "region": "Stockholms län",
+    "country": "Sverige",
+    "street_address": null,
+    "postcode": null,
+    "city": null
+   },
+   "description": {
+    "text": "Vi söker en kundtjänstmedarbetare som svarar på frågor via telefon, chatt och mejl."
+   },
+   "occupation": {
+    "concept_id": "BK8D_hZe_dtk",
+    "label": "Ekonomiassistent",
+    "legacy_ams_taxonomy_id": "6024"
+   },
+   "working_hours_type": {
+    "concept_id": "6YE1_gAC_R2G",
+    "label": "Heltid",
+    "legacy_ams_taxonomy_id": "1"
+   }
+  },
+  {
+   "id": "90000003",
+   "headline": "Customer Support Agent",
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/90000003",
+   "publication_date": "2026-11-03T09:00:00",
+   "employer": {
+    "name": "Example Support C AB",
+    "workplace": "Example Support C",
+    "url": null,
+    "email": null,
+    "phone_number": null,
+    "organization_number": null
+   },
+   "workplace_address": {
+    "municipality": "Stockholm",
+    "region": "Stockholms län",
+    "country": "Sverige",
+    "street_address": null,
+    "postcode": null,
+    "city": null
+   },
+   "description": {
+    "text": "Vi söker en kundtjänstmedarbetare som svarar på frågor via telefon, chatt och mejl."
+   },
+   "occupation": {
+    "concept_id": "8Uhp_XYo_z5f",
+    "label": "Kundtjänstmedarbetare",
+    "legacy_ams_taxonomy_id": "2291"
+   },
+   "working_hours_type": {
+    "concept_id": "6YE1_gAC_R2G",
+    "label": "Heltid",
+    "legacy_ams_taxonomy_id": "1"
+   }
+  },
+  {
+   "id": "90000004",
+   "headline": "Kundtjänst till vårt kontor",
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/90000004",
+   "publication_date": "2026-11-04T09:00:00",
+   "employer": {
+    "name": "Example Support D AB",
+    "workplace": "Example Support D",
+    "url": null,
+    "email": null,
+    "phone_number": null,
+    "organization_number": null
+   },
+   "workplace_address": {
+    "municipality": "Linköping",
+    "region": "Östergötlands län",
+    "country": "Sverige",
+    "street_address": null,
+    "postcode": null,
+    "city": null
+   },
+   "description": {
+    "text": "Vi söker en kundtjänstmedarbetare som svarar på frågor via telefon, chatt och mejl."
+   },
+   "occupation": {
+    "concept_id": "8Uhp_XYo_z5f",
+    "label": "Kundtjänstmedarbetare",
+    "legacy_ams_taxonomy_id": "2291"
+   },
+   "working_hours_type": {
+    "concept_id": "947z_JGS_Uk2",
+    "label": "Deltid",
+    "legacy_ams_taxonomy_id": "2"
+   }
+  }
+ ]
+}

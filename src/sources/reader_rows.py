@@ -61,6 +61,27 @@ def _eures_on(env):
     return not disabled('aggregators', env) and enabled('eures', env)
 
 
+def _national_read(name):
+    """One national employment service's read (src/sources/national.py read), the service and the read looked up at call time, so a test's patch of national.read is the one read."""
+    def read(run, search):
+        from . import national
+        return national.read(next(service for service in national.SERVICES if service.name == name), search)
+    return read
+
+
+def _national_on(env):
+    """On wherever the free job APIs are, from source and on CI too: our own source, measured as one (owner, 12 Nov 2026: "Yes, add them (Recommended)");
+    JOBADABRA_DISABLE=national turns every service off."""
+    from ..features import disabled
+    return not disabled('aggregators', env) and not disabled('national', env)
+
+
+# Why (#3887, 12 Nov 2026): named here, not imported: tools/press-yardstick/verdict.py loads this file on its own (no package) for LANES, so nothing at import may
+# import a sibling. src/sources/national.py SERVICES' names, in its order; tests/unit/sources/test_national.py pins the two equal.
+NATIONAL = ('Platsbanken', 'Le Forem')
+
+
 ROWS = (
     Row('EURES', _eures_read, _eures_on, 'eures'),   # the portal's countries only (it returns nothing otherwise)
+    *(Row(name, _national_read(name), _national_on, 'free_job_apis') for name in NATIONAL),   # each its own country only (it returns nothing otherwise)
 )

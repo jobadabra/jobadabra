@@ -226,7 +226,8 @@ jobs:
       - name: The same people, twice more on both sides (offline, no AI)
         if: steps.again.outputs.count != '' && steps.again.outputs.count != '0'
         continue-on-error: true   # a repeat that crashed leaves its pair empty: never red, never a 4th try
-        run: python3 tools/press-yardstick/replay.py recordings-again '{"main-2":"sides/main","pr-2":"sides/pr","main-3":"sides/main","pr-3":"sides/pr"}' art | tee -a "$GITHUB_STEP_SUMMARY"
+        # Why (12 Nov 2026, owner: "Main twice as control"): ctl-2 and ctl-3 are main once more, after the PR side and in its place (verdict.py CONTROLS; a guard test keeps the names equal)
+        run: python3 tools/press-yardstick/replay.py recordings-again '{"main-2":"sides/main","pr-2":"sides/pr","ctl-2":"sides/main","main-3":"sides/main","ctl-3":"sides/main","pr-3":"sides/pr"}' art | tee -a "$GITHUB_STEP_SUMMARY"
       - name: The verdict (red = a source main reads or a person's right jobs lost in all 3 pairs)
         if: steps.again.outputs.verdict != ''
         env:
