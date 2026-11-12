@@ -3,7 +3,7 @@ normal range). It is a report on the PR, never a red check.
 Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)", replacing 11 Nov "Yes, block the PR"): that day the
 replay measured 3 of 18 people (each merged search change ages the recordings), read "no person below main's range" on #3891 while the live proof showed
 a person's right jobs 223 -> 192 (answers replay at the recorded pace, so a slower AI call is invisible here), and had held PRs for a gap main's own replay
-showed (#3889). The live proof, 3 searches a side, is the verdict of a search PR; "once an improvement made, it will never be overwrite" (owner, 11 Nov
+showed (#3889). The live proof, one search a side started in the same minute (owner, 12 Nov 2026; 3 a side before), is the verdict of a search PR; "once an improvement made, it will never be overwrite" (owner, 11 Nov
 2026) is held there. A loss named below is a reason to run that proof on the person named, never a pass or a block by itself.
   python3 tools/press-yardstick/verdict.py suspects <art> <out> <recordings> <again>   the people to replay twice more -> <again>/p<N> (their recordings), prints count=N
   python3 tools/press-yardstick/verdict.py final <art> <out> <recordings>              the verdict: markdown on stdout, at the top of <out>/summary.md; always exit 0
@@ -11,7 +11,7 @@ Each person and Find jobs run reads one state, in this order (the one owner of t
   not measured (never red): no recording; main's band built on another recording; a press failed or a replay left no jobs on a side; a clock cliff on main's
     own band (its replays disagree: some read 0 right jobs or skip a lane, others not); main's side asks beyond the recording's bounds (re-record, said loudly).
   recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them, in all 3 pairs (too_old); the PR
-    changed the path. Named, never "worse": the replay cannot judge it, so the report asks for a live `Moves:` line (numbers, 3 runs a side).
+    changed the path. Named, never "worse": the replay cannot judge it, so the report asks for a live `Moves:` line (numbers, one search a side started in the same minute).
     Re-recorded after the merge.
     Not held when main's own extra replay beside the 2 repeat pairs (CONTROLS) asks beyond the bounds too: then it is the replay's place, and the person is
     not measured (by_place).
@@ -246,9 +246,9 @@ def verdict(found, body):
     if red and words:
         lines += ['', f'Accepted by the owner\'s words (`Floor-change:`): "{words[0]}"']
     if blocked_old:
-        lines += ['', 'To check live: this PR changes what the recordings hold and its body has no `Moves:` line with numbers (3 searches a side).']
+        lines += ['', 'To check live: this PR changes what the recordings hold and its body has no `Moves:` line with numbers (one search a side, both started in the same minute).']
     if red and not words:
-        lines += ['', 'To check live: lost in all 3 pairs of the replay. Run the live proof (3 searches a side) on each person named; it decides, not this report.']
+        lines += ['', 'To check live: lost in all 3 pairs of the replay. Run the live proof (one search a side, both started in the same minute) on each person named; it decides, not this report.']
     if not red and not blocked_old:
         lines.append('✅ The replay shows no source lost and no person below main\'s range (it cannot see a slower AI call or a person it did not measure).')
     return bool((red and not words) or blocked_old), lines

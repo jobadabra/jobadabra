@@ -4,7 +4,7 @@
 **Unblocks:** <exactly what this solves or lets happen next: a PR, a session, a number, a person's step>
 **Root cause:** <a fix only, else delete this line: the cause in one sentence (file:line, log line or measurement); why this is not a symptom patch; what let it through (the rule, test or check that missed it)>
 **Design:** <a fix that is the 3rd fix PR on the same files in 7 days, else delete: the states, their one owner, the verdicts that change them>
-Moves: <a PR that changes a search file (src/sources, src/press, first_jobs, daily_search*, place/title triage, slots, time_budget, job_rank), else delete: `Moves: p<n> <number> <before> → <after> (3 runs a side, spread <s>)` or `Moves: nothing (<why>)`>
+Moves: <a PR that changes a search file (src/sources, src/press, first_jobs, daily_search*, place/title triage, slots, time_budget, job_rank), else delete: `Moves: p<n> <number> <before> → <after> (1 run a side, same minute, usual difference <d>)` or `Moves: nothing (<why>)`>
 
 | Area | Impact | How |
 |---|---|---|
