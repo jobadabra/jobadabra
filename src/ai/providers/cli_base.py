@@ -61,6 +61,7 @@ class CliAdapter(Adapter):
     folder = ''                # the call folders' name: jobadabra-<folder>-…
     timeout_env = 'JOBADABRA_CLI_TIMEOUT'
     missing_text = not_answering_text = ''
+    action = ''                # the step that asks: providers.build names it; '' for a client made by hand (no step's own rule)
     _slots = Slots(2)   # a subclass sets its own (served by priority: src/ai/slots.py)
 
     def __init__(self, binary='', fallback=None, run=subprocess.run, timeout=None, log=None):

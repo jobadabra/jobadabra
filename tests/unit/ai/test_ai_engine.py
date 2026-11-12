@@ -160,9 +160,13 @@ class CliClientTests(unittest.TestCase):
         fake = FakeClaude(self, 'schema')
         ask = dict(model='claude-haiku-5-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Pick them'}],
                    output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}, 'effort': 'low'})
+        from src.ai import providers
+        env = {'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_CLAUDE_BIN': fake.binary, 'PATH': os.environ.get('PATH', '')}
+        self.assertEqual(claude_code.ClaudeCode(binary=fake.binary).action, '')   # made by hand: no step, so no step's rule
         for step in sorted(claude_code.THINK_FIRST) + ['place_triage']:   # the place sort writes its reasoning per item and keeps its one turn (#3836)
-            client = fake.client()
-            client.action = step   # as providers.build names a step's client (engine.client(action=...))
+            client = providers.build(env, action=step)   # as engine.client(action=...) builds a step's client
+            if sys.platform == 'win32':
+                client.run = fake.run
             self.assertEqual(json.loads(client.messages.create(**ask).content[0].text), {'answer': 'yes', 'score': 7}, step)
             args = fake.calls[-1]['args']
             if step in claude_code.THINK_FIRST:

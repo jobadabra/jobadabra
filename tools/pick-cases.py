@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 os.environ['JOBADABRA_AI_ENGINE'] = 'cli'   # the person's own Claude Code: the replay never reaches an API account
 os.environ['ANTHROPIC_API_KEY'] = ''
 for name in ('JOBADABRA_DATA_DIR', 'JOBADABRA_CONFIG_DIR'):   # a folder of its own: never the app's data
-    os.environ.setdefault(name, tempfile.mkdtemp(prefix='pick-cases-'))
+    os.environ[name] = tempfile.mkdtemp(prefix='pick-cases-')   # even when set: a shell opened from the app carries the app's folders
 
 from src.ai import engine, title_triage  # noqa: E402
 from src.sources import visits  # noqa: E402
@@ -41,8 +41,9 @@ def title_question(case):
 
 
 def visit_question(case):
-    """The same for the visit list's judge (visits.relevant), with the case's own "unsure" rule."""
-    items = [(f'{name} ({url}) [{kind}]', want) for name, url, kind, want in case['sites']]
+    """The same for the visit list's judge, each site written as relevant() writes it (a case row's optional 5th field is its "found in"),
+    with the case's own "unsure" rule."""
+    items = [(f'{row[0]} ({row[1]}) [{row[2]}]' + (f' found in: {row[4]}' if len(row) > 4 and row[4] else ''), row[3]) for row in case['sites']]   # relevant()'s line
     listed = '\n'.join(f'{n}. {site}' for n, (site, _) in enumerate(items, 1))
     return ('visit_relevant', visits.RELEVANT_MODEL, f"{visits.RELEVANT_SYSTEM} {visits.RELEVANT_UNSURE[case['unsure']]}", visits.RELEVANT_SCHEMA,
             f"Their roles: {json.dumps(case['roles'], ensure_ascii=False)}\nTheir places: {json.dumps(case['places'], ensure_ascii=False)}\nThe sites:\n{listed}", 'keep', items)
