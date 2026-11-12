@@ -100,7 +100,7 @@ def classify(text):
     if SIGNED_OUT.search(text or ''):
         return CliLimitError(SIGNED_OUT_TEXT, stopped='Claude Code is not signed in')
     if LIMIT.search(text or ''):
-        return CliLimitError(LIMIT_TEXT)
+        return CliLimitError(LIMIT_TEXT, said=(text or '').strip())   # which limit, when it resets: the technical line's (contract.error_facts)
     return CliError(f'Claude Code failed: {(text or "no output").strip()[:300]}')
 
 

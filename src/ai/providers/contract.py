@@ -31,25 +31,29 @@ class AiUnavailable(AiError):
 
 class AiLimit(AiError):
     """The user's plan or spend limit, or an engine that cannot run (not signed in, not installed). `final`: no fallback can help.
-    `stopped`: the cause in a few words when it is no limit ("Claude Code is not signed in"); every line a run writes reads it from here (cost.stopped)."""
+    `stopped`: the cause in a few words when it is no limit ("Claude Code is not signed in"); every line a run writes reads it from here (cost.stopped).
+    `said`: a command-line engine's own words about the limit ("You've hit your usage limit · resets 5pm"), for the technical line only (error_facts),
+    never the person's text, which stays the product's sentence."""
     ai_limit = True
 
-    def __init__(self, text, final=False, stopped=''):
+    def __init__(self, text, final=False, stopped='', said=''):
         super().__init__(text)
-        self.final, self.stopped = final, stopped
+        self.final, self.stopped, self.said = final, stopped, said
 
 
 def error_facts(error):
     """What the log needs to tell a limit from a bad key or a wrong model, from any provider's error: "HTTP 429 insufficient_quota, model gpt-x, engine openai".
-    The status, the code, the model asked for, the engine (stamped by Adapter.create) and, for a refusal with a status, the API's own message cut to 160 characters
-    with anything key-shaped removed (17 Oct 2026: a bare "400 invalid_request_error" could not be told from a spent limit or a bad request)."""
+    Why the AI stopped when it is no limit (AiLimit.stopped), the status, the code, the model asked for, the engine (stamped by Adapter.create) and, for a refusal
+    with a status or a command-line engine's limit (AiLimit.said), its own message cut to 160 characters with anything key-shaped removed (17 Oct 2026: a bare "400 invalid_request_error" could not be told from a spent limit or a bad request)."""
     body = getattr(error, 'body', None)
     body = body.get('error', body) if isinstance(body, dict) else {}
     code = getattr(error, 'code', None) or (body.get('code') or body.get('type') if isinstance(body, dict) else '')
     status = getattr(error, 'status_code', None) or getattr(error, 'ai_status', None)
-    said = (body.get('message') if isinstance(body, dict) else '') or (str(error) if status else '')
-    said = re.sub(r'sk-[\w-]{6,}|Bearer\s+\S+|\b[A-Za-z0-9_-]{32,}\b', '…', ' '.join(str(said).split()))[:160] if status else ''
-    parts = [f'HTTP {status}' + (f' {code}' if code else '') if status else (str(code) if code else ''),
+    said = ((body.get('message') if isinstance(body, dict) else '') or str(error)) if status else (getattr(error, 'said', '') or '')
+    said = re.sub(r'sk-[\w-]{6,}|Bearer\s+\S+|\b[A-Za-z0-9_-]{32,}\b', '…', ' '.join(str(said).split()))[:160]
+    # Why (gp, 12 Nov 2026): "CliLimitError (model …, engine cli)" read the same for a spent plan, a sign-out, a binary gone during an update and a CLI that
+    # stopped answering; two local proofs were taken for the plan's limit. The cause (AiLimit.stopped) leads the facts.
+    parts = [getattr(error, 'stopped', '') or '', f'HTTP {status}' + (f' {code}' if code else '') if status else (str(code) if code else ''),
              f'model {error.ai_model}' if getattr(error, 'ai_model', '') else '', f'engine {error.ai_engine}' if getattr(error, 'ai_engine', '') else '',
              f'said "{said}"' if said else '']
     return ', '.join(part for part in parts if part)
