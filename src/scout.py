@@ -205,6 +205,20 @@ def sync_store_only(db_path):
     return 1 if failed and not written else 0
 
 
+def board_pass(db_path):
+    """The central scout's board pass alone (--board-pass): one country's boards measured and kept. Returns the exit code.
+    Why (12 Nov 2026, sa): a by-hand SCOUT_BOARD_COUNTRY the list does not know ends the run with the accepted names; it used to read the thinnest country instead."""
+    from . import scout_boards
+    scout_core.CENTRAL = True
+    with store.connect(db_path) as db:
+        try:
+            named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
+        except ValueError as wrong:
+            raise SystemExit(f'Board pass: {wrong}') from None
+        scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, default=JOBS_DB)
@@ -235,11 +249,7 @@ def main():
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
     if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
-        from . import scout_boards
-        scout_core.CENTRAL = True
-        with store.connect(args.db) as db:
-            scout_boards.run(db, named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')), kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
-        return 0
+        return board_pass(args.db)
     if args.export_sources:
         kept, failed = export_sources(employer_store())
         print(f'Wrote {len(kept)} feeds ({sum(k["jobs"] for k in kept):,} open jobs) to config/sources.json')

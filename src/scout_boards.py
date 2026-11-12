@@ -37,9 +37,16 @@ def ensure(db):
 
 
 def named_country(text):
-    """The pool id of a country named by hand ("md" or "Moldova", any case), else None: the by-hand scout run's country input."""
+    """The pool id of a country named by hand ("md" or "Moldova", any case); None for no name (the thinnest country's turn); a name no list knows
+    raises ValueError naming the accepted ones: the by-hand scout run's country input.
+    Why (12 Nov 2026, sa): "Slovakia" was unknown and the run silently read the thinnest country instead (Moldova), so a wrong name looked like a result."""
     wanted = str(text or '').strip().casefold()
-    return next((code for code, name in pool_tags.COUNTRIES.items() if wanted in (code, name.casefold())), None) if wanted else None
+    if not wanted:
+        return None
+    found = next((code for code, name in pool_tags.COUNTRIES.items() if wanted in (code, name.casefold())), None)
+    if found is None:
+        raise ValueError(f"unknown country {str(text).strip()!r}; accepted: {', '.join(f'{name} ({code})' for code, name in pool_tags.COUNTRIES.items())}")
+    return found
 
 
 def next_country(db, named=None):

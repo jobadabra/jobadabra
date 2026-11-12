@@ -116,9 +116,31 @@ class BoardPassTest(unittest.TestCase):
         self.assertNotIn('board_facts', sent[0])
         self.assertEqual(sent[1]['board_facts'][0]['host'], 'a.md')
 
+    def test_a_country_name_no_list_knows_fails_with_the_accepted_names_and_never_reads_another_country(self):
+        """12 Nov 2026, sa: "Slovakia" and "Slovenia" were unknown, so the by-hand runs silently did Moldova and Estonia instead."""
+        for wrong in ('Narnia', 'Slovak republic', 'xx'):
+            with self.assertRaises(ValueError) as caught:
+                scout_boards.named_country(wrong)
+            self.assertIn('accepted:', str(caught.exception))
+            self.assertIn('Moldova (md)', str(caught.exception))
+        self.assertEqual([scout_boards.named_country(x) for x in ('Slovakia', 'sk', 'Slovenia', 'LT', 'latvia', 'Cyprus', 'mt')],
+                         ['sk', 'sk', 'si', 'lt', 'lv', 'cy', 'mt'])
+
+    def test_the_by_hand_run_with_a_wrong_name_stops_before_any_board_is_read(self):
+        """The run's input path (src/scout.py --board-pass): the wrong name ends the process with the line, the board pass never starts."""
+        import os
+        import sys
+        from src import scout
+        with mock.patch.dict(os.environ, {'SCOUT_BOARD_COUNTRY': 'Narnia'}), mock.patch.object(sys, 'argv', ['scout', '--board-pass', '--db', ':memory:']), \
+                mock.patch.object(scout_boards, 'run') as ran, mock.patch.object(scout.scout_core, 'CENTRAL', False):   # main() and the pass set it; restored on exit so no later test sees central mode
+            with self.assertRaises(SystemExit) as stopped:
+                scout.main()
+        self.assertIn('unknown country', str(stopped.exception))
+        ran.assert_not_called()
+
     def test_a_country_named_by_hand_is_read_and_each_board_says_listed_and_local(self):
         """24 Oct 2026, owner: "Small step + Moldova run": the by-hand scout run picks the country; the line shows listed/local per board."""
-        self.assertEqual([scout_boards.named_country(x) for x in ('md', 'Moldova', ' moldova ', 'Narnia', '', None)], ['md', 'md', 'md', None, None, None])
+        self.assertEqual([scout_boards.named_country(x) for x in ('md', 'Moldova', ' moldova ', '', None)], ['md', 'md', 'md', None, None])
         out = []
         reads = {'a.md': [job('Chisinau')] * 4 + [job('Paris')], 'b.md': []}
         scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None),

@@ -62,6 +62,24 @@ class OwnWordsTest(unittest.TestCase):
         self.assertEqual(tags, {'countries': ['ch', 'fr'], 'metros': ['ch-geneva'], 'families': ['photography']})
 
 
+class EveryCopyOfTheCountriesTest(unittest.TestCase):
+    def test_the_meanings_schema_answers_are_the_countries_and_none(self):
+        """12 Nov 2026: the schema's pool-country answers lacked bg, hr, ee and hu for weeks, so the pack rejected a learned place word for them."""
+        import json
+        schema = json.loads((Path(__file__).resolve().parents[3] / 'config' / 'meanings_schema.json').read_text(encoding='utf-8'))
+        self.assertEqual(schema['pool-country']['answers'], [*pool_tags.COUNTRIES, 'none'])
+
+    def test_every_eu_member_the_scout_aims_at_is_a_european_column_and_a_country(self):
+        eu = {'at', 'be', 'bg', 'hr', 'cy', 'cz', 'dk', 'ee', 'fi', 'fr', 'de', 'gr', 'hu', 'ie', 'it', 'lv', 'lt', 'lu', 'mt', 'nl', 'pl', 'pt', 'ro', 'sk', 'si', 'es', 'se'}
+        self.assertEqual(eu - set(pool_tags.EUROPE), set())
+        self.assertEqual(set(pool_tags.EUROPE) - set(pool_tags.COUNTRIES), set())
+
+    def test_the_floor_lists_name_only_known_european_countries(self):
+        from src import scout_cells
+        self.assertEqual((set(scout_cells.BIG) | set(scout_cells.SMALL)) - set(pool_tags.EUROPE), set())
+        self.assertEqual([scout_cells.floor_for(c) for c in ('sk', 'si', 'mt', 'de')], [10, 5, 5, 25])
+
+
 class EuropeTest(unittest.TestCase):
     def test_every_country_the_lab_draws_is_a_european_column(self):
         """The scout aims at the same countries the Lab's random draws search in (owner, 19 Oct 2026: one list, not two)."""
