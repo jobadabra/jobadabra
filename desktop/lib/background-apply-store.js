@@ -20,8 +20,7 @@ const FINISHED_REASONS = new Set(['stopped', 'cancelled', 'app_closed', 'app_upd
 export const finishedHandoff = state => state?.state === 'needs_user_handoff' && !state.attempt && FINISHED_REASONS.has(state.reason);
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
 
-/** The error code of `appOf`: the job has no Application record, so nothing can ever be written for it (a caller treats the item as gone, not as a failure to retry). */
-export const NO_APPLICATION = 'no_application';
+const NO_APPLICATION = 'no_application';   // the code of `appOf`'s error: no Application record, so nothing can ever be written for the job
 /** Build a serialized controller over Applications sections/events; failed store writes reject before any launch or submit is authorized. */
 export function createBackgroundApplyStore(storage, {call = engineCall, now = backgroundWaitNow, realNow = Date.now, uuid = randomUUID, stopped = () => false} = {}) {
   let tail = Promise.resolve();
@@ -192,5 +191,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       return manual(app, state, outcome.state === 'unknown' ? 'submission_outcome_unknown' : String(outcome?.reason || 'needs_user').slice(0, 80));
     });
   }
-  return {queue, ended, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, sendToCloud, unsend, fromCloud, read};
+  /** Whether a store error says the job has no Application record: nothing can ever be written for it, so a caller treats the item as gone, not as a failure to retry. A method, not an import, so lib/background-apply-cloud.js does not import this module (arch no-circular). */
+  const noApplication = error => error?.code === NO_APPLICATION;
+  return {queue, ended, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, sendToCloud, unsend, fromCloud, read, noApplication};
 }
