@@ -9,6 +9,8 @@ Each person and Find jobs run reads one state, in this order (the one owner of t
   recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them, in all 3 pairs (too_old); the PR
     changed the path. Held, never "worse": the PR passes only with a live `Moves:` line (numbers, 3 runs a side; "Moves: nothing (...)" does not hold it).
     Re-recorded after the merge.
+    Not held when main's own extra replay beside the 2 repeat pairs (CONTROLS) asks beyond the bounds too: then it is the replay's place, and the person is
+    not measured (by_place).
   lost a source: a lane of src/sources/reader_rows.py LANES (main's file, looped) that ran, or read jobs, in all of main's band replays and in main's replay
     here, and on the PR side did not run or read 0 jobs. eures counts only on a tape recorded with it on.
   fewer right jobs: the person's coverage reads "worse" (three_numbers.person_verdict: beyond one job and beyond the person's 2-sd band).
@@ -29,6 +31,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 PAIRS = (('main', 'pr'), ('main-2', 'pr-2'), ('main-3', 'pr-3'))   # always 3, never a 4th
+# Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Main twice as control (Recommended)"): on #3878 and #3883, whose changes no replayed search runs, the PR
+# side of one person asked beyond the recording in 4 pairs of 4 while main's side did not. main replayed once more beside each repeat pair (after the PR side
+# in pair 2, in the PR side's place in pair 3) says whether the replay's place makes that difference, or the PR's code.
+CONTROLS = ('ctl-2', 'ctl-3')
+PLACE = "the replay's place, not this PR (main's extra replay asks beyond the recording too)"
 AGAIN_SIDES = {'main-2': 'sides/main', 'pr-2': 'sides/pr', 'main-3': 'sides/main', 'pr-3': 'sides/pr'}
 
 
@@ -136,6 +143,12 @@ def too_old(art, persona):
     return all(ci.report_gap(pr_side) and not ci.report_gap(main_side) for main_side, pr_side in again)
 
 
+def by_place(art, persona):
+    """Whether main's own extra replay (CONTROLS) asks beyond the recording too: then the PR side's gap is the replay's place, never the PR's path.
+    Invariant: a control that did not run says nothing (False), so a crashed control never frees a PR."""
+    return any(ci.report_gap(Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl')) for side in CONTROLS)
+
+
 def states(art, out, recordings, band, ids):
     """{persona: {run: {'state', 'why', 'pairs'}}} for the 18 night people. states: not measured, too old, red, ok."""
     sides = ci.lay_out(art, out)
@@ -158,6 +171,8 @@ def states(art, out, recordings, band, ids):
                 gaps = [ci.report_gap(Path(art, f'yardstick-{persona}-{side}', 'tape-report.jsonl')) for side in PAIRS[0]]
                 if gaps[0]:   # main itself asks what the recording lacks (both sides, or a merged path change): the comparison means nothing
                     one['why'] = 'recording stale, re-record'
+                elif gaps[1] and by_place(art, persona):
+                    one['why'] = PLACE
                 elif gaps[1] and too_old(art, persona):
                     one.update(state='too old', why='recording too old for this PR')
                 else:
