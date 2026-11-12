@@ -152,5 +152,5 @@ Proofs, red today and marked `red_until(<fix>, <cause>)` (tests/unit/press/red_u
   - [ ] 1/5 Safety net: the lane table and the two proofs, red today for their stated cause under `red_until` (this PR)
   - [ ] 2/5 Calls end on the clock, in every place that leaves background work (closes #3740)
   - [ ] 3/5 Lanes: every source starts at 0, ends in a said state (closes #3754)
-  - [ ] 4/5 Waiting jobs kept and asked first; sorting and scoring take jobs as they land; the planner applied (rules 5-7)
+  - [x] 4/5 Waiting jobs kept and asked first (wj, closes #3754; owner, 12 Nov 2026, asked via AskUserQuestion: "Places that unlock most first (Recommended)"): the free APIs' locations are placed by the jobs they decide first (rule 7), a source whose jobs wait for the AI is read again, not rested 6 h, and a read that ends after the read cut is kept when it ends (rule 6) (proof: tests/unit/ai/test_titles_with_places.py, tests/unit/sources/test_aggregators.py, tests/unit/sources/test_api_lane.py, tests/unit/press/ledger.py). Rule 5 was built before (#3649, #3685). The planner applied (rule 7's reorder of whole steps) is parked: no measured loss needs it (Work board, Parked)
   - [ ] 5/5 The card: one progress line per lane (picture first, the owner's yes before code)
