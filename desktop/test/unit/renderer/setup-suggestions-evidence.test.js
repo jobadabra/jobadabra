@@ -17,8 +17,11 @@ const PRODUCERS = {
   linkedin: () => linkedinEntries({view: {loaded: true, on: false}}),
   gmail: () => gmailEntries({view: {loaded: true, connected: false}}),
   hosted: () => hostedEntries({hosted: {available: true, on: false, shared: 'alex@example.com'}, jobs: {jobs: [{stage: 'Saved', fit: 81}]}, runs: {lastSearchAt: '2026-10-31T08:00:00Z'}}),
-  notify: () => notifyEntries({state: {reached: true, by: ['app'], chosen: null, email: '', confirmed: false, serviceOff: false, unconfirmedStopped: false}}),
+  notify: () => notifyEntries({state: NOTIFY.none}),
 };
+// The card's four states (renderer/notify-words.js offerCard): the evidence says what prompted THIS one (#3863 review).
+const BASE = {reached: true, by: ['app'], chosen: null, email: 'alex@example.com', confirmed: false, serviceOff: false, unconfirmedStopped: false};
+const NOTIFY = {none: {...BASE, email: ''}, pending: BASE, stopped: {...BASE, unconfirmedStopped: true}, unsubscribed: {...BASE, serviceOff: true}};
 
 test('every setup suggestion carries evidence the row can show, in every language', () => {
   for (const locale of SUPPORTED_LOCALES) {
@@ -29,5 +32,20 @@ test('every setup suggestion carries evidence the row can show, in every languag
       assert.ok(entry.evidence.length > 0 && entry.evidence.every(line => line.trim()), `${locale} ${name}: evidence`);
       assert.ok(entryParts(entry).evidence, `${locale} ${name}: the row shows it`);
     }
+  }
+});
+
+test('the notification card says what prompted it in each of its four states, in every language', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    setLocale(locale);
+    const said = Object.entries(NOTIFY).map(([state, given]) => {
+      const [entry] = notifyEntries({state: given});
+      assert.equal(entry.state, state, `${locale} ${state}`);
+      assert.ok(entry.evidence.length === 1 && entry.evidence[0].trim(), `${locale} ${state}: evidence`);
+      return entry.evidence[0];
+    });
+    assert.notEqual(said[2], said[0], `${locale}: stopped differs from none`);
+    assert.notEqual(said[3], said[0], `${locale}: unsubscribed differs from none`);
+    assert.notEqual(said[3], said[2], `${locale}: unsubscribed differs from stopped`);
   }
 });

@@ -43,6 +43,8 @@ export const messages = {
   "getMessage": "Recevez un message quand votre intervention est nécessaire",
   "offerDetails": "Une candidature en attente, une bonne offre, une réponse : par e-mail ou Telegram.{lost}",
   "notifyOfferEvidence": "Pas encore d'e-mail ni de Telegram confirmé, donc rien ne vous parvient hors de l'app.",
+  "notifyEvidenceUnsubscribed": "Vous avez arrêté les e-mails avec leur lien de désabonnement, donc rien ne vous parvient hors de l'app.",
+  "notifyEvidenceStopped": "Votre adresse e-mail n'a pas été confirmée en 14 jours, donc les e-mails sont suspendus.",
   "emailsStopped": "Vos e-mails sont arrêtés",
   "offerUnsubscribed": "Vous les avez arrêtés avec le lien d'un de nos e-mails. Réactivez-les via « Paramètres e-mail » au bas de l'un d'eux.{lost}",
   "mailConfirmHyphen": "Envoi arrêté : confirmez votre e-mail",

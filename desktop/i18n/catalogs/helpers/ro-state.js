@@ -43,6 +43,8 @@ export const messages = {
   "getMessage": "Primește un mesaj când este nevoie de tine",
   "offerDetails": "O candidatură în așteptare, o potrivire bună, un răspuns: prin e-mail sau Telegram.{lost}",
   "notifyOfferEvidence": "Încă niciun e-mail sau Telegram confirmat, deci nimic nu ajunge la tine în afara aplicației.",
+  "notifyEvidenceUnsubscribed": "Ai oprit e-mailurile cu linkul de dezabonare, deci nimic nu ajunge la tine în afara aplicației.",
+  "notifyEvidenceStopped": "Adresa ta de e-mail nu a fost confirmată în 14 zile, deci e-mailurile au fost oprite.",
   "emailsStopped": "E-mailurile tale sunt oprite",
   "offerUnsubscribed": "Le-ai oprit folosind linkul dintr-un e-mail de la noi. Reactivează-le din „Setări e-mail” la finalul oricăruia.{lost}",
   "mailConfirmHyphen": "Trimitere oprită: confirmă e-mailul",

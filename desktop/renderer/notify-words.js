@@ -66,10 +66,10 @@ export function workingChannel(state) {
 export function offerCard(state) {
   if (!state?.reached || workingChannel(state)) return null;   // `reached`: the website answered; offline we know nothing about the confirmation and draw nothing on a guess
   const lost = state.automation ? t('helperState.automationLost') : '';   // 2/2: the card says it too (owner, 2 Nov 2026: stays on and says so)
-  if (!state.email) return {state: 'none', title: t('helperState.getMessage'), detail: t('helperState.offerDetails', {lost}), resend: false};
-  if (state.serviceOff) return {state: 'unsubscribed', title: t('helperState.emailsStopped'), detail: t('helperState.offerUnsubscribed', {lost}), resend: false};
-  if (state.unconfirmedStopped) return {state: 'stopped', title: t('helperState.mailConfirmHyphen'), detail: t('helperState.offerStopped', {email: state.email, lost}), resend: true};
-  return {state: 'pending', title: t('helperState.checkInbox'), detail: t('helperState.offerPending', {email: state.email, lost}), resend: true};
+  if (!state.email) return {state: 'none', title: t('helperState.getMessage'), detail: t('helperState.offerDetails', {lost}), resend: false, evidence: t('helperState.notifyOfferEvidence')};
+  if (state.serviceOff) return {state: 'unsubscribed', title: t('helperState.emailsStopped'), detail: t('helperState.offerUnsubscribed', {lost}), resend: false, evidence: t('helperState.notifyEvidenceUnsubscribed')};
+  if (state.unconfirmedStopped) return {state: 'stopped', title: t('helperState.mailConfirmHyphen'), detail: t('helperState.offerStopped', {email: state.email, lost}), resend: true, evidence: t('helperState.notifyEvidenceStopped')};
+  return {state: 'pending', title: t('helperState.checkInbox'), detail: t('helperState.offerPending', {email: state.email, lost}), resend: true, evidence: t('helperState.notifyOfferEvidence')};
 }
 
 // Why a person with no working channel can not be reached: the card's state word (the same four as offerCard).

@@ -43,6 +43,8 @@ export const messages = {
   "getMessage": "Ricevi un messaggio quando serve il tuo intervento",
   "offerDetails": "Una candidatura in attesa, una buona offerta, una risposta: via email o Telegram.{lost}",
   "notifyOfferEvidence": "Nessuna e-mail o Telegram confermati finora, quindi nulla ti raggiunge fuori dall'app.",
+  "notifyEvidenceUnsubscribed": "Hai fermato le e-mail con il link di annullamento, quindi nulla ti raggiunge fuori dall'app.",
+  "notifyEvidenceStopped": "Il tuo indirizzo e-mail non è stato confermato in 14 giorni, quindi le e-mail sono state sospese.",
   "emailsStopped": "Le tue email sono interrotte",
   "offerUnsubscribed": "Le hai interrotte con un link nelle nostre email. Riattivale con «Impostazioni email» in fondo a una di esse.{lost}",
   "mailConfirmHyphen": "Invio interrotto: conferma l'email",
