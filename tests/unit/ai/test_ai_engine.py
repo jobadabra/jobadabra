@@ -151,6 +151,33 @@ class CliClientTests(unittest.TestCase):
         self.assertEqual(first['args'][first['args'].index('--max-turns') + 1], '1')
         self.assertIn('matches this JSON schema', first['prompt'])
 
+    def test_steps_that_pick_numbers_keep_claude_codes_own_structured_answer(self):
+        """gp, 12 Nov 2026 (GTM 6 round: b08 Data Analyst listed 67 jobs, 65 of other work): answered as text in one turn, Haiku skipped its thinking on
+        about 7 of 10 sorts of a batch where no title fits and named 2-14 unrelated titles anyway; Claude Code's own structured answer thought on 10 of 10
+        and named none (tests/fixtures/title-cases.json, tools/pick-cases.py). Each step in THINK_FIRST asks with the schema flag; the others keep one turn."""
+        from src.ai.providers import claude_code
+        self.assertIn('title_triage', claude_code.THINK_FIRST)
+        fake = FakeClaude(self, 'schema')
+        ask = dict(model='claude-haiku-5-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Pick them'}],
+                   output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}, 'effort': 'low'})
+        from src.ai import providers
+        env = {'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_CLAUDE_BIN': fake.binary, 'PATH': os.environ.get('PATH', '')}
+        self.assertEqual(claude_code.ClaudeCode(binary=fake.binary).action, '')   # made by hand: no step, so no step's rule
+        # Codex answers in one turn and never thinks first: its title batch stays 30 until measured (sa, 12 Nov 2026); the API engines keep the contract's default no.
+        self.assertFalse(providers.build(dict(env, JOBADABRA_AI_ENGINE='codex'), action='title_triage').thinks_first())
+        for step in sorted(claude_code.THINK_FIRST) + ['place_triage']:   # the place sort writes its reasoning per item and keeps its one turn (#3836)
+            client = providers.build(env, action=step)   # as engine.client(action=...) builds a step's client
+            self.assertEqual(client.thinks_first(), step in claude_code.THINK_FIRST, f'{step}: title_triage asks 60 titles a call only when the step thinks first')
+            if sys.platform == 'win32':
+                client.run = fake.run
+            self.assertEqual(json.loads(client.messages.create(**ask).content[0].text), {'answer': 'yes', 'score': 7}, step)
+            args = fake.calls[-1]['args']
+            if step in claude_code.THINK_FIRST:
+                self.assertEqual(json.loads(args[args.index('--json-schema') + 1]), SCHEMA, step)
+                self.assertNotEqual(args[args.index('--max-turns') + 1], '1', f'{step}: a structured answer takes Claude Code more than one turn')
+            else:
+                self.assertNotIn('--json-schema', args, f'{step}: the other short Haiku steps keep their one turn (#3836)')
+
     def test_old_claude_code_gets_the_schema_in_the_prompt_and_one_repair(self):
         fake = FakeClaude(self, 'repair', old=True)
         logged = []

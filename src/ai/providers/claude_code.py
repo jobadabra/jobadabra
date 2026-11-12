@@ -18,6 +18,14 @@ from .contract import Usage, SUBSCRIPTION
 ALIASES = (('claude-haiku', 'haiku'), ('claude-sonnet', 'sonnet'), ('claude-opus', 'opus'))
 PARALLEL = 4     # Claude Code processes at once, whatever a module's thread pool (score.py runs 5); served by priority (src/ai/slots.py)
 # Why (#first-press-slots, owner, 27 Oct 2026: "more AI slots"): with 2, a first press's calls waited 13-24 s each (rerun 40450152414); cost: up to ~1.2 GB (~300 MB a process, measured) and 4 calls at once on the person's plan
+# Steps (the client's action) whose short Haiku answer keeps Claude Code's own structured answer, two turns, instead of #3836's one-turn text.
+# Why (gp, 12 Nov 2026; GTM 6 round, b08 Data Analyst listed 67 jobs and 65 were other work): a title sort answers bare picked numbers; in one turn Haiku
+# skipped its thinking on 7 of 10 sorts of a batch where no title fits and named 2-14 unrelated titles anyway (53 in all); the structured answer thought
+# on 10 of 10 and named none, at 6.5 s a call instead of 4.4 s (tests/fixtures/title-cases.json, tools/pick-cases.py). The visit list's judge
+# (sources/visits.py) kept 3-15 of 15 unrelated sites on 8 of 10 one-turn calls, 1 site on 1 of 10 structured ones (5.8 s instead of 3.8 s;
+# tests/fixtures/visit-cases.json). Measured the same way and kept on one turn: the place sort, which writes where/nearest/km per item (0 lost of 300),
+# its vague-location list (1 wrong in 10 calls), the role counts and the job-page pick (0 in 10 each).
+THINK_FIRST = frozenset({'title_triage', 'visit_relevant'})
 # Tools a text call never needs, for a Claude Code too old for --tools.
 DENY = ('Bash', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch', 'Task', 'Glob', 'Grep', 'Read')
 _help = {}
@@ -158,8 +166,9 @@ class ClaudeCode(CliAdapter):
             args += ['--permission-mode', 'dontAsk']  # anything not allowed above is refused, never asked
         # Why (sa, 11 Nov 2026, 12 timed calls of one 30-title sort on Claude Code 2.1.322): Claude Code's own structured answer takes Haiku two turns
         # (4.8-7.0 s a call); the same question answered as JSON text in one turn took 3.4-4.5 s with the same answers. cli_base checks that text against
-        # the schema and repairs it once, as it does for a CLI with no schema flag. Only the short Haiku steps: a file or web call needs its turns.
-        plain = schema is not None and alias(model) == 'haiku' and not with_files and not web_search
+        # the schema and repairs it once, as it does for a CLI with no schema flag. Only the short Haiku steps: a file or web call needs its turns; and not
+        # the steps in THINK_FIRST (gp, 12 Nov 2026): "the same answers" held on batches with titles to pick, not on a batch where none fits.
+        plain = schema is not None and alias(model) == 'haiku' and not with_files and not web_search and not self.thinks_first()
         if schema is not None and not plain and '--json-schema' in offered:
             args += ['--json-schema', json.dumps(schema)]
         if effort and '--effort' in offered:
@@ -171,6 +180,10 @@ class ClaudeCode(CliAdapter):
             if flag in offered:
                 args.append(flag)
         return args
+
+    def thinks_first(self):
+        """The steps in THINK_FIRST get Claude Code's own structured answer, two turns (command())."""
+        return self.action in THINK_FIRST
 
     def build(self, request, folder, files):
         prompt = self.conversation(request, files)

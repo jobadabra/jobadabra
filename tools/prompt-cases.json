@@ -97,10 +97,18 @@
     },
     "title": {
       "live": false,
-      "about": "which job titles could fit a search (src/ai/title_triage.py): lenient by the owner's 7 Oct 2026 \"Only the location should be strict\"; an open or unsolicited application and pre-sales titles for someone who builds the product are left out (rj #3793, 11 Nov 2026: night 42927975750, carpenter in Brussels, software engineer in Amsterdam)",
-      "cases": ["tests/unit/ai/test_title_not_a_job_of_theirs.py", "tests/unit/ai/test_title_triage.py"],
+      "about": "which job titles could fit a search (src/ai/title_triage.py): lenient by the owner's 7 Oct 2026 \"Only the location should be strict\"; an open or unsolicited application and pre-sales titles for someone who builds the product are left out (rj #3793, 11 Nov 2026: night 42927975750, carpenter in Brussels, software engineer in Amsterdam); a batch where no title fits is answered with none (gp, 12 Nov 2026: replay with tools/pick-cases.py on the Claude plan)",
+      "cases": ["tests/unit/ai/test_title_not_a_job_of_theirs.py", "tests/unit/ai/test_title_triage.py", "tests/fixtures/title-cases.json"],
       "prompts": {
         "src/ai/title_triage.py": ["SYSTEM", "RECHECK_SYSTEM"]
+      }
+    },
+    "visit-relevant": {
+      "live": false,
+      "about": "which sites are worth a browser's time for one person's roles and places (src/sources/visits.py relevant(): the visit list and the refused sites' automatic reads): a list where no site fits is answered with none (gp, 12 Nov 2026: one-turn answers kept 3-15 of 15 unrelated sites on 8 of 10 calls; replay with tools/pick-cases.py --step visit on the Claude plan)",
+      "cases": ["tests/fixtures/visit-cases.json"],
+      "prompts": {
+        "src/sources/visits.py": ["RELEVANT_SYSTEM"]
       }
     },
     "place": {
