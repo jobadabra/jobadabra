@@ -24,8 +24,9 @@ const STARTING = new Set();   // job links whose Apply (the row's button, a ⋯ 
 export function wireRowApply({startedApplying, confirm, toastMessage, sayRefused}) { wired = {startedApplying, confirm, toastMessage, sayRefused}; }
 
 /**
- * The row's Apply for one job. `rerender` redraws the Jobs list. -> {start(button, {pick, ready}), modeItems()}: `start` gets the job ready through Apply readiness (unless `ready`: the
- * caller just did), then starts it in the saved mode or the `pick` ({mode, autoConfirmedAt}); `modeItems` are the ⋯ menu's rows, under one heading, the saved mode marked current.
+ * The row's Apply for one job. `rerender` redraws the Jobs list. -> {start(button, {pick, ready, track}), modeItems()}: `start` gets the job ready through Apply readiness (unless `ready`: the
+ * caller just did), then starts it in the saved mode or the `pick` ({mode, autoConfirmedAt}); `track('local'|'failed'|null)` tells a kitless row that the draft runs, was refused or is done;
+ * `modeItems` are the ⋯ menu's rows, under one heading, the saved mode marked current.
  */
 export function createRowApply(job, {rerender}) {
   const details = {title: job.title, company: job.company, location: job.location, workMode: job.work_mode};
@@ -38,24 +39,27 @@ export function createRowApply(job, {rerender}) {
     wired.toastMessage(outcome.toast.title, outcome.toast.body, outcome.toast.target, outcome.toast.tone);
   };
   /** Apply readiness for this job (its kit when missing, then its form check), the button busy meanwhile. -> true when the job may start. */
-  const getReady = async button => {
+  const getReady = async (button, track) => {
     const label = button?.textContent;
+    track?.('local');
     if (button) { button.disabled = true; button.classList.add('busy', 'state-busy'); button.textContent = t('pagesJobs.checkingReadiness'); }
     const ready = await kitThroughStep(window.pilot, job);
     if (button) { button.disabled = false; button.classList.remove('busy', 'state-busy'); button.textContent = label; }
-    if (ready.ok) { job.kit = true; for (const item of shared.allJobs || []) if (item.code === job.code) item.kit = true; return true; }
+    if (ready.ok) { job.kit = true; for (const item of shared.allJobs || []) if (item.code === job.code) item.kit = true; track?.(null); return true; }
+    track?.('failed');
     wired.sayRefused(t('pagesControlStatus.applyNotStarted'), ready, {place: jobPlace(job)});   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
     return false;
   };
   // Chrome opens the job's form and the extension fills it at once from the kit; a hidden-browser mode queues it instead.
   // Every way in (the row's Apply, a ⋯ menu pick, the kitless path) takes the job's one lock before its first await: a second press while one gets ready starts nothing (Gitar on #3630).
-  const start = async (button, {pick = null, ready = false} = {}) => {
+  // Why (#3638, 12 Nov 2026): the kitless row's press used to run readiness (which drafts the kit) before taking this lock, so a ⋯ pick still running drafted it a second time; it now comes in here with `track`.
+  const start = async (button, {pick = null, ready = false, track = null} = {}) => {
     if (STARTING.has(job.url)) { sayChecking(); return; }
     STARTING.add(job.url);
-    try { await startNow(button, {pick, ready}); } finally { STARTING.delete(job.url); }
+    try { await startNow(button, {pick, ready, track}); } finally { STARTING.delete(job.url); }
   };
-  const startNow = async (button, {pick, ready}) => {
-    if (!ready && !(await getReady(button))) return;
+  const startNow = async (button, {pick, ready, track}) => {
+    if (!ready && !(await getReady(button, track))) return;
     const result = await window.pilot.applyOne(job.url, details, pick);
     if (result.background) return queuedInBackground(result);   // a hidden-browser mode queued the job: no tab opened, so the row does not read "Opened"
     if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); wired.startedApplying(job); rerender(); if (result.extensionNote) wired.toastMessage(t('pagesFinalCopy.olderExtension'), result.extensionNote, jobPlace(job), 'warn'); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
