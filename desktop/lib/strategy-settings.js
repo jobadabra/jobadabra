@@ -11,6 +11,7 @@ import {withoutNotes} from './config-text.js';
 import {remoteWordOf} from '../renderer/remote-word.js';
 import {writePrivate} from './private-file.js';
 import {log as appLog} from './log.js';
+import {prepareSearch} from './search-prepared.js';
 import {dropFragment, editTitles, hasFragment, titlesOf, view as viewRoles, withDerived} from './target-roles.js';
 
 // Accepting a draft writes the Profile, answers and the pipeline's settings into the user's folder.
@@ -118,6 +119,7 @@ export async function saveSettings(storage, {search = null, preferences = null},
     throw error;
   }
   for (const [name, content] of Object.entries(files)) if (content) storage.writeText(SETTINGS_FILES[name], JSON.stringify(content, null, 2) + '\n');
+  if (search) prepareSearch(storage, deps?.run);   // not awaited: the save is done; the next search starts with the places and kinds of role known (lib/search-prepared.js)
 }
 const SETTINGS_FILES = {search: 'config/search.json', preferences: 'config/preferences.json'};
 // Target roles, one list (21 Oct 2026): a settings file that still has the two lists (roles, job board searches) is merged once by the engine, which asks

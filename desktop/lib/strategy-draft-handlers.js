@@ -14,6 +14,7 @@ import * as pipeline from './pipeline.js';
 import * as strategy from './strategy.js';
 import fs from 'node:fs';
 import {log as appLog} from './log.js';
+import {prepareSearch} from './search-prepared.js';
 import {demoPath} from './demo.js';
 import {aiClient} from './confirmation.js';
 import {contactSaved} from './server-contact.js';
@@ -106,6 +107,7 @@ export function registerStrategyDraftHandlers(ctx) {
       // Notion when it is connected. Contact details are a section of the Profile text, as in Notion.
       if (!notionGate.notionInUse(storage)) {
         const backup = strategy.keepLocally(storage, draft, parts);   // the search settings, then the Profile with its contact section and the answers
+        if (take('search')) prepareSearch(storage, pipeline.run);   // not awaited: the first Find jobs starts with the places and kinds of role known (lib/search-prepared.js)
         step('local', {finished: true});
         appLog('notion', 'strategy kept on this Mac', {parts: parts || 'all', backup: !!backup});
         for (const name of ['profile', 'answers', 'search']) step(name, {finished: true});

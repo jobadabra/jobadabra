@@ -9,6 +9,7 @@
 //   node tools/persona-search/run.mjs <name> <out> [--presses 5] [--tag before] [--fresh] [--draft <draft.json>]
 //        [--tape <folder> --record [--ceiling <seconds>] | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
 // --ceiling: a recording's press lasts <whole seconds> instead of 3 minutes, every engine share scaled (time_budget.part; the employer finder keeps its 45 s, desktop/lib/search-steps.js): the press's yardstick ceiling (plan 2026-11-07-the-press 2/6).
+// --no-prepare: skip the app's preparation after the strategy save (lib/search-prepared.js), so the first search asks its places and kinds of role itself, as before 12 Nov 2026 (a before/after of that change).
 // --note: the wizard's "What should the AI know?" text (e.g. "First Officer jobs anywhere in Europe"), given to the strategy draft as a person types it.
 // --change-field: a JSON list of role titles; before press 2 they replace the roles through the Strategy page's own edit (lib/strategy-edit.js editLists,
 //   which redrafts the old field's words), and the search is marked changed: the owner's path, a field change on an existing install then Find jobs again (26 Oct 2026).
@@ -121,6 +122,13 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
   strategy.keepLocally(storage, draft);
   storage.saveSettings({setupDone: true, cvName: 'cv.pdf'});
   console.log(`${name}: strategy ${kept ? `from ${kept}` : 'drafted'} in ${Math.round((Date.now() - started) / 1000)} s`);
+  // As the app does after the wizard's Save (lib/strategy-draft-handlers.js): places and kinds of role are worked out before the first Find jobs, not inside it.
+  // Awaited here so every measured person starts the same; in the app a search pressed sooner waits for it (src/search_prepared.py wait). --no-prepare: the search as before.
+  if (!process.argv.includes('--no-prepare')) {
+    const before = Date.now(), {prepareSearch} = await lib('search-prepared.js');
+    const ok = await prepareSearch(storage, searchRun);
+    console.log(`${name}: search ${ok ? 'prepared' : 'NOT prepared (the search asks for itself)'} in ${Math.round((Date.now() - before) / 1000)} s`);
+  }
 }
 // What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,
 // the countries the AI worked out for them from places.json (written by the press itself, so it is read again after it).

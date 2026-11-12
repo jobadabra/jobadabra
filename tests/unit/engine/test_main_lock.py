@@ -21,11 +21,18 @@ class RunLockTest(unittest.TestCase):
                 mock.patch('src.crash_reporting.install'):
             from src import __main__ as entry
             self.assertEqual(entry.main(), 0)
-        return taken, ran
+        self.waited = [kwargs for kwargs in taken if kwargs.get('name') == 'prepared']   # a search's wait for the settings' preparation (src/search_prepared.py)
+        return [kwargs for kwargs in taken if kwargs.get('name', 'run') == 'run'], ran
 
     def test_a_search_takes_the_lock(self):
         taken, ran = self.run_main('daily', '--mode', 'scheduled')
         self.assertEqual((len(taken), len(ran)), (1, 1))
+
+    def test_a_search_under_either_name_waits_for_a_preparation_in_flight_and_other_modes_do_not(self):
+        for argv, waits in ((('daily', '--mode', 'scheduled'), 1), (('check', '--mode', 'run'), 1), (('daily',), 1), (('daily', '--mode', 'score'), 0),
+                            (('daily', '--mode', 'add', '--from-app', '--reading', 'x.json'), 0), (('daily', '--mode', 'kits'), 0)):
+            self.run_main(*argv)
+            self.assertEqual(len(self.waited), waits, argv)
 
     def test_the_log_boxs_reading_never_waits_for_a_search(self):
         taken, ran = self.run_main('daily', '--mode', 'add', '--from-app', '--propose')
