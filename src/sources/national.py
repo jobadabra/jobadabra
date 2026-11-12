@@ -1,4 +1,4 @@
-"""National public employment services with an open feed, one row per country (Sweden's Arbetsförmedlingen, Belgium's Le Forem): where small local employers post.
+"""National public employment services, one row per country (Sweden's Arbetsförmedlingen, Belgium's Le Forem, Norway's NAV): where small local employers post.
 Owner, 12 Nov 2026, asked via AskUserQuestion by sa ("Shall I add these national services to Find jobs' source list as our own sources, reading their
 official open feeds where they exist?"): "Yes, add them (Recommended)". Why: in 30 fictional profiles (GTM 6 re-measure, EURES off) EURES's jobs and ours
 overlapped in 0; Stockholm · Customer Support Agent: 8 right jobs found, 45 in Sweden's public feed. This reader is not EURES and never waits for it.
@@ -9,12 +9,16 @@ AI's answer kept once per word, as EURES reads them); no host or country list be
 radius (a town or area) or as the whole country (a country word), nearest first in the person's place order; every role word's first page before any second
 page (EURES's role words: the board searches, then the role words, in the person's language and the local one as the search has them). Titles and places are
 judged later as for every reader (aggregators.kept). Honest client (aggregators._get: our own user agent, src/sources/host_pace.py: a 401/403 is never
-retried, a 429 waits as the site asks); a failure ends the read, keeping what was read; no key. Each job keeps its posting date and its own address at the service.
+retried, a 429 waits as the site asks); a failure ends the read, keeping what was read; no key in the app. A feed that needs a key (Norway's) is read through our
+site with the install's index token (_site_get); without it, the read asks nothing and says nothing. Each job keeps its posting date and its own address at the service.
 Read by: src/sources/reader_rows.py (one row per service, in the free job APIs' lane). Tests: tests/unit/sources/test_national.py.
 """
 import http.client
+import json
+import re
 import urllib.error
 import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from typing import Callable
 
@@ -22,6 +26,9 @@ from .. import geo, time_budget
 from ..press import budget
 
 PAGES = budget.value('national.PAGES')   # per role word and place
+NAV_PAGE = 'https://arbeidsplassen.nav.no/stillinger/stilling/'   # an ad's own page at NAV: the only address a Norwegian row may carry
+_UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')   # NAV's ad ids, as the site validates them (jobadabra-web api/national.js rowOf)
+OFF = None   # what a service's own fetch answers when it is off for this install (no token, the site says 204 or 401, a run that must not ask the site)
 PAGE = 100   # rows a page asks: the most both feeds give (JobSearch limit 0-100; Opendatasoft "-1 <= limit <= 100", asked 12 Nov 2026)
 MOST = budget.value('national.MOST')   # per read: the titles' AI after it keeps its load
 
@@ -30,7 +37,8 @@ MOST = budget.value('national.MOST')   # per read: the titles' AI after it keeps
 class Service:
     """One country's public employment service. url(word, place, offset) -> the search page for a role word in one place entry (geo: kind, lat, lon, r) or the whole
     country (place None); rows(answer) -> (jobs as listed, the answer's total); size: rows a page holds (a shorter page is the last); get(url) -> the parsed
-    answer, for a service read through our site with the install's token (None: the plain public fetch, aggregators._get).
+    answer, for a service read through our site with the install's token (None: the plain public fetch, aggregators._get); it answers OFF when the service is
+    off for this install, which ends the read without a word.
     Why (12 Nov 2026, fw via sa): a country whose feed needs a key the app never holds is read through our site, never with a key in the app."""
     name: str
     country: str
@@ -89,6 +97,51 @@ def _belgium_rows(answer):
     return jobs, int(answer.get('total_count') or 0)
 
 
+def _norway_url(word, place, offset):
+    """Norway's public employment service (NAV's arbeidsplassen.no), kept by our site because NAV's feed needs a key the app never holds
+    (jobadabra-web api/national.js: GET /api/index/national under the employer index's install token; 204 = the country off). Same point and radius as above."""
+    from .. import service
+    query = {'country': 'no', 'q': word, 'offset': offset}
+    if place:
+        query.update({'lat': place['lat'], 'lon': place['lon'], 'r': max(int(place['r'] or 0), 1)})
+    return f'{service.SITE}/api/index/national?' + urllib.parse.urlencode(query)
+
+
+def _norway_rows(answer):
+    """The site's rows as jobs, checked again here (fixed fields, a NAV ad id, the ad's own page at NAV as the address); the site sends no posting text."""
+    from . import aggregators
+    jobs = []
+    for row in (answer or {}).get('rows') or []:
+        if not (isinstance(row, dict) and _UUID.fullmatch(str(row.get('id') or '')) and str(row.get('url') or '').startswith(NAV_PAGE)
+                and isinstance(row.get('title'), str) and row['title'].strip()):
+            continue
+        jobs.append(aggregators._job('arbeidsplassen', row['id'], row['title'][:300], str(row.get('employer') or '')[:200],
+                                     _where(str(row.get('place') or '')[:80], 'NO'), row['url'], str(row.get('date') or '')[:10]))
+    total = (answer or {}).get('total')
+    return jobs, total if isinstance(total, int) and total >= 0 else 0
+
+
+def _site_get(url):
+    """One page from our site with this install's index token, or OFF: a run that must not ask the site (service.site_off: tests, CI, smoke), no token, or the
+    site's 204 (the country off, or NAV's key not on the site) or 401 (the token refused). Never retried; any other error is the read's failure as usual."""
+    from .. import employer_index, service
+    from . import ats
+    if service.site_off():
+        return OFF
+    install = service.install_id()
+    token = employer_index._mint(service.SITE, install)
+    if not token:
+        return OFF
+    request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Authorization': f'Bearer {token}', 'X-Install-Id': install, 'Accept': 'application/json'})
+    try:
+        with urllib.request.urlopen(request, timeout=service.TIMEOUT) as response:
+            return OFF if response.status == 204 else json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code == 401:
+            return OFF
+        raise
+
+
 def _where(town, country):
     """"<town>, <country>" for where the job is; the country alone when the service names no town."""
     name = geo.country_name(country) or country
@@ -98,6 +151,7 @@ def _where(town, country):
 SERVICES = (
     Service('Platsbanken', 'SE', _sweden_url, _sweden_rows, PAGE),
     Service('Le Forem', 'BE', _belgium_url, _belgium_rows, PAGE),
+    Service('arbeidsplassen.no', 'NO', _norway_url, _norway_rows, PAGE, get=_site_get),
 )
 
 
@@ -143,7 +197,10 @@ def read(service, search, get=None, client=None):
                     if len(jobs) >= MOST or (stop is not None and time_budget.now() >= stop):
                         print(f'{service.name}: {min(len(jobs), MOST)} job(s) read; the rest waits for the next search', flush=True)
                         return jobs[:MOST]
-                    listed, total = service.rows(get(service.url(word, place, page * service.size)))
+                    answer = get(service.url(word, place, page * service.size))
+                    if answer is OFF:   # Why (12 Nov 2026, sa): a service off for this install reads nothing and says nothing to the person
+                        return jobs[:MOST]
+                    listed, total = service.rows(answer)
                     if len(listed) < service.size or (page + 1) * service.size >= total:
                         left.remove(word)
                     for job in listed:
