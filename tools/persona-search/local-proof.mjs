@@ -32,9 +32,13 @@ const refs = args.flatMap((arg, i) => (arg === '--ref' ? [args[i + 1]] : []));
 const runs = args.includes('--runs') ? Number(args[args.indexOf('--runs') + 1]) : 1;
 // Why (Gitar on #3906): the one-run proof's verdict needs the person's usual run-to-run difference, which no run measures; the caller says it
 const usual = args.includes('--usual-diff') ? Number(args[args.indexOf('--usual-diff') + 1]) : null;
+if (usual !== null && !(usual >= 0)) {
+  console.error('--usual-diff N: the person\'s usual run-to-run difference in listed jobs, a number from 0 (p10: 15)');
+  process.exit(2);
+}
 // Why (12 Nov 2026, brief sa-pane-ns): at most 2 local searches at once on this Mac, so --together pairs two refs and no more.
-if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2) || (usual !== null && !(usual >= 0))) {
-  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--usual-diff N] [--fresh-draft]');
+if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2)) {
+  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--fresh-draft]');
   process.exit(2);
 }
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
