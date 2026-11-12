@@ -77,7 +77,7 @@ function stepOn(each, browser, {kill = null} = {}) {
       await browser.send('Storage.setCookies', {cookies: SITE_SETS()});
       await until(() => rowsOnDisk(each.storage.path(READ_FOLDER)).filter(row => /^li_at@/.test(row)).length >= 4, 'the session reached the read profile on disk during the read', 60000);   // positive control
       if (kill) await kill();
-      return [{jobs: 3, answered: true}];   // as runAll returns a read the extension answered
+      return [{jobs: 3, ok: true, pages: 1, answered: true}];   // as runAll returns a read the extension answered with a page read (ok, pages: #3710)
     }});
 }
 
