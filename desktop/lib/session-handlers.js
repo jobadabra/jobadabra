@@ -202,13 +202,14 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     const opened = apply.openOne(old.url, {session: old.id, reuse: true});   // the same session: its new tab carries its id
     if (!opened.ok) { reopenedAt.delete(old.id); appLog('review', `tab gone ${old.id}: could not reopen`, {reset, error: opened.error || ''}); return {ok: false, error: opened.error}; }
     appLog('review', `tab gone ${old.id}: asked the browser to reopen the form`, {reset});
-    // Why (7 Nov 2026, #3443 review): reused means the extension already reports this tab open; its id need not change.
-    if (!verifyOpenedTab || opened.reused) return {ok: true, reset};
+    // Why (7 Nov 2026, #3443 review; 12 Nov 2026, #3408): reused means the extension already reports this tab open; its id need not change, and the reopen is logged here as it is on confirmation.
+    if (!verifyOpenedTab || opened.reused) { terminals.noteReopened(old.id); return {ok: true, reset}; }
     const confirmation = (async () => {
       for (let elapsed = 0; elapsed <= WINDOW_MS; elapsed += OPEN_ACK_INTERVAL_MS) {
         const boundTab = String(review.tabOf(old.id) || '');
         if (boundTab && boundTab !== priorTab) {
           appLog('review', `tab gone ${old.id}: extension confirmed the reopened form tab`, {reset});
+          terminals.noteReopened(old.id);
           return {ok: true, reset};
         }
         if (elapsed < WINDOW_MS) await pause(OPEN_ACK_INTERVAL_MS);
