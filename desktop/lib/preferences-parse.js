@@ -13,6 +13,10 @@ export const FILE = 'profile/preferences-parse.json';
 // What the card is given when the AI's answer could not be used (outside the shape twice, or declined): a fixed word the window turns into its own sentence in the person's language,
 // never the engine's text (#3666, 12 Nov 2026: the card read "Free AI's answer was outside the expected shape (not a list)"); the reason stays in app.log.
 export const UNREADABLE = 'unreadable';
+// One owner of the two failure wordings: the throw sites build their messages from these, and a row an older build saved is recognised by them.
+const OUTSIDE_SHAPE = 'was outside the expected shape', DECLINED = 'declined to read the preferences';
+const unreadableError = message => Object.assign(new Error(message), {unreadable: true});
+const isOldUnreadable = text => typeof text === 'string' && (text.includes(OUTSIDE_SHAPE) || text.includes(DECLINED));
 export const KEYS = ['countries', 'cities', 'mode', 'relocation', 'languages', 'roles', 'employment', 'seniority'];
 const CEFR = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'native', 'unknown'];
 const SENIORITY = ['junior', 'mid', 'senior', 'staff', 'unknown'];
@@ -93,11 +97,11 @@ export async function ask(client, fields) {
       messages: [{role: 'user', content: [{type: 'text', text: brief(fields) + (problem ? `\nYour previous answer was rejected: ${problem}. Answer again in the exact shape.` : '')}]}],
       output_config: {format: {type: 'json_schema', schema: SCHEMA}},
     }, {headers: {'x-jp-action': 'preferences_parse'}});   // Why (30 Oct 2026, bb 3/9): every sibling sender names its step; without it Free AI cannot count this step and the e2e answer table cannot key it (interactions red, run 41091251455).
-    if (response.stop_reason === 'refusal') throw Object.assign(new Error(`${nameOfClient(client)} declined to read the preferences`), {unreadable: true});
+    if (response.stop_reason === 'refusal') throw unreadableError(`${nameOfClient(client)} ${DECLINED}`);
     if (response.stop_reason === 'max_tokens') { problem = 'it was cut short'; continue; }
     try { return {parse: cleanAnswer(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}'))}; } catch (failure) { problem = failure.message; }
   }
-  throw Object.assign(new Error(`${nameOfClient(client)}'s answer was outside the expected shape (${problem})`), {unreadable: true});
+  throw unreadableError(`${nameOfClient(client)}'s answer ${OUTSIDE_SHAPE} (${problem})`);
 }
 
 // The parse for these field texts: the kept one when the text is the same (a failure is kept too, so opening the tab never pays twice; `again` asks anew).
@@ -111,7 +115,7 @@ async function forFieldsNow(storage, {fields, client, again = false, log = () =>
   if (!KEYS.some(name => String(fields?.[name] || '').trim())) return {parse: null, key, fresh: false};
   let saved = null;
   try { saved = JSON.parse(storage.readText(FILE) || 'null'); } catch {}
-  if (saved?.key === key && !again) return {parse: saved.parse || null, key, fresh: false, error: /expected shape|declined to read/.test(saved.error || '') ? UNREADABLE : saved.error || ''};   // a row an older build saved keeps the engine's words on disk
+  if (saved?.key === key && !again) return {parse: saved.parse || null, key, fresh: false, error: isOldUnreadable(saved.error) ? UNREADABLE : saved.error || ''};   // a row an older build saved keeps the engine's words on disk
   if (!client) return {parse: null, key, fresh: false, error: 'no AI'};
   const started = Date.now();
   let parse = null, error = '', reason = '';
