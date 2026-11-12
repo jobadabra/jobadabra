@@ -66,8 +66,23 @@ def style_before_after(lines):
     return out
 
 
+FOOTER = re.compile(r'^🤖 Generated with (\[Claude Code\]\([^)]*\)|Claude Code)\s*$')
+GENERATED = re.compile(r'^(#{2,4} 🧾 Facts|<details><summary>📄 The commit messages?\b)')   # the two blocks tools/pr-body.sh prints after the summary
+
+
+def drop_generated_tail(lines):
+    """The summary without anything tools/pr-body.sh generates: the Facts block and the commit-message block (and everything after the first of them, so every older copy goes too), and every
+    "🤖 Generated with Claude Code" line. Why (12 Nov 2026, owner: "we get duplicated footnote on PR bodies"; #3893 had 5 commit blocks): pr-body.sh appends one tail and one footer to the summary file, so a summary that
+    already held an old tail (a body fetched back with `gh pr view`) or its own footer line (the attribution reminder asks for one) made a body with several. A body always ends with exactly one of each."""
+    cut = next((at for at, line in enumerate(lines) if GENERATED.match(line)), len(lines))
+    kept = [line for line in lines[:cut] if not FOOTER.match(line.strip())]
+    while kept and kept[-1].strip() in ('', '---'):
+        kept.pop()
+    return kept
+
+
 def lay_out(text, repo=''):
-    lines = style_before_after(text.rstrip('\n').split('\n'))
+    lines = style_before_after(drop_generated_tail(text.rstrip('\n').split('\n')))
     if any(line.startswith('### ') or line.startswith('## ') for line in lines[1:]):
         return '\n'.join(link_runs(line, repo) for line in lines) + '\n'   # the author laid it out already: links only
     out, used, note, first = [], set(), [], True
