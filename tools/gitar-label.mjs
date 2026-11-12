@@ -5,6 +5,9 @@
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
 //   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026), plus the gray "working" mark a session sets.
+//   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
+//   A verdict older than the head is dropped, never shown beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
+//   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
 //   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
 //   Moments that run it: a push, open or reopen of the PR, Gitar's review or new comment, EVERY push to main (all open PRs), and the Worker's ten-minute tick (all open PRs;
 //   app-core/src/scheduler.js). Gitar closes a finding by only EDITING its comment, which starts nothing, so the tick is what bounds the label's age: at most ten minutes stale.
@@ -21,7 +24,7 @@ export const LABELS = {
   approved: {name: 'Gitar: approved', color: '0e8a16', description: 'Gitar fully approved the current head'},
 };
 // Gray, our side of the conversation (owner, 28 Oct 2026: "when we acknowledged and working on the feedback, a secondary label, a gray one"; "what's the latest status from Gitar and what's our current action").
-export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar is reviewing the newest push; a verdict label beside this one is for an older push'};
+export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar was asked to review the newest push, or its check runs on it; no verdict yet'};
 // Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check RUN on the head (an empty check suite exists on every push, so it proves nothing); no run = not started. Both marks sit beside the latest verdict (owner, 11 Nov: "the label is not reflecting gitar").
 export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has not started on the newest push; one "Gitar review" comment starts it'};
 export const WORKING = {name: 'Working on PR comments', color: '6b7280', description: 'A session is applying the review feedback; a push clears it'};
@@ -62,11 +65,25 @@ export function gitarOnHead(repo, sha, run = gh) {
   return JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.latest_check_runs_count ?? 0) > 0);
 }
 
-/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, latest = null, workingSince, headTime, verdictTime, gitarOnHead = true}) {
-  // Why (11 Nov 2026, owner: "the label is not reflecting gitar"; 7 Nov: "the label = what Gitar's latest comment says"): a verdict older than the head still shows, beside a second label saying the newest push has no review yet (gray: Gitar has a check on it, orange: it has none). READY reads the pair, so a stale approval never reads as ready.
-  const names = verdict ? [verdict] : [...(latest ? [latest] : []), gitarOnHead ? WAITING.name : NOT_STARTED.name];
-  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && ((verdict ?? latest) !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
+// Why (12 Nov 2026, #3870 and #3859): a "Gitar review" ask is answered in ~1 min; past 15 min with no verdict and no Gitar run it was lost, so the label says "not started" and the watcher may ask again.
+export const ASK_FRESH_MS = 15 * 60 * 1000;
+const ASK = /^\s*gitar review\b/i;
+const REFUSED = /wait about \d+ minutes/i;   // Gitar's rate-limit reply: the ask before it starts nothing
+
+/** When someone last asked Gitar to review ("Gitar review" comment), or null when there is no ask or Gitar refused it with a later "wait about N minutes". `comments`: {login, body, createdAt}. */
+export function askedAt(comments) {
+  const at = c => Date.parse(c.createdAt);
+  const ask = comments.filter(c => !/^gitar-bot/.test(c.login) && ASK.test(c.body || '')).sort((a, b) => at(a) - at(b)).at(-1);
+  if (!ask) return null;
+  return comments.some(c => /^gitar-bot/.test(c.login) && REFUSED.test(c.body || '') && at(c) > at(ask)) ? null : ask.createdAt;
+}
+
+/** The labels a PR should hold: ONE Gitar label for the newest push, then "working" when it applies; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
+export function wantedLabels({verdict, workingSince, headTime, verdictTime, gitarOnHead = true, asked = null, now = Date.now()}) {
+  const t = Date.parse;
+  const askPending = !!asked && t(asked) >= t(headTime) && !(t(verdictTime) >= t(asked)) && now - t(asked) < ASK_FRESH_MS;
+  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : NOT_STARTED.name)];
+  if (workingSince && t(workingSince) >= t(headTime) && (verdict !== LABELS.approved.name || t(workingSince) > t(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
@@ -111,7 +128,7 @@ function main(pr) {
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
   state headRefOid
-  comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body updatedAt } }
+  comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body createdAt updatedAt } }
   labels(first: 30) { nodes { name } }
   timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
   commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 1) { totalCount } } } } } }
@@ -137,6 +154,7 @@ export function fromGraphql(data) {
     labels,
     workingSince: workedAt,
     gitarOnHead: suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.checkRuns?.totalCount ?? 0) > 0),
+    asked: askedAt(pr.comments.nodes.filter(Boolean).map(c => ({login: c.author?.login || '', body: c.body, createdAt: c.createdAt}))),
   };
 }
 
@@ -148,11 +166,13 @@ export function readPr(repo, pr, run = gh) {
 
 /** The same read page by page over REST: for a thread whose Gitar comment is older than the 100 newest. */
 function readPrByRest(repo, pr, info) {
-  const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
+  const comments = pages(`repos/${repo}/issues/${pr}/comments`);
+  const reviews = comments.filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
+  return {state: info.state, headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true,
+    asked: askedAt(comments.map(c => ({login: c.user.login, body: c.body, createdAt: c.created_at})))};
 }
 
 const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
@@ -163,8 +183,7 @@ function syncOnce(pr) {
   const read = readLive(repo, pr);
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  const kind = read.review ? verdictKind(read.review.body) : null;
-  const wanted = wantedLabels({verdict, latest: kind ? LABELS[kind].name : null, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead});
+  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked});
   const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
