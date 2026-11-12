@@ -7,6 +7,7 @@ import {createCloudAuto} from '../../../lib/cloud-auto.js';
 const T0 = Date.parse('2026-11-10T21:00:00Z');   // clock: fixed fixture time; the test hands every clock to the module
 function rig({sites = {}, skipCode: firstSkip = '', eligible = true, takeFails = 0} = {}) {
   let failing = takeFails, skipCode = firstSkip;
+  const gone = new Set();   // sessions the store no longer holds as cloud items: the real side.take answers null for them
   let settings = {}, time = T0;
   const marks = [], calls = [], taken = [], applied = [], logs = [];
   const storage = {settings: () => settings, saveSettings: patch => { settings = {...settings, ...patch}; }};
@@ -17,7 +18,7 @@ function rig({sites = {}, skipCode: firstSkip = '', eligible = true, takeFails =
     send: async session => { marks.push(`mark ${session}`); sent.add(session); return {state: 'cloud'}; },
     unsend: async session => { marks.push(`back ${session}`); sent.delete(session); return {state: 'filling'}; },
     closeLocal: async session => { closed.push(session); return true; },
-    take: async (session, outcome) => { if (failing-- > 0) throw new Error('store down'); taken.push([session, outcome]); return {state: outcome.state === 'submitted' ? 'receipt_confirmed' : 'needs_user_handoff'}; },
+    take: async (session, outcome) => { if (failing-- > 0) return {ok: false, retry: true}; if (gone.has(session)) return null; taken.push([session, outcome]); return {state: outcome.state === 'submitted' ? 'receipt_confirmed' : 'needs_user_handoff'}; },
   };
   const answer = (name, fallback) => async (...args) => { calls.push(name); marks.push(name); const own = sites[name]; return typeof own === 'function' ? own(...args) : own || fallback; };
   const site = {autoSend: async (_, batch) => { marks.push('post'); calls.push(['post', batch]); const own = sites.post; return typeof own === 'function' ? own(batch) : own || {ok: true, batch: 'b1', queued: batch.jobs.length}; },
@@ -26,7 +27,7 @@ function rig({sites = {}, skipCode: firstSkip = '', eligible = true, takeFails =
   const build = async list => ({batch: {night: '2026-11-11', fillAt: 'x', contact: {name: 'Ada'}, facts: {}, jobs: list.filter(job => ![skipCode].flat().includes(job.code)).map(job => ({id: job.code, url: job.url, title: job.title, company: job.company, fit: 90, kit: {answers: []}, letter: '', cv: 'pdf', letterPdf: ''}))}, skipped: []});
   const auto = createCloudAuto({storage, eligible: () => eligible, side, jobs: () => jobs, build, kitInfo: async () => ({stage: 'Kit ready', eligible: true}), waitMin: () => 7, site, markApplied: async url => { applied.push(url); return {ok: true}; },
     now: () => new Date(time), log: (message, extra) => logs.push([message, extra]), });
-  return {auto, storage, marks, calls, taken, applied, closed, logs, skip: code => { skipCode = code; }, advance: ms => { time += ms; }, entries};
+  return {auto, storage, marks, calls, taken, gone, applied, closed, logs, skip: code => { skipCode = code; }, advance: ms => { time += ms; }, entries};
 }
 const batchOf = r => r.calls.find(call => call[0] === 'post')[1];
 
@@ -102,16 +103,39 @@ test('an outcome is kept before it is written, written once, and a receipt marks
   assert.ok(r.logs.some(([message]) => /for no item of this Mac/.test(message)));
 });
 
-test('an outcome the store could not take stays kept and is written by the next call', async () => {
+// Why (#3815): side.take never throws; it answers {ok: false, retry: true} when the store write failed and null when the item is gone. The old fake threw, which the real side never does, so the bug passed.
+test('a failed store write keeps the outcome and its item for the next takeBack (the real side.take answer, not a throw)', async () => {
   const r = rig({takeFails: 1});
   await r.auto.handOver('the app quits');
-  await r.auto.heard({ok: true, submits: [{job: 'code-a', night: '2026-11-10', state: 'submitted', why: '', outcome: {attempt: 'att-1'}, ms: 1}]});   // the site deleted it when it answered
-  assert.equal(r.taken.length, 0);
-  assert.equal(r.storage.settings().cloudAuto.inbox.length, 1, 'kept');
+  await r.auto.heard({ok: true, submits: [{job: 'code-a', night: '2026-11-10', state: 'submitted', why: '', outcome: {attempt: 'att-1'}, ms: 1}]});
+  assert.equal(r.applied.length, 0);
+  assert.equal(r.storage.settings().cloudAuto.inbox.length, 1, 'the outcome is kept');
   assert.ok(r.storage.settings().cloudAuto.sent['code-a'], 'its item is still out');
   await r.auto.takeBack();
-  assert.deepEqual(r.taken.map(([session]) => session), ['s-a']);
+  assert.equal(r.applied.length, 1, 'the receipt is recorded once the write works');
   assert.deepEqual(r.storage.settings().cloudAuto.inbox, []);
+  assert.equal(r.storage.settings().cloudAuto.sent['code-a'], undefined);
+});
+
+test('an outcome for an item the store no longer holds as a cloud item is dropped', async () => {
+  const r = rig();
+  await r.auto.handOver('the app quits');
+  r.gone.add('s-a');
+  await r.auto.heard({ok: true, submits: [{job: 'code-a', night: '2026-11-10', state: 'submitted', why: '', outcome: {attempt: 'att-1'}, ms: 1}]});
+  assert.deepEqual(r.storage.settings().cloudAuto.inbox, []);
+  assert.equal(r.storage.settings().cloudAuto.sent['code-a'], undefined);
+  assert.equal(r.applied.length, 0);
+});
+
+test('the give-up after 5 minutes keeps the item when the store write fails, and ends it when the write works', async () => {
+  const r = rig({takeFails: 1});
+  await r.auto.handOver('the app quits');
+  r.advance(6 * 60000);
+  await r.auto.takeBack();
+  assert.deepEqual(Object.keys(r.storage.settings().cloudAuto.sent), ['code-a'], 'the failed write keeps code-a; code-b ended as unknown');
+  await r.auto.takeBack();
+  assert.deepEqual(r.taken.map(([session, outcome]) => [session, outcome.state]), [['s-b', 'unknown'], ['s-a', 'unknown']]);
+  assert.deepEqual(r.storage.settings().cloudAuto.sent, {});
 });
 
 test('a wait with no news is told as unknown after 5 minutes, never as "not sent"', async () => {

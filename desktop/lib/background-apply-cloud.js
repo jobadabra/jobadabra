@@ -4,6 +4,7 @@
 // Guard: test/unit/main/background-apply-cloud.test.js.
 import {activityText, activityHandoff} from '../i18n/activity-notices.js';
 
+const RETRY = Object.freeze({ok: false, retry: true});   // take(): the store write failed, the outcome is still owed
 const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // the store's states before a press (background-apply-store.js)
 
 /**
@@ -40,11 +41,14 @@ export function createCloudSide({store, terminals, serial, cache, closeSession, 
     }),
     /** The site took it and started: the local hidden tab closes (nothing there will press it). */
     closeLocal: session => closeSession(session).catch(() => false),
-    /** One outcome of the cloud written as the item's end: a receipt (the "applied" mail and notice, as the Mac's own send), or a hand-off to the person with the reason in plain words. -> the saved state, or null (not a cloud item any more). */
+    /** One outcome of the cloud written as the item's end: a receipt (the "applied" mail and notice, as the Mac's own send), or a hand-off to the person with the reason in plain words. -> the saved state, `{ok: false, retry: true}` (the store write failed: the caller keeps the outcome and tries again), or null (not a cloud item any more: the caller drops it). */
     take: (session, outcome) => serial(async () => {
       const item = itemFor(session);
       if (!item) return null;
-      const state = await store.fromCloud(item.url, session, outcome).catch(error => { log('apply', 'cloud outcome not written', {error: String(error?.message || error).slice(0, 120)}); return null; });
+      // Why (#3815): the site deleted its copy when it handed the outcome over, so a failed write must not look like "no such item" (null), but a job whose Application record is gone can never be written (Gitar, same PR): that is "gone": cloud-auto drops an outcome on null and keeps it on a retry answer.
+      let failed = false;
+      const state = await store.fromCloud(item.url, session, outcome).catch(error => { failed = !store.noApplication(error); log('apply', 'cloud outcome not written', {error: String(error?.message || error).slice(0, 120)}); return null; });
+      if (failed) return RETRY;
       if (!state || state.ok === false) return null;
       cache(item, state);
       if (state.state === 'receipt_confirmed') {

@@ -3,7 +3,7 @@
 // outcomes back into the store. Nothing changes while the Mac stays on: no timer sends, nothing here presses.
 // Invariants: an item is marked sent in the store BEFORE the site hears of it (the Mac never presses it from then on); a send the site refused puts every item back; the site sends an item at most once (its one
 // reserved attempt); an outcome written back never overwrites a receipt; a night that already started today takes no more items (they stay with the Mac, a quit hands them over as before); no page text, answer or
-// address is logged. Guard: test/unit/main/cloud-auto.test.js.
+// address is logged. an outcome the store could not write is kept with its item until it is written (#3815). Guard: test/unit/main/cloud-auto.test.js.
 
 const registry = new WeakMap();
 /** The cloud Full automation of a store, or null when none was made (a test, the demo, a CLI session): the stop paths ask it (focus-handlers.js, background-apply-controller.js). */
@@ -112,7 +112,7 @@ export function createCloudAuto({storage, eligible, side, jobs, build, kitInfo, 
         const sent = {...(mine().sent || {})}, entry = sent[each.job], held = each.state === 'not_submitted' && each.why === 'already';
         // Why (code review of cs 4/4): "already" means another night of the same item holds its one attempt: that night's own outcome is the answer, so this one is no end for the item.
         if (held) log('cloud Full automation: another night holds this item', {});
-        else if (entry) await write(entry, each);
+        else if (entry) { if ((await write(entry, each))?.retry) { log('cloud Full automation: outcome not written, kept for the next try', {}); continue; } }   // Why (#3815): the site deleted its copy, so a failed store write keeps the outcome and its item (takeBack retries)
         else log('cloud Full automation: an outcome for no item of this Mac', {job: String(each.job).slice(0, 40)});
         if (!held) delete sent[each.job];
         save({sent, inbox: (mine().inbox || []).filter(kept => kept !== each && !(kept.job === each.job && kept.night === each.night))});
@@ -132,8 +132,11 @@ export function createCloudAuto({storage, eligible, side, jobs, build, kitInfo, 
     if (!got.pendingSubmits && !(got.submits || []).length && out()) {
       const stale = Object.entries(mine().sent).filter(([, entry]) => now().getTime() - (entry.at || 0) > GIVE_UP_MS);
       for (const [job, entry] of stale) {
-        await serial(async () => { if (!entry.stopped) await side.take(entry.session, {state: 'unknown'}); const sent = {...mine().sent}; delete sent[job]; save({sent}); });   // a Stop the person gave is no press to check on
-        log('cloud Full automation: an outcome never arrived', {});
+        const written = await serial(async () => {
+          if (!entry.stopped && (await side.take(entry.session, {state: 'unknown'}))?.retry) return false;   // Why (#3815): a failed store write keeps the item; the next takeBack gives up on it again
+          const sent = {...mine().sent}; delete sent[job]; save({sent}); return true;   // a Stop the person gave is no press to check on
+        });
+        log(written ? 'cloud Full automation: an outcome never arrived' : 'cloud Full automation: the check note was not written, kept for the next try', {});
       }
     }
     return out() > 0;
