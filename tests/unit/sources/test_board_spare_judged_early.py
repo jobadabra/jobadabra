@@ -5,7 +5,17 @@ import unittest
 from unittest import mock
 
 from src.ai import board_ideas
-from src.sources import found_boards
+from src.sources import careers, found_boards
+
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/unit/sources/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 SEARCH = {'role_keywords': ['sales'], 'locations': {'top_tier': ['Vienna'], 'country_wide': [], 'abroad': []}}
 

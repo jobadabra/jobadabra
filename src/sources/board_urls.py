@@ -1,5 +1,5 @@
 """How a job board's proposed search link is filled and trimmed (moved out of found_boards.py, 500-line rule; the link is structure, never a judgment).
-Tests: tests/unit/sources/test_found_boards.py (found_boards._bare)."""
+Tests: tests/unit/sources/test_board_bare_link.py (found_boards._bare)."""
 import urllib.parse
 
 
