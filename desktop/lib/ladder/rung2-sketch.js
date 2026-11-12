@@ -186,7 +186,8 @@ async function pageKindOnce(client, raw, cache, {now = Date.now(), fresh = false
   const shown = buttons.find(button => phrases.includes(button)) || '';
   if (usable && (shown || !buttons.length)) return remembered(stored, shape, shown);
   const asked = await askSketch(client, page, shape, cache, now);
-  const namedNone = !!asked.error || (asked.kind === 'posting' && !asked.applyButton && !asked.applyRoute && asked.applyBy !== 'email' && !asked.botCheck && !asked.stillDrawing);
+  // Why (#3618, triage 12 Nov 2026): an embedded application form (formFrame) is a way in as much as a button; ignoring it let the kept button, absent here, replace the frame.
+  const namedNone = !!asked.error || (asked.kind === 'posting' && !asked.applyButton && !asked.applyRoute && asked.applyBy !== 'email' && !(asked.formFrame >= 0) && !asked.botCheck && !asked.stillDrawing);
   return usable && namedNone ? {...remembered(stored, shape, buttons[0]), ...(asked.usd ? {usd: asked.usd} : {})} : asked;
 }
 

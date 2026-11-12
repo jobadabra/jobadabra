@@ -319,6 +319,18 @@ test('scenario: a weak page-kind answer on an account page is asked again on the
   assert.deepEqual([said.length, next.by, next.accountStep, cache.get(kindKey(page))?.accountStep], [2, 'ai', 'sign_in', 'sign_in']);
 });
 
+test('scenario: a posting shape kept an Apply button, this posting embeds its form in a frame: the frame reaches the extension, not the absent button (#3618)', async () => {
+  const {kindKey, pageKind, pageKindCache} = await import('../../../lib/page-kind.js');
+  const cache = pageKindCache(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-frame-')), 'page-kinds.json'));
+  const page = (slug, buttons, extra = {}) => ({url: `https://jobs.example.test/jobs/${slug}`, title: 'First Officer', headings: ['First Officer'], buttons, controls: [], ...extra});
+  const ai = answer => ({messages: {create: async () => ({stop_reason: 'end_turn', usage: {input_tokens: 600, output_tokens: 20}, content: [{type: 'text', text: JSON.stringify({kind: 'posting', confidence: 0.95, ...answer})}]})}});
+  const framed = page('first-officer-2', ['Save job'], {frameCandidates: [{host: 'job-boards.example-ats.io', path: '/embed/job_app', width: 650, height: 2432}]});
+  assert.equal(kindKey(page('first-officer-1', [])), kindKey(framed), 'one kept answer for both postings');
+  await pageKind(ai({apply_button: 'Easy apply', apply_button_kind: 'apply'}), page('first-officer-1', ['Easy apply']), cache);
+  const got = await pageKind(ai({apply_button: '', apply_button_kind: 'none', form_frame: 0}), framed, cache);
+  assert.deepEqual([got.by, got.formFrame, got.applyButton], ['ai', 0, '']);
+});
+
 // 12 Oct 2026, the owner's app.log: a job-list read started 14:56:15, the session's Cancel wrote Kit ready at 14:56:37, the read ended 14:56:45 with
 // the old stage, and the cancelled job showed "still marked Applying but has no open session". A read asked after any engine stage write starts
 // its own (lib/pipeline-commands.js afterWrite); the window never paints the older one (renderer/job-writes.js, test/unit/renderer/job-writes.test.js).
