@@ -122,6 +122,43 @@ def _walk(value):
             yield from _walk(inner)
 
 
+def site_names(markup):
+    """The site's own name as the page declares it, lower-cased: its og:site_name and the name of its WebSite or Organization JSON-LD entry.
+    Read from the page only (no list of names), so a heading equal to one is the site's logo or name, not a page's title (#3901)."""
+    names = set()
+    for tag in re.findall(r'<meta\b[^>]*>', markup, re.I):
+        if re.search(r'''property\s*=\s*["']og:site_name["']''', tag, re.I):
+            named = re.search(r'''content\s*=\s*["']([^"']*)''', tag, re.I)
+            names.add(plain_name(named.group(1)) if named else '')
+    for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', markup, re.S | re.I):
+        try:
+            data = json.loads(html.unescape(block) if '&quot;' in block else block)
+        except ValueError:
+            continue
+        for item in _typed(data, {'website', 'organization'}):
+            names.add(plain_name(item.get('name')))
+    names.discard('')
+    return names
+
+
+def plain_name(value):
+    """A name or heading as compared text: tags and entities out, spaces folded, lower-cased; '' for anything but text."""
+    return re.sub(r'\s+', ' ', ats.plain(value)).strip().lower() if isinstance(value, str) else ''
+
+
+def _typed(value, kinds):
+    """The JSON-LD entries of one of these @types (lower-case), anywhere in the data (@graph, lists, nested)."""
+    if isinstance(value, dict):
+        types = value.get('@type')
+        if {str(kind).lower() for kind in (types if isinstance(types, list) else [types])} & kinds:
+            yield value
+        for inner in value.values():
+            yield from _typed(inner, kinds)
+    elif isinstance(value, list):
+        for inner in value:
+            yield from _typed(inner, kinds)
+
+
 def _words(value):
     """A JSON-LD text field as text: sites give a string, a {"name": …}, or a list of either (7 Oct 2026: a list in addressLocality ended a
     whole Find new employers run with a TypeError)."""
