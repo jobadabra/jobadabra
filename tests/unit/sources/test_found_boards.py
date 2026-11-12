@@ -194,3 +194,50 @@ class FoundBoardsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TwoReadsAtOnceTests(unittest.TestCase):
+    """One press runs two board reads at once (the first-jobs slice, src/first_jobs.py board_jobs, and the boards the web search found,
+    src/sources/board_reader.py _fetch). Night 43313523472: each saved the whole board memory at its end and the later save dropped the
+    other's boards: p1's Jobs.bg (403) and p3's Jobat, StepStone and Constructjobs (403) were gone after the press."""
+    OTHER = {**BOARD, 'name': 'Vagas', 'host': 'vagas.example', 'search_url': 'https://vagas.example/procura?q={role}'}
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={})):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def _both(self):
+        """Read A (a readable board) loads the memory, then waits in its first page; read B (a board that answers 403) runs and saves; then A ends and saves."""
+        import threading
+        b_saved = threading.Event()
+
+        def slow(url):
+            b_saved.wait(60)   # a hang guard only: B always sets it
+            return PAGE
+
+        def refuse(url):
+            raise urllib.error.HTTPError(url, 403, 'Forbidden', None, None)
+        a = threading.Thread(target=found_boards.read, args=(SEARCH, [BOARD]), kwargs={'fetch': slow, 'web': False})
+        a.start()
+        try:
+            found_boards.read(SEARCH, [self.OTHER], fetch=refuse, web=False)
+        finally:
+            b_saved.set()
+            a.join(60)
+        self.assertFalse(a.is_alive())
+        from src.ai import board_ideas
+        return board_ideas.load().get('boards') or {}
+
+    def test_two_reads_at_once_keep_both_boards_states(self):
+        boards = self._both()
+        self.assertEqual({host: boards.get(host, {}).get('state') for host in ('empregos.example', 'vagas.example')},
+                         {'empregos.example': 'ok', 'vagas.example': 'browser'})
+
+    def test_a_403_kept_by_one_read_is_still_stopped_after_the_other_saves(self):
+        self._both()
+        asked = []
+        found_boards.read(SEARCH, [self.OTHER], fetch=lambda url: asked.append(url) or PAGE, web=False)
+        self.assertEqual(asked, [], 'a board that answered 403 is not asked again by the plain reader (CLAUDE.md: never retry a 401 or 403)')

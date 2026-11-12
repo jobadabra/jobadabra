@@ -8,6 +8,7 @@ cache's source_yield table: src/sources/board_yield.py dead). The outcome of eac
 ('boards'), a cache. Wired as one aggregator, "Job boards found" (src/sources/aggregators.py). The boards that gave other installs like
 this one their jobs are read first, the top 2 in the first-jobs slice (src/first_jobs.py; their jobs are handed to the full read, not
 fetched twice: the full read reuses the slice's pages). Tests: tests/unit/sources/test_found_boards.py, tests/unit/sources/test_proven_boards.py."""
+import json
 import threading
 import time
 import urllib.error
@@ -294,6 +295,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     fetch = fetch or careers.get_text   # looked up when called: a test's or a run's own fetcher applies
     from . import board_yield
     data = board_ideas.load()
+    base = json.loads(json.dumps(data))   # what this read loaded: its save writes only what it changed since (board_ideas.save_read)
     kept = data.setdefault('boards', {})
     stamp = (now or datetime.now(timezone.utc)).isoformat(timespec='seconds')
     by_turn = []   # each board's jobs at its turn in the list (its replacements after it): the list's order at the end, whichever board ended first
@@ -381,6 +383,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             entry['last_read'] = stamp
             entry.pop('owed', None)
             board_yield.record(entry, 0, 0, 'empty')
+            board_ideas.keep_board(board['host'], entry)
             return
         def wait(answer):   # not stamped read: the next search goes up its ladder from this page, not a second read
             waiting.append(board['name'])
@@ -410,6 +413,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         entry.pop('owed', None)   # a mark of the removed re-read (owed_reads): the jobs the AI had no answer for wait in src/sources/waiting_jobs.py instead
         board_yield.record(entry, len(found), len(relevant), state)
         board_yield.paid(entry, len(relevant), search)   # read first by the next search in this field (boards_first)
+        board_ideas.keep_board(board['host'], entry)   # on disk at once: a refusal reaches Jobadabra's browser queue (refused_reads) in this press
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
@@ -441,7 +445,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     for read_item in reads:   # a board still open at the cut: its replacements read before it
         _kept_spares(taken, lock, [read_item], keep)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
-    board_ideas.save_read(data)
+    board_ideas.save_read(data, base)
     jobs = [job for turn in by_turn for job in turn]
     board_employers.note(jobs, 'Job boards found')
     if more and read_budget.past_cut():   # found too late for this search: kept with the web search's boards, read by the next one

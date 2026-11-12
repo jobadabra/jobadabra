@@ -99,13 +99,39 @@ def save(data):
     write_whole(file, json.dumps(data, ensure_ascii=False, indent=1))
 
 
-def save_read(data):
-    """Save the board memory a read held since it started, keeping the proposals cached while it ran.
+def save_read(data, base=None):
+    """Save what a board read changed in the memory it loaded (`base`: a copy of what it loaded) over what the file holds now: per board in
+    'boards', per key in the other parts ('ideas', 'web', ...). What a read beside it saved meanwhile stays (a board, a proposal).
     Why (12 Nov 2026): a read loads the file, reads its boards for a minute and saves it whole; the proposal now answers during that read
-    (first_jobs.board_jobs `later`), and its cached answer was written over, so the search's full read asked the AI again."""
+    (first_jobs.board_jobs `later`), and its cached answer was written over, so the search's full read asked the AI again.
+    Why (13 Nov 2026, night 43313523472): the same for boards: the first-jobs slice and the web-found boards are read at once, and the later
+    save dropped the other's boards, a 403 among them (p1 Jobs.bg, p3 Jobat), so the plain reader could ask it again and Jobadabra's
+    browser never had it in its queue (src/sources/refused_reads.py)."""
     with STORE:
-        for key, answer in (load().get('ideas') or {}).items():
-            data.setdefault('ideas', {}).setdefault(key, answer)
+        save(_merged(load(), data, base or {}))
+
+
+def _merged(now, mine, base):
+    """`now` (the file) with what `mine` changed since `base`: a part that is a dict is merged per key, any other part replaced when it changed."""
+    out = dict(now)
+    for part, value in mine.items():
+        before = base.get(part)
+        if isinstance(value, dict):
+            before = before if isinstance(before, dict) else {}
+            here = dict(now[part]) if isinstance(now.get(part), dict) else {}
+            here.update({key: item for key, item in value.items() if key not in before or before[key] != item})
+            out[part] = here
+        elif part not in base or value != before:
+            out[part] = value
+    return out
+
+
+def keep_board(host, entry):
+    """Save one board's entry as soon as its read keeps it, over what the file holds now (nothing else of the memory is written), so a
+    refusal is known to the next reader of the file within seconds, not when the whole read ends."""
+    with STORE:
+        data = load()
+        data.setdefault('boards', {})[host] = json.loads(json.dumps(entry))
         save(data)
 
 
