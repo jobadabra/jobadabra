@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       min_gaps:
-        description: 'The hourly look (the Worker): record only when at least this many people have a gap. Empty = 1: the day\'s run, which records any gap and always replays the table'
+        description: 'The hourly look (the Worker): record only when at least this many people have a gap. Empty = 1: the daily run, which records any gap and always replays the table'
         required: false
         default: ''
         type: string
