@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from ..press import resume, stage
 
@@ -78,9 +78,10 @@ def _read(board, search, fetch, route, early, show=None):
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):
-            url = board['search_url'].replace('{role}', urllib.parse.quote_plus(term)).replace('{place}', urllib.parse.quote_plus(place))
+            links = board_paths.forms(board['search_url'], term, place)
+            url = links[0]
             try:
-                page = (listing or fetch)(url)
+                url, page = board_paths.get(listing or fetch, links)   # Why (12 Nov 2026): a path-style board 404s the plus form and serves the slug
             except urllib.error.HTTPError as error:
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
