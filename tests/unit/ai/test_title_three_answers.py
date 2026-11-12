@@ -67,6 +67,20 @@ class ThreeAnswersTest(unittest.TestCase):
         self.assertEqual(title_triage.near(SEARCH), {'business analyst', 'analytics engineer'})
         self.assertEqual(set(title_triage.known(SEARCH)), set(decided), 'the NEAR list is no title of its own')
 
+    def test_a_neighbour_the_second_look_brings_back_waits_like_the_sort_s_own(self):
+        """Gitar on #3908: the second look read only `fit`, so a title it kept as a neighbour was stored as a plain yes and listed before its score."""
+        class Twice(Model):
+            def create(self, **kwargs):
+                if not kwargs['system'][0]['text'].startswith('You check job titles'):
+                    return SimpleNamespace(content=[SimpleNamespace(type='text', text='{"fit": [], "near": []}')], usage=SimpleNamespace(input_tokens=1, output_tokens=1))
+                titles = [line.split('. ', 1)[1] for line in kwargs['messages'][0]['content'].split('The titles:\n', 1)[1].split('\n')]
+                answer = {'fit': [n for n, t in enumerate(titles, 1) if t == 'data analyst'], 'near': [n for n, t in enumerate(titles, 1) if t != 'data analyst']}
+                return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(answer))], usage=SimpleNamespace(input_tokens=1, output_tokens=1))
+        with contextlib.redirect_stdout(io.StringIO()):
+            decided = title_triage.decide(['Data Analyst', 'Data Analyst Recruiter'], SEARCH, client=Twice(), local=True)
+        self.assertEqual(decided, {'data analyst': True, 'data analyst recruiter': True})
+        self.assertEqual(title_triage.near(SEARCH), {'data analyst recruiter'})
+
     def test_an_answer_without_the_near_group_names_no_neighbour(self):
         decided = self.sort(Model(with_near=False))
         self.assertIs(decided['data analyst'], True)

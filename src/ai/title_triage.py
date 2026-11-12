@@ -56,9 +56,10 @@ NEAR = '#NEAR'   # the key of a search's neighbour titles (a list): kept True li
 # Engineer' for an SRE/platform search after both were scored and listed; the sort's no closed them before their facts were read. A no on a title that holds
 # one of the search's own role words is asked once more, alone; the job leaves only when both say no.
 RECHECK_SYSTEM = """You check job titles that a first sort rejected for one job seeker. You get their search (the role words they wrote, and words \
-that rule a title out) and a numbered list of job titles; each holds one of their role words. Answer with the numbers of the titles that are \
-the kind of work they look for, or a close neighbour of it at a similar level. Leave out a title where the role word names another job \
-("Pilote / Product Owner" is no pilot, "Infrastructure Tax Lead" is no infrastructure engineer). When unsure, include it: a later step scores each job."""
+that rule a title out) and a numbered list of job titles; each holds one of their role words. Answer with two lists of numbers: fit = the titles \
+that are the kind of work they look for; near = the titles that are a close neighbour of it at a similar level. Leave out of both a title where the \
+role word names another job ("Pilote / Product Owner" is no pilot, "Infrastructure Tax Lead" is no infrastructure engineer). When unsure whether a \
+title is their kind of work, put it in near: a later step scores each job."""
 
 
 def _key(search):
@@ -105,7 +106,7 @@ def _stamped(entry, decided, neighbours=()):
     """The entry kept for a search after a sort: what still holds (_current), this run's answers, its neighbour titles (NEAR: those still kept True) and this SYSTEM's stamp."""
     kept = {**_current(entry), **decided}
     was = (entry or {}).get(NEAR) or () if (entry or {}).get(STAMP) == PROMPT else ()
-    close = {*was, *neighbours}
+    close = {*(title for title in was if title not in decided), *neighbours}   # a title sorted again this run takes this run's group
     return {**kept, NEAR: [title for title, answer in kept.items() if answer is True and title in close], STAMP: PROMPT}
 
 
@@ -123,7 +124,7 @@ def batch_size(client):
     return BATCH_THINKING if callable(thinks) and thinks() is True else BATCH
 
 
-def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0, size=BATCH):
+def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0, size=BATCH, neighbours=None):
     """The titles this call rejected that hold one of the search's role words are asked once more, alone (RECHECK_SYSTEM); a yes keeps the job.
     When that call fails or the clock is up they are dropped from `decided`: unknown, asked again next refresh, never a guessed no."""
     from . import cost, engine
@@ -141,14 +142,17 @@ def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0
                                               messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
                                               output_config=engine.structured(SCHEMA, MODEL, 'low'))
             cost.side(MODEL, response.usage)
-            fit = {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
+            answer = json.loads(next(b.text for b in response.content if b.type == 'text'))
+            fit, close = ({int(n) for n in answer.get(group) or [] if str(n).isdigit()} for group in ('fit', 'near'))
         except Exception as error:  # noqa: BLE001 — any failure of the extra look leaves its titles unknown for the next refresh
             print(f'Titles: second look at {len(batch)} title(s) not done ({type(error).__name__}); they stay unjudged until the next refresh', flush=True)
             for title in batch:
                 decided.pop(title, None)
             continue
         for n, title in enumerate(batch, 1):
-            decided[title] = n in fit
+            decided[title] = n in fit or n in close
+            if n in close and n not in fit and neighbours is not None:   # a rescued neighbour waits for its score like the sort's own (Gitar on #3908)
+                neighbours.add(title)
 
 
 def _workers(budget):
@@ -247,7 +251,7 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     title_queue.serve(nearest, one, landed, _workers(budget), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
     budget.record('title_rounds', spent[0] / max(1, engine.at_once()), -(-sorted_[0] // (size * max(1, engine.at_once()))))
     with slots.priority(slots.TITLES):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
-        _second_look(client, ask, decided, search, words, mine, forced, size)
+        _second_look(client, ask, decided, search, words, mine, forced, size, neighbours)
     with LOCK:
         data = _load()
         data[key] = _stamped(data.get(key), decided, neighbours)
