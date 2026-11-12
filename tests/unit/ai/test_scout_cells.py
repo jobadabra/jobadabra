@@ -36,7 +36,7 @@ class ThinCellTest(unittest.TestCase):
         self.assertTrue(set(scout_cells.BIG + scout_cells.SMALL) <= set(scout_cells.EUROPE), 'every named country is a column of the page')
         self.assertFalse(set(scout_cells.BIG) & set(scout_cells.SMALL))
         self.assertEqual(scout_cells.floor_for('ch'), scout_cells.MID_FLOOR)
-        self.assertEqual([scout_cells.floor_for(c) for c in scout_cells.EUROPE].count(scout_cells.MID_FLOOR), 13, 'the 13 mid-size countries')
+        self.assertEqual([scout_cells.floor_for(c) for c in scout_cells.EUROPE].count(scout_cells.MID_FLOOR), 14, 'the 14 mid-size countries (Slovakia joined the 13 on 12 Nov 2026)')
 
     def test_a_small_country_at_its_own_floor_is_not_aimed_at(self):
         enough = [feed(kind, 'lu') for kind in scout_cells.AIMED for _ in range(scout_cells.SMALL_FLOOR)]

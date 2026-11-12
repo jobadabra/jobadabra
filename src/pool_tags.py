@@ -12,10 +12,12 @@ COUNTRIES = {
     'no': 'Norway', 'fi': 'Finland', 'pl': 'Poland', 'cz': 'Czechia', 'ro': 'Romania', 'md': 'Moldova', 'gr': 'Greece',
     'us': 'United States', 'ca': 'Canada', 'au': 'Australia', 'sg': 'Singapore', 'in': 'India', 'ae': 'United Arab Emirates',
     'il': 'Israel', 'br': 'Brazil', 'mx': 'Mexico', 'jp': 'Japan', 'bg': 'Bulgaria', 'hr': 'Croatia', 'ee': 'Estonia', 'hu': 'Hungary',
+    'sk': 'Slovakia', 'si': 'Slovenia', 'lt': 'Lithuania', 'lv': 'Latvia', 'cy': 'Cyprus', 'mt': 'Malta',
 }
 # The European ones: the columns of the central list's kind × country coverage (/admin/job-search/scouting). Every country the Lab's draws use
 # (tools/persona-search/draws.json) is here; tests/unit/ai/test_pool_tags.py checks it.
-EUROPE = ('ch', 'de', 'at', 'fr', 'it', 'gb', 'ie', 'nl', 'be', 'lu', 'es', 'pt', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro', 'md', 'gr', 'bg', 'hr', 'ee', 'hu')
+EUROPE = ('ch', 'de', 'at', 'fr', 'it', 'gb', 'ie', 'nl', 'be', 'lu', 'es', 'pt', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro', 'md', 'gr', 'bg', 'hr', 'ee', 'hu',
+          'sk', 'si', 'lt', 'lv', 'cy', 'mt')
 METROS = {
     'ch-geneva': 'Geneva', 'ch-lausanne': 'Lausanne and Vaud', 'ch-zurich': 'Zurich', 'ch-basel': 'Basel', 'ch-bern': 'Bern',
     'ch-zug-luzern': 'Zug and Lucerne', 'ch-ticino': 'Ticino', 'ch-st-gallen': 'St. Gallen',

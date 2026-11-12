@@ -238,7 +238,11 @@ def main():
         from . import scout_boards
         scout_core.CENTRAL = True
         with store.connect(args.db) as db:
-            scout_boards.run(db, named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')), kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+            try:
+                named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
+            except ValueError as wrong:   # a wrong by-hand name fails the run with the accepted names, never reads another country
+                raise SystemExit(f'Board pass: {wrong}')
+            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
         return 0
     if args.export_sources:
         kept, failed = export_sources(employer_store())

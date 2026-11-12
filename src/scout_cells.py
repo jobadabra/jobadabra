@@ -13,7 +13,7 @@ FLOOR = 25      # employers per kind and country the scout aims for in the big m
 # The floor follows the country's size (owner, 20 Oct 2026: a flat 25 is never reachable in Luxembourg or Moldova, so only 13 of 225 cells counted).
 # Mid-size countries are every one that is in neither list. An install's own "covered" check (src/scout_need.py) keeps the flat FLOOR: it asks about one search.
 BIG = ('de', 'gb', 'fr', 'it', 'es', 'pl', 'nl')
-SMALL = ('lu', 'md', 'bg', 'hr', 'ee')
+SMALL = ('lu', 'md', 'bg', 'hr', 'ee', 'si', 'lt', 'lv', 'cy', 'mt')
 MID_FLOOR, SMALL_FLOOR = 10, 5
 AIMED = tuple(kind for kind in role_kinds.KINDS if kind not in ('software', 'other'))   # every kind but the strong one and the leftover
 LOCAL_FLOOR = 60   # employers with local jobs a European country needs before the general company lists stop aiming at it
