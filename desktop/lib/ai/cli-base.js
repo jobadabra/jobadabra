@@ -14,6 +14,7 @@ import {parseJson, problems} from './schema.js';
 import {noteAiLimiter} from '../ext-http-timing.js';
 
 export const TIMEOUT_MS = 10 * 60 * 1000;
+const ANSWERED_CLOSE_MS = 30000;   // a process that answered and has not closed down by then is killed
 const TIMEOUTS_BEFORE_STOP = 2;  // in a row: the CLI is not answering at all, so nothing waits again in this run
 const EXT = {'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif'};
 
@@ -43,22 +44,44 @@ export function conversation(request, names = []) {
 }
 
 // One process: {stdout, stderr, code}, or {error: {kind: 'timeout' | 'missing', text}}. The prompt goes on stdin. started: a process already
-// started with these args (cli-spares.js), used instead of starting one.
-export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null} = {}) {
+// started with these args (cli-spares.js), used instead of starting one. answered(line): a stdout line that completes the answer; the call
+// returns there, as a run that ended well, and the process closes down by itself (killed if it has not after ANSWERED_CLOSE_MS).
+// Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): `codex exec` closed down 0.7-1.5 s after its answer line, Claude Code
+// ~0.25-0.8 s after its result (telemetry, then exit) on the owner's Mac. A failed answer is never cut short: it waits for the exit code and stderr.
+export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null, answered = null} = {}) {
   return new Promise(resolve => {
     let child = started;
     try { child ||= spawnFn(binary, args, {cwd, env, stdio: ['pipe', 'pipe', 'pipe']}); }
     catch (error) { resolve({error: {kind: 'missing', text: `${tool} could not start: ${error.message}`}}); return; }
-    let stdout = '', stderr = '', done = false;
+    let stdout = '', stderr = '', done = false, seen = 0;
     const finish = value => { if (!done) { done = true; clearTimeout(timer); resolve(value); } };
     const timer = setTimeout(() => { child.kill('SIGKILL'); finish({error: {kind: 'timeout', text: `${tool} did not answer within ${Math.round(timeout / 1000)} s`}}); }, timeout);
-    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stdout.on('data', chunk => {
+      stdout += chunk;
+      if (!answered || done) return;
+      for (let end = stdout.indexOf('\n', seen); end >= 0; end = stdout.indexOf('\n', seen)) {
+        const line = stdout.slice(seen, end);
+        seen = end + 1;
+        if (answered(line)) {
+          finish({stdout: stdout.slice(0, seen), stderr: '', code: 0});
+          const guard = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* already gone */ } }, ANSWERED_CLOSE_MS);
+          guard.unref?.();
+          child.on('close', () => clearTimeout(guard));
+          return;
+        }
+      }
+    });
     child.stderr.on('data', chunk => { stderr += chunk; });
     child.on('error', error => finish({error: {kind: 'missing', text: `${tool} could not start: ${error.message}`}}));
     child.on('close', code => finish({stdout, stderr, code}));
     child.stdin.on('error', () => {});
     child.stdin.end(prompt);
   });
+}
+
+// One stdout line as an object, or {} (not a JSON object).
+export function jsonLine(line) {
+  try { const item = JSON.parse(line); return item && typeof item === 'object' ? item : {}; } catch { return {}; }
 }
 
 // At most `size` callers at once; the rest wait their turn. A 'page' ask (the extension's questions while a form is open: page kind, digest,
@@ -100,7 +123,9 @@ export class CliAdapter extends Adapter {
   usage(data) { throw new Error('not implemented'); }
   normalize(value, schema) { return value; }   // a structured answer back in the caller's schema's shape
   env() { return {...process.env}; }
-  runCall(args, prompt, folder) {   // one process for one call (Claude Code: a pre-started one for a page ask)
+  coming(args) { return null; }   // told before a call waits for its turn: the key of the process started ahead for it (cli-spares.js), or null
+  left(key) {}                    // a call told by coming() that will not run after all
+  runCall(args, prompt, folder, key) {   // one process for one call (Claude Code: one started ahead, by key)
     return runProcess(this.binary, args, prompt, {cwd: folder, env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool});
   }
 
@@ -109,7 +134,10 @@ export class CliAdapter extends Adapter {
     const {tool} = this.constructor;
     if (!this.binary) throw cliError({kind: 'missing', text: this.constructor.missingText});
     if (this.timeouts >= TIMEOUTS_BEFORE_STOP) throw cliError({kind: 'limit', text: `${tool} is not answering (it timed out twice in a row); this run stops here.`});
-    const finished = await this.constructor.queue(() => this.runCall(args, prompt, folder), this.lane);
+    const key = this.coming(args);   // its process starts now, while it waits for its turn
+    let reached = false, finished;
+    try { finished = await this.constructor.queue(() => { reached = true; return this.runCall(args, prompt, folder, key); }, this.lane); }
+    finally { if (!reached) this.left(key); }
     if (finished.error?.kind === 'timeout') {
       this.timeouts += 1;
       if (this.timeouts >= TIMEOUTS_BEFORE_STOP) throw cliError({kind: 'limit', text: `${finished.error.text}, twice in a row; this run stops here.`});

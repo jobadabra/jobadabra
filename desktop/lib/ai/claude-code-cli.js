@@ -1,15 +1,15 @@
 // The Claude Code engine ('cli'): the app's own AI calls on the user's own signed-in `claude -p` (moved out of lib/claude-code.js,
 // which re-exports cliClient, runJson, problem, cleanEnv, alias, promptAndFiles and parseJson so callers are unchanged). Each call: a
 // fresh folder, only the Read tool and only inside it, the user's skills/slash commands/settings not loaded, the schema enforced by
-// `--json-schema` when this Claude Code offers it. A page ask (lane 'page') reads its prompt as one stream-json message on a process started
-// before it came (cli-spares.js). Billing 'subscription'. Guarded by test/unit/main/claude-code.test.js, test/unit/main/ai-contract.test.js and test/unit/main/cli-spares.test.js.
+// `--json-schema` when this Claude Code offers it. An ask that reads no file takes its prompt as one stream-json message on a process started
+// while it waited for its turn (cli-spares.js), and returns at its result line. Billing 'subscription'. Guarded by test/unit/main/claude-code.test.js, test/unit/main/ai-contract.test.js and test/unit/main/cli-spares.test.js.
 import {osText} from '../../i18n/platform.js';
 import {execFile, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {usage as usageOf} from './contract.js';
-import {CliAdapter, TIMEOUT_MS, cliError, conversation, runProcess, slots} from './cli-base.js';
+import {CliAdapter, TIMEOUT_MS, cliError, conversation, jsonLine, runProcess, slots} from './cli-base.js';
 import {sparePool} from './cli-spares.js';
 export {parseJson} from './schema.js';
 
@@ -94,7 +94,7 @@ export class ClaudeCode extends CliAdapter {
   static folder = 'claude';
   static missingText = osText('Claude Code is not installed on this Mac: install it, or switch to an API key in Settings → Connections → AI.', process.platform);
   static queue = slots(2);
-  static spares = sparePool();   // pre-started processes for the page's questions (cli-spares.js)
+  static spares = sparePool();   // processes started ahead for the asks that read no file (cli-spares.js)
 
   constructor({run = execFile, ...options} = {}) { super(options); this.run = run; }
 
@@ -102,9 +102,10 @@ export class ClaudeCode extends CliAdapter {
 
   async build(request, folder, files) {
     const flags = await offered(this.binary, this.run);
-    // A page ask (lane 'page', no file) reads its prompt as a stream-json message: a process started before the prompt waits for it (cli-spares.js);
+    // An ask that reads no file reads its prompt as a stream-json message: a process started before the prompt waits for it (cli-spares.js);
     // with plain text on stdin `claude -p` gives up after 3 s without input.
-    const streamed = this.lane === 'page' && !files.length && flags.has('--input-format');
+    // Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): page asks only before; every other app ask started Claude Code cold.
+    const streamed = !files.length && flags.has('--input-format');
     const args = ['-p', ...(streamed ? ['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'] : ['--output-format', 'json']), '--model', alias(request.model)];
     if (request.system) args.push('--system-prompt', request.system);
     args.push('--tools', files.length ? 'Read' : '');
@@ -121,20 +122,34 @@ export class ClaudeCode extends CliAdapter {
     return {args, prompt: readFirst(conversation(request, files), files), native};
   }
 
-  // A page ask: the process started for its kind of question (same args) if one waits, and the next one started now for the next page.
-  runCall(args, prompt, folder) {
-    if (!args.includes('--input-format')) return super.runCall(args, prompt, folder);
-    const key = `${this.binary}\0${JSON.stringify(args)}`, env = this.env();
-    const started = this.constructor.spares.take(key);
-    const message = `${JSON.stringify({type: 'user', message: {role: 'user', content: prompt}})}\n`;
-    const answered = runProcess(this.binary, args, message, {cwd: folder, env, timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool, started});
-    // The next one starts once this question is answered: started beside it, its ~2 s of start-up slowed this answer by ~0.5 s (replay, 11 Oct 2026).
-    return answered.finally(() => this.constructor.spares.keep(key, () => {
-      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
-      const child = this.spawnFn(this.binary, args, {cwd, env, stdio: ['pipe', 'pipe', 'pipe']});
+  // An ask that reads no file: its process starts now, while it waits for its turn (cli-spares.js); null keeps the one plain call.
+  coming(args) {
+    if (!args.includes('--input-format')) return null;
+    const key = `${this.binary}\0${JSON.stringify(args)}`;
+    this.constructor.spares.asked(key, () => this.startAhead(args));
+    return key;
+  }
+
+  left(key) { if (key) this.constructor.spares.gone(key); }
+
+  // A process for `args` in a folder of its own (never the call's: the call removes that while Claude Code may still close down), waiting for its prompt.
+  startAhead(args) {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
+    try {
+      const child = this.spawnFn(this.binary, args, {cwd, env: this.env(), stdio: ['pipe', 'pipe', 'pipe']});
       child.on?.('close', () => fs.rmSync(cwd, {recursive: true, force: true}));
       return child;
-    }));
+    } catch (error) { fs.rmSync(cwd, {recursive: true, force: true}); throw error; }
+  }
+
+  // The call's process: the one started ahead for its key if one waits, else one started now; it returns at its result line.
+  runCall(args, prompt, folder, key) {
+    if (!key) return super.runCall(args, prompt, folder);
+    let started = this.constructor.spares.take(key);
+    if (!started) { try { started = this.startAhead(args); } catch { started = null; } }   // a start that fails is said by runProcess, as before
+    const message = `${JSON.stringify({type: 'user', message: {role: 'user', content: prompt}})}\n`;
+    return runProcess(this.binary, args, message, {cwd: folder, env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
+      started, answered: line => { const event = jsonLine(line); return event.type === 'result' && !event.is_error && !String(event.subtype || 'success').startsWith('error'); }});
   }
 
   parse(finished) {
