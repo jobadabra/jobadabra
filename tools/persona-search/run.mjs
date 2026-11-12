@@ -14,6 +14,8 @@
 // --change-field: a JSON list of role titles; before press 2 they replace the roles through the Strategy page's own edit (lib/strategy-edit.js editLists,
 //   which redrafts the old field's words), and the search is marked changed: the owner's path, a field change on an existing install then Find jobs again (26 Oct 2026).
 // Each press's row also has its funnel (funnel.py: employers picked, sites and boards read, web searches, jobs listed) for the search robot's alarm.
+// --beside: each press as the app runs it, with the job boards that refuse plain reading read beside it in Jobadabra's own headless Chrome (beside.mjs; Playwright's Chromium as
+//   the runtime); live only, so never with --replay. Each press's row gets headless_boards: {state, read, jobs, fits, of}.
 // --first-only: stop after the first-jobs step (boards read, local jobs listed; ~6 min instead of 20-25): the discover, light run and scout steps are skipped (24 Oct 2026, the beyond-Moldova checks).
 // --judge: after each press, how many of the top 10 are right for the persona (judge.py, plan engine only; never on --engine api).
 // Writes <out>/<name>/draft.json, run-<press>.log and presses.jsonl (one JSON line per press: tools/persona-search/metrics.py + time).
@@ -48,6 +50,7 @@ if (tape && process.argv.includes('--replay') && Number(waitScale) === 0 && proc
   console.error('--wait-scale 0 with JOBADABRA_TAPE_BUDGET=0: the replay\'s own clock would cut each stage at another place every run. Use --wait-scale 1, or drop JOBADABRA_TAPE_BUDGET=0 to replay the recording\'s clock decisions.');
   process.exit(2);
 }
+if (process.argv.includes('--beside') && process.argv.includes('--replay')) { console.error('--beside reads live boards in a real browser: not with --replay (a replay stays offline)'); process.exit(2); }
 if (process.argv.includes('--speed')) { console.error('--speed is gone (it multiplied the waits, so 20 meant 20x slower): use --wait-scale, 0 = no wait'); process.exit(2); }
 if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these three on)
   if (process.argv.includes('--record') === process.argv.includes('--replay')) { console.error('--tape needs --record or --replay'); process.exit(2); }
@@ -90,6 +93,8 @@ const apiKey = process.env.JOBADABRA_PERSONA_CODEX === '1' ? 'codex-relay-placeh
 if (api && !apiKey) { console.error('--engine api needs RANDOM_DRAWS_ANTHROPIC_KEY or PR_PROOF_ANTHROPIC_KEY'); process.exit(2); }
 if (api) storage.setSecret('ANTHROPIC_API_KEY', apiKey);
 storage.saveSettings({aiEngine: api ? 'api' : 'cli', ...(api ? {} : {claudeCode: {path: realClaude() || (process.env.JOBADABRA_TAPE_LIVE === '0' ? process.execPath : '')}}), store: 'sqlite', telemetry: false, shareEmployers: false});
+
+const beside = process.argv.includes('--beside') ? await (await import('./beside.mjs')).besideFor(storage, dir, searchRun) : null;
 
 const metrics = (script = 'metrics.py', ...args) => JSON.parse(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', script), ...args], {cwd: ROOT, env: {
   ...process.env, PYTHONPATH: ROOT, JOBADABRA_NO_DOTENV: '1', JOBADABRA_FOLLOW_APP: '0',
@@ -153,12 +158,15 @@ for (let press = done + 1; press <= presses; press++) {
   // The paired benchmark switches only its own engine children; pipelineEnv intentionally drops inherited feature switches.
   const exec = (store, args, onLine, extraEnv = {}, options) => (firstOnly && calls++ > 0 ? Promise.resolve({code: 0})
     : searchRun(store, args, onLine, {...extraEnv, ...(process.argv.includes('--with-eures') ? {JOBADABRA_EURES: '1'} : {}), ...(process.argv.includes('--without-eures') ? {JOBADABRA_DISABLE: [extraEnv.JOBADABRA_DISABLE, 'eures'].filter(Boolean).join(',')} : {})}, options));
-  const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
+  const onLog = line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`);
+  const steps = () => searchSteps(storage, onLog, 'run', press === 1 ? 'first' : 'you', exec);
+  const {code} = beside ? await beside.press(steps, onLog) : await steps();
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
   const row = {press, started: new Date(started).toISOString(), code, crashes, eures: euresMode(), ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
     search: searchSummary(),
     ...(changed ? {field_changed: changed} : {}),
+    ...(beside ? {headless_boards: beside.last()} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);
   if (tape) metrics('ttfr.py', '--jobs', path.join(out, `jobs-${press}.json`), '--since', new Date(started).toISOString());   // each job in the places, for the press's yardstick (tools/press-yardstick/three_numbers.py)
@@ -168,5 +176,6 @@ for (let press = done + 1; press <= presses; press++) {
   if (crashes.length) { failed.push(...crashes); console.log(`PRESS ${name} ${press} FAILED: ${crashes.map(crash => `${crash.step}: ${crash.error}`).join(' | ')}`); }
   console.log(`PRESS ${name} ${press} (EURES: ${process.argv.includes('--with-eures') ? 'on' : 'off'}): ${row.in_places} in places, ${row.scored_in_places} scored, ${row.fit70_in_places} fit 70+ (${row.seconds} s${first})${verdict ? `; top 10: ${verdict.right} of ${verdict.of} right` : ''}`);
 }
+await beside?.close();
 if (failed.length) { console.log(`PERSONA FAILED ${name}: ${failed.length} crash(es), the numbers above are not a clean run`); process.exitCode = 1; }
 else console.log(`PERSONA DONE ${name}`);
