@@ -94,9 +94,8 @@ class OnlyTheRecordingPathIsSerialized(unittest.TestCase):
         return WORKFLOW[start:start + 1 + nxt.start()] if nxt else WORKFLOW[start:]
 
     def test_a_look_runs_gaps_and_decide_and_nothing_that_records(self):
-        for name in ('guard',):
-            self.assertIn("(inputs.min_gaps == '' || inputs.queued)", self.job(name), name)
-        self.assertIn('needs.guard.outputs.go', self.job('record'))   # record follows guard: a look's guard is skipped, so its record is too
+        self.assertIn("(inputs.min_gaps == '' || inputs.queued)", self.job('guard'))   # a look's guard is skipped, and so is everything after it
+        self.assertIn('needs.guard.outputs.go', self.job('record'))
         self.assertIn("needs.decide.outputs.daily == 'true' || needs.record.result != 'skipped'", self.job('table'))   # a look that records nothing has no table
 
     def test_a_look_over_the_line_queues_one_run_and_only_when_none_is_waiting(self):
@@ -108,11 +107,10 @@ class OnlyTheRecordingPathIsSerialized(unittest.TestCase):
         self.assertIn('-f queued=true', queue)
         self.assertIn('-f min_gaps=', queue)
 
-    def test_a_waiting_guard_does_not_stand_down_for_a_look(self):
-        guard = self.job('guard')
-        self.assertIn('displayTitle', guard)
-        self.assertIn('hourly look', guard)
-        self.assertIn("hourly look", WORKFLOW[:WORKFLOW.index('\non:')])   # the run-name tells a look from a re-record
+    def test_the_run_name_tells_a_look_from_a_re_record(self):
+        # the guard's `newer()` filter reads this title (executed against fake runs in test_press_tapes_auto_guard.py)
+        self.assertIn('hourly look', WORKFLOW[:WORKFLOW.index('\non:')])
+        self.assertIn('hourly look', self.job('guard'))
 
 
 if __name__ == '__main__':

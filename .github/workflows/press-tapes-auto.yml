@@ -134,8 +134,8 @@ jobs:
           due() { m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) )); [ "$m" -ge 1380 ] || [ "$m" -lt 10 ]; }
           blocked() { held; if due; then echo "the night Search check is due at 00:00 UTC"; fi; }
           mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
-          # An hourly look is not a newer re-record: it runs beside this one (its own group) and records nothing, so its title is skipped (13 Nov 2026, sa on #3943).
-          newer() { for state in pending queued waiting; do gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status "$state" --json createdAt,url,displayTitle --jq ".[] | select(.createdAt > \"$mine\") | select(.displayTitle | test(\"hourly look\") and (test(\"queued by\") | not) | not) | .url" || true; done; }
+          # Neither an hourly look nor the run a look queued (both titled "the hourly look") is a newer re-record: a look records nothing, and the queued one applies the line (12) and the 6 h, so a daily or by-hand run (any gap records) that stood down for it would record nothing (Gitar on #3947, 13 Nov 2026).
+          newer() { for state in pending queued waiting; do gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status "$state" --json createdAt,url,displayTitle --jq ".[] | select(.createdAt > \"$mine\") | select(.displayTitle | test(\"hourly look\") | not) | .url" || true; done; }
           for _ in $(seq 1 150); do
             n=$(newer)
             if [ -n "$n" ]; then
