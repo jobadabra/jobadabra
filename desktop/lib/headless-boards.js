@@ -86,30 +86,43 @@ const line = (name, answer) => {
 
 /**
  * Read the refused boards the engine queued, one at a time, in the owned browser. Every seam is injected: browser {ready, send, targetSocket}, start(), queue() -> [{url, name, kind}],
+ * changed(signal) -> true once the board memory changed since the last ask, false at Stop or the press's deadline (none: the queue is asked once),
  * begin(item) -> true when the engine spent today's share for it (before its page loads), judge(page) -> page_state or null, outcome(page) -> the engine's answer, openCdp.
  * A board the press's deadline or Stop did not reach waits for the next press (nothing is spent or kept for it). The engine owns what each verdict means (refused_reads.outcome).
+ * Invariants: at most MAX_BOARDS opened a press, an address at most once a press, the browser starts only when a board is due.
  * -> {state: 'off'|'no-browser'|'failed'|'done'|'stopped', jobs, fits?, read?, of?}.
  */
-export async function boardsStep({browser, start, queue, begin, judge, outcome, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
+export async function boardsStep({browser, start, queue, changed = null, begin, judge, outcome, openCdp = openCdpSession, tee = () => {}, signal = null, now = Date.now, sleep = nap}) {
   if (signal?.aborted) return {state: 'stopped', jobs: 0};
-  const list = (await queue().catch(() => [])).filter(mayRead).slice(0, MAX_BOARDS);
-  if (!list.length || signal?.aborted) return {state: 'off', jobs: 0};
-  if (!browser.ready()) { tee(WORDS['no-browser']); return {state: 'no-browser', jobs: 0}; }
-  try { await start(); } catch { tee(WORDS.failed); return {state: 'failed', jobs: 0}; }
-  tee(`Job boards: reading ${list.length} that refuse plain reading in Jobadabra's browser, 1 at a time`);
-  const total = {jobs: 0, fits: 0, read: 0};
-  for (const [index, item] of list.entries()) {
-    if (index) await sleep(2000 + Math.random() * 2000, signal);   // a gap between boards, like a person
+  const total = {jobs: 0, fits: 0, read: 0}, tried = new Set();
+  let started = false, spent = false, listed = 0;
+  // Why (13 Nov 2026, night 43313523472): asked once at second 0, a person's first press had nothing queued: its boards refuse the plain reader
+  // at ~30 s (p1 Jobs.bg at 28 s, p3 Jobat at 33 s); the engine keeps each refusal as it happens (board_ideas.keep_board), so the queue is asked again then
+  do {
+    const list = (await queue().catch(() => [])).filter(item => mayRead(item) && !tried.has(item.url)).slice(0, MAX_BOARDS - tried.size);
     if (signal?.aborted) break;
-    if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); break; }   // spent before the page loads: a read killed mid-way is not repeated today
-    const got = await readOne({browser, openCdp, url: item.url, judge, signal, now, sleep}).catch(() => null);
-    if (signal?.aborted) break;
-    const page = got?.page || {url: item.url, status: 0, html: '', title: '', final: item.url};
-    const answer = await outcome({...page, step: 'headless', ...(got?.state ? {judged: got.state} : {})}).catch(() => null);   // not judged (a busy AI): no verdict is made up
-    const name = item.name || new URL(item.url).hostname;
-    if (!answer) { tee(`Job boards: ${name}: not read (no answer from the engine)`); continue; }
-    total.read += 1; total.jobs += answer.jobs || 0; total.fits += answer.fits || 0;
-    tee(line(name, answer));
-  }
-  return {state: signal?.aborted ? 'stopped' : 'done', ...total, of: list.length};
+    if (list.length && !started) {
+      if (!browser.ready()) { tee(WORDS['no-browser']); return {state: 'no-browser', jobs: 0}; }
+      try { await start(); } catch { tee(WORDS.failed); return {state: 'failed', jobs: 0}; }
+      started = true;
+    }
+    if (list.length) tee(`Job boards: reading ${list.length} that refuse plain reading in Jobadabra's browser, 1 at a time`);
+    listed += list.length;
+    for (const item of list) {
+      if (tried.size) await sleep(2000 + Math.random() * 2000, signal);   // a gap between boards, like a person
+      if (signal?.aborted) break;
+      if (!(await begin(item).catch(() => false))) { tee(WORDS.spent); spent = true; break; }   // spent before the page loads: a read killed mid-way is not repeated today
+      tried.add(item.url);
+      const got = await readOne({browser, openCdp, url: item.url, judge, signal, now, sleep}).catch(() => null);
+      if (signal?.aborted) break;
+      const page = got?.page || {url: item.url, status: 0, html: '', title: '', final: item.url};
+      const answer = await outcome({...page, step: 'headless', ...(got?.state ? {judged: got.state} : {})}).catch(() => null);   // not judged (a busy AI): no verdict is made up
+      const name = item.name || new URL(item.url).hostname;
+      if (!answer) { tee(`Job boards: ${name}: not read (no answer from the engine)`); continue; }
+      total.read += 1; total.jobs += answer.jobs || 0; total.fits += answer.fits || 0;
+      tee(line(name, answer));
+    }
+  } while (changed && !spent && tried.size < MAX_BOARDS && !signal?.aborted && await changed(signal).catch(() => false));
+  if (!started) return {state: signal?.aborted ? 'stopped' : 'off', jobs: 0};
+  return {state: signal?.aborted ? 'stopped' : 'done', ...total, of: listed};
 }

@@ -139,3 +139,64 @@ test('an engine answer that never came is not counted as a board read', async ()
   assert.deepEqual(result, {state: 'done', jobs: 0, fits: 0, read: 0, of: 1});
   assert.match(lines.at(-1), /Board 1: not read/);
 });
+
+// A first press: the queue is empty at second 0 and the plain reader is refused by a board at ~30 s (night 43313523472: p1's Jobs.bg at 28 s, p3's Jobat at 33 s).
+// The step asks the queue again each time the board memory changes, until Stop or the press's deadline; the caps hold for the whole press.
+function later(lists, {changes = lists.length - 1, share = Infinity} = {}) {
+  const fake = fakeBrowser({});
+  const asked = [], outcomes = [], lines = [];
+  let started = 0, begun = 0, told = 0;
+  const queue = async () => { asked.push(asked.length); return lists[Math.min(asked.length - 1, lists.length - 1)]; };
+  const changed = async () => told++ < changes;
+  return boardsStep({browser: fake.browser, start: async () => { started++; }, queue, changed, begin: async () => begun++ < share, judge: async () => 'page',
+    outcome: async page => { outcomes.push(page.url); return {ok: true, state: 'read', jobs: 2, fits: 1}; }, openCdp: fake.openCdp, tee: line => lines.push(line), sleep: async () => {}})
+    .then(result => ({result, asked, outcomes, lines, started: () => started}));
+}
+
+test('a board refused later in the same press is read when the board memory changes', async () => {
+  const a = board(1);
+  const {result, outcomes, asked, started} = await later([[], [a]]);
+  assert.deepEqual(outcomes, [a.url]);
+  assert.equal(asked.length, 2, 'asked at the start, then once after the change');
+  assert.equal(started(), 1, 'the browser starts only when a board is due');
+  assert.deepEqual(result, {state: 'done', jobs: 2, fits: 1, read: 1, of: 1});
+});
+
+test('the queue is not asked again while the board memory is unchanged; nothing due: nothing starts', async () => {
+  const {result, asked, started, lines} = await later([[]], {changes: 0});
+  assert.equal(asked.length, 1);
+  assert.equal(started(), 0);
+  assert.deepEqual(lines, []);
+  assert.deepEqual(result, {state: 'off', jobs: 0});
+});
+
+test('a board already read in this press is never opened again, and MAX_BOARDS holds across the queue\'s answers', async () => {
+  const first = [board(1), board(2), board(3)];
+  const {outcomes} = await later([first, [...first, board(4), board(5), board(6), board(7)], [board(8)]]);
+  assert.deepEqual(outcomes, [1, 2, 3, 4, 5].map(n => board(n).url));
+});
+
+test('today\'s share spent on a board named later: nothing more is opened and the step ends', async () => {
+  const {outcomes, asked, lines} = await later([[board(1)], [board(2)], [board(3)]], {share: 1});
+  assert.deepEqual(outcomes, [board(1).url]);
+  assert.equal(asked.length, 2, 'not asked again after the engine said the share is used');
+  assert.match(lines.at(-1), /today's reads in Jobadabra's browser are used/);
+});
+
+test('the board memory watch: true once the file changed, false at the engine\'s end with nothing new, one last look first', async () => {
+  const {memoryWatch} = await import('../../../lib/headless-boards-beside.js');
+  let stamp = 1;
+  const ended = new AbortController();
+  const looks = [];
+  const watch = memoryWatch('/nowhere/found_boards.json', {sleep: async () => {}, stat: async () => { looks.push(stamp); return stamp; }});
+  await watch.mark();
+  stamp = 2;
+  assert.equal(await watch.changed(null, ended.signal), true, 'a write since the mark');
+  ended.abort();
+  stamp = 3;
+  assert.equal(await watch.changed(null, ended.signal), true, 'the engine ended right after its last write: still seen');
+  assert.equal(await watch.changed(null, ended.signal), false, 'ended and nothing new: the step ends');
+  const stop = new AbortController();
+  stop.abort();
+  assert.equal(await watch.changed(stop.signal, null), false, 'Stop: no look at all');
+});
