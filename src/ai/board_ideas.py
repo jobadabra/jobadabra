@@ -283,7 +283,7 @@ def _families(search):
 def ranked(boards, search):
     """The boards best first by what they gave installs with this user's role families in these countries (owner, 18 Oct 2026: "relevant
     jobs per role"): jobs in their places per install, then fit 70+ per install; 'rank' is kept on each board (0: no data for this user).
-    Boards without data keep their order after the ranked ones."""
+    Boards without data keep their order after the ranked ones. 'measured' is kept when the Central Scout's own read gave one of those cells."""
     if not any(board.get('cells') for board in boards):
         return boards
     families = _families(search)
@@ -292,6 +292,8 @@ def ranked(boards, search):
         installs = sum(cell['installs'] for cell in cells)
         board['rank'] = round(sum(cell['in_places'] for cell in cells) / installs, 1) if installs else 0
         board['rank_fit70'] = round(sum(cell['fit70'] for cell in cells) / installs, 1) if installs else 0
+        if any(cell.get('measured') for cell in cells):
+            board['measured'] = True   # the Central Scout read this board and saw this family's jobs located in this country
     return sorted(boards, key=lambda board: (-board['rank'], -board['rank_fit70']))
 
 
@@ -301,10 +303,14 @@ def proven(search, limit=2):
     Why (12 Nov 2026): jobs in places alone were enough, and a pool cell is one install's whole list credited to each of its families
     (installs 1, fit70 0): an electrician in Madrid and a car mechanic in Seville were "proven" an IT board, so no proposal was ever asked
     for Spain and the full board stage (which asks it) started past the read cut. Jobs in places without a fit job rank the board
-    (`ranked`, `_merge`) but do not skip the proposal."""
+    (`ranked`, `_merge`) but do not skip the proposal.
+    Why (12 Nov 2026, owner: "We should now from the start what boards/employers we should read first"; "I agree"): a cell the Central Scout
+    measured itself also proves its board, with no fit count: the Scout read the board and the AI saw this family's jobs on it, located in this
+    country, which one install's whole list never showed. 6 of 154 recorded first searches started from a proven board; the Scout's rows carry
+    fit70 0 by construction. Not a board it could read only in a browser (`browser`): the slice reads plainly."""
     from .. import places
     countries = places.countries(search, limit=None)
-    return [board for board in ranked(served(countries), search) if board.get('rank') and board.get('rank_fit70')][:limit] if countries else []
+    return [board for board in ranked(served(countries), search) if board.get('rank') and (board.get('rank_fit70') or board.get('measured') and not board.get('browser'))][:limit] if countries else []
 
 
 def _merge(own, shared):

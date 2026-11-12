@@ -109,7 +109,7 @@ def _cells(items):
     for cell in items if isinstance(items, list) else []:
         if isinstance(cell, dict) and all(isinstance(cell.get(k), str) for k in ('family', 'country')) and \
                 all(isinstance(cell.get(k), int) and cell[k] >= 0 for k in ('installs', 'in_places', 'fit70')) and cell['installs'] > 0:
-            out.append({k: cell[k] for k in ('family', 'country', 'installs', 'in_places', 'fit70')})
+            out.append({**{k: cell[k] for k in ('family', 'country', 'installs', 'in_places', 'fit70')}, **({'measured': True} if cell.get('measured') is True else {})})   # measured: the Central Scout's own read gave this cell (jobadabra-web api/employers.js boardCells)
     return out
 
 

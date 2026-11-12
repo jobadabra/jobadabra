@@ -173,6 +173,25 @@ class RankTests(Fixture):
         merged = board_ideas._merge([board(7), board(8)], [{**board(1), 'rank': 0}, {**board(2), 'rank': 0, 'rank_fit70': 0}, {**board(3), 'rank': 2.5}])
         self.assertEqual([b['host'] for b in merged], ['b3.example', 'b7.example', 'b8.example', 'b1.example', 'b2.example'])
 
+    def test_a_board_the_scout_measured_for_your_field_is_proven_without_a_fit_count(self):
+        """12 Nov 2026 (owner: "We should now from the start what boards/employers we should read first"): 6 of 154 recorded first searches started
+        from a proven board; the Central Scout's own cells carry fit70 0 and never proved one. Its read of another field, or in a browser, proves nothing."""
+        measured = lambda family: {**self.cell(family, 1, 14), 'measured': True}
+        facts = self.served({1: [measured('nursing_care')], 2: [measured('software_dev')], 3: [measured('nursing_care')], 4: [self.cell('nursing_care', 1, 40)]})
+        facts['board']['b3.example']['browser'] = True
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'nursing_care'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            self.assertEqual([b['host'] for b in board_ideas.proven(SEARCH, limit=6)], ['b1.example'])
+
+    def test_the_scouts_mark_on_a_cell_survives_the_index_read_only_as_true(self):
+        index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
+                            'relevant': [{**self.cell('nursing_care', 1, 14), 'measured': True}, {**self.cell('software_dev', 1, 9), 'measured': 'yes'}]}]}
+        cache = self.data / 'employer_index.json'
+        cache.write_text(json.dumps(index))
+        with mock.patch('src.employer_index.CACHE', cache):
+            cells = POOL_FACTS()['board']['b1.example']['relevant']
+        self.assertEqual(cells, [{**self.cell('nursing_care', 1, 14), 'measured': True}, self.cell('software_dev', 1, 9)])
+
     def test_the_index_cells_are_read_in_their_fixed_shape_only(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
                             'relevant': [self.cell('accounting_finance', 3, 6), {'family': 'x', 'country': 'nl', 'installs': 'many'}, 'junk']}]}
