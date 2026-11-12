@@ -7,7 +7,7 @@
 //   e2e.yml      -night_pass: n/5  the night burn-in: five full runs at fixed UTC times (NIGHT_SLOTS below), each on the commit of pass 1
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
 //   search-personas.yml           the Search check's night run (SEARCH_SLOT below) and its week, 5 runs a person (SEARCH_WEEKLY)
-//   press-tapes-auto.yml          the day's one re-record of the Find jobs recordings (TAPES_SLOT below)
+//   press-tapes-auto.yml          the day's catch-all re-record of the Find jobs recordings (TAPES_SLOT below) and the hourly look that records only when many people have a gap (TAPES_CHECK below)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   pr-labels.yml                 sets every open PR's Gitar label from Gitar's latest comment every 10 minutes (7 Nov 2026, gl): Gitar closes a finding by editing its comment, which starts no event
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
@@ -30,6 +30,13 @@ export const SEARCH_SLOT = '00:00';
 // once after a day's merges instead of after each merge"): it rides the ten-minute trigger, after the night's passes (the last starts 05:30) and after Thursday's Search week (SEARCH_WEEKLY below: 03:00, about 7 h, ends about 10:00), which would
 // hold the broker past the re-record guard's 5 h wait and end that day's run red (Gitar on #3899, 12 Nov 2026); a by-hand Search check still makes its guard wait.
 export const TAPES_SLOT = '10:30';
+// The hourly look at how stale the recordings are (press-tapes-auto.yml input min_gaps), at this minute of every hour except TAPES_SLOT's, UTC. Why (13 Nov 2026, owner, asked via AskUserQuestion by mac-9a:
+// "When the replay finds many empty": "The daily replay re-records by itself when it sees several people with 0 jobs, then re-runs. It only spends a run when the recordings are stale."; rejected: "By hand after merge
+// batches", "Add a second daily slot"): on 12 Nov 22 search merges landed after the 16:20Z re-record and the replay read 0 jobs for 14 of 18 people. The look is the workflow's offline gap check (no AI call); below `minGaps`
+// people with a gap it ends with one summary line, at or above it records them and replays again. The line, 12 of 18 (Why, 13 Nov 2026): the gap check read 12-18 people (median 15) on each of the 17 checks of 12 Nov, a day of about 60 search
+// merges, so a line near 6 would re-record every 2-3 h on a busy day (the 8 re-records a day that "saved Codex-plan calls" ended on 12 Nov); 12 is the lowest count seen on that stale day and two thirds of the people. A quiet day stays under it, and the
+// 10:30 run records whatever gap is left. TODO(AI): read the count right after a full re-record (about 0-2 expected, not yet measured: no check ran between a re-record and the next merges) and lower the line if the day's tail stays stale (13 Nov 2026).
+export const TAPES_CHECK = {minute: 30, minGaps: 12};
 export const STORE_WATCH_MINUTE = 20;
 // The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
 // one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).
@@ -59,6 +66,7 @@ export function jobsFor(cron, now = new Date()) {
     if (hhmm(now) === AGENT_SLOT) jobs.push({workflow: 'ai-user-agents.yml', inputs: {scheduled: 'true'}});
     if (hhmm(now) === SEARCH_SLOT) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true'}});
     if (hhmm(now) === TAPES_SLOT) jobs.push({workflow: 'press-tapes-auto.yml'});
+    else if (now.getUTCMinutes() === TAPES_CHECK.minute) jobs.push({workflow: 'press-tapes-auto.yml', inputs: {min_gaps: String(TAPES_CHECK.minGaps)}});   // the hourly look, never beside the day's run
     if (now.getUTCDay() === SEARCH_WEEKLY.day && hhmm(now) === SEARCH_WEEKLY.time) jobs.push({workflow: 'search-personas.yml', inputs: {scheduled: 'true', presses: '5'}});
     // Why (5 Nov 2026, owner: "when Microsoft accepts a new release version, I'd like to get a message on telegram"): Microsoft certifies for hours to days, so an hourly look (minute 20) tells him within the hour;
     // it rides this trigger (no 4th trigger can be registered) and costs one Ubuntu minute unless a submitted version waits (msix-store-watch.yml).
