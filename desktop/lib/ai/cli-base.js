@@ -45,12 +45,13 @@ export function conversation(request, names = []) {
 
 // One process: {stdout, stderr, code}, or {error: {kind: 'timeout' | 'missing', text}}. The prompt goes on stdin. started: a process already
 // started with these args (cli-spares.js), used instead of starting one. answered(line): a stdout line that completes the answer; the call
-// returns there, as a run that ended well, and the process closes down by itself (killed if it has not after ANSWERED_CLOSE_MS).
+// returns there, as a run that ended well with the stderr written so far, and the process closes down by itself (killed if it has not after
+// ANSWERED_CLOSE_MS); a non-zero exit or stderr after the answer is said through late(text), never dropped (Gitar on #3937): the answer stands.
 // Why (as, 12 Nov 2026; owner: "let's make sure we cover all AI calls"): `codex exec` closed down 0.7-1.5 s after its answer line, Claude Code
 // ~0.25-0.8 s after its result (telemetry, then exit) on the owner's Mac. A failed answer is never cut short: it waits for the exit code and stderr.
 // own: the process's working directory is a folder of its own, removed once it has closed (a process that answers before it closes must not
 // run in the call's folder, which the call removes at once: Windows refuses to remove a running process's working directory).
-export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null, answered = null, own = ''} = {}) {
+export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS, spawnFn = spawn, tool = 'The AI', started = null, answered = null, own = '', late = null} = {}) {
   return new Promise(resolve => {
     let child = started;
     const folder = !child && own ? fs.mkdtempSync(path.join(os.tmpdir(), own)) : '';
@@ -68,10 +69,15 @@ export function runProcess(binary, args, prompt, {cwd, env, timeout = TIMEOUT_MS
         const line = stdout.slice(seen, end);
         seen = end + 1;
         if (answered(line)) {
-          finish({stdout: stdout.slice(0, seen), stderr: '', code: 0});
+          const said = stderr.length;
+          finish({stdout: stdout.slice(0, seen), stderr, code: 0});
           const guard = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* already gone */ } }, ANSWERED_CLOSE_MS);
           guard.unref?.();
-          child.on('close', () => clearTimeout(guard));
+          child.on('close', code => {
+            clearTimeout(guard);
+            const after = stderr.slice(said).trim();
+            if (late && (code !== 0 || after)) late(`${tool} closed with exit code ${code ?? 'killed'} after its answer${after ? `: ${after.slice(0, 500)}` : ''}`);
+          });
           return;
         }
       }

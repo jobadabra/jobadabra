@@ -137,7 +137,7 @@ export class Codex extends CliAdapter {
   // the person's own ~/.codex config (+57 input tokens). The engine does the same (#3936: src/ai/providers/codex_cli.py answer_line).
   runCall(args, prompt) {
     return runProcess(this.binary, args, prompt, {env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
-      own: 'jobadabra-codex-run-', answered: line => jsonLine(line).type === 'turn.completed'});
+      own: 'jobadabra-codex-run-', late: text => this.log(`Warning: ${text}`), answered: line => jsonLine(line).type === 'turn.completed'});
   }
 
   async complete(request) { return super.complete(await withPdfsAsPages(request, this.pdfReader ?? pdfReader)); }

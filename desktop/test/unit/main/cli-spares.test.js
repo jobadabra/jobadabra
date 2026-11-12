@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {test} from 'node:test';
 
+import {jsonLine, runProcess} from '../../../lib/ai/cli-base.js';
 import {sparePool} from '../../../lib/ai/cli-spares.js';
 import {ClaudeCode} from '../../../lib/ai/claude-code-cli.js';
 import {Codex} from '../../../lib/ai/codex-cli.js';
@@ -19,7 +20,7 @@ function fakeSpawner({lines = defaultLines, hold = false} = {}) {
     Object.assign(child, {args, cwd: options.cwd, input: null, asked: 0, exitCode: null, killed: false, stdout: new EventEmitter(), stderr: new EventEmitter()});
     const close = code => { if (child.exitCode === null) { child.exitCode = code; child.emit('exit', code); child.emit('close', code); } };
     child.kill = () => { child.killed = true; close(137); };
-    child.release = () => close(0);
+    child.release = (code = 0) => close(code);
     child.stdin = {on: () => {}, end: input => setImmediate(() => {
       child.asked += 1;
       child.input = input;
@@ -141,4 +142,32 @@ test('Claude Code and Codex calls return at their answer line while the process 
   await assert.rejects(new Codex({binary: '/fake/codex-limit', run: features, env: {}, spawnFn: failed.spawnFn, log: () => {}})
     .messages.create({model: 'claude-haiku-5-5', max_tokens: 10, messages: [{role: 'user', content: 'SRE?'}]}), error => error.kind === 'limit');
   for (const child of [...spawned, ...codex.spawned]) child.release();
+});
+
+test('after its answer line, a failed exit or late stderr is logged, never dropped; the stderr written before the answer stays on the result', async () => {
+  // Gitar on #3937: the answer-line return used to say stderr '' and drop whatever the process did after its answer. The answer stands (the
+  // CLI said its turn completed); what follows is the process closing down, now said as a warning with its exit code and stderr.
+  const turn = [{type: 'item.completed', item: {type: 'agent_message', text: 'yes'}}, {type: 'turn.completed', usage: {input_tokens: 9}}];
+  const out = `${turn.map(event => JSON.stringify(event)).join('\n')}\n`;
+  const {spawned, spawnFn} = fakeSpawner({hold: true, lines: () => ({out, err: 'reading config\n'})});
+  const notes = [];
+  const result = await runProcess('/fake/codex', [], 'q', {spawnFn, tool: 'Codex', late: text => notes.push(text), answered: line => jsonLine(line).type === 'turn.completed'});
+  assert.deepEqual([result.code, result.stderr, result.stdout], [0, 'reading config\n', out]);
+  assert.deepEqual(notes, [], 'positive control: nothing said before it closed');
+  spawned[0].stderr.emit('data', 'telemetry upload failed');
+  spawned[0].release(1);
+  assert.deepEqual(notes, ['Codex closed with exit code 1 after its answer: telemetry upload failed']);
+
+  const clean = fakeSpawner({hold: true, lines: () => ({out, err: 'reading config\n'})});
+  await runProcess('/fake/codex', [], 'q', {spawnFn: clean.spawnFn, tool: 'Codex', late: text => notes.push(text), answered: line => jsonLine(line).type === 'turn.completed'});
+  clean.spawned[0].release(0);
+  assert.equal(notes.length, 1, 'a clean close after the answer says nothing');
+
+  const logged = [];
+  const codex = fakeSpawner({hold: true, lines: () => ({out})});
+  const said = await new Codex({binary: '/fake/codex-late', run: (bin, args, opts, done) => done(null, '', ''), env: {}, spawnFn: codex.spawnFn, log: text => logged.push(text)})
+    .messages.create({model: 'claude-haiku-5-5', max_tokens: 10, messages: [{role: 'user', content: 'SRE?'}]});
+  assert.equal(said.content[0].text, 'yes', 'the answer stands');
+  codex.spawned[0].release(2);
+  assert.ok(logged.some(text => text.startsWith('Warning: Codex closed with exit code 2 after its answer')), 'the app log says it');
 });

@@ -147,7 +147,7 @@ export class ClaudeCode extends CliAdapter {
     if (!key) return super.runCall(args, prompt, folder);
     const message = `${JSON.stringify({type: 'user', message: {role: 'user', content: prompt}})}\n`;
     return runProcess(this.binary, args, message, {env: this.env(), timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool,
-      started: this.constructor.spares.take(key), own: 'jobadabra-claude-', answered: line => { const event = jsonLine(line); return event.type === 'result' && !event.is_error && !String(event.subtype || 'success').startsWith('error'); }});
+      started: this.constructor.spares.take(key), own: 'jobadabra-claude-', late: text => this.log(`Warning: ${text}`), answered: line => { const event = jsonLine(line); return event.type === 'result' && !event.is_error && !String(event.subtype || 'success').startsWith('error'); }});
   }
 
   parse(finished) {
