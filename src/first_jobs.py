@@ -39,10 +39,11 @@ def to_score(db, hidden):
     return eligible(db, hidden)
 
 
-def board_jobs(say=print, search=None):
+def board_jobs(say=print, search=None, on_board=None):
     """The jobs (as read) of the job boards that gave installs like this one the most jobs in their places (no AI call: the pool's
     ranking, src/ai/board_ideas.py proven), else of the first boards proposed for this search's countries that never refused us; read now,
-    and the full search's board read reuses the pages fetched here. Touches no job cache: it runs beside the employer sites' read."""
+    and the full search's board read reuses the pages fetched here. Touches no job cache: it runs beside the employer sites' read.
+    on_board(jobs): each board's jobs as soon as that board is kept (found_boards.read), so one slow board holds back none of the others."""
     if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return []
     from .ai import board_ideas
@@ -62,7 +63,7 @@ def board_jobs(say=print, search=None):
         say(f"First jobs: reading {', '.join(board['name'] for board in top)}, job board{'s' if len(top) > 1 else ''} for your country")
     # a board that refuses gives its place to the next proposed one at once, in the same read (19 Oct 2026: a second wave after the first
     # made Finance's slice wait 35 s)
-    return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare)
+    return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare, on_board=on_board)
 
 
 _early = {}   # the slice's board proposal asked once the employers are named (propose_early): {'search': ..., 'future': ...}
