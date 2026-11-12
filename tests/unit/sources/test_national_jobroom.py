@@ -2,9 +2,11 @@
 address, from a recorded answer shape (tests/fixtures/sources/jobroom-zurich.json: ads and employers made up). Owner, 12 Nov 2026, asked via AskUserQuestion by sa:
 "Read it now"; typed: "Let's try to read. ONly if we'll get 401 or 403, we'll ask for permission". No network, no AI."""
 import json
+import tempfile
 import unittest
 import urllib.error
 import urllib.parse
+from pathlib import Path
 from unittest import mock
 
 from src.sources import host_pace, national
@@ -43,6 +45,15 @@ class Response:
 
 
 class JobRoomTest(Placed):
+    def setUp(self):
+        super().setUp()
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.kept = Path(folder.name) / 'jobroom_refused.json'
+        refused = mock.patch.object(national, '_jobroom_refused', return_value=self.kept)
+        refused.start()
+        self.addCleanup(refused.stop)
+
     def test_a_zurich_search_asks_job_rooms_search_by_point_and_radius_and_lists_the_ads_in_switzerland(self):
         feed = Feed()
         jobs = national.read(JOBROOM, search('Zurich'), get=feed)
@@ -94,10 +105,39 @@ class JobRoomTest(Placed):
     def test_through_the_sites_pace_a_403_is_one_request_never_a_second(self):
         host_pace.reset()
         refused = urllib.error.HTTPError(national.JOBROOM_SEARCH, 403, 'Forbidden', {}, None)
-        with mock.patch('urllib.request.urlopen', side_effect=refused) as opened, self.assertRaises(urllib.error.HTTPError):
+        with mock.patch('urllib.request.urlopen', side_effect=refused) as opened, self.assertRaises(national.Refused):
             national._jobroom_get(national._switzerland_url('Lagerist', None, 0))
         self.assertEqual(opened.call_count, 1)
 
+    def test_a_403_right_after_a_fast_burst_is_still_one_request_and_kept_for_the_next_run(self):   # #3920, Gitar: host_pace reads that 403 as "too fast" once
+        host_pace.reset()
+        answers = [Response(RECORDED['rows'], total=500)] * 3 + [urllib.error.HTTPError(national.JOBROOM_SEARCH, 403, 'Forbidden', {}, None)]
+        sent = []
+
+        def opened(request, timeout=None):
+            sent.append(request)
+            answer = answers[len(sent) - 1]
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        with mock.patch.object(host_pace, 'turn'), mock.patch('urllib.request.urlopen', side_effect=opened):   # no wait between the four: a burst
+            for page in range(3):
+                national._jobroom_get(national._switzerland_url('Lagerist', None, page * national.PAGE))
+            with self.assertRaises(national.Refused):
+                national._jobroom_get(national._switzerland_url('Lagerist', None, 3 * national.PAGE))
+            self.assertEqual(len(sent), 4, 'the refused page is not asked a second time')
+            self.assertEqual(json.loads(self.kept.read_text())['status'], 403)
+            self.assertIs(national._jobroom_get(national._switzerland_url('Lagerist', None, 0)), national.OFF, 'a later run does not ask Job-Room')
+            self.assertEqual(national.read(JOBROOM, search('Zurich')), [])
+        self.assertEqual(len(sent), 4)
+        self.assertIn('refused (403)', self.out.getvalue())
+
+    def test_with_no_total_header_a_full_page_asks_the_next_and_a_short_one_is_the_last(self):   # #3920, Gitar
+        full = [RECORDED['rows'][0]] * national.PAGE
+        with mock.patch.object(host_pace, 'open', return_value=Response(full)):
+            self.assertGreater(national._jobroom_get(national._switzerland_url('Lagerist', None, national.PAGE))['total'], 2 * national.PAGE)
+        with mock.patch.object(host_pace, 'open', return_value=Response(RECORDED['rows'])):
+            self.assertEqual(national._jobroom_get(national._switzerland_url('Lagerist', None, national.PAGE))['total'], national.PAGE + 5)
 
 if __name__ == '__main__':
     unittest.main()

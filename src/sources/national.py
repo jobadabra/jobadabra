@@ -16,6 +16,7 @@ Read by: src/sources/reader_rows.py (one row per service, in the free job APIs' 
 import http.client
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -173,17 +174,51 @@ def _switzerland_url(word, place, offset):
                                   headers={'User-Agent': ats.USER_AGENT, 'Content-Type': 'application/json', 'Accept': 'application/json'})
 
 
+class Refused(OSError):
+    """Job-Room said 401 or 403. Not an HTTPError, so host_pace's burst slow-down (a 403 right after 3 fast requests) never asks a second time."""
+
+
+def _jobroom_refused():
+    """Where Job-Room's refusal is kept (the data folder): while the file is there, the source is off for this install."""
+    from ..paths import DATA
+    return DATA / 'jobroom_refused.json'
+
+
+def _jobroom_open(request, timeout):
+    """urllib's urlopen for host_pace, where a 401 or 403 is kept in _jobroom_refused() and raised as Refused, said in one line of the run's log."""
+    try:
+        return urllib.request.urlopen(request, timeout=timeout)
+    except urllib.error.HTTPError as error:
+        if error.code not in (401, 403):
+            raise
+        kept = _jobroom_refused()
+        try:
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            kept.write_text(json.dumps({'status': error.code, 'at': time.strftime('%Y-%m-%d %H:%M:%S')}) + '\n')
+        except OSError:
+            pass   # the read still fails now; the next run asks once more and is refused again
+        print(f'Job-Room: refused ({error.code}); not asked again on this install until permission is asked from SECO and {kept.name} is removed', flush=True)
+        raise Refused(f'Job-Room refused ({error.code})') from error
+
+
 def _jobroom_get(request):
-    """{'rows': the page's ads, 'total': all that match} for one Job-Room page, at the site's pace (host_pace). Why (12 Nov 2026, owner, asked via AskUserQuestion by sa:
-    "Read it now"; typed: "Let's try to read. ONly if we'll get 401 or 403, we'll ask for permission"): the address is undocumented and SECO has not offered it for reuse, so a
-    401 or 403 ends the source for good (host_pace never retries it; the read fails as "source failed", never as 0 jobs) and is the owner's cue to write to SECO. Only the title,
-    employer, place, date and link of an ad are kept, never its text. An answer that is not a list of ads is the read's failure."""
+    """{'rows': the page's ads, 'total': all that match} for one Job-Room page, at the site's pace (host_pace), or OFF once Job-Room has refused this install.
+    Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Read it now"; typed: "Let's try to read. ONly if we'll get 401 or 403, we'll ask for permission";
+    #3920, Gitar): the address is undocumented and SECO has not offered it for reuse, so a 401 or 403 ends the source for good: it is never asked again, not even
+    once after a fast burst, and is kept across runs (_jobroom_refused) until the owner has asked SECO; the refused read fails as "source failed", never as 0 jobs.
+    Only the title, employer, place, date and link of an ad are kept, never its text. An answer that is not a list of ads is the read's failure. With no
+    x-total-count header a full page reads as "more may follow" (the next page is asked) and a short one as the last."""
     from . import host_pace
-    with host_pace.open(request, 20) as response:
+    if _jobroom_refused().exists():
+        return OFF
+    with host_pace.open(request, 20, opener=_jobroom_open) as response:
         rows, total = json.load(response), response.headers.get('x-total-count')
     if not isinstance(rows, list):
         raise ValueError('Job-Room answered something other than a list of ads')
-    return {'rows': rows, 'total': int(total) if str(total).isdigit() else len(rows)}
+    if str(total).isdigit():
+        return {'rows': rows, 'total': int(total)}
+    page = int((urllib.parse.parse_qs(urllib.parse.urlsplit(request.full_url).query).get('page') or ['0'])[0])
+    return {'rows': rows, 'total': page * PAGE + len(rows) + (1 if len(rows) >= PAGE else 0)}
 
 
 def _switzerland_rows(answer):
