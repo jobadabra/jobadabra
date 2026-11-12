@@ -621,6 +621,20 @@
     "https://www.benedict.ch/jobs"
    ],
    "signature": "posting@www.benedict.ch#posting"
+  },
+  {
+   "shape": "Discovery: careers.tecan.com",
+   "urls": [
+    "https://careers.tecan.com/job/Financial-Accountant/1450126833/"
+   ],
+   "signature": "posting>account-form>posting>account-form@career5.successfactors.eu#form"
+  },
+  {
+   "shape": "Discovery: sonova.com",
+   "urls": [
+    "https://www.sonova.com/careers"
+   ],
+   "signature": "other>posting>other>posting@www.sonova.com#posting"
   }
  ]
 }
