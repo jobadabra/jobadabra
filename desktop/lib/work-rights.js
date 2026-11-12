@@ -2,6 +2,7 @@
 // the Profile"): derived from Profile → Your details → Work eligibility, the one owner, and written to config/work-rights.json, which nothing else writes
 // (preferences.json is replaced whole by several writers). The engine reads it through src/work_rights.py. Guarded by test/unit/main/work-rights.test.js.
 import {fragmentWords} from '../renderer/fragment-words.js';
+import {log} from './log.js';
 import {OLDER, STATUSES, ZONES, eligibilityOf, isAsked, isOldLine, zoneOfLabel} from '../renderer/work-eligibility.js';
 
 export const FILE = 'config/work-rights.json';
@@ -36,14 +37,20 @@ export function olderRights(storage) {
 
 /**
  * Writes config/work-rights.json from these Work eligibility lines when what it says changed. -> true when written.
- * Invariant: until lib/work-rights-move.js has carried the older Strategy list into the Profile (settings.workRightsMovedAt), that list rides along, so a
- * Profile save before the move never drops a right the engine read.
+ * Invariants: until lib/work-rights-move.js has carried the older Strategy list into the Profile (settings.workRightsMovedAt), that list rides along, so a
+ * Profile save before the move never drops a right the engine read. Never throws: a failed write is logged and returns false (Why, #3862 review: the
+ * Profile was already saved or read; the engine keeps its last copy until the next open writes it).
  */
 export function writeRights(storage, lines) {
-  const rights = rightsOf(lines);
-  if (!storage.settings().workRightsMovedAt) rights.work_rights = unique([...rights.work_rights, ...olderRights(storage)]);
-  const next = JSON.stringify(rights, null, 2) + '\n';
-  if (storage.readText(FILE) === next) return false;
-  storage.writeText(FILE, next);
-  return true;
+  try {
+    const rights = rightsOf(lines);
+    if (!storage.settings().workRightsMovedAt) rights.work_rights = unique([...rights.work_rights, ...olderRights(storage)]);
+    const next = JSON.stringify(rights, null, 2) + '\n';
+    if (storage.readText(FILE) === next) return false;
+    storage.writeText(FILE, next);
+    return true;
+  } catch (failed) {
+    log('profile', 'the work rights file was not written', {error: failed.message});
+    return false;
+  }
 }

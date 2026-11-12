@@ -38,9 +38,17 @@ class WorkRights(unittest.TestCase):
         self.assertNotIn('EU', words, 'never the whole block')
         self.assertEqual(work_rights.words(rights, []), ['United Kingdom'], 'no own places: the permit clears nothing')
 
+    def test_many_free_rights_never_crowd_out_the_permit(self):
+        """#3862 review: the cap of 10 applied after the permit was added, so a person open in a whole zone lost the permit sentence."""
+        rights = {'work_rights': [f'Country {n}' for n in range(12)], 'permit_zones': ['EU / EEA + Switzerland'], 'unread': []}
+        words = place_triage.places_words(GENEVA, rights)['work_rights']
+        self.assertEqual(words[-1], 'a work permit in EU / EEA + Switzerland, valid only in the country of: geneva')
+        self.assertEqual(len(words), 11, 'ten plain words, then the permit')
+
     def test_the_visa_question_reads_the_profiles_rights(self):
+        """Read at call time: a patched src.paths.CONFIG holds (#3862: a CONFIG bound at import ignored it)."""
         folder = self.config(**{'work-rights.json': {'work_rights': ['Romania', 'EU'], 'permit_zones': []}})
-        with mock.patch.object(work_rights, 'CONFIG', folder):
+        with mock.patch('src.paths.CONFIG', folder):
             self.assertEqual(place_triage.places_words(GENEVA, place_triage._preferences())['work_rights'], ['Romania', 'EU'])
 
 

@@ -69,3 +69,9 @@ test('owner\'s scenario on open: the rights fold into the zones, an answered zon
   assert.ok(rights.work_rights.includes('United Kingdom') && !rights.work_rights.includes('Canada') && !rights.work_rights.includes('eu'));
   assert.deepEqual(rights.unread, []);
 });
+
+test('a failed write of the engine\'s copy never fails the Profile read or save: it is logged and returns false (#3862 review)', () => {
+  const storage = fresh();
+  const broken = {...storage, settings: storage.settings, readText: storage.readText, writeText: () => { throw new Error('ENOSPC: no space left'); }};
+  assert.equal(writeRights(broken, [zone('United States', 'yes, freely')]), false);
+});

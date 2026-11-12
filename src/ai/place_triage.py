@@ -65,7 +65,7 @@ def places_words(search, preferences=None):
     return {'best_places': plain_words(places['top_tier'])[:20], 'anywhere_in': plain_words(places['country_wide'])[:20],
             'cities_abroad': plain_words(places['abroad'])[:20], 'remote_jobs': _TO_AI[my_places.remote_word(search)],
             'remote_limited_to_regions_they_cannot_work_from': terms(search.get('remote_excluded_regions'))[:20],
-            'work_rights': work_rights.words(preferences or {}, plain_words(places['top_tier']) + plain_words(places['country_wide']))[:10]}
+            'work_rights': work_rights.words(preferences or {}, plain_words(places['top_tier']) + plain_words(places['country_wide']))}
 
 
 def _preferences():
