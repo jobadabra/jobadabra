@@ -26,7 +26,8 @@ export function linkedinReadBrowser(storage, deps = {}) {
   return {...browser, dispose};
 }
 
-async function removeFolder(folder) {
+/** Delete a read browser's folder, trying again while a closing helper still writes. -> true when it is gone. Also the job boards' read (lib/headless-boards-beside.js). */
+export async function removeFolder(folder) {
   for (let attempt = 0; attempt < 5; attempt++) {
     try { fs.rmSync(folder, {recursive: true, force: true}); } catch { /* a helper still writing: tried again */ }
     if (!fs.existsSync(folder)) return true;

@@ -4,7 +4,7 @@
 // The refused sites due now, for the current search (src/sources/refused_reads.py queue: rests, the AI judge); [] on any failure.
 export async function dueSites(storage, run) {
   try {
-    const {stdout} = await run(storage, ['src.desktop', 'refused-queue']);
+    const {stdout} = await run(storage, ['src.desktop', 'refused-queue', '--kind', 'employer']);   // Why (12 Nov 2026, owner: "Boards now, employers next (Recommended)"): boards are read by the Find jobs press (lib/headless-boards.js)
     return JSON.parse(String(stdout).trim().split('\n').pop()).sites || [];
   } catch { return []; }
 }

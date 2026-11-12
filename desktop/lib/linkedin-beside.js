@@ -9,7 +9,7 @@ import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as visits from './visits.js';
 import {log as appLog} from './log.js';
 
-/** -> {step(signal, onLine), searches(), score(fits, onLine)} for withLinkedin (lib/search-beside.js). */
+/** -> {step(signal, onLine), searches(), score(fits, onLine)} for withBeside (lib/search-beside.js). */
 export function linkedinSeams(storage, {browser = null, readBrowser = linkedinReadBrowser, readSession, runEngine = pipeline.run, run = visits.runAll, end = visits.done, port = Number(process.env.JOBADABRA_PORT || 47111), refresh = realRefresh,
   openCdp} = {}) {   // openCdp: the tab's CDP opener; left out, linkedinStep's own (lib/cdp-session.js). A stand-in browser passes its own (integration/app/linkedin-read.test.js)
   const searches = async () => {

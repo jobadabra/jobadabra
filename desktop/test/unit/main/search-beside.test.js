@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
-import {besideSteps, ownPress, setLinkedinStep, withLinkedin} from '../../../lib/search-beside.js';
+import {besideSteps, ownPress, setLinkedinStep, withBeside} from '../../../lib/search-beside.js';
 import {createRefresh} from '../../../lib/linkedin-refresh.js';
 
 const storage = {};
@@ -11,7 +11,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const base = (extra = {}) => ({recorded: [], scored: [], ...extra});
 
 test('no step registered: the engine\'s steps run alone and their result is returned as it is', async () => {
-  assert.deepEqual(await withLinkedin(storage, () => {}, null, async () => ({code: 0, result: 'r'}), {step: null}), {code: 0, result: 'r'});
+  assert.deepEqual(await withBeside(storage, () => {}, null, async () => ({code: 0, result: 'r'}), {step: null}), {code: 0, result: 'r'});
 });
 
 test('the step starts with the engine\'s steps, not after them, and both are awaited', async () => {
@@ -19,7 +19,7 @@ test('the step starts with the engine\'s steps, not after them, and both are awa
   const step = async () => { order.push('step start'); await wait(20); order.push('step end'); return {state: 'done', jobs: 3}; };
   const main = async () => { order.push('main start'); await wait(5); order.push('main end'); return {code: 0}; };
   const r = base();
-  assert.deepEqual(await withLinkedin(storage, () => {}, null, main, {step, deadlineMs: 500, record: (_, row) => r.recorded.push(row)}), {code: 0});
+  assert.deepEqual(await withBeside(storage, () => {}, null, main, {step, deadlineMs: 500, record: (_, row) => r.recorded.push(row)}), {code: 0});
   assert.deepEqual(order.slice(0, 2).sort(), ['main start', 'step start']);
   assert.deepEqual(order.slice(2), ['main end', 'step end']);
   assert.equal(r.recorded.length, 1, 'the verdict is recorded once');
@@ -30,8 +30,8 @@ test('the step starts with the engine\'s steps, not after them, and both are awa
 test('a step that is off writes nothing; a step that throws never fails the search', async () => {
   const r = base();
   const record = (_, row) => r.recorded.push(row);
-  assert.deepEqual(await withLinkedin(storage, () => {}, null, async () => ({code: 0}), {step: async () => ({state: 'off', jobs: 0}), record}), {code: 0});
-  assert.deepEqual(await withLinkedin(storage, () => {}, null, async () => ({code: 0}), {step: async () => { throw new Error('x'); }, record}), {code: 0});
+  assert.deepEqual(await withBeside(storage, () => {}, null, async () => ({code: 0}), {step: async () => ({state: 'off', jobs: 0}), record}), {code: 0});
+  assert.deepEqual(await withBeside(storage, () => {}, null, async () => ({code: 0}), {step: async () => { throw new Error('x'); }, record}), {code: 0});
   assert.deepEqual(r.recorded, []);
 });
 
@@ -40,9 +40,9 @@ test('Stop ends the step at once; so does a failing search, which is still throw
   let seen = null;
   const step = async signal => { seen = signal; await new Promise(resolve => signal.addEventListener('abort', resolve, {once: true})); return {state: 'stopped', jobs: 0}; };
   setTimeout(() => stop.abort(), 10);
-  await withLinkedin(storage, () => {}, stop.signal, async () => { await wait(40); return {code: null}; }, {step, deadlineMs: 5000, record: () => {}});
+  await withBeside(storage, () => {}, stop.signal, async () => { await wait(40); return {code: null}; }, {step, deadlineMs: 5000, record: () => {}});
   assert.equal(seen.aborted, true, 'Stop reached the step');
-  await assert.rejects(withLinkedin(storage, () => {}, null, async () => { throw new Error('engine broke'); }, {step, deadlineMs: 5000, record: () => {}}), /engine broke/);
+  await assert.rejects(withBeside(storage, () => {}, null, async () => { throw new Error('engine broke'); }, {step, deadlineMs: 5000, record: () => {}}), /engine broke/);
   assert.equal(seen.aborted, true, 'a failing search ends the step too');
 });
 
@@ -52,14 +52,14 @@ test('the press\'s deadline ends the step even when the engine\'s steps take lon
   let release;
   const engineMayFinish = new Promise(resolve => { release = resolve; });
   const step = async signal => { await new Promise(resolve => signal.addEventListener('abort', () => { order.push('step cut'); release(); resolve(); }, {once: true})); return {state: 'done', jobs: 1}; };
-  await withLinkedin(storage, () => {}, null, async () => { await engineMayFinish; order.push('engine done'); return {code: 0}; }, {step, deadlineMs: 20, record: () => {}});
+  await withBeside(storage, () => {}, null, async () => { await engineMayFinish; order.push('engine done'); return {code: 0}; }, {step, deadlineMs: 20, record: () => {}});
   assert.deepEqual(order, ['step cut', 'engine done'], 'the deadline cuts the step while the engine runs on, and the press waits for the engine');
 });
 
 test('the light scoring runs after both, for the jobs LinkedIn added, only with time left and not after a Stop', async () => {
   const r = base();
   const step = fits => async () => ({state: 'done', jobs: 8, fits});
-  const run = (fits, extra = {}) => withLinkedin(storage, () => {}, extra.signal || null, async () => ({code: 0}),
+  const run = (fits, extra = {}) => withBeside(storage, () => {}, extra.signal || null, async () => ({code: 0}),
     {step: step(fits), score: async n => { r.scored.push(n); }, record: () => {}, deadlineMs: 500, ...extra});
   await run(5);
   assert.deepEqual(r.scored, [5]);
@@ -79,7 +79,7 @@ test('a Stop pressed after the engine\'s steps ended, while LinkedIn is still re
   const step = async signal => { await new Promise(resolve => { signal.addEventListener('abort', () => { endedBy = 'stop'; resolve(); }, {once: true}); setTimeout(resolve, 400); }); return {state: 'stopped', jobs: 0}; };
   setTimeout(() => stop.abort(), 30);
   const started = Date.now();
-  await withLinkedin(storage, () => {}, stop.signal, async () => ({code: 0}), {step, deadlineMs: 5000, record: () => {}});
+  await withBeside(storage, () => {}, stop.signal, async () => ({code: 0}), {step, deadlineMs: 5000, record: () => {}});
   assert.equal(endedBy, 'stop');
   assert.ok(Date.now() - started < 300, 'it did not wait for the step\'s own 400 ms');
 });
@@ -121,7 +121,7 @@ test('#2731 the refresh wait is cut by the press\'s deadline, not only by its ow
   const step = async signal => { outcomes.push(await note.ask({signal})); return {state: 'stopped', jobs: 0}; };
   const main = async () => { outcomes.push('main'); return {code: 0}; };
   const r = base();
-  assert.deepEqual(await withLinkedin(storage, () => {}, null, main, {step, deadlineMs: 30, record: (_, row) => r.recorded.push(row)}), {code: 0});
+  assert.deepEqual(await withBeside(storage, () => {}, null, main, {step, deadlineMs: 30, record: (_, row) => r.recorded.push(row)}), {code: 0});
   assert.deepEqual(outcomes, ['main', 'stopped'], 'the engine ran at once; the wait ended with the deadline');
   assert.ok(Date.now() - started < 5000, 'seconds, not the 70 s cap');
 });
