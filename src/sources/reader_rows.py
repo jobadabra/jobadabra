@@ -61,6 +61,27 @@ def _eures_on(env):
     return not disabled('aggregators', env) and enabled('eures', env)
 
 
+def _national_read(service):
+    """One national employment service's read (src/sources/national.py read), looked up at call time, so a test's patch of national.read is the one read."""
+    def read(run, search):
+        from . import national
+        return national.read(service, search)
+    return read
+
+
+def _national_on(env):
+    """On wherever the free job APIs are, from source and on CI too: our own source, measured as one (owner, 12 Nov 2026: "Yes, add them (Recommended)");
+    JOBADABRA_DISABLE=national turns every service off."""
+    from ..features import disabled
+    return not disabled('aggregators', env) and not disabled('national', env)
+
+
+def _national_rows():
+    from . import national
+    return tuple(Row(service.name, _national_read(service), _national_on, 'free_job_apis') for service in national.SERVICES)   # its own country only (it returns nothing otherwise)
+
+
 ROWS = (
     Row('EURES', _eures_read, _eures_on, 'eures'),   # the portal's countries only (it returns nothing otherwise)
+    *_national_rows(),
 )

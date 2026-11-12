@@ -12,7 +12,7 @@ from unittest import mock
 
 from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
-from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, reader_rows
+from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, national, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
 from src.press import stage
 
@@ -72,6 +72,7 @@ class LanesTest(phases.SearchCharacterization):
         patches += [mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}),   # EURES is a lane like any other here, behind its own gate
                     mock.patch.object(board_ideas, 'asked_for', return_value=['site reliability boards']),
                     *[mock.patch.object(aggregators, api, side_effect=refuse) for api in ('himalayas', 'jobicy', 'jobsch')],   # every free API a stand-in: no live site
+                    mock.patch.object(national, 'read', side_effect=refuse),   # the national services too (src/sources/national.py)
                     mock.patch.object(aggregators, 'technical_search', return_value=True),   # Jobicy is asked too (IT searches only)
                     mock.patch.object(time_budget.time, 'monotonic', side_effect=lambda: real_monotonic() + jumped[0])]
         # Why (lanes 1/5, #3780's CI): the real starters turn the search's own tallies on; left so, they broke the next tests in the same process

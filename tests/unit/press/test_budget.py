@@ -10,7 +10,7 @@ from src.press import budget
 
 ROOT = Path(__file__).resolve().parents[3]
 MODULES = {'time_budget': 'src.time_budget', 'read_budget': 'src.sources.read_budget', 'boards': 'src.sources.boards',
-           'boards_first': 'src.sources.boards_first', 'eures': 'src.sources.eures', 'first_jobs': 'src.first_jobs', 'title_triage': 'src.ai.title_triage',
+           'boards_first': 'src.sources.boards_first', 'eures': 'src.sources.eures', 'national': 'src.sources.national', 'first_jobs': 'src.first_jobs', 'title_triage': 'src.ai.title_triage',
            'daily_search_scoring': 'src.daily_search_scoring', 'run_exit': 'src.run_exit'}
 APP = {'SEARCH_BUDGET_S': 'desktop/lib/pipeline-args.js', 'SCOUT_SHARE_S': 'desktop/lib/search-steps.js',
        'STOP_MARGIN_S': 'desktop/lib/search-steps.js', 'STEP_MIN_S': 'desktop/lib/search-steps.js'}

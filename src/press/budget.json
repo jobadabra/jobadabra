@@ -33,6 +33,8 @@
   {"name": "eures.LAST_PAGE", "value": 3, "unit": "s", "why": "seconds a page asked just before the stop time still gets", "pr": "#3305"},
   {"name": "eures.MOST", "value": 200, "unit": "count", "why": "per read: a read returned 173-234 jobs before areas (#2918), so the AI steps after it keep their load", "pr": "#3305"},
   {"name": "eures.KEEP", "value": 100, "unit": "count", "why": "per area: enough near home, the next place gets its turn", "pr": "2026-10-27"},
+  {"name": "national.PAGES", "value": 2, "unit": "count", "why": "pages of a national employment service read per role word and place (100 ads a page in Sweden's feed): the best matches first, the rest waits for another search", "pr": "2026-11-12"},
+  {"name": "national.MOST", "value": 300, "unit": "count", "why": "ads of a national employment service kept per read, so the titles' AI after it keeps its load (Stockholm, customer support: 45 ads within 30 km for one word, 12 Nov 2026)", "pr": "2026-11-12"},
   {"name": "first_jobs.SLICE", "value": 15, "unit": "count", "why": "feeds read first, before the full read, so a first Find jobs run puts its first jobs on screen early", "pr": "2026-10-16"},
   {"name": "first_jobs.FIRST_JOBS", "value": 3, "unit": "count", "why": "jobs scored first, at once", "pr": "2026-10-16"},
   {"name": "first_jobs.MAX_FIRST", "value": 10, "unit": "count", "why": "scored at most in the slice while none fits FIT+ yet: the full search would score these same best-ranked jobs anyway", "pr": "2026-10-18"},
