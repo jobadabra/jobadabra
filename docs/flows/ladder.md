@@ -45,7 +45,8 @@ Spec: `docs/superpowers/specs/2026-10-12-one-next-move.md`.
 | Raise a cap only with the owner's say-so | Skip a rung that is off or capped; press Submit; pass a bot check |
 
 Floors never move: never Submit, never a consent on an application, never a bot check or SMS code, never read a password field, one press per control per tab,
-no AI = nothing pressed. A rung's answer is accepted only when it is one of the fixed answers and names something the page itself shows.
+no AI answer = only the posting's own Apply button is pressed (the shared Apply words, once per tab: it opens a form, never sends one), nothing else.
+Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the press, fix the doc (Recommended)"): `extension/fill-flow-steps.js` `pressPosting` presses the shared Apply phrases when the page-kind AI named no button; the old line "no AI = nothing pressed" said the opposite. A rung's answer is accepted only when it is one of the fixed answers and names something the page itself shows.
 
 ## How a change is judged (the safety net)
 | Layer | What | Run |
