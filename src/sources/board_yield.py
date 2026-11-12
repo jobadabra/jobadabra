@@ -24,12 +24,51 @@ def is_relevant(jobs):
     return [job for job in jobs if feeds.wanted_title(job.get('title')) and feeds.wanted_location(job)]
 
 
+# Why (12 Nov 2026, owner via sa, asked via AskUserQuestion: "Hold, learn the reason (Recommended)"): a board that needs a browser keeps why in
+# these fixed words, from the read that marked it (never the page's own words), so a round counts them by reason without asking any site again.
+REFUSED_WORDS = {'HTTP 401': 'HTTP 401', 'HTTP 403': 'HTTP 403', 'a bot check': 'a bot check page', 'bot check page': 'a bot check page'}   # what our readers say
+SCRIPTED_WORDS = 'a page built by scripts'   # not a refusal: its list needs a browser to run its scripts and none was here (found_boards._read)
+UNKNOWN = 'unknown'
+WORDS = {*REFUSED_WORDS.values(), SCRIPTED_WORDS, UNKNOWN}
+
+
+class Needs(str):
+    """A board read's 'browser' state that carries why in WORDS' fixed words. It equals and saves as 'browser', so every reader of the state is
+    unchanged; a step that rebuilds a plain 'browser' drops the reason and record() keeps UNKNOWN. No run state is kept for it."""
+    def __new__(cls, why):
+        state = super().__new__(cls, 'browser')
+        state.why = why if why in WORDS else UNKNOWN
+        return state
+
+
+def refused(error):
+    """The 'browser' state of a read refused with `error` (an HTTP 401/403, or a reader's Refused: its status or bot check), said in fixed words."""
+    code = getattr(error, 'code', None)
+    if code in (401, 403):
+        return Needs(f'HTTP {code}')
+    return Needs(REFUSED_WORDS.get(str(error), UNKNOWN) if type(error).__name__ == 'Refused' else UNKNOWN)
+
+
+def scripted():
+    """The state of a page built by scripts with no browser here to run them: 'browser', said as SCRIPTED_WORDS."""
+    return Needs(SCRIPTED_WORDS)
+
+
+def refused_why(entry):
+    """The reason kept with a board marked 'browser' (record), UNKNOWN for one stored before reasons were kept."""
+    return entry.get('refused') or UNKNOWN
+
+
 def record(entry, listed, relevant, state):
     """Keep this read in the board's entry: jobs listed, relevant jobs and the state (ok: it listed jobs; empty; browser: only a person's
-    browser reads it). Whether it is dropped is its history in source_yield (dead)."""
+    browser reads it), with the state's reason (Needs) kept only for 'browser'. Whether it is dropped is its history in source_yield (dead)."""
     entry.update({'jobs': listed, 'relevant': relevant, 'last_yield': date.today().isoformat()})
     entry.pop('misses', None)   # kept here before 18 Oct 2026; the history is source_yield's now
     entry['state'] = 'browser' if state == 'browser' else 'ok' if listed else 'empty'
+    if entry['state'] == 'browser':
+        entry['refused'] = getattr(state, 'why', UNKNOWN)
+    else:
+        entry.pop('refused', None)
 
 
 def dead(db):
