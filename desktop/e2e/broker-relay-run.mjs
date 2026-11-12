@@ -34,9 +34,14 @@ export function outcomeOf(stats, job) {
   return {line, summary, why: stats.latched ? `${stats.refused} AI calls were refused (${first}); ${effect}` : `${stats.refused} of ${stats.calls} AI calls failed (${first}); ${effect}`};
 }
 
-/** Runs `argv` behind a relay; resolves to the command's exit code. Takes {job, cap, argv, env, dir}. */
-export async function runBehindRelay({job, cap = 0, argv, env = process.env, dir, answer}) {
-  const relay = await startRelay({cap, env, ...(answer ? {answer} : {})});
+/**
+ * Runs `argv` behind a relay; resolves to the command's exit code. Takes {job, cap, extra, argv, env, dir}.
+ * Invariant: the command's own limit is `cap`; the relay lets `cap + extra` calls through, `extra` being the calls of the steps the engine counts outside its cap.
+ * Why (12 Nov 2026, sa; lab scout runs 3-11 Nov, 12 of 12 read "0 boards proposed"): the engine gives the scout's board pass and its probe their own allowances
+ * outside the run's cap (src/ai/decide.py own_allowance, probe_allowance), but the relay stopped at the same number, so those calls were refused here after the feed pass had spent it.
+ */
+export async function runBehindRelay({job, cap = 0, extra = 0, argv, env = process.env, dir, answer}) {
+  const relay = await startRelay({cap: cap ? cap + extra : 0, env, ...(answer ? {answer} : {})});
   const code = await new Promise(resolve => {
     const child = spawn(argv[0], argv.slice(1), {stdio: 'inherit', env: childEnv(env, relay.url, cap)});
     child.on('error', error => { console.error(`::error::${job}: cannot start ${argv[0]}: ${error.message}`); resolve(127); });
@@ -52,8 +57,8 @@ export async function runBehindRelay({job, cap = 0, argv, env = process.env, dir
 async function main() {
   const args = process.argv.slice(2), split = args.indexOf('--');
   const flag = name => (args.indexOf(name) >= 0 && args.indexOf(name) < (split < 0 ? args.length : split) ? args[args.indexOf(name) + 1] : '');
-  if (split < 0 || split === args.length - 1) throw new Error('usage: broker-relay-run.mjs --job <name> [--cap <calls>] -- <command...>');
-  process.exitCode = await runBehindRelay({job: flag('--job') || 'ai job', cap: Number(flag('--cap')) || 0, argv: args.slice(split + 1)});
+  if (split < 0 || split === args.length - 1) throw new Error('usage: broker-relay-run.mjs --job <name> [--cap <calls>] [--extra <calls>] -- <command...>');
+  process.exitCode = await runBehindRelay({job: flag('--job') || 'ai job', cap: Number(flag('--cap')) || 0, extra: Number(flag('--extra')) || 0, argv: args.slice(split + 1)});
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) main().catch(error => { console.error(`::error::${error.message}`); process.exit(1); });
