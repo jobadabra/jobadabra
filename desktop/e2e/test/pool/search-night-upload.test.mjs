@@ -48,6 +48,21 @@ test('a refused, unreachable or oversized upload is one line and never throws', 
   assert.equal(await uploadSearchNight(verdictFile(), '42133678718', {env: CI, now: NOW, fetcher: async () => ({ok: true, json: async () => { throw new Error('not json'); }})}), 'search night: sent night 2026-11-07 (stored) to /admin/job-search/lab?tab=night');
 });
 
+// Why (12 Nov 2026, owner's 06:30 alert "Night search: no result last night"): the first night that measured all 18 people was 106,067 bytes as gate.py writes it (indented, with the
+// per-person results under `personas`, which only gate.py's own compare reads), over the cap, so Admin got no night. What is sent is compact and carries what the site reads.
+test('a fully measured night fits: the verdict is sent compact, without the per-person results the site never reads', async () => {
+  const row = n => ({persona: n, kind: 'measured', label: `Example role ${n}`, found: 40, local: 12, sources: {a: 1}, step_yield: 'x'.repeat(285), scout: 'y'.repeat(253)});
+  const verdict = {state: 'success', head: 'measured 18 of 18', eures: 'off', floors: {f: 1}, rows: Array.from({length: 18}, (_, i) => row(i + 1)), personas: Object.fromEntries(Array.from({length: 18}, (_, i) => [i + 1, {jobs: 'z'.repeat(5000)}]))};
+  const file = verdictFile(JSON.stringify(verdict, null, 1));
+  assert.ok(fs.statSync(file).size > MAX_BYTES, 'the file as written is over the cap, as on 12 Nov');
+  let sent;
+  const line = await uploadSearchNight(file, '43124127967', {env: CI, now: NOW, fetcher: async (url, init) => { sent = String(init.body); return {ok: true, json: async () => ({measured: 18, total: 18})}; }});
+  assert.match(line, /sent night 2026-11-07 \(measured 18 of 18\)/);
+  const {personas: _unread, ...kept} = verdict;
+  assert.deepEqual(JSON.parse(sent), kept, 'everything but `personas` arrives unchanged');
+  assert.equal(sent, JSON.stringify(kept), 'compact: no indent');
+});
+
 test('a by-hand run sends by_hand=1 and says it is stored beside the nights; the scheduled run does not (a by-hand run must never replace the night)', async () => {
   const calls = [];
   const fetcher = async (url, init) => { calls.push(url); return {ok: true, json: async () => ({ok: true, byHand: true})}; };

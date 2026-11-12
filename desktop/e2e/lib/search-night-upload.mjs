@@ -36,13 +36,25 @@ function destination(env, run, night) {
   return {week, byHand, label: week ? 'search week' : 'search night', url: `${url}${byHand ? '&by_hand=1' : ''}`, what: week ? 'the week of' : byHand ? 'a by-hand run' : 'night'};
 }
 
+// What goes over the wire: the verdict compact and without `personas`. A file that is not a JSON object goes as it is (the site answers 400 and the line says so).
+// Why (12 Nov 2026, owner's alert "Night search: no result last night", run 43124127967): gate.py writes verdict.json indented and with every person's full result under `personas`
+// for its own compare; the site reads `rows` and the verdict's own fields only (jobadabra-web admin/search-night.js clean). The first night with all 18 measured was 106,067 bytes
+// as written and was not sent; without the copy and the indent it is about 35,000.
+function wire(text) {
+  let verdict;
+  try { verdict = JSON.parse(text); } catch { return Buffer.from(text); }
+  if (!verdict || typeof verdict !== 'object' || Array.isArray(verdict)) return Buffer.from(text);
+  const {personas: _unread, ...sent} = verdict;
+  return Buffer.from(JSON.stringify(sent));
+}
+
 /** Upload the verdict file `file` as GitHub run `run`, filed under the UTC night of `now` (SEARCH_CHECK_SERIES=weekly: as the week starting that day, on its own route). -> one line for the job's log. */
 export async function uploadSearchNight(file, run, {env = process.env, fetcher = fetch, now = new Date()} = {}) {
   const night = now.toISOString().slice(0, 10), to = destination(env, run, night);
   const why = refusal(env, run);
   if (why) return `${to.label}: not sent (${why})`;
   if (!file || !fs.existsSync(file)) return `${to.label}: nothing to send (no verdict.json)`;
-  const body = fs.readFileSync(file);
+  const body = wire(fs.readFileSync(file, 'utf8'));
   if (body.length > MAX_BYTES) return `${to.label}: not sent (the verdict is ${body.length} bytes, over ${MAX_BYTES})`;
   if (['1', 'true'].includes(String(env.JP_CI_ROWS_DRY || '').toLowerCase())) return `${to.label}: dry run: would send ${body.length} bytes for ${to.what} ${night}`;
   try {
