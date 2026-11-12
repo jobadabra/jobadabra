@@ -53,9 +53,11 @@ class Verdict(unittest.TestCase):
             ci.band_mode(art, out)
         return json.loads((out / 'band.json').read_text())
 
-    def run_verdict(self, band, pairs, body=''):
-        """pairs: [(main kwargs, pr kwargs)] for pair 1..n -> (exit code, text)."""
+    def run_verdict(self, band, pairs, body='', controls=None):
+        """pairs: [(main kwargs, pr kwargs)] for pair 1..n; controls: {side: kwargs} of main's extra replays -> (exit code, text)."""
         art, out = self.fresh('art'), self.fresh('out')
+        for side, kwargs in (controls or {}).items():
+            replay(art, side, **kwargs)
         for (main, pr), (main_side, pr_side) in zip(pairs, verdict.PAIRS):
             replay(art, main_side, **main)
             replay(art, pr_side, **pr)
@@ -116,6 +118,27 @@ class Verdict(unittest.TestCase):
         code, text = self.run_verdict(self.band(), [({}, {'gap': True}), ({'gap': True}, {'gap': True}), ({'gap': True}, {'gap': True})])
         self.assertEqual(code, 0, 'main asks beyond the recording too in the 2 more pairs: an aged recording, never this PR\'s path')
         self.assertNotIn('recording too old for this PR', text)
+
+    def test_a_gap_that_mains_own_extra_replay_shows_too_is_the_replays_place_never_held(self):
+        """#3883, 12 Nov 2026: the PR side asked beyond the recording in 3 of 3 pairs on a PR whose change no replayed search runs."""
+        three = [({}, {'gap': True})] * 3
+        code, text = self.run_verdict(self.band(), three, controls={'ctl-2': {}, 'ctl-3': {'gap': True}})
+        self.assertEqual(code, 0, text)
+        self.assertNotIn('recording too old for this PR', text)
+        self.assertIn("the replay's place, not this PR", text)
+        code, text = self.run_verdict(self.band(), three, controls={'ctl-2': {}, 'ctl-3': {}})
+        self.assertEqual(code, 1, 'positive control: main stays within the recording in both extra replays, so the PR changed the path')
+        self.assertIn('recording too old for this PR', text)
+
+    def test_the_workflow_replays_every_control_on_mains_side_and_passes_the_art_folder(self):
+        """#3889, Gitar: a shell comment inside the run line dropped `art` and the tee, so no repeat pair and no control ever ran."""
+        text = (ROOT / '.github' / 'workflows' / 'press-yardstick.yml').read_text(encoding='utf-8')
+        line = next(line for line in text.splitlines() if 'replay.py recordings-again' in line)
+        sides = json.loads(line.split("'")[1])
+        self.assertEqual([side for side in sides if side.startswith('ctl')], list(verdict.CONTROLS))
+        self.assertTrue(all(sides[side] == 'sides/main' for side in verdict.CONTROLS))
+        self.assertEqual([side for pair in verdict.PAIRS[1:] for side in pair], [side for side in sides if not side.startswith('ctl')])
+        self.assertRegex(line.split("'")[2], r'^ art \| tee -a "\$GITHUB_STEP_SUMMARY"$')
 
     def test_a_recording_too_old_for_this_pr_is_held_by_a_live_moves_line_only(self):
         old = [({}, {'gap': True, 'right': False})]
