@@ -13,6 +13,7 @@ refused-sites exception): a board the plain reader is refused on (401/403, a bot
 our own user agent, a fresh context with no cookies, no stealth, load only). A refusal, a bot check or a sign-in page there is final for the scout's
 browser (scout_browser_final), never asked again; jobs located in the country make the same fact, marked browser: installs read it in Jobadabra's
 own headless Chrome (src/sources/refused_reads.py board_queue)."""
+import re
 import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -34,7 +35,8 @@ JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CAL
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
-PLACES, KINDS = 'central scout board places', 'central scout board kinds'   # the allowances' names
+PLACES, KINDS = 'central scout board places', 'central scout board kinds'
+HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')   # a by-hand host name (seed_final)   # the allowances' names
 
 
 def ensure(db):
@@ -48,6 +50,21 @@ def ensure(db):
 def browser_final(db, host):
     """True when the scout's headless browser was stopped at this board (a refusal, a bot check, a sign-in page): never asked again."""
     return db.execute('SELECT 1 FROM scout_browser_final WHERE host = ?', (host,)).fetchone() is not None
+
+
+def seed_final(db, text, out=print):
+    """Keep the hosts named in `text` (a by-hand list, commas or spaces) as stopped for the scout's browser before any board is read: a stop a trial
+    saw (a trial saves no memory) is then never opened again by a real pass. Only host-shaped names are kept; returns the hosts kept.
+    Why (12 Nov 2026, sa for the owner's "Final, never again (Recommended)" and "never retry a 401 or 403"): the Slovakia trial met a 403 in the
+    browser and kept nothing, so the first real pass would have opened that board again; the names stay in jobadabra-lab's run input, never here."""
+    hosts = [host for host in dict.fromkeys(part.strip().lower().removeprefix('www.') for part in re.split(r'[\s,]+', str(text or ''))) if HOST.fullmatch(host)]
+    stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
+    for host in hosts:
+        db.execute('INSERT OR IGNORE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', (host, 'stopped in a trial (named by hand)', stamp))
+    db.commit()
+    if hosts:
+        out(f"Board pass: kept as stopped for the browser, never opened: {', '.join(hosts)}")
+    return hosts
 
 
 def browse(board, search):

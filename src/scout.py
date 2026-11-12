@@ -215,6 +215,8 @@ def board_pass(db_path):
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
+        scout_boards.ensure(db)
+        scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
         try:
             scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
         finally:

@@ -91,6 +91,18 @@ class BoardPassTest(unittest.TestCase):
         self.assertEqual(again, [], 'a later pass never opens them in the browser again')
         self.assertEqual(scout_boards.facts(self.db), [])
 
+    def test_a_stop_seen_in_a_trial_and_named_by_hand_is_never_opened_by_the_next_real_pass(self):
+        # sa for the owner, 12 Nov 2026: "Final, never again" and "never retry a 401 or 403"; a trial saves no memory, so its stop is named by hand.
+        from src.sources import board_yield
+        scout_boards.ensure(self.db)
+        lines = []
+        kept = scout_boards.seed_final(self.db, 'Refusing.example, www.other.example  not a host, refusing.example', out=lines.append)
+        self.assertEqual(kept, ['refusing.example', 'other.example'])
+        self.assertIn('never opened: refusing.example, other.example', lines[0])
+        _, _, asked = self.browser_pass({'refusing.example': ([], board_yield.Needs('HTTP 403'), None)}, {})
+        self.assertEqual(asked, [], 'the real pass never opens it in the browser')
+        self.assertEqual(scout_boards.seed_final(self.db, ''), [], 'no input: nothing kept')
+
     def test_with_no_browser_here_the_pass_reads_as_before(self):
         from src.sources import board_yield
         got, line, _ = self.browser_pass({'a.md': ([], board_yield.Needs('HTTP 403'), None)}, {'a.md': None})
