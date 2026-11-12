@@ -10,6 +10,7 @@
 //          something else) is asked live, and a page the tape lacks fails as unreachable (nothing new is read). The table says per run whether the boards proposed match the recording
 //          ("draw not shared" when they do not), how many AI answers were live and how many pages were not on the tape. Off by default.
 //   --together: the refs search at the same time instead of one after the other (to measure whether two local searches move the 3-minute clock); at most 2 refs, so at most 2 searches at once.
+//   --usual-diff N: the person's usual run-to-run difference in listed jobs (p10: 15); with one run a side the table then says whether the PR is held (owner, 12 Nov 2026).
 //   --fresh-draft: make the person's saved search plan again.
 // What it cuts (a full local run, search-check.mjs, is 5-12 min): the CV (gate.py cv) and the strategy draft (one AI call of ~1 min) are made ONCE per person and kept in
 // <os temp>/jp-local-proof/people/p<n>/ (outside the repo and the app's folder; kept until macOS clears its temp folder), so every run searches for exactly the same thing
@@ -29,9 +30,11 @@ const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const args = process.argv.slice(2), person = Number(args[0]);
 const refs = args.flatMap((arg, i) => (arg === '--ref' ? [args[i + 1]] : []));
 const runs = args.includes('--runs') ? Number(args[args.indexOf('--runs') + 1]) : 1;
+// Why (Gitar on #3906): the one-run proof's verdict needs the person's usual run-to-run difference, which no run measures; the caller says it
+const usual = args.includes('--usual-diff') ? Number(args[args.indexOf('--usual-diff') + 1]) : null;
 // Why (12 Nov 2026, brief sa-pane-ns): at most 2 local searches at once on this Mac, so --together pairs two refs and no more.
-if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2)) {
-  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--fresh-draft]');
+if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2) || (usual !== null && !(usual >= 0))) {
+  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--usual-diff N] [--fresh-draft]');
   process.exit(2);
 }
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
@@ -149,5 +152,5 @@ for (let round = 1; round <= runs; round++) {
   if (limit && round < runs) { console.log(`  the AI stopped in ${limit.label} (${limit.limit.replace(/^\[\d+s\] (?:AI stopped: )?/, '').slice(0, 100)}): rounds ${round + 1}-${runs} are not started`); break; }
 }
 
-if (runs === 1) console.log(`\n${table(ran)}`);
+if (runs === 1) console.log(`\n${table(ran, usual)}`);
 else console.log(`\n${noise(trees.map((t, i) => ({label: t.label, runs: ran.filter(r => r.side === i)})), name, draw)}`);

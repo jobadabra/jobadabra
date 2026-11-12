@@ -60,7 +60,7 @@ export function drawShared(x, draw) {
 const tapeCell = (x, draw) => (x.tape ? `${drawShared(x, draw)} · ${x.tape.live.length} live · ${x.tape.pagesMissing} off tape` : '–');
 
 /** The printed table: one column per run (before | after when two). */
-export function table(runs) {
+export function table(runs, usual = null) {
   const r = runs.map(read), rows = [];
   const add = (what, f) => rows.push([what, ...r.map(x => { try { const v = f(x); return v == null ? '–' : String(v); } catch { return '–'; } })]);
   add('Code', x => x.label);
@@ -89,6 +89,7 @@ export function table(runs) {
   // Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after. not 3 (which are 6)"): one search a side, started together, is a search PR's proof;
   //   its difference is read against the person's usual one (11 Nov 2026, as, measured: the same code on p10 listed 46, 60 and 59 jobs as the web search found 3 or 5 boards)
   if (r.length > 1) lines.push('Rule (one search a side, owner 12 Nov 2026): a loss larger than this person\'s usual run-to-run difference holds the PR (p10: the same code listed 46-60, boards and web search vary); a gain is claimed only with its mechanism proven by a test.');
+  if (r.length === 2 && !r.some(notCounted)) lines.push(`Verdict (side 2 against side 1): ${verdict([r[0].row.in_places], [r[1].row.in_places], false, usual)}`);
   // Why (Gitar on #3831): the table reads the engine's log lines (src/ai/call_log.py, src/sources/job_stage.py); a run with a press row but no AI call line read means their format changed, said aloud instead of dashes
   for (const x of r) if (x.row && !x.calls.length) lines.push(`\n⚠️ ${x.label}: no "AI call:" line read from run-1.log: the log format changed (src/ai/call_log.py), so the AI rows are blank; fix local-proof-table.mjs AI_CALL`);
   for (const x of r) if (x.limit) lines.push(`\n⛔ NOT COUNTED (${x.label}): ${x.limit}`);
@@ -111,9 +112,15 @@ const LUCK = 0.05;   // Why (12 Nov 2026, sa-pane-ns): the usual 1-in-20 bar, fi
  * `sameDraw` (both sides replayed one recorded draw, --same-draw): when EVERY run of each side lists the same number (no spread on either side), two different numbers are
  * a gain or loss SHOWN and two equal ones no difference, whatever the run count; any spread on either side falls back to the rule above.
  */
-export function verdict(a, b, sameDraw = false) {
+export function verdict(a, b, sameDraw = false, usual = null) {
   // Why (12 Nov 2026, owner, quoted by coordinator sa: "Let's do only 1 live search before and after"): one run a side is a search PR's proof; the luck rule below is for measuring a small effect
-  if (a.length === 1 && b.length === 1) return `one run a side: ${b[0] - a[0] >= 0 ? '+' : ''}${b[0] - a[0]} listed (${a[0]} → ${b[0]}); a loss larger than this person's usual run-to-run difference holds the PR, a gain needs its mechanism proven by a test`;
+  if (a.length === 1 && b.length === 1) {
+    const d = b[0] - a[0], said = `one run a side: ${d >= 0 ? '+' : ''}${d} listed (${a[0]} → ${b[0]})`;
+    if (usual == null || !(usual >= 0)) return `${said}; give --usual-diff N (this person's usual run-to-run difference) for a verdict: a larger loss holds the PR`;
+    // Why (12 Nov 2026, #3891's p10 pair: listed 206 → 189 while right jobs rose 130 → 152): the count is not judged, so a change meant to drop jobs of other work lists fewer
+    if (d < -usual) return `${said}: a loss larger than the usual ${usual}: HOLDS the PR, unless the blind judge shows the dropped jobs were of other work`;
+    return d > usual ? `${said}: a gain beyond the usual ${usual}: claim it only with its mechanism proven by a test` : `${said}: within the usual difference (±${usual}): no loss`;
+  }
   if (a.length < 2 || b.length < 2) return `not enough runs: ${a.length} and ${b.length} counted runs (2 a side at least)`;
   const [aLo, aHi, bLo, bHi] = [Math.min(...a), Math.max(...a), Math.min(...b), Math.max(...b)];
   // Why (12 Nov 2026, coordinator sa on #3848): the luck rule assumes runs that vary; a replay of one draw repeats exactly (p9: 34 four times), so an exact repeat on both sides is proof by itself
