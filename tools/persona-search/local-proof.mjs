@@ -48,18 +48,25 @@ function pinClaude() {
   const real = realClaude(env);
   if (!real) return console.log('Claude Code: no install found on PATH; the runs will say so');
   const dir = path.join(work, 'pinbin', stamp), pin = path.join(dir, 'claude');
-  // A copy is ~320 MB: this proof's goes when it ends, and one a killed proof left goes after a day (no proof runs that long).
+  // A copy is ~320 MB: this proof's goes when it ends (Ctrl-C and a kill too), and one a proof left behind goes once that proof's process is gone (its pid file).
   for (const old of fs.existsSync(path.dirname(dir)) ? fs.readdirSync(path.dirname(dir)) : []) {
     const at = path.join(path.dirname(dir), old);
-    if (Date.now() - fs.statSync(at).mtimeMs > 86400000) fs.rmSync(at, {recursive: true, force: true});
+    let owner = 0;
+    try { owner = Number(fs.readFileSync(path.join(at, 'pid'), 'utf8')); } catch { /* no pid file: an old copy */ }
+    let alive = false;
+    try { alive = owner > 0 && process.kill(owner, 0); } catch { /* that proof has ended */ }
+    if (!alive) fs.rmSync(at, {recursive: true, force: true});
   }
   process.on('exit', () => fs.rmSync(dir, {recursive: true, force: true}));
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => process.exit(signal === 'SIGINT' ? 130 : 143));
   try {
     fs.mkdirSync(dir, {recursive: true});
+    fs.writeFileSync(path.join(dir, 'pid'), String(process.pid));
     fs.copyFileSync(fs.realpathSync(real), pin);
     fs.chmodSync(pin, 0o755);
     const version = execFileSync(pin, ['--version'], {encoding: 'utf8', timeout: 30000, env: {...env, PATH: `${dir}${path.delimiter}${env.PATH}`}}).trim();
     env.PATH = `${dir}${path.delimiter}${env.PATH}`;
+    env.JOBADABRA_CLAUDE_BIN = pin;   // the engine's find_binary reads it before PATH (Gitar on #3897)
     console.log(`Claude Code: a private copy for these runs (${version}): ${pin}`);
   } catch (error) {
     fs.rmSync(dir, {recursive: true, force: true});
