@@ -44,8 +44,6 @@ permissions:
 jobs:
   replay:
     name: ${{ (inputs.mode || 'pr') == 'band' && 'Find jobs replay · main band' || 'Find jobs replay · ref vs main' }}
-    # a bot's fixer branch never gets the recording's key (tests/tooling/ci/test_workflow_ai_secret_jobs.py)
-    if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 50   # a hang guard: setup ~5 min, 36 replays side by side ~7 min; replay.py's own deadline (30 min, every wave) ends first
     outputs:
@@ -54,10 +52,6 @@ jobs:
       contents: read
       actions: read   # main's newest band, from its own run's artifact
     steps:
-      # Why (Gitar on #3834): a call from a push could run steps that need a dispatch and leave the output empty; since 12 Nov 2026 press-tapes-auto.yml (a dispatch) calls it with gaps and pr.
-      - name: A call asks for mode=gaps only
-        if: github.event_name == 'push' && inputs.mode != 'gaps'
-        run: echo "::error::called with mode=${{ inputs.mode }}; a call supports mode=gaps only"; exit 1
       - uses: actions/checkout@v5   # this run's own commit: its actions and the yardstick's scripts
         with: {persist-credentials: false}
       - name: main, the side every replay is compared with

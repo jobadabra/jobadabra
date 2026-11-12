@@ -108,7 +108,7 @@ jobs:
   band:
     name: The band on the renewed recordings (press-tapes.yml dispatched it)
     needs: [gaps, record]
-    if: ${{ !cancelled() && needs.gaps.result == 'success' && needs.record.result == 'success' }}
+    if: ${{ !cancelled() && needs.gaps.result == 'success' && needs.record.result != 'skipped' }}   # Why (12 Nov 2026, Gitar on #3939): press-tapes.yml's own band job runs on `record.result != 'skipped'`, so one unpublished tape (record red) still dispatches a band on the tapes that were published; the table waits for it too, never reads the old band
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -121,10 +121,12 @@ jobs:
         run: |
           # Why (12 Nov 2026, owner: "Off PRs, nightly on main"): the table compares main with a band built on the recordings it replays; a table started beside the band would read "no band on this recording" for every renewed person.
           # press-tapes.yml's band job (it ran inside `record`) dispatched the band on main: find it by its title and wait for it.
-          start=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
+          # Why (12 Nov 2026, Gitar on #3939): the band run is the first one dispatched after press-tapes.yml's band job started inside `record`, so a by-hand mode=band started during the hours-long guard and record window is not taken for it.
+          start=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID/jobs" --paginate --jq '[.jobs[] | select(.name | test("Rebuild main.s yardstick band")) | .started_at][0] // empty')
+          [ -n "$start" ] || start=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
           id=""
           for _ in $(seq 1 20); do
-            id=$(gh run list --repo "$REPO" --workflow press-yardstick.yml --event workflow_dispatch --created ">=$start" --json databaseId,displayTitle --jq '[.[] | select(.displayTitle == "Find jobs pipeline yardstick band")][0].databaseId // empty')
+            id=$(gh run list --repo "$REPO" --workflow press-yardstick.yml --event workflow_dispatch --created ">=$start" --json databaseId,displayTitle,createdAt --jq '[.[] | select(.displayTitle == "Find jobs pipeline yardstick band")] | sort_by(.createdAt) | .[0].databaseId // empty')
             [ -n "$id" ] && break
             sleep 30
           done
