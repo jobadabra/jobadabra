@@ -22,20 +22,35 @@ function write(file, value) {
   fs.renameSync(part, file);   // whole or not at all: two searches may end together
 }
 
-/** Give the throwaway install in `dataDir` the pool's next id and the tokens that id was given before. -> the id, or '' when off (CI).
- *  The engine reads both files as its own (src/service.py install_id, site_token). */
-export function lend(dataDir, {file = POOL_FILE, env = process.env, size = POOL_SIZE} = {}) {
-  if (env.CI || env.GITHUB_ACTIONS) return '';
-  const idFile = path.join(dataDir, 'install_id');
-  if (fs.existsSync(idFile)) return fs.readFileSync(idFile, 'utf8').trim();   // a later search of the same throwaway install keeps its id
-  const pool = read(file) || {next: 0, installs: []};
+/** The pool, made once: a second search starting at the same moment reads the first one's file instead of writing its own.
+ *  Invariant: the pool returned is the one in the file (an id lent from a pool nobody saved loses its tokens at keep()). */
+function poolOf(file, size) {
+  const made = read(file);
+  if (made?.installs?.length >= size) return made;
+  const pool = {installs: [...(made?.installs || [])]};
   while (pool.installs.length < size) pool.installs.push({id: `test-${crypto.randomBytes(10).toString('hex')}`, tokens: {}});
-  const entry = pool.installs[pool.next % size];
-  pool.next = (pool.next + 1) % size;
-  write(file, pool);
+  if (made || fs.existsSync(file)) { write(file, pool); return pool; }   // a short or unreadable file is replaced whole
+  fs.mkdirSync(path.dirname(file), {recursive: true});
+  const part = `${file}.${process.pid}.part`;
+  fs.writeFileSync(part, JSON.stringify(pool, null, 1) + '\n', {mode: 0o600});
+  // Why (#3930, review): an exclusive create shows the file empty before its text is written; a link shows it whole or not at all.
+  try { fs.linkSync(part, file); return pool; } catch { return read(file) || (write(file, pool), pool); } finally { fs.rmSync(part, {force: true}); }
+}
+
+/** Give the throwaway install in `dataDir` one of the pool's ids and the tokens that id was given before. -> the id, or '' when off (CI).
+ *  An id the folder already holds stays only when it is the pool's (a folder made before the pool held a random id, whose tokens were
+ *  never kept). The id is drawn, not counted: two searches starting together share no counter to race on.
+ *  The engine reads both files as its own (src/service.py install_id, site_token). */
+export function lend(dataDir, {file = POOL_FILE, env = process.env, size = POOL_SIZE, draw = crypto.randomInt} = {}) {
+  if (env.CI || env.GITHUB_ACTIONS) return '';
+  const pool = poolOf(file, size), idFile = path.join(dataDir, 'install_id'), tokensFile = path.join(dataDir, 'site_tokens.json');
+  const held = fs.existsSync(idFile) ? fs.readFileSync(idFile, 'utf8').trim() : '';
+  if (pool.installs.some(one => one.id === held)) return held;   // a later search of the same throwaway install keeps its id
+  const entry = pool.installs[draw(size)];
   fs.mkdirSync(dataDir, {recursive: true});
   fs.writeFileSync(idFile, entry.id + '\n');
-  if (Object.keys(entry.tokens).length) fs.writeFileSync(path.join(dataDir, 'site_tokens.json'), JSON.stringify(entry.tokens) + '\n', {mode: 0o600});
+  fs.rmSync(tokensFile, {force: true});   // another id's tokens are not this id's
+  if (Object.keys(entry.tokens).length) fs.writeFileSync(tokensFile, JSON.stringify(entry.tokens) + '\n', {mode: 0o600});
   return entry.id;
 }
 
