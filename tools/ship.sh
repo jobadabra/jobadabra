@@ -51,7 +51,7 @@ main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
 repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
 log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 # Why (8 Nov 2026, ac's R1): a refusal before the background run starts (a bad --body, uncommitted files) wrote nothing to the log, so the
-# caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there.
+# caller's tools/ship-wait.sh waited 6 h for an event; it now gets one FAILED line there (12 Nov 2026, sl: the line is `refusal_line` when the refusal is the live-run lock, else the generic one).
 refusal_line=""
 [ "$background" != 1 ] || trap 'code=$?; [ "$code" -eq 0 ] || echo "${refusal_line:-ship: FAILED (exit $code) refused before starting, nothing was pushed: see its message}" >> "$log"' EXIT
 [ -z "$arg_err" ] || { echo "$arg_err" >&2; exit 2; }   # an argument refusal waits for the trap (Gitar on #3575)
