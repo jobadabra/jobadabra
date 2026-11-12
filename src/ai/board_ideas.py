@@ -283,12 +283,37 @@ def _proposal(asked, client=None):
     if answer is None:
         return None   # no AI: the boards other installs found for these countries
     found = list({b['host']: b for b in (valid(item) for item in answer) if b}.values())[:MAX_BOARDS]
+    aside = _homes(answer, {b['host'] for b in found})
     with STORE:
         data = load()
         data.setdefault('ideas', {})[key] = found
+        data.setdefault('homes', {})[key] = aside
         save(data)
-    print(f"Job boards proposed for {', '.join(countries)}: {', '.join(b['name'] for b in found) or 'none'}", flush=True)
+    print(f"Job boards proposed for {', '.join(countries)}: {', '.join(b['name'] for b in found) or 'none'}"
+          + (f" (named without a search link: {', '.join(b['name'] for b in aside)})" if aside else ''), flush=True)
     return found
+
+
+def _homes(answer, taken):
+    """The boards of one answer that only lack {role} in their link (a home page or a list page), each host once and none of `taken`,
+    marked 'home'. A search never reads them (valid: a general board's page without {role} is every job, not the person's); board
+    discovery measures each through its own search form and keeps it only with local jobs (src/scout_board_homes.py).
+    Why (13 Nov 2026, sa): 4-6 of the 8-9 boards a country's proposal named came this way and were dropped unread."""
+    kept = {}
+    for item in answer:
+        board = None if valid(item) else valid(item, listing=True)
+        if board and board['host'] not in taken:
+            kept.setdefault(board['host'], {**board, 'home': True})
+    return list(kept.values())[:MAX_BOARDS]
+
+
+def homes(search):
+    """The boards the AI's kept proposals for this search named without a search link (_homes), in the slices' order; [] before any answer."""
+    kept, out = load().get('homes') or {}, {}
+    for part in slices(search):
+        for board in kept.get(part[0]) or []:
+            out.setdefault(board['host'], dict(board))
+    return list(out.values())
 
 
 def served(countries):

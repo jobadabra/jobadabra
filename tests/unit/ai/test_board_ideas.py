@@ -54,6 +54,15 @@ class BoardIdeasTests(unittest.TestCase):
         self.assertEqual(sent['countries'], ['Portugal'])
         self.assertNotIn('cv', json.dumps(sent).lower())
 
+    def test_a_board_named_without_a_search_link_is_kept_aside_for_board_discovery_and_never_read_by_a_search(self):
+        client = FakeClient()
+        self.assertEqual(board_ideas.homes(LISBON), [], 'before any answer')
+        found = board_ideas.ideas(LISBON, client)
+        self.assertNotIn('jobs.example', [b['host'] for b in found])
+        aside = board_ideas.homes(LISBON)
+        self.assertEqual([(b['host'], b['search_url'], b['home']) for b in aside], [('jobs.example', 'https://jobs.example/all', True)])   # http, odd fields, a portal, an own reader: still out
+        self.assertEqual(len(client.calls), 1)
+
     def test_without_ai_or_countries_nothing_is_proposed(self):
         with mock.patch('src.ai.engine.ready', return_value=False):
             self.assertEqual(board_ideas.ideas(LISBON), [])
