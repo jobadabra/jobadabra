@@ -27,7 +27,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, heads, runs='ok', after='0', locked_ago=None, opened=False, opened_wait='3600'):   # runs: one fake check-run answer for every look, or a list with one per look
+    def watch(self, heads, runs='ok', after='0', locked_ago=None, opened=False, opened_wait='3600', peek=''):   # runs: one fake check-run answer for every look, or a list with one per look
         """One look per head, then the PR closes. Returns (the log lines, the number of `gh pr comment` calls, the calls' text)."""
         self.log.write_text('ship: [34s] opened the pull request: https://github.com/o/r/pull/7\n' if opened else 'ship: opened\n')   # ship.sh's own line when it opened the PR
         looks = len(heads)
@@ -41,6 +41,9 @@ class ShipWatchGitarAskTest(unittest.TestCase):
             (self.tmp / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': at, 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."}]))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after, 'SHIP_WATCH_GITAR_OPENED': opened_wait}
+        (self.tmp / 'peek.sh').write_text(f'#!/bin/sh\nprintf "%s\\n" "{peek}"\n')   # what tools/gitar-label.mjs peek would print for the head
+        (self.tmp / 'peek.sh').chmod(0o755)
+        env['SHIP_WATCH_GITAR_PEEK'] = str(self.tmp / 'peek.sh')
         env.pop('SHIP_WATCH_DRAFT_OK', None)
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
         calls = [c for c in (self.tmp / 'calls').read_text().splitlines() if c.startswith('pr comment')]
@@ -50,6 +53,14 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         lines, calls = self.watch(['aaa1111', 'aaa1111', 'aaa1111'])
         self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], calls)
         self.assertEqual([l for l in lines if 'GITAR ASKED' in l], ['ship: GITAR ASKED #7 aaa1111'], lines)
+
+    def test_a_head_that_keeps_gitars_verdict_is_not_asked(self):
+        """12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)": #3886 merged main after Gitar's approval; the label keeps it, so the watcher must not ask."""
+        lines, calls = self.watch(['aaa1111', 'aaa1111'], peek='Gitar: approved')
+        self.assertEqual(calls, [], calls)
+        self.assertEqual([l for l in lines if 'GITAR KEPT' in l], ['ship: GITAR KEPT #7 aaa1111 (Gitar: approved: the push only merged main)'], lines)
+        _, calls = self.watch(['bbb2222'], peek='Gitar: not started')
+        self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], calls)
 
     def test_a_head_with_a_gitar_check_is_never_asked(self):
         _, calls = self.watch(['aaa1111', 'aaa1111'], runs='gitar')
