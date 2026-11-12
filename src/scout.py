@@ -215,7 +215,11 @@ def board_pass(db_path):
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
-        scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        try:
+            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        finally:
+            from .sources import render
+            render.close()   # the browser a refused board was measured in (scout_boards.browse); nothing when it never started
     return 0
 
 

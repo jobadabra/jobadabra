@@ -240,7 +240,8 @@ def _proposal(asked, client=None):
 
 def served(countries):
     """The boards the central pool serves for these countries (3+ installs read jobs there: src/contribute.py site_facts, kind 'board'),
-    checked like Claude's proposals; work without AI too. Each keeps what it gave installs per role family in these countries ('cells')."""
+    checked like Claude's proposals; work without AI too. Each keeps what it gave installs per role family in these countries ('cells'), and
+    browser: True when the Central Scout read it only in a headless browser (the plain reader refused; src/scout_boards.py browse)."""
     from .. import pool_tags
     from ..sources.visits_jobpages import pool_facts
     ids = {name: code for code, name in pool_tags.COUNTRIES.items()}
@@ -251,7 +252,7 @@ def served(countries):
             board = valid({'name': host, 'search_url': fact.get('url'), 'countries': [pool_tags.COUNTRIES.get(c, c) for c in fact['countries']]}, listing=True)
             if board and board['host'] == host:
                 cells = [cell for cell in fact.get('relevant') or [] if cell['country'] in wanted]
-                out.append({**board, **({'cells': cells} if cells else {})})
+                out.append({**board, **({'cells': cells} if cells else {}), **({'browser': True} if fact.get('browser') else {})})
     return out
 
 

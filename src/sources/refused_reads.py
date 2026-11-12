@@ -79,8 +79,23 @@ def _board_url(board, search):
     return board_paths.forms(board['search_url'], terms[0], place)[0]   # a person's browser opens one link: the plus form, as before
 
 
+def _browser_boards(search):
+    """The boards for a browser, best first: the ones the Central Scout read only in its headless browser for this search's countries (served
+    marked browser: src/scout_boards.py browse), then the ones this install's own plain reader was refused on (state 'browser').
+    Why (12 Nov 2026, sa for the owner: "Scout-flagged boards first, then this install's own refused boards, inside the same 5 a day"): a board the
+    Scout's browser opened gave it local jobs; this install's own refusals keep #3883's reads where the Scout has not been yet."""
+    from .. import places
+    try:
+        flagged = [board for board in board_ideas.served(places.countries(search, limit=None)) if board.get('browser')]
+    except (OSError, ValueError, KeyError, TypeError) as error:   # the pack unread or in an old shape: this install's own refusals only, as before
+        print(f'Refused sites: the Scout\'s browser boards were not listed: {type(error).__name__}')
+        flagged = []
+    own = [board for board in (board_ideas.load().get('boards') or {}).values() if board.get('state') == 'browser']
+    return flagged + own
+
+
 def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False, kinds=('employer', 'board')):
-    """[{url, name, kind: 'employer'|'board', step?}]: refused employer sites, then boards marked 'browser', that are due (see _days). A host in `now_hosts`
+    """[{url, name, kind: 'employer'|'board', step?}]: refused employer sites, then boards for a browser (_browser_boards), that are due (see _days). A host in `now_hosts`
     ("Read now", the person opened a job there or pressed Check for new jobs) is due at once; `step` is where the ladder starts (the one that worked last time).
     `kinds`: which of the two to list (the button reads employer sites, the Find jobs press's headless Chrome reads boards: board_queue)."""
     now = now or _now()
@@ -104,9 +119,7 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False, kinds=('emp
                         **({'found': pick['origin']} if pick.get('origin') else {})})
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
     search = search_config()
-    for board in (board_ideas.load().get('boards') or {}).values() if 'board' in kinds else ():
-        if board.get('state') != 'browser':
-            continue
+    for board in _browser_boards(search) if 'board' in kinds else ():
         url = _board_url(board, search)
         host = visits.host_of(url or '')
         if url and allowed(url) and host not in seen and due(host):
