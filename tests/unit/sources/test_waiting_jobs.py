@@ -71,6 +71,14 @@ class JobsJudgedAfterTheSearch(unittest.TestCase):
         self.late_search('Example jobs API')
         self.assertEqual([job['location'] for _, job in waiting_jobs.held(self.db, SEARCH)], ['Known town'])
 
+    def test_without_an_ai_the_role_words_never_list_a_waiting_job(self):
+        """#3924's first CI (tests/unit/sources/test_titles_ai_first.py): the queue kept by feeds.wanted_title, whose answer with no AI is the role words."""
+        self.late_search()
+        with mock.patch.object(feeds, 'placing', return_value=False), mock.patch.object(feeds, 'TITLES', feeds.keyword_regex(['known role'])):
+            feeds._triaged().pop(feeds.ASKED, None)
+            checked, items = waiting_jobs.judge(self.db, SEARCH, NOW, out=lambda line: None)
+        self.assertEqual((checked, items), (3, []), 'a role word in the title, in the person\'s town, no AI answer: still waiting, not listed')
+
     def test_a_title_the_ai_refuses_leaves_the_list_and_is_not_listed(self):
         self.late_search()
         refuse = lambda titles, search, **kw: {title_triage._norm(title): title.startswith('Known') for title in titles}

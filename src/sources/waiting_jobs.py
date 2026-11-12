@@ -90,7 +90,8 @@ def judge(db, search, now, out=print, land=None):
     if open_titles and feeds.placing():
         feeds._triaged()[feeds.ASKED] = True
         feeds._triaged().update(title_triage.decide(open_titles, search, local=True, land=land))
-    fitting = [job for job in jobs if feeds.wanted_title(job['title'])]
+    # The AI's yes only, never the role words: a title it has not answered stays waiting (tests/unit/sources/test_titles_ai_first.py).
+    fitting = [job for job in jobs if feeds.judged_title(job['title']) is True]
     feed_places.place_jobs(fitting, chosen=True)
     # A location that names no town (only a country): the posting's own words say where the job is, before it is listed.
     # Why (12 Nov 2026, Tallinn proof on this branch): 8 jobs located "Estonia" were listed by the queue; their postings, read after, put none of them in the person's places.
@@ -101,7 +102,7 @@ def judge(db, search, now, out=print, land=None):
     items, refused = [], []
     with db:
         for name, job in rows:
-            if feeds.wanted_title(job['title']) and feeds.wanted_location(job) and feeds.place_of(job) != 'vague':
+            if feeds.judged_title(job['title']) is True and feeds.wanted_location(job) and feeds.place_of(job) != 'vague':
                 items.append(aggregators._item(db, name, job, now))
             elif feeds.judged_title(job['title']) is False or feeds.place_of(job) == 'out':   # an answer said no
                 refused.append(job['url'])
