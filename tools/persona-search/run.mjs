@@ -121,6 +121,13 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
   strategy.keepLocally(storage, draft);
   storage.saveSettings({setupDone: true, cvName: 'cv.pdf'});
   console.log(`${name}: strategy ${kept ? `from ${kept}` : 'drafted'} in ${Math.round((Date.now() - started) / 1000)} s`);
+  // As the app does after the wizard's Save (lib/strategy-draft-handlers.js): places and kinds of role are worked out before the first Find jobs, not inside it.
+  // Awaited here so every measured person starts the same; in the app a search pressed sooner waits for it (src/search_prepared.py wait). --no-prepare: the search as before.
+  if (!process.argv.includes('--no-prepare')) {
+    const before = Date.now(), {prepareSearch} = await lib('search-prepared.js');
+    const ok = await prepareSearch(storage, searchRun);
+    console.log(`${name}: search ${ok ? 'prepared' : 'NOT prepared (the search asks for itself)'} in ${Math.round((Date.now() - before) / 1000)} s`);
+  }
 }
 // What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,
 // the countries the AI worked out for them from places.json (written by the press itself, so it is read again after it).
