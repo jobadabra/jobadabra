@@ -65,8 +65,8 @@ class CountriesFromPlaceAnswersTest(Fixtures):
 
         def labels(topic, texts, choices, task):
             self.pack.append((topic, list(texts)))
-            return ([], list(texts))   # the pack knows none of them
-        patch = mock.patch.object(meanings, 'labels_read', labels)
+            return ({}, list(texts))   # the pack knows none of them (labels_read and the scout's region asks both come here)
+        patch = mock.patch.object(meanings, 'labels_each', labels)
         patch.start()
         self.addCleanup(patch.stop)
 
@@ -111,6 +111,57 @@ class CountriesFromPlaceAnswersTest(Fixtures):
             feeds, _ = scout.build_index(db, [{'company': 'Co', 'ats': 'lever', 'slug': 'co'}], lambda s, slug: job, today='2026-11-11')
         self.assertEqual(feeds[0]['countries'], ['de'])
         self.assertEqual([t for t in self.pack if t[0] == 'pool-country'], [], 'no pool-country question for a place the place answers cover')
+
+
+class RegionsFromPlaceAnswersTest(Fixtures):
+    """Why (sa-pane-kp, 12 Nov 2026): the scout asked job-region about every place string the place answers (geo) had already put in a country: 93 of a run's
+    200 calls judged places twice (jobadabra-lab #87). A placed place's region is now the AI's region answer for its country, asked once."""
+    def setUp(self):
+        super().setUp()
+        self.regions, self.known = [], {'switzerland': 'europe', 'remote - emea': 'europe', 'frankfurt': 'europe'}
+        PLACE['geneva'] = {'kind': 'city', 'cc': 'CH', 'lat': 46.2, 'lon': 6.14, 'r': 20}
+        PLACE['remote - emea'] = {'kind': 'remote'}
+        self.addCleanup(PLACE.pop, 'geneva')
+        self.addCleanup(PLACE.pop, 'remote - emea')
+        self.kept = {}
+
+        def judged(topic, items, answers, instructions, **kwargs):   # the AI and decide's own cache: an answer kept is never asked again
+            if topic != 'job-region':
+                return None
+            todo = sorted(k for k in items if k not in self.kept)
+            if todo:
+                self.regions.append(todo)
+                self.kept.update({k: self.known[k] for k in todo if k in self.known})
+            return {k: self.kept[k] for k in items if k in self.kept}
+        for patch in (mock.patch.object(decide, 'decide', judged), mock.patch('src.ai.meanings_pack.every', lambda *a, **k: [])):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def build(self, places):
+        import tempfile
+        from pathlib import Path
+        from src import store
+        jobs = {slug: [{'id': str(n), 'title': 'Backend Engineer', 'location': where, 'url': f'u{n}', 'date_posted': '2099-01-01', 'description': '', 'remote': False,
+                        'salary': ''} for n, where in enumerate(spots)] for slug, spots in places.items()}
+        with tempfile.TemporaryDirectory() as tmp, store.connect(Path(tmp) / 'j.sqlite') as db, mock.patch.object(scout_core, 'CENTRAL', True):
+            db.executescript(scout.TABLES)
+            feeds, _ = scout.build_index(db, [{'company': slug, 'ats': 'lever', 'slug': slug} for slug in places], lambda s, slug: jobs[slug], today='2026-11-12', workers=1)
+        return {f['slug']: f.get('regions') for f in feeds}
+
+    def test_places_in_one_country_ask_its_region_once_for_every_feed(self):
+        regions = self.build({'a': ['Zurich', 'Zurich', 'Remote - EMEA'], 'b': ['Geneva']})
+        self.assertEqual(self.regions, [['switzerland'], ['remote - emea']],
+                         'one ask for the country both places are in; a remote place is asked as before (its words may name a region)')
+        self.assertEqual(regions, {'a': ['europe'], 'b': ['europe']})
+
+    def test_a_country_with_no_region_answer_asks_its_places_as_before(self):
+        del self.known['switzerland']   # the AI did not answer for the country (busy, past the cap)
+        self.assertEqual(scout_kind_counts.region_ids(['Zurich']), ([], ['Zurich']), 'no region guessed from the country')
+        self.assertEqual(self.regions, [['switzerland'], ['zurich']])
+
+    def test_a_place_the_place_answers_lack_is_asked_as_before(self):
+        self.assertEqual(scout_kind_counts.region_ids(['Frankfurt', 'remote']), (['europe', 'remote'], []), "'remote': the feed's own flag, never asked")
+        self.assertEqual(self.regions, [['frankfurt']])
 
 
 class CentralCapAndSampleTest(Fixtures):

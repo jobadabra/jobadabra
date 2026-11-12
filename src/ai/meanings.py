@@ -46,9 +46,15 @@ def labels(topic, texts, choices, task):
 def labels_read(topic, texts, choices, task):
     """(ids, unanswered): labels' ids, and the texts nothing answered this run (the AI busy, capped or failed, and no pack id). Why (6 Nov 2026): a caller that
     keeps an earlier answer must tell "not answered" from "answered none"; labels() alone made a capped run look like none."""
+    each, unanswered = labels_each(topic, texts, choices, task)
+    return sorted({a for ids in each.values() for a in ids}), unanswered
+
+
+def labels_each(topic, texts, choices, task):
+    """({text: its ids}, unanswered): labels_read's answers per text (one batch for all); a text answered none, or not answered, has no ids."""
     texts = [str(t).strip() for t in texts if str(t or '').strip()]
     if not texts:
-        return [], []
+        return {}, []
     from . import meanings_pack
     late = meanings_pack.ai_first(topic)   # a kind of work: the keyword patterns only without AI (decide.py), the site's learned wordings first
     known = {t: meanings_pack.every(topic, t, patterns=not late) for t in texts}   # every id the pack gives a text (the old lists + what the site learned)
@@ -57,5 +63,5 @@ def labels_read(topic, texts, choices, task):
     found = (decide.decide(topic, {t.lower(): t for t in rest}, (*choices, 'none'), f'{task} Ids: {named}; none = none of these.', floor=False) or {}) if rest else {}
     if late and rest and not engine.ready():   # no AI at all: every id the old lists give ('many'), as before
         known.update({t: meanings_pack.every(topic, t) for t in rest if t.lower() not in found})
-    ids = sorted({a for answers in known.values() for a in answers if a in choices} | {a for a in found.values() if a != 'none'})
-    return ids, [t for t in rest if t.lower() not in found and not known.get(t)]
+    each = {t: sorted({a for a in known[t] if a in choices} | ({found[t.lower()]} if found.get(t.lower(), 'none') != 'none' else set())) for t in texts}
+    return each, [t for t in rest if t.lower() not in found and not known.get(t)]
