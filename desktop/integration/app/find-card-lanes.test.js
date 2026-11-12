@@ -31,7 +31,7 @@ async function press({on = true, session = {li_at: 'FAKE-LI-AT-1'}, ready = true
     options.openTab(`${sites[0].url}#jp-read-abcd1234`);
     if (n === 1 && during) during(card());
     options.tee(`  ✓ ${sites[0].name} · 10 jobs`);   // the read's per-search line: the Technical log's, never Live updates
-    return [{answered: true, ...sites[0], ...(results[n++] ?? {jobs: 10, fits: 0})}];
+    return [{answered: true, ok: true, pages: 1, ...sites[0], ...(results[n++] ?? {jobs: 10, fits: 0})}];   // the real result of a read: ok and pages say a page was read (visits.js), which the step counts as answered (#3710)
   };
   const controller = new AbortController();
   if (aborted) controller.abort();
