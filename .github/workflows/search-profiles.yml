@@ -32,6 +32,9 @@ env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
   JOBADABRA_CHECK_CHAIN: codex,claude   # the night's AIs (Codex, Claude as its replacement), so a profile row and a night row use the same chain
+  # Why (13 Nov 2026, Gitar on #3940): the search's own steps on the night's small tier (search-personas.yml pins both), so a profile row and a night row use the same model.
+  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5
+  JOBADABRA_SEARCH_TIER: small
 
 jobs:
   room:
