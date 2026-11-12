@@ -39,7 +39,7 @@ def title_question(case):
     items = [(title, want) for title, want in case['titles']]
     listed = '\n'.join(f'{n}. {title}' for n, (title, _) in enumerate(items, 1))
     return ('title_triage', title_triage.MODEL, title_triage.SYSTEM, title_triage.SCHEMA,
-            f"The search (JSON): {json.dumps(case['search'], ensure_ascii=False)}\nThe titles:\n{listed}", 'fit', items)
+            f"The search (JSON): {json.dumps(case['search'], ensure_ascii=False)}\nThe titles:\n{listed}", ('fit', 'near'), items)   # kept = its own kind of work or a close neighbour (12 Nov 2026: three groups)
 
 
 def visit_question(case):
@@ -63,7 +63,8 @@ def ask(question, path):
     response = client.messages.create(model=model, max_tokens=1500, system=[{'type': 'text', 'text': system}],
                                       messages=[{'role': 'user', 'content': user}], output_config=engine.structured(schema, model, 'low'))
     seconds = time.monotonic() - began
-    picked = {int(n) for n in json.loads(response.content[0].text).get(key) or [] if str(n).isdigit()}
+    answer = json.loads(response.content[0].text)
+    picked = {int(n) for group in ([key] if isinstance(key, str) else key) for n in answer.get(group) or [] if str(n).isdigit()}
     wrong = [item for n, (item, want) in enumerate(items, 1) if want == 'no' and n in picked]
     right = [n for n, (_, want) in enumerate(items, 1) if want == 'yes']
     return wrong, sum(1 for n in right if n in picked), len(right), seconds

@@ -74,10 +74,12 @@ export function replyData(reply) {
   const text = reply.output_text ?? (Array.isArray(blocks) ? blocks.filter(part => ['text', 'output_text'].includes(part?.type)).map(part => part.text || '').join('') : '');
   return json(text);
 }
+/** A selection kind's second group, absent for an ask recorded before the kind had one (it sent the one-group schema). */
+const alsoOf = (kind, question) => question?.oneGroup ? undefined : kind.also;
 /** Produce the provider schema for a numbered, word-keyed, selected or single-item kind. */
 export function responseSchema(kind, question) {
   if (kind.mode === 'single') return question.responseSchema;
-  if (kind.mode === 'selection') return S.object({[kind.root]: S.array(kind.selector === 'text' ? S.string : S.integer)});
+  if (kind.mode === 'selection') return S.object(Object.fromEntries([kind.root, alsoOf(kind, question)].filter(Boolean).map(root => [root, S.array(kind.selector === 'text' ? S.string : S.integer)])));
   return S.object({[kind.root]: S.array(S.object({[kind.selector || 'n']: kind.selector === 'word' ? S.string : S.integer, ...kind.row.properties}))});
 }
 /** Compose a batch only when every exact item has a valid reviewed row. */
@@ -89,7 +91,10 @@ export function engineBatchAnswer(kind, question, table) {
     answers.push(entry.answer);
   }
   if (kind.mode === 'single') return {data: ordered(question.responseSchema, answers[0])};
-  if (kind.mode === 'selection') return {data: {[kind.root]: question.items.filter((_item, index) => answers[index]).map(item => kind.selector === 'text' ? item.text : item.n)}};
+  if (kind.mode === 'selection') {
+    const also = alsoOf(kind, question), chosen = wanted => question.items.filter((_item, index) => wanted(answers[index])).map(item => kind.selector === 'text' ? item.text : item.n);
+    return {data: also ? {[kind.root]: chosen(answer => answer === true), [also]: chosen(answer => answer === also)} : {[kind.root]: chosen(Boolean)}};
+  }
   return {data: {[kind.root]: question.items.map((item, index) => ({[kind.selector || 'n']: kind.selector === 'word' ? item.raw : item.n, ...ordered(kind.row, answers[index])}))}};
 }
 /** Validate an entire live batch before exposing any per-item review candidate. */
@@ -100,8 +105,9 @@ export function engineBatchCandidates(kind, question, reply) {
   if (kind.mode === 'single') answers = [data];
   else if (kind.mode === 'selection') {
     const choices = data[kind.root], identifiers = question.items.map(item => kind.selector === 'text' ? item.text : item.n);
-    if (new Set(choices).size !== choices.length || choices.some(value => !identifiers.includes(value))) return [];
-    answers = identifiers.map(value => choices.includes(value));
+    const also = alsoOf(kind, question), second = also ? data[also] : [], all = [...choices, ...second];
+    if (new Set(all).size !== all.length || all.some(value => !identifiers.includes(value))) return [];
+    answers = identifiers.map(value => choices.includes(value) || (second.includes(value) ? also : false));
   } else {
     const rows = data[kind.root], found = new Map(), selector = kind.selector || 'n';
     if (rows.length !== question.items.length) return [];

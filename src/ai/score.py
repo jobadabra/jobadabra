@@ -251,6 +251,11 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None, scope='all')
     from ..press import rank
     ordered = rank.jobs([job for _, job in pending], rank.fresh, reverse=True)                      # newest first
     ordered = best_first(ordered)                                                                   # your best places first
+    from ..sources import feeds
+    from . import title_triage
+    close = title_triage.near(feeds._SEARCH)   # titles the AI sort called a close neighbour of the person's work (listed once scored: src/desktop_jobs.py)
+    near = {id(job) for job in ordered if feeds.title_key(job.get('title')) in close}
+    ordered = rank.jobs(ordered, rank.fit_before_neighbour(lambda job: id(job) in near))            # your own kind of work before its close neighbours (stable)
     group = {id(job): key for key, job in pending}
     ordered = rank.jobs(ordered, rank.waiting_for_score(group))                                     # then by group (stable)
     return ordered[:limit]

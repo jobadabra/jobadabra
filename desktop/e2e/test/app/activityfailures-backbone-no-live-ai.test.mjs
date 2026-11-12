@@ -310,7 +310,7 @@ test('the captured title-sort context and restart question match the finite auth
     const key = `default/app.title/a8034c8810b9/${hash(text)}`;
     assert.equal(table.items['app.title'][key]?.answer, true, key);
   }
-  assert.deepEqual(JSON.parse(answerFor(question, table).reply.content[0].text), {fit: [1]});
+  assert.deepEqual(JSON.parse(answerFor(question, table).reply.content[0].text), {fit: [1], near: []});
 });
 
 for (const family of ['claude', 'openai']) for (const seam of ['direct', 'proxy']) {
@@ -325,6 +325,6 @@ for (const family of ['claude', 'openai']) for (const seam of ['direct', 'proxy'
     assert.equal(response.status, 200);
     const body = await response.json();
     const text = seam === 'proxy' && family === 'openai' ? body.output[0].content[0].text : body.content[0].text;
-    assert.deepEqual(JSON.parse(text), {fit: [1]});
+    assert.deepEqual(JSON.parse(text), {fit: [1], near: []});
   });
 }
