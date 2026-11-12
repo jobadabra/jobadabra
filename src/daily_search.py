@@ -311,7 +311,7 @@ def keep_late_apis(apis, so_far, wait=False):
     with stage.guard('free job APIs: late hand-over') as caught:   # late reads are a bonus; the run goes on
         until = (read_budget.run_end() if wait else None) or time_budget.now()
         with feeds.database(DATA / 'jobs.sqlite') as feed_db:
-            aggregators.keep_late(feed_db, load_search_config(), apis, so_far.listener('job boards', 'free_job_apis'), until)
+            aggregators.keep_late(feed_db, load_search_config(), apis, so_far.listener('free job APIs', 'free_job_apis'), until)
         so_far.flush()
     if caught:
         print(f'Warning: late free job APIs not kept: {caught.reason}', flush=True)
@@ -333,7 +333,7 @@ def _gather_apis(args, feed_db, report, so_far, ahead, apis=None):
     # Aggregators with public APIs (src/sources/aggregators.py): free ones always, keyed ones with their keys; each at most every 6 hours.
     if args.mode in ('scheduled', 'run'):
         from .sources import aggregators
-        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('job boards', 'free_job_apis'), ahead=ahead, lane=apis)
+        found = aggregators.scan(feed_db, load_search_config(), on_jobs=so_far.listener('free job APIs', 'free_job_apis'), ahead=ahead, lane=apis)
         report['jobs'] += found['jobs']
         report['sources'] += found['sources']
         gather_alerts(feed_db, report)
