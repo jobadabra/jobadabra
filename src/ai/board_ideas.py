@@ -278,11 +278,15 @@ def ranked(boards, search):
 
 
 def proven(search, limit=2):
-    """The boards that gave installs like this one the most jobs in their places (rank > 0), best first, without any AI call: read in the
-    first-jobs slice (src/first_jobs.py)."""
+    """The boards that gave installs like this one jobs that FIT (rank_fit70 > 0), best first, without any AI call: read in the first-jobs
+    slice (src/first_jobs.py), and their existence is why no board proposal is asked at second 0 (first_jobs.propose_early).
+    Why (12 Nov 2026): jobs in places alone were enough, and a pool cell is one install's whole list credited to each of its families
+    (installs 1, fit70 0): an electrician in Madrid and a car mechanic in Seville were "proven" an IT board, so no proposal was ever asked
+    for Spain and the full board stage (which asks it) started past the read cut. Jobs in places without a fit job rank the board
+    (`ranked`, `_merge`) but do not skip the proposal."""
     from .. import places
     countries = places.countries(search, limit=None)
-    return [board for board in ranked(served(countries), search) if board.get('rank')][:limit] if countries else []
+    return [board for board in ranked(served(countries), search) if board.get('rank') and board.get('rank_fit70')][:limit] if countries else []
 
 
 def _merge(own, shared):
