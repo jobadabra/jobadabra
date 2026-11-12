@@ -16,7 +16,7 @@ def read(run, search, early=False, since=None, wait=WEB_WAIT, where='before', on
     """(said, Listed jobs) groups of the found boards for `search`. early: each kind of board's first pages, one group per kind (see the
     header), waiting up to `wait` s for the web search between them; `where` ('before' / 'beside') names the employer read it runs against in
     the log. Else the full read, one group (since: the boards read since then are skipped, board_yield.not_read_since). on_board(jobs): each early
-    board's jobs as soon as that board is kept (found_boards.read); its groups then come empty, every job already handed.
+    board's jobs as soon as that board is kept (found_boards.read); its group still comes whole when it ends, in the list's order.
     run: the Run of src/press/run.py; nothing is read from it yet.
     TODO(AI): board_web's early read and searched set move onto run.reads['job boards'] once the Run is on main (#3679)."""
     if not early:
@@ -45,5 +45,4 @@ def _fetch(search, boards, said, where, on_board=None):
     """These boards' first pages read (found_boards early), said in the log the Find jobs card reads (desktop/renderer/find-card-model.js)."""
     from . import found_boards
     print(f"Job boards first: reading {said}, {where} the employer sites: {', '.join(board['name'] for board in boards)}", flush=True)
-    jobs = found_boards.read(search, boards, web=False, early=True, on_board=on_board)
-    return [] if on_board is not None else jobs   # handed board by board already
+    return found_boards.read(search, boards, web=False, early=True, on_board=on_board)

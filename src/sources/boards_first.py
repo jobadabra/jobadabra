@@ -47,6 +47,7 @@ class Beside:
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
         self.count, self.left = threading.Lock(), len(reads)
+        self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
         for thread in self.threads:
@@ -74,10 +75,19 @@ class Beside:
             left = read_budget.seconds_left(read_budget.cut_at())
             wait = WEB_WAIT if left is None else max(0.0, left)
         # Why (bj, 12 Nov 2026, GTM 6 round's stored run b08 press 2): each board handed as it is kept, not its group at its slowest board's end
-        # (a board kept at 103 s waited for its group to 142 s)
-        for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._put):
-            if found:   # a reader that hands no board on its own gives its group here
-                self._put(found)
+        # (a board kept at 103 s waited for its group to 142 s); the whole group, when it ends, gives the list's order take() returns
+        for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._hand):
+            with self.count:
+                rest = [job for job in found if id(job) not in self.handed]   # a reader that hands no board on its own: its whole group
+                self.order += [job.get('url') for job in found]
+            if rest:
+                self._put(rest)
+
+    def _hand(self, found):
+        """One board's jobs, kept by found_boards.read: judged and queued now, remembered so its group does not queue them twice."""
+        with self.count:
+            self.handed.update((id(job), job) for job in found)
+        self._put(found)
 
     def _listed(self, listed):
         """A first run's own boards (the pool's proven ones, else the ones proposed for your country), read as the first-jobs step read them.
@@ -145,4 +155,16 @@ class Beside:
             if until is not None and not read_budget.seconds_left(until):
                 break
         self.deliver(feed_db, on_jobs)
-        return self.matched
+        return self._in_list_order(self.matched)
+
+    def _in_list_order(self, matched):
+        """`matched` in the order the boards' groups list their jobs, whichever board ended first; jobs of a group still being read, or of
+        `listed`, after them in the order they came. The list's order, not a priority (src/press/rank.py orders what a person sees).
+        Why (bj, 12 Nov 2026; CI on #3892): handed board by board, the gather's jobs followed the threads' timing, and the boards' reader
+        contract (tests/unit/sources/test_board_reader.py) reads that order."""
+        with self.count:
+            turn = {url: n for n, url in enumerate(self.order)}
+        by_turn = [[] for _ in range(len(turn) + 1)]
+        for item in matched:
+            by_turn[turn.get(item.get('url'), len(turn))].append(item)
+        return [item for items in by_turn for item in items]

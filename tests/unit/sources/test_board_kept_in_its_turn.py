@@ -123,8 +123,10 @@ class KeptInItsTurn(unittest.TestCase):
             self.assertEqual([j['url'] for j in shown], ['https://b2.example/1'], 'board 2 listed while board 1 is still being read')
             self.assertFalse(lane.done.is_set(), 'positive control: board 1 was still open')
             released.set()
-            lane.take(db, shown.extend)
-        self.assertEqual(sorted(j['url'] for j in shown), ['https://b1.example/1', 'https://b2.example/1'], 'each board listed once')
+            taken = lane.take(db, shown.extend)
+        self.assertEqual([j['url'] for j in shown], ['https://b2.example/1', 'https://b1.example/1'], 'each board listed once, as it ended')
+        self.assertEqual([j['url'] for j in taken], ['https://b1.example/1', 'https://b2.example/1'], 'the gather gets them in the list\'s order, '
+                         'whatever the threads\' timing (CI on #3892: test_board_reader read that order)')
 
 
 if __name__ == '__main__':
