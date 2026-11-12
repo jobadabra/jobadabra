@@ -78,6 +78,21 @@ class Read(unittest.TestCase):
         self.assertEqual((jobs, state), ([], 'empty'))
         self.assertEqual(len(asked), len(set(asked)), 'no link is asked twice')
 
+class OtherReaders(unittest.TestCase):
+    """The headless and refused-site readers build the same links through board_paths (one mechanism, not a quote_plus chain each)."""
+    def test_the_rendered_read_asks_the_slug_link_too_and_a_persons_browser_opens_the_plus_link(self):
+        from src.sources import board_rendered, refused_reads
+        shown = []
+
+        def show(url):
+            shown.append(url)
+            raise OSError('no browser here')
+        with mock.patch.object(found_boards.careers, 'note_refusal'):
+            board_rendered._rendered(PATH_BOARD, {}, PATH_BOARD['search_url'], ('https://path.example/',), SEARCH, None, show, list)
+        self.assertEqual(shown, ['https://path.example/jobs/sales+representative/wien', 'https://path.example/jobs/sales-representative/wien',
+                                 'https://path.example/'])
+        self.assertEqual(refused_reads._board_url(PATH_BOARD, SEARCH), 'https://path.example/jobs/sales+representative/wien')
+
 
 if __name__ == '__main__':
     unittest.main()
