@@ -1,5 +1,6 @@
-"""Guard: release — a search PR that loses a source main reads, or a person's right jobs, must be red on the replay (owner, 11 Nov 2026: "I want that once an
-improvement made, it will never be overwrite"; tools/press-yardstick/verdict.py), and a loss that one runner's load made (one pair of three) must never be."""
+"""Guard: release — the replay's report on a search PR must name a source main reads that the PR lost, or a person's lost right jobs, and never name a loss
+that one runner's load made (one pair of three); and it must never red the PR: the live proof decides (owner, 12 Nov 2026, asked via AskUserQuestion by sa:
+"Report only, live decides (Recommended)"; tools/press-yardstick/verdict.py). Below, code 1 = the report names a loss to check live, 0 = it names none."""
 import importlib.util
 import io
 import json
@@ -21,6 +22,7 @@ JOBS = [{'title': 'Nurse', 'company': 'St Mary', 'location': 'Dublin', 'seen_s':
 BOARDS = {'job_boards': (30, 5), 'employer_sites': (40, 1)}
 NO_BOARDS = {'job_boards': (0, 0), 'employer_sites': (40, 1)}
 LIVE_MOVES = 'Moves: p1 coverage 0.40 → 0.55 (3 runs a side, spread 0.03)\n'
+LOSS = 'To check live:'   # the report's words for a loss the replay shows and the body does not answer
 
 
 def replay(art, side, right=True, lanes=None, gap=False, persona='p1'):
@@ -66,10 +68,15 @@ class Verdict(unittest.TestCase):
         said = io.StringIO()
         with mock.patch.dict(os.environ, {'PR_BODY': body}, clear=False), redirect_stdout(said):
             os.environ.pop('PR_NUMBER', None)
-            code = verdict.final(art, out, self.root / 'recordings')
-        return code, said.getvalue()
+            self.exit = verdict.final(art, out, self.root / 'recordings')
+        return int(LOSS in said.getvalue()), said.getvalue()
 
-    def test_a_source_main_reads_that_the_pr_stops_reading_in_all_3_pairs_is_red(self):
+    def test_a_loss_is_reported_and_never_reds_the_pr(self):
+        code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS})] * 3)
+        self.assertEqual((code, self.exit), (1, 0), 'the report names the loss; its exit is 0: the live proof decides, not the replay')
+        self.assertIn('Run the live proof (3 searches a side)', text)
+
+    def test_a_source_main_reads_that_the_pr_stops_reading_in_all_3_pairs_is_named(self):
         code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS})] * 3)
         self.assertEqual(code, 1, text)
         self.assertIn('job_boards did not run', text)
@@ -90,7 +97,7 @@ class Verdict(unittest.TestCase):
         code, text = self.run_verdict(self.band(), [({}, {'lanes': NO_BOARDS})])
         self.assertEqual(code, 0, 'the repeat left no pairs 2 and 3: never red, never a 4th try')
 
-    def test_right_jobs_lost_in_3_pairs_are_red_unless_the_owner_lowered_the_bar(self):
+    def test_right_jobs_lost_in_3_pairs_are_named_unless_the_owner_lowered_the_bar(self):
         lost = [({}, {'right': False})] * 3
         code, text = self.run_verdict(self.band(), lost)
         self.assertEqual(code, 1, text)

@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {AGENT_SLOT, CRONS, SEARCH_WEEKLY, STORE_WEEKLY, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
+import {AGENT_SLOT, CRONS, SEARCH_WEEKLY, STORE_WEEKLY, TAPES_SLOT, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -62,6 +62,19 @@ test('the night burn-in starts five full e2e passes at five different UTC times,
   assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-10-31T21:00:00Z')), [{workflow: 'pr-verdict.yml'}, {workflow: 'pr-labels.yml'}, {workflow: 'e2e.yml', inputs: {night_pass: '1/5'}}], 'the verdict and label sweeps keep their tick');
   assert.equal(nightPassAt(new Date('2026-10-31T21:10:00Z')), '', 'a tick next to a slot is not a pass');
   assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'], 'no 4th trigger');
+});
+
+// Guard: release — without this start the Find jobs recordings are never renewed (no merge starts it since 12 Nov 2026), and an input the workflow does not declare is refused by GitHub with 422.
+test('the Find jobs re-record starts once a day at TAPES_SLOT, with no inputs, after the weekly Search check ended', () => {
+  const day = new Date(Date.UTC(2026, 10, 3)), started = [];
+  for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
+    const now = new Date(day.getTime() + minutes * 60000);
+    if (jobsFor('*/10 * * * *', now).some(job => job.workflow === 'press-tapes-auto.yml')) started.push(now.toISOString().slice(11, 16));
+  }
+  assert.deepEqual(started, [TAPES_SLOT]);
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date(`2026-11-03T${TAPES_SLOT}:00Z`)).find(job => job.workflow === 'press-tapes-auto.yml'), {workflow: 'press-tapes-auto.yml'});
+  const [hours, minutes] = SEARCH_WEEKLY.time.split(':').map(Number);
+  assert.ok(TAPES_SLOT >= `${String(hours + 7).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, 'the Search week takes about 7 h and holds the broker: the re-record guard waits 5 h, then ends red');
 });
 
 test('the AI user agent starts once a day at 04:40 UTC, alone on its tick, on the ten-minute trigger', () => {

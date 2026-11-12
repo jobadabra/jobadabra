@@ -1,20 +1,24 @@
-"""The yardstick's verdict: a search PR is red when, in the replay, a source main reads is no longer read or a person's right jobs fall below main's
-normal range (owner, 11 Nov 2026, asked via AskUserQuestion in session sa: "Yes, block the PR (Recommended)"; his words: "I want that once an improvement
-made, it will never be overwrite"). It holds a gain from the moment the recordings contain it.
+"""The yardstick's verdict: what the replay shows a search PR lost (a source main reads is no longer read, or a person's right jobs fall below main's
+normal range). It is a report on the PR, never a red check.
+Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)", replacing 11 Nov "Yes, block the PR"): that day the
+replay measured 3 of 18 people (each merged search change ages the recordings), read "no person below main's range" on #3891 while the live proof showed
+a person's right jobs 223 -> 192 (answers replay at the recorded pace, so a slower AI call is invisible here), and had held PRs for a gap main's own replay
+showed (#3889). The live proof, 3 searches a side, is the verdict of a search PR; "once an improvement made, it will never be overwrite" (owner, 11 Nov
+2026) is held there. A loss named below is a reason to run that proof on the person named, never a pass or a block by itself.
   python3 tools/press-yardstick/verdict.py suspects <art> <out> <recordings> <again>   the people to replay twice more -> <again>/p<N> (their recordings), prints count=N
-  python3 tools/press-yardstick/verdict.py final <art> <out> <recordings>              the verdict: markdown on stdout, at the top of <out>/summary.md; exit 1 = red
+  python3 tools/press-yardstick/verdict.py final <art> <out> <recordings>              the verdict: markdown on stdout, at the top of <out>/summary.md; always exit 0
 Each person and Find jobs run reads one state, in this order (the one owner of these states):
   not measured (never red): no recording; main's band built on another recording; a press failed or a replay left no jobs on a side; a clock cliff on main's
     own band (its replays disagree: some read 0 right jobs or skip a lane, others not); main's side asks beyond the recording's bounds (re-record, said loudly).
   recording too old for this PR: only the PR side asks beyond the bounds (ci.py report_gap) while main's stays within them, in all 3 pairs (too_old); the PR
-    changed the path. Held, never "worse": the PR passes only with a live `Moves:` line (numbers, 3 runs a side; "Moves: nothing (...)" does not hold it).
+    changed the path. Named, never "worse": the replay cannot judge it, so the report asks for a live `Moves:` line (numbers, 3 runs a side).
     Re-recorded after the merge.
     Not held when main's own extra replay beside the 2 repeat pairs (CONTROLS) asks beyond the bounds too: then it is the replay's place, and the person is
     not measured (by_place).
   lost a source: a lane of src/sources/reader_rows.py LANES (main's file, looped) that ran, or read jobs, in all of main's band replays and in main's replay
     here, and on the PR side did not run or read 0 jobs. eures counts only on a tape recorded with it on.
   fewer right jobs: the person's coverage reads "worse" (three_numbers.person_verdict: beyond one job and beyond the person's 2-sd band).
-A red stands only when all 3 pairs (main and PR replayed side by side, 3 times) show it: the suspects step replays the person twice more, once, never a
+A loss is named only when all 3 pairs (main and PR replayed side by side, 3 times) show it: the suspects step replays the person twice more, once, never a
 4th time. Why (cr, 11 Nov 2026, sa's design): a replay runs on the runner's wall clock, so load moves one read across the 180 s cut and flips a whole
 person (p5 92% -> 0% on #3777, which changed no src). That is a symptom: lanes (sf 3/5, 4/5) end the single queue that turns one late read into a lost
 person, and a replay clock that does not follow the runner's load is the second real fix (Work board draft).
@@ -214,7 +218,7 @@ def live_moves(body):
 
 
 def verdict(found, body):
-    """(red, markdown lines) for the states and the PR body."""
+    """(loss, markdown lines) for the states and the PR body: loss = the replay shows a loss the body does not answer. A report: final() never reds on it."""
     floors = _load('persona_floors', ROOT / 'tools' / 'persona-search' / 'floors.py')
     words = sorted(floors.floor_change_words(body))
     red = sorted({p for p, runs in found.items() for one in runs.values() if one['state'] == 'red'}, key=lambda n: int(n[1:]))
@@ -237,31 +241,31 @@ def verdict(found, body):
             if one['state'] == 'red':
                 lines.append(f"- ❌ {persona}, {ci.RUNS[run]}: " + ' | '.join(f"pair {n}: {'; '.join(pair)}" for n, pair in enumerate(one['pairs'], 1)))
     for persona in old:
-        lines.append(f'- ⏸ {persona}: recording too old for this PR (it asks what the recording lacks): held by a live `Moves:` line, re-recorded after the merge')
+        lines.append(f'- ⏸ {persona}: recording too old for this PR (it asks what the recording lacks): the replay cannot judge this person')
     blocked_old = bool(old) and not live_moves(body)
     if red and words:
         lines += ['', f'Accepted by the owner\'s words (`Floor-change:`): "{words[0]}"']
     if blocked_old:
-        lines += ['', 'Red: this PR changes what the recordings hold and its body has no `Moves:` line with numbers (3 runs a side): add it, then re-run this check.']
+        lines += ['', 'To check live: this PR changes what the recordings hold and its body has no `Moves:` line with numbers (3 searches a side).']
     if red and not words:
-        lines += ['', 'Red: lost in all 3 pairs. Fix it, or lower the bar with the owner\'s words: `Floor-change: "<his exact words>"` in the PR body, then re-run this check.']
+        lines += ['', 'To check live: lost in all 3 pairs of the replay. Run the live proof (3 searches a side) on each person named; it decides, not this report.']
     if not red and not blocked_old:
-        lines.append('✅ No source lost, no person below main\'s range.')
+        lines.append('✅ The replay shows no source lost and no person below main\'s range (it cannot see a slower AI call or a person it did not measure).')
     return bool((red and not words) or blocked_old), lines
 
 
 def final(art, out, recordings):
-    """The verdict on stdout and at the top of <out>/summary.md; 1 when red."""
+    """The verdict on stdout and at the top of <out>/summary.md. Always 0: the replay reports, the live proof decides (module docstring)."""
     used = Path(out, 'band-used.json')
     band = json.loads(used.read_text(encoding='utf-8')) if used.exists() else ci.newest_band()
-    red, lines = verdict(states(art, out, recordings, band, lanes()), pr_body())
+    _, lines = verdict(states(art, out, recordings, band, lanes()), pr_body())
     text = '\n'.join(lines)
     summary = Path(out, 'summary.md')
     old = summary.read_text(encoding='utf-8') if summary.exists() else '## Find jobs pipeline yardstick\n'
     head, _, rest = old.partition('\n')
     summary.write_text(f'{head}\n\n{text}\n{rest}', encoding='utf-8')
     print(text)
-    return 1 if red else 0
+    return 0
 
 
 def main(argv):

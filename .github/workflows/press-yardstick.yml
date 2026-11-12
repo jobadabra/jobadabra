@@ -210,9 +210,9 @@ jobs:
         run: |
           [ -s out/gaps.json ] || { echo "::error::mode=gaps wrote no out/gaps.json (the replay or ci.py failed above)"; exit 1; }
           echo "personas=$(node -p 'JSON.stringify(JSON.parse(require("fs").readFileSync("out/gaps.json", "utf8")).personas)')" >> "$GITHUB_OUTPUT"
-      # Why (11 Nov 2026, owner, asked via AskUserQuestion in session sa: "Yes, block the PR (Recommended)"; "I want that once an improvement made, it will never be
-      # overwrite"): the replay is a verdict. A person whose first pair shows a loss is replayed twice more on both sides, once (3 pairs, never a 4th); red only on 3 of 3
-      # (tools/press-yardstick/verdict.py). The verdict runs main's own copy when main has one, so a PR cannot loosen the gate that judges it.
+      # Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)", replacing 11 Nov "Yes, block the PR"): the replay is a
+      # report, never a red check; the live proof (3 searches a side) decides a search PR. A person whose first pair shows a loss is replayed twice more on both
+      # sides, once (3 pairs, never a 4th); a loss is named only on 3 of 3 (tools/press-yardstick/verdict.py). The report runs main's own copy when main has one.
       - name: Who is replayed twice more (a loss in the first pair)
         id: again
         if: (inputs.mode || 'pr') == 'pr' && steps.rec.outputs.count != '0'
@@ -228,7 +228,7 @@ jobs:
         continue-on-error: true   # a repeat that crashed leaves its pair empty: never red, never a 4th try
         # Why (12 Nov 2026, owner: "Main twice as control"): ctl-2 and ctl-3 are main once more, after the PR side and in its place (verdict.py CONTROLS; a guard test keeps the names equal)
         run: python3 tools/press-yardstick/replay.py recordings-again '{"main-2":"sides/main","pr-2":"sides/pr","ctl-2":"sides/main","main-3":"sides/main","ctl-3":"sides/main","pr-3":"sides/pr"}' art | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: The verdict (red = a source main reads or a person's right jobs lost in all 3 pairs)
+      - name: The verdict (a report, never red; names a source or a person's right jobs lost in all 3 pairs)
         if: steps.again.outputs.verdict != ''
         env:
           GH_TOKEN: ${{ github.token }}
