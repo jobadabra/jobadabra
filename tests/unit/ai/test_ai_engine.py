@@ -163,8 +163,11 @@ class CliClientTests(unittest.TestCase):
         from src.ai import providers
         env = {'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_CLAUDE_BIN': fake.binary, 'PATH': os.environ.get('PATH', '')}
         self.assertEqual(claude_code.ClaudeCode(binary=fake.binary).action, '')   # made by hand: no step, so no step's rule
+        # Codex answers in one turn and never thinks first: its title batch stays 30 until measured (sa, 12 Nov 2026); the API engines keep the contract's default no.
+        self.assertFalse(providers.build(dict(env, JOBADABRA_AI_ENGINE='codex'), action='title_triage').thinks_first())
         for step in sorted(claude_code.THINK_FIRST) + ['place_triage']:   # the place sort writes its reasoning per item and keeps its one turn (#3836)
             client = providers.build(env, action=step)   # as engine.client(action=...) builds a step's client
+            self.assertEqual(client.thinks_first(), step in claude_code.THINK_FIRST, f'{step}: title_triage asks 60 titles a call only when the step thinks first')
             if sys.platform == 'win32':
                 client.run = fake.run
             self.assertEqual(json.loads(client.messages.create(**ask).content[0].text), {'answer': 'yes', 'score': 7}, step)

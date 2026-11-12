@@ -343,8 +343,8 @@ def capture_engine(prompts=False):
 
         pack.patterns = lambda *a: []
         IMPORTS['levels'] = load('src/levels.py', ['SENIOR', 'ENTRY', 'LEVELS', '_BY_WORD', '_named', 'level_of', 'title_skips'])
-        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'PROMPT', 'STAMP', 'RECHECK_SYSTEM', '_key', '_norm', '_workers',
-                     '_load', 'known', '_current', '_stamped', '_may_start', '_second_look', 'decide'], **bindings, STORE=temporary / 'titles.json')
+        title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'BATCH_THINKING', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'PROMPT', 'STAMP', 'RECHECK_SYSTEM', '_key', '_norm', '_workers',
+                     '_load', 'known', '_current', '_stamped', '_may_start', 'batch_size', '_second_look', 'decide'], **bindings, STORE=temporary / 'titles.json')
         title_search = {'role_keywords': ['site reliability'], 'title_exclude_keywords': ['intern'], 'level': ['senior']}
         titles = ['Senior Site Reliability Engineer']
         client = Client({'fit': [1]})

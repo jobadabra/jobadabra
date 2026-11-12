@@ -243,3 +243,8 @@ class Adapter:
 
     def complete(self, request):
         raise NotImplementedError
+
+    def thinks_first(self):
+        """Whether this client's step thinks before it answers (a fixed cost paid once a call, so the step may ask more per call:
+        title_triage's BATCH_THINKING). No by default; Claude Code says yes for its THINK_FIRST steps."""
+        return False

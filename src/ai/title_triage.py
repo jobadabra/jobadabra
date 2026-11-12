@@ -19,6 +19,8 @@ from ..press import rank
 
 MODEL = SMALL_MODEL
 BATCH = press_budget.value('title_triage.BATCH')   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
+# Why (gp + sa, 12 Nov 2026): a step that thinks before it answers pays that once a call; 60 titles sort 7.0 a second against 4.2, the same right titles kept (budget.json's row).
+BATCH_THINKING = press_budget.value('title_triage.BATCH_THINKING')
 MAX_NEW = press_budget.value('title_triage.MAX_NEW')       # titles asked about in one run at most, of each kind: your own places' titles and the others (a first run on a big list is spread over the next ones)
 STORE = DATA / 'title_triage.json'
 LOCK = threading.Lock()
@@ -96,7 +98,13 @@ def _may_start(batch, mine, forced):
     return not budget.over('titles', key=batch[0]) or bool(here and (forced and budget.title_room() or budget.local_titles(here) >= here))
 
 
-def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0):
+def batch_size(client):
+    """Titles in one call: BATCH_THINKING when the client's step thinks before it answers (the provider says so), else BATCH. A client without the question (a test's fake) asks BATCH."""
+    thinks = getattr(client, 'thinks_first', None)
+    return BATCH_THINKING if callable(thinks) and thinks() is True else BATCH
+
+
+def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0, size=BATCH):
     """The titles this call rejected that hold one of the search's role words are asked once more, alone (RECHECK_SYSTEM); a yes keeps the job.
     When that call fails or the clock is up they are dropped from `decided`: unknown, asked again next refresh, never a guessed no."""
     from . import cost, engine
@@ -104,8 +112,8 @@ def _second_look(client, ask, decided, search, words, mine=frozenset(), forced=0
     from ..paths import keyword_regex
     roles = keyword_regex(search.get('role_keywords'))
     doubted = [title for title in ask if decided.get(title) is False and roles.search(title)]
-    for start in range(0, len(doubted), BATCH):
-        batch = doubted[start:start + BATCH]
+    for start in range(0, len(doubted), size):
+        batch = doubted[start:start + size]
         try:
             if not _may_start(batch, mine, forced):   # as the sort's own exemption
                 raise TimeoutError('the refresh\'s time is up')
@@ -146,7 +154,11 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     ask = [t for t in ask if t in mine][:MAX_NEW] + [t for t in ask if t not in mine][:MAX_NEW]   # as the two passes did: each kind capped at MAX_NEW (Gitar on #3550: all-local input stops at MAX_NEW)
     # The rounds of calls that end by the titles' stop (src/time_budget.py); the rest is asked next time. 18 Oct 2026, persona runs: paced per title (0.5 s at least), a refresh
     # planned "28 of 600 titles" for its 3 minutes, sorted them in one 7 s call and left 572 waiting. 7 Nov 2026 (#2920): one pass for all, a round that fits starts.
-    taken = budget.in_calls('title_rounds', len(ask), BATCH, engine.at_once(), noun='title(s)', stop='titles')
+    if not ask:
+        return decided
+    client = client or engine.client(action='title_triage')
+    size = batch_size(client)
+    taken = budget.in_calls('title_rounds', len(ask), size, engine.at_once(), noun='title(s)', stop='titles')
     nearest_mine = sum(1 for t in ask if t in mine)
     forced = budget.local_titles(nearest_mine - taken) if taken < nearest_mine else 0   # past the clock: the titles of your own places only
     if nearness:
@@ -154,7 +166,6 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     ask = ask[:taken + forced]
     if not ask:
         return decided
-    client = client or engine.client(action='title_triage')
     from ..notion.search_settings import terms
     from .. import levels   # the level is said as a level: its skip words (src/levels.py) are the no-AI floor, never words the AI must obey
     skips, level = set(terms(levels.title_skips(search.get('level')))), levels.level_of(search.get('level'))
@@ -162,11 +173,11 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
              **({'level': level} if level else {})}
     from . import cost
     from ..progress import Ticker
-    batches = [ask[start:start + BATCH] for start in range(0, len(ask), BATCH)]
+    batches = [ask[start:start + size] for start in range(0, len(ask), size)]
     nearest = [(rank.batch_nearest(map(nearness, batch)) if nearness else (1, 0.0), batch) for batch in batches]
     # Said before the first answer, then after each batch with the time left (owner, 7 Oct 2026: 6 batches ran ~2 min each with only
     # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.at_once() at a time.
-    print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
+    print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {size}', flush=True)
     ticker, lock, sorted_ = Ticker('Sorting job titles with AI', len(ask), every=0), threading.Lock(), [0]
 
     spent = [0.0]   # seconds the AI took, summed over the asks (not the queue's waiting, nor the scoring the hub does meanwhile: #2918 review)
@@ -210,9 +221,9 @@ def decide(titles, search, client=None, local=False, nearness=None, land=None):
     # the scores got none: 1,056 titles asked and 13 jobs scored instead of 32. Behind the scores instead, a batch waited 42-56 s and ~750 titles were never asked.
     # Half the slots are the titles', at once; the other half stay with the scores and the board reads (_workers: of the engine in use, and only where slots are shared).
     title_queue.serve(nearest, one, landed, _workers(budget), rank=getattr(nearness, 'rank', lambda batch: rank.batch_nearest(map(nearness, batch))) if nearness else None)
-    budget.record('title_rounds', spent[0] / max(1, engine.at_once()), -(-sorted_[0] // (BATCH * max(1, engine.at_once()))))
+    budget.record('title_rounds', spent[0] / max(1, engine.at_once()), -(-sorted_[0] // (size * max(1, engine.at_once()))))
     with slots.priority(slots.TITLES):   # the second look is title work too: no reader's level (src/ai/title_queue.py)
-        _second_look(client, ask, decided, search, words, mine, forced)
+        _second_look(client, ask, decided, search, words, mine, forced, size)
     with LOCK:
         data = _load()
         data[key] = _stamped(data.get(key), decided)

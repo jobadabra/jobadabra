@@ -168,7 +168,7 @@ class ClaudeCode(CliAdapter):
         # (4.8-7.0 s a call); the same question answered as JSON text in one turn took 3.4-4.5 s with the same answers. cli_base checks that text against
         # the schema and repairs it once, as it does for a CLI with no schema flag. Only the short Haiku steps: a file or web call needs its turns; and not
         # the steps in THINK_FIRST (gp, 12 Nov 2026): "the same answers" held on batches with titles to pick, not on a batch where none fits.
-        plain = schema is not None and alias(model) == 'haiku' and not with_files and not web_search and self.action not in THINK_FIRST
+        plain = schema is not None and alias(model) == 'haiku' and not with_files and not web_search and not self.thinks_first()
         if schema is not None and not plain and '--json-schema' in offered:
             args += ['--json-schema', json.dumps(schema)]
         if effort and '--effort' in offered:
@@ -180,6 +180,10 @@ class ClaudeCode(CliAdapter):
             if flag in offered:
                 args.append(flag)
         return args
+
+    def thinks_first(self):
+        """The steps in THINK_FIRST get Claude Code's own structured answer, two turns (command())."""
+        return self.action in THINK_FIRST
 
     def build(self, request, folder, files):
         prompt = self.conversation(request, files)
