@@ -32,11 +32,11 @@ PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.co
 KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
 WORD_CALLS = 1          # board discovery: its families' search words in the country's language, one call (src/ai/board_words.py)
-# Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" for this case): a Slovak
-# board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards). A board the rules read as empty is read once more with the AI page
-# reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe reads the same page with no AI later in that run.
-# Why (12 Nov 2026, owner: "Let's make it more efficient"): with 6 calls (3 boards) 8 of 12 runs spent them all and left 2-5 boards a run "not measured",
-# while a pass used 18-31 of its cap; 12 calls read 6 boards, half of MAX_BOARDS.
+# Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" here; the cap raised the same
+# day on his "Let's make it more efficient"): a Slovak board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards), so a board the
+# rules read as empty is read once more with the AI page reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe
+# reads the same page with no AI later in that run. 12, not 6: six calls (3 boards) were all spent in 8 of 12 runs with 2-5 boards a run left
+# "not measured", while a pass used 18-31 of its cap; 12 reads 6 boards, half of MAX_BOARDS.
 PAGE_CALLS = 12
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
 # ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 77.
