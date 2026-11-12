@@ -8,8 +8,8 @@ from src.sources import careers
 A, B, C = '00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-00000000000c'
 
 
-def posting(ident, title, locality=None):
-    address = {'@type': 'PostalAddress', 'addressCountry': 'CH', **({'addressLocality': locality} if locality else {})}
+def posting(ident, title, locality=None, country='CH'):
+    address = {'@type': 'PostalAddress', 'addressCountry': country, **({'addressLocality': locality} if locality else {})}
     return {'@type': 'JobPosting', 'title': title, 'identifier': {'@type': 'PropertyValue', 'value': ident}, 'url': f'https://board.example/jobs/detail/{ident}/',
             'hiringOrganization': {'@type': 'Organization', 'name': 'Example AG'}, 'jobLocation': {'@type': 'Place', 'address': address}}
 
@@ -39,6 +39,13 @@ class PageTown(unittest.TestCase):
         del plain['identifier']
         self.assertEqual(self.where(page(plain, data=f'[{APP_DATA}]')), {'Lagerist': 'Switzerland'})
         self.assertEqual(self.where(page(posting(A, 'Lagerist'))), {'Lagerist': 'Switzerland'})
+
+    def test_a_posting_abroad_keeps_its_own_country_beside_its_own_town(self):   # Gitar, #3918: never a Swiss town joined to a job abroad
+        data = f'[{{"id":"{A}","title":"Lagerist","place":"Konstanz"}}]'
+        self.assertEqual(self.where(page(posting(A, 'Lagerist', country='DE'), data=data)), {'Lagerist': 'Konstanz, Germany'},
+                         "the town is this posting's own (its id's block), joined to the posting's own country, never Switzerland")
+        self.assertEqual(self.where(page(posting(B, 'Kommissionierer', country='DE'), data=f'[{APP_DATA}]')), {'Kommissionierer': 'Germany'},
+                         "an id with no town in the data: the posting's country alone")
 
 
 if __name__ == '__main__':
