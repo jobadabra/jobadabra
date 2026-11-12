@@ -5,19 +5,24 @@ One call is one `codex exec --json --ephemeral` in the call's own temp folder, r
 name, from the features this Codex lists (`codex features list`, once per binary), the shell included. The system prompt becomes Codex's
 own instructions (model_instructions_file, a file in the call's folder); a schema goes in --output-schema in OpenAI's strict form; images go in -i. A PDF is refused (reads_pdf False): the live
 check of 9 Oct 2026 answered a CV question without opening the file, so a PDF reaches Codex only as page images + text. The model is the same tier in OpenAI's family (models.for_family). It drops the API keys the app gives Python,
-so Codex runs on the user's own sign-in; never signs in for them. Guarded by tests/unit/ai/test_ai_providers.py.
+so Codex runs on the user's own sign-in; never signs in for them. A call returns at Codex's answer line (`turn.completed`); the process
+ends by itself in the background (`answer_line`). Guarded by tests/unit/ai/test_ai_providers.py and tests/unit/ai/test_codex_answer_line.py.
 """
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 from ..slots import Slots
 from .cli_base import CliAdapter, CliError, CliLimitError, conversation
 from .contract import SUBSCRIPTION, Usage
 from .schema import drop_nulls, parse_json, strict
+from .warm import Spare
 
 PARALLEL = 2
 # Off for every call (when this Codex has them): a text answer needs none of these.
@@ -37,6 +42,7 @@ NOT_ANSWERING_TEXT = ('Codex did not answer twice in a row (each waited {seconds
 MISSING_TEXT = ('Codex was not found on this computer: install it (developers.openai.com/codex) and sign in with `codex login`, '
                 'or switch to an OpenAI API key in Settings → Connections → AI.')
 DROP_ENV = ('OPENAI_API_KEY', 'OPENAI_BASE_URL', 'CODEX_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL')
+REAL_RUN = subprocess.run   # the default runner; a runner given by a test or a caller is used as it is
 
 
 def find_binary(env=None, exists=os.path.exists):
@@ -81,6 +87,62 @@ def classify(text):
     if LIMIT.search(text or ''):
         return CliLimitError(LIMIT_TEXT)
     return CliError(f'Codex failed: {(text or "no output").strip()[:300]}')
+
+
+def answer_line(args, prompt, wait, env, clock=time.monotonic):
+    """One `codex exec` call, returned at its answer line (`turn.completed`) as a finished run (stdout so far, '', 0); the process exits by
+    itself in the background. A call that ends without that line (a failed turn, a crash) is returned as it ended, with its stderr and exit
+    code, so classify() reads it as before. Raises subprocess.TimeoutExpired as subprocess.run does (the process is killed).
+
+    Why (as, 12 Nov 2026; owner: "we should optimize any of the local Claude, local Codex and AI-broker"): on the owner's plan (gpt-6-luna,
+    9 calls) `codex exec` reached its answer line at a median 3.49 s and exited at 4.6 s; the 1-1.5 s between is Codex closing down, after
+    the answer is complete. A warm `codex app-server` was measured too and is not used: its answer came at 3.46 s (no start-up left to save:
+    exec reaches thread.started in ~0.3 s), and it loads the person's own ~/.codex config (+57 input tokens; --ignore-user-config is exec's).
+    The process runs in a folder of its own (its stderr file), never the call's folder, which the caller removes while Codex may still be
+    closing (Windows refuses to remove a running process's working directory); `-C` keeps Codex's own folder the call's."""
+    own = tempfile.mkdtemp(prefix='jobadabra-codex-run-')
+    try:
+        with open(os.path.join(own, 'stderr.txt'), 'w', encoding='utf-8') as errors:
+            process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, cwd=own, env=env,
+                                       close_fds=True)
+    except OSError:
+        shutil.rmtree(own, ignore_errors=True)
+        raise
+    run = Spare(process, own, clock())   # reads its output in a daemon thread; end() lets it exit and removes its folder after
+    try:
+        process.stdin.write(prompt)
+        process.stdin.close()
+    except (OSError, ValueError):
+        pass   # it ended before reading its question: its output and exit code say why
+    lines, until = [], clock() + wait
+    while True:
+        try:
+            line = run.lines.get(timeout=max(0.0, until - clock()))
+        except queue.Empty:
+            process.kill()
+            run.end()
+            raise subprocess.TimeoutExpired(args, wait) from None
+        if line is None:   # its output ended without an answer line: read as the whole run, as before
+            try:
+                code = process.wait(timeout=max(1.0, until - clock()))
+            except subprocess.TimeoutExpired:
+                process.kill()
+                code = process.wait()
+            errors = run.stderr()   # before end(): its reaper removes the folder, stderr file included
+            run.end()
+            return subprocess.CompletedProcess(args, code, ''.join(lines), errors)
+        lines.append(line)
+        if _kind(line) == 'turn.completed':
+            run.end()
+            return subprocess.CompletedProcess(args, 0, ''.join(lines), '')
+
+
+def _kind(line):
+    try:
+        item = json.loads(line)
+    except ValueError:
+        return ''
+    return item.get('type', '') if isinstance(item, dict) else ''
 
 
 def events(stdout):
@@ -138,6 +200,12 @@ class Codex(CliAdapter):
 
     def env(self, args):
         return cli_env()
+
+    def ask(self, args, prompt, folder, wait, key=None):
+        """The call's run, returned at Codex's answer line (answer_line); a runner given by a test or a caller runs the whole process as before."""
+        if self.run is not REAL_RUN:
+            return super().ask(args, prompt, folder, wait, key)
+        return answer_line(args, prompt, wait, self.env(args))
 
     def parse(self, out, args, queued_s, ran_s):
         found = events(out.stdout)
