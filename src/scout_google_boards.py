@@ -2,7 +2,7 @@
 search never name (owner, 26 Oct 2026, "Yes, free plan only": a pilot board ranked 4th on Google for "first officer pilot jobs Europe" while
 Anthropic's search never returned it, not even for its own name). Per kind of work and country, at most PER_PAIR SerpApi searches, once ever;
 only the result addresses are kept, each new site's page is judged by the AI for that kind of work (src/sources/board_check.py field_kind), and
-only a 'field board' joins the pass (a site not judged waits for the next run, never searched again), where its local jobs are measured like any proposed board (src/scout_boards.py).
+only a 'field board' or a 'job board' joins the pass (KEPT) (a site not judged waits for the next run, never searched again), where its local jobs are measured like any proposed board (src/scout_boards.py).
 Hard stops (SerpApi's free plan: 250 searches a month, shared with the owner's own key use): MONTH_CAP of ours a month, never when the account
 (free to ask) has RESERVE or fewer left, at most PER_RUN a run. Off without SCOUT_SERPAPI_KEY (GitHub secret CENTRAL_SCOUT_SERPAPI_KEY), said in the log. Never SERPAPI_API_KEY on the scout: that name turns on
 the role and hiring searches' SerpApi lane (src/sources/web_search.py provider), uncapped by these stops.
@@ -24,6 +24,9 @@ PER_PAIR = 6      # searches per kind of work and country: its first 3 field wor
 FORMS = ('{word} jobs {country}', '{word} job board {country}')
 MAX_JUDGED = 15   # sites whose page the AI judges per run: also the judge's own AI allowance (decide allowance=, outside the scout's 600)
 TRIES = 3         # runs a site the AI could not judge waits for an answer
+# Why (12 Nov 2026, bd; owner's "Stay free for now (Recommended)"): France's runs dropped 3 sites the AI judged a general job board, though the address
+# Google gave is that board's page for the searched work; the pass measures each (MIN_LOCAL local jobs, families from its titles), so it joins too.
+KEPT = ('field board', 'job board')
 WAITING = 40      # sites kept waiting per country
 
 
@@ -33,9 +36,14 @@ def _get(url, params, opener=urllib.request.urlopen):
         return json.load(response)
 
 
+def work_words(kind):
+    """The words of a kind of work (src/role_kinds.py WORK) or of a role family (src/pool_tags.py FAMILIES: board discovery's cells)."""
+    return role_kinds.WORK.get(kind) or pool_tags.FAMILIES.get(kind, '')
+
+
 def queries(kind, country):
-    """The searches for one kind of work in one country: its first field words (src/role_kinds.py WORK) in each form."""
-    words = [word.strip() for word in role_kinds.WORK.get(kind, '').split(',') if word.strip()][:PER_PAIR // len(FORMS)]
+    """The searches for one kind of work or role family in one country: its first field words (work_words) in each form."""
+    words = [word.strip() for word in work_words(kind).split(',') if word.strip()][:PER_PAIR // len(FORMS)]
     return [form.format(word=word, country=country) for word in words for form in FORMS]
 
 
@@ -46,7 +54,7 @@ def _month(db, now):
 
 
 def boards(db, country, kinds, judge, key=None, get=_get, account=None, now=None, out=print):
-    """[board] the AI judged as field boards among Google's results for these kinds of work in this country (pool id), never searched for this pair
+    """[board] the AI judged as field or job boards (KEPT) among Google's results for these kinds of work in this country (pool id), never searched for this pair
     before, plus the sites an earlier run found but could not judge (judged first: never searched again); [] when off or nothing to judge.
     judge(board, roles) -> 'field board' / 'job board' / 'one employer' / 'other' / None (not judged: the site waits, at most TRIES runs)."""
     key = os.getenv(KEY_ENV, '').strip() if key is None else key
@@ -66,9 +74,9 @@ def boards(db, country, kinds, judge, key=None, get=_get, account=None, now=None
         if number >= MAX_JUDGED:
             still.append(board)
             continue
-        answer = judge(board, [role_kinds.WORK.get(board['kinds'][0], board['kinds'][0])]) or 'no answer'
+        answer = judge(board, [work_words(board['kinds'][0]) or board['kinds'][0]]) or 'no answer'
         said.setdefault(answer, []).append(board['host'])
-        if answer == 'field board':
+        if answer in KEPT:
             kept.append({field: value for field, value in board.items() if field != 'tries'} | {'name': board['host']})
         elif answer == 'no answer' and int(board.get('tries') or 0) + 1 < TRIES:
             still.append({**board, 'tries': int(board.get('tries') or 0) + 1})
@@ -76,7 +84,7 @@ def boards(db, country, kinds, judge, key=None, get=_get, account=None, now=None
     db.commit()
     verdicts = '; '.join(f"{answer}: {', '.join(hosts)}" for answer, hosts in sorted(said.items(), key=lambda item: item[0] != 'field board'))
     out(f"Board pass, Google results: {name}: {searched} searches ({used + searched} of {MONTH_CAP} this month), {len(found)} sites"
-        + (f" ({len(earlier)} from earlier runs)" if earlier else '') + f", {len(kept)} field boards" + (f"; judged {verdicts}" if verdicts else '')
+        + (f" ({len(earlier)} from earlier runs)" if earlier else '') + f", {len(kept)} boards kept" + (f"; judged {verdicts}" if verdicts else '')
         + (f"; not judged (over {MAX_JUDGED}): {len(found) - MAX_JUDGED}" if len(found) > MAX_JUDGED else '')
         + (f"; {len(still[:WAITING])} wait for the next run" if still else ''))
     return kept
@@ -117,7 +125,7 @@ def _search(db, country, name, kinds, key, get, account, now, out, found):
                 board = board_ideas.valid({'name': result.get('title') or '', 'search_url': str(result.get('link') or ''), 'countries': [name],
                                            'kinds': [kind], 'source_kind': 'sector'})
                 if board and board['host'] not in found:
-                    found[board['host']] = board
+                    found[board['host']] = {**board, 'kinds': [kind]}   # the family it was searched for (valid() keeps kinds of work only)
         done.add(f'{kind}|{country}')
         scout_cells._set(db, 'serp_pairs', sorted(done))
         db.commit()

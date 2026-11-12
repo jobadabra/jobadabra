@@ -215,8 +215,29 @@ def board_pass(db_path):
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
-        scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        if named:
+            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        else:
+            discover(db)
     return 0
+
+
+def discover(db, run=None, out=print, today=None):
+    """Board discovery's turn (src/scout_board_cells.py): the weakest cells' country, their families, and the facts due to be read again; the
+    cells' rest is kept after. SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
+    equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
+    by employers never gave a turn to the countries with no measured board."""
+    from . import scout_board_cells as cells, scout_boards
+    priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
+    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')))
+    if not turn:
+        out('Board discovery: every cell under its target rests; nothing to read this run')
+        return []
+    country, families, again = turn
+    kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out)
+    cells.record(db, country, families, kept, today, again=again)
+    out(cells.line(db, today, priority))
+    return kept
 
 
 def main():
@@ -234,8 +255,8 @@ def main():
                         help='with --publish-index: a trial of an unmerged change (jobadabra-lab central-scout.yml engine_ref): every step runs and logs as the central scout does, and nothing is uploaded')
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
-                             '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest; '
-                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn)')
+                             '(its own job and AI cap in jobadabra-lab board-discovery.yml; the country: SCOUT_BOARD_COUNTRY with SCOUT_BOARD_KINDS, '
+                             'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')

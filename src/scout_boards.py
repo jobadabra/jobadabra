@@ -105,6 +105,23 @@ def search_for(db, country, kinds=None):
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
 
+def family_search(country, families):
+    """The search board discovery's cells are proposed and read for: the role families' own words (src/pool_tags.py FAMILIES), the whole country."""
+    words = [word.strip() for family in families for word in pool_tags.FAMILIES.get(family, '').split(',') if word.strip()]
+    return {'role_keywords': list(dict.fromkeys(words)),
+            'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
+
+
+def _first(*groups):
+    """The boards of these groups in order, each host once, at most MAX_BOARDS: facts read again, then Google's, then the AI's."""
+    seen, out = set(), []
+    for board in (board for group in groups for board in group):
+        if board['host'] not in seen:
+            seen.add(board['host'])
+            out.append(board)
+    return out[:MAX_BOARDS]
+
+
 def local_of(jobs, country):
     """The jobs whose place is in `country`: every distinct place asked in one batch (pool_tags.countries_each); a place left unanswered is not local."""
     places = list(dict.fromkeys(str(job.get('location') or '').strip() for job in jobs if str(job.get('location') or '').strip()))
@@ -125,8 +142,9 @@ def measure(board, local, country, families):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)}
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None):
-    """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept."""
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, families=None, again=()):
+    """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept.
+    families: board discovery's cells (src/scout_board_cells.py): the boards are asked for these role families instead of kinds; again: kept facts' boards read first, to measure them again."""
     from .ai import board_ideas, cost, decide
     from .sources import careers, found_boards
     ensure(db)
@@ -134,12 +152,12 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
     if not country:
         return []
     try:
-        kinds = kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
-        search = search_for(db, country, kinds)
-        proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS]   # several kinds: no one field to ask for
-        thin = [kind for kind in kinds if kind != 'software']   # the few free searches: never the strongest kind
-        found = (google or _google)(db, country, thin, out)   # boards only Google's results name, judged by the AI first
-        proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
+        kinds = list(families) if families is not None else kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
+        search = family_search(country, kinds) if families is not None else search_for(db, country, kinds)
+        proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
+        thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
+        found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
+        proposed = _first(list(again), found, proposed)
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:
@@ -170,7 +188,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         for fact in kept:
             db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
                        (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
-        _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn
+        if families is None:
+            _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
         out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')

@@ -46,7 +46,7 @@ class GoogleBoards(unittest.TestCase):
     def boards(self, fake, kinds=('aviation_transport',), country='at', key='k', now=NOW):
         return google.boards(self.db, country, list(kinds), self.judge, key=key, get=fake.get, now=now, out=self.out.append)
 
-    def test_only_field_boards_join_with_the_result_address_and_the_ai_judges_each_new_site(self):
+    def test_only_boards_join_with_the_result_address_and_the_ai_judges_each_new_site(self):
         fake = Fake()
         kept = self.boards(fake)
         self.assertEqual(fake.params['gl'], 'at', "Google as seen from the country (run 40384536845: Croatia's searches gave US sites)")
@@ -59,9 +59,23 @@ class GoogleBoards(unittest.TestCase):
         self.assertEqual([host for host, _ in self.judged], ['pilot-board.example', 'an-airline.example'],
                          'each new site judged once; a portal and a plain-http page never reach the judge')
         self.assertIn('pilots, cabin crew', self.judged[0][1][0], 'judged for the kind of work searched')
-        self.assertIn('Board pass, Google results: Austria: 6 searches (6 of 200 this month), 2 sites, 1 field boards; '
+        self.assertIn('Board pass, Google results: Austria: 6 searches (6 of 200 this month), 2 sites, 1 boards kept; '
                       'judged field board: pilot-board.example; one employer: an-airline.example', self.out,
                       "every site's answer is said (26 Oct 2026: the first live run said only '32 sites, 0 field boards')")
+
+    def test_a_general_job_board_joins_to_be_measured_and_one_employer_never(self):
+        # 12 Nov 2026 (bd): France's runs dropped 3 sites the AI called a job board; the pass measures each, so it joins (KEPT)
+        JUDGED_NOW = {'pilot-board.example': 'job board', 'an-airline.example': 'one employer'}
+        self.judge = lambda board, roles: JUDGED_NOW.get(board['host'])
+        self.assertEqual([board['host'] for board in self.boards(Fake())], ['pilot-board.example'])
+
+    def test_a_role_family_is_searched_by_its_own_words_and_kept_with_its_id(self):
+        # board discovery's cells are role families (src/scout_board_cells.py): valid() keeps kinds of work only, so the family is put back
+        fake = Fake()
+        kept = self.boards(fake, kinds=('nursing_care',))
+        self.assertEqual(fake.asked[:2], ['nursing jobs Austria', 'nursing job board Austria'])
+        self.assertEqual(kept[0]['kinds'], ['nursing_care'])
+        self.assertEqual(self.judged[0][1], ['nursing, care work'], 'the judge is told the family in words')
 
     def test_a_site_without_an_answer_and_the_ones_past_the_judge_cap_are_said(self):
         many = [{'title': f'Site {n}', 'link': f'https://site{n}.example/jobs'} for n in range(google.MAX_JUDGED + 3)]
@@ -138,7 +152,7 @@ class GoogleBoards(unittest.TestCase):
         self.assertEqual(len(fake.asked), google.PER_PAIR, 'the next run judges what is waiting, without a new search')
         self.assertEqual([board['host'] for board in kept], ['pilot-board.example'])
         self.assertNotIn('tries', kept[0])
-        self.assertIn('0 searches (6 of 200 this month), 2 sites (2 from earlier runs), 1 field boards', self.out[-1])
+        self.assertIn('0 searches (6 of 200 this month), 2 sites (2 from earlier runs), 1 boards kept', self.out[-1])
         for _ in range(google.TRIES):
             self.boards(fake)
         self.assertEqual(scout_cells._meta(self.db, 'serp_waiting', {}).get('at'), [], f'a site with no answer in {google.TRIES} runs is let go')
