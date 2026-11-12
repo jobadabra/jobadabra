@@ -8,68 +8,14 @@ run-name: Find jobs pipeline yardstick ${{ inputs.mode || 'pr' }}
 # yet is "not measured", never red. The PR's number is better or worse only outside the band.
 # One check, every replay side by side in it (owner, 8 Nov 2026: "are we going to have so many checks at PR, or group them in 5-10 most?" →
 # "1 check, all 36 at once (Recommended)"; tools/press-yardstick/replay.py). Was 38 checks (plan, 18 x 2 replays, numbers).
+# Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Off PRs, nightly on main": "I feel Like I'm not getting any value of this. It never failed. It's just slow. It finds no bugs."):
+# it no longer runs on a pull request. press-tapes-auto.yml calls it once a day on main, right after the recordings are renewed (the one moment all 18 people are measured), as a report in
+# that run's summary; a PR's proof is the live same-minute pair plus the Search night. The sides are main and this ref, which on main is main again: the table is main against its own band.
 on:
-  pull_request:
-    # Why (10 Nov 2026, owner, asked via AskUserQuestion: "Every file the search reaches (Recommended)"; plan ys 1/2): the src lines are derived, not listed: `python3 tools/press-yardstick/paths.py`
-    # prints them (every src file except those the Find jobs run never imports; its first step checks them). The hand list started this on 40 of the last 100 engine PRs and missed
-    # the files that decide what is kept or read (src/sources/feeds.py, features.py, aggregators.py, geo.py, places.py); this starts it on 91 of 100, one job of about 8 minutes.
-    paths:
-      - 'src/**'
-      - '!src/__main__.py'
-      - '!src/ai/apply_batch.py'
-      - '!src/ai/apply_record.py'
-      - '!src/ai/apply_run.py'
-      - '!src/ai/few_jobs.py'
-      - '!src/ai/inbox.py'
-      - '!src/ai/inbox_dates.py'
-      - '!src/ai/inbox_events.py'
-      - '!src/ai/inbox_fields.py'
-      - '!src/ai/inbox_notion.py'
-      - '!src/ai/inbox_reading.py'
-      - '!src/ai/passwords.py'
-      - '!src/ai/reassign.py'
-      - '!src/ai/visit_filters.py'
-      - '!src/ai/visit_reader.py'
-      - '!src/ai/visit_unblock.py'
-      - '!src/build_stamp.py'
-      - '!src/clear_jobs.py'
-      - '!src/connection_test.py'
-      - '!src/daily_search_reporting.py'
-      - '!src/desktop.py'
-      - '!src/desktop_status.py'
-      - '!src/desktop_store_jobs.py'
-      - '!src/desktop_tracker.py'
-      - '!src/desktop_visits.py'
-      - '!src/doctor.py'
-      - '!src/field_redraft.py'
-      - '!src/hosted_run.py'
-      - '!src/import_url.py'
-      - '!src/jobs_so_far.py'
-      - '!src/notion/runs.py'
-      - '!src/search_prepared.py'
-      - '!src/search_report.py'
-      - '!src/stores/__main__.py'
-      - '!src/stores/copy.py'
-      - '!src/stores/job_page.py'
-      - '!src/stores/memory.py'
-      - '!src/stores/notion.py'
-      - '!src/stores/notion_agent_runs.py'
-      - '!src/stores/notion_conversation.py'
-      - '!src/stores/notion_employers.py'
-      - '!src/stores/notion_insights.py'
-      - '!src/stores/notion_texts.py'
-      - 'desktop/lib/search-steps.js'
-      - 'desktop/lib/pipeline-args.js'
-      - 'desktop/lib/pipeline-env.js'
-      - 'tools/press-yardstick/**'
-      - 'tools/persona-search/run.mjs'
-      - 'tools/persona-search/ttfr.py'
-      - '.github/workflows/press-yardstick.yml'
-      - '.github/actions/electron-cache/**'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'pr = this ref against main; band = 5 replays of main per persona (the noise band the PR runs compare with); gaps = one replay of main: who needs a new recording'
+        description: 'pr = this ref against main (a branch by hand; on main, main again: the daily table); band = 5 replays of main per persona (the noise band the table compares with); gaps = one replay of main: who needs a new recording'
         type: choice
         options: [pr, band, gaps]
         default: pr
@@ -95,14 +41,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  # Why (11 Nov 2026, Gitar on #3838): only a newer run of the SAME pull request replaces an older one. A push, a by-hand run or a call from press-tapes-auto.yml gets a group of its own (the caller's run id), so a second mode=gaps call never cancels a replay whose answer a re-record waits for.
-  group: press-yardstick-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}-${{ inputs.mode || 'pr' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   replay:
-    name: ${{ (inputs.mode || 'pr') == 'band' && 'Find jobs replay · main band' || 'Find jobs replay · PR vs main' }}
+    name: ${{ (inputs.mode || 'pr') == 'band' && 'Find jobs replay · main band' || 'Find jobs replay · ref vs main' }}
     # a bot's fixer branch never gets the recording's key (tests/tooling/ci/test_workflow_ai_secret_jobs.py)
     if: ${{ !((startsWith(github.head_ref, 'fd-ai/') || startsWith(github.head_ref, 'fixer/')) && endsWith(github.actor, '[bot]')) }}
     runs-on: ubuntu-24.04
@@ -112,30 +53,25 @@ jobs:
     permissions:
       contents: read
       actions: read   # main's newest band, from its own run's artifact
-      pull-requests: read   # the verdict reads the PR body as it is now (a `Moves:` or `Floor-change:` line added after the push counts on a re-run)
     steps:
-      # Why (Gitar on #3834): only a pull_request or a dispatch can run the PR and band modes; this workflow is also called (by press-tapes-auto.yml, event push or dispatch) and a call
-      # that asks for another mode than gaps would reach steps that need a pull request and leave the output empty.
+      # Why (Gitar on #3834): a call from a push could run steps that need a dispatch and leave the output empty; since 12 Nov 2026 press-tapes-auto.yml (a dispatch) calls it with gaps and pr.
       - name: A call asks for mode=gaps only
         if: github.event_name == 'push' && inputs.mode != 'gaps'
         run: echo "::error::called with mode=${{ inputs.mode }}; a call supports mode=gaps only"; exit 1
       - uses: actions/checkout@v5   # this run's own commit: its actions and the yardstick's scripts
         with: {persist-credentials: false}
-      - name: The src paths are what the Find jobs run reaches
-        if: github.event_name == 'pull_request'
-        run: python3 tools/press-yardstick/paths.py --check
       - name: main, the side every replay is compared with
         uses: actions/checkout@v5
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          ref: main
           path: sides/main
       - name: This pull request's side
         if: (inputs.mode || 'pr') == 'pr'
         uses: actions/checkout@v5
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           path: sides/pr
       - uses: actions/setup-node@v5
         with: {node-version: '22'}
@@ -249,8 +185,6 @@ jobs:
         if: steps.again.outputs.verdict != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: python3 "${{ steps.again.outputs.verdict }}" final art out recordings >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v6
         if: always()
@@ -264,32 +198,3 @@ jobs:
             art/*/tape-report.jsonl
             art/*/out/draw/run-*.log
             art/*/out/draw/presses.jsonl
-  # Why (plan ys 1/2; owner, 10 Nov 2026: "each session that tries to improve a case, does this without worsening/affecting other improvements"): the 18-person table is on the PR itself,
-  # not only in the run's summary. A job of its own, so the token that writes a comment never meets the replay job's steps, which run the PR's code with the recordings' key; this one runs only
-  # `gh`, on the summary text the replay job's artifact holds (a fork's read-only token fails the post, never the check).
-  comment:
-    name: Find jobs yardstick · PR comment
-    needs: replay
-    if: ${{ always() && github.event_name == 'pull_request' && needs.replay.result != 'skipped' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/download-artifact@v7
-        continue-on-error: true   # a replay job that ended before its upload leaves nothing to post
-        with: {name: press-yardstick-numbers, path: numbers}
-      - name: The table, in one comment kept up to date
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          [ -s numbers/out/summary.md ] || { echo "no summary to post"; exit 0; }
-          marker='<!-- press-yardstick -->'
-          { echo "$marker"; cat numbers/out/summary.md; printf '\n[This run](%s) · one comment, edited on each push\n' "$RUN"; } > body.md
-          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
-          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@body.md > /dev/null
-          else gh api -X POST "repos/$REPO/issues/$PR/comments" -F body=@body.md > /dev/null; fi

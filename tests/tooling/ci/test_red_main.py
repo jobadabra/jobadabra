@@ -65,7 +65,7 @@ CLASSIFIED = {
     'Press tapes': 'ignored: records the 18 personas\' tapes, started by hand; never by a push to main',
     # Why (12 Nov 2026, owner asked via AskUserQuestion: "Report only, live decides"; 11 Nov: "Auto re-record after merge"): it records tapes once a day from the site timer, on no push; a red run (broker busy, a by-hand run in the way) says nothing about a push, its run summary names the cause.
     'Press tapes auto': 'ignored: re-records the stale people once a day (the site timer; until 12 Nov 2026 after each push to main that the search reaches); a red run is its own summary, never a broken push',
-    'Find jobs pipeline yardstick': 'ignored: replays the Find jobs recordings on pipeline pull requests (on: paths:) and by hand (main\'s band); never by a push to main',
+    'Find jobs pipeline yardstick': 'ignored: replays the Find jobs recordings once a day on main after the recordings are renewed (called by press-tapes-auto.yml) and by hand (main\'s band); never by a push to main, no longer on pull requests',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'Tooling': 'ignored: alone only on pull requests that change the harness (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
