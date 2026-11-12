@@ -132,7 +132,7 @@ class RankTests(Fixture):
         return {'family': family, 'country': country, 'installs': installs, 'in_places': in_places, 'fit70': fit70}
 
     def test_boards_are_ranked_by_jobs_in_places_per_install_for_your_role_families(self):
-        facts = self.served({1: [self.cell('accounting_finance', 3, 6)], 2: [self.cell('accounting_finance', 4, 40), self.cell('software_dev', 9, 900)],
+        facts = self.served({1: [self.cell('accounting_finance', 3, 6, fit70=1)], 2: [self.cell('accounting_finance', 4, 40, fit70=2), self.cell('software_dev', 9, 900)],
                              3: [], 4: [self.cell('software_dev', 5, 500)], 5: [self.cell('accounting_finance', 3, 9, country='de')]})
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), \
                 mock.patch.object(board_ideas, '_families', return_value={'accounting_finance'}), \
@@ -141,7 +141,22 @@ class RankTests(Fixture):
             proven = board_ideas.proven(SEARCH)
         self.assertEqual([(b['host'], b['rank']) for b in ranked][:2], [('b2.example', 10.0), ('b1.example', 2.0)])
         self.assertEqual({b['host'] for b in ranked[2:]}, {'b3.example', 'b4.example', 'b5.example'}, 'another family or country gives no rank')
-        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b1.example'], 'the top 2, ranked boards only')
+        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b1.example'], 'the top 2, ranked boards with a fit job only')
+
+    def test_jobs_in_places_without_a_fit_job_rank_a_board_but_do_not_prove_it(self):
+        """12 Nov 2026 (vb): Madrid's electrician and Seville's car mechanic were "proven" an IT board by one install's list (installs 1,
+        40 jobs in places, fit70 0), so the proposal for Spain was never asked. A cell with a fit job proves it, as before."""
+        facts = self.served({1: [self.cell('electrical_mechanical', 1, 40)], 2: [self.cell('electrical_mechanical', 1, 5, fit70=1)]})
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), \
+                mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
+            proven = board_ideas.proven(SEARCH)
+            only_jobs = {'board': {'b1.example': facts['board']['b1.example']}}
+            with mock.patch.object(visits_jobpages, 'pool_facts', return_value=only_jobs):
+                self.assertEqual(board_ideas.proven(SEARCH), [], 'no fit evidence: the proposal is asked')
+        self.assertEqual([b['host'] for b in ranked], ['b1.example', 'b2.example'], 'jobs in places still rank it first')
+        self.assertEqual([b['host'] for b in proven], ['b2.example'])
 
     def test_without_data_for_anyone_the_order_is_unchanged_and_no_family_is_asked(self):
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value=self.served({1: [], 2: []})), \
