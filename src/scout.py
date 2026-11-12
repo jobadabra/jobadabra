@@ -289,7 +289,8 @@ def main():
         return sync_store_only(args.db)
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
-    if args.board_pass or args.board_lanes or args.board_merge:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
+    args.board_pass = args.board_pass or bool(args.board_lanes or args.board_merge)   # the lanes' two commands enter where a pass does (board_pass)
+    if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
         return board_pass(args.db, lanes=args.board_lanes, merge=args.board_merge)
     if args.export_sources:
         kept, failed = export_sources(employer_store())
