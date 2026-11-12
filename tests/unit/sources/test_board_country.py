@@ -32,8 +32,8 @@ class BoardCountry(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(':memory:')
         scout_cells.keep(self.db, [{'countries': [c]} for c in scout_cells.EUROPE if c != 'md' for _ in range(5)])   # Moldova: the thinnest
-        for patch in (mock.patch.object(scout_boards.pool_tags, 'countries', lambda texts: ['md'] if any('Chi' in t for t in texts) else []),
-                      mock.patch.object(scout_boards.pool_tags, 'families', lambda titles: ['sales_retail'] if titles else [])):
+        for patch in (mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
+                      mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['sales_retail'] if titles else [], []))):
             patch.start()
             self.addCleanup(patch.stop)
         self.asked = []

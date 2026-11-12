@@ -192,6 +192,19 @@ def upload_index(trial_run, feeds_out, *args, **kwargs):
     return len(feeds_out)
 
 
+def sync_store_only(db_path):
+    """--sync-store: write the employers checked on this computer that the active store lacks, then stop. Returns the exit code."""
+    stores = employer_store()
+    if not synced_key(stores):
+        print('Employers: no employer list to write to; nothing to write.')
+        return 0
+    with store.connect(db_path) as db:
+        ensure_tables(db)
+        written, failed = sync_employers(db, stores)
+    print(f'Employers: {written} written to {where_of(stores)}')   # each one not written said so in its own Warning line
+    return 1 if failed and not written else 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--db', type=Path, default=JOBS_DB)
@@ -205,6 +218,9 @@ def main():
                              '(needs INDEX_PUBLISH_KEY; URL: JOBADABRA_INDEX_URL or the default)')
     parser.add_argument('--no-upload', action='store_true',
                         help='with --publish-index: a trial of an unmerged change (jobadabra-lab central-scout.yml engine_ref): every step runs and logs as the central scout does, and nothing is uploaded')
+    parser.add_argument('--board-pass', action='store_true',
+                        help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
+                             '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -214,17 +230,15 @@ def main():
                              '(sources.json + the active store\'s active employers with a feed)')
     args = parser.parse_args()
     if args.sync_store:
-        stores = employer_store()
-        if not synced_key(stores):
-            print('Employers: no employer list to write to; nothing to write.')
-            return 0
-        with store.connect(args.db) as db:
-            ensure_tables(db)
-            written, failed = sync_employers(db, stores)
-        print(f'Employers: {written} written to {where_of(stores)}')   # each one not written said so in its own Warning line
-        return 1 if failed and not written else 0
+        return sync_store_only(args.db)
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
+    if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
+        from . import scout_boards
+        scout_core.CENTRAL = True
+        with store.connect(args.db) as db:
+            scout_boards.run(db, named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')))
+        return 0
     if args.export_sources:
         kept, failed = export_sources(employer_store())
         print(f'Wrote {len(kept)} feeds ({sum(k["jobs"] for k in kept):,} open jobs) to config/sources.json')
@@ -274,7 +288,7 @@ def main():
                 raise SystemExit('--publish-index needs INDEX_PUBLISH_KEY')
             index_url = os.getenv('JOBADABRA_INDEX_URL') or employer_index.URL
             from . import scout_boards, scout_cells
-            deadline = min(scout_overrun.publish_deadline(started) - scout_boards.RESERVE_S, time.monotonic() + scout_core.VERIFY_BUDGET_S)
+            deadline = min(scout_overrun.publish_deadline(started), time.monotonic() + scout_core.VERIFY_BUDGET_S)
             with scout_overrun.phase('reading what installs shared'):
                 contributions, shared_dead = fetched or fetch_contributions(index_url, key, with_nofeed=True)
             swiss_titles = []
@@ -285,10 +299,7 @@ def main():
                                                 boards=json.loads(SEEDS.read_text()).get('boards', []), swiss_titles=swiss_titles, deadline=deadline, carry=True)
             scout_cells.keep(db, feeds_out)   # the next run's ideas aim at the thinnest kind × country
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
-            board_facts = []
-            with scout_overrun.phase('board pass (job boards of a thin country)'):   # the checks stopped RESERVE_S early: it has its time, else it says so
-                scout_boards.run(db, until=scout_overrun.publish_deadline(started), named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')))
-            board_facts = scout_boards.facts(db)   # everything measured in the last 30 days, not only this run's country
+            board_facts = scout_boards.facts(db)   # what the board pass job measured in the last 30 days (its own job: --board-pass)
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))
             with scout_overrun.phase('reading the job boards'):
