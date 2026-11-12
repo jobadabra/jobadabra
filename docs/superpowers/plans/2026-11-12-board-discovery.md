@@ -13,7 +13,8 @@ Owner, 12 Nov 2026: "start new sessions, developer new processes/workflows … t
 - **Runs:** jobadabra-lab `board-discovery.yml`, its own concurrency group, every 2 h from the Worker timer (jobadabra-web); publish through the existing board facts.
 
 ## Progress
-- [ ] 1/3 jobadabra: the cell picker, rest, refresh, family search
-- [ ] 2/3 jobadabra-lab: `board-discovery.yml`; the boards job leaves `central-scout.yml`; the Scout restores the facts copy
-- [ ] 3/3 jobadabra: Codex's web search as a source, only if its trial run finds boards
+- [x] 1/4 jobadabra: the cell picker, rest, refresh, family search (#3913)
+- [x] 2/4 jobadabra-lab: `board-discovery.yml`; the boards job leaves `central-scout.yml`; the Scout restores the facts copy (lab #100; its AI token, lab #101)
+- [ ] 3/4 jobadabra: a board is searched in its country's language, one word per family in turn (`src/ai/board_words.py`). Owner, 12 Nov 2026, asked via AskUserQuestion: "Scout asks once per country (Recommended)". Replaces the country seed: the first nl and sk runs showed the AI already names the general portals; 9 of 12 boards read empty, and one gave 0 jobs for the English word and 5 for its own
+- [ ] 4/4 jobadabra: Codex's web search as a source, only if its trial run finds boards
 - [ ] The search reads measured boards first (session sa's PR)

@@ -17,6 +17,7 @@ import re
 import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+from itertools import zip_longest
 
 from . import pool_tags, role_kinds, scout_cells, scout_google_boards
 
@@ -29,9 +30,10 @@ BUDGET_S = 240          # the pass gives up starting new boards after this long
 PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.countries_each): a board's search page names at most ~100 distinct places
 KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
+WORD_CALLS = 1          # board discovery: its families' search words in the country's language, one call (src/ai/board_words.py)
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
-# ideas 1 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 64.
-JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
+# ideas 1 + words 1 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 65.
+JOB_CALLS = IDEA_CALLS + WORD_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
@@ -169,10 +171,16 @@ def search_for(db, country, kinds=None):
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
 
-def family_search(country, families):
-    """The search board discovery's cells are proposed and read for: the role families' own words (src/pool_tags.py FAMILIES), the whole country."""
-    words = [word.strip() for family in families for word in pool_tags.FAMILIES.get(family, '').split(',') if word.strip()]
-    return {'role_keywords': list(dict.fromkeys(words)),
+def family_search(country, families, local=None):
+    """The search board discovery's cells are proposed and read for, the whole country: the AI's ideas get the role families' own words
+    (src/pool_tags.py FAMILIES); a board's search box gets `local` ({family: words in the country's language}, src/scout_board_cells.py
+    local_words), else those English words, one word per family in turn, so each family is searched before any family's second word.
+    Why (12 Nov 2026, owner, asked via AskUserQuestion: "Scout asks once per country (Recommended)"): a Slovak board gave 0 jobs for "cooking"
+    and 5 for its own word, and the first family's English words took every search the board had (src/sources/found_boards.py FULL_SEARCHES)."""
+    english = {family: [word.strip() for word in pool_tags.FAMILIES.get(family, '').split(',') if word.strip()] for family in families}
+    turns = zip_longest(*[(local or {}).get(family) or english[family] for family in families])
+    return {'role_keywords': list(dict.fromkeys(word for family in families for word in english[family])),
+            'jobs_board_search_queries': list(dict.fromkeys(word for turn in turns for word in turn if word)),
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
 
@@ -207,9 +215,10 @@ def measure(board, local, country, families, browser=False):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local), **({'browser': True} if browser else {})}
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=()):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
     """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept.
-    families: board discovery's cells (src/scout_board_cells.py): the boards are asked for these role families instead of kinds; again: kept facts' boards read first, to measure them again."""
+    families: board discovery's cells (src/scout_board_cells.py): the boards are asked for these role families instead of kinds; again: kept facts' boards read first, to measure them again.
+    words: (db, country, families) -> {family: words in the country's language}, for cells only (default src/scout_board_cells.py local_words; tests pass a fake)."""
     from .ai import board_ideas, cost, decide
     from .sources import board_yield, careers, found_boards
     ensure(db)
@@ -219,12 +228,16 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
     try:
         by_cells = families is not None   # Gitar on #3913: the per-board loop below rebinds `families`; decide here
         kinds = list(families) if by_cells else kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
-        search = family_search(country, kinds) if by_cells else search_for(db, country, kinds)
+        if by_cells:
+            from . import scout_board_cells
+            search = family_search(country, kinds, (words or scout_board_cells.local_words)(db, country, kinds))   # like the ideas: a direct call, inside JOB_CALLS
+        else:
+            search = search_for(db, country, kinds)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
         proposed = _first(list(again), found, proposed)
-        began, kept, unread, counts, final = clock(), [], [], [], []
+        began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:
             for board in proposed:
@@ -257,6 +270,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
                     unread.append(board['host'])
+                    addresses.append(f"{board['search_url']} ({state})")
         finally:
             careers.READER = reader
         stamp = datetime.now(timezone.utc).date().isoformat()
@@ -271,6 +285,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
             + (f"; the browser was stopped, never asked again: {', '.join(final)}" if final else '')
             + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's lines showed neither which question spent the calls nor whether the job's cap held
+        if by_cells:   # Why (12 Nov 2026, bd): nl and sk runs read 9 of 12 boards as empty and the log named neither the words searched nor the address read
+            out(f"Board pass: searched with {', '.join(search['jobs_board_search_queries'][:found_boards.FULL_SEARCHES])}"
+                + (f"; read empty at: {', '.join(addresses)}" if addresses else ''))
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
         out(f'Warning: board pass skipped: {type(error).__name__}: {error}')
