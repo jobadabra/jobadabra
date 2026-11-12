@@ -98,18 +98,24 @@ def result(future, at):
 
 def as_done(futures, at):
     """(future, its result) for each of `futures` as it ends, until the cut `at`; then (future, LEFT) for each still open, in the given order.
-    Futures that end together come in the given order. The first failed read raises out of the loop, as result() did in the list's order: the
-    reads not yet taken are not taken (the caller's stage guard reports the source). Not waiting for the slowest is the point:
-    Why (bj, 12 Nov 2026, GTM 6 round's stored run c15 press 1): taken in the list's order, a slow first board held 4 boards read at 13-59 s
-    to 118 s of a 135 s run, after the titles' time."""
+    Futures that end together come in the given order. A failed read raises out of the loop once every read that ended with it is given (Gitar,
+    #3892: none of them lost with it); the reads still open are not taken (the caller's stage guard reports the source). Not waiting for the
+    slowest is the point:
+    Why (#3892, 12 Nov 2026): taken in the list's order, a slow first board held the boards read before it ended past the titles' time."""
     pending = list(futures)
     while pending:
         ended, _ = wait(pending, timeout=seconds_left(at), return_when=FIRST_COMPLETED)
         if not ended:
             break
-        for future in [future for future in pending if future in ended]:
+        batch = [future for future in pending if future in ended]
+        for future in batch:
             pending.remove(future)
-            yield future, future.result()
+        failed = [future for future in batch if future.exception() is not None]
+        for future in batch:
+            if future not in failed:
+                yield future, future.result()
+        if failed:
+            raise failed[0].exception()
     for future in pending:
         yield future, LEFT
 

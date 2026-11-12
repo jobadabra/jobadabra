@@ -1,7 +1,6 @@
-"""Each job board is kept, and so its titles and places judged, as soon as ITS read ends, not after the boards listed before it (12 Nov 2026, bj:
-in the GTM 6 round's stored run c15 press 1, a slow first board held 4 boards read at 13-59 s until 118 s of a 135 s run, past the titles'
-time: 97 of 113 jobs never asked). A board still
-open at the read cut is left for the next search exactly as before. No AI call and no live site here."""
+"""Each job board is kept, and so its titles and places judged, as soon as ITS read ends, not after the boards listed before it (#3892: a slow
+first board held the boards read before it ended past the titles' time, so their jobs were never asked). A board still open at the read cut
+is left for the next search exactly as before. No AI call and no live site here."""
 import tempfile
 import threading
 import time
@@ -34,6 +33,20 @@ def board(n):
 
 def job(n):
     return {'title': 'Sales', 'url': f'https://b{n}.example/1'}
+
+
+class AFailedRead(unittest.TestCase):
+    def test_the_reads_that_ended_with_a_failed_one_are_given_before_it_raises(self):
+        """Gitar on #3892: the first board's read failed in the same wait as the second's ended; the second is still kept."""
+        from concurrent.futures import Future
+        failed, ended, still_open = Future(), Future(), Future()
+        failed.set_exception(ValueError('a board read broke'))
+        ended.set_result('board 2')
+        given = []
+        with self.assertRaises(ValueError):
+            for future, result in read_budget.as_done([failed, ended, still_open], at=time.monotonic() + 5):
+                given.append(result)
+        self.assertEqual(given, ['board 2'], 'the read that ended is given; the open one is not taken')
 
 
 class KeptInItsTurn(unittest.TestCase):

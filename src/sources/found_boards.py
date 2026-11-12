@@ -456,9 +456,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     order = {id(read_item): n for n, read_item in enumerate(reads)}   # by item, not host: two items of one host keep their own turns (Gitar, #3892)
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
     # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST level for the AI calls of
-    # each board, whose future maps to its item so it is kept as it ends (bj, 12 Nov 2026)
+    # each board, whose future maps to its item so it is kept as it ends (#3892)
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
-    # Why (bj, 12 Nov 2026, GTM 6 round's stored run c15 press 1): kept in the list's order, a slow first board held the others' titles past the AI's time
+    # Why (#3892, 12 Nov 2026): kept in the list's order, a slow first board held the others' titles and places past the AI's time
     for done, (future, result) in enumerate(read_budget.as_done(futures, cut), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:

@@ -109,7 +109,7 @@ class FoundBoardsTests(unittest.TestCase):
 
     def test_boards_are_read_at_once_and_each_reported_when_it_ends(self):
         """18 Oct 2026: Chisinau's 2 slice boards gave nothing and its useful ones came 4th and 8th, each read after the one before. The list's
-        order was never the requirement (bj, 12 Nov 2026): a board is reported as soon as it ends, so the first board, ending last, comes last."""
+        order was never the requirement (#3892): a board is reported as soon as it ends, so the first board, ending last, comes last."""
         import threading
         boards = [{**BOARD, 'name': f'Board {n}', 'host': f'b{n}.example', 'search_url': f'https://b{n}.example/q?q={{role}}&l={{place}}'}
                   for n in range(1, found_boards.BOARD_WORKERS + 1)]
