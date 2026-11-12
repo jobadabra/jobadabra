@@ -57,16 +57,6 @@ jobs:
           name: ai-capped-finder-review   # present only when the broker refused
           path: ${{ runner.temp }}/ai-capped/ai-capped.json
           if-no-files-found: ignore
-      # Why (5 Nov 2026, code review of nt 3/4e): no switchboard-key here. The step above applies Codex's edits to desktop/e2e/lib/*.mjs in this same job, and this step then runs credit-alert.mjs and the lib files it imports; with the site's key in its env, an injected edit could read it. This alert keeps the CI-alerts bot until it moves to a job with a clean checkout.
-      - name: Tell the owner once if the broker refused
-        if: always() && !cancelled()
-        continue-on-error: true
-        uses: ./.github/actions/ai-skipped-alert
-        with:
-          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-          github-token: ${{ github.token }}
-          notes-dir: ${{ runner.temp }}/ai-capped
       # GitHub starts no workflow for a push or PR made with GITHUB_TOKEN, so the PR would sit without checks: push and open it with the CI GitHub App's token (else the workflow token, and no checks).
       - name: The App token, so the PR's checks start
         id: pr_app
@@ -112,6 +102,30 @@ jobs:
             --rate='Tests & harness=🟡 Medium|the Finder and its unit tests' --detail=.finder-review/body.md > .finder-review/laid-out.md
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file .finder-review/laid-out.md)
           { echo "## Finder self-review: PR opened"; echo "$url"; }
+
+  # Why (12 Nov 2026, owner: "Still getting on old telegram bots"): the alert had no switchboard-key because the `review` job applies Codex's edits to desktop/e2e/lib/*.mjs, which the alert's own
+  # script imports (code review of nt 3/4e, 5 Nov). A job of its own has a clean checkout of main and reads only the artifact `review` uploaded, so the site's key can be in its env.
+  tell:
+    name: Tell the owner once if the broker refused
+    needs: review
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read   # the run's ai-capped-* artifact
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: ./.github/actions/ai-skipped-alert
+        continue-on-error: true
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          switchboard-key: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+          github-token: ${{ github.token }}
 
   # The verdict pass's measured accuracy: five random verdicts of the week on the Verdict audit card (/admin/testing/bug-loop) to tick right or wrong; last week's audit is closed with its score. No AI.
   audit:

@@ -96,3 +96,22 @@ test('tell-owner.mjs reads the message file and sends it with the CI-alerts bot 
   const bot = calls.find(c => c.url.includes('api.telegram.org'));
   assert.deepEqual([calls[0].body.event, bot.url.includes('/bot1:OLD/'), bot.body.text], ['pr-check-scorecard', true, 'Scorecard: 3 checks slow']);
 });
+
+test('tellOwner (the AI-refusal alert of web\'s digest and changelog jobs, the weekly e2e summary): the switchboard first with its event, the CI-alerts bot only when it cannot deliver, held is delivered (12 Nov 2026)', async () => {
+  const {tellOwner} = await import('../../../../tools/ci-intel/lib/ai-refusal.mjs');
+  const ok = net({status: 200, body: {ok: true, sent: true}});
+  assert.deepEqual(await tellOwner('x', {env: KEY, fetch: ok.fetcher}), {sent: true});
+  assert.deepEqual([ok.site()[0].body.event, ok.bot().length], ['ai-credit', 0]);
+  const weekly = net({status: 200, body: {ok: true, sent: false, why: 'off'}});
+  assert.deepEqual(await tellOwner('x', {env: KEY, fetch: weekly.fetcher, event: 'e2e-weekly'}), {sent: true});
+  assert.deepEqual([weekly.site()[0].body.event, weekly.bot().length], ['e2e-weekly', 0]);
+  const down = net({status: 503, body: {ok: false}});
+  assert.deepEqual(await tellOwner('x', {env: KEY, fetch: down.fetcher}), {sent: true});
+  assert.deepEqual([down.bot().length, down.bot()[0].url.includes('/bot1:OLD/'), down.site().at(-1).body], [1, true, {event: 'ai-credit', fallback: true}]);
+  const keyless = net({status: 200, body: {}});
+  const noKey = {...KEY};
+  delete noKey.SELFHEAL_PUBLISH_KEY;
+  assert.deepEqual(await tellOwner('x', {env: noKey, fetch: keyless.fetcher}), {sent: true});
+  assert.deepEqual([keyless.site().length, keyless.bot().length], [0, 1]);
+  assert.match((await tellOwner('x', {env: {}, fetch: keyless.fetcher})).skipped, /no Telegram bot token/);
+});
