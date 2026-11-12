@@ -192,10 +192,6 @@ class FoundBoardsTests(unittest.TestCase):
         self.assertEqual(self._company([{'@type': 'EmploymentAgency', 'name': 'Example Personal GmbH'}]), ['Example Personal GmbH'], 'an agency alone is all the page names')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class TwoReadsAtOnceTests(unittest.TestCase):
     """One press runs two board reads at once (the first-jobs slice, src/first_jobs.py board_jobs, and the boards the web search found,
     src/sources/board_reader.py _fetch). Night 43313523472: each saved the whole board memory at its end and the later save dropped the
@@ -241,3 +237,7 @@ class TwoReadsAtOnceTests(unittest.TestCase):
         asked = []
         found_boards.read(SEARCH, [self.OTHER], fetch=lambda url: asked.append(url) or PAGE, web=False)
         self.assertEqual(asked, [], 'a board that answered 403 is not asked again by the plain reader (CLAUDE.md: never retry a 401 or 403)')
+
+
+if __name__ == '__main__':
+    unittest.main()
