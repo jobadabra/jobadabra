@@ -241,7 +241,8 @@ def main():
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
                              '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest; '
-                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn)')
+                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn; boards the headless browser must never open: '
+                             'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab central-scout.yml\'s browser_final input)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')

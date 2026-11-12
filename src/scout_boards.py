@@ -35,8 +35,8 @@ JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CAL
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
-PLACES, KINDS = 'central scout board places', 'central scout board kinds'
-HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')   # a by-hand host name (seed_final)   # the allowances' names
+PLACES, KINDS = 'central scout board places', 'central scout board kinds'   # the allowances' names
+HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')   # a by-hand host name (seed_final)
 
 
 def ensure(db):
@@ -55,8 +55,9 @@ def browser_final(db, host):
 def seed_final(db, text, out=print):
     """Keep the hosts named in `text` (a by-hand list, commas or spaces) as stopped for the scout's browser before any board is read: a stop a trial
     saw (a trial saves no memory) is then never opened again by a real pass. Only host-shaped names are kept; returns the hosts kept.
-    Why (12 Nov 2026, sa for the owner's "Final, never again (Recommended)" and "never retry a 401 or 403"): the Slovakia trial met a 403 in the
-    browser and kept nothing, so the first real pass would have opened that board again; the names stay in jobadabra-lab's run input, never here."""
+    Why (12 Nov 2026; CLAUDE.md, the refused-sites exception: "A check, captcha, sign-in page or 401/403 stops that board in Jobadabra's browser for
+    good, with no retry"): a trial saves no memory, so the 403 the scout's browser met in jobadabra-lab trial run 43275501441 was kept nowhere and the first
+    real pass would have opened that board again; jobadabra-lab's by-hand input `browser_final` names such hosts, never this repo."""
     hosts = [host for host in dict.fromkeys(part.strip().lower().removeprefix('www.') for part in re.split(r'[\s,]+', str(text or ''))) if HOST.fullmatch(host)]
     stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
     for host in hosts:
