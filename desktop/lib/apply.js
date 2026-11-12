@@ -359,8 +359,12 @@ export async function start(storage, {n, mode, applyMode}, open = openBrowser, l
   }
   await releaseEndedRuns(release, chosen.map(job => job.url));   // ended hidden-browser runs leave the list first, as in applyOne (7 Nov 2026, review of the owner's HYPE fix)
   const result = openBatchInChrome(chosen, drafted, {open, focus});
+  // Why (#3617, 12 Nov 2026): with a drafted job the dialog counts only outcomes, so a job that already had a kit and got a tab needs its row too (the background branch lists every chosen job the same way); with none drafted the batch closes to its toast as before.
   const opened = new Set(chosen.map(job => job.url));
-  if (result.ok) outcomes = outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, status: 'started'} : item);
+  if (outcomes.length) {
+    const listed = new Set(outcomes.map(item => item.url));
+    outcomes = [...outcomes.map(item => item.status === 'prepared' && opened.has(item.url) ? {...item, ...chromeStatus(result)} : item), ...chosen.filter(job => !listed.has(job.url)).map(job => chromeRow(job, result))];
+  }
   return outcomes.length ? {...result, outcomes} : result;
 }
 
@@ -373,8 +377,12 @@ export async function openInChrome(storage, jobs, {open = openBrowser, focus = o
   if (!jobs.length) return {ok: true, outcomes: []};
   await releaseEndedRuns(release, jobs.map(job => job.url));
   const result = openBatchInChrome(jobs, 0, {open, focus});
-  return {...result, outcomes: jobs.map(job => ({url: job.url, title: job.title || '', company: job.company || '', status: result.ok ? 'started' : 'not-started', reason: result.ok ? '' : result.error}))};
+  return {...result, outcomes: jobs.map(job => chromeRow(job, result))};
 }
+
+/** A Chrome open's answer as one job's status: 'started', or 'not-started' with the reason Chrome could not open. */
+const chromeStatus = result => result.ok ? {status: 'started', reason: ''} : {status: 'not-started', reason: result.error};
+const chromeRow = (job, result) => ({url: job.url, title: job.title || '', company: job.company || '', ...chromeStatus(result)});
 
 /** The Apply-to-N batch in Chrome: a form session per job, then one launch with a tab for each job whose tab is not open yet. -> the start() answer. */
 function openBatchInChrome(chosen, drafted, {open, focus}) {
