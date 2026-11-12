@@ -47,6 +47,7 @@ class Beside:
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
         self.count, self.left = threading.Lock(), len(reads)
+        self.urls = set()   # the links handed board by board: a list that returns copies of them hands none twice
         self.handed, self.order = {}, []   # {id: job} handed board by board (held, so an id is never reused); the groups' links in the list's order
         self.threads = [threading.Thread(target=slots.carry(self._read, level), args=(read, end, wait), name='boards-first', daemon=True)
                         for read, level in reads]
@@ -78,7 +79,7 @@ class Beside:
         # group past the titles' time); the whole group, when it ends, gives the list's order take() returns
         for _said, found in board_reader.read(Run.current(), self.search, early=True, wait=wait, where='beside', on_board=self._hand):
             with self.count:
-                rest = [job for job in found if id(job) not in self.handed]   # a reader that hands no board on its own: its whole group
+                rest = [job for job in found if id(job) not in self.handed and job.get('url') not in self.urls]   # not handed board by board, by the other source either
                 self.order += [job.get('url') for job in found]
             if rest:
                 self._put(rest)
@@ -87,15 +88,24 @@ class Beside:
         """One board's jobs, kept by found_boards.read: judged and queued now, remembered so its group does not queue them twice."""
         with self.count:
             self.handed.update((id(job), job) for job in found)
+            self.urls.update(job.get('url') for job in found)
         self._put(found)
 
     def _listed(self, listed):
         """A first run's own boards (the pool's proven ones, else the ones proposed for your country), read as the first-jobs step read them.
         Why (lanes 4a, owner, 11 Nov 2026, L10: "the first-jobs step reads employer sites and scores them without waiting for the boards"):
         read inside the slice, they held it to the read cut (68 s for 5 of 7 people) and ended there with 2-6 boards still open."""
-        found = listed()
-        if found:
-            self._put(found)
+        # Why (12 Nov 2026, the 30 fixed profiles; #3892 did it for the known boards only): the list came back only when its slowest board
+        # ended, which with one board still open is the search's own end, after the last hand-over: Vienna read 41 fitting jobs from three
+        # boards and listed 0, Krakow 24 and 0. Each board is handed as it is kept; what the whole list still holds follows once.
+        import inspect
+        # TODO(AI): pass on_board always once L10's proof stand-in (test_board_lane_clock board_list, a locked ledger proof) takes it (#3915)
+        by_board = 'on_board' in inspect.signature(listed).parameters   # a stand-in list without boards of its own gives its whole list
+        found = listed(on_board=self._hand) if by_board else listed()
+        with self.count:
+            rest = [job for job in found or [] if id(job) not in self.handed and job.get('url') not in self.urls]
+        if rest:
+            self._put(rest)
 
     def _put(self, found):
         import copy

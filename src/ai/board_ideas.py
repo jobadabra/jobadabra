@@ -142,20 +142,37 @@ def slices(search):
     return out
 
 
+LEAD = 3   # boards each side gives in turn: the first-jobs slice reads 6 at once (press/budget.json first_jobs.SLICE_BOARDS)
+
+
 def ideas(search, client=None, field=True):
     """The boards Claude proposed for this search's countries, roles and kinds (validated), one call per slice of countries, each from the
-    cache when it already answered for it; [] without AI or without countries. field: also the field's own boards, first (_field); off for
-    the central scout, whose search mixes several kinds of work for one country (src/scout_boards.py)."""
+    cache when it already answered for it; [] without AI or without countries. field: also the field's own boards (_field), sharing the
+    head of the list with the countries' boards (_in_turn); off for the central scout, whose search mixes several kinds of work for one
+    country (src/scout_boards.py)."""
     asked = slices(search)
     if not asked:
         return []
     shared = ranked(served([country for part in asked for country in part[1]]), search)
     calls = ([lambda: _field(asked_for(search), client)] if field else []) + [lambda part=part: _proposal(part, client) for part in asked]
     answers = _together(calls)
-    own = []   # the field's own boards first, then the slices in their order: the slices' general ones come after (MAX_BOARDS * 2 cap)
-    for found in answers:
-        own.extend(board for board in found or [] if board['host'] not in {b['host'] for b in own})   # a call that failed leaves the others
-    return _merge(own, shared)
+    of_field, own = (answers[0] or [], answers[1:]) if field else ([], answers)
+    country = []   # the slices in their order; a call that failed leaves the others
+    for found in own:
+        country.extend(board for board in found or [] if board['host'] not in {b['host'] for b in country})
+    return _merge(_in_turn(country, [board for board in of_field if board['host'] not in {b['host'] for b in country}]), shared)
+
+
+def _in_turn(country, of_field):
+    """The countries' boards and the field's, LEAD of each in turn, the countries' first; what one side has left follows the other's end.
+    Why (12 Nov 2026, owner, asked via AskUserQuestion: "Country first, then field (Recommended)"): every field board went first (26 Oct
+    2026, "Field first"), and a search reads the first 6 at once: for people hired locally they were foreign boards (a welder in Naples
+    read two oil-and-gas boards, a chef in Krakow US and UK hotel boards) while Poland's main board was only a stand-in; 20 of 30 fixed
+    profiles got no right job from a board (round of 12 Nov). A pilot still reads three boards of the field in the first six."""
+    out = []
+    for start in range(0, max(len(country), len(of_field)), LEAD):
+        out += country[start:start + LEAD] + of_field[start:start + LEAD]
+    return out
 
 
 def _together(calls):

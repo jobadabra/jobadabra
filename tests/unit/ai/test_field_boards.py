@@ -1,5 +1,6 @@
-"""The boards of the search's own field are asked once for all its places and read first (owner's yes, 26 Oct 2026, discovery sketch "Field
-first"): a First Officer in Europe was asked as 10 slices of 5 countries with "public service first, then general boards": 111 boards, 14 for
+"""The boards of the search's own field are asked once for all its places and share the head of the list with the countries' own boards,
+three and three, the countries' first (owner, 12 Nov 2026, asked via AskUserQuestion: "Country first, then field (Recommended)"; before:
+owner's yes, 26 Oct 2026, discovery sketch "Field first"): a First Officer in Europe was asked as 10 slices of 5 countries with "public service first, then general boards": 111 boards, 14 for
 aviation, 2 of them read, because the slices' general boards filled the list. Fake AI client only (src/ai/board_ideas.py)."""
 import json
 import tempfile
@@ -50,7 +51,7 @@ class FieldBoards(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def test_the_field_s_boards_are_asked_once_for_every_place_and_come_first(self):
+    def test_the_field_s_boards_are_asked_once_for_every_place_and_follow_the_country_s_first_three(self):
         client = Client()
         found = board_ideas.ideas(EUROPE, client)
         field_calls = [kw for kw in client.asked if kw['system'][0]['text'] == board_ideas.FIELD_SYSTEM]
@@ -59,9 +60,12 @@ class FieldBoards(unittest.TestCase):
         self.assertEqual((sent['countries'], sent['roles'], sent['kinds']), (COUNTRIES, ['first officer'], ['aviation_transport']),
                          'every country of the region at once, the roles and the kind of work; never the CV')
         hosts = [board['host'] for board in found]
-        self.assertEqual(hosts[:4], ['crew0.example', 'crew1.example', 'crew2.example', 'crew-careers.example'],
-                         "the field's boards lead the list, before the slices' general boards fill its cap")
-        self.assertEqual({board['source_kind'] for board in found[:4]}, {'sector'}, 'each is a board of the field')
+        country = [host for host in hosts if host.startswith('general')]
+        self.assertEqual(hosts[:6], [*country[:3], 'crew0.example', 'crew1.example', 'crew2.example'],
+                         "the first six a search reads at once: the countries' first three boards, then the field's first three")
+        self.assertEqual(hosts[6:10], [*country[3:6], 'crew-careers.example'],
+                         "then three and three again: the field's last board is not pushed behind every general board")
+        self.assertEqual({board['source_kind'] for board in found if board['host'].startswith('crew')}, {'sector'}, 'each is a board of the field')
         self.assertNotIn('every-job.example', hosts, 'one the AI marked general, with no keyword search page: not read')
         self.assertEqual(len(found), board_ideas.MAX_BOARDS * 2)
         calls = len(client.asked)

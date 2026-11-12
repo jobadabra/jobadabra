@@ -56,7 +56,7 @@ class AskedTogether(unittest.TestCase):
         self.assertIn('BAustria', [b['name'] for b in found], 'the field call and the first slice met: asked together')
 
     def test_the_same_answers_make_the_same_list_whatever_arrives_first(self):
-        """The field's boards lead, then the slices in their order, even when the last slice answers first."""
+        """The slices' boards in their order, then the field's (three of each in turn, the countries' first), even when the last slice answers first."""
         last_done = threading.Event()
         last = board_ideas.slices(SEARCH)[-1][1][0]
 
@@ -75,7 +75,7 @@ class AskedTogether(unittest.TestCase):
         client.create = create
         found = board_ideas.ideas(SEARCH, client)
         slices = board_ideas.slices(SEARCH)
-        self.assertEqual([b['name'] for b in found], ['Bfield', *('B' + part[1][0] for part in slices)])
+        self.assertEqual([b['name'] for b in found], [*('B' + part[1][0] for part in slices), 'Bfield'])
 
     def test_one_call_failing_leaves_the_others(self):
         firsts = [part[1][0] for part in board_ideas.slices(SEARCH)]
@@ -85,9 +85,9 @@ class AskedTogether(unittest.TestCase):
             if name == failing:
                 raise TimeoutError('past the deadline')
         found = board_ideas.ideas(SEARCH, Client(before))
-        self.assertEqual([b['name'] for b in found], ['Bfield', 'B' + firsts[0], 'B' + firsts[2]], 'the failed slice is dropped, the others land in order')
+        self.assertEqual([b['name'] for b in found], ['B' + firsts[0], 'B' + firsts[2], 'Bfield'], 'the failed slice is dropped, the others land in order')
         again = Client()
-        self.assertEqual([b['name'] for b in board_ideas.ideas(SEARCH, again)], ['Bfield', *('B' + n for n in firsts)], 'the failed one is asked next time')
+        self.assertEqual([b['name'] for b in board_ideas.ideas(SEARCH, again)], [*('B' + n for n in firsts), 'Bfield'], 'the failed one is asked next time')
 
 
     def test_a_call_that_raises_itself_leaves_the_others(self):
