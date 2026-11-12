@@ -282,9 +282,9 @@ export function renderNextStep(item) {
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
     if (live) actions.push(sessionButton(t('pagesCommon.skipRole'), 'secondary', () => skipSession(item)));
     else if (item.resumable) pushResume();
-    const never = el('span', 'ss-never muted small');
-    never.append(icon('info'), el('span', '', t('pagesSession.neverSubmit')));
-    actions.push(never);
+    const yours = el('span', 'ss-submit-yours muted small');
+    yours.append(icon('info'), el('span', '', t('pagesSession.submitIsYours')));
+    actions.push(yours);
   } else if (asking && !live) {
     if (item.resumable) pushResume();
     // Claude closed with the app, but the form may still be open in Chrome.

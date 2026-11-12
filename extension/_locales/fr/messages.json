@@ -1,5 +1,5 @@
 {
   "description": {
-    "message": "Remplit une candidature à partir de votre dossier préparé. Vous vérifiez et envoyez vous-même."
+    "message": "Remplit une candidature à partir de votre dossier préparé. Vous vérifiez et envoyez vous-même, sauf si vous activez « Automatisation complète » dans l’app."
   }
 }
