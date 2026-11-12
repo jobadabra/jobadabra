@@ -16,7 +16,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from .. import read_methods, time_budget
-from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, owed_reads, posting_text
+from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text, waiting_jobs
 from ..press import resume, stage
 
 SPACING_HOURS = 6
@@ -213,16 +213,13 @@ def mark_read(db, name, now, search=None):
             db.execute('INSERT OR REPLACE INTO aggregator_searches (source, search) VALUES (?, ?)', (name, search_key(search)))
 
 
-def mark_read_unless_waiting(db, name, now, search, owed, cut=False):
-    """Mark reader `name` read now unless something of it waits: -> True when it waits (its clock cut it, or `owed`, the jobs still waiting for an answer the AI owes them, is not empty), so the next
-    search reads it again; the one place scan and keep_late decide it.
-    Why (#3754, wj, WP8 rule 6): resting a source 6 h while its jobs wait for their place or title answer dropped them for 6 h (p10 on main: Arbeitnow 600 read, 9 kept, 495 never asked).
-    Each re-read costs three GETs and AI calls only for what has no stored answer yet (feeds.triage and the place call skip the answered), so a search that answers more leaves less owed;
-    once nothing is owed the source rests as before. An answer the AI never gives is bounded (owner, 12 Nov 2026: "Add a limit first"): owed_reads.MOST further searches read the source again, then it rests 6 h
-    like the others (owed_reads.another_read, the one owner of the count)."""
-    if cut or (owed and owed_reads.another_read(db, name, search_key(search) if search is not None else '')):
+def mark_read_unless_cut(db, name, now, search, cut=False):
+    """Mark reader `name` read now unless its own clock cut the read: -> True when it was cut, so the next search reads it again; the one place scan and keep_late decide it.
+    Why no "jobs still waiting" any more (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommended)", replacing "Add a limit first"): a job the AI had no
+    answer for in time is kept by kept() (src/sources/waiting_jobs.py) and judged by the queue after the search, so its source is read once and rests like any other;
+    reading it again for the same jobs (#3754, #3893) cost three GETs a search and still lost the ones a late read returned."""
+    if cut:
         return True
-    owed_reads.clear(db, name)   # at most owed_reads.MOST re-reads for jobs that keep waiting (owner, 12 Nov 2026), then the source rests as any other
     mark_read(db, name, now, search)
     return False
 
@@ -250,17 +247,15 @@ def early_items(db, name, jobs, shown, now=None):
     return items
 
 
-def kept(db, name, found, now=None, shown=None, owed=None):
+def kept(db, name, found, now=None, shown=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
     (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py). shown: {url: item} of the jobs handed early (early_items),
-    taken as they are, not recorded again. owed: a list that gets each job still waiting for an answer the AI owes it (stage never_asked): their source is not rested (scan)."""
+    taken as they are, not recorded again. A job still waiting for an answer the AI owes it
+    (stage never_asked) is kept for the queue after the search (src/sources/waiting_jobs.py), the one owner of waiting."""
     from collections import Counter
     from . import job_stage
-    now, matched, fresh, shown, stages, places = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter(), {}
+    now, matched, fresh, shown, stages, places, waiting = now or time_budget.wall(), [], [], shown if shown is not None else {}, Counter(), {}, []
     feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
-    if name == boards_ahead.NAME:   # a board was searched for your place: what it lists one town over is asked about after the search (src/sources/places_later.py)
-        from . import places_later
-        places_later.note(found)
     with db:
         for job in found:
             if job.get('url') in shown:
@@ -273,10 +268,11 @@ def kept(db, name, found, now=None, shown=None, owed=None):
             else:
                 stage = job_stage.of(job, places)   # Why (sa's plan WP3 and #3709's yardstick, 10 Nov 2026): each job read gets a stage, none unseen; one `places` per pass keeps the place words to once per location
             stages[stage] += 1
-            if stage == 'never_asked' and owed is not None:
-                owed.append(job)
+            if stage == 'never_asked':
+                waiting.append(job)
             job_stage.say_one(name, stage, job)
     job_stage.say(name, len(found), stages)
+    waiting_jobs.keep(db, name, waiting, now, places=places)   # judged by the queue after the search, never dropped
     board_employers.fill_missing(fresh)   # the page's own hiringOrganization, a few per run
     board_employers.note(matched, name)
     return matched
@@ -317,17 +313,16 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
             continue
         with stage.guard('free job APIs: read') as caught:   # Why (lanes 3/5, 11 Nov 2026): any error of one reader is that source failing, never the run (a RuntimeError ended it)
             try:
-                owed = []   # this reader's jobs still waiting for the AI's answer
-                found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately, owed)
+                found, matched = _one(db, search, name, read, now, shown, ahead, lane if started else None, lately)
             except _Cut:   # still reading at the read cut: not marked read, the next search takes it
                 late.append(name)
                 continue
             except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
                 _source_failed(report, name, error)
                 continue
-            # EURES stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251); a job the AI has not answered for yet (stage never_asked) waits too, WP8 rule 6 (#3754)
+            # EURES stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
             cut_now = name == 'EURES' and eures.CUT[0]
-            if mark_read_unless_waiting(db, name, now, search, owed, cut=cut_now) and (cut_now or not matched):   # a read whose matched jobs were kept is not "cut" (owner, 12 Nov 2026; Gitar on #3893)
+            if mark_read_unless_cut(db, name, now, search, cut=cut_now):   # a read whose matched jobs were kept is not "cut" (owner, 12 Nov 2026; Gitar on #3893)
                 late.append(name)
             if on_jobs and matched and not (ahead is not None and name == boards_ahead.NAME and ahead.shown):   # shown already
                 on_jobs(matched)
@@ -361,10 +356,9 @@ def keep_late(db, search, lane, on_jobs, until, now=None):
             if taken is None:   # still reading: the run ends first, the next search asks again
                 continue
             found, views = taken
-            owed = []
             with batch_scope.using(views):
-                matched = kept(db, name, found, now, None, owed)
-            mark_read_unless_waiting(db, name, now, search, owed)
+                matched = kept(db, name, found, now, None)
+            mark_read(db, name, now, search)
             if matched:
                 on_jobs(matched)
             jobs.extend(matched)
@@ -377,7 +371,7 @@ class _Cut(Exception):
     """A read started from the press's start is still reading at the read cut."""
 
 
-def _one(db, search, name, read, now, shown, ahead, lane, lately, owed):
+def _one(db, search, name, read, now, shown, ahead, lane, lately):
     """(jobs listed, jobs kept) of one reader: the found boards read beside the employers taken, a read the lane started taken (raises _Cut
     while it still reads at the cut), any other read now."""
     from . import read_budget
@@ -390,14 +384,14 @@ def _one(db, search, name, read, now, shown, ahead, lane, lately, owed):
         found, views = taken
         from ..ai import batch_scope
         with batch_scope.using(views):   # the lane's own title answers (api_lane._read): kept() asks nothing it judged
-            return found, kept(db, name, found, now, shown, owed)
+            return found, kept(db, name, found, now, shown)
     elif name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
         found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
     else:
         with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
             found = read(search)
             counted.jobs = read_methods.in_places(found)
-    return found, kept(db, name, found, now, shown, owed)
+    return found, kept(db, name, found, now, shown)
 
 
 def _said(report, late):

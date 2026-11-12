@@ -57,8 +57,9 @@ const CEILING = Number(process.env.JOBADABRA_PRESS_SECONDS) || 0;
 export const SEARCH_BUDGET_S = process.env.JOBADABRA_SEARCH_TAPE_MODE === 'record' && CEILING > 180 ? CEILING : 180;
 // Find new employers starts no new check after 3 minutes (owner, 7 Oct 2026: "runs for too long"); each check is saved as it ends (src/scout.py).
 export const SCOUT_BUDGET_S = 180;
-// The scoring queue's own clock: a hang guard, not a target (60 scores take ~4 min on Claude Code's 4 slots; a slower engine gets the same room).
-export const SCORE_QUEUE_S = 900;
+// The queue's own clock after a search: the jobs it checks, the postings it reads and its scores stop at 10 minutes; what is left continues after the next search or on "Score".
+// Why (12 Nov 2026, owner, asked via AskUserQuestion: "All checked, 60 scored, 10 min (Recommended)"; it was 900, a hang guard for scores only).
+export const SCORE_QUEUE_S = 600;
 /** The scoring queue's command (src/daily_modes.py score_mode): scores for the jobs a search found and did not reach, `max` at most, on its own clock; no digest is sent. */
 export const scoreQueueArgs = (storage, max = 60) => dailyArgs(storage, {mode: 'score', scoreMax: max, budget: SCORE_QUEUE_S}).filter(arg => arg !== '--send');
 export const syncMatchesArgs = () => ['src', 'daily', '--mode', 'today', '--log-run', '--enrich-max', '0', '--score-max', '0', '--auto-kit-max', '0'];

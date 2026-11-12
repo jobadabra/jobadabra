@@ -9,6 +9,21 @@ import os
 ORDER = ('kept', 'ai_no', 'never_asked', 'placed_out', 'no_link')
 
 
+def inside_places(job, places=None):
+    """Whether the job is in the person's places as far as anyone has said: Claude's answer for it, else the place words (once per location in a pass: `places`)."""
+    from . import feeds
+    key = ((job.get('location') or '').strip(), bool(job.get('remote')))
+    verdict = feeds.place_of(job)   # Claude's, per posting for a vague place: never shared between jobs
+    if verdict is not None:
+        return verdict != 'out'
+    if places is not None and key in places:
+        return places[key]
+    inside = feeds.wanted_location(job)   # unplaced: the place words, which read only the location and remote
+    if places is not None:
+        places[key] = inside
+    return inside
+
+
 def of(job, places=None):
     """The stage of a job that aggregators.kept did not keep: placed_out (Claude placed it outside; no place call runs and the words say no; or it
     names no place at all), never_asked (its place or its title had no answer when kept looked: no call reached it in time, or none asks on this
@@ -22,15 +37,7 @@ def of(job, places=None):
         return 'no_link'
     title = job.get('title') or ''
     key = ((job.get('location') or '').strip(), bool(job.get('remote')))
-    verdict = feeds.place_of(job)   # Claude's, per posting for a vague place: never shared between jobs
-    if verdict is not None:
-        inside = verdict != 'out'
-    elif places is not None and key in places:
-        inside = places[key]
-    else:
-        inside = feeds.wanted_location(job)   # unplaced: the place words, which read only the location and remote
-        if places is not None:
-            places[key] = inside
+    verdict, inside = feeds.place_of(job), inside_places(job, places)
     if not inside:
         return 'never_asked' if verdict is None and feeds.placing() and key[0] else 'placed_out'
     if not feeds.wanted_title(title):
