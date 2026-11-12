@@ -7,7 +7,8 @@ Design (12 Nov 2026, owner, asked via AskUserQuestion: "Yes, build it (Recommend
   takes from it (judge). Nothing else reads it.
 - The queue asks the titles first, then the places of the ones whose title fits (a location that names no town: from its posting), and lists what both say yes to.
   A job is never listed on a guess.
-- Bounded: the newest KEPT rows of the current search, for DAYS days and TRIES queue runs; an answer the AI never gives ends there.
+- Bounded: the newest KEPT rows of the current search, for DAYS days; a row whose title the AI answered and whose place stays open, for TRIES queue runs.
+  A run in which the AI did not answer for a row's title (no AI, a spent limit, the queue's clock) costs it no try.
 Why (12 Nov 2026, 30 first searches on the Mac): job boards returned at 97 s (median) and the AI stops at 124 s, so 1,068 of 2,019 board jobs were
 read and never asked; they were dropped, and their board was read again by the next 2 searches to get them back (owed_reads, removed with this).
 Tests: tests/unit/sources/test_waiting_jobs.py."""
@@ -19,7 +20,7 @@ TABLE = ('CREATE TABLE IF NOT EXISTS waiting_jobs (url TEXT PRIMARY KEY, source 
 KEPT = 500   # rows kept at most, the newest (owner, 12 Nov 2026: "newest 500 at most")
 DAYS = 14    # a row older than this is dropped unasked: its posting is likely gone
 SAID = 'Waiting to be checked after this search: '   # the fixed start of the line a search says when it keeps jobs waiting
-TRIES = 3    # queue runs that may ask about a row; then the AI never answers for it and it is dropped
+TRIES = 3    # queue runs in which the AI answered for a row's title and it still could not be listed (its place stays open); then it is dropped
 
 
 def _key(search):
@@ -78,7 +79,7 @@ def count(db, search):
 def judge(db, search, now, out=print, land=None):
     """The queue's first step: asks the AI about the waiting jobs' titles, then about the places of the ones whose title fits, and hands back the
     ones both say yes to, in the report's shape (aggregators._item, recorded in the seen history) -> (checked, items to list). land(fit titles, batch): as each title batch lands.
-    A row leaves the list when it is listed, when an answer says no, or after TRIES runs; one still unanswered stays for the next queue."""
+    A row leaves the list when it is listed, when an answer says no, or after TRIES runs that answered its title; one whose title is unanswered stays for the next queue."""
     from ..ai import title_triage
     from . import aggregators, feed_places, feeds
     rows = held(db, search)
@@ -90,6 +91,8 @@ def judge(db, search, now, out=print, land=None):
     if open_titles and feeds.placing():
         feeds._triaged()[feeds.ASKED] = True
         feeds._triaged().update(title_triage.decide(open_titles, search, local=True, land=land))
+    # Why (#3924 review, 12 Nov 2026): every row lost a try in every run, so three queues during an AI outage dropped jobs nobody was asked about.
+    answered = {job['url'] for job in jobs if feeds.judged_title(job['title']) is not None}
     # The AI's yes only, never the role words: a title it has not answered stays waiting (tests/unit/sources/test_titles_ai_first.py).
     fitting = [job for job in jobs if feeds.judged_title(job['title']) is True]
     feed_places.place_jobs(fitting, chosen=True)
@@ -107,7 +110,7 @@ def judge(db, search, now, out=print, land=None):
             elif feeds.judged_title(job['title']) is False or feeds.place_of(job) == 'out':   # an answer said no
                 refused.append(job['url'])
         db.executemany('DELETE FROM waiting_jobs WHERE url = ?', [(item['url'],) for item in items] + [(url,) for url in refused])
-        db.execute('UPDATE waiting_jobs SET tries = tries + 1 WHERE search = ?', (_key(search),))
+        db.executemany('UPDATE waiting_jobs SET tries = tries + 1 WHERE url = ?', [(url,) for url in answered])
         db.execute('DELETE FROM waiting_jobs WHERE tries >= ?', (TRIES,))
     left = count(db, search)
     out(f"Checked {len(rows)} job(s) your last search had no time for: {len(items)} listed, {len(refused)} not for you"

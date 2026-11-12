@@ -87,11 +87,20 @@ class JobsJudgedAfterTheSearch(unittest.TestCase):
         self.assertEqual([item['title'] for item in items], ['Known role 0'])
         self.assertEqual(waiting_jobs.count(self.db, SEARCH), 0, 'an answer of no is an answer: nothing waits')
 
-    def test_a_job_the_ai_never_answers_for_waits_three_queues_then_is_dropped(self):
+    def test_a_queue_in_which_the_ai_answers_nothing_costs_a_waiting_job_no_try(self):
+        """#3924 review: three queues during an AI outage dropped every waiting job though nobody was asked about one."""
         self.late_search()
         with mock.patch.object(title_triage, 'decide', lambda titles, search, **kw: {}):   # no AI, a spent limit, the queue's own clock
-            for left in (3, 3, 0):
+            for _ in range(4):
                 self.assertEqual(waiting_jobs.judge(self.db, SEARCH, NOW)[1], [], 'never listed on a guess')
+                self.assertEqual(waiting_jobs.count(self.db, SEARCH), 3, 'still waiting: the AI answered for none of them')
+
+    def test_a_job_whose_title_fits_and_whose_place_is_never_answered_waits_three_queues_then_is_dropped(self):
+        self.late_search()
+        fits = lambda titles, search, **kw: {feeds.title_key(title): True for title in titles}
+        with mock.patch.object(title_triage, 'decide', fits), mock.patch('src.sources.feed_places.place_jobs', lambda jobs, **kw: None):
+            for left in (2, 2, 0):   # the one in the person's town is listed by the first queue; the next town's two wait for a place answer
+                waiting_jobs.judge(self.db, SEARCH, NOW)
                 self.assertEqual(waiting_jobs.count(self.db, SEARCH), left)
 
     def test_a_job_that_names_no_town_is_listed_only_once_its_posting_says_where_it_is(self):

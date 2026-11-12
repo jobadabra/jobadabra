@@ -18,7 +18,7 @@ Owner, 12 Nov 2026, asked via AskUserQuestion: "Yes, build it (Recommended)", "A
 | **not for you** | the stored title and place answers | a new search strategy re-judges |
 
 - The queue (`src/daily_modes.py score_mode`, steps in `src/press/after_search.py`): titles → places → postings → scores.
-- Limits: every waiting job checked, the newest 500 kept, 14 days, 3 queue runs per job; 60 postings read, 60 scored; 10 minutes (`SCORE_QUEUE_S`).
+- Limits: every waiting job is asked about, the newest 500 kept, 14 days; 60 postings read, 60 scored; 10 minutes (`SCORE_QUEUE_S`, the queue process's one clock). A job the AI did not answer for (no AI, a spent limit, the clock) keeps waiting at no cost; one whose title was answered and whose place stays open leaves after 3 queue runs.
 - Only what few questions can settle waits: a job in the person's places with an open title, a board's job with an open place, a fitting title with an open place. A free job API's whole-world rows do not.
 - The app starts the queue when a search says it kept work (jobs to check, postings to read, jobs to score); one bar above the Jobs list, a count, never unjudged rows.
 - Not in this design: the search's own clock is unchanged (asking more places inside the 3 minutes starved the titles, 3 tries on 12 Nov 2026); employer sites are read again each search, so their unjudged titles are asked then.
