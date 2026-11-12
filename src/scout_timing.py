@@ -28,7 +28,8 @@ class Tally:
     def line(self, workers, wall):
         """The one log line: each timed read's thread-seconds and calls, against the pass's thread-seconds (workers x wall clock)."""
         parts = ', '.join(f'{name} {self.seconds[name]:.0f} s in {self.calls[name]} calls' for _, _, name in TIMED)
-        return f'Scout feed pass time ({workers} workers x {wall:.0f} s = {workers * wall:.0f} thread-seconds): {parts}'
+        # Why (Gitar, #3880): the pass ends on its deadline while late fetches still run; their reads come after the restore and are not in these numbers.
+        return f'Scout feed pass time ({workers} workers x {wall:.0f} s = {workers * wall:.0f} thread-seconds, reads after the pass ended not counted): {parts}'
 
 
 def _timed(tally, name, fn):

@@ -20,7 +20,7 @@ class FeedPassTimingTest(unittest.TestCase):
             geo.load()
         self.assertEqual((decide.kept, geo._read, paths.load_search_config), before, 'every function is back after the pass')
         self.assertEqual((tally.calls['answer-cache lookups'], tally.calls['place-file reads'], tally.calls['search-config reads']), (1, 1, 0))
-        self.assertRegex(out.getvalue(), r'^Scout feed pass time \(24 workers x \d+ s = \d+ thread-seconds\): answer-cache lookups \d+ s in 1 calls, '
+        self.assertRegex(out.getvalue(), r'^Scout feed pass time \(24 workers x \d+ s = \d+ thread-seconds, reads after the pass ended not counted\): answer-cache lookups \d+ s in 1 calls, '
                                          r'place-file reads \d+ s in 1 calls, search-config reads 0 s in 0 calls\n$')
 
     def test_an_error_inside_the_pass_still_restores_the_functions(self):
