@@ -375,6 +375,7 @@ export default {
   "read.limit": "Maximum par lecture atteint ({pages})",
   "read.scroll": "Défilement pour voir plus d’offres…",
   "read.goPage": "Accès à la page {page}…",
+  "read.pressed": "En appuyant sur les cartes, {placed} sur {cards} ont reçu une adresse",
   "read.ai": "IA : {reason}",
   "read.tryJobs": "Essai d’un chemin vers les offres",
   "read.signIn": "Connectez-vous à {host} dans cet onglet, puis appuyez sur Lire",

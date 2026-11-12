@@ -375,6 +375,7 @@ export default {
   "read.limit": "Limite per lettura raggiunto ({pages})",
   "read.scroll": "Scorro per altri annunci…",
   "read.goPage": "Apro la pagina {page}…",
+  "read.pressed": "Premendo le schede, {placed} su {cards} hanno ottenuto un indirizzo",
   "read.ai": "IA: {reason}",
   "read.tryJobs": "Provo un percorso verso gli annunci",
   "read.signIn": "Accedi a {host} in questa scheda, poi premi Leggi",
