@@ -2,15 +2,6 @@
  {
   "seed": 20261107,
   "pairs": [
-   "start → Focus: Up next",
-   "Focus: Up next → Settings: Your data",
-   "Settings: Your data → Actions: Actions: More · 2",
-   "Actions: Actions: More · 2 → Strategy: Job preferences"
-  ]
- },
- {
-  "seed": 20261107,
-  "pairs": [
    "start → Focus: Focus: History",
    "Focus: Focus: History → Profile: Build a CV with the AI",
    "Profile: Build a CV with the AI → Settings: Available",
@@ -54,6 +45,10 @@
  },
  {
   "seed": 20261111,
+  "pairs": []
+ },
+ {
+  "seed": 20261112,
   "pairs": []
  }
 ]

@@ -20,11 +20,11 @@
   "label": "Tune my strategy"
  },
  {
-  "group": "Actions",
-  "label": "Tailor CV + cover letter for top matches"
- },
- {
   "group": "Focus",
   "label": "Suggestions"
+ },
+ {
+  "group": "Actions",
+  "label": "Actions: More · 2"
  }
 ]
