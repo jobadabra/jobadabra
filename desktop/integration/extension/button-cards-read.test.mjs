@@ -70,7 +70,9 @@ test('cards that are pressable blocks with no link are all read, each with the a
   const {page, titles} = await open('attribute');
   try {
     assert.equal(titles.length, CARDS, 'positive control: the copy holds the list of cards');
-    const seen = await call(page, 'extractPage');
+    const linked = await call(page, 'extractPage');
+    assert.equal(linked.cards.length, 0, 'no link on the page is a posting: the header links point to the page itself');
+    const seen = await call(page, 'linklessCards');
     assert.deepEqual(seen.cards.map(card => card.title), titles, `read ${seen.cards.length} cards: ${JSON.stringify(seen.cards.map(card => card.title).slice(0, 4))}`);
     assert.deepEqual(seen.cards.map(card => new URL(card.url).search), titles.map((_, index) => `?jobId=${900001 + index}`));
     assert.ok(seen.cards.every(card => card.lines.length >= 2), 'each card keeps its lines (title and the lines under it)');
@@ -80,7 +82,7 @@ test('cards that are pressable blocks with no link are all read, each with the a
 test('when the cards hold no id, pressing each one, as a person does, gives the address the page then shows', async () => {
   const {page, titles} = await open('press');
   try {
-    const seen = await call(page, 'extractPage');
+    const seen = await call(page, 'linklessCards');
     assert.equal(seen.cards.length, 0, 'no card has an address before it is pressed');
     assert.equal(seen.pressCards.length, CARDS, 'every card is offered to be pressed');
     const pressed = await callWith(page, 'addressByPress', {keys: seen.pressCards.map(card => card.key), budgetMs: 20000, gapMs: 0});

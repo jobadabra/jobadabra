@@ -1,11 +1,12 @@
 // The read loop with cards that have no address yet (#3710 PR 2, B): extension/visit.js presses them through addressByPress and sends the app every card
-// that got an address, the ones read by link or id included; a card the press could not place is not sent. Page functions are stand-ins by name.
+// that got an address, the ones placed by their id included; a card the press could not place is not sent. Page functions are stand-ins by name.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
 test('cards with no address are pressed for one, and the app gets every card that has an address', async () => {
   const store = {}, ran = [], sent = [];
-  const page = {url: 'https://list.example/results/?sel=900001', title: 'Results', html: '', cards: [{title: 'Read by link', url: 'https://list.example/results/?sel=900001', lines: ['Read by link', 'Line']}],
+  const page = {url: 'https://list.example/results/?sel=900001', title: 'Results', html: '', cards: []};
+  const loose = {cards: [{title: 'Placed by its id', url: 'https://list.example/results/?sel=900001', lines: ['Placed by its id', 'Line']}],
     pressCards: [{key: '1', title: 'Pressed one', lines: ['Pressed one', 'Line']}, {key: '2', title: 'Never placed', lines: ['Never placed', 'Line']}]};
   globalThis.chrome = {
     storage: {session: {get: async () => ({}), set: async items => Object.assign(store, items), remove: async () => {}}, local: {get: async () => ({workerUrl: 'http://127.0.0.1:47111', token: 't'}), set: async () => {}}},
@@ -15,6 +16,7 @@ test('cards with no address are pressed for one, and the app gets every card tha
     scripting: {executeScript: async ({func, args}) => {
       ran.push({name: func?.name, args});
       if (func?.name === 'extractPage') return [{result: page}];
+      if (func?.name === 'linklessCards') return [{result: loose}];
       if (func?.name === 'addressByPress') return [{result: {addresses: {1: 'https://list.example/results/?sel=900002'}, left: false}}];
       if (func?.name === 'goNext') return [{result: 'none'}];
       return [{result: undefined}];
@@ -33,7 +35,7 @@ test('cards with no address are pressed for one, and the app gets every card tha
     assert.ok(press, 'positive control: the unplaced cards were pressed');
     assert.deepEqual(press.args[0].keys, ['1', '2']);
     assert.equal(sent.length, 1, 'the page was sent to the app once');
-    assert.deepEqual(sent[0].cards.map(card => [card.title, card.url]), [['Read by link', 'https://list.example/results/?sel=900001'], ['Pressed one', 'https://list.example/results/?sel=900002']]);
+    assert.deepEqual(sent[0].cards.map(card => [card.title, card.url]), [['Placed by its id', 'https://list.example/results/?sel=900001'], ['Pressed one', 'https://list.example/results/?sel=900002']]);
   } finally {
     delete globalThis.chrome;
     globalThis.fetch = realFetch;

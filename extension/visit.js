@@ -17,8 +17,8 @@ const NO_CARDS_AI = ", none of them jobs by Claude's reading";
 export const MAX_PAGES = 20;
 const PAUSE_MS = [1800, 3200];   // between pages, like a person reading: not to look like one, to be gentle with the site
 
-import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress} from './visit-page.js';
-export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress};
+import {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress, linklessCards} from './visit-page.js';
+export {extractPage, pageOutline, cardsByRecipe, nextByRecipe, closeConsent, pageBanner, collectControls, jobFrame, collectWays, applyFilters, goNext, plausible, addressByPress, linklessCards};
 // (the functions that run inside the page are in visit-page.js; the visit itself is here)
 
 
@@ -34,6 +34,13 @@ const TEMPLATE = /\$\{|\{\{|%7B/i;
 // B of #3710 (owner, 12 Nov 2026: "A first, then B"): cards with no link and no id are pressed one by one, each press like a person's (a gap of 0.5-0.75 s), within this budget a page.
 const PRESS = {budgetMs: 20000, gapMs: 500};
 /** A page's cards: the ones read with an address, plus the pressable ones given the address the page shows when each is pressed (extension/visit-page.js addressByPress). */
+/** A page as the extension sees it (extractPage); when its links give no list, plus the cards drawn with no link (linklessCards, #3710). */
+async function readPage(tabId) {
+  const seen = await run(tabId, extractPage);
+  if (!seen || seen.login || seen.challenge || seen.cards.length >= 3) return seen;
+  const loose = await run(tabId, linklessCards).catch(() => null);
+  return loose ? {...seen, cards: [...seen.cards, ...loose.cards], pressCards: loose.pressCards} : seen;
+}
 async function withPressed(tabId, seen) {
   if (!seen?.pressCards?.length) return seen?.cards || [];
   const pressed = await run(tabId, addressByPress, [{keys: seen.pressCards.map(card => card.key), ...PRESS}]).catch(() => null);
@@ -107,17 +114,17 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
   try {
     // Not a job list (a home page, an "about" page): go to the site's job list first, as a person would, then filter and read there.
     await consent();
-    let first = await run(tabId, extractPage).catch(() => null);
+    let first = await readPage(tabId).catch(() => null);
     if (first?.blank) {   // a page that draws nothing: a few seconds more, then loaded once again, then said and stopped (not skipped as silent)
       await tellStep(tabId, config, ticket, readWords('the page is still blank: waiting a few seconds…','read.blank'));
       await wait(5000);
-      first = await run(tabId, extractPage).catch(() => null);
+      first = await readPage(tabId).catch(() => null);
       if (first?.blank) {
         await tellStep(tabId, config, ticket, readWords('still blank: loading it again…','read.reload'));
         await chrome.tabs.reload(tabId);
         await waitForPage(tabId).catch(() => {});
         await wait(3000);
-        first = await run(tabId, extractPage).catch(() => null);
+        first = await readPage(tabId).catch(() => null);
       }
       if (first?.blank) throw Object.assign(new Error('the page stayed blank, even loaded again: open it yourself once (it may want you to sign in), then Open again'),{displayKey:'read.stayedBlank'});
     }
@@ -164,7 +171,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
     for (let page = 0; page < pages; page++) {
       if (Date.now() - thought > deadline) { setReadReason(state,`${SITE_MS / 1000} s are up after ${state.pages} page${state.pages === 1 ? '' : 's'}: the rest of the list was not read`,'read.deadline',{seconds:SITE_MS/1000,pages:readWords('','pages',{count:state.pages})}); break; }
       await tellStep(tabId, config, ticket, readWords(`reading page ${page + 1}…`,'read.page',{page:page+1}));
-      const seen = await run(tabId, extractPage);
+      const seen = await readPage(tabId);
       if (!seen) { setReadReason(state,'the page could not be read','read.unread'); break; }
       if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; applyReadReason(state,readBlockedReason(seen.login)); break; }
       let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : await withPressed(tabId, seen);

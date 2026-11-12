@@ -22,45 +22,48 @@ export function extractPage() {
     if (title.length >= 3) cards.push({title: title.slice(0, 160), url: href, lines});
     if (cards.length >= 300) break;
   }
-  // Why (#3710, owner, 12 Nov 2026, asked via AskUserQuestion: "A first, then B"): a results list can draw each card as a pressable block with no link (25 such
-  // cards on the structural copy; 1 read before). When the links give no list, 3+ alike siblings, each pressable, with no link and 2+ lines, are the cards.
-  // A: a card's own attribute holds the id that the page's address gives the selected job; its address is the page's with that id. Cards A cannot place
-  // are marked (data-jp-card) for addressByPress (B). Only the structure decides: no word, no site.
-  const pressCards = [];
-  if (cards.length < 3) {
-    const linesOf = node => (node.innerText || '').split('\n').map(line => line.trim()).filter(Boolean);
-    const pressable = node => (node.matches('[role="button"], [tabindex]') ? node : node.querySelector('[role="button"], [tabindex]'));
-    const runsOf = node => [node, ...node.querySelectorAll('*')].flatMap(el => el.getAttributeNames().filter(name => !name.startsWith('data-jp'))
-      .flatMap(name => [...(el.getAttribute(name) || '').matchAll(/\d{5,}/g)].map(match => ({name, value: match[0]}))));
-    const ids = [...here.searchParams].filter(([, value]) => /^\d{5,}$/.test(value));
-    for (const old of document.querySelectorAll('[data-jp-card]')) delete old.dataset.jpCard;   // a list drawn again in place (the next page) is read afresh
-    const groups = [];
-    for (const parent of document.querySelectorAll('body *')) {
-      if (parent.closest('[data-jp-card]')) continue;
-      const kids = [...parent.children].filter(kid => pressable(kid) && !kid.querySelector('a[href]') && linesOf(kid).length >= 2);
-      const bySign = {};
-      for (const kid of kids) (bySign[`${kid.tagName}.${[...kid.classList].sort().join('.')}`] ||= []).push(kid);
-      for (const group of Object.values(bySign).filter(list => list.length >= 3)) { groups.push(group); for (const kid of group) kid.dataset.jpCard = ''; }   // marked: no card is looked for inside a card
-    }
-    const found = groups.flat();
-    let key = null;
-    for (const card of found) for (const run of runsOf(card)) { const hit = ids.find(([, value]) => value === run.value); if (hit && !key) key = {param: hit[0], attr: run.name}; }
-    found.forEach((card, index) => {
-      card.dataset.jpCard = String(index);
-      const lines = linesOf(card).slice(0, 8), title = lines[0].slice(0, 160);
-      const id = key && runsOf(card).find(run => run.name === key.attr)?.value;
-      const url = id ? `${here.origin}${here.pathname}?${key.param}=${id}` : '';
-      if (url && !seen.has(url) && cards.length < 300) { seen.add(url); cards.push({title, url, lines}); } else if (!url) pressCards.push({key: String(index), title, lines});
-    });
-  }
   const text = `${document.title} ${(document.body?.innerText || '').slice(0, 3000)}`;
   return {
-    url: location.href, title: document.title.slice(0, 300), cards, pressCards,
+    url: location.href, title: document.title.slice(0, 300), cards,
     html: document.documentElement.outerHTML.slice(0, 3_000_000),
     challenge: CHALLENGE.test(text) && cards.length === 0,
     login: /\/(login|signin|sign-in|authwall|checkpoint|uas\/login)\b/i.test(location.pathname),
     blank: (document.body?.innerText || '').trim().length < 40,   // nothing drawn yet (7 Oct 2026: LinkedIn stayed white)
   };
+}
+
+/**
+ * Runs inside the page (#3710; owner, 12 Nov 2026, asked via AskUserQuestion: "A first, then B"): the cards of a list drawn as pressable blocks with no link
+ * (25 such cards on the structural copy of a results page; extractPage, which reads links, found 1). 3+ alike siblings, each pressable, with no link and 2+ lines
+ * are cards. A: a card's own attribute holding the id that the page's address gives the selected job makes its address (the page's, with that id). Cards A
+ * cannot place are marked (data-jp-card) and listed in pressCards for addressByPress (B). Only the structure decides: no word, no site.
+ * -> {cards: [{title, url, lines}], pressCards: [{key, title, lines}]}
+ */
+export function linklessCards() {
+  const here = new URL(location.href);
+  const linesOf = node => (node.innerText || '').split('\n').map(line => line.trim()).filter(Boolean);
+  const pressable = node => (node.matches('[role="button"], [tabindex]') ? node : node.querySelector('[role="button"], [tabindex]'));
+  const isCard = kid => pressable(kid) && !kid.querySelector('a[href]') && linesOf(kid).length >= 2;
+  const runsOf = node => [node, ...node.querySelectorAll('*')].flatMap(el => el.getAttributeNames().filter(name => !name.startsWith('data-jp'))
+    .flatMap(name => [...(el.getAttribute(name) || '').matchAll(/\d{5,}/g)].map(match => ({name, value: match[0]}))));
+  const alike = kids => Object.values(Object.groupBy(kids, kid => `${kid.tagName}.${[...kid.classList].sort().join('.')}`)).filter(list => list.length >= 3).flat();
+  for (const old of document.querySelectorAll('[data-jp-card]')) delete old.dataset.jpCard;   // a list drawn again in place (the next page) is read afresh
+  const found = [];
+  for (const parent of document.querySelectorAll('body *')) {
+    if (parent.closest('[data-jp-card]')) continue;   // no card is looked for inside a card
+    for (const card of alike([...parent.children].filter(isCard))) { card.dataset.jpCard = String(found.length); found.push(card); }
+  }
+  const ids = [...here.searchParams].filter(([, value]) => /^\d{5,}$/.test(value));
+  const hits = found.flatMap(card => runsOf(card)).map(run => ({run, id: ids.find(([, value]) => value === run.value)})).filter(hit => hit.id);
+  const key = hits.length ? {param: hits[0].id[0], attr: hits[0].run.name} : null;
+  const addressOf = card => { const id = key && runsOf(card).find(run => run.name === key.attr)?.value; return id ? `${here.origin}${here.pathname}?${key.param}=${id}` : ''; };
+  const cards = [], pressCards = [], seen = new Set();
+  found.slice(0, 300).forEach((card, index) => {
+    const lines = linesOf(card).slice(0, 8), title = lines[0].slice(0, 160), url = addressOf(card);
+    if (!url) pressCards.push({key: String(index), title, lines});
+    else if (!seen.has(url)) { seen.add(url); cards.push({title, url, lines}); }
+  });
+  return {cards, pressCards};
 }
 
 // Runs inside the page: a compact outline for Claude when no recipe or quick guess reads the list (owner, 7 Oct 2026: "intelligent enough to
@@ -373,20 +376,21 @@ export async function addressByPress({keys, budgetMs, gapMs}) {
   const began = Date.now(), here = new URL(location.href), addresses = {};
   const wait = ms => new Promise(done => setTimeout(done, ms));
   const shown = [...here.searchParams].filter(([, value]) => /^\d{5,}$/.test(value));
+  const targetOf = key => { const card = document.querySelector(`[data-jp-card="${CSS.escape(key)}"]`); return card?.matches('[role="button"], [tabindex]') ? card : card?.querySelector('[role="button"], [tabindex]'); };
+  const changedId = (before, now) => [...now.searchParams].find(([name, value]) => /^\d{5,}$/.test(value) && new URL(before).searchParams.get(name) !== value);
+  // The card already shown when the page opened changes nothing when pressed: it is the one the address names (when it names exactly one).
+  const stillShown = () => (shown.length === 1 && !Object.values(addresses).some(url => url.endsWith(`=${shown[0][1]}`)) ? shown[0] : null);
   let still = 0;
   for (const key of keys) {
+    const target = targetOf(key);
     if (Date.now() - began > budgetMs || still >= 3) break;
-    const card = document.querySelector(`[data-jp-card="${CSS.escape(key)}"]`);
-    const target = card && (card.matches('[role="button"], [tabindex]') ? card : card.querySelector('[role="button"], [tabindex]'));
     if (!target) continue;
     const before = location.href;
     (globalThis.__jobadabraPress?.(target) || target.click());
     for (let n = 0; n < 40 && location.href === before; n++) await wait(50);
     const now = new URL(location.href);
     if (now.pathname !== here.pathname) return {addresses, left: true};
-    const changed = [...now.searchParams].find(([name, value]) => /^\d{5,}$/.test(value) && new URL(before).searchParams.get(name) !== value);
-    // The card already shown when the page opened changes nothing when pressed: it is the one the address names (when it names exactly one).
-    const pair = changed || (location.href === before && shown.length === 1 && !Object.values(addresses).some(url => url.endsWith(`=${shown[0][1]}`)) ? shown[0] : null);
+    const changed = changedId(before, now), pair = changed || (location.href === before ? stillShown() : null);
     if (pair) addresses[key] = `${now.origin}${now.pathname}?${pair[0]}=${pair[1]}`;
     still = changed ? 0 : still + 1;
     if (gapMs) await wait(gapMs + Math.random() * gapMs / 2);
