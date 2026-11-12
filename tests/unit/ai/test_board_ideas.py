@@ -94,6 +94,22 @@ class BoardIdeasTests(unittest.TestCase):
         self.assertEqual(found, again)
         self.assertEqual([b['host'] for b in offline][:2], ['jobs.example', 'weak.example'], 'without AI the served boards still come')
 
+    def test_a_board_the_scout_read_only_in_its_browser_keeps_that_mark_from_the_pack_to_the_served_list(self):
+        # Owner, 12 Nov 2026 (asked via AskUserQuestion by sa): "Boards now, employers next (Recommended)"; the site keeps it: jobadabra-web api/employers.js boardFactsOf.
+        import json
+        import tempfile
+        from pathlib import Path
+        from src import employer_index
+        sites = [{'host': 'needs.example', 'kind': 'board', 'url': 'https://needs.example/?q={role}', 'recipe': {'countries': ['pt'], 'browser': True}, 'installs': 1},
+                 {'host': 'truthy.example', 'kind': 'board', 'url': 'https://truthy.example/?q={role}', 'recipe': {'countries': ['pt'], 'browser': 'yes'}, 'installs': 1},
+                 {'host': 'plain.example', 'kind': 'board', 'url': 'https://plain.example/?q={role}', 'recipe': {'countries': ['pt']}, 'installs': 1}]
+        with tempfile.TemporaryDirectory() as folder:
+            cache = Path(folder, 'index.json')
+            cache.write_text(json.dumps({'sites': sites}))
+            with mock.patch.object(employer_index, 'CACHE', cache):
+                served = {board['host']: board.get('browser') for board in board_ideas.served(['Portugal'])}
+        self.assertEqual(served, {'needs.example': True, 'truthy.example': None, 'plain.example': None}, 'only an exact true is the mark')
+
     def test_without_served_boards_the_ai_proposal_stands_alone(self):
         with mock.patch('src.sources.visits_jobpages.pool_facts', return_value={}):
             self.assertEqual([b['host'] for b in board_ideas.ideas(LISBON, FakeClient())], ['net-empregos.com', 'itjobs.pt'])

@@ -215,7 +215,13 @@ def board_pass(db_path):
             named = scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY'))
         except ValueError as wrong:
             raise SystemExit(f'Board pass: {wrong}') from None
-        scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        scout_boards.ensure(db)
+        scout_boards.seed_final(db, os.environ.get('SCOUT_BROWSER_FINAL'))   # stops a trial saw: jobadabra-lab's by-hand input
+        try:
+            scout_boards.run(db, named=named, kinds=scout_boards.named_kinds(os.environ.get('SCOUT_BOARD_KINDS')))
+        finally:
+            from .sources import render
+            render.close()   # the browser a refused board was measured in (scout_boards.browse); nothing when it never started
     return 0
 
 
@@ -235,7 +241,8 @@ def main():
     parser.add_argument('--board-pass', action='store_true',
                         help="the central scout's board pass alone: one thin country's job boards measured and kept for the next publish "
                              '(its own job and AI cap in jobadabra-lab central-scout.yml; the country: SCOUT_BOARD_COUNTRY, else the thinnest; '
-                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn)')
+                             'its kinds of work: SCOUT_BOARD_KINDS, else the country\'s next in turn; boards the headless browser must never open: '
+                             'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab central-scout.yml\'s browser_final input)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')

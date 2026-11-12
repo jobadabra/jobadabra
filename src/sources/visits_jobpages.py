@@ -85,7 +85,8 @@ def pool_facts():
             out.setdefault('layout', {})[fact['host']] = fact.get('recipe')
         elif isinstance(fact, dict) and fact.get('kind') == 'board' and isinstance(fact.get('host'), str) and isinstance(fact.get('recipe'), dict):
             out.setdefault('board', {})[fact['host']] = {'url': fact.get('url'), 'countries': fact['recipe'].get('countries') or [],
-                                                         'relevant': _cells(fact.get('relevant'))}
+                                                         'relevant': _cells(fact.get('relevant')),
+                                                         **({'browser': True} if fact['recipe'].get('browser') is True else {})}   # the Central Scout read it in a browser: src/scout_boards.py browse
     return out
 
 

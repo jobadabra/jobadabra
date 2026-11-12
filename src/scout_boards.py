@@ -7,8 +7,15 @@ served as the same board fact installs share. Never worldwide remote: only a job
 Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/unit/sources/test_scout_boards.py.
 Why (12 Nov 2026, owner: "own job"): the pass ran last inside the scout's run and found the run's AI calls spent by the passes before it (lab France run
 43149389454: "its AI calls: 1 of 24", every later call refused at the relay's cap). It is its own job now (`python -m src scout --board-pass`, jobadabra-lab
-central-scout.yml), behind its own relay with its own cap (JOB_CALLS); the scout's run only publishes the facts kept (facts())."""
+central-scout.yml), behind its own relay with its own cap (JOB_CALLS); the scout's run only publishes the facts kept (facts()).
+Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Boards now, employers next (Recommended)", "Final, never again (Recommended)"; CLAUDE.md, the
+refused-sites exception): a board the plain reader is refused on (401/403, a bot check) is read ONCE MORE in CI's headless browser (src/sources/render.py:
+our own user agent, a fresh context with no cookies, no stealth, load only). A refusal, a bot check or a sign-in page there is final for the scout's
+browser (scout_browser_final), never asked again; jobs located in the country make the same fact, marked browser: installs read it in Jobadabra's
+own headless Chrome (src/sources/refused_reads.py board_queue)."""
+import re
 import time
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 
 from . import pool_tags, role_kinds, scout_cells, scout_google_boards
@@ -29,11 +36,68 @@ KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
 PLACES, KINDS = 'central scout board places', 'central scout board kinds'   # the allowances' names
+HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')   # a by-hand host name (seed_final)
 
 
 def ensure(db):
     db.execute('CREATE TABLE IF NOT EXISTS scout_board_facts (host TEXT NOT NULL, country TEXT NOT NULL, url TEXT NOT NULL, families TEXT NOT NULL, '
                'local_jobs INTEGER NOT NULL, read_at TEXT NOT NULL, PRIMARY KEY (host, country))')
+    if 'browser' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 12 Nov 2026
+        db.execute('ALTER TABLE scout_board_facts ADD COLUMN browser INTEGER NOT NULL DEFAULT 0')
+    db.execute('CREATE TABLE IF NOT EXISTS scout_browser_final (host TEXT PRIMARY KEY, why TEXT NOT NULL, at TEXT NOT NULL)')
+
+
+def browser_final(db, host):
+    """True when the scout's headless browser was stopped at this board (a refusal, a bot check, a sign-in page): never asked again."""
+    return db.execute('SELECT 1 FROM scout_browser_final WHERE host = ?', (host,)).fetchone() is not None
+
+
+def seed_final(db, text, out=print):
+    """Keep the hosts named in `text` (a by-hand list, commas or spaces) as stopped for the scout's browser before any board is read: a stop a trial
+    saw (a trial saves no memory) is then never opened again by a real pass. Only host-shaped names are kept; returns the hosts kept.
+    Why (12 Nov 2026; CLAUDE.md, the refused-sites exception: "A check, captcha, sign-in page or 401/403 stops that board in Jobadabra's browser for
+    good, with no retry"): a trial saves no memory, so the 403 the scout's browser met in jobadabra-lab trial run 43275501441 was kept nowhere and the first
+    real pass would have opened that board again; jobadabra-lab's by-hand input `browser_final` names such hosts, never this repo."""
+    hosts = [host for host in dict.fromkeys(part.strip().lower().removeprefix('www.') for part in re.split(r'[\s,]+', str(text or ''))) if HOST.fullmatch(host)]
+    stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
+    for host in hosts:
+        db.execute('INSERT OR IGNORE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', (host, 'stopped in a trial (named by hand)', stamp))
+    db.commit()
+    if hosts:
+        out(f"Board pass: kept as stopped for the browser, never opened: {', '.join(hosts)}")
+    return hosts
+
+
+def browse(board, search):
+    """(jobs, state, stop) of one read of this board in the headless browser, rules only like the plain read; stop is why the browser was stopped
+    (a refusal, a bot check, a sign-in page) or ''. None when no browser is here (the pass carries on as before)."""
+    from .sources import board_yield, careers, found_boards, refused_reads, render
+    show = careers.renderer()
+    if show is None or render._app():   # the app's renderer answers no landed address, so a sign-in page could not stop the read: CI's own Playwright only
+        return None
+    stopped = {'why': ''}
+
+    def page(url):
+        if stopped['why']:   # stopped once: no other page of this board is loaded, whatever a caller does with the error
+            raise render.Refused(stopped['why'])
+        try:
+            markup = show(url)
+        except render.Refused as error:
+            stopped['why'] = str(error)
+            raise
+        landed = render.landed(url)
+        if landed and (not refused_reads.allowed(landed) or refused_reads.LOGIN_PATH.search(urllib.parse.urlsplit(landed).path)):
+            stopped['why'] = 'a login page'
+            raise render.Refused('a login page')
+        return markup
+    try:
+        jobs, state, _ = found_boards.read_board({**board, 'rendered': True}, search, page, show=page)
+    except Exception as error:  # noqa: BLE001 — the renderer's own Refused is no reader error: a stop ends this board; a browser that would not start is "not measured"
+        if not stopped['why']:
+            print(f"Board pass: {board['host']} not measured in the browser: {type(error).__name__}")
+            return None
+        return [], board_yield.Needs('unknown'), stopped['why']
+    return jobs, state, stopped['why']
 
 
 def named_country(text):
@@ -118,17 +182,18 @@ def kinds_of(local):
     return pool_tags.families_read(titles) if titles else ([], [])
 
 
-def measure(board, local, country, families):
-    """The fact for one board's read: its jobs in `country` and their role families; None under MIN_LOCAL or without families."""
+def measure(board, local, country, families, browser=False):
+    """The fact for one board's read: its jobs in `country` and their role families (browser: read in the headless browser, the plain reader was
+    refused); None under MIN_LOCAL or without families."""
     if len(local) < MIN_LOCAL or not families:
         return None
-    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)}
+    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local), **({'browser': True} if browser else {})}
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None):
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
     """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept."""
     from .ai import board_ideas, cost, decide
-    from .sources import careers, found_boards
+    from .sources import board_yield, careers, found_boards
     ensure(db)
     country = next_country(db, named)
     if not country:
@@ -140,13 +205,22 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         thin = [kind for kind in kinds if kind != 'software']   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out)   # boards only Google's results name, judged by the AI first
         proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
-        began, kept, unread, counts = clock(), [], [], []
+        began, kept, unread, counts, final = clock(), [], [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:
             for board in proposed:
                 if clock() - began > BUDGET_S:
                     break
                 jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
+                browsed = False
+                if not jobs and getattr(state, 'why', '') in board_yield.REFUSED_WORDS.values() and not browser_final(db, board['host']):
+                    seen = (browser or browse)(board, search)
+                    if seen is not None:
+                        jobs, state, stop = seen
+                        browsed = True
+                        if stop:
+                            db.execute('INSERT OR REPLACE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', (board['host'], stop, datetime.now(timezone.utc).isoformat(timespec='seconds')))
+                            final.append(f"{board['host']} ({stop})")
                 with decide.own_allowance(PLACES, PLACE_CALLS):
                     local = local_of(jobs, country)
                 placeless = [job for job in jobs if not str(job.get('location') or '').strip()]
@@ -157,9 +231,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                 if len(counted) >= MIN_LOCAL:
                     with decide.own_allowance(KINDS, KIND_CALLS):
                         families, unasked = kinds_of(counted)
-                fact = measure(board, counted, country, families)
+                fact = measure(board, counted, country, families, browser=browsed)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
-                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + why)
+                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + why)
                 if fact:
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
@@ -168,13 +242,14 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             careers.READER = reader
         stamp = datetime.now(timezone.utc).date().isoformat()
         for fact in kept:
-            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
-                       (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
+            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                       (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp, int(bool(fact.get('browser')))))
         _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn
         db.commit()
         out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
+            + (f"; the browser was stopped, never asked again: {', '.join(final)}" if final else '')
             + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's lines showed neither which question spent the calls nor whether the job's cap held
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
@@ -204,9 +279,9 @@ def _country_of(board, country):
 
 
 def facts(db, today=None):
-    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs}]."""
+    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, browser?}] (browser: true only)."""
     ensure(db)
     cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
-    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs}
-            for host, country, url, families, jobs in db.execute(
-                'SELECT host, country, url, families, local_jobs FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]
+    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'browser': True} if browser else {})}
+            for host, country, url, families, jobs, browser in db.execute(
+                'SELECT host, country, url, families, local_jobs, browser FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]
