@@ -133,6 +133,7 @@ class ScanTakesTheLaneTest(unittest.TestCase):
         with mock.patch('src.sources.read_budget.cut_at', lambda: cut), mock.patch('src.sources.read_budget.past_cut', lambda now=None: False):
             report = aggregators.scan(self.db, SEARCH, readers=[('Slow', None)], lane=lane)
         self.assertEqual(report['jobs'], [], 'positive control: the scan left it at the cut')
+        lane.close()   # the gather closes the lane before the hand-over takes the late reads (Gitar on #3893): a read in flight stays takeable
         self.assertEqual(aggregators.keep_late(self.db, SEARCH, lane, shown.extend, time.monotonic()), [], 'still reading: nothing is waited for between stages')
         go.set()
         kept = aggregators.keep_late(self.db, SEARCH, lane, shown.extend, time.monotonic() + 5)

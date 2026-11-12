@@ -34,7 +34,8 @@ class Lane:
         return future.result()
 
     def close(self):
-        """No new read starts; one still reading is not waited for (the process's end bounds it, src/run_exit.py)."""
+        """No new read starts; one still reading is not waited for (the process's end bounds it, src/run_exit.py). Results stay takeable after close: every read is submitted at once
+        (max_workers = the reads), so none is pending to be cancelled, and aggregators.keep_late takes the late ones after the gather has closed the lane (tests/unit/sources/test_api_lane.py)."""
         self._pool.shutdown(wait=False, cancel_futures=True)
 
 

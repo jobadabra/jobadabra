@@ -213,6 +213,18 @@ def mark_read(db, name, now, search=None):
             db.execute('INSERT OR REPLACE INTO aggregator_searches (source, search) VALUES (?, ?)', (name, search_key(search)))
 
 
+def mark_read_unless_waiting(db, name, now, search, owed, cut=False):
+    """Mark reader `name` read now unless something of it waits: -> True when it waits (its clock cut it, or `owed`, the jobs still waiting for an answer the AI owes them, is not empty), so the next
+    search reads it again; the one place scan and keep_late decide it.
+    Why (#3754, wj, WP8 rule 6): resting a source 6 h while its jobs wait for their place or title answer dropped them for 6 h (p10 on main: Arbeitnow 600 read, 9 kept, 495 never asked).
+    Each re-read costs three GETs and AI calls only for what has no stored answer yet (feeds.triage and the place call skip the answered), so a search that answers more leaves less owed;
+    once nothing is owed the source rests as before. An answer the AI never gives is asked again each search, at the price of one batch (Gitar on #3893, answered there)."""
+    if cut or owed:
+        return True
+    mark_read(db, name, now, search)
+    return False
+
+
 def _item(db, name, job, now):
     """One matched job in the report's shape, recorded in the seen history (its status is the first one it gets)."""
     return {**{k: job[k] for k in ('company', 'id', 'title', 'url', 'date_posted', 'description')},
@@ -311,12 +323,9 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None, early=Fal
             except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError, KeyError, TypeError, *ai_errors()) as error:
                 _source_failed(report, name, error)
                 continue
-            if name == 'EURES' and eures.CUT[0]:   # stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
+            # EURES stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251); a job the AI has not answered for yet (stage never_asked) waits too, WP8 rule 6 (#3754)
+            if mark_read_unless_waiting(db, name, now, search, owed, cut=name == 'EURES' and eures.CUT[0]):
                 late.append(name)
-            elif owed:   # Why (#3754, wj, WP8 rule 6): a job the AI has not answered for yet (stage never_asked) is not kept now; resting the source 6 h would drop it for 6 h
-                late.append(name)
-            else:
-                mark_read(db, name, now, search)
             if on_jobs and matched and not (ahead is not None and name == boards_ahead.NAME and ahead.shown):   # shown already
                 on_jobs(matched)
             report['jobs'].extend(matched)
@@ -352,8 +361,7 @@ def keep_late(db, search, lane, on_jobs, until, now=None):
             owed = []
             with batch_scope.using(views):
                 matched = kept(db, name, found, now, None, owed)
-            if not owed:
-                mark_read(db, name, now, search)
+            mark_read_unless_waiting(db, name, now, search, owed)
             if matched:
                 on_jobs(matched)
             jobs.extend(matched)
