@@ -86,6 +86,8 @@ const claudeCode = await lib('claude-code.js');
 const {realClaude} = await import(path.join(ROOT, 'desktop', 'e2e', 'lib', 'real-claude.mjs'));
 const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});   // its own folder: nothing reaches the Keychain
 ensureConfig(storage);
+// Why (12 Nov 2026, owner: "Tests reuse one token"): a local live search borrows a fixed test install id and its kept index token (test-installs.mjs)
+const lent = tape ? '' : (await import('./test-installs.mjs')).lend(storage.path('data'));
 // --engine api keeps the Messages SDK contract: the PR search check uses the Codex wrapper's relay and placeholder; standalone draws retain their own explicit API key.
 const api = engineName === 'api', replayOnly = api && process.argv.includes('--replay') && process.argv.includes('--no-live');   // an offline replay builds the API client but never calls it
 // Why (30 Oct 2026, owner; names renamed 1 Nov 2026; heal key removed 3 Nov 2026, owner: "We should not use API Keys at all anymore"): the CI wrapper supplies a broker-only loopback relay, never an API credential; the only keys left are the Free AI draws key and the prompt-case proof's.
@@ -162,6 +164,7 @@ for (let press = done + 1; press <= presses; press++) {
   const steps = () => searchSteps(storage, onLog, 'run', press === 1 ? 'first' : 'you', exec);
   const {code} = beside ? await beside.press(steps, onLog) : await steps();
   log.end();
+  if (lent) (await import('./test-installs.mjs')).keep(storage.path('data'), lent);
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
   const row = {press, started: new Date(started).toISOString(), code, crashes, eures: euresMode(), ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
     search: searchSummary(),
