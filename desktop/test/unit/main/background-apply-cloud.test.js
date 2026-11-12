@@ -27,7 +27,7 @@ function rig() {
     notify: (title, body, target, kind) => notices.push([kind, session(target)]), tellAway: (item, note) => away.push([item.id, note]), applied: () => ({add: row => mails.push(row.id)}), log: () => {}, now: () => 1});
   const session = target => target?.session;
   const add = async (name, mode = 'auto') => { const {job} = make(name); const row = await store.queue(job.url, `s-${name}`, mode, {...config, mode}); records.set(row.session, {id: row.session, url: job.url, title: `Job ${name}`, company: 'Fictional', background: {mode}}); return row; };
-  return {store, side, add, notices, mails, away, cached, closed, records};
+  return {store, side, add, notices, mails, away, cached, closed, records, apps};
 }
 
 test('only Full automation items before their press are candidates; a sent one stays one for the next send', async () => {
@@ -106,4 +106,14 @@ test('a failed store write answers retry, not null; an item the store no longer 
   assert.equal(await r.side.take(gone.session, {state: 'submitted', attempt: 'att'}), null, 'never sent: not a cloud item');
   r.records.delete(a.session);
   assert.equal(await r.side.take(a.session, {state: 'submitted', attempt: 'att'}), null, 'no session record: gone');
+});
+
+// Why (#3815, Gitar): a job deleted while it is out in the cloud has no Application record: the write can never work, so the outcome is dropped (null), not retried for ever.
+test('an outcome for a job whose Application record is gone is dropped, not retried', async () => {
+  const r = rig();
+  const a = await r.add('a');
+  await r.side.send(a.session);
+  r.apps.delete(r.records.get(a.session).url);
+  assert.equal(await r.side.take(a.session, {state: 'submitted', attempt: 'att'}), null);
+  assert.deepEqual(r.mails, []);
 });

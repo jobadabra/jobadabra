@@ -2,6 +2,7 @@
 // the move of one to the cloud, and the site's outcome written back as the item's own end. The store (lib/background-apply-store.js) is the item's one owner; this only moves the Sessions record, the window and the mails with it.
 // Invariants: an item sent is never acted on by the Mac again (the store refuses its claims, `ready` and `reserve`); an outcome never overwrites a receipt; a refused or failed send puts the item back where it was.
 // Guard: test/unit/main/background-apply-cloud.test.js.
+import {NO_APPLICATION} from './background-apply-store.js';
 import {activityText, activityHandoff} from '../i18n/activity-notices.js';
 
 const RETRY = Object.freeze({ok: false, retry: true});   // take(): the store write failed, the outcome is still owed
@@ -45,9 +46,9 @@ export function createCloudSide({store, terminals, serial, cache, closeSession, 
     take: (session, outcome) => serial(async () => {
       const item = itemFor(session);
       if (!item) return null;
-      // Why (#3815): the site deleted its copy when it handed the outcome over, so a failed write must not look like "no such item" (null): cloud-auto drops an outcome on null and keeps it on a retry answer.
+      // Why (#3815): the site deleted its copy when it handed the outcome over, so a failed write must not look like "no such item" (null), but a job whose Application record is gone can never be written (Gitar, same PR): that is "gone": cloud-auto drops an outcome on null and keeps it on a retry answer.
       let failed = false;
-      const state = await store.fromCloud(item.url, session, outcome).catch(error => { failed = true; log('apply', 'cloud outcome not written', {error: String(error?.message || error).slice(0, 120)}); return null; });
+      const state = await store.fromCloud(item.url, session, outcome).catch(error => { failed = error?.code !== NO_APPLICATION; log('apply', 'cloud outcome not written', {error: String(error?.message || error).slice(0, 120)}); return null; });
       if (failed) return RETRY;
       if (!state || state.ok === false) return null;
       cache(item, state);
