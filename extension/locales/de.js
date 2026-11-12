@@ -375,6 +375,7 @@ export default {
   "read.limit": "{pages} gelesen: Höchstzahl pro Durchgang",
   "read.scroll": "Weitere Stellen werden durch Scrollen gesucht…",
   "read.goPage": "Seite {page} wird geöffnet…",
+  "read.pressed": "Beim Anklicken der Karten bekamen {placed} von {cards} eine Adresse",
   "read.ai": "KI: {reason}",
   "read.tryJobs": "Ein Weg zu den Stellen wird versucht",
   "read.signIn": "In diesem Tab bei {host} anmelden, dann Lesen drücken",

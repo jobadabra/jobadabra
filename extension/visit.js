@@ -41,9 +41,12 @@ async function readPage(tabId) {
   const loose = await run(tabId, linklessCards).catch(() => null);
   return loose ? {...seen, cards: [...seen.cards, ...loose.cards], pressCards: loose.pressCards} : seen;
 }
-async function withPressed(tabId, seen) {
+async function withPressed(tabId, seen, say = () => {}) {
   if (!seen?.pressCards?.length) return seen?.cards || [];
   const pressed = await run(tabId, addressByPress, [{keys: seen.pressCards.map(card => card.key), ...PRESS}]).catch(() => null);
+  // Why (Gitar on #3866): how many presses placed a card is said in the site's row, so a page whose cards never get an address is not a silent 0.
+  await say(readWords(`pressing the cards gave ${Object.keys(pressed?.addresses || {}).length} of ${seen.pressCards.length} an address`, 'read.pressed',
+    {placed: Object.keys(pressed?.addresses || {}).length, cards: seen.pressCards.length}));
   if (pressed?.left) { await moveTab(tabId, seen.url); await waitForPage(tabId).catch(() => {}); }   // a press that opened another page: back to the list
   const addresses = pressed?.addresses || {};
   return [...seen.cards, ...seen.pressCards.filter(card => addresses[card.key]).map(({title, lines, key}) => ({title, url: addresses[key], lines}))];
@@ -174,7 +177,7 @@ async function readSiteAwake(tabId, {pages, filter, ticket = ''}) {
       const seen = await readPage(tabId);
       if (!seen) { setReadReason(state,'the page could not be read','read.unread'); break; }
       if (seen.login || seen.challenge) { state.blocked = seen.login ? 'login' : 'check'; applyReadReason(state,readBlockedReason(seen.login)); break; }
-      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : await withPressed(tabId, seen);
+      let cards = recipe ? await run(tabId, cardsByRecipe, [recipe]) : await withPressed(tabId, seen, words => tellStep(tabId, config, ticket, words));
       if (recipe && !cards.length && page === 0) {
         if (plausible(seen.cards)) {   // the quick guess reads a list the recipe misses: it no longer fits this site, forgotten and read afresh
           await api(config, '/extension/visit-recipe', {method: 'POST', body: JSON.stringify({url: seen.url, forget: true})}).catch(() => {});

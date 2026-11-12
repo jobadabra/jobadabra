@@ -34,6 +34,8 @@ test('cards with no address are pressed for one, and the app gets every card tha
     const press = ran.find(call => call.name === 'addressByPress');
     assert.ok(press, 'positive control: the unplaced cards were pressed');
     assert.deepEqual(press.args[0].keys, ['1', '2']);
+    const banners = ran.filter(call => call.name === 'pageBanner').map(call => String(call.args?.[0] || ''));
+    assert.ok(banners.some(text => /pressing the cards gave 1 of 2 an address/.test(text)), `the read says how many presses placed a card (Gitar on #3866): ${JSON.stringify(banners)}`);
     assert.equal(sent.length, 1, 'the page was sent to the app once');
     assert.deepEqual(sent[0].cards.map(card => [card.title, card.url]), [['Placed by its id', 'https://list.example/results/?sel=900001'], ['Pressed one', 'https://list.example/results/?sel=900002']]);
   } finally {
