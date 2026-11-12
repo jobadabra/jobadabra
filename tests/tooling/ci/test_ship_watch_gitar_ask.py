@@ -27,9 +27,9 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         (self.tmp / 'fix.sh').write_text('#!/bin/sh\nexit 0\n')
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
 
-    def watch(self, heads, runs='ok', after='0', locked_ago=None):   # runs: one fake check-run answer for every look, or a list with one per look
+    def watch(self, heads, runs='ok', after='0', locked_ago=None, opened=False, opened_wait='3600'):   # runs: one fake check-run answer for every look, or a list with one per look
         """One look per head, then the PR closes. Returns (the log lines, the number of `gh pr comment` calls, the calls' text)."""
-        self.log.write_text('ship: opened\n')
+        self.log.write_text('ship: [34s] opened the pull request: https://github.com/o/r/pull/7\n' if opened else 'ship: opened\n')   # ship.sh's own line when it opened the PR
         looks = len(heads)
         files = {'states': 'OPEN\n' * looks + 'CLOSED\n', 'drafts': 'false\n' * (looks + 1), 'labels': 'Gitar: not started\n' * (looks + 1), 'mergeables': '', 'fixes': '',
                  'verdicts': '', 'heads': '\n'.join(heads) + '\n', 'looks': '0', 'mergestates': '', 'twins': '', 'runs': (''.join(r + '\n' for r in runs) if isinstance(runs, list) else (runs + '\n') * looks) + 'ok\n'}
@@ -40,7 +40,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
             at = (datetime.now(timezone.utc) - timedelta(seconds=locked_ago)).strftime('%Y-%m-%dT%H:%M:%SZ')   # clock: relative, the watcher measures the reply's age against its own now
             (self.tmp / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': at, 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."}]))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
-               'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after}
+               'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after, 'SHIP_WATCH_GITAR_OPENED': opened_wait}
         env.pop('SHIP_WATCH_DRAFT_OK', None)
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
         calls = [c for c in (self.tmp / 'calls').read_text().splitlines() if c.startswith('pr comment')]
@@ -68,6 +68,11 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         self.assertEqual(calls, [], 'a comment inside the lock restarts it')
         _, calls = self.watch(['aaa1111'] * 2, locked_ago=1200)
         self.assertEqual(len(calls), 1, calls)
+
+    def test_the_head_the_pr_opened_with_waits_longer_and_a_later_push_does_not(self):
+        """12 Nov 2026, owner chose "One label per push": a push is asked after 30 s, not 180; Gitar starts on an open by itself, so the opening head keeps the long wait."""
+        _, calls = self.watch(['aaa1111', 'aaa1111', 'bbb2222', 'bbb2222'], opened=True)
+        self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], 'only the pushed head bbb2222 is asked')
 
     def test_it_waits_before_asking(self):
         _, calls = self.watch(['aaa1111', 'aaa1111'], after='3600')
