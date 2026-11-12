@@ -235,10 +235,14 @@ def discover(db, run=None, out=print, today=None):
     jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
     equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
     by employers never gave a turn to the countries with no measured board."""
-    from . import scout_board_cells as cells, scout_boards
+    from . import scout_board_cells as cells, scout_board_lanes, scout_boards
     cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
     priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
-    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')))
+    try:
+        only = scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV))   # one lane of several at once: its own country or nothing
+    except ValueError as wrong:
+        raise SystemExit(f'Board discovery: {wrong}') from None
+    turn = cells.pick(db, today, priority=priority, named=cells.parse(os.environ.get('SCOUT_BOARD_CELLS')), only=only)
     if not turn:
         out('Board discovery: every cell under its target rests; nothing to read this run')
         return []
@@ -267,6 +271,10 @@ def main():
                              '(its own job and AI cap in jobadabra-lab board-discovery.yml; the country: SCOUT_BOARD_COUNTRY with SCOUT_BOARD_KINDS, '
                              'else board discovery\'s weakest cells: SCOUT_BOARD_CELLS, SCOUT_BOARD_PRIORITY, src/scout_board_cells.py; boards the headless browser must never open: '
                              'SCOUT_BROWSER_FINAL, hosts separated by commas, from jobadabra-lab board-discovery.yml\'s browser_final input)')
+    parser.add_argument('--board-lanes', type=int, default=0, metavar='N',
+                        help='board discovery in several lanes at once: print the N different countries one round reads side by side (src/scout_board_lanes.py), then stop')
+    parser.add_argument('--board-merge', nargs='+', metavar='COUNTRY=PATH',
+                        help="after a round's lanes: copy each lane's own country from its copy of the memory into --db, then stop")
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -279,6 +287,9 @@ def main():
         return sync_store_only(args.db)
     started = time.monotonic()
     scout_core.CENTRAL = bool(args.publish_index)   # the central scout: its full lists, published to every install
+    if args.board_lanes or args.board_merge:
+        from . import scout_board_lanes
+        return scout_board_lanes.merge_all(args.db, args.board_merge) if args.board_merge else scout_board_lanes.plan(args.db, args.board_lanes)
     if args.board_pass:   # Why (12 Nov 2026, owner: "own job"): inside the scout's run the passes before it spent the run's AI calls (src/scout_boards.py)
         return board_pass(args.db)
     if args.export_sources:
