@@ -72,7 +72,7 @@ if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools
   export SHIP_BODY_CHECKED=1
 fi
 # One live ship run per worktree (Work board card, 12 Nov 2026; 3 escapes in 30 days: #3370 on 7 Nov closed empty, #3803 on 11 Nov, #3917 on 12 Nov).
-# Why (12 Nov 2026, sl): `ship: REVIEW #n` reads as finished while its run may still be alive, and a 2nd ship.sh beside it rebased and pushed the same checkout and
+# Why (12 Nov 2026, sl): the REVIEW line reads as finished while its run may still be alive, and a 2nd ship.sh beside it rebased and pushed the same checkout and
 # truncated its log. The lock is a pid file in this worktree's own git dir (not the common dir: another worktree is not blocked; line 1 the pid, line 2 the log),
 # live = kill -0 and the process is a ship.sh (a reused pid is stale). A stale file is replaced; the run's EXIT trap removes it before it prints REVIEW or DONE.
 lockfile="$(git rev-parse --path-format=absolute --git-dir)/ship-run.pid"
