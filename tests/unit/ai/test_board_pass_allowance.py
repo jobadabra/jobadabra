@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import scout_boards, scout_cells, scout_google_boards
-from src.ai import decide
+from src.ai import cost, decide
 from src.sources import careers
 
 _READER = careers.READER
@@ -143,11 +143,12 @@ class BoardPassAllowance(unittest.TestCase):
                 text = kw['messages'][0]['content']
                 answers = [a.strip() for a in text.split('Allowed answers: ', 1)[1].split('\n', 1)[0].split(',')]
                 pick = next((a for a in ('this country', 'field board', 'md', 'Moldova') if a in answers), next(a for a in answers if a != 'none'))
-                return self.N(stop_reason='end_turn', usage=None, content=[self.N(type='text', text=json.dumps(
+                return self.N(stop_reason='end_turn', usage=self.N(input_tokens=1, output_tokens=1), content=[self.N(type='text', text=json.dumps(
                     {'results': [{'index': i, 'answer': pick} for i in range(text.count('### Item'))]}))])
 
         def ideas(search):
-            relay['calls'] += 1   # the board ideas: one call for one country
+            relay['calls'] += 1   # the board ideas: one call for one country, counted as src/ai/board_ideas.py counts it
+            cost.side('fake', Client.N(input_tokens=1, output_tokens=1), 'board_ideas')
             return [board(f'b{n}.example') for n in range(scout_boards.MAX_BOARDS)]
 
         def google(db, country, kinds, out):   # more sites than the judge's allowance: the ones past it wait, unasked
@@ -163,12 +164,13 @@ class BoardPassAllowance(unittest.TestCase):
         out = []
         with mock.patch('src.ai.engine.ready', return_value=True), mock.patch('src.ai.engine.client', lambda **kw: Client()), \
                 mock.patch('src.ai.meanings_pack.first', return_value=None), mock.patch('src.ai.meanings_pack.every', return_value=[]), \
-                mock.patch('src.ai.cost.side'), mock.patch.object(decide, 'MODEL', 'fake'), mock.patch('src.sources.careers.get_text', lambda url: '<title>Board</title>'):
+                mock.patch.dict(cost.TOPICS, clear=True), mock.patch.dict(cost.SIDE, clear=True), mock.patch('src.ai.cost.usd', return_value=0.0), \
+                mock.patch('src.read_methods.ai'), mock.patch.object(decide, 'MODEL', 'fake'), mock.patch('src.sources.careers.get_text', lambda url: '<title>Board</title>'):
             got = scout_boards.run(self.db, ideas=ideas, read_board=read, out=out.append, google=google)
         self.assertEqual(relay['refused'], 0, out)
         self.assertLessEqual(relay['calls'], scout_boards.JOB_CALLS)
         self.assertEqual(len(got), scout_boards.MAX_BOARDS, out)
-        self.assertIn(f'of {scout_boards.JOB_CALLS} in all', out[-1])
+        self.assertIn(f"{relay['calls']} of {scout_boards.JOB_CALLS} in all", out[-1], "the line's total is the relay's count (Gitar, #3876)")
 
     def test_a_board_with_local_jobs_but_no_kinds_of_work_says_so(self):
         jobs = [{'title': 'Vânzător', 'location': 'Chișinău', 'url': f'https://x/{n}'} for n in range(4)]
