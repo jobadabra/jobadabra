@@ -93,23 +93,43 @@ class ARunResumesWhereTheLastOneStopped(Isolated):
         return set(started[1]), set(started[2]), set(started[1]) & set(started[2])
 
     def stage_job_boards(self):
+        """Run 1: b3 is open at the cut; b4 is read before the cut but kept after it, because b5's judging holds the one keeping thread past the
+        cut (boards are kept as they end, bj 12 Nov 2026), so b4's other ways wait for run 2. Gates decide the order, never a timed margin."""
+        from concurrent.futures import ThreadPoolExecutor
         reads, ladders, run = {1: [], 2: []}, {1: [], 2: []}, [1]
-        store = {'boards': {}}
+        store, submitted = {'boards': {}}, {}
+        b5_judging, run1_returned = threading.Event(), threading.Event()
+
+        class Pool(ThreadPoolExecutor):   # the read's own pool, its futures seen by board: b5's judging waits for b4's to end
+            def submit(self, fn, *args, **kwargs):
+                future = super().submit(fn, *args, **kwargs)
+                submitted[args[0][0]['host']] = future
+                return future
 
         def read_board(b, *a, **k):
             reads[run[0]].append(b['host'])
-            time.sleep({'b3.test': 3, 'b4.test': 1.2}.get(b['host'], 0))   # b3: open at the cut; b4: read, its other ways due past it
+            if run[0] == 1 and b['host'] == 'b3.test':   # open at the cut: it ends after run 1's read has returned
+                run1_returned.wait(10)   # hang guard
+            if run[0] == 1 and b['host'] == 'b4.test':   # ends only once b5 is being judged, so b5 is kept first
+                b5_judging.wait(10)   # hang guard
             return [job(b['host'])], 'ok', None
 
         def another_way(b, entry, proposed, search, fetch, judge, before, show=None):
             ladders[run[0]].append(b['host'])
             return before
         boards = [board(i) for i in range(6)]
-        relevant = lambda found: [j for j in found if j['id'] != 'b4.test']   # noqa: E731 — b4 gives no job in your roles: its ladder is due
+
+        def relevant(found):   # b4 gives no job in your roles: its ladder is due
+            if run[0] == 1 and any(j['id'] == 'b5.test' for j in found):
+                b5_judging.set()
+                self.assertTrue(wait_for(lambda: submitted['b4.test'].done() and read_budget.past_cut()), 'b4 read, and the cut has come')
+            return [j for j in found if j['id'] != 'b4.test']
         with mock.patch('src.ai.board_ideas.load', return_value=store), mock.patch.object(found_boards, 'read_board', side_effect=read_board), \
                 mock.patch.object(found_boards, '_another_way', side_effect=another_way):
             time_budget.start(BUDGET)
-            found_boards.read({}, boards, fetch=lambda url: '', is_relevant=relevant, dead=set(), web=False)
+            with mock.patch.object(found_boards, 'ThreadPoolExecutor', Pool):
+                found_boards.read({}, boards, fetch=lambda url: '', is_relevant=relevant, dead=set(), web=False)
+            run1_returned.set()
             self.assertTrue(wait_for(lambda: kept_late('board', 'b3.test')), 'b3 ended and was kept')
             self.assertEqual(ladders[1], [], 'no other way started past the cut')
             run[0] = 2

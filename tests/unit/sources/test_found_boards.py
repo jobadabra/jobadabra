@@ -107,8 +107,9 @@ class FoundBoardsTests(unittest.TestCase):
             jobs, state, _ = found_boards.read_board(BOARD, search, fetch=pages)
             self.assertEqual((state, len(jobs)), ('browser', 1), code)
 
-    def test_boards_are_read_at_once_and_reported_in_their_order(self):
-        """18 Oct 2026: Chisinau's 2 slice boards gave nothing and its useful ones came 4th and 8th, each read after the one before."""
+    def test_boards_are_read_at_once_and_each_reported_when_it_ends(self):
+        """18 Oct 2026: Chisinau's 2 slice boards gave nothing and its useful ones came 4th and 8th, each read after the one before. The list's
+        order was never the requirement (#3892): a board is reported as soon as it ends, so the first board, ending last, comes last."""
         import threading
         boards = [{**BOARD, 'name': f'Board {n}', 'host': f'b{n}.example', 'search_url': f'https://b{n}.example/q?q={{role}}&l={{place}}'}
                   for n in range(1, found_boards.BOARD_WORKERS + 1)]
@@ -126,7 +127,10 @@ class FoundBoardsTests(unittest.TestCase):
             jobs = found_boards.read(SEARCH, boards, fetch=pages, is_relevant=lambda found: found)
         self.assertEqual(len(jobs), found_boards.BOARD_WORKERS)
         lines = [call.args[0] for call in said.call_args_list if str(call.args[0]).startswith('Job boards found:')]
-        self.assertEqual([line.split()[4] for line in lines], [str(n) for n in range(1, found_boards.BOARD_WORKERS + 1)], 'in the list\'s order')
+        reported = [line.split()[4] for line in lines]
+        self.assertEqual(sorted(reported), [str(n) for n in range(1, found_boards.BOARD_WORKERS + 1)], 'each board reported once')
+        self.assertEqual(reported[-1], '1', 'the first board ended last and did not hold back the others')
+        self.assertEqual([job['title'] for job in jobs][0], 'b1', 'the jobs come back in the list\'s order')
 
     def test_a_board_that_only_a_browser_reads_is_offered_as_a_visit(self):
         from src.sources import visits_portals

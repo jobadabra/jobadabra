@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from src.press import clock as press_clock
-from src.sources import feed_scan, found_boards
+from src.sources import feed_scan, found_boards, read_budget
 
 
 class Clock:
@@ -95,11 +95,12 @@ def wait(futures, timeout=None, return_when=None):
 
 
 def install(case, clock):
-    """Patch the run's clock and its two pools for one test case; undone at its end."""
+    """Patch the run's clock and its two pools (and their waits) for one test case; undone at its end."""
     Pool.open, Pool.waited, Pool.clock, StillOpen.patient = [], [], clock, False
     scripted = SimpleNamespace(monotonic=clock.monotonic, time=clock.time)
     for patch in (mock.patch.object(press_clock, 'time', scripted), mock.patch.object(feed_scan, 'ThreadPoolExecutor', Pool),
-                  mock.patch.object(feed_scan, 'wait', wait), mock.patch.object(found_boards, 'ThreadPoolExecutor', Pool)):
+                  mock.patch.object(feed_scan, 'wait', wait), mock.patch.object(found_boards, 'ThreadPoolExecutor', Pool),
+                  mock.patch.object(read_budget, 'wait', wait)):   # the boards' read takes each board as it ends (read_budget.as_done)
         patch.start()
         case.addCleanup(patch.stop)
     return Pool
