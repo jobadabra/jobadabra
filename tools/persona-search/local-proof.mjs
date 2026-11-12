@@ -38,7 +38,7 @@ if (usual !== null && !(usual >= 0)) {
 }
 // Why (12 Nov 2026, brief sa-pane-ns): at most 2 local searches at once on this Mac, so --together pairs two refs and no more.
 if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('--')) || !(Number.isInteger(runs) && runs >= 1) || (args.includes('--together') && refs.length > 2)) {
-  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--fresh-draft]');
+  console.error('usage: node tools/persona-search/local-proof.mjs <person 1-18> [--ref <git ref>]... [--runs N] [--same-draw] [--together (at most 2 refs)] [--usual-diff N] [--fresh-draft]');
   process.exit(2);
 }
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
