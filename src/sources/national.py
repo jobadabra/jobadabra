@@ -1,14 +1,15 @@
-"""National public employment services with an open feed, one row per country (Sweden's Arbetsförmedlingen first): where small local employers post.
+"""National public employment services with an open feed, one row per country (Sweden's Arbetsförmedlingen, Belgium's Le Forem): where small local employers post.
 Owner, 12 Nov 2026, asked via AskUserQuestion by sa ("Shall I add these national services to Find jobs' source list as our own sources, reading their
 official open feeds where they exist?"): "Yes, add them (Recommended)". Why: in 30 fictional profiles (GTM 6 re-measure, EURES off) EURES's jobs and ours
 overlapped in 0; Stockholm · Customer Support Agent: 8 right jobs found, 45 in Sweden's public feed. This reader is not EURES and never waits for it.
+Owner, 12 Nov 2026, via sa: "you just did something from Sweden but that's it": Belgium's row in the same change.
 
 A service is read only for a person with a place in its own country: each place word's country, point and radius are the map's (src/geo.py resolve, the
 AI's answer kept once per word, as EURES reads them); no host or country list beyond each service's own country. Each place is asked by its point and
 radius (a town or area) or as the whole country (a country word), nearest first in the person's place order; every role word's first page before any second
 page (EURES's role words: the board searches, then the role words, in the person's language and the local one as the search has them). Titles and places are
 judged later as for every reader (aggregators.kept). Honest client (aggregators._get: our own user agent, src/sources/host_pace.py: a 401/403 is never
-retried, a 429 waits as the site asks); a failure ends the read, keeping what was read; no key.
+retried, a 429 waits as the site asks); a failure ends the read, keeping what was read; no key. Each job keeps its posting date and its own address at the service.
 Read by: src/sources/reader_rows.py (one row per service, in the free job APIs' lane). Tests: tests/unit/sources/test_national.py.
 """
 import http.client
@@ -21,6 +22,7 @@ from .. import geo, time_budget
 from ..press import budget
 
 PAGES = budget.value('national.PAGES')   # per role word and place
+PAGE = 100   # rows a page asks: the most both feeds give (JobSearch limit 0-100; Opendatasoft "-1 <= limit <= 100", asked 12 Nov 2026)
 MOST = budget.value('national.MOST')   # per read: the titles' AI after it keeps its load
 
 
@@ -38,7 +40,7 @@ class Service:
 def _sweden_url(word, place, offset):
     """Arbetsförmedlingen's JobSearch API (jobsearch.api.jobtechdev.se/search, OpenAPI 1.37: no security scheme, ads CC0, limit 0-100, offset 0-2000;
     `position` + `position.radius` in km take a point, so no place table of its own is needed)."""
-    query = {'q': word, 'limit': SWEDEN_PAGE, 'offset': offset}
+    query = {'q': word, 'limit': PAGE, 'offset': offset}
     if place:
         query.update({'position': f"{place['lat']},{place['lon']}", 'position.radius': max(int(place['r'] or 0), 1)})
     return 'https://jobsearch.api.jobtechdev.se/search?' + urllib.parse.urlencode(query)
@@ -52,16 +54,47 @@ def _sweden_rows(answer):
         if not (ad.get('id') and ad.get('headline') and ad.get('webpage_url')):
             continue
         where = ad.get('workplace_address') or {}
-        town = where.get('municipality') or where.get('city') or where.get('region')
-        location = f"{town}, {geo.country_name('SE') or 'Sweden'}" if town else (geo.country_name('SE') or 'Sweden')
+        location = _where(where.get('municipality') or where.get('city') or where.get('region'), 'SE')
         jobs.append(aggregators._job('platsbanken', ad['id'], ad['headline'], (ad.get('employer') or {}).get('name'), location, ad['webpage_url'],
                                      str(ad.get('publication_date') or '')[:10], (ad.get('description') or {}).get('text') or ''))
     return jobs, int((answer.get('total') or {}).get('value') or 0)
 
 
-SWEDEN_PAGE = 100
+def _belgium_url(word, place, offset):
+    """Le Forem's job offers on the Walloon open-data portal (odwb.be, Opendatasoft Explore v2.1, dataset offres-d-emploi-forem: no key, licence CC BY-SA 4.0,
+    publisher Le Forem; Wallonia and part of Brussels). `within_distance` on the offers' own points takes the place's point and radius, as Sweden's feed does."""
+    words = word.replace('\\', ' ').replace('"', ' ')   # the word goes inside an ODSQL string
+    where = f'search("{words}")'
+    if place:
+        where += f" and within_distance(lieuxtravailgeo, geom'POINT({place['lon']} {place['lat']})', {max(int(place['r'] or 0), 1)}km)"
+    query = {'where': where, 'limit': PAGE, 'offset': offset}
+    return 'https://www.odwb.be/api/explore/v2.1/catalog/datasets/offres-d-emploi-forem/records?' + urllib.parse.urlencode(query)
+
+
+def _belgium_rows(answer):
+    """The offers of one answer as jobs: their leforem.be page as the address (the licence's attribution: the source and the offer's own page go with each job),
+    the first workplace town as the location, the trade and sector as the short description (the dataset has no posting text)."""
+    from . import aggregators
+    jobs = []
+    for offer in answer.get('results') or []:
+        if not (offer.get('numerooffreforem') and offer.get('titreoffre') and offer.get('url')):
+            continue
+        town = next((str(t).title() for t in offer.get('lieuxtravaillocalite') or [] if t), '')
+        about = ' · '.join(str(part) for part in (offer.get('metier'), *(offer.get('secteurs') or []), offer.get('typecontrat'), offer.get('regimetravail')) if part)
+        jobs.append(aggregators._job('forem', offer['numerooffreforem'], offer['titreoffre'], offer.get('nomemployeur'), _where(town, 'BE'), offer['url'],
+                                     str(offer.get('datedebutdiffusion') or '')[:10], about))
+    return jobs, int(answer.get('total_count') or 0)
+
+
+def _where(town, country):
+    """"<town>, <country>" for where the job is; the country alone when the service names no town."""
+    name = geo.country_name(country) or country
+    return f'{town}, {name}' if town else name
+
+
 SERVICES = (
-    Service('Platsbanken', 'SE', _sweden_url, _sweden_rows, SWEDEN_PAGE),
+    Service('Platsbanken', 'SE', _sweden_url, _sweden_rows, PAGE),
+    Service('Le Forem', 'BE', _belgium_url, _belgium_rows, PAGE),
 )
 
 
