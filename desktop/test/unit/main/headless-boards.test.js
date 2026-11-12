@@ -200,3 +200,10 @@ test('the board memory watch: true once the file changed, false at the engine\'s
   stop.abort();
   assert.equal(await watch.changed(stop.signal, null), false, 'Stop: no look at all');
 });
+
+test('Gitar on #3944: with today\'s share already used, no board is said to be read and none is counted', async () => {
+  const {result, lines} = await run([board(1), board(2)], {}, {share: 0});
+  assert.deepEqual(result, {state: 'done', jobs: 0, fits: 0, read: 0, of: 0});
+  assert.ok(!lines.some(text => /reading \d/.test(text)), lines.join('\n'));
+  assert.match(lines.at(-1), /today's reads in Jobadabra's browser are used/);
+});
