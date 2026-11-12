@@ -130,6 +130,16 @@ class Verdict(unittest.TestCase):
         self.assertEqual(code, 1, 'positive control: main stays within the recording in both extra replays, so the PR changed the path')
         self.assertIn('recording too old for this PR', text)
 
+    def test_the_workflow_replays_every_control_on_mains_side_and_passes_the_art_folder(self):
+        """#3889, Gitar: a shell comment inside the run line dropped `art` and the tee, so no repeat pair and no control ever ran."""
+        text = (ROOT / '.github' / 'workflows' / 'press-yardstick.yml').read_text(encoding='utf-8')
+        line = next(line for line in text.splitlines() if 'replay.py recordings-again' in line)
+        sides = json.loads(line.split("'")[1])
+        self.assertEqual([side for side in sides if side.startswith('ctl')], list(verdict.CONTROLS))
+        self.assertTrue(all(sides[side] == 'sides/main' for side in verdict.CONTROLS))
+        self.assertEqual([side for pair in verdict.PAIRS[1:] for side in pair], [side for side in sides if not side.startswith('ctl')])
+        self.assertRegex(line.split("'")[2], r'^ art \| tee -a "\$GITHUB_STEP_SUMMARY"$')
+
     def test_a_recording_too_old_for_this_pr_is_held_by_a_live_moves_line_only(self):
         old = [({}, {'gap': True, 'right': False})]
         code, text = self.run_verdict(self.band(), old)
