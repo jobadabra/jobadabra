@@ -133,8 +133,16 @@ def _words(value):
 
 
 def hiring_organisation(posting):
-    """The name a JobPosting gives for the organisation that hires (a string, {"name": …} or a list of either), or ''."""
-    return re.sub(r'\s+', ' ', _words(posting.get('hiringOrganization'))).strip()[:120]
+    """The name a JobPosting gives for the organisation that hires (a string, {"name": …} or a list of either), or ''.
+    Invariant: one organisation's name, never two joined."""
+    hiring = posting.get('hiringOrganization')
+    if isinstance(hiring, (list, tuple)):
+        # Why (#3581, 8 Nov 2026): a board listed the employer and the recruiter that posted the job, and both names became one company. schema.org's
+        # EmploymentAgency type marks a recruiter; a list with no such mark gives no way to tell, so its first organisation is kept.
+        named = [item for item in hiring if _words(item)]
+        hirers = [item for item in named if not (isinstance(item, dict) and str(item.get('@type') or '') == 'EmploymentAgency')]
+        hiring = (hirers or named or [''])[0]
+    return re.sub(r'\s+', ' ', _words(hiring)).strip()[:120]
 
 
 def jsonld_jobs(markup, url):

@@ -170,6 +170,23 @@ class FoundBoardsTests(unittest.TestCase):
         jobs, found_state, route = found_boards.read_board(BOARD, SEARCH, fetch=lambda url: page)
         self.assertEqual((found_state, route['kind'], len(jobs)), ('ok', 'state', 3))
 
+    def _company(self, hiring):
+        page = f'<html><script type="application/ld+json">{json.dumps({**JOB, "hiringOrganization": hiring})}</script><body>x</body></html>'
+        jobs, _, _ = found_boards.read_board(BOARD, SEARCH, fetch=lambda url: page, early=True)
+        return [job['company'] for job in jobs]
+
+    def test_a_job_naming_its_employer_and_the_recruiter_that_posted_it_keeps_the_employer_only(self):
+        """#3581 (8 Nov 2026): a board job's company was two names in one, employer and recruiter, so a cover letter could name the wrong company."""
+        employer, recruiter = {'@type': 'Organization', 'name': 'Example Jets GmbH'}, {'@type': 'Organization', 'name': 'Example Recruiting GmbH & Co.KG'}
+        self.assertEqual(self._company([employer, recruiter]), ['Example Jets GmbH'])
+        agency = {'@type': 'EmploymentAgency', 'name': 'Example Recruiting GmbH & Co.KG'}
+        self.assertEqual(self._company([agency, employer]), ['Example Jets GmbH'], 'the one schema.org marks as an agency is not the employer')
+        self.assertEqual(self._company(['Example Jets GmbH', 'Example Recruiting GmbH & Co.KG']), ['Example Jets GmbH'])
+
+    def test_a_job_with_one_company_keeps_it_unchanged(self):
+        self.assertEqual(self._company({'@type': 'Organization', 'name': 'Example Recruiting GmbH & Co.KG'}), ['Example Recruiting GmbH & Co.KG'])
+        self.assertEqual(self._company([{'@type': 'EmploymentAgency', 'name': 'Example Personal GmbH'}]), ['Example Personal GmbH'], 'an agency alone is all the page names')
+
 
 if __name__ == '__main__':
     unittest.main()
