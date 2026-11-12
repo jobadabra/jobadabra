@@ -25,7 +25,8 @@ IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
 # ideas 1 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 64.
 JOB_CALLS = IDEA_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
-KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
+KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
+ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
 PLACES, KINDS = 'central scout board places', 'central scout board kinds'   # the allowances' names
 
@@ -62,16 +63,37 @@ def next_country(db, named=None):
     return country
 
 
-def kinds_for(db, country):
-    """Software and the country's thinnest kinds of work (by the central list's counts)."""
-    cells = scout_cells._meta(db, 'cells', None)
-    cells = cells if isinstance(cells, dict) else {}
-    return ['software', *sorted(scout_cells.AIMED, key=lambda kind: (cells.get(f'{kind}|{country}', 0), scout_cells.AIMED.index(kind)))[:KINDS_PER_COUNTRY - 1]]
+def kinds_for(db, country, named=None):
+    """The kinds of work this run asks a country's boards for: the ones named by hand, else the KINDS_PER_COUNTRY asked longest ago there (never asked first:
+    software, then the thinnest by the central list's counts).
+    Why (12 Nov 2026, sa; a by-hand pass of one country): "software and the 2 thinnest" was the same 3 kinds every run, so a country's boards for its other
+    kinds were never asked for, and a search for a trade there read a board of another field (0 of its jobs fit)."""
+    order = ('software', *scout_cells.AIMED)
+    if named:
+        return [kind for kind in dict.fromkeys(named) if kind in order]
+    cells, asked = scout_cells._meta(db, 'cells', None), scout_cells._meta(db, ASKED_KINDS, None)
+    cells, asked = cells if isinstance(cells, dict) else {}, (asked.get(country) or []) if isinstance(asked, dict) else []
+    turn = lambda kind: (asked.index(kind) if kind in asked else -1, kind != 'software', cells.get(f'{kind}|{country}', 0), order.index(kind))
+    return sorted(order, key=turn)[:KINDS_PER_COUNTRY]
 
 
-def search_for(db, country):
-    """The search the boards are proposed and read for: kinds_for's kinds of work, the whole country."""
-    words = [word.strip() for kind in kinds_for(db, country) for word in role_kinds.WORK[kind].split(',') if word.strip()]
+def named_kinds(text):
+    """The kinds of work named by hand ("trades, education", any case), the fixed ids only; [] for none: the by-hand run's kinds input."""
+    wanted = [word.strip().casefold() for word in str(text or '').split(',')]
+    return [kind for kind in dict.fromkeys(wanted) if kind in ('software', *scout_cells.AIMED)]
+
+
+def _asked(db, country, kinds):
+    """These kinds were asked for this country now: they go to the end of its turn list (one owner of the turns: the scout's memory, key ASKED_KINDS)."""
+    held = scout_cells._meta(db, ASKED_KINDS, None)
+    held = held if isinstance(held, dict) else {}
+    held[country] = [kind for kind in held.get(country) or [] if kind not in kinds] + list(kinds)
+    scout_cells._set(db, ASKED_KINDS, held)
+
+
+def search_for(db, country, kinds=None):
+    """The search the boards are proposed and read for: these kinds of work (kinds_for's when none are given), the whole country."""
+    words = [word.strip() for kind in (kinds or kinds_for(db, country)) for word in role_kinds.WORK[kind].split(',') if word.strip()]
     return {'role_keywords': list(dict.fromkeys(words)),
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
@@ -96,8 +118,8 @@ def measure(board, local, country, families):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)}
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None):
-    """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept."""
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None):
+    """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept."""
     from .ai import board_ideas, cost, decide
     from .sources import careers, found_boards
     ensure(db)
@@ -105,9 +127,10 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
     if not country:
         return []
     try:
-        search = search_for(db, country)
+        kinds = kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
+        search = search_for(db, country, kinds)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS]   # several kinds: no one field to ask for
-        thin = [kind for kind in kinds_for(db, country) if kind != 'software']   # the few free searches: the thinnest kinds, never the strongest
+        thin = [kind for kind in kinds if kind != 'software']   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out)   # boards only Google's results name, judged by the AI first
         proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
         began, kept, unread, counts = clock(), [], [], []
@@ -140,8 +163,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         for fact in kept:
             db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
                        (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
+        _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn
         db.commit()
-        out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
+        out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
             + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")   # Why (12 Nov 2026): France's lines showed neither which question spent the calls nor whether the job's cap held

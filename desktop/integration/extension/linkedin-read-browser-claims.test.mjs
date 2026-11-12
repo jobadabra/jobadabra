@@ -16,6 +16,7 @@ import {test} from 'node:test';
 import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {endBrowser} from '../../e2e/lib/browser-end.mjs';
 import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
+import {evaluate} from '../../e2e/lib/cdp-evaluate.mjs';
 import {createBackgroundBrowser} from '../../lib/background-browser.js';
 import {KEPT_FOLDER, READ_FOLDER, linkedinReadBrowser} from '../../lib/linkedin-browser.js';
 import {POST_CORS, jsonBody, jsonHeaders, jsonPayload, preflight} from '../../lib/server-http.js';
@@ -32,12 +33,7 @@ async function withE2eEnv(body) {
 async function workerStorage(browser) {
   const port = Number(fs.readFileSync(path.join(browser.folder, 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
   const worker = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(target => target.type === 'service_worker' && target.url.endsWith('/background-owned.js'));
-  const socket = new WebSocket(worker.webSocketDebuggerUrl);
-  return new Promise((resolve, reject) => {
-    const guard = setTimeout(() => { socket.close(); reject(new Error('the worker did not answer in time')); }, 15000);
-    socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {expression: 'chrome.storage.local.get(null).then(all => Object.keys(all))', awaitPromise: true, returnByValue: true}}));
-    socket.onmessage = event => { const row = JSON.parse(event.data); if (row.id === 1) { clearTimeout(guard); socket.close(); resolve(row.result?.result?.value || []); } };
-  });
+  return (await evaluate(worker.webSocketDebuggerUrl, 'chrome.storage.local.get(null).then(all => Object.keys(all))')) || [];   // a CDP error rejects (e2e/lib/cdp-evaluate.mjs), never an empty list that reads as "claims nothing"
 }
 
 test('the LinkedIn read\'s browser never polls for or claims a queued application; the kept browser does (positive control)', {timeout: TEST_MS + CLOSE_MS + 5000}, clocked(TEST_MS, () => withE2eEnv(async () => {
