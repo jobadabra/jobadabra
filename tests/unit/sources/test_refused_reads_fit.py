@@ -99,7 +99,7 @@ class RefusedReadsFitTest(unittest.TestCase):
         """The polluter's pattern: another thread asks the AI (decide) while the judge is patched in. Before 8 Nov 2026 its call was counted (3 != 1)."""
         from src.ai import decide
         fresh = ((decide.WAITING, {'n': 0, 'said': False, 'calls': {}}), (decide._calls, {'n': 0}), (decide._own, {}),
-                 (decide.STOPPED, {'why': '', 'key': False, 'cause': ''}), (decide.CACHE_ONLY, {'on': False}), (decide.SCOPE, {'name': None, 'n': 0}))
+                 (decide.STOPPED, {'why': '', 'key': False, 'cause': ''}), (decide.CACHE_ONLY, {'on': False}))
         for state, values in fresh:   # a fresh run: whatever earlier modules left (a spent cap, a stopped AI), the stray reaches the judge, and leaves nothing behind (first try failed in the shard: #3623 run 42496847818)
             patch = mock.patch.dict(state, values, clear=True)
             patch.start()

@@ -35,7 +35,6 @@ MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a b
 CENTRAL_MAX_CALLS = 2000
 _calls = {'n': 0}
 _own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), or per own_allowance() scope or the probe's pool, outside limit() (and the lock take() holds, under '\0lock')
-SCOPE = {'name': None, 'n': 0}   # own_allowance(): the calls inside count against this, not the run's cap
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
 STOPPED = {'why': '', 'key': False, 'cause': ''}   # a spent limit or a refused key: no more asks this run (every page would fail the same way)
@@ -104,15 +103,24 @@ def failed(what, error, n=1):
 
 @contextlib.contextmanager
 def own_allowance(name, n):
-    """Every model call inside (without its own allowance=) counts against `name`'s n calls a run instead of the run's cap: a step that
+    """Every model call this thread makes inside (without its own allowance=) counts against `name`'s n calls a run instead of the run's cap: a step that
     runs after the others spent the cap (the central scout's board pass: places, kinds of work, a board's country) still gets answers
-    (owner, 26 Oct 2026, "Own 15-call allowance", then the whole pass; tests/unit/ai/test_board_pass_allowance.py)."""
-    before = dict(SCOPE)
-    SCOPE.update(name=name, n=n)
+    (owner, 26 Oct 2026, "Own 15-call allowance", then the whole pass; tests/unit/ai/test_board_pass_allowance.py).
+    Why (12 Nov 2026, lab scout run France: "12 boards proposed, 0 with 3+ local jobs", two boards with local jobs "no kinds of work from the AI"): the scope was
+    process-wide, and the feed checks still running after the feed pass's time ran out (src/scout_index.py shutdown(wait=False)) spent the pass's calls.
+    Invariant: only the thread that opened the allowance draws from it; any other thread counts on its own pool or the run's cap."""
+    thread = threading.current_thread()
+    before = getattr(thread, 'own_scope', None)
+    thread.own_scope = (name, n)
     try:
         yield
     finally:
-        SCOPE.update(before)
+        thread.own_scope = before
+
+
+def own_scope():
+    """The name of this thread's own allowance (own_allowance), or None: its calls count on the run's cap (or the probe's pool)."""
+    return (getattr(threading.current_thread(), 'own_scope', None) or (None,))[0]
 
 
 # The central scout's candidate probe (its employer checks, in worker threads) asks the AI on one allowance of its own, so the feed pass that counts the known employers keeps the rest.
@@ -135,11 +143,12 @@ def probe_allowance(n):
 
 
 def _pool(topic, allowance):
-    """(pool, cap) a call is counted on: its own allowance=, else own_allowance()'s scope, else the probe's pool when this thread is a probe check; (None, 0): the run's cap."""
+    """(pool, cap) a call is counted on: its own allowance=, else this thread's own_allowance(), else the probe's pool when this thread is a probe check; (None, 0): the run's cap."""
     if allowance is not None:
         return topic, allowance
-    if SCOPE['name']:
-        return SCOPE['name'], SCOPE['n']
+    own = getattr(threading.current_thread(), 'own_scope', None)
+    if own:
+        return own
     n = getattr(threading.current_thread(), 'probe_pool', None)
     return ('probe', n) if n is not None else (None, 0)
 
@@ -156,6 +165,11 @@ def take(topic, key, allowance=None, label='decide'):
         else:
             _calls['n'] += 1
         return True
+
+
+def spent(name):
+    """How many calls of the allowance `name` (own_allowance, or a topic's allowance=) this run has used: a step prints it, so a run shows whether its allowance ran out."""
+    return _own.get(name, 0)
 
 
 def probe_spent():

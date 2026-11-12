@@ -17,6 +17,7 @@ BUDGET_S = 240          # the pass gives up starting new boards after this long
 PASS_CALLS = 2 * MAX_BOARDS   # the board pass's own AI calls a run (places and kinds of work, batched), outside the scout's cap
 KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
 RECENT = 4              # countries done lately wait their turn
+PASS = 'central scout board pass'   # the allowance's name
 RESERVE_S = 5 * 60      # the feed checks stop this long before the publish deadline, so the pass (a few minutes) always has its time
 
 
@@ -105,7 +106,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
         # every AI answer the reads need (places, kinds of work) on the pass's own calls: title sorting spends the scout's cap first (run 40384536845:
         # posao.hr 40/37 local, no fact, its kinds of work never asked)
         try:
-            with decide.own_allowance('central scout board pass', PASS_CALLS):
+            with decide.own_allowance(PASS, PASS_CALLS):
                 for board in proposed:
                     if clock() - began > BUDGET_S:
                         break
@@ -130,7 +131,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
         db.commit()
         out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
-            + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else ''))
+            + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
+            + f"; its AI calls: {decide.spent(PASS)} of {PASS_CALLS}")   # Why (12 Nov 2026): France's "no kinds of work" could not show who spent the calls
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
         out(f'Warning: board pass skipped: {type(error).__name__}: {error}')

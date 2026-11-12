@@ -21,7 +21,7 @@ KNOWN = {
     'src/ai/batch_scope.py': {'_WATCHED', '_by_reader', '_frozen', '_local'},
     'src/ai/board_ideas.py': {'STORE'},
     'src/ai/cost.py': {'SIDE', 'TOPICS', 'TOPICS_LOCK'},
-    'src/ai/decide.py': {'CACHE_ONLY', 'FAILED', 'SCOPE', 'STOPPED', 'WAITING', '_calls', '_own'},
+    'src/ai/decide.py': {'CACHE_ONLY', 'FAILED', 'STOPPED', 'WAITING', '_calls', '_own'},
     'src/ai/page_reader.py': {'_reads'},
     'src/ai/place_triage.py': {'LOCK'},
     'src/ai/slots.py': {'_local'},
