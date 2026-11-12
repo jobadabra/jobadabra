@@ -5,6 +5,7 @@ followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code
 It never touches the nightly Search check: the profiles come from search-profiles.json, the 18 locked people (gate-personas.json) and gate.py are only read,
 and the judge is gate_judge.judge() itself, given this file's profiles. No night, no Admin, no floors, no reference, no red.
 Usage: profiles.py ids '<json list or empty>' | free '<json list>' <at_once> | cv <id> <out> | judge <id> <jobs.json> <judged.json> | row <id> <out> | table <dir> <out.md>
+       | tell <rows.json> <run url> <message.txt>
 """
 import json
 import math
@@ -99,6 +100,13 @@ def judge(pid, jobs_path, out):
     print(f"{pid}: judged {verdict['judged_jobs']} distinct jobs, {sum(r['role'] == 'yes' and r['place'] == 'yes' for r in verdict['rows'])} right role and place")
 
 
+def target(relevant, eures):
+    """'meets' (N >= X), 'below' or 'not measured' (X = 0 or missing). Why (13 Nov 2026, sa: the Trello board's rule, owner: "Keep EURES as X, ours without it"): X = 0 is never a pass."""
+    if not eures:
+        return 'not measured'
+    return 'meets' if relevant >= eures else 'below'
+
+
 def _when(text):
     try:
         return datetime.fromisoformat(text.replace('Z', '+00:00'))
@@ -130,7 +138,7 @@ def row(pid, out):
             'first_relevant_s': round((min(seen) - started).total_seconds()) if seen and started else None,
             'boards_read': len(boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards), 'time_ran_out_for': ran_out,
             'engine': (', '.join(engines) or 'not said') + (' (no renderer)' if (out / 'no-renderer.txt').exists() else ''), 'judge': ', '.join((judged.get('agreement') or {}).get('ai') or []) or 'not said',
-            'judge_tier': judged.get('tier', 'small')}
+            'judge_tier': judged.get('tier', 'small'), 'eures': p.get('eures', 0), 'target': target(len(right), p.get('eures', 0))}
 
 
 def table(folder, out):
@@ -139,17 +147,35 @@ def table(folder, out):
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
              'CI rows (Codex through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026.', '',
-             '| id | city | role | relevant | shown | first relevant at | boards read / with relevant | time ran out for | engine | judge |',
-             '|---|---|---|---|---|---|---|---|---|---|']
+             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read / with relevant | time ran out for | engine | judge |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
         if 'relevant' not in r:
-            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | |")
+            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | | |")
             continue
         first = f"{r['first_relevant_s']} s" if r['first_relevant_s'] is not None else '—'
-        lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r['shown']} | {first} | {r['boards_read']} / {r['boards_with_relevant']} | "
+        lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r.get('eures') or '—'} | {r.get('target', '—')} | {r['shown']} | {first} | {r['boards_read']} / {r['boards_with_relevant']} | "
                      f"{', '.join(r['time_ran_out_for']) or '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     (Path(out).parent / 'rows.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
+
+
+def tell(rows_path, url, out):
+    """The run's one Telegram text (sent by desktop/e2e/tell-owner.mjs --event search-profiles): the owner's goal first, how many got 0 right jobs, then how many meet N >= X, then the link.
+    Why (13 Nov 2026, sa for the owner: "<k> of 30 got 0 right jobs", then "<m> meet target (N >= X)", then the link): a row not run or not measured is counted apart, never as 0."""
+    rows = json.loads(Path(rows_path).read_text(encoding='utf-8')) if Path(rows_path).exists() else []
+    measured = [r for r in rows if 'relevant' in r]
+    zero = sum(r['relevant'] == 0 for r in measured)
+    meets = sum(r.get('target') == 'meets' for r in measured)
+    judged = sum(r.get('target') in ('meets', 'below') for r in measured)
+    lines = [f'🧪 Search profiles on CI · {len(measured)} of {len(rows)} measured',
+             f'{zero} of {len(measured)} got 0 right jobs',
+             f'{meets} of {judged} meet target (N ≥ X, X = EURES)' + (f' · {len(measured) - judged} without an X' if len(measured) > judged else '')]
+    if len(rows) > len(measured):
+        lines.append(f'{len(rows) - len(measured)} not run or not measured: ' + ', '.join(r['id'] for r in rows if 'relevant' not in r))
+    lines.append(url)
+    Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    return lines
 
 
 def main(argv):
@@ -170,6 +196,8 @@ def main(argv):
         print(json.dumps(result, ensure_ascii=False))
     elif command == 'table':
         table(*args[:2])
+    elif command == 'tell':
+        print('\n'.join(tell(*args[:3])))
     else:
         raise SystemExit(__doc__)
 

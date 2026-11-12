@@ -11,6 +11,7 @@ export const WORKFLOW_EVENTS = {
   'replay-refill.yml': 'replay-refill',
   'site-replays.yml': 'replay-drift',
   'search-personas.yml': 'search-night',   // sent by desktop/e2e/search-alert.mjs with this event; registered in jobadabra-web shared/notify-registry.js (#529)
+  'search-profiles.yml': 'search-profiles',   // by hand: the 30 Trello profiles' run, sent by desktop/e2e/tell-owner.mjs with this event; registered in jobadabra-web shared/notify-registry.js (#602)
 };
 
 /** The event of the workflow file that runs this step (GITHUB_WORKFLOW_REF), or '' for one with no registry alert yet. */
