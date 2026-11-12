@@ -33,14 +33,18 @@ const noteFor = (why, need) => (why === 'email' && need ? `Send your application
 const stopSource = source => ['user', 'browser'].includes(source) ? source : 'unknown';
 const stopNote = source => source === 'user' ? STOPPED : `${source === 'browser' ? 'Chrome stopped the extension.' : 'The extension stopped.'} Press Reopen form to fill it again.`;
 
+// The stuck reason ends: its fields go, and a cleared Stop stays as history (#3408); null when nothing was stuck.
+function clearStuck(session, at) {
+  if (!session.stuck) return null;
+  const stopped = session.stuck === 'stopped' ? {earlier: addEarlier(session, session.stopSource === 'user' ? 'stopped' : 'stopped-other', at)} : {};
+  return {set: {stuck: '', accountNeeds: '', note: 'Form open in Chrome', ...stopped}, result: true};
+}
+
 // -> {set: {field: value} to apply (empty: nothing changed), result: what the old terminals function returned}.
 export function journey(session, event) {
   const none = {set: {}, result: false};
   if (!session) return none;
-  if (event.type === 'clear-stuck') {   // no outcome guard: a submitted form that was stuck still loses its stale "needs you"
-    const stopped = session.stuck === 'stopped' ? {earlier: addEarlier(session, session.stopSource === 'user' ? 'stopped' : 'stopped-other', event.at)} : {};
-    return session.stuck ? {set: {stuck: '', accountNeeds: '', note: 'Form open in Chrome', ...stopped}, result: true} : none;
-  }
+  if (event.type === 'clear-stuck') return clearStuck(session, event.at) || none;   // no outcome guard: a submitted form that was stuck still loses its stale "needs you"
   if (session.outcome) return none;   // invariant 1
   if (event.type === 'reopened') return {set: {earlier: addEarlier(session, 'reopened', event.at)}, result: true};   // Reopen form opened a new tab (session-handlers.js sessionReopen)
   if (event.type === 'stage') {
