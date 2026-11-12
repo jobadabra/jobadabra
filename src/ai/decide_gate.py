@@ -13,7 +13,10 @@ a question with no call running holds nothing: its gate is dropped, so nothing p
 Tests: tests/unit/ai/test_decide_gate.py."""
 import threading
 
-LANES = 2      # calls of one question running at once; the rest of the AI's slots stay free for titles, places and scores
+# Why (12 Nov 2026, the search night 43313523472 on b7b56240): with 2 lanes the Cluj and Zagreb searches kept about 2 AI calls in flight for 80 of their
+# 124 s (21 and 20 board questions at ~11 s each) and their national boards' jobs came after the search; an engine takes 4 at once, and titles,
+# places and scores take a free slot before a board question by their level (src/ai/slots.py), so one slot left free is enough for them.
+LANES = 3      # calls of one question running at once; one of the engine's 4 slots stays free for titles, places and scores
 WAIT_S = 90    # a waiting caller leaves unanswered after this (a search's AI window is about 2 minutes)
 UNASKED = object()   # the answer of an item no call was made for (the cap, a failure, the wait): unknown this run, asked again next run
 
