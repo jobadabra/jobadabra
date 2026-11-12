@@ -22,15 +22,19 @@ function write(file, value) {
   fs.renameSync(part, file);   // whole or not at all: two searches may end together
 }
 
-/** The pool, made once: a second search starting at the same moment reads the first one's file instead of writing its own. */
+/** The pool, made once: a second search starting at the same moment reads the first one's file instead of writing its own.
+ *  Invariant: the pool returned is the one in the file (an id lent from a pool nobody saved loses its tokens at keep()). */
 function poolOf(file, size) {
   const made = read(file);
   if (made?.installs?.length >= size) return made;
   const pool = {installs: [...(made?.installs || [])]};
   while (pool.installs.length < size) pool.installs.push({id: `test-${crypto.randomBytes(10).toString('hex')}`, tokens: {}});
+  if (made || fs.existsSync(file)) { write(file, pool); return pool; }   // a short or unreadable file is replaced whole
   fs.mkdirSync(path.dirname(file), {recursive: true});
-  try { fs.writeFileSync(file, JSON.stringify(pool, null, 1) + '\n', {mode: 0o600, flag: made ? 'w' : 'wx'}); } catch { return read(file) || pool; }
-  return pool;
+  const part = `${file}.${process.pid}.part`;
+  fs.writeFileSync(part, JSON.stringify(pool, null, 1) + '\n', {mode: 0o600});
+  // Why (#3930, review): an exclusive create shows the file empty before its text is written; a link shows it whole or not at all.
+  try { fs.linkSync(part, file); return pool; } catch { return read(file) || (write(file, pool), pool); } finally { fs.rmSync(part, {force: true}); }
 }
 
 /** Give the throwaway install in `dataDir` one of the pool's ids and the tokens that id was given before. -> the id, or '' when off (CI).
