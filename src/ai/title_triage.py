@@ -105,7 +105,8 @@ def _stamped(entry, decided, neighbours=()):
     """The entry kept for a search after a sort: what still holds (_current), this run's answers, its neighbour titles (NEAR: those still kept True) and this SYSTEM's stamp."""
     kept = {**_current(entry), **decided}
     was = (entry or {}).get(NEAR) or () if (entry or {}).get(STAMP) == PROMPT else ()
-    return {**kept, NEAR: sorted(title for title in {*was, *neighbours} if kept.get(title) is True), STAMP: PROMPT}
+    close = {*was, *neighbours}
+    return {**kept, NEAR: [title for title, answer in kept.items() if answer is True and title in close], STAMP: PROMPT}
 
 
 def _may_start(batch, mine, forced):

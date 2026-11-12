@@ -31,6 +31,19 @@ class Model:
         answer = {'fit': fit, 'near': near} if self.with_near else {'fit': fit}
         return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(answer))], usage=SimpleNamespace(input_tokens=1, output_tokens=1))
 
+from src.sources import careers
+
+_READER = careers.READER
+
+
+def setUpModule():   # the guard in tests/unit/sources/test_found_boards_ai.py: no page read reaches a real model from this file
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
+
 
 class ThreeAnswersTest(unittest.TestCase):
     def setUp(self):
