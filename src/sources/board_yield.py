@@ -161,7 +161,7 @@ def not_read_since(boards, kept, since, handed=()):
     (found_boards._early): their next pages are still to read."""
     if since is None:
         return list(boards)
-    fresh = [board for board in boards if board['host'] in handed or not _read_after(kept.get(board['host']), since)]
+    fresh = [board for board in boards if board['host'] in handed or not _read_after(kept.get(board['host']), since) or (kept.get(board['host']) or {}).get('owed')]
     from .aggregators import SPACING_HOURS
     print(f'Job boards: {len(boards) - len(fresh)} read in the last {SPACING_HOURS} h skipped; reading {len(fresh)} new ones', flush=True)
     return fresh
