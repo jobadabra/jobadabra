@@ -43,8 +43,7 @@ class SharedCalls(unittest.TestCase):
             self.addCleanup(patch.stop)
         decide.reset_run()
         self.addCleanup(decide.reset_run)
-        self.addCleanup(decide_gate._gates.clear)
-        decide_gate._gates.clear()
+        self.assertEqual(decide.GATES.open, {}, 'positive control: no question is being asked when a test starts')
 
     def ask(self, model, page, out):
         out[page] = decide.decide('link-kind', {f'{page} link {n}': f'{page} link {n}' for n in range(2)}, ANSWERS, 'what a link is', client=model, floor=False)
@@ -62,7 +61,7 @@ class SharedCalls(unittest.TestCase):
 
     def wait_queued(self, n):
         for _ in range(500):
-            if sum(len(gate['queue']) for gate in decide_gate._gates.values()) == n:
+            if sum(len(gate['queue']) for gate in list(decide.GATES.open.values())) == n:
                 return
             threading.Event().wait(0.01)
         self.fail(f'{n} callers never queued')
@@ -114,7 +113,7 @@ class SharedCalls(unittest.TestCase):
                 thread.join(10)
         self.assertFalse(any(thread.is_alive() for thread in threads), 'nobody is left waiting')
         self.assertEqual(out, {'a': {}, 'b': {}, 'c': {}}, 'unknown, never a guess')
-        self.assertEqual(decide_gate._gates and [gate['flying'] for gate in decide_gate._gates.values()], [0], 'the lane is free again')
+        self.assertEqual(decide.GATES.open, {}, 'the lane is free again: nothing is kept')
 
     def test_a_different_question_never_shares_a_call(self):
         model = Model()
@@ -150,13 +149,14 @@ class SharedCalls(unittest.TestCase):
         asked = threading.Event()
         release = threading.Event()
         slow = lambda pairs: (asked.set(), release.wait(10), ['x'] * len(pairs))[2]
-        lead = threading.Thread(target=decide_gate.shared, args=('k', [('a', 'a')], slow), kwargs={'lanes': 1}, daemon=True)
+        gates = decide_gate.Gates()
+        lead = threading.Thread(target=gates.shared, args=('k', [('a', 'a')], slow), kwargs={'lanes': 1}, daemon=True)
         lead.start()
         self.assertTrue(asked.wait(5))
-        self.assertEqual(decide_gate.shared('k', [('b', 'b')], slow, lanes=1, wait=0.05), [decide_gate.UNASKED])
+        self.assertEqual(gates.shared('k', [('b', 'b')], slow, lanes=1, wait=0.05), [decide_gate.UNASKED])
         release.set()
         lead.join(10)
-        self.assertEqual(decide_gate._gates['k'], {'flying': 0, 'queue': []})
+        self.assertEqual(gates.open, {}, 'no call of the question runs: its gate is dropped')
 
 
 if __name__ == '__main__':
