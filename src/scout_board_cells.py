@@ -19,6 +19,7 @@ REFRESH_DAYS = 20              # a fact this old is read again (the site drops i
 TARGET = 2                     # boards a cell needs before it leaves the queue (only a refresh reads it again)
 SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
+WORDS, WORDS_DAYS = 'board_words', 30     # scout_meta: {"<country>|<family>": {"words": [...], "at": "YYYY-MM-DD"}} the family's search words in the country's language (local_words)
 
 
 def _facts(db):
@@ -181,6 +182,30 @@ def keep_stops(db, path, out=print):
     if rows:   # the run's proof that the Scout's stops reached this database (sa, 12 Nov 2026: checked before a stopped country is read)
         out(f"Board pass: kept as stopped for the browser, from the Scout's memory, never opened: {', '.join(sorted(host for host, _, _ in rows))}")
     return len(rows)
+
+
+def local_words(db, country, families, today=None, ask=None):
+    """{family: [words in the country's language]} for these families, from memory (WORDS, kept WORDS_DAYS) or one AI call for the ones missing
+    (src/ai/board_words.py); a family the AI did not answer is absent, and the board pass searches its English words. Nothing is remembered from a failed call."""
+    today = today or date.today()
+    memory = scout_cells._meta(db, WORDS, {})
+    memory = memory if isinstance(memory, dict) else {}
+    fresh = (today - timedelta(days=WORDS_DAYS)).isoformat()
+    known = {family: (memory.get(f'{country}|{family}') or {}).get('words') for family in families
+             if str((memory.get(f'{country}|{family}') or {}).get('at') or '') >= fresh}
+    missing = {family: pool_tags.FAMILIES[family] for family in families if family not in known and family in pool_tags.FAMILIES}
+    if missing:
+        if ask is None:
+            from .ai import board_words
+            ask = board_words.words
+        answered = ask(pool_tags.COUNTRIES.get(country, country), missing)
+        if answered:
+            for family, found in answered.items():
+                memory[f'{country}|{family}'] = {'words': found, 'at': today.isoformat()}
+                known[family] = found
+            scout_cells._set(db, WORDS, memory)
+            db.commit()
+    return {family: known[family] for family in families if known.get(family)}
 
 
 def facts_beside(path, today=None):

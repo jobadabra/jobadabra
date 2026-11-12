@@ -84,6 +84,36 @@ class Pick(unittest.TestCase):
         self.assertEqual(cells.pick(self.db, TODAY, named=cells.parse('sk:nursing_care,si:kitchen,sk:teaching'))[:2], ('sk', ['nursing_care', 'teaching']))
 
 
+class Words(unittest.TestCase):
+    """12 Nov 2026, owner, asked via AskUserQuestion: "Scout asks once per country (Recommended)": a local board is searched in its country's language."""
+    def setUp(self):
+        self.db = sqlite3.connect(':memory:')
+        self.asked = []
+
+    def ask(self, country, families):
+        self.asked.append((country, sorted(families)))
+        return {family: [f'{family}-sk'] for family in families if family != 'teaching'}
+
+    def test_the_words_are_asked_once_per_country_and_family_and_kept_for_a_month(self):
+        got = cells.local_words(self.db, 'sk', ['kitchen', 'teaching'], TODAY, ask=self.ask)
+        self.assertEqual(got, {'kitchen': ['kitchen-sk']}, 'a family the AI left out searches its English words')
+        self.assertEqual(self.asked, [('Slovakia', ['kitchen', 'teaching'])])
+        cells.local_words(self.db, 'sk', ['kitchen', 'nursing_care'], TODAY + timedelta(days=cells.WORDS_DAYS - 1), ask=self.ask)
+        self.assertEqual(self.asked[1:], [('Slovakia', ['nursing_care'])], 'only the family not yet known is asked')
+        cells.local_words(self.db, 'sk', ['kitchen'], TODAY + timedelta(days=cells.WORDS_DAYS + 1), ask=self.ask)
+        self.assertEqual(self.asked[2:], [('Slovakia', ['kitchen'])], 'asked again after a month')
+
+    def test_a_failed_call_remembers_nothing(self):
+        self.assertEqual(cells.local_words(self.db, 'sk', ['kitchen'], TODAY, ask=lambda *_: None), {})
+        self.assertEqual(scout_cells._meta(self.db, cells.WORDS, {}), {})
+
+    def test_each_family_s_first_word_is_searched_before_any_second_word(self):
+        search = scout_boards.family_search('sk', ['kitchen', 'nursing_care', 'construction'], {'kitchen': ['kuchár', 'čašník'], 'nursing_care': ['opatrovateľka']})
+        english = pool_tags.FAMILIES['construction'].split(',')[0].strip()
+        self.assertEqual(search['jobs_board_search_queries'][:4], ['kuchár', 'opatrovateľka', english, 'čašník'])
+        self.assertIn(pool_tags.FAMILIES['kitchen'].split(',')[0].strip(), search['role_keywords'], "the AI's ideas still get the English words")
+
+
 class Discover(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(':memory:')
@@ -97,7 +127,9 @@ class Discover(unittest.TestCase):
 
         def run(db, **options):
             return scout_boards.run(db, ideas=lambda search: asked.append(search) or [], google=google, out=out.append,
-                                    read_board=lambda board, *rest: read.append(board['host']) or ([], 'ok', None), **options)
+                                    read_board=lambda board, search, *rest: read.append(board['host']) or searched.append(search['jobs_board_search_queries']) or ([], 'ok', None),
+                                    words=lambda db, country, families: {families[0]: ['local-word']}, **options)
+        searched = []
         with mock.patch.dict('os.environ', {'SCOUT_BOARD_CELLS': '', 'SCOUT_BOARD_PRIORITY': ''}):
             scout.discover(self.db, run=lambda db, **options: run(db, **{k: v for k, v in options.items() if k != 'out'}), out=out.append, today=TODAY)
         words = pool_tags.FAMILIES[FAMILIES[0]].split(',')[0].strip()
@@ -107,6 +139,8 @@ class Discover(unittest.TestCase):
         self.assertEqual(read, ['again.example', 'g.example'], 'the fact due again first, then Google, then the AI')
         self.assertTrue(any(line.startswith(f"Board pass: Slovakia ({', '.join(FAMILIES[:cells.PER_RUN])})") for line in out), out)
         self.assertTrue(out[-1].startswith('Board cells: '), out[-1])
+        self.assertEqual(searched[0][0], 'local-word', "a board's search box gets the country's word first")
+        self.assertTrue(any(line.startswith('Board pass: searched with local-word, ') for line in out), out)
         self.assertEqual(scout_cells._meta(self.db, scout_boards.ASKED_KINDS, None), None, "cells keep their own turns: the kinds' turn list is untouched")
 
 
