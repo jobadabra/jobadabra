@@ -6,6 +6,7 @@ from datetime import date
 from unittest import mock
 
 from src import scout_boards, scout_cells
+from src.ai import decide
 from src.sources import careers
 
 
@@ -62,6 +63,47 @@ class BoardPassTest(unittest.TestCase):
     def test_boards_the_rules_could_not_read_are_named_in_the_log(self):
         _, out, _ = self.run_pass({'a.md': ([], 'empty', None), 'b.md': ([], 'browser', None)})
         self.assertIn('not measured (rules could not read the page): a.md, b.md', out[0])
+
+    def test_a_board_the_rules_read_as_empty_is_read_once_more_by_the_ai_page_reader(self):
+        # 12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)": a Slovak board's page held 40 ads, the rules read 0
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+        readers = []
+
+        def read_board(item, search, fetch):
+            readers.append(careers.READER)
+            return ([job('Chisinau')] * 3, 'ok', None) if careers.READER else ([], 'empty', None)
+        out = []
+        with mock.patch.object(careers, 'READER', 'auto'):
+            got = scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=read_board, out=out.append, google=lambda *a: [])
+            self.assertEqual(careers.READER, 'auto', 'the reader is back as it was after the pass')
+        self.assertEqual(readers, [None, 'auto'], 'rules first, then the AI page reader once')
+        self.assertEqual([fact['host'] for fact in got], ['a.md'])
+        self.assertIn('a.md 3/3 (read by the AI page reader)', out[0])
+
+    def test_the_ai_page_reads_stop_when_their_calls_are_spent_and_a_page_built_by_scripts_is_not_one(self):
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+        ai_reads = []
+
+        def read_board(item, search, fetch):
+            if careers.READER:
+                ai_reads.append(item['host'])
+                decide.probe_take(), decide.probe_take()   # the page reader's two pages of this board, counted on the step's pool
+            return [], 'browser' if item['host'] == 'script.md' else 'empty', None
+        hosts = ['script.md'] + [f'{n}.md' for n in range(5)]
+        out = []
+        with mock.patch.object(careers, 'READER', 'auto'):
+            scout_boards.run(self.db, ideas=lambda search: [board(host) for host in hosts], read_board=read_board, out=out.append, google=lambda *a: [])
+        self.assertEqual(ai_reads, ['0.md', '1.md', '2.md'], f'{scout_boards.PAGE_CALLS} calls, two a board; no AI read for a page built by scripts')
+        self.assertIn(f'pages {scout_boards.PAGE_CALLS} of {scout_boards.PAGE_CALLS}', out[0])
+
+    def test_a_reader_kept_off_stays_off(self):
+        readers = []
+        with mock.patch.object(careers, 'READER', None):
+            scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda item, *a: readers.append(careers.READER) or ([], 'empty', None),
+                             out=lambda line: None, google=lambda *a: [])
+        self.assertEqual(readers, [None], 'a process whose page reader is off (tests, a person who keeps pages from the AI) never turns it on')
 
     def browser_pass(self, reads, browsed):
         """One pass where `reads` is each board's plain read and `browsed` its headless browser read (host -> (jobs, state, stop)); -> (facts, line, browsed hosts)."""
