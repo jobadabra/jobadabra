@@ -7,7 +7,7 @@ from unittest import mock
 
 from src import scout_boards, scout_cells
 from src.ai import decide
-from src.sources import careers
+from src.sources import careers, found_boards
 
 
 def board(host):
@@ -91,11 +91,14 @@ class BoardPassTest(unittest.TestCase):
                 ai_reads.append(item['host'])
                 decide.probe_take(), decide.probe_take()   # the page reader's two pages of this board, counted on the step's pool
             return [], 'browser' if item['host'] == 'script.md' else 'empty', None
-        hosts = ['script.md'] + [f'{n}.md' for n in range(5)]
+        self.assertEqual(scout_boards.PAGE_CALLS, 12, 'the cap is a cost: a raise is a deliberate edit (6 left up to 5 boards a run unread in 7 of 11 lab runs, 12 Nov 2026)')
+        boards_by_ai = scout_boards.PAGE_CALLS // found_boards.AI_ASKS
+        self.assertEqual(boards_by_ai, scout_boards.MAX_BOARDS // 2, 'the AI page reader reaches half the boards a pass reads')
+        hosts = ['script.md'] + [f'{n}.md' for n in range(boards_by_ai + 2)]
         out = []
         with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=True):
             scout_boards.run(self.db, ideas=lambda search: [board(host) for host in hosts], read_board=read_board, out=out.append, google=lambda *a: [])
-        self.assertEqual(ai_reads, ['0.md', '1.md', '2.md'], f'{scout_boards.PAGE_CALLS} calls, two a board; no AI read for a page built by scripts')
+        self.assertEqual(ai_reads, [f'{n}.md' for n in range(boards_by_ai)], f'{scout_boards.PAGE_CALLS} calls, two a board; no AI read for a page built by scripts')
         self.assertIn(f'pages {scout_boards.PAGE_CALLS} of {scout_boards.PAGE_CALLS}', out[0])
 
     def test_without_a_usable_page_reader_an_empty_board_is_not_fetched_again(self):

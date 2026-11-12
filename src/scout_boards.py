@@ -32,12 +32,15 @@ PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.co
 KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
 WORD_CALLS = 1          # board discovery: its families' search words in the country's language, one call (src/ai/board_words.py)
-# Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" for this case): a Slovak
-# board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards). A board the rules read as empty is read once more with the AI page
-# reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe reads the same page with no AI later in that run.
-PAGE_CALLS = 6
+# Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" here; the cap raised the same
+# day on his "Let's make it more efficient"): a Slovak board's page held 40 ads and the rules read 0 (lab run 43292873441: 0 of 5 boards), so a board the
+# rules read as empty is read once more with the AI page reader while the run has PAGE_CALLS left, every AI call of that read on one pool; its recipe
+# reads the same page with no AI later in that run. 12, not 6: six calls (3 boards) were all spent in 7 of the 11 lab runs that had the reader
+# (43300216888, 43303531806, 43308056859, 43317574914, 43319365565, 43320153606, 43321482016), which left up to 5 boards a run "not measured",
+# while a pass used 12-47 of its 71 calls; 12 reads 6 boards, half of MAX_BOARDS (pinned by tests/unit/sources/test_scout_boards.py).
+PAGE_CALLS = 12
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
-# ideas 1 + words 1 + pages 6 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 71.
+# ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 = 77.
 JOB_CALLS = IDEA_CALLS + WORD_CALLS + PAGE_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
