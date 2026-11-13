@@ -75,6 +75,23 @@ class StarvedProfileTest(unittest.TestCase):
             self.assertIn('CI rows (Claude through the broker', (Path(tmp) / 'table.md').read_text())
             self.assertEqual(profiles.tell(Path(tmp) / 'rows.json', 'https://example.invalid/run', Path(tmp) / 'message.txt')[0], '🧪 Search profiles on CI · Claude · 1 of 1 measured')
 
+    def test_row_counts_boards_that_gave_jobs_refused_and_cut(self):
+        """sa for the owner (13 Nov 2026): per profile, boards that gave jobs, boards refused, boards cut at the end. Lines as run 43358450676's press logs write them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            out = profile_folder(tmp, 'b01', [2000] * 5, right=1)
+            (out / 'draw' / 'run-1.log').write_text('\n'.join([
+                '[80s] Job boards found: jobup.ch 14 job(s), 2 relevant',
+                '[90s] Job boards found: adecco.ch 1 job(s), 0 relevant',
+                '[91s] Job boards found: ch.talent.com 0 job(s), 0 relevant',
+                '[92s] Job boards found: Rabota.bg 0 job(s), 0 relevant (refuses automated reading, HTTP 403: offered as a visit)',
+                '[93s] Job boards: Jobat refuses automated reading; reading Emplois Construction in its place',
+                '[94s] ⏱ Time is up (1 min 28 s) for job boards: 3 board read waits for the next search',
+                '[95s] ⏱ Time is up (1 min 29 s) for job boards: 1 board discovery waits for the next search']))   # not a board read: not counted (Gitar on #3975)
+            row = profiles.row('b01', out)
+            self.assertEqual((row['boards_read'], row['boards_gave_jobs'], row['boards_with_relevant'], row['boards_refused'], row['boards_cut']), (4, 2, 1, 2, 3))
+            profiles.table(tmp, Path(tmp) / 'table.md')
+            self.assertIn('| boards that gave jobs | boards with relevant | boards refused | boards cut at the end |', (Path(tmp) / 'table.md').read_text())
+
 
 if __name__ == '__main__':
     unittest.main()
