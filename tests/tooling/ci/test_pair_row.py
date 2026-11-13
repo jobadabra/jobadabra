@@ -47,6 +47,11 @@ class TheRow(unittest.TestCase):
         self.assertIn('run it again', second['title'])
         self.assertNotIn('failure', (first['conclusion'], second['conclusion']))
 
+    def test_a_person_who_never_searched_is_not_run_again_but_says_run_it_again(self):   # Gitar on #4065 and #3967: the turn found no room; a second long wait is not queued
+        out = pair_row.decide({'c04': moves(15, 14)}, ['c04', 'b10'], {'c04'}, {'c04': None}, 1, rows(c04=1))
+        self.assertEqual((out['conclusion'], out['rerun']), ('pending', []))
+        self.assertIn('run it again', out['title'])
+
     def test_the_second_run_keeps_the_first_runs_counted_lines_in_front(self):   # Gitar on #4059: the re-run counts only the missing people, the row must still show the first run's
         first = 'c04 15 → 14 right jobs (one run a side, within the usual difference of 7: not a proven gain)'
         out = pair_row.decide({'b10': moves(2, 9)}, ['b10'], {'b10'}, {'b10': None}, 2, rows(b10=1), earlier=[first])

@@ -67,8 +67,10 @@ def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()
         title = f"not counted: {', '.join(str(p) for p in missing)} ({why})"
         # Why (13 Nov 2026, sa after 1/3: "a stalled call is not a loss"; the day's false 40 → 22 was one 63 s call): a pair that did not count is never red; it runs once more by itself,
         #   then the row stays PENDING (running, so the PR is not mergeable on an unproven pair) with the next step in its text. Red stays the loss beyond the band.
-        if attempt < 2:
-            return {'conclusion': 'pending', 'title': (title + '; running once more')[:140], 'summary': '\n'.join(lines), 'rerun': missing}
+        # Why (Gitar on #4065, and on #3967: "the turn found no room, the workflow must not queue a second long wait"): only a person who HAD a side is run again; one whose search never started goes straight to "run it again".
+        again = [person for person in missing if person in seen]
+        if attempt < 2 and again:
+            return {'conclusion': 'pending', 'title': (title + '; running once more')[:140], 'summary': '\n'.join(lines), 'rerun': again}
         return {'conclusion': 'pending', 'title': (title + '; run it again')[:140], 'summary': '\n'.join(lines + [title, 'Next step: run the pair again by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>); a stalled call is not a loss.']), 'rerun': []}
     return {'conclusion': 'success', 'title': ' · '.join(lines)[:140], 'summary': '\n'.join(lines), 'rerun': []}
 

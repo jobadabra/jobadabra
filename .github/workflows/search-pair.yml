@@ -78,7 +78,7 @@ jobs:
       need: ${{ steps.people.outputs.need }}
       main: ${{ steps.refs.outputs.main }}
       head: ${{ steps.refs.outputs.head }}
-      status_sha: ${{ steps.refs.outputs.status_sha }}
+      row_sha: ${{ steps.refs.outputs.row_sha }}
       state: ${{ steps.refs.outputs.state }}
     steps:
       - uses: actions/checkout@v5
@@ -95,9 +95,9 @@ jobs:
           python3 -c "import json,sys; d=json.load(open('pr.json')); sys.exit('a fork PR is not run (its code would get the broker)' if d['isCrossRepository'] else 'the PR is closed unmerged' if d['state'] not in ('OPEN', 'MERGED') else 0)"
           head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")
           echo "head=$head" >> "$GITHUB_OUTPUT"
-          # Why (13 Nov 2026, Gitar on #4033): a squash-merged PR's head is off main, so its "Search pair" status goes on the merge commit instead
+          # Why (13 Nov 2026, Gitar on #4033): a squash-merged PR's head is off main, so its "Search before/after" row goes on the merge commit instead
           echo "state=$(python3 -c "import json; print(json.load(open('pr.json'))['state'])")" >> "$GITHUB_OUTPUT"
-          echo "status_sha=$(python3 -c "import json; d=json.load(open('pr.json')); print((d.get('mergeCommit') or {}).get('oid') or d['headRefOid'])")" >> "$GITHUB_OUTPUT"
+          echo "row_sha=$(python3 -c "import json; d=json.load(open('pr.json')); print((d.get('mergeCommit') or {}).get('oid') or d['headRefOid'])")" >> "$GITHUB_OUTPUT"
           # Why (13 Nov 2026, #3946's pair): the "before" side is the main commit the PR sits on, not main's newest; a PR behind main would otherwise be compared
           # with everything merged since, and its own change could not be told apart (main 7e5ee877 against a branch on f86251e3 also differed by #3952 and two more).
           echo "main=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$head" --jq .merge_base_commit.sha)" >> "$GITHUB_OUTPUT"
@@ -111,7 +111,7 @@ jobs:
         id: row
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD: ${{ steps.refs.outputs.status_sha }}
+          HEAD: ${{ steps.refs.outputs.row_sha }}
           PEOPLE: ${{ steps.people.outputs.people }}
           ROW_IN: ${{ inputs.check_id }}
         # Why (Gitar on #4044): the pair's own second run takes over the first run's row (its id comes in as an input), so a head never shows a grey row beside the real one.
@@ -121,8 +121,12 @@ jobs:
         run: |
           started="$(date -u +%H:%M)"
           title="$(python3 -c "import sys; sys.path.insert(0, 'tools/persona-search'); import pair_row; print(pair_row.running(sys.argv[1], 'waiting for room at the broker'))" "$started")"
+          # Why (Gitar on #4065): a pair started by hand for a head whose row has not ended (a pair not counted twice stays running, "run it again") takes that row over: one row per head. A row that ended (a counted pair) is left as it is; the new pair gets its own newer row.
+          if [ -z "$ROW_IN" ]; then
+            ROW_IN="$(gh api -X GET "repos/$GITHUB_REPOSITORY/commits/$HEAD/check-runs" -f check_name='Search before/after' --jq '.check_runs[0] | select(.status != "completed") | .id // empty' || true)"
+          fi
           if [ -n "$ROW_IN" ]; then
-            jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg title "$title" '{status: "in_progress", output: {title: $title, summary: "The pair ran once more for the people it did not count."}}' \
+            jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg title "$title" '{status: "in_progress", output: {title: $title, summary: "A pair runs for this head again; this row stays the one row of the head and ends with its numbers."}}' \
               | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$ROW_IN" --input - >/dev/null
             echo "check_id=$ROW_IN" >> "$GITHUB_OUTPUT"; echo "started=$started" >> "$GITHUB_OUTPUT"; exit 0
           fi
@@ -352,14 +356,15 @@ jobs:
           # Why (Gitar on #4044): the row ends here, before the hold, label and comment work: a failure there must not turn a counted pair red ("not counted: no numbers"), and it never leaves a second run dispatched.
           # Why (13 Nov 2026, owner via sa: a pair that did not count re-runs itself once; then, sa: never red, the row stays pending): every PR's pair runs once more for the people it did not count; its row stays running and the second run takes it over.
           rerun="$(jq -c .rerun row.json)"
-          if [ "$rerun" != '[]' ] && [ "$newer" = 0 ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2 -f check_id="$CHECK_ID"; fi
+          if [ "$rerun" != '[]' ] && [ "$newer" = 0 ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2 -f check_id="$CHECK_ID" \
+            || { rerun='[]'; jq '.title |= sub("; running once more$"; "; run it again (the second run did not start)")' row.json > row2.json && mv row2.json row.json; }; fi   # Why (Gitar on #4065): a dispatch that fails must not leave "running once more" on a row nobody will end
           # the row's end: success with the numbers, failure (a loss beyond the band), neutral (superseded); "pending" (a second run to come, or not counted twice: run it again) only gets the new words and stays running
           jq -n --slurpfile r row.json --arg rerun "$rerun" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg comment "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
             '({output: {title: $r[0].title, summary: (if $r[0].summary == "" then "No numbers." else $r[0].summary end) + "\n\nThe table: the pair comment on " + $comment + "\nOne run a side. Run: " + $run}}) + (if $rerun == "[]" and $r[0].conclusion != "pending" then {status: "completed", conclusion: $r[0].conclusion, completed_at: $now} else {} end)' \
             | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
           echo "row_done=1" >> "$GITHUB_OUTPUT"
           if [ "$STATE" = MERGED ]; then   # Why (13 Nov 2026, Gitar on #4033): a merged PR has no hold to lift and no pending Moves lines; the comment says what was compared
-            { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the checks-list status is on its merge commit."; } >> table.md
+            { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the \"Search before/after\" row is on its merge commit."; } >> table.md
           elif [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
             { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
           else
