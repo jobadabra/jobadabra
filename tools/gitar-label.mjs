@@ -4,17 +4,19 @@
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
-//   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026), plus the gray "working" mark a session sets.
+//   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026) | changes requested · not re-reviewed (the
+//   same as "not started" when Gitar's last verdict, on an older push, was red: 13 Nov 2026), plus the gray "working" mark a session sets.
 //   A head that only merged the base branch in, own diff byte-identical, keeps the verdict of the change before it (12 Nov 2026, owner: "Keep the verdict (Recommended)"; ownHeadTime()).
 //   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
 //   A verdict older than the head is dropped, never shown beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
 //   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
 //   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
-//   Moments that run it: a push, open or reopen of the PR, Gitar's review or new comment, EVERY push to main (all open PRs), and the Worker's ten-minute tick (all open PRs;
-//   app-core/src/scheduler.js). Gitar closes a finding by only EDITING its comment, which starts nothing, so the tick is what bounds the label's age: at most ten minutes stale.
-//   Gone with it: the check_run trigger and its PR lookup, and the wait for Gitar's comment to catch up with its review (up to 2 minutes of re-reads, then a red run): a read that is
-//   a few seconds early is corrected by the next moment. Reads are one GraphQL call per PR; a label is written only when it differs (#2516: 151 runs an hour once spent the REST budget).
-// Usage (workflow .github/workflows/pr-labels.yml): node tools/gitar-label.mjs <pr-number> | all
+//   Moments that run it (the table is in .github/workflows/pr-labels-shared.yml, the one workflow every repo of the org calls; owner, 13 Nov 2026: "One shared workflow"): a push, open or reopen of
+//   the PR, Gitar's review or new comment, Gitar's check starting or ending (`head <sha>`: Gitar closes a finding or approves by only EDITING its comment, which starts no event, and its check ends
+//   0-2 s after that edit), EVERY push to main (all open PRs), and jobadabra's ten-minute tick (app-core/src/scheduler.js), now only a safety net.
+//   Gone with it: the wait for Gitar's comment to catch up with its review (up to 2 minutes of re-reads, then a red run): a read that is a few seconds early is corrected by the next moment.
+//   Reads are one GraphQL call per PR; a label is written only when it differs (#2516: 151 runs an hour once spent the REST budget).
+// Usage (shared workflow .github/workflows/pr-labels-shared.yml): node tools/gitar-label.mjs <pr-number> | all | head <sha>
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -28,6 +30,8 @@ export const LABELS = {
 export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar was asked to review the newest push, or its check runs on it; no verdict yet'};
 // Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check RUN on the head (an empty check suite exists on every push, so it proves nothing); no run = not started. Both marks sit beside the latest verdict (owner, 11 Nov: "the label is not reflecting gitar").
 export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has not started on the newest push; one "Gitar review" comment starts it'};
+// Why (13 Nov 2026, owner, asked via AskUserQuestion: "Keep red visible (Recommended)"; web #635: after the fix push the label read "not started" and hid the red verdict he was reading; Gitar had locked the PR for 20 min after the session's thread replies, so no re-review could be asked): a red verdict of an older push stays visible until Gitar judges the new one. Only red: an old approval never stays green (28 Oct 2026).
+export const CHANGES_OLD = {name: 'Gitar: changes requested · not re-reviewed', color: 'd73a4a', description: 'Gitar asked for changes on an earlier push; the newest push has no review yet'};
 export const WORKING = {name: 'Working on PR comments', color: '6b7280', description: 'A session is applying the review feedback; a push clears it'};
 
 /** The verdict kind in Gitar's comment body, or null when it holds no verdict line (e.g. a review in progress). Order matters: "Approved with suggestions" contains "Approved". */
@@ -107,15 +111,15 @@ export function askedAt(comments) {
 }
 
 /** The labels a PR should hold: ONE Gitar label for the newest push, then "working" when it applies; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, workingSince, headTime, verdictTime, gitarOnHead = true, asked = null, now = Date.now()}) {
+export function wantedLabels({verdict, staleKind = null, workingSince, headTime, verdictTime, gitarOnHead = true, asked = null, now = Date.now()}) {
   const t = Date.parse;
   const askPending = !!asked && t(asked) >= t(headTime) && !(t(verdictTime) >= t(asked)) && now - t(asked) < ASK_FRESH_MS;
-  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : NOT_STARTED.name)];
+  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : staleKind === 'changes' ? CHANGES_OLD.name : NOT_STARTED.name)];
   if (workingSince && t(workingSince) >= t(headTime) && (verdict !== LABELS.approved.name || t(workingSince) > t(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
-const ALL = [...Object.values(LABELS), WAITING, NOT_STARTED, WORKING];
+const ALL = [...Object.values(LABELS), WAITING, NOT_STARTED, CHANGES_OLD, WORKING];
 const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
 /** Adds one label; creates it (a REST call) only when GitHub says the repo has no such label yet, then adds it again.
@@ -152,6 +156,18 @@ export function converge(once, max = 3) {
 
 function main(pr) {
   converge(() => syncOnce(pr));
+}
+
+/** The open PRs whose head IS `sha` (one REST call, up to 100 PRs a commit belongs to; a failed read stays a red run, as everywhere here, #2516). Why (13 Nov 2026, gl): a Gitar check names its commit; its payload's own PR list is empty on most checks (3 of 40, 5 Nov 2026). */
+export function prsOfHead(repo, sha, run = gh) {
+  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/pulls?per_page=100`)).filter(p => p.state === 'open' && p.head?.sha === sha).map(p => p.number);
+}
+
+/** Labels the PRs a Gitar check ran on; -> their numbers. The label follows the verdict the moment Gitar's check ends, even when the verdict only edited its comment (owner, 13 Nov 2026: jobadabra-benchmarks #38). */
+export function syncHead(repo, sha, run = gh) {
+  const prs = prsOfHead(repo, sha, run);
+  for (const pr of prs) converge(() => syncOnce(pr, repo, run));
+  return prs;
 }
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
@@ -204,23 +220,23 @@ function readPrByRest(repo, pr, info) {
     asked: askedAt(comments.map(c => ({login: c.user.login, body: c.body, createdAt: c.created_at})))};
 }
 
-const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+const readLive = (repo, pr, run = gh) => readPr(repo, pr, run) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
 
 /** The read and the labels the PR should hold; the head time is that of the PR's own change (ownHeadTime) when the head only merged the base branch in. */
-function wantedFor(repo, pr) {
-  const read = readLive(repo, pr);
+function wantedFor(repo, pr, run = gh) {
+  const read = readLive(repo, pr, run);
   if (read.state !== 'open') return {read, wanted: null};
-  const at = (read.parents?.length === 2 && ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base)) || read.headTime;
+  const at = (read.parents?.length === 2 && ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base, run)) || read.headTime;
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at) : null;
-  return {read, wanted: wantedLabels({verdict, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
+  const staleKind = read.review && !verdict ? verdictKind(read.review.body) : null;   // the verdict of an older push, kept in view only when red
+  return {read, wanted: wantedLabels({verdict, staleKind, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
 }
 
 /** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
-function syncOnce(pr) {
-  const repo = process.env.GITHUB_REPOSITORY;
-  const {read, wanted} = wantedFor(repo, pr);
+function syncOnce(pr, repo = process.env.GITHUB_REPOSITORY, run = gh) {
+  const {read, wanted} = wantedFor(repo, pr, run);
   if (!wanted) { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
-  const changed = setLabels(repo, pr, wanted, read.labels);
+  const changed = setLabels(repo, pr, wanted, read.labels, run);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
 }
@@ -254,9 +270,11 @@ function cli() {
   try {
     if (process.argv[2] === 'working') return markWorking(process.argv[3]);
     if (process.argv[2] === 'all') return syncAll();
+    // head <sha>: the PRs a Gitar check ran on (the shared workflow's check_run event).
+    if (process.argv[2] === 'head') return console.log(`gitar-label: head ${process.argv[3]} → ${syncHead(process.env.GITHUB_REPOSITORY, process.argv[3]).map(n => `#${n}`).join(' ') || 'no open PR'}`);
     // peek <n>: print the labels the PR should hold, write nothing (tools/ship-watch.sh asks Gitar only when no verdict counts on the head).
     if (process.argv[2] === 'peek') return console.log((wantedFor(process.env.GITHUB_REPOSITORY, process.argv[3]).wanted || []).join('\n'));
-    // Why (7 Nov 2026, gl, code review): jobadabra-web and -lab run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is synced to templates/org-repo/pr-labels.yml; that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once both repos carry the synced workflow (14 Nov 2026)
+    // Why (7 Nov 2026, gl, code review): jobadabra-web, -lab and -benchmarks run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is the shared caller (templates/org-repo/pr-labels.yml); that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once all three callers have merged (13 Nov 2026)
     if (!process.argv[2]) return console.log('gitar-label: no PR number given (an event that no longer labels), nothing to do');
     main(process.argv[2]);
   } catch (error) {
