@@ -28,6 +28,10 @@ NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts 
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
 RAN_OUT = re.compile(r'Time is up \([^)]*\) for ([^:]+):|No time left in this refresh for these: \d+ (\w+)')
 ENGINE = re.compile(r'^AI: (\S+)(?: / (\S+))?', re.M)
+RELAY_WAIT = re.compile(r'^relay: \S+ total \d+ broker \S+ waited (\d+)', re.M)   # codex.mjs: one line per AI call; waited = ms the call spent outside the broker's answer
+# Why (13 Nov 2026, sa, after run 43354770712: b02 0 and c06 1 right jobs with waits p90 56-58 s, Cluj 18-21 on the Mac): a profile whose search waited this long on the broker ran
+# out of time for job boards; its count measures the broker's queue, not the search, so the row says "not measured (waits p90 N s)" and is never counted as 0 or below target.
+WAIT_P90_LIMIT_S = 20
 
 
 def profile(pid):
@@ -111,6 +115,12 @@ def target(relevant, eures):
     return 'meets' if relevant >= eures else 'below'
 
 
+def waits_p90_s(log):
+    """The search's broker waits p90 in whole seconds, from the relay lines of run.log; None when the log has none."""
+    waits = sorted(int(m) for m in RELAY_WAIT.findall(log))
+    return round(waits[min(len(waits) - 1, int(0.9 * len(waits)))] / 1000) if waits else None
+
+
 def _when(text):
     try:
         return datetime.fromisoformat(text.replace('Z', '+00:00'))
@@ -138,7 +148,10 @@ def row(pid, out):
     boards = BOARD.findall(log)
     ran_out = sorted({(a or b).strip() for a, b in RAN_OUT.findall(log)})
     engines = sorted({' / '.join(x for x in m if x) for m in ENGINE.findall(read('run.log'))})
-    return {**result, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
+    p90 = waits_p90_s(read('run.log'))
+    if p90 is not None and p90 > WAIT_P90_LIMIT_S:
+        return {**result, 'not_measured': f'not measured (waits p90 {p90} s)', 'starved': True, 'waits_p90_s': p90, 'relevant_while_starved': len(right), 'shown_while_starved': len(rows)}
+    return {**result, 'waits_p90_s': p90, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
             'first_relevant_s': round((min(seen) - started).total_seconds()) if seen and started else None,
             'boards_read': len(boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards), 'time_ran_out_for': ran_out,
             'engine': (', '.join(engines) or 'not said') + (' (no renderer)' if (out / 'no-renderer.txt').exists() else ''), 'judge': ', '.join((judged.get('agreement') or {}).get('ai') or []) or 'not said',
@@ -151,15 +164,16 @@ def table(folder, out):
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
              'CI rows (Codex through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026.', '',
-             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read / with relevant | time ran out for | engine | judge |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|']
+             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read / with relevant | time ran out for | broker waits p90 | engine | judge |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
         if 'relevant' not in r:
-            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | | |")
+            waits = f"{r['waits_p90_s']} s" if r.get('waits_p90_s') is not None else ''
+            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | {waits} | | |")
             continue
         first = f"{r['first_relevant_s']} s" if r['first_relevant_s'] is not None else '—'
         lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r.get('eures') or '—'} | {r.get('target', '—')} | {r['shown']} | {first} | {r['boards_read']} / {r['boards_with_relevant']} | "
-                     f"{', '.join(r['time_ran_out_for']) or '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
+                     f"{', '.join(r['time_ran_out_for']) or '—'} | {str(r['waits_p90_s']) + ' s' if r.get('waits_p90_s') is not None else '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     (Path(out).parent / 'rows.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
 
@@ -169,6 +183,11 @@ def tell(rows_path, url, out):
     Why (13 Nov 2026, sa for the owner: "<k> of 30 got 0 right jobs", then "<m> meet target (N >= X)", then the link): a row not run or not measured is counted apart, never as 0."""
     rows = json.loads(Path(rows_path).read_text(encoding='utf-8')) if Path(rows_path).exists() else []
     measured = [r for r in rows if 'relevant' in r]
+    starved = [r for r in rows if r.get('starved')]
+    if not measured and starved:
+        lines = [f'🧪 Search profiles on CI · nothing measured: the broker was too busy for {len(starved)} of {len(rows)} (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved), url]
+        Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        return lines
     if not measured:   # Why (13 Nov 2026, Gitar on #3945): "0 of 0 got 0 right jobs" reads as a clean run; nothing measured is said as such
         lines = [f'🧪 Search profiles on CI · nothing measured ({len(rows)} profile{"" if len(rows) == 1 else "s"}: ' + (', '.join(r.get('id', '?') for r in rows) or 'no rows') + ')', url]
         Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
@@ -179,8 +198,12 @@ def tell(rows_path, url, out):
     lines = [f'🧪 Search profiles on CI · {len(measured)} of {len(rows)} measured',
              f'{zero} of {len(measured)} got 0 right jobs',
              f'{meets} of {judged} meet target (N ≥ X, X = EURES)' + (f' · {len(measured) - judged} without an X' if len(measured) > judged else '')]
-    if len(rows) > len(measured):
-        lines.append(f'{len(rows) - len(measured)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in rows if 'relevant' not in r))
+    starved = [r for r in rows if r.get('starved')]
+    if starved:
+        lines.append(f'{len(starved)} not measured, the broker was too busy (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved))
+    other = [r for r in rows if 'relevant' not in r and not r.get('starved')]
+    if other:
+        lines.append(f'{len(other)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in other))
     lines.append(url)
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return lines
