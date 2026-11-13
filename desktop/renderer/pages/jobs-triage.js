@@ -153,11 +153,26 @@ export async function runTriage(jobs, read, match = null) {
 
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
+let wired = {read: notYetRead, match: null, rerender: () => {}};   // what wireTriage was given, so one job can be checked the same way
+
+/**
+ * Checks ONE job (the ⋯ menu's "Check apply readiness", the drawer's Check button) through the same read, match and dialog as the top button, so its progress and Stop show the same way.
+ * Owner, 13 Nov 2026: "checks only this job, like the top button does for all". Takes the job; resolves with {read, failed}, or {read: 0, failed: 0} while another check runs.
+ */
+export async function checkJob(job) {
+  if (busy() || !job?.url) return {read: 0, failed: 0};
+  const dialog = $('triage-dialog');
+  if (dialog && !dialog.open) dialog.showModal();
+  const result = await runTriage([job], wired.read, wired.match);
+  wired.rerender();
+  return result;
+}
 
 /** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended, `onStep(fn)` hands the read's steps to the dialog. Takes the callbacks; a missing dialog wires nothing. */
 export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
+  wired = {read, match, rerender};
   onStep(heardStep);
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());
