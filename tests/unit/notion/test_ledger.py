@@ -231,6 +231,32 @@ class AddApplicationTests(unittest.TestCase):
                          ('Infrastructure Engineer', 'Robotics Co', 'Zürich, Switzerland'))
         self.assertIn('Build & run', meta['description'])
 
+    def test_a_board_list_with_no_text_leaves_the_page_posting_to_fill_it(self):
+        """Bug #4005 (13 Nov 2026): Workday's job list gives title and place only (description ''), and the page draws its text in the
+        browser but ships a JobPosting. The list's empty description kept the page's 4.7k-character one out: "no posting text"."""
+        recorded = (Path(__file__).resolve().parents[2] / 'fixtures' / 'job_pages' / 'nvidia-workday-JR2029104.html').read_bytes()
+        link = 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Network-Site-Reliability-Engineer_JR2029104'
+        listed = {
+            'workday': ledger.ats._job('/job/US-CA-Santa-Clara/Network-Site-Reliability-Engineer_JR2029104', 'Network Site Reliability Engineer',
+                                       'US, CA, Santa Clara', link),
+            'a list with neither place nor text': ledger.ats._job('JR2029104', 'Network Site Reliability Engineer', '', link),
+        }
+        for name, entry in listed.items():
+            with self.subTest(list=name), mock.patch.object(ledger.ats, '_board', lambda *_a, e=entry: [e]):
+                meta = ledger.page_meta(link, opener=lambda req, timeout: io.BytesIO(recorded))
+            self.assertGreater(len(meta.get('description', '')), 1000)
+            self.assertEqual(meta['date_posted'], '2026-11-04')
+            self.assertEqual(meta['title'], 'Network Site Reliability Engineer')
+
+    def test_a_board_list_keeps_what_it_has_over_the_page(self):
+        link = 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Network-Site-Reliability-Engineer_JR2029104'
+        entry = ledger.ats._job('JR2029104', 'Board title', 'Board place', link, '2026-11-01', 'The board text. ' * 10)
+        page = '<script type="application/ld+json">{"@type":"JobPosting","title":"Page title","description":"Page text"}</script>'
+        with mock.patch.object(ledger.ats, '_board', lambda *_a: [entry]):
+            meta = ledger.page_meta(link, opener=lambda req, timeout: io.BytesIO(page.encode()))
+        self.assertEqual((meta['title'], meta['location'], meta['date_posted']), ('Board title', 'Board place', '2026-11-01'))
+        self.assertTrue(meta['description'].startswith('The board text.'))
+
     def test_a_page_without_a_feed_or_schema_is_read_from_its_own_words(self):
         page = """<html><head><title>Senior SRE at Example</title>
             <script>var noise = 'not the posting';</script><style>.x{color:red}</style></head>
