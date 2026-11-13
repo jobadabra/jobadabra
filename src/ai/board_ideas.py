@@ -355,7 +355,7 @@ from ..scout_board_counts import MIN_RIGHT as PROVEN_RIGHT   # jobs of the perso
 def ranked(boards, search):
     """The boards best first: by `right` (the Central Scout's count of this user's role families' jobs on the board, located in these countries, summed), then by what
     they gave installs with these families (owner, 18 Oct 2026: "relevant jobs per role"): jobs in their places per install, then fit 70+ per install. 'rank' is kept on each
-    board (0: no data for this user), 'right' (their sum, which orders) 'right_best' (the largest single count, which proves) and 'right_searched' (the part of the sum from the board's own search, not its list) only when the Scout counted at least one of the families (absent: not measured, never 0).
+    board (0: no data for this user), 'right' (their sum, which orders) 'right_best' (the largest single count from the board's own search, which proves; 0 when only its list was counted) and 'right_searched' (the part of the sum from the board's own search, not its list) only when the Scout counted at least one of the families (absent: not measured, never 0).
     Boards without data keep their order after the ranked ones.
     Why (13 Nov 2026, bp, owner: "we know exactly: this board will give x jobs, this other board will give y jobs"): the order was jobs in places per install, and the Scout's cells
     credited a board's whole list to every family it had seen once (178 airline jobs for an electrician): the number the Scout counted per family comes first."""
@@ -370,7 +370,7 @@ def ranked(boards, search):
         counted = [cell for cell in cells if isinstance(cell.get('right'), int)]
         if counted:
             board['right'] = sum(cell['right'] for cell in counted)       # the Scout's count, summed
-            board['right_best'] = max(cell['right'] for cell in counted)  # proves a board: the Scout's PROVEN_RIGHT is per (country, family), never a sum (Gitar on #4045: two cells of 2 are not 4)
+            board['right_best'] = max((cell['right'] for cell in counted if not cell.get('listed')), default=0)   # proves a board: the largest single count from its own search; PROVEN_RIGHT is per (country, family), never a sum (Gitar on #4045: two cells of 2 are not 4), and never its whole list (Gitar on #4106: airlinejobs.com, 53 right from a list of 178)
             board['right_searched'] = sum(cell['right'] for cell in counted if not cell.get('listed'))   # from the board's own search; `listed` cells are its whole list (absent field: all searched)
     return sorted(boards, key=_order)
 
@@ -387,7 +387,7 @@ def _order(board):
 def proven(search, limit=2):
     """The boards read first in the first-jobs slice (src/first_jobs.py; `limit` = first_jobs.SLICE_BOARDS, six) without any AI call, most right jobs first; the board proposal is
     asked beside them and fills the places they leave (first_jobs.board_jobs). Never a board it could read only in a browser (`browser`).
-    A board the Central Scout COUNTED for this user's families in these countries (`right`) is proven by that number alone: PROVEN_RIGHT+. One the Scout has no number for is proven
+    A board the Central Scout COUNTED for this user's families in these countries (`right`) is proven by that number alone: PROVEN_RIGHT+ from its own search (`right_best`; a count of its whole list, `listed`, proves nothing: it only orders). One the Scout has no number for is proven
     as before, by installs like this one that got a fit job from it (`rank_fit70` > 0): a thin or empty table changes nothing.
     Design (13 Nov 2026, bp + eo; third fix here in 7 days: 11 Nov #3835, 12 Nov twice): a board's state for one (country, family) has one owner while the Scout has a number.
     proven = the Scout's AI counted PROVEN_RIGHT+ right jobs (served as `right`, with its `day`); known = counted fewer: not proven, whatever installs' lists say; unknown = no number:
@@ -400,14 +400,14 @@ def proven(search, limit=2):
 
 
 def _merge(own, shared):
-    """The shared boards that gave people in this field jobs in their places (rank above 0) or that the Scout counted right jobs on (`right`), best first; then Claude's own proposals; then the
+    """The shared boards that gave people in this field jobs in their places (rank above 0) or that the Scout counted PROVEN_RIGHT+ right jobs on from the board's own search (`right_best`), best first; then Claude's own proposals; then the
     shared boards with no record for this field. A board in both keeps its rank and the shared link (the page measured to give local jobs,
     maybe a section of the board), with Claude's own kinds and place words.
     Why (11 Nov 2026, #3835, owner: "A: read boards to 180 s", asked via AskUserQuestion): every shared board went first, so a pilots' board
     with no record for the field was the first board read for a carpenter, an electrician, a hospitality worker and a data person, ahead of
     their field's boards and the public employment service, and a search reads only the top of this list."""
     theirs = {board['host']: board for board in shared}
-    merged = {board['host']: board for board in shared if board.get('rank') or board.get('right')}   # a Scout count above 0 is a record for the field; a counted 0 is not (13 Nov 2026, Gitar on #4045, #4063)
+    merged = {board['host']: board for board in shared if board.get('rank') or board.get('right_best', 0) >= PROVEN_RIGHT}   # a Scout count that proves the board (the threshold proven() uses) is a record for the field; a count under it, a list-only count or a counted 0 is not (13 Nov 2026, Gitar on #4045, #4063, #4106)
     for board in own:
         known = theirs.get(board['host'], {})
         merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}

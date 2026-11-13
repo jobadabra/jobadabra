@@ -208,7 +208,7 @@ class RankTests(Fixture):
 
     def test_a_shared_board_the_scout_counted_goes_before_the_proposals_even_without_a_rank(self):
         """13 Nov 2026 (Gitar on #4045): a Scout count is a record for the field, whatever `rank` says."""
-        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 19}, {**board(2), 'rank': 0}])
+        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 19, 'right_best': 19}, {**board(2), 'rank': 0}])
         self.assertEqual([b['host'] for b in merged], ['b1.example', 'b7.example', 'b2.example'])
 
     def test_a_counted_board_comes_first_and_an_uncounted_one_with_a_fit_job_keeps_its_place_after_it(self):
@@ -229,15 +229,29 @@ class RankTests(Fixture):
             ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
             proven = board_ideas.proven(SEARCH, limit=6)
         self.assertEqual([b['host'] for b in ranked], ['b2.example', 'b5.example', 'b1.example', 'b4.example', 'b3.example'])
-        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b5.example', 'b1.example', 'b4.example'], 'a counted 0 is not proven; the uncounted board keeps its fit-job proof')
+        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b5.example', 'b4.example'],
+                         'a counted 0 is not proven, nor is a count of a board\'s whole list (53 of 178: it orders, never proves; Gitar on #4106); the uncounted board keeps its fit-job proof')
         facts = self.served({1: [scout(53)], 2: [scout(19)]})   # the field absent (an old index): the larger count first, as before
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
                 mock.patch('src.places.countries', return_value=['Netherlands']):
             self.assertEqual([b['host'] for b in board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)], ['b1.example', 'b2.example'])
 
     def test_a_counted_zero_is_no_record_for_the_field_in_the_merge(self):
-        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 0}, {**board(2), 'rank': 0, 'right': 5}])
+        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 0, 'right_best': 0}, {**board(2), 'rank': 0, 'right': 5, 'right_best': 5}])
         self.assertEqual([b['host'] for b in merged], ['b2.example', 'b7.example', 'b1.example'])
+
+    def test_the_merge_puts_ahead_of_the_proposals_only_the_boards_proven_would_read_first(self):
+        """13 Nov 2026 (Gitar on #4106): the merge put a board counted 1-2 right jobs, or only from its list, ahead of the per-search proposals while proven() needs PROVEN_RIGHT
+        from the board's own search; both gates now read the same `right_best`, so a board proven() would not read first never goes before the proposals."""
+        scout = lambda right, **more: {**self.cell('electrical_mechanical', 1, right), 'right': right, **more}
+        facts = self.served({1: [scout(2)], 2: [scout(53, listed=True)], 3: [scout(board_ideas.PROVEN_RIGHT)]})
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
+            proven = board_ideas.proven(SEARCH, limit=6)
+        merged = board_ideas._merge([board(7)], [{**b, 'rank': 0} for b in ranked])
+        self.assertEqual([b['host'] for b in proven], ['b3.example'], 'only the searched count at the threshold proves a board')
+        self.assertEqual([b['host'] for b in merged][:2], ['b3.example', 'b7.example'], 'the proven board, then the proposals; a count of 2 and a list-only 53 wait behind them')
 
     def test_the_listed_mark_survives_the_index_read_only_as_true(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
