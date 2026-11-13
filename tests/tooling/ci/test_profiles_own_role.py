@@ -53,8 +53,8 @@ class OwnRoleText(unittest.TestCase):
             self.assertEqual(self.cv_of(p['id']), expected, p['id'])
 
     def test_an_area_reaches_the_cv_and_the_judges_profile_line_and_no_other_row_changes(self):
-        # Why (13 Nov 2026, owner via sa: d07 "Monthey + 100km"): the area travels through the title (profiles.for_judge), not through gate_judge.judge, which the Scoreboard lock hashes.
-        self.assertIn('within 100 km of Monthey', self.cv_of('d07'))
+        # Why (13 Nov 2026, owner via sa: d06 "The Software Developer look in the entire Switzerland"; d05 and d07 became one town each, owner 13 Nov: "We should search also one town only, to be fair"): the area travels through the title (profiles.for_judge), not through gate_judge.judge, which the Scoreboard lock hashes.
+        self.assertIn('anywhere in Switzerland', self.cv_of('d06'))
         seen = []
 
         def asker(profile, jobs):
@@ -63,13 +63,13 @@ class OwnRoleText(unittest.TestCase):
         saved = gate_judge.PERSONAS
         try:
             gate_judge.PERSONAS = [profiles.for_judge(p) for p in profiles.PROFILES]
-            pool = [{'title': 'IT Project Manager', 'company': 'Example AG', 'location': 'Geneva'}]
-            gate_judge.judge(profiles.IDS.index('d07') + 1, pool, asker)
+            pool = [{'title': 'Software Developer', 'company': 'Example AG', 'location': 'Geneva'}]
+            gate_judge.judge(profiles.IDS.index('d06') + 1, pool, asker)
             gate_judge.judge(profiles.IDS.index('d04') + 1, pool, asker)
         finally:
             gate_judge.PERSONAS = saved
-        self.assertIn('IT Project Manager (willing to work within 100 km of Monthey, including Geneva', seen[0])
-        self.assertIn('living in Monthey, Switzerland', seen[0])
+        self.assertIn('Software Developer (willing to work anywhere in Switzerland)', seen[0])
+        self.assertIn('living in Zurich, Switzerland', seen[0])
         self.assertEqual(seen[-1], 'Profile: Financial Analyst (FP&A), 6 years of experience, living in Amsterdam, Netherlands; on-site or hybrid; speaks Dutch and English.')
         for p in profiles.PROFILES:
             if 'area' not in p:

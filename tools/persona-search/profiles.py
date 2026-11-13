@@ -92,9 +92,9 @@ def cv(pid, out):
 
 def for_judge(p):
     """The row as the blind judge reads it: a row with an `area` is willing to work in it, said in the title the judge's profile line prints; a row without one is returned as it is.
-    Why (13 Nov 2026, owner via sa: d07 "Monthey + 100km (should include Geneva, Lausanne, Bern, Martigny, Sion ...)", d06 "look in the entire Switzerland", d05 "Geneva or Lausanne, Nyon..."):
+    Why (13 Nov 2026, owner via sa: d06 "The Software Developer look in the entire Switzerland"; d05 and d07 were areas first and became one town each: "We should sarch also one town only, to be fair"):
     the judge's place rule is "their city or a short commute", and gate_judge.judge() builds its profile line from the title, city, country and language only. An `area` field in judge() would
-    change what scoreboard.lock.json (S2) hashes, so the area goes through the title here, in this unlocked file; every row without `area` (the night people, b, c, d01-d04) is byte-identical."""
+    change what scoreboard.lock.json (S2) hashes, so the area goes through the title here, in this unlocked file; every row without `area` (the night people, b, c, d01-d05, d07) is byte-identical."""
     if not p.get('area'):
         return p
     return {**p, 'title': f"{p['title']} (willing to work {p['area']})"}
