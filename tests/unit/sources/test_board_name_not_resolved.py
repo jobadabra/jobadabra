@@ -25,18 +25,26 @@ def tearDownModule():
 
 
 class NameNotResolved(unittest.TestCase):
-    def test_a_host_with_no_address_is_named_in_the_round_line_and_still_a_value_error(self):
+    def read_round(self, error):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         out = io.StringIO()
         with mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(board_ideas, 'load', return_value={}), \
-                mock.patch('socket.getaddrinfo', side_effect=socket.gaierror(8, 'nodename nor servname provided')), contextlib.redirect_stdout(out):
+                mock.patch('socket.getaddrinfo', side_effect=error), contextlib.redirect_stdout(out):
             with self.assertRaises(ValueError):
                 careers.get_text('https://md.jooble.org/SearchResult?ukw=x')
             found_boards.read(SEARCH, [BOARD], fetch=careers.get_text, is_relevant=lambda jobs: [], dead=set(), early=True)
-        log = out.getvalue()
+        return out.getvalue()
+
+    def test_a_host_with_no_address_is_named_in_the_round_line_and_still_a_value_error(self):
+        log = self.read_round(socket.gaierror(socket.EAI_NONAME, 'Name or service not known'))
         self.assertIn('page not read (the name does not resolve)', log)
         self.assertNotIn('(ValueError)', log)
+
+    def test_a_temporary_resolver_failure_is_not_called_a_missing_name(self):
+        log = self.read_round(socket.gaierror(socket.EAI_AGAIN, 'Temporary failure in name resolution'))   # Gitar, #4036: the host may exist
+        self.assertIn('page not read (ValueError)', log)
+        self.assertNotIn('does not resolve', log)
 
     def test_a_private_address_stays_a_plain_refusal(self):
         with mock.patch('socket.getaddrinfo', return_value=[(socket.AF_INET, 0, 0, '', ('10.0.0.1', 0))]):

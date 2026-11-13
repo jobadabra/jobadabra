@@ -39,8 +39,8 @@ def _address(host):
             ip = ipaddress.ip_address(address[0])
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
                 return 'private'
-    except socket.gaierror:
-        return 'unresolved'
+    except socket.gaierror as error:   # Gitar, #4036: only "no such name" is unresolved; a temporary resolver failure (EAI_AGAIN, EAI_FAIL) is a host that may exist
+        return 'unresolved' if error.errno in {socket.EAI_NONAME, getattr(socket, 'EAI_NODATA', socket.EAI_NONAME)} else 'private'
     except (OSError, ValueError):
         return 'private'
     return 'ok'
@@ -56,9 +56,8 @@ def get_text(url):
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ('http', 'https') or not parts.hostname:
         raise ValueError('not a public web address')
-    address = _address(parts.hostname)
-    if address != 'ok':
-        raise (NameNotResolved if address == 'unresolved' else ValueError)('not a public web address')   # Why (13 Nov 2026, d03 run 43478619242, #4034): "md.jooble.org" printed as a bare ValueError
+    if not _public(parts.hostname):   # the seam the reader tests patch; only the refusal asks why
+        raise (NameNotResolved if _address(parts.hostname) == 'unresolved' else ValueError)('not a public web address')   # Why (13 Nov 2026, d03 run 43478619242, #4034): "md.jooble.org" printed as a bare ValueError
     fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
         return page_bytes.text(ats._fixture(fixtures, url))
