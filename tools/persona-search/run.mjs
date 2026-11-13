@@ -71,7 +71,7 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
 
 const lib = file => import(path.join(ROOT, 'desktop', 'lib', file));
 const {createStorage} = await lib('storage.js');
-const {ensureConfig, python} = await lib('pipeline-env.js');
+const {ensureConfig, python, pipelineEnv} = await lib('pipeline-env.js');
 const {searchSteps} = await lib('search-steps.js');
 const {run: searchRun} = await lib('pipeline-run.js');
 const strategy = await lib('strategy.js');
@@ -129,6 +129,11 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
     const before = Date.now(), {prepareSearch} = await lib('search-prepared.js');
     const ok = await prepareSearch(storage, searchRun);
     console.log(`${name}: search ${ok ? 'prepared' : 'NOT prepared (the search asks for itself)'} in ${Math.round((Date.now() - before) / 1000)} s`);
+  }
+  // Why (13 Nov 2026, sa and bl, run 43487528056): the pair's draft step asks the board proposal once (propose.py) so both sides copy this install's answers instead of asking one call each.
+  if (process.argv.includes('--propose')) {
+    try { console.log(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', 'propose.py')], {cwd: ROOT, env: {...pipelineEnv(storage), PYTHONPATH: ROOT}}).toString().trim().split('\n').pop()); }
+    catch (error) { console.log(`${name}: board proposal NOT made (each search asks for itself): ${String(error.message).split('\n')[0]}`); }
   }
 }
 // What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,

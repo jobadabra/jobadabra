@@ -59,6 +59,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      statuses: write   # the "Search pair" entry in the PR's checks list (never required, never red)
     outputs:
       people: ${{ steps.people.outputs.people }}
       need: ${{ steps.people.outputs.need }}
@@ -88,6 +89,15 @@ jobs:
         env:
           PEOPLE: ${{ inputs.people }}
         run: python3 tools/persona-search/pair.py people "$PEOPLE" changed.txt >> "$GITHUB_OUTPUT"
+      - name: "The PR's checks list: waiting for room"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ steps.refs.outputs.head }}
+          PEOPLE: ${{ steps.people.outputs.people }}
+        # Why (13 Nov 2026, owner on #4022: "Can't we link the PR as a PR CI check?" · "So that I see what's going on"): a commit status on the head the pair measures, linking this run.
+        # A status (not a check run): its text shows in the checks list; it is never failure, so the PR never turns red and "All checks passed" (tools/pr-verdict.py counts workflow runs) does not read it.
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=pending -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="$(echo "$PEOPLE" | jq -r '[.[].id] | join(", ")'): waiting for room at the broker" >/dev/null
 
   turn:
     name: Claim room at the broker
@@ -97,6 +107,7 @@ jobs:
     permissions:
       contents: read
       id-token: write   # the broker names the claim from this run's token
+      statuses: write   # "Search pair": searching, once the room is ours
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -104,6 +115,13 @@ jobs:
         env:
           NEED: ${{ needs.setup.outputs.need }}
         run: python3 tools/persona-search/claim.py wait "$NEED"
+      - name: "The PR's checks list: searching"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ needs.setup.outputs.head }}
+          PEOPLE: ${{ needs.setup.outputs.people }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=pending -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="$(echo "$PEOPLE" | jq -r '[.[].id] | join(", ")'): searching main and the PR" >/dev/null
 
   pair:
     name: Pair ${{ matrix.person.id }}
@@ -175,7 +193,11 @@ jobs:
           mkdir -p cv
           if [ "$KIND" = night ]; then python3 tools/persona-search/gate.py cv "$N" cv; else python3 tools/persona-search/profiles.py cv "$ID" cv; fi
           if [ "$OWN" != true ]; then
-            node tools/persona-search/codex.mjs -- node side-main/tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/cv" --presses 0 --fresh --engine api --tag pair-draft 2>&1 | tee draft.log
+            # Why (13 Nov 2026, sa and bl, run 43487528056): the board proposal and the board searches in local words were one AI call per side, so the sides read different boards (main's
+            # side read a board that gave 19 of its 26 right jobs, the PR's never saw it). --propose asks them once here, in the draft's install, and each side starts from a copy of it (below).
+            # The run.mjs that has --propose is main's once this has landed; until then the PR's own.
+            drafter=side-main; grep -q -- '--propose' side-main/tools/persona-search/run.mjs || drafter=side-pr
+            node tools/persona-search/codex.mjs -- node "$drafter/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/cv" --presses 0 --fresh --engine api --tag pair-draft --propose 2>&1 | tee draft.log
           fi
       - name: Main and the PR search at the same minute (first search, the person's tier, through the Codex relay)
         env:
@@ -189,8 +211,13 @@ jobs:
           for k in $(seq 1 "$RUNS"); do
             for side in main pr; do
               out="out/${{ matrix.person.id }}--$side-$k"; mkdir -p "$out/draw"; cp cv/draw/cv.pdf cv/draw/cv.md cv/draw/draw.json "$out/draw/"
-              draft=(); [ "$OWN" != true ] && draft=(--draft "$GITHUB_WORKSPACE/cv/draw/draft.json")
-              node tools/persona-search/codex.mjs -- node "side-$side/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/$out" --presses 1 --first-only --fresh --engine api --tag "pair-$side" "${draft[@]}" > "$out/run.log" 2>&1 &
+              tmp="$(node -p 'require("os").tmpdir()')"; draft=(); fresh=(--fresh)
+              if [ "$OWN" != true ]; then
+                draft=(--draft "$GITHUB_WORKSPACE/cv/draw/draft.json")
+                # both sides start from a copy of the draft's install (strategy, places, board proposal, board searches): no AI question the draft already asked is asked again by a side
+                rm -rf "$tmp/jp-persona-draw-pair-$side"; cp -a "$tmp/jp-persona-draw-pair-draft" "$tmp/jp-persona-draw-pair-$side"; fresh=()
+              fi
+              node tools/persona-search/codex.mjs -- node "side-$side/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/$out" --presses 1 --first-only "${fresh[@]}" --engine api --tag "pair-$side" "${draft[@]}" > "$out/run.log" 2>&1 &
             done
             wait
             for side in main pr; do
@@ -243,6 +270,8 @@ jobs:
     if: ${{ !cancelled() && needs.setup.result == 'success' }}   # a cancelled run left an empty table on #3946 (13 Nov 2026): the run that replaced it writes its own
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      status: ${{ steps.table.outputs.status }}   # the numbers, for the PR's checks list (the closing job)
     permissions:
       contents: read
       pull-requests: write
@@ -254,6 +283,7 @@ jobs:
       - uses: actions/download-artifact@v7
         with: {pattern: 'search-pair-*', path: dl, merge-multiple: true}
       - name: One comment, updated in place
+        id: table
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ inputs.pr }}
@@ -290,3 +320,26 @@ jobs:
           old=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- search-pair -->")) | .id' | tail -1)
           if [ -n "$old" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$old" -F body=@table.md >/dev/null
           else gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file table.md; fi
+          # the checks list's text: the Moves lines, or why nothing was counted (140 characters at most)
+          if [ "$(jq -r '.rerun | length' settle.json 2>/dev/null || echo 0)" != 0 ]; then text="not counted: $(jq -r '.rerun | join(", ")' settle.json) (a side was starved; the pair runs once more)"
+          else text="$(grep '^Moves:' table.md | sed -e 's/^Moves: //' -e 's/ (1 run a side.*//' | paste -sd ';' - | sed 's/;/; /g')"; fi
+          echo "status=${text:-no numbers written (the PR changed while the pair ran)}" | cut -c1-150 >> "$GITHUB_OUTPUT"
+
+  status:
+    name: "The PR's checks list: the end"
+    needs: [setup, pair, comment]
+    if: ${{ always() && needs.setup.result == 'success' }}   # a cancelled or failed run must not leave the entry "searching" for good
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      statuses: write
+    steps:
+      - name: "Success with the numbers in its text (never failure: the PR must not turn red)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ needs.setup.outputs.head }}
+          NUMBERS: ${{ needs.comment.outputs.status }}
+          ENDED: ${{ needs.pair.result }}
+        run: |
+          text="$NUMBERS"; [ -n "$text" ] || text="not counted: the pair ended ($ENDED), no numbers"
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=success -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="${text:0:140}" >/dev/null
