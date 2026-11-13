@@ -28,7 +28,7 @@ NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts 
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
 # Why (13 Nov 2026, sa for the owner: per profile "boards that gave jobs, boards refused, boards cut at the end"): the three counts come from the press log's own lines, as BOARD does.
 REFUSED = re.compile(r'Job boards found: (.+?) \d+ job\(s\), \d+ relevant \(refuses automated reading|Job boards: (.+?) refuses automated reading')
-CUT_BOARDS = re.compile(r'Time is up \([^)]*\) for job boards: (\d+) board')
+CUT_BOARDS = re.compile(r'Time is up \([^)]*\) for job boards: (\d+) boards?(?: read)? waits?')   # the nouns found_boards.py writes (boards, board read, board); not 'board discovery' (boards_beside.py), 'searches' or 'employers' (boards.py)
 RAN_OUT = re.compile(r'Time is up \([^)]*\) for ([^:]+):|No time left in this refresh for these: \d+ (\w+)')
 ENGINE = re.compile(r'^AI: (\S+)(?: / (\S+))?', re.M)
 # Why (13 Nov 2026, sa, after run 43354770712: b02 0 and c06 1 right jobs with waits p90 56-58 s, Cluj 18-21 on the Mac): a profile whose search waited this long on the broker ran

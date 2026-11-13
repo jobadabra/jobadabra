@@ -85,7 +85,8 @@ class StarvedProfileTest(unittest.TestCase):
                 '[91s] Job boards found: ch.talent.com 0 job(s), 0 relevant',
                 '[92s] Job boards found: Rabota.bg 0 job(s), 0 relevant (refuses automated reading, HTTP 403: offered as a visit)',
                 '[93s] Job boards: Jobat refuses automated reading; reading Emplois Construction in its place',
-                '[94s] ⏱ Time is up (1 min 28 s) for job boards: 3 board read waits for the next search']))
+                '[94s] ⏱ Time is up (1 min 28 s) for job boards: 3 board read waits for the next search',
+                '[95s] ⏱ Time is up (1 min 29 s) for job boards: 1 board discovery waits for the next search']))   # not a board read: not counted (Gitar on #3975)
             row = profiles.row('b01', out)
             self.assertEqual((row['boards_read'], row['boards_gave_jobs'], row['boards_with_relevant'], row['boards_refused'], row['boards_cut']), (4, 2, 1, 2, 3))
             profiles.table(tmp, Path(tmp) / 'table.md')
