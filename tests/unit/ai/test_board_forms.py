@@ -39,6 +39,15 @@ class TemplateTests(unittest.TestCase):
         self.assertEqual(board_forms.templates(form('<input name="q">', method='post'), HOME), [])
         self.assertEqual(board_forms.templates(form('<input name="user"><input type="password" name="pw">'), HOME), [])
 
+    def test_a_subscribe_or_apply_form_is_never_made_into_a_search_link(self):   # 13 Nov 2026, bp: rabota.md's home page holds all three
+        subscribe = '<form class="subscribeWrap"><input class="subscribePosition" type="text" name="position"><input type="text" name="name"><input type="email" name="email"><input type="hidden" name="source" value="main"></form>'
+        apply = '<form action="/apply"><input type="text" name="full_name"><input type="tel" name="phone"><input type="file" name="cv"></form>'
+        search = '<form action="/search"><input name="query"></form>'
+        page = f'<html><body>{subscribe}{apply}{search}</body></html>'
+        self.assertEqual(board_forms.templates(page, HOME), ['https://vacatures.example/search?query={role}'], 'the search form wins, the others are not offered')
+        self.assertEqual(board_forms.templates(f'<html>{subscribe}{apply}</html>', HOME), [])
+        self.assertEqual(board_forms.templates(f'<html>{subscribe.replace("<form", "<form method=post")}</html>', HOME, 'https://vacatures.example/jobs'), [], 'a posted one neither')
+
     def test_a_form_that_sends_to_another_site_is_left_alone(self):
         self.assertEqual(board_forms.templates(form('<input name="q">', action='https://elsewhere.example/s'), HOME), [])
 

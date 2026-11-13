@@ -1,5 +1,5 @@
 """A job board's own search link, read from the search form on its home page (structure only: a form sent by GET with a text box, on the
-board's own site, no password box), for a board whose proposed link gave no relevant job (owner, 18 Oct 2026: 14 of 32 boards proposed
+board's own site, no password box, no e-mail, phone or file box), for a board whose proposed link gave no relevant job (owner, 18 Oct 2026: 14 of 32 boards proposed
 for six candidates gave nothing or ignored the search words, e.g. warehouse jobs for "financial analyst" in Amsterdam). The first text
 box takes the role, a second the place; hidden fields keep their values. found_boards.read tries it once per proposed link and keeps it
 when it brings relevant jobs; with none, the job list the board declares itself (found_boards._another_way). Tests: tests/unit/ai/test_board_forms.py."""
@@ -10,6 +10,7 @@ from .careers_parse import registrable
 from ..press import stage
 
 TEXT_BOXES = ('', 'text', 'search')   # an <input> a person types words into
+PERSONAL = ('email', 'tel', 'file')   # a box for the person's own details: a form with one is a subscription or an application, never a search
 MAX_TEMPLATES = 2                     # forms tried per board: the home page's search box is among the first
 TOKEN = 24                            # a POST form's hidden value longer than this is a token (an anti-forgery one runs to 100+), never put in a kept link;
                                       # a short constant (lang=de, a search kind) stays, as the board's own form sends it (Gitar, #3917)
@@ -23,12 +24,14 @@ class _Forms(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = {key: value or '' for key, value in attrs}
         if tag == 'form':
-            self.open = {'action': attrs.get('action', ''), 'method': attrs.get('method', 'get').lower(), 'boxes': [], 'hidden': [], 'password': False}
+            self.open = {'action': attrs.get('action', ''), 'method': attrs.get('method', 'get').lower(), 'boxes': [], 'hidden': [], 'password': False, 'personal': False}
             self.forms.append(self.open)
         elif tag == 'input' and self.open is not None:
             kind = attrs.get('type', '').lower()
             if kind == 'password':
                 self.open['password'] = True
+            elif kind in PERSONAL:
+                self.open['personal'] = True
             elif kind == 'hidden' and attrs.get('name'):
                 self.open['hidden'].append((attrs['name'], attrs.get('value', '')))
             elif kind in TEXT_BOXES and attrs.get('name'):
@@ -42,6 +45,8 @@ class _Forms(HTMLParser):
 def templates(markup, page_url, posted_at=None):
     """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first.
     posted_at: a form sent by POST counts too, its field names asked as a GET link at this address (the board's own search page), not at its action, which answers a POST only.
+    Why (13 Nov 2026, bp, owner via sa: the Scout never opens a subscribe or alert form): a form with an e-mail, phone or file box is a job alert or an application (rabota.md's
+    home page holds a subscribe form with position, name and e-mail boxes sent without a method, and two apply forms), so it is never made into a search link, whatever its text boxes are called.
     Why (12 Nov 2026, ch): JobScout24's search form is a POST (SearchWhat, anti-forgery token) and its list page answers ?SearchWhat=<words> with the filtered list,
     while the guessed ?keywords= was ignored (the unfiltered 84,421 jobs, 0 right). The link stays only when it brings relevant jobs (found_boards._another_way)."""
     parser = _Forms()
@@ -52,7 +57,7 @@ def templates(markup, page_url, posted_at=None):
     home = urllib.parse.urlsplit(page_url).hostname or ''
     out = []
     for found in sorted(parser.forms, key=lambda f: -min(len(f['boxes']), 2)):
-        if (found['method'] != 'get' and not posted_at) or found['password'] or not found['boxes']:
+        if (found['method'] != 'get' and not posted_at) or found['password'] or found['personal'] or not found['boxes']:
             continue
         action = urllib.parse.urljoin(page_url, found['action'] or page_url)
         parts = urllib.parse.urlsplit(action)

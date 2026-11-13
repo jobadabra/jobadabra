@@ -273,11 +273,12 @@ def _said(layout, kept, found, notes, browsed):
     return 'no layout: ' + (notes.get('why') or ('read in the browser' if browsed else 'none learned on this read'))
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None, homes=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None, homes=None, reported=()):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
     """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept.
     families: board discovery's cells (src/scout_board_cells.py): the boards are asked for these role families instead of kinds; again: kept facts' boards read first, to measure them again.
     words: (db, country, families) -> {family: words in the country's language}, for cells only (default src/scout_board_cells.py local_words; tests pass a fake).
-    homes: search -> the boards the AI named only by their home page, read last through their own search form (src/scout_board_homes.py; default: the proposal's own)."""
+    homes: search -> the boards the AI named only by their home page, read last through their own search form (src/scout_board_homes.py; default: the proposal's own).
+    reported: the boards installs reported (src/scout_board_candidates.py fetch), read after the re-reads and before Google's and the AI's, each by its home page."""
     from . import scout_board_homes
     from .ai import board_ideas, cost, decide, page_words
     from .sources import board_yield, careers, found_boards, one_posting
@@ -297,7 +298,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
-        proposed = _first(list(again), found, proposed, scout_board_homes.named(search, ideas, homes))
+        from . import scout_board_candidates, scout_board_cells
+        candidates = scout_board_candidates.for_country(reported, country, [(host, code, read_at) for host, code, _, _, read_at, _ in scout_board_cells._facts(db)] + scout_board_candidates.tried(db)) if reported and by_cells else []
+        proposed = _first(list(again), candidates, found, proposed, scout_board_homes.named(search, ideas, homes))
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses, ran = clock(), [], [], [], [], [], set()
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
@@ -378,6 +381,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                         json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1]))
         if by_cells:
             from . import scout_board_cells
+            scout_board_candidates.stamp(db, country, [item['host'] for item in candidates if any(line.startswith(item['host'] + ' ') for line in counts)])   # the candidates this pass read
             scout_board_cells.note_ran(db, country, ran)   # the cell's record() after this pass: a family no board was asked is no miss
             scout_board_cells.note_skipped(db, country, skipped)   # record() stamps as read again only the re-reads that ran
         if not by_cells:
