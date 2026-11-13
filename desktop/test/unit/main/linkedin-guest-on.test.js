@@ -60,3 +60,12 @@ test('the line the app watches is the engine\'s own (src/sources/linkedin_guest.
   const engine = readFileSync(new URL('../../../../src/sources/linkedin_guest.py', import.meta.url), 'utf8');
   assert.match(engine, new RegExp(`^SLOW_DOWN = '${SLOW_DOWN}'$`, 'm'));
 });
+
+// lg's ask (13 Nov 2026): switching LinkedIn jobs off right after a signed-in 429 must not let the guest read (which runs only while the switch is off) hit LinkedIn at once.
+test('turning LinkedIn jobs off after a 429 keeps the guest read off until the pause ends', () => {
+  const mine = store({on: true});
+  session.noteRun(mine, {state: 'limited', jobs: 0, at: new Date(NOW).toISOString(), pauseUntil: new Date(NOW + 24 * 3600e3).toISOString()});
+  session.turnOff(mine, {keychain: {remove: () => true}});
+  assert.equal(guestOn(mine, {}, {packaged: true, now: NOW + 3600e3}), false, 'an hour later: still paused');
+  assert.equal(guestOn(mine, {}, {packaged: true, now: NOW + 24 * 3600e3 + 1}), true, 'the day is over');
+});
