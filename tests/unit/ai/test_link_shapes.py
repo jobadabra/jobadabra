@@ -36,11 +36,11 @@ def judge(paths, ai):
 
 
 class LinkShapes(unittest.TestCase):
-    def test_a_uniform_shape_of_248_city_links_is_asked_through_three(self):
+    def test_a_uniform_shape_of_239_city_links_is_asked_through_three(self):
         ai = AI()
         got = judge(PAGES['trabajos'], ai)
         cities = [p for p in PAGES['trabajos'] if page_words._family(p) == '/ofertas-empleo/*']
-        self.assertGreater(len(cities), 200, 'positive control: the saved page has its city links')
+        self.assertEqual(len(cities), 239, 'positive control: the saved page has its city links')
         self.assertEqual(len([w for w in ai.words() if '/ofertas-empleo/' in w and w.count('/') >= 2 and not w.endswith('/ofertas-empleo/')]), 3)
         self.assertTrue(all(got[('', p)] == page_words.from_kind('other') for p in cities), 'every city link has the AI\'s answer of its shape')
 
@@ -92,6 +92,25 @@ class LinkShapes(unittest.TestCase):
             got = page_words.link_words([('', p) for p in PAGES['infojobs']])
         self.assertEqual(kinds.call_count, 1, 'one lookup of the kept answers, no sampling')
         self.assertTrue(all(value is not None for value in got.values()), 'the offline floor answers every link')
+
+    def test_a_minority_no_sample_hits_takes_its_shapes_answer_as_the_owner_chose(self):
+        """The owner's rule (13 Nov 2026): 3 samples that agree decide the rest of the shape on that page. Its cost, measured on the AI's own
+        per-link answers for 4 saved board pages (571 links, PR #4022): 0 links differ. A slug-prefix key (Gitar) split one board's
+        underscore-separated city slugs and asked 206 wordings instead of 116 on the three Madrid pages, so the shape stays parent + *."""
+        paths = [f'/trabajo/en_{n}/' for n in ('madrid', 'murcia')] + ['/trabajo/area-de-empresa_comercial/'] + [f'/trabajo/en_{n}/' for n in ('lugo', 'leon')]
+        ai = AI(odd=('area-de-empresa',))
+        judge(paths, ai)
+        self.assertEqual(len(ai.words()), 5, 'positive control: the samples are the 1st, 3rd and 5th; the odd link is the middle one, so the family is asked in full')
+        ai = AI(odd=('area-de-empresa',))
+        paths = paths[:1] + paths[2:3] + paths[1:2] + paths[3:]   # the odd link second: no sample hits it
+        got = judge(paths, ai)
+        self.assertEqual(got[('', '/trabajo/area-de-empresa_comercial/')], page_words.from_kind('other'), 'takes the shape\'s answer, never asked')
+
+    def test_when_the_ai_answers_no_sample_the_page_is_not_asked_a_second_time(self):
+        ai = AI(none=('/',))
+        got = judge(PAGES['trabajos'], ai)
+        self.assertEqual(len(ai.asked), 1, 'one question; its links stay unknown this run')
+        self.assertTrue(all(value is None for value in got.values()))
 
 
 if __name__ == '__main__':

@@ -20,8 +20,8 @@ ONLY = {'board_careers_link': 'weak', 'job_list': 'weak', 'not_a_list': 'not_job
 MAX_WORDINGS = 300   # distinct link wordings judged in one call site
 # Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Sample per shape, AI decides (Recommended)": "For a shape with 3+ links the AI is
 # asked about 3 of them. If all 3 get the same answer, it holds for the rest of that shape on that page; if they differ, every link of the shape
-# is asked as today. Single links (contact, companies) are always asked one by one."): one Madrid results page asked 315 link wordings, 248 of
-# them city links of one shape, and three boards' 502 wordings took 11 calls (c04, run 43473395249: "job links 82 s"); by shape, 120 (3 calls).
+# is asked as today. Single links (contact, companies) are always asked one by one."): one Madrid results page asked 315 link wordings, most of
+# them city links of one shape (239 paths), and three boards' 502 wordings took 11 calls (c04, run 43473395249: "job links 82 s"); by shape, 120 (3 calls).
 SAMPLE = 3
 
 # Where every 'page-words' answer lives now; tests/unit/ai/test_page_words.py fails when an answer is missing here (a new one must be placed).
@@ -129,7 +129,7 @@ def _sampled(pairs):
     first = {w: w for key, words in families.items() for w in (picks[key] if key in picks else words)}
     found = _kinds(LINK, first, LINK_ANSWERS, LINK_TASK)
     split = [key for key in wide if len({found.get(w) for w in picks[key]}) != 1 or found.get(picks[key][0]) is None]
-    rest = {w: w for key in split for w in wide[key] if w not in first}
+    rest = {w: w for key in split for w in wide[key] if w not in first} if found else {}   # nothing answered (cap, failure): never asked twice
     if rest:
         found.update(_kinds(LINK, rest, LINK_ANSWERS, LINK_TASK))
     shared = 0
