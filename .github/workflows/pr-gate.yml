@@ -112,8 +112,25 @@ jobs:
       # Why (13 Nov 2026, owner, asked via AskUserQuestion: "Add the check (Recommended)"; 2 escapes in 30 days): #3684 (10 Nov) and #3939 (12 Nov) changed press-yardstick.yml, merged green here,
       # and turned web's search-night-prs test red on every web PR. A file a web test reads (tools/web-tests-reached.mjs derives it from the tests' own text) now runs just those tests of
       # jobadabra-web main in the joined tree, here, before the merge. Nothing read = about a second. A test already red on the base is a warning, not this PR's red.
+      # Why (13 Nov 2026, coordinator, Gitar on #3950; owner 6 Nov: web goes private at launch): web is checked out with the CI App token, as .github/actions/free-ai-relay does, so the step
+      # keeps working when web is private. continue-on-error: a fork has no App secrets and an App outage is no PR's fault; the script then clones without a token and, when that is
+      # refused too, ends with "web tests NOT run: <reason>" (never a silent green, never a red).
+      - name: Read access to the site (the CI App)
+        id: site_token
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with: {client-id: '${{ vars.CI_APP_CLIENT_ID }}', private-key: '${{ secrets.CI_APP_PRIVATE_KEY }}', owner: '${{ vars.OWNER_OF_WEB || github.repository_owner }}', repositories: jobadabra-web}
+      - name: The site, for the web tests
+        id: web_site
+        if: ${{ !cancelled() && steps.site_token.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/checkout@v5
+        with: {repository: '${{ vars.OWNER_OF_WEB || github.repository_owner }}/jobadabra-web', token: '${{ steps.site_token.outputs.token }}', path: .web-site, persist-credentials: false}
       - name: Web tests that read this PR's files
         if: ${{ !cancelled() }}
+        env:
+          WEB_DIR: ${{ steps.web_site.outcome == 'success' && format('{0}/.web-site', github.workspace) || '' }}   # '' = the script clones web itself, without a token
         run: |
           git fetch -q origin main
           bash tools/web-tests-reached.sh origin/main "${{ github.event.pull_request.head.sha }}"

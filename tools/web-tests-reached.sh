@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Runs the jobadabra-web tests that read a file this PR changes, in the joined tree web CI uses (this repo with web laid over it). Red only for a test THIS PR turns red.
-#   tools/web-tests-reached.sh <base> <head>        WEB_DIR=<a jobadabra-web checkout> skips the clone; WEB_REPO_URL and CLONE_WAIT (seconds between tries, 5) are for the tests.
+#   tools/web-tests-reached.sh <base> <head>        WEB_DIR=<a jobadabra-web checkout> skips the clone (pr-gate.yml checks web out with the CI App token and passes it: web goes private at launch); WEB_REPO_URL and CLONE_WAIT (seconds between tries, 5) are for the tests.
 # Step "Web tests that read this PR's files" of .github/workflows/pr-gate.yml. Which tests: tools/web-tests-reached.mjs. Guard: desktop/test/tooling/ci/web-tests-reached-run.test.js.
 # Why (13 Nov 2026, owner, asked via AskUserQuestion: "Add the check (Recommended)"): #3684 and #3939 each turned a web test red on every web PR after they merged; the red showed in web, a day later.
+# Why (13 Nov 2026, coordinator, after Gitar's 4th finding on #3950; owner 6 Nov: web goes private at launch): a token-less clone of a private web fails, and a green "could not clone" would make this check catch nothing, unseen.
+# So the workflow brings web with the CI App token (the way .github/actions/free-ai-relay does), the token-less clone stays as the fallback (a fork has no secrets), and a clone that fails says why, in the first words of the warning.
 # The four outcomes (coordinator, 13 Nov 2026, after Gitar's three findings on #3950):
-#   - an outside failure (web cannot be cloned or laid over the tree, a package this job lacks) is a ::warning::, never a red: the PR is not at fault and a GitHub outage must not hold every PR;
+#   - an outside failure (web cannot be cloned or laid over the tree, a package this job lacks) is a ::warning:: that starts "web tests NOT run: <reason>", never a red: the PR is not at fault and a GitHub outage must not hold every PR, but a no-op must never be silent;
 #   - a test that needs a package this job does not install (playwright-core, a non-stdlib python module) is not run here, and the log says so (web's own CI runs it); the job installs nothing;
 #   - a test red on the head and green on the base is this PR's break: red, with the test's own message;
 #   - a test red on both is already red without this PR: a warning naming it (a broken web main must not hold every PR that touches a workflow).
 set -uo pipefail
 base="${1:?usage: web-tests-reached.sh <base> <head>}"; head="${2:?usage: web-tests-reached.sh <base> <head>}"
 here="$(git rev-parse --show-toplevel)"
+notrun() { echo "::warning::web tests NOT run: $1"; exit 0; }   # the one way a no-op is ended: green, but never silent
 changed="$(git -C "$here" diff --name-only --no-renames "$base...$head")" || { echo "::error::could not read this PR's changed files (git diff $base...$head)"; exit 1; }
 # Why (13 Nov 2026, coordinator): no clone and no work when the PR changes nothing. Whether a changed file is read by a web test only web's tests can say (97 of the last 120 merged PRs reach one; docs/map/index.md alone is read by 11 web tests, so "a .md is never read" is false),
 # so the clone below is the question's price; a hand-kept list of "never read" paths would drift into the next escape.
@@ -20,8 +23,14 @@ mkdir -p "$scratch"; trap 'git -C "$here" worktree remove --force "$scratch/head
 web="${WEB_DIR:-$scratch/web}"
 if [ -z "${WEB_DIR:-}" ]; then
   for try in 1 2 3; do
-    git clone -q --depth 1 "${WEB_REPO_URL:-https://github.com/jobadabra/jobadabra-web.git}" "$web" 2>/dev/null && break
-    [ "$try" = 3 ] && { echo "::warning::could not clone jobadabra-web (3 tries): its tests were not checked on this PR"; exit 0; }
+    GIT_TERMINAL_PROMPT=0 git clone -q --depth 1 "${WEB_REPO_URL:-https://github.com/jobadabra/jobadabra-web.git}" "$web" 2>"$scratch/clone.err" && break
+    if [ "$try" = 3 ]; then
+      # GitHub answers a private repo without a token with a username prompt or "not found", not with "private": say that, it is the cause that matters
+      if grep -Eqi 'could not read (username|password)|terminal prompts disabled|authentication failed|repository not found' "$scratch/clone.err"; then
+        notrun "jobadabra-web refused a clone without a token (private?) and this job had none: the workflow's CI App checkout did not run or failed ($(tail -n 1 "$scratch/clone.err" | cut -c1-140))"
+      fi
+      notrun "could not clone jobadabra-web in 3 tries ($(tail -n 1 "$scratch/clone.err" | cut -c1-140))"
+    fi
     sleep $((try * ${CLONE_WAIT:-5}))
   done
 fi
@@ -50,15 +59,15 @@ run_one() {
     esac
   )
 }
-join head "$head" || { echo "::warning::could not lay jobadabra-web over the PR head (did web's layout change?): its tests were not checked on this PR"; exit 0; }
+join head "$head" || notrun "could not lay jobadabra-web over the PR head (did web's layout change?)"
 # A package the scan could not see (a computed import) still shows as a missing module: that is this job's gap, not the PR's break.
 MISSING='Cannot find (module|package)|ERR_MODULE_NOT_FOUND|ModuleNotFoundError|No module named'
-red=(); for test in $picks; do
+red=(); gaps=$(wc -l < "$scratch/skipped" | tr -d ' '); for test in $picks; do
   out="$(run_one "$scratch/head" "$test")" && continue
-  if printf '%s' "$out" | grep -Eq "$MISSING"; then echo "::warning::$test needs a package this job does not install: not checked on this PR ($(printf '%s' "$out" | grep -Em1 "$MISSING" | cut -c1-160))"; continue; fi
+  if printf '%s' "$out" | grep -Eq "$MISSING"; then echo "::warning::web test NOT run: $test needs a package this job does not install ($(printf '%s' "$out" | grep -Em1 "$MISSING" | cut -c1-160))"; gaps=$((gaps + 1)); continue; fi
   red+=("$test"); printf '\n::group::red on this PR: %s\n%s\n::endgroup::\n' "$test" "$out"
 done
-[ "${#red[@]}" = 0 ] && { echo "every jobadabra-web test that reads this PR's files passes"; exit 0; }
+[ "${#red[@]}" = 0 ] && { echo "every jobadabra-web test that reads this PR's files passes$([ "$gaps" -gt 0 ] && echo " (web tests NOT run: $gaps, see above)")"; exit 0; }
 # Red on the head: is it this PR's? Run the same tests on the base.
 mine=()
 if join base "$base"; then
