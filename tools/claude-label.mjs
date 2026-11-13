@@ -2,9 +2,9 @@
 // Keeps the ONE "Claude: …" label of a PR in step with the Claude review of its head; READY (tools/ship-watch.sh) and the owner's PR list read it. Usage: GITHUB_REPOSITORY=o/r node tools/claude-label.mjs <pr>
 // Why (owner, 13 Nov 2026: "We should replace Gitar" / "With Claude Code review"; coordinator mac-95: READY needs the Claude ✅ marker only): the label is a pure function of ONE signal, the newest of our marker reviews
 //   (tools/claude-review.mjs ourReviews(): the sha it reviewed and its verdict, read from the body's headline, never from GitHub's review state: "Allow Actions to approve" is off, so an Approve is posted as a COMMENT) and the PR's head.
-//   Design (the lesson of the Gitar label, 10 fixes in 10 days): NO "reviewing" state, because only the review job knows it and a cancelled job would leave it stuck. States: reviewed head -> approved | changes requested;
-//   a head moved on since the last review -> the same verdict "· not re-reviewed"; never reviewed -> "not reviewed". Written by the review job right after it posts, and by pr-labels on a push (a review posted with the Actions
-//   token starts no event of its own).
+//   Design (owner, 14 Nov 2026: "Why it's so complicated?"): the review job writes the label itself, twice: "reviewing" as its first step, then, in a step that also runs when the job fails or is cancelled, the verdict
+//   (so "reviewing" cannot stay). States: reviewed head -> approved | changes requested; a head moved on since the last review -> the same verdict "· not re-reviewed" (pr-labels, on a push); never reviewed -> "not reviewed".
+//   READY never trusts the label alone: it also reads the newest review's sha against the head (tools/ship-watch.sh).
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readPr} from './claude-review.mjs';
@@ -14,6 +14,7 @@ const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 
 export const OLD = ' · not re-reviewed';
 
 export const LABELS = {
+  reviewing: {name: 'Claude: reviewing', color: 'fbca04', description: 'Claude is reviewing the current head now'},
   approved: {name: 'Claude: approved', color: '0e8a16', description: 'Claude reviewed the current head and found no high or medium problem'},
   changes: {name: 'Claude: changes requested', color: 'd73a4a', description: 'Claude found a high or medium problem on the current head'},
   none: {name: 'Claude: not reviewed', color: 'f97316', description: 'Claude has not reviewed this PR yet; it does when the checks are green, or on "@claude review"'},
@@ -48,15 +49,15 @@ export function setLabel(repo, pr, wanted, have, run = gh) {
   return changed;
 }
 
-/** Reads the PR and writes its label until a fresh read wants no change (at most 4 rounds); a closed or merged PR is left alone. -> the label name, or '' when it was left.
+/** Reads the PR and writes its label until a fresh read wants no change (at most 4 rounds); a closed or merged PR is left alone; `only` forces one label name ('reviewing'). -> the label name, or '' when it was left.
  * Why (13 Nov 2026, Gitar's finding on #4119): the review job and the push's pr-labels run both write this label, in different concurrency groups; a writer that read before the other one's review landed could
  * leave a stale state. Each writer therefore re-reads after its write and corrects until the PR agrees with the newest review. */
-export function sync(repo, pr, run = gh) {
+export function sync(repo, pr, run = gh, only = '') {
   let wanted = '';
   for (let round = 1; round <= 4; round++) {
     const {pr: p, reviews} = readPr(repo, pr, run);
     if (p.state !== 'OPEN') return wanted;
-    wanted = wantedLabel(reviews, p.head);
+    wanted = only || wantedLabel(reviews, p.head);
     const changed = setLabel(repo, pr, wanted, p.labels, run);
     console.log(`claude-label: #${pr} → ${wanted}${changed ? '' : ' (unchanged)'}`);
     if (!changed) break;
@@ -68,7 +69,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const pr = process.argv[2];
     if (!/^\d+$/.test(pr || '')) throw new Error('usage: GITHUB_REPOSITORY=o/r node tools/claude-label.mjs <pr number>');
-    sync(process.env.GITHUB_REPOSITORY, pr);
+    sync(process.env.GITHUB_REPOSITORY, pr, undefined, process.argv[3] === 'reviewing' ? LABELS.reviewing.name : '');
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

@@ -1,5 +1,5 @@
 """Guard: release — READY (tools/ship-watch.sh) and the PR list read the "Claude: …" label, so it must be a pure function of the newest Claude review and the head: "approved" only for the head that review looked at,
-never from GitHub's review state (an Approve posted by Actions is a COMMENT), never stuck on a state only a running job knows (13 Nov 2026, cr 2a; the Gitar label needed 10 fixes for that). Runs tools/claude-label.mjs under node with a fake gh."""
+never from GitHub's review state (an Approve posted by Actions is a COMMENT), and "Claude: reviewing" (written by the review job's first step, 14 Nov 2026) is always replaced by the verdict step, which runs also after a failed or cancelled job (the Gitar label needed 10 fixes for a stuck state). Runs tools/claude-label.mjs under node with a fake gh."""
 import json
 import shutil
 import subprocess
@@ -52,6 +52,17 @@ class ClaudeLabelTest(unittest.TestCase):
         wanted, seen = node(script)
         self.assertEqual(wanted, 'Claude: approved')
         self.assertEqual(seen, ['pr edit 7 --add-label Claude: not reviewed', 'pr edit 7 --add-label Claude: approved', 'pr edit 7 --remove-label Claude: not reviewed'])
+
+    def test_reviewing_is_set_alone_and_the_verdict_step_replaces_it(self):
+        read = {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': A, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
+                'commits': {'nodes': []}, 'reviews': {'nodes': []}, 'comments': {'nodes': []}, 'labels': {'nodes': [{'name': 'Claude: approved · not re-reviewed'}]}}}}}
+        script = ("(() => { const seen = []; const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(%s); seen.push(a.slice(0, 5).join(' ')); return ''; };"
+                  " return [m.sync('o/r', 7, run, m.LABELS.reviewing.name), seen]; })()") % json.dumps(read)
+        wanted, seen = node(script)
+        self.assertEqual(wanted, 'Claude: reviewing')
+        self.assertEqual(seen[0], 'pr edit 7 --add-label Claude: reviewing')
+        self.assertIn('pr edit 7 --remove-label Claude: approved · not re-reviewed', seen)
+        self.assertEqual(node("m.wantedLabel([], '%s')" % A), 'Claude: not reviewed', 'the verdict step wants no "reviewing"')
 
 
 if __name__ == '__main__':
