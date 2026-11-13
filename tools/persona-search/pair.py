@@ -7,6 +7,8 @@ tools/persona-search/gate-personas.json, and the 30 profiles, search-profiles.js
   pair.py side <out> <side>                      -> <out>/side.json: right jobs, found, first relevant, board words, broker waits, valid
   pair.py minutes <times.env> <person> <out>     -> <out>/<person>.minutes.txt: minutes per part (setup, draft, searches, judge)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
+  pair.py pending < body                         -> the people of the body's "→ pending" Moves lines as a dispatch list ([1, "b02"]), nothing when none (tools/ship-search-hold.sh)
+  pair.py settle <results> <view.json> <attempt> <people> -> settle.json: the body with the numbers written, the title (hold lifted or kept), the people to run again, the verdict
 """
 import json
 import math
@@ -218,29 +220,46 @@ def _wait(row):
     return f"{secs(row.get('wait_p50_ms'))}/{secs(row.get('wait_p90_ms'))}"
 
 
+def sides(results):
+    """{person: {'main': [rows], 'pr': [rows]}} from <results>/*/side.json."""
+    out = {}
+    for found in sorted(Path(results).glob('*/side.json')):
+        row = json.loads(found.read_text(encoding='utf-8'))
+        out.setdefault(found.parent.name.split('--')[0], {'main': [], 'pr': []})[row['side']].append(row)
+    return out
+
+
+def measured(people_rows, spread=usual):
+    """{person: {before, after, d, line}} for each person whose every side is valid; the Moves line is the one the PR check reads."""
+    out = {}
+    for person, sides_ in sorted(people_rows.items()):
+        a, b = sides_['main'], sides_['pr']
+        if not (a and b and all(r['valid'] for r in a + b)):
+            continue
+        d = spread(person)
+        before, after = statistics.median(r['right'] for r in a), statistics.median(r['right'] for r in b)
+        runs = f'{len(a)} run{"s" if len(a) > 1 else ""} a side, same minute'
+        out[person] = {'before': before, 'after': after, 'd': d, 'line': f'Moves: {person} right jobs {before:g} → {after:g} ({runs}, usual difference '
+                                                                       + (f'{d:g})' if d is not None else 'not measured yet)')}
+    return out
+
+
 def table(results, pr, main_sha, pr_sha, spread=usual):
     """The PR comment: per person both sides, a ready Moves line when both sides are valid, and the minutes per part."""
-    results, people_rows, lines = Path(results), {}, []
-    for found in sorted(results.glob('*/side.json')):
-        row = json.loads(found.read_text(encoding='utf-8'))
-        person = found.parent.name.split('--')[0]
-        people_rows.setdefault(person, {'main': [], 'pr': []})[row['side']].append(row)
+    results, lines = Path(results), []
+    people_rows = sides(results)
     lines += ['<!-- search-pair -->', f'### Before/after: main `{main_sha[:8]}` (the commit the PR sits on) vs #{pr} `{pr_sha[:8]}`, same minute', '',
               '| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Broker wait p50/p90 (s) | Valid |',
               '|---|---|---|---|---|---|---|']
-    moves = []
-    for person, sides in sorted(people_rows.items()):
-        a, b = sides['main'], sides['pr']
+    done = measured(people_rows, spread)
+    for person, sides_ in sorted(people_rows.items()):
+        a, b = sides_['main'], sides_['pr']
         lines.append(f"| {person} | {_cell(a, 'right')} → {_cell(b, 'right')} | {_cell(a, 'found')} → {_cell(b, 'found')} | {_cell(a, 'first_s')} → {_cell(b, 'first_s')} "
                      f"| {'; '.join(', '.join(r['words']) or '—' for r in a)} · {'; '.join(', '.join(r['words']) or '—' for r in b)} "
                      f"| {' / '.join(_wait(r) for r in a + b)} "
-                     f"| {'yes' if a and b and all(r['valid'] for r in a + b) else '**no**: not counted'} |")
-        if a and b and all(r['valid'] for r in a + b):
-            d = spread(person)
-            before, after = statistics.median(r['right'] for r in a), statistics.median(r['right'] for r in b)
-            runs = f'{len(a)} run{"s" if len(a) > 1 else ""} a side, same minute'
-            moves.append(f'Moves: {person} right jobs {before:g} → {after:g} ({runs}, usual difference {d:g})' if d is not None
-                         else f'Moves: {person} right jobs {before:g} → {after:g} ({runs}, usual difference not measured yet)')
+                     f"| {'yes' if person in done else '**no**: not counted'} |")
+    if not people_rows:
+        lines.append('| — | no side ran (the turn gave up, or a side failed before its search) | | | | | **no** |')
     lines.append('')
     drafts = {r.get('own_draft') for r in (json.loads(p.read_text()) for p in results.glob('*/person.json'))}
     lines.append('Each side drafted its own search plan and searched twice: this PR changes the plan\'s producer.' if True in drafts
@@ -249,9 +268,55 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     timed = [p.read_text(encoding='utf-8').strip() for p in sorted(results.glob('*.minutes.txt'))]
     if timed:
         lines += ['', 'Minutes per part: ' + '; '.join(timed)]
-    if moves:
-        lines += ['', 'Paste into the PR body (the PR check reads it):', '```', *moves, '```']
+    if done:
+        lines += ['', 'Paste into the PR body (the PR check reads it):', '```', *(m['line'] for m in done.values()), '```']
     return '\n'.join(lines)
+
+
+# The hold (plan docs/superpowers/plans/2026-11-13-search-pair.md 4/4; owner via sa, 13 Nov 2026: "we shoulndt do  by hand"): a "→ pending" Moves line makes ship hold the PR
+# (draft, "DONT MERGE" in its title, label HOLD_LABEL) and start this pair; the pair writes the numbers and lifts ONLY the hold ship set (the label), when no person fell
+# beyond their usual difference (1 job when it is not measured yet). A side not valid runs once more, then the pair reports and the hold stays.
+HOLD_LABEL = 'search-hold'
+PENDING_LINE = r'^(?P<lead>[ \t]*[-*]?[ \t]*)\**Moves:\**[ \t]*(?P<person>{person})\s+\S.*\d\S*\s*(?:→|->)\s*pending\s*\(.*$'   # the shape tools/pr-body-check.py PENDING reads
+
+
+def pending(body):
+    """The people of the body's pending Moves lines as a dispatch list: night people as numbers, profiles as ids; [] when none."""
+    out = []
+    for person in (m.group('person') for m in re.finditer(PENDING_LINE.format(person=r'p\d{1,2}|[a-z]\d{2}'), body or '', re.M)):
+        one = int(person[1:]) if re.fullmatch(r'p\d{1,2}', person) else person
+        if one not in out:
+            out.append(one)
+    return out[:MAX_PEOPLE]
+
+
+def settle(body, title, labels, done, ran, attempt):
+    """What the pair does to its PR: {body, title, lift, rerun, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2."""
+    body, verdict, fell = body or '', [], []
+    for person, m in done.items():
+        body = re.sub(PENDING_LINE.format(person=re.escape(person)), lambda hit, line=m['line']: hit.group('lead') + line, body, flags=re.M)   # the bullet stays
+        tolerance = m['d'] if m['d'] is not None else 1
+        if m['before'] - m['after'] > tolerance:
+            fell.append(f"{person} fell {m['before']:g} → {m['after']:g} (usual difference {tolerance:g})")
+    left = [p for p in ran if p not in done]
+    rerun = left if left and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
+    ours = HOLD_LABEL in labels
+    still = pending(body)
+    lift = ours and 'DONT MERGE' in title and not fell and not still and not left
+    if lift:
+        title = re.sub(r'\s*DONT MERGE\s*', ' ', title, count=1).strip()
+        verdict.append('Hold lifted: every pending number is in and none fell beyond its usual difference; the PR is marked ready at READY.')
+    elif fell:
+        verdict.append('Hold kept: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
+    elif rerun:
+        verdict.append(f"Hold kept: {', '.join(rerun)} not valid; the pair runs once more for them.")
+    elif left:
+        verdict.append(f"Hold kept: {', '.join(left)} not valid twice: start the pair again later, or write the number by hand.")
+    elif still and ours:
+        verdict.append('Hold kept: the body still has a pending number this pair did not run.')
+    elif not ours and done:
+        verdict.append('Numbers written. The hold was not set by ship (no "search-hold" label): lift it by hand.')
+    return {'body': body, 'title': title, 'lift': lift, 'rerun': [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in rerun], 'verdict': verdict}
 
 
 def main(argv):
@@ -271,6 +336,18 @@ def main(argv):
         return 0
     if command == 'table' and len(argv) == 6:
         print(table(argv[2], argv[3], argv[4], argv[5]))
+        return 0
+    if command == 'pending' and len(argv) == 2:
+        found = pending(sys.stdin.read())
+        if found:
+            print(json.dumps(found))
+        return 0
+    if command == 'settle' and len(argv) == 6:   # people: setup's matrix entries (each its id)
+        view = json.loads(Path(argv[3]).read_text(encoding='utf-8'))
+        ran = [entry['id'] for entry in json.loads(argv[5])]
+        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(sides(argv[2])), sorted(set(ran)), int(argv[4]))
+        Path('settle.json').write_text(json.dumps(out), encoding='utf-8')
+        print('\n'.join(out['verdict']))
         return 0
     print(__doc__, file=sys.stderr)
     return 2

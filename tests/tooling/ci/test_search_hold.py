@@ -1,0 +1,85 @@
+"""Guard: release — a search PR held for its pending number (tools/ship-search-hold.sh) is let go only by its own pair, and only when no person fell beyond their usual difference.
+Without it an unmeasured or worse search change becomes mergeable (owner via sa, 13 Nov 2026: "anything not a draft is safe to merge"), or a hold a person set is lifted by a tool.
+Plays tools/persona-search/pair.py pending and settle on bodies shaped like a real PR's, and checks the lines it writes pass tools/pr-body-check.py."""
+import importlib.util
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'tools' / 'persona-search'))
+import pair  # noqa: E402
+
+spec = importlib.util.spec_from_file_location('pr_body_check', ROOT / 'tools' / 'pr-body-check.py')
+check = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(check)
+
+BODY = ('🟢 A job board\'s first jobs are judged while the rest is still read\n\n'
+        'Moves: p1 right jobs 0 → pending (1 run a side, same minute, usual difference 2)\n'
+        '- Moves: p4 right jobs 20 → pending (1 run a side, same minute, usual difference not measured yet)\n')
+TITLE = '[2d] DONT MERGE A job board\'s first jobs are judged while the rest is still read'
+
+
+def done(**people):
+    """measured()'s shape for (before, after, d) per person."""
+    out = {}
+    for person, (before, after, d) in people.items():
+        out[person] = {'before': before, 'after': after, 'd': d, 'line': f'Moves: {person} right jobs {before:g} → {after:g} (1 run a side, same minute, usual difference '
+                                                                       + (f'{d:g})' if d is not None else 'not measured yet)')}
+    return out
+
+
+class SearchHoldTest(unittest.TestCase):
+    def test_pending_names_the_people_to_dispatch(self):
+        self.assertEqual(pair.pending(BODY), [1, 4])
+        self.assertEqual(pair.pending('Moves: b02 right jobs 3 → pending (1 run a side, same minute, usual difference not measured yet)'), ['b02'])
+        for finished in ('Moves: p1 right jobs 0 → 9 (1 run a side, same minute, usual difference 2)', 'Moves: nothing (the run → pending later)',
+                         'Moves: p1 right jobs 0 → 4 (1 run a side, same minute, usual difference 2; next → pending)'):
+            self.assertEqual(pair.pending(finished), [], finished)
+
+    def test_no_loss_lifts_ships_hold_and_the_written_body_passes_the_check(self):
+        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
+        self.assertTrue(out['lift'])
+        self.assertEqual(out['title'], '[2d] A job board\'s first jobs are judged while the rest is still read')
+        self.assertIn('Moves: p1 right jobs 0 → 9 (1 run a side, same minute, usual difference 2)', out['body'])
+        self.assertIn('- Moves: p4 right jobs 20 → 35', out['body'])
+        self.assertEqual(pair.pending(out['body']), [])
+        self.assertIsNone(check.moves_gap(out['body'], ['src/sources/feeds.py']))
+        self.assertIsNone(check.pending_gap(out['body'], out['title'], 'false'))   # ready and not a draft: no pending number left
+        self.assertEqual(out['rerun'], [])
+
+    def test_a_loss_beyond_the_usual_difference_keeps_the_hold(self):
+        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 6, 2), p4=(20, 20, None)), ['p1', 'p4'], 1)
+        self.assertFalse(out['lift'])
+        self.assertEqual(out['title'], TITLE)
+        self.assertIn('p1 fell 9 → 6 (usual difference 2)', out['verdict'][0])
+        self.assertIn('Moves: p1 right jobs 9 → 6', out['body'])   # the number is written either way
+
+    def test_an_unmeasured_difference_allows_one_job(self):
+        self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 4, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
+        self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 3, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
+
+    def test_a_side_not_valid_runs_once_more_then_reports(self):
+        first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
+        self.assertEqual((first['lift'], first['rerun']), (False, [4]))
+        self.assertEqual(pair.pending(first['body']), [4])
+        second = pair.settle(first['body'], TITLE, ['search-hold'], {}, ['p4'], 2)
+        self.assertEqual((second['lift'], second['rerun']), (False, []))
+        self.assertIn('not valid twice', second['verdict'][0])
+        third = pair.settle(first['body'], TITLE, ['search-hold'], done(p4=(20, 22, None)), ['p4'], 2)
+        self.assertTrue(third['lift'])
+
+    def test_a_loss_is_never_run_again(self):
+        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 2, 2)), ['p1', 'p4'], 1)
+        self.assertEqual((out['lift'], out['rerun']), (False, []))
+
+    def test_a_hold_ship_did_not_set_is_never_lifted(self):
+        out = pair.settle(BODY, TITLE, ['Gitar: approved'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
+        self.assertFalse(out['lift'])
+        self.assertEqual(out['title'], TITLE)
+        self.assertEqual(pair.pending(out['body']), [])
+        self.assertIn('lift it by hand', out['verdict'][0])
+
+
+if __name__ == '__main__':
+    unittest.main()

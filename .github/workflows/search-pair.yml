@@ -27,6 +27,10 @@ on:
         type: choice
         options: ['app', 'small']
         default: 'app'
+      attempt:
+        description: "1, or 2 when the pair itself ran again for a side that was not valid (a held PR's pair runs once more, then reports)"
+        type: string
+        default: '1'
 
 # Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
 # the same people again (a side not counted, "start the pair again") replace only their own pending run.
@@ -210,12 +214,14 @@ jobs:
   comment:
     name: The table on the PR
     needs: [setup, pair]
-    if: ${{ always() && needs.setup.result == 'success' }}
+    if: ${{ !cancelled() && needs.setup.result == 'success' }}   # a cancelled run left an empty table on #3946 (13 Nov 2026): the run that replaced it writes its own
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
+      issues: write    # the "search-hold" label of a PR ship held (tools/ship-search-hold.sh)
+      actions: write   # a held PR's pair runs once more for a side that was not valid
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -227,9 +233,27 @@ jobs:
           PR: ${{ inputs.pr }}
           MAIN: ${{ needs.setup.outputs.main }}
           HEAD: ${{ needs.setup.outputs.head }}
+          PEOPLE: ${{ needs.setup.outputs.people }}
+          ATTEMPT: ${{ inputs.attempt }}
+          TIERS: ${{ inputs.tiers }}
         run: |
           set -euo pipefail
           python3 tools/persona-search/pair.py table dl "$PR" "$MAIN" "$HEAD" > table.md
+          # The hold (plan 4/4, pair.py settle): the numbers go into the body's pending Moves lines; ship's own hold (label search-hold) comes off only when none fell.
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,labels,headRefOid > view.json
+          if [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
+            { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
+          else
+            python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" > verdict.txt
+            if [ -s verdict.txt ]; then { echo; cat verdict.txt; } >> table.md; fi
+            jq -n --slurpfile s settle.json '{title: $s[0].title, body: $s[0].body}' > edit.json
+            if ! jq -e --slurpfile v view.json '.title == $v[0].title and .body == $v[0].body' edit.json >/dev/null; then
+              gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" --input edit.json >/dev/null
+            fi
+            if [ "$(jq -r .lift settle.json)" = true ]; then gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label search-hold >/dev/null; fi
+            rerun="$(jq -c .rerun settle.json)"
+            if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
+          fi
           echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> table.md
           cat table.md >> "$GITHUB_STEP_SUMMARY"
           old=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- search-pair -->")) | .id' | tail -1)
