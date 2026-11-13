@@ -19,7 +19,7 @@ on:
 
 jobs:
   labels:
-    permissions:   # what the called workflow asks for, or GitHub refuses to start it (tests/tooling/ci/test_workflow_call_permissions.py)
+    permissions:   # at least what the called workflow asks for (its permissions: block), or GitHub refuses to start the run
       contents: read
       checks: read
       pull-requests: write

@@ -158,9 +158,9 @@ function main(pr) {
   converge(() => syncOnce(pr));
 }
 
-/** The open PRs whose head IS `sha` (one REST call). Why (13 Nov 2026, gl): a Gitar check names its commit; its payload's own PR list is empty on most checks (3 of 40, 5 Nov 2026). */
+/** The open PRs whose head IS `sha` (one REST call, up to 100 PRs a commit belongs to; a failed read stays a red run, as everywhere here, #2516). Why (13 Nov 2026, gl): a Gitar check names its commit; its payload's own PR list is empty on most checks (3 of 40, 5 Nov 2026). */
 export function prsOfHead(repo, sha, run = gh) {
-  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/pulls`)).filter(p => p.state === 'open' && p.head?.sha === sha).map(p => p.number);
+  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/pulls?per_page=100`)).filter(p => p.state === 'open' && p.head?.sha === sha).map(p => p.number);
 }
 
 /** Labels the PRs a Gitar check ran on; -> their numbers. The label follows the verdict the moment Gitar's check ends, even when the verdict only edited its comment (owner, 13 Nov 2026: jobadabra-benchmarks #38). */

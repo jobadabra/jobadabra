@@ -128,7 +128,7 @@ def fake_gh(comment_body, labels):
         {author: {login: 'gitar-bot'}, body: %s, createdAt: '2026-11-13T17:38:00Z', updatedAt: '2026-11-13T17:41:27Z'}]},
       labels: {nodes: state.labels.map(name => ({name}))}, timelineItems: {nodes: []},
       commits: {nodes: [{commit: {committedDate: '2026-11-13T17:30:00Z', parents: {nodes: [{oid: 'P'}]}, checkSuites: {nodes: [{createdAt: '2026-11-13T17:31:00Z', app: {slug: 'gitar-bot'}, checkRuns: {totalCount: 1}}]}}}]}}}}});
-    if (a[1] === 'repos/o/r/commits/H1/pulls') return JSON.stringify([{number: 38, state: 'open', head: {sha: 'H1'}}, {number: 7, state: 'open', head: {sha: 'OTHER'}}, {number: 6, state: 'closed', head: {sha: 'H1'}}]);
+    if (a[1] === 'repos/o/r/commits/H1/pulls?per_page=100') return JSON.stringify([{number: 38, state: 'open', head: {sha: 'H1'}}, {number: 7, state: 'open', head: {sha: 'OTHER'}}, {number: 6, state: 'closed', head: {sha: 'H1'}}]);
     if (a[0] === 'pr' && a[1] === 'edit') { const flag = a[3], name = a[4]; edits.push(flag + ' ' + name); state.labels = flag === '--add-label' ? [...state.labels, name] : state.labels.filter(l => l !== name); return ''; }
     throw new Error('unexpected ' + a.join(' '));
   };
@@ -158,7 +158,7 @@ class CheckEndedRelabelsTest(unittest.TestCase):
         self.assertIn('uses: jobadabra/jobadabra/.github/workflows/pr-labels-shared.yml@main', own)
         self.assertRegex(own, r'check_run:\n    types: \[created, completed\]')
         shared = (ROOT / '.github' / 'workflows' / 'pr-labels-shared.yml').read_text()
-        self.assertIn("github.event_name == 'check_run' && github.event.check_run.app.slug == 'gitar-bot'", shared)
+        self.assertIn("github.event_name == 'check_run' && contains(github.event.check_run.app.slug, 'gitar')", shared)
         self.assertIn('node tools/gitar-label.mjs head "$SHA"', shared)
 
 

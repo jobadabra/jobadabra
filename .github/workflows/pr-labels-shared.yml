@@ -20,7 +20,7 @@ name: CI · PR labels (reusable)
 #   Its check run ENDS 0-2 s after that edit (12 of 12 heads in jobadabra's last 14 PRs, measured 13 Nov 2026: check completed_at minus the comment's updated_at, 0 to 2 s). So the check is the one event an
 #   edit-only verdict always comes with, and `completed` reads it already written. 7 Nov (#3513) dropped the trigger and relied on a push to main and the tick; the copies in the other repos had no tick and a
 #   drifted copy of the trigger (no PR number), so nothing ever corrected them.
-# Why check_run is back and is not what #3513 and 30 Oct 2026 removed: (1) it is only Gitar's check (`app.slug`); GitHub does not start a workflow for a check run an Actions job made, so the event is Gitar's
+# Why check_run is back and is not what #3513 and 30 Oct 2026 removed: (1) it is only Gitar's check (`app.slug` contains "gitar", the rule the script reads a Gitar run by; the real slug is "gitar-bot", read from 14 heads' check runs on 13 Nov 2026); GitHub does not start a workflow for a check run an Actions job made, so the event is Gitar's
 #   own, two per review (created + completed; 14 reviews in jobadabra's last 100 minutes on 13 Nov), not the 151 an hour the comment EDITS made on 30 Oct (#2516, REST budget); (2) it labels the PRs whose head IS that commit (one REST call, tools/gitar-label.mjs
 #   `head <sha>`), not every open PR; (3) the run is a check_run run on main: it draws no row on a PR (5 Nov 2026, #3176); (4) a label is written only when it differs.
 # Why (4 Nov 2026, a8): a Gitar review still draws a second row, since pull_request_review runs on the PR's head. A new comment can't replace it: 47 of 145 reviews came with none.
@@ -36,10 +36,10 @@ permissions:
   pull-requests: write
   issues: write   # creating a missing label (tools/gitar-label.mjs addLabel)
 
-# Why (30 Oct 2026): on main the newest push's run decides (tests/test_main_runs_finish.py) and reads every open PR anyway. Every other run is its own group, never
+# Why (30 Oct 2026): on main the newest push's run decides and reads every open PR anyway. Every other run is its own group, never
 # cancelled: a cancelled run is drawn as a failed check in the PR list (#2400, web #299). Runs needing a live sync re-read the verdict, head and labels after every write (converge in tools/gitar-label.mjs).
 concurrency:
-  group: pr-labels-${{ github.event_name == 'push' && 'main' || github.event_name == 'workflow_dispatch' && 'tick' || github.run_id }}   # a tick never cancels a push's run (tests/test_main_runs_finish.py); both sync every open PR and write only what differs
+  group: pr-labels-${{ github.event_name == 'push' && 'main' || github.event_name == 'workflow_dispatch' && 'tick' || github.run_id }}   # a tick never cancels a push's run (own group name); both sync every open PR and write only what differs
   cancel-in-progress: true
 
 jobs:
@@ -52,7 +52,7 @@ jobs:
       (github.event_name == 'pull_request_review' && github.event.review.user.login == 'gitar-bot[bot]') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, 'Gitar review')) ||
-      (github.event_name == 'check_run' && github.event.check_run.app.slug == 'gitar-bot')
+      (github.event_name == 'check_run' && contains(github.event.check_run.app.slug, 'gitar'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15   # a hang guard: the two steps took 267 s at the very worst, queue included, in the last 30 runs of each
     steps:
