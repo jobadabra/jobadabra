@@ -48,7 +48,9 @@ test('the engine\'s slow-down line pauses both LinkedIn reads a day; every line 
   assert.equal(session.pausedUntil(mine), 0, 'a read that worked pauses nothing');
   onLine(`${SLOW_DOWN}: left alone for now (HTTP 429)`);
   assert.equal(session.pausedUntil(mine), NOW + 24 * 3600e3);
-  assert.equal(mine.settings().linkedinJobs.last.state, 'limited');
+  const kept = mine.settings().linkedinJobs;
+  assert.equal(kept.last, undefined, 'the guest read never writes the signed-in read\'s result (Gitar on #3998)');
+  assert.equal(kept.signin, undefined, 'nor its sign-in state');
   assert.equal(seen.length, 2);
   assert.equal(guestOn(mine, {}, {packaged: true, now: NOW + 3600e3}), false, 'the next press within the day reads no LinkedIn');
 });

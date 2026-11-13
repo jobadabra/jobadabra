@@ -4,7 +4,7 @@ when the list is done, the job's own page for its description. Our own code; not
 Why (owner, 13 Nov 2026, asked via AskUserQuestion: "On each person's Mac (Recommended)": "Each Find jobs reads a few pages from the person's own internet address, with
 JobSpy's pace (3-7 s between pages) and a stop at the first 429 or check", since slowed to GAP_S; then "3 searches × 3 pages (Recommended)", "Only kept jobs, ≤10 (Recommended)",
 "Shared 1-day pause (Recommended)"): most people never turn on the signed-in LinkedIn switch, so Find jobs read no LinkedIn job for them.
-Invariants: one request to LinkedIn at a time, GAP_S after the last one began, search pages and job pages in the same queue (sa, 13 Nov 2026: one gap for the whole host);
+Invariants: one request to LinkedIn at a time, GAP_S after this computer's last one began (any process's), search pages and job pages in the same queue (sa, 13 Nov 2026: one gap for the whole host);
 no cookie (an opener with no cookie jar), no proxy, never the signed-in session, our own honest user agent (CLAUDE.md: never disguise); the first 401/403/429/999, sign-in or
 check page, or a page that is neither cards nor the empty end stops every LinkedIn read of this process with no retry, said once (SLOW_DOWN is the line the app pauses
 LinkedIn on, desktop/lib); no request starts past the read cut (src/sources/read_budget.py cut_at); at most WINDOW_MAX requests in any WINDOW_S on this computer, every
@@ -14,6 +14,7 @@ process and press together (the times in FILE, numbers only), search pages first
 (src/features.py 'linkedin_guest'; src/sources/reader_rows.py is its row). Tests: tests/unit/sources/test_linkedin_guest.py (recorded pages, a stand-in site)."""
 import html
 import json
+import os
 import random
 import re
 import threading
@@ -51,7 +52,7 @@ CARD = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
 
 
 class Pace:
-    """This process's LinkedIn reads: one at a time (`lock`), the last request's start and the stop (a SAID key). State in its own attributes,
+    """This process's LinkedIn reads: one at a time (`lock`), the last request's start (its timeout's cut) and the stop (a SAID key). State in its own attributes,
     named on the Run (src/press/run.py reads['LinkedIn'].held), as the guard tests/guards/rules/test_run_state_only_shrinks.py asks."""
 
     def __init__(self):
@@ -116,18 +117,26 @@ def _sent(at):
         times = json.loads(_file().read_text()).get('sent', [])
     except (OSError, ValueError, AttributeError):
         times = []
-    return [float(t) for t in times if isinstance(t, (int, float)) and at - WINDOW_S < float(t) <= at]
+    # a time a little ahead still counts (the file keeps 0.1 s; another process's clock), and one far ahead (a clock set back) only for a window
+    return [float(t) for t in times if isinstance(t, (int, float)) and at - WINDOW_S < float(t) < at + WINDOW_S]
 
 
 def _spend(at):
-    """Count one request that starts now; a file that cannot be written still counts it for this process's next look."""
-    times = _sent(at) + [at]
+    """Count one request that starts now; False when the window filled meanwhile (another process sent during the gap: nothing is sent). Why (Gitar on #3998):
+    the count is read again at the moment of sending and written whole (a temp file, then os.replace), so two presses cannot both pass on one look.
+    A file that cannot be written still lets this one request go; this process's next look reads what is there."""
+    times = _sent(at)
+    if len(times) >= WINDOW_MAX:
+        return False
     try:
         path = _file()
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({'sent': [round(t, 1) for t in times]}) + '\n')
+        temp = path.with_name(f'{path.name}.{os.getpid()}.tmp')
+        temp.write_text(json.dumps({'sent': [round(t, 1) for t in times + [at]]}) + '\n')
+        os.replace(temp, path)
     except OSError:
         pass
+    return True
 
 
 def left():
@@ -153,16 +162,20 @@ def _get(url):
     with PACE.lock:   # held through the request: one at a time, so the gap holds for every thread of the process
         if PACE.stopped:
             raise Later(url, SAID[PACE.stopped])
-        if len(_sent(time_budget.wall().timestamp())) >= WINDOW_MAX:
+        at = time_budget.wall().timestamp()
+        sent = _sent(at)
+        if len(sent) >= WINDOW_MAX:
             raise Later(url, WINDOW_FULL)
         cut, now = _cut(), time_budget.now()
-        wait = 0.0 if PACE.last is None else max(0.0, PACE.last + random.uniform(*GAP_S) - now)
+        # Why (Gitar on #3998): the gap counts from this computer's last request, any process's, so two presses are spaced too, not only one press's pages
+        wait = 0.0 if not sent else max(0.0, max(sent) + random.uniform(*GAP_S) - at)
         if cut is not None and now + wait >= cut:
             raise Later(url, 'the read time is up')
         if wait:
             _sleep(wait)
+        if not _spend(time_budget.wall().timestamp()):   # counted once sent, whatever comes back
+            raise Later(url, WINDOW_FULL)
         PACE.began(time_budget.now())
-        _spend(time_budget.wall().timestamp())   # sent counts, whatever comes back
         timeout = TIMEOUT if cut is None else max(1.0, min(TIMEOUT, cut - PACE.last))
         request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'text/html', 'Accept-Language': 'en-US,en;q=0.9'})
         try:

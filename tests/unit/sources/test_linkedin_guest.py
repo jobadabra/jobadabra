@@ -213,6 +213,26 @@ class GuestTest(unittest.TestCase):
         self.assertIn('Swissquote', linkedin_guest.description(urls[7]))
         self.assertEqual(len(site.requests), linkedin_guest.WINDOW_MAX + 1)
 
+    def test_a_second_press_is_spaced_from_the_first_and_a_window_filled_meanwhile_sends_nothing(self):
+        """Gitar on #3998: the gap and the count are the computer's, not the process's: a new process waits the gap from the last request any process sent,
+        and the count is read again at the moment of sending."""
+        site = self.site(lambda url: CARDS)
+        linkedin_guest.FILE.write_text('{"sent": [%s]}' % (self.clock[0] - 5))   # another press sent one 5 s ago
+        linkedin_guest.read(SEARCH)
+        self.assertGreaterEqual(self.sleeps[0], linkedin_guest.GAP_S[0] - 5, "the first request of this press waits the gap from the other press's")
+        linkedin_guest.reset()
+        linkedin_guest.FILE.unlink()
+        asked = len(site.requests)
+        linkedin_guest.FILE.write_text('{"sent": [%s]}' % self.clock[0])
+
+        def other_press_fills_the_window(seconds):   # during this press's gap, another process sends the rest of the window
+            self.clock[0] += seconds
+            linkedin_guest.FILE.write_text('{"sent": [%s]}' % ', '.join(str(self.clock[0] - n) for n in range(linkedin_guest.WINDOW_MAX)))
+        with mock.patch.object(linkedin_guest, '_sleep', side_effect=other_press_fills_the_window):
+            self.assertEqual(linkedin_guest.read(SEARCH), [])
+        self.assertEqual(len(site.requests), asked, 'nothing sent: the window filled while this press waited')
+        self.assertIn(linkedin_guest.WINDOW_FULL, self.said())
+
     def test_a_sent_job_page_counts_even_when_it_failed_and_a_cut_sends_nothing(self):
         """Gitar on #3995 (twice): a request that went out counts, whatever came back; a Later, where nothing was sent, does not."""
         def offline(url):

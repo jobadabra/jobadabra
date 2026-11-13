@@ -24,7 +24,8 @@ export function guestOn(storage, env = process.env, {packaged = false, now = Dat
 export const guestEnv = (storage, env, build) => (guestOn(storage, env, build) ? {JOBADABRA_LINKEDIN_GUEST: '1'} : {});
 
 /**
- * Wraps a search's line callback: every line goes on as it was; the engine's slow-down line also records the LinkedIn read's result with a day's pause (linkedin-session noteRun, its one writer).
+ * Wraps a search's line callback: every line goes on as it was; the engine's slow-down line also pauses both LinkedIn reads a day (linkedin-session notePause: the pause only,
+ * never the signed-in read's result or sign-in state; Gitar on #3998).
  * @param {object} storage the app's storage
  * @param {(line: string) => void} onLine the search's own line callback
  * @param {() => number} now epoch ms
@@ -32,7 +33,7 @@ export const guestEnv = (storage, env, build) => (guestOn(storage, env, build) ?
  */
 export function watchGuest(storage, onLine, now = Date.now) {
   return line => {
-    if (String(line).startsWith(SLOW_DOWN)) linkedinSession.noteRun(storage, {state: 'limited', jobs: 0, at: new Date(now()).toISOString(), pauseUntil: new Date(now() + DAY_MS).toISOString()});
+    if (String(line).startsWith(SLOW_DOWN)) linkedinSession.notePause(storage, new Date(now() + DAY_MS).toISOString());
     onLine(line);
   };
 }
