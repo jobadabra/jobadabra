@@ -134,12 +134,14 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
 // What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,
 // the countries the engine reads for them (metrics.py --countries: src/places.py countries over places.json, written by the press itself, so it is read again after it).
 // Why (13 Nov 2026, #3953): matching places.json by the raw fragment showed countries [] for "sofia|софия" and "krak[oó]w", which the engine reads as Bulgaria and Poland.
+// Never throws: a failed countries lookup is one log line and [], so the press row with all its numbers is still written (Gitar on #3962).
 function searchSummary(withCountries = true) {
-  let search = {};
+  let search = {}, countries = [];
   try { search = JSON.parse(fs.readFileSync(path.join(storage.path('config'), 'search.json'), 'utf8')); } catch { /* no strategy yet: no roles, no places */ }
+  if (withCountries) try { countries = metrics('metrics.py', '--countries').countries || []; } catch (error) { console.log(`${name}: countries not read: ${String(error.message).split('\n')[0]}`); }
   const places = [];
   for (const key of ['top_tier', 'country_wide', 'abroad']) for (const word of search.locations?.[key] || []) if (!places.includes(word)) places.push(word);
-  return {roles: (search.role_keywords || []).length, places, ...(withCountries ? {countries: metrics('metrics.py', '--countries').countries || []} : {})};
+  return {roles: (search.role_keywords || []).length, places, ...(withCountries ? {countries} : {})};
 }
 const failed = [];
 /** 'on' or 'off': whether this run's presses read EURES (src/features.py 'eures': --with-eures or JOBADABRA_EURES=1 turn it on, --without-eures off), written on each press row for gate.py. */
