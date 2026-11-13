@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import scout_board_cells, scout_board_lanes, scout_boards, scout_cells
-from src.ai import page_words
+from src.ai import decide, page_words
 from src.sources import careers, found_boards
 
 MENU = '<a href="/about">About us</a><a href="/blog/news">News</a><a href="/employers">For employers</a>'
@@ -20,8 +20,8 @@ def board(host):
     return {'name': host, 'host': host, 'search_url': f'https://{host}/search?q={{role}}', 'countries': ['Moldova'], 'kinds': ['any'], 'source_kind': 'general'}
 
 
-def posting(host, n):
-    job = {'@context': 'https://schema.org', '@type': 'JobPosting', 'title': f'Developer {n}', 'url': f'https://{host}/job/{n}',
+def posting(host, n, folder='job'):
+    job = {'@context': 'https://schema.org', '@type': 'JobPosting', 'title': f'Developer {n}', 'url': f'https://{host}/{folder}/{n}',
            'hiringOrganization': {'@type': 'Organization', 'name': 'Acme'},
            'jobLocation': {'@type': 'Place', 'address': {'addressLocality': 'Chisinau', 'addressCountry': 'MD'}}}
     return f'<html><script type="application/ld+json">{json.dumps(job)}</script><body>x</body></html>'
@@ -35,11 +35,11 @@ def pages(shape):
     none), scattered under several folders (shape 'mixed': no one layout reads them), or listing its jobs as JSON-LD (shape 'jsonld': no layout tested)."""
     def fetch(url):
         host, path = url.split('/')[2], '/' + url.split('/', 3)[3]
-        if path.startswith(('/job/', '/jobs-it/', '/offer/')):
-            return posting(host, path.rsplit('/', 1)[1])
+        if path.startswith(('/job/', '/jobs-it/', '/offer/', '/vaga/')):
+            return posting(host, path.rsplit('/', 1)[1], 'vaga' if path.startswith('/vaga/') else 'job')
         if shape == 'jsonld':
             return '<html>' + ''.join(posting(host, slug).split('<body>')[0].removeprefix('<html>') for slug in SLUGS) + f'<body>{MENU}{FOOTER}</body></html>'
-        hrefs = [f'/job/{slug}' for slug in SLUGS] if shape == 'one' else ['/job/python-developer-acme', '/jobs-it/data-engineer-globex',
+        hrefs = [f'/{"vaga" if shape == "vaga" else "job"}/{slug}' for slug in SLUGS] if shape in ('one', 'vaga') else ['/job/python-developer-acme', '/jobs-it/data-engineer-globex',
                                                                             '/offer/backend-developer-initech', '/jobs-it/x/devops-engineer-umbrella']
         return f'<html><body>{MENU}' + ''.join(f'<a href="{h}">{h.rsplit("/", 1)[1].replace("-", " ").title()}</a>' for h in hrefs) + f'{FOOTER}</body></html>'
     return fetch
@@ -162,6 +162,50 @@ class DiscoveryLayoutTest(unittest.TestCase):
         fresh = sqlite3.connect(':memory:')
         self.assertEqual(scout_board_cells.seed(fresh, str(old), out=lambda line: None), 1)
         self.assertNotIn('layout', scout_boards.facts(fresh, today=__import__('datetime').date(2099, 1, 2))[0])
+
+
+class PassAsksTheLinksTest(unittest.TestCase):
+    """sa, 13 Nov 2026 (Portugal trial 43425606888: net-empregos.com's page "36 links in 30 wordings, 0 the AI called job pages, 30 not judged"): the
+    pass's first read had the page reader off, so page_words judged its links with the offline word lists only, while every install asks the AI
+    about them. The pass now asks the AI about the links once, on its own allowance, and learns the layout installs replay."""
+
+    def setUp(self):
+        self.db = sqlite3.connect(':memory:')
+        scout_cells.keep(self.db, [{'countries': [c]} for c in scout_cells.EUROPE if c != 'md' for _ in range(5)])
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.asked = []
+
+        real = decide.decide
+
+        def judged(topic, items, answers, instructions, **rest):   # the AI on links: a /vaga/ card is a job page (the word lists know no such word)
+            if topic != page_words.LINK:
+                return real(topic, items, answers, instructions, **rest)
+            self.asked.append((topic, decide.own_scope(), len(items)))
+            return {key: ('job_page' if '| path: /vaga/' in key else 'other') for key in items}
+        for patch in (mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
+                      mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], [])),
+                      mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}),
+                      mock.patch('src.sources.board_yield.is_relevant', side_effect=list),
+                      mock.patch('src.ai.decide.decide', side_effect=judged), mock.patch('src.ai.page_reader.usable', return_value=True)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_the_pass_asks_the_ai_about_a_boards_links_on_its_own_allowance_and_learns_the_layout(self):
+        read = lambda item, search, fetch: found_boards.read_board(item, search, pages('vaga'))
+        kept = scout_boards.run(self.db, ideas=lambda search: [board('vaga.example')], read_board=read, out=lambda line: None,
+                                google=lambda db, country, kinds, out: [], named='md')
+        self.assertEqual([fact.get('layout') for fact in kept], [{'kind': 'links', 'prefix': '/vaga'}], 'the AI called the /vaga/ cards jobs: a layout')
+        links = [scope for topic, scope, _ in self.asked if topic == page_words.LINK]
+        self.assertTrue(links, 'the first read asked the AI about the links (the page reader stays off)')
+        self.assertEqual(set(links), {page_words.WORDS}, "every link question counts on the pass's own allowance")
+
+    def test_page_words_outside_the_allowance_stay_with_the_word_lists_when_the_page_reader_is_off(self):
+        careers.READER = None
+        self.assertFalse(page_words.ai_on())
+        with decide.own_allowance(page_words.WORDS, 3):
+            self.assertTrue(page_words.ai_on())
+        self.assertFalse(page_words.ai_on())
 
 
 if __name__ == '__main__':
