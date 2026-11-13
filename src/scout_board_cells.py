@@ -150,12 +150,12 @@ def seed(db, path, out=print):
         return 0
     try:
         with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
-            marked = 'browser' in {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser
-            rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if marked else '0')
-                                  + ' FROM scout_board_facts').fetchall()
+            columns = {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser; 13 Nov 2026: its layout
+            rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if 'browser' in columns else '0')
+                                  + ', ' + ('layout' if 'layout' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
     except sqlite3.Error:
         return 0
-    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser) VALUES (?, ?, ?, ?, ?, ?, ?)', rows)
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', rows)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:

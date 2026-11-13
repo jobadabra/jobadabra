@@ -118,7 +118,7 @@ def _read(board, search, fetch, route, early, show=None):
             if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
                 asks, asked_term = asks + 1, term                      # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
                 with parts.part('AI reader'):
-                    found, how = careers._asked(url, page, [], fetch), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
+                    found, how = layout.learn(page, url, careers._asked(url, page, [], fetch)), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
                 asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
             on_page = len(found or [])   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)

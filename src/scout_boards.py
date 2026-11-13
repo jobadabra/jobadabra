@@ -14,6 +14,7 @@ refused-sites exception): a board the plain reader is refused on (401/403, a bot
 our own user agent, a fresh context with no cookies, no stealth, load only). A refusal, a bot check or a sign-in page there is final for the scout's
 browser (scout_browser_final), never asked again; jobs located in the country make the same fact, marked browser: installs read it in Jobadabra's
 own headless Chrome (src/sources/refused_reads.py board_queue)."""
+import json
 import re
 import time
 import urllib.parse
@@ -54,6 +55,8 @@ def ensure(db):
                'local_jobs INTEGER NOT NULL, read_at TEXT NOT NULL, PRIMARY KEY (host, country))')
     if 'browser' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 12 Nov 2026
         db.execute('ALTER TABLE scout_board_facts ADD COLUMN browser INTEGER NOT NULL DEFAULT 0')
+    if 'layout' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 13 Nov 2026: no layout learned yet
+        db.execute('ALTER TABLE scout_board_facts ADD COLUMN layout TEXT')
     db.execute('CREATE TABLE IF NOT EXISTS scout_browser_final (host TEXT PRIMARY KEY, why TEXT NOT NULL, at TEXT NOT NULL)')
 
 
@@ -222,12 +225,24 @@ def kinds_of(local):
     return pool_tags.families_read(titles) if titles else ([], [])
 
 
-def measure(board, local, country, families, browser=False):
+def measure(board, local, country, families, browser=False, layout=None):
     """The fact for one board's read: its jobs in `country` and their role families (browser: read in the headless browser, the plain reader was
-    refused); None under MIN_LOCAL or without families."""
+    refused; layout: how its job cards are laid out, src/sources/board_layout.py); None under MIN_LOCAL or without families."""
     if len(local) < MIN_LOCAL or not families:
         return None
-    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local), **({'browser': True} if browser else {})}
+    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local),
+            **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
+
+
+def _layout(db, host, country):
+    """The layout a pass kept for this board in this country, in its checked shape, or None."""
+    from .sources import page_recipes
+    row = db.execute('SELECT layout FROM scout_board_facts WHERE host = ? AND country = ?', (host, country)).fetchone()
+    try:
+        recipe = json.loads(row[0]) if row and row[0] else None
+    except ValueError:
+        return None
+    return recipe if page_recipes.valid(recipe) else None
 
 
 def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None, homes=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
@@ -257,12 +272,16 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
+        # Why (13 Nov 2026, owner: "shouldn't the central scout and board discovery do that... spend those 60-90s ?"): the pass learns each board's
+        # layout from its own read, so every install reads the board with no AI question per link (src/sources/board_layout.py: board['learn']).
         from .ai import page_reader
         ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
             for board in proposed:
                 if clock() - began > BUDGET_S:
                     break
+                kept_layout, notes = _layout(db, board['host'], country), {}   # replayed by this read: a layout that still holds is kept, a stale one replaced
+                board = {**board, 'learn': notes, **({'layout': kept_layout} if kept_layout else {})}
                 jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
                 browsed = False
                 if not jobs and getattr(state, 'why', '') in board_yield.REFUSED_WORDS.values() and not browser_final(db, board['host']):
@@ -292,7 +311,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                 if len(counted) >= MIN_LOCAL:
                     with decide.own_allowance(KINDS, KIND_CALLS):
                         families, unasked = kinds_of(counted)
-                fact = measure(board, counted, country, families, browser=browsed)
+                found_layout = notes.get('layout')   # None: this read never tested a layout, the kept one stays; False: it was stale
+                fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
                 counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why)
                 if fact:
@@ -310,14 +330,16 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row.
             held = db.execute('SELECT families FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
             families = list(dict.fromkeys(fact['families'] + [family for family in (held[0].split(',') if held else []) if family]))
-            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                       (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser')))))
+            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                       (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
+                        json.dumps(fact['layout']) if fact.get('layout') else None))
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
         # Why (12 Nov 2026): each allowance's calls are named, so a run shows which question spent them and that the job's cap held (France's lines showed neither); pages: the AI page reads' pool (owner, 12 Nov 2026: "AI reads once, recipe after")
         out(f"Board pass: {pool_tags.COUNTRIES[country]} ({', '.join(kinds)}): {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
             + (f"; listed/local: {', '.join(counts)}" if counts else '')
+            + (f"; a layout for {sum(1 for fact in kept if fact.get('layout'))} of the {len(kept)} kept boards" if kept else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
             + (f"; the browser was stopped, never asked again: {', '.join(final)}" if final else '')
             + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, pages {decide.probe_spent()} of {PAGE_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")
@@ -352,9 +374,19 @@ def _country_of(board, country):
 
 
 def facts(db, today=None):
-    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, browser?}] (browser: true only)."""
+    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, browser?, layout?}] (browser: true
+    only; layout only in its checked shape: jobadabra-web api/employers.js boardFactsOf checks it again)."""
+    from .sources import page_recipes
     ensure(db)
+
+    def layout(text):
+        try:
+            recipe = json.loads(text) if text else None
+        except ValueError:
+            return None
+        return recipe if page_recipes.valid(recipe) else None
     cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
-    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'browser': True} if browser else {})}
-            for host, country, url, families, jobs, browser in db.execute(
-                'SELECT host, country, url, families, local_jobs, browser FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]
+    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'browser': True} if browser else {}),
+             **({'layout': layout(kept)} if layout(kept) else {})}
+            for host, country, url, families, jobs, browser, kept in db.execute(
+                'SELECT host, country, url, families, local_jobs, browser, layout FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]
