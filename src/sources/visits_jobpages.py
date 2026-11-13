@@ -111,8 +111,9 @@ def _cells(items):
         if isinstance(cell, dict) and all(isinstance(cell.get(k), str) for k in ('family', 'country')) and \
                 all(isinstance(cell.get(k), int) and cell[k] >= 0 for k in ('installs', 'in_places', 'fit70')) and cell['installs'] > 0:
             right = cell.get('right')
-            out.append({**{k: cell[k] for k in ('family', 'country', 'installs', 'in_places', 'fit70')}, **({'measured': True} if cell.get('measured') is True else {}),   # measured: the Central Scout's own read gave 3+ right jobs (jobadabra-web api/employers.js boardCells)
+            out.append({**{k: cell[k] for k in ('family', 'country', 'installs', 'in_places', 'fit70')}, **({'measured': True} if cell.get('measured') is True else {}),   # measured: the mark the site sends (jobadabra-web api/employers.js boardCells sends it with 3+ right jobs; this reader only keeps a boolean true)
                         **({'right': right} if isinstance(right, int) and not isinstance(right, bool) and 0 <= right <= 5000 else {}),   # right: the Scout's count of this family's jobs on the board, in this country (absent: not measured, never 0)
+                        **({'listed': True} if cell.get('listed') is True else {}),   # listed: the count came from the board's own list, not its search (jobadabra-web #646); absent: from its search
                         **({'day': cell['day']} if re.fullmatch(r'\d{4}-\d{2}-\d{2}', str(cell.get('day') or '')) else {})})   # day: when it was measured
     return out
 

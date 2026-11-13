@@ -355,7 +355,7 @@ PROVEN_RIGHT = 3   # jobs of the person's family, located in the country, the Ce
 def ranked(boards, search):
     """The boards best first: by `right` (the Central Scout's count of this user's role families' jobs on the board, located in these countries, summed), then by what
     they gave installs with these families (owner, 18 Oct 2026: "relevant jobs per role"): jobs in their places per install, then fit 70+ per install. 'rank' is kept on each
-    board (0: no data for this user), 'right' (their sum, which orders) and 'right_best' (the largest single count, which proves) only when the Scout counted at least one of the families (absent: not measured, never 0).
+    board (0: no data for this user), 'right' (their sum, which orders) 'right_best' (the largest single count, which proves) and 'right_searched' (the part of the sum from the board's own search, not its list) only when the Scout counted at least one of the families (absent: not measured, never 0).
     Boards without data keep their order after the ranked ones.
     Why (13 Nov 2026, bp, owner: "we know exactly: this board will give x jobs, this other board will give y jobs"): the order was jobs in places per install, and the Scout's cells
     credited a board's whole list to every family it had seen once (178 airline jobs for an electrician): the number the Scout counted per family comes first."""
@@ -367,11 +367,21 @@ def ranked(boards, search):
         installs = sum(cell['installs'] for cell in cells)
         board['rank'] = round(sum(cell['in_places'] for cell in cells) / installs, 1) if installs else 0
         board['rank_fit70'] = round(sum(cell['fit70'] for cell in cells) / installs, 1) if installs else 0
-        counted = [cell['right'] for cell in cells if isinstance(cell.get('right'), int)]
+        counted = [cell for cell in cells if isinstance(cell.get('right'), int)]
         if counted:
-            board['right'] = sum(counted)       # orders the boards
-            board['right_best'] = max(counted)  # proves a board: the Scout's PROVEN_RIGHT is per (country, family), never a sum (Gitar on #4045: two cells of 2 are not 4)
-    return sorted(boards, key=lambda board: (-board.get('right', 0), -board['rank'], -board['rank_fit70']))
+            board['right'] = sum(cell['right'] for cell in counted)       # the Scout's count, summed
+            board['right_best'] = max(cell['right'] for cell in counted)  # proves a board: the Scout's PROVEN_RIGHT is per (country, family), never a sum (Gitar on #4045: two cells of 2 are not 4)
+            board['right_searched'] = sum(cell['right'] for cell in counted if not cell.get('listed'))   # from the board's own search; `listed` cells are its whole list (absent field: all searched)
+    return sorted(boards, key=_order)
+
+
+def _order(board):
+    """Sort key: boards with a count from the board's own search (most first), then boards counted only from its list, then boards the Scout has no number for (installs' evidence
+    orders them), then boards the Scout counted at 0. Why (13 Nov 2026, bp + eo; Gitar on #4063): a list count is the board's whole list (airlinejobs.com, electrical_mechanical: 53 against
+    ~5 a search page), so it never outranks a searched count; and a counted 0 is known to give nothing, so it goes after a board nobody has measured, not level with it."""
+    right = board.get('right')
+    tier = 2 if right is None else 3 if right == 0 else 0 if board.get('right_searched') else 1
+    return (tier, -board.get('right_searched', 0), -(right or 0), -board['rank'], -board['rank_fit70'])
 
 
 def proven(search, limit=2):
@@ -397,7 +407,7 @@ def _merge(own, shared):
     with no record for the field was the first board read for a carpenter, an electrician, a hospitality worker and a data person, ahead of
     their field's boards and the public employment service, and a search reads only the top of this list."""
     theirs = {board['host']: board for board in shared}
-    merged = {board['host']: board for board in shared if board.get('rank') or board.get('right')}   # a Scout count is a record for the field (13 Nov 2026, Gitar on #4045)
+    merged = {board['host']: board for board in shared if board.get('rank') or board.get('right')}   # a Scout count above 0 is a record for the field; a counted 0 is not (13 Nov 2026, Gitar on #4045, #4063)
     for board in own:
         known = theirs.get(board['host'], {})
         merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}

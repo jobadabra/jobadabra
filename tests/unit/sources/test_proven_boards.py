@@ -219,6 +219,35 @@ class RankTests(Fixture):
                 mock.patch('src.places.countries', return_value=['Netherlands']):
             self.assertEqual([b['host'] for b in board_ideas.proven(SEARCH, limit=6)], ['b2.example', 'b1.example'])
 
+    def test_a_count_from_a_boards_own_list_never_outranks_one_from_its_search_and_a_counted_zero_goes_last(self):
+        """13 Nov 2026 (bp + eo; Gitar on #4063), c04 Madrid electrician: airlinejobs.com was counted 53 right from its own list (about 5 a search page), Jobeka 19 from its search. The searched
+        count orders first; a list count next; a board nobody measured (an install's fit job) before one counted 0. A cell with no `listed` field orders as today."""
+        scout = lambda right, **more: {**self.cell('electrical_mechanical', 1, right), 'right': right, **more}
+        facts = self.served({1: [scout(53, listed=True)], 2: [scout(19)], 3: [scout(0)], 4: [self.cell('electrical_mechanical', 2, 20, fit70=2)], 5: [scout(16)]})
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
+            proven = board_ideas.proven(SEARCH, limit=6)
+        self.assertEqual([b['host'] for b in ranked], ['b2.example', 'b5.example', 'b1.example', 'b4.example', 'b3.example'])
+        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b5.example', 'b1.example', 'b4.example'], 'a counted 0 is not proven; the uncounted board keeps its fit-job proof')
+        facts = self.served({1: [scout(53)], 2: [scout(19)]})   # the field absent (an old index): the larger count first, as before
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            self.assertEqual([b['host'] for b in board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)], ['b1.example', 'b2.example'])
+
+    def test_a_counted_zero_is_no_record_for_the_field_in_the_merge(self):
+        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 0}, {**board(2), 'rank': 0, 'right': 5}])
+        self.assertEqual([b['host'] for b in merged], ['b2.example', 'b7.example', 'b1.example'])
+
+    def test_the_listed_mark_survives_the_index_read_only_as_true(self):
+        index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
+                            'relevant': [{**self.cell('nursing_care', 1, 14), 'right': 14, 'listed': True}, {**self.cell('software_dev', 1, 9), 'right': 9, 'listed': 'yes'}]}]}
+        cache = self.data / 'employer_index.json'
+        cache.write_text(json.dumps(index))
+        with mock.patch('src.employer_index.CACHE', cache):
+            cells = POOL_FACTS()['board']['b1.example']['relevant']
+        self.assertEqual(cells, [{**self.cell('nursing_care', 1, 14), 'right': 14, 'listed': True}, {**self.cell('software_dev', 1, 9), 'right': 9}])
+
     def test_the_scouts_mark_on_a_cell_survives_the_index_read_only_as_true(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
                             'relevant': [{**self.cell('nursing_care', 1, 14), 'measured': True, 'right': 14, 'day': '2026-11-13'},
