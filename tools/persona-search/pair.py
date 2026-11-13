@@ -299,28 +299,31 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
         body = re.sub(PENDING_LINE.format(person=re.escape(person)), lambda hit, line=m['line']: hit.group('lead') + line, body, flags=re.M)   # the bullet stays
         tolerance = m['d'] if m['d'] is not None else 1
         if m['before'] - m['after'] > tolerance:
-            fell.append(f"{person} fell {m['before']:g} → {m['after']:g} (usual difference {tolerance:g})")
+            fell.append(f"{person} fell {m['before']:g} → {m['after']:g} ("
+                        + (f"usual difference {tolerance:g})" if m['d'] is not None else 'usual difference not measured yet: 1 job allowed)'))
     invalid = [p for p in ran if p in seen and p not in done]
     never = [p for p in ran if p not in seen]
-    rerun = invalid if invalid and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
     ours = HOLD_LABEL in labels
+    # Why (13 Nov 2026, #3946: a by-hand pair queued a third run on main's workflow by itself): only ship's own hold runs again; a by-hand pair reports and stops.
+    rerun = invalid if ours and invalid and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
     still = pending(body)
     # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
     lift = ours and not fell and not still and not invalid and not never
+    head = 'Hold kept' if ours else 'Not held by ship (no "search-hold" label)'
     if lift:
         title = re.sub(r'\s*DONT MERGE\s*', ' ', title, count=1).strip()
         verdict.append('Hold lifted: every pending number is in and none fell beyond its usual difference; the PR is marked ready at READY.')
     elif fell:
-        verdict.append('Hold kept: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
+        verdict.append(f'{head}: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
     elif never:
-        verdict.append(f"Hold kept: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
+        verdict.append(f"{head}: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
     elif rerun:
         verdict.append(f"Hold kept: {', '.join(rerun)} not valid; the pair runs once more for them.")
     elif invalid:
-        verdict.append(f"Hold kept: {', '.join(invalid)} not valid twice: start the pair again later, or write the number by hand.")
+        verdict.append(f"{head}: {', '.join(invalid)} not valid" + (' twice' if ours else '') + ': start the pair again later, or write the number by hand.')
     elif still and ours:
         verdict.append('Hold kept: the body still has a pending number this pair did not run.')
-    elif not ours and done:
+    elif not ours and done and 'DONT MERGE' in title:
         verdict.append('Numbers written. The hold was not set by ship (no "search-hold" label): lift it by hand.')
     return {'body': body, 'title': title, 'lift': lift, 'rerun': [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in rerun], 'verdict': verdict}
 

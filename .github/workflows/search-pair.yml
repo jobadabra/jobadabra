@@ -256,7 +256,7 @@ jobs:
               fi
               if [ "$(jq -r .lift settle.json)" = true ]; then gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label search-hold >/dev/null; fi
               rerun="$(jq -c .rerun settle.json)"
-              if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
+              if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
             fi
           fi
           echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> table.md
