@@ -197,7 +197,49 @@ def _page_town(markup, posting, memo):
     return memo['towns'].get(ident, '')
 
 
+def page_title(markup, url, say=True, cut=True):
+    """The page's title: its first <h1> that is not the site's own name as the page declares it (site_names), else the first
+    part of <title> that is not. say=False: no log line; cut=False: the whole <h1>, not its first part before a " - " or "|". '' when the only heading is the site's name: that page is said in the log and not read as a job."""
+    names = site_names(markup)
+    headings = [ats.plain(text) for text in re.findall(r'<h1[^>]*>(.*?)</h1>', markup, re.S | re.I)]
+    kept = [text for text in headings if plain_name(text) not in names]
+    if headings and not kept:
+        if say:
+            print(f"Job page: its only heading is the site's own name, not a job title; not read as a job: {url}", flush=True)
+        return ''
+    if say and len(kept) < len(headings) and len(kept) > 1:   # Why (#3901, 12 Nov 2026, sa; moved here 13 Nov 2026, sd): the first is taken, said so a wrong pick can be found (say=False: a caller that only checks a title keeps the log quiet)
+        print(f"Job page: {len(kept)} headings besides the site's name, the first taken as the title: {url}", flush=True)
+    if kept:
+        return re.split(r'\s+[|\u2013\u2014-]\s+', kept[0])[0].strip() if cut else kept[0].strip()
+    page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
+    parts = [part.strip() for part in re.split(r'\s+[|\u2013\u2014-]\s+', page)]
+    return next((part for part in parts if plain_name(part) not in names), '')
+
+
+def _shown_title(markup, url, title):
+    """A job page's one JobPosting title, unless the page itself never shows it: then the page's own heading.
+    Why (13 Nov 2026, sd, lab run 43502695338): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"` (an unrendered template field), so its 39 local jobs
+    shared one title and the kinds question saw one title: "no kinds of work from the AI: not kept". Structure, not a word list: a title found nowhere in the page's
+    visible text is not this job's. Invariant: never an empty title (no heading on the page: the JSON-LD title stays, as a script-rendered page needs)."""
+    seen = plain_name(ats.plain(re.sub(r'<(script|style|noscript)\b.*?</\1>', ' ', markup, flags=re.S | re.I)))
+    if plain_name(title) in seen:
+        return title
+    heading = page_title(markup, url, say=False, cut=False)   # the whole heading: "Mozo/a de montaje - Mallorca" is the title, not "Mozo/a de montaje"
+    if heading and plain_name(heading) != plain_name(title):
+        print(f"Job page: its structured data names the job {title!r}, which the page never shows; its heading {heading!r} is the title: {url}", flush=True)
+        return heading
+    return title
+
+
 def jsonld_jobs(markup, url):
+    """The JobPosting entries a page publishes, in the common job shape (ats._job). A page of exactly one posting shows its title (_shown_title)."""
+    jobs = _jsonld_jobs(markup, url)
+    if len(jobs) == 1:
+        jobs[0]['title'] = ats.posting_text.label(_shown_title(markup, url, jobs[0]['title']))
+    return jobs
+
+
+def _jsonld_jobs(markup, url):
     """The JobPosting entries a page publishes, in the common job shape (ats._job)."""
     jobs, memo = [], {}
     for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', markup, re.S | re.I):
