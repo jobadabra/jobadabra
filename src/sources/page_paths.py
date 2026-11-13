@@ -150,7 +150,7 @@ def _groups(found):
     return (sorted(own.values(), key=len, reverse=True)[:3] if len(own) > 1 else []) + [found]
 
 
-def candidates(markup, base, links, cap=None):
+def candidates(markup, base, links):
     """Recipe bodies ({'chain', 'max'}, chain outermost first) that could read the page's links `links` (job addresses): for each group of their anchors (_groups) the
     shortest chain first, each level the class every anchor of the group shares that the fewest page elements of that tag carry (else no class). The caller adds `title`
     and checks the fit; `max` is 3 times the number of links."""

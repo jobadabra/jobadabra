@@ -183,7 +183,7 @@ def _cards(markup, base, titles, links, paths):
 def _path(markup, base, titles, links):
     """A path recipe (the link and its nearest ancestors, page_paths) that reads these jobs, shortest chain first, or None.
     Learned after every other kind (no recipe learned before it changes); the title is the link's text unless a label or a heading reads more of the jobs."""
-    for body in page_paths.candidates(markup, base, [link for link in links if link], 0):
+    for body in page_paths.candidates(markup, base, [link for link in links if link]):
         for title in (None, *TITLES):
             recipe = {'kind': 'path', **body, **({'title': title} if title else {})}
             if valid(recipe) and _fits(recipe, markup, base, titles, links):
