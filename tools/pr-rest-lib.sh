@@ -159,11 +159,12 @@ pr_of_head() {
   out="$(pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1")" || { _pr_rest_out && _pr_gql_of_head "$@"; return; }
   jq -r '.[0].number // empty' <<<"$out"
 }
-# _pr_gql_of_head <repo> <branch>: pr_of_head's answer from GraphQL (only PRs whose head is in the repo's own owner, like REST's head=owner:branch).
+# _pr_gql_of_head <repo> <branch>: pr_of_head's answer from GraphQL (only PRs whose head is in the repo's own owner, like REST's head=owner:branch). The branch name matches any fork's branch of that name, so a page
+#   with more behind it and no match of ours is unknown (exit 1), never none (Gitar on #4093).
 _pr_gql_of_head() {
   local out
-  out="$(_pr_gql 'query($o:String!,$n:String!,$b:String!){repository(owner:$o,name:$n){pullRequests(headRefName:$b,states:OPEN,first:10){nodes{number headRepositoryOwner{login}}}}}' -f o="${1%%/*}" -f n="${1#*/}" -f b="$2")" || return 1
-  jq -r --arg o "${1%%/*}" '.data.repository | if . == null then error("no repository") else (.pullRequests.nodes | map(select(.headRepositoryOwner.login == $o)) | .[0].number // empty) end' <<<"$out"
+  out="$(_pr_gql 'query($o:String!,$n:String!,$b:String!){repository(owner:$o,name:$n){pullRequests(headRefName:$b,states:OPEN,first:100){pageInfo{hasNextPage} nodes{number headRepositoryOwner{login}}}}}' -f o="${1%%/*}" -f n="${1#*/}" -f b="$2")" || return 1
+  jq -r --arg o "${1%%/*}" '.data.repository | if . == null then error("no repository") else (.pullRequests as $p | ($p.nodes | map(select(.headRepositoryOwner.login == $o)) | .[0].number) as $m | if $m == null and $p.pageInfo.hasNextPage then error("more pages") else ($m // empty) end) end' <<<"$out" || return 1
 }
 
 # pr_open <repo> <branch> <title> <body> [draft]: opens the PR into main; prints its URL.
