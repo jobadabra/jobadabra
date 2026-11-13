@@ -34,10 +34,13 @@ class Model:
 
 
 class SharedCalls(unittest.TestCase):
+    """Temp stores, no pack, the real gate; LANES lanes. The helpers only: the tests are in the classes below."""
+    LANES = 1
+
     def setUp(self):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         for patch in (mock.patch.object(decide, '_db', lambda: sqlite3.connect(self.tmp / 'd.sqlite')), mock.patch.object(decide.cost, 'side'),
-                      mock.patch.object(decide.engine, 'structured', lambda *a, **k: {}), mock.patch('src.ai.meanings_pack.queue'), mock.patch.object(decide_gate, 'LANES', 1),
+                      mock.patch.object(decide.engine, 'structured', lambda *a, **k: {}), mock.patch('src.ai.meanings_pack.queue'), mock.patch.object(decide_gate, 'LANES', self.LANES),
                       mock.patch('src.ai.meanings_pack.first', return_value=None), mock.patch('src.ai.meanings_pack.ai_first', return_value=True)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -61,11 +64,14 @@ class SharedCalls(unittest.TestCase):
 
     def wait_queued(self, n):
         for _ in range(500):
-            if sum(len(gate['queue']) for gate in list(decide.GATES.open.values())) == n:
+            if sum(len([c for c in gate['callers'] if c.untaken]) for gate in list(decide.GATES.open.values())) == n:
                 return
             threading.Event().wait(0.01)
         self.fail(f'{n} callers never queued')
 
+
+
+class SmallQuestions(SharedCalls):
     def test_pages_that_ask_while_a_call_runs_share_the_next_call(self):
         model = Model()
         out, threads = self.pages(model, ['a', 'b', 'c', 'd'])
@@ -157,6 +163,57 @@ class SharedCalls(unittest.TestCase):
         release.set()
         lead.join(10)
         self.assertEqual(gates.open, {}, 'no call of the question runs: its gate is dropped')
+
+
+class Lanes(Model):
+    """Model that also counts the calls in flight at once (`most`)."""
+    def __init__(self):
+        super().__init__()
+        self.flying, self.most, self.lock = 0, 0, threading.Lock()
+
+    def create(self, **kw):
+        with self.lock:
+            self.flying += 1
+            self.most = max(self.most, self.flying)
+        try:
+            return super().create(**kw)
+        finally:
+            with self.lock:
+                self.flying -= 1
+
+
+class BoardsTogether(SharedCalls):
+    """The owner's scenario (13 Nov 2026, run 43473395249, c04 = Madrid electrician): Infoempleo, Trabajos.com and Infojobs asked the link-kind
+    question at 13 s while two earlier pages held both lanes; their 145 + 300 + 57 wordings went into ONE ask that made its 11 calls one after
+    another, and all three got their links at 96 s ("job links 82 s / 80 s / 82 s"), too late for their jobs to be checked."""
+    LANES = 2   # as in the app
+
+    def board(self, model, page, n, out):
+        out[page] = decide.decide('link-kind', {f'{page} link {i}': f'{page} link {i}' for i in range(n)}, ANSWERS, 'what a link is', client=model, floor=False)
+
+    def last_call(self, model, page):
+        return max(i for i, call in enumerate(model.calls, 1) if any(w.startswith(f'{page} link') for w in call))
+
+    def test_boards_that_ask_together_each_get_their_links_after_their_own_calls_not_everyones(self):
+        model, out, threads = Lanes(), {}, []
+        for page in ('h1', 'h2'):   # two earlier pages hold both lanes
+            threads.append(threading.Thread(target=self.ask, args=(model, page, out), daemon=True))
+            threads[-1].start()
+            self.assertTrue(model.started.acquire(timeout=5))
+        for queued, (page, n) in enumerate((('trabajos', 300), ('infoempleo', 145), ('infojobs', 57)), 1):   # the order that hurt most: the smallest last
+            threads.append(threading.Thread(target=self.board, args=(model, page, n, out), daemon=True))
+            threads[-1].start()
+            self.wait_queued(queued)
+        model.go.set()
+        for thread in threads:
+            thread.join(10)
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(len(model.calls), 2 + 11, 'positive control: the same calls as before (502 wordings, 50 a call), no more')
+        self.assertEqual({p: len(out[p]) for p in ('trabajos', 'infoempleo', 'infojobs')}, {'trabajos': 300, 'infoempleo': 145, 'infojobs': 57}, 'every board got all its answers')
+        self.assertLessEqual(self.last_call(model, 'infojobs'), 4, 'Infojobs (57 wordings) is answered by the first two calls after the lanes free, not the last of 11')
+        self.assertLessEqual(self.last_call(model, 'infoempleo'), 7, 'Infoempleo (145) next: it never waits for Trabajos.com\'s 300')
+        self.assertTrue(all(len(call) <= decide.BATCH for call in model.calls))
+        self.assertLessEqual(model.most, 2, 'never more than LANES calls of one question at once')
 
 
 if __name__ == '__main__':
