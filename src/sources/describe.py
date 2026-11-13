@@ -93,8 +93,9 @@ def walled(url):
 
 
 def readable(url):
-    """Whether this posting's text may be fetched here: any web page but a sign-in site's."""
-    return str(url or '').startswith(('http://', 'https://')) and not walled(url)
+    """Whether this posting's text may be fetched here: any web page but a sign-in site's; a LinkedIn job's own page while LinkedIn's public search is on."""
+    from . import linkedin_guest
+    return str(url or '').startswith(('http://', 'https://')) and (not walled(url) or linkedin_guest.job_page(url))
 
 
 def _get(url, opener=None, accept='text/html'):
@@ -146,6 +147,10 @@ def fetch(url, client=None):
     if match:
         _ROUTE.route = 'api'
         return ats.smartrecruiters_detail(match.group(1), match.group(2))
+    from . import linkedin_guest
+    if linkedin_guest.job_page(url):   # at LinkedIn's pace, in turn with its search pages, ≤ 10 a run (spec 2026-11-13-linkedin-guest-search-design.md)
+        _ROUTE.route = 'main'
+        return linkedin_guest.description(url)
     host = urlsplit(url or '').hostname or ''
     if host.endswith('jobs.ch'):
         page = (client or boards.Client()).get(url)
@@ -209,6 +214,11 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             pool_served.count('site_route')
         else:
             todo.append((job_id, url))
+    from . import linkedin_guest
+    # Why (spec 2026-11-13-linkedin-guest-search-design.md; owner, 13 Nov 2026: "Only kept jobs, ≤10"): LinkedIn's pages take turns 3-7 s apart, so they go last (the other
+    # sites' threads are not held behind them) and only as many as the run may still read; the others stay for the scoring queue after the search.
+    linkedin = [item for item in todo if linkedin_guest.job_page(item[1])]
+    todo = [item for item in todo if item not in linkedin] + linkedin[:linkedin_guest.job_pages_left()]
 
     def one(item):
         _ROUTE.route = None
@@ -221,26 +231,21 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             if isinstance(error, Refused) and fetcher is fetch:
                 read_routes.record(item[1], 'refused', now)
             return item, '', error
-    filled = failed = gone = empty = 0
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(slots.carry(one), todo))
+    seen = Counter()
     for (job_id, url), text, error in results:
-        if isinstance(error, host_pace.Busy):
-            waiting_at[host(url)] += 1   # tried again in a later run, at the pace the site asked for
-        elif isinstance(error, Refused):
-            refused_at[host(url)] += 1
+        kind = _outcome(error, text)
+        seen[kind] += 1
+        if kind in ('waiting', 'refused', 'empty'):   # waiting: tried again at the pace the site asked; empty: a page drawn by scripts, a browser shows it
+            {'waiting': waiting_at, 'refused': refused_at, 'empty': scripted_at}[kind][host(url)] += 1
+        if kind == 'refused':
             refused_before[host(url)] = {'at': now.isoformat(), 'why': str(error)}
-        elif getattr(error, 'code', None) in (404, 410):   # the posting was taken down: the job expired, not unscored
+        elif kind == 'gone':   # the posting was taken down: the job expired, not unscored
             db.execute("UPDATE jobs SET state='expired' WHERE id=?", (job_id,))
-            gone += 1
-        elif error is not None:
-            failed += 1   # tried again next run
-        elif text:
+        elif kind == 'filled':
             db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
-            filled += 1
-        else:
-            empty += 1
-            scripted_at[host(url)] += 1   # a page that draws its text with scripts: a browser shows it
+    filled, gone, failed, empty, later = (seen[kind] for kind in ('filled', 'gone', 'failed', 'empty', 'later'))
     db.commit()
     if fetcher is fetch:
         _keep_refused(refused_before)
@@ -248,10 +253,28 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     return (f'Descriptions: read {filled} of {len(rows)} missing job texts' + (f', {gone} posting(s) taken down (closed)' if gone else '')
             + (f', {empty} drawn only in a browser ({hosts(scripted_at)})' if empty else '') + (f', {failed} failed (tried again next time)' if failed else '')
             + (f', {sum(waiting_at.values())} waiting: {hosts(waiting_at)} asked us to slow down (tried again later)' if waiting_at else '')
+            + (f', {later} LinkedIn page(s) wait for a later run' if later else '')
             + (f', {sum(refused_at.values())} refused by {hosts(refused_at)}' if refused_at else '')
             + (f', {sum(walled_at.values())} on sign-in sites ({hosts(walled_at)})' if walled_at else '')
             + (f', {sum(closed_at.values())} not asked: other installs found {hosts(closed_at)} closed to a plain read' if closed_at else '')
             + (' → readable in your browser (Actions, Find jobs using your browser)' if refused_at or walled_at or closed_at or empty else ''))
+
+
+def _outcome(error, text):
+    """How one posting's read ended: waiting (the site asked us to slow down), later (LinkedIn's turn in this run is over: its cut, its 10 pages or a stop),
+    refused, gone (404/410), failed (tried again next run), filled, or empty. Why (lg 1/4, 13 Nov 2026): one named step, so backfill's complexity shrinks as a reader is added."""
+    from . import linkedin_guest
+    if isinstance(error, host_pace.Busy):
+        return 'waiting'
+    if isinstance(error, linkedin_guest.Later):
+        return 'later'
+    if isinstance(error, Refused):
+        return 'refused'
+    if getattr(error, 'code', None) in (404, 410):
+        return 'gone'
+    if error is not None:
+        return 'failed'
+    return 'filled' if text else 'empty'
 
 
 def _board_of(url):

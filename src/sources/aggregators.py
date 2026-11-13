@@ -398,8 +398,11 @@ def _said(report, late):
     """The free job APIs' lane's one state: failed when some failed and none read (Why, #3802, 11 Nov 2026: also when others still wait, so a failure
     is never hidden behind a wait), else cut when one of its sources waits for the next search, else done."""
     from . import api_lane
-    own = [row for row in report['sources'] if row.get('company') not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
-    late = [name for name in late if name not in (*api_lane.NOT_HERE, boards_ahead.NAME)]
+    from . import reader_rows
+    # Why (lg 1/3, 13 Nov 2026): a row of another lane started here (LinkedIn's public search, lane linkedin_guest) is that lane's, never this lane's verdict
+    others = (*api_lane.NOT_HERE, boards_ahead.NAME, *(row.name for row in reader_rows.ROWS if row.lane not in ('free_job_apis', 'eures')))
+    own = [row for row in report['sources'] if row.get('company') not in others]
+    late = [name for name in late if name not in others]
     failed = [row for row in own if not row.get('ok')]
     if failed and len(failed) == len(own):
         waiting = f'; {len(late)} wait for the next search' if late else ''

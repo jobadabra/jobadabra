@@ -35,7 +35,7 @@ Night totals include EURES; source counts are not coverage. By-hand input `eures
 - [The press](../superpowers/specs/2026-11-07-the-press-design.md): one pipeline, budget table, ranker, fix ledger (plan [ps](../superpowers/plans/2026-11-07-the-press.md)).
 - [Collect, rank once, then spend](../superpowers/specs/2026-11-10-find-jobs-collect-rank-spend.md): a job's states and owners (plan sf).
 - [First jobs fast](../superpowers/specs/2026-10-16-first-jobs-fast.md), [search learns sources](../superpowers/specs/2026-10-18-search-learns-sources.md).
-- [Job board discovery](../superpowers/specs/2026-10-08-job-board-discovery.md), [locations, one source](../superpowers/specs/2026-10-17-locations-one-source.md), [LinkedIn headless](../superpowers/specs/2026-10-31-linkedin-headless-design.md).
+- [Job board discovery](../superpowers/specs/2026-10-08-job-board-discovery.md), [locations, one source](../superpowers/specs/2026-10-17-locations-one-source.md), [LinkedIn headless](../superpowers/specs/2026-10-31-linkedin-headless-design.md), [LinkedIn public search](../superpowers/specs/2026-11-13-linkedin-guest-search-design.md).
 
 ## Ask the sources
 ask: github runs workflow=scout status=failure

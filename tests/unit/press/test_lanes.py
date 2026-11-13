@@ -12,7 +12,7 @@ from unittest import mock
 
 from src import daily_search, first_jobs, read_methods, time_budget
 from src.ai import board_ideas
-from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, national, reader_rows
+from src.sources import aggregators, board_web, boards_ahead, boards_first, eures, feed_scan, feeds, found_boards, linkedin_guest, national, reader_rows
 from tests.unit.ai import test_daily_search_phases as phases
 from src.press import stage
 
@@ -25,7 +25,7 @@ REAL = {(board_web, 'early'): board_web.early, (eures, 'start_early'): eures.sta
         (daily_search, 'start_apis'): daily_search.start_apis}
 # Each source lane that is on in this search -> its reader's seam. boards_found waits for board_web by design (its declared need) and is not held here.
 SEAMS = {'eures': (eures, 'eures'), 'employer_sites': (feed_scan, 'scan'), 'job_boards': (found_boards, 'read'),
-         'free_job_apis': (aggregators, 'arbeitnow'), 'board_web': (board_web, 'search')}
+         'free_job_apis': (aggregators, 'arbeitnow'), 'board_web': (board_web, 'search'), 'linkedin_guest': (linkedin_guest, 'read')}
 
 
 class Lanes:
@@ -66,10 +66,10 @@ class LanesTest(phases.SearchCharacterization):
             raise RuntimeError('the API refused')
 
         then = {'eures': lambda *a, **k: [], 'employer_sites': lambda *a, **k: dict(employer), 'job_boards': jump, 'free_job_apis': refuse,
-                'board_web': lambda *a, **k: {}}
+                'board_web': lambda *a, **k: {}, 'linkedin_guest': lambda *a, **k: []}
         patches = [mock.patch.object(owner, name, real) for (owner, name), real in REAL.items()]
         patches += [mock.patch.object(owner, name, lanes.reader(lane, then[lane])) for lane, (owner, name) in SEAMS.items()]
-        patches += [mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1'}),   # EURES is a lane like any other here, behind its own gate
+        patches += [mock.patch.dict('os.environ', {'JOBADABRA_EURES': '1', 'JOBADABRA_LINKEDIN_GUEST': '1'}),   # EURES and LinkedIn's public search are lanes like any other here, each behind its own gate
                     mock.patch.object(board_ideas, 'asked_for', return_value=['site reliability boards']),
                     *[mock.patch.object(aggregators, api, side_effect=refuse) for api in ('himalayas', 'jobicy', 'jobsch')],   # every free API a stand-in: no live site
                     mock.patch.object(national, 'read', side_effect=refuse),   # the national services too (src/sources/national.py)
