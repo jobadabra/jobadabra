@@ -45,7 +45,7 @@ function card(job) {
   // its last read's mode, or "Not checked" (spec 2026-10-30-apply-triage), as the value only ("Needs you"), in one spaced chip row with "Account needed"; the reason stays in the
   // tooltip, the list and the job's page (an applied or inbound card has no apply read).
   if (parts.triage) {
-    const chips = el('div', 'board-card-chips');
+    const chips = el('div', 'chip-row');
     chips.append(triageChip(job, {detail: false}));
     const account = accountChip(readOf(job.url));
     if (account) chips.append(account);

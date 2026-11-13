@@ -36,7 +36,7 @@ before(() => {
       return tops.size;
     };
     return [...document.querySelectorAll('.board-card')].map(card => {
-      const row = card.querySelector('.board-card-chips'), chips = [...(row?.children || [])], above = row?.previousElementSibling;
+      const row = card.querySelector('.chip-row'), chips = [...(row?.children || [])], above = row?.previousElementSibling;
       const box = node => node.getBoundingClientRect();
       return {chips: chips.map(chip => ({text: chip.textContent.trim(), lines: lines(chip)})), detail: !!row?.querySelector('.chip-detail'),
         above: row && above ? Math.round(box(row).top - box(above).bottom) : null, between: chips.length > 1 ? Math.round(box(chips[1]).top - box(chips[0]).bottom) : null};
