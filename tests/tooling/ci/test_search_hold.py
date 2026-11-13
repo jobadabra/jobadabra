@@ -48,11 +48,11 @@ class SearchHoldTest(unittest.TestCase):
         self.assertIsNone(check.pending_gap(out['body'], out['title'], 'false'))   # ready and not a draft: no pending number left
 
     def test_a_loss_beyond_the_usual_difference_keeps_the_hold(self):
-        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 6, 2), p4=(20, 20, None)), ['p1', 'p4'], 1)
+        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(20, 6, 2), p4=(20, 20, None)), ['p1', 'p4'], 1)   # a spread of 2 is under the floor of 7: lost 14 is beyond it
         self.assertFalse(out['lift'])
         self.assertEqual(out['title'], TITLE)
-        self.assertIn('p1 fell 9 → 6 (usual difference 2)', out['verdict'][0])
-        self.assertIn('Moves: p1 right jobs 9 → 6', out['body'])   # the number is written either way
+        self.assertIn('p1 fell 20 → 6 (usual difference 7)', out['verdict'][0])
+        self.assertIn('Moves: p1 right jobs 20 → 6', out['body'])   # the number is written either way
 
     def test_an_unmeasured_difference_allows_seven_jobs(self):   # 13 Nov 2026, sa: 7, not 1 (run 43498213279: the same code gave 8 vs 15)
         self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 5, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])

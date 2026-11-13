@@ -28,9 +28,15 @@ class TheRow(unittest.TestCase):
         self.assertEqual(out['conclusion'], 'success')
         self.assertIn('within ±7, not a proven gain', out['title'])
 
-    def test_a_measured_spread_is_the_band_when_there_is_one(self):
-        self.assertEqual(pair_row.decide({'p3': moves(10, 8)}, ['p3'], {'p3'}, {'p3': 1}, 1, rows(p3=1))['conclusion'], 'failure')   # lost 2, spread 1
-        self.assertEqual(pair_row.decide({'p3': moves(10, 9)}, ['p3'], {'p3'}, {'p3': 1}, 1, rows(p3=1))['conclusion'], 'success')
+    def test_the_band_is_never_below_the_same_minute_noise_floor(self):
+        """Gitar on #4114: the night's across-days spread (1-2 jobs for a steady person) is not the main-vs-PR noise of one minute: run 43498213279 gave 8 vs 15 for the same code, and 13 Nov 2026's
+        c04 gave 17 / 15 / 36 on the same code in three same-minute rounds."""
+        verdict = lambda before, after, spread: pair_row.decide({'p3': moves(before, after)}, ['p3'], {'p3'}, {'p3': spread}, 1, rows(p3=1))['conclusion']   # noqa: E731
+        self.assertEqual(verdict(10, 6, 1), 'success', 'lost 4 with spread 1: inside the floor of 7')
+        self.assertEqual(verdict(10, 3, 1), 'success', 'lost 7 = the floor, not beyond it')
+        self.assertEqual(verdict(10, 2, 1), 'failure', 'positive control: lost 8 is beyond the floor')
+        self.assertEqual(verdict(30, 19, 10), 'failure', 'a measured spread above the floor still sets the band (lost 11 > 10)')
+        self.assertEqual(verdict(30, 21, 10), 'success')
 
     def test_a_gain_beyond_the_band_says_so(self):
         out = pair_row.decide({'c15': moves(5, 20)}, ['c15'], {'c15'}, {'c15': None}, 1, rows(c15=1))

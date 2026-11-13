@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-UNMEASURED_BAND = 7   # right jobs a person may lose before a pair is red, while their own spread is not measured
+BAND_FLOOR = 7   # right jobs a person may lose before a pair is red, whatever their own spread is (the same-minute noise floor, see band)
 # Why (13 Nov 2026, sa): run 43498213279 (c04 + c10, the same code both sides, the same boards) gave 8 vs 15 right jobs for c04; a 1-job band would red honest PRs and the red would mean
 # nothing. The band is the spread of the person's last 3 searches on main (the Trello middle-of-3 data) once that is stored; until then 7, or the night person's own kept spread.
 # TODO(AI): the band from the last 3 main searches of a profile, when the Trello re-measure stores them (2026-11-13)
@@ -17,8 +17,9 @@ OVERRIDE = 'A red row is not a dead end: the owner may merge by hand with the ru
 
 
 def band(spread):
-    """The right jobs one person may lose before the row is red: their own spread when it is measured (a number), else UNMEASURED_BAND."""
-    return spread if spread is not None else UNMEASURED_BAND
+    """The right jobs one person may lose before the row is red: their own spread when it is above BAND_FLOOR, else BAND_FLOOR.
+    Why (13 Nov 2026, Gitar on #4114; sa's run 43498213279 gave 8 vs 15 for the same code, tr's c04 15 / 17 / 36 in three same-minute rounds): the night's spread is across days (1-2 jobs for a steady person), not main-vs-PR noise of one minute."""
+    return max(spread, BAND_FLOOR) if spread is not None else BAND_FLOOR
 
 
 def ends(started_hm, minutes=EXPECT_MIN):

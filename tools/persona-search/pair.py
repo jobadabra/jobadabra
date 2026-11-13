@@ -216,7 +216,7 @@ def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
         tolerance = pair_row.band(m['d'])   # Why (13 Nov 2026, sa): 7 jobs while unmeasured, not 1: run 43498213279 gave 8 vs 15 for the same code (pair_row.py)
         if m['before'] - m['after'] > tolerance:
             fell.append(f"{person} fell {m['before']:g} → {m['after']:g} ("
-                        + (f"usual difference {tolerance:g})" if m['d'] is not None else f'usual difference not measured yet: {pair_row.UNMEASURED_BAND} jobs allowed)'))
+                        + (f"usual difference {tolerance:g})" if m['d'] is not None else f'usual difference not measured yet: {pair_row.BAND_FLOOR} jobs allowed)'))
     invalid = [p for p in ran if p in seen and p not in done]
     never = [p for p in ran if p not in seen]
     ours = HOLD_LABEL in labels
