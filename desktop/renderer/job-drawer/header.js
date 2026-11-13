@@ -29,7 +29,7 @@ export function drawerHeader(job, page, {at, back, expanded, on, read = null}) {
   }
   const top = el('div', 'jd-top');
   const cell = el('div', `fit-cell ${band(job.fit)}`);
-  cell.append(fitRing(job.fit, 'lg'));
+  cell.append(fitRing(job.fit, 'lg', !!job.stale && job.fit != null));
   const words = el('div', 'jd-title');
   words.append(el('h2', '', job.title), el('p', 'muted', [job.company, job.location || page?.app?.location].filter(Boolean).join(' · ')));
   const chips = el('div', 'jd-chips');

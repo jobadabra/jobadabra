@@ -30,7 +30,7 @@ const rescoreKit = base => {
         bullets: [...document.querySelectorAll('#jobs-suggestions-bullets .severity-bullet')].map(chip => chip.getAttribute('aria-label')), toggle: document.getElementById('jobs-suggestions-count').textContent};
     }, 'the old-scores row in the Jobs bar'),
     rowGone: () => !document.querySelector('#jobs-suggestions-list [data-suggestion="rescore"]'),
-    rows: () => [...document.querySelectorAll('#jobs-body .job-row .fit-cell')].map(cell => ({stale: cell.classList.contains('is-stale'), ring: cell.querySelector('.fit-ring')?.textContent.trim(), label: cell.querySelector('.fit-label')?.textContent.trim()})),
+    rows: () => [...document.querySelectorAll('#jobs-body .job-row .fit-cell')].map(cell => ({stale: cell.classList.contains('is-stale'), ring: cell.querySelector('.fit-ring')?.textContent.trim(), badge: !!cell.querySelector('.fit-ring.is-old .fit-old-badge'), label: cell.querySelector('.fit-label')?.textContent.trim() || '', tip: cell.title})),
     pressFind: () => document.getElementById('refresh').click(),
     dialogOpen: async () => base.until(() => dialog().open && {title: document.getElementById('score-first-title').textContent, lead: document.getElementById('score-first-lead').textContent,
       buttons: [...dialog().querySelectorAll('button')].map(button => button.textContent.trim())}, 'the Score first dialog'),
@@ -71,11 +71,11 @@ before(() => {
   }}).result;
 });
 
-test('after a strategy change every fit stays on its row, muted and marked "Old score"; the others look as before', live, () => {
+test('after a strategy change every fit stays on its row as a dashed ring with a refresh badge and no word; the others look as before', live, () => {
   const marked = stale.rows.filter(row => row.stale);
   assert.ok(marked.length > 0, 'no row is marked as scored with the previous strategy');
-  for (const row of marked) { assert.match(row.ring, /^\d+$/, 'the old fit number is still shown'); assert.equal(row.label, 'Old score'); }
-  assert.ok(stale.rows.some(row => !row.stale && /^\d+$/.test(row.ring)), 'a current score was marked too');
+  for (const row of marked) { assert.match(row.ring, /^\d+$/, 'the old fit number is still shown'); assert.equal(row.badge, true, 'the refresh badge marks it old'); assert.equal(row.label, '', 'no word under the ring'); assert.match(row.tip, /Re-score/, 'the tooltip says what to do'); }
+  assert.ok(stale.rows.some(row => !row.stale && !row.badge && /^\d+$/.test(row.ring)), 'a current score was marked too');
   assert.deepEqual(stale.severe, [], 'the call or the marks break the Jobs layout');
 });
 
