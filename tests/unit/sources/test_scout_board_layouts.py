@@ -35,15 +35,20 @@ def pages(shape):
     none), scattered under several folders (shape 'mixed': no one layout reads them), or listing its jobs as JSON-LD (shape 'jsonld': no layout tested)."""
     def fetch(url):
         host, path = url.split('/')[2], '/' + url.split('/', 3)[3]
+        if path.startswith('/oferta/'):   # shape 'deep': /oferta/<id>/<slug>, two folders under the prefix
+            return posting(host, path.rsplit('/', 1)[1], path.rsplit('/', 1)[0].lstrip('/'))
         if path.startswith(('/job/', '/jobs-it/', '/offer/', '/vaga/')):
             return posting(host, path.rsplit('/', 1)[1], 'vaga' if path.startswith('/vaga/') else 'job')
         if shape == 'jsonld':
             return '<html>' + ''.join(posting(host, slug).split('<body>')[0].removeprefix('<html>') for slug in SLUGS) + f'<body>{MENU}{FOOTER}</body></html>'
-        hrefs = [f'/{"vaga" if shape == "vaga" else "job"}/{slug}' for slug in SLUGS] if shape in ('one', 'vaga') else ['/job/python-developer-acme', '/jobs-it/data-engineer-globex',
+        hrefs = [f'/oferta/{100 + i}/{slug}' for i, slug in enumerate(SLUGS)] if shape == 'deep' else \
+            [f'/{"vaga" if shape == "vaga" else "job"}/{slug}' for slug in SLUGS] if shape in ('one', 'vaga') else ['/job/python-developer-acme', '/jobs-it/data-engineer-globex',
                                                                             '/offer/backend-developer-initech', '/jobs-it/x/devops-engineer-umbrella']
         return f'<html><body>{MENU}' + ''.join(f'<a href="{h}">{h.rsplit("/", 1)[1].replace("-", " ").title()}</a>' for h in hrefs) + f'{FOOTER}</body></html>'
     return fetch
 
+
+SEARCH = {'jobs_board_search_queries': ['developer'], 'role_keywords': ['developer'], 'locations': {'top_tier': ['Chisinau'], 'country_wide': [], 'abroad': []}}
 
 _READER = careers.READER
 
@@ -68,7 +73,7 @@ class DiscoveryLayoutTest(unittest.TestCase):
         def link_words(pairs, floor=None):   # the AI's verdict on each link (a job card or not), recorded
             pairs = list(pairs)
             self.asked.extend(pairs)
-            return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith(('/job', '/offer'))) for t, p in pairs}
+            return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith(('/job', '/offer', '/oferta'))) for t, p in pairs}
         for patch in (mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
                       mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], [])),
                       mock.patch('src.paths.DATA', self.folder), mock.patch('src.places.load', return_value={}),
@@ -98,12 +103,20 @@ class DiscoveryLayoutTest(unittest.TestCase):
         self.assertIn('one.example 4/4 (layout learned: links /job)', self.lines[0], 'each kept board says its layout, or why it has none (sa, 13 Nov 2026)')
         self.assertIn('mixed.example 4/4 (no layout: no one shape reads its job cards)', self.lines[0])
 
+    def test_a_board_whose_cards_sit_two_folders_deep_learns_a_layout_with_its_depth(self):
+        """Owner, 13 Nov 2026: "Yes, add depth (Recommended)": three Lisbon boards link each job /oferta/<id>/<slug>, so no one-level layout fitted."""
+        kept = self.run_pass({'deep.example': 'deep'})
+        self.assertEqual([fact.get('layout') for fact in kept], [{'kind': 'links', 'prefix': '/oferta', 'depth': 2}])
+        self.assertIn('deep.example 4/4 (layout learned: links /oferta, 2 folders deep)', self.lines[0])
+        self.asked.clear()
+        jobs, _, _ = found_boards.read_board({**board('deep.example'), 'layout': kept[0]['layout']}, SEARCH, pages('deep'))
+        self.assertEqual((self.asked, len(jobs)), ([], 4), 'an install replays it with no link question')
+
     def test_the_published_layout_reads_the_board_with_no_link_question(self):
         """The whole loop: what discovery publishes, served to an install (jobadabra-web api/employers.js boardFactsOf keeps it), costs no question."""
         layout = next(fact['layout'] for fact in self.run_pass({'one.example': 'one'}))
         self.asked.clear()
-        jobs, _, _ = found_boards.read_board({**board('one.example'), 'layout': layout}, {'jobs_board_search_queries': ['developer'], 'role_keywords': ['developer'],
-                                                                                         'locations': {'top_tier': ['Chisinau'], 'country_wide': [], 'abroad': []}}, pages('one'))
+        jobs, _, _ = found_boards.read_board({**board('one.example'), 'layout': layout}, SEARCH, pages('one'))
         self.assertEqual((self.asked, len(jobs)), ([], 4))
 
     def test_a_kept_layout_that_still_holds_is_kept_and_the_read_asks_no_link_question(self):
