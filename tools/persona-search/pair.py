@@ -226,7 +226,7 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
         row = json.loads(found.read_text(encoding='utf-8'))
         person = found.parent.name.split('--')[0]
         people_rows.setdefault(person, {'main': [], 'pr': []})[row['side']].append(row)
-    lines += ['<!-- search-pair -->', f'### Before/after: main `{main_sha[:8]}` vs #{pr} `{pr_sha[:8]}`, same minute', '',
+    lines += ['<!-- search-pair -->', f'### Before/after: main `{main_sha[:8]}` (the commit the PR sits on) vs #{pr} `{pr_sha[:8]}`, same minute', '',
               '| Person | Right jobs main → PR | Found | First relevant (s) | First 2 board words (main · PR) | Broker wait p50/p90 (s) | Valid |',
               '|---|---|---|---|---|---|---|']
     moves = []
