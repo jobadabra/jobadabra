@@ -61,12 +61,11 @@ def profile_pairs(path=PROFILES, each=None, db=None):
 
 def searched_pairs(facts):
     """Counter {(country, family): installs} from the pool's board facts (src/sources/visits_jobpages.py pool_facts): the cells installs gave. A cell the Scout
-    marked (`measured`) is the Scout's own and is no demand.
-    (Plan PR 3/4 `_cells` will carry the Scout's `right` count: it adds the `right` test here then; until then only `measured` shows. Gitar on #4035: no clause for a key that never arrives.)"""
+    marked (`measured`) or counted (`right`, a number even when it is 0 or 1) is the Scout's own and is no demand."""
     out = Counter()
     for board in ((facts or {}).get('board') or {}).values():
         for cell in board.get('relevant') or []:
-            if cell.get('measured') or cell.get('country') not in scout_cells.EUROPE or cell.get('family') not in pool_tags.FAMILIES:
+            if cell.get('measured') or 'right' in cell or cell.get('country') not in scout_cells.EUROPE or cell.get('family') not in pool_tags.FAMILIES:
                 continue
             out[(cell['country'], cell['family'])] += cell['installs']
     return out

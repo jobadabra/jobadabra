@@ -100,6 +100,12 @@ class Order(unittest.TestCase):
         self.assertEqual(priority.searched_pairs(facts), Counter({('de', 'data_ai'): 5}))
         self.assertEqual(priority.searched_pairs(None), Counter())
 
+    def test_a_cell_the_scout_counted_is_no_demand_even_when_it_counted_none(self):
+        """13 Nov 2026 (eo, plan 3/4): the site serves `right` (0 and 1 included) on a cell the Scout counted; `measured` is only sent from 3 on, so a count of 0 or 1 showed as demand."""
+        facts = {'board': {'a.example': {'relevant': [self.cell('teaching', 'es', 1, right=0), self.cell('teaching', 'es', 1, right=1), self.cell('teaching', 'es', 1, right=19, measured=True),
+                                                     self.cell('teaching', 'pt', 2)]}}}
+        self.assertEqual(priority.searched_pairs(facts), Counter({('pt', 'teaching'): 2}))
+
     def test_the_order_is_the_labs_cells_then_the_profiles_then_installs_pairs_then_every_country_for_the_most_searched_field(self):
         demand = Counter({('pt', 'graphic_design'): 4, ('de', 'data_ai'): 9, ('es', 'data_ai'): 9})
         got = priority.order(named=[('sk', 'nursing_care')], profiles=[('es', 'electrical_mechanical'), ('de', 'data_ai')], demand=demand)
