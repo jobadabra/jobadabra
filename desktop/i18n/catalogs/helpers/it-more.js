@@ -1,5 +1,11 @@
 // Other app-owned helper copy; identifiers, user data and workflow instructions remain unchanged.
 export const messages = {
+  "deviceOnlyLead": "Always on non li usa mai. Restano su questo computer:",
+  "deviceOnlyPill": "Solo questo computer",
+  "deviceOnlyLinkedin": "LinkedIn con il tuo accesso",
+  "deviceOnlyLinkedinLine": "Per la tua sicurezza, il tuo accesso a LinkedIn non lascia mai questo computer: per ora le offerte LinkedIn vengono lette solo qui, mentre Jobadabra è aperto.",
+  "deviceOnlyGoogle": "Gmail e Calendar",
+  "deviceOnlyGoogleLine": "Per la tua sicurezza, il tuo accesso Google non lascia mai questo computer: per ora posta e calendario vengono controllati solo qui, mentre Jobadabra è aperto.",
   "standardAutomation": "Automazione standard",
   "bestQuality": "Qualità migliore",
   "visibleFilling": "Compila in un browser visibile; controlli e invii tu.",
