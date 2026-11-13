@@ -73,12 +73,30 @@ CI rounds (Night search, `search-pair.yml`) stay without LinkedIn: a GitHub addr
 3. "Only kept jobs, ≤10 (Recommended)": job pages only for jobs the AI kept, at most 10 inside the search; the rest by the scoring queue.
 4. "Shared 1-day pause (Recommended)", option text: "Both LinkedIn reads pause a day. Consequence: a logged-out throttle would then switch off a person's signed-in LinkedIn for a day."
 
+## Caps (Always on; owner, 13 Nov 2026: "And let's leave only the linkedin public/guest search being Always on..." · "But with some limits/restrications/caps to avoid the IP blocking")
+Every Always on user shares the cloud runner's few addresses, so LinkedIn sees one heavy reader, not many people. Each cap has one owner, is a named constant with a Why line, and rises only with a measured reason. The guest read is the ONLY LinkedIn read in Always on; the signed-in read and Gmail/Calendar stay disabled rows ("credentials stay on device").
+
+| Cap | Always on (shared addresses) | Mac/Windows (the person's own address) | Owner |
+|---|---|---|---|
+| One request at a time | across ALL users: one lease at the site, 3-7 s random gap after the last request began | per process (`linkedin_guest.PACE`) | site lease (D1 row or Durable Object); the runner asks before each GET |
+| Searches | ≤ 2 searches × 3 pages a person a day (`CLOUD_SEARCHES_A_DAY`, `PAGES`) | ≤ 3 × 3 a press, each search ≤ once per 6 h (`aggregators.SPACING_HOURS`) | site counter / engine |
+| Job pages | ≤ 5 a person a day, kept jobs only (`CLOUD_JOB_PAGES_A_DAY`) | ≤ 10 a process (`JOB_PAGES`) | site counter / engine |
+| All requests | ≤ 200 a day for all users together (`CLOUD_REQUESTS_A_DAY`), start value | none beyond the above | site counter |
+| Shared cache | the same keywords + place + page within 6 h (`CACHE_HOURS`) is read once and served to every user who asks; a job page within 24 h | none (one person) | site cache |
+| Stop | the first 429/999, sign-in wall, check page or unexpected page stops ALL guest reads for 24 h (`STOP_HOURS`), logged, shown in Admin; no retry, no proxy, ever | the run stops; a 429/999 pauses both LinkedIn reads a day on that computer | site stop row / app `pausedUntil` |
+
+How a cloud read goes: the runner's engine (never a Cloudflare Worker: its requests carry a CF-Worker header naming our domain) asks the site for a turn with the run token. The site answers `cached` (the cards, no request), `wait <s>` (another user holds the lease), `go` (a lease for one GET) or `no` (a cap reached or the 24 h stop; the reason is said once in the run's log). After the GET the runner reports what LinkedIn answered (status, cards, ms) and the parsed cards; the site keeps them for `CACHE_HOURS` and writes one row per answer (the trial's evidence; an Admin chart of answers per day). The engine module is the Mac's; only `_get`'s turn comes from the site (`JOBADABRA_LINKEDIN_GUEST=cloud`, `JOBADABRA_LINKEDIN_GUEST_SITE`).
+Numbers at the start: 200 requests a day ≈ 18 people at 2 × 3 search pages + 5 job pages, more as the cache serves shared searches. The benchmark round of 13 Nov 2026 (run 43357080026) read LinkedIn's guest search from GitHub's servers without a block (180 of at most 200 jobs); nothing is known yet about a day of steady reads from one address, which is what the trial measures.
+Open for the owner with the trial: the shared cache keeps LinkedIn's public job cards on our site for 6 h (the cards anyone sees logged out), served only to Always on runs, never to the index, the pack or the benchmark.
+Tests (site PR first, then this repo): a fake LinkedIn that answers 429 after N requests: the global stop holds for every user, no request after it for 24 h; two users asking the same search within 6 h: the second gets the cache and LinkedIn sees one request; two runners at once never overlap and keep the gap; each daily cap ends at its number.
+Rollout: the owner's install only (trial), then everyone, only after about a week of trial with no 429/999/wall and the owner's yes on the answers chart.
+
 ## Plan (4 PRs)
 1/4 `[lg] 1/4 Find jobs can read LinkedIn's public job search` — engine lane, parser, stop rules, row, describe route (≤ 10 job pages), CLAUDE.md sentence, fixtures, tests; off unless the flag (no user change yet; the measure runs with the flag by hand).
 2/4 `[lg] 2/4 Every Find jobs reads LinkedIn's public job search` — the app sets the flag, one read a press, shared pause, activity lines, guard; the before/after Mac search.
 3/4 `[lg] 3/4 Settings says where LinkedIn is read` — the Automations note (after the owner's yes on the preview); it is also the LinkedIn part of 6/6 "Always On says what it does not read" of spec 2026-11-11-always-on-parity-design.md (one change, ticked there).
 
-4/4 `[lg] 4/4 Always on tries LinkedIn's public search for the owner` — site PR first (jobadabra-web: the owner-only gate in the run payload, the answers kept), then `src/hosted_run.py` sets the flag only when the payload says so; a daily cap of a few pages; the answers table the owner reads after a week.
+4/4 `[lg] 4/4 Always on tries LinkedIn's public search for the owner` — site PR first (jobadabra-web: the owner-only gate in the run payload, the answers kept), then `src/hosted_run.py` sets the flag only when the payload says so; the Caps above (lease, daily caps, shared cache, 24 h stop) at the site; the answers chart the owner reads after a week.
 
 ## Follow-ups (not in these PRs)
 - Remove the LinkedIn cloud probe code (`desktop/lib/linkedin-cloud-probe.js`, its IPC, web #547's route): it sends a session to the site, which the owner's 13 Nov rule ends; a separate small cleanup PR, proposed to the coordinator.
@@ -89,4 +107,6 @@ CI rounds (Night search, `search-pair.yml`) stay without LinkedIn: a GitHub addr
 - [ ] PR 1/4 engine lane (proof: tests/unit/sources/test_linkedin_guest.py)
 - [ ] PR 2/4 app turns it on + shared stop + measure
 - [ ] PR 3/4 Automations note
-- [ ] PR 4/4 Always on trial, owner's install only (site PR first)
+- [ ] Caps numbers: owner's yes (proposed above)
+- [ ] PR 4/4 Always on trial with the Caps, owner's install only (site PR first)
+- [ ] Trial read after about a week: no 429/999/wall, then the owner's yes, then the Always on guest read for everyone
