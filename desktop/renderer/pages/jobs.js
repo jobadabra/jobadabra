@@ -158,8 +158,8 @@ function reloadQuietly() {
 const withoutProfileVerdict = ({profile_empty, ...rest}) => rest;
 export function showJobsData(data) {
   jobsState.lastJobsData = data;
-  keepStored(data.jobs);   // each row's stored apply check, so a restart keeps "Needs you" and "Account needed" (lib/jobs-handlers.js)
   renderFindCard();   // its count decides "empty" (no jobs yet)
+  keepStored(data.jobs);   // each row's stored apply check, so a restart keeps "Needs you" and "Account needed" (lib/jobs-handlers.js)
   // "Your search changed" until a refresh has finished: the settings as they are now (a refresh that just ended set lastSearchAt).
   wireSearchChanged();
   window.pilot.state().then(state => { shared.state = state; showSearchChanged(state.settings); }).catch(() => {});
