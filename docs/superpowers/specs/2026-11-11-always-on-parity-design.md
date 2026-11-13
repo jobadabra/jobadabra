@@ -51,7 +51,7 @@ Verdict: **approved to build all six** (owner, 11 Nov 2026, asked via AskUserQue
 
 ## Progress
 - [ ] Sketch and the owner's yes (sketch https://claude.ai/artifact/TdRGmaJvmB8oRbFXhs8zUs; yes 11 Nov 2026)
-- [x] 1/6 LinkedIn cloud probe: removed, never run; credentials stay on device (owner, 13 Nov 2026: "ok. Let's make it this way. lets' keep Linkedin and Google sessions/credentials windows/mac only"); its code is removed: web #624 (the site refuses the `linkedin` task; 0 such batches were ever stored) and #3999 (the IPC, `ready-site.js` linkedinSend/linkedinRun, the cloud runner's `linkedin` task). The section below is history
+- [x] 1/6 LinkedIn cloud probe: removed, never run; credentials stay on device (proof: desktop/ready-fill/night.mjs) (owner, 13 Nov 2026: "ok. Let's make it this way. lets' keep Linkedin and Google sessions/credentials windows/mac only"); its code is removed: web #624 (the site refuses the `linkedin` task; 0 such batches were ever stored) and #3999 (the IPC, `ready-site.js` linkedinSend/linkedinRun, the cloud runner's `linkedin` task). The section below is history
 - [x] 2/6 Settings parity (How often hours reach the cloud schedule; finder lane reported missing; the card's wording is 6/6) (proof: desktop/test/unit/main/hosted-hours.test.js)
 - [ ] 3/6 Web search in the cloud (cost shown first)
 - [ ] 4/6 EURES, Adzuna, alert e-mails (a design block each; EURES done: hosted_run.environment sets JOBADABRA_EURES=1; Adzuna and alert e-mails wait for the owner's design yes; alert e-mails in the cloud cannot use Gmail tokens server-side: Google sign-ins stay on the person's computer, owner 13 Nov 2026)
