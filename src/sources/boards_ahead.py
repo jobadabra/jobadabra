@@ -28,11 +28,10 @@ class Ahead:
         self.shown = False
 
     def wait(self, lane=None, hand=None):
-        """Until the read ends (inside the side-by-side scope, so its answers join the shared ones). lane: a boards_first.Beside whose groups landing meanwhile are handed to
-        `hand` by this thread, the one that owns the job cache: it wakes on the lane's `arrived` or on the read's end, whichever comes first, and keeps what is there.
-        Design (13 Nov 2026, eo + sa; c04 pair run 43517140431): the job-cache thread has four places it waits (the first-jobs slice's hub, each employer site, this wait, the
-        gather's end) and the lane's group reaches it in each one, by that wait's own wake-up: an employer stage that ends first no longer leaves the lane's groups unkept until the
-        boards end (the scorer beside the search saw none of them for 52 s)."""
+        """Until the read ends (inside the side-by-side scope, so its answers join the shared ones). lane: a boards_first.Beside; `hand()` keeps its groups, in this thread, the
+        one that owns the job cache, whenever one lands (lane.arrived) or the read ends.
+        Why (13 Nov 2026, eo + sa, c04 pair run 43517140431): an employer stage that ended first left the lane's groups unkept until the boards ended (52 s), after the scorer beside
+        the search had stopped; the thread waits on that event, never on a clock, and each of its other waits (slice, employer site, gather's end) hands the lane over by its own."""
         if lane is None:
             wait_for([self.future])
             return
