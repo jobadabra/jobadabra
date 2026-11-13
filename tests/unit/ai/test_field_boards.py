@@ -51,7 +51,7 @@ class FieldBoards(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def test_the_field_s_boards_are_asked_once_for_every_place_and_follow_the_country_s_first_three(self):
+    def test_the_field_s_boards_are_asked_once_for_every_place_and_follow_the_country_s_first_six(self):
         client = Client()
         found = board_ideas.ideas(EUROPE, client)
         field_calls = [kw for kw in client.asked if kw['system'][0]['text'] == board_ideas.FIELD_SYSTEM]
@@ -61,10 +61,12 @@ class FieldBoards(unittest.TestCase):
                          'every country of the region at once, the roles and the kind of work; never the CV')
         hosts = [board['host'] for board in found]
         country = [host for host in hosts if host.startswith('general')]
-        self.assertEqual(hosts[:6], [*country[:3], 'crew0.example', 'crew1.example', 'crew2.example'],
-                         "the first six a search reads at once: the countries' first three boards, then the field's first three")
-        self.assertEqual(hosts[6:10], [*country[3:6], 'crew-careers.example'],
-                         "then three and three again: the field's last board is not pushed behind every general board")
+        self.assertEqual(hosts[:6], country[:6], "the first six a search reads at once are the countries' boards when they have six")
+        self.assertEqual(hosts[6:12], ['crew0.example', 'crew1.example', 'crew2.example', *country[6:9]],
+                         "then three and three, the field's first: a pilot reads the field's boards from the seventh place on")
+        self.assertEqual(board_ideas._in_turn(['c1', 'c2'], ['f1', 'f2', 'f3', 'f4', 'f5']), ['c1', 'c2', 'f1', 'f2', 'f3', 'f4', 'f5'],
+                         "a country with two boards: the field's take the places it leaves")
+        self.assertEqual(board_ideas._in_turn([], ['f1']), ['f1'])
         self.assertEqual({board['source_kind'] for board in found if board['host'].startswith('crew')}, {'sector'}, 'each is a board of the field')
         self.assertNotIn('every-job.example', hosts, 'one the AI marked general, with no keyword search page: not read')
         self.assertEqual(len(found), board_ideas.MAX_BOARDS * 2)
