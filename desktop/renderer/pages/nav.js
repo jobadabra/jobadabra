@@ -39,6 +39,7 @@ import {loadSettings, profileTab} from './profile.js';
 import {openSession, renderSessionPage} from './session-log.js';
 import {bestSession, renderDock, sessionList} from './sessions.js';
 import {openSetting, settingsPage, showServicesNow} from './settings.js';
+import {drawerActions} from '../job-drawer/drawer-actions.js';
 import {exportState} from './jobs-export.js';
 import {ENGINE_CHOICES} from '../ai-engine-view.js';
 import {openWaitlist} from './plan-waitlist.js';
@@ -62,6 +63,7 @@ import {setFilters} from './jobs-filter-menu.js';
 // The page (and Settings section) open now, kept for a reload (⌘R): the app comes back where it was.
 // sessionStorage: survives a reload of this window, not a restart of the app (that opens Focus as before).
 import {remembered} from '../view-memory.js';
+drawerActions.openCredentials = () => openSetting('credentials');   // the drawer's Account / Credentials → Settings → Credentials (job-drawer/drawer-actions.js: the drawer imports no page)
 export {remembered} from '../view-memory.js';
 // Back / forward (⌘← ⌘→, ⌘[ ⌘], the mouse's side buttons): every screen opened through here, in order, and the
 // Recent activity panel opened over one (pages/activity.js tells us through panelOpened / panelClosed).

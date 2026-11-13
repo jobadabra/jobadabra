@@ -8,6 +8,7 @@ import {ai} from '../ai-name.js';
 import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {readOf, triageChip} from './jobs-triage.js';
+import {readinessItem} from './jobs-readiness-menu.js';
 import {accountChip} from '../account-chip.js';
 import {columnOf} from '../jobs-board-rules.js';
 import {isInbound} from '../origin.js';
@@ -263,6 +264,7 @@ export function renderJobs() {
     };
     menu.push({icon: 'file', label: t('pagesJobs.openJobPage'), run: () => openJobPanel(job),
       title: t('pagesJobsHelp.jobPageHelp')});
+    if (!isInbound(job)) menu.push(readinessItem(job, openJobPanel));
     if (job.notion_url) menu.push({icon: job.kit ? 'file-text' : 'layers', label: t('pagesCommon.openNotion'), run: event => window.pilot.openNotion(job.notion_url, event.metaKey),
       title: t('pagesJobsHelp.jobNotion')});   // about Notion
     menu.push({icon: 'external', label: isInbound(job) ? t('pagesJobs.openMessage') : t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? t('pagesJobsHelp.messageOrigin') : t('pagesJobs.jobPosting')});
