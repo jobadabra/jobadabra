@@ -55,6 +55,7 @@ def profile_pairs(path=PROFILES, each=None, db=None):
     pairs = list(dict.fromkeys((country, family) for country, title in counted for family in families.get(title, []) if family in pool_tags.FAMILIES))
     if db is not None and not unanswered:
         scout_cells._set(db, KEY, {'from': [list(item) for item in counted], 'pairs': pairs})
+        db.commit()   # the lane plan (src/scout_board_lanes.py plan) closes its connection after this: an uncommitted answer would be asked again by every process (Gitar on #4035)
     return pairs
 
 

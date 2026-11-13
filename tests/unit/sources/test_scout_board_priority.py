@@ -64,6 +64,18 @@ class Profiles(unittest.TestCase):
         self.write(person('c04', 'Electrician', 'Spain'))
         self.assertEqual(priority.profile_pairs(self.path, families, db), [('es', 'electrical_mechanical')], 'other profiles: derived again')
 
+    def test_the_kept_pairs_survive_the_connection_closing_as_the_lane_plan_closes_it(self):
+        del CALLS[:]
+        self.write(person('c04', 'Electrician', 'Spain'))
+        database = self.folder / 'memory.sqlite'
+        for _ in range(2):   # two processes in turn: the plan, then a lane's pass
+            db = sqlite3.connect(database)
+            try:
+                self.assertEqual(priority.profile_pairs(self.path, families, db), [('es', 'electrical_mechanical')])
+            finally:
+                db.close()   # closed without a commit of its own, as plan() does
+        self.assertEqual(len(CALLS), 1, 'the second process read the kept answer: the AI was asked once')
+
     def test_a_title_the_ai_left_unanswered_is_not_kept_as_no_family(self):
         db = sqlite3.connect(':memory:')
         self.write(person('c04', 'Electrician', 'Spain'), person('b04', 'Data Analyst', 'Germany'))
