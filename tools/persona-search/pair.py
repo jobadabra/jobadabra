@@ -29,11 +29,10 @@ MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatc
 # since one draft a side cannot tell the change from the draft's own luck (13 Nov 2026: Sofia's board words were English in one draft and Bulgarian in the next, same code).
 DRAFT_PRODUCERS = re.compile(r'^desktop/lib/strategy(-draft[^/]*)?\.js$')
 BROKER = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/health'
-# Why (13 Nov 2026, as-ai-startup-34's 15 s log of /health, replayed): starvation = waiting > 0 at active 16 held over a minute; the clean pair of 00:44 ran at active 7-15.
-# Admit when 8 readings 15 s apart all have nothing waiting and their median active leaves FREE_SLOTS free: 10 of 16 today (the clean run of 00:44 ran at 7-15; 8 would
-# have held it). The cap is /health's queue.slots once the broker reports it (as-ai-startup-34, 13 Nov 2026: 16 -> 24 slots), 16 until then.
-READINGS, EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 8, 15, 6, 16
-SETTLE_S = 240   # another pair admitted this recently has not shown its load in /health yet: wait
+# Why (13 Nov 2026, owner via sa: "I jsut want a simple mechanism" · "when there is room" · "use it"; he refused a reserved share): ONE /health reading; a pair starts when
+# nothing waits and active leaves FREE_SLOTS of the cap free, else it reads again EVERY_S later. The 8-reading window, the settle time after another pair and "older pair
+# first" are gone: none had a measured reason, and a starved side is still caught after the run (VALID_P90_MS) and run once more (the hold, settle()).
+EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 15, 6, 16
 TURN_MINUTES = 55
 # Why (13 Nov 2026, sa's measure on 24 slots: 10 app-tier searches at once ran valid, wait p90 7.7-10.1 s; a night is one press at a time): a night or a profile round no
 # longer holds a pair (#3946's pair sat 58 min behind a night); /health's room and the per-side p90 (VALID_P90_MS) judge the load. A press tape still holds it: a recording
@@ -71,22 +70,24 @@ def people(given, changed):
 def health(read=None):
     """(active, waiting, slots) from the broker's public /health `queue` (waiting summed over its lanes; slots = its cap, SLOTS_FALLBACK before it reports one); None when unreadable."""
     try:
-        data = read() if read else json.loads(urllib.request.urlopen(BROKER, timeout=20).read())
+        # Why (13 Nov 2026, #3946's pair waited 55 min on an idle broker): Cloudflare refuses urllib's own "Python-urllib" agent (403, error 1010), so every reading was None;
+        #   the honest name the other tools send (tools/e2e_bisect.py) reads it.
+        data = read() if read else json.loads(urllib.request.urlopen(urllib.request.Request(BROKER, headers={'User-Agent': 'jobadabra-ci'}), timeout=20).read())
         queue = data['queue']
         return int(queue['active']), sum(int(v) for v in (queue.get('waiting') or {}).values()), int(queue.get('slots') or SLOTS_FALLBACK)
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
 
-def room(readings):
-    """(ok, why) for one window of /health readings: all read, nothing waiting, median active leaving at least FREE_SLOTS of the cap free."""
-    if len(readings) < READINGS or any(r is None for r in readings):
-        return False, 'the broker could not be read on every reading'
-    if any(waiting for _, waiting, _ in readings):
-        return False, f'calls were waiting at the broker ({max(w for _, w, _ in readings)} at most)'
-    middle, slots = statistics.median(active for active, _, _ in readings), min(s for _, _, s in readings)
+def room(reading):
+    """(ok, why) for one /health reading: read, nothing waiting, and active leaving at least FREE_SLOTS of the cap free."""
+    if reading is None:
+        return False, 'the broker could not be read'
+    active, waiting, slots = reading
+    if waiting:
+        return False, f'{waiting} calls waiting at the broker'
     line = slots - FREE_SLOTS
-    return (True, f'nothing waiting, median {middle:g} of {slots} slots busy') if middle <= line else (False, f'median {middle:g} of {slots} slots busy (line {line})')
+    return (True, f'nothing waiting, {active} of {slots} slots busy') if active <= line else (False, f'{active} of {slots} slots busy (line {line})')
 
 
 def _gh(*args):
@@ -95,8 +96,7 @@ def _gh(*args):
 
 
 def held(me=None):
-    """What holds the broker for a pair now: a holder workflow queued or running, an older pair still waiting for its turn, or another pair admitted under SETTLE_S
-    ago. Unreadable = held."""
+    """The holder workflows queued or running now (a press tape: a recording keeps the broker's pace). Unreadable = held."""
     out = []
     for workflow in HOLDERS:
         try:
@@ -104,48 +104,22 @@ def held(me=None):
                 out.append(workflow)
         except (subprocess.CalledProcessError, OSError, ValueError, subprocess.TimeoutExpired):
             out.append(f'{workflow} (unreadable)')
-    try:
-        repo = os.environ.get('GITHUB_REPOSITORY', '')
-        for run in _gh('run', 'list', '--workflow', 'search-pair.yml', '--limit', '20', '--json', 'databaseId,status'):
-            if run['status'] != 'in_progress' or str(run['databaseId']) == str(me):
-                continue
-            for job in _gh('api', f'repos/{repo}/actions/runs/{run["databaseId"]}/jobs', '--jq', '.jobs'):
-                # Why (Gitar on #3957): pairs go in run order, so two turns never admit in the same window: an older run still waiting goes first ...
-                if job['name'].startswith('Wait for room') and job.get('status') == 'in_progress' and me and int(run['databaseId']) < int(me):
-                    out.append(f'pair run {run["databaseId"]} is ahead in line')
-                    break
-                # ... and a pair whose searches started, or whose turn ended, under SETTLE_S ago has not shown its load in /health yet
-                stamp = job.get('started_at') if job['name'].startswith('Pair') else job.get('completed_at') if job['name'].startswith('Wait for room') else None
-                if stamp:
-                    age = (datetime.now(timezone.utc) - datetime.fromisoformat(stamp.replace('Z', '+00:00'))).total_seconds()
-                    if age < SETTLE_S:
-                        out.append(f'pair run {run["databaseId"]} admitted {age:.0f} s ago')
-                        break
-    except (subprocess.CalledProcessError, OSError, ValueError, subprocess.TimeoutExpired):
-        out.append('search-pair.yml (unreadable)')
     return out
 
 
 def turn(now=datetime.now, sleep=time.sleep, read=None, holders=held):
-    """Wait for room (exit 0) or give up after TURN_MINUTES (exit 1); one line per window."""
-    end = time.monotonic() + TURN_MINUTES * 60
+    """Wait for room (exit 0) or give up after TURN_MINUTES (exit 1): one /health reading every EVERY_S, one line when the answer changes."""
+    end, said = time.monotonic() + TURN_MINUTES * 60, ''
     while time.monotonic() < end:
-        clock = now(timezone.utc)
         busy = holders(os.environ.get('GITHUB_RUN_ID'))
-        if busy:
-            print(f'pair: waiting {clock:%H:%M:%S}: the broker is held by {", ".join(busy)}', flush=True)
-            sleep(60)
-            continue
-        readings = []
-        for k in range(READINGS):
-            readings.append(health(read))
-            if k < READINGS - 1:
-                sleep(EVERY_S)
-        ok, why = room(readings)
-        print(f'pair: {"admitted" if ok else "waiting"} {now(timezone.utc):%H:%M:%S}: {why}', flush=True)
+        ok, why = (False, f'the broker is held by {", ".join(busy)}') if busy else room(health(read))
+        if ok or why != said:
+            print(f'pair: {"admitted" if ok else "waiting"} {now(timezone.utc):%H:%M:%S}: {why}', flush=True)
+            said = why
         if ok:
             return 0
-    print(f'pair: not started: no room at the broker in {TURN_MINUTES} min; start it again later')
+        sleep(EVERY_S)
+    print(f'pair: not started: no room at the broker in {TURN_MINUTES} min (last: {said}); start it again later')
     return 1
 
 
