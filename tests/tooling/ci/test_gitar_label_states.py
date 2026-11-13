@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def node(expr):
     code = f"import('{(ROOT / 'tools' / 'gitar-label.mjs').as_posix()}').then(m => console.log(JSON.stringify({expr})))"
-    return json.loads(subprocess.run(['node', '-e', code], capture_output=True, text=True, check=True, timeout=30).stdout)
+    return json.loads(subprocess.run(['node', '-e', code], capture_output=True, text=True, check=True, timeout=30).stdout.strip().splitlines()[-1])   # the answer is the last line: syncOnce logs its own
 
 
 @unittest.skipUnless(shutil.which('node'), 'needs node')
@@ -101,6 +101,65 @@ class GitarLabelStatesTest(unittest.TestCase):
         self.assertFalse(read([{'app': {'slug': 'github-actions', 'name': 'gitar-label'}, 'latest_check_runs_count': 4}]))
         self.assertFalse(read([{'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 0}]))
         self.assertTrue(read([{'app': {'slug': 'github-actions'}, 'latest_check_runs_count': 90}, {'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 1}]))
+
+    def test_a_red_verdict_of_an_older_push_stays_visible_until_the_new_push_is_judged(self):
+        """13 Nov 2026, owner ("Keep red visible"), web #635: the fix push read "not started" while Gitar's red verdict was what he was reading; Gitar had locked the PR, so nobody could ask."""
+        head = "headTime: '2026-11-13T18:31:11Z', verdictTime: '2026-11-13T18:29:06Z', gitarOnHead: false"
+        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'changes', {head}}})"), ['Gitar: changes requested · not re-reviewed'])
+        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'changes', {head.replace('false', 'true')}}})"), ['Gitar: reviewing'], 'a review under way is what the label says')
+        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'approved', {head}}})"), ['Gitar: not started'], 'an old approval never stays green')
+        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'suggestions', {head}}})"), ['Gitar: not started'])
+
+
+# 13 Nov 2026, owner: "the PR got approved by gitar, but PR lable never changed" (jobadabra-benchmarks #38; jobadabra #4000 the same day). Gitar approved by only EDITING its comment, which starts no
+# event; the one event that came with it was its check ending 1 s later, and no workflow listened. Plays #38: asked at 17:36, comment first written 17:38 ("changes requested"), edited to "Approved" 17:41:27.
+VERDICT = '<details><summary><b>Code Review</b> <kbd>%s</kbd></summary>x</details>'
+HEAD_SHA = 'H1'
+
+
+def fake_gh(comment_body, labels):
+    """A gh that answers #38's GraphQL read and the commit's PR list from memory, keeps the labels in `state` and records each label edit in `edits`."""
+    return """(() => {
+  const state = {labels: %s}, edits = [];
+  const run = (...a) => {
+    if (a[1] === 'graphql') return JSON.stringify({data: {repository: {pullRequest: {state: 'OPEN', headRefOid: 'H1', baseRefName: 'main',
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [
+        {author: {login: 'GarryOne'}, body: 'Gitar review', createdAt: '2026-11-13T17:36:00Z', updatedAt: '2026-11-13T17:36:00Z'},
+        {author: {login: 'gitar-bot'}, body: %s, createdAt: '2026-11-13T17:38:00Z', updatedAt: '2026-11-13T17:41:27Z'}]},
+      labels: {nodes: state.labels.map(name => ({name}))}, timelineItems: {nodes: []},
+      commits: {nodes: [{commit: {committedDate: '2026-11-13T17:30:00Z', parents: {nodes: [{oid: 'P'}]}, checkSuites: {nodes: [{createdAt: '2026-11-13T17:31:00Z', app: {slug: 'gitar-bot'}, checkRuns: {totalCount: 1}}]}}}]}}}}});
+    if (a[1] === 'repos/o/r/commits/H1/pulls') return JSON.stringify([{number: 38, state: 'open', head: {sha: 'H1'}}, {number: 7, state: 'open', head: {sha: 'OTHER'}}, {number: 6, state: 'closed', head: {sha: 'H1'}}]);
+    if (a[0] === 'pr' && a[1] === 'edit') { const flag = a[3], name = a[4]; edits.push(flag + ' ' + name); state.labels = flag === '--add-label' ? [...state.labels, name] : state.labels.filter(l => l !== name); return ''; }
+    throw new Error('unexpected ' + a.join(' '));
+  };
+  return {run, edits, state};
+})()""" % (json.dumps(labels), json.dumps(comment_body))
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs node')
+class CheckEndedRelabelsTest(unittest.TestCase):
+    def after_check(self, body, labels):
+        """Gitar's check ended on H1: -> {prs, edits, labels} after `syncHead`."""
+        return node(f"(() => {{ const g = {fake_gh(body, labels)}; const prs = m.syncHead('o/r', '{HEAD_SHA}', g.run); return {{prs, edits: g.edits, labels: g.state.labels}}; }})()")
+
+    def test_a_verdict_that_only_edited_the_comment_relabels_on_the_check_ending(self):
+        got = self.after_check(VERDICT % '✅ Approved', ['Gitar: reviewing'])
+        self.assertEqual(got['prs'], [38], 'only the OPEN PR whose head is the checked commit')
+        self.assertEqual(got['labels'], ['Gitar: approved'], got)
+
+    def test_the_check_ending_before_any_verdict_keeps_reviewing(self):
+        got = self.after_check('Gitar is reviewing this PR', ['Gitar: reviewing'])
+        self.assertEqual((got['labels'], got['edits']), (['Gitar: reviewing'], []), 'no write when the label already matches')
+
+    def test_every_repo_calls_the_one_workflow_and_listens_to_gitars_check(self):
+        """Guard: release — 2 escapes in 1 day (#4000, benchmarks #38) of a copy that lacked the trigger: the callers are the same file, and the shared workflow starts on Gitar's check only."""
+        own = (ROOT / '.github' / 'workflows' / 'pr-labels.yml').read_text()
+        self.assertEqual(own, (ROOT / 'templates' / 'org-repo' / 'pr-labels.yml').read_text(), 'jobadabra\'s caller is the org template')
+        self.assertIn('uses: jobadabra/jobadabra/.github/workflows/pr-labels-shared.yml@main', own)
+        self.assertRegex(own, r'check_run:\n    types: \[created, completed\]')
+        shared = (ROOT / '.github' / 'workflows' / 'pr-labels-shared.yml').read_text()
+        self.assertIn("github.event_name == 'check_run' && github.event.check_run.app.slug == 'gitar-bot'", shared)
+        self.assertIn('node tools/gitar-label.mjs head "$SHA"', shared)
 
 
 if __name__ == '__main__':
