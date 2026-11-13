@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
 from . import pool_tags, role_kinds, scout_cells, scout_google_boards
+from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_of, measured_counts, proven_families  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
@@ -30,7 +31,7 @@ BUDGET_S = 240          # the pass gives up starting new boards after this long
 # Why (12 Nov 2026, owner: "Reserve kinds + batch places"): France trial 43154452142 asked one call per place, its 24 calls for places and kinds all went to
 # places, and three boards with local jobs were never asked their kinds of work. Two allowances, each its one owner: places never spend the kinds' calls.
 PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.countries_each): a board's search page names at most ~100 distinct places
-KIND_CALLS = MAX_BOARDS        # one kinds-of-work question a board (its first 40 titles, one batch), reserved
+KIND_CALLS = MAX_BOARDS * (MAX_TITLES // KIND_BATCH)   # kinds-of-work questions, reserved: a board's jobs, KIND_BATCH titles a question, MAX_TITLES at most (13 Nov 2026, bp: it was the first 40, one question)
 IDEA_CALLS = 1          # the AI's board ideas: one country is one slice (src/ai/board_ideas.py slices)
 WORD_CALLS = 1          # board discovery: its families' search words in the country's language, one call (src/ai/board_words.py)
 # Why (12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)", lifting 24 Oct's "rules only" here; the cap raised the same
@@ -65,6 +66,8 @@ def ensure(db):
         db.execute('ALTER TABLE scout_board_facts ADD COLUMN browser INTEGER NOT NULL DEFAULT 0')
     if 'layout' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 13 Nov 2026: no layout learned yet
         db.execute('ALTER TABLE scout_board_facts ADD COLUMN layout TEXT')
+    if 'family_jobs' not in {row[1] for row in db.execute('PRAGMA table_info(scout_board_facts)')}:   # memories kept before 13 Nov 2026: no count per family yet
+        db.execute('ALTER TABLE scout_board_facts ADD COLUMN family_jobs TEXT')
     db.execute('CREATE TABLE IF NOT EXISTS scout_browser_final (host TEXT PRIMARY KEY, why TEXT NOT NULL, at TEXT NOT NULL)')
 
 
@@ -196,11 +199,17 @@ def family_search(country, families, local=None):
     local_words), else those English words, one word per family in turn, so each family is searched before any family's second word.
     Why (12 Nov 2026, owner, asked via AskUserQuestion: "Scout asks once per country (Recommended)"): a Slovak board gave 0 jobs for "cooking"
     and 5 for its own word, and the first family's English words took every search the board had (src/sources/found_boards.py FULL_SEARCHES)."""
+    turns = zip_longest(*family_words(families, local).values())
     english = {family: [word.strip() for word in pool_tags.FAMILIES.get(family, '').split(',') if word.strip()] for family in families}
-    turns = zip_longest(*[(local or {}).get(family) or english[family] for family in families])
     return {'role_keywords': list(dict.fromkeys(word for family in families for word in english[family])),
             'jobs_board_search_queries': list(dict.fromkeys(word for turn in turns for word in turn if word)),
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
+
+
+def family_words(families, local=None):
+    """{family: the words its search uses}: `local` (the country's language) else the family's English words (src/pool_tags.py FAMILIES). A board's search is asked these, one
+    per family in turn: the words that ran say which families the board was asked for (scout_board_counts.measured_counts)."""
+    return {family: (local or {}).get(family) or [word.strip() for word in pool_tags.FAMILIES.get(family, '').split(',') if word.strip()] for family in families}
 
 
 def _first(*groups):
@@ -227,19 +236,13 @@ def _local(jobs, country):
         return local_of(jobs, country)
 
 
-def kinds_of(local):
-    """(families, unanswered) of these jobs' titles (the first 40, one question): unanswered titles mean "not asked", never "no kinds"."""
-    titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
-    return pool_tags.families_read(titles) if titles else ([], [])
-
-
-def measure(board, local, country, families, browser=False, layout=None):
-    """The fact for one board's read: its jobs in `country` and their role families (browser: read in the headless browser, the plain reader was
-    refused; layout: how its job cards are laid out, src/sources/board_layout.py); None under MIN_LOCAL or without families."""
+def measure(board, local, country, families, browser=False, layout=None, counts=None):
+    """The fact for one board's read: its jobs in `country` and their role families, with the jobs of each (counts; browser: read in the headless browser,
+    the plain reader was refused; layout: how its job cards are laid out, src/sources/board_layout.py); None under MIN_LOCAL or without families."""
     if len(local) < MIN_LOCAL or not families:
         return None
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local),
-            **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
+            **({'family_jobs': counts} if counts is not None else {}), **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
 
 
 def _checked(text):
@@ -287,9 +290,10 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         kinds = list(families) if by_cells else kinds_for(db, country, kinds) or kinds_for(db, country)   # named kinds that are none of ours: the country's turn
         if by_cells:
             from . import scout_board_cells
-            search = family_search(country, kinds, (words or scout_board_cells.local_words)(db, country, kinds))   # like the ideas: a direct call, inside JOB_CALLS
+            asked = family_words(kinds, (words or scout_board_cells.local_words)(db, country, kinds))   # like the ideas: a direct call, inside JOB_CALLS
+            search = family_search(country, kinds, asked)
         else:
-            search = search_for(db, country, kinds)
+            search, asked = search_for(db, country, kinds), None   # a pass by kinds of work asks no family by its own word: it counts none (scout_board_counts.py)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
@@ -333,12 +337,14 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                 # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
                 whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
                 counted = local + placeless if whole else local
-                families, unasked = [], []
+                families, unasked, by_family = [], [], {}
                 if len(counted) >= MIN_LOCAL:
                     with decide.own_allowance(KINDS, KIND_CALLS):
-                        families, unasked = kinds_of(counted)
+                        families, unasked, by_family = kinds_of(counted)
                 found_layout = notes.get('layout')   # None: this read never tested a layout, the kept one stays; False: it was stale
-                fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None)
+                if asked is not None:   # only the families this board was asked for by their own word, or all of a list it shows with no search
+                    by_family = measured_counts(by_family, asked, set(notes.get('terms') or ()), '{role}' not in board['search_url'] or not notes.get('terms'))
+                fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None, counts=by_family if asked is not None else None)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
                 counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why
                               + (f" ({_said(fact.get('layout'), kept_layout, found_layout, notes, browsed)})" if fact else ''))
@@ -352,14 +358,16 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         stamp = datetime.now(timezone.utc).date().isoformat()
         fresh = (datetime.now(timezone.utc).date() - timedelta(days=FACT_DAYS)).isoformat()
         for fact in kept:
-            # Why (13 Nov 2026, sa): a pass reads a board with its own kinds' words, so its row is one search's view of the board. Germany's data pass
+            # Why (13 Nov 2026, sa; counts 13 Nov, bp): a pass reads a board with its own kinds' words, so its row is one search's view of the board. Germany's data pass
             # kept a general board (76 local jobs); two hours later the pass for photography, video and design read it again and the row lost data:
-            # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row.
-            held = db.execute('SELECT families FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
+            # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row, and so
+            # do their job counts (family_jobs): a family's newer count replaces its older one, the families this pass did not measure keep theirs.
+            held = db.execute('SELECT families, family_jobs FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
             families = list(dict.fromkeys(fact['families'] + [family for family in (held[0].split(',') if held else []) if family]))
-            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            rights = {**_counts(held[1] if held else None), **fact.get('family_jobs', {})}   # this pass's count of a family replaces the earlier one; the others stay
+            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                        (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
-                        json.dumps(fact['layout']) if fact.get('layout') else None))
+                        json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1]))
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
@@ -401,11 +409,13 @@ def _country_of(board, country):
 
 
 def facts(db, today=None):
-    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, browser?, layout?}] (browser: true
-    only; layout only in its checked shape: jobadabra-web api/employers.js boardFactsOf checks it again)."""
+    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, family_jobs?, browser?, layout?}]
+    (family_jobs: the jobs of each family, only when a pass counted them; browser: true only; layout only in its checked shape: jobadabra-web api/employers.js
+    boardFactsOf checks both again)."""
     ensure(db)
     cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
-    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'browser': True} if browser else {}),
-             **({'layout': layout} if layout else {})}
-            for host, country, url, families, jobs, browser, kept in db.execute(
-                'SELECT host, country, url, families, local_jobs, browser, layout FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL)) for layout in [_checked(kept)]]
+    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'family_jobs': counts} if counts is not None else {}),
+             **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
+            for host, country, url, families, jobs, browser, kept, text in db.execute(
+                'SELECT host, country, url, families, local_jobs, browser, layout, family_jobs FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))
+            for layout in [_checked(kept)] for counts in [_counts(text) if text is not None else None]]

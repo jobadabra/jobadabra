@@ -75,7 +75,7 @@ class DiscoveryLayoutTest(unittest.TestCase):
             self.asked.extend(pairs)
             return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith(('/job', '/offer', '/oferta'))) for t, p in pairs}
         for patch in (mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
-                      mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], [])),
+                      mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['software_dev'] for t in titles}, [])),
                       mock.patch('src.paths.DATA', self.folder), mock.patch('src.places.load', return_value={}),
                       mock.patch('src.sources.board_yield.is_relevant', side_effect=list),
                       mock.patch.object(page_words, 'link_words', side_effect=link_words)):
@@ -197,7 +197,7 @@ class PassAsksTheLinksTest(unittest.TestCase):
             self.asked.append((topic, decide.own_scope(), len(items)))
             return {key: ('job_page' if '| path: /vaga/' in key else 'other') for key in items}
         for patch in (mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
-                      mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], [])),
+                      mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['software_dev'] for t in titles}, [])),
                       mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}),
                       mock.patch('src.sources.board_yield.is_relevant', side_effect=list),
                       mock.patch('src.ai.decide.decide', side_effect=judged), mock.patch('src.ai.page_reader.usable', return_value=True)):

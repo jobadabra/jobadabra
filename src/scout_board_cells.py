@@ -16,36 +16,44 @@ CELLS = 'board_cells'          # scout_meta: {"<country>|<family>": {"tries": n,
 PER_RUN = 3                    # families one run asks a country's boards for (one AI ideas call names boards for all of them)
 REST_DAYS = (1, 2, 4, 8, 30)   # an empty cell's rest after its 1st, 2nd, ... empty try; the last one repeats
 REFRESH_DAYS = 20              # a fact this old is read again (the site drops it at src/scout_boards.py FACT_DAYS)
-TARGET = 2                     # boards a cell needs before it leaves the queue (only a refresh reads it again)
+TARGET = 4                     # boards PROVEN for the cell (MIN_RIGHT+ jobs of the family) before it leaves the queue (only a refresh reads it again)
+# Why (13 Nov 2026, bp; sa for the owner, plan approved "Yes, go on (Recommended)", sketch https://claude.ai/artifact/YPkXa1B2BDQg4WjDbrQLfx): 2 left four of the six places
+# of a first search to the per-search naming, whose variance (Madrid electrician: 6 to 26 right jobs on near-identical code) is what the proven boards remove; 4 leaves two.
+# Cost, from run 43485778466: a pass (one country, 3 families) 6.3 min and 25-41 AI calls; 930 cells = 310 passes = ~33 h on one lane, ~4-5 h on 8 lanes.
 SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
 WORDS, WORDS_DAYS = 'board_words', 30     # scout_meta: {"<country>|<family>": {"words": [...], "at": "YYYY-MM-DD"}} the family's search words in the country's language (local_words)
 
 
 def _facts(db):
-    """[(host, country, url, families, read_at)] of every fact kept (src/scout_boards.py scout_board_facts)."""
+    """[(host, country, url, families, read_at, counts)] of every fact kept (src/scout_boards.py scout_board_facts); counts {family: jobs} is None for a fact
+    kept before 13 Nov 2026 (no count per family: it proves no family)."""
     from . import scout_boards
     scout_boards.ensure(db)
-    return db.execute('SELECT host, country, url, families, read_at FROM scout_board_facts WHERE local_jobs >= ?', (scout_boards.MIN_LOCAL,)).fetchall()
+    return [(host, country, url, families, read_at, scout_boards._counts(text) if text is not None else None) for host, country, url, families, read_at, text in db.execute(
+        'SELECT host, country, url, families, read_at, family_jobs FROM scout_board_facts WHERE local_jobs >= ?', (scout_boards.MIN_LOCAL,))]
 
 
 def strength(db, today):
-    """Counter {(country, family): boards with MIN_LOCAL+ local jobs measured within FACT_DAYS}."""
+    """Counter {(country, family): boards PROVEN for the family (MIN_RIGHT+ jobs of it located in the country) measured within FACT_DAYS}.
+    Why (13 Nov 2026, bp, owner: "Why ? Let's fix it."): it counted the boards that had seen the family once, so an airline board and a tech board (one aircraft
+    electrician and one electronics job) filled (es, electrical_mechanical) at TARGET and the cell left the queue: the boards that give Madrid electricians
+    their jobs (Jobeka 19 right, Trabajo.org 16) were never looked for."""
     from . import scout_boards
     cutoff = (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
-    return Counter((country, family) for _, country, _, families, read_at in _facts(db) if read_at >= cutoff
-                   for family in families.split(',') if family)
+    return Counter((country, family) for _, country, _, _, read_at, counts in _facts(db) if read_at >= cutoff
+                   for family in scout_boards.proven_families({'family_jobs': counts}))
 
 
 def stale(db, today):
-    """{country: [board]} of facts older than REFRESH_DAYS and not yet dropped, the boards in the shape the pass reads, oldest country first.
+    """{country: [board]} of facts older than REFRESH_DAYS and not yet dropped (and the facts kept before 13 Nov 2026, with no count per family, at once), the boards in the shape the pass reads, oldest country first.
     A fact read again within REREAD_DAYS that did not pass waits: one board under the floor now must not take every run until it is dropped."""
     from . import scout_boards
     old, gone = (today - timedelta(days=REFRESH_DAYS)).isoformat(), (today - timedelta(days=scout_boards.FACT_DAYS)).isoformat()
     tried, recent = scout_cells._meta(db, REREAD, {}), (today - timedelta(days=REREAD_DAYS)).isoformat()
     tried = tried if isinstance(tried, dict) else {}
-    due = sorted((read_at, country, host, url) for host, country, url, _, read_at in _facts(db)
-                 if gone <= read_at < old and str(tried.get(f'{host}|{country}') or '') < recent)
+    due = sorted((read_at, country, host, url) for host, country, url, _, read_at, counts in _facts(db)
+                 if gone <= read_at and (read_at < old or counts is None) and str(tried.get(f'{host}|{country}') or '') < recent)
     out = {}
     for _, country, host, url in due:
         out.setdefault(country, []).append({'name': host, 'host': host, 'search_url': url, 'countries': [pool_tags.COUNTRIES.get(country, country)],
@@ -107,6 +115,7 @@ def pick(db, today=None, priority=(), named=(), only=None):
 
 def record(db, country, families, kept, today=None, again=()):
     """After a run: a family with a kept board is cleared; one without rests REST_DAYS by its empty tries in a row; the facts read again are stamped."""
+    from . import scout_boards
     today = today or date.today()
     if again:
         tried = scout_cells._meta(db, REREAD, {})
@@ -116,11 +125,14 @@ def record(db, country, families, kept, today=None, again=()):
                                       **{f"{board['host']}|{country}": today.isoformat() for board in again}})
     memory = scout_cells._meta(db, CELLS, {})
     memory = memory if isinstance(memory, dict) else {}
-    found = {family for fact in kept for family in fact.get('families') or []}
+    found = {family for fact in kept for family in scout_boards.proven_families(fact)}   # a family the board only saw once is not found
+    # a kept board whose count has no entry for an asked family was not asked its word (the read stopped first): not measured is work owed, never a miss
+    owed = {family for fact in kept if fact.get('family_jobs') is not None for family in families if family not in fact['family_jobs']} - found
     for family in families:
         key = f'{country}|{family}'
-        tries = 0 if family in found else int((memory.get(key) or {}).get('tries') or 0) + 1
-        until = (today + timedelta(days=REST_DAYS[min(tries, len(REST_DAYS)) - 1])).isoformat() if tries else ''
+        tries = 0 if family in found else int((memory.get(key) or {}).get('tries') or 0) + (family not in owed)
+        rest = REST_DAYS[0] if family in owed else REST_DAYS[min(tries, len(REST_DAYS)) - 1] if tries else 0   # owed: asked again after the shortest rest
+        until = (today + timedelta(days=rest)).isoformat() if rest else ''
         memory[key] = {'tries': tries, 'until': until, 'asked': today.isoformat()}
     scout_cells._set(db, CELLS, memory)
     db.commit()
@@ -152,10 +164,10 @@ def seed(db, path, out=print):
         with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
             columns = {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser; 13 Nov 2026: its layout
             rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if 'browser' in columns else '0')
-                                  + ', ' + ('layout' if 'layout' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
+                                  + ', ' + ('layout' if 'layout' in columns else 'NULL') + ', ' + ('family_jobs' if 'family_jobs' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
     except sqlite3.Error:
         return 0
-    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', rows)
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', rows)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:

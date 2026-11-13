@@ -2,6 +2,7 @@
 of the memory, and only a lane's own country comes back into the one memory.
 13 Nov 2026, owner: "Maybe we just need to run the Board discovery" "many times in parallel": two runs at once would have saved over each other's
 memory (one file). Fake reads only: no network, no AI."""
+import json
 import os
 import shutil
 import sqlite3
@@ -17,10 +18,12 @@ TODAY = date(2026, 11, 13)
 FAMILIES = list(pool_tags.FAMILIES)
 
 
-def fact(db, host, country, families, read_at=TODAY, jobs=5):
+def fact(db, host, country, families, read_at=TODAY, jobs=5, right=scout_boards.MIN_RIGHT):
+    """A kept fact: each family has `right` jobs (None: a fact kept before 13 Nov 2026, with no count per family)."""
     scout_boards.ensure(db)
-    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
-               (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat()))
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+               (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat(),
+                None if right is None else json.dumps({family: right for family in families})))
 
 
 def cover(db, countries):

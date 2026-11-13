@@ -211,13 +211,15 @@ class BoardPassAllowance(unittest.TestCase):
         sizes = [120, 30, 51]
         _, out, relay = self.run_boards(sizes)
         self.assertEqual(relay.asked['places'], sum(-(-n // 50) for n in sizes), out)   # 3 + 1 + 2
-        self.assertEqual(relay.asked['kinds'], len(sizes), 'one reserved question a board, whatever the places spent')
+        # 13 Nov 2026 (bp): every job read is asked (KIND_BATCH titles a question, MAX_TITLES at most), no longer a first 40: 3 + 1 + 2
+        self.assertEqual(relay.asked['kinds'], sum(-(-n // scout_boards.KIND_BATCH) for n in sizes), 'a board takes the questions its jobs need, whatever the places spent')
+        self.assertLessEqual(relay.asked['kinds'], scout_boards.KIND_CALLS)
 
     def test_a_board_with_local_jobs_but_no_kinds_of_work_says_so(self):
         jobs = [{'title': 'Vânzător', 'location': 'Chișinău', 'url': f'https://x/{n}'} for n in range(4)]
         out = []
         with mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} for t in texts}, [])), \
-                mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: ([], [])):
+                mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({}, [])):
             scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda *a: (jobs, 'ok', None), out=out.append, google=lambda *a: [])
         self.assertIn('a.md 4/4 (no kinds of work from the AI: not kept)', out[-1])
 
