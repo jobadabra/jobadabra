@@ -29,7 +29,7 @@ SCORES = {1: {'method': score.PREVIOUS_METHOD, 'locations': OLD},   # both reaso
 
 class OutdatedTests(unittest.TestCase):
     def setUp(self):
-        patches = [mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(locations, 'active_ids', return_value={1, 2, 3, 5})]
+        patches = [mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(desktop_strategy, '_active_ids', return_value={1, 2, 3, 5})]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
@@ -59,7 +59,7 @@ class ChangedSinceTheScoreTests(unittest.TestCase):
     PROFILE = '# Goals\n- SRE in Zurich\n# Skills\n- Kubernetes, Terraform, Python, incident response, observability\n'
 
     def setUp(self):
-        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(locations, 'active_ids', return_value={1, 2, 3, 5}),
+        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(desktop_strategy, '_active_ids', return_value={1, 2, 3, 5}),
                       mock.patch.object(desktop_strategy.digest, 'eligible_jobs', return_value=([{'id': 5, 'title': 'SRE', 'description': 'Kubernetes.'}], []))):
             patch.start()
             self.addCleanup(patch.stop)
@@ -77,7 +77,7 @@ class ChangedSinceTheScoreTests(unittest.TestCase):
                          'a changed low score is asked again too: no profile-only shortcut leaves the count where it was')
 
     def test_a_changed_job_with_an_application_is_not_counted(self):
-        with mock.patch.object(locations, 'active_ids', return_value={1, 2, 3}):   # job 5 has an application: Re-score skips it, so it is no old score
+        with mock.patch.object(desktop_strategy, '_active_ids', return_value={1, 2, 3}):   # job 5 has an application: Re-score skips it, so it is no old score
             self.assertEqual(desktop_strategy.outdated(db_with({5: SCORES[5]}), {'https://x/5': 'Applied'}, self.PROFILE)['changed'], 0)
 
 
@@ -95,7 +95,7 @@ class JobsListKeepsTheOldFitsTests(unittest.TestCase):
     """Owner, 2 Nov 2026: "I don't think we should clear all the scoring instantly ... there should be the old scored." The Jobs read keeps every fit
     and marks the ones from the previous strategy; its count is Strategy's, from the same ids."""
     def setUp(self):
-        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(locations, 'active_ids', return_value={1, 2, 3, 5})):
+        for patch in (mock.patch.object(locations, 'current', return_value=NOW), mock.patch.object(desktop_strategy, '_active_ids', return_value={1, 2, 3, 5})):
             patch.start()
             self.addCleanup(patch.stop)
 

@@ -16,10 +16,17 @@ COMPONENTS = (('role_fit', 'Role fit'), ('location', 'Location fit'), ('compensa
               ('growth', 'Growth'), ('risk', 'Low risk'))
 
 
+def _active_ids(db, stage_map):
+    """The jobs a Re-score can take, the ONE set all three reasons are cut to (src/ai/score_old.py rescorable): listed, no application, place known, with a posting
+    text. Not locations.active_ids, which the places refresh keeps for itself (Gitar, #4011)."""
+    hidden = frozenset(url for url, stage in (stage_map or {}).items() if stage)
+    return {job['id'] for job in score_old.rescorable(db, hidden)}
+
+
 def _previous_locations_ids(db, stage_map):
     """The ACTIVE jobs scored with other places than the ones saved now (src/ai/locations.py); none when it cannot be told."""
     try:
-        return set(locations.previous(score.load(db), locations.current())) & locations.active_ids(db, stage_map)
+        return set(locations.previous(score.load(db), locations.current())) & _active_ids(db, stage_map)
     except Exception:  # noqa: BLE001
         return set()
 
@@ -45,16 +52,16 @@ def _changed_ids(db, profile, stage_map):
         return set()
     try:
         candidates, _ = digest.eligible_jobs(db)
-        return score_old.old_ids(db, candidates, profile) & locations.active_ids(db, stage_map)
+        return score_old.old_ids(db, candidates, profile) & _active_ids(db, stage_map)
     except Exception:  # noqa: BLE001 — the notice then counts the other reasons
         return set()
 
 
 def _outdated_ids(db, stage_map, profile=None):
-    """The three reasons, each cut to the ACTIVE jobs (locations.active_ids): an expired or hidden job keeps its old score but no list shows it and no run
+    """The three reasons, each cut to the ACTIVE jobs (_active_ids): an expired or hidden job keeps its old score but no list shows it and no run
     scores it, so counting it made "Re-score 10" score 2 (13 Nov 2026, owner). The older-method reason was the one not cut."""
     try:
-        method = set(score.previous_method(db)) & locations.active_ids(db, stage_map)
+        method = set(score.previous_method(db)) & _active_ids(db, stage_map)
     except Exception:  # noqa: BLE001
         method = set()
     return method, _previous_locations_ids(db, stage_map), _changed_ids(db, profile, stage_map)

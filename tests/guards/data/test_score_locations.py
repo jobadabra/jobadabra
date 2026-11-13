@@ -91,19 +91,14 @@ class ActiveJobsTests(unittest.TestCase):
 
         def eligible(db, hidden_urls=frozenset()):
             seen['hidden'] = hidden_urls
-            return [{'id': 1, 'url': 'a', 'description': 'text', 'location': 'Zurich'}, {'id': 3, 'url': 'c', 'description': 'text', 'location': 'Zurich'}], []
+            return [{'id': 1, 'url': 'a'}, {'id': 3, 'url': 'c'}], []
 
         with mock.patch('src.digest.eligible_jobs', eligible):
             self.assertEqual(locations.active_ids(None, {'b': 'Applied', 'c': None, 'd': 'Rejected'}), {1, 3})
         self.assertEqual(seen['hidden'], {'b', 'd'})   # an application, whatever its stage, is never refreshed
 
-    def test_a_job_without_a_posting_text_is_not_active_for_a_re_score(self):
-        # 13 Nov 2026: no run can score it, so no count may include it (src/ai/score_old.py rescorable)
-        with mock.patch('src.digest.eligible_jobs', lambda db, hidden_urls=frozenset(): ([{'id': 1, 'url': 'a', 'location': 'Zurich'}], [])):
-            self.assertEqual(locations.active_ids(None), set())
-
     def test_no_stages_known_leaves_every_shown_job_active(self):
-        with mock.patch('src.digest.eligible_jobs', lambda db, hidden_urls=frozenset(): ([{'id': 1, 'url': 'a', 'description': 'text', 'location': 'Zurich'}], [])):
+        with mock.patch('src.digest.eligible_jobs', lambda db, hidden_urls=frozenset(): ([{'id': 1, 'url': 'a'}], [])):
             self.assertEqual(locations.active_ids(None), {1})
 
 
