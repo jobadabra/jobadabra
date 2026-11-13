@@ -10,6 +10,9 @@
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   pr-labels.yml                 sets every open PR's Gitar label from Gitar's latest comment every 10 minutes (7 Nov 2026, gl): Gitar closes a finding by editing its comment, which starts no event
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
+//   (press-tapes-auto.yml is no longer started here since 13 Nov 2026: the Find jobs replay is retired.
+//    Why (13 Nov 2026, owner, asked via AskUserQuestion by mac-9a: "Retire the replay (Recommended)": "one PR removes the replay, its re-records and the hourly check, which ends all the Codex calls they spend"):
+//    after the 12 Nov re-record the hourly look still counted 18 of 18 people out of date, because 12 search PRs merged during the recording: the recordings cannot keep up with the merges.)
 // One trigger for the night's four UTC hours (00-03): Cloudflare's free plan allows 5 cron triggers per ACCOUNT (other Workers hold 2), a sixth could not be registered
 // (5 Oct 2026), and a 4th trigger for this Worker was refused (14 Oct 2026): the hour that is 02:00 in Zurich starts the replay gate, the one that is 04:00 the nightly.
 // Why (31 Oct 2026, owner, "Worker cron"): GitHub never started #2648's sweep on schedule; reuse the stats trigger, keeping its UTC slots below.
@@ -25,8 +28,6 @@ export const AGENT_SLOT = '04:40';
 // The night's Search check (search-personas.yml), UTC HH:MM. Why (4 Nov 2026, owner: "Night run, off PRs"): it rides the ten-minute trigger too, at the broker's quietest hour: 0 and 2 calls in the 00 hour of the last two nights.
 // Six presses in a row took 26-29 min on 5-6 Nov 2026 (runs 41938128120, 42133678718; 33-44 min on 4 Nov), so 18 take about 80-85 min and it ends about 01:25: close to the 01:30 pass (6 Nov 2026, 4/5). TODO(AI): move this slot earlier or start the pass later if the two overlap (6 Nov 2026); the scout at about 02:30 and AGENT_SLOT come later.
 export const SEARCH_SLOT = '00:00';
-// Why (13 Nov 2026, owner, asked via AskUserQuestion by mac-9a: "Retire the replay (Recommended)": "one PR removes the replay, its re-records and the hourly check, which ends all the Codex calls they spend"): the day's and the hourly
-// start of press-tapes-auto.yml are gone from this trigger. After the 12 Nov re-record the hourly look still counted 18 of 18 people out of date, because 12 search PRs merged during the recording: the recordings cannot keep up with the merges.
 export const STORE_WATCH_MINUTE = 20;
 // The weekly Microsoft Store submission (msix-store-weekly.yml), Monday, UTC HH:MM. Why (7 Nov 2026, owner: "Weekly, a fixed day"; "To release less often on Microsoft store"): Microsoft took 5 days to certify
 // one version while a stable came out every day. It rides the ten-minute trigger (a 4th trigger cannot be registered), after the night's passes (the last starts 05:30) and the AI agent (04:40).
