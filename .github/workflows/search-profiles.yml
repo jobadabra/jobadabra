@@ -1,17 +1,17 @@
-name: CI · Search profiles (30, by hand)
-# By hand only: the 30 fictional profiles of the owner's profile round each press Find jobs once on a fresh CI install (the first search, EURES off, Codex through the
+name: CI · Search profiles (by hand)
+# By hand only: the fictional profiles of the owner's profile round each press Find jobs once on a fresh CI install (the first search, EURES off, Codex through the
 # broker as search-personas.yml does), the same blind judge counts their right jobs, and one table says, per profile: relevant, shown, first relevant at, boards read and
 # with relevant jobs, what ran out of time, the engine and judge, the commit. Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Move it to CI"): the round ran on
 # the owner's Mac and its numbers followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). A new series: never mixed with the Mac rows.
 # Never a night, never sent to Admin, never red, no floors, no reference, no scoreboard.lock change (the 18 locked people and gate.py are only read); the Worker never starts it.
-# One Telegram message per run (profiles.py tell, then desktop/e2e/tell-owner.mjs --event search-profiles through the switchboard). Tools: tools/persona-search/profiles.py (ids, free, cv, judge, row, table, tell), search-profiles.json (the 30), run.mjs (the press), gate.py extract, gate_judge.judge (the judge).
-run-name: ${{ format('Search profiles · {0} · {1} at once · {2}', inputs.profiles || 'all 30', inputs.at_once || 4, inputs.engine || 'claude') }}
+# One Telegram message per run (profiles.py tell, then desktop/e2e/tell-owner.mjs --event search-profiles through the switchboard). Tools: tools/persona-search/profiles.py (ids, free, cv, judge, row, table, tell), search-profiles.json, run.mjs (the press), gate.py extract, gate_judge.judge (the judge).
+run-name: ${{ format('Search profiles · {0} · {1} at once · {2}', inputs.profiles || 'all', inputs.at_once || 4, inputs.engine || 'claude') }}
 
 on:
   workflow_dispatch:
     inputs:
       profiles:
-        description: 'Only these profile ids, a JSON list such as ["b02", "c06"] (empty = all 30)'
+        description: 'Only these profile ids, a JSON list such as ["b02", "c06"] (empty = all)'
         type: string
         default: ''
       # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number 1-30, one dispatch away. A profile whose broker waits pass 20 s is reported not measured (sa),

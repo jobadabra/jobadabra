@@ -1,7 +1,7 @@
 """A Find jobs PR's before/after pair on CI: main and the PR searched in the same minute for the people named, judged by the same blind judge, one table on the PR.
 Owner, 13 Nov 2026 (asked via AskUserQuestion by sa: "Self-serve workflow + tighter check (Recommended)"): "But why sessions don't know to do this by themselves. No skill is
 telling them to do this. No PR CI guardrail is requested them a before/after". Run by .github/workflows/search-pair.yml; fictional people only (the 18 night people p<n>,
-tools/persona-search/gate-personas.json, and the 30 profiles, search-profiles.json), plan AI through the broker only.
+tools/persona-search/gate-personas.json, and the profiles, search-profiles.json), plan AI through the broker only.
   pair.py people '<json list>' <changed-files>   -> people=<json> for the matrix (each: id, kind, runs, own_draft), need=<searches at once> for claim.py
   pair.py side <out> <side>                      -> <out>/side.json: right jobs, found, first relevant, board words, broker waits, valid
   pair.py minutes <times.env> <person> <out>     -> <out>/<person>.minutes.txt: minutes per part (setup, draft, searches, judge)
@@ -28,7 +28,7 @@ VALID_P90_MS = 20000   # sa's rule (13 Nov 2026): a side whose broker wait p90 i
 
 
 def _profiles():
-    """The 30 profile ids (profiles.IDS, from search-profiles.json)."""
+    """The profile ids (profiles.IDS, from search-profiles.json)."""
     sys.path.insert(0, str(HERE))
     import profiles  # noqa: PLC0415
     return list(profiles.IDS)

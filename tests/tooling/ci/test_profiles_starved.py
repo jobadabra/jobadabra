@@ -56,17 +56,18 @@ class StarvedProfileTest(unittest.TestCase):
             self.assertEqual(lines[1:3], ['1 not measured, the broker was too busy (waits p90 > 20 s): b01', '1 not run or not measured: b03'])
 
     def test_cancelled_run_says_cancelled_and_names_every_asked_profile(self):
-        """Plays run 43355710034: 27 profiles asked, cancelled at 02:58Z, 6 uploaded a not-run row (mac-9a for the owner, 13 Nov 2026)."""
+        """Plays run 43355710034: all but 3 profiles asked, cancelled at 02:58Z, 6 uploaded a not-run row (mac-9a for the owner, 13 Nov 2026)."""
         with tempfile.TemporaryDirectory() as tmp:
             asked = [p['id'] for p in json.loads((ROOT / 'tools' / 'persona-search' / 'search-profiles.json').read_text())['profiles'] if p['id'] not in ('b02', 'b06', 'c06')]
+            n = len(asked)   # Why (13 Nov 2026, sa: 7 more profiles): the count follows search-profiles.json, never a number typed here
             rows = Path(tmp) / 'rows.json'
             rows.write_text(json.dumps([{'id': pid, 'not_run': 'cancelled'} for pid in ('b01', 'b03', 'b04', 'b05', 'b07', 'b08')]))
             lines = profiles.tell(rows, 'https://example.invalid/run', Path(tmp) / 'message.txt', asked, 'cancelled')
-            self.assertEqual(lines[0], '⚪ Search profiles on CI · cancelled on GitHub before measuring (27 profiles)')
-            self.assertTrue(lines[1].startswith('27 not run or not measured: '), lines[1])
+            self.assertEqual(lines[0], f'⚪ Search profiles on CI · cancelled on GitHub before measuring ({n} profiles)')
+            self.assertTrue(lines[1].startswith(f'{n} not run or not measured: '), lines[1])
             self.assertNotIn('nothing measured', '\n'.join(lines))
             finished = profiles.tell(rows, 'https://example.invalid/run', Path(tmp) / 'message.txt', asked, 'success')
-            self.assertEqual(finished[0], '🧪 Search profiles on CI · nothing measured (27 profiles)', 'positive control: a finished run keeps its words')
+            self.assertEqual(finished[0], f'🧪 Search profiles on CI · nothing measured ({n} profiles)', 'positive control: a finished run keeps its words')
 
     def test_a_claude_round_is_named_claude_in_table_and_text(self):
         with tempfile.TemporaryDirectory() as tmp:
