@@ -128,7 +128,8 @@ while :; do
         if [ "$gitar_peeked" != "$head" ]; then
           gitar_peeked="$head"
           kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
-          case "$kept" in "Gitar: approved"*|"Gitar: changes requested") gitar_done="$head"; say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";; esac
+          # exact names, not a glob: "Gitar: approved · not re-reviewed" (gl3) must still ask
+          case "$kept" in "Gitar: approved"|"Gitar: approved with suggestions"|"Gitar: changes requested") gitar_done="$head"; say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";; esac
         fi
         # Why (13 Nov 2026, gq; owner, asked via AskUserQuestion: "One shared ask queue (Recommended)"): this watcher never posts "Gitar review" itself: every session's asks go through ONE queue on this Mac
         #   (tools/gitar-queue.mjs: one post at a time, spaced, a PR Gitar refused waits, the same head never twice). The call is idempotent, so each look asks again until the queue says ASKED or DROPPED.

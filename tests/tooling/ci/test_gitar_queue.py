@@ -16,6 +16,7 @@ FAKE_GH = textwrap.dedent('''\
     import json, os, sys, time
     from datetime import datetime, timezone
     d = os.environ['FAKE_DIR']; a = sys.argv[1:]
+    if os.path.exists(d + '/gh_out'): sys.exit(1)   # GitHub's REST quota is out: gh prints nothing and fails (13 Nov 2026, #4031 live)
     open(d + '/calls', 'a').write(' '.join(a[:4]) + '\\n')
     def comments(pr):
         try: return json.load(open(f'{d}/comments_{pr}.json'))
@@ -92,6 +93,31 @@ class GitarQueueTest(unittest.TestCase):
         self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'SENT')
         self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith('QUEUED'), 'the reply used this PR\'s turn')
         self.assertEqual(self.posted(), ['reply 555'])
+
+    def test_a_refusal_that_lands_after_the_settle_wait_still_sends_the_ask_back(self):
+        """Gitar on #4031: Gitar answers 3-5 s after the post and the check ran at post + 8 s with "now minus 5 s", so it missed the refusal. The simulated clock moves 8 s on the settle wait."""
+        (self.tmp / 'refuse_1').write_text('')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_SETTLE_MS='8000').startswith('QUEUED'))
+        self.assertEqual(self.posted(), ['ask 1'])
+
+    def test_the_same_reply_twice_is_one_comment_and_a_reply_on_a_refused_pr_says_queued(self):
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed in abc1234.')
+        self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0'), 'SENT')
+        self.assertEqual(self.posted(), ['reply 555'], 'the second run found the same reply already sent')
+        (self.tmp / 'refuse_2').write_text('')
+        self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0')   # refused: PR 2 now waits 10 minutes
+        body.write_text('Another answer.')
+        self.assertTrue(self.run_queue('reply', 'o/r', '2', '777', str(body), GITAR_QUEUE_GAP_S='0').startswith('QUEUED (position 2'), 'not SENT while its PR waits (the refused ask is first)')
+        self.assertEqual(self.posted(), ['reply 555', 'ask 2'])
+
+    def test_a_github_that_answers_nothing_never_crashes_the_ask_and_the_failure_is_said(self):
+        (self.tmp / 'gh_out').write_text('')
+        out = self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
+        self.assertTrue(out.startswith('QUEUED (position 1') and 'the last post failed' in out, out)
+        (self.tmp / 'gh_out').unlink()
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
 
 
 if __name__ == '__main__':
