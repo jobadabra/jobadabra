@@ -27,9 +27,10 @@ on:
         options: ['app', 'small']
         default: 'app'
 
-# Why: per PR, so one PR's dispatch never replaces another PR's waiting run (GitHub keeps one pending run per group).
+# Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
+# the same people again (a side not counted, "start the pair again") replace only their own pending run.
 concurrency:
-  group: search-pair-${{ inputs.pr }}
+  group: search-pair-${{ inputs.pr }}-${{ inputs.people }}
   cancel-in-progress: false
 
 permissions:
@@ -161,6 +162,8 @@ jobs:
         run: |
           set -uo pipefail
           echo "press_start=$(date +%s)" >> times.env
+          # run.mjs works in <tmpdir>/jp-persona-draw-<tag> and --fresh empties it: the two sides run at once on this runner, so their tags must differ (pair-main, pair-pr),
+          # and each round's jobs are read (gate.py extract) before the next round's --fresh. Each person is its own runner.
           for k in $(seq 1 "$RUNS"); do
             for side in main pr; do
               out="out/${{ matrix.person.id }}--$side-$k"; mkdir -p "$out/draw"; cp cv/draw/cv.pdf cv/draw/cv.md cv/draw/draw.json "$out/draw/"

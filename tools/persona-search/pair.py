@@ -11,6 +11,7 @@ tools/persona-search/gate-personas.json, and the 30 profiles, search-profiles.js
 import json
 import math
 import os
+import random
 import re
 import statistics
 import subprocess
@@ -31,6 +32,7 @@ BROKER = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/health'
 # Admit when 8 readings 15 s apart all have nothing waiting and their median active leaves FREE_SLOTS free: 10 of 16 today (the clean run of 00:44 ran at 7-15; 8 would
 # have held it). The cap is /health's queue.slots once the broker reports it (as-ai-startup-34, 13 Nov 2026: 16 -> 24 slots), 16 until then.
 READINGS, EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 8, 15, 6, 16
+JITTER_S = 60   # the pause before the last look (turn)
 SETTLE_S = 240   # another pair admitted this recently has not shown its load in /health yet: wait
 TURN_MINUTES = 55
 NIGHT_STOP = (23, 35)   # the Worker starts the night at 00:00 UTC (profiles.NIGHT_UTC): no pair starts after this
@@ -136,6 +138,14 @@ def turn(now=datetime.now, sleep=time.sleep, read=None, holders=held):
             if k < READINGS - 1:
                 sleep(EVERY_S)
         ok, why = room(readings)
+        if ok:
+            # Why (Gitar on #3957): two pairs' turns may see the same quiet window; a random pause, then one more look, lets the later one see the
+            # earlier one's admission (held(): a turn ended under SETTLE_S ago). Seconds apart they still both go: a side whose waits ran long is not counted.
+            sleep(random.uniform(0, JITTER_S))
+            late = holders(os.environ.get('GITHUB_RUN_ID'))
+            if late:
+                print(f'pair: waiting {now(timezone.utc):%H:%M:%S}: room, but {", ".join(late)}', flush=True)
+                continue
         print(f'pair: {"admitted" if ok else "waiting"} {now(timezone.utc):%H:%M:%S}: {why}', flush=True)
         if ok:
             return 0
