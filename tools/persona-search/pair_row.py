@@ -52,6 +52,9 @@ def short(line):
     return f"{hit['head']} ({'gain beyond' if hit['kind'] == 'gain beyond' else 'within'} ±{hit['band']}{'' if hit['kind'] == 'gain beyond' else ', not a proven gain'})"
 
 
+RERUN_NOT_STARTED = 'If the second run does not start, run the pair by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>): it takes this row.'
+
+
 def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()):
     """{conclusion, title, summary, rerun} of a pair. done: pair.measured() ({person: {before, after, d, line}}); ran: the people dispatched; seen: those with any side;
     spreads: {person: spread or None}; rows: pair.sides() (for the reason); earlier: the first run's counted lines (its row's text), kept in front when the re-run takes the row over (Gitar on #4059). conclusion: success, failure (a loss beyond the band), neutral (superseded), pending (not counted: the row stays running)."""
@@ -81,7 +84,9 @@ def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()
         # Why (Gitar on #4065, and on #3967: "the turn found no room, the workflow must not queue a second long wait"): only a person who HAD a side is run again; one whose search never started goes straight to "run it again".
         again = [person for person in missing if person in seen]
         if attempt < 2 and again:
-            return {'conclusion': 'pending', 'title': (title + '; running once more')[:140], 'summary': '\n'.join(lines), 'rerun': again}
+            # Why (#4103, Gitar): the row has no owner until the second run claims it, so a second run that never starts (cancelled in its queue, refused) leaves it open; the row says so and
+            #   how to close it (a pair by hand takes an unowned rerunning row), instead of promising "running once more".
+            return {'conclusion': 'pending', 'title': (title + '; a second run is asked')[:140], 'summary': '\n'.join(lines + [RERUN_NOT_STARTED]), 'rerun': again}
         return {'conclusion': 'pending', 'title': (title + '; run it again')[:140], 'summary': '\n'.join(lines + [title, 'Next step: run the pair again by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>); a stalled call is not a loss.']), 'rerun': []}
     return {'conclusion': 'success', 'title': ' · '.join(short(line) for line in lines)[:140], 'summary': '\n'.join(lines), 'rerun': []}
 

@@ -46,6 +46,8 @@ class TheRow(unittest.TestCase):
         self.assertTrue(second['title'].startswith('not counted: b10'))
         self.assertIn('run it again', second['title'])
         self.assertNotIn('failure', (first['conclusion'], second['conclusion']))
+        self.assertIn('run the pair by hand', first['summary'])   # #4103: an unowned second run that never starts is closed by a pair by hand, and the row says so
+        self.assertNotIn('running once more', first['title'])
 
     def test_a_person_who_never_searched_is_not_run_again_but_says_run_it_again(self):   # Gitar on #4065 and #3967: the turn found no room; a second long wait is not queued
         out = pair_row.decide({'c04': moves(15, 14)}, ['c04', 'b10'], {'c04'}, {'c04': None}, 1, rows(c04=1))

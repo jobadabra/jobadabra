@@ -350,7 +350,7 @@ jobs:
           python3 tools/persona-search/pair.py table dl "$PR" "$MAIN" "$HEAD" > table.md
           # The hold (plan 4/4, pair.py settle): the numbers go into the body's pending Moves lines; ship's own hold (label search-hold) comes off only when none fell.
           gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,labels,headRefOid > view.json
-          # The row's end (pair_row.next_row, the table at the top of pair_row.py): success with the numbers, failure (a loss beyond the band), neutral (a newer head), or still open ("running once more", "run it again").
+          # The row's end (pair_row.next_row, the table at the top of pair_row.py): success with the numbers, failure (a loss beyond the band), neutral (a newer head), or still open ("a second run is asked", "run it again").
           # Order (Gitar on #4044/#4077): the row moves to "rerunning" BEFORE the second run is dispatched (its start claims that row), a dispatch that fails moves it to "run it again", and all of it happens
           #   before the hold, label and comment work, so a failure there can not turn a counted pair red.
           newer=0; if [ "$STATE" != MERGED ] && [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then newer=1; fi
