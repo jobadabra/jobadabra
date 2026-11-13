@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_form_read, board_terms, board_employers, board_paths, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -78,7 +78,7 @@ def _read(board, search, fetch, route, early, show=None):
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):
-            links = board_paths.forms(board['search_url'], term, place)
+            links, started, how = board_paths.forms(board['search_url'], term, place), time.monotonic(), ''
             url = links[0]
             try:
                 url, page = board_paths.get(listing or fetch, links)   # Why (#3886): a path-style board answers the plus form 404 and was skipped; its slug link has the jobs
@@ -86,10 +86,12 @@ def _read(board, search, fetch, route, early, show=None):
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
                     return jobs, board_yield.refused(error), None
+                board_round_log.said(board, term, place, started, jobs, error=f'HTTP {error.code}')
                 continue
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
                     return jobs, board_yield.refused(error), None
+                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__)
                 continue
             found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
@@ -108,16 +110,19 @@ def _read(board, search, fetch, route, early, show=None):
                     except Exception as error:  # noqa: BLE001 — refused (401/403, a bot check), not allowed or no browser: a visit
                         careers.note_refusal(url, error)
                         return jobs, board_yield.refused(error), None
-                    fetch = show   # this board's other searches and next pages are built by scripts too
+                    fetch, how = show, 'read after its scripts ran'   # this board's other searches and next pages are built by scripts too
                     found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
             if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
                 asks, asked_term = asks + 1, term                      # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
-                found = careers._asked(url, page, [], fetch)           # An empty answer (no jobs for these words) asks again on the next words' page
+                found, how = careers._asked(url, page, [], fetch), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
                 asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
+            on_page = len(found or [])   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)
                 found = found + board_pages.more(url, page, found, fetch, lambda markup, link: careers.jsonld_jobs(markup, link) or careers.read_page_from(markup, link, fetch),
                                                  lambda some: board_yield.is_relevant(some))
-            jobs.extend(_shaped(board, found))
+            shaped = _shaped(board, found)
+            board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page)
+            jobs.extend(shaped)
             state = 'ok' if jobs else state
         new = {job['url'] for job in jobs} - seen
         seen |= new

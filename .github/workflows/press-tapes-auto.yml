@@ -1,5 +1,5 @@
 name: Press tapes auto
-run-name: Press tapes auto · the day's re-record
+run-name: Press tapes auto · ${{ inputs.min_gaps != '' && !inputs.queued && 'the hourly look' || inputs.queued && 'queued by the hourly look' || 'the daily re-record' }}
 # The day's re-record of the Find jobs recordings. Until 12 Nov 2026 it started after each merge (owner, 11 Nov 2026, asked via AskUserQuestion by sa: "Auto re-record after merge (Recommended)": "A workflow starts by itself after each merge that touches the search, re-records only the people
 # whose recording has a gap (the check already lists them), on the scheduled AI lane, one run pending at a time"; why: on #3802, #3803, #3826 and #3832 the yardstick read "Verdict covers 0 or 1 of 18 people" until someone re-recorded by hand).
 # 1. gaps: press-yardstick.yml mode=gaps, one offline replay of main on the recordings (no AI): the people whose replay asks for what their recording lacks, plus people with no recording (ci.recording_gaps, the PR comment's "Re-record").
@@ -18,6 +18,7 @@ run-name: Press tapes auto · the day's re-record
 #    (owner, 13 Nov 2026, asked via AskUserQuestion by mac-9a: "At most one every 6 h"; read from this workflow's past runs, tools/press-yardstick/rerecord_decision.py), else the run ends there with one summary line (no recording, no AI call, no table).
 #    The 10:30 run does not wait for the 6 h (any gap records), and its recording starts the 6 h for the looks after it.
 #    After a recording the band and the table replay main again, as always.
+#    A look never records itself (sa on #3943, 13 Nov 2026): it runs gaps + decide in a group of its own, and when the line and the 6 h say record, its `queue` job starts a run with queued=true, the one that records, in the group `press-tapes-auto`.
 # Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Report only, live decides (Recommended)": "recordings are renewed once after a day's merges instead of after each merge, which saves Codex-plan calls"):
 # about 11 search merges that day aged the recordings faster than 8 re-records renewed them (the replay measured 3 of 18 people), and the replay no longer decides a PR (tools/press-yardstick/verdict.py).
 on:
@@ -28,12 +29,20 @@ on:
         required: false
         default: ''
         type: string
+      queued:
+        description: 'Set by an hourly look that found the recordings stale: this run is the one that records, one at a time, and applies the line and the 6 h to the state it starts in'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
+# Why (13 Nov 2026, sa's finding on #3943, run 43320816550 in its guard for hours): this group keeps one running + one pending run and a newer pending run REPLACES the older, so an hourly look that records nothing replaced a
+# waiting 10:30 or by-hand re-record and piled up as cancelled runs. Only a run that records is serialized here (the daily run, one by hand, the one a look queues); a look runs gaps + decide, both offline and free, in a group of its own per run.
+# Test tests/unit/press/test_press_tapes_auto_concurrency.py plays it with this expression.
 concurrency:
-  group: press-tapes-auto
+  group: ${{ inputs.min_gaps != '' && !inputs.queued && format('press-tapes-look-{0}', github.run_id) || 'press-tapes-auto' }}
   cancel-in-progress: false
 
 jobs:
@@ -70,10 +79,38 @@ jobs:
           MIN_GAPS: ${{ inputs.min_gaps }}
         run: python3 -I tools/press-yardstick/rerecord_decision.py
 
+  queue:
+    name: Queue the re-record (an hourly look that found the recordings stale)
+    needs: [gaps, decide]
+    if: ${{ inputs.min_gaps != '' && !inputs.queued && needs.decide.outputs.record == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write   # starts the queued run (workflow_dispatch with the job token)
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref_name }}
+          MIN_GAPS: ${{ inputs.min_gaps }}
+        run: |
+          # Why (13 Nov 2026, sa on #3943): the recording path is one at a time in the group `press-tapes-auto`; the run queued here records when its turn comes, after re-reading the gaps, the line and the 6 h on its own start (a record that ended meanwhile means it records nothing).
+          # One waiting is enough: a second queued while one is pending would only replace it.
+          waiting=$(gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status pending --json url --jq '.[].url' || true)
+          if [ -n "$waiting" ]; then
+            echo "### Not queued: a re-record is already waiting" >> "$GITHUB_STEP_SUMMARY"
+            echo "$waiting" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh workflow run press-tapes-auto.yml --repo "$REPO" --ref "$REF" -f min_gaps="$MIN_GAPS" -f queued=true
+          echo "### Queued: the recordings are stale enough to re-record" >> "$GITHUB_STEP_SUMMARY"
+          echo "A run of press-tapes-auto.yml started with min_gaps=$MIN_GAPS, queued=true: it takes its turn behind any re-record in progress." >> "$GITHUB_STEP_SUMMARY"
+
   guard:
     name: No by-hand run holds the broker, and how many may record at once
     needs: [gaps, decide]
-    if: ${{ needs.decide.outputs.record == 'true' }}
+    if: ${{ needs.decide.outputs.record == 'true' && (inputs.min_gaps == '' || inputs.queued) }}   # a look never records: the `queue` job below starts the run that does
     runs-on: ubuntu-24.04
     timeout-minutes: 320
     permissions:
@@ -97,7 +134,8 @@ jobs:
           due() { m=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) )); [ "$m" -ge 1380 ] || [ "$m" -lt 10 ]; }
           blocked() { held; if due; then echo "the night Search check is due at 00:00 UTC"; fi; }
           mine=$(gh api "repos/$REPO/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
-          newer() { for state in pending queued waiting; do gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status "$state" --json createdAt,url --jq ".[] | select(.createdAt > \"$mine\") | .url" || true; done; }
+          # Neither an hourly look nor the run a look queued (both titled "the hourly look") is a newer re-record: a look records nothing, and the queued one applies the line (12) and the 6 h, so a daily or by-hand run (any gap records) that stood down for it would record nothing (Gitar on #3947, 13 Nov 2026).
+          newer() { for state in pending queued waiting; do gh run list --repo "$REPO" --workflow press-tapes-auto.yml --status "$state" --json createdAt,url,displayTitle --jq ".[] | select(.createdAt > \"$mine\") | select(.displayTitle | test(\"hourly look\") | not) | .url" || true; done; }
           for _ in $(seq 1 150); do
             n=$(newer)
             if [ -n "$n" ]; then
