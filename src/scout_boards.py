@@ -209,6 +209,13 @@ def local_of(jobs, country):
     return [job for job in jobs if country in where.get(str(job.get('location') or '').strip(), ())]
 
 
+def _local(jobs, country):
+    """local_of under the places' own allowance (PLACE_CALLS): a home-page board's form links are measured with it (src/scout_board_homes.py)."""
+    from .ai import decide
+    with decide.own_allowance(PLACES, PLACE_CALLS):
+        return local_of(jobs, country)
+
+
 def kinds_of(local):
     """(families, unanswered) of these jobs' titles (the first 40, one question): unanswered titles mean "not asked", never "no kinds"."""
     titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
@@ -223,10 +230,12 @@ def measure(board, local, country, families, browser=False):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local), **({'browser': True} if browser else {})}
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None, homes=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
     """Read the next thin country's boards for this run's kinds of work (kinds: named by hand, else the country's next in turn) and keep the facts. Returns the facts kept (a list); never raises: the next scout run publishes what it kept.
     families: board discovery's cells (src/scout_board_cells.py): the boards are asked for these role families instead of kinds; again: kept facts' boards read first, to measure them again.
-    words: (db, country, families) -> {family: words in the country's language}, for cells only (default src/scout_board_cells.py local_words; tests pass a fake)."""
+    words: (db, country, families) -> {family: words in the country's language}, for cells only (default src/scout_board_cells.py local_words; tests pass a fake).
+    homes: search -> the boards the AI named only by their home page, read last through their own search form (src/scout_board_homes.py; default: the proposal's own)."""
+    from . import scout_board_homes
     from .ai import board_ideas, cost, decide
     from .sources import board_yield, careers, found_boards
     ensure(db)
@@ -244,7 +253,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
-        proposed = _first(list(again), found, proposed)
+        proposed = _first(list(again), found, proposed, scout_board_homes.named(search, ideas, homes))
+        read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
         from .ai import page_reader
