@@ -1,12 +1,13 @@
 """The central scout's board pass (src/scout_boards.py): per thin country, the boards that give jobs located there, kept as facts the index publish sends.
 24 Oct 2026, owner: "A. Central scout measures boards" (a first search in Moldova depended on which boards the AI happened to name)."""
+import os
 import sqlite3
 import unittest
 from datetime import date
 from unittest import mock
 
 from src import scout_board_cells, scout_boards, scout_cells
-from src.ai import decide
+from src.ai import decide, page_words
 from src.sources import careers, found_boards
 
 
@@ -75,6 +76,30 @@ class BoardPassTest(unittest.TestCase):
                          again=known, clock=lambda: now[0])
         self.assertEqual(read, ['known1.example', 'new1.example', 'new2.example'], 'the second re-read had no time left; both new boards were read')
         self.assertEqual(scout_cells._meta(self.db, scout_board_cells.SKIPPED, {}), {'md': ['known2.example']})
+
+    def test_an_empty_page_spends_its_share_of_page_words_and_the_next_boards_still_get_theirs(self):
+        """13 Nov 2026 (bp, lab run 43520706763): two empty pages spent 23 of the pass's 24 page-words calls. Each board's two reads (rules, then the AI page read of an empty one)
+        draw at most BOARD_WORD_CALLS together; the pass's pool is untouched by what a board was refused."""
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+        taken, hosts = {}, ['a.example', 'b.example', 'c.example']
+
+        def read_board(item, search, fetch):
+            got = sum(decide.take('link-kind', f"{item['host']} {n}") for n in range(10))   # a page with 10 batches of wordings to judge
+            taken[item['host']] = taken.get(item['host'], 0) + got
+            return [], 'empty', None
+        with mock.patch('src.ai.page_reader.usable', return_value=True), mock.patch.object(careers, 'READER', 'auto'):
+            scout_boards.run(self.db, ideas=lambda search: [board(h) for h in hosts], read_board=read_board, out=lambda line: None, named='md', google=lambda *a: [])
+        self.assertEqual(taken, {h: scout_boards.BOARD_WORD_CALLS for h in hosts}, 'each board: its share over both reads, none starved')
+        self.assertEqual(decide.spent(page_words.WORDS) + decide.probe_spent(), len(hosts) * scout_boards.BOARD_WORD_CALLS)
+
+    def test_a_by_hand_reserve_gives_the_pass_time_for_its_candidates_and_the_default_keeps_240_s(self):
+        """13 Nov 2026 (bp): 240 s for 4 candidates (~60 s each); a pass asked for 12 would stop starting boards after the 4th unless its time follows."""
+        for env, seconds in (({}, 240), ({'SCOUT_BOARD_RESERVE': '2'}, 240), ({'SCOUT_BOARD_RESERVE': '12'}, 720), ({'SCOUT_BOARD_RESERVE': 'lots'}, 240)):
+            with mock.patch.dict('os.environ', env, clear=False):
+                if not env:
+                    os.environ.pop('SCOUT_BOARD_RESERVE', None)
+                self.assertEqual(scout_boards.budget_s(), seconds, env)
 
     def test_one_slow_reread_still_lets_every_new_board_be_read(self):
         now, read = [0.0], []

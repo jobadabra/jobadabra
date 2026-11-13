@@ -226,3 +226,29 @@ class BoardPassAllowance(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ShareAllowance(unittest.TestCase):
+    """decide.share_allowance: one board's page-words calls stop at its share, whatever pool they are drawn from; other topics and other boards are untouched."""
+
+    def setUp(self):
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+
+    def test_only_the_named_topics_stop_at_the_share_and_a_refused_call_costs_the_pool_nothing(self):
+        with decide.own_allowance('page words', 24):
+            with decide.share_allowance('a.example', 2, ('link-kind',)):
+                link = [decide.take('link-kind', n) for n in range(5)]
+                other = [decide.take('place', n) for n in range(5)]
+            with decide.share_allowance('a.example', 2, ('link-kind',)):   # the same board's second read continues the count
+                again = decide.take('link-kind', 'later')
+            with decide.share_allowance('b.example', 2, ('link-kind',)):
+                nextboard = [decide.take('link-kind', n) for n in range(5)]
+        self.assertEqual((link, again, nextboard), ([True, True, False, False, False], False, [True, True, False, False, False]))
+        self.assertEqual(other, [True] * 5, 'a topic outside the share is only the pool\'s')
+        self.assertEqual(decide.spent('page words'), 9, '2 + 5 + 2: the refused calls were never counted on the pool')
+
+    def test_no_share_open_changes_nothing(self):
+        with decide.own_allowance('page words', 3):
+            self.assertEqual([decide.take('link-kind', n) for n in range(5)], [True, True, True, False, False])
+

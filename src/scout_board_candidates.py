@@ -20,9 +20,19 @@ from .sources import ats
 
 URL = 'https://www.jobadabra.top/api/scout-memory'
 RESERVE = 4                 # reported boards a pass reads beside the AI's ideas and the re-reads (Why (13 Nov 2026, bp): the pass reads ~5 boards in its 240 s; the ideas keep the rest)
+MAX_RESERVE = 24            # the most candidates one by-hand pass may ask for (Why (13 Nov 2026, bp): owner's range 1..24; the pass reads at most scout_boards.MAX_BOARDS (12) boards in all, so more is cut there)
 TRIED = 'board_candidates'  # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a candidate the pass read (kept or not): not a candidate again for REFRESH_DAYS
 MAX_BOARDS = 1500           # the site's cap (jobadabra-web api/scout-memory.js MAX_REPORTED)
 HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')
+
+
+def reserve():
+    """How many reported boards this pass reads: env SCOUT_BOARD_RESERVE (lab board-discovery.yml's `reserve` input, by hand) as a whole number clamped to 1..MAX_RESERVE; anything else
+    (unset, empty, text, a fraction) is the default RESERVE, so the schedule is unchanged. Never trusted: an input is a request, the limits are ours."""
+    try:
+        return min(max(int(os.environ.get('SCOUT_BOARD_RESERVE', '').strip()), 1), MAX_RESERVE)
+    except ValueError:
+        return RESERVE
 
 
 def valid(item):
@@ -66,12 +76,12 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
 
 def for_country(reports, country, measured=(), today=None, refresh_days=20):
     """The boards of `reports` serving `country` that are not measured already: [{name, host, search_url (the home page), home: True, countries, kinds, source_kind}], most installs
-    first, at most RESERVE. `measured`: [(host, country, read_at)] of the Scout's facts; one read within `refresh_days` is not read again."""
+    first, at most reserve(). `measured`: [(host, country, read_at)] of the Scout's facts; one read within `refresh_days` is not read again."""
     today = today or date.today()
     recent = {(host, code) for host, code, read_at in measured if str(read_at) >= (today - timedelta(days=refresh_days)).isoformat()}
     wanted = sorted((report for report in reports if country in report['countries'] and (report['host'], country) not in recent), key=lambda report: (-report['installs'], report['host']))
     return [{'name': report['host'], 'host': report['host'], 'search_url': f"https://{report['host']}/", 'home': True, 'countries': [pool_tags.COUNTRIES.get(country, country)],
-             'kinds': ['any'], 'source_kind': 'sector'} for report in wanted[:RESERVE]]
+             'kinds': ['any'], 'source_kind': 'sector'} for report in wanted[:reserve()]]
 
 
 def tried(db):
