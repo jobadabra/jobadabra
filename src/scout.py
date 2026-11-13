@@ -239,9 +239,10 @@ def discover(db, run=None, out=print, today=None):
     jobs never save over each other's memory; the Scout publishes both (SCOUT_BOARD_DB). SCOUT_BOARD_CELLS ("sk:nursing_care") names cells by hand; SCOUT_BOARD_PRIORITY lists the cells that go first among
     equals (the lab's private list). Why (12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)"): the thinnest country
     by employers never gave a turn to the countries with no measured board."""
-    from . import scout_board_cells as cells, scout_board_lanes, scout_boards
+    from . import scout_board_cells as cells, scout_board_lanes, scout_board_priority, scout_boards
     cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
-    priority = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
+    named_first = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
+    priority = scout_board_priority.priority(named_first)   # the lab's cells, the profiles', the pairs installs search, then the most searched fields everywhere
     try:
         only = scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV))   # one lane of several at once: its own country or nothing
     except ValueError as wrong:
@@ -253,7 +254,7 @@ def discover(db, run=None, out=print, today=None):
     country, families, again = turn
     kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out)
     cells.record(db, country, families, kept, today, again=again)
-    out(cells.line(db, today, priority))
+    out(cells.line(db, today, named_first))
     return kept
 
 
