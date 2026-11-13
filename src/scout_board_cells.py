@@ -22,6 +22,7 @@ TARGET = 4                     # boards PROVEN for the cell (MIN_RIGHT+ jobs of 
 # Cost, from run 43485778466: a pass (one country, 3 families) 6.3 min and 25-41 AI calls; 930 cells = 310 passes = ~33 h on one lane, ~4-5 h on 8 lanes.
 SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
+RAN = 'board_ran'   # scout_meta: {"<country>": [families a board of the last pass was asked by their own word]} (note_ran, read by record)
 WORDS, WORDS_DAYS = 'board_words', 30     # scout_meta: {"<country>|<family>": {"words": [...], "at": "YYYY-MM-DD"}} the family's search words in the country's language (local_words)
 
 
@@ -113,6 +114,12 @@ def pick(db, today=None, priority=(), named=(), only=None):
     return country, [family for code, family in open_cells if code == country][:PER_RUN], again.get(country, [])
 
 
+def note_ran(db, country, ran):
+    """The families whose own word ran on ANY board of the pass just read, kept or not (src/scout_boards.py run): record() leaves the others unpenalised."""
+    memory = scout_cells._meta(db, RAN, {})
+    scout_cells._set(db, RAN, {**(memory if isinstance(memory, dict) else {}), country: sorted(ran)})
+
+
 def record(db, country, families, kept, today=None, again=()):
     """After a run: a family with a kept board is cleared; one without rests REST_DAYS by its empty tries in a row; the facts read again are stamped."""
     from . import scout_boards
@@ -126,8 +133,11 @@ def record(db, country, families, kept, today=None, again=()):
     memory = scout_cells._meta(db, CELLS, {})
     memory = memory if isinstance(memory, dict) else {}
     found = {family for fact in kept for family in scout_boards.proven_families(fact)}   # a family the board only saw once is not found
-    # a kept board whose count has no entry for an asked family was not asked its word (the read stopped first): not measured is work owed, never a miss
-    owed = {family for fact in kept if fact.get('family_jobs') is not None for family in families if family not in fact['family_jobs']} - found
+    # Why (13 Nov 2026, bp; Gitar on #4027): a family whose own word ran on no board of the pass (a read stops after two idle queries) was not asked: work owed, never a miss.
+    # Decided from every board read, not from the kept ones: an all-empty pass is when the later families are most often skipped. No note (a pass by hand): none owed.
+    ran = scout_cells._meta(db, RAN, {})
+    ran = ran.get(country) if isinstance(ran, dict) else None
+    owed = {family for family in families if family not in ran and family not in found} if ran is not None else set()
     for family in families:
         key = f'{country}|{family}'
         tries = 0 if family in found else int((memory.get(key) or {}).get('tries') or 0) + (family not in owed)

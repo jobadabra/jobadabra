@@ -74,18 +74,18 @@ class Pick(unittest.TestCase):
         cells.record(self.db, 'es', [family], [{'families': [family], 'family_jobs': {family: scout_boards.MIN_RIGHT - 1}}], TODAY)
         self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})[f'es|{family}']['tries'], 1, 'two right jobs of it is not a found board: the cell rests and is asked again')
 
-    def test_a_family_a_kept_board_was_not_asked_is_work_owed_not_a_miss(self):
-        """13 Nov 2026 (bp, sa): the read of a board can stop before a family's own word (two idle queries); its count is then absent, "not measured".
-        That cell is asked again tomorrow and never rests 2, 4, 8, 30 days as if the family had been searched and found nothing."""
+    def test_a_family_no_board_was_asked_is_work_owed_not_a_miss(self):
+        """13 Nov 2026 (bp; Gitar on #4027): a read stops after two idle queries, so the pass's third family may never be searched on any board, kept or not.
+        That cell is asked again after one day and never rests 2, 4, 8, 30 days as if the family had been searched and found nothing."""
         cells.record(self.db, 'es', ['electrical_mechanical'], [], TODAY)
         cells.record(self.db, 'es', ['electrical_mechanical'], [], TODAY)
-        self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})['es|electrical_mechanical']['tries'], 2, 'two real misses')
-        kept = [{'families': ['teaching'], 'family_jobs': {'teaching': 5}}]
-        cells.record(self.db, 'es', ['electrical_mechanical', 'teaching'], kept, TODAY)
+        self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})['es|electrical_mechanical']['tries'], 2, 'two real misses (no note of the words that ran: a pass by hand)')
+        cells.note_ran(self.db, 'es', {'teaching'})   # an ALL-EMPTY pass: no board kept, and only teaching's word ran on any board
+        cells.record(self.db, 'es', ['electrical_mechanical', 'teaching'], [], TODAY)
         memory = scout_cells._meta(self.db, cells.CELLS, {})
         self.assertEqual(memory['es|electrical_mechanical'], {'tries': 2, 'until': (TODAY + timedelta(days=1)).isoformat(), 'asked': TODAY.isoformat()},
-                         'not asked its word: no new miss, back in the queue tomorrow')
-        self.assertEqual(memory['es|teaching']['tries'], 0)
+                         'its word never ran: no new miss, back in the queue tomorrow')
+        self.assertEqual(memory['es|teaching']['tries'], 1, 'its word ran and no board of it was kept: a real miss')
 
     def test_boards_that_saw_a_family_once_do_not_fill_its_cell_and_boards_with_right_jobs_do(self):
         """13 Nov 2026 (bp): airlinejobs.com (178 Spanish jobs, one an aircraft electrician) and tecnoempleo.com filled (es, electrical_mechanical) at TARGET,

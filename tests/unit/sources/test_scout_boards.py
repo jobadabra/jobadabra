@@ -79,6 +79,13 @@ class BoardPassTest(unittest.TestCase):
                             url='https://{host}/jobs')
         self.assertEqual(got[0]['family_jobs'], {'kitchen': 4, 'nursing_care': 0}, 'its list is the board: no nurse in it is a measured zero')
 
+    def test_the_families_whose_word_ran_on_any_board_are_noted_even_when_no_board_is_kept(self):
+        """Gitar on #4027: an all-empty pass must still say which families were asked, so the cell queue does not rest the others as misses."""
+        asked = {'electrical_mechanical': ['electricista'], 'service_hotel': ['camarero'], 'construction': ['albañil']}
+        got = self.by_cells({'a.md': ([job('Berlin')] * 5, 'ok', None)}, lambda title: [], asked, searched=['electricista', 'camarero'])   # nothing local: no fact
+        self.assertEqual(got, [])
+        self.assertEqual(scout_cells._meta(self.db, 'board_ran', {}), {'md': ['electrical_mechanical', 'service_hotel']}, 'construction\'s word never ran')
+
     def test_a_pass_by_kinds_of_work_counts_no_family(self):
         got, _, _ = self.run_pass({'a.md': ([job('Chisinau')] * 3, 'ok', None)})
         self.assertNotIn('family_jobs', got[0])

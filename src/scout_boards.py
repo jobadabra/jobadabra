@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
 from . import pool_tags, role_kinds, scout_cells, scout_google_boards
-from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_of, measured_counts, proven_families  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
+from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
@@ -299,7 +299,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
         proposed = _first(list(again), found, proposed, scout_board_homes.named(search, ideas, homes))
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
-        began, kept, unread, counts, final, addresses = clock(), [], [], [], [], []
+        began, kept, unread, counts, final, addresses, ran = clock(), [], [], [], [], [], set()
         reader, careers.READER = careers.READER, None   # rules first: the AI page reader only for a board they read as empty (PAGE_CALLS)
         # Why (13 Nov 2026, owner: "shouldn't the central scout and board discovery do that... spend those 60-90s ?"): the pass learns each board's
         # layout from its own read, so every install reads the board with no AI question per link (src/sources/board_layout.py: board['learn']).
@@ -343,7 +343,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                         families, unasked, by_family = kinds_of(counted)
                 found_layout = notes.get('layout')   # None: this read never tested a layout, the kept one stays; False: it was stale
                 if asked is not None:   # only the families this board was asked for by their own word, or all of a list it shows with no search
-                    by_family = measured_counts(by_family, asked, set(notes.get('terms') or ()), '{role}' not in board['search_url'] or not notes.get('terms'))
+                    lists = '{role}' not in board['search_url'] or not notes.get('terms')
+                    by_family = measured_counts(by_family, asked, set(notes.get('terms') or ()), lists)
+                    ran |= searched(asked, set(notes.get('terms') or ()), lists)   # on any board, kept or not: a family nobody searched is no miss (scout_board_cells.record)
                 fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None, counts=by_family if asked is not None else None)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
                 counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why
@@ -368,6 +370,9 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                        (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
                         json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1]))
+        if by_cells:
+            from . import scout_board_cells
+            scout_board_cells.note_ran(db, country, ran)   # the cell's record() after this pass: a family no board was asked is no miss
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()

@@ -28,14 +28,16 @@ def kinds_of(local):
     return sorted(counts), unanswered, dict(sorted(counts.items()))
 
 
-def measured_counts(counts, asked, searched, lists):
-    """{family: jobs} for the families this read measured: a board that lists its jobs with no search of its own word (a category page, or a feed it declares: lists)
-    measured every family asked (0 where none of its list is); a board with a search box only the families whose own word ran (searched: the lowercase words that did),
-    asked = {family: its words}. Others are absent."""
-    if lists:
-        return {**{family: 0 for family in asked}, **counts}
-    ran = {family for family, words in asked.items() if any(word.lower() in searched for word in words)}
-    return {family: counts.get(family, 0) for family in sorted(ran)}
+def searched(asked, terms, lists):
+    """The families this read asked: all of them for a board that lists its jobs with no search of its own word (lists: a category page, or a feed it declares), else the
+    ones whose own word ran (terms: the lowercase words the read searched, written by src/sources/found_boards.py). asked = {family: its words}."""
+    return set(asked) if lists else {family for family, words in asked.items() if any(word.lower() in terms for word in words)}
+
+
+def measured_counts(counts, asked, terms, lists):
+    """{family: jobs} for the families this read asked (searched): 0 where none of its jobs are; a family never asked is absent (not measured, never 0)."""
+    ran = searched(asked, terms, lists)
+    return {**{family: 0 for family in sorted(ran)}, **{family: jobs for family, jobs in counts.items() if lists or family in ran}}
 
 
 def proven_families(fact):
