@@ -12,7 +12,7 @@ set -uo pipefail
 base="${1:?usage: web-tests-reached.sh <base> <head>}"; head="${2:?usage: web-tests-reached.sh <base> <head>}"
 here="$(git rev-parse --show-toplevel)"
 changed="$(git -C "$here" diff --name-only --no-renames "$base...$head")" || { echo "::error::could not read this PR's changed files (git diff $base...$head)"; exit 1; }
-# Why (13 Nov 2026, coordinator): no clone and no work when the PR changes nothing. Whether a changed file is read by a web test only web's tests can say (97 of the last 120 merged PRs reach one),
+# Why (13 Nov 2026, coordinator): no clone and no work when the PR changes nothing. Whether a changed file is read by a web test only web's tests can say (97 of the last 120 merged PRs reach one; docs/map/index.md alone is read by 11 web tests, so "a .md is never read" is false),
 # so the clone below is the question's price; a hand-kept list of "never read" paths would drift into the next escape.
 [ -n "$changed" ] || { echo "this PR changes no file: no jobadabra-web test can read it"; exit 0; }
 scratch="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/web-tests-reached.$$"

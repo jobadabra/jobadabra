@@ -65,7 +65,7 @@ function asPath(text, dir) {
 // (admin/search-night-prs.js SEARCH_PATHS) reads nothing, and counting it picked 111 web tests for one desktop/lib file; what such a module imports still counts.
 const READS_FILES = /^(?:test|tests|tools|jobs|desktop\/test)\//;
 
-// A package is named by a real import: a line that starts with import/export ... from 'x', or an import('x') / require('x') call; never prose inside a string. Not a path ('./x', '/x'), not Node's own.
+// A package is named by a real import: a line that starts with import/export ... from a quoted name, or a dynamic import or require call with a quoted name; never prose inside a string. Not a path ('./x', '/x'), not Node's own.
 const BARE_STATIC = /^[ \t]*(?:import|export)\b[^'"\n;()]*?\bfrom\s*['"]([^'"\n]+)['"]|^[ \t]*import\s*['"]([^'"\n]+)['"]/gm;
 const BARE_CALL = /\b(?:import|require)\(\s*['"]([^'"\n]+)['"]\s*\)/g;
 const PACKAGE_NAME = /^(?:@[a-z0-9~-][\w.~-]*\/)?[a-z0-9~-][\w.~-]*(?:\/[\w./-]*)?$/;
