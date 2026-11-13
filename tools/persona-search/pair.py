@@ -200,7 +200,7 @@ def usual(person):
     except (RuntimeError, OSError, subprocess.CalledProcessError, ValueError):
         return None
     levels = [lv for series in ((state or {}).get('series') or {}).values() for lv in ((series.get('people') or {}).get(person[1:]) or {}).get('right', {}).get('levels', [])]
-    return floors.spread_of(levels, None) if len(levels) >= 5 else None
+    return floors.spread_of(levels, floors.NUMBERS['right'][2]) if len(levels) >= 5 else None   # the number's own least spread (1): max() never sees None
 
 
 def _cell(rows, key, fmt=str):
