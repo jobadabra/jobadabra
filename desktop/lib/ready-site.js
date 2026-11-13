@@ -104,9 +104,3 @@ export const autoRun = async (storage, options) => readWords(await call(storage,
 /** Stops these jobs of the auto night one by one (the whole-night stop would also end a readiness night). -> {ok}: true only when every one was stopped. */
 export const autoStop = async (storage, jobs, options) => ({ok: (await Promise.all((jobs || []).map(job => stop(storage, job, options)))).every(result => result.ok)});
 
-// The LinkedIn cloud probe (spec 2026-11-11-always-on-parity-design.md 1/6, lib/linkedin-cloud-probe.js): the owner's install posts ONE search and the session as a `linkedin` night (the site seals the session with the batch and deletes it with it),
-// starts it, and takes the one read with readTake. -> {ok, batch, queued} or {ok: false, status, error}; never throws. The session is only in the body of this one call.
-export const linkedinSend = async (storage, {url, session, now = () => new Date(), ...options}) => readWords(await call(storage, '/api/ready/batch', {method: 'POST', ...options,
-  body: {task: 'linkedin', night: now().toISOString().slice(0, 10), jobs: [{id: 'probe', url}], linkedin: session}}));
-/** Starts the queued LinkedIn probe night now. -> {ok} or {ok: false, status, error}; never throws. */
-export const linkedinRun = async (storage, options) => readWords(await call(storage, '/api/ready/run', {method: 'POST', body: {task: 'linkedin'}, ...options}));
