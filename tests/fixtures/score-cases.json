@@ -1,5 +1,5 @@
 {
- "_": "The fit score's fixed case set (src/ai/score.py SYSTEM, score_bands.py, score_search.py), replayed by tools/score-cases.py on the person's Claude plan ($0). Fictional people and postings only. Expect: score_max / score_min bound the final score (after the search part), fit_max bounds the AI's own fit to the search, gap says the cv_gap line must be filled. Added 7 Nov 2026 (owner: a Cessna Citation captain job, licence required, scored 85 while the card said Not eligible). location_min bounds the location part; a case's places stand in for Strategy → Locations and profile_add is appended to the golden profile (12 Nov 2026).",
+ "_": "The fit score's fixed case set (src/ai/score.py SYSTEM, score_bands.py, score_search.py), replayed by tools/score-cases.py on the person's Claude plan ($0). Fictional people and postings only. Expect: score_max / score_min bound the final score (after the search part), fit_max bounds the AI's own fit to the search, gap says the cv_gap line must be filled. Added 7 Nov 2026 (owner: a Cessna Citation captain job, licence required, scored 85 while the card said Not eligible). location_min bounds the location part; a case's places stand in for Strategy → Locations and profile_add is appended to the golden profile (12 Nov 2026). Changed 13 Nov 2026 (owner: \"We should be realistic\"): the ring is the scorer's own overall, so a career change case bounds score (final = overall) and fit_min/fit_max bound the AI's fit to the search; every case also holds ring_over_fit_max 25 (overall at most the role fit + 25, in failures()); career_change says the AI flagged the search as another field.",
  "profile": "golden",
  "cases": [
   {
@@ -19,12 +19,13 @@
     "score_max": 49,
     "fit_max": 49,
     "gap": true,
-    "needs_credential": true
+    "needs_credential": true,
+    "career_change": true
    }
   },
   {
    "id": "cadet-no-licence-needed",
-   "why": "The over-correction trap: a cadet scheme that trains a person from zero is within reach of a person with no licence, so it keeps its high search fit.",
+   "why": "The over-correction trap: a cadet scheme that trains a person from zero is within reach of a person with no licence, so it keeps its high search fit. The fit to the search stays high; the ring is the scorer's own overall (13 Nov 2026 replay: Claude 38-52, Codex 62-80 for a software CV; the rule ring <= fit + 25 holds on both).",
    "search": [
     "First Officer",
     "Captain"
@@ -36,7 +37,8 @@
     "description": "Become an airline first officer without any flying experience. We select candidates from any background, pay for the whole training (private licence to CPL/IR and the A320 type rating) and employ you on completion. You need: age 18 to 35, class 1 medical, fluent English, good maths, a degree or equivalent work experience. Training starts every March in Zurich."
    },
    "expect": {
-    "score_min": 50,
+    "fit_min": 50,
+    "career_change": true,
     "needs_credential": false
    }
   },
@@ -118,6 +120,81 @@
    },
    "expect": {
     "location_min": 70
+   }
+  },
+  {
+   "id": "pilot-first-officer-career-change",
+   "why": "The owner's pilot search (13 First Officer jobs against a software CV): the ring is the realistic overall, under 50, with the gap named.",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "First Officer A320",
+    "company": "Example Air AG",
+    "location": "Zurich, Switzerland",
+    "description": "First Officer on the A320 fleet: valid EASA ATPL, A320 type rating, at least 500 flight hours, class 1 medical, fluent English. Base Zurich, roster of 12 days on and 8 off, salary by experience."
+   },
+   "expect": {
+    "score_max": 49,
+    "gap": true,
+    "career_change": true,
+    "needs_credential": true
+   }
+  },
+  {
+   "id": "pilot-cadet-programme-career-change",
+   "why": "A trainee programme open to any background, for a person from another field: not capped by the licence rule, the gap is still named. The ring is the scorer's own overall and the engines differ on it (13 Nov 2026 replay: Claude 38-40, Codex 45-62); only the invariant ring <= fit + 25 binds.",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "Pilot Cadet Programme, Class of 2027",
+    "company": "Example Flight Academy",
+    "location": "Zurich, Switzerland",
+    "description": "Train as an airline pilot from zero: the academy pays the whole course (private licence to CPL/IR, A320 type rating) and guarantees an interview with our partner airline. You need: age 18 to 35, class 1 medical, good maths, English. Training starts every September in Zurich."
+   },
+   "expect": {
+    "gap": true,
+    "career_change": true,
+    "needs_credential": false
+   }
+  },
+  {
+   "id": "accounting-pilotage-is-not-a-pilot-job",
+   "why": "The 04:21 digest of 26 Oct 2026: \"Pilotage\" is managing in this accounting job. Its ring is low and it is no role of the search (the role check drops it from the digest; score-cases stubs that check).",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "Spécialiste Support Pilotage et Comptabilité",
+    "company": "Example Fiduciaire SA",
+    "location": "Geneva, Switzerland",
+    "description": "Vous assurez le pilotage des clôtures comptables et le support aux cabinets d'expertise comptable : rapprochements bancaires, TVA, liasses fiscales."
+   },
+   "expect": {
+    "score_max": 40,
+    "fit_max": 25
+   }
+  },
+  {
+   "id": "flight-controls-engineer-is-not-a-pilot-job",
+   "why": "The same digest: a flight-controls engineer designs the control laws, he does not fly. Low ring, low fit to the search.",
+   "search": [
+    "First Officer",
+    "Captain"
+   ],
+   "job": {
+    "title": "Flight Physics & Flight Controls Engineer",
+    "company": "Example Drones SA",
+    "location": "Zurich, Switzerland",
+    "description": "You design flight control laws and simulate flight physics for our drone fleet; MSc in aerospace engineering, MATLAB/Simulink."
+   },
+   "expect": {
+    "score_max": 55,
+    "fit_max": 35
    }
   }
  ]

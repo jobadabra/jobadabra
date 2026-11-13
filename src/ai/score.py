@@ -23,8 +23,8 @@ from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 from ..press import resume
 
-# Bump when the prompt, the schema or a rule that decides a fit changes: an older stamp is an old score for Re-score (score_old.rescorable). Why (13 Nov 2026, owner: "Re-score scores made before a rule change"): 3 = the licence cap of 7 Nov (#3357); tests/guards/data/test_scorer_rules_version.py locks it.
-SCORER_VERSION = 3
+# Bump when the prompt, the schema or a rule that decides a fit changes: an older stamp is an old score for Re-score (score_old.rescorable). Why (13 Nov 2026, owner: "Re-score scores made before a rule change"): 3 = the licence cap of 7 Nov (#3357); 4 (13 Nov, owner: "We should be realistic"; "Realistic ring, never hidden") = a career change keeps the scorer's own overall, no lift to the search fit; tests/guards/data/test_scorer_rules_version.py locks it.
+SCORER_VERSION = 4
 DEFAULT_MODEL = os.getenv('JOBADABRA_SCORE_MODEL', MAIN_MODEL)
 # How hard the scorer thinks (medium by default; Haiku has no such setting and ignores it).
 EFFORT = os.getenv('JOBADABRA_SCORE_EFFORT', 'medium')
@@ -209,9 +209,7 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None, scope='all')
     'all' = both. Why (3 Nov 2026, owner): a job already in the list is never re-scored by Find jobs, so 'new' leaves every scored row untouched."""
     db.executescript(SCORES_TABLE)
     done = {row['job_id']: row for row in db.execute('SELECT job_id, scorer_version, input_hash, data_json FROM scores')}
-    scored = [job for job in candidates if job.get('description') and scope != 'new']   # 'new' touches no scored row: no lift check, no title sort (an AI call)
-    score_search.recheck_lifts(db, scored, done)   # a title-only lift falls on the role check's no, scored now or not
-    pending, again = [], score_search.again_ids(scored, done, RESCORE_MIN)
+    pending = []
     for job in candidates:
         if not job.get('description'):
             continue
@@ -219,9 +217,6 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None, scope='all')
         if (scope == 'new' and row) or (scope == 'old' and not row):
             continue
         current = input_hash(job, job.get('ai'), profile)
-        if job['id'] in again:   # scored before the search part, low, a title the search wants now
-            pending.append(((1, 0), job))
-            continue
         if row and row['scorer_version'] == SCORER_VERSION and row['input_hash'] == current:
             continue
         if row and full_profile and row['scorer_version'] == SCORER_VERSION and row['input_hash'] == input_hash(job, job.get('ai'), full_profile):

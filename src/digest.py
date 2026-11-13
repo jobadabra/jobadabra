@@ -342,7 +342,8 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
         job['saved'] = (job.get('url') or '').strip() in saved_urls
     # Scored jobs below digest_min_score stay in Notion Job Matches but don't use digest space;
     # saved ones always show, and unscored ones are shown so the digest still works without AI.
-    low_fit = {j['id'] for j in everything if j['fit'] and j['fit']['score'] < MIN_DIGEST_SCORE and not j['saved']}
+    # Why (13 Nov 2026, owner: "Realistic ring, never hidden"): a role of the search on a career change stays, low score and all (score_search.searched).
+    low_fit = {j['id'] for j in everything if j['fit'] and j['fit']['score'] < MIN_DIGEST_SCORE and not j['saved'] and not score_search.searched(j['fit'])}
     everything = [j for j in everything if j['id'] not in low_fit]
     if hide_unscored:   # an AI is ready: list what the app's Jobs list lists (16 Oct 2026: "506 new" in Telegram, 487 jobs in the app)
         everything = [j for j in everything if not waiting_for_score(j)]
@@ -351,7 +352,7 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
     new_ids = {j['id'] for j in everything if since is None or (j.get('first_seen_at') or '') > since}
     recent = recently_shown(db, seed)
     new = rank_jobs([j for j in everything if j['id'] in new_ids], rng)
-    new.sort(key=lambda j: (-(j['fit'] or {}).get('score', -1), -score_search.own_fit(j['fit']) if j['fit'] else 0))  # ties: the AI's own fit; unscored keep rule order
+    new.sort(key=lambda j: -(j['fit'] or {}).get('score', -1))   # stable: unscored keep rule order
     older = rank_jobs([j for j in everything if j['id'] not in new_ids], rng)
     if any(j['fit'] for j in older):
         # Best matches lead every digest, with light rotation: a match shown in the last
