@@ -68,8 +68,15 @@ export function verdictOf(findings) {
   return (findings || []).some(f => ['high', 'medium'].includes(f.severity)) ? 'REQUEST_CHANGES' : 'APPROVE';
 }
 
-/** True when the action's failure text says the Claude plan is out (usage limit, rate limit, quota or credit): that is a skipped review, not a red check. */
-export const planLimitHit = text => /usage limit|rate limit|limit reached|quota|out of credit|credit balance|too many requests|\b429\b|overloaded/i.test(String(text || ''));
+/** True when `text` (the final error message of a run) says the Claude plan is out: a usage limit, rate limit, quota or credit. Narrow on purpose: it is only ever given the run's LAST result message, never the transcript,
+ * so a PR whose diff talks about quotas or 429s cannot turn a real failure into a skip (Gitar's finding on #4119). */
+export const planLimitHit = text => /usage limit|rate limit|limit reached|out of credit|credit balance|too many requests/i.test(String(text || ''));
+
+/** The error text of the run's last `result` message when it is an error ('' otherwise or when unreadable): `messages` is the action's execution file (an array of Claude Code messages). */
+export function finalError(messages) {
+  const result = [...(Array.isArray(messages) ? messages : [])].reverse().find(m => m?.type === 'result');
+  return result && result.is_error ? String(result.result || result.error || '') : '';
+}
 
 const ICON = {high: '🔴', medium: '🟠', low: '⚪'};
 
@@ -192,12 +199,16 @@ function post(env = process.env, run = gh) {
   try { const line = usageLine(JSON.parse(fs.readFileSync(env.EXECUTION_FILE, 'utf8'))); if (line) summary(line); } catch { /* no execution file: no usage line */ }
 }
 
-/** After a failed Review step: a plan limit is a green job with one clear line (the review is skipped, the PR is not blocked); any other failure stays red. */
-function failed(env = process.env) {
-  let text = '';
-  try { text = fs.readFileSync(env.EXECUTION_FILE, 'utf8'); } catch { /* no execution file: only the step's own text can say */ }
-  if (planLimitHit(text + ' ' + (env.REVIEW_ERROR || ''))) return summary(`Claude review of #${env.PR} skipped: the Claude plan limit is reached (it resets by itself); no review of this head, nothing is blocked.`);
-  throw new Error(`claude-review: the Review step failed (not a plan limit): see its log`);
+/** After a failed Review step: a plan limit is a green job with one clear line and ONE note on the PR per head (the review is skipped, nothing is blocked, the owner sees why); any other failure stays red. */
+export function failed(env = process.env, run = gh) {
+  let messages = [];
+  try { messages = JSON.parse(fs.readFileSync(env.EXECUTION_FILE, 'utf8')); } catch { /* no execution file: nothing says it was a plan limit */ }
+  if (!planLimitHit(finalError(messages))) throw new Error('claude-review: the Review step failed (not a plan limit): see its log');
+  summary(`Claude review of #${env.PR} skipped: the Claude plan limit is reached (it resets by itself); no review of this head, nothing is blocked.`);
+  const mark = `<!-- claude-review-skipped sha=${env.HEAD} -->`;
+  if (!env.HEAD || !env.GITHUB_REPOSITORY) return;
+  if (readPr(env.GITHUB_REPOSITORY, env.PR, run).comments.some(c => (c || '').includes(mark))) return;
+  run('pr', 'comment', String(env.PR), '-R', env.GITHUB_REPOSITORY, '--body', `Claude review skipped on \`${env.HEAD.slice(0, 7)}\`: the Claude plan limit is reached; it resets by itself. Comment "@claude review" later to review this head.\n\n${mark}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -40,6 +40,19 @@ class ClaudeLabelTest(unittest.TestCase):
         calls = node("(() => { const seen = []; m.setLabel('o/r', 7, 'Claude: approved', ['Claude: not reviewed', 'bug'], (...a) => { seen.push(a.slice(0, 3).join(' ')); if (a[0] === 'pr' && a.includes('--add-label') && seen.filter(s => s.startsWith('pr edit')).length === 1) throw new Error(\"'Claude: approved' not found\"); }); return seen; })()")
         self.assertEqual(calls, ['pr edit 7', 'label create Claude: approved', 'pr edit 7', 'pr edit 7'])   # add (refused: no such label), create, add again, remove "not reviewed"; "bug" untouched
 
+    def test_a_writer_that_read_before_the_review_landed_corrects_itself(self):
+        """Gitar's finding on #4119: the review job and pr-labels both write the label; a stale read must converge on the newest review."""
+        def pr(reviews, labels):
+            nodes = [{'author': {'login': 'github-actions'}, 'submittedAt': '2026-11-13T10:00:00Z', 'body': f'**Claude review: ✅ Approve** on x\n<!-- claude-review sha={A} -->'} for _ in reviews]
+            return {'data': {'repository': {'pullRequest': {'number': 7, 'state': 'OPEN', 'isDraft': False, 'title': 't', 'headRefOid': A, 'baseRefName': 'main', 'headRepository': {'nameWithOwner': 'o/r'},
+                    'commits': {'nodes': []}, 'reviews': {'nodes': nodes}, 'comments': {'nodes': []}, 'labels': {'nodes': [{'name': n} for n in labels]}}}}}
+        reads = [pr([], []), pr([1], ['Claude: not reviewed']), pr([1], ['Claude: approved'])]   # the review lands between the first and second read
+        script = ("(() => { const reads = %s; const seen = []; const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify(reads.shift()); seen.push(a.slice(0, 5).join(' ')); return ''; };"
+                  " return [m.sync('o/r', 7, run), seen]; })()") % json.dumps(reads)
+        wanted, seen = node(script)
+        self.assertEqual(wanted, 'Claude: approved')
+        self.assertEqual(seen, ['pr edit 7 --add-label Claude: not reviewed', 'pr edit 7 --add-label Claude: approved', 'pr edit 7 --remove-label Claude: not reviewed'])
+
 
 if __name__ == '__main__':
     unittest.main()
