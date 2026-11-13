@@ -89,6 +89,7 @@ them from colliding in one checkout:
   checkout: `tools/worktree.sh <topic>` (a worktree in `.claude/worktrees/<topic>` from `origin/main`, with the main
   checkout's `node_modules` and Python `.venv` linked in, so the tests run at once; both are git-ignored: leave the links alone).
   Another base: `tools/worktree.sh <topic> origin/<branch>` (a release lane), never a bare `git worktree add`, which links nothing.
+- Before the first push, check the diff, PR body and commits against `.gitar/review/*.md` (owner, 13 Nov 2026).
 - Open and update every PR through **`tools/ship.sh`** (owner, 30 Oct 2026); pass `--body=<file>` for its reviewable description. Never open a PR with a separate `gh pr create` call.
 - Commit there, then land it with **`tools/ship.sh`**. **Through a pull request since 12 Oct 2026** (while the repo allows auto-merge, `tools/pr-settings.sh`): fetch + rebase, the hook's fast checks only (seconds),
   push the branch, open a PR, wait for its required checks. CI runs the suites, all recorded pages, the pure gates and "Core flow files up to date with main" on the PR. **The owner reviews and merges every PR by hand** (12 Oct 2026, auto-merge off):
