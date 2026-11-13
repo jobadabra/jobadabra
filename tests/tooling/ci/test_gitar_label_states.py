@@ -113,11 +113,17 @@ class GitarLabelStatesTest(unittest.TestCase):
         self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: null, gitarOnHead: false, {head}}})"), ['Gitar: not started'], 'no verdict on any push')
 
     def test_each_not_re_reviewed_label_is_its_verdicts_name_with_a_lighter_shade_of_its_colour(self):
-        names = node("m.ALL.map(l => [l.name, l.color])")
-        by = dict(names)
+        by = {name: (color, description) for name, color, description in node("m.ALL.map(l => [l.name, l.color, l.description])")}
+        luminance = lambda hex_: sum(int(hex_[i:i + 2], 16) for i in (0, 2, 4))
         for plain in ('Gitar: changes requested', 'Gitar: approved with suggestions', 'Gitar: approved'):
-            self.assertIn(plain + ' \u00b7 not re-reviewed', by)
-            self.assertNotEqual(by[plain + ' \u00b7 not re-reviewed'], by[plain], 'a lighter shade, not the same colour')
+            old = by[plain + ' \u00b7 not re-reviewed']
+            self.assertGreater(luminance(old[0]), luminance(by[plain][0]), 'lighter than the verdict it keeps')
+            self.assertIn('earlier push', old[1])
+
+    def test_a_label_set_swaps_the_plain_verdict_for_its_not_re_reviewed_label(self):
+        """setLabels removes the label the PR holds and adds the wanted one: approved -> approved · not re-reviewed after a push."""
+        edits = node("(() => { const edits = []; m.setLabels('o/r', 7, ['Gitar: approved \\u00b7 not re-reviewed'], ['Gitar: approved'], (...a) => { edits.push(a.slice(0, 5).join(' ')); return ''; }); return edits; })()")
+        self.assertEqual(edits, ['pr edit 7 --remove-label Gitar: approved', 'pr edit 7 --add-label Gitar: approved \u00b7 not re-reviewed'])
 
 
 # 13 Nov 2026, owner: "the PR got approved by gitar, but PR lable never changed" (jobadabra-benchmarks #38; jobadabra #4000 the same day). Gitar approved by only EDITING its comment, which starts no
