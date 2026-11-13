@@ -72,7 +72,7 @@ def techtree_text(html):
 # own JSON for a Workday posting; else the page's schema.org JobPosting (most career sites publish it); else the page's main text. A site
 # that refuses (401/403 or a "are you human" page) is respected: not asked again for a week, its jobs left for your browser (the
 # extension, Find jobs using your browser). Sign-in sites (LinkedIn, Glassdoor, Indeed…) are never fetched (owner's rule).
-WORKDAY = re.compile(rf'^https://([^./]+)\.({ats.WORKDAY_CLUSTER})\.myworkdayjobs\.com/(?:[a-z]{{2}}-[A-Z]{{2}}/)?([^/?#]+)/job/([^?#]+)')
+WORKDAY = ats.WORKDAY_JOB_URL
 CHALLENGE = re.compile(r'captcha|are you (?:a )?human|verify (?:that )?you are (?:a )?human|cf-chl|access denied|just a moment\.\.\.', re.I)
 REFUSED_CODES = host_pace.REFUSED   # 429 is "slow down" (host_pace), never a refusal (owner, 20 Oct 2026)
 REFUSED_DAYS = 7
