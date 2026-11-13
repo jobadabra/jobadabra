@@ -68,7 +68,9 @@ def portals(search=None, kinds=None):
     for host, board in sorted((board_ideas.load().get('boards') or {}).items()):
         if board.get('state') != 'browser' or '{role}' not in str(board.get('search_url')):
             continue
-        url = board['search_url'].replace('{role}', urllib.parse.quote(roles[0])).replace('{place}', urllib.parse.quote(places[0] if places else ''))
+        from . import board_paths   # in the board's own charset when a read learned it (board_paths.read)
+        url = board['search_url'].replace('{role}', board_paths.words(roles[0], board.get('charset'), plus=False)).replace(
+            '{place}', board_paths.words(places[0] if places else '', board.get('charset'), plus=False))
         out.append({'key': f'board:{host}', 'name': board.get('name') or host, 'url': url,
                     'note': 'A job board of your country that only a browser reads: open it, then click the Jobadabra icon'})
     return out

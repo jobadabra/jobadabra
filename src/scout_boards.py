@@ -44,9 +44,13 @@ PAGE_CALLS = 12
 # what its page's links are (src/ai/page_words.py WORDS), as every install's read does, so the pass learns the layout installs replay with no question.
 # Every such question counts here; past it a link stays unjudged, never the word lists' guess. 24: two calls a board (one per page's wordings, 50 a call).
 LINK_CALLS = 2 * MAX_BOARDS
+# Why (13 Nov 2026, sa; lab run 43432640838): the same read judges each job page with no job data "one posting or not" (src/sources/one_posting.py
+# pass_allowance), as installs do: with the reader off every linked page stood, so filter pages and redirect stubs counted as local jobs and mixed
+# paths blocked a layout. Past it a page stays unjudged and is not counted. 24: two calls a board (a round's pages, its next pages), one batch each.
+POSTING_CALLS = 2 * MAX_BOARDS
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
-# ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 + page words 24 = 101.
-JOB_CALLS = IDEA_CALLS + WORD_CALLS + PAGE_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS + LINK_CALLS
+# ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 + page words 24 + job pages 24 = 125.
+JOB_CALLS = IDEA_CALLS + WORD_CALLS + PAGE_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS + LINK_CALLS + POSTING_CALLS
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
@@ -273,7 +277,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
     homes: search -> the boards the AI named only by their home page, read last through their own search form (src/scout_board_homes.py; default: the proposal's own)."""
     from . import scout_board_homes
     from .ai import board_ideas, cost, decide, page_words
-    from .sources import board_yield, careers, found_boards
+    from .sources import board_yield, careers, found_boards, one_posting
     ensure(db)
     country = next_country(db, named)
     if not country:
@@ -303,7 +307,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                     break
                 kept_layout, notes = _layout(db, board['host'], country), {}   # replayed by this read: a layout that still holds is kept, a stale one replaced
                 board = {**board, 'learn': notes, **({'layout': kept_layout} if kept_layout else {})}
-                with decide.own_allowance(page_words.WORDS, LINK_CALLS):   # the page reader stays off; the page's words are the AI's (LINK_CALLS)
+                with decide.own_allowance(page_words.WORDS, LINK_CALLS), one_posting.pass_allowance(POSTING_CALLS):   # the page reader stays off; the page's words and its job pages are the AI's
                     jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
                 browsed = False
                 if not jobs and getattr(state, 'why', '') in board_yield.REFUSED_WORDS.values() and not browser_final(db, board['host']):
@@ -365,7 +369,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             + (f"; a layout for {sum(1 for fact in kept if fact.get('layout'))} of the {len(kept)} kept boards" if kept else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else '')
             + (f"; the browser was stopped, never asked again: {', '.join(final)}" if final else '')
-            + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, page words {decide.spent(page_words.WORDS)} of {LINK_CALLS}, pages {decide.probe_spent()} of {PAGE_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")
+            + f"; its AI calls: places {decide.spent(PLACES)} of {PLACE_CALLS}, kinds {decide.spent(KINDS)} of {KIND_CALLS}, page words {decide.spent(page_words.WORDS)} of {LINK_CALLS}, job pages {decide.spent(one_posting.POSTINGS)} of {POSTING_CALLS}, pages {decide.probe_spent()} of {PAGE_CALLS}, {sum(cost.TOPICS.values())} of {JOB_CALLS} in all")
         if by_cells:   # Why (12 Nov 2026, bd): nl and sk runs read 9 of 12 boards as empty and the log named neither the words searched nor the address read
             out(f"Board pass: searched with {', '.join(search['jobs_board_search_queries'][:found_boards.FULL_SEARCHES])}"
                 + (f"; read empty at: {', '.join(addresses)}" if addresses else ''))

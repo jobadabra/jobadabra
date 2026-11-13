@@ -38,6 +38,13 @@ def reply(response, limit):
     return text(response.read(limit), headers.get_content_charset() if headers is not None else None)
 
 
+def charset_of(markup):
+    """The codec of the charset a page (already text) declares in its own <meta>, read as `text` would read it (latin-1 as cp1252, UTF-16 as
+    UTF-8), or None. Used to write a board's search words in its own charset (board_paths.read)."""
+    name = declared(str(markup or '')[:HEAD_BYTES].encode('ascii', 'ignore'))
+    return _codec(name, meta=True) if name else None
+
+
 def declared(raw):
     """The charset the page names in a <meta> of its head, or None."""
     found = _META.search(_NOT_MARKUP.sub(b'', raw[:HEAD_BYTES]))
