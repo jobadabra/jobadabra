@@ -4,7 +4,6 @@ import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {createRowApply} from './jobs-apply-row.js';
 import '../../i18n/focus-cards.js';
-import {copyField} from '../../i18n/display-copy.js';
 import {ai} from '../ai-name.js';
 import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
@@ -33,6 +32,7 @@ import {renderExport} from './jobs-export.js';
 import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
+import {runRejectionReview} from './rejection-review.js';
 import {jobsChanged, loadJobs, openLogFor, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
@@ -279,11 +279,7 @@ export function renderJobs() {
       // soft skills, or a different profile (nothing to improve). Written on the job's Notion page.
       menu.push({icon: 'search', label: job.rejection ? t('pagesJobs.reviewRejection') : t('pagesJobs.whyMe'),
         title: ai(t('pagesAuditPunct.a33')),
-        run: () => background(t('pagesFinalLabels.reviewingRejection'), async () => {
-          const result = await window.pilot.reviewRejection(job.url);
-          toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), copyField(result, 'text'), jobPlace(job), result.ok ? 'good' : 'bad');
-          if (result.ok) loadJobs();
-        })});
+        run: () => background(t('pagesFinalLabels.reviewingRejection'), () => runRejectionReview(job, {toast: toastMessage, reload: loadJobs}))});
     }
     if (job.code) {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).
