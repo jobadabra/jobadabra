@@ -84,3 +84,30 @@ class EachRoundSaysWhatItFound(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TheLineSaysWhereTheSecondsWent(unittest.TestCase):
+    """sa, 13 Nov 2026: a board's first page took 18 to 93 s in the benchmark and the line could not say which part took them."""
+
+    def line(self, clock, parts):
+        from src.sources import board_round_log
+        with mock.patch.object(board_round_log.time, 'monotonic', side_effect=clock), mock.patch('builtins.print') as said:
+            board_round_log.begin()
+            for name in parts:
+                with board_round_log.part(name):
+                    pass
+            board_round_log.said(BOARD, 'menuisier', '', 0.0, [], [])
+        return said.call_args[0][0]
+
+    def test_parts_of_a_second_and_more_are_named_in_order_and_short_ones_left_out(self):
+        line = self.line([0, 2, 2, 33, 33, 33.4, 40], ['page', '19 job pages', 'postings'])
+        self.assertIn(', 40 s (page 2 s · 19 job pages 31 s)', line)
+        self.assertNotIn('postings', line)
+
+    def test_a_part_timed_outside_a_round_is_kept_nowhere_and_the_next_line_starts_clean(self):
+        from src.sources import board_round_log
+        board_round_log._ROUND.parts = None
+        with board_round_log.part('job links'):   # an employer site's page read: no round open in this thread
+            pass
+        self.assertIsNone(board_round_log._ROUND.parts)
+        self.assertTrue(self.line([5], []).endswith(', 5 s'))
