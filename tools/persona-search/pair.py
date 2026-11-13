@@ -28,8 +28,9 @@ MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatc
 DRAFT_PRODUCERS = re.compile(r'^desktop/lib/strategy(-draft[^/]*)?\.js$')
 BROKER = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/health'
 # Why (13 Nov 2026, as-ai-startup-34's 15 s log of /health, replayed): starvation = waiting > 0 at active 16 held over a minute; the clean pair of 00:44 ran at active 7-15.
-# Admit when 8 readings 15 s apart all have nothing waiting and their median active is at most ADMIT_ACTIVE (a pair adds ~12 of the 16 slots).
-READINGS, EVERY_S, ADMIT_ACTIVE = 8, 15, 10
+# Admit when 8 readings 15 s apart all have nothing waiting and their median active leaves FREE_SLOTS free: 10 of 16 today (the clean run of 00:44 ran at 7-15; 8 would
+# have held it). The cap is /health's queue.slots once the broker reports it (as-ai-startup-34, 13 Nov 2026: 16 -> 24 slots), 16 until then.
+READINGS, EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 8, 15, 6, 16
 SETTLE_S = 240   # another pair admitted this recently has not shown its load in /health yet: wait
 TURN_MINUTES = 55
 NIGHT_STOP = (23, 35)   # the Worker starts the night at 00:00 UTC (profiles.NIGHT_UTC): no pair starts after this
@@ -64,23 +65,24 @@ def people(given, changed):
 
 
 def health(read=None):
-    """(active, waiting) from the broker's public /health `queue` (waiting summed over its lanes); None when unreadable."""
+    """(active, waiting, slots) from the broker's public /health `queue` (waiting summed over its lanes; slots = its cap, SLOTS_FALLBACK before it reports one); None when unreadable."""
     try:
         data = read() if read else json.loads(urllib.request.urlopen(BROKER, timeout=20).read())
         queue = data['queue']
-        return int(queue['active']), sum(int(v) for v in (queue.get('waiting') or {}).values())
+        return int(queue['active']), sum(int(v) for v in (queue.get('waiting') or {}).values()), int(queue.get('slots') or SLOTS_FALLBACK)
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
 
 def room(readings):
-    """(ok, why) for one window of /health readings: all read, nothing waiting, median active at most ADMIT_ACTIVE."""
+    """(ok, why) for one window of /health readings: all read, nothing waiting, median active leaving at least FREE_SLOTS of the cap free."""
     if len(readings) < READINGS or any(r is None for r in readings):
         return False, 'the broker could not be read on every reading'
-    if any(waiting for _, waiting in readings):
-        return False, f'calls were waiting at the broker ({max(w for _, w in readings)} at most)'
-    middle = statistics.median(active for active, _ in readings)
-    return (True, f'nothing waiting, median {middle:g} of 16 slots busy') if middle <= ADMIT_ACTIVE else (False, f'median {middle:g} of 16 slots busy (line {ADMIT_ACTIVE})')
+    if any(waiting for _, waiting, _ in readings):
+        return False, f'calls were waiting at the broker ({max(w for _, w, _ in readings)} at most)'
+    middle, slots = statistics.median(active for active, _, _ in readings), min(s for _, _, s in readings)
+    line = slots - FREE_SLOTS
+    return (True, f'nothing waiting, median {middle:g} of {slots} slots busy') if middle <= line else (False, f'median {middle:g} of {slots} slots busy (line {line})')
 
 
 def _gh(*args):
