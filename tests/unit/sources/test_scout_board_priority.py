@@ -21,8 +21,8 @@ def families(texts, unanswered=()):   # the pool's AI, stood in, one batch: role
     return {text: TITLES[text] for text in texts if text in TITLES and text not in unanswered}, [text for text in texts if text in unanswered]
 
 
-def person(name, title, country):
-    return {'id': name, 'family': 'x', 'title': title, 'city': 'c', 'country': country, 'language': 'l'}
+def person(name, title, country, **more):
+    return {'id': name, 'family': 'x', 'title': title, 'city': 'c', 'country': country, 'language': 'l', **more}
 
 
 class Profiles(unittest.TestCase):
@@ -38,9 +38,15 @@ class Profiles(unittest.TestCase):
         self.write(person('c04', 'Electrician', 'Spain'), person('b01', 'Truck Driver (Class CE)', 'Bulgaria'), person('c04', 'Electrician', 'Spain'))
         self.assertEqual(priority.profile_pairs(self.path, families), [('es', 'electrical_mechanical'), ('bg', 'driving_delivery')], 'in the file\'s order, each pair once')
 
-    def test_profiles_added_on_13_nov_2026_are_held_out(self):
-        self.write(person('c04', 'Electrician', 'Spain'), person('d01', 'Data Analyst', 'Germany'), person('d05', 'Data Analyst', 'Switzerland'), person('p3', 'Data Analyst', 'Germany'))
-        self.assertEqual(priority.profile_pairs(self.path, families), [('es', 'electrical_mechanical')])
+    def test_a_person_marked_held_out_is_never_tuned_for_whatever_the_id_and_an_unmarked_one_is(self):   # 13 Nov 2026, owner via sa: "Add held_out field (Recommended)"
+        self.write(person('c04', 'Electrician', 'Spain'), person('d01', 'Data Analyst', 'Germany', held_out=True), person('b99', 'Data Analyst', 'Germany', held_out=True),
+                   person('x1', 'Data Analyst', 'Germany', held_out=False), person('p3', 'Truck Driver (Class CE)', 'Bulgaria'))
+        self.assertEqual(priority.profile_pairs(self.path, families), [('es', 'electrical_mechanical'), ('de', 'data_ai'), ('bg', 'driving_delivery')], 'b99 is held out by its field, x1 and p3 are tuned for by having none')
+
+    def test_in_the_real_profiles_file_the_d_people_are_held_out_and_nobody_else(self):   # the data the owner chose: d01-d07 held_out, the b and c people not
+        held = {p['id'] for p in json.loads(priority.PROFILES.read_text())['profiles'] if p.get('held_out')}
+        self.assertEqual(held, {f'd0{n}' for n in range(1, 8)})
+        self.assertFalse({'es'} - {country for country, _ in priority._counted(priority.PROFILES)}, 'the Spanish b/c people still count')
 
     def test_a_country_or_title_no_list_knows_is_left_out_and_a_missing_file_gives_none(self):
         self.write(person('b02', 'Electrician', 'Atlantis'), person('b03', 'Wizard', 'Spain'), person('b04', 'Data Analyst', 'Germany'))

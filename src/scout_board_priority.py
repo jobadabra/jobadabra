@@ -3,15 +3,15 @@ Why (13 Nov 2026, owner via sa, asked via AskUserQuestion: "Searched pairs first
 https://claude.ai/artifact/YPkXa1B2BDQg4WjDbrQLfx): the fill took the weakest cell first, so a full pass (930 cells, 310 passes, ~33 h on one lane) reached the pairs people search
 last. One ordered list, one owner for each part:
   1. the cells the lab names (SCOUT_BOARD_PRIORITY), in the order it names them;
-  2. the profile pairs: the b and c people of tools/persona-search/search-profiles.json (all of them: cards move, the list must not), every family of their role title derived with
-     pool_tags in one batch (never typed by hand) and kept in the Scout's memory once answered (`profile_pairs`), their country from its name. Profiles added 13 Nov 2026 (d01-d07) are held out: they are the check that the fill also works for people nobody
-     tuned it for (owner via sa, "Searched pairs first (Recommended)"); so are the random draws;
+  2. the profile pairs: the people of tools/persona-search/search-profiles.json that are not `held_out` (all of them: cards move, the list must not), every family of their role title
+     derived with pool_tags in one batch (never typed by hand) and kept in the Scout's memory once answered (`profile_pairs`), their country from its name. A person with `held_out: true`
+     (d01-d07; the random draws are not in the file) is never tuned for: they are the check that the fill also works for people nobody tuned it for (owner via sa, "Searched pairs first
+     (Recommended)"; the field, not an id pattern: "Add held_out field (Recommended)", 13 Nov 2026, asked via AskUserQuestion by sa, Gitar on #4035);
   3. the pairs installs really searched: the index's board cells that installs gave (no `measured`: that is the Scout's own), the most installs first. Never a second demand
      signal (src/scout_need.py is whether one install's search has enough employers, not what people search);
   4. every country for the fields installs and the profiles search most, the most searched field first.
 The list only orders cells with the same number of proven boards (src/scout_board_cells.py pick): a cell with fewer proven boards always goes first. Tests: tests/unit/sources/test_scout_board_priority.py."""
 import json
-import re
 from collections import Counter
 from pathlib import Path
 
@@ -19,11 +19,11 @@ from . import pool_tags, scout_cells
 
 PROFILES = Path(__file__).resolve().parent.parent / 'tools' / 'persona-search' / 'search-profiles.json'
 KEY = 'profile_pairs'   # scout_meta: the pairs derived once, with the profiles they came from
-COUNTED = re.compile(r'[bc]\d{2}')   # the 12 Nov 2026 round (b01-b10, c01-c20); d01-d07 (13 Nov 2026) and anything later are held out
 
 
 def _counted(path):
-    """[(country code, role title)] of the b and c profiles, in the file's order; a profile whose country is not known is left out."""
+    """[(country code, role title)] of the profiles that are not `held_out`, in the file's order; a profile whose country is not known is left out.
+    Why (13 Nov 2026, owner via sa, "Add held_out field (Recommended)"): the file says who is held out; an id pattern ([bc]\\d{2}) made a later b11 or c21 tuned for without anyone deciding so."""
     from .scout_boards import named_country
     try:
         profiles = json.loads(Path(path).read_text()).get('profiles') or []
@@ -31,7 +31,7 @@ def _counted(path):
         return []
     out = []
     for person in profiles:
-        if not isinstance(person, dict) or not COUNTED.fullmatch(str(person.get('id') or '')):
+        if not isinstance(person, dict) or person.get('held_out') is True:
             continue
         try:
             country = named_country(person.get('country'))
@@ -43,7 +43,7 @@ def _counted(path):
 
 
 def profile_pairs(path=PROFILES, each=None, db=None):
-    """[(country code, family)] of the b and c profiles, in the file's order, each once. A title's every family counts, asked in one batch (each = titles -> ({title: ids}, unanswered),
+    """[(country code, family)] of the profiles that are not `held_out`, in the file's order, each once. A title's every family counts, asked in one batch (each = titles -> ({title: ids}, unanswered),
     default src/pool_tags.py families_each: the meanings pack, then the AI). With a `db` the answer is kept in the Scout's memory (scout_meta `profile_pairs`, with the profiles it
     was derived from) once every title was answered, so the AI is asked once, and a busy AI never reorders the fill between runs or between the lane plan and the lane's own pass
     (Gitar on #4035); a title left unanswered gives the kept answer if the profiles are the same, else the pairs of the titles that were answered."""
