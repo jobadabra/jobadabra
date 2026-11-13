@@ -55,9 +55,9 @@ class SearchHoldTest(unittest.TestCase):
         self.assertIn('p1 fell 9 → 6 (usual difference 2)', out['verdict'][0])
         self.assertIn('Moves: p1 right jobs 9 → 6', out['body'])   # the number is written either way
 
-    def test_an_unmeasured_difference_allows_one_job(self):
-        self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 4, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
-        self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 3, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
+    def test_an_unmeasured_difference_allows_seven_jobs(self):   # 13 Nov 2026, sa: 7, not 1 (run 43498213279: the same code gave 8 vs 15)
+        self.assertTrue(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 5, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
+        self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 4, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
 
     def test_a_side_not_valid_runs_once_more_then_reports(self):
         first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
@@ -92,7 +92,7 @@ class SearchHoldTest(unittest.TestCase):
         out = pair.settle(BODY, TITLE, [], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
         self.assertEqual((out['lift'], out['rerun']), (False, []))
         self.assertTrue(out['verdict'][0].startswith('Not held by ship'), out['verdict'])
-        self.assertIn('fell 5 → 3 (usual difference not measured yet: 1 job allowed)', pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 3, None)), ['p1'], 1)['verdict'][0])
+        self.assertIn('fell 12 → 3 (usual difference not measured yet: 7 jobs allowed)', pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 3, None)), ['p1'], 1)['verdict'][0])   # 13 Nov 2026, sa: 7, not 1 (pair_row.py)
 
     def test_a_hold_ship_did_not_set_is_never_lifted(self):
         out = pair.settle(BODY, TITLE, ['Gitar: approved'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
