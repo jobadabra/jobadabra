@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {AGENT_SLOT, CRONS, SEARCH_WEEKLY, STORE_WEEKLY, TAPES_CHECK, TAPES_SLOT, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
+import {AGENT_SLOT, CRONS, SEARCH_WEEKLY, STORE_WEEKLY, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -64,22 +64,13 @@ test('the night burn-in starts five full e2e passes at five different UTC times,
   assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'], 'no 4th trigger');
 });
 
-// Guard: money — the day's re-record is the catch-all (no input: any gap records) and the hourly look carries the line below which it records nothing; an input the workflow does not declare is refused by GitHub with 422.
-test('the Find jobs re-record: the day\'s run at TAPES_SLOT with no input, an hourly look with the line at every other hour', () => {
-  const day = new Date(Date.UTC(2026, 10, 3)), started = [];
+// Guard: money — the Find jobs recordings are no longer re-recorded on a timer (owner, 13 Nov 2026, "Retire the replay"): each re-record spent about 3 h of Codex-plan calls.
+test('no tick of the day starts the Find jobs re-record (press-tapes-auto.yml)', () => {
+  const day = new Date(Date.UTC(2026, 10, 3));
   for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
-    const now = new Date(day.getTime() + minutes * 60000), jobs = jobsFor('*/10 * * * *', now).filter(job => job.workflow === 'press-tapes-auto.yml');
-    assert.ok(jobs.length <= 1, 'one start a tick: the day\'s run and the hourly look never beside each other');
-    if (jobs.length) started.push([now.toISOString().slice(11, 16), jobs[0].inputs?.min_gaps]);
+    const now = new Date(day.getTime() + minutes * 60000);
+    assert.deepEqual(jobsFor('*/10 * * * *', now).filter(job => job.workflow === 'press-tapes-auto.yml'), [], `no re-record at ${now.toISOString().slice(11, 16)}`);
   }
-  const hours = Array.from({length: 24}, (_, hour) => `${String(hour).padStart(2, '0')}:${String(TAPES_CHECK.minute).padStart(2, '0')}`);
-  assert.deepEqual(started.map(([time]) => time), hours, 'one start an hour');
-  assert.deepEqual(started.find(([time]) => time === TAPES_SLOT), [TAPES_SLOT, undefined], 'the day\'s run is the catch-all: no line, any gap records');
-  assert.deepEqual(new Set(started.filter(([time]) => time !== TAPES_SLOT).map(([, line]) => line)), new Set([String(TAPES_CHECK.minGaps)]));
-  assert.ok(Number.isInteger(TAPES_CHECK.minGaps) && TAPES_CHECK.minGaps >= 2 && TAPES_CHECK.minGaps <= 18, 'a line of 1 would be the daily catch-all every hour');
-  assert.deepEqual(jobsFor('*/10 * * * *', new Date(`2026-11-03T${TAPES_SLOT}:00Z`)).find(job => job.workflow === 'press-tapes-auto.yml'), {workflow: 'press-tapes-auto.yml'});
-  const [hours7, minutes] = SEARCH_WEEKLY.time.split(':').map(Number);
-  assert.ok(TAPES_SLOT >= `${String(hours7 + 7).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, 'the Search week takes about 7 h and holds the broker: the re-record guard waits 5 h, then ends red');
 });
 
 test('the AI user agent starts once a day at 04:40 UTC, alone on its tick, on the ten-minute trigger', () => {
