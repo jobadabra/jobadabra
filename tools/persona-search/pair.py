@@ -290,28 +290,34 @@ def pending(body):
     return out[:MAX_PEOPLE]
 
 
-def settle(body, title, labels, done, ran, attempt):
-    """What the pair does to its PR: {body, title, lift, rerun, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2."""
+def settle(body, title, labels, done, ran, attempt, seen=None):
+    """What the pair does to its PR: {body, title, lift, rerun, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
+    seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again."""
     body, verdict, fell = body or '', [], []
+    seen = set(ran if seen is None else seen)
     for person, m in done.items():
         body = re.sub(PENDING_LINE.format(person=re.escape(person)), lambda hit, line=m['line']: hit.group('lead') + line, body, flags=re.M)   # the bullet stays
         tolerance = m['d'] if m['d'] is not None else 1
         if m['before'] - m['after'] > tolerance:
             fell.append(f"{person} fell {m['before']:g} → {m['after']:g} (usual difference {tolerance:g})")
-    left = [p for p in ran if p not in done]
-    rerun = left if left and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
+    invalid = [p for p in ran if p in seen and p not in done]
+    never = [p for p in ran if p not in seen]
+    rerun = invalid if invalid and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
     ours = HOLD_LABEL in labels
     still = pending(body)
-    lift = ours and 'DONT MERGE' in title and not fell and not still and not left
+    # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
+    lift = ours and not fell and not still and not invalid and not never
     if lift:
         title = re.sub(r'\s*DONT MERGE\s*', ' ', title, count=1).strip()
         verdict.append('Hold lifted: every pending number is in and none fell beyond its usual difference; the PR is marked ready at READY.')
     elif fell:
         verdict.append('Hold kept: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
+    elif never:
+        verdict.append(f"Hold kept: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
     elif rerun:
         verdict.append(f"Hold kept: {', '.join(rerun)} not valid; the pair runs once more for them.")
-    elif left:
-        verdict.append(f"Hold kept: {', '.join(left)} not valid twice: start the pair again later, or write the number by hand.")
+    elif invalid:
+        verdict.append(f"Hold kept: {', '.join(invalid)} not valid twice: start the pair again later, or write the number by hand.")
     elif still and ours:
         verdict.append('Hold kept: the body still has a pending number this pair did not run.')
     elif not ours and done:
@@ -345,7 +351,8 @@ def main(argv):
     if command == 'settle' and len(argv) == 6:   # people: setup's matrix entries (each its id)
         view = json.loads(Path(argv[3]).read_text(encoding='utf-8'))
         ran = [entry['id'] for entry in json.loads(argv[5])]
-        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(sides(argv[2])), sorted(set(ran)), int(argv[4]))
+        rows = sides(argv[2])
+        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(rows), sorted(set(ran)), int(argv[4]), seen=set(rows))
         Path('settle.json').write_text(json.dumps(out), encoding='utf-8')
         print('\n'.join(out['verdict']))
         return 0

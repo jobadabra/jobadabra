@@ -73,6 +73,20 @@ class SearchHoldTest(unittest.TestCase):
         out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 2, 2)), ['p1', 'p4'], 1)
         self.assertEqual((out['lift'], out['rerun']), (False, []))
 
+    def test_a_person_who_never_searched_is_not_run_again(self):
+        """Gitar on #3967: the turn gave up (no side ran); that is no "not valid" and the workflow must not queue a second long wait itself."""
+        out = pair.settle(BODY, TITLE, ['search-hold'], {}, ['p1', 'p4'], 1, seen=set())
+        self.assertEqual((out['lift'], out['rerun']), (False, []))
+        self.assertIn('never searched', out['verdict'][0])
+        out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1, seen={'p1'})
+        self.assertEqual(out['rerun'], [])
+
+    def test_a_retitled_held_pr_loses_the_label_when_its_numbers_are_in(self):
+        """Gitar on #3967: the label is the hold; a title without DONT MERGE still gets it lifted, the title unchanged."""
+        out = pair.settle(BODY, '[2d] Read boards', ['search-hold'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
+        self.assertTrue(out['lift'])
+        self.assertEqual(out['title'], '[2d] Read boards')
+
     def test_a_hold_ship_did_not_set_is_never_lifted(self):
         out = pair.settle(BODY, TITLE, ['Gitar: approved'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
         self.assertFalse(out['lift'])

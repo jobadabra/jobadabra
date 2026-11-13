@@ -245,14 +245,19 @@ jobs:
             { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
           else
             python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" > verdict.txt
-            if [ -s verdict.txt ]; then { echo; cat verdict.txt; } >> table.md; fi
             jq -n --slurpfile s settle.json '{title: $s[0].title, body: $s[0].body}' > edit.json
-            if ! jq -e --slurpfile v view.json '.title == $v[0].title and .body == $v[0].body' edit.json >/dev/null; then
-              gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" --input edit.json >/dev/null
+            gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body > now.json   # Why (Gitar on #3967): an edit made while settle ran is never overwritten
+            if ! jq -e --slurpfile v view.json '.title == $v[0].title and .body == $v[0].body' now.json >/dev/null; then
+              { echo; echo "The PR's title or description changed while the pair wrote its numbers: nothing written, the hold stays; start the pair again."; } >> table.md
+            else
+              if [ -s verdict.txt ]; then { echo; cat verdict.txt; } >> table.md; fi
+              if ! jq -e --slurpfile v view.json '.title == $v[0].title and .body == $v[0].body' edit.json >/dev/null; then
+                gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" --input edit.json >/dev/null
+              fi
+              if [ "$(jq -r .lift settle.json)" = true ]; then gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label search-hold >/dev/null; fi
+              rerun="$(jq -c .rerun settle.json)"
+              if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
             fi
-            if [ "$(jq -r .lift settle.json)" = true ]; then gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label search-hold >/dev/null; fi
-            rerun="$(jq -c .rerun settle.json)"
-            if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
           fi
           echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> table.md
           cat table.md >> "$GITHUB_STEP_SUMMARY"
