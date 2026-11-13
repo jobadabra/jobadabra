@@ -67,7 +67,7 @@ test('web is private and the job has no token: the warning names why, and nothin
   assert.doesNotMatch(done.out, /every jobadabra-web test/);
 });
 
-test('web handed over as a checkout (the workflow\'s App-token path) never clones, so a private web is read', () => {
+test('web handed over as a checkout (WEB_DIR) never clones, so a private web can be read', () => {
   const {run, web} = pr({headText: 'BAD\n'});
   const done = run({WEB_DIR: web, PATH: `${gitRefusingClone()}${path.delimiter}${process.env.PATH}`});
   assert.equal(done.status, 1, done.out);

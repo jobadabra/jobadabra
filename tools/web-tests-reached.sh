@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Runs the jobadabra-web tests that read a file this PR changes, in the joined tree web CI uses (this repo with web laid over it). Red only for a test THIS PR turns red.
-#   tools/web-tests-reached.sh <base> <head>        WEB_DIR=<a jobadabra-web checkout> skips the clone (pr-gate.yml checks web out with the CI App token and passes it: web goes private at launch); WEB_REPO_URL and CLONE_WAIT (seconds between tries, 5) are for the tests.
+#   tools/web-tests-reached.sh <base> <head>        WEB_DIR=<a jobadabra-web checkout> skips the clone; WEB_REPO_URL and CLONE_WAIT (seconds between tries, 5) are for the tests.
 # Step "Web tests that read this PR's files" of .github/workflows/pr-gate.yml. Which tests: tools/web-tests-reached.mjs. Guard: desktop/test/tooling/ci/web-tests-reached-run.test.js.
 # Why (13 Nov 2026, owner, asked via AskUserQuestion: "Add the check (Recommended)"): #3684 and #3939 each turned a web test red on every web PR after they merged; the red showed in web, a day later.
 # Why (13 Nov 2026, coordinator, after Gitar's 4th finding on #3950; owner 6 Nov: web goes private at launch): a token-less clone of a private web fails, and a green "could not clone" would make this check catch nothing, unseen.
-# So the workflow brings web with the CI App token (the way .github/actions/free-ai-relay does), the token-less clone stays as the fallback (a fork has no secrets), and a clone that fails says why, in the first words of the warning.
+# So a clone that fails says why in the first words of the warning ("web tests NOT run: ... (private?)"). No token here: the job is never skipped, so it may hold no secret (tests/tooling/ci/test_workflow_ai_secret_jobs.py); giving the check a token is parked on the Work board.
 # The four outcomes (coordinator, 13 Nov 2026, after Gitar's three findings on #3950):
 #   - an outside failure (web cannot be cloned or laid over the tree, a package this job lacks) is a ::warning:: that starts "web tests NOT run: <reason>", never a red: the PR is not at fault and a GitHub outage must not hold every PR, but a no-op must never be silent;
 #   - a test that needs a package this job does not install (playwright-core, a non-stdlib python module) is not run here, and the log says so (web's own CI runs it); the job installs nothing;
@@ -27,7 +27,7 @@ if [ -z "${WEB_DIR:-}" ]; then
     if [ "$try" = 3 ]; then
       # GitHub answers a private repo without a token with a username prompt or "not found", not with "private": say that, it is the cause that matters
       if grep -Eqi 'could not read (username|password)|terminal prompts disabled|authentication failed|repository not found' "$scratch/clone.err"; then
-        notrun "jobadabra-web refused a clone without a token (private?) and this job had none: the workflow's CI App checkout did not run or failed ($(tail -n 1 "$scratch/clone.err" | cut -c1-140))"
+        notrun "jobadabra-web refused a clone without a token (private?) and this job had none: a token path is parked on the Work board ($(tail -n 1 "$scratch/clone.err" | cut -c1-140))"
       fi
       notrun "could not clone jobadabra-web in 3 tries ($(tail -n 1 "$scratch/clone.err" | cut -c1-140))"
     fi
