@@ -25,6 +25,8 @@ FAKE_GH = textwrap.dedent('''\
     if a[:2] == ['pr', 'view']:   # state_N: MERGED..; draft_N: exists = draft; title_N; checks_N: red | pending (default green)
         gate = {'red': {'name': 'All checks passed', 'conclusion': 'FAILURE'}, 'pending': {'name': 'All checks passed', 'status': 'IN_PROGRESS', 'conclusion': ''}}.get(flag('checks', a[2]), {'name': 'All checks passed', 'conclusion': 'SUCCESS'})
         print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change'), 'statusCheckRollup': [gate]}))
+    elif a[:2] == ['api', 'graphql'] and os.path.exists(f'{d}/graphql_down'):   # quota 0 / 5xx: gh prints nothing
+        pass
     elif a[:2] == ['api', 'graphql']:   # every open PR's comments, from the comments_N.json files (a PR the queue never saw has one too)
         nodes = []
         for name in sorted(os.listdir(d)):
@@ -140,7 +142,7 @@ class GitarQueueTest(unittest.TestCase):
     def test_a_github_that_answers_nothing_never_crashes_the_ask_and_the_failure_is_said(self):
         (self.tmp / 'gh_out').write_text('')
         out = self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
-        self.assertTrue(out.startswith('QUEUED (position 1') and 'the last post failed' in out, out)
+        self.assertTrue(out.startswith('QUEUED (position 1') and 'the last look failed' in out, out)
         (self.tmp / 'gh_out').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
 
@@ -212,6 +214,22 @@ class GitarQueueTest(unittest.TestCase):
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
         self.assertIn('ask 1', self.posted())
         self.assertEqual(self.posted(), ['ask 1'])
+
+    def test_an_unreadable_refusal_read_posts_nothing_that_look(self):
+        """13 Nov 2026, Gitar on #4058: a failed read was taken as "no refusal anywhere" and the post extended Gitar's lock."""
+        (self.tmp / 'graphql_down').write_text('')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0').startswith('QUEUED'))
+        self.assertEqual(self.posted(), [])
+        (self.tmp / 'graphql_down').unlink()
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next readable look posts')
+
+    def test_when_every_entry_is_held_the_refusal_read_is_skipped(self):
+        """13 Nov 2026, Gitar on #4058: held entries never post, so each watcher look must not run the 100-PR read."""
+        (self.tmp / 'draft_1').write_text('')
+        self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
+        self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
+        calls = (self.tmp / 'calls').read_text() if (self.tmp / 'calls').exists() else ''
+        self.assertNotIn('api graphql', calls)
 
 
 if __name__ == '__main__':

@@ -65,11 +65,13 @@ const QUERY = 'query($q:String!){search(query:$q,type:ISSUE,first:100){issueCoun
 function refusals(repo) {
   const out = [];
   // Why (13 Nov 2026, #4031 live: GitHub's REST quota was 0 and gh printed nothing): JSON.parse(null) is null, not an error, so a read must say "no refusals" instead of crashing every watcher's ask.
+  // Why (13 Nov 2026, Gitar on #4058): an unreadable list (quota, 5xx, GraphQL errors) is not "no refusal": it marks the result `unreadable` and the drain posts nothing on that look.
   let nodes = []; try {
     const search = JSON.parse(gh(['api', 'graphql', '-f', `query=${QUERY}`, '-f', `q=repo:${repo} is:pr is:open sort:updated-desc`]))?.data?.search;
+    if (!search?.nodes) out.unreadable = true;
     nodes = search?.nodes ?? [];
     if (search?.issueCount > nodes.length) console.error(`gitar-queue: ${repo} has ${search.issueCount} open PRs, only the ${nodes.length} most recently updated are read for a refusal`);
-  } catch { /* an unreadable list says "not paused": the sent record still stops a second ask */ }
+  } catch { out.unreadable = true; }
   for (const n of nodes) {
     const rows = [...(n.comments?.nodes ?? []), ...(n.reviewThreads?.nodes ?? []).flatMap(t => t.comments?.nodes ?? [])];
     for (const c of rows) {
@@ -103,10 +105,14 @@ function drain(st) {
   });
   if (st.last + GAP > now()) return;   // spacing first: no comment reads while it holds
   // Gitar's "wait N minutes" on ANY open PR of a queued repo pauses every PR until it ends (account-wide: coordinator, 13 Nov 2026); sent repos of the last 2 h count too.
-  const repos = new Set([...st.entries.map(e => e.repo), ...st.sent.filter(x => x.at > now() - 7200000).map(x => x.key.split('#')[0])]);
-  st.until = Math.max(st.until || 0, ...[...repos].map(r => latest(refusals(r))));
-  if (st.until > now()) return;
   const held = holdsOf(st, info);
+  if (st.entries.every(e => held.has(key(e)))) return;   // Why (13 Nov 2026, Gitar on #4058): nothing can post, so the 100-PR refusal read is skipped on every watcher look
+  const repos = new Set([...st.entries.map(e => e.repo), ...st.sent.filter(x => x.at > now() - 7200000).map(x => x.key.split('#')[0])]);
+  const reads = [...repos].map(r => refusals(r));
+  st.until = Math.max(st.until || 0, ...reads.map(latest));
+  if (st.until > now()) return;
+  if (st.fail === 'GitHub could not be read') delete st.fail;
+  if (reads.some(r => r.unreadable)) { st.fail = 'GitHub could not be read'; return; }   // the next look retries; ask/status say so
   for (const e of st.entries) {
     if (held.has(key(e))) continue;
     const t0 = now();   // Why (13 Nov 2026, Gitar on #4031): a refusal lands 3-5 s after the post, so it is looked for from just before the post, not from "now minus 5 s" after the settle wait
@@ -134,7 +140,7 @@ function placed(st, k) {
   const sch = schedule(st), x = sch.find(y => key(y.e) === k);
   if (!x) return 'DROPPED (not queued)';
   if (x.hold) return `HELD (${x.hold}: it goes when that changes)`;
-  return `QUEUED (position ${sch.filter(y => !y.hold).indexOf(x) + 1}, next ask ~${hhmm(x.at)}${st.fail ? `; the last post failed: ${st.fail}` : ''})`;
+  return `QUEUED (position ${sch.filter(y => !y.hold).indexOf(x) + 1}, next ask ~${hhmm(x.at)}${st.fail ? `; the last look failed: ${st.fail}` : ''})`;
 }
 const hhmm = ms => new Date(ms).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 
@@ -162,7 +168,7 @@ const out = locked(() => {
   }
   if (cmd === 'cancel') { st.entries = st.entries.filter(e => !(e.repo === repo && e.pr === Number(pr))); save(st); return 'CANCELLED'; }
   if (cmd === 'drain') { drain(st); save(st); return `${st.entries.length} queued`; }
-  if (cmd === 'status') return (schedule(st).map(({e, at, hold}) => `${e.kind} ${key(e)} ${hold ? `held (${hold})` : `~${hhmm(at)}`}`).join('\n') || 'empty') + (st.fail ? `\nthe last post failed: ${st.fail}` : '');
+  if (cmd === 'status') return (schedule(st).map(({e, at, hold}) => `${e.kind} ${key(e)} ${hold ? `held (${hold})` : `~${hhmm(at)}`}`).join('\n') || 'empty') + (st.fail ? `\nthe last look failed: ${st.fail}` : '');
   throw new Error('usage: gitar-queue.mjs ask <owner/repo> <pr> <head> | reply <owner/repo> <pr> <comment-id> <body-file> | cancel <owner/repo> <pr> | drain | status');
 });
 console.log(out);
