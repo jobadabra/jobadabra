@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
-      - name: The PR's head and main, fixed now (a branch of this repo only)
+      - name: The PR's head and the main commit it sits on, fixed now (a branch of this repo only)
         id: refs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,8 +71,11 @@ jobs:
           [[ "$PR" =~ ^[0-9]+$ ]] || { echo "pr: a number"; exit 1; }
           gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid,isCrossRepository,state > pr.json
           python3 -c "import json,sys; d=json.load(open('pr.json')); sys.exit('a fork PR is not run (its code would get the broker)' if d['isCrossRepository'] else 'the PR is not open' if d['state'] != 'OPEN' else 0)"
-          echo "head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")" >> "$GITHUB_OUTPUT"
-          echo "main=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" >> "$GITHUB_OUTPUT"
+          head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          # Why (13 Nov 2026, #3946's pair): the "before" side is the main commit the PR sits on, not main's newest; a PR behind main would otherwise be compared
+          # with everything merged since, and its own change could not be told apart (0bf3c8d6 against 7e5ee877 also differed by #3952 and two more).
+          echo "main=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$head" --jq .merge_base_commit.sha)" >> "$GITHUB_OUTPUT"
           gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > changed.txt
       - name: The people (night 1-18 and profile ids, at most 3)
         id: people
