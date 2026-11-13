@@ -216,6 +216,7 @@ jobs:
                 draft=(--draft "$GITHUB_WORKSPACE/cv/draw/draft.json")
                 # both sides start from a copy of the draft's install (strategy, places, board proposal, board searches): no AI question the draft already asked is asked again by a side
                 rm -rf "$tmp/jp-persona-draw-pair-$side"; cp -a "$tmp/jp-persona-draw-pair-draft" "$tmp/jp-persona-draw-pair-$side"; fresh=()
+                [ -f "$tmp/jp-persona-draw-pair-draft/data/proposed.ok" ] || touch "$out/boards-not-shared"   # the draft's proposal failed: this side asks for itself, and the table says it is not counted
               fi
               node tools/persona-search/codex.mjs -- node "side-$side/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/$out" --presses 1 --first-only "${fresh[@]}" --engine api --tag "pair-$side" "${draft[@]}" > "$out/run.log" 2>&1 &
             done
@@ -322,7 +323,7 @@ jobs:
           else gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file table.md; fi
           # the checks list's text: the Moves lines, or why nothing was counted (140 characters at most)
           if [ "$(jq -r '.rerun | length' settle.json 2>/dev/null || echo 0)" != 0 ]; then text="not counted: $(jq -r '.rerun | join(", ")' settle.json) (a side was starved; the pair runs once more)"
-          else text="$(grep '^Moves:' table.md | sed -e 's/^Moves: //' -e 's/ (1 run a side.*//' | paste -sd ';' - | sed 's/;/; /g')"; fi
+          else text="$(grep '^Moves:' table.md | sed -E -e 's/^Moves: //' -e 's/ \([0-9]+ runs? a side.*//' | paste -sd ';' - | sed 's/;/; /g' || true)"; fi
           echo "status=${text:-no numbers written (the PR changed while the pair ran)}" | cut -c1-150 >> "$GITHUB_OUTPUT"
 
   status:

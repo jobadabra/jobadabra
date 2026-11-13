@@ -132,7 +132,10 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
   }
   // Why (13 Nov 2026, sa and bl, run 43487528056): the pair's draft step asks the board proposal once (propose.py) so both sides copy this install's answers instead of asking one call each.
   if (process.argv.includes('--propose')) {
-    try { console.log(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', 'propose.py')], {cwd: ROOT, env: {...pipelineEnv(storage), PYTHONPATH: ROOT}}).toString().trim().split('\n').pop()); }
+    try {
+      console.log(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', 'propose.py')], {cwd: ROOT, env: {...pipelineEnv(storage), PYTHONPATH: ROOT}}).toString().trim().split('\n').pop());
+      fs.writeFileSync(path.join(storage.path('data'), 'proposed.ok'), '');   // the pair's sides read this: no marker, no shared proposal, the pair says so (pair.py side)
+    }
     catch (error) { console.log(`${name}: board proposal NOT made (each search asks for itself): ${String(error.message).split('\n')[0]}`); }
   }
 }
