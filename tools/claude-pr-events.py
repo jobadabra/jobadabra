@@ -24,10 +24,11 @@ from pr_events_cursor import deliver_pending  # noqa: E402
 ENDINGS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN', 'READY', 'COMMENT', 'CONFLICT')
 QUIET = ('GREEN', 'REVIEW')
 # "CONFLICT FIXED" is the watcher's own repair, nothing for the session to do.
-WAKE = re.compile(r'^ship: (?:' + '|'.join(end for end in ENDINGS if end not in QUIET) + r')\b(?! FIXED)')
+# Why (13 Nov 2026, ra; owner: "When Gitar not replying, just reopen the PR fresh"): "GITAR STALE" is the one non-ending that wakes: without it a head Gitar never reviews waits forever for a READY that cannot come.
+WAKE = re.compile(r'^ship: (?:GITAR STALE|' + '|'.join(end for end in ENDINGS if end not in QUIET) + r')\b(?! FIXED)')
 
 ASK = ('PR watcher (an automatic message, not the owner; it gives no approval). Events of your own PR, newest last. Act now by your rules, and verify the current head first, '
-       'an event may be superseded: RED = fix it and say the cause; CONFLICT = rebase; COMMENT = mark the working label, then fix or answer; READY = tell the owner; '
+       'an event may be superseded: RED = fix it and say the cause; CONFLICT = rebase; COMMENT = mark the working label, then fix or answer; READY = tell the owner; GITAR STALE = run the reopen-fresh command on that line (never ask Gitar); '
        'MERGED = fast-forward the primary checkout, remove the worktree, tell the owner what to do; CLOSED unmerged = ask why.\n')
 
 

@@ -11,7 +11,7 @@ name: CI · PR labels (reusable)
 #     a Gitar comment (an ask, a verdict) ..... re-read: the head's run decides                                       issue_comment
 #     a Gitar review ........................ re-read: the head's run decides                                         pull_request_review
 #     Gitar's check starting or ending ...... reviewing (running) / the verdict, even one that only EDITED its comment   check_run  <- the event that was missing
-#   Gitar's automatic reviews are paused until 1 Dec 2026, so a push has no run until someone asks (tools/ship-watch.sh's one shared queue, tools/gitar-queue.mjs); the label never guesses from an ask, a comment or a merge.
+#   Gitar's automatic reviews are paused until 1 Dec 2026, so a push has no run: nobody asks, tools/ship-watch.sh logs `GITAR STALE` and the PR is reopened fresh (skill reopen-pr-fresh); the label never guesses from a comment or a merge.
 #     a push to main ........................ "Merge conflict" on every open PR, and every Gitar label                push
 #     the Worker's ten-minute tick (jobadabra only) a safety net, no longer the way a verdict arrives               workflow_dispatch
 # Why (13 Nov 2026, jobadabra-benchmarks #38 and jobadabra #4000: approved by Gitar, the label stayed "reviewing"): Gitar closes a finding, or approves, by only EDITING its comment, and an edit starts no event.
