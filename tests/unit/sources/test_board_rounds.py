@@ -63,6 +63,16 @@ class HandedPerRound(unittest.TestCase):
         self.assertEqual(sorted(n for group in handed for n in group), ['1', '2', '3'], 'each job is handed once, by its round or by its board')
         self.assertEqual([j['url'][-1] for j in jobs], ['1', '2', '3'], 'the read returns each job once')
 
+    def test_a_rounds_jobs_are_placed_before_they_are_handed(self):
+        """Run 43420915768: a round handed unplaced had 3 of its 8 titles asked; the other 5 jobs stayed never asked."""
+        said = []
+        with mock.patch.object(found_boards, 'read_board', self.read_board), mock.patch.object(read_budget, 'BETWEEN_S', 0.01), \
+                mock.patch.object(found_boards.board_yield.stage, 'guard', mock.MagicMock()), \
+                mock.patch('src.sources.feeds.triage_places', side_effect=lambda jobs: said.append(('placed', [j['url'][-1] for j in jobs]))):
+            found_boards.read(SEARCH, [BOARD], early=True, workers=1, is_relevant=list, dead=set(),
+                              on_board=lambda found: (said.append(('handed', [j['url'][-1] for j in found])), self.second_round.set()))
+        self.assertEqual(said[:2], [('placed', ['1', '2']), ('handed', ['1', '2'])], 'the first round is placed, then handed')
+
     def test_a_board_still_open_at_the_cut_gave_the_rounds_it_ended(self):
         self.addCleanup(time_budget.start, 0)
         time_budget.start(180)

@@ -335,7 +335,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                             if board['host'] not in hosts))
     taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
-    rounds = board_rounds.Rounds(lambda read_item, found: _hand(by_turn[order.get(id(read_item), -1)], found, on_board)) if on_board is not None else None
+    rounds = board_rounds.Rounds(lambda read_item, found: _hand(by_turn[order.get(id(read_item), -1)], board_yield.placed(found), on_board)) if on_board is not None else None
 
     def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
         board, entry, pages, fetched, _ = read_item

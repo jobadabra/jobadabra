@@ -24,6 +24,17 @@ def is_relevant(jobs):
     return [job for job in jobs if feeds.wanted_title(job.get('title')) and feeds.wanted_location(job)]
 
 
+def placed(jobs):
+    """These jobs with their places asked (the AI place triage), as is_relevant asks a whole board's: a round handed before its board ends
+    (src/sources/board_rounds.py) is placed first, or the title sort, which asks only the jobs in the user's places, never sees most of it.
+    Why (13 Nov 2026, run 43420915768): a round of 8 Nuremberg jobs was handed unplaced; 3 titles were asked, 5 jobs stayed never asked."""
+    from . import feeds
+    jobs = list(jobs)
+    with stage.guard('job boards: triage'):   # a failure: the place words decide
+        feeds.triage_places(jobs)
+    return jobs
+
+
 # Why (12 Nov 2026, owner via sa, asked via AskUserQuestion: "Hold, learn the reason (Recommended)"): a board that needs a browser keeps why in
 # these fixed words, from the read that marked it (never the page's own words), so a round counts them by reason without asking any site again.
 REFUSED_WORDS = {'HTTP 401': 'HTTP 401', 'HTTP 403': 'HTTP 403', 'a bot check': 'a bot check page', 'bot check page': 'a bot check page'}   # what our readers say
