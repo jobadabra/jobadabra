@@ -24,7 +24,7 @@ LinkedIn is one of the finish line's sources (spec 2026-11-10-find-jobs-finish-l
 8. **Stop rule (one rule, shared with the signed-in read):** a 401/403/429/999, a sign-in or check page, or a page that is neither cards nor LinkedIn's empty end (`<!DOCTYPE html>\n\n<!---->`) ends LinkedIn (both reads) for that run, with no retry; a 429 or 999 also pauses LinkedIn for a day (the signed-in read's `pausedUntil`, `desktop/lib/linkedin-session.js`, one copy). The empty end is the normal end of a search, not a stop.
 9. **One LinkedIn read a press:** when the signed-in switch is on and its session is usable, the signed-in read runs and the guest lane does not (no doubled requests from one address); otherwise the guest lane runs.
 10. Recent activity and the Find jobs log say one line: `LinkedIn: 23 jobs from the public search`, `LinkedIn asked us to slow down: left alone until tomorrow`, `LinkedIn: could not be read this time`.
-11. Settings → Automations (Always on) says LinkedIn's public search is on trial in Always on for the owner's install, and the person's own LinkedIn session is used only on their computer (UI: previewed light + dark, owner's yes before commit).
+11. Settings → Automations (Always on) says, in about these words: Always on reads LinkedIn's public job search (trial); your LinkedIn and Google sign-ins are used only on your computer (UI: previewed light + dark, owner's yes before commit).
 
 ## Where it lives
 - `src/sources/linkedin_guest.py` (new): search-page reader, card parser, stop verdicts, pace. Our own code, written from JobSpy's method (speedyapply/JobSpy, MIT); no JobSpy code copied, so no notice needed; the method is credited in the module's docstring.
@@ -79,6 +79,9 @@ CI rounds (Night search, `search-pair.yml`) stay without LinkedIn: a GitHub addr
 3/4 `[lg] 3/4 Settings says where LinkedIn is read` — the Automations note (after the owner's yes on the preview); it is also the LinkedIn part of 6/6 "Always On says what it does not read" of spec 2026-11-11-always-on-parity-design.md (one change, ticked there).
 
 4/4 `[lg] 4/4 Always on tries LinkedIn's public search for the owner` — site PR first (jobadabra-web: the owner-only gate in the run payload, the answers kept), then `src/hosted_run.py` sets the flag only when the payload says so; a daily cap of a few pages; the answers table the owner reads after a week.
+
+## Follow-ups (not in these PRs)
+- Remove the LinkedIn cloud probe code (`desktop/lib/linkedin-cloud-probe.js`, its IPC, web #547's route): it sends a session to the site, which the owner's 13 Nov rule ends; a separate small cleanup PR, proposed to the coordinator.
 
 ## Progress
 - [x] Positive control: one search page + one job page, logged out, honest user agent: 200, 10 cards, description present (13 Nov 2026) (proof: none: two by-hand requests from this Mac)
