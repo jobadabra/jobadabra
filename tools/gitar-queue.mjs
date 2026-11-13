@@ -60,11 +60,16 @@ const prInfo = (repo, pr) => {
 const holdReason = (e, i) => !i ? '' : i.draft ? 'draft' : /DONT MERGE/.test(i.title) ? 'DONT MERGE' : e.kind === 'ask' && i.gate !== 'green' ? `checks ${i.gate}` : '';
 /** Gitar's "wait about N minutes" replies on every open PR of the repo (issue comments and inline threads, newest of each): [{pr, at, until}] in ms. One GraphQL read per repo.
  *  Why (13 Nov 2026, coordinator; #4042 drew "wait about 40 minutes" at 21:08:37 while it was not queued): the limit is the account's, so a refusal on a PR the queue never saw still pauses it. */
-const QUERY = 'query($q:String!){search(query:$q,type:ISSUE,first:50){nodes{... on PullRequest{number comments(last:5){nodes{author{login} createdAt body}} reviewThreads(last:15){nodes{comments(last:4){nodes{author{login} createdAt body}}}}}}}}';
+// Why (13 Nov 2026, Gitar on #4053): a refusal is one of the newest comments, but ship events and labels push it out of a window of 5; 100 PRs x (30 + 30x10) nodes stays far under GitHub's node limit.
+const QUERY = 'query($q:String!){search(query:$q,type:ISSUE,first:100){issueCount nodes{... on PullRequest{number comments(last:30){nodes{author{login} createdAt body}} reviewThreads(last:30){nodes{comments(last:10){nodes{author{login} createdAt body}}}}}}}}';
 function refusals(repo) {
   const out = [];
   // Why (13 Nov 2026, #4031 live: GitHub's REST quota was 0 and gh printed nothing): JSON.parse(null) is null, not an error, so a read must say "no refusals" instead of crashing every watcher's ask.
-  let nodes = []; try { nodes = JSON.parse(gh(['api', 'graphql', '-f', `query=${QUERY}`, '-f', `q=repo:${repo} is:pr is:open sort:updated-desc`]))?.data?.search?.nodes ?? []; } catch { /* an unreadable list says "not paused": the sent record still stops a second ask */ }
+  let nodes = []; try {
+    const search = JSON.parse(gh(['api', 'graphql', '-f', `query=${QUERY}`, '-f', `q=repo:${repo} is:pr is:open sort:updated-desc`]))?.data?.search;
+    nodes = search?.nodes ?? [];
+    if (search?.issueCount > nodes.length) console.error(`gitar-queue: ${repo} has ${search.issueCount} open PRs, only the ${nodes.length} most recently updated are read for a refusal`);
+  } catch { /* an unreadable list says "not paused": the sent record still stops a second ask */ }
   for (const n of nodes) {
     const rows = [...(n.comments?.nodes ?? []), ...(n.reviewThreads?.nodes ?? []).flatMap(t => t.comments?.nodes ?? [])];
     for (const c of rows) {
@@ -110,7 +115,9 @@ function drain(st) {
     st.sent.push({key: key(e), at: now()});
     save(st); settle(SETTLE);
     // A refused ask or reply goes back to the front, so Gitar is not left without it (Gitar on #4031: a refused reply was lost). A refused reply is deleted first, so people see it once, after the wait.
-    const refusedUntil = latest(refusals(e.repo).filter(r => r.at >= t0 - 2000)); st.until = Math.max(st.until || 0, refusedUntil);
+    // Why (13 Nov 2026, Gitar on #4053): the pause is account-wide, but only a refusal on THIS PR means this post was refused; another PR's refusal must not re-post it.
+    const fresh = refusals(e.repo).filter(r => r.at >= t0 - 2000), refusedUntil = latest(fresh.filter(r => r.pr === e.pr));
+    st.until = Math.max(st.until || 0, latest(fresh));
     if (refusedUntil > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
     return;
   }
