@@ -63,7 +63,7 @@ CLASSIFIED = {
     'CI · Search check (18 personas)': 'ignored: a night report on live public job sites; started by the Worker, never by a push to main',
     'CI · Search reference (18 personas)': 'ignored: a report on a live public job portal (EURES), started by hand; never by a push to main',
     "CI · Search pair (a PR's before/after, by hand)": 'ignored: a PR\'s before/after searches on live public job sites, started by hand for one PR; never by a push to main',
-    'CI · Search profiles (30, by hand)': 'ignored: a report of the 30 fictional profiles\' first search on live public job sites, started by hand; never by a push to main',
+    'CI · Search profiles (by hand)': 'ignored: a report of the fictional profiles\' first search on live public job sites, started by hand; never by a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'Tooling': 'ignored: alone only on pull requests that change the harness (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',

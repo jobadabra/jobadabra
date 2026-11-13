@@ -1,5 +1,5 @@
 name: CI · Search pair (a PR's before/after, by hand)
-# By hand: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the 30 profiles by id), main and the PR head search at the same
+# By hand: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the profiles by id), main and the PR head search at the same
 # minute on one runner (two checkouts, two first searches started together, the same strategy draft), the same blind judge counts their right jobs, and one comment on
 # the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
 # Why (13 Nov 2026, owner: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a

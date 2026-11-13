@@ -1,4 +1,4 @@
-"""The 30 fictional profiles' first search on CI (search-profiles.yml): their CV, the blind judge on their jobs, one row each and the run's table.
+"""The fictional profiles' first search on CI (search-profiles.yml): their CV, the blind judge on their jobs, one row each and the run's table.
 
 Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Move it to CI"): the profile round ran on the owner's Mac, one search at a time, and its numbers
 followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). This runs the same first search on fresh CI installs through the AI broker (Claude by default, Codex as an input).
@@ -19,8 +19,8 @@ HERE = Path(__file__).resolve().parent
 PROFILES = json.loads((HERE / 'search-profiles.json').read_text(encoding='utf-8'))['profiles']
 IDS = [p['id'] for p in PROFILES]
 # Why (13 Nov 2026, owner via sa: "First come, first serve" · "each workflow should take its necessary slots"): no workflow holds a profile run; the run claims its room at the
-# broker (tools/persona-search/claim.py) and a profile starved anyway shows as waits p90 > 20 s and is reported not measured, never a low number.
-MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number up to all 30 at once; the room is the broker's, read per run
+# broker (tools/persona-search/claim.py) and a profile starved anyway shows as waits p90 > 20 s and is reported not measured, never a low number (the 30 below is the at-once cap, not the profile count: sa, 13 Nov 2026, added profiles past 30).
+MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number up to 30 at once (the cap, not the profile count); the room is the broker's, read per run
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
@@ -37,7 +37,7 @@ WAIT_P90_LIMIT_S = 20
 
 
 def profile(pid):
-    """The profile row of an id; ValueError for an id that is not one of the 30."""
+    """The profile row of an id; ValueError for an id that is not in search-profiles.json."""
     for p in PROFILES:
         if p['id'] == pid:
             return p
@@ -45,7 +45,7 @@ def profile(pid):
 
 
 def ids(given):
-    """The run's ids as `profiles=<json>`: the given JSON list (each checked), or all 30 when empty."""
+    """The run's ids as `profiles=<json>`: the given JSON list (each checked), or all of them when empty."""
     chosen = json.loads(given) if given.strip() else IDS
     for pid in chosen:
         profile(pid)
@@ -71,7 +71,15 @@ def cv(pid, out):
     import draw  # noqa: PLC0415
     from personas import pdf  # noqa: PLC0415
     p = profile(pid)
-    family = next(f for f in draw.DATA['families'] if f['id'] == p['family'])
+    # Why (13 Nov 2026, sa for the owner: 7 more Trello profiles, "actually let's leave it only for the Trello board"): music, financial analyst and IT project manager are not families in
+    # draws.json, and adding one would move the seeded draws and the night people; a row may carry its own duty/education/tools, which win over a family of the same id.
+    family = next((dict(f) for f in draw.DATA['families'] if f['id'] == p['family']), {})
+    own = {k: p[k] for k in ('duty', 'education', 'tools') if k in p}
+    if own or not family:   # Why (Gitar on #4010): a row without its own text keeps the family's title and text, so the CVs of b01-c20 stay byte-identical
+        family.update(own, title=p['title'])
+    missing = [k for k in ('duty', 'education', 'tools') if k not in family]
+    if missing:
+        raise ValueError(f"profile {pid}: family {p['family']!r} is not in draws.json and the row has no {', '.join(missing)}")
     lines = draw.cv(family, {k: p[k] for k in ('city', 'country', 'language')}, 'Alex Example')
     folder = Path(out) / 'draw'
     folder.mkdir(parents=True, exist_ok=True)
