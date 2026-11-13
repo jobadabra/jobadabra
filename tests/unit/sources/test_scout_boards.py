@@ -54,6 +54,21 @@ class BoardPassTest(unittest.TestCase):
             return scout_boards.run(self.db, ideas=lambda search: [{**board(host), 'search_url': url.format(host=host)} for host in reads], read_board=read_board,
                                     out=lambda line: None, named='md', google=lambda *a: [], families=list(asked), words=lambda db, country, families: asked)
 
+    def test_a_slow_reread_of_a_known_board_does_not_use_up_the_time_of_the_new_boards(self):
+        """13 Nov 2026 (bp, run 43498167418, Spain): the stale re-read of airlinejobs.com took 264 s, past BUDGET_S (240), so the loop stopped and the 10 other proposed boards
+        never started. A re-read has its own time; the budget for new boards starts after it."""
+        now, read = [0.0], []
+
+        def read_board(item, search, fetch):
+            read.append(item['host'])
+            now[0] += 300 if item['host'] == 'known.example' else 10   # the re-read is slow, every new board is quick
+            return [], 'ok', None
+        known = {**board('known.example'), 'search_url': 'https://known.example/search?q={role}'}
+        scout_boards.run(self.db, ideas=lambda search: [board('new1.example'), board('new2.example')], read_board=read_board, out=lambda line: None, named='md',
+                         google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['programator']},
+                         again=[known], clock=lambda: now[0])
+        self.assertEqual(read, ['known.example', 'new1.example', 'new2.example'])
+
     def test_a_fact_counts_the_jobs_of_each_family_over_every_job_read_not_just_the_families_seen(self):
         """13 Nov 2026 (bp, owner: "Why ? Let's fix it."): an airline board with 178 Spanish jobs, one an aircraft electrician, was 'measured' for electricians. The count is
         per family, over every job the pass read (60 titles here: past the old first 40), only for families the board was asked for by their own word."""
