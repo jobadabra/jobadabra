@@ -71,7 +71,7 @@ class ReportBoards(unittest.TestCase):
         folder = run_folder(self.tmp.name, 'b01', [
             board('good.example.com'), board('none.example.com', local=0), board('feed.example.com', kind='employer feed'),
             board('Display Name'), board('')])
-        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg'): {'local': 3, 'url': None}, ('none.example.com', 'bg'): {'local': 0, 'url': None}})
+        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg'): {'local': 3, 'url': None, 'fine': False}, ('none.example.com', 'bg'): {'local': 0, 'url': None, 'fine': False}})
 
     def test_the_night_people_add_nothing(self):
         root = self.tmp.name
@@ -84,7 +84,7 @@ class ReportBoards(unittest.TestCase):
         root = self.tmp.name
         run_folder(root, 'b01--main-1', [board('a.example.com')])
         run_folder(root, 'b02--pr-1', [board('b.example.com')])
-        self.assertEqual(report_boards.collect(root), {('a.example.com', 'bg'): {'local': 3, 'url': None}, ('b.example.com', 'ro'): {'local': 3, 'url': None}})
+        self.assertEqual(report_boards.collect(root), {('a.example.com', 'bg'): {'local': 3, 'url': None, 'fine': False}, ('b.example.com', 'ro'): {'local': 3, 'url': None, 'fine': False}})
 
     def test_the_body_carries_the_jobs_kept_per_host_the_highest_over_rows_and_folders_as_a_capped_count(self):
         """13 Nov 2026, owner via sa: the press row's `local` (jobs kept in the person's place) goes with the host so the Scout reads Jobeka (19) before an alphabetical neighbour."""
@@ -113,7 +113,7 @@ class ReportBoards(unittest.TestCase):
             'filled.example': {'search_url': 'https://filled.example/empleos-zxq%C3%A1vrole?q={role}', 'state': 'ok'},      # an encoded word: dropped
             'other.example': {'search_url': 'https://elsewhere.example/s?q={role}', 'state': 'ok'},                       # not this board's host: dropped
             'plain.example': {'state': 'ok'}}}), encoding='utf-8')
-        self.assertEqual(report_boards.addresses(folder), {'jobeka.example': template})
+        self.assertEqual(report_boards.addresses(folder, {'jobeka.example', 'plain.example', 'filled.example', 'other.example'}), {'jobeka.example': (True, template)})
         post = Post()
         main([str(folder), '--person', 'b01', '--run', '5'], post, CI)
         sent = {item['host']: item for item in json.loads(post.requests[0].data)['ci_boards']}
@@ -129,16 +129,46 @@ class ReportBoards(unittest.TestCase):
             folder = run_folder(self.tmp.name, f'b01--main-{abs(hash(content))}', [board('jobeka.example')])
             if content is not None:
                 (folder / 'found-boards.json').write_text(content, encoding='utf-8')
-            self.assertEqual(report_boards.collect(folder, 'b01'), {('jobeka.example', 'bg'): {'local': 3, 'url': None}}, repr(content))
+            self.assertEqual(report_boards.collect(folder, 'b01'), {('jobeka.example', 'bg'): {'local': 3, 'url': None, 'fine': False}}, repr(content))
 
     def test_two_addresses_for_one_board_go_as_two_items_and_the_one_the_search_read_fine_is_taken(self):
         folder = run_folder(self.tmp.name, 'b01', [board('jobeka.example')])
         (folder / 'found-boards.json').write_text(json.dumps({'boards': {
             'a.jobeka.example': {'search_url': 'https://a.jobeka.example/s?q={role}', 'state': 'empty'},
             'z.jobeka.example': {'search_url': 'https://z.jobeka.example/s?q={role}', 'state': 'ok'}}}), encoding='utf-8')
-        self.assertEqual(report_boards.addresses(folder), {'jobeka.example': 'https://z.jobeka.example/s?q={role}'})
-        body = report_boards.body({('jobeka.example', 'bg'): {'local': 4, 'url': 'https://z.jobeka.example/s?q={role}'}, ('jobeka.example', 'ro'): {'local': 9, 'url': None}}, '1')
+        self.assertEqual(report_boards.addresses(folder, {'jobeka.example'}), {'jobeka.example': (True, 'https://z.jobeka.example/s?q={role}')})
+        body = report_boards.body({('jobeka.example', 'bg'): {'local': 4, 'url': 'https://z.jobeka.example/s?q={role}', 'fine': True}, ('jobeka.example', 'ro'): {'local': 9, 'url': None, 'fine': False}}, '1')
         self.assertEqual(body['ci_boards'], [{'host': 'jobeka.example', 'countries': ['bg'], 'local': 4, 'url': 'https://z.jobeka.example/s?q={role}'}, {'host': 'jobeka.example', 'countries': ['ro'], 'local': 9}])
+
+    def test_a_board_on_a_two_label_suffix_is_matched_by_its_company_domain_never_to_co_uk(self):
+        """Gitar on #4127: registrable('es.indeed.co.uk') is 'co.uk'. An entry belongs to a press-row host when its company domain is that host (careers_explore.company_domain), and the address is checked against it."""
+        boards = {'es.indeed.co.uk': {'search_url': 'https://es.indeed.co.uk/jobs?q={role}&l={place}', 'state': 'ok'},
+                  'www.infojobs.com.br': {'search_url': 'https://www.infojobs.com.br/empregos/{role}', 'state': 'ok'},
+                  'evil.co.uk': {'search_url': 'https://evil.co.uk/s?q={role}', 'state': 'ok'},                               # another company on the same suffix
+                  'sub.indeed.co.uk': {'search_url': 'https://other.co.uk/s?q={role}', 'state': 'ok'}}                        # an address on another domain than its entry
+        folder = run_folder(self.tmp.name, 'b01', [board('indeed.co.uk', local=7), board('infojobs.com.br', local=2)])
+        (folder / 'found-boards.json').write_text(json.dumps({'boards': boards}), encoding='utf-8')
+        self.assertEqual(report_boards.addresses(folder, {'indeed.co.uk', 'infojobs.com.br'}), {
+            'indeed.co.uk': (True, 'https://es.indeed.co.uk/jobs?q={role}&l={place}'), 'infojobs.com.br': (True, 'https://www.infojobs.com.br/empregos/{role}')})
+        self.assertEqual(report_boards.collect(folder, 'b01')[('indeed.co.uk', 'bg')]['url'], 'https://es.indeed.co.uk/jobs?q={role}&l={place}')
+        # what source_yield writes today for these boards (careers_parse.registrable keeps two labels): the press row is keyed 'co.uk' / 'com.br'; no address is reported for it, never a loose one
+        keyed = run_folder(self.tmp.name, 'b02', [board('co.uk', local=7), board('com.br', local=2)])
+        (keyed / 'found-boards.json').write_text(json.dumps({'boards': boards}), encoding='utf-8')
+        self.assertEqual(report_boards.addresses(keyed, {'co.uk', 'com.br'}), {})
+        self.assertEqual({key: value['url'] for key, value in report_boards.collect(keyed, 'b02').items()}, {('co.uk', 'ro'): None, ('com.br', 'ro'): None})
+
+    def test_across_folders_the_address_the_search_read_fine_wins_over_one_that_gave_nothing(self):
+        """Gitar on #4127: the first folder's address (state empty) must not beat a later folder's address that gave jobs."""
+        root = self.tmp.name
+        for name, state, url in (('b01--main-1', 'empty', 'https://a.jobeka.example/s?q={role}'), ('b01--pr-1', 'ok', 'https://z.jobeka.example/s?q={role}'), ('b01--pr-2', 'empty', 'https://m.jobeka.example/s?q={role}')):
+            folder = run_folder(root, name, [board('jobeka.example')])
+            (folder / 'found-boards.json').write_text(json.dumps({'boards': {url.split('/')[2]: {'search_url': url, 'state': state}}}), encoding='utf-8')
+        self.assertEqual(report_boards.collect(root)[('jobeka.example', 'bg')]['url'], 'https://z.jobeka.example/s?q={role}')
+        only_empty = os.path.join(self.tmp.name, 'only')
+        for name, url in (('b01--main-1', 'https://a.jobeka.example/s?q={role}'), ('b01--pr-1', 'https://z.jobeka.example/s?q={role}')):
+            folder = run_folder(only_empty, name, [board('jobeka.example')])
+            (folder / 'found-boards.json').write_text(json.dumps({'boards': {url.split('/')[2]: {'search_url': url, 'state': 'empty'}}}), encoding='utf-8')
+        self.assertEqual(report_boards.collect(only_empty)[('jobeka.example', 'bg')]['url'], 'https://a.jobeka.example/s?q={role}', 'none read fine: the first found, as before')
 
     def test_nothing_is_sent_off_github_actions_or_with_a_fixture(self):
         folder = run_folder(self.tmp.name, 'b01', [board('jobeka.com')])

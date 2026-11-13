@@ -48,12 +48,14 @@ def local_of(source):
     return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= MAX_LOCAL else 0
 
 
-def addresses(folder):
-    """{registrable host: address} of the boards a run's search read at a search address: `boards[host].search_url` of the run folder's `found-boards.json`, kept only when scout_board_candidates.address_ok says it is
-    a template of that board (https, the board's host or a subdomain, {role}, a fixed character set); {} without the file. A host with several entries takes the one the search read fine ('ok'), then the first by name.
-    Why (14 Nov 2026, owner via sa): the file holds the AI's template, never the filled search, so no word of the profile can be in it; address_ok drops anything else."""
+def addresses(folder, hosts):
+    """{press-row host: (read_fine, address)} of the boards a run's search read at a search address: `boards[name].search_url` of the run folder's `found-boards.json`, for each `name` whose company domain
+    (careers_explore.company_domain: the engine's one public-suffix rule, es.indeed.co.uk -> indeed.co.uk) is one of `hosts`, the press rows' hosts. The address is then checked against that company domain
+    (scout_board_candidates.address_ok: https, that domain or a subdomain, {role}, a fixed character set), never against a two-label guess: a press row keyed `co.uk` (source_yield's registrable) matches nothing,
+    and an entry on evil.co.uk never passes for indeed.co.uk (Gitar on #4127). A host with several entries takes the one the search read fine (state 'ok'), then the first by name; `read_fine` tells which.
+    Why (14 Nov 2026, owner via sa): the file holds the AI's template, never the filled search, so no word of the profile can be in it; address_ok drops anything else. {} without the file."""
     from src import scout_board_candidates
-    from src.sources.careers_parse import registrable
+    from src.sources.careers_explore import company_domain
     try:
         boards = json.loads((Path(folder) / 'found-boards.json').read_text(encoding='utf-8')).get('boards')
     except (OSError, ValueError, AttributeError):
@@ -61,11 +63,10 @@ def addresses(folder):
     boards = boards if isinstance(boards, dict) else {}
     found = {}
     for name in sorted(boards, key=lambda key: ((boards[key] or {}).get('state') != 'ok' if isinstance(boards[key], dict) else True, str(key))):
-        entry = boards[name]
-        host = registrable(str(name).lower())
-        address = scout_board_candidates.address_ok(entry.get('search_url'), host) if isinstance(entry, dict) and host else None
+        entry, host = boards[name], company_domain(str(name))
+        address = scout_board_candidates.address_ok(entry.get('search_url'), host) if isinstance(entry, dict) and host in hosts else None
         if address and host not in found:
-            found[host] = address
+            found[host] = (entry.get('state') == 'ok', address)
     return found
 
 
@@ -101,8 +102,8 @@ def country_of(person):
 
 
 def collect(path, person=None):
-    """{(host, country): {'local': int, 'url': address or None}} for a run folder or a folder of run folders (the highest `local` over its folders for a host, the first address found); a folder with no known person
-    or no readable country adds nothing."""
+    """{(host, country): {'local': int, 'url': address or None, 'fine': whether the address was read fine}} for a run folder or a folder of run folders (the highest `local` over its folders for a host, the address
+    the search read fine, else the first found); a folder with no known person or no readable country adds nothing."""
     path = Path(path)
     folders = [path] if (path / 'draw').is_dir() else sorted(draw.parent for draw in path.rglob('draw') if draw.is_dir())
     found = {}
@@ -110,10 +111,13 @@ def collect(path, person=None):
         who = person or person_of(folder)
         country = country_of(who) if who else None
         if country:
-            where = addresses(folder)
-            for host, local in boards_read(folder).items():
-                known = found.get((host, country)) or {'local': 0, 'url': None}
-                found[(host, country)] = {'local': max(known['local'], local), 'url': known['url'] or where.get(host)}
+            read = boards_read(folder)
+            where = addresses(folder, set(read))
+            for host, local in read.items():
+                known = found.get((host, country)) or {'local': 0, 'url': None, 'fine': False}
+                fine, address = where.get(host, (False, None))
+                better = address and (not known['url'] or (fine and not known['fine']))   # an address the search read fine replaces one that gave nothing, whichever folder came first
+                found[(host, country)] = {'local': max(known['local'], local), 'url': address if better else known['url'], 'fine': fine if better else known['fine']}
     return found
 
 

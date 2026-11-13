@@ -48,6 +48,17 @@ class Valid(unittest.TestCase):
         self.assertEqual(candidates.valid({'host': 'jobeka.es', 'countries': ['es'], 'installs': 2})['local'], 0, 'an old site answer has no local')
 
 
+    def test_the_same_board_means_the_company_domain_so_co_uk_and_com_br_boards_work_and_a_bare_suffix_matches_nothing(self):
+        """Gitar on #4127: with a two-label guess a board keyed 'co.uk' made every *.co.uk address "the same board". One rule, the engine's own (careers_explore.company_domain), no .co.uk special case."""
+        for host, url in (('indeed.co.uk', 'https://es.indeed.co.uk/jobs?q={role}&l={place}'), ('infojobs.com.br', 'https://www.infojobs.com.br/empregos/{role}'), ('jobeka.example', 'https://es.jobeka.example/s/{role}')):
+            self.assertEqual(candidates.address_ok(url, host), url, host)
+        for host, url in (('indeed.co.uk', 'https://evil.co.uk/s?q={role}'), ('indeed.co.uk', 'https://indeed.com/s?q={role}'), ('infojobs.com.br', 'https://other.com.br/s/{role}'),
+                          ('co.uk', 'https://evil.co.uk/s?q={role}'), ('co.uk', 'https://es.indeed.co.uk/jobs?q={role}'), ('com.br', 'https://other.com.br/s/{role}'), ('com.au', 'https://x.com.au/s/{role}'), ('es.indeed.co.uk', 'https://es.indeed.co.uk/jobs?q={role}')):
+            self.assertIsNone(candidates.address_ok(url, host), f'{host} {url}')
+        item = {'host': 'co.uk', 'countries': ['es'], 'installs': 0, 'ci': True}
+        self.assertNotIn('ci_urls', candidates.valid({**item, 'ci_urls': {'es': 'https://evil.co.uk/s?q={role}'}}), 'a board reported as co.uk keeps the home read, never a loose address')
+        self.assertEqual(candidates.valid({**item, 'host': 'indeed.co.uk', 'ci_urls': {'es': 'https://es.indeed.co.uk/jobs?q={role}'}})['ci_urls'], {'es': 'https://es.indeed.co.uk/jobs?q={role}'})
+
     def test_a_ci_address_is_kept_per_country_only_when_it_is_a_search_template_of_the_board(self):
         """14 Nov 2026, owner via sa ("CI report carries it"): the site hands `ci_urls`; the Scout checks the same shape again (jobadabra-web api/ci-boards.js searchAddress)."""
         item = {'host': 'jobeka.example', 'countries': ['es', 'pt'], 'installs': 0, 'ci': True, 'local': 19}
@@ -193,9 +204,10 @@ class ForCountry(unittest.TestCase):
         self.assertEqual([(item['host'], item['search_url']) for item in due], [('jobeka.example', address)], 'the address arrives: due now; plain.example (no address) stays blocked')
         candidates.stamp_read(db, 'es', due, ['jobeka.example 20/19'])
         self.assertEqual(candidates.choose(db, reports, 'es'), [], 'read at that address: not again for 20 days')
-        later = (date.today() + timedelta(days=21)).isoformat()   # the stamps are made on the real day
-        self.assertEqual([item['host'] for item in candidates.for_country(reports, 'es', measured=[(h, c, d, t) for h, c, d, t in candidates.tried(db)], today=date.fromisoformat(later))],
-                         ['jobeka.example', 'plain.example'], 'both are candidates again after the refresh days')
+        old = sqlite3.connect(':memory:')
+        candidates.stamp(old, 'es', [('jobeka.example', address), ('plain.example', '')], today=TODAY)   # stamped on a fixed day: no real clock in this test
+        self.assertEqual([item['host'] for item in candidates.for_country(reports, 'es', measured=candidates.tried(old), today=TODAY + timedelta(days=21))], ['jobeka.example', 'plain.example'], 'both are candidates again after the refresh days')
+        self.assertEqual(candidates.for_country(reports, 'es', measured=candidates.tried(old), today=TODAY + timedelta(days=19)), [], 'still inside the 20 days: neither')
         reports[0]['ci_urls'] = {'es': 'https://es.jobeka.example/search?q={role}'}
         self.assertEqual([item['search_url'] for item in candidates.choose(db, reports, 'es')], ['https://es.jobeka.example/search?q={role}'], 'a changed address is a new one: due')
 

@@ -26,6 +26,7 @@ from datetime import date, timedelta
 
 from . import pool_tags, scout_board_cells, scout_cells
 from .sources import ats
+from .sources.careers_explore import company_domain
 
 URL = 'https://www.jobadabra.top/api/scout-memory'
 RESERVE = 4                 # reported boards a pass reads beside the AI's ideas and the re-reads (Why (13 Nov 2026, bp): the pass reads ~5 boards in its 240 s; the ideas keep the rest)
@@ -43,8 +44,8 @@ def address_ok(url, host):
     """`url` when it is a valid search template of the board `host` (registrable), else None: https, the host or a subdomain of it, no userinfo, port or fragment, at most MAX_ADDRESS characters, `{role}` once or more,
     `{place}` optional, nothing else outside letters, digits and . _ ~ - / = & ? : , (no %, spaces or accents: an encoded word is a person's word). The same shape as the site's searchAddress (jobadabra-web api/ci-boards.js):
     checked there on the way in and here on the way in and out of the report."""
-    if not isinstance(url, str) or not isinstance(host, str) or not HOST.fullmatch(host) or len(url) > MAX_ADDRESS:
-        return None
+    if not isinstance(url, str) or not isinstance(host, str) or not HOST.fullmatch(host) or len(url) > MAX_ADDRESS or company_domain(host) != host:
+        return None   # `host` must itself be a company's domain (careers_explore.company_domain, the engine's one public-suffix rule): 'co.uk' or 'com.br' alone would pass every *.co.uk address as "the same board" (Gitar on #4127)
     found = ADDRESS.fullmatch(url)
     if not found or not (found[1] == host or found[1].endswith('.' + host)) or '{role}' not in url:
         return None
