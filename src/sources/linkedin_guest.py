@@ -13,7 +13,6 @@ process and press together (the times in FILE, numbers only), search pages first
 (src/press/run.py reads['LinkedIn']). On only where JOBADABRA_LINKEDIN_GUEST=1
 (src/features.py 'linkedin_guest'; src/sources/reader_rows.py is its row). Tests: tests/unit/sources/test_linkedin_guest.py (recorded pages, a stand-in site)."""
 import html
-import http.client
 import json
 import os
 import random
@@ -205,7 +204,7 @@ def _get(url):
             if error.code == AUTOMATED or host_pace.answer(url, error.code, host_pace.retry_after(error.headers), burst=False):
                 raise _stop('limited', error.code) from error
             raise
-        except (OSError, ValueError, http.client.HTTPException):   # Why (Gitar on #4004): a reply cut mid-body (IncompleteRead) or one that will not decode still answers the lease
+        except linkedin_turn.BROKEN:   # Why (Gitar on #4004): a reply cut mid-body (IncompleteRead) or one that will not decode still answers the lease
             _told(lease, 0, 'neterror')
             raise
         if any(urllib.parse.urlsplit(final).path.startswith(wall) for wall in WALLS):

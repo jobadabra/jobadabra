@@ -4,6 +4,7 @@ Why (owner, 13 Nov 2026, asked via AskUserQuestion: "Both ways", "By hand, right
 and holds every cap (the owner's install only, one GET at a time, 30 a day, a 24 h stop), so the cloud's shared addresses never read more than the site allows.
 Invariants: in a cloud run (TURN set) no LinkedIn GET starts without the site's "go"; a site that does not answer is a "no" (never a read on a guess); a "wait" never sleeps past the read cut;
 the credential is the run's own (a run token on our servers, the repo key in a GitHub run), never a LinkedIn cookie or session. Tests: tests/unit/sources/test_linkedin_turn.py."""
+import http.client
 import json
 import os
 import time
@@ -13,6 +14,8 @@ from .ats import USER_AGENT
 
 TURN = 'JOBADABRA_LINKEDIN_TURN'   # the site's address: set only by cloud runs (src/hosted_run.py, .github/workflows/daily.yml)
 WAITS, TIMEOUT, BODY_MAX = 3, 15, 400_000
+# Why (Gitar on #4004): a reply cut mid-body (http.client.IncompleteRead) or one that will not decode is not an OSError; one tuple for the site's reads and LinkedIn's
+BROKEN = (OSError, ValueError, http.client.HTTPException)
 _open = urllib.request.urlopen
 _sleep = time.sleep
 
@@ -45,7 +48,7 @@ def ask(url, seconds_left=None, env=None):
     for _ in range(WAITS + 1):
         try:
             got = _post('/api/linkedin/turn', {'url': url}, env)
-        except (OSError, ValueError) as error:   # a network error or a reply that is not JSON: no answer from the site means no LinkedIn GET, never a read on a guess
+        except BROKEN as error:   # a network error, a reply cut short or not JSON: no answer from the site means no LinkedIn GET, never a read on a guess
             return 'no', f'the site gave no turn ({type(error).__name__})'
         answer = got.get('answer') if isinstance(got, dict) else None
         if answer == 'cached' and isinstance(got.get('body'), str):
@@ -72,5 +75,5 @@ def tell(lease, status, word, body=None, env=None):
         given['body'] = body
     try:
         _post('/api/linkedin/answer', given, env)
-    except (OSError, ValueError):   # see the docstring
+    except BROKEN:   # see the docstring
         pass

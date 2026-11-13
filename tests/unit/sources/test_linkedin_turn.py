@@ -28,6 +28,8 @@ class FakeSite:
         path = request.full_url.rsplit('/', 1)[1]
         self.calls.append((path, json.loads(request.data), dict(request.header_items())))
         if path == 'answer':
+            if getattr(self, 'answer_error', None):
+                raise self.answer_error
             return io.BytesIO(b'{"ok": true}')
         got = self.answers.pop(0)
         if isinstance(got, Exception):
@@ -143,6 +145,17 @@ class TurnTest(unittest.TestCase):
                 self.run_with([{'answer': 'go', 'lease': 'lt_1'}])
             site = self.last_site
             self.assertEqual(site.calls[-1][1], {'lease': 'lt_1', 'status': 0, 'word': 'neterror'}, type(broken).__name__)
+
+    def test_a_site_reply_cut_mid_body_is_a_no_and_never_hides_a_429_stop(self):
+        # Why (Gitar on #4004): the site's own reply can break too; a turn that breaks is a "no", and a tell that breaks never skips the run's stop after a 429
+        got, _, linkedin = self.run_with([http.client.IncompleteRead(b'{"ans')])
+        self.assertIsInstance(got, linkedin_guest.Later)
+        self.assertEqual(linkedin.requests, [])
+        linkedin_guest.reset()
+        with mock.patch.object(FakeSite, 'answer_error', http.client.IncompleteRead(b''), create=True):
+            got, _, _ = self.run_with([{'answer': 'go', 'lease': 'lt_1'}], linkedin=lambda url: 429)
+        self.assertIsInstance(got, linkedin_guest.Later)
+        self.assertEqual(linkedin_guest.PACE.stopped, 'limited')
 
     def test_a_github_run_asks_with_its_repo_key(self):
         env = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_TRIAL_KEY': 'JPT1.handle.mac'}
