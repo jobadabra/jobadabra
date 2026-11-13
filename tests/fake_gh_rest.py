@@ -27,6 +27,11 @@ if argv[:1] == ['api'] and 'Accept: application/vnd.github.raw' in argv:
 if argv[:2] == ['api', 'rate_limit']:   # never counted, answers while REST is out
     print((d / 'rate_core').read_text().strip() if (d / 'rate_core').exists() else '5000')
     sys.exit(0)
+if argv[:2] == ['api', 'graphql'] and any(x.startswith('query=') and 'search(query:$q' in x for x in argv):   # tools/gitar-queue.mjs: Gitar's refusals, from the rest/ fixture of PR 7's comments
+    fixture = d / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100'
+    rows = json.loads(fixture.read_text()) if fixture.exists() else []
+    print(json.dumps({'data': {'search': {'nodes': [{'number': 7, 'comments': {'nodes': []}, 'reviewThreads': {'nodes': [{'comments': {'nodes': [{'author': {'login': r['user']['login']}, 'createdAt': r['created_at'], 'body': r['body']} for r in rows]}}]}}]}}}))
+    sys.exit(0)
 if argv[:2] == ['api', 'graphql']:
     query = next((a[len('query='):] for a in argv if a.startswith('query=')), '')
     kind = 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
@@ -42,10 +47,11 @@ if argv[:2] == ['api', 'graphql']:
             body['data']['repository']['pullRequest'].pop(name, None)
     print(json.dumps(body))
     sys.exit(0)
-if argv[:2] == ['pr', 'view'] and '--json' in argv and argv[argv.index('--json') + 1] == 'state,headRefOid':   # tools/gitar-queue.mjs: the PR's state and head as of the last look
+if argv[:2] == ['pr', 'view'] and '--json' in argv and argv[argv.index('--json') + 1].startswith('state,headRefOid'):   # tools/gitar-queue.mjs: the PR's state and head as of the last look
     heads = (d / 'heads').read_text().split() if (d / 'heads').exists() else []
     looks = int((d / 'looks').read_text() or 0) if (d / 'looks').exists() else 0
-    print(json.dumps({'state': (d / 'queue_pr_state').read_text().strip() if (d / 'queue_pr_state').exists() else 'OPEN', 'headRefOid': (heads[min(max(looks, 1), len(heads)) - 1] if heads else 'new1')}))
+    print(json.dumps({'state': (d / 'queue_pr_state').read_text().strip() if (d / 'queue_pr_state').exists() else 'OPEN', 'headRefOid': (heads[min(max(looks, 1), len(heads)) - 1] if heads else 'new1'),
+                      'isDraft': False, 'title': '[t] A change', 'statusCheckRollup': [{'name': 'All checks passed', 'conclusion': 'SUCCESS'}]}))
     sys.exit(0)
 if argv[:1] == ['api'] and '-i' not in argv and '-X' not in argv and re.search(r'/(issues|pulls)/\d+/comments\?per_page=100$', argv[-1]):   # tools/gitar-queue.mjs reads Gitar's refusals
     rest = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', argv[-1])

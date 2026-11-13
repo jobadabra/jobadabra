@@ -21,8 +21,17 @@ FAKE_GH = textwrap.dedent('''\
     def comments(pr):
         try: return json.load(open(f'{d}/comments_{pr}.json'))
         except OSError: return []
-    if a[:2] == ['pr', 'view']:
-        print(json.dumps({'state': open(f'{d}/state_{a[2]}').read().strip() if os.path.exists(f'{d}/state_{a[2]}') else 'OPEN', 'headRefOid': 'h' + a[2]}))
+    def flag(name, pr, default=''): return open(f'{d}/{name}_{pr}').read().strip() if os.path.exists(f'{d}/{name}_{pr}') else default
+    if a[:2] == ['pr', 'view']:   # state_N: MERGED..; draft_N: exists = draft; title_N; checks_N: red | pending (default green)
+        gate = {'red': {'name': 'All checks passed', 'conclusion': 'FAILURE'}, 'pending': {'name': 'All checks passed', 'status': 'IN_PROGRESS', 'conclusion': ''}}.get(flag('checks', a[2]), {'name': 'All checks passed', 'conclusion': 'SUCCESS'})
+        print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change'), 'statusCheckRollup': [gate]}))
+    elif a[:2] == ['api', 'graphql']:   # every open PR's comments, from the comments_N.json files (a PR the queue never saw has one too)
+        nodes = []
+        for name in sorted(os.listdir(d)):
+            if name.startswith('comments_'):
+                rows = json.load(open(f'{d}/{name}'))
+                nodes.append({'number': int(name[9:-5]), 'comments': {'nodes': [{'author': {'login': r['user']['login']}, 'createdAt': r['created_at'], 'body': r['body']} for r in rows]}, 'reviewThreads': {'nodes': []}})
+        print(json.dumps({'data': {'search': {'nodes': nodes}}}))
     elif a[:2] == ['pr', 'comment']:   # Gitar answers a PR that is under its limit with a refusal, 3 s later in real life, at once here
         if os.path.exists(f'{d}/refuse_{a[2]}'):
             rows = comments(a[2]); rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading seconds later
@@ -159,6 +168,38 @@ class GitarQueueTest(unittest.TestCase):
         (self.tmp / 'refuse_1').unlink()
         self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', now_plus=700), 'SENT')
         self.assertEqual(self.posted(), ['reply 555', 'delete 9555', 'reply 555'])
+
+    def test_a_refusal_on_a_pr_the_queue_never_saw_pauses_a_queued_reply(self):
+        """13 Nov 2026, coordinator: #4042 (not queued) drew "wait about 40 minutes" at 21:08:37; the queue read refusals only on queued PRs, so its reply for another PR would have posted at 21:19 and extended the lock for everyone."""
+        (self.tmp / 'comments_99.json').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own clock seconds later
+            'body': "You've sent several Gitar comments in a short window. Please wait about 40 minutes and comment again."}]))   # a hand-posted ask on a PR this queue never saw
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed.')
+        out = self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0')
+        self.assertTrue(out.startswith('QUEUED'), out)
+        self.assertEqual(self.posted(), [], 'nothing is posted inside the 40 minutes')
+
+    def test_a_draft_or_dont_merge_pr_is_held_and_takes_no_slot(self):
+        """13 Nov 2026, coordinator: the 11-minute slots go only to PRs that can become ready."""
+        (self.tmp / 'draft_1').write_text('')
+        (self.tmp / 'title_2').write_text('[xx] DONT MERGE A change')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith('HELD (draft'))
+        self.assertTrue(self.run_queue('ask', 'o/r', '2', 'h2').startswith('HELD (DONT MERGE'))
+        self.assertEqual(self.run_queue('ask', 'o/r', '3', 'h3'), 'ASKED', 'the held PRs took no slot')
+        self.assertIn('held (draft)', self.run_queue('status'))
+        (self.tmp / 'draft_1').unlink()
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=3700), 'ASKED', 'it re-enters when it is ready')
+
+    def test_an_ask_waits_while_all_checks_passed_is_red_or_pending_and_a_reply_does_not(self):
+        for state, word in (('red', 'checks red'), ('pending', 'checks pending')):
+            (self.tmp / 'checks_1').write_text(state)
+            self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith(f'HELD ({word}'), state)
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed.')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'SENT', 'a reply is not held by the checks')
+        (self.tmp / 'checks_1').unlink()
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=3700), 'ASKED', 'green: it goes')
+        self.assertEqual(self.posted(), ['reply 555', 'ask 1'])
 
 
 if __name__ == '__main__':
