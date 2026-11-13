@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {registerEasyApplyHandlers} from '../../../lib/easy-apply-handlers.js';
 import {state, turnOff, turnOn, viewOf} from '../../../lib/easy-apply-switch.js';
+import * as linkedin from '../../../lib/linkedin-session.js';
 
 const NOW = new Date('2026-11-13T18:00:00.000Z');
 function store(settings = {}) {
@@ -47,6 +48,22 @@ test('with LinkedIn jobs off (no sign-in kept) Easy Apply reads as off, whatever
   assert.deepEqual(viewOf(storage, {packaged: false}), {on: false, linkedinOn: false, warned: true, offered: true});
 });
 
+// Gitar on #4008: the saved yes must not come back by itself when LinkedIn jobs is switched off and on again; Easy Apply sends from the person's account.
+test('switching LinkedIn jobs off turns Easy Apply off for good; LinkedIn jobs back on leaves it off, still warned once', () => {
+  const storage = store(linkedinOn());
+  const keychain = {write: () => true, read: () => null, remove: () => true};
+  assert.deepEqual(turnOn(storage, {warned: true, now: NOW}), {ok: true});
+  linkedin.turnOff(storage, {keychain});
+  assert.equal(storage.mine.easyApply.on, false, 'the saved switch itself is off, not only read as off');
+  assert.equal(storage.mine.easyApply.warnedAt, NOW.toISOString());
+  assert.deepEqual(linkedin.saveSession(storage, [{name: 'li_at', value: 'fake-token', domain: '.linkedin.com'}], {keychain}), {ok: true});
+  assert.equal(linkedin.state(storage).on, true);
+  assert.equal(state(storage).on, false, 'LinkedIn jobs on again: Easy Apply stays off until the person turns it on');
+  const fresh = store(linkedinOn());
+  linkedin.turnOff(fresh, {keychain});
+  assert.equal(fresh.mine.easyApply, undefined, 'never turned on: nothing written');
+});
+
 test('a packaged build is not offered the switch until sending lands (owner, 13 Nov 2026: "Dev builds only until 4/5")', () => {
   assert.equal(viewOf(store(linkedinOn()), {packaged: true}).offered, false);
   const storage = store(linkedinOn());
@@ -59,7 +76,8 @@ test('the three channels: demo mode touches no settings; a real turn-on passes t
   const demo = store(linkedinOn());
   registerEasyApplyHandlers({DEMO: true, ipcMain, storage: demo, packaged: false, clock: () => NOW});
   assert.deepEqual(Object.keys(handlers).sort(), ['easyApplyOff', 'easyApplyOn', 'easyApplyState']);
-  assert.deepEqual(await handlers.easyApplyOn({}, {warned: true}), {ok: true});
+  assert.deepEqual(await handlers.easyApplyOn({}, {warned: true}), {ok: false, reason: 'not-offered'}, 'demo never says on over a row that reads off');
+  assert.equal((await handlers.easyApplyState()).on, false);
   assert.equal(demo.mine.easyApply, undefined, 'demo: nothing saved');
 
   const real = store(linkedinOn());
