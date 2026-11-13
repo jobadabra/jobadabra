@@ -24,8 +24,11 @@ def text(raw, charset=None):
         codec = _codec(name, meta)
         if codec and meta and codec != 'utf-8' and _utf8(raw):
             return raw.decode('utf-8')
-        if codec:
-            return raw.decode(codec, 'replace')
+        try:
+            if codec:
+                return raw.decode(codec, 'replace')
+        except (UnicodeError, LookupError):   # 'undefined', idna: text codecs that refuse any bytes; the next name is tried
+            continue
     return raw.decode('utf-8', 'replace')
 
 

@@ -43,6 +43,9 @@ class PageBytesTest(unittest.TestCase):
                 raw = f'{HEAD}{meta}</head><body><h1>{TITLE}</h1></body></html>'.encode('utf-8')
                 self.assertIn(TITLE, page_bytes.text(raw))
         self.assertIn('Lisboa', page_bytes.text(page('<meta charset="hex">'), 'base64'))
+        for odd in ('undefined', 'idna', 'punycode'):   # Gitar on #3990: text codecs that refuse bytes
+            with self.subTest(odd=odd):
+                self.assertIn('Lisboa', page_bytes.text(page(f'<meta charset="{odd}">'), odd))
 
     def test_a_stale_meta_in_a_comment_or_script_or_on_a_utf_8_page_does_not_garble_it(self):
         """Gitar on #3990: a UTF-8 page carrying an old latin-1 <meta> read right before this change and must still."""
