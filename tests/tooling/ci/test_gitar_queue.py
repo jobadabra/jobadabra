@@ -23,8 +23,9 @@ FAKE_GH = textwrap.dedent('''\
         except OSError: return []
     def flag(name, pr, default=''): return open(f'{d}/{name}_{pr}').read().strip() if os.path.exists(f'{d}/{name}_{pr}') else default
     if a[:2] == ['pr', 'view']:   # state_N: MERGED..; draft_N: exists = draft; title_N; checks_N: red | pending (default green)
+        rollup_other = [{'name': 'Unit', 'conclusion': 'SUCCESS'}]
         gate = {'red': {'name': 'All checks passed', 'conclusion': 'FAILURE'}, 'pending': {'name': 'All checks passed', 'status': 'IN_PROGRESS', 'conclusion': ''}}.get(flag('checks', a[2]), {'name': 'All checks passed', 'conclusion': 'SUCCESS'})
-        print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change'), 'statusCheckRollup': [gate]}))
+        print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change'), 'statusCheckRollup': ([] if flag('checks', a[2]) == 'none' else rollup_other if flag('checks', a[2]) == 'nogate' else [gate])}))
     elif a[:2] == ['api', 'graphql'] and os.path.exists(f'{d}/graphql_down'):   # quota 0 / 5xx: gh prints nothing
         pass
     elif a[:2] == ['api', 'graphql']:   # every open PR's comments, from the comments_N.json files (a PR the queue never saw has one too)
@@ -230,6 +231,13 @@ class GitarQueueTest(unittest.TestCase):
         self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
         calls = (self.tmp / 'calls').read_text() if (self.tmp / 'calls').exists() else ''
         self.assertNotIn('api graphql', calls)
+
+    def test_a_repo_without_an_all_checks_passed_gate_does_not_hold_an_ask_but_an_empty_rollup_waits(self):
+        """13 Nov 2026, Gitar on #4058: a rollup without the gate held an ask forever; an empty one (CI not started) still waits."""
+        (self.tmp / 'checks_1').write_text('none')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith('HELD (checks pending'))
+        (self.tmp / 'checks_1').write_text('nogate')
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
 
 
 if __name__ == '__main__':
