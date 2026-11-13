@@ -123,6 +123,23 @@ class InThePass(unittest.TestCase):
         second = self.run_pass([report])
         self.assertEqual([item[0] for item in second], ['idea.example'], 'read lately (kept or not): the AI s ideas keep the slots')
 
+    def test_a_host_the_browser_was_stopped_at_is_never_a_candidate_whoever_reported_it(self):
+        scout_boards.run(self.db, ideas=lambda search: [], read_board=lambda *a: ([], 'ok', None), out=lambda line: None, named='md', google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {})   # makes the memory tables
+        self.db.execute("INSERT INTO scout_browser_final (host, why, at) VALUES ('jooble.org', 'HTTP 403', '2026-11-13')")
+        reports = [candidates.valid({'host': host, 'countries': ['md'], 'installs': installs, 'ci': ci}) for host, installs, ci in (('jooble.org', 0, True), ('jooble.org', 5, False), ('open.example', 0, True))]
+        self.assertEqual([item['host'] for item in candidates.choose(self.db, reports, 'md')], ['open.example'], 'CI report or install report: the stop wins')
+
+    def test_a_refused_candidate_is_read_once_then_left_alone_for_the_refresh_days(self):
+        report = candidates.valid({'host': 'refused.example', 'countries': ['md'], 'installs': 0, 'ci': True})
+        seen = []
+
+        def read_board(item, search, fetch):
+            seen.append(item['host'])
+            return [], 'ok', None   # a refusal reads as no job
+        for _ in range(2):
+            scout_boards.run(self.db, ideas=lambda search: [], read_board=read_board, out=lambda line: None, named='md', google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['x']}, reported=[report])
+        self.assertEqual(seen, ['refused.example'], 'a refused board is stamped like any read one: not asked again by the next pass')
+
 
 if __name__ == '__main__':
     unittest.main()
