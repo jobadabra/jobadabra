@@ -70,3 +70,12 @@ test('a Remote work edit may say Yes, No or Country, and is written and read bac
   assert.ok(edited(next, {remote: {set: 'Country'}}));
   assert.ok(!edited(files, {remote: {set: 'Country'}}));
 });
+
+// pp (#3953 follow-up; benchmark run 43328194035, p10 Lisbon): the draft wrote places ["lisb(on|oa)"] because this prompt called locations "regex fragments";
+// the engine read no place, no country and no board web search. A place is a plain name; two spellings are two entries. The engine still reads a saved
+// pattern through src/places.py spellings (the floor under this rule).
+test('the draft writes each place as one plain name, two spellings as two entries, never a pattern', () => {
+  assert.ok(!/locations and remote_excluded_regions are case-insensitive regex fragments/.test(INSTRUCTIONS), 'locations are no longer listed among the regex fragments');
+  assert.match(INSTRUCTIONS, /Each entry of locations is one plain place name as job postings write it/);
+  assert.match(INSTRUCTIONS, /never a pattern: no \|, brackets, parentheses or other regex signs; a place with two spellings is two entries \("lisboa", "lisbon"/);
+});

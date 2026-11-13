@@ -145,7 +145,7 @@
     },
     "strategy-draft": {
       "live": false,
-      "about": "the strategy draft's search part (desktop/lib/strategy.js INSTRUCTIONS): country_wide stays [] unless the CV or note says they would work anywhere in the country, Remote jobs No / Country / Yes from the work mode (lj 2/4, 10 Nov 2026: 16 of 18 drafts filled the whole country; rj #3792, 11 Nov 2026: office roles in Cluj, Amsterdam, Lisbon still got it)",
+      "about": "the strategy draft's search part (desktop/lib/strategy.js INSTRUCTIONS): country_wide stays [] unless the CV or note says they would work anywhere in the country, Remote jobs No / Country / Yes from the work mode (lj 2/4, 10 Nov 2026: 16 of 18 drafts filled the whole country; rj #3792, 11 Nov 2026: office roles in Cluj, Amsterdam, Lisbon still got it; pp, #3953 follow-up: run 43328194035 p10 drafted places [\"lisb(on|oa)\"]: each place is one plain name, two spellings two entries)",
       "cases": ["desktop/test/unit/main/strategy-reach.test.js"],
       "prompts": {"desktop/lib/strategy.js": ["INSTRUCTIONS"]}
     },
