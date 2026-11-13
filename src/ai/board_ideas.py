@@ -349,10 +349,16 @@ def _families(search):
     return set(pool_tags.families([_plain(k) for k in (search or {}).get('role_keywords', [])]))
 
 
+PROVEN_RIGHT = 3   # jobs of the person's family, located in the country, the Central Scout's AI counted on a board before it is "proven" (the Scout and the site use the same 3)
+
+
 def ranked(boards, search):
-    """The boards best first by what they gave installs with this user's role families in these countries (owner, 18 Oct 2026: "relevant
-    jobs per role"): jobs in their places per install, then fit 70+ per install; 'rank' is kept on each board (0: no data for this user).
-    Boards without data keep their order after the ranked ones. 'measured' is kept when the Central Scout's own read gave one of those cells."""
+    """The boards best first: by `right` (the Central Scout's count of this user's role families' jobs on the board, located in these countries, summed), then by what
+    they gave installs with these families (owner, 18 Oct 2026: "relevant jobs per role"): jobs in their places per install, then fit 70+ per install. 'rank' is kept on each
+    board (0: no data for this user), 'right' only when the Scout counted at least one of the families (absent: not measured, never 0).
+    Boards without data keep their order after the ranked ones.
+    Why (13 Nov 2026, bp, owner: "we know exactly: this board will give x jobs, this other board will give y jobs"): the order was jobs in places per install, and the Scout's cells
+    credited a board's whole list to every family it had seen once (178 airline jobs for an electrician): the number the Scout counted per family comes first."""
     if not any(board.get('cells') for board in boards):
         return boards
     families = _families(search)
@@ -361,25 +367,24 @@ def ranked(boards, search):
         installs = sum(cell['installs'] for cell in cells)
         board['rank'] = round(sum(cell['in_places'] for cell in cells) / installs, 1) if installs else 0
         board['rank_fit70'] = round(sum(cell['fit70'] for cell in cells) / installs, 1) if installs else 0
-        if any(cell.get('measured') for cell in cells):
-            board['measured'] = True   # the Central Scout read this board and saw this family's jobs located in this country
-    return sorted(boards, key=lambda board: (-board['rank'], -board['rank_fit70']))
+        counted = [cell['right'] for cell in cells if isinstance(cell.get('right'), int)]
+        if counted:
+            board['right'] = sum(counted)
+    return sorted(boards, key=lambda board: (-board.get('right', 0), -board['rank'], -board['rank_fit70']))
 
 
 def proven(search, limit=2):
-    """The boards that gave installs like this one jobs that FIT (rank_fit70 > 0), best first, without any AI call: read in the first-jobs
-    slice (src/first_jobs.py) at once; the board proposal is asked beside them and fills the places they leave (first_jobs.board_jobs).
-    Why (12 Nov 2026): jobs in places alone were enough, and a pool cell is one install's whole list credited to each of its families
-    (installs 1, fit70 0): an electrician in Madrid and a car mechanic in Seville were "proven" an IT board, so no proposal was ever asked
-    for Spain and the full board stage (which asks it) started past the read cut. Jobs in places without a fit job rank the board
-    (`ranked`, `_merge`) but do not skip the proposal.
-    Why (12 Nov 2026, owner: "We should now from the start what boards/employers we should read first"; "I agree"): a cell the Central Scout
-    measured itself also proves its board, with no fit count: the Scout read the board and the AI saw this family's jobs on it, located in this
-    country, which one install's whole list never showed. 6 of 154 recorded first searches started from a proven board; the Scout's rows carry
-    fit70 0 by construction. Not a board it could read only in a browser (`browser`): the slice reads plainly."""
+    """The boards the Central Scout counted PROVEN_RIGHT+ jobs of this user's role families on, located in this user's countries, most jobs first, without any AI call: read in the
+    first-jobs slice (src/first_jobs.py) at once; the board proposal is asked beside them and fills the places they leave (first_jobs.board_jobs). Not a board it could read only in
+    a browser (`browser`): the slice reads plainly. Nothing else proves a board: jobs in places, `rank_fit70` and a family seen once only order.
+    Design (13 Nov 2026, bp; third fix here in 7 days: 11 Nov #3835, 12 Nov twice): a board's state for one (country, family) has one owner, the Scout: proven = its AI counted
+    PROVEN_RIGHT+ right jobs (served as `right`, with its day); known = fewer; unknown = no number. Only the verdict of its next measure changes it. The per-search AI proposal fills
+    the places proven boards leave. Replaces: rank_fit70 > 0 (12 Nov: one install's whole list credited to each of its families, installs 1 and fit70 0: an electrician in Madrid
+    and a car mechanic in Seville were "proven" an IT board) and `measured` (12 Nov, owner: "We should now from the start what boards/employers we should read first"; "I agree": the
+    Scout's AI saw the family once on the board: an aircraft electrician on an airline board proved it for an electrician in Madrid, in 5 of 5 searches, with 0 right jobs)."""
     from .. import places
     countries = places.countries(search, limit=None)
-    return [board for board in ranked(served(countries), search) if board.get('rank') and (board.get('rank_fit70') or board.get('measured') and not board.get('browser'))][:limit] if countries else []
+    return [board for board in ranked(served(countries), search) if board.get('right', 0) >= PROVEN_RIGHT and not board.get('browser')][:limit] if countries else []
 
 
 def _merge(own, shared):
