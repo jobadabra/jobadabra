@@ -1,4 +1,4 @@
-// A job's apply readiness in the ⋯ menu and the drawer's Application tab, in all seven display languages (owner, 13 Nov 2026: "One action, changes with state"; the two new parts beside Preparation | Submitted).
+// A job's apply readiness in the ⋯ menu and the drawer's Application tab (renderer/apply-readiness-view.js, job-drawer/application-readiness.js), in all seven display languages.
 const locales = ["en","de","fr","it","es","ro","ru"];
 const rows = {
   check: ["Check apply readiness","Bewerbungsbereitschaft prüfen","Vérifier si prêt à postuler","Verifica se pronto a candidarti","Comprobar si está listo para postular","Verifică pregătirea pentru aplicare","Проверить готовность к отклику"],
@@ -22,6 +22,7 @@ const rows = {
   usesEmail: ["Uses {email}","Nutzt {email}","Utilise {email}","Usa {email}","Usa {email}","Folosește {email}","Использует {email}"],
   noSaved: ["No saved sign-in for this site yet","Noch keine gespeicherte Anmeldung für diese Seite","Aucune connexion enregistrée pour ce site","Nessun accesso salvato per questo sito","Aún no hay inicio de sesión guardado para este sitio","Încă nicio autentificare salvată pentru acest site","Для этого сайта пока нет сохранённого входа"],
   passwordNote: ["Passwords stay in your Keychain. See or change them in Settings → Credentials.","Passwörter bleiben in deinem Schlüsselbund. Ansehen oder ändern in Einstellungen → Zugangsdaten.","Les mots de passe restent dans votre trousseau. Voir ou modifier dans Réglages → Identifiants.","Le password restano nel tuo portachiavi. Vedile o cambiale in Impostazioni → Credenziali.","Las contraseñas quedan en tu llavero. Verlas o cambiarlas en Ajustes → Credenciales.","Parolele rămân în Portchei. Vezi-le sau schimbă-le în Setări → Date de acces.","Пароли остаются в Связке ключей. Посмотреть или изменить: Настройки → Учётные данные."],
+  unread: ["Couldn't read your saved sign-ins: open Credentials to see them","Gespeicherte Anmeldungen konnten nicht gelesen werden: Zugangsdaten öffnen, um sie zu sehen","Impossible de lire vos connexions enregistrées : ouvrez les identifiants pour les voir","Impossibile leggere gli accessi salvati: apri le credenziali per vederli","No se pudieron leer tus inicios de sesión guardados: abre las credenciales para verlos","Autentificările salvate nu au putut fi citite: deschide datele de acces pentru a le vedea","Не удалось прочитать сохранённые входы: откройте учётные данные, чтобы их увидеть"],
   openCredentials: ["Open Credentials","Zugangsdaten öffnen","Ouvrir les identifiants","Apri credenziali","Abrir credenciales","Deschide datele de acces","Открыть учётные данные"],
 };
 

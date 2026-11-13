@@ -3,7 +3,7 @@
 // Owner, 13 Nov 2026 (via the coordinator): "let's add a new action on the job to fulffull the apply readiness", "One action, changes with state (Recommended)"; "on the job drawer, on the
 // "Application" tab, beside these. I should see a tab with Apply readiness and with Account/Credentials". Plays: the item says Check apply readiness, checks only that job, then says
 // Fix what's missing, which opens the drawer on Apply readiness with what is missing; Account / Credentials says what the site asks and the matching saved sign-in, with no password.
-// Job: check apply readiness
+// Job: serve stored answers
 import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
 import {readFromJudge} from '../../lib/triage-read.js';
@@ -35,6 +35,7 @@ before(() => {
     const before = await items(login);
     press('Check apply readiness');
     await kit.until(() => document.getElementById('triage-progress')?.hidden === true && document.querySelectorAll('#triage-results li').length === 1, 'the one job checked');
+    const toast = (await kit.until(() => document.querySelector('#toasts .toast'), 'the pop-up that says how the one-job check ended')).textContent.replace(/\s+/g, ' ').trim();
     document.getElementById('triage-dialog').close();
     const otherAfter = (await items(ready)).filter(label => /readiness|missing|Check again/.test(label));
     document.body.click();
@@ -51,7 +52,7 @@ before(() => {
       const text = document.querySelector('#job-drawer-layer .jd-card')?.textContent.replace(/\s+/g, ' ') || '';
       return text.includes('Saved sign-in') || text.includes('No saved sign-in') ? text : '';
     }, 'the Account / Credentials part');
-    return {before: before.filter(label => /readiness|missing/.test(label)), otherAfter, after: after.filter(label => /readiness|missing|Check again/.test(label)), readiness, account};
+    return {toast, before: before.filter(label => /readiness|missing/.test(label)), otherAfter, after: after.filter(label => /readiness|missing|Check again/.test(label)), readiness, account};
   }});
 });
 
@@ -59,6 +60,7 @@ test('the ⋯ item follows the stored check: Check apply readiness checks only t
   assert.deepEqual(screen.result.before, ['Check apply readiness']);
   assert.deepEqual(screen.result.after, ["Fix what's missing"]);
   assert.deepEqual(screen.result.otherAfter, ['Check apply readiness'], 'the other job was not checked');
+  assert.match(screen.result.toast, /Checked/, 'the one-job check says how it ended, like the batch check (Gitar on #4018)');
 });
 
 test('Fix what\'s missing opens the drawer on Apply readiness, from the same check: Needs you, the sign-in it lacks, and Check again', live, () => {

@@ -1,6 +1,7 @@
-// A job's apply readiness as the ⋯ menu and the drawer draw it, from the job's ONE stored check (pages/jobs-triage.js readOf; lib/apply-readiness.js keeps it per posting).
-// Owner, 13 Nov 2026 (via the coordinator): "let's add a new action on the job to fulffull the apply readiness", "One action, changes with state (Recommended)"; and on the drawer's Application tab
-// "I should see a tab with Apply readiness and with Account/Credentials". Pure: the menu item, what the check found and what is missing, and the saved sign-in that matches the job (never a password).
+// A job's apply readiness as the ⋯ menu and the drawer draw it, from the job's ONE stored check (pages/jobs-triage.js readOf; lib/apply-readiness.js keeps it per posting). Pure: the menu item, what
+// the check found and what is missing, and the saved sign-in that matches the job (never a password).
+// Why (13 Nov 2026, owner, screenshots 888-889 via the coordinator): "let's add a new action on the job to fulffull the apply readiness" ("One action, changes with state") and, on the drawer's
+// Application tab, "a tab with Apply readiness and with Account/Credentials"; one model so the menu and both parts read the same check.
 // Guard: test/unit/renderer/apply-readiness-view.test.js.
 import '../i18n/screens-pages.js';
 import {t} from '../i18n/index.js';

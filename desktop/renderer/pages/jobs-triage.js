@@ -153,18 +153,26 @@ export async function runTriage(jobs, read, match = null) {
 
 // The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
-let wired = {read: notYetRead, match: null, rerender: () => {}};   // what wireTriage was given, so one job can be checked the same way
+let wired = {read: notYetRead, match: null, rerender: () => {}, toast: () => {}};   // what wireTriage was given, so one job is checked and told the same way
+
+/** Says how a check ended, in the same words for the batch and for one job: `done` read, `failed` could not be read, of `total`. Why (7 Nov 2026, owner: three statuses with a sub-status; coordinator's "Checked 7 of 10, 3 couldn't be read"): a read that could not be made is said, never silently counted away. */
+function say(toast, done, failed, total) {
+  const body = failed ? t('pagesControlStatus.checkedSome', {done, length: total, failed}) : done ? t('pagesDynamicJobs.m240', {"done": done, "length": total}) : t('pagesAuditSecond.a119');
+  toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), body, null, done && !failed ? 'good' : done || failed ? 'warn' : 'info');
+}
 
 /**
  * Checks ONE job (the ⋯ menu's "Check apply readiness", the drawer's Check button) through the same read, match and dialog as the top button, so its progress and Stop show the same way.
- * Owner, 13 Nov 2026: "checks only this job, like the top button does for all". Takes the job; resolves with {read, failed}, or {read: 0, failed: 0} while another check runs.
+ * Why (13 Nov 2026, owner): "checks only this job, like the top button does for all". Takes the job; resolves with {read, failed}, or {read: 0, failed: 0} while another check runs.
  */
 export async function checkJob(job) {
-  if (busy() || !job?.url) return {read: 0, failed: 0};
+  if (!job?.url) return {read: 0, failed: 0};
   const dialog = $('triage-dialog');
-  if (dialog && !dialog.open) dialog.showModal();
+  if (dialog && !dialog.open) { paint(); dialog.showModal(); }   // also while another check runs: the press shows that check's progress, never nothing
+  if (busy()) return {read: 0, failed: 0};
   const result = await runTriage([job], wired.read, wired.match);
   wired.rerender();
+  say(wired.toast, result.read, result.failed, 1);
   return result;
 }
 
@@ -172,7 +180,7 @@ export async function checkJob(job) {
 export function wireTriage({read = notYetRead, match = null, cancel = () => {}, rerender = () => {}, toast = () => {}, onStep = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
-  wired = {read, match, rerender};
+  wired = {read, match, rerender, toast};
   onStep(heardStep);
   $('triage-open').addEventListener('click', () => { paint(); dialog.showModal(); });
   $('triage-close').addEventListener('click', () => dialog.close());
@@ -190,9 +198,7 @@ export function wireTriage({read = notYetRead, match = null, cancel = () => {}, 
       paint();
     }
     rerender();
-    // Why (7 Nov 2026, owner: three statuses with a sub-status; coordinator's "Checked 7 of 10, 3 couldn't be read"): a read that could not be made is said, never silently counted away.
-    const body = failed ? t('pagesControlStatus.checkedSome', {done, length: jobs.length, failed}) : done ? t('pagesDynamicJobs.m240', {"done": done, "length": jobs.length}) : t('pagesAuditSecond.a119');
-    toast(done ? t('pagesControlStatus.checkedJobs') : t('pagesControlStatus.nothingChecked'), body, null, done && !failed ? 'good' : done || failed ? 'warn' : 'info');
+    say(toast, done, failed, jobs.length);
   });
   paint();
 }

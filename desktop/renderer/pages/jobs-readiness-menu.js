@@ -1,5 +1,5 @@
-// The job ⋯ menu's one apply-readiness item, which follows the job's stored check (owner, 13 Nov 2026, via the coordinator: "let's add a new action on the job to fulffull the apply readiness",
-// "One action, changes with state (Recommended)"): "Check apply readiness" checks only this job, like the top button does for all; "Fix what's missing" opens the drawer on Apply readiness.
+// The job ⋯ menu's one apply-readiness item, which follows the job's stored check: "Check apply readiness" checks only this job, like the top button does for all; "Fix what's missing" opens
+// the drawer on Apply readiness. Why: renderer/apply-readiness-view.js.
 import {menuItemOf} from '../apply-readiness-view.js';
 import {nextPart} from '../job-drawer/drawer-actions.js';
 import {checkJob, readOf} from './jobs-triage.js';
