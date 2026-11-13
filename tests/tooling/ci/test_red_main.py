@@ -43,6 +43,8 @@ CLASSIFIED = {
     'Proof · Codex subscription broker': 'ignored: pull requests that edit it, and by hand; proves the OIDC Codex broker without an AI key, never on a push to main',
     # Why (2 Nov 2026, owner: "the same workflow on all repos"): the shared PR-description check other org repos call (workflow_call); it never runs on this repo's main.
     'CI · PR description (reusable)': 'ignored: workflow_call only, run for another repo\'s pull request; checks that PR\'s description, never runs on a push to main',
+    'CI · Claude review (reusable)': 'ignored: workflow_call only, a Claude review of one PR (claude-review.yml calls it); a reviewer, not a check, never runs on a push to main',
+    'CI · Claude review': 'ignored: started by a PR comment, by hand or by pr-verdict.yml (workflow_dispatch / issue_comment); reviews one PR, never runs on a push to main',
     'CI · PR labels (reusable)': 'ignored: workflow_call only, run for a repo\'s own labels caller (pr-labels.yml); sets labels, tests nothing, so its result says nothing about main',
     # Why (2 Nov 2026, owner: "One script + weekly check"): the weekly org-setup check is report only (one issue), started by the Worker timer or by hand, never a push or PR check.
     'CI · E2E weekly summary': 'ignored: Mondays and by hand only; posts the week\'s e2e issue and Telegram message from the site snapshot, never runs on a push to main',

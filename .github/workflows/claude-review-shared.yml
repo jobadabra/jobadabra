@@ -1,0 +1,95 @@
+name: CI · Claude review (reusable)
+# The ONE workflow that reviews a PR with Claude, in every repo of the org (owner, 13 Nov 2026, asked via AskUserQuestion: "Trial Claude on jobadabra (Recommended)", then "We should replace Gitar with something" /
+# "With Claude Code review", and "A+B+D": the Claude review is the pass BEFORE Gitar's first review). A repo's claude-review.yml is only the caller (its triggers and permissions); called with
+# `uses: jobadabra/jobadabra/.github/workflows/claude-review-shared.yml@main`, `secrets: inherit`. The scripts are read from this repo's main, never from a PR; the rules are the caller repo's own `.gitar/review/*.md` on its base branch.
+# Design: one review per PR head = one GitHub review (APPROVE when no high/medium finding, else REQUEST_CHANGES; tools/claude-review.mjs decide()/reviewPayload()). Sonnet on the owner's Claude plan token, read-only tools,
+#   structured output; the script alone posts. A later push is reviewed on the diff since the last reviewed head. A daily cap (repository variable CLAUDE_REVIEW_DAILY_CAP, default 60) stops the plan being drained.
+#   It is a reviewer, not a required check. The action refuses events it does not know ("Unsupported event type: push", run 43512820604), so the callers use workflow_dispatch and issue_comment.
+# Why (13 Nov 2026, cr): GitHub's setting "Allow GitHub Actions to create and approve pull requests" is off, so an APPROVE is posted as a COMMENT whose first line reads "Claude review: ✅ Approve" and carries the reviewed sha; that line is what the label and READY read.
+on:
+  workflow_call:
+    inputs:
+      pr: {type: string, required: true}              # the PR number
+      mode: {type: string, required: true}            # auto: a green head (needs `sha`), manual: the owner's ask
+      sha: {type: string, default: ''}                # auto: the head that went green; a moved head is skipped
+      asked_by: {type: string, default: ''}           # manual: OWNER | MEMBER (comment) or DISPATCH
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: {required: false}      # the owner's plan token; missing = skipped with a clear line
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Claude review of PR ${{ inputs.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40   # a hang guard: the first 13 reviews took 1-9 min
+    # Why (13 Nov 2026, cr): a review of an older head still running is cancelled by the newer head's run (one group per PR), so a review is never posted on a head that is gone.
+    concurrency:
+      group: claude-review-${{ github.repository }}-${{ inputs.pr }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write   # the one review (and the cap note)
+      issues: write          # the cap note is an issue comment
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5   # the caller repo's default branch: its CLAUDE.md, AGENTS.md and .gitar/review
+      - uses: actions/checkout@v5
+        with:
+          repository: jobadabra/jobadabra   # the scripts live here (public), whichever repo called
+          ref: main
+          path: cr-tools
+          sparse-checkout: |
+            tools/claude-review.mjs
+            tools/claude-review-prompt.md
+            tools/gh_retry.py
+          sparse-checkout-cone-mode: false
+      - name: Gate
+        id: gate
+        env:
+          PR: ${{ inputs.pr }}
+          MODE: ${{ inputs.mode }}
+          SHA: ${{ inputs.sha }}
+          ASKED_BY: ${{ inputs.asked_by }}
+          CLAUDE_REVIEW_DAILY_CAP: ${{ vars.CLAUDE_REVIEW_DAILY_CAP }}
+        run: node cr-tools/tools/claude-review.mjs gate
+      - name: The head of the PR, beside the base branch
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.gate.outputs.head }}
+          path: pr-head
+          fetch-depth: 0
+      - name: The plan token is set?
+        id: token
+        if: steps.gate.outputs.go == 'true'
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "Claude review skipped: CLAUDE_CODE_OAUTH_TOKEN is not set on this repository" | tee -a "$GITHUB_STEP_SUMMARY"; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Review
+        id: claude
+        if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true'
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.gate.outputs.prompt }}
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 40
+            --permission-mode default
+            --allowedTools "Read,Grep,Glob,Bash(git -C pr-head diff:*),Bash(git -C pr-head log:*),Bash(git -C pr-head show:*),Bash(git -C pr-head grep:*),Bash(git -C pr-head blame:*),Bash(gh pr view:*),Bash(gh pr diff:*)"
+            --add-dir pr-head
+            --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"findings":{"type":"array","maxItems":5,"items":{"type":"object","properties":{"severity":{"type":"string","enum":["high","medium","low"]},"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"body":{"type":"string"}},"required":["severity","path","line","title","body"]}}},"required":["summary","findings"]}'
+      - name: Post the one review
+        if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' && steps.claude.outcome == 'success'
+        env:
+          STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          PR: ${{ steps.gate.outputs.pr }}
+          HEAD: ${{ steps.gate.outputs.head }}
+          FROM: ${{ steps.gate.outputs.from }}
+        run: node cr-tools/tools/claude-review.mjs post

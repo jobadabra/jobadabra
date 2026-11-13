@@ -21,7 +21,11 @@ USER_PIPELINES = {
 
 # The e2e lane's entries (the review action, record-sites, watch-live) went on 5 Nov 2026 (plan "CI and e2e take no AI API keys", 4/5; owner, 3 Nov 2026: "We should not use API Keys at all anymore. Everything should be around the ai-broker."): the table holds the user pipelines only.
 E2E_LANE = {}
-ALLOWED = {**USER_PIPELINES, **E2E_LANE}
+# The Claude PR reviewer (owner, 13 Nov 2026, asked via AskUserQuestion: "Trial Claude on jobadabra (Recommended)", then "We should replace Gitar with something" / "With Claude Code review"): ONE reusable workflow runs
+# anthropics/claude-code-action on the owner's Claude PLAN token (CLAUDE_CODE_OAUTH_TOKEN, never an API key), read-only tools, Sonnet, a daily cap. It overrides the 28 Oct / 3 Nov "CI AI goes through the broker" rule for this one file;
+# a second file naming the action still fails here. The action is pinned to its release commit.
+CLAUDE_REVIEW = {'.github/workflows/claude-review-shared.yml': {'anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc'}}
+ALLOWED = {**USER_PIPELINES, **E2E_LANE, **CLAUDE_REVIEW}
 
 # Allowed by name anywhere, not on the shrinking list (coordinator, 31 Oct 2026): the Admin key only READS what Anthropic billed (daily.yml here; ai-cost-billed.yml moved to jobadabra-web, rs 6a/6); it makes no model call and spends nothing.
 # The guard bans keys that buy model calls.

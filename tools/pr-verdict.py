@@ -402,6 +402,16 @@ def flaky_note(repo, ref, live, why):
         return why
 
 
+def hand_over_green(state, number, sha):
+    """Tells pr-verdict.yml's next step which PR head just went green (step outputs green_pr and green_sha); nothing for any other state or outside a workflow.
+    Why (13 Nov 2026, cr; owner: "replace Gitar with Claude Code review"): a status written with the Actions token starts no workflow, so the green head is handed to the next step, which dispatches claude-review.yml.
+    It reviews a head once (already-reviewed heads are skipped by its gate), so a repeated green write costs one short job. TODO(AI): hand over only a change of state, not every green write (13 Nov 2026)."""
+    if state != 'success' or not number or not os.environ.get('GITHUB_OUTPUT'):
+        return
+    with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+        f.write(f'green_pr={number}\ngreen_sha={sha}\n')
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -461,6 +471,7 @@ def main():
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')
+        hand_over_green(state, number, a.sha)
     return 0
 
 
