@@ -250,7 +250,7 @@ export function registerApplyHandlers(ctx) {
     return {ok: true, copied: true, password: action === 'show' ? sitePassword.read() : null};
   });
   // Settings → Credentials: the sites' accounts from the Keychain (attributes only), and one password when you press Show or Copy.
-  ipcMain.handle('credentials', () => (DEMO ? {ok: true, rows: [{host: 'career2.successfactors.eu', email: 'you@example.com', job: 'https://jobs.migros.ch/x', created: '2026-10-08T11:54:02Z', state: 'confirmed', companies: ['Migros', 'Coop']}, {host: 'jobs.old-example.com', key: 'unassigned:jobs.old-example.com', unassigned: true, email: '', job: '', created: '2026-09-28T00:36:03Z'}]} : (list => ({...list, rows: withCompanies(withAccounts(list.rows, storage.settings().siteAccounts), review.allStates(), terminals.list())}))(credentials.list())));
+  ipcMain.handle('credentials', () => (DEMO ? {ok: true, rows: [{host: 'career2.successfactors.eu', email: 'you@example.com', job: 'https://jobs.migros.ch/x', created: '2026-10-08T11:54:02Z', state: 'confirmed', companies: ['Migros', 'Coop', 'Glacier Labs']}, {host: 'jobs.old-example.com', key: 'unassigned:jobs.old-example.com', unassigned: true, email: '', job: '', created: '2026-09-28T00:36:03Z'}]} : (list => ({...list, rows: withCompanies(withAccounts(list.rows, storage.settings().siteAccounts), review.allStates(), terminals.list())}))(credentials.list())));
   ipcMain.handle('credentialReveal', (_, host, why) => {
     const password = DEMO ? 'Maple-Rocket-42' : credentials.reveal(host);
     appLog('apply', `credential ${why === 'copy' ? 'copied' : 'shown'}`, {host: String(host || '').slice(0, 120), found: !!password});   // which site, never the password

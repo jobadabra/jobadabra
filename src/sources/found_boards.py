@@ -101,7 +101,7 @@ def _read(board, search, fetch, route, early, show=None):
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts, link=url)
+                board_round_log.said(board, term, place, started, jobs, error='the name does not resolve' if isinstance(error, careers.NameNotResolved) else type(error).__name__, parts=parts, link=url)
                 continue
             _told(board, term)   # Why (13 Nov 2026, bp): the Scout counts a family only on a board asked its own word (src/scout_board_counts.py)
             found = layout.read(page, url, fetch, parts.part)
