@@ -95,7 +95,7 @@ def umantis(slug):
     if not re.fullmatch(r'recruitingapp-\d{2,6}', slug):
         raise ValueError('not an Umantis slug')
     base = f'https://{slug}.umantis.com'
-    markup = ats._get(f'{base}/Jobs/All').decode('utf-8', 'replace')
+    markup = page_bytes.text(ats._get(f'{base}/Jobs/All'))
     found = []
     for path, label in re.findall(r'href="(/Vacancies/\d+/Description/\d+)"[^>]*?aria-label="([^"]*)"', markup):
         if path not in [p for p, _ in found]:
@@ -105,7 +105,7 @@ def umantis(slug):
     def one(item):
         path, title = item
         try:
-            job = page.job_from_page(ats._get(base + path).decode('utf-8', 'replace'), base + path)
+            job = page.job_from_page(page_bytes.text(ats._get(base + path)), base + path)
         except (urllib.error.URLError, OSError, ValueError):
             job = None
         return _job(path.split('/')[2], title, (job or {}).get('location', ''), base + path, '', (job or {}).get('description', ''),
@@ -185,7 +185,7 @@ def netflix(slug='netflix'):
     return jobs
 
 
-from . import ats  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
+from . import ats, page_bytes  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
 from . import host_pace  # noqa: E402
 from ..ai import slots  # noqa: E402
 from .ats import _fixture, _job, plain, USER_AGENT, TIMEOUT  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)

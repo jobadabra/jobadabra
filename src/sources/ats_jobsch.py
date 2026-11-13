@@ -90,7 +90,7 @@ def jobsch_find(name, key, get=None):
     """An employer on jobs.ch by name: {'slug', 'site'} (its company page id, and the job site that page links, or ''), or None. Only a
     listing whose employer has the same name key (`key`, the scout's: "Manor" and "Manor AG" are one) counts, never a similar name."""
     get = get or ats._get
-    text = lambda raw: raw.decode('utf-8', 'replace') if isinstance(raw, bytes) else raw
+    text = page_bytes.text
     for job in _postings(text(get('https://www.jobs.ch/en/vacancies/?' + urllib.parse.urlencode({'term': name})))):
         org = job.get('hiringOrganization') or {}
         slug = jobsch_company(org.get('sameAs'))
@@ -111,7 +111,7 @@ def jobsch(slug):
     out, seen = [], set()
     for page in range(1, JOBSCH_PAGES + 1):
         markup = ats._get('https://www.jobs.ch/en/vacancies/?' + urllib.parse.urlencode({'term': words.replace('-', ' '), 'page': page}))
-        markup = markup.decode('utf-8', 'replace') if isinstance(markup, bytes) else markup
+        markup = page_bytes.text(markup)
         postings, towns = list(_postings(markup)), jobsch_towns(markup)
         for job in postings:
             if jobsch_company((job.get('hiringOrganization') or {}).get('sameAs')).split('-')[0] != company or job.get('url') in seen:
@@ -126,5 +126,5 @@ def jobsch(slug):
     return out
 
 
-from . import ats  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
+from . import ats, page_bytes  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
 from .ats import _job  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)

@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from . import ats, careers_parse, host_pace
+from . import ats, careers_parse, host_pace, page_bytes
 from ..press import stage
 
 MAX_BYTES = 2_000_000
@@ -47,10 +47,10 @@ def get_text(url):
         raise ValueError('not a public web address')
     fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
-        return ats._fixture(fixtures, url).decode('utf-8', 'replace')
+        return page_bytes.text(ats._fixture(fixtures, url))
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'text/html,application/xhtml+xml'})
     with host_pace.open(request, ats.TIMEOUT) as response:
-        return response.read(MAX_BYTES).decode(response.headers.get_content_charset() or 'utf-8', 'replace')
+        return page_bytes.text(response.read(MAX_BYTES), response.headers.get_content_charset())
 
 
 # ---------- reading a page ----------
