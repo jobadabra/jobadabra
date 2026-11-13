@@ -1,7 +1,7 @@
 """The 30 fictional profiles' first search on CI (search-profiles.yml): their CV, the blind judge on their jobs, one row each and the run's table.
 
 Why (12 Nov 2026, owner, asked via AskUserQuestion by sa: "Move it to CI"): the profile round ran on the owner's Mac, one search at a time, and its numbers
-followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). This runs the same first search on fresh CI installs through the Codex broker.
+followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). This runs the same first search on fresh CI installs through the AI broker (Claude by default, Codex as an input).
 It never touches the nightly Search check: the profiles come from search-profiles.json, the 18 locked people (gate-personas.json) and gate.py are only read,
 and the judge is gate_judge.judge() itself, given this file's profiles. No night, no Admin, no floors, no reference, no red.
 Usage: profiles.py ids '<json list or empty>' | free '<json list>' <at_once> | cv <id> <out> | judge <id> <jobs.json> <judged.json> | row <id> <out> | table <dir> <out.md>
@@ -161,12 +161,17 @@ def row(pid, out):
             'judge_tier': judged.get('tier', 'small'), 'eures': p.get('eures', 0), 'target': target(len(right), p.get('eures', 0))}
 
 
+def ai_names(rows):
+    """The AI(s) that answered the rows' search steps, from each row's engine column ("claude / model" -> Claude); '' when no row says. One reader for the table's header and the Telegram head (Gitar on #3971)."""
+    return ', '.join(sorted({r['engine'].split(' / ')[0].split(' ')[0].capitalize() for r in rows if r.get('engine') and r['engine'] != 'not said'}))
+
+
 def table(folder, out):
     """The run's table (markdown) from every profile's row.json under the folder, in id order; also written as rows.json beside it."""
     rows = sorted((json.loads(f.read_text(encoding='utf-8')) for f in Path(folder).rglob('row.json')), key=lambda r: r['id'])
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
-             'CI rows (Codex through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026.', '',
+             f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
              '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read / with relevant | time ran out for | broker waits p90 | engine | judge |',
              '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
@@ -197,7 +202,7 @@ def tell(rows_path, url, out, profiles=None, outcome='success'):
     apart = ([f'{len(starved)} not measured, the broker was too busy (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved)] if starved else []) + \
             ([f'{len(other)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in other)] if other else [])
     n = f'{len(rows)} profile{"" if len(rows) == 1 else "s"}'
-    ai = ', '.join(sorted({r['engine'].split(' / ')[0].split(' ')[0].capitalize() for r in rows if r.get('engine') and r['engine'] != 'not said'}))
+    ai = ai_names(rows)
     where = f'Search profiles on CI{" · " + ai if ai else ""}'   # Why (13 Nov 2026, sa): a Codex round and a Claude round are two series; the text names its AI
     if outcome == 'cancelled':   # Why (13 Nov 2026, mac-9a for the owner): run 43355710034 was cancelled at 02:58Z and the text read "nothing measured (6 profiles)", 6 of 27, never "cancelled"
         head = f'⚪ {where} · cancelled on GitHub ' + (f'before measuring ({n})' if not measured else f'after {len(measured)} of {len(rows)} measured')

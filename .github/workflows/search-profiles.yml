@@ -97,14 +97,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5   # first: a later checkout cleans the folder and would remove out/
         with: {persist-credentials: false}
-      - name: This run can use the Codex broker
+      - name: This run can use the AI broker
         id: token
         run: |
           mkdir -p out
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
             echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          echo "no trusted GitHub OIDC token for Codex" > out/not-run.txt
+          echo "no trusted GitHub OIDC token for the AI broker" > out/not-run.txt
       - uses: actions/setup-node@v5
         if: steps.token.outputs.ok == 'yes'
         with: {node-version: '22'}
