@@ -7,6 +7,7 @@
 //   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026) | changes requested · not re-reviewed (the
 //   same as "not started" when Gitar's last verdict, on an older push, was red: 13 Nov 2026), plus the gray "working" mark a session sets.
 //   A head that only merged the base branch in, own diff byte-identical, keeps the verdict of the change before it (12 Nov 2026, owner: "Keep the verdict (Recommended)"; ownHeadTime()).
+//   A verdict counts for a head only when Gitar's check ran on that head (13 Nov 2026, gl2; wantedLabel()): an edit of its comment for a thread reply is not a review.
 //   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
 //   A verdict older than the head is dropped, never shown beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
 //   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
@@ -45,10 +46,13 @@ export function verdictKind(body) {
   return 'changes';   // Why (28 Oct 2026): an unknown Code Review state is not an approval; red is the safe side
 }
 
-/** The label name to hold: Gitar's verdict if its comment was written at or after the head commit, else null (a stale approval never stays green). */
-export function wantedLabel(body, commentUpdatedAt, headCommittedAt) {
+// Why (13 Nov 2026, coordinator gl2; real case #4020: the fix push had no Gitar run, the session's thread replies made Gitar EDIT its old dashboard comment, and the label and ship-watch's peek read it as the head's verdict, so nobody asked for a review):
+//   an edit of Gitar's comment proves nothing about the head; only Gitar's check run on the head does. The same rule as "reviewing" (a run exists). Cost, measured on 39 approved PRs of 13 Nov: 4 (10%) had no run on the final head (a
+//   one-line follow-up pushed while the review ran); they now read "not started", and ship-watch asks Gitar once for that head, as it does for any head with no run.
+/** The label name to hold: Gitar's verdict if its comment was written at or after the head commit AND Gitar's check ran on the head (`ranOnHead`), else null (a stale approval never stays green). */
+export function wantedLabel(body, commentUpdatedAt, headCommittedAt, ranOnHead) {
   const kind = verdictKind(body);
-  if (!kind || !(Date.parse(commentUpdatedAt) >= Date.parse(headCommittedAt))) return null;
+  if (!ranOnHead || !kind || !(Date.parse(commentUpdatedAt) >= Date.parse(headCommittedAt))) return null;
   return LABELS[kind].name;
 }
 
@@ -82,7 +86,7 @@ export function sameOwnChange(before, after) {
 // Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886 approved at 13:05, merged main at 13:10, read "not started", Gitar refused the
 //   re-ask for 30 min): a head that only merged the base branch in, the PR's own diff byte-identical, is not a new change to review. Up to 3 such merges are walked back.
 const COMPARE_CAP = 300;   // GitHub's compare lists at most 300 files: a list that long may be cut, so it never counts as the same change
-/** The push time of the PR's own change when the head (`{sha, parents}`) only merged `base` in, else null (the head's own time counts). Own diff before: compare
+/** The PR's own head, `{sha, time}`, when the head (`{sha, parents}`) only merged `base` in (the commit before the merges and its push time), else null (the head itself counts). Own diff before: compare
  * theirs...mine (from their merge base to the branch's previous tip); after: theirs...head (from the merged base commit to the head). */
 export function ownHeadTime(repo, head, base, run = gh) {
   let sha = head.sha, parents = head.parents;
@@ -94,7 +98,7 @@ export function ownHeadTime(repo, head, base, run = gh) {
     if (before.length >= COMPARE_CAP || !sameOwnChange(before, after)) break;
     sha = mine; parents = JSON.parse(run('api', `repos/${repo}/commits/${mine}`)).parents.map(p => p.sha);
   }
-  return sha === head.sha ? null : headTime(repo, sha, run);
+  return sha === head.sha ? null : {sha, time: headTime(repo, sha, run)};
 }
 
 // Why (12 Nov 2026, #3870 and #3859): a "Gitar review" ask is answered in ~1 min; past 15 min with no verdict and no Gitar run it was lost, so the label says "not started" and the watcher may ask again.
@@ -222,12 +226,14 @@ function readPrByRest(repo, pr, info) {
 
 const readLive = (repo, pr, run = gh) => readPr(repo, pr, run) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
 
-/** The read and the labels the PR should hold; the head time is that of the PR's own change (ownHeadTime) when the head only merged the base branch in. */
-function wantedFor(repo, pr, run = gh) {
+/** The read and the labels the PR should hold (exported: the cases play it with a fake gh); the head time is that of the PR's own change (ownHeadTime) when the head only merged the base branch in. */
+export function wantedFor(repo, pr, run = gh) {
   const read = readLive(repo, pr, run);
   if (read.state !== 'open') return {read, wanted: null};
-  const at = (read.parents?.length === 2 && ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base, run)) || read.headTime;
-  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at) : null;
+  const own = read.parents?.length === 2 ? ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base, run) : null;
+  const at = own?.time || read.headTime;
+  const ran = own ? gitarOnHead(repo, own.sha, run) : read.gitarOnHead;   // a merge of main keeps the verdict of the commit before it: Gitar's run on THAT commit
+  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at, ran) : null;
   const staleKind = read.review && !verdict ? verdictKind(read.review.body) : null;   // the verdict of an older push, kept in view only when red
   return {read, wanted: wantedLabels({verdict, staleKind, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
 }
@@ -274,8 +280,7 @@ function cli() {
     if (process.argv[2] === 'head') return console.log(`gitar-label: head ${process.argv[3]} → ${syncHead(process.env.GITHUB_REPOSITORY, process.argv[3]).map(n => `#${n}`).join(' ') || 'no open PR'}`);
     // peek <n>: print the labels the PR should hold, write nothing (tools/ship-watch.sh asks Gitar only when no verdict counts on the head).
     if (process.argv[2] === 'peek') return console.log((wantedFor(process.env.GITHUB_REPOSITORY, process.argv[3]).wanted || []).join('\n'));
-    // Why (7 Nov 2026, gl, code review): jobadabra-web, -lab and -benchmarks run this script from main with their own copy of the workflow, which still starts on a Gitar check and passes no PR number until their copy is the shared caller (templates/org-repo/pr-labels.yml); that must not turn each of their Gitar checks red. TODO(AI): make an empty argument an error again once all three callers have merged (13 Nov 2026)
-    if (!process.argv[2]) return console.log('gitar-label: no PR number given (an event that no longer labels), nothing to do');
+    if (!process.argv[2]) throw new Error('gitar-label: no PR number given (usage: <pr-number> | all | head <sha> | working <pr> | peek <pr>)');
     main(process.argv[2]);
   } catch (error) {
     console.error(error.message);
