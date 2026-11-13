@@ -18,5 +18,15 @@ fi
 if [ "$(jq -r '.isDraft' <<<"$view")" != true ]; then gh pr ready "$n" -R "$repo" --undo >/dev/null 2>&1 || true; fi
 busy="$(gh run list -R "$repo" --workflow search-pair.yml --limit 30 --json status,displayTitle --jq "[.[] | select(.status != \"completed\" and (.displayTitle | startswith(\"Search pair · #$n \")))] | length" 2>/dev/null || echo 0)"
 if [ "${busy:-0}" != 0 ]; then echo "#$n: its pair is already queued or running: not started again"
-elif gh workflow run search-pair.yml -R "$repo" -f pr="$n" -f people="$people" >/dev/null 2>&1; then echo "#$n: started its before/after pair for $people (search-pair.yml; its comment writes the number and lifts the hold)"
-else echo "could not start the pair of #$n: gh workflow run search-pair.yml -f pr=$n -f people='$people'"; fi
+else
+  # Why (14 Nov 2026, rb; owner via mac-95: #4091 and #4100 sat ~25 min with no pair, REST quota 0 at ~22:50Z, and the only trace was a plain line nobody read): a dispatch that fails is tried once more
+  #   after 3 s (a 5xx or a dropped connection; GitHub has no GraphQL mutation for a workflow dispatch, so a quota-0 failure cannot be read around and waits for the reset), then ends as `PAIR NOT STARTED <gh's own words>`,
+  #   which tools/ship-pr.sh turns into the `ship: FAILED pair not started` line the watchers wake on. The held PR stays held: only its pair lifts the hold.
+  for try in 1 2; do
+    if err="$(gh workflow run search-pair.yml -R "$repo" -f pr="$n" -f people="$people" 2>&1 >/dev/null)"; then
+      echo "#$n: started its before/after pair for $people (search-pair.yml; its comment writes the number and lifts the hold)"; exit 0
+    fi
+    [ "$try" = 2 ] || sleep "${SHIP_PAIR_RETRY_S:-3}"
+  done
+  echo "PAIR NOT STARTED $(tail -n 1 <<<"$err" | cut -c1-160)|gh workflow run search-pair.yml -R $repo -f pr=$n -f people='$people'"
+fi
