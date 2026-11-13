@@ -301,3 +301,18 @@ class OrphanTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PipesTests(unittest.TestCase):
+    """#3973's red (13 Nov 2026): the reader thread left the process's output pipe open, and Python's "unclosed file" warning for it landed in
+    the captured stderr of whichever test ran when the garbage collector did (test_codex_answer_line's positive control)."""
+
+    def test_the_output_pipe_is_closed_when_the_process_has_said_everything(self):
+        folder = tempfile.mkdtemp(prefix='jobadabra-warm-test-')
+        process = subprocess.Popen([sys.executable, '-c', 'print("one")'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, cwd=folder)
+        spare = warm.Spare(process, folder, 0.0)
+        self.assertEqual(spare.lines.get(timeout=20), 'one\n')
+        self.assertIsNone(spare.lines.get(timeout=20))   # the end of its output: said after the pipe is closed
+        self.assertTrue(process.stdout.closed)
+        spare.end()
+        process.wait(timeout=20)

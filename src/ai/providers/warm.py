@@ -47,6 +47,10 @@ class Spare:
                 self.lines.put(line)
         except (OSError, ValueError):
             pass
+        try:   # Why (#3973, 13 Nov 2026): left open, the pipe was closed by the garbage collector with an "unclosed file" warning on stderr, in whichever call ran then
+            self.process.stdout.close()
+        except (OSError, ValueError):
+            pass
         self.lines.put(None)   # end of output
 
     def feed(self, text):
