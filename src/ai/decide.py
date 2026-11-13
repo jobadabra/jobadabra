@@ -18,6 +18,7 @@ import os
 import sqlite3
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 
 from .. import budget_tape
@@ -332,12 +333,14 @@ def _ask(topic, pairs, answers, instructions, client, allowance):
 
 
 def _shared_ask(same, pairs, ask):
-    """Share one model batch at a time, releasing the question's lane between batches; a failure leaves later items unasked."""
+    """Share one model batch at a time within the existing wait window; a failure leaves later items unasked."""
     # Why (13 Nov 2026, cp; Brussels boards spent 54-56 s in 'job links'): the gate combined every waiting page, then held every answer until
     # _ask finished all their batches. A small board waited for unrelated pages; one BATCH per turn preserves sharing without that wait.
-    got = []
+    got, started = [], time.monotonic()
     for start in range(0, len(pairs), BATCH):
-        chunk = GATES.shared(same, pairs[start:start + BATCH], ask, max_items=BATCH)
+        # Why (13 Nov 2026, Gitar on #3978): splitting a page must not grant another WAIT_S for every later chunk.
+        wait = max(0, decide_gate.WAIT_S - (time.monotonic() - started))
+        chunk = GATES.shared(same, pairs[start:start + BATCH], ask, wait=wait, max_items=BATCH)
         got.extend(chunk)
         if any(answer is decide_gate.UNASKED for answer in chunk):
             return got + [decide_gate.UNASKED] * (len(pairs) - len(got))

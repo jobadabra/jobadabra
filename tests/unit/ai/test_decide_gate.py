@@ -128,6 +128,53 @@ class SharedCalls(unittest.TestCase):
         self.assertTrue(all(len(call) <= 4 for call in model.calls), 'sharing never creates an extra model batch')
         self.assertEqual(decide.GATES.open, {})
 
+    def test_a_later_batch_never_restarts_the_pages_wait_window(self):
+        """After one page's wait window passes, a queued tail stays unknown instead of waiting another 90 seconds."""
+        model, out, clock = Model(), {}, [0.0]
+        releases = [threading.Event() for _ in range(5)]
+        started, returned = threading.Semaphore(0), threading.Event()
+        create = model.create
+
+        def controlled(**kwargs):
+            number = len(model.calls)
+            started.release()
+            assert releases[number].wait(5), 'the test never released the model call'
+            if number == 1:
+                clock[0] = 91.0
+            return create(**kwargs)
+
+        def page(name, count):
+            out[name] = decide.decide('link-kind', {f'{name}{n}': f'{name}{n}' for n in range(count)}, ANSWERS,
+                                      'what a link is', client=model, floor=False)
+            if name == 'large':
+                returned.set()
+
+        model.go.set()
+        model.messages.create = controlled
+        threads = [threading.Thread(target=page, args=args, daemon=True) for args in [('first', 2), ('large', 6), ('neighbor', 2)]]
+        with mock.patch.object(decide, 'BATCH', 4), mock.patch.object(decide, 'time', SimpleNamespace(monotonic=lambda: clock[0]), create=True):
+            try:
+                threads[0].start()
+                self.assertTrue(started.acquire(timeout=5))
+                threads[1].start()
+                self.wait_queued(1)
+                threads[2].start()
+                self.wait_queued(2)
+                releases[0].set()
+                self.assertTrue(started.acquire(timeout=5))
+                releases[1].set()
+                self.assertTrue(started.acquire(timeout=5), 'another page now holds the lane')
+                self.assertTrue(returned.wait(0.5), 'the large page must not get another wait window for its tail')
+            finally:
+                for release in releases:
+                    release.set()
+                for thread in threads:
+                    if thread.ident is not None:
+                        thread.join(5)
+        self.assertEqual(out['large'], {f'large{n}': 'job_list' for n in range(4)}, 'the first answers survive, the tail stays unknown')
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(decide.GATES.open, {})
+
     def test_a_failed_later_batch_keeps_earlier_answers_and_starts_no_further_call(self):
         model = Model()
         model.go.set()

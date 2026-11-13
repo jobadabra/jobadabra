@@ -234,8 +234,8 @@ def capture_engine(prompts=False):
     pack = NS(ai_first=lambda topic: False, first=lambda *a, **k: None, queue=lambda *a: None)
     IMPORTS['meanings_pack'] = pack
     decide = load('src/ai/decide.py', ['MODEL', 'BATCH', 'MAX_TEXT', 'MAX_CALLS_PER_RUN', 'CENTRAL_MAX_CALLS', '_calls', '_own',
-                  '_pool', 'take', 'STOPPED', 'WAITING', 'CACHE_ONLY', 'SYSTEM', 'limit', '_table', 'kept', 'GATES', 'answer_shape', '_ask', 'decide'],
-                  threading=threading, decide_gate=load('src/ai/decide_gate.py', ['LANES', 'WAIT_S', 'UNASKED', '_Caller', 'Gates'], threading=threading), SMALL_MODEL=models.SMALL_MODEL, budget_tape=NS(within=lambda *a: True), cost=cost, engine=engine)
+                  '_pool', 'take', 'STOPPED', 'WAITING', 'CACHE_ONLY', 'SYSTEM', 'limit', '_table', 'kept', 'GATES', 'answer_shape', '_ask', '_shared_ask', 'decide'],
+                  threading=threading, time=time, decide_gate=load('src/ai/decide_gate.py', ['LANES', 'WAIT_S', 'UNASKED', '_Caller', 'Gates'], threading=threading), SMALL_MODEL=models.SMALL_MODEL, budget_tape=NS(within=lambda *a: True), cost=cost, engine=engine)
     captured = json.loads(read('desktop/e2e/fixtures/golden/interviews-decide.json'))['requests'][0]
     task, choices, blocks = re.fullmatch(r'Task: ([\s\S]+)\nAllowed answers: ([^\n]+)\n\n([\s\S]+)', captured['messages'][0]['content']).groups()
     items = {'fixture-0': blocks.split('\n', 1)[1]}

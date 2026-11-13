@@ -212,7 +212,7 @@ FIXES = (
         "a board with its link answers ready never waits for another page's later AI batches; sharing keeps its lanes and call cap",
         ('tests/unit/ai/test_decide_gate.py::test_a_small_pages_answers_return_before_another_pages_later_batch',
          'tests/unit/ai/test_decide_gate.py::test_the_call_cap_still_leaves_later_batches_unknown'),
-        owner='this is most important'),
+        owner='13 Nov 2026, cp pane: "this is most important", prioritizing the 54-73 s board-link delay over the Codex exit wait'),
 )
 
 
