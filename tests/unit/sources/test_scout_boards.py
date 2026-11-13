@@ -316,7 +316,7 @@ class BoardPassTest(unittest.TestCase):
         reads = {'a.md': [job('Chisinau')] * 4 + [job('Paris')], 'b.md': []}
         scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None),
                          out=out.append, named='md')
-        self.assertIn('2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4, b.md 0/0', out[-1])
+        self.assertIn('2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4 (no layout: none learned on this read), b.md 0/0', out[-1])
         self.assertTrue(out[-1].startswith('Board pass: Moldova ('))
         self.assertIn('md', scout_cells._meta(self.db, 'boards_aimed', []))   # it counts as done: the rotation moves on
 

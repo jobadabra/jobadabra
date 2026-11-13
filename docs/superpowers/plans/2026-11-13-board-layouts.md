@@ -10,7 +10,7 @@ A replay that reads nothing on a page drops the layout for the rest of that read
 
 ## Progress
 - [x] 1/3 web: the pool keeps and serves a board's layout (jobadabra-web #620) (proof: none: merged in the private jobadabra-web as a3c50e9, its test/unit/api/employers.test.js)
-- [ ] 2/3 installs replay a served layout before any link question
-- [ ] 3/3 board discovery learns the layout and the Scout publishes it
+- [x] 2/3 installs replay a served layout before any link question (#3982) (proof: tests/unit/sources/test_board_layouts.py @3c7c1c1)
+- [x] 3/3 board discovery learns the layout and the Scout publishes it (proof: tests/unit/sources/test_scout_board_layouts.py)
 - [ ] Proof, each on the coordinator's word: one by-hand board discovery run, the Central Scout right after, one search pair on b08 + b10
   (link-kind calls and "job links" seconds before → after)
