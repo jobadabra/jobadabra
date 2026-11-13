@@ -195,8 +195,12 @@ def _from_recipe(url, markup, fetch_page):
     items = page_recipes.replay(recipe, markup, url) if recipe else []
     if recipe and not items:
         page_recipes.mark_broken(url)   # the page changed: flag it; the page is read the usual way and a new read learns a new recipe
-    if not items:
-        return []
+    return listed(items, url, markup, fetch_page) if items else []
+
+
+def listed(items, url, markup, fetch_page):
+    """The jobs of a recipe's [(title, link or None)] on this listing page: each linked job page's data (its title stays the listing's), else
+    the listing's own title and place. Shared by a page's own recipe and a board's served layout (board_layout.py)."""
     listing = job_from_page(markup, url) or {}
 
     def one(item):
@@ -310,9 +314,10 @@ def discover(website, fetch_page=get_text):
     return _explore(website, shown, show)
 
 
-def read_page_from(markup, url, fetch_page, part=None):
+def read_page_from(markup, url, fetch_page, part=None, linked=None):
     """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
-    when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not)."""
+    when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not).
+    linked: the job pages a board's served layout named (board_layout.py), so no link on the page is asked about; None = the page's job links."""
     def one(link):
         with stage.guard('employer sites: linked page') as caught:
             page = fetch_page(link)
@@ -322,8 +327,10 @@ def read_page_from(markup, url, fetch_page, part=None):
         return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
     from . import board_round_log, one_posting
     part = part or board_round_log.untimed   # a board's round names where its seconds went (log only); any other page read times nothing
-    with part('job links'):
-        linked = job_links(markup, url)
+    if linked is None:
+        with part('job links'):
+            linked = job_links(markup, url)
+    linked = linked[:MAX_JOB_PAGES]
     with part(f'{len(linked)} job pages'), ThreadPoolExecutor(max_workers=6) as pool:
         read = list(pool.map(slots.carry(one), linked))
     headed = list({job['url']: job for _, jobs in read for job in jobs}.values())

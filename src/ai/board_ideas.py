@@ -337,7 +337,8 @@ def served(countries):
             board = valid({'name': host, 'search_url': fact.get('url'), 'countries': [pool_tags.COUNTRIES.get(c, c) for c in fact['countries']]}, listing=True)
             if board and board['host'] == host:
                 cells = [cell for cell in fact.get('relevant') or [] if cell['country'] in wanted]
-                out.append({**board, **({'cells': cells} if cells else {}), **({'browser': True} if fact.get('browser') else {})})
+                out.append({**board, **({'cells': cells} if cells else {}), **({'browser': True} if fact.get('browser') else {}),
+                            **({'layout': fact['layout']} if fact.get('layout') else {})})   # how its job cards are laid out (src/sources/board_layout.py)
     return out
 
 
