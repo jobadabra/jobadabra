@@ -317,7 +317,8 @@ def discover(website, fetch_page=get_text):
 def read_page_from(markup, url, fetch_page, part=None, linked=None):
     """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
     when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not).
-    linked: the job pages a board's served layout named (board_layout.py), so no link on the page is asked about; None = the page's job links."""
+    linked: the job pages a board's served layout named (board_layout.py), so no link on the page is asked about; None = the page's job links.
+    Either way at most MAX_JOB_PAGES job pages are read, as the page's own job links always were."""
     def one(link):
         with stage.guard('employer sites: linked page') as caught:
             page = fetch_page(link)

@@ -29,11 +29,12 @@ SEARCH = {'jobs_board_search_queries': ['developer'], 'role_keywords': ['develop
           'locations': {'top_tier': ['Lisboa'], 'country_wide': [], 'abroad': []}}
 BOARD = {'name': 'Jobs Example', 'host': 'jobs.example', 'search_url': 'https://jobs.example/search?q={role}', 'countries': ['Portugal'], 'kinds': ['any']}
 MENU = '<a href="/about">About us</a><a href="/blog/news">News</a><a href="/employers">For employers</a>'
+FOOTER = '<footer><p>' + 'Jobs Example lists open positions from employers across the country, updated every day. ' * 12 + '</p></footer>'   # a real page's text: under 800 characters a page reads as a script shell (careers._shell)
 
 
 def _list(ids, more=False):
     cards = ''.join(f'<div class="card"><a href="/job/{n}">Python Developer {n}</a></div>' for n in ids)
-    return f'<html><body>{MENU}{cards}' + ('<a rel="next" href="/search?q=developer&page=2">Next</a>' if more else '') + '</body></html>'
+    return f'<html><body>{MENU}{cards}' + ('<a rel="next" href="/search?q=developer&page=2">Next</a>' if more else '') + f'{FOOTER}</body></html>'
 
 
 def _posting(n):
@@ -63,7 +64,7 @@ class BoardLayoutTests(unittest.TestCase):
         def link_words(pairs, floor=None):   # the AI's verdict on each link, recorded: what this change saves
             pairs = list(pairs)
             self.asked.extend(pairs)
-            return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith('/job/')) for t, p in pairs}
+            return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith(('/job/', '/vacancy/'))) for t, p in pairs}
         patch = mock.patch.object(page_words, 'link_words', side_effect=link_words)
         patch.start()
         self.addCleanup(patch.stop)
@@ -90,6 +91,54 @@ class BoardLayoutTests(unittest.TestCase):
         said = [line for line in out.getvalue().splitlines() if 'layout' in line]
         self.assertEqual(len(said), 1, f'one line for the read, not one per page: {said}')
         self.assertIn('jobs.example', said[0])
+
+    def _said(self, board, fetch_page, search=SEARCH):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            jobs, state, _ = found_boards.read_board(board, search, fetch=fetch_page)
+        return jobs, state, [line for line in out.getvalue().splitlines() if 'layout' in line]
+
+    def test_a_layout_that_holds_on_page_one_and_fails_on_the_next_page_is_dropped_there_only(self):
+        """Gitar on #3982: page 1 read by the layout, the next page (other cards) by the usual read through the round's own fetch."""
+        def moved(url):
+            if 'page=2' in url:
+                return f'<html><body>{MENU}' + ''.join(f'<a href="/vacancy/{n}">Python Developer {n}</a>' for n in (201, 202)) + f'{FOOTER}</body></html>'
+            return _posting(url.rsplit('/', 1)[1]) if '/vacancy/' in url else fetch(url)
+        jobs, state, said = self._said({**BOARD, 'layout': {'kind': 'links', 'prefix': '/job'}}, moved)
+        self.assertEqual(len(said), 1, said)
+        self.assertFalse([path for _, path in self.asked if path.startswith('/job/')], 'page 1 asked nothing: the layout read it')
+        self.assertTrue([path for _, path in self.asked if path.startswith('/vacancy/')], 'the next page was read the usual way')
+        self.assertEqual(len(jobs), 6)
+
+    def test_an_empty_results_page_keeps_the_layout_for_the_next_search(self):
+        """Gitar on #3982: the first words found nothing on the board; their empty page must not cost the layout for the next words."""
+        search = {**SEARCH, 'jobs_board_search_queries': ['nothing', 'developer']}
+        empty = lambda url: f'<html><body>{MENU}<p>No jobs match your search.</p>{FOOTER}</body></html>' if 'q=nothing' in url else fetch(url)
+        jobs, _, said = self._said({**BOARD, 'layout': {'kind': 'links', 'prefix': '/job'}}, empty, search)
+        self.assertEqual(said, [])
+        self.assertFalse([path for _, path in self.asked if path.startswith('/job/')], 'the next words were still read by the layout')
+        self.assertEqual(len(jobs), 7)
+
+    def test_job_pages_that_fail_never_cost_the_layout(self):
+        """Gitar on #3982: the layout found the cards; job pages that fail are those pages' failure (a refusal, a timeout)."""
+        search = {**SEARCH, 'jobs_board_search_queries': ['broken', 'developer']}
+
+        def failing(url):
+            if 'q=broken' in url:
+                return _list([301, 302, 303])
+            if '/job/3' in url:
+                raise OSError('timed out')
+            return fetch(url)
+        jobs, _, said = self._said({**BOARD, 'layout': {'kind': 'links', 'prefix': '/job'}}, failing, search)
+        self.assertEqual(said, [])
+        self.assertFalse([path for _, path in self.asked if path.startswith('/job/')])
+        self.assertEqual(len(jobs), 7)
+
+    def test_a_layout_of_titles_with_no_link_reads_the_listing_itself(self):
+        page = f'<html><body>{MENU}' + ''.join(f'<h3 class="job-title">Python Developer {n}</h3>' for n in (1, 2, 3)) + f'{FOOTER}</body></html>'
+        jobs, state, said = self._said({**BOARD, 'layout': {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}}, lambda url: page)
+        self.assertEqual((self.asked, said), ([], []))
+        self.assertEqual(sorted(job['title'] for job in jobs), ['Python Developer 1', 'Python Developer 2', 'Python Developer 3'])
 
     def test_a_layout_rides_from_the_index_to_the_served_board_only_in_its_fixed_shape(self):
         sites = [{'host': 'laid.example', 'kind': 'board', 'url': 'https://laid.example/?q={role}', 'installs': 1,
