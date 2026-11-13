@@ -1,0 +1,153 @@
+name: CI · Search pair start (the row, then the pair)
+# A search PR gets its "Search before/after" row when it opens, and its pair when the other checks are green. Nobody starts either by hand (owner via sa, 13 Nov 2026: "Can we add the before/after as a CI check on the PR ?"
+# · "instead of having \"DONT MERGE\"... we'll just have red check"). Plan: docs/superpowers/plans/2026-11-13-search-before-after-check.md (2/3); the row's words: tools/persona-search/pair_row.py; this file's logic: tools/persona-search/start.py.
+# Invariants: pull_request_target runs with the repo's token on a PR's events, so this workflow NEVER checks out or runs the PR's code: it checks out main only, and reads the PR through the API (its changed-file list and its body).
+#   The body (attacker-shaped text, even in our own repo) reaches the script only through env and a file, never inside a `run:` line; no title is read at all. The token's rights are checks, actions (the dispatch), pull-requests read.
+#   One pair per head: the row is claimed (waiting -> running) BEFORE the dispatch, and a dispatch that fails puts it back to waiting.
+# Why (sa, 13 Nov 2026): "do not run a pair a push does not need": a head whose search files equal the last paired head's carries that pair's result (no 11 min of broker room), and an edit of the body with the same people restarts nothing.
+# Cost: one pair per push of a search PR (~11 min, plan AI through the broker, $0), started only once the other checks are green; a head that is no longer the PR's head is never started.
+on:
+  pull_request_target:
+    types: [opened, synchronize, edited, reopened]
+  # Why (like pr-verdict.yml): the layer workflows' ends are the events at which "the other checks are green" can become true; a run's head_sha must still be the PR's head now.
+  workflow_run:
+    types: [completed]
+    workflows: ['Guard', 'Unit', 'Integration', 'Smoke', 'E2E', 'Tooling']
+
+# Why: per head, never cancelling: the second event of a head reads what the first wrote (a claim is a PATCH, so two events can not both start a pair); a newer head is its own group.
+concurrency:
+  group: search-pair-start-${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: write
+  actions: write
+  pull-requests: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  REPO: ${{ github.repository }}
+  ROW_NAME: Search before/after
+
+jobs:
+  row:
+    name: The row on the head
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+      BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}   # main's code, never the PR's
+          persist-credentials: false
+          sparse-checkout: tools
+      - name: The files, the body and the head's row
+        id: read
+        run: |
+          gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' > changed.txt
+          printf '%s' "$BODY" > body.txt
+          gh api -X GET "repos/$REPO/commits/$HEAD/check-runs" -f check_name="$ROW_NAME" --jq '.check_runs[0] // empty | [.id, (if (.external_id // "") == "" then "-" else .external_id end)] | @tsv' > row.tsv || : > row.tsv
+          read -r ROW EXT < row.tsv || true
+          [ "${EXT:-}" = "-" ] && EXT=''
+          { echo "row=${ROW:-}"; echo "ext=${EXT:-}"; } >> "$GITHUB_OUTPUT"
+      - name: What the row says
+        id: decide
+        env:
+          EXT: ${{ steps.read.outputs.ext }}
+        run: echo "action=$(python3 tools/persona-search/start.py decide changed.txt body.txt "$EXT")" >> "$GITHUB_OUTPUT"
+      - name: Put the row on the head
+        if: steps.decide.outputs.action != 'none'
+        env:
+          ACTION: ${{ steps.decide.outputs.action }}
+          ROW: ${{ steps.read.outputs.row }}
+          EXT: ${{ steps.read.outputs.ext }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          put() {   # stdin: the row's fields; the head's one row is updated, or created
+            if [ -n "$ROW" ]; then gh api -X PATCH "repos/$REPO/check-runs/$ROW" --input - > /dev/null
+            else jq --arg sha "$HEAD" --arg name "$ROW_NAME" --arg url "$RUN_URL" '. + {name: $name, head_sha: $sha, details_url: $url}' | gh api -X POST "repos/$REPO/check-runs" --input - > /dev/null; fi
+          }
+          if [ "$ACTION" = green ] || [ "$ACTION" = red ]; then
+            conclusion=success; [ "$ACTION" = red ] && conclusion=failure
+            jq --arg c "$conclusion" '{status: "completed", conclusion: $c, external_id: .external_id, output: {title: .title, summary: .summary}}' decision.json | put
+            exit 0
+          fi
+          # Why (sa, 13 Nov 2026): a pair that runs keeps its row when only the body changed (decide says none for the same people); different people while it runs are not taken in (rare; the running pair stands).
+          case "$EXT" in search-pair:running:*) echo "a pair runs for this head: the row stands"; exit 0 ;; esac
+          NEWEXT="$(jq -r .external_id decision.json)"
+          # Carry-over (sa): the newest earlier head of this PR whose pair counted, for the same people, and whose search files are the same as this head's: its result is this head's result.
+          carried=''
+          for sha in $(gh api "repos/$REPO/pulls/$PR/commits?per_page=100" --paginate --jq '.[].sha' | grep -v "^$HEAD$" | tail -n 10 | tac); do
+            prev="$(gh api -X GET "repos/$REPO/commits/$sha/check-runs" -f check_name="$ROW_NAME" --jq '.check_runs[0] | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure")) | {conclusion, external_id, title: .output.title, summary: .output.summary}' || true)"
+            [ -n "$prev" ] || continue
+            [ "$(echo "$prev" | jq -r '.external_id // ""' | sed 's/.*://')" = "${NEWEXT##*:}" ] || continue
+            if gh api "repos/$REPO/compare/$sha...$HEAD" --jq '.files[].filename' > between.txt && [ "$(python3 tools/persona-search/start.py carry between.txt)" = carry ]; then
+              jq -n --argjson prev "$prev" --arg sha "${sha:0:7}" --arg ext "search-pair:carried:${NEWEXT##*:}" \
+                '{status: "completed", conclusion: $prev.conclusion, external_id: $ext, output: {title: ("carried from " + $sha + ", same search files: " + ($prev.title // ""))[0:140], summary: ("The search files are the same as head " + $sha + ", whose pair counted: its result stands.\n\n" + ($prev.summary // ""))}}' | put
+              carried=1
+            fi
+            break   # only the newest counted head decides; an older one is never compared
+          done
+          [ -z "$carried" ] || exit 0
+          jq '{status: "queued", external_id: .external_id, output: {title: .title, summary: .summary}}' decision.json | put
+
+  pair:
+    name: The pair, once the other checks are green
+    # Why (as pr-verdict.yml): the run is a PR run and its head is the PR's head now; a run of an older head starts nothing.
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}   # main's code, never the PR's
+          persist-credentials: false
+          sparse-checkout: tools
+      - name: Is the row waiting, and is this still the PR's head?
+        id: waiting
+        run: |
+          gh api -X GET "repos/$REPO/commits/$HEAD/check-runs" -f check_name="$ROW_NAME" --jq '.check_runs[0] // empty | [.id, (if (.external_id // "") == "" then "-" else .external_id end)] | @tsv' > row.tsv || : > row.tsv
+          read -r ROW EXT < row.tsv || true
+          case "${EXT:-}" in
+            search-pair:waiting:*) ;;
+            *) echo "no waiting row on this head: nothing to start"; echo "go=" >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+          now="$(gh api "repos/$REPO/pulls/$PR" --jq 'select(.state == "open") | .head.sha')"
+          if [ "$now" != "$HEAD" ]; then echo "this head is not the PR's head any more"; echo "go=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          { echo "go=1"; echo "row=$ROW"; echo "ext=$EXT"; } >> "$GITHUB_OUTPUT"
+      - name: Are the other checks green?
+        id: ready
+        if: steps.waiting.outputs.go == '1'
+        run: |
+          gh api "repos/$REPO/commits/$HEAD/check-runs" --paginate --jq '.check_runs[] | {name, status, conclusion}' | jq -s . > runs.json
+          gh api "repos/$REPO/commits/$HEAD/status" --jq '.statuses' > statuses.json
+          verdict="$(python3 tools/persona-search/start.py ready runs.json statuses.json)"
+          echo "$verdict"
+          [ "$verdict" = ready ] && echo "go=1" >> "$GITHUB_OUTPUT" || echo "go=" >> "$GITHUB_OUTPUT"
+      - name: Claim the row, then start the pair
+        if: steps.ready.outputs.go == '1'
+        env:
+          ROW: ${{ steps.waiting.outputs.row }}
+          EXT: ${{ steps.waiting.outputs.ext }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          people="$(python3 tools/persona-search/start.py people-json "$EXT")"
+          running="search-pair:running:${EXT##*:}"
+          jq -n --arg ext "$running" --arg url "$RUN_URL" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{status: "in_progress", started_at: $at, external_id: $ext, details_url: $url, output: {title: "the other checks are green: the pair is starting", summary: "One run a side, main and the PR at the same minute."}}' \
+            | gh api -X PATCH "repos/$REPO/check-runs/$ROW" --input - > /dev/null
+          # Why: the claim is written first; a dispatch that fails puts the row back to waiting, so the next green check tries again and a head never has two pairs.
+          if ! python3 tools/gh_retry.py workflow run search-pair.yml --ref "$DEFAULT_BRANCH" -f pr="$PR" -f people="$people" -f check_id="$ROW"; then
+            jq -n --arg ext "$EXT" '{status: "queued", external_id: $ext, output: {title: "waiting for the other checks, then the pair starts", summary: "The pair could not be started; the next green check tries again."}}' \
+              | gh api -X PATCH "repos/$REPO/check-runs/$ROW" --input - > /dev/null
+            exit 1
+          fi

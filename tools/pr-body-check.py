@@ -43,8 +43,8 @@ def title_gap(title):
 
 # The files that decide what Find jobs reads, keeps, scores or orders (the finish-line spec, guardrail G4), and the ones that write its words and places before it reads.
 # Why (13 Nov 2026, owner via sa: "let's close these gaps"): the strategy draft (desktop/lib/strategy*.js), the place reader (src/places.py, src/fragment_words.py), the board ideas
-# (src/ai/board_ideas.py) and the search settings (src/notion/search_settings.py) change what a first search asks; #2977 (places.py) and #3857 (strategy places) changed it unmeasured.
-SEARCH_FILES = re.compile(r'^(src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots|board_ideas)\.py$|(ai/)?(time_budget|job_rank)\.py$'
+# (every src/ai/board_*.py: 13 Nov 2026, sa, a board_search_first/board_web change moves a search as much as board_ideas) and the search settings (src/notion/search_settings.py) change what a first search asks; #2977 (places.py) and #3857 (strategy places) changed it unmeasured.
+SEARCH_FILES = re.compile(r'^(src/(sources/|press/|first_jobs\.py$|daily_search[^/]*\.py$|ai/(place_triage|title_triage|slots|board_[a-z_]+)\.py$|(ai/)?(time_budget|job_rank)\.py$'
                           r'|places\.py$|fragment_words\.py$|notion/search_settings\.py$)|desktop/lib/strategy(-draft[^/]*)?\.js$)')
 # Why (lanes 4a, owner, 11 Nov 2026, asked via AskUserQuestion: "Accept your measure (Recommended)"): a move from saved runs (before) to the owner's
 # chosen after-run is also a measure: `(<N> saved runs before, <M> run(s) after)`, its after-number `pending` while that run runs (the PR is then a DONT MERGE draft).

@@ -63,6 +63,7 @@ CLASSIFIED = {
     'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
     'CI · Search check (18 personas)': 'ignored: a night report on live public job sites; started by the Worker, never by a push to main',
     'CI · Search reference (18 personas)': 'ignored: a report on a live public job portal (EURES), started by hand; never by a push to main',
+    'CI · Search pair start (the row, then the pair)': 'ignored: puts a search PR\'s "Search before/after" row on its head and starts its pair once the other checks are green; it runs on PR events only, never for a push to main',
     "CI · Search pair (a PR's before/after, by hand)": 'ignored: a PR\'s before/after searches on live public job sites, started by hand for one PR; never by a push to main',
     'CI · Search profiles (by hand)': 'ignored: a report of the fictional profiles\' first search on live public job sites, started by hand; never by a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
