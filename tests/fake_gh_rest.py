@@ -2,7 +2,7 @@
 rest/<path, every non-alphanumeric as _>: the JSON body for that path, with an ETag of its hash (304 when the request sends that ETag). A missing file: [] for a list, else 404.
 The watcher's looks (tests/test_ship_watch.py): when states exists, repos/<r>/pulls/<n> and the head's check-runs/status follow one line per look of
 states (OPEN | MERGED <sha> | CLOSED | REFUSED), mergeables, checks (pending | <failing name> | empty = pass), runs (none | running | gate | ok | refused: a 403), verdicts (pending | none | ok),
-heads (the head sha, default new1), labels (comma-separated names) twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
+heads (the head sha, default new1), labels (comma-separated names), titles (default "[t] A change"), twins (a cancelled older run of the gate beside the green one: any text) and mergestates (GitHub's mergeable_state: clean | blocked | unstable | unknown ..., default clean, or draft for a draft).
 Every call is appended to calls; any other gh command fails like an unknown call.
 REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
 `gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
@@ -42,7 +42,7 @@ if argv[:2] == ['api', 'graphql']:
             body['data']['repository']['pullRequest'].pop(name, None)
     print(json.dumps(body))
     sys.exit(0)
-if argv[:2] == ['pr', 'comment']:   # logged above; a posted comment changes nothing the watcher reads
+if argv[:2] in (['pr', 'comment'], ['pr', 'ready']):   # logged above; a posted comment or a draft flip changes nothing the watcher reads (the drafts file scripts it)
     sys.exit(0)
 if argv[:1] != ['api'] or '-i' not in argv:
     print(f'fake gh: unknown call {argv}', file=sys.stderr)
@@ -85,7 +85,7 @@ if (d / 'states').exists() and m:
     answer({'number': int(m[2]), 'html_url': f'https://github.com/{m[1]}/pull/{m[2]}', 'head': {'sha': line('heads', n) or 'new1', 'ref': 'feature'},
             'draft': line('drafts', n) == 'true', 'state': 'open' if state[0] == 'OPEN' else 'closed', 'merged_at': '2026-10-27T10:00:00Z' if state[0] == 'MERGED' else None,
             'merge_commit_sha': state[1] if state[0] == 'MERGED' else None, 'mergeable': mergeable, 'mergeable_state': line('mergestates', n) or ('draft' if line('drafts', n) == 'true' else 'clean'),
-            'labels': [{'name': name} for name in line('labels', n).split(',') if name]})
+            'labels': [{'name': name} for name in line('labels', n).split(',') if name], 'title': line('titles', n) or '[t] A change'})
 if (d / 'states').exists() and re.search(r'/commits/[^/]+/check-runs\?per_page=100$', path):
     n, runs, check = look(), line('runs', look()) or 'ok', line('checks', look())
     if runs == 'refused':

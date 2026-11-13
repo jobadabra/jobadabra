@@ -61,7 +61,8 @@ ship_pr_land() {
     [ -n "${SHIP_PR_BODY:-}" ] || step "no --body=<file>: the PR shows the subject, the facts and the commit folded; a 5-second summary goes in a file (CLAUDE.md \"PR descriptions\")"
     body="$(bash "$tools/pr-body.sh" origin/main ${SHIP_PR_BODY:+"--body=$SHIP_PR_BODY"})"   # the summary first, the facts, the commit folded (tools/pr-body.sh)
     rows="$(git log --format='%(trailers:key=Pool-row,valueonly)' origin/main..HEAD | grep -v '^$' | grep -iv '^none' | sort -u || true)"   # the pool rows this PR fixes (the Pool-row lines)
-    out="$(pr_open "$repo" "$branch" "$title" "$body" ${SHIP_PR_DRAFT:+draft} 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
+    # Why (13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): in review mode every PR opens as a draft; tools/ship-watch.sh marks it ready at READY.
+    out="$(pr_open "$repo" "$branch" "$title" "$body" $(ship_review && echo draft || echo ${SHIP_PR_DRAFT:+draft}) 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
     n="${out##*/}"
     if [ -n "$rows" ]; then pr_label "$repo" "$n" pool-fix 1D76DB "fixes a row of the applying pool (from its Pool-row lines)" || true; fi   # a missing label never fails a landing
     step "opened the pull request: $(echo "$out" | tail -n 1)"
@@ -86,7 +87,7 @@ ship_pr_land() {
         [ -z "$new_title" ] || step "retitled #$n"
       else step "could not edit the title and description of #$n (the old ones stay)"; fi
     fi
-    if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until its new checks are green" || true; fi   # --draft: a new push restarts the checks
+    if [ -n "${SHIP_PR_DRAFT:-}" ] || ship_review; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # a new push is not yet checked or approved (13 Nov 2026)
   fi
   [ -z "${external:-}" ] || bash "$tools/lab-ci-dispatch.sh" "$n"   # a lab PR has no Actions of its own: the public repo runs its tests (tools/lab_ci.py)
   ship_watch_start "$n"   # from here on the log also hears RED / GREEN / READY / MERGED / CLOSED, whatever way this run ends (18 Oct 2026: #1321 sat red unnoticed)
@@ -132,9 +133,10 @@ ship_pr_land() {
     fi
     # Review mode ends when every check the PR started passed (none pending, none failing): the PR waits for the owner, nothing has landed on main.
     if [ -n "$review" ] && [ -z "$failing" ] && jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping")' <<<"${checks:-[]}" >/dev/null 2>&1; then
-      # Why (11 Nov 2026, owner: "you should put it as draft and a prefix \"DONT MERGE\""): a held PR (draft + "DONT MERGE" in its title) stays a draft when it turns green; #3773 was merged 59 s after this step marked it ready. The hold comes off by hand (gh pr ready, then the title).
-      if [ -n "${SHIP_PR_DRAFT:-}" ] && grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then step "#$n: every check is green, but its title says DONT MERGE: it stays a draft (undo the hold by hand: gh pr ready $n, then strip the title prefix)"
-      elif [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" >/dev/null 2>&1 && step "#$n: marked ready for review (it was a draft until green)" || step "#$n: could not mark it ready: do it by hand (gh pr ready $n)"; fi
+      # Why (11 Nov 2026, owner: "you should put it as draft and a prefix \"DONT MERGE\""; 13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): green is not ready. This step used to
+      #   mark a draft ready on green, before Gitar's approval (a green, unapproved PR was merged on 12 Nov); the watcher marks it ready at READY, never a "DONT MERGE" draft.
+      if grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then step "#$n: every check is green, but its title says DONT MERGE: it stays a draft (undo the hold by hand: gh pr ready $n, then strip the title prefix)"
+      elif [ "$(jq -r '.isDraft // false' <<<"$view")" = true ]; then step "#$n: every check is green: it stays a draft until READY (Gitar Approved, no unanswered comment), when the watcher marks it ready"; fi
       review_n="$n"; review_url="$(jq -r '.url // empty' <<<"$view")"; step "#$n: every check is green: open for the owner's review"; return 0
     fi
     if [ "$waited" -ge "$limit" ]; then ship_pr_fail "pull request #$n is not merged after ${limit}s (it merges by itself when the checks pass): $(jq -r '.url' <<<"$view")"; fi

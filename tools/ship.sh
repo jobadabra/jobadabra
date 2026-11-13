@@ -13,7 +13,7 @@
 #   tools/ship.sh --body=<file>  the PR's 5-second summary (a verdict line, short bullets, a before/after table): tools/pr-body.sh puts it on top
 #   tools/ship.sh --title=<text>  the PR's title; one commit: its subject; 2+ commits: required when the PR is opened and names the whole PR (not the newest commit); on a PR already open it retitles only when given
 #   tools/ship.sh --background   start detached and return at once (the checks can take minutes): follow the log it names
-#   tools/ship.sh --draft    open the PR as a draft (nobody can merge it) and mark it ready only when every check it started is green (owner, 14 Oct 2026)
+#   tools/ship.sh --draft    open the PR as a draft (nobody can merge it); tools/ship-watch.sh marks it ready at READY: every check green and Gitar Approved (owner, 14 Oct 2026; 13 Nov 2026). Every PR now opens this way in review mode
 # Every run writes its whole output to a log (the first line names it; SHIP_LOG=<file> chooses it), shows each step with the seconds since
 # the start, and ends with one marker line (then MERGED / CLOSED / RED / GREEN / READY, below): `ship: DONE <sha>` (merged), `ship: REVIEW #n <url>` (owner reviews by hand: open, checks green) or `ship: FAILED (exit N) ...`. A caller that cut the run short
 # (a timeout, a piped `| tail`) reads that last line of the log to know how it ended; running it again is safe.
@@ -28,7 +28,7 @@ for arg in "$@"; do
     --keep) keep=1; args+=("$arg") ;;
     --remove) keep=0; args+=("$arg") ;;
     --background) background=1 ;;
-    --draft) export SHIP_PR_DRAFT=1; args+=("$arg") ;;   # a draft until green: tools/ship-pr.sh marks it ready at REVIEW
+    --draft) export SHIP_PR_DRAFT=1; args+=("$arg") ;;   # a draft until READY: tools/ship-watch.sh marks it ready
     --body=*) SHIP_PR_BODY="$(cd "$(dirname "${arg#--body=}")" && pwd)/$(basename "${arg#--body=}")"; export SHIP_PR_BODY; [ -s "$SHIP_PR_BODY" ] || arg_err="ship: --body file is empty or missing: ${arg#--body=}"; args+=("$arg") ;;   # the PR's 5-second summary (tools/pr-body.sh)
     --title=*) SHIP_PR_TITLE="${arg#--title=}"; export SHIP_PR_TITLE; [ -n "$SHIP_PR_TITLE" ] || arg_err="ship: --title is empty"; args+=("$arg") ;;   # the PR's title (default: tools/pr-title.sh)
     *) arg_err="usage: tools/ship.sh [--full] [--fix] [--keep|--remove] [--background] [--draft] [--body=<file>] [--title=<text>]" ;;
