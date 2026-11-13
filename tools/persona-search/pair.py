@@ -2,8 +2,7 @@
 Owner, 13 Nov 2026 (asked via AskUserQuestion by sa: "Self-serve workflow + tighter check (Recommended)"): "But why sessions don't know to do this by themselves. No skill is
 telling them to do this. No PR CI guardrail is requested them a before/after". Run by .github/workflows/search-pair.yml; fictional people only (the 18 night people p<n>,
 tools/persona-search/gate-personas.json, and the 30 profiles, search-profiles.json), plan AI through the broker only.
-  pair.py people '<json list>' <changed-files>   -> people=<json> for the matrix (each: id, kind, runs, own_draft)
-  pair.py turn                                   -> waits until the broker has room for one more pair (exit 0), or says why not (exit 1)
+  pair.py people '<json list>' <changed-files>   -> people=<json> for the matrix (each: id, kind, runs, own_draft), need=<searches at once> for claim.py
   pair.py side <out> <side>                      -> <out>/side.json: right jobs, found, first relevant, board words, broker waits, valid
   pair.py minutes <times.env> <person> <out>     -> <out>/<person>.minutes.txt: minutes per part (setup, draft, searches, judge)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
@@ -17,9 +16,6 @@ import re
 import statistics
 import subprocess
 import sys
-import time
-import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -28,16 +24,6 @@ MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatc
 # The files that write a person's search words before any search (the strategy draft): a PR touching one drafts per side and runs 2 searches a side for each person,
 # since one draft a side cannot tell the change from the draft's own luck (13 Nov 2026: Sofia's board words were English in one draft and Bulgarian in the next, same code).
 DRAFT_PRODUCERS = re.compile(r'^desktop/lib/strategy(-draft[^/]*)?\.js$')
-BROKER = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/health'
-# Why (13 Nov 2026, owner via sa: "I jsut want a simple mechanism" · "when there is room" · "use it"; he refused a reserved share): ONE /health reading; a pair starts when
-# nothing waits and active leaves FREE_SLOTS of the cap free, else it reads again EVERY_S later. The 8-reading window, the settle time after another pair and "older pair
-# first" are gone: none had a measured reason, and a starved side is still caught after the run (VALID_P90_MS) and run once more (the hold, settle()).
-EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 15, 6, 16
-TURN_MINUTES = 55
-# Why (13 Nov 2026, sa's measure on 24 slots: 10 app-tier searches at once ran valid, wait p90 7.7-10.1 s; a night is one press at a time): a night or a profile round no
-# longer holds a pair (#3946's pair sat 58 min behind a night); /health's room and the per-side p90 (VALID_P90_MS) judge the load. A press tape still holds it: a recording
-# keeps the broker's pace, so a slow broker would be replayed in every later yardstick.
-HOLDERS = ('press-tapes.yml', 'press-tapes-auto.yml')
 VALID_P90_MS = 20000   # sa's rule (13 Nov 2026): a side whose broker wait p90 is over ~20 s is not valid, shown but not counted
 
 
@@ -67,60 +53,9 @@ def people(given, changed):
     return out
 
 
-def health(read=None):
-    """(active, waiting, slots) from the broker's public /health `queue` (waiting summed over its lanes; slots = its cap, SLOTS_FALLBACK before it reports one); None when unreadable."""
-    try:
-        # Why (13 Nov 2026, #3946's pair waited 55 min on an idle broker): Cloudflare refuses urllib's own "Python-urllib" agent (403, error 1010), so every reading was None;
-        #   the honest name the other tools send (tools/e2e_bisect.py) reads it.
-        data = read() if read else json.loads(urllib.request.urlopen(urllib.request.Request(BROKER, headers={'User-Agent': 'jobadabra-ci'}), timeout=20).read())
-        queue = data['queue']
-        return int(queue['active']), sum(int(v) for v in (queue.get('waiting') or {}).values()), int(queue.get('slots') or SLOTS_FALLBACK)
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
-
-
-def room(reading):
-    """(ok, why) for one /health reading: read, nothing waiting, and active leaving at least FREE_SLOTS of the cap free."""
-    if reading is None:
-        return False, 'the broker could not be read'
-    active, waiting, slots = reading
-    if waiting:
-        return False, f'{waiting} calls waiting at the broker'
-    line = slots - FREE_SLOTS
-    return (True, f'nothing waiting, {active} of {slots} slots busy') if active <= line else (False, f'{active} of {slots} slots busy (line {line})')
-
-
-def _gh(*args):
-    """gh's JSON answer for these arguments (raises on a failed call)."""
-    return json.loads(subprocess.run(['gh', *args], capture_output=True, text=True, check=True, timeout=60).stdout or 'null')
-
-
-def held():
-    """The holder workflows queued or running now (a press tape: a recording keeps the broker's pace). Unreadable = held."""
-    out = []
-    for workflow in HOLDERS:
-        try:
-            if any(r['status'] != 'completed' for r in _gh('run', 'list', '--workflow', workflow, '--limit', '10', '--json', 'status')):
-                out.append(workflow)
-        except (subprocess.CalledProcessError, OSError, ValueError, subprocess.TimeoutExpired):
-            out.append(f'{workflow} (unreadable)')
-    return out
-
-
-def turn(now=datetime.now, sleep=time.sleep, read=None, holders=held):
-    """Wait for room (exit 0) or give up after TURN_MINUTES (exit 1): one /health reading every EVERY_S, one line when the answer changes."""
-    end, said = time.monotonic() + TURN_MINUTES * 60, ''
-    while time.monotonic() < end:
-        busy = holders()
-        ok, why = (False, f'the broker is held by {", ".join(busy)}') if busy else room(health(read))
-        if ok or why != said:
-            print(f'pair: {"admitted" if ok else "waiting"} {now(timezone.utc):%H:%M:%S}: {why}', flush=True)
-            said = why
-        if ok:
-            return 0
-        sleep(EVERY_S)
-    print(f'pair: not started: no room at the broker in {TURN_MINUTES} min (last: {said}); start it again later')
-    return 1
+def need(chosen):
+    """Searches the pair runs at once at the broker (its claim, tools/persona-search/claim.py): main and the PR side by side for each person, rounds one after another."""
+    return 2 * len(chosen)
 
 
 def waits(log_text):
@@ -307,10 +242,10 @@ def main(argv):
     command = argv[1] if len(argv) > 1 else ''
     if command == 'people' and len(argv) == 4:
         changed = Path(argv[3]).read_text(encoding='utf-8').split() if Path(argv[3]).exists() else []
-        print('people=' + json.dumps(people(argv[2], changed)))
+        chosen = people(argv[2], changed)
+        print('people=' + json.dumps(chosen))
+        print(f'need={need(chosen)}')
         return 0
-    if command == 'turn':
-        return turn()
     if command == 'side' and len(argv) == 4:
         side(argv[2], argv[3])
         return 0
