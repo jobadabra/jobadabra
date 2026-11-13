@@ -29,7 +29,7 @@ LinkedIn is one of the finish line's sources (spec 2026-11-10-find-jobs-finish-l
 ## Where it lives
 - `src/sources/linkedin_guest.py` (new): search-page reader, card parser, stop verdicts, pace. Our own code, written from JobSpy's method (speedyapply/JobSpy, MIT); no JobSpy code copied, so no notice needed; the method is credited in the module's docstring.
 - `src/sources/reader_rows.py`: one Row `LinkedIn` in a new engine lane `linkedin_guest` (clock name "LinkedIn"); gate `JOBADABRA_LINKEDIN_GUEST=1`.
-- `desktop/lib/pipeline-env.js` + a small `desktop/lib/linkedin-guest-on.js`: the app sets the flag for its own runs when no signed-in read happens and LinkedIn is not paused; the engine's stop line comes back and the app writes the shared pause. CI, tests, the Night search, the pairs and Always on never set it (guard: `tests/guards/safety/test_linkedin_guest_desktop_only.py`, no workflow or cloud file sets the flag).
+- `desktop/lib/pipeline-env.js` + a small `desktop/lib/linkedin-guest-on.js`: the app sets the flag for its own runs when no signed-in read happens and LinkedIn is not paused; the engine's stop line comes back and the app writes the shared pause. CI, tests, the Night search and the pairs never set it; Always on sets it only beside the site's turn address (`src/hosted_run.py`, `.github/workflows/daily.yml`, both ways: owner, 13 Nov 2026, "Both ways"), and the reader refuses a cloud run without one (guard: `tests/guards/safety/test_linkedin_guest_desktop_only.py`, no workflow or cloud file sets the flag).
 - `src/sources/describe.py`: a LinkedIn job page's description (`.show-more-less-html__markup`) at the lane's pace and stop rule.
 
 ## Safety
@@ -123,5 +123,6 @@ The pause after a 429 (`linkedin-guest-on.js`, today 1 day) becomes this clear t
 - [ ] 429 clear time measured (1 h / 3 h / 6 h) and the pause set from it
 - [x] PR 3/4 Automations note: both Always on cards list LinkedIn with your sign-in and Gmail & Calendar as "This computer only" (proof: desktop/test/unit/renderer/always-on-device-only.test.js)
 - [x] Caps numbers and the 6 h cache: owner's yes (13 Nov 2026) (proof: none: AskUserQuestion answers relayed by the coordinator, quoted in Caps)
-- [ ] PR 4/4 Always on trial with the Caps, owner's install only (site PR first)
+- [x] PR 4/4 Always on trial with the Caps, owner's install only (site PR first): web #627 the turn route; the app half asks it before each GET, both ways (proof: tests/unit/sources/test_linkedin_turn.py); its FakeSite plays the contract of jobadabra-web api/linkedin-turn.js at f26b27f (live: no key answers 401); the GitHub way also needs the repo variable JOBADABRA_LINKEDIN_TRIAL=1, set by hand on the owner's repo only
+- [ ] First cloud run by hand right after both merge (owner: "By hand, right after merge (Recommended)"); the Settings line "Always on reads LinkedIn's public job search (trial)" waits for its answer: a cloud address LinkedIn refuses would make it untrue
 - [ ] Trial read after about a week: no 429/999/wall, then the owner's yes, then the Always on guest read for everyone

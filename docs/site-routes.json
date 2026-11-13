@@ -134,6 +134,14 @@
    "kind": "app"
   },
   {
+   "path": "/api/linkedin/turn",
+   "kind": "app"
+  },
+  {
+   "path": "/api/linkedin/answer",
+   "kind": "app"
+  },
+  {
    "path": "/api/notify/email",
    "kind": "app"
   },

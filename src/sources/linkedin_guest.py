@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 
 from .. import time_budget
-from . import ats, host_pace, page_bytes, posting_text
+from . import ats, host_pace, linkedin_turn, page_bytes, posting_text
 
 NAME = 'LinkedIn'
 SEARCH_URL = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search'
@@ -45,7 +45,7 @@ WALLS = ('/authwall', '/login', '/checkpoint', '/uas/', '/signup')   # a redirec
 TIMEOUT = 20
 SLOW_DOWN = 'LinkedIn asked us to slow down'
 SAID = {'limited': f'{SLOW_DOWN}: left alone for now', 'check': 'LinkedIn showed a sign-in or check page: not answered, nothing more is read this time',
-        'blocked': 'LinkedIn: could not be read this time'}
+        'blocked': 'LinkedIn: could not be read this time', 'cloud': 'LinkedIn: not read in this cloud run'}
 JOB_PAGE = re.compile(r'^https://(?:[a-z]{2,3}|www)\.linkedin\.com/jobs/view/(?:[\w%-]*?-)?(\d{6,})/?$')
 CARD = re.compile(r'data-entity-urn="urn:li:jobPosting:(\d+)"')
 
@@ -94,9 +94,13 @@ def reset():
 
 
 def on(env=None):
-    """Whether this run reads LinkedIn's public search: only where the desktop app set the flag (src/features.py)."""
+    """Whether this run reads LinkedIn's public search: where the desktop app set the flag (src/features.py), and in a cloud run only with the site's turns (linkedin_turn)."""
     from ..features import disabled, enabled
-    return not disabled('aggregators', env) and enabled('linkedin_guest', env)
+    env = os.environ if env is None else env
+    # Why (owner, 13 Nov 2026: "Both ways" for the Always on trial, the site the one gate): a cloud run (GitHub or our servers) with the flag but no turn address would read
+    # LinkedIn from shared addresses with no cap, so it reads nothing.
+    cloud = env.get('GITHUB_ACTIONS') == 'true' or env.get('JOBADABRA_TRIGGER') == 'hosted'
+    return not disabled('aggregators', env) and enabled('linkedin_guest', env) and (not cloud or linkedin_turn.active(env))
 
 
 def job_page(url):
@@ -173,7 +177,19 @@ def _get(url):
             raise Later(url, 'the read time is up')
         if wait:
             _sleep(wait)
+        lease = None
+        # Why (Gitar on #4004): in a cloud run the site's turn comes after this computer's own window, gap and cut, so a lease is never taken and then left unused
+        if linkedin_turn.active():
+            kind, given = linkedin_turn.ask(url, None if cut is None else cut - time_budget.now())
+            if kind == 'cached':
+                return url, given
+            if kind == 'no':
+                if PACE.stop('cloud'):
+                    print(f"{SAID['cloud']}: {given}", flush=True)
+                raise Later(url, given)
+            lease = given
         if not _spend(time_budget.wall().timestamp()):   # counted once sent, whatever comes back
+            _told(lease, 0, 'unused')
             raise Later(url, WINDOW_FULL)
         PACE.began(time_budget.now())
         timeout = TIMEOUT if cut is None else max(1.0, min(TIMEOUT, cut - PACE.last))
@@ -182,14 +198,26 @@ def _get(url):
             with _opener.open(request, timeout=timeout) as response:
                 final, text = response.geturl(), page_bytes.reply(response, 3_000_000)
         except urllib.error.HTTPError as error:
+            _told(lease, error.code, 'refused')
             if error.code in host_pace.REFUSED:
                 raise _stop('blocked', error.code) from error
             if error.code == AUTOMATED or host_pace.answer(url, error.code, host_pace.retry_after(error.headers), burst=False):
                 raise _stop('limited', error.code) from error
             raise
+        except linkedin_turn.BROKEN:   # Why (Gitar on #4004): a reply cut mid-body (IncompleteRead) or one that will not decode still answers the lease
+            _told(lease, 0, 'neterror')
+            raise
         if any(urllib.parse.urlsplit(final).path.startswith(wall) for wall in WALLS):
+            _told(lease, 200, 'signin')
             raise _stop('check')
+        _told(lease, 200, 'page', text)
         return final, text
+
+
+def _told(lease, status, word, text=None):
+    """Tells the site what LinkedIn answered to a cloud run's GET (nothing on a Mac: no lease)."""
+    if lease:
+        linkedin_turn.tell(lease, status, word, text)
 
 
 def _plain(fragment):

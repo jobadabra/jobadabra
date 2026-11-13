@@ -267,7 +267,8 @@ class GateTest(unittest.TestCase):
         with mock.patch.dict('os.environ', {}, clear=False):
             os.environ.pop('JOBADABRA_LINKEDIN_GUEST', None)
             self.assertFalse(describe.readable(url), 'a sign-in site, as before')
-        with mock.patch.dict('os.environ', {'JOBADABRA_LINKEDIN_GUEST': '1'}):
+        # the desktop app: not a CI runner, not a hosted run (a cloud run reads only with the site's turn: tests/unit/sources/test_linkedin_turn.py)
+        with mock.patch.dict('os.environ', {'JOBADABRA_LINKEDIN_GUEST': '1', 'GITHUB_ACTIONS': '', 'JOBADABRA_TRIGGER': ''}):
             self.assertTrue(describe.readable(url))
             self.assertFalse(describe.readable('https://www.linkedin.com/in/someone'), 'only a job page')
             self.assertFalse(describe.readable('https://www.glassdoor.com/job-listing/x'))
