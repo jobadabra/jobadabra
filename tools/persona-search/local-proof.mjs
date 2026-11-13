@@ -17,7 +17,7 @@
 // (a change to the strategy draft itself is therefore NOT tested unless --fresh-draft remakes the plan with the first ref); no judge, no second press. What is left is the press itself
 // (its own 3-minute clock, desktop/lib/search-steps.js) plus the engine's start-up. The search runs through run.mjs: a throwaway install under the OS temp folder, the Claude plan
 // via `claude -p` ($0), API keys removed from the environment, never the person's app folder, Keychain, Notion or Telegram; telemetry and pool sharing off.
-// The model is Haiku (JOBADABRA_MODEL_OVERRIDE, as the CI Search check) unless the environment names another. A run whose log says the AI stopped is marked NOT COUNTED, with why.
+// Each step runs on the tier it names, as in the app (owner, 13 Nov 2026: "Ok, let's swithc to Sonnet then"); JOBADABRA_MODEL_OVERRIDE in the environment puts every step on one model. A run whose log says the AI stopped is marked NOT COUNTED, with why.
 // Claude Code runs from a private copy made at the start (<os temp>/jp-local-proof/pinbin/<stamp>-<pid>/claude, first on PATH), so its own update mid-search cannot remove it.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -44,7 +44,7 @@ if (!(person >= 1 && person <= 18) || refs.some(ref => !ref || ref.startsWith('-
 const name = `p${person}`, work = path.join(os.tmpdir(), 'jp-local-proof'), home = path.join(work, 'people', name);
 const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
 const env = {...cleanEnv(process.env), JOBADABRA_NO_DOTENV: '1', JOBADABRA_AI_CALL_LOG: '1', JOBADABRA_STAGE_LOG: '1',
-  JOBADABRA_MODEL_OVERRIDE: process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-haiku-5-5'};
+  ...(process.env.JOBADABRA_MODEL_OVERRIDE ? {JOBADABRA_MODEL_OVERRIDE: process.env.JOBADABRA_MODEL_OVERRIDE} : {})};
 const git = (...a) => execFileSync('git', a, {cwd: ROOT, encoding: 'utf8'}).trim();
 
 /** Puts a private copy of the Claude Code install first on env.PATH; says so, or why the runs use the install itself (none found, or a copy that does not start). */
@@ -127,7 +127,7 @@ if (args.includes('--fresh-draft') || !fs.existsSync(path.join(home, 'draft.json
 }
 
 console.log(`${name}: search plan saved ${fs.statSync(path.join(home, 'draft.json')).mtime.toISOString().slice(0, 16)}Z (a change to the strategy draft is NOT tested; --fresh-draft remakes it)`);
-console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}${runs > 1 ? `, ${runs} rounds` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE})`);
+console.log(`${name}: ${trees.length} search${trees.length > 1 ? `es, ${args.includes('--together') ? 'at the same time' : 'one after the other'}` : ''}${runs > 1 ? `, ${runs} rounds` : ''}, ~2.5 min each, on the Claude plan (${env.JOBADABRA_MODEL_OVERRIDE || "the app's tiers"})`);
 const {table, noise, read, notCounted} = await import('./local-proof-table.mjs');
 const plan = ['--presses', '1', '--draft', path.join(home, 'draft.json')];
 let draw = null;   // --same-draw: the recording's folder, its tape and its read
