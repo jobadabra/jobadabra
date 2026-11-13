@@ -5,6 +5,7 @@ import * as claudeCode from './claude-code.js';
 import {dailyArgs, SEARCH_BUDGET_S, deliveryReady, triggerEnv} from './pipeline-args.js';
 import {run} from './pipeline-run.js';
 import {APP_STEPS} from './press-stages.js';
+import {watchGuest} from './linkedin-guest-on.js';
 
 const SCOUT_COOLDOWN_MS = 24 * 3600 * 1000;   // a press of Find jobs grows the sources at most once a day
 
@@ -37,6 +38,8 @@ const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {
   const ai = claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
   const pressAt = now();
+  // Why (lg 2/4; owner, 13 Nov 2026, asked via AskUserQuestion: "Shared 1-day pause (Recommended)"): the engine's LinkedIn slow-down line pauses both LinkedIn reads a day (lib/linkedin-guest-on.js)
+  onLine = watchGuest(storage, onLine, now);
   const env = {...triggerEnv(trigger), JOBADABRA_SEARCH_AT: String(pressAt / 1000)};
   const scout = scoutDue(storage.settings(), trigger, Date.now(), employers);
   const budget = SEARCH_BUDGET_S - (scout ? SCOUT_SHARE_S : 0);   // the search's end on the press's clock
