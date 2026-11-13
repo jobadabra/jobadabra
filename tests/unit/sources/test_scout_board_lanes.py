@@ -35,6 +35,9 @@ def cover(db, countries):
 
 class Countries(unittest.TestCase):
     def setUp(self):
+        patch = mock.patch('src.scout_board_priority.priority', lambda named=(), **kwargs: list(named))   # the lab's cells alone: no profile titles asked of the AI (13 Nov 2026)
+        patch.start()
+        self.addCleanup(patch.stop)
         self.db = sqlite3.connect(':memory:')
         self.addCleanup(self.db.close)
 
@@ -78,6 +81,9 @@ class Countries(unittest.TestCase):
 
 class Merge(unittest.TestCase):
     def setUp(self):
+        patch = mock.patch('src.scout_board_priority.priority', lambda named=(), **kwargs: list(named))   # the lab's cells alone: no profile titles asked of the AI (13 Nov 2026)
+        patch.start()
+        self.addCleanup(patch.stop)
         self.dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.dir, True)
         self.path = os.path.join(self.dir, 'boards.sqlite')

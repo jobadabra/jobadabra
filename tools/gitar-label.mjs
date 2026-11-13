@@ -4,12 +4,15 @@
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
-//   States: changes requested | approved with suggestions | approved | reviewing (no verdict yet, Gitar has a check on the head) | not started (no verdict, no Gitar check: 11 Nov 2026) | changes requested · not re-reviewed (the
-//   same as "not started" when Gitar's last verdict, on an older push, was red: 13 Nov 2026), plus the gray "working" mark a session sets.
+//   States: <verdict> (changes requested | approved with suggestions | approved: Gitar judged the newest push) | reviewing (Gitar has a check run on the head, or was just asked) |
+//   <verdict> · not re-reviewed (Gitar's LAST verdict, given on an earlier push; the same suffix for every verdict) | not started (Gitar has given no verdict on any push of the PR),
+//   plus the gray "working" mark a session sets.
+//   The label is Gitar's last verdict (13 Nov 2026, owner, asked via AskUserQuestion: "Last verdict + not re-reviewed (Recommended)": "Same rule for every verdict, so one case less in the code, not one more";
+//   the 3rd label report that day: benchmarks #38, web #635 red kept, #4026 approved with suggestions read "not started"). The special case for a red verdict is gone.
 //   A head that only merged the base branch in, own diff byte-identical, keeps the verdict of the change before it (12 Nov 2026, owner: "Keep the verdict (Recommended)"; ownHeadTime()).
-//   A verdict counts for a head only when Gitar's check ran on that head (13 Nov 2026, gl2; wantedLabel()): an edit of its comment for a thread reply is not a review.
+//   A verdict is the head's own only when Gitar's check ran on that head (13 Nov 2026, gl2; wantedLabel()): an edit of its comment for a thread reply is not a review, so it reads "· not re-reviewed".
 //   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
-//   A verdict older than the head is dropped, never shown beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
+//   A verdict of an older push is never shown plain and never beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
 //   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
 //   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
 //   Moments that run it (the table is in .github/workflows/pr-labels-shared.yml, the one workflow every repo of the org calls; owner, 13 Nov 2026: "One shared workflow"): a push, open or reopen of
@@ -29,10 +32,13 @@ export const LABELS = {
 };
 // Gray, our side of the conversation (owner, 28 Oct 2026: "when we acknowledged and working on the feedback, a secondary label, a gray one"; "what's the latest status from Gitar and what's our current action").
 export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar was asked to review the newest push, or its check runs on it; no verdict yet'};
-// Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check RUN on the head (an empty check suite exists on every push, so it proves nothing); no run = not started. Both marks sit beside the latest verdict (owner, 11 Nov: "the label is not reflecting gitar").
-export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has not started on the newest push; one "Gitar review" comment starts it'};
-// Why (13 Nov 2026, owner, asked via AskUserQuestion: "Keep red visible (Recommended)"; web #635: after the fix push the label read "not started" and hid the red verdict he was reading; Gitar had locked the PR for 20 min after the session's thread replies, so no re-review could be asked): a red verdict of an older push stays visible until Gitar judges the new one. Only red: an old approval never stays green (28 Oct 2026).
-export const CHANGES_OLD = {name: 'Gitar: changes requested · not re-reviewed', color: 'd73a4a', description: 'Gitar asked for changes on an earlier push; the newest push has no review yet'};
+// Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check RUN on the head (an empty check suite exists on every push, so it proves nothing); no run = not reviewed: the last verdict with " · not re-reviewed", or "not started" when Gitar never gave one (13 Nov 2026, owner). Both marks sit beside the latest verdict (owner, 11 Nov: "the label is not reflecting gitar").
+export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has given no verdict on this PR yet; one "Gitar review" comment starts it'};
+// Why (13 Nov 2026, owner: "Last verdict + not re-reviewed (Recommended)"; web #635 red hidden by "not started", #4026 "approved with suggestions" hidden the same way; Gitar had locked those PRs after the sessions' thread replies, so no re-review could be asked): the last verdict stays visible, with this suffix, until Gitar judges the new push. It replaces 28 Oct's "an old approval never stays green": the suffix says the verdict is old.
+export const NOT_RE_REVIEWED = ' · not re-reviewed';
+// The same hue as the verdict, lighter, so the PR list still reads red / yellow / green (owner, 28 Oct 2026) and a glance tells current from old.
+const LIGHTER = {changes: 'f0a1a8', suggestions: 'fde68a', approved: '86d98d'};
+export const OLD_LABELS = Object.fromEntries(Object.entries(LABELS).map(([kind, l]) => [kind, {name: l.name + NOT_RE_REVIEWED, color: LIGHTER[kind], description: `${l.description.replace(/\.$/, '')}; on an earlier push, the newest has no review yet`}]));
 export const WORKING = {name: 'Working on PR comments', color: '6b7280', description: 'A session is applying the review feedback; a push clears it'};
 
 /** The verdict kind in Gitar's comment body, or null when it holds no verdict line (e.g. a review in progress). Order matters: "Approved with suggestions" contains "Approved". */
@@ -48,7 +54,7 @@ export function verdictKind(body) {
 
 // Why (13 Nov 2026, coordinator gl2; real case #4020: the fix push had no Gitar run, the session's thread replies made Gitar EDIT its old dashboard comment, and the label and ship-watch's peek read it as the head's verdict, so nobody asked for a review):
 //   an edit of Gitar's comment proves nothing about the head; only Gitar's check run on the head does. The same rule as "reviewing" (a run exists). Cost, measured on 39 approved PRs of 13 Nov: 4 (10%) had no run on the final head (a
-//   one-line follow-up pushed while the review ran); they now read "not started", and ship-watch asks Gitar once for that head, as it does for any head with no run.
+//   one-line follow-up pushed while the review ran); they now read "<verdict> · not re-reviewed" (13 Nov 2026, owner: "Last verdict + not re-reviewed"; first "not started"), and ship-watch asks Gitar once for that head, as it does for any head with no run (it keeps a head only on a plain verdict name).
 /** The label name to hold: Gitar's verdict if its comment was written at or after the head commit AND Gitar's check ran on the head (`ranOnHead`), else null (a stale approval never stays green). */
 export function wantedLabel(body, commentUpdatedAt, headCommittedAt, ranOnHead) {
   const kind = verdictKind(body);
@@ -118,12 +124,12 @@ export function askedAt(comments) {
 export function wantedLabels({verdict, staleKind = null, workingSince, headTime, verdictTime, gitarOnHead = true, asked = null, now = Date.now()}) {
   const t = Date.parse;
   const askPending = !!asked && t(asked) >= t(headTime) && !(t(verdictTime) >= t(asked)) && now - t(asked) < ASK_FRESH_MS;
-  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : staleKind === 'changes' ? CHANGES_OLD.name : NOT_STARTED.name)];
+  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : staleKind ? OLD_LABELS[staleKind].name : NOT_STARTED.name)];
   if (workingSince && t(workingSince) >= t(headTime) && (verdict !== LABELS.approved.name || t(workingSince) > t(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
-const ALL = [...Object.values(LABELS), WAITING, NOT_STARTED, CHANGES_OLD, WORKING];
+export const ALL = [...Object.values(LABELS), ...Object.values(OLD_LABELS), WAITING, NOT_STARTED, WORKING];
 const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
 /** Adds one label; creates it (a REST call) only when GitHub says the repo has no such label yet, then adds it again.
@@ -234,7 +240,7 @@ export function wantedFor(repo, pr, run = gh) {
   const at = own?.time || read.headTime;
   const ran = own ? gitarOnHead(repo, own.sha, run) : read.gitarOnHead;   // a merge of main keeps the verdict of the commit before it: Gitar's run on THAT commit
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at, ran) : null;
-  const staleKind = read.review && !verdict ? verdictKind(read.review.body) : null;   // the verdict of an older push, kept in view only when red
+  const staleKind = read.review && !verdict ? verdictKind(read.review.body) : null;   // Gitar's last verdict, on an earlier push, kept in view with "· not re-reviewed"
   return {read, wanted: wantedLabels({verdict, staleKind, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
 }
 

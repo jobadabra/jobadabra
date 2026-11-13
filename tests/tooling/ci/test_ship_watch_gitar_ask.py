@@ -62,6 +62,18 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         _, calls = self.watch(['bbb2222'], peek='Gitar: not started')
         self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], calls)
 
+    def test_only_a_plain_verdict_is_kept_never_a_not_re_reviewed_label(self):
+        """13 Nov 2026 (gl3, Gitar on #4032): "Gitar: approved \u00b7 not re-reviewed" means Gitar did NOT review this head, so it must be asked; the plain verdicts stay kept. Same test as gq's in #4031."""
+        cases = [('Gitar: approved \u00b7 not re-reviewed', True), ('Gitar: approved with suggestions \u00b7 not re-reviewed', True), ('Gitar: changes requested \u00b7 not re-reviewed', True),
+                 ('Gitar: approved', False), ('Gitar: approved with suggestions', False), ('Gitar: changes requested', False)]
+        before = 0
+        for n, (peek, asked) in enumerate(cases):
+            with self.subTest(peek=peek):
+                lines, calls = self.watch([f'h{n}00000', f'h{n}00000'], peek=peek)   # a head per case: the asked-head marker is per head; the calls file keeps growing
+                self.assertEqual(len(calls) - before, int(asked), (peek, calls))
+                before = len(calls)
+                self.assertEqual(bool([l for l in lines if 'GITAR KEPT' in l]), not asked, (peek, lines))
+
     def test_a_head_with_a_gitar_check_is_never_asked(self):
         _, calls = self.watch(['aaa1111', 'aaa1111'], runs='gitar')
         self.assertEqual(calls, [])
