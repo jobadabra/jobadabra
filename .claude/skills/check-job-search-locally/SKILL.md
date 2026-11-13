@@ -53,6 +53,9 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
 9. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
 10. **A before/after claim is one search a side on a person the change reaches, both started in the same minute** (owner, 12 Nov 2026: "Let's do only 1 live search before and after. not 3 (which are 6)", replacing 10 Nov's 3 a side; spec `docs/superpowers/specs/2026-11-10-find-jobs-finish-line.md`): `--together`, CI or the Mac. One run moves a person by about ±10 jobs, so a loss larger than that person's usual run-to-run difference holds the PR, and a gain counts only with its mechanism proven by a test. Say the person, the number (in = out for a source, or coverage), the two values and the usual difference.
 
+## A PR's before/after on CI, self-serve (no asking: fictional people, plan AI through the broker)
+`gh workflow run search-pair.yml -f pr=<n> -f people='[3]'`: main and the PR search at the same minute on CI, the same judge counts both, one comment on the PR with the table and a ready `Moves:` line (skill change-find-jobs, "The before/after, yourself, on CI"). The Mac's `--together` stays the fast check while you build.
+
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;
 add `-f seed=YYYY-MM-DD` to repeat a day.
