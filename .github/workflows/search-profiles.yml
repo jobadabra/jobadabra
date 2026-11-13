@@ -53,9 +53,17 @@ jobs:
       contents: read
     outputs:
       profiles: ${{ steps.list.outputs.profiles }}
+      capacity: ${{ steps.capacity.outputs.capacity }}
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
+      - name: The broker's claim capacity (the most searches one run holds at once)
+        id: capacity
+        run: |
+          set -o pipefail
+          capacity=$(curl -fsS --max-time 20 -A jobadabra-ci https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 -c "import json,sys; print(int(json.load(sys.stdin)['claims']['capacity']))") \
+            || { echo "::error::the AI broker's /health gave no claims.capacity (unreachable, or a broker without claims): not run"; exit 1; }
+          echo "capacity=$capacity" >> "$GITHUB_OUTPUT"
       - name: The profiles of this run
         id: list
         env:
@@ -65,10 +73,9 @@ jobs:
         env:
           PROFILES: ${{ steps.list.outputs.profiles }}
           AT_ONCE: ${{ inputs.at_once || 4 }}
-        run: |
-          set -o pipefail
-          capacity=$(curl -fsS --max-time 20 -A jobadabra-ci https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 -c "import json,sys; print(json.load(sys.stdin)['claims']['capacity'])")
-          python3 tools/persona-search/profiles.py free "$PROFILES" "$(( AT_ONCE < capacity ? AT_ONCE : capacity ))"   # the estimate counts what really runs at once
+          CAPACITY: ${{ steps.capacity.outputs.capacity }}
+        run: |   # the estimate counts what really runs at once
+          python3 tools/persona-search/profiles.py free "$PROFILES" "$(( AT_ONCE < CAPACITY ? AT_ONCE : CAPACITY ))"
       - name: The broker's by-hand lane has room for every profile (~300 calls each, as search-personas.yml counts a press)
         env:
           PROFILES: ${{ steps.list.outputs.profiles }}
@@ -96,10 +103,8 @@ jobs:
         env:
           AT_ONCE: ${{ inputs.at_once || 4 }}
           PROFILES: ${{ needs.room.outputs.profiles }}
-        run: |
-          set -o pipefail
-          capacity=$(curl -fsS --max-time 20 -A jobadabra-ci https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 -c "import json,sys; print(json.load(sys.stdin)['claims']['capacity'])")
-          echo "need=$(python3 -c "import json,os,sys; print(min(int(os.environ['AT_ONCE']), len(json.loads(os.environ['PROFILES'])), int(sys.argv[1])))" "$capacity")" >> "$GITHUB_OUTPUT"
+          CAPACITY: ${{ needs.room.outputs.capacity }}
+        run: echo "need=$(python3 -c "import json,os; print(min(int(os.environ['AT_ONCE']), len(json.loads(os.environ['PROFILES'])), int(os.environ['CAPACITY'])))")" >> "$GITHUB_OUTPUT"
       - name: Wait our place in line for the searches we run at once
         # Why (13 Nov 2026, owner via sa: "each workflow should take its necessary slots"): the searches at once, at most one per profile (claim.py min below)
         env:
@@ -238,8 +243,8 @@ jobs:
 
   table:
     name: The table
-    needs: [room, profile]
-    if: ${{ always() && needs.room.result == 'success' }}
+    needs: [room, turn, profile]
+    if: ${{ always() && needs.room.result == 'success' && needs.turn.result == 'success' }}   # Why (Gitar on #3980): a round that never got its claim ran nothing; its red run says so, never an owner message of "nothing measured"
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
