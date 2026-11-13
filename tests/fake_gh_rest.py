@@ -6,7 +6,7 @@ heads (the head sha, default new1), labels (comma-separated names), titles (defa
 Every call is appended to calls; any other gh command fails like an unknown call.
 REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
 `gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
-fails like GitHub on an unbalanced query or a missing file. It adds one "GRAPHQL <kind> <GH_GRAPHQL_WHY>" line to calls."""
+graphql_ofhead.json (pullRequests of a head branch: pr_of_head's fallback; 13 Nov 2026, pq); a `--jq .resources.core.reset` read prints rate_reset (default 0). It fails like GitHub on an unbalanced query or a missing file. It adds one "GRAPHQL <kind> <GH_GRAPHQL_WHY>" line to calls."""
 import hashlib
 import json
 import os
@@ -25,11 +25,14 @@ if argv[:1] == ['api'] and 'Accept: application/vnd.github.raw' in argv:
         sys.exit(0)
     sys.exit(1)
 if argv[:2] == ['api', 'rate_limit']:   # never counted, answers while REST is out
+    if any('core.reset' in x for x in argv):
+        print((d / 'rate_reset').read_text().strip() if (d / 'rate_reset').exists() else '0')
+        sys.exit(0)
     print((d / 'rate_core').read_text().strip() if (d / 'rate_core').exists() else '5000')
     sys.exit(0)
 if argv[:2] == ['api', 'graphql']:
     query = next((a[len('query='):] for a in argv if a.startswith('query=')), '')
-    kind = 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
+    kind = 'ofhead' if 'pullRequests(' in query else 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
     with open(d / 'calls', 'a') as f:
         f.write(f"GRAPHQL {kind} {os.environ.get('GH_GRAPHQL_WHY', '')}\n")
     answer_file = d / f'graphql_{kind}.json'
