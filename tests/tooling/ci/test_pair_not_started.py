@@ -1,4 +1,4 @@
-"""Guard: release — a search PR whose pair never started must say so on a line the watchers wake on (14 Nov 2026: #4091 and #4100 sat ~25 min with no pair while REST quota was 0; the only trace
+"""Guard: release — a search PR whose pair never started must say so on a line the watchers wake on, and that line is not the run's `FAILED` ending (Gitar on #4125) (14 Nov 2026: #4091 and #4100 sat ~25 min with no pair while REST quota was 0; the only trace
 was a plain step line). Plays tools/ship-search-hold.sh and tools/ship-pr.sh ship_pair_lines against a stub gh: quota out, one failed dispatch then success, and a clean dispatch."""
 import importlib.util
 import os
@@ -47,17 +47,24 @@ class PairNotStartedTest(unittest.TestCase):
         runs = int((self.tmp / 'runs').read_text()) if (self.tmp / 'runs').exists() else 0
         return done.stdout.splitlines(), runs
 
-    def test_quota_out_ends_as_a_failed_line_with_the_reset_time_and_the_command(self):
+    def test_quota_out_ends_as_a_pair_not_started_line_with_the_reset_time_and_the_command(self):
         lines, runs = self.lines(core='0', fail_first=9, fail_text='HTTP 403: API rate limit exceeded for user ID 1.')
-        fail = [l for l in lines if l.startswith('ship: FAILED pair not started')]
+        fail = [l for l in lines if l.startswith('ship: PAIR NOT STARTED')]
         self.assertEqual(runs, 2, 'tried twice, then stopped')
         self.assertEqual(len(fail), 1, lines)
-        self.assertRegex(fail[0], r'^ship: FAILED pair not started \(HTTP 403: API rate limit exceeded.*; REST quota 0 until \d\d:\d\d\); start it by hand: gh workflow run search-pair.yml -R o/r -f pr=9 -f people=')
-        self.assertFalse([l for l in lines if 'PAIR NOT STARTED' in l], 'the marker never reaches the log')
+        self.assertRegex(fail[0], r'^ship: PAIR NOT STARTED \(HTTP 403: API rate limit exceeded.*; REST quota 0 until \d\d:\d\d\); start it by hand: gh workflow run search-pair.yml -R o/r -f pr=9 -f people=')
+        self.assertFalse([l for l in lines if l.startswith('PAIR NOT STARTED')], 'the hold script\'s own marker never reaches the log')
+        self.assertFalse([l for l in lines if l.startswith('ship: FAILED')], 'a live held PR is never reported with the run\'s ending word')
+
+    def test_a_bar_in_ghs_words_never_corrupts_the_command(self):
+        """Gitar on #4125: `|` splits the reason from the command, so gh's own `|` must not move the split."""
+        lines, _ = self.lines(core='4000', fail_first=9, fail_text='HTTP 502: a | b')
+        line = [l for l in lines if l.startswith('ship: PAIR NOT STARTED')][0]
+        self.assertIn('(HTTP 502: a / b); start it by hand: gh workflow run search-pair.yml -R o/r -f pr=9', line)
 
     def test_a_failure_with_quota_left_does_not_claim_the_quota_is_out(self):
         lines, _ = self.lines(core='4000', fail_first=9, fail_text='HTTP 500')
-        fail = [l for l in lines if l.startswith('ship: FAILED pair not started')]
+        fail = [l for l in lines if l.startswith('ship: PAIR NOT STARTED')]
         self.assertEqual(len(fail), 1, lines)
         self.assertNotIn('REST quota', fail[0])
 
@@ -72,12 +79,14 @@ class PairNotStartedTest(unittest.TestCase):
         self.assertEqual(runs, 1)
         self.assertFalse([l for l in lines if 'FAILED' in l], lines)
 
-    def test_the_failed_line_wakes_the_session(self):
+    def test_the_line_wakes_the_session_and_ends_no_wait(self):
         spec = importlib.util.spec_from_file_location('claude_pr_events', ROOT / 'tools' / 'claude-pr-events.py')
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         lines, _ = self.lines(core='0', fail_first=9, fail_text='HTTP 403: API rate limit exceeded')
-        self.assertTrue(any(re.match(mod.WAKE, l) for l in lines if l.startswith('ship: FAILED')), lines)
+        self.assertTrue(any(re.match(mod.WAKE, l) for l in lines if l.startswith('ship: PAIR NOT STARTED')), lines)
+        wait = (ROOT / 'tools' / 'ship-wait.sh').read_text()
+        self.assertIn('PAIR NOT STARTED', re.search(r"^events='(.*)'$", wait, re.M).group(1), 'ship-wait.sh returns on it, like GITAR STALE')
 
 
 if __name__ == '__main__':
