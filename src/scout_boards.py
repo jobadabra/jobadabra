@@ -258,7 +258,9 @@ def _said(layout, kept, found, notes, browsed):
     """A kept board's layout for the pass line. Why (13 Nov 2026, sa): a run must show which boards learned no layout, and why, one line each."""
     if layout:
         how = 'kept, not tested on this read' if found is None else 'held' if layout == kept else 'learned'
-        return f"layout {how}: {layout['kind']} {layout.get('prefix') or layout.get('path') or layout.get('tag')}"
+        if layout['kind'] == 'links':
+            return f"layout {how}: links {layout['prefix'] or '/'}" + (f", {layout['depth']} folders deep" if layout.get('depth', 1) > 1 else '')
+        return f"layout {how}: {layout['kind']} {layout.get('path') or layout.get('tag')}"
     if found is False:
         return 'no layout: its kept one read nothing, none learned'
     return 'no layout: ' + (notes.get('why') or ('read in the browser' if browsed else 'none learned on this read'))

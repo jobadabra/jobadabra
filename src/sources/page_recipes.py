@@ -2,6 +2,7 @@
 
 When Claude lists the jobs on a page (ai/page_reader.py), the rules here look at its answer and the page and derive a recipe the code can replay:
   {'kind': 'links', 'prefix': '/de/jobs'}           the jobs are the links one level under this path (title = the link text), or
+  {'kind': 'links', 'prefix': '/oferta', 'depth': 2} ... 2 or 3 levels under it (/oferta/<id>/<slug>); no depth field means 1, as before, or
   {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'} the jobs are the texts of these elements (pages that list jobs as sections), or
   {'kind': 'state', 'path': '0.hits.list'}   the jobs are the records of this list in the JSON state the page carries (board_state.py).
 A recipe is kept only when replaying it on the same page gives back what Claude found. The 4-hourly crawl then replays it with no model call,
@@ -19,6 +20,10 @@ from datetime import datetime, timezone
 TAGS = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'a', 'strong', 'b', 'span', 'div', 'p', 'td', 'dt')
 MATCH_SHARE = 0.8          # a replay must give back at least this share of what the model found
 MAX_FACTOR = 3             # ... and not more than this many times as many items (a pattern that grabs every link is no recipe)
+# Why (13 Nov 2026, owner: "Yes, add depth (Recommended)"): three job boards put each job 2 folders under one prefix (/oferta/<id>/<slug>, or
+# /<id>/<slug> at the root), so no one-level links recipe fitted them and every install asked the AI about their links. Depth 1 has no field, so a
+# recipe learned before depth replays exactly as before, and an install older than depth refuses a recipe that has it (its valid wants 2 keys).
+MAX_DEPTH = 3
 TABLE = 'CREATE TABLE IF NOT EXISTS page_recipes (url TEXT PRIMARY KEY, recipe_json TEXT NOT NULL, learned_at TEXT NOT NULL, source TEXT NOT NULL, broken_at TEXT)'
 
 
@@ -27,7 +32,9 @@ def valid(recipe):
     if not isinstance(recipe, dict):
         return False
     if recipe.get('kind') == 'links':
-        return set(recipe) == {'kind', 'prefix'} and isinstance(recipe['prefix'], str) and bool(re.fullmatch(r'(/[\w.%~-]+){0,6}', recipe['prefix']))
+        depth = recipe.get('depth', 1)
+        return (set(recipe) in ({'kind', 'prefix'}, {'kind', 'prefix', 'depth'}) and isinstance(recipe['prefix'], str)
+                and bool(re.fullmatch(r'(/[\w.%~-]+){0,6}', recipe['prefix'])) and type(depth) is int and 1 <= depth <= MAX_DEPTH)
     if recipe.get('kind') == 'tag':
         return (set(recipe) == {'kind', 'tag', 'class'} and recipe['tag'] in TAGS and isinstance(recipe['class'], str)
                 and bool(re.fullmatch(r'[\w -]{1,60}', recipe['class'])))
@@ -58,7 +65,7 @@ def replay(recipe, markup, base):
         found = [(r['title'], r['url']) for r in board_state.at_path(markup, base, recipe['path'])]
     elif recipe['kind'] == 'links':
         host = urllib.parse.urlsplit(base).hostname
-        depth = len([part for part in recipe['prefix'].split('/') if part]) + 1
+        depth = len([part for part in recipe['prefix'].split('/') if part]) + recipe.get('depth', 1)
         for url, text in _links(markup, base):
             parts = urllib.parse.urlsplit(url)
             segments = [part for part in parts.path.split('/') if part]
@@ -96,13 +103,34 @@ def derive(markup, base, jobs):
         if valid(recipe) and _fits(recipe, markup, base, titles, links):
             return recipe
     paths = [urllib.parse.urlsplit(link).path.rstrip('/') for link in links if link]
-    if len(paths) >= max(1, len(titles) // 2):
+    linked = len(paths) >= max(1, len(titles) // 2)
+    if linked:
         parents = {path.rsplit('/', 1)[0] for path in paths}
         if len(parents) == 1:
             recipe = {'kind': 'links', 'prefix': parents.pop()}
             if valid(recipe) and _fits(recipe, markup, base, titles, links):
                 return recipe
-    # Jobs written as sections: the element that holds each title, if they all share one tag and class.
+    # Deeper links come after every recipe derived before depth (one level, then sections): a page that had a recipe keeps the same one, so an
+    # install older than depth is never served a recipe it refuses in place of one it reads.
+    return _sections(markup, base, titles) or (_deeper(markup, base, titles, links, paths) if linked else None)
+
+
+def _deeper(markup, base, titles, links, paths):
+    """A links recipe 2 or 3 levels under one prefix that reads these jobs, or None."""
+    for depth in range(2, MAX_DEPTH + 1):
+        parts = [[part for part in path.split('/') if part] for path in paths]
+        if any(len(segments) < depth for segments in parts):
+            return None
+        parents = {'/'.join([''] + segments[:-depth]) if len(segments) > depth else '' for segments in parts}
+        if len(parents) == 1:
+            recipe = {'kind': 'links', 'prefix': parents.pop(), 'depth': depth}
+            if valid(recipe) and _fits(recipe, markup, base, titles, links):
+                return recipe
+    return None
+
+
+def _sections(markup, base, titles):
+    """A recipe for jobs written as sections: the element that holds each title, if they all share one tag and class; or None."""
     shapes = set()
     for title in titles:
         words = r'\s+'.join(re.escape(html.escape(word, quote=False)) for word in title.split())

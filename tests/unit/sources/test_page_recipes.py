@@ -126,6 +126,40 @@ class ChooserTests(unittest.TestCase):
 
 
 class IndexCarriesRecipesTests(unittest.TestCase):
+    def test_jobs_two_folders_under_a_prefix_or_the_root_get_a_links_recipe_with_their_depth(self):
+        """Owner, 13 Nov 2026: "Yes, add depth (Recommended)": job boards whose cards link /oferta/<id>/<slug>, or /<id>/<slug> at the root."""
+        for prefix in ('/oferta', ''):
+            with self.subTest(prefix=prefix or 'root'):
+                base = 'https://board.example/pesquisa?q=x'
+                cards = ''.join(f'<li><a href="{prefix}/{100 + i}/vaga-{i}">Analista de Dados {i}</a></li>' for i in range(4))
+                page = f'<nav><a href="/sobre">Sobre</a><a href="/empresas/lista">Empresas</a></nav><ul>{cards}</ul>'
+                answer = jobs(*[(f'Analista de Dados {i}', f'https://board.example{prefix}/{100 + i}/vaga-{i}') for i in range(3)])
+                recipe = page_recipes.derive(page, base, answer)
+                self.assertEqual(recipe, {'kind': 'links', 'prefix': prefix, 'depth': 2})
+                read = [t for t, _ in page_recipes.replay(recipe, page, base)]
+                self.assertEqual([t for t in read if t.startswith('Analista')], [f'Analista de Dados {i}' for i in range(4)], 'a new card is read too')
+                # Under the root every 2-folder link fits, a menu entry included (as every 1-folder link fits a one-level root recipe today):
+                # _fits' MAX_FACTOR caps it, and the jobs' titles are judged after the read.
+                self.assertEqual([t for t in read if not t.startswith('Analista')], ['Empresas'] if not prefix else [])
+
+    def test_a_recipe_without_depth_replays_and_derives_exactly_as_before(self):
+        nested = LISTING + '<a href="/de/jobs/team/lead">Team Lead</a>'   # a link one folder deeper is not read by a one-level recipe
+        self.assertEqual([t for t, _ in page_recipes.replay({'kind': 'links', 'prefix': '/de/jobs'}, nested, BASE)],
+                         ['DevOps Engineer 80-100%', 'Site Reliability Engineer', 'HR Lead'])
+        self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/de/jobs', 'depth': 1}, nested, BASE),
+                         page_recipes.replay({'kind': 'links', 'prefix': '/de/jobs'}, nested, BASE))
+        both = SECTIONS.replace('</h3>', '</h3>', 1) + ''.join(f'<a href="/x/{i}/y">DevOps Engineer (m/w/d)</a>' for i in range(1))
+        self.assertEqual(page_recipes.derive(both, BASE, jobs(('DevOps Engineer (m/w/d)', 'https://acme.ch/x/0/y'), ('Plattform-Ingenieur 100%', None))),
+                         {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}, 'a page that had a sections recipe keeps it: old installs read it')
+
+    def test_a_depth_is_a_whole_number_from_1_to_3_and_only_on_links(self):
+        for bad in ({'kind': 'links', 'prefix': '/a', 'depth': 0}, {'kind': 'links', 'prefix': '/a', 'depth': 4}, {'kind': 'links', 'prefix': '/a', 'depth': '2'},
+                    {'kind': 'links', 'prefix': '/a', 'depth': True}, {'kind': 'links', 'prefix': '/a', 'depth': 2.0}, {'kind': 'links', 'prefix': '/a', 'depth': None},
+                    {'kind': 'tag', 'tag': 'h3', 'class': 'x', 'depth': 2}):
+            self.assertFalse(page_recipes.valid(bad), bad)
+        for good in ({'kind': 'links', 'prefix': '/a', 'depth': 3}, {'kind': 'links', 'prefix': '', 'depth': 2}):
+            self.assertTrue(page_recipes.valid(good), good)
+
     def test_the_engine_keeps_a_valid_recipe_from_the_index_and_drops_a_bad_one(self):
         served = [{'company': 'A', 'ats': 'careers', 'slug': 'a.ch__jobs', 'recipe': {'kind': 'links', 'prefix': '/jobs'}},
                   {'company': 'B', 'ats': 'careers', 'slug': 'b.ch__jobs', 'recipe': {'kind': 'regex', 'pattern': '.*'}}]
@@ -135,7 +169,8 @@ class IndexCarriesRecipesTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'node is not installed')
     def test_the_website_accepts_every_recipe_the_engine_accepts(self):
         samples = [{'kind': 'links', 'prefix': '/de/jobs'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}, {'kind': 'links', 'prefix': '/(a)+'},
-                   {'kind': 'tag', 'tag': 'script', 'class': 'x'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job', 'x': 1}]
+                   {'kind': 'tag', 'tag': 'script', 'class': 'x'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job', 'x': 1},
+                   {'kind': 'links', 'prefix': '/oferta', 'depth': 2}, {'kind': 'links', 'prefix': '', 'depth': 3}, {'kind': 'links', 'prefix': '/a', 'depth': 4}]
         script = ("import {recipeOf} from './api/employers.js'; console.log(JSON.stringify(JSON.parse(process.argv[1]).map(r => !!recipeOf(r))));")
         out = subprocess.run(['node', '--input-type=module', '-e', script, json.dumps(samples)], cwd=ROOT, capture_output=True, text=True, timeout=60)
         site_accepts = json.loads(out.stdout)
