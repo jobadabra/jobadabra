@@ -5,7 +5,7 @@
 // → every suite that loaded the file: a change nobody measured runs everyone who loads it, never no one.
 // Tests: test/coverage.test.mjs
 // Job: pick the suites
-import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
+import {LOAD, mergeRanges, SETUP, WHOLE} from './coverage.mjs';
 import {MAX_USERS} from './plan.mjs';
 
 // Coverage files of one run (each {suite, sha, files, steps, partial, store}) laid over the previous map: a suite this run recorded whole replaces its old entry; the others keep theirs.
@@ -20,7 +20,7 @@ export function mergeMap(previous, coverageFiles, at = new Date().toISOString(),
     unionFiles(entry.files, files);
     for (const [step, stepFiles] of Object.entries(steps || {})) {
       unionFiles((entry.steps ||= {})[step] ||= {}, stepFiles);
-      if (store && step !== SETUP && step !== WHOLE) addStores((entry.stores ||= {}), step, [store]);
+      if (store && step !== SETUP && step !== WHOLE && step !== LOAD) addStores((entry.stores ||= {}), step, [store]);
     }
   }
   const suites = {...(previous?.suites || {})};
@@ -52,7 +52,7 @@ function overlay(old, now, diff) {
     moved = shiftEntry(old, lineMoves(text));
   }
   const steps = {...moved.steps}, stores = {...(old.stores || {})};
-  for (const [step, files] of Object.entries(now.steps || {})) steps[step] = step === SETUP || step === WHOLE ? unionFiles({...moved.steps[step]}, files) : files;
+  for (const [step, files] of Object.entries(now.steps || {})) steps[step] = step === SETUP || step === WHOLE || step === LOAD ? unionFiles({...moved.steps[step]}, files) : files;
   for (const [step, names] of Object.entries(now.stores || {})) addStores(stores, step, names);
   return {sha: now.sha, at: now.at, files: unionFiles({...moved.files}, now.files), steps, ...(Object.keys(stores).length ? {stores} : {})};
 }
@@ -208,10 +208,13 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
         if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)
-        const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && ran(files[file]?.lines, range)).map(([name]) => name);
+        const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && name !== LOAD && ran(files[file]?.lines, range)).map(([name]) => name);
         for (const step of steps) pick(suite, {step, at: `${file}:${range[0]}`}, `runs ${file}:${range[0]} in "${step}"`);
         if (steps.length) continue;
         if (ran(entry.steps[SETUP]?.[file]?.lines, range)) { setupOnly.push({suite, key: `${file}:${range[0]}`}); continue; }
+        // Why (27-pane-ig, 13 Nov 2026, owner on #3973: "importing a file alone no longer pulls in a Tier 1 suite"): a line only the import ran (LOAD) is reached by no step; running the
+        // suite whole would not run it either. One suite's setup proves the file still loads (as the shared-file `loadOnly` above).
+        if (ran(entry.steps[LOAD]?.[file]?.lines, range)) { setupOnly.push({suite, key: `${file}:${range[0]}`}); continue; }
         const ranByAny = suites.some(([, other]) => ran(other.files[file]?.lines, range));
         if (!ranByAny) pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`);
       }

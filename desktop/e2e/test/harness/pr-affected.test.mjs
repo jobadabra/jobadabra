@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {hunksFromDiff, stepNamesFor, stepsCovering} from '../../lib/coverage-pick.mjs';
+import {LOAD, pythonSteps, SETUP as SETUP_KEY, WHOLE} from '../../lib/coverage.mjs';
 import {PR_STEP_CAP, affectedPlan, prLinux, removedStepNames} from '../../lib/pr-affected.mjs';
 import {stepCalls} from '../../lib/pr-suites.mjs';
 import {ensureStaged} from '../../lib/ensure-staged.mjs';
@@ -95,4 +96,38 @@ test('a prerequisite already in the pick counts once toward the cap, not twice (
   assert.ok(!plan.lines.some(line => line.includes('needs "the app has an applicant"')), plan.lines.join('\n'));
   const alone = affectedPlan({...base, full: {suites: ['apply'], steps: {apply: [CHECK]}}, changed: {suites: [], steps: {}}});
   assert.equal(alone.count, 2, 'without the setup in the pick it is still added and counted');
+});
+
+// #3973 (13 Nov 2026, run 43362599539): a Python-only PR ran apply, jobs and strategy whole because its changed lines (a def line, a docstring)
+// were import-time lines, which the map filed under WHOLE beside real cross-step lines. Now they are LOAD: a step that only imports the file is not reached by them.
+const PY = 'src/sources/careers.py';
+const pyMap = {suites: {apply: {sha: 'aaa', files: {[PY]: {lines: [[1, 17], [150, 150], [313, 313], [323, 323], [330, 340]]}}, steps: {   // files: the union of every line it ran
+  'a fill': {[PY]: {lines: [[330, 340]]}},
+  [SETUP_KEY]: {},
+  [WHOLE]: {[PY]: {lines: [[150, 150]]}},   // a body line a process ran across steps
+  [LOAD]: {[PY]: {lines: [[1, 17], [313, 313], [323, 323]]}},   // import time: docstring, def lines
+}}}};
+const pyPick = (line, count = 1) => stepsCovering(pyMap, {aaa: hunksFromDiff(`diff --git a/${PY} b/${PY}\n--- a/${PY}\n+++ b/${PY}\n@@ -${line},${count} +${line},${count} @@\n-  old()\n+  new()\n`)});
+
+test('a def line or docstring only the import ran picks no apply step, and the suite is not whole: one setup proves the file loads', () => {
+  for (const line of [3, 313]) {
+    const picked = pyPick(line);
+    assert.equal(picked.apply.whole, false, `line ${line}: ${picked.apply.reason}`);
+    assert.deepEqual(picked.apply.steps, [], `line ${line}`);
+    assert.deepEqual(stepNamesFor(picked), {apply: [SETUP_KEY]}, `line ${line}: only the setup`);
+  }
+});
+
+test('a changed line a step ran picks that step; a line a process ran across steps still runs the suite whole', () => {
+  assert.deepEqual(pyPick(335).apply.steps, ['a fill']);
+  assert.equal(pyPick(335).apply.whole, false);
+  assert.equal(pyPick(150).apply.whole, true, 'cross-step body lines stay WHOLE');
+});
+
+test('the Python recorder files import-time lines under LOAD and a step\'s body lines under the step, never import lines under WHOLE', () => {
+  const files = {'src/x.py': {body: [[20, 22]], load: [[1, 5]]}};
+  const steps = pythonSteps({}, [{start: 'a fill', end: 'a fill', files}, {start: 'a fill', end: 'next', files: {'src/x.py': {body: [[30, 31]], load: [[1, 5]]}}}]);
+  assert.deepEqual(steps['a fill']['src/x.py'].lines, [[20, 22]]);
+  assert.deepEqual(steps[WHOLE]['src/x.py'].lines, [[30, 31]]);
+  assert.deepEqual(steps[LOAD]['src/x.py'].lines, [[1, 5]]);
 });

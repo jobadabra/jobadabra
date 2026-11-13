@@ -3,6 +3,7 @@
 // pull request's plan reads (lib/coverage-pick.mjs), so a PR runs the suites that run the code it changes. Why: on 25 Oct #1911 changed menu.css and broke interactions,
 // and #1913 changed the run views and broke cardstates; neither PR ran the suite. Never a reason to fail: a session that cannot record is only logged.
 // Tests: test/coverage.test.mjs
+// Job: pick the suites
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -98,9 +99,12 @@ export function cssDeltaEntries(usage, sheets) {
 // read returns is that step's. Lines read outside any step (launch, between steps, the close) go to SETUP. The suite's `files` stay the union (the suite pick).
 export const SETUP = '(setup)';
 // Python (owner's yes, 26 Oct 2026: scoring PRs ran the whole quality suite): lib/pycov/sitecustomize.py, on PYTHONPATH, records the src/ lines each engine process
-// ran into E2E_PY_COVERAGE_DIR, tagged with the step named in its `step` file. Lines a process ran across steps, and lines run at import (they reach every step),
-// go to WHOLE: a change there runs the suite whole (lib/coverage-pick.mjs).
+// ran into E2E_PY_COVERAGE_DIR, tagged with the step named in its `step` file. Lines a process ran across steps go to WHOLE: a change there runs the suite whole
+// (lib/coverage-pick.mjs). Lines run at import (module and class level, def lines, docstrings) go to LOAD: no step ran them, they only prove the file loads.
+// Why (27-pane-ig, 13 Nov 2026, owner: "Merge it, fix both causes" on #3973): import-time lines shared WHOLE with real cross-step body lines, so a def line or a docstring
+// edit of a file `apply` merely imports ran 25 apply steps; a change that only touches LOAD lines now costs one suite's setup.
 export const WHOLE = '(whole)';
+export const LOAD = '(load)';
 const PYCOV = path.join(path.dirname(fileURLToPath(import.meta.url)), 'pycov');
 // Before the app starts (lib/app.mjs): the folder, the recorder on PYTHONPATH and the step file in `env`, once per suite process. -> the folder, '' when not recording.
 export function pythonCoverage(env = process.env) {
@@ -117,7 +121,7 @@ export function pythonSteps(steps, records) {
   const into = (step, file, lines) => { if (!lines?.length) return; const target = steps[step] ||= {}; const now = target[file] || {loaded: true, lines: []}; target[file] = {loaded: true, lines: mergeRanges([...now.lines, ...lines])}; };
   for (const {start, end, files} of records) {
     const step = start !== end ? WHOLE : start || SETUP;
-    for (const [file, {body = [], load = []}] of Object.entries(files || {})) { into(step, file, body); into(WHOLE, file, load); }
+    for (const [file, {body = [], load = []}] of Object.entries(files || {})) { into(step, file, body); into(LOAD, file, load); }
   }
   return steps;
 }
@@ -201,6 +205,6 @@ export async function saveCoverage(handle, dir, env = process.env) {
   const file = path.join(dir, `coverage-${suite}-${handle.number}.json`);
   fs.mkdirSync(dir, {recursive: true});
   fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps, partial: someSteps(env), store: env.E2E_STORE_UNDER_TEST || ''}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
-  console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).filter(name => name !== SETUP && name !== WHOLE).length} step(s), ${python} Python process(es) → ${path.basename(file)}`);
+  console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).filter(name => name !== SETUP && name !== WHOLE && name !== LOAD).length} step(s), ${python} Python process(es) → ${path.basename(file)}`);
   return file;
 }
