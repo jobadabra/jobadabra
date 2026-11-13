@@ -94,8 +94,8 @@ class BoardPassTest(unittest.TestCase):
     def test_a_fact_kept_before_the_count_is_published_without_one(self):
         scout_boards.ensure(self.db)
         self.db.execute("INSERT INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES ('old.md', 'md', 'https://old.md/?q={role}', 'software_dev', 5, ?)",
-                        (date.today().isoformat(),))
-        self.assertNotIn('family_jobs', scout_boards.facts(self.db)[0])
+                        ('2026-11-13',))
+        self.assertNotIn('family_jobs', scout_boards.facts(self.db, today=date(2026, 11, 13))[0])
 
     def test_the_kinds_turn_moves_on_after_a_pass_that_read_boards(self):
         # Gitar on #3913: the per-board loop rebound `families`, so a pass by kinds that read a board never moved the country's turn on
