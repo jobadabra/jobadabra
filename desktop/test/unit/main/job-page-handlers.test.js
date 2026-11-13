@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {fileBytes, jobCode, jobPage, registerJobPageHandlers} from '../../../lib/job-page-handlers.js';
+import {fileBytes, jobCode, jobCore, jobPage, registerJobPageHandlers} from '../../../lib/job-page-handlers.js';
+import {pack} from '../../../lib/apply-readiness.js';
 
 const kitMarkdown = 'Drafted.\n\n### Machine-readable kit\n\n```json\n{"cover_letter": "Dear team", "answers": []}\n```';
 function fakeStore(app, match = null) {
@@ -34,7 +35,7 @@ test('a tracked job: its sections, its kit as JSON and its events, by its app id
 
 test('a job nobody acted on: no application, nothing else read', async () => {
   const {call, calls} = fakeStore(null);
-  assert.deepEqual(await jobPage({}, 'https://x/2', {call}), {app: null, match: null, sections: {}, kit: null, events: [], files: [], interviews: [], links: false});
+  assert.deepEqual(await jobPage({}, 'https://x/2', {call}), {app: null, match: null, check: null, sections: {}, kit: null, events: [], files: [], interviews: [], links: false});
   assert.deepEqual(calls.sort(), ['applications.get', 'matches.get']);
 });
 
@@ -85,4 +86,17 @@ test('jobPosting in demo mode: a fictional posting for a demo job, none for the 
   assert.match(demo.description, /Responsibilities/);
   assert.equal(demo.source_kind, 'employer feed');
   assert.deepEqual(await handlers.jobPosting(null, 'https://example.com/jobs/1'), {ok: false, error: 'job not found'});
+});
+
+// Owner, 13 Nov 2026 ("Let's add a chip to that job"): the job page's "Account needed" reads the stored apply check, so it shows after a restart too, and only for this posting.
+test('the core carries the stored apply check while it is this posting\'s, else none', async () => {
+  const stored = pack({eligible: true, captcha: false, login: true, accountCreation: false, simple: false, why: 'login'}, {posted: '2026-11-10'});
+  const core = async posted => jobCore({}, 'https://x/3', {call: fakeStore({id: 'a3', apply_readiness: stored}, {url: 'https://x/3', posted}).call, placesNow: async () => ''});
+  assert.equal((await core('2026-11-10')).check.login, true);
+  assert.equal((await core('2026-11-12')).check, null, 'a newer posting: the old check is not shown');
+  assert.equal((await jobCore({}, 'https://x/4', {call: fakeStore({id: 'a4', apply_readiness: 'not ours'}).call})).check, null);
+  // #3997 review: a job with no match uses the record's own posting date, as its list row does (src/desktop_store_jobs.py), so the header and the row agree.
+  const alone = await jobCore({}, 'https://x/5', {call: fakeStore({id: 'a5', posted: '2026-11-10', apply_readiness: stored}).call});
+  assert.equal(alone.check.login, true);
+  assert.equal(alone.check.stored, true, 'the same read rowCheck gives the list');
 });

@@ -21,3 +21,13 @@ export async function kitThroughStep(pilot, job, {redraft = false} = {}) {
   const done = await pilot.applyReadiness({url: job.url, code: job.code, title: `${job.title} · ${job.company}`, kit: redraft ? false : job.kit === true, posted_at: job.posted_at}, {say: true});
   return done?.kit || done || {ok: false};
 }
+
+/**
+ * Which read a Jobs row holds after the list was read again: `held` is the read this window has, `check` the stored check the row now carries (lib/apply-readiness.js rowCheck).
+ * A read made in this window (no `stored` flag) wins; a stored read follows the list, so a posting that changed drops its old check. Returns the read to hold, or null for none. Pure.
+ * Why (#3997 review): the held stored read was never replaced or dropped, so a changed posting kept its old "Needs you" line and "Account needed" chip until a restart.
+ */
+export function heldAfterList(held, check) {
+  if (held && held.stored !== true) return held;
+  return check || null;
+}

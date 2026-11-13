@@ -6,14 +6,27 @@ import {chip} from '../components.js';
 import {$} from './core.js';
 import {KEEP_TIMINGS, chipOf, estimateOf, pickForTriage, pickWhenFresh} from '../apply-triage-pick.js';
 import {listReady} from './jobs-state.js';
+import {heldAfterList} from '../apply-readiness-read.js';
 import {shared} from './shared.js';
 
-// The reads this window knows, by job URL: {read, at}. PR C fills it from the hidden browser's reads; nothing is stored here yet.
+// The reads this window knows, by job URL: {read, at}: the checks run in this window, and the stored ones the list rows carry (keepStored).
 const reads = new Map();
 /** The read of a job, by its URL, or null when it has none. Takes the job's URL; never throws; the data is the reads this window holds (filled by setRead). */
 export const readOf = url => reads.get(url)?.read || null;
 /** Stores one job's read with the time it was read. Takes the URL and the read; returns nothing; a repeat read replaces the last one. */
 export const setRead = (url, read) => reads.set(url, {read, at: new Date().toISOString()});
+/**
+ * Follows the stored checks the Jobs list rows carry (`job.check`, lib/apply-readiness.js rowCheck), so a restart keeps each row's "Needs you" line and "Account needed" chip and a
+ * changed posting drops its old one (apply-readiness-read.js heldAfterList). A read made in this window wins over the stored one. Takes the list's rows; returns nothing.
+ */
+export function keepStored(jobs = []) {
+  for (const job of jobs) {
+    if (!job?.url) continue;
+    const held = readOf(job.url), next = heldAfterList(held, job.check);
+    if (!next) reads.delete(job.url);
+    else if (next !== held) setRead(job.url, next);
+  }
+}
 
 /** The chip for a job's row on the board: the mode of its last read, or "Not checked". */
 export function triageChip(job) {

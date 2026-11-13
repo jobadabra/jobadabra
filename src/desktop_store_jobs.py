@@ -37,7 +37,7 @@ def store_jobs(stores):
                    rejection=app.get('rejection') or '', rejection_lesson=app.get('rejection_lesson') or '',
                    feedback_status=app.get('feedback_status') or '', employer_feedback=app.get('employer_feedback') or '',
                    page_id=app.get('id') or '', next_interview=app.get('next_interview') or '',
-                   via=app.get('via') or '', contact=app.get('contact') or '', kit_inputs=app.get('kit_inputs') or '',
+                   via=app.get('via') or '', contact=app.get('contact') or '', kit_inputs=app.get('kit_inputs') or '', apply_readiness=app.get('apply_readiness') or '',
                    origin=app.get('origin') or '', source=app.get('source') or '', notes=(app.get('notes') or '')[:60],
                    applied_on=app.get('applied_on') or '')
         row['title'] = titles.role_of(row['title'], row['company'], row['via'])

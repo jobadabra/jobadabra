@@ -1,7 +1,7 @@
 // Apply triage's mode table: each form read gives one mode, and a missing flag never counts as the safe answer (lib/apply-triage-mode.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {modeOfRead} from '../../../renderer/apply-triage-mode.js';
+import {accountNeed, modeOfRead} from '../../../renderer/apply-triage-mode.js';
 
 const clean = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true};
 
@@ -69,4 +69,12 @@ test('a required box with no question text is a lasting "a box without a questio
   const look = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: null, simple: true, why: '', questions: ['field_1']};
   assert.deepEqual(modeOfRead({...look, match: {missing: [], unjudged: 0, unnamed: 1}}), {mode: 'fill', reason: 'a box without a question'});
   assert.equal(modeOfRead({...look, match: {missing: [{kind: 'detail', label: 'Phone'}], unjudged: 0, unnamed: 1}}).reason, 'needs your details');
+});
+
+// Owner, 13 Nov 2026: "Let's somehow mark the jobs that requires an account... Let's add a chip to that job" (renderer/account-chip.js draws it).
+test('"Account needed": a sign-in page or an account to create is named; unknown, clean or unread forms show nothing', () => {
+  assert.deepEqual(accountNeed({...clean, login: true}), {kind: 'site', why: 'sign-in'});
+  assert.deepEqual(accountNeed({...clean, accountCreation: true}), {kind: 'site', why: 'create'});
+  assert.deepEqual(accountNeed({...clean, login: true, accountCreation: true}), {kind: 'site', why: 'sign-in'}, 'one chip, sign-in first');
+  for (const read of [null, undefined, clean, {...clean, login: null, accountCreation: null}, {unreadable: true, login: true}]) assert.equal(accountNeed(read), null, JSON.stringify(read));
 });

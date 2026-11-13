@@ -12,7 +12,8 @@ import {$} from './core.js';
 import {openJobPanel} from './job-panel.js';
 import {toastMessage} from './startup.js';
 import {jobsChanged} from './jobs.js';
-import {triageChip} from './jobs-triage.js';
+import {readOf, triageChip} from './jobs-triage.js';
+import {accountChip} from '../account-chip.js';
 import {openFromBoard} from './jobs-views.js';
 import {jobPlace} from '../targets.js';
 
@@ -41,6 +42,8 @@ function card(job) {
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (nextStepOf(job)) body.append(el('div', 'muted small', t('pagesShortJobs.m172', {"nextStepOf": nextStepOf(job)})));
   if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
+  const account = parts.triage && accountChip(readOf(job.url));
+  if (account) body.append(account);
   const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
     .map(stage => ({label: stageName(stageLabel(stage)), run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: t('pagesJobs.moveTo'), disabled: true}, ...moves], t('pagesJobs.moveStage')));

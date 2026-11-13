@@ -144,6 +144,8 @@ def jobs(db, limit=200, stages=None, notion=False, notion_jobs=None, kit_inputs=
                             # Outbound or inbound (desktop/renderer/origin.js), and what the "In conversation" rows show.
                             origin=item.get('origin') or '', source=item.get('source') or '', notes=item.get('notes') or '',
                             applied_on=item.get('applied_on') or '',
+                            # Why (13 Nov 2026, owner: "Fix it in this PR"): the stored apply check (desktop/lib/apply-readiness.js owns its format), so a row keeps "Needs you" and "Account needed" after a restart.
+                            apply_readiness=item.get('apply_readiness') or '',
                             via=item.get('via') or '', next_step=item.get('next_step') or ''))
         for url, job in local.items():  # found by a search, not in Notion yet (its sync failed): shown, marked
             if url and url not in seen:
