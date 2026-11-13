@@ -326,7 +326,9 @@ def read_page_from(markup, url, fetch_page, part=None, linked=None):
     if linked is None:
         with part('job links'):
             linked = job_links(markup, url)
-    linked = one_per_posting(linked)[:MAX_JOB_PAGES]   # a served layout's links too: twins of one posting are read once (careers_parse.one_per_posting)
+    else:
+        linked = one_per_posting(linked)   # Why (13 Nov 2026, sd; Gitar on #4069): job_links already did this for the page's own links, a served layout's links never were
+    linked = linked[:MAX_JOB_PAGES]
     with part(f'{len(linked)} job pages'), ThreadPoolExecutor(max_workers=6) as pool:
         read = list(pool.map(slots.carry(one), linked))
     headed = list({job['url']: job for _, jobs in read for job in jobs}.values())

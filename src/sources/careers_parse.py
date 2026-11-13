@@ -12,6 +12,7 @@ import re
 import urllib.parse
 
 from . import ats
+from .job_twins import one_per_posting   # noqa: F401 (used by job_links; careers.py re-exports it)
 from .. import country_codes
 from ..ai import meanings_pack, page_words
 
@@ -369,39 +370,6 @@ def has_job_ids(markup, base):
     """The page links at least 3 job pages that end in an id: a list built into the page, not only a menu of job words (a page whose cards
     come by script has none until they do, 24 Oct 2026)."""
     return len(_job_paths(markup, base)[3]) >= 3
-
-
-POSTING_ID = re.compile(r'(?<![0-9a-z])(\d{5,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-z])', re.I)   # a long number or a UUID standing alone in a path segment or beside a slug
-
-
-def _posting_key(url):
-    """(key, the segments after the id's segment, whether that segment holds a slug beside the id) of a job address, or None when its path carries no id. The key is the host,
-    the path before the LAST id-carrying segment and the id in it: a company id earlier in the path never joins two postings."""
-    parts = urllib.parse.urlsplit(url)
-    segments = [segment for segment in parts.path.split('/') if segment]
-    for at in range(len(segments) - 1, -1, -1):
-        found = POSTING_ID.search(segments[at])
-        if found:
-            return (parts.netloc.lower(), tuple(segments[:at]), found.group(1).lower()), tuple(segment.lower() for segment in segments[at + 1:]), len(segments[at]) > len(found.group(1))
-    return None
-
-
-def one_per_posting(urls):
-    """The job addresses with an action on a posting left out, in page order: /jobs/<id>-<slug> is the posting and /jobs/<id>/apply (the same path before the id, the same
-    id, more segments after it) is an action on it. Only the certain case is joined: a link is dropped when another link of the same id ends at its id's segment with a slug
-    AND its own trailing segments repeat under at least two different ids on the page (an action like /apply is on every card; a job's own name is on one). A single
-    employer's /employer/<id>-acme/welder and /driver, or a bare /employer/<id>, are never joined: they may be two jobs, and a lost job is worse than a shown twin (sa, 13 Nov
-    2026; Gitar on #4060: a slug beside the id does not make the link a posting when its sub-pages are told apart by name). The one posting with one apply link and no other
-    card on the page keeps its twin: shown twice, never lost.
-    Why (13 Nov 2026, sd; bp's proof on an airline board, discovery run 43498167418 of jobadabra-lab): 39 rows of ~20 postings, each read from its job page and again from its apply
-    page, so a person saw each job twice and the Scout counted 53 for ~27 postings. Same id under the same path is a fact of the addresses, not a meaning: no AI, no word of ours, no host."""
-    keyed = [(url, _posting_key(url)) for url in dict.fromkeys(urls)]
-    posting = {found[0] for _, found in keyed if found and not found[1] and found[2]}
-    ids_by_tail = {}
-    for _, found in keyed:
-        if found and found[1]:
-            ids_by_tail.setdefault(found[1], set()).add(found[0])
-    return [url for url, found in keyed if not (found and found[1] and found[0] in posting and len(ids_by_tail[found[1]]) >= 2)]
 
 
 def job_links(markup, base):

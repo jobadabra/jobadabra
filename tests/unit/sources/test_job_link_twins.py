@@ -103,6 +103,17 @@ class OneLinkPerPostingTests(unittest.TestCase):
         urls = [f'https://{HOST}/employer/7000001-acme', f'https://{HOST}/employer/7000001-acme/welder', f'https://{HOST}/employer/7000001-acme/driver']
         self.assertEqual(careers_parse.one_per_posting(urls), urls)
 
+    def test_two_employers_with_several_named_sub_pages_each_keep_every_job(self):
+        """Gitar on #4111: two employers, each with /welder and /driver, share both names across ids; an id with more than one other link is never collapsed."""
+        urls = [f'https://{HOST}/employer/{n}-{name}{tail}' for n, name in ((1000001, 'acme'), (1000002, 'beta')) for tail in ('', '/welder', '/driver')]
+        self.assertEqual(careers_parse.one_per_posting(urls), urls)
+
+    def test_known_limit_one_named_sub_page_repeated_under_two_ids_looks_like_an_action(self):
+        """Said plainly (Design in one_per_posting): an id with exactly one other link whose name repeats under two ids has the shape of /apply. The AI's link-kind judgment owns that
+        meaning (parked); this pins the limit so it is a known behaviour, not a surprise."""
+        urls = [f'https://{HOST}/employer/{n}-{name}{tail}' for n, name in ((1000001, 'acme'), (1000002, 'beta')) for tail in ('', '/welder')]
+        self.assertEqual(careers_parse.one_per_posting(urls), [urls[0], urls[2]])
+
     def test_a_lone_card_keeps_its_twin_rather_than_risk_a_lost_job(self):
         """One posting with one apply link and no other card cannot show that /apply is an action: shown twice, never lost."""
         urls = [f'https://{HOST}/jobs/7000001-mechanic', f'https://{HOST}/jobs/7000001/apply']
