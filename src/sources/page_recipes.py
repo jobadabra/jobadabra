@@ -27,8 +27,9 @@ MAX_FACTOR = 3             # ... and not more than this many times as many items
 # recipe learned before depth replays exactly as before, and an install older than depth refuses a recipe that has it (its valid wants 2 keys).
 MAX_DEPTH = 3
 # Why (13 Nov 2026, sa for the owner's approved fix #1 design, "Learn once in the Scout, replay in every search"): on the saved pages of 13 searches
-# derive learned a layout for 18 of the 30 boards whose job links the AI named; 12 of the 19 replays that failed were job cards whose link holds the
-# whole card (title, place, date, text: over 140 characters, so dropped) or holds no text (the title is its aria-label). A card's title is its link's
+# derive learned a layout for 18 of the 30 boards (by board name) whose job links the AI named, 23 of them with titles (offline, no AI; 21 of 28
+# by host, none lost); the boards gained were job cards whose link holds the whole card (title, place, date, text: over 140 characters, so dropped)
+# or holds no text (the title is its aria-label). A card's title is its link's
 # own name or the first heading inside it; no title field means the link text, as before, and an install older than titles refuses the field.
 TITLES = ('label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6')
 TABLE = 'CREATE TABLE IF NOT EXISTS page_recipes (url TEXT PRIMARY KEY, recipe_json TEXT NOT NULL, learned_at TEXT NOT NULL, source TEXT NOT NULL, broken_at TEXT)'
@@ -67,11 +68,12 @@ def _card_links(markup, base, title):
     """[(address, title)] of every link, its title read as `title` says (TITLES): the link's aria-label or title attribute, or its first heading."""
     out = []
     for attrs, inner in re.findall(r'<a\b([^>]*)>(.*?)</a>', markup, re.S | re.I):
-        href = re.search(r'\bhref=["\']([^"\'#][^"\']*)["\']', attrs, re.I)
+        href = re.search(r'(?<![\w-])href=["\']([^"\'#][^"\']*)["\']', attrs, re.I)
         if not href:
             continue
         if title == 'label':
-            named = re.search(r'\baria-label=["\']([^"\']*)["\']', attrs, re.I) or re.search(r'\btitle=["\']([^"\']*)["\']', attrs, re.I)
+            # Why (Gitar on #4047): the name is the attribute itself; `\b` also matched data-title / data-aria-label, which tracking code puts on cards.
+            named = re.search(r'(?<![\w-])aria-label=["\']([^"\']*)["\']', attrs, re.I) or re.search(r'(?<![\w-])title=["\']([^"\']*)["\']', attrs, re.I)
             text = _text(named.group(1)) if named else ''
         else:
             heading = re.search(r'<{0}\b[^>]*>(.*?)</{0}>'.format(title), inner, re.S | re.I)
@@ -138,34 +140,36 @@ def derive(markup, base, jobs):
     # Deeper links come after every recipe derived before depth (one level, then sections): a page that had a recipe keeps the same one, so an
     # install older than depth is never served a recipe it refuses in place of one it reads.
     # Cards come last for the same reason: every recipe derived before titles stays the one derived.
-    return _sections(markup, base, titles) or (_deeper(markup, base, titles, links, paths) or _cards(markup, base, titles, links, paths) if linked else None)
+    recipe = _sections(markup, base, titles)
+    if recipe or not linked:
+        return recipe
+    return _deeper(markup, base, titles, links, paths) or _cards(markup, base, titles, links, paths)
+
+
+def _parent(paths, depth):
+    """The one folder every path sits `depth` levels under ('' is the root), or None when they sit under different ones or are shorter."""
+    parts = [[part for part in path.split('/') if part] for path in paths]
+    if any(len(segments) < depth for segments in parts):
+        return None
+    parents = {'/'.join([''] + segments[:-depth]) for segments in parts}
+    return parents.pop() if len(parents) == 1 else None
 
 
 def _deeper(markup, base, titles, links, paths):
     """A links recipe 2 or 3 levels under one prefix that reads these jobs, or None."""
     for depth in range(2, MAX_DEPTH + 1):
-        parts = [[part for part in path.split('/') if part] for path in paths]
-        if any(len(segments) < depth for segments in parts):
-            return None
-        parents = {'/'.join([''] + segments[:-depth]) if len(segments) > depth else '' for segments in parts}
-        if len(parents) == 1:
-            recipe = {'kind': 'links', 'prefix': parents.pop(), 'depth': depth}
-            if valid(recipe) and _fits(recipe, markup, base, titles, links):
-                return recipe
+        prefix = _parent(paths, depth)
+        recipe = {'kind': 'links', 'prefix': prefix, 'depth': depth}
+        if prefix is not None and valid(recipe) and _fits(recipe, markup, base, titles, links):
+            return recipe
     return None
 
 
 def _cards(markup, base, titles, links, paths):
     """A links recipe (any depth) whose title is the link's own name or a heading inside it (TITLES) that reads these jobs, or None."""
-    parts = [[part for part in path.split('/') if part] for path in paths]
     for depth in range(1, MAX_DEPTH + 1):
-        if any(len(segments) < depth for segments in parts):
-            return None
-        parents = {'/'.join([''] + segments[:-depth]) for segments in parts}
-        if len(parents) != 1:
-            continue
-        prefix = parents.pop()
-        for title in TITLES:
+        prefix = _parent(paths, depth)
+        for title in TITLES if prefix is not None else ():
             recipe = {'kind': 'links', 'prefix': prefix, **({'depth': depth} if depth > 1 else {}), 'title': title}
             if valid(recipe) and _fits(recipe, markup, base, titles, links):
                 return recipe
