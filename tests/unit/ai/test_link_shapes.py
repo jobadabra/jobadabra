@@ -4,6 +4,7 @@ wordings in 11 calls and got their links at 96 s. Fixture: tests/fixtures/board_
 no link text); a stand-in AI that answers by path and records every wording it was asked."""
 import json
 import pathlib
+import re
 import unittest
 from unittest import mock
 
@@ -105,6 +106,34 @@ class LinkShapes(unittest.TestCase):
         paths = paths[:1] + paths[2:3] + paths[1:2] + paths[3:]   # the odd link second: no sample hits it
         got = judge(paths, ai)
         self.assertEqual(got[('', '/trabajo/area-de-empresa_comercial/')], page_words.from_kind('other'), 'takes the shape\'s answer, never asked')
+
+    def test_on_the_ais_own_answers_the_shape_rule_changes_no_verdict_and_a_split_by_last_part_asks_three_times_more(self):
+        """Why (owner, 13 Nov 2026, asked via AskUserQuestion by sa: "Keep our rule (Recommended)"): Gitar proposed splitting a shape by the
+        last part's slug prefix, so unlike links under one parent are not decided by 3 samples. Replayed on the AI's own per-link answers for
+        4 saved board pages (tests/fixtures/board_link_answers.json, 526 paths): the shape rule asks 143 and changes 0 verdicts; the split asks
+        451 and changes 0 verdicts too. A shape is the parent + *, as the owner chose."""
+        def split_by_last_part(path):   # Gitar's suggested key on #4022
+            parts = [part for part in page_words._shape(path).split('/') if part]
+            if len(parts) < 2:
+                return None
+            return '/' + '/'.join(parts[:-1]) + '/' + re.sub(r'^([a-z]+_|[a-z]+-[a-z-]+_).*', r'\1', parts[-1]) + '*'
+
+        recorded = json.loads((pathlib.Path(__file__).parents[2] / 'fixtures' / 'board_link_answers.json').read_text())['pages']
+        for family, want_asked in ((page_words._family, 143), (split_by_last_part, 451)):
+            asked, differ, links = 0, [], 0
+            for rows in recorded.values():
+                answer = {page_words._wording('', path): kind for path, kind in rows}
+                ai = AI()
+
+                def replay(topic, items, answers, task, floor=True, ai=ai, answer=answer):
+                    ai.asked.append(list(items))
+                    return {key: answer[wording] for key, wording in items.items()}
+                with mock.patch.object(page_words, '_family', family):
+                    got = judge([path for path, _ in rows], replay)
+                asked, links = asked + len(ai.words()), links + len(rows)
+                differ += [path for path, kind in rows if got[('', path)] != page_words.from_kind(kind)]
+            self.assertEqual(links, 526, 'positive control: every saved path has the AI\'s own answer')
+            self.assertEqual((asked, differ), (want_asked, []), family.__name__)
 
     def test_when_the_ai_answers_no_sample_the_page_is_not_asked_a_second_time(self):
         ai = AI(none=('/',))
