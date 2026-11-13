@@ -227,7 +227,10 @@ class IndexCarriesRecipesTests(unittest.TestCase):
                    {'kind': 'tag', 'tag': 'script', 'class': 'x'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job', 'x': 1},
                    {'kind': 'links', 'prefix': '/oferta', 'depth': 2}, {'kind': 'links', 'prefix': '', 'depth': 3}, {'kind': 'links', 'prefix': '/a', 'depth': 4},
                    {'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, {'kind': 'links', 'prefix': '/stellen', 'depth': 2, 'title': 'h4'},
-                   {'kind': 'links', 'prefix': '/a', 'title': 'script'}]
+                   {'kind': 'links', 'prefix': '/a', 'title': 'script'},
+                   {'kind': 'path', 'chain': [['li', 'job'], ['a', 'title-link']], 'max': 9}, {'kind': 'path', 'chain': [['a', '']], 'max': 1000, 'title': 'h4'},
+                   {'kind': 'path', 'chain': [['li', 'job']], 'max': 9}, {'kind': 'path', 'chain': [['script', ''], ['a', '']], 'max': 9},
+                   {'kind': 'path', 'chain': [['li', 'a b'], ['a', '']], 'max': 9}, {'kind': 'path', 'chain': [['a', '']], 'max': 1001}, {'kind': 'path', 'chain': [['a', '']], 'max': 9, 'x': 1}]
         script = ("import {recipeOf} from './api/employers.js'; console.log(JSON.stringify(JSON.parse(process.argv[1]).map(r => !!recipeOf(r))));")
         out = subprocess.run(['node', '--input-type=module', '-e', script, json.dumps(samples)], cwd=ROOT, capture_output=True, text=True, timeout=60)
         site_accepts = json.loads(out.stdout)
