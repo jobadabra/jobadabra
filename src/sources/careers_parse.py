@@ -305,14 +305,41 @@ def has_job_ids(markup, base):
     return len(_job_paths(markup, base)[3]) >= 3
 
 
+POSTING_ID = re.compile(r'(?<![0-9a-z])(\d{5,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![0-9a-z])', re.I)   # a long number or a UUID standing alone in a path segment or beside a slug
+
+
+def _posting_key(url):
+    """(key, segments after the id's segment, whether that segment holds a slug beside the id) of a job address, or None when its path carries no id. The key is the host,
+    the path before the LAST id-carrying segment and the id in it: a company id earlier in the path never joins two postings."""
+    parts = urllib.parse.urlsplit(url)
+    segments = [segment for segment in parts.path.split('/') if segment]
+    for at in range(len(segments) - 1, -1, -1):
+        found = POSTING_ID.search(segments[at])
+        if found:
+            return (parts.netloc.lower(), tuple(segments[:at]), found.group(1).lower()), len(segments) - 1 - at, len(segments[at]) > len(found.group(1))
+    return None
+
+
+def one_per_posting(urls):
+    """The job addresses with an action on a posting left out, in page order: /jobs/<id>-<slug> is the posting and /jobs/<id>/apply (the same path before the id, the same
+    id, more segments after it) is an action on it. Only that certain case is joined: a link is dropped when another link of the same id ends at its id's segment AND that
+    segment carries a slug. Two links that both add segments (/employer/<id>/welder, /employer/<id>/driver) or a bare /employer/<id> are never joined: they may be two jobs, and a
+    lost job is worse than a shown twin (sa, 13 Nov 2026).
+    Why (13 Nov 2026, sd; bp's proof on an airline board, run 43498167418): 39 rows of ~20 postings, each read from its job page and again from its apply page, so a
+    person saw each job twice and the Scout counted 53 for ~27 postings. Same id under the same path is a fact of the addresses, not a meaning: no AI, no word of ours, no host."""
+    posting = {key for url in urls if (found := _posting_key(url)) and found[1] == 0 and found[2] for key in [found[0]]}
+    return [url for url in dict.fromkeys(urls) if not ((found := _posting_key(url)) and found[1] > 0 and found[0] in posting)]
+
+
 def job_links(markup, base):
-    """Links on a listing page that look like single job pages of the same site."""
+    """Links on a listing page that look like single job pages of the same site, one per posting (one_per_posting)."""
     host, own, out, with_id = _job_paths(markup, base)
+    out, with_id = one_per_posting(out), one_per_posting(with_id)
     # Single job pages end in an id (a UUID, a long number): when the page has some, those are the jobs and the rest is its menu
     # ("/karriere/trainee"). 6 Oct 2026: Migros's menu links filled the quota before its 31 job links on the page.
     chosen = with_id if len(with_id) >= 3 else out
     if len(with_id) < 3:   # no job addresses with an id: a list of cards that differ only in their number beats a menu of job words
-        chosen = numbered_links(links(markup, base), host, own) or chosen
+        chosen = one_per_posting(numbered_links(links(markup, base), host, own)) or chosen
     return chosen[:MAX_JOB_PAGES]
 
 

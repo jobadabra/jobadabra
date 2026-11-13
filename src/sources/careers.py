@@ -23,7 +23,7 @@ MAX_BYTES = 2_000_000
 from ..ai import meanings_pack, page_words, slots
 from .careers_parse import (MAX_JOB_PAGES, CAREER_WORDS, JOB_PATH, JOB_ID, COUNTRIES, AGGREGATORS, own_site, encode, decode, links,  # noqa: F401
                             NO_JOBS, STRONG_WORDS, JOB_HOST, NOT_JOBS, registrable, careers_links, _walk, _words, jsonld_jobs, job_links,
-                            MAX_LIST_PAGES, PAGE_PAUSE_S, page_links)
+                            MAX_LIST_PAGES, PAGE_PAUSE_S, page_links, one_per_posting)
 # ---------- fetching ----------
 
 class NameNotResolved(ValueError):
@@ -344,7 +344,7 @@ def read_page_from(markup, url, fetch_page, part=None, linked=None):
     if linked is None:
         with part('job links'):
             linked = job_links(markup, url)
-    linked = linked[:MAX_JOB_PAGES]
+    linked = one_per_posting(linked)[:MAX_JOB_PAGES]   # a served layout's links too: twins of one posting are read once (careers_parse.one_per_posting)
     with part(f'{len(linked)} job pages'), ThreadPoolExecutor(max_workers=6) as pool:
         read = list(pool.map(slots.carry(one), linked))
     headed = list({job['url']: job for _, jobs in read for job in jobs}.values())
