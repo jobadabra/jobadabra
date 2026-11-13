@@ -2,6 +2,7 @@
 never a judgment about the page). The plus form (`quote_plus`) is what every board was read with; a board whose search is a path
 (`/jobs/{role}/{place}`) often wants a slug (`sales-representative`) and answers the plus form 404. Tests: tests/unit/sources/test_board_paths.py."""
 import re
+import unicodedata
 import urllib.error
 import urllib.parse
 
@@ -23,9 +24,14 @@ def _ascii(url):
     return scheme + sep + host + slash + re.sub(r'[^\x00-\x7f]+', lambda found: urllib.parse.quote(found.group()), tail)
 
 
+def _plain(text):
+    """The text without its accents (é to e); letters with no accent form (Cyrillic, ł) stay as they are."""
+    return ''.join(letter for letter in unicodedata.normalize('NFKD', text) if not unicodedata.combining(letter))
+
+
 def forms(url, term, place=''):
     """The links to ask for this board search, in order: the plus form first (a board that works today is read as before), then, only when
-    {role} or {place} sits in the link's path, the same link with those as slugs. Never more than two, never a different host or path."""
+    {role} or {place} sits in the link's path, the same link with those as slugs, and last the slugs without accents. Never more than three, never a different host or path."""
     # Why (13 Nov 2026): a board's own link may hold local letters (a Cyrillic path); only the word and the place were encoded, so the
     # read died on UnicodeEncodeError before asking the board, on every round.
     url = _ascii(url)
@@ -33,9 +39,11 @@ def forms(url, term, place=''):
     head, sep, tail = url.partition('?')
     if '{role}' not in head and '{place}' not in head:
         return [plus]
-    slug = head.replace('{role}', _slug(term)).replace('{place}', _slug(place))
-    other = slug + sep + tail.replace('{role}', urllib.parse.quote_plus(term)).replace('{place}', urllib.parse.quote_plus(place))
-    return [plus] if other == plus else [plus, other]
+    def filled(role, where):
+        return head.replace('{role}', _slug(role)).replace('{place}', _slug(where)) + sep + tail.replace('{role}', urllib.parse.quote_plus(term)).replace('{place}', urllib.parse.quote_plus(place))
+    # Why (13 Nov 2026, a chef in Krakow): a path-style board answered 404 to the place with its accent and had the jobs under the plain
+    # letters; the plain form is asked last, and only when a word in the path carries an accent.
+    return list(dict.fromkeys([plus, filled(term, place), filled(_plain(term), _plain(place))]))
 
 
 def get(fetch, links):

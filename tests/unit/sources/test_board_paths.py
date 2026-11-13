@@ -37,6 +37,11 @@ class Forms(unittest.TestCase):
                                    '%D0%BA%D0%B0%D0%BC%D0%B8%D0%BE%D0%BD/%D1%81%D0%BE%D1%84%D0%B8%D1%8F?%D0%B2%D0%B8%D0%B4=%D0%B2%D1%81%D0%B8%D1%87%D0%BA%D0%B8'
                                    '&q=%D1%88%D0%BE%D1%84%D1%8C%D0%BE%D1%80+%D0%BD%D0%B0+%D0%BA%D0%B0%D0%BC%D0%B8%D0%BE%D0%BD')
 
+    def test_a_path_place_with_an_accent_is_asked_last_without_it(self):
+        self.assertEqual(board_paths.forms('https://path.example/{role}/{place}', 'kucharz', 'Kraków'),
+                         ['https://path.example/kucharz/Krak%C3%B3w', 'https://path.example/kucharz/krak%C3%B3w', 'https://path.example/kucharz/krakow'])
+        self.assertEqual(len(board_paths.forms('https://q.example/jobs?l={place}', 'kucharz', 'Kraków')), 1, 'a query takes the accent as it is')
+
     def test_an_ascii_link_is_asked_as_before(self):
         self.assertEqual(board_paths.forms('https://path.example/search?q={role}&x=a%20b', 'sales rep'), ['https://path.example/search?q=sales+rep&x=a%20b'])
 
