@@ -21,7 +21,7 @@ repo="${4:-$(pr_repo .)}"; start_dir="$PWD"
 # Why (2 Nov 2026, owner: "let's check every 1 imnute"; PRs sat red for minutes): a look every 60 s, not 120; the ETag reads below made an unchanged look free, so the 27 Oct limit no longer sets the pace.
 #   Each look reads REST with the last ETag (tools/pr-rest-lib.sh): an unchanged answer is free, so a look costs about one call.
 poll="${SHIP_WATCH_POLL:-60}"; cap="${SHIP_WATCH_CAP:-172800}"; backoff_max="${SHIP_WATCH_BACKOFF_MAX:-900}"; backoff=0
-gitar_head=""; gitar_t0=0; opened_head=""; first_look=1   # the head the Gitar-ask timer runs for, when it began, and the head ship.sh opened the PR with (below)
+gitar_head=""; gitar_done=""; gitar_peeked=""; gitar_q=""; gitar_failed=""; gitar_t0=0; opened_head=""; first_look=1   # the head the Gitar-ask timer runs for, when it began, and the head ship.sh opened the PR with (below)
 old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
@@ -30,12 +30,6 @@ trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 #   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
 #   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Without an owning session those notifiers exit 0; the log stays the channel.
 # Why (7 Nov 2026, #3421): the independent coordinator notifier can fail even without an owning cmux session; keep its retry/result separate from worker delivery.
-# gitar_locked: true while Gitar's own newest "wait about N minutes" reply (issue comment or inline thread, any session's: replies in its threads count too, #3785 11 Nov 2026) is under 10 min old;
-#   a comment inside the lock restarts it, so the ask waits. A failed read says "not locked": the marker still allows one comment per head.
-gitar_locked() {
-  local c r; c="$(pr_get "repos/$repo/issues/$n/comments?per_page=100")" || c="[]"; r="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100")" || r="[]"
-  jq -es '[.[][]? | select((.user.login // "") | test("gitar"; "i")) | select(.body | test("Please wait about")) | (now - (.created_at | fromdateiso8601))] | any(. < 600)' <<<"$c $r" >/dev/null 2>&1
-}
 notify_worker() {
   if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
   else python3 "$here/claude-pr-events.py" "$log"; fi
@@ -119,7 +113,7 @@ while :; do
     now="$(jq -r '[.[]? | select(.bucket == "fail") | .name] | first // empty' <<<"${checks:-[]}" 2>/dev/null)" || now=""
     # Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 sat 7+ min with no review): Gitar reviews a PR when it opens, not a push to an
     #   open PR, so a pushed head has no "Gitar" check and nobody asks. After the wait below without one, this watcher posts ONE "Gitar review" per head (a second comment inside
-    #   ~50 min locks the PR, so the head is written to the marker before the post and never asked twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
+    #   ~50 min locks the PR, so the queue keeps a record of the heads it sent and never asks twice). Guard: tests/tooling/ci/test_ship_watch_gitar_ask.py.
     #   The check is named "Gitar" (live on #3723, 11 Nov 2026 00:55:52Z); matched like the label matches the app slug: case-insensitive "gitar" in the name; an empty read (rate limit, 5xx) keeps the timer running and never asks, since it cannot show that Gitar has no check.
     # Why (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"): a push to an open PR is asked after SHIP_WATCH_GITAR_AFTER s (default 30, was 180 for every head), so the
     #   label reads "reviewing" about half a minute after the push; only the head ship.sh OPENED the PR with keeps SHIP_WATCH_GITAR_OPENED s (default 180), since Gitar starts on an open by itself.
@@ -128,15 +122,26 @@ while :; do
     if [ -n "$checks" ] && jq -e 'any(.[]?; (.name // "") | test("gitar"; "i"))' <<<"$checks" >/dev/null 2>&1; then gitar_head=""
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
-      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$(cat "$seen.gitar-asked" 2>/dev/null)" != "$head" ] && ! gitar_locked; then
-        printf '%s\n' "$head" > "$seen.gitar-asked"
+      if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$gitar_done" != "$head" ]; then
         # Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886): a head that only merged main in keeps Gitar's verdict (tools/gitar-label.mjs
-        #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before.
-        kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
-        case "$kept" in
-          "Gitar: approved"|"Gitar: approved with suggestions"|"Gitar: changes requested") say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";;
-          *) if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi;;
-        esac
+        #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before. Read once per head.
+        if [ "$gitar_peeked" != "$head" ]; then
+          gitar_peeked="$head"
+          kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
+          case "$kept" in "Gitar: approved"*|"Gitar: changes requested") gitar_done="$head"; say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";; esac
+        fi
+        # Why (13 Nov 2026, gq; owner, asked via AskUserQuestion: "One shared ask queue (Recommended)"): this watcher never posts "Gitar review" itself: every session's asks go through ONE queue on this Mac
+        #   (tools/gitar-queue.mjs: one post at a time, spaced, a PR Gitar refused waits, the same head never twice). The call is idempotent, so each look asks again until the queue says ASKED or DROPPED.
+        #   A watcher runs this file from its own worktree: a PR open before this change keeps posting by itself until its branch has it and its next tools/ship.sh replaces the watcher.
+        if [ "$gitar_done" != "$head" ]; then
+          if out="$(${SHIP_WATCH_GITAR_QUEUE:-node "$here/gitar-queue.mjs"} ask "$repo" "$n" "$head" 2>/dev/null | tail -n 1)" && [ -n "$out" ]; then
+            case "$out" in
+              ASKED*) gitar_done="$head"; say "GITAR ASKED #$n ${head:0:7}";;
+              DROPPED*) gitar_done="$head"; say "GITAR $out #$n ${head:0:7}";;
+              QUEUED*) [ "${out%%, next*}" = "$gitar_q" ] || say "GITAR queued #$n ${head:0:7} ${out#QUEUED }"; gitar_q="${out%%, next*}";;
+            esac
+          else [ "$gitar_failed" = "$head" ] || say "GITAR ASK FAILED #$n ${head:0:7}"; gitar_failed="$head"; fi
+        fi
       fi
     fi
     key="${now:+$head:$now}"
