@@ -26,6 +26,9 @@ MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "custom
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
+# Why (13 Nov 2026, sa for the owner: per profile "boards that gave jobs, boards refused, boards cut at the end"): the three counts come from the press log's own lines, as BOARD does.
+REFUSED = re.compile(r'Job boards found: (.+?) \d+ job\(s\), \d+ relevant \(refuses automated reading|Job boards: (.+?) refuses automated reading')
+CUT_BOARDS = re.compile(r'Time is up \([^)]*\) for job boards: (\d+) board')
 RAN_OUT = re.compile(r'Time is up \([^)]*\) for ([^:]+):|No time left in this refresh for these: \d+ (\w+)')
 ENGINE = re.compile(r'^AI: (\S+)(?: / (\S+))?', re.M)
 # Why (13 Nov 2026, sa, after run 43354770712: b02 0 and c06 1 right jobs with waits p90 56-58 s, Cluj 18-21 on the Mac): a profile whose search waited this long on the broker ran
@@ -149,6 +152,7 @@ def row(pid, out):
     seen = [t for t in (_when(r.get('first_seen')) for r in right) if t]
     log = '\n'.join(read(f'draw/{f.name}') for f in sorted((out / 'draw').glob('run-*.log')))
     boards = BOARD.findall(log)
+    refused = sorted({(a or b).strip() for a, b in REFUSED.findall(log)})
     ran_out = sorted({(a or b).strip() for a, b in RAN_OUT.findall(log)})
     engines = sorted({' / '.join(x for x in m if x) for m in ENGINE.findall(read('run.log'))})
     p90 = waits_p90_s(read('run.log'))
@@ -156,7 +160,8 @@ def row(pid, out):
         return {**result, 'not_measured': f'not measured (waits p90 {p90} s)', 'starved': True, 'waits_p90_s': p90, 'relevant_while_starved': len(right), 'shown_while_starved': len(rows)}
     return {**result, 'waits_p90_s': p90, 'relevant': len(right), 'shown': len(rows), 'seconds': press.get('seconds'),
             'first_relevant_s': round((min(seen) - started).total_seconds()) if seen and started else None,
-            'boards_read': len(boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards), 'time_ran_out_for': ran_out,
+            'boards_read': len(boards), 'boards_gave_jobs': sum(int(j) > 0 for _, j, _ in boards), 'boards_with_relevant': sum(int(n) > 0 for _, _, n in boards),
+            'boards_refused': len(refused), 'boards_cut': sum(int(n) for n in CUT_BOARDS.findall(log)), 'time_ran_out_for': ran_out,
             'engine': (', '.join(engines) or 'not said') + (' (no renderer)' if (out / 'no-renderer.txt').exists() else ''), 'judge': ', '.join((judged.get('agreement') or {}).get('ai') or []) or 'not said',
             'judge_tier': judged.get('tier', 'small'), 'eures': p.get('eures', 0), 'target': target(len(right), p.get('eures', 0))}
 
@@ -172,15 +177,15 @@ def table(folder, out):
     commits = sorted({r['commit'] for r in rows if r.get('commit')})
     lines = [f'## Search profiles on CI · {len(rows)} profiles · one run each · commit {", ".join(commits) or "?"}',
              f'CI rows ({ai_names(rows) or "AI"} through the broker, fresh installs, EURES off): a new series, never mixed with the Mac rows of 12 Nov 2026 or a round on another AI.', '',
-             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read / with relevant | time ran out for | broker waits p90 | engine | judge |',
-             '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
+             '| id | city | role | relevant | EURES (X) | target | shown | first relevant at | boards read | boards that gave jobs | boards with relevant | boards refused | boards cut at the end | time ran out for | broker waits p90 | engine | judge |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for r in rows:
         if 'relevant' not in r:
             waits = f"{r['waits_p90_s']} s" if r.get('waits_p90_s') is not None else ''
-            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | {waits} | | |")
+            lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r.get('not_run') or r.get('not_measured')} | | | | | | | | | | | {waits} | | |")
             continue
         first = f"{r['first_relevant_s']} s" if r['first_relevant_s'] is not None else '—'
-        lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r.get('eures') or '—'} | {r.get('target', '—')} | {r['shown']} | {first} | {r['boards_read']} / {r['boards_with_relevant']} | "
+        lines.append(f"| {r['id']} | {r['city']} | {r['title']} | {r['relevant']} | {r.get('eures') or '—'} | {r.get('target', '—')} | {r['shown']} | {first} | {r['boards_read']} | {r.get('boards_gave_jobs', '—')} | {r['boards_with_relevant']} | {r.get('boards_refused', '—')} | {r.get('boards_cut', '—')} | "
                      f"{', '.join(r['time_ran_out_for']) or '—'} | {str(r['waits_p90_s']) + ' s' if r.get('waits_p90_s') is not None else '—'} | {r['engine']} | {r['judge']} ({r['judge_tier']}) |")
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     (Path(out).parent / 'rows.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
