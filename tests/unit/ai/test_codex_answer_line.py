@@ -129,7 +129,7 @@ class AnswerLineTests(unittest.TestCase):
         with mock.patch('sys.stderr', new_callable=io.StringIO) as printed:
             out = self.run_fake('late')
             self.assertEqual((out.returncode, out.stderr), (0, 'reading config\n'))
-            self.assertEqual(printed.getvalue(), '')   # positive control: nothing said while it still runs
+            self.assertNotIn('after its answer', printed.getvalue())   # positive control: no warning while it still runs (only ours: #3973's red was another call's "unclosed file" line landing here)
             (self.dir / 'RELEASE').write_text('1')
             deadline = time.monotonic() + 20   # a hang guard only: the reaper prints within a tick of the exit
             while 'after its answer' not in printed.getvalue() and time.monotonic() < deadline:
