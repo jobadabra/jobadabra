@@ -1,5 +1,5 @@
 """A board card that links its posting twice (the job page and an action on it, /jobs/<id>-<slug> and /jobs/<id>/apply) is ONE posting in the list
-(src/sources/careers_parse.py one_per_posting). 13 Nov 2026 (sd; bp's proof on an airline board, discovery run 43498167418): 39 rows of ~20 postings, each posting
+(src/sources/careers_parse.py one_per_posting). 13 Nov 2026 (sd; bp's proof on an airline board, his log of a jobadabra-lab discovery read, run 43498167418): 39 rows of ~20 postings, each posting
 once from its job page and once from its apply page ('Girona' vs 'Gerona'), so a person saw each job twice and the Scout counted 53 for a field of ~27 postings.
 Invented boards and words; no AI call, no live site. Only the certain case is joined: the link that ends at its own <id>-<slug> segment keeps its place and a link of the same id
 with segments after it is dropped; two links that both add segments, or a bare id beside its sub-pages, are never joined (a lost job is worse than a shown twin, sa 13 Nov 2026)."""
@@ -72,7 +72,7 @@ class OneLinkPerPostingTests(unittest.TestCase):
 
     def test_the_layout_a_board_served_is_cleaned_the_same_way(self):
         """read_page_from(linked=...) takes the links a served layout named: twins in it are read once too."""
-        named = [f'https://{HOST}/jobs/7000001-mechanic-1', f'https://{HOST}/jobs/7000001/apply', f'https://{HOST}/jobs/7000002-mechanic-2']
+        named = [f'https://{HOST}/jobs/7000001-mechanic-1', f'https://{HOST}/jobs/7000001/apply', f'https://{HOST}/jobs/7000002-mechanic-2', f'https://{HOST}/jobs/7000002/apply']
         opened = []
 
         def fetch(url):
@@ -97,6 +97,16 @@ class OneLinkPerPostingTests(unittest.TestCase):
         """sa, 13 Nov 2026: /employer/<id>/welder and /employer/<id>/driver share the path before the id and the id, and are two jobs."""
         page = ''.join(f'<a href="/jobs/{7000000 + n}/{role}">{role}</a>' for n in range(3) for role in ('welder', 'driver'))
         self.assertEqual(len(careers_parse.job_links(page, BASE)), 6)
+
+    def test_a_posting_with_a_slug_keeps_its_own_named_sub_pages(self):
+        """Gitar on #4060: /employer/<id>-acme (a slug beside the id) with /welder and /driver below it: the sub-pages are told apart by name, on one id, so they stay."""
+        urls = [f'https://{HOST}/employer/7000001-acme', f'https://{HOST}/employer/7000001-acme/welder', f'https://{HOST}/employer/7000001-acme/driver']
+        self.assertEqual(careers_parse.one_per_posting(urls), urls)
+
+    def test_a_lone_card_keeps_its_twin_rather_than_risk_a_lost_job(self):
+        """One posting with one apply link and no other card cannot show that /apply is an action: shown twice, never lost."""
+        urls = [f'https://{HOST}/jobs/7000001-mechanic', f'https://{HOST}/jobs/7000001/apply']
+        self.assertEqual(careers_parse.one_per_posting(urls), urls)
 
     def test_a_bare_id_page_is_never_joined_with_the_pages_below_it(self):
         """/jobs/<id> may be an employer page, not a posting with a slug: its sub-pages stay."""
