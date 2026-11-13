@@ -195,8 +195,9 @@ jobs:
           if [ "$OWN" != true ]; then
             # Why (13 Nov 2026, sa and bl, run 43487528056): the board proposal and the board searches in local words were one AI call per side, so the sides read different boards (main's
             # side read a board that gave 19 of its 26 right jobs, the PR's never saw it). --propose asks them once here, in the draft's install, and each side starts from a copy of it (below).
-            # The run.mjs that has --propose is main's once this has landed; until then the PR's own.
+            # The run.mjs that has --propose is main's once this has landed; until then the PR's own, and the PR's own when it changes propose.py (13 Nov 2026, the web search made once: its proof needs the PR's).
             drafter=side-main; grep -q -- '--propose' side-main/tools/persona-search/run.mjs || drafter=side-pr
+            cmp -s side-main/tools/persona-search/propose.py side-pr/tools/persona-search/propose.py || drafter=side-pr
             node tools/persona-search/codex.mjs -- node "$drafter/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/cv" --presses 0 --fresh --engine api --tag pair-draft --propose 2>&1 | tee draft.log
           fi
       - name: Main and the PR search at the same minute (first search, the person's tier, through the Codex relay)
