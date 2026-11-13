@@ -103,12 +103,12 @@ class TheClass(unittest.TestCase):
 
     def test_the_gate_runs_again_when_a_pr_is_retargeted_and_never_skips_its_job(self):
         gate = (WORKFLOWS / 'pr-gate.yml').read_text()
-        self.assertRegex(gate, r'types: \[opened, synchronize, reopened, edited\]')
+        self.assertRegex(gate, r'types: \[opened, synchronize, reopened, edited(, ready_for_review, converted_to_draft)?\]')   # 13 Nov 2026: a draft flip re-reads a pending Moves line
         self.assertNotRegex(gate, r'(?m)^    if: .*github\.event', 'a skipped required job counts as green and would hide an earlier red')
 
     def test_a_description_edit_never_cancels_the_run_of_a_push_or_a_retarget(self):
         gate = (WORKFLOWS / 'pr-gate.yml').read_text()
-        self.assertIn("(github.event.action == 'edited' || github.event.action == 'reopened') && format('same-commit-{0}', github.run_id) || 'code'", gate)   # 10 Nov 2026: an edit has its own group (test_pr_gate_one_run_per_head.py)
+        self.assertIn("(github.event.action == 'edited' || github.event.action == 'reopened' || github.event.action == 'ready_for_review' || github.event.action == 'converted_to_draft') && format('same-commit-{0}', github.run_id) || 'code'", gate)   # 10 Nov 2026: an edit has its own group (test_pr_gate_one_run_per_head.py)
         self.assertIn('cancel-in-progress: true', gate)
 
     def test_no_workflow_asks_a_pick(self):
