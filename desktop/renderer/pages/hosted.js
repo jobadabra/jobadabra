@@ -10,6 +10,7 @@ import {NAME, STORED, SUBTITLE, model} from '../hosted-words.js';
 import {draw as drawChoice, mountChoice} from './always-on-choice.js';
 import {showScheduleState} from './connections.js';
 import {askConsentOnce} from './hosted-email-ask.js';
+import {mountDeviceOnly} from '../always-on-device-only.js';
 
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
 
@@ -79,4 +80,4 @@ export async function refresh() {
 }
 
 /** Mount the Always on Settings card and subscribe to its status refreshes. */
-export function init() { mountCard(); mountChoice(); }
+export function init() { mountCard(); mountChoice(); mountDeviceOnly(); }

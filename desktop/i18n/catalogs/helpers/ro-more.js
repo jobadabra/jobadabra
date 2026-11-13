@@ -1,5 +1,11 @@
 // Other app-owned helper copy; identifiers, user data and workflow instructions remain unchanged.
 export const messages = {
+  "deviceOnlyLead": "Always on nu le folosește niciodată. Rămân pe acest computer:",
+  "deviceOnlyPill": "Doar acest computer",
+  "deviceOnlyLinkedin": "LinkedIn cu autentificarea ta",
+  "deviceOnlyLinkedinLine": "Pentru siguranța ta, autentificarea ta LinkedIn nu părăsește niciodată acest computer: deocamdată, joburile LinkedIn sunt citite doar aici, cât Jobadabra e deschis.",
+  "deviceOnlyGoogle": "Gmail și Calendar",
+  "deviceOnlyGoogleLine": "Pentru siguranța ta, autentificarea ta Google nu părăsește niciodată acest computer: deocamdată, mailul și calendarul sunt verificate doar aici, cât Jobadabra e deschis.",
   "standardAutomation": "Automatizare standard",
   "bestQuality": "Cea mai bună calitate",
   "visibleFilling": "Completează într-un browser vizibil; tu verifici și trimiți.",

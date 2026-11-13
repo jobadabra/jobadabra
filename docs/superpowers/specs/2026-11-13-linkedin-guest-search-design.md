@@ -121,7 +121,7 @@ The pause after a 429 (`linkedin-guest-on.js`, today 1 day) becomes this clear t
 - [x] PR 1/4 engine lane (#3995, merged 13 Nov 2026) (proof: tests/unit/sources/test_linkedin_guest.py)
 - [ ] PR 2/4 app turns it on + shared stop + ≤ 6 requests in any 10 min, 20-40 s apart + measure (proof: tests/unit/sources/test_linkedin_guest.py window and round-robin tests)
 - [ ] 429 clear time measured (1 h / 3 h / 6 h) and the pause set from it
-- [ ] PR 3/4 Automations note
+- [x] PR 3/4 Automations note: both Always on cards list LinkedIn with your sign-in and Gmail & Calendar as "This computer only" (proof: desktop/test/unit/renderer/always-on-device-only.test.js)
 - [x] Caps numbers and the 6 h cache: owner's yes (13 Nov 2026) (proof: none: AskUserQuestion answers relayed by the coordinator, quoted in Caps)
 - [ ] PR 4/4 Always on trial with the Caps, owner's install only (site PR first)
 - [ ] Trial read after about a week: no 429/999/wall, then the owner's yes, then the Always on guest read for everyone
