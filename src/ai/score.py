@@ -23,8 +23,8 @@ from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 from ..press import resume
 
-# Bump when the prompt or schema changes so every job is re-scored once.
-SCORER_VERSION = 2
+# Bump when the prompt, the schema or a rule that decides a fit changes: an older stamp is an old score for Re-score (score_old.rescorable). Why (13 Nov 2026, owner: "Re-score scores made before a rule change"): 3 = the licence cap of 7 Nov (#3357); tests/guards/data/test_scorer_rules_version.py locks it.
+SCORER_VERSION = 3
 DEFAULT_MODEL = os.getenv('JOBADABRA_SCORE_MODEL', MAIN_MODEL)
 # How hard the scorer thinks (medium by default; Haiku has no such setting and ignores it).
 EFFORT = os.getenv('JOBADABRA_SCORE_EFFORT', 'medium')

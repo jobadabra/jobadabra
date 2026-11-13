@@ -21,23 +21,26 @@ from tests.unit.ai.test_score_scope import EDITED, PROFILE, job_row
 
 
 class Client:
-    def __init__(self):
-        self.messages, self.titles = self, []
+    def __init__(self, answer=70):
+        self.messages, self.titles, self.answer = self, [], answer
 
     def create(self, **params):
         self.titles.append(json.dumps(params['messages'][0]['content']))
-        return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(fit(70)))],
+        return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps(fit(self.answer)))],
                                usage=SimpleNamespace(input_tokens=1, output_tokens=1, cache_read_input_tokens=0))
 
 
-class OneCountTests(unittest.TestCase):
+class StoreCase(unittest.TestCase):
+    """The owner's-store harness (no tests of its own): a real store of 9 jobs, the Re-score run, a fake AI; other test files build on it."""
+    answer = 70   # what the fake AI scores every job
+
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
         self.stores = memory.open_store()
         self.stores.texts.set('profile', EDITED)   # the Profile changed since every score below
-        self.client = Client()
+        self.client = Client(self.answer)
         self.addCleanup(time_budget.start, 0)
         time_budget.start(0)
         for patch in (mock.patch.dict(os.environ, {'JOBADABRA_DATA_DIR': str(self.root), 'JOBADABRA_CONFIG_DIR': str(self.root)}),
@@ -65,6 +68,8 @@ class OneCountTests(unittest.TestCase):
         args = build_parser('test').parse_args(['--mode', 'rescore', '--score-max', '60', '--db', str(self.db_path)])
         return rescore_mode(args, self.stores)
 
+
+class OneCountTests(StoreCase):
     def test_the_count_the_button_the_run_and_the_rows_are_the_same_jobs(self):
         with store.connect(self.db_path) as db:
             counted = desktop_strategy.outdated(db, {}, EDITED)['count']
