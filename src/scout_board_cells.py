@@ -22,6 +22,7 @@ TARGET = 4                     # boards PROVEN for the cell (MIN_RIGHT+ jobs of 
 # Cost, from run 43485778466: a pass (one country, 3 families) 6.3 min and 25-41 AI calls; 930 cells = 310 passes = ~33 h on one lane, ~4-5 h on 8 lanes.
 SEEDED = ('serp_waiting', 'serp_pairs', 'serp_month')   # src/scout_google_boards.py memory, copied once by seed()
 REREAD, REREAD_DAYS = 'board_reread', 3   # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a due fact was read again; it is not due again for this long
+SKIPPED = 'board_skipped'   # scout_meta: {"<country>": [hosts whose re-read the pass had no time for]} (note_skipped, read by record)
 RAN = 'board_ran'   # scout_meta: {"<country>": [families a board of the last pass was asked by their own word]} (note_ran, read by record)
 WORDS, WORDS_DAYS = 'board_words', 30     # scout_meta: {"<country>|<family>": {"words": [...], "at": "YYYY-MM-DD"}} the family's search words in the country's language (local_words)
 
@@ -120,10 +121,18 @@ def note_ran(db, country, ran):
     scout_cells._set(db, RAN, {**(memory if isinstance(memory, dict) else {}), country: sorted(ran)})
 
 
+def note_skipped(db, country, hosts):
+    """The re-reads the pass just read had no time for (src/scout_boards.py run): record() does not stamp them, so they are due again next pass."""
+    memory = scout_cells._meta(db, SKIPPED, {})
+    scout_cells._set(db, SKIPPED, {**(memory if isinstance(memory, dict) else {}), country: sorted(hosts)})
+
+
 def record(db, country, families, kept, today=None, again=()):
     """After a run: a family with a kept board is cleared; one without rests REST_DAYS by its empty tries in a row; the facts read again are stamped."""
     from . import scout_boards
     today = today or date.today()
+    skipped = (scout_cells._meta(db, SKIPPED, {}) or {}).get(country) or []
+    again = [board for board in again if board['host'] not in skipped]
     if again:
         tried = scout_cells._meta(db, REREAD, {})
         tried = tried if isinstance(tried, dict) else {}

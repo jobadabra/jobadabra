@@ -306,11 +306,14 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         from .ai import page_reader
         ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
-            known = {item['host'] for item in again}
+            known, skipped = {item['host'] for item in again}, []
             for board in proposed:
                 if known and board['host'] not in known:
                     began, known = clock(), set()   # the re-reads are done: the new boards' time starts here
                 if clock() - began > BUDGET_S:
+                    if known:   # the re-reads' own time is spent: this one waits for a next pass (not stamped as read), the new boards still come
+                        skipped.append(board['host'])
+                        continue
                     break
                 kept_layout, notes = _layout(db, board['host'], country), {}   # replayed by this read: a layout that still holds is kept, a stale one replaced
                 board = {**board, 'learn': notes, **({'layout': kept_layout} if kept_layout else {})}
@@ -376,6 +379,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         if by_cells:
             from . import scout_board_cells
             scout_board_cells.note_ran(db, country, ran)   # the cell's record() after this pass: a family no board was asked is no miss
+            scout_board_cells.note_skipped(db, country, skipped)   # record() stamps as read again only the re-reads that ran
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()
