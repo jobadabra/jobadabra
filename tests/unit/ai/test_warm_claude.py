@@ -299,10 +299,6 @@ class OrphanTests(unittest.TestCase):
         self.assertTrue((fake.dir / 'ended').exists(), 'the spare kept waiting after its engine was killed')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class PipesTests(unittest.TestCase):
     """#3973's red (13 Nov 2026): the reader thread left the process's output pipe open, and Python's "unclosed file" warning for it landed in
     the captured stderr of whichever test ran when the garbage collector did (test_codex_answer_line's positive control)."""
@@ -316,3 +312,7 @@ class PipesTests(unittest.TestCase):
         self.assertTrue(process.stdout.closed)
         spare.end()
         process.wait(timeout=20)
+
+
+if __name__ == '__main__':
+    unittest.main()
