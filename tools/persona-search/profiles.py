@@ -21,6 +21,7 @@ PROFILES = json.loads((HERE / 'search-profiles.json').read_text(encoding='utf-8'
 IDS = [p['id'] for p in PROFILES]
 # Why (12 Nov 2026, sa): a profile run shares the broker with nothing that measures: the Search check's night (the press tapes were retired 13 Nov 2026).
 HOLDERS = ('search-personas.yml',)
+MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number up to all 30 at once; the room is the broker's, read per run
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
@@ -63,6 +64,8 @@ def busy(run_list=None):
 def free(chosen, at_once, now=None, run_list=None):
     """(ok, why): no holder runs, and the run's estimate ends before the night's 00:00 UTC start. Invariant: never ok while a holder is queued or running."""
     now = now or datetime.now(timezone.utc)
+    if not 1 <= at_once <= MAX_AT_ONCE:
+        return False, f'at_once {at_once} is outside 1-{MAX_AT_ONCE}: not run'
     held = busy(run_list)
     if held:
         return False, 'the broker is held by ' + ', '.join(held) + ': not run, start it again when they end'
@@ -187,7 +190,7 @@ def main(argv):
     if command == 'ids':
         print(ids(args[0] if args else ''))
     elif command == 'free':
-        ok, why = free(json.loads(args[0]), int(args[1]))
+        ok, why = free(json.loads(args[0]), int(float(args[1])))   # a number input may arrive as '6' or '6.0'
         print(why)
         sys.exit(0 if ok else 1)
     elif command == 'cv':
