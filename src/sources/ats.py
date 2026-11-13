@@ -219,7 +219,7 @@ def join(slug):
 
 
 # The feeds below live in their own files (pure move); they read `_get`/`_json`/`_job`/`plain` above, so they are imported here, after those.
-from .ats_sites import (WORKDAY_PAGES, WORKDAY_ALL_PAGES, WORKDAY_MAX_TERMS, WORKDAY_CLUSTER, workday_terms, _split_workday, workday, successfactors,  # noqa: E402,F401
+from .ats_sites import (WORKDAY_PAGES, WORKDAY_ALL_PAGES, WORKDAY_MAX_TERMS, WORKDAY_CLUSTER, workday_terms, _split_workday, workday, WORKDAY_JOB_URL, workday_job, successfactors,  # noqa: E402,F401
                         umantis, careers, MAX_ROLES, MAX_PLACES, _strategy_terms, search_roles, search_places, amazon, netflix)
 from .ats_oracle import (ORACLE_ALL_PAGE, ORACLE_ALL_PAGES, ORACLE_TERM_PAGE, split_oracle, oracle_base, oracle)  # noqa: E402,F401
 from .ats_phenom import (PHENOM_PAGE, PHENOM_ALL_PAGES, PHENOM_TERM_PAGES, phenom_site, phenom)  # noqa: E402,F401
@@ -236,6 +236,8 @@ FETCHERS = {'greenhouse': greenhouse, 'lever': lever, 'ashby': ashby, 'smartrecr
             'amazon': amazon, 'netflix': netflix, 'jobsch': jobsch, 'visit': lambda slug: _visit(slug)}
 
 
+# Boards whose one job can be read on its own, without walking the list (ats -> fn(job url) -> job, None when the link has no such shape).
+ONE_JOB = {'workday': workday_job}
 LOCAL_ONLY = {'visit'}   # feed types that live on one install only: never published, shared or sent to the website
 
 
@@ -351,7 +353,11 @@ def posting(url):
     if describe.refused_lately(url):
         return None
     wanted = _wanted(url)
+    one = ONE_JOB.get(found[0])
     try:
+        job = one(url) if one else None
+        if job:
+            return job
         jobs = _board(*found)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, KeyError, ET.ParseError,
             json.JSONDecodeError, OSError) as error:

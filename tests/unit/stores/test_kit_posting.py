@@ -246,7 +246,9 @@ class OneRefusalRecord(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def press(self, board):
-        with mock.patch.object(ats, '_board', side_effect=board) as asked, mock.patch.object(describe, 'fetch', return_value=PAGE) as fetched:
+        # The board's list read (ats.ONE_JOB emptied): a Workday link is otherwise read as one job, tests/unit/sources/test_ats_one_job.py.
+        with mock.patch.object(ats, 'ONE_JOB', {}), mock.patch.object(ats, '_board', side_effect=board) as asked, \
+                mock.patch.object(describe, 'fetch', return_value=PAGE) as fetched:
             found = ats.posting(self.BOARD)
             return found, asked.call_count, describe.read_posting(self.BOARD), fetched.call_count
 

@@ -71,6 +71,29 @@ def workday(slug):
     return jobs
 
 
+# Why (13 Nov 2026, #4005 follow-up): one shape for a Workday job link, shared by the one-job read below and the page reader (describe.py).
+WORKDAY_JOB_URL = re.compile(rf'^https://([^./]+)\.({WORKDAY_CLUSTER})\.myworkdayjobs\.com/(?:[a-z]{{2}}-[A-Z]{{2}}/)?([^/?#]+)/job/([^?#]+)')
+
+
+def workday_job(url):
+    """The one job a Workday link points at, read from its own JSON (the one the job page uses, /wday/cxs/<tenant>/<site>/job/<path>): one request.
+    None when the link has no such shape (the caller walks the board's list instead); ValueError when the job is not there.
+    Why (13 Nov 2026, #4005 follow-up): finding one job by walking the board's search took ~45 s (up to 22 requests at the host's pace) on every Add job."""
+    match = WORKDAY_JOB_URL.match(url or '')
+    if not match:
+        return None
+    tenant, cluster, site, path = match.groups()
+    request = urllib.request.Request(f'https://{tenant}.{cluster}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{path}', headers={
+        'User-Agent': USER_AGENT, 'Accept': 'application/json'})
+    with host_pace.open(request, TIMEOUT) as response:
+        info = (json.loads(response.read()) or {}).get('jobPostingInfo') or {}
+    if not info.get('title'):
+        raise ValueError('no such Workday posting')
+    where = info.get('location') or ''
+    return _job(info.get('jobReqId') or path, info['title'], where, info.get('externalUrl') or url, info.get('startDate'),
+                plain(info.get('jobDescription')), 'remote' in where.lower())
+
+
 def successfactors(slug):
     """SAP SuccessFactors career sites ("Recruiting Marketing", e.g. careers.swissre.com): every open job in the site's public feed for
     search engines, /sitemal.xml (RSS with Google Base fields: location, employer). Slug: the site's host name."""
