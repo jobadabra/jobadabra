@@ -205,9 +205,10 @@ def pending(body):
     return out[:MAX_PEOPLE]
 
 
-def settle(body, title, labels, done, ran, attempt, seen=None):
+def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
     """What the pair does to its PR: {body, title, lift, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
-    seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again."""
+    seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again;
+    rerun: the people the row really dispatched again (pair_row.decide's rerun, empty when the dispatch failed): the one source of "runs once more" (Gitar on #4077)."""
     body, verdict, fell = body or '', [], []
     seen = set(ran if seen is None else seen)
     for person, m in done.items():
@@ -221,7 +222,7 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
     ours = HOLD_LABEL in labels
     # Why (13 Nov 2026, #3946 then #4044: a by-hand pair queued a third run on main's workflow by itself; since 1/3 every pair runs once more by itself through its row): settle only words the verdict.
     # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
-    again = bool(ours and invalid and attempt < 2 and not fell)
+    again = bool(ours and invalid and rerun and not fell)
     still = pending(body)
     # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
     lift = ours and not fell and not still and not invalid and not never
@@ -267,21 +268,23 @@ def main(argv):
         if found:
             print(json.dumps(found))
         return 0
-    if command == 'row' and len(argv) in (6, 7):   # people: the dispatched ids as json; an optional 7th: a file of the first run's counted lines (attempt 2 keeps them)
+    if command == 'row' and len(argv) == 10:   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
         rows = sides(argv[2])
         ran = sorted(set(json.loads(argv[3])), key=str)
         done = measured(rows)
-        earlier = [line for line in Path(argv[6]).read_text(encoding='utf-8').splitlines() if ' right jobs ' in line] if len(argv) == 7 and Path(argv[6]).exists() else []
-        out = pair_row.decide(done, ran, set(rows), {person: usual(person) for person in done}, int(argv[4]), rows, newer_head=argv[5] == '1', earlier=earlier)
+        old = json.loads(Path(argv[6]).read_text(encoding='utf-8') or '{}')
+        event = {'kind': 'ended', 'run_id': argv[7], 'run_url': argv[8], 'comment_url': argv[9], 'done': done, 'ran': ran, 'seen': set(rows), 'spreads': {person: usual(person) for person in done},
+                 'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1'}
+        out = pair_row.next_row(old, event)
         out['rerun'] = [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in out['rerun']]   # the dispatch's own form: night people as numbers, profiles as ids
-        Path('row.json').write_text(json.dumps({key: pair_row.safe(value) if isinstance(value, str) else value for key, value in out.items()}), encoding='utf-8')
-        print(out['title'])
+        Path('row.json').write_text(json.dumps(out), encoding='utf-8')
+        print(out['api'].get('output', {}).get('title', out.get('why', '')))
         return 0
-    if command == 'settle' and len(argv) == 6:   # people: setup's matrix entries (each its id)
+    if command == 'settle' and len(argv) in (6, 7):   # people: setup's matrix entries (each its id); an optional 7th: the row's real rerun (json list)
         view = json.loads(Path(argv[3]).read_text(encoding='utf-8'))
         ran = [entry['id'] for entry in json.loads(argv[5])]
         rows = sides(argv[2])
-        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(rows), sorted(set(ran)), int(argv[4]), seen=set(rows))
+        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(rows), sorted(set(ran)), int(argv[4]), seen=set(rows), rerun=json.loads(argv[6]) if len(argv) == 7 else ())
         Path('settle.json').write_text(json.dumps(out), encoding='utf-8')
         print('\n'.join(out['verdict']))
         return 0

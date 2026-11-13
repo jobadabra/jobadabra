@@ -59,9 +59,11 @@ class SearchHoldTest(unittest.TestCase):
         self.assertFalse(pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 4, None), p4=(20, 19, None)), ['p1', 'p4'], 1)['lift'])
 
     def test_a_side_not_valid_runs_once_more_then_reports(self):
-        first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
+        first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1, rerun=['p4'])
         self.assertFalse(first['lift'])
         self.assertIn('p4 not valid; the pair runs once more', first['verdict'][0])
+        failed = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1, rerun=[])   # the dispatch failed or the head moved: no promise of a second run (Gitar on #4077)
+        self.assertNotIn('runs once more', failed['verdict'][0])
         self.assertEqual(pair.pending(first['body']), [4])
         second = pair.settle(first['body'], TITLE, ['search-hold'], {}, ['p4'], 2)
         self.assertFalse(second['lift'])
