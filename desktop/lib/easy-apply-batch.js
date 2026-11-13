@@ -30,9 +30,10 @@ export function easyApplyBatch({storage, send, readSession = realSession.readSes
   let inside = false;
   const browser = {send};
   async function put(session) {
+    const first = !inside;
+    inside = true;   // before the call: a put that throws may still have written the cookies, so a later poll must expire them (Gitar on #4096)
     await send('Storage.setCookies', {cookies: jar(Object.entries(session), now(), false)});
-    if (inside !== true) log('easy-apply', 'LinkedIn sign-in put into the hidden browser for this batch', {});
-    inside = true;
+    if (first) log('easy-apply', 'LinkedIn sign-in put into the hidden browser for this batch', {});
   }
   async function out() {
     await clearJar(browser, realSession.COOKIE_NAMES.map(name => [name, '']), now());   // the names are the floor; every LinkedIn cookie held is expired too
@@ -62,10 +63,13 @@ export function easyApplyBatch({storage, send, readSession = realSession.readSes
     }
     const waiting = mine.filter(([, each]) => NOT_OPENED.has(each.state.state));
     const {reason, session} = waiting.length ? turn() : {};
-    // A hand-over write that throws skips only that job this poll (never opened: the next poll tries again), like the controller's other per-job reads.
-    if (reason) for (const entry of waiting) entry[1] = await Promise.resolve().then(() => handOver(entry[0], reason)).then(state => ({...entry[1], state}), error => { log('easy-apply', 'a LinkedIn job could not be handed to the person: tried again next poll', {session: entry[0].id, error: String(error?.message || error)}); return null; });
+    // A hand-over write that throws or is refused skips only that job this poll (never opened: the next poll tries again), like the controller's other per-job reads.
+    if (reason) for (const entry of waiting) entry[1] = await Promise.resolve().then(() => handOver(entry[0], reason)).then(state => {
+      if (!state || state.ok === false) throw new Error('the store refused the hand-over');   // a refusal is no hand-over: skipped and tried again, like a throw (Gitar on #4096)
+      return {...entry[1], state};
+    }).then(entry1 => entry1, error => { log('easy-apply', 'a LinkedIn job could not be handed to the person: tried again next poll', {session: entry[0].id, error: String(error?.message || error)}); return null; });
     // Open = a LinkedIn page in the hidden browser: filling, ready, waiting, or handed to the person on its own page; a job this file handed over never opened one.
-    const open = mine.some(([, each]) => !NOT_OPENED.has(each.state.state) && !LINKEDIN_NOTICES[each.state.reason]);
+    const open = mine.some(([, each]) => each && !NOT_OPENED.has(each.state.state) && !LINKEDIN_NOTICES[each.state.reason]);   // a skipped job (null) opened nothing
     // Why (13 Nov 2026, plan 4a-2b): set again on every poll a LinkedIn job waits, never only once: a hidden browser restarted mid-batch has lost it, and a job opened signed out
     // would meet LinkedIn's sign-in page, a D3 stop of 24 h that the person never caused.
     // A browser call that fails is logged and never fails the poll (other sites' jobs still open): the LinkedIn jobs wait for the next poll, never open signed out.
