@@ -9,7 +9,7 @@ import re
 import urllib.parse
 from datetime import timedelta
 
-from . import careers, read_routes
+from . import careers, page_recipes, read_routes
 from ..ai import meanings_pack, page_words
 from ..ai.providers.contract import detail, reason
 
@@ -86,7 +86,8 @@ def pool_facts():
         elif isinstance(fact, dict) and fact.get('kind') == 'board' and isinstance(fact.get('host'), str) and isinstance(fact.get('recipe'), dict):
             out.setdefault('board', {})[fact['host']] = {'url': fact.get('url'), 'countries': fact['recipe'].get('countries') or [],
                                                          'relevant': _cells(fact.get('relevant')),
-                                                         **({'browser': True} if fact['recipe'].get('browser') is True else {})}   # the Central Scout read it in a browser: src/scout_boards.py browse
+                                                         **({'browser': True} if fact['recipe'].get('browser') is True else {}),   # the Central Scout read it in a browser: src/scout_boards.py browse
+                                                         **({'layout': fact['recipe']['layout']} if page_recipes.valid(fact['recipe'].get('layout')) else {})}   # its job cards, learned by board discovery (board_layout.py)
     return out
 
 

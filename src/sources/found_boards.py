@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_layout, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -65,6 +65,7 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
 def _read(board, search, fetch, route, early, show=None):
     jobs, state, asked_routes, asks, asked_term = [], 'empty', False, 0, None
     listing = show if board.get('rendered') and show is not None else None   # the list pages after their scripts ran; job pages are fetched as usual
+    layout = board_layout.Layout(board)   # Why (13 Nov 2026, owner): a measured board's served layout names its job cards; no AI question per link
     try:
         if route:
             jobs = board_routes.follow(route, fetch, board, _terms(search))
@@ -95,7 +96,7 @@ def _read(board, search, fetch, route, early, show=None):
                     return jobs, board_yield.refused(error), None
                 board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts)
                 continue
-            found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch, parts.part)
+            found = layout.read(page, url, fetch, parts.part)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
                 asked_routes = True
                 try:
@@ -113,7 +114,7 @@ def _read(board, search, fetch, route, early, show=None):
                         careers.note_refusal(url, error)
                         return jobs, board_yield.refused(error), None
                     fetch, how = show, 'read after its scripts ran'   # this board's other searches and next pages are built by scripts too
-                    found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch, parts.part)
+                    found = layout.read(page, url, fetch, parts.part)
             if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
                 asks, asked_term = asks + 1, term                      # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
                 with parts.part('AI reader'):
@@ -121,7 +122,7 @@ def _read(board, search, fetch, route, early, show=None):
                 asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
             on_page = len(found or [])   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)
-                found = found + board_pages.more(url, page, found, fetch, lambda markup, link: careers.jsonld_jobs(markup, link) or careers.read_page_from(markup, link, fetch),
+                found = found + board_pages.more(url, page, found, fetch, lambda markup, link, fetch=fetch: layout.read(markup, link, fetch),
                                                  lambda some: board_yield.is_relevant(some))
             shaped = _shaped(board, found)
             board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
