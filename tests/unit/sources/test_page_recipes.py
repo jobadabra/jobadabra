@@ -160,6 +160,53 @@ class IndexCarriesRecipesTests(unittest.TestCase):
         for good in ({'kind': 'links', 'prefix': '/a', 'depth': 3}, {'kind': 'links', 'prefix': '', 'depth': 2}):
             self.assertTrue(page_recipes.valid(good), good)
 
+    def test_job_cards_whose_link_holds_the_whole_card_are_read_by_the_heading_inside(self):
+        """Fix #1 (sa, 13 Nov 2026): a card link holds title, place, date and text, over 140 characters, so the link text was dropped as a title."""
+        blurb = 'Wir suchen für unseren Kunden in der Region eine engagierte Fachkraft mit Erfahrung, Teamgeist und Freude an abwechslungsreichen Aufgaben.'
+        cards = ''.join(f'<a href="/stellen/job-{i}" class="card"><h4>Elektriker {i} (m/w/d)</h4><p>{blurb}</p><ul><li>Musterstadt</li></ul></a>'
+                        for i in range(4))
+        page = f'<nav><a href="/ueber-uns">Über uns</a><a href="/stellen">Alle Stellen</a></nav>{cards}'
+        base = 'https://board.example/suche?q=elektriker'
+        # a heading with no class: no sections recipe fits (a classed heading keeps its sections recipe, derived first, as before titles)
+        self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/stellen'}, page, base), [], 'positive control: the card text is no title')
+        answer = jobs(*[(f'Elektriker {i} (m/w/d)', f'https://board.example/stellen/job-{i}') for i in range(3)])
+        recipe = page_recipes.derive(page, base, answer)
+        self.assertEqual(recipe, {'kind': 'links', 'prefix': '/stellen', 'title': 'h4'})
+        self.assertEqual([t for t, _ in page_recipes.replay(recipe, page, base)], [f'Elektriker {i} (m/w/d)' for i in range(4)], 'a new card is read too')
+
+    def test_a_card_link_with_no_text_is_titled_by_its_own_label(self):
+        for attr in ('aria-label', 'title'):
+            with self.subTest(attr=attr):
+                cards = ''.join(f'<article><a href="/jobs/berlin-tontechniker-{i}" {attr}="Tontechniker {i} (w/m/d)"></a><img alt=""><p>Firma {i}</p></article>'
+                                for i in range(3))
+                base = 'https://board.example/jobs/search?k=ton'
+                answer = jobs(*[(f'Tontechniker {i} (w/m/d)', f'https://board.example/jobs/berlin-tontechniker-{i}') for i in range(3)])
+                recipe = page_recipes.derive(f'<a href="/login">Anmelden</a>{cards}', base, answer)
+                self.assertEqual(recipe, {'kind': 'links', 'prefix': '/jobs', 'title': 'label'})
+                self.assertEqual([t for t, _ in page_recipes.replay(recipe, cards, base)], [f'Tontechniker {i} (w/m/d)' for i in range(3)])
+
+    def test_a_whole_card_is_never_a_title(self):
+        """sa: "never a 300-character title": a heading as long as a card is dropped like any title over 140 characters, and no recipe fits."""
+        long = 'Elektriker ' + 'mit Erfahrung in Gebäudetechnik und Steuerungen ' * 7
+        cards = ''.join(f'<a href="/stellen/job-{i}"><h4>{long}{i}</h4></a>' for i in range(3))
+        self.assertGreater(len(long), 300)
+        self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/stellen', 'title': 'h4'}, cards, BASE), [])
+        self.assertIsNone(page_recipes.derive(cards, BASE, jobs(*[(f'{long}{i}'.strip(), f'https://acme.ch/stellen/job-{i}') for i in range(3)])))
+
+    def test_a_title_is_one_of_the_fixed_list_and_an_install_older_than_titles_refuses_it(self):
+        for good in ({'kind': 'links', 'prefix': '/a', 'title': 'label'}, {'kind': 'links', 'prefix': '', 'depth': 2, 'title': 'h6'}):
+            self.assertTrue(page_recipes.valid(good), good)
+        for bad in ({'kind': 'links', 'prefix': '/a', 'title': 'script'}, {'kind': 'links', 'prefix': '/a', 'title': 'h7'}, {'kind': 'links', 'prefix': '/a', 'title': None},
+                    {'kind': 'links', 'prefix': '/a', 'title': ['h4']}, {'kind': 'tag', 'tag': 'h3', 'class': 'x', 'title': 'h4'}, {'kind': 'links', 'prefix': '/a', 'name': 'h4'}):
+            self.assertFalse(page_recipes.valid(bad), bad)
+
+        def before_titles(recipe):   # page_recipes.valid's links rule of installs before titles (af66ae7b, #3991), frozen: exactly these key sets
+            return isinstance(recipe, dict) and recipe.get('kind') == 'links' and set(recipe) in ({'kind', 'prefix'}, {'kind', 'prefix', 'depth'})
+        self.assertFalse(before_titles({'kind': 'links', 'prefix': '/stellen', 'title': 'h4'}), 'an older install refuses it: its board read asks the AI, never misreads')
+        self.assertEqual(page_recipes.derive(LISTING, BASE, jobs(('DevOps Engineer 80-100%', 'https://acme.ch/de/jobs/devops-engineer'),
+                                                                 ('Site Reliability Engineer', 'https://acme.ch/de/jobs/sre'))),
+                         {'kind': 'links', 'prefix': '/de/jobs'}, 'a page that had a recipe before titles keeps the same one')
+
     def test_the_engine_keeps_a_valid_recipe_from_the_index_and_drops_a_bad_one(self):
         served = [{'company': 'A', 'ats': 'careers', 'slug': 'a.ch__jobs', 'recipe': {'kind': 'links', 'prefix': '/jobs'}},
                   {'company': 'B', 'ats': 'careers', 'slug': 'b.ch__jobs', 'recipe': {'kind': 'regex', 'pattern': '.*'}}]
@@ -170,7 +217,9 @@ class IndexCarriesRecipesTests(unittest.TestCase):
     def test_the_website_accepts_every_recipe_the_engine_accepts(self):
         samples = [{'kind': 'links', 'prefix': '/de/jobs'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}, {'kind': 'links', 'prefix': '/(a)+'},
                    {'kind': 'tag', 'tag': 'script', 'class': 'x'}, {'kind': 'tag', 'tag': 'h3', 'class': 'job', 'x': 1},
-                   {'kind': 'links', 'prefix': '/oferta', 'depth': 2}, {'kind': 'links', 'prefix': '', 'depth': 3}, {'kind': 'links', 'prefix': '/a', 'depth': 4}]
+                   {'kind': 'links', 'prefix': '/oferta', 'depth': 2}, {'kind': 'links', 'prefix': '', 'depth': 3}, {'kind': 'links', 'prefix': '/a', 'depth': 4},
+                   {'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, {'kind': 'links', 'prefix': '/stellen', 'depth': 2, 'title': 'h4'},
+                   {'kind': 'links', 'prefix': '/a', 'title': 'script'}]
         script = ("import {recipeOf} from './api/employers.js'; console.log(JSON.stringify(JSON.parse(process.argv[1]).map(r => !!recipeOf(r))));")
         out = subprocess.run(['node', '--input-type=module', '-e', script, json.dumps(samples)], cwd=ROOT, capture_output=True, text=True, timeout=60)
         site_accepts = json.loads(out.stdout)
