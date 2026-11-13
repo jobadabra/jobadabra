@@ -142,9 +142,9 @@ while :; do
     mstate="$(jq -r '.mergeState // "unknown"' <<<"$view" 2>/dev/null)"
     draft="$(jq -r '.isDraft // false' <<<"$view" 2>/dev/null)"
     # Why (13 Nov 2026, cr 2a; owner: "We should replace Gitar" / "With Claude Code review"; coordinator: READY needs the Claude ✅ only): a PR that carries a "Claude: …" label (every jobadabra PR, from pr-labels) is READY on
-    #   "Claude: approved" (the review of THIS head, tools/claude-label.mjs: "· not re-reviewed" never matches); a PR of a repo without the reviewer yet (web, lab, benchmarks until cr PR 3) keeps the Gitar rule.
+    #   "Claude: approved" AND the newest review of ours reads Approve for THIS head's sha (a stale label never makes it READY: owner, 14 Nov 2026, #4115 had "Gitar: approved" and a Claude "Request changes" on one head); a PR of a repo without the reviewer yet (web, lab, benchmarks until cr PR 3) keeps the Gitar rule.
     #   TODO(AI): drop the Gitar branch when cr PR 3 and 2b land (13 Nov 2026).
-    approved='(.labels // []) as $l | (if ($l | any(startswith("Claude: "))) then ($l | index("Claude: approved")) else (($l | index("Gitar: approved")) and ($l | index("Gitar: reviewing") | not) and ($l | index("Gitar: not started") | not)) end) and ($l | index("Working on PR comments") | not)'
+    approved='(.labels // []) as $l | (.headRefOid // "") as $head | (if ($l | any(startswith("Claude: "))) then (($l | index("Claude: approved")) and ([.reviews[]? | select(((.author.login // "") | sub("\\[bot\\]$"; "")) == "github-actions" and (.body | test("<!-- claude-review sha=[0-9a-f]{40}")))] | sort_by(.submittedAt) | last | ((.body | test("claude-review sha=" + $head)) and (.body | test("^\\*\\*Claude review: ✅ Approve\\*\\*"))))) else (($l | index("Gitar: approved")) and ($l | index("Gitar: reviewing") | not) and ($l | index("Gitar: not started") | not)) end) and ($l | index("Working on PR comments") | not)'
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
       && jq -e "(.mergeState == \"clean\" or .mergeState == \"has_hooks\" or (.isDraft == true and .mergeState == \"draft\")) and $approved" <<<"$view" >/dev/null 2>&1; then
       if [ "$draft" != true ] || [ "${SHIP_WATCH_DRAFT_OK:-}" = 1 ]; then   # already ready (or the AI fixer's draft, which the owner marks ready himself)
