@@ -40,7 +40,7 @@ def _post(url, body):
 def phenom(slug):
     """Jobs of one Phenom career site (see the module note)."""
     _check(slug)
-    home = ats._get(f'https://{slug}/').decode('utf-8', 'replace')
+    home = page_bytes.text(ats._get(f'https://{slug}/'))
     ref = re.search(r'"refNum"\s*:\s*"([^"]+)"', home)
     if not ref:
         raise ValueError('not a Phenom site')
@@ -70,5 +70,5 @@ def phenom(slug):
     return jobs
 
 
-from . import ats, host_pace  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
+from . import ats, host_pace, page_bytes  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
 from .ats import _job  # noqa: E402

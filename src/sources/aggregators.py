@@ -16,7 +16,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from .. import read_methods, time_budget
-from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, posting_text, waiting_jobs
+from . import ats, board_employers, boards_ahead, eures, feeds, host_pace, page_bytes, posting_text, waiting_jobs
 from ..press import resume, stage
 
 SPACING_HOURS = 6
@@ -141,7 +141,7 @@ def jobsch(search, get=None):
                 print(f'Warning: {error}; {len(jobs)} job(s) read before that are kept')
                 return jobs
             listed = list(boards.walk(boards.Page(markup).schemas, 'JobPosting'))
-            towns = ats.jobsch_towns(markup if isinstance(markup, str) else markup.decode('utf-8', 'replace'))
+            towns = ats.jobsch_towns(page_bytes.text(markup))
             fresh = 0
             for j in listed:
                 url = j.get('url') or ''

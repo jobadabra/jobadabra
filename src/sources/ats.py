@@ -16,7 +16,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from . import host_pace, posting_text
+from . import host_pace, page_bytes, posting_text
 from ..repos import PUBLIC_REPO
 from .ats_conditional import HEAD, Unchanged, conditional, conditional_state, first_page  # noqa: F401  (re-exported: ats.Unchanged, ats.first_page)
 
@@ -201,7 +201,7 @@ def join(slug):
     """JOIN (join.com): the company page carries its jobs in the page data, a few per page."""
     jobs, page = [], 1
     while page <= 20:
-        markup = _get(f'https://join.com/companies/{slug}?page={page}').decode('utf-8', 'replace')
+        markup = page_bytes.text(_get(f'https://join.com/companies/{slug}?page={page}'))
         found = re.search(r'__NEXT_DATA__[^>]*>(.*?)</script>', markup, re.S)
         data = json.loads(found.group(1))['props']['pageProps'] if found else {}
         # The jobs sit under initialState (older pages) or pageData (since ~Oct 2026); neither is a failed read, never "no jobs".

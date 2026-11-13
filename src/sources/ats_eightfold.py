@@ -33,7 +33,7 @@ def eightfold(slug):
     """Jobs of one Eightfold career site (see the module note)."""
     if not re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+', slug or ''):
         raise ValueError('not an Eightfold site')
-    domain, _ = _domain(ats._get(f'https://{slug}/').decode('utf-8', 'replace'))
+    domain, _ = _domain(page_bytes.text(ats._get(f'https://{slug}/')))
     if not domain:
         raise ValueError('not an Eightfold site')
     jobs, seen = [], set()
@@ -56,5 +56,5 @@ def eightfold(slug):
     return jobs
 
 
-from . import ats  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
+from . import ats, page_bytes  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
 from .ats import _job  # noqa: E402

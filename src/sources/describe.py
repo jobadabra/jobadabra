@@ -17,7 +17,7 @@ import urllib.request
 from urllib.parse import parse_qsl, urlsplit
 
 from .. import pool_served
-from . import ats, boards, host_pace, read_routes
+from . import ats, boards, host_pace, page_bytes, read_routes
 from ..ai import slots
 from .careers_parse import registrable
 from ..press import resume
@@ -101,7 +101,7 @@ def _get(url, opener=None, accept='text/html'):
     request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Jobadabra; personal job search)', 'Accept': accept})
     try:
         with host_pace.open(request, 15, opener) as response:
-            return response.read(3_000_000).decode('utf-8', errors='replace')
+            return page_bytes.reply(response, 3_000_000)
     except urllib.error.HTTPError as error:
         if error.code in REFUSED_CODES:
             raise Refused(f'HTTP {error.code}') from error
