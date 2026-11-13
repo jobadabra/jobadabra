@@ -5,7 +5,7 @@ name: CI · Search profiles (30, by hand)
 # the owner's Mac and its numbers followed the Mac's load (Cluj 18 -> 0 at load 24, 18 -> 21 at load 10, same code). A new series: never mixed with the Mac rows.
 # Never a night, never sent to Admin, never red, no floors, no reference, no scoreboard.lock change (the 18 locked people and gate.py are only read); the Worker never starts it.
 # One Telegram message per run (profiles.py tell, then desktop/e2e/tell-owner.mjs --event search-profiles through the switchboard). Tools: tools/persona-search/profiles.py (ids, free, cv, judge, row, table, tell), search-profiles.json (the 30), run.mjs (the press), gate.py extract, gate_judge.judge (the judge).
-run-name: ${{ format('Search profiles · {0} · {1} at once', inputs.profiles || 'all 30', inputs.at_once || 6) }}
+run-name: ${{ format('Search profiles · {0} · {1} at once · {2}', inputs.profiles || 'all 30', inputs.at_once || 4, inputs.engine || 'claude') }}
 
 on:
   workflow_dispatch:
@@ -14,12 +14,19 @@ on:
         description: 'Only these profile ids, a JSON list such as ["b02", "c06"] (empty = all 30)'
         type: string
         default: ''
-      # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): the broker has 24 slots since 02:01Z (was 8 when this was a choice of 1-3); one profile used up to 4 at once
-      # on 11 Nov, so 6 fills it. A profile whose broker waits pass 20 s is reported not measured (sa), so too many at once shows as waits, never as a low number.
+      # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number 1-30, one dispatch away. A profile whose broker waits pass 20 s is reported not measured (sa),
+      # so too many at once shows as waits, never as a low number.
       at_once:
-        description: 'Profiles searching at once, 1 to 30 (the broker has 24 slots; one profile uses up to ~4)'
+        description: 'Profiles searching at once, 1 to 30 (the broker holds about 6 searches; read its /health first)'
         type: number
-        default: 6
+        default: 4   # Why (13 Nov 2026, owner via sa: "Claude, like the benchmark (Recommended)"; sa: the broker holds ~6 searches): 4 leaves room for a night or a benchmark beside it
+      # Why (13 Nov 2026, owner via sa's AskUserQuestion: "Claude, like the benchmark (Recommended)"): on Codex every broker call took 10-11 s at least (16 output tokens = 11 s,
+      # b05/b08 of run 43358450676), so a board's first page cost 55-65 s of chained calls and the round measured Codex's floor, not the app on Claude. Codex stays one dispatch away.
+      engine:
+        description: 'The AI of the search steps, on the app tiers (claude = as the app and the benchmark; codex = the earlier reading)'
+        type: choice
+        options: [claude, codex]
+        default: claude
 
 # Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
 concurrency:
@@ -30,9 +37,9 @@ permissions:
   contents: read
 
 env:
-  CI_AI_PROVIDER: codex
+  CI_AI_PROVIDER: codex   # the broker relay (codex.mjs); the engine behind it is JOBADABRA_CHECK_CHAIN below
   E2E_AI_PROVIDER: codex
-  JOBADABRA_CHECK_CHAIN: codex,claude   # the night's AIs (Codex, Claude as its replacement), so a profile row and a night row use the same chain
+  JOBADABRA_CHECK_CHAIN: ${{ inputs.engine == 'codex' && 'codex,claude' || 'claude' }}   # the search steps' AI; the judge keeps its own chain (its step)
   # Why (13 Nov 2026, owner: "Ok, let's swithc to Sonnet then"; asked via AskUserQuestion, "All but the replays (Recommended)"): no one-model override, so each
   # search step runs on the tier it names (small or main), as in the app; forced onto the small tier, the country's job boards came back as home pages with no search link.
   JOBADABRA_SEARCH_TIER: app
@@ -59,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PROFILES: ${{ steps.list.outputs.profiles }}
-          AT_ONCE: ${{ inputs.at_once || 6 }}
+          AT_ONCE: ${{ inputs.at_once || 4 }}
         run: python3 tools/persona-search/profiles.py free "$PROFILES" "$AT_ONCE"
       - name: The broker's by-hand lane has room for every profile (~300 calls each, as search-personas.yml counts a press)
         env:
@@ -84,20 +91,20 @@ jobs:
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
     strategy:
       fail-fast: false
-      max-parallel: ${{ fromJSON(format('{0}', inputs.at_once || 6)) }}
+      max-parallel: ${{ fromJSON(format('{0}', inputs.at_once || 4)) }}
       matrix:
         profile: ${{ fromJSON(needs.room.outputs.profiles) }}
     steps:
       - uses: actions/checkout@v5   # first: a later checkout cleans the folder and would remove out/
         with: {persist-credentials: false}
-      - name: This run can use the Codex broker
+      - name: This run can use the AI broker
         id: token
         run: |
           mkdir -p out
           if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
             echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          echo "no trusted GitHub OIDC token for Codex" > out/not-run.txt
+          echo "no trusted GitHub OIDC token for the AI broker" > out/not-run.txt
       - uses: actions/setup-node@v5
         if: steps.token.outputs.ok == 'yes'
         with: {node-version: '22'}
@@ -142,7 +149,14 @@ jobs:
       - name: A row searched without the renderer is marked
         if: steps.free.outputs.ok == 'yes' && (steps.render.outcome != 'success' || steps.render_browser.outcome != 'success')
         run: echo "the engine's renderer did not install" > out/no-renderer.txt
-      - name: The profile's fictional CV, then its first Find jobs search (the app's tiers through the Codex relay)
+      - name: The broker answers on the chosen AI (stops the profile if not, so a wrong or dead AI is never a quiet number)
+        if: steps.free.outputs.ok == 'yes'
+        env:
+          ENGINE: ${{ inputs.engine || 'claude' }}
+        run: |
+          node tools/persona-search/codex.mjs --proof 2>&1 | tee out/proof.txt
+          grep -q "AI: $ENGINE / " out/proof.txt || { echo "the broker did not answer on $ENGINE" | tee out/not-run.txt; exit 1; }
+      - name: The profile's fictional CV, then its first Find jobs search (the app's tiers through the broker)
         if: steps.free.outputs.ok == 'yes'
         env:
           PROFILE: ${{ matrix.profile }}
@@ -155,6 +169,7 @@ jobs:
         if: steps.free.outputs.ok == 'yes'
         env:
           PROFILE: ${{ matrix.profile }}
+          JOBADABRA_CHECK_CHAIN: codex,claude   # the judge's AI does not follow the search engine: a Claude round and a Codex round are judged alike
         run: |
           set -o pipefail
           node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$PROFILE" out/jobs.json out/judged.json 2>&1 | tee out/judge.log || true
