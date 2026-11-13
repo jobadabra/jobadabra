@@ -28,9 +28,15 @@ export function kitAllows({stage, kit, allowIneligible}) {
  * Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion; "No live Easy Apply send by an agent, ever" for tests): until 4b nothing sends on LinkedIn.
  */
 export function sendAllowedOn(url) {
+  try { new URL(String(url)); } catch { return false; }   // no readable address: no press
+  return !linkedinAddress(url);
+}
+
+/** Pure: is the job's address on LinkedIn (linkedin.com or a subdomain)? An address that cannot be read is not. The one LinkedIn address rule: the send gate and Easy Apply's batches (lib/easy-apply-batch.js). */
+export function linkedinAddress(url) {
   let host = '';
-  try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return false; }   // no readable address: no press
-  return !(host === 'linkedin.com' || host.endsWith('.linkedin.com'));   // words-ok: a safety gate (CLAUDE.md "safety is code"), not page knowledge
+  try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return false; }
+  return host === 'linkedin.com' || host.endsWith('.linkedin.com');   // words-ok: a safety gate (CLAUDE.md "safety is code"), not page knowledge
 }
 
 /**
