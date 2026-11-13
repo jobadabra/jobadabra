@@ -303,7 +303,7 @@ def answer_shape(answers, count):
 
 def _ask(topic, pairs, answers, instructions, client, allowance):
     """The model call(s) for these (key, wording) pairs, BATCH a call -> an answer, None (asked, not answered) or decide_gate.UNASKED (the cap or a
-    failure: unknown, asked again next run) for each; never raises. One caller's pairs, or several callers' at once (src/ai/decide_gate.py)."""
+    failure: unknown, asked again next run) for each; never raises. One caller's pairs, or several callers' at once (src/ai/decide_gate.py hands it one BATCH)."""
     got, numbers = [decide_gate.UNASKED] * len(pairs), [str(n) for n in range(BATCH)]
     for start in range(0, len(pairs), BATCH):
         if not take(topic, pairs[start][0], allowance):
@@ -367,9 +367,9 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             if not engine.ready():
                 return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
             client = engine.client(action='decide')
-        # Callers asking this same question at the same moment share one call (src/ai/decide_gate.py): a caller alone asks at once, as before.
+        # Callers asking this same question at the same moment share its calls, one BATCH a call (src/ai/decide_gate.py): a caller alone asks at once, as before.
         same = (topic, tuple(answers), instructions, _pool(topic, allowance), id(client) if given else None)   # the same pool pays (this thread's allowance): a caller never spends another's
-        got = GATES.shared(same, [(key, items[key]) for key in todo], lambda pairs: _ask(topic, pairs, answers, instructions, client, allowance))
+        got = GATES.shared(same, [(key, items[key]) for key in todo], lambda pairs: _ask(topic, pairs, answers, instructions, client, allowance), size=BATCH)
         stamp, unasked = datetime.now(timezone.utc).isoformat(timespec='seconds'), 0
         for key, answer in zip(todo, got):
             if answer is decide_gate.UNASKED:

@@ -43,6 +43,10 @@ env:
   # Why (13 Nov 2026, owner: "Ok, let's swithc to Sonnet then"; asked via AskUserQuestion, "All but the replays (Recommended)"): no one-model override, so each
   # search step runs on the tier it names (small or main), as in the app; forced onto the small tier, the country's job boards came back as home pages with no search link.
   JOBADABRA_SEARCH_TIER: app
+  # Why (13 Nov 2026, bl for sa: a board's "job links" took 80 s on c04 and the log could not say on what): one line per AI call and per slot taken
+  # (src/ai/call_log.py, src/ai/slots.py), as search-personas.yml logs its calls; a person's app never sets these.
+  JOBADABRA_AI_CALL_LOG: '1'
+  JOBADABRA_SLOT_LOG: '1'
 
 jobs:
   room:

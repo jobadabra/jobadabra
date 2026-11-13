@@ -18,6 +18,11 @@ LINK_ANSWERS = ('job_list', 'careers_page', 'job_page', 'not_jobs', 'other')
 TITLE_ANSWERS = ('job_title', 'heading')
 ONLY = {'board_careers_link': 'weak', 'job_list': 'weak', 'not_a_list': 'not_jobs'}   # which Words field an old list stands for when a caller used it alone
 MAX_WORDINGS = 300   # distinct link wordings judged in one call site
+# Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Sample per shape, AI decides (Recommended)": "For a shape with 3+ links the AI is
+# asked about 3 of them. If all 3 get the same answer, it holds for the rest of that shape on that page; if they differ, every link of the shape
+# is asked as today. Single links (contact, companies) are always asked one by one."): one Madrid results page asked 315 link wordings, most of
+# them city links of one shape (239 paths), and three boards' 502 wordings took 11 calls (c04, run 43473395249: "job links 82 s"); by shape, 120 (3 calls).
+SAMPLE = 3
 
 # Where every 'page-words' answer lives now; tests/unit/ai/test_page_words.py fails when an answer is missing here (a new one must be placed).
 PLACED = {'careers_link': LINK, 'strong_jobs': LINK, 'job_path': LINK, 'not_jobs': LINK, 'job_host': LINK, 'board_careers_link': LINK,
@@ -104,13 +109,53 @@ def _kinds(topic, items, answers, task):
     return found
 
 
+def _family(path):
+    """The shape a link shares with its siblings on one page: the path with numbers as 0 and its last part as *, for a path of 2+ parts
+    ('/ofertas/0/*'); None for a 1-part path (/contacto, /empresas): those are always asked one by one."""
+    parts = [part for part in _shape(path).split('/') if part]
+    return '/' + '/'.join(parts[:-1]) + '/*' if len(parts) >= 2 else None
+
+
+def _sampled(pairs):
+    """{wording: answer} for one page's links, asking the AI about SAMPLE links of each family of SAMPLE+ links (first, middle and last in page
+    order) and every other link; a family whose samples all got one answer takes it for its other links, else they are asked one by one.
+    -> (answers, wordings asked, links answered by their family, families that disagreed)."""
+    families = {}
+    for text, path in pairs:
+        families.setdefault(_family(path), []).append(_wording(text, path))
+    families = {key: list(dict.fromkeys(words)) for key, words in families.items()}
+    wide = {key: words for key, words in families.items() if key and len(words) >= SAMPLE}
+    picks = {key: [words[0], words[len(words) // 2], words[-1]] for key, words in wide.items()}
+    first = {w: w for key, words in families.items() for w in (picks[key] if key in picks else words)}
+    found = _kinds(LINK, first, LINK_ANSWERS, LINK_TASK)
+    split = [key for key in wide if len({found.get(w) for w in picks[key]}) != 1 or found.get(picks[key][0]) is None]
+    rest = {w: w for key in split for w in wide[key] if w not in first} if found else {}   # nothing answered (cap, failure): never asked twice
+    if rest:
+        found.update(_kinds(LINK, rest, LINK_ANSWERS, LINK_TASK))
+    shared = 0
+    for key in set(wide) - set(split):
+        for w in wide[key]:
+            if w not in found:
+                found[w], shared = found[picks[key][0]], shared + 1   # never kept: the AI judged the samples, not this link (one page, one read)
+    return found, len(first) + len(rest), shared, len(split)
+
+
 def link_words(pairs, floor=None):
     """{(text, path): Words or None}: None = not judged yet (the AI is on but past its cap or failed), the link is skipped this run. With no AI
-    at all, the old words; a wording kept earlier or learned by the site still answers."""
+    at all, the old words; a wording kept earlier or learned by the site still answers. With the AI, a family of SAMPLE+ links of one shape
+    is asked through SAMPLE of them (_sampled)."""
     pairs = list(dict.fromkeys((str(t or ''), str(p or '')) for t, p in pairs))
-    items = {_wording(t, p): _wording(t, p) for t, p in pairs[:MAX_WORDINGS]}   # a site map of slugs is thousands: the rest is left for a later run
-    found = _kinds(LINK, items, LINK_ANSWERS, LINK_TASK) if items else {}
+    judged = pairs[:MAX_WORDINGS]   # a site map of slugs is thousands: the rest is left for a later run
     no_ai = not ai_on()
+    if not judged:
+        found = {}
+    elif no_ai:
+        found = _kinds(LINK, {_wording(t, p): _wording(t, p) for t, p in judged}, LINK_ANSWERS, LINK_TASK)
+    else:
+        found, asked, shared, split = _sampled(judged)
+        if shared or split:
+            print(f'Link questions: {asked} wording(s) asked for {len(judged)} link(s); {shared} judged by their shape, '
+                  f'{split} shape(s) asked link by link', flush=True)
     return {(t, p): (from_kind(found[_wording(t, p)]) if _wording(t, p) in found else floor_words(t, p, floor) if no_ai else None) for t, p in pairs}
 
 
