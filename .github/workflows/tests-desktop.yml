@@ -52,7 +52,8 @@ on:
       - 'tools/store-zip.mjs'   # desktop/test/tooling/release/store-zip.test.js builds the Web Store package with it
       - 'tools/webstore-publish.mjs'   # desktop/test/tooling/release/webstore-publish.test.js
       - 'tools/pr-assets.mjs'   # desktop/test/pr-assets-args.test.js
-      - 'tools/web-tests-reached.mjs'   # desktop/test/tooling/ci/web-tests-reached.test.js
+      - 'tools/web-tests-reached.mjs'   # desktop/test/tooling/ci/web-tests-reached.test.js, and its -run.test.js with the .sh
+      - 'tools/web-tests-reached.sh'
       - 'tools/pr-body-template.md'   # the same test reads the template
       - 'docs/superpowers/specs/2026-10-10-ai-ladder.md'
       - 'docs/superpowers/specs/2026-11-03-desktop-ai-mcp-design.md'   # desktop-ai-tools.test.js checks every tool name is in the spec's table
