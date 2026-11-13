@@ -206,7 +206,7 @@ def pending(body):
 
 
 def settle(body, title, labels, done, ran, attempt, seen=None):
-    """What the pair does to its PR: {body, title, lift, rerun, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
+    """What the pair does to its PR: {body, title, lift, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
     seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again."""
     body, verdict, fell = body or '', [], []
     seen = set(ran if seen is None else seen)
@@ -220,8 +220,8 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
     never = [p for p in ran if p not in seen]
     ours = HOLD_LABEL in labels
     # Why (13 Nov 2026, #3946: a by-hand pair queued a third run on main's workflow by itself): only ship's own hold runs again; a by-hand pair reports and stops.
-    # The workflow no longer dispatches this list: pair_row.decide's rerun does, for every PR, once (owner via sa, 13 Nov 2026), and 3/3 deletes this hold path.
-    rerun = invalid if ours and invalid and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
+    # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
+    again = bool(ours and invalid and attempt < 2 and not fell)
     still = pending(body)
     # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
     lift = ours and not fell and not still and not invalid and not never
@@ -233,15 +233,15 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
         verdict.append(f'{head}: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
     elif never:
         verdict.append(f"{head}: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
-    elif rerun:
-        verdict.append(f"Hold kept: {', '.join(rerun)} not valid; the pair runs once more for them.")
+    elif again:
+        verdict.append(f"Hold kept: {', '.join(invalid)} not valid; the pair runs once more for them.")
     elif invalid:
         verdict.append(f"{head}: {', '.join(invalid)} not valid" + (' twice' if ours else '') + ': start the pair again later, or write the number by hand.')
     elif still and ours:
         verdict.append('Hold kept: the body still has a pending number this pair did not run.')
     elif not ours and done and 'DONT MERGE' in title:
         verdict.append('Numbers written. The hold was not set by ship (no "search-hold" label): lift it by hand.')
-    return {'body': body, 'title': title, 'lift': lift, 'rerun': [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in rerun], 'verdict': verdict}
+    return {'body': body, 'title': title, 'lift': lift, 'verdict': verdict}
 
 
 def main(argv):

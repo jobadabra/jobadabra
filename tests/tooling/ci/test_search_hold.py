@@ -46,7 +46,6 @@ class SearchHoldTest(unittest.TestCase):
         self.assertEqual(pair.pending(out['body']), [])
         self.assertIsNone(check.moves_gap(out['body'], ['src/sources/feeds.py']))
         self.assertIsNone(check.pending_gap(out['body'], out['title'], 'false'))   # ready and not a draft: no pending number left
-        self.assertEqual(out['rerun'], [])
 
     def test_a_loss_beyond_the_usual_difference_keeps_the_hold(self):
         out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 6, 2), p4=(20, 20, None)), ['p1', 'p4'], 1)
@@ -61,25 +60,25 @@ class SearchHoldTest(unittest.TestCase):
 
     def test_a_side_not_valid_runs_once_more_then_reports(self):
         first = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
-        self.assertEqual((first['lift'], first['rerun']), (False, [4]))
+        self.assertFalse(first['lift'])
+        self.assertIn('p4 not valid; the pair runs once more', first['verdict'][0])
         self.assertEqual(pair.pending(first['body']), [4])
         second = pair.settle(first['body'], TITLE, ['search-hold'], {}, ['p4'], 2)
-        self.assertEqual((second['lift'], second['rerun']), (False, []))
+        self.assertFalse(second['lift'])
         self.assertIn('not valid twice', second['verdict'][0])
         third = pair.settle(first['body'], TITLE, ['search-hold'], done(p4=(20, 22, None)), ['p4'], 2)
         self.assertTrue(third['lift'])
 
     def test_a_loss_is_never_run_again(self):
         out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(9, 2, 2)), ['p1', 'p4'], 1)
-        self.assertEqual((out['lift'], out['rerun']), (False, []))
+        self.assertFalse(out['lift'])
 
     def test_a_person_who_never_searched_is_not_run_again(self):
         """Gitar on #3967: the turn gave up (no side ran); that is no "not valid" and the workflow must not queue a second long wait itself."""
         out = pair.settle(BODY, TITLE, ['search-hold'], {}, ['p1', 'p4'], 1, seen=set())
-        self.assertEqual((out['lift'], out['rerun']), (False, []))
+        self.assertFalse(out['lift'])
         self.assertIn('never searched', out['verdict'][0])
         out = pair.settle(BODY, TITLE, ['search-hold'], done(p1=(0, 9, 2)), ['p1', 'p4'], 1, seen={'p1'})
-        self.assertEqual(out['rerun'], [])
 
     def test_a_retitled_held_pr_loses_the_label_when_its_numbers_are_in(self):
         """Gitar on #3967: the label is the hold; a title without DONT MERGE still gets it lifted, the title unchanged."""
@@ -90,7 +89,7 @@ class SearchHoldTest(unittest.TestCase):
     def test_a_pair_on_a_pr_ship_did_not_hold_never_runs_again(self):
         """13 Nov 2026, #3946: a by-hand pair with sides not valid queued a third run by itself; only ship's hold runs again, and its verdict says it is not a hold."""
         out = pair.settle(BODY, TITLE, [], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
-        self.assertEqual((out['lift'], out['rerun']), (False, []))
+        self.assertFalse(out['lift'])
         self.assertTrue(out['verdict'][0].startswith('Not held by ship'), out['verdict'])
         self.assertIn('fell 12 → 3 (usual difference not measured yet: 7 jobs allowed)', pair.settle(BODY, TITLE, ['search-hold'], done(p1=(12, 3, None)), ['p1'], 1)['verdict'][0])   # 13 Nov 2026, sa: 7, not 1 (pair_row.py)
 
