@@ -153,9 +153,28 @@ def _pool(topic, allowance):
     return ('probe', n) if n is not None else (None, 0)
 
 
+@contextlib.contextmanager
+def share_allowance(name, n, topics):
+    """This thread's calls on `topics` are also counted on ONE share of `n` calls named `name`, over every pool they are drawn from (own_allowance, the probe's pool, the run's
+    cap): past it take() refuses them, so the question stays unknown (never guessed) and the pool's other askers keep their calls. Opens and closes with the scope; a second
+    scope with the same name continues the count (a board's two reads share its share). Why (13 Nov 2026, bp): one empty board's pages spent 23 of the pass's 24 page-words calls
+    (lab run 43520706763), so the next boards got none. Invariant: only this thread draws from it; the count lives in `_own` (cleared by reset_run), under 'share <name>'."""
+    thread = threading.current_thread()
+    before = getattr(thread, 'share', None)
+    thread.share = (f'share {name}', n, frozenset(topics))
+    try:
+        yield
+    finally:
+        thread.share = before
+
+
 def take(topic, key, allowance=None, label='decide'):
-    """Count one model call on its pool: True to make it, False when the pool is spent. One lock, as the feeds and the probe are checked side by side (Gitar, sk 4/5: a bare read then write overshot)."""
+    """Count one model call on its pool: True to make it, False when the pool is spent (or this thread's share_allowance for the topic). One lock, as the feeds and the probe are checked side by side (Gitar, sk 4/5: a bare read then write overshot)."""
     with _own.setdefault('\0lock', threading.Lock()):   # setdefault is atomic: every thread gets the one lock
+        share = getattr(threading.current_thread(), 'share', None)
+        shared = share if share and topic in share[2] else None
+        if shared and _own.get(shared[0], 0) >= shared[1]:
+            return False
         pool, cap = _pool(topic, allowance)
         used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
         if not budget_tape.within(label, f'{topic} {key}', used, cap):
@@ -164,6 +183,8 @@ def take(topic, key, allowance=None, label='decide'):
             _own[pool] = used + 1
         else:
             _calls['n'] += 1
+        if shared:
+            _own[shared[0]] = _own.get(shared[0], 0) + 1
         return True
 
 

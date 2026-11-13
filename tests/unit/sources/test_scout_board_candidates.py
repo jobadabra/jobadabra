@@ -97,6 +97,31 @@ class ForCountry(unittest.TestCase):
         self.assertEqual([item['host'] for item in got], ['b7.example', 'b6.example', 'b5.example', 'b4.example'][:candidates.RESERVE], 'not another country, not a board measured lately')
         self.assertTrue(all(item['home'] and item['search_url'] == f"https://{item['host']}/" for item in got), 'the home page, marked: the pass finds its own search')
 
+    def test_reserve_comes_from_the_env_clamped_and_anything_else_is_the_default(self):
+        """13 Nov 2026 (bp): a by-hand dispatch asks for more candidates (lab `reserve` input); the schedule sends nothing and keeps RESERVE."""
+        for raw, want in (('', candidates.RESERVE), ('12', 12), (' 7 ', 7), ('0', 1), ('-5', 1), ('99', candidates.MAX_RESERVE), ('24', 24), ('lots', candidates.RESERVE), ('3.5', candidates.RESERVE), ('1e1', candidates.RESERVE)):
+            with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': raw}):
+                self.assertEqual(candidates.reserve(), want, repr(raw))
+        with mock.patch.dict(os.environ):
+            os.environ.pop('SCOUT_BOARD_RESERVE', None)
+            self.assertEqual(candidates.reserve(), candidates.RESERVE)
+
+    def test_a_by_hand_reserve_reads_that_many_candidates_a_pass(self):
+        reports = [self.report(f'b{n}.example', n) for n in range(1, 21)]
+        with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': '12'}):
+            self.assertEqual(len(candidates.for_country(reports, 'md', today=TODAY)), 12)
+        with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': ''}):
+            self.assertEqual(len(candidates.for_country(reports, 'md', today=TODAY)), candidates.RESERVE)
+
+    def test_a_candidate_whose_page_was_empty_or_refused_is_stamped_so_it_is_not_read_again_for_20_days(self):
+        """13 Nov 2026 (bp, lab run 43520706763): ayto-coslada.es 0/0 and campuseducacion.com 0/0 ("not measured") must not take a slot again next pass: every candidate the pass read has a line."""
+        db = sqlite3.connect(':memory:')
+        picked = [{'host': 'empty.example'}, {'host': 'refused.example'}, {'host': 'unread.example'}]
+        candidates.stamp_read(db, 'es', picked, ['empty.example 0/0', 'refused.example 0/0 (no places; the AI: this country)'])
+        self.assertEqual({(host, code) for host, code, _ in candidates.tried(db)}, {('empty.example', 'es'), ('refused.example', 'es')}, 'the one the pass never reached waits for the next pass')
+        reports = [{'host': host, 'countries': ['es'], 'installs': 1} for host in ('empty.example', 'refused.example', 'unread.example')]
+        self.assertEqual([c['host'] for c in candidates.choose(db, reports, 'es')], ['unread.example'])
+
     def test_an_old_measure_makes_the_board_a_candidate_again(self):
         got = candidates.for_country([self.report('old.example', 1)], 'md', measured=[('old.example', 'md', (TODAY - timedelta(days=21)).isoformat())], today=TODAY)
         self.assertEqual([item['host'] for item in got], ['old.example'])
