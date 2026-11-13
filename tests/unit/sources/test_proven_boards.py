@@ -142,22 +142,18 @@ class RankTests(Fixture):
             proven = board_ideas.proven(SEARCH)
         self.assertEqual([(b['host'], b['rank']) for b in ranked][:2], [('b2.example', 10.0), ('b1.example', 2.0)])
         self.assertEqual({b['host'] for b in ranked[2:]}, {'b3.example', 'b4.example', 'b5.example'}, 'another family or country gives no rank')
-        self.assertEqual([b['host'] for b in proven], ['b2.example', 'b1.example'], 'the top 2, ranked boards with a fit job only')
+        self.assertEqual(proven, [], '13 Nov 2026 (bp): fit jobs of installs order a board, they do not prove it: only the Scout\'s count of right jobs does')
 
-    def test_jobs_in_places_without_a_fit_job_rank_a_board_but_do_not_prove_it(self):
-        """12 Nov 2026 (vb): Madrid's electrician and Seville's car mechanic were "proven" an IT board by one install's list (installs 1,
-        40 jobs in places, fit70 0), so the proposal for Spain was never asked. A cell with a fit job proves it, as before."""
+    def test_jobs_in_places_and_fit_jobs_rank_a_board_but_never_prove_it(self):
+        """12 Nov 2026 (vb): Madrid's electrician and Seville's car mechanic were "proven" an IT board by one install's list (installs 1, 40 jobs in places, fit70 0).
+        13 Nov 2026 (bp): a fit job proves no more: one install's whole list is credited to each of its families. Only the Scout's count of right jobs proves a board."""
         facts = self.served({1: [self.cell('electrical_mechanical', 1, 40)], 2: [self.cell('electrical_mechanical', 1, 5, fit70=1)]})
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), \
                 mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
                 mock.patch('src.places.countries', return_value=['Netherlands']):
             ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
-            proven = board_ideas.proven(SEARCH)
-            only_jobs = {'board': {'b1.example': facts['board']['b1.example']}}
-            with mock.patch.object(visits_jobpages, 'pool_facts', return_value=only_jobs):
-                self.assertEqual(board_ideas.proven(SEARCH), [], 'no fit evidence: the proposal is asked')
+            self.assertEqual(board_ideas.proven(SEARCH), [], 'no Scout count: the proposal is asked')
         self.assertEqual([b['host'] for b in ranked], ['b1.example', 'b2.example'], 'jobs in places still rank it first')
-        self.assertEqual([b['host'] for b in proven], ['b2.example'])
 
     def test_without_data_for_anyone_the_order_is_unchanged_and_no_family_is_asked(self):
         with mock.patch.object(visits_jobpages, 'pool_facts', return_value=self.served({1: [], 2: []})), \
@@ -174,24 +170,36 @@ class RankTests(Fixture):
         merged = board_ideas._merge([board(7), board(8)], [{**board(1), 'rank': 0}, {**board(2), 'rank': 0, 'rank_fit70': 0}, {**board(3), 'rank': 2.5}])
         self.assertEqual([b['host'] for b in merged], ['b3.example', 'b7.example', 'b8.example', 'b1.example', 'b2.example'])
 
-    def test_a_board_the_scout_measured_for_your_field_is_proven_without_a_fit_count(self):
-        """12 Nov 2026 (owner: "We should now from the start what boards/employers we should read first"): 6 of 154 recorded first searches started
-        from a proven board; the Central Scout's own cells carry fit70 0 and never proved one. Its read of another field, or in a browser, proves nothing."""
-        measured = lambda family: {**self.cell(family, 1, 14), 'measured': True}
-        facts = self.served({1: [measured('nursing_care')], 2: [measured('software_dev')], 3: [measured('nursing_care')], 4: [self.cell('nursing_care', 1, 40)]})
-        facts['board']['b3.example']['browser'] = True
-        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'nursing_care'}), \
+    def test_a_board_is_proven_by_the_scouts_count_of_right_jobs_and_read_in_that_order(self):
+        """13 Nov 2026 (bp, owner: "Why ? Let's fix it."), Madrid electrician c04: an airline board (178 jobs, ONE aircraft electrician) was `measured` for electricians
+        and the first board read in 5 of 5 searches, with 0 right jobs; Jobeka (19 right) was never read first. Replaces the 12 Nov test that proved a board by the Scout's
+        mark alone (`measured`, no fit count). Its read of another field, in a browser, or fewer than PROVEN_RIGHT jobs proves nothing."""
+        scout = lambda family, right, **more: {**self.cell(family, 1, right), 'right': right, **more, **({'measured': True} if right >= board_ideas.PROVEN_RIGHT else {})}
+        facts = self.served({1: [scout('electrical_mechanical', 1)],             # the airline board: one electrician among 178 jobs
+                             2: [scout('electrical_mechanical', 19, day='2026-11-13')],   # Jobeka
+                             3: [scout('software_dev', 40)],                      # another field
+                             4: [scout('electrical_mechanical', 16)],             # Trabajo.org
+                             5: [scout('electrical_mechanical', 30)],             # a board read only in a browser
+                             6: [self.cell('electrical_mechanical', 1, 178, fit70=3), {**self.cell('electrical_mechanical', 1, 178), 'measured': True}]})   # old index: no count
+        facts['board']['b5.example']['browser'] = True
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical'}), \
                 mock.patch('src.places.countries', return_value=['Netherlands']):
-            self.assertEqual([b['host'] for b in board_ideas.proven(SEARCH, limit=6)], ['b1.example'])
+            proven = board_ideas.proven(SEARCH, limit=6)
+            ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
+        self.assertEqual([(b['host'], b['right']) for b in proven], [('b2.example', 19), ('b4.example', 16)], 'most right jobs first; one electrician, another field, a browser board and an uncounted cell prove nothing')
+        self.assertEqual([b['host'] for b in ranked][:4], ['b5.example', 'b2.example', 'b4.example', 'b1.example'], 'the count orders before jobs in places (b6 has 178 and no count)')
+        self.assertNotIn('right', next(b for b in ranked if b['host'] == 'b6.example'), 'not measured: no number, never 0')
 
     def test_the_scouts_mark_on_a_cell_survives_the_index_read_only_as_true(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
-                            'relevant': [{**self.cell('nursing_care', 1, 14), 'measured': True}, {**self.cell('software_dev', 1, 9), 'measured': 'yes'}]}]}
+                            'relevant': [{**self.cell('nursing_care', 1, 14), 'measured': True, 'right': 14, 'day': '2026-11-13'},
+                                         {**self.cell('software_dev', 1, 9), 'measured': 'yes', 'right': '9', 'day': 'yesterday'}]}]}
         cache = self.data / 'employer_index.json'
         cache.write_text(json.dumps(index))
         with mock.patch('src.employer_index.CACHE', cache):
             cells = POOL_FACTS()['board']['b1.example']['relevant']
-        self.assertEqual(cells, [{**self.cell('nursing_care', 1, 14), 'measured': True}, self.cell('software_dev', 1, 9)])
+        self.assertEqual(cells, [{**self.cell('nursing_care', 1, 14), 'measured': True, 'right': 14, 'day': '2026-11-13'}, self.cell('software_dev', 1, 9)],
+                         'the number only as a whole number and its day only as a date; anything else is dropped')
 
     def test_the_index_cells_are_read_in_their_fixed_shape_only(self):
         index = {'sites': [{'host': 'b1.example', 'kind': 'board', 'url': 'https://b1.example/?q={role}', 'recipe': {'countries': ['nl']},
