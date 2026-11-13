@@ -53,7 +53,7 @@ class GitarQueueTest(unittest.TestCase):
         gh = self.tmp / 'gh'
         gh.write_text(FAKE_GH)
         gh.chmod(0o755)
-        self.env = {**os.environ, 'FAKE_DIR': str(self.tmp), 'GITAR_QUEUE_DIR': str(self.tmp / 'q'), 'GITAR_QUEUE_GH': str(gh), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': '3600', 'GITAR_QUEUE_PR_GAP_S': '300'}
+        self.env = {**os.environ, 'FAKE_DIR': str(self.tmp), 'GITAR_QUEUE_DIR': str(self.tmp / 'q'), 'GITAR_QUEUE_GH': str(gh), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': '3600'}
 
     def run_queue(self, *args, now_plus=0, wait=True, **env):
         e = {**self.env, 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000), **env}   # clock: relative the queue compares only readings of this same clock
@@ -79,14 +79,16 @@ class GitarQueueTest(unittest.TestCase):
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=7200), 'ASKED')
         self.assertEqual(self.posted(), ['ask 1'])
 
-    def test_a_refusal_pauses_only_that_pr_and_the_ask_goes_back_to_the_front(self):
+    def test_a_refusal_pauses_every_pr_and_the_ask_goes_back_to_the_front(self):
+        """13 Nov 2026, coordinator: the limit is account-wide (#4037's first ask, no comment of ours on it, was refused after other PRs' comments)."""
         (self.tmp / 'refuse_1').write_text('')
         self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0').startswith('QUEUED'))   # posted, refused, so not done
-        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'another PR is not held by #1')
-        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=60).startswith('QUEUED'), 'inside its 10 minutes')
+        self.assertTrue(self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0').startswith('QUEUED'), 'every PR waits for #1\'s 10 minutes')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=60).startswith('QUEUED'), 'inside the 10 minutes')
         (self.tmp / 'refuse_1').unlink()
-        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=700), 'ASKED')
-        self.assertEqual(self.posted(), ['ask 1', 'ask 2', 'ask 1'])
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=700), 'ASKED', 'the refused ask is first again')
+        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0', now_plus=701), 'ASKED')
+        self.assertEqual(self.posted(), ['ask 1', 'ask 1', 'ask 2'])
 
     def test_a_merged_pr_leaves_the_queue_and_a_moved_head_is_dropped(self):
         self.run_queue('ask', 'o/r', '1', 'h1')
@@ -128,14 +130,15 @@ class GitarQueueTest(unittest.TestCase):
         (self.tmp / 'gh_out').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
 
-    def test_a_second_comment_on_the_same_pr_waits_five_minutes_and_another_pr_does_not(self):
-        """13 Nov 2026, #4031 live: ask 20:01, reply 20:05, reply 20:06:39 -> "wait about 30 minutes" 3 s later. Our own comments on one PR are spaced even when the global gap allows them."""
+    def test_posts_on_different_prs_are_five_minutes_apart_by_default(self):
+        """13 Nov 2026, coordinator: space asks across all PRs by a minimum gap, 5 minutes unless measured better; a reply counts as an ask."""
+        env = {k: v for k, v in self.env.items() if k != 'GITAR_QUEUE_GAP_S'}
+        self.env = env
         body = self.tmp / 'body.md'
         body.write_text('Fixed.')
-        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0'), 'SENT')
-        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=100).startswith('QUEUED'), 'a 2nd comment on #1 inside 5 min')
-        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0', now_plus=100), 'ASKED', 'another PR is free')
-        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=400), 'ASKED')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'SENT')
+        self.assertTrue(self.run_queue('ask', 'o/r', '2', 'h2', now_plus=100).startswith('QUEUED'), 'a reply took the turn 100 s ago')
+        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', now_plus=310), 'ASKED')
 
     def test_a_reply_to_a_closed_pr_is_dropped_not_sent(self):
         """Gitar on #4031: `reply` printed SENT for an entry that drain had dropped."""

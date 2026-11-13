@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// The one queue every session on this Mac posts its "Gitar review" asks and replies to Gitar's threads through: one post at a time, oldest first, spaced out, and a PR Gitar refused waits.
+// The one queue every session on this Mac posts its "Gitar review" asks and replies to Gitar's threads through: one post at a time, oldest first, 5 minutes apart, and a refusal pauses all of them.
 //   node tools/gitar-queue.mjs ask <owner/repo> <pr> <head-sha>      -> ASKED | QUEUED (position k, next ask ~hh:mm) | DROPPED (<why>)   (idempotent: call again each look)
-//   node tools/gitar-queue.mjs reply <owner/repo> <pr> <comment-id> <body-file>    a reply in one of Gitar's inline threads (it counts toward Gitar's limit too)
+//   node tools/gitar-queue.mjs reply <owner/repo> <pr> <comment-id> <body-file>    a reply in one of Gitar's inline threads (it counts as an ask)
 //   node tools/gitar-queue.mjs drain | cancel <owner/repo> <pr> | status
 // Design (13 Nov 2026, gq; owner, asked via AskUserQuestion: "One shared ask queue (Recommended)"): states are queued -> sent (or dropped); the one owner is this file's state.json under
 //   ~/.claude/gitar-queue (GITAR_QUEUE_DIR), behind a mkdir lock; every ship-watch look calls `ask` again, which drains one due post, so no daemon is needed.
-//   Verdicts that change a state: PR merged/closed or (for an ask) head moved -> dropped; Gitar's "wait about N minutes" on that PR (issue comment or inline thread, anyone's) -> that PR waits N minutes;
-//   a refusal right after our own ask -> the ask goes back to the front (a refused reply is not posted twice); an ask for a head already sent is never sent twice.
-// Why (13 Nov 2026, measured on #4018/#4020/#4021/#4022/#4026 and 17 replies): 22 asks in 70 min across 4 repos drew 11 refusals. Refusals follow the PR, not the account: web #636, lab #109, web #637 and bench #43 were
-//   accepted inside the 30-minute pauses of #4020/#4021/#4018, and bench #44 20 s after web #639 was refused. Thread replies count: #4026's first inline reply got "wait about 10 minutes". So the pause is per PR and
-//   the gap (GITAR_QUEUE_GAP_S, default 60) is only the spacing. #4031 itself then drew "wait about 30 minutes" for a 3rd own comment (ask 20:01, replies 20:05 and 20:06) while Gitar had already closed the findings: so one PR also gets GITAR_QUEUE_PR_GAP_S (default 300) between our comments. The exact count Gitar applies is unknown; TODO(AI): tune the gap from the refusal rate once the queue has run for a week (13 Nov 2026).
+//   Verdicts that change a state: PR merged/closed or (for an ask) head moved -> dropped; Gitar's "wait about N minutes" on ANY queued PR (issue comment or inline thread, anyone's) -> every PR waits until it ends;
+//   a refusal right after our own post -> the ask goes back to the front, a refused reply is deleted and goes back too (seen once, after the wait); an ask for a head already sent is never sent twice.
+// Why (13 Nov 2026, coordinator, measured; owner's rule: one queue for the account): the limit is account-wide. #4037's first "Gitar review" (20:17:45), with zero comments of ours on it, was refused "wait about 20 minutes"
+//   after #4035 took 4 replies at 20:12, #4033 an ask at 20:13:18 and #4032 at 20:13:48, 20:14:17 and 20:14:20; #4033's 20:19:19 ask was refused 74 s after its 20:18:05 one. #4031's replies at 20:05:05 and 20:06:39 drew
+//   "wait about 30 minutes" 3 s later. A short burst passes at the start of a quiet window (#4030 and #4031 asked at 20:01:19/20:01:21, both accepted), and earlier that evening four asks on other repos were accepted
+//   inside others' pauses (19:12-19:16), so the evidence is not clean: the queue is safe under both readings. The gap (GITAR_QUEUE_GAP_S, default 300) is the coordinator's 5 minutes "unless you measure better";
+//   TODO(AI): tune the gap from the refusal rate once the queue has run for a week (13 Nov 2026).
 import {mkdirSync, rmSync, readFileSync, writeFileSync, renameSync, statSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -18,8 +20,7 @@ import {join} from 'node:path';
 
 const DIR = process.env.GITAR_QUEUE_DIR || join(homedir(), '.claude', 'gitar-queue');
 const GH = process.env.GITAR_QUEUE_GH || 'gh';
-const GAP = Number(process.env.GITAR_QUEUE_GAP_S || 60) * 1000;
-const PR_GAP = Number(process.env.GITAR_QUEUE_PR_GAP_S ?? 300) * 1000;   // between two of OUR comments on the same PR (13 Nov 2026, #4031: the 3rd comment in 5 min drew "wait about 30 minutes")
+const GAP = Number(process.env.GITAR_QUEUE_GAP_S ?? 300) * 1000;   // between any two posts of this Mac (13 Nov 2026, coordinator: "space asks across all PRs by a minimum gap; use 5 min unless you measure better")
 const SETTLE = Number(process.env.GITAR_QUEUE_SETTLE_MS ?? 8000);   // Gitar's refusal arrives 3-5 s after the comment
 let slept = 0;   // a pinned GITAR_QUEUE_NOW is a simulated clock: the settle wait advances it instead of waiting (tests)
 const now = () => Number(process.env.GITAR_QUEUE_NOW) ? Number(process.env.GITAR_QUEUE_NOW) + slept : Date.now();
@@ -42,7 +43,7 @@ function locked(fn) {
   try { return fn(); } finally { rmSync(lock, {recursive: true, force: true}); }
 }
 const file = join(DIR, 'state.json');
-const load = () => { try { return {entries: [], sent: [], dropped: {}, pr: {}, last: 0, ...JSON.parse(readFileSync(file, 'utf8'))}; } catch { return {entries: [], sent: [], dropped: {}, pr: {}, last: 0}; } };
+const load = () => { try { return {entries: [], sent: [], dropped: {}, last: 0, ...JSON.parse(readFileSync(file, 'utf8'))}; } catch { return {entries: [], sent: [], dropped: {}, last: 0}; } };
 const save = st => { st.sent = st.sent.slice(-300); writeFileSync(file + '.tmp', JSON.stringify(st, null, 1)); renameSync(file + '.tmp', file); };
 
 const key = e => `${e.repo}#${e.pr}${e.kind === 'ask' ? '@' + e.head : '/' + e.commentId + ':' + createHash('sha1').update(e.body).digest('hex').slice(0, 8)}`;   // a reply is told apart by its comment and its words
@@ -79,23 +80,27 @@ function drain(st) {
     return !why;
   });
   if (st.last + GAP > now()) return;   // spacing first: no comment reads while it holds
+  // Gitar's "wait N minutes" on ANY queued PR pauses every PR until it ends (account-wide: coordinator, 13 Nov 2026).
+  const paused = new Map(); for (const e of st.entries) { const k = `${e.repo}#${e.pr}`; if (!paused.has(k)) paused.set(k, pausedUntil(e)); }
+  st.until = Math.max(st.until || 0, ...paused.values());
+  if (st.until > now()) return;
   for (const e of st.entries) {
-    if ((st.pr[`${e.repo}#${e.pr}`] || 0) + PR_GAP > now() || pausedUntil(e) > now()) continue;
     const t0 = now();   // Why (13 Nov 2026, Gitar on #4031): a refusal lands 3-5 s after the post, so it is looked for from just before the post, not from "now minus 5 s" after the settle wait
     if (!post(e)) { st.fail = key(e); return; }   // gh failed: the entry stays, the next look retries, and `ask`/`status` say so
     st.entries = st.entries.filter(x => x !== e); st.last = now(); delete st.fail;
-    st.sent.push({key: key(e), at: now()}); st.pr[`${e.repo}#${e.pr}`] = now();
+    st.sent.push({key: key(e), at: now()});
     save(st); settle(SETTLE);
     // A refused ask or reply goes back to the front, so Gitar is not left without it (Gitar on #4031: a refused reply was lost). A refused reply is deleted first, so people see it once, after the wait.
-    if (pausedUntil(e, t0 - 2000) > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
+    const refusedUntil = pausedUntil(e, t0 - 2000); st.until = Math.max(st.until || 0, refusedUntil);
+    if (refusedUntil > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
     return;
   }
 }
 
 /** When each queued entry will go, assuming no new refusal: [{e, at}]. */
 function schedule(st) {
-  let slot = Math.max(st.last + GAP, now());
-  return st.entries.map(e => { const p = Math.max(pausedUntil(e), (st.pr[`${e.repo}#${e.pr}`] || 0) + PR_GAP); if (p > slot) return {e, at: p}; const at = slot; slot += GAP; return {e, at}; });
+  let slot = Math.max(st.last + GAP, st.until || 0, now());
+  return st.entries.map(e => { const at = slot; slot += GAP; return {e, at}; });
 }
 const hhmm = ms => new Date(ms).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 
