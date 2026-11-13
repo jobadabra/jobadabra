@@ -35,7 +35,7 @@ on:
 
 # Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
 concurrency:
-  group: search-profiles
+  group: search-profiles-${{ github.run_id }}   # Why (13 Nov 2026, owner: "yes, let's run the side by side"; asked by sa): a run of its own, so three by-hand rounds go side by side; their room is the broker's claim line (capacity 6, first come first served), never this group
   cancel-in-progress: false
 
 permissions:
