@@ -10,6 +10,7 @@
     {"id": "ui-verdict", "repo": "jobadabra", "file": "ui-verdict.yml", "name": "UI verdicts", "issuesOnly": true, "starts": "After each UI findings run", "acts": "Labels or closes up to 5 issues", "engine": "broker", "today": "one-shot"}
   ],
   "steps": [
+    {"repo": "jobadabra", "file": "claude-review-shared.yml", "name": "Claude PR review", "engine": "plan"},
     {"repo": "jobadabra", "file": "ai-judge-set.yml", "name": "AI user agent judge exam", "engine": "broker"},
     {"repo": "jobadabra", "file": "ui-findings.yml", "name": "UI findings", "engine": "broker"},
     {"repo": "jobadabra", "file": "e2e.yml", "name": "E2E judges and screenshot review", "engine": "broker"},

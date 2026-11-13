@@ -1,0 +1,60 @@
+name: CI · Claude review
+run-name: Claude review · ${{ inputs.prs || github.event.issue.number }}${{ github.event_name == 'issue_comment' && ' (asked by comment)' || '' }}
+# jobadabra's caller of the shared Claude reviewer (claude-review-shared.yml): only the events that start it. Three ways in (owner, 13 Nov 2026, "Trial Claude on jobadabra" then "replace Gitar"):
+#   a green head: tools/pr-verdict.py writes "All checks passed" and pr-verdict.yml then dispatches this with `prs` and `sha` (a status written with the Actions token starts no event of its own);
+#   the owner's comment "@claude review" on a PR (author_association OWNER or MEMBER only): reviews the current head at once, on a draft or a red head too;
+#   workflow_dispatch with `prs` (numbers, space or comma separated) and no `sha`: the same ask, by hand, for a batch (2 at a time).
+# A workflow reached by issue_comment or workflow_dispatch runs from the default branch: this file only works once it is on main.
+on:
+  workflow_dispatch:
+    inputs:
+      prs: {description: 'PR numbers, space or comma separated', required: true, type: string}
+      sha: {description: 'automatic only: the head that went green (empty = the owner asked by hand)', required: false, default: '', type: string}
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Which PRs
+    # Why (13 Nov 2026, cr): the comment path is the owner's alone: only a PR comment starting "@claude review" by OWNER or MEMBER; a fork PR's code never meets the plan token (the gate refuses it too).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '@claude review') &&
+       (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      prs: ${{ steps.prs.outputs.prs }}
+    steps:
+      - id: prs
+        env:
+          INPUT_PRS: ${{ inputs.prs }}
+          COMMENT_PR: ${{ github.event.issue.number }}
+        run: |
+          list="${INPUT_PRS:-$COMMENT_PR}"
+          json="$(printf '%s' "$list" | tr -s ', ' '\n' | grep -E '^[0-9]+$' | sort -un | jq -R 'tonumber' | jq -cs .)"
+          [ -n "$json" ] && [ "$json" != "[]" ] || { echo "no PR number in: $list" >&2; exit 1; }
+          echo "prs=$json" >> "$GITHUB_OUTPUT"
+
+  review:
+    name: Claude review of PR ${{ matrix.pr }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        pr: ${{ fromJSON(needs.plan.outputs.prs) }}
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    uses: ./.github/workflows/claude-review-shared.yml
+    with:
+      pr: ${{ format('{0}', matrix.pr) }}
+      mode: ${{ inputs.sha != '' && 'auto' || 'manual' }}
+      sha: ${{ inputs.sha }}
+      asked_by: ${{ github.event_name == 'issue_comment' && github.event.comment.author_association || 'DISPATCH' }}
+    secrets: inherit
