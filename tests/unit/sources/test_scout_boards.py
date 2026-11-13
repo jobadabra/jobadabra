@@ -18,6 +18,11 @@ def job(place, title='Developer'):
     return {'title': title, 'location': place, 'url': f'https://x/{place}/{title}'}
 
 
+def summary(out):
+    """The pass's one summary line (the per-board 'Board kinds:' lines, 13 Nov 2026, come beside it)."""
+    return next(line for line in out if line.startswith('Board pass: '))
+
+
 class BoardPassTest(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(':memory:')
@@ -42,8 +47,8 @@ class BoardPassTest(unittest.TestCase):
     def test_a_board_with_enough_jobs_located_in_the_country_becomes_a_fact(self):
         got, out, _ = self.run_pass({'a.md': ([job('Chisinau')] * 3 + [job('Berlin')], 'ok', None), 'b.md': ([job('Berlin')] * 9, 'ok', None)})
         self.assertEqual([(f['host'], f['country'], f['local_jobs'], f['families']) for f in got], [('a.md', 'md', 3, ['software_dev'])])
-        self.assertIn('2 boards proposed, 1 with 3+ local jobs', out[0])
-        self.assertTrue(out[0].startswith('Board pass: Moldova (software, '), 'the line names the kinds of work the boards were asked for')
+        self.assertIn('2 boards proposed, 1 with 3+ local jobs', summary(out))
+        self.assertTrue(summary(out).startswith('Board pass: Moldova (software, '), 'the line names the kinds of work the boards were asked for')
 
     def by_cells(self, reads, labels, asked, searched, url='https://{host}/search?q={{role}}'):
         """One board-discovery pass for `asked` ({family: its words}); the fake reader says which words it searched (as found_boards does) and returns reads[host]."""
@@ -151,7 +156,7 @@ class BoardPassTest(unittest.TestCase):
 
     def test_boards_the_rules_could_not_read_are_named_in_the_log(self):
         _, out, _ = self.run_pass({'a.md': ([], 'empty', None), 'b.md': ([], 'browser', None)})
-        self.assertIn('not measured (rules could not read the page): a.md, b.md', out[0])
+        self.assertIn('not measured (rules could not read the page): a.md, b.md', summary(out))
 
     def test_a_board_the_rules_read_as_empty_is_read_once_more_by_the_ai_page_reader(self):
         # 12 Nov 2026, owner, asked via AskUserQuestion: "AI reads once, recipe after (Recommended)": a Slovak board's page held 40 ads, the rules read 0
@@ -168,7 +173,7 @@ class BoardPassTest(unittest.TestCase):
             self.assertEqual(careers.READER, 'auto', 'the reader is back as it was after the pass')
         self.assertEqual(readers, [None, 'auto'], 'rules first, then the AI page reader once')
         self.assertEqual([fact['host'] for fact in got], ['a.md'])
-        self.assertIn('a.md 3/3 (read by the AI page reader)', out[0])
+        self.assertIn('a.md 3/3 (read by the AI page reader)', summary(out))
 
     def test_the_ai_page_reads_stop_when_their_calls_are_spent_and_a_page_built_by_scripts_is_not_one(self):
         decide.reset_run()
@@ -188,7 +193,7 @@ class BoardPassTest(unittest.TestCase):
         with mock.patch.object(careers, 'READER', 'auto'), mock.patch('src.ai.page_reader.usable', return_value=True):
             scout_boards.run(self.db, ideas=lambda search: [board(host) for host in hosts], read_board=read_board, out=out.append, google=lambda *a: [])
         self.assertEqual(ai_reads, [f'{n}.md' for n in range(boards_by_ai)], f'{scout_boards.PAGE_CALLS} calls, two a board; no AI read for a page built by scripts')
-        self.assertIn(f'pages {scout_boards.PAGE_CALLS} of {scout_boards.PAGE_CALLS}', out[0])
+        self.assertIn(f'pages {scout_boards.PAGE_CALLS} of {scout_boards.PAGE_CALLS}', summary(out))
 
     def test_without_a_usable_page_reader_an_empty_board_is_not_fetched_again(self):
         # #3922's first CI: every empty board was read twice when no AI could read it (a read with no call never drew from the pool)
@@ -221,7 +226,7 @@ class BoardPassTest(unittest.TestCase):
             return browsed[item['host']]
         got = scout_boards.run(self.db, ideas=lambda search: [board(host) for host in reads], read_board=lambda item, *a: reads[item['host']],
                                out=out.append, google=lambda *a: [], browser=browser, named='md')
-        return got, out[0], asked
+        return got, summary(out), asked
 
     def test_a_board_that_refuses_the_plain_reader_is_measured_once_in_the_browser_and_published_marked(self):
         # Owner, 12 Nov 2026 (asked via AskUserQuestion by sa): "Boards now, employers next (Recommended)": the scout's browser reads it, installs see "needs a browser".
@@ -408,6 +413,27 @@ class BoardPassTest(unittest.TestCase):
         self.assertIn('2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4 (no layout: none learned on this read), b.md 0/0', out[-1])
         self.assertTrue(out[-1].startswith('Board pass: Moldova ('))
         self.assertIn('md', scout_cells._meta(self.db, 'boards_aimed', []))   # it counts as done: the rotation moves on
+
+    def test_the_log_says_what_the_kinds_question_got_and_the_right_jobs_per_family(self):
+        """13 Nov 2026, sa: "the run log must print right jobs per board and family"; Spain run 43502695338 dropped a 40-job board as "no kinds of work" without saying what was asked."""
+        out = []
+        reads = {'a.md': [job('Chisinau', title=f'Programmer {n}') for n in range(4)], 'b.md': [job('Chisinau', title=f'Odd title {n}') for n in range(4)]}
+        with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: (['software_dev'] if t.startswith('Programmer') else []) for t in titles}, [])):
+            scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None), out=out.append, named='md')
+        lines = {line.split(':')[1].strip(): line for line in out if line.startswith('Board kinds: ')}
+        self.assertIn('4 local jobs, 4 distinct titles asked, 4 job(s) put in a family, 0 title(s) unanswered', lines['a.md'])
+        self.assertNotIn('asked, no family', lines['a.md'])
+        self.assertIn("0 job(s) put in a family, 0 title(s) unanswered; right jobs per family: none; asked, no family: 'Odd title 0' | 'Odd title 1' | 'Odd title 2' | 'Odd title 3'", lines['b.md'])
+
+    def test_the_log_says_when_every_job_of_a_board_has_the_same_title(self):
+        """13 Nov 2026, sd: trabajos.com pages all carried one placeholder title, so 40 jobs reached the AI as 1 title and the board was dropped; the line must show it at once."""
+        out = []
+        reads = {'a.md': [job('Chisinau', title='HV_JSON_TITULO')] * 4}
+        with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: [] for t in titles}, [])):
+            scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None), out=out.append, named='md')
+        line = next(line for line in out if line.startswith('Board kinds: a.md'))
+        self.assertIn("4 local jobs, 1 distinct titles asked", line)
+        self.assertIn("every job has the same title 'HV_JSON_TITULO'", line)
 
 
 

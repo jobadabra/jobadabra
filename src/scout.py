@@ -252,7 +252,8 @@ def discover(db, run=None, out=print, today=None):
         out('Board discovery: every cell under its target rests; nothing to read this run')
         return []
     country, families, again = turn
-    kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out)
+    from . import scout_board_candidates
+    kept = (run or scout_boards.run)(db, named=country, families=families, again=again, out=out, reported=scout_board_candidates.fetch(out))   # the boards installs reported (site GET ?boards=1, the Scout's key)
     cells.record(db, country, families, kept, today, again=again)
     out(cells.line(db, today, named_first))
     return kept

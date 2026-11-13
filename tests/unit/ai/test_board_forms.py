@@ -39,6 +39,16 @@ class TemplateTests(unittest.TestCase):
         self.assertEqual(board_forms.templates(form('<input name="q">', method='post'), HOME), [])
         self.assertEqual(board_forms.templates(form('<input name="user"><input type="password" name="pw">'), HOME), [])
 
+    def test_the_scout_never_makes_a_search_link_of_a_subscribe_or_apply_form(self):   # 13 Nov 2026, bp: rabota.md's home page holds all three
+        subscribe = '<form class="subscribeWrap"><input class="subscribePosition" type="text" name="position"><input type="text" name="name"><input type="email" name="email"><input type="hidden" name="source" value="main"></form>'
+        apply = '<form action="/apply"><input type="text" name="full_name"><input type="tel" name="phone"><input type="file" name="cv"></form>'
+        search = '<form action="/search"><input name="query"></form>'
+        page = f'<html><body>{subscribe}{apply}{search}</body></html>'
+        self.assertEqual(board_forms.templates(page, HOME, search_only=True), ['https://vacatures.example/search?query={role}'], 'the search form wins, the others are not offered')
+        self.assertEqual(board_forms.templates(f'<html>{subscribe}{apply}</html>', HOME, search_only=True), [])
+        self.assertEqual(board_forms.templates(f'<html>{subscribe.replace("<form", "<form method=post")}</html>', HOME, 'https://vacatures.example/jobs', search_only=True), [], 'a posted one neither')
+        self.assertEqual(len(board_forms.templates(f'<html>{subscribe}{apply}</html>', HOME)), 2, 'Find jobs in the app (no search_only) reads them as before: Gitar on #4042, no live pair')
+
     def test_a_form_that_sends_to_another_site_is_left_alone(self):
         self.assertEqual(board_forms.templates(form('<input name="q">', action='https://elsewhere.example/s'), HOME), [])
 
