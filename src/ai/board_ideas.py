@@ -349,7 +349,7 @@ def _families(search):
     return set(pool_tags.families([_plain(k) for k in (search or {}).get('role_keywords', [])]))
 
 
-PROVEN_RIGHT = 3   # jobs of the person's family, located in the country, the Central Scout's AI counted on a board before it is "proven" (the Scout and the site use the same 3)
+from ..scout_board_counts import MIN_RIGHT as PROVEN_RIGHT   # jobs of the person's family, located in the country, the Central Scout's AI counted on a board before it is "proven": one owner, the Scout's threshold (Gitar on #4068)
 
 
 def ranked(boards, search):
