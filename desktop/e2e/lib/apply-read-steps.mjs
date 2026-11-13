@@ -102,7 +102,7 @@ export async function runReadSteps(ctx) {
         await page.reload();
         await stepWait('the app window showed its view after the reload', timeout => page.locator('.view:not([hidden])').waitFor({timeout}));
         await page.click('.nav[data-view="jobs"]');
-        await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the default "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
+        await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
         await chipBeforeRead(() => rowOf(page, form));
         const sessions = sessionsNow(ctx), posted = forms.posts.length;
         await page.click('#triage-open');

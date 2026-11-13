@@ -54,7 +54,7 @@ export async function runTriageSteps(ctx) {
       await removeJobsByUrl(ctx, urls);
       for (const job of JOBS) await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: null, fit: job.fit, stage: 'Saved', nextStep: ''});
       await openJobs(ctx);
-      // These fixtures are Saved jobs; the default New matches filter excludes them.
+      // These fixtures are Saved jobs; the New matches filter excludes them.
       await showFilter(page, 'saved');
       await stepWait('the twelve Saved triage rows to render', timeout => page.waitForFunction(urls => urls.every(url => [...document.querySelectorAll('article.job-row')].some(row => row.dataset.url === url)), urls, {timeout}));
       const before = sessionsNow(ctx);
