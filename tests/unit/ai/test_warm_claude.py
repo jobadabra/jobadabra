@@ -103,7 +103,7 @@ class StubProcess:
     """A process stand-in for the scaling tests: alive until its input is closed."""
 
     def __init__(self):
-        self.stdin, self.stdout, self.closed = io.StringIO(), iter(()), False
+        self.stdin, self.stdout, self.closed = io.StringIO(), io.StringIO(), False   # an output that says nothing and can be closed, as a pipe
         self.stdin.close = self._close
 
     def _close(self):
