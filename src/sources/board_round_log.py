@@ -32,6 +32,9 @@ class Parts:
         return f" ({' · '.join(long)})" if long else ''
 
 
+UNCOUNTED = object()   # Why (Gitar on #4052): the search form way hands back only a relevant read, so a "0 job(s)" for it would be made up
+
+
 class Ladder:
     """One board's walk up the read ladder (found_boards._another_way): after each way, one line with the way, the jobs it listed and its seconds,
     so a board that cost 40 s over four ways that gave nothing is told from one that cost 40 s in one.
@@ -42,10 +45,11 @@ class Ladder:
         self.began = self.last = clock()
 
     def did(self, way, listed=None):
-        """Say `way` ended with `listed` (the jobs it read; None: it did not run, nothing is said)."""
+        """Say `way` ended with `listed` (the jobs it read; None: it did not run, nothing is said; UNCOUNTED: it ran and its jobs are not counted)."""
         now = self.clock()
         if way and listed is not None:
-            print(f"Job boards found: {self.name} way '{way}': {len(listed)} job(s) listed, {now - self.last:.0f} s (ladder {now - self.began:.0f} s)", flush=True)
+            count = 'jobs not counted' if listed is UNCOUNTED else f'{len(listed)} job(s) listed'
+            print(f"Job boards found: {self.name} way '{way}': {count}, {now - self.last:.0f} s (ladder {now - self.began:.0f} s)", flush=True)
         self.last = now
 
 

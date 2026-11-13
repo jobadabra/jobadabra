@@ -252,7 +252,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         return stands(before)
     if made:
         return made
-    if cut('search form', []):
+    if cut('search form', board_round_log.UNCOUNTED):
         return stands(before)
     listed, section, scripted = _section(board, page, search, fetch, judge, show)   # the board's own section for this kind of work (board_sections.py)
     if listed:
@@ -265,8 +265,10 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     try:
         listed, route = board_routes.discover(page[1], page[0], fetch, board, _terms(search, FULL_SEARCHES))
     except board_routes.Stop:   # its own list refused us: the search page's answer stands, the board is not marked for a visit
+        steps.did('own job list', [])
         return stands(before)
     except Exception:  # noqa: BLE001 — a fallback never breaks the read: the search page's answer stands
+        steps.did('own job list', [])
         return stands(before)
     relevant = judge(listed) if listed else []
     if relevant:
@@ -275,7 +277,9 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         return listed, 'ok', relevant
     if cut('own job list', listed):
         return stands(before)
-    return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
+    made = _rendered(board, entry, proposed, page, search, fetch, show, judge)
+    steps.did('rendered read', made[0] if made else [])
+    return made or stands(before)
 
 
 def _kept_spares(taken, lock, read_items, keep):
