@@ -73,14 +73,16 @@ function headTime(repo, sha, run = gh) {
  * GraphQL read does (Gitar, #3790); read per suite, so a head with 90 other runs has no 100-run cap. */
 export function gitarRunOnHead(repo, sha, run = gh) {
   const suites = JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.filter(c => /gitar/i.test(c.app?.slug || '') && (c.latest_check_runs_count ?? 0) > 0);
-  return newestRun(suites.flatMap(c => JSON.parse(run('api', `repos/${repo}/check-suites/${c.id}/check-runs`)).check_runs.map(r => ({status: r.status.toUpperCase(), startedAt: r.started_at}))));
+  return newestRun(suites.flatMap(c => JSON.parse(run('api', `repos/${repo}/check-suites/${c.id}/check-runs?per_page=100`)).check_runs.map(r => ({status: r.status.toUpperCase(), startedAt: r.started_at}))));
 }
 
-/** The newest of Gitar's check runs on a head, `{running, startedAt}` (running = any run not completed; startedAt = the newest start), or null when there is none. */
+/** The newest of Gitar's check runs on a head, `{running, startedAt}`, or null when there is none. `running` is the NEWEST run's state (a run with no start yet is the newest): an older run left
+ * queued or in progress by a superseded ask must not hold the label on "reviewing" beside a completed newer run (Gitar's finding on #4084). */
 export function newestRun(runs) {
   const some = runs.filter(Boolean);
   if (!some.length) return null;
-  return {running: some.some(r => r.status !== 'COMPLETED'), startedAt: some.map(r => r.startedAt).filter(Boolean).sort().at(-1) || null};
+  const newest = [...some].sort((a, b) => String(a.startedAt || '~').localeCompare(String(b.startedAt || '~'))).at(-1);
+  return {running: newest.status !== 'COMPLETED', startedAt: some.map(r => r.startedAt).filter(Boolean).sort().at(-1) || null};
 }
 
 /** The labels a PR should hold: ONE Gitar label for the newest push, then "working" when it applies. `kind`: the verdict of Gitar's newest Code Review comment (or null), `verdictTime` its last edit; `run`: Gitar's
@@ -150,7 +152,7 @@ const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository
   comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body createdAt updatedAt } }
   labels(first: 30) { nodes { name } }
   timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
-  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 20) { nodes { status startedAt } } } } } } }
+  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 100) { nodes { status startedAt } } } } } } }
 } } }`;
 
 /** The PR's state, Gitar's newest Code Review comment, Gitar's check run on the head, head time (for the gray mark), labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit

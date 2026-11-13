@@ -63,6 +63,9 @@ class OneSignalTest(unittest.TestCase):
                 self.assertEqual(wanted([run()], BODY[kind], updated='2026-11-13T20:30:00Z'), [old], "a verdict written before the run started is not that run's")
                 self.assertEqual(wanted([run(started='2026-11-13T20:10:00Z'), run('IN_PROGRESS', '2026-11-13T20:50:00Z')], BODY[kind]), ['Gitar: reviewing'], 'a re-ask on the same head: its run is the signal')
                 self.assertEqual(wanted([run(started='2026-11-13T20:10:00Z'), run(started='2026-11-13T20:40:09Z')], BODY[kind]), [plain], 'the newest run decides')
+        stale_queued = [run(status='QUEUED', started='2026-11-13T20:10:00Z'), run(started='2026-11-13T20:40:09Z')]   # Gitar's finding on #4084: an older unfinished run must not pin "reviewing"
+        self.assertEqual(wanted(stale_queued, SUGGESTIONS), [PLAIN['suggestions']], 'only the newest run says running')
+        self.assertEqual(wanted([run(started='2026-11-13T20:10:00Z'), run(status='IN_PROGRESS', started='2026-11-13T20:40:09Z')], SUGGESTIONS), ['Gitar: reviewing'], 'a newer run in progress is reviewing')
         self.assertEqual(wanted([]), ['Gitar: not started'], 'never reviewed')
         self.assertEqual(wanted([run()]), ['Gitar: not started'], 'a run that left no verdict, and no earlier verdict')
 
@@ -102,7 +105,7 @@ class OneSignalTest(unittest.TestCase):
     def test_the_rest_read_finds_the_same_run(self):
         """The REST path (a thread too long for GraphQL): the head's suites, Gitar's by app slug, then that suite's runs; the same shape as the GraphQL read."""
         suites = {'check_suites': [{'id': 1, 'app': {'slug': 'github-actions'}, 'latest_check_runs_count': 90}, {'id': 2, 'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 1}]}
-        fake = {'repos/o/r/commits/abc/check-suites?per_page=100': suites, 'repos/o/r/check-suites/2/check-runs': {'check_runs': [{'status': 'in_progress', 'started_at': '2026-11-11T00:01:00Z'}]}}
+        fake = {'repos/o/r/commits/abc/check-suites?per_page=100': suites, 'repos/o/r/check-suites/2/check-runs?per_page=100': {'check_runs': [{'status': 'in_progress', 'started_at': '2026-11-11T00:01:00Z'}]}}
         self.assertEqual(node(f"m.gitarRunOnHead('o/r', 'abc', {answering(fake)})"), {'running': True, 'startedAt': '2026-11-11T00:01:00Z'})
         fake['repos/o/r/commits/abc/check-suites?per_page=100'] = {'check_suites': [{'id': 2, 'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 0}]}
         self.assertIsNone(node(f"m.gitarRunOnHead('o/r', 'abc', {answering(fake)})"))
