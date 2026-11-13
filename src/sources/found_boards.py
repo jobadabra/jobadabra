@@ -63,7 +63,7 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 
 
-def _read(board, search, fetch, route, early, show=None, on_jobs=None):
+def _read(board, search, fetch, route, early, show=None, on_jobs=None):  # noqa: C901 (Why (13 Nov 2026, cp): 19 before and after; only a completed-round callback is added, splitting parsing is its own change)
     jobs, state, asked_routes, asks, asked_term = [], 'empty', False, 0, None
     on_jobs = on_jobs or (lambda _jobs: None)
     listing = show if board.get('rendered') and show is not None else None   # the list pages after their scripts ran; job pages are fetched as usual
@@ -441,8 +441,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
     feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
-    # Why (#3892, 12 Nov 2026): boards are kept as they end (in the list's order a slow first board held the others' titles and places
-    # past the AI's time); the boards named meanwhile (feeders) join this same loop as they start, never a second read
+    # Why (#3892; 13 Nov 2026, cp): boards are kept as they end, and ready early rounds are drained in this reader while whole boards stay
+    # open, so their titles keep the reader's own answer scope. Boards named meanwhile (feeders) join this same loop, never a second read.
     for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, **handoff.waiting()), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
