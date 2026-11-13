@@ -36,6 +36,14 @@ def valid(item):
     return {'host': item['host'], 'countries': countries, 'installs': installs}
 
 
+def _said(error):
+    """The site's own error word from a refused answer ({"ok": false, "error": "..."}), at most 60 characters, '' when it has none. Never the key: the answer holds none."""
+    try:
+        return str(json.loads(error.read(2000)).get('error') or '')[:60]
+    except Exception:  # noqa: BLE001 -- no readable answer: the status alone says it
+        return ''
+
+
 def fetch(out=print, urlopen=urllib.request.urlopen):
     """The valid reports from the site ([] without INDEX_PUBLISH_KEY, or when the site does not answer: the pass goes on with the AI's ideas). The key is never printed."""
     key = os.environ.get('INDEX_PUBLISH_KEY')
@@ -47,7 +55,8 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
         with urlopen(request, timeout=30) as answer:
             boards = json.loads(answer.read(8 * 1024 * 1024)).get('boards') or []
     except Exception as error:  # noqa: BLE001 -- a site that does not answer must not stop the pass (the same boards come next run)
-        out(f'Board pass: reported boards: not read ({type(error).__name__})')
+        code, said = getattr(error, 'code', None), _said(error)   # Why (13 Nov 2026, bp): the pass printed only 'HTTPError' for a 404 or a 503, so run 43516854672's cause was unreadable
+        out(f"Board pass: reported boards: not read ({type(error).__name__}{f' HTTP {code}' if code else ''}{f': {said}' if said else ''})")
         return []
     reports = [report for report in map(valid, boards[:MAX_BOARDS]) if report]
     out(f'Board pass: reported boards: {len(reports)} of {len(boards)} read')

@@ -5,6 +5,7 @@ import json
 import os
 import sqlite3
 import unittest
+import urllib.error
 from datetime import date, timedelta
 from unittest import mock
 
@@ -64,6 +65,16 @@ class Fetch(unittest.TestCase):
         with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
             self.assertEqual(candidates.fetch(out.append, urlopen=urlopen), [])
         self.assertIn('not read (OSError)', out[0])
+
+    def test_a_refusal_names_its_status_and_the_site_s_word_and_never_the_key(self):
+        out = []
+
+        def urlopen(*a, **k):
+            raise urllib.error.HTTPError('https://x', 503, 'unavailable', {}, io.BytesIO(b'{"ok": false, "error": "could not read the reported boards"}'))
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
+            self.assertEqual(candidates.fetch(out.append, urlopen=urlopen), [])
+        self.assertIn('not read (HTTPError HTTP 503: could not read the reported boards)', out[0])
+        self.assertNotIn('k3y-secret', out[0])
 
 
 class ForCountry(unittest.TestCase):
