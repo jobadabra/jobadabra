@@ -66,13 +66,23 @@ class PrOfHeadUnknownTest(unittest.TestCase):
         self.assertFalse([c for c in self.calls() if c.startswith('GRAPHQL')], 'a failure that is not "REST out" never touches GraphQL')
 
     def test_rest_out_reads_the_lookup_over_graphql(self):
-        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'nodes': [{'number': 9, 'headRepositoryOwner': {'login': 'fork'}}, {'number': 7, 'headRepositoryOwner': {'login': 'o'}}]}}}})
+        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'pageInfo': {'hasNextPage': False}, 'nodes': [{'number': 9, 'headRepositoryOwner': {'login': 'fork'}}, {'number': 7, 'headRepositoryOwner': {'login': 'o'}}]}}}})
         done = self.run_shell('pr_of_head o/r topic')
         self.assertEqual((done.returncode, done.stdout.strip()), (0, '7'), 'only the PR whose head is in the repo owner counts')
         self.assertIn('GRAPHQL ofhead fallback: REST out', self.calls())
-        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'nodes': []}}}})
+        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'pageInfo': {'hasNextPage': False}, 'nodes': []}}}})
         done = self.run_shell('pr_of_head o/r topic')
         self.assertEqual((done.returncode, done.stdout.strip()), (0, ''), 'GraphQL says there is none')
+
+    def test_rest_out_with_more_graphql_pages_and_no_match_of_ours_is_unknown_not_none(self):
+        """13 Nov 2026, Gitar on #4093: the branch name matches any fork's branch, so a full page without our PR may hide it."""
+        forks = [{'number': n, 'headRepositoryOwner': {'login': 'fork'}} for n in range(1, 4)]
+        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'pageInfo': {'hasNextPage': True}, 'nodes': forks}}}})
+        done = self.run_shell('pr_of_head o/r topic')
+        self.assertEqual((done.returncode, done.stdout), (1, ''))
+        self.out(core=0, graphql={'data': {'repository': {'pullRequests': {'pageInfo': {'hasNextPage': True}, 'nodes': forks + [{'number': 7, 'headRepositoryOwner': {'login': 'o'}}]}}}})
+        done = self.run_shell('pr_of_head o/r topic')
+        self.assertEqual((done.returncode, done.stdout.strip()), (0, '7'), 'a match of ours is a match, whatever follows')
 
     def test_rest_out_and_graphql_unreadable_is_unknown(self):
         self.out(core=0)
