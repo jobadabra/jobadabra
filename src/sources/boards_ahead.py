@@ -27,9 +27,22 @@ class Ahead:
         self.found = self.matched = None
         self.shown = False
 
-    def wait(self):
-        """Until the read ends (inside the side-by-side scope, so its answers join the shared ones)."""
-        wait_for([self.future])
+    def wait(self, lane=None, hand=None):
+        """Until the read ends (inside the side-by-side scope, so its answers join the shared ones). lane: a boards_first.Beside; `hand()` keeps its groups, in this thread, the
+        one that owns the job cache, whenever one lands (lane.arrived) or the read ends.
+        Why (13 Nov 2026, eo + sa, c04 pair run 43517140431): an employer stage that ended first left the lane's groups unkept until the boards ended (52 s), after the scorer beside
+        the search had stopped; the thread waits on that event, never on a clock, and each of its other waits (slice, employer site, gather's end) hands the lane over by its own."""
+        if lane is None:
+            wait_for([self.future])
+            return
+        self.future.add_done_callback(lambda _future: lane.arrived.set())   # the read's end wakes it too (at once when already ended)
+        while True:
+            lane.arrived.wait()
+            lane.arrived.clear()   # before deliver: a group put meanwhile sets it again
+            hand()
+            if self.future.done():
+                hand()   # a group put between that drain and the read's end is kept here too, before the caller goes on (Gitar on #4100)
+                return
 
     def take(self, db, now=None):
         """(jobs read, jobs kept): waits for the read, keeps them once; a failed read raises as a direct read would."""
@@ -94,6 +107,6 @@ def scan_beside(sources, db, search, so_far, due, scan=None, first=None, early=N
         with batch_scope.reader('employer sites') if ahead is not None else contextlib.nullcontext(), step_yield.span('employer_sites'):
             report = scan(sources, db, on_jobs=on_site, **after_site)
         if ahead is not None:
-            ahead.wait()
+            ahead.wait(first, lambda: first.deliver(db, boards))   # the lane's groups that land while the boards are awaited are kept as they land
             ahead.deliver(db, boards)   # Why (Gitar, #3616): boards that end after the last employer site are shown here as 'job boards', else aggregators.scan hands them to free_job_apis
     return report, ahead
