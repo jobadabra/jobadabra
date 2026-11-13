@@ -29,9 +29,9 @@ export function keepStored(jobs = []) {
 }
 
 /** The chip for a job's row on the board: the mode of its last read, or "Not checked". */
-export function triageChip(job) {
+export function triageChip(job, {detail: withDetail = true} = {}) {   // detail false: the value only (a narrow board card); the detail stays in the tooltip
   const {label, tone, detail} = chipOf(readOf(job?.url));
-  return chip(label, {tone, detail, title: detail || t('pagesJobsFinal.notReadYet')});
+  return chip(label, {tone, detail: withDetail ? detail : '', title: detail || t('pagesJobsFinal.notReadYet')});
 }
 
 // The seconds each real read took on this Mac (the last ten), so the popup's estimate learns from them; a window with no storage keeps them for this session only.
