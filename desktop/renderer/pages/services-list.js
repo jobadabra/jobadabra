@@ -6,6 +6,7 @@ import {shared} from './shared.js';
 import {offered} from '../key-sources.js';
 import {telegramRequired} from '../notify-words.js';
 import {LINE} from '../linkedin-words.js';
+import {rowOf, view as easyApplyView} from '../easy-apply-words.js';
 
 // Connections status, shared by Overview (cards + alert), Connections (Connected / Available + alert) and the
 // dot on Connections. required: counted for the alert and the dot (Google Jobs and Always on are optional extras;
@@ -20,6 +21,8 @@ const ALL_SERVICES = [
   {id: 'extension', name: t('pagesDetails.extensionName'), icon: 'puzzle', what: t('pagesDetails.formFilling'), required: true,
     why: t('pagesDetails.extensionWhy')},
   {id: 'linkedin-jobs', name: t('pagesLinkedinServices.linkedinJobs'), icon: 'linkedin', what: t('pagesDynamicSessionReports.m333', {"LINE": LINE}), required: false, connect: t('pagesCommon.turnOn')},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
+  {id: 'linkedin-easy-apply', name: 'LinkedIn Easy Apply', icon: 'linkedin', what: t('pagesEasyApply.what'), required: false, connect: t('pagesCommon.turnOn'),   // plan 1/5: pages/easy-apply-consent.js
+    shown: () => rowOf(easyApplyView).shown},
   {id: 'telegram', name: 'Telegram', icon: 'send', what: t('pagesDetails.digests'), required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
     why: t('pagesLinkedinServices.notificationWhy')},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: t('pagesDetails.moreResults'), connect: t('pagesDetails.addKey')},

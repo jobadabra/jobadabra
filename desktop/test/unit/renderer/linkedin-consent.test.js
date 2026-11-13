@@ -66,7 +66,8 @@ test('the consent dialog exists once in the page and uses the shared dialog look
   assert.match(html, /<dialog id="linkedin-dialog" class="save-dialog panel-dialog">/);
   assert.match(html, /<button class="secondary" id="linkedin-chrome" value="chrome" formnovalidate hidden><\/button>/, 'the Chrome shortcut button is hidden until the page shows it');
   const page = readScreenSource(new URL('../../../renderer/pages/linkedin-consent.js', import.meta.url), 'utf8');
-  assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
+  assert.match(page, /chrome: !!\(words\.chrome && view\.extension\)/, 'shown only while the extension is connected');
+  assert.match(page, /\$\('linkedin-chrome'\)\.hidden = !chrome;/, 'the shared dialog shows the shortcut only when asked to');
   assert.match(page, /linkedinJobsSignIn\(\)/, 'the primary button opens the sign-in window');
 });
 

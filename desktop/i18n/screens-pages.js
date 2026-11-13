@@ -28,6 +28,7 @@ import {messages as jobsHelp} from './catalogs/pages/jobs-help.js';
 import {messages as profileMore} from './catalogs/pages/profile-more.js';
 import {messages as jobsFinal} from './catalogs/pages/jobs-final.js';
 import {messages as linkedinServices} from './catalogs/pages/linkedin-services.js';
+import {messages as easyApply} from './catalogs/pages/easy-apply.js';
 import {messages as misc} from './catalogs/pages/misc.js';
 import {messages as extraCommon} from './catalogs/pages/extra-common.js';
 import {messages as fieldsStatus} from './catalogs/pages/fields-status.js';
@@ -84,6 +85,7 @@ for (const [locale, messages] of Object.entries(jobsHelp)) registerMessages(loca
 for (const [locale, messages] of Object.entries(profileMore)) registerMessages(locale, 'pagesProfileMore', messages);
 for (const [locale, messages] of Object.entries(jobsFinal)) registerMessages(locale, 'pagesJobsFinal', messages);
 for (const [locale, messages] of Object.entries(linkedinServices)) registerMessages(locale, 'pagesLinkedinServices', messages);
+for (const [locale, messages] of Object.entries(easyApply)) registerMessages(locale, 'pagesEasyApply', messages);
 for (const [locale, messages] of Object.entries(misc)) registerMessages(locale, 'pagesMisc', messages);
 for (const [locale, messages] of Object.entries(extraCommon)) registerMessages(locale, 'pagesExtraCommon', messages);
 for (const [locale, messages] of Object.entries(fieldsStatus)) registerMessages(locale, 'pagesFieldsStatus', messages);

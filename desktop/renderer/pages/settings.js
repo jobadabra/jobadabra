@@ -19,6 +19,8 @@ import {startDefault} from '../tab-choice.js';
 import {byStore} from '../store-words.js';
 import {SERVICES, isRequired} from './services-list.js';
 import {openLinkedinConsent, refreshLinkedin, view as linkedinView} from './linkedin-consent.js';
+import {openEasyApply, refreshEasyApply, view as easyApplyView} from './easy-apply-consent.js';
+import {rowOf as easyApplyRow} from '../easy-apply-words.js';
 import {signinLine} from '../linkedin-words.js';
 import {emailSetupCard} from './setup-email-card.js';
 import {plainError} from '../run-warnings.js';
@@ -89,12 +91,12 @@ function statusFrom({extension, google}) {
   const ai = aiService(aiReady(), shared.state.aiKeyBad);   // a key the provider refused (401, lib/ai-key-health.js) is never "Connected"
   const on = {ai: ai.on, notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
-    telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on};
+    telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on, 'linkedin-jobs': linkedinView.on, 'linkedin-easy-apply': easyApplyRow(easyApplyView).on};
   const detail = {ai: aiReady() && {cli: t('pagesFinalLabels.claudePlan'), codex: t('pagesFinalLabels.codexPlan'), openai: t('pagesFinalLabels.openaiApiKey'), api: t('pagesFinalLabels.anthropicApiKey'), free: t('helperMore.free')}[aiSource(shared.state)], google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
     telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
   const needs = signinLine(linkedinView);   // #3911: LinkedIn jobs is on but its sign-in needs the person: the card says so, never "Connected"
-  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': needs || t('pagesCommon.off'), ai: ai.words};
+  const words = {extension: extension.on || extension.checking ? '' : extension.words, 'linkedin-jobs': needs || t('pagesCommon.off'), 'linkedin-easy-apply': easyApplyRow(easyApplyView).words, ai: ai.words};
   const checking = {google: !google, extension: extension.checking};
   return {on, detail, words, checking, needsYou: {'linkedin-jobs': !!needs}, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
@@ -172,7 +174,8 @@ function renderConnections(status) {
     text.append(el('b', '', service.name), el('span', 'muted small', service.what));
     const needsYou = !!status.needsYou?.[service.id];   // #3911: LinkedIn jobs is on and its sign-in needs the person: Renew, not Manage
     const button = el('button', on[service.id] && !needsYou ? 'secondary' : 'secondary is-signal', needsYou ? t('pagesLinkedinServices.renewButton') : on[service.id] ? t('pagesCommon.manage') : service.connect || t('pagesCommon.connect'));
-    button.addEventListener('click', () => (service.id === 'linkedin-jobs' ? openLinkedinConsent({mode: needsYou ? 'renew' : on['linkedin-jobs'] ? 'manage' : 'turn-on'}) : connectsNow(service, status) ? connectExtension() : openSetting(service.id)));
+    button.addEventListener('click', () => (service.id === 'linkedin-jobs' ? openLinkedinConsent({mode: needsYou ? 'renew' : on['linkedin-jobs'] ? 'manage' : 'turn-on'})
+      : service.id === 'linkedin-easy-apply' ? openEasyApply() : connectsNow(service, status) ? connectExtension() : openSetting(service.id)));
     const actions = el('span', 'service-actions');
     actions.append(stateLine(on[service.id] && !needsYou, detail[service.id], checking[service.id], words[service.id]), button);  // state, then the way in
     box.append(tile(service.icon, on[service.id] && !needsYou ? 'good' : 'warn'), text, actions);
@@ -210,7 +213,7 @@ export function noteCheck(part) {
   refreshServices();
 }
 // A connection changed in the app (Always on turned on or off): the cards follow at once, from what's known.
-window.addEventListener('linkedin-changed', () => refreshServices());
+for (const name of ['linkedin-changed', 'easy-apply-changed']) window.addEventListener(name, () => refreshServices());
 export function refreshServices() {
   if (shared.state?.secrets) renderServices(quickStatus());
 }
@@ -218,6 +221,7 @@ export function refreshServices() {
 export function showServicesNow() {
   if (!shared.state?.secrets) return;
   refreshLinkedin().catch(() => {});   // the LinkedIn row follows the app's switch (it redraws on 'linkedin-changed')
+  refreshEasyApply().catch(() => {});   // so does Easy Apply's, beside it ('easy-apply-changed')
   renderServices(quickStatus());
   checkingLine(true);
   renderKnown();
