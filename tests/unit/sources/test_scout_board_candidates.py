@@ -44,7 +44,7 @@ class Fetch(unittest.TestCase):
         def urlopen(request, timeout=None):
             asked.append((request.full_url, request.get_header('Authorization')))
             return self.answer([{'host': 'rabota.md', 'url': SUBSCRIBE, 'countries': ['md'], 'installs': 2, 'install': 'x'}, {'host': 'bad host', 'countries': ['md'], 'installs': 1}])
-        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret', 'SCOUT_MEMORY_URL': ''}):
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret', 'SCOUT_MEMORY_URL': 'https://elsewhere.example/x'}):   # the lab job sets this variable for its memory restore: the key still goes only to the fixed address
             got = candidates.fetch(out.append, urlopen=urlopen)
         self.assertEqual(got, [{'host': 'rabota.md', 'countries': ['md'], 'installs': 2}])
         self.assertEqual(asked, [('https://www.jobadabra.top/api/scout-memory?boards=1', 'Bearer k3y-secret')])

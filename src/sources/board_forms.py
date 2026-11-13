@@ -1,5 +1,5 @@
 """A job board's own search link, read from the search form on its home page (structure only: a form sent by GET with a text box, on the
-board's own site, no password box, no e-mail, phone or file box), for a board whose proposed link gave no relevant job (owner, 18 Oct 2026: 14 of 32 boards proposed
+board's own site, no password box; the Scout's pass also no e-mail, phone or file box), for a board whose proposed link gave no relevant job (owner, 18 Oct 2026: 14 of 32 boards proposed
 for six candidates gave nothing or ignored the search words, e.g. warehouse jobs for "financial analyst" in Amsterdam). The first text
 box takes the role, a second the place; hidden fields keep their values. found_boards.read tries it once per proposed link and keeps it
 when it brings relevant jobs; with none, the job list the board declares itself (found_boards._another_way). Tests: tests/unit/ai/test_board_forms.py."""
@@ -42,11 +42,12 @@ class _Forms(HTMLParser):
             self.open = None
 
 
-def templates(markup, page_url, posted_at=None):
+def templates(markup, page_url, posted_at=None, search_only=False):
     """The search links the page's own forms make, with {role} (and {place} for a second text box), forms with two boxes first.
     posted_at: a form sent by POST counts too, its field names asked as a GET link at this address (the board's own search page), not at its action, which answers a POST only.
-    Why (13 Nov 2026, bp, owner via sa: the Scout never opens a subscribe or alert form): a form with an e-mail, phone or file box is a job alert or an application (rabota.md's
-    home page holds a subscribe form with position, name and e-mail boxes sent without a method, and two apply forms), so it is never made into a search link, whatever its text boxes are called.
+    search_only (the Scout's board pass only; Find jobs in the app is unchanged: Gitar on #4042, no live pair): a form with an e-mail, phone or file box is left out.
+    Why (13 Nov 2026, bp, owner via sa: the Scout never opens a subscribe or alert form): such a form is a job alert or an application (rabota.md's home page holds a subscribe
+    form with position, name and e-mail boxes sent without a method, and two apply forms), so the Scout never makes a search link of it, whatever its text boxes are called.
     Why (12 Nov 2026, ch): JobScout24's search form is a POST (SearchWhat, anti-forgery token) and its list page answers ?SearchWhat=<words> with the filtered list,
     while the guessed ?keywords= was ignored (the unfiltered 84,421 jobs, 0 right). The link stays only when it brings relevant jobs (found_boards._another_way)."""
     parser = _Forms()
@@ -57,7 +58,7 @@ def templates(markup, page_url, posted_at=None):
     home = urllib.parse.urlsplit(page_url).hostname or ''
     out = []
     for found in sorted(parser.forms, key=lambda f: -min(len(f['boxes']), 2)):
-        if (found['method'] != 'get' and not posted_at) or found['password'] or found['personal'] or not found['boxes']:
+        if (found['method'] != 'get' and not posted_at) or found['password'] or (search_only and found['personal']) or not found['boxes']:
             continue
         action = urllib.parse.urljoin(page_url, found['action'] or page_url)
         parts = urllib.parse.urlsplit(action)
@@ -84,8 +85,8 @@ def home(board, fetch):
     return address, ''   # a home page that does not answer: the proposed link stays
 
 
-def home_templates(board, fetch, page=None):
-    """The search links the board's home page forms make (page: home()'s answer, fetched once)."""
+def home_templates(board, fetch, page=None, search_only=False):
+    """The search links the board's home page forms make (page: home()'s answer, fetched once; search_only: see templates)."""
     address, markup = page or home(board, fetch)
-    found = templates(markup, address, board['search_url']) if markup else []
+    found = templates(markup, address, board['search_url'], search_only) if markup else []
     return [url for url in found if url != board['search_url']]

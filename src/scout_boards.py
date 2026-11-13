@@ -21,7 +21,7 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
-from . import pool_tags, role_kinds, scout_cells, scout_google_boards
+from . import pool_tags, role_kinds, scout_board_candidates, scout_cells, scout_google_boards
 from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
@@ -298,8 +298,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS] if kinds else []   # several kinds: no one field to ask for
         thin = [kind for kind in kinds if kind not in ('software', 'software_dev')]   # the few free searches: never the strongest kind
         found = (google or _google)(db, country, thin, out) if thin else []   # boards only Google's results name, judged by the AI first
-        from . import scout_board_candidates, scout_board_cells
-        candidates = scout_board_candidates.for_country(reported, country, [(host, code, read_at) for host, code, _, _, read_at, _ in scout_board_cells._facts(db)] + scout_board_candidates.tried(db)) if reported and by_cells else []
+        candidates = scout_board_candidates.choose(db, reported, country) if by_cells else []
         proposed = _first(list(again), candidates, found, proposed, scout_board_homes.named(search, ideas, homes))
         read_board = scout_board_homes.reader(read_board or found_boards.read_board, lambda jobs: _local(jobs, country), MIN_LOCAL, out)
         began, kept, unread, counts, final, addresses, ran = clock(), [], [], [], [], [], set()
@@ -381,7 +380,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                         json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1]))
         if by_cells:
             from . import scout_board_cells
-            scout_board_candidates.stamp(db, country, [item['host'] for item in candidates if any(line.startswith(item['host'] + ' ') for line in counts)])   # the candidates this pass read
+            scout_board_candidates.stamp_read(db, country, candidates, counts)   # the candidates this pass read
             scout_board_cells.note_ran(db, country, ran)   # the cell's record() after this pass: a family no board was asked is no miss
             scout_board_cells.note_skipped(db, country, skipped)   # record() stamps as read again only the re-reads that ran
         if not by_cells:

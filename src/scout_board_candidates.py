@@ -15,7 +15,7 @@ import re
 import urllib.request
 from datetime import date, timedelta
 
-from . import pool_tags, scout_cells
+from . import pool_tags, scout_board_cells, scout_cells
 
 URL = 'https://www.jobadabra.top/api/scout-memory'
 RESERVE = 4                 # reported boards a pass reads beside the AI's ideas and the re-reads (Why (13 Nov 2026, bp): the pass reads ~5 boards in its 240 s; the ideas keep the rest)
@@ -42,7 +42,7 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
         out('Board pass: reported boards: not read (no INDEX_PUBLISH_KEY)')
         return []
     try:
-        request = urllib.request.Request(f"{os.environ.get('SCOUT_MEMORY_URL') or URL}?boards=1", headers={'Authorization': f'Bearer {key}'})
+        request = urllib.request.Request(f'{URL}?boards=1', headers={'Authorization': f'Bearer {key}'})   # the one fixed address: the Scout's key goes nowhere else (Gitar on #4042)
         with urlopen(request, timeout=30) as answer:
             boards = json.loads(answer.read(8 * 1024 * 1024)).get('boards') or []
     except Exception as error:  # noqa: BLE001 -- a site that does not answer must not stop the pass (the same boards come next run)
@@ -76,3 +76,14 @@ def stamp(db, country, hosts, today=None, refresh_days=20):
     memory = scout_cells._meta(db, TRIED, {})
     kept = {key: day for key, day in (memory.items() if isinstance(memory, dict) else []) if str(day) >= old}
     scout_cells._set(db, TRIED, {**kept, **{f'{host}|{country}': today.isoformat() for host in hosts}})
+
+
+def choose(db, reported, country):
+    """The candidates of this pass: `reported` (fetch's answer) for `country`, not measured lately by the Scout's facts and not tried lately (for_country)."""
+    measured = [(host, code, read_at) for host, code, _, _, read_at, _ in scout_board_cells._facts(db)] + tried(db)
+    return for_country(reported, country, measured) if reported else []
+
+
+def stamp_read(db, country, picked, counts):
+    """Remember the candidates whose line is in the pass's `counts` (the boards it read)."""
+    stamp(db, country, [item['host'] for item in picked if any(line.startswith(item['host'] + ' ') for line in counts)])

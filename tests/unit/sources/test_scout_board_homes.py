@@ -27,7 +27,7 @@ class HomeBoardsTest(unittest.TestCase):
         patches = [mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
                    mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['software_dev'] for t in titles}, [])),
                    mock.patch.object(careers, 'get_text', self.fetch),
-                   mock.patch.object(board_forms, 'home_templates', lambda board, fetch, page=None: list(self.templates))]
+                   mock.patch.object(board_forms, 'home_templates', lambda board, fetch, page=None, search_only=False: list(self.templates))]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
