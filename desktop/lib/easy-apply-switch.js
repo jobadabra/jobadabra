@@ -26,7 +26,7 @@ export function turnOn(storage, {warned = false, now = new Date(), packaged = fa
   if (!linkedinState(storage).on) return {ok: false, reason: 'needs-linkedin'};
   const warnedAt = state(storage).warnedAt || (warned ? now.toISOString() : '');
   if (!warnedAt) return {ok: false, reason: 'not-warned'};
-  save(storage, {on: true, warnedAt});
+  save(storage, {on: true, warnedAt, stops: 0});   // Why (13 Nov 2026, D3 "a second stop turns the switch off"): stops count from the person's last yes, so a new yes starts from 0
   return {ok: true};
 }
 

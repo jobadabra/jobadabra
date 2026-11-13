@@ -2,7 +2,7 @@
 // copied LinkedIn session as a credential (allow-listed cookies, Keychain only, gone when the switch goes off). lib/linkedin-session.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, noteRun, pausedUntil, readSession, refreshSession, saveSession, shouldAsk, state, turnOff} from '../../../lib/linkedin-session.js';
+import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, notePause, noteRun, pausedUntil, readSession, refreshSession, saveSession, shouldAsk, state, turnOff} from '../../../lib/linkedin-session.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 const JSESSION = '"ajax:1234567890"';
@@ -103,7 +103,8 @@ test('the last run and a pause are kept beside the switch, and no other write dr
   assert.equal(pausedUntil(settings), Date.parse('2026-11-01T13:00:00.000Z'));
   assert.deepEqual(state(settings), {on: true, asked: 2, declined: 1}, 'state() still answers only the three keys');
   turnOff(settings, {keychain: keychain()});
-  assert.equal(pausedUntil(settings), 0, 'turning it off forgets the pause: a new yes starts clean');
+  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause", owner's D3: a warning "stops ALL LinkedIn work for 24 h"): the guest read runs while the switch is off, so the pause outlives it.
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-01T13:00:00.000Z'), 'turning it off keeps the 24 h pause: LinkedIn asked us to wait, whichever switch is on');
   assert.equal(settings.settings().linkedinJobs.last, undefined, 'and the last run');
   assert.equal(pausedUntil(store()), 0);
 });
@@ -176,4 +177,15 @@ test('the switch off says nothing; a new yes and Turn off start clean; the state
   assert.equal(signinView(settings).state, 'ok');
   assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false);
   assert.deepEqual(nextSignin({state: 'ok', why: '', empties: 0}, 'weird-verdict'), {state: 'ok', why: '', empties: 0}, 'an unknown verdict changes nothing');
+});
+
+test('a later, shorter pause never shortens a longer one (spec "One LinkedIn pause": 24 h, then 1 h, reads 24 h)', () => {
+  const settings = store({linkedinJobs: {on: true}});
+  notePause(settings, '2026-11-14T12:00:00.000Z');
+  notePause(settings, '2026-11-13T13:00:00.000Z');
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-14T12:00:00.000Z'));
+  notePause(settings, '2026-11-15T12:00:00.000Z');
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-15T12:00:00.000Z'), 'a longer one moves it on');
+  noteRun(settings, {state: 'limited', jobs: 0, at: '2026-11-13T12:00:00.000Z', pauseUntil: '2026-11-14T00:00:00.000Z'});
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-15T12:00:00.000Z'), 'a read\'s own 429 pause goes through the same rule');
 });

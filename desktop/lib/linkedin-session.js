@@ -59,10 +59,12 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-/** Switch off: the Keychain item goes, the ask counters stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
+/** Switch off: the Keychain item goes, the ask counters and the shared pause stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {on: false, last: undefined, pauseUntil: undefined, signin: undefined, noticedAt: undefined});   // a new yes starts clean: no old result, no old pause
+  // Why (13 Nov 2026, spec 2026-11-13-linkedin-easy-apply-design.md "One LinkedIn pause"; owner's D3: a warning "stops ALL LinkedIn work for 24 h"; lg agreed): the pause outlives the switch,
+  // since the guest read runs while it is off (lib/linkedin-guest-on.js); a new yes starts with no old result, but LinkedIn's wait still holds.
+  save(storage, {on: false, last: undefined, signin: undefined, noticedAt: undefined});
   // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
   const easy = storage.settings().easyApply;
   if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});
@@ -92,7 +94,7 @@ export function nextSignin(prev, verdict) {
  */
 export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
   const prev = signinView(storage), next = nextSignin(prev, String(verdict)), live = state(storage).on;
-  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? {pauseUntil: String(pauseUntil)} : {}), ...(live ? {signin: next} : {})});
+  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? laterPause(storage, pauseUntil) : {}), ...(live ? {signin: next} : {})});
   if (!live) return {event: null, why: ''};
   if (verdict === 'done' && prev.state === 'needs-you') return {event: 'renewed', why: ''};
   const told = next.state === 'needs-you' && (NEEDS[verdict] || verdict === 'failed');
@@ -102,9 +104,11 @@ export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
 export const noticedAt = storage => Number(storage.settings().linkedinJobs?.noticedAt) || 0;
 /** Remember when a "needs you" notice was raised (`at` epoch ms), or forget it (`at` 0, after "renewed": the next failure is told at once). Writes only that key; the other linkedinJobs keys stay. */
 export const noteNoticed = (storage, at) => save(storage, {noticedAt: at || undefined});
-/** Epoch ms until which LinkedIn is left alone (a 429 asked us to slow down), or 0. */
-/** The shared pause alone (an ISO time), for the logged-out guest read (lib/linkedin-guest-on.js): it writes no `last` and no sign-in state, which belong to the signed-in read (Gitar on #3998). */
-export const notePause = (storage, until) => save(storage, {pauseUntil: String(until)});
+// Why (13 Nov 2026, spec "One LinkedIn pause"; lg agreed): a later, shorter pause never shortens a longer one, whichever LinkedIn step writes it (guest read, signed-in read, Easy Apply).
+const laterPause = (storage, until) => (Date.parse(until || '') > pausedUntil(storage) ? {pauseUntil: String(until)} : {});
+/** The shared LinkedIn pause (an ISO time `until`), for every LinkedIn step: written only when later than the stored one; writes no `last` and no sign-in state (Gitar on #3998). Returns nothing. */
+export const notePause = (storage, until) => save(storage, laterPause(storage, until));
+/** Epoch ms until which LinkedIn is left alone (LinkedIn asked us to slow down or warned), or 0. */
 export const pausedUntil = storage => Date.parse(storage.settings().linkedinJobs?.pauseUntil || '') || 0;
 
 /** The ask on Find jobs: the 1st and 2nd press while off; never after On, two "Not now" or two asks. */
