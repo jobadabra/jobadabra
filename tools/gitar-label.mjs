@@ -54,7 +54,7 @@ export function verdictKind(body) {
 
 // Why (13 Nov 2026, coordinator gl2; real case #4020: the fix push had no Gitar run, the session's thread replies made Gitar EDIT its old dashboard comment, and the label and ship-watch's peek read it as the head's verdict, so nobody asked for a review):
 //   an edit of Gitar's comment proves nothing about the head; only Gitar's check run on the head does. The same rule as "reviewing" (a run exists). Cost, measured on 39 approved PRs of 13 Nov: 4 (10%) had no run on the final head (a
-//   one-line follow-up pushed while the review ran); they now read "not started", and ship-watch asks Gitar once for that head, as it does for any head with no run.
+//   one-line follow-up pushed while the review ran); they now read "<verdict> · not re-reviewed" (13 Nov 2026, owner: "Last verdict + not re-reviewed"; first "not started"), and ship-watch asks Gitar once for that head, as it does for any head with no run (it keeps a head only on a plain verdict name).
 /** The label name to hold: Gitar's verdict if its comment was written at or after the head commit AND Gitar's check ran on the head (`ranOnHead`), else null (a stale approval never stays green). */
 export function wantedLabel(body, commentUpdatedAt, headCommittedAt, ranOnHead) {
   const kind = verdictKind(body);
