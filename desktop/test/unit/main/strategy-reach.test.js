@@ -84,8 +84,11 @@ test('the draft writes each place as one plain name, two spellings as two entrie
 // (src/sources/found_boards.py MAX_SEARCHES, board_terms early: no local word is kept yet). Sofia r1 asked alo.bg "truck driver", "lorry driver" (HTTP 410, 0 jobs);
 // r2 asked "шофьор на камион" and read 30 jobs. The draft now puts the local title first and the CV-language one second; a local title names the role itself,
 // never a broader word that the title pre-filter (role_keywords) would match for other jobs.
-test('the draft puts the local-language title first and the CV-language one second, each the role itself, never a broader word', () => {
+// sa (13 Nov 2026, run 43343062154): that first wording drafted Krakow's chef de partie as "szef sekcji kuchennej", a literal translation Polish ads do not use
+// (pracuj.pl 1 job); the word that pays is "kucharz". A local title is the one most local ads use, and a rank inside a trade becomes the trade's common title.
+test('the draft puts the local-language title first and the CV-language one second, the title most local ads use, never a broader word or a translated rank', () => {
   assert.match(INSTRUCTIONS, /the first title is the job title as those local postings write it, the second is the same title in the language of the CV/);
   assert.match(INSTRUCTIONS, /the first two are what a job board of their country is searched with first/);
-  assert.match(INSTRUCTIONS, /Each local title is the role's own job title, never a broader word \(a truck driver is "шофьор на камион" or "kierowca ciężarówki", not "шофьор" or "kierowca"/);
+  assert.match(INSTRUCTIONS, /Each local title is the job title most local ads for that job use, specific enough to leave out other jobs \(a truck driver is "шофьор на камион" or "kierowca ciężarówki", not "шофьор" or "kierowca"/);
+  assert.match(INSTRUCTIONS, /never a word-for-word translation of a foreign rank: when the CV's title is a rank inside a trade \("chef de partie", "commis"\), the local title is that trade's common title \("kucharz" in Poland, not "szef sekcji kuchennej"\)/);
 });

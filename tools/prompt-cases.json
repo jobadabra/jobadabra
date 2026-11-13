@@ -145,7 +145,7 @@
     },
     "strategy-draft": {
       "live": false,
-      "about": "the strategy draft's search part (desktop/lib/strategy.js INSTRUCTIONS): country_wide stays [] unless the CV or note says they would work anywhere in the country, Remote jobs No / Country / Yes from the work mode (lj 2/4, 10 Nov 2026: 16 of 18 drafts filled the whole country; rj #3792, 11 Nov 2026: office roles in Cluj, Amsterdam, Lisbon still got it; pp, #3953 follow-up: run 43328194035 p10 drafted places [\"lisb(on|oa)\"]: each place is one plain name, two spellings two entries; pp, 13 Nov 2026: a first search asks a board only the first 2 titles, so the local-language title comes first and names the role itself, never a broader word like \"шофьор\")",
+      "about": "the strategy draft's search part (desktop/lib/strategy.js INSTRUCTIONS): country_wide stays [] unless the CV or note says they would work anywhere in the country, Remote jobs No / Country / Yes from the work mode (lj 2/4, 10 Nov 2026: 16 of 18 drafts filled the whole country; rj #3792, 11 Nov 2026: office roles in Cluj, Amsterdam, Lisbon still got it; pp, #3953 follow-up: run 43328194035 p10 drafted places [\"lisb(on|oa)\"]: each place is one plain name, two spellings two entries; pp, 13 Nov 2026: a first search asks a board only the first 2 titles, so the local-language title comes first and is the title most local ads use, never a broader word like \"шофьор\"; sa, run 43343062154: Krakow's chef de partie drafted as the literal \"szef sekcji kuchennej\" (1 job), a rank inside a trade becomes the trade's common title \"kucharz\")",
       "cases": ["desktop/test/unit/main/strategy-reach.test.js"],
       "prompts": {"desktop/lib/strategy.js": ["INSTRUCTIONS"]}
     },
