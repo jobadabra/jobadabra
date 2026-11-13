@@ -41,7 +41,7 @@ test('clicking a counter shows the jobs it counts: New since the last run, Inter
     {url: 'c', status: 'applied', stage: 'Interviewing', first_seen_at: '2026-09-28T09:10:00Z'},
     {url: 'd', status: 'unreviewed', first_seen_at: '2026-09-28T08:59:59Z'},
   ];
-  assert.deepEqual(byStat(jobs, 'fresh', Date.now(), '2026-09-28T09:00:00Z').map(job => job.url), ['a'], 'matches first seen since the run began; an application is not a match');
+  assert.deepEqual(byStat(jobs, 'fresh', Date.parse('2026-09-28T12:00:00Z'), '2026-09-28T09:00:00Z').map(job => job.url), ['a'], 'matches first seen since the run began; an application is not a match');
   assert.deepEqual(byStat(jobs, 'fresh').map(job => job.url), [], 'no run known: none');
   assert.deepEqual(byStat(jobs, 'interviews').map(job => job.url), ['c']);
   assert.equal(byStat(jobs, null), jobs);
