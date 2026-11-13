@@ -11,7 +11,7 @@ import uuid
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # the sibling module, whether run as a script or loaded by path
 from pr_events_cursor import deliver_pending  # noqa: E402
 
-EVENT = re.compile(r'^ship: (?:DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)\b')
+EVENT = re.compile(r'^ship: (?:GITAR STALE|DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)\b')   # Why (13 Nov 2026, ra): GITAR STALE = no Gitar review of the head, reopen fresh (never ask Gitar)
 
 
 def deliver(log, thread, codex, *, run=subprocess.run, cmux=None, surface=None):
