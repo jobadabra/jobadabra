@@ -152,7 +152,8 @@ test('Suggestions lead with the latest rejection lesson, with a button to review
   assert.match(panel, /Gale Robotics/, 'the Review tab opens on the rejected job');
 });
 
-test('clicking an Up next or Suggestions row opens the right place: the mail, Jobs, Add job activity', live, () => {
+// The title is a key of the owner's journey registry (e2e/critical-journeys.json): it keeps "the feedback box" though the box is now Add job activity (13 Nov 2026).
+test('clicking an Up next or Suggestions row opens the right place: the mail, Jobs, the feedback box', live, () => {
   const {host} = first;
   const mail = host.filter(call => call.api === 'shell.openExternal' && /mail\.google\.com.*e2e-lead-1/.test(call.args[0]));
   assert.equal(mail.length, 1, `"Open email" should open the lead's own message once: ${host.map(call => call.args[0]).join(', ') || 'nothing'}`);
