@@ -7,7 +7,10 @@
 # `ship: COMMENT #n <owner|bot|other> <comment|review-<state>|line> <url>` (27 Oct 2026): once per new comment or review by the owner, a review bot or anyone else, never a session's own; the ids already told live in <pidfile>.comments,
 # so a restart or a second ship repeats none. Every read is REST with the last ETag (tools/pr-rest-lib.sh), free while nothing changed. Guard: tests/test_pr_comments.py.
 # `ship: READY #n <sha>` (30 Oct 2026): the owner's "ready" on this head: every check green, Gitar ✅ Approved (its label), no "Working on PR comments" label, no unanswered
-# owner or other comment, no conflict, not a draft and GitHub's merge state clean (6 Nov 2026); once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
+# owner or other comment, no conflict and GitHub's merge state clean (6 Nov 2026); once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
+# Since 13 Nov 2026 (owner via sa: "anything not a draft is safe to merge"; plan docs/superpowers/plans/2026-11-13-search-pair.md 3/4): ship.sh opens a PR as a draft and THIS
+# watcher marks it ready at the moment it would say READY, so a non-draft PR is one the owner may merge; a draft titled "DONT MERGE" is never flipped (`ship: HELD #n`), and a PR it
+# flipped goes back to draft (`ship: DRAFT AGAIN #n (<why>)`) on a red check, a conflict, an unanswered comment, Gitar no longer Approved or a new head. A pending check never flips it.
 # Started detached by tools/ship.sh when the PR opens (18 Oct 2026: #1321 sat red for hours because the watcher began only after REVIEW); a second ship of the same branch replaces the old watcher through the pid file (18 Oct 2026: the owner merges by hand and
 # sessions only learned of it when told). Guard: tests/test_ship_watch.py, tests/test_pr_conflict_fix.py.
 set -u
@@ -92,7 +95,7 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; flipped=""; held=""; flipfail=""
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
@@ -147,10 +150,33 @@ while :; do
     #   Why (4 Nov 2026, owner: "follow the local ship.sh approach"; fixer driver, plan 2026-11-04-ci-agent-until-green.md 4/6): SHIP_WATCH_DRAFT_OK=1 drops ONLY this condition, for the AI fixer's PR, which stays a draft until the owner marks it ready; every other part of READY is unchanged.
     #   Why (6 Nov 2026, owner: "red" on web #459, Gitar approved): a push and a body edit left a cancelled run beside the green one; this watcher read the newest row per check name (green) while GitHub's merge state read BLOCKED, so READY was told for a PR the owner could not merge. READY also needs GitHub's own verdict: mergeable_state "clean" (or "has_hooks"; a draft reads "draft" and counts only with SHIP_WATCH_DRAFT_OK=1). "unknown" (still computing) holds READY for one look without re-arming it. Normal states cannot hold it forever: "unstable" is a failing non-required check, which already blocks GREEN; "behind" cannot happen (strict_required_status_checks_policy is off in the ruleset); no review is required.
     mstate="$(jq -r '.mergeState // "unknown"' <<<"$view" 2>/dev/null)"
+    draft="$(jq -r '.isDraft // false' <<<"$view" 2>/dev/null)"
+    approved='(.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Gitar: reviewing") | not) and (.labels // [] | index("Gitar: not started") | not) and (.labels // [] | index("Working on PR comments") | not)'
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
-      && jq -e --arg draftok "${SHIP_WATCH_DRAFT_OK:-}" '(.mergeState == "clean" or .mergeState == "has_hooks" or ($draftok == "1" and .isDraft == true and .mergeState == "draft")) and (.isDraft != true or $draftok == "1") and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Gitar: reviewing") | not) and (.labels // [] | index("Gitar: not started") | not) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
-      [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
-    elif [ -n "$checks" ] && [ "$mstate" != unknown ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
+      && jq -e "(.mergeState == \"clean\" or .mergeState == \"has_hooks\" or (.isDraft == true and .mergeState == \"draft\")) and $approved" <<<"$view" >/dev/null 2>&1; then
+      if [ "$draft" != true ] || [ "${SHIP_WATCH_DRAFT_OK:-}" = 1 ]; then   # already ready (or the AI fixer's draft, which the owner marks ready himself)
+        [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
+      elif grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then   # a hold a person or ship set: never flipped here
+        [ "$held" = "$head" ] || say "HELD #$n ${head:0:7} (every check green and Gitar Approved, but its title says DONT MERGE: it stays a draft)"; held="$head"
+      elif gh pr ready "$n" -R "$repo" >/dev/null 2>&1; then
+        flipped="$head"; [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
+      else
+        [ "$flipfail" = "$head" ] || say "READY FLIP FAILED #$n ${head:0:7} (it stays a draft: gh pr ready $n)"; flipfail="$head"
+      fi
+    else
+      # Why (13 Nov 2026, 3/4): only a real loss clears READY; a pending check does not (a draft flip re-runs the gate, pr-gate.yml, and must not flip it back in a loop).
+      lost=""
+      [ -z "$now" ] || lost="$now is red"
+      [ -n "$lost" ] || [ -z "$conflict" ] || lost="a conflict"
+      [ -n "$lost" ] || [ "${waiting:-0}" = 0 ] || lost="an unanswered comment"
+      [ -n "$lost" ] || jq -e "$approved" <<<"$view" >/dev/null 2>&1 || lost="Gitar is not Approved"
+      [ -z "$lost" ] || ready=""
+    fi
+    [ -z "$flipped" ] || [ "$flipped" = "$head" ] || lost="a new head ${head:0:7}"
+    if [ -n "$flipped" ] && [ -n "${lost:-}" ] && [ "$draft" != true ]; then
+      if gh pr ready "$n" -R "$repo" --undo >/dev/null 2>&1; then say "DRAFT AGAIN #$n ($lost)"; flipped=""; ready=""; fi
+    fi
+    lost=""
   fi
   notify_session   # retry a failed delivery even if the PR state has not changed
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }
