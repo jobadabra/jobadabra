@@ -38,6 +38,13 @@ A change that makes an AI call on the press path slower or larger is invisible t
 
 A change in **what is kept or scored** (filters, place tests, ranking weights) changes jobs the recordings never listed: the replay can only reuse what was recorded. Re-run live for the people it touches: one search before and one after, started in the same minute, on CI or the Mac (owner, 12 Nov 2026: "Let's do only 1 live search before and after"; `check-job-search-locally`, or a batch with `fictional-candidate-runs`); put the numbers next to the table in the PR and say which people you ran. A loss larger than the person's usual run-to-run difference holds the PR; a gain is claimed only with its mechanism proven by a test.
 
+## The before/after, yourself, on CI (13 Nov 2026)
+Owner, 13 Nov 2026: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a before/after". A PR that changes what Find jobs reads, keeps, scores or orders starts its own pair as soon as it is pushed; nobody queues it for you:
+1. Pick up to 3 people the change reaches (night people 1-18 by number, profiles by id, `tools/persona-search/search-profiles.json`), at least one it could hurt.
+2. `gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'` (add `-f tiers=small` only for a small-tier comparison asked for). It waits for room at the broker (no night, tape or profile round, /health quiet), then main and your PR search at the same minute on one runner, with one strategy draft for both; a PR touching `desktop/lib/strategy*.js` drafts per side and searches twice a side.
+3. One comment on the PR (updated in place) gives right jobs main → PR, found, first relevant, the first two board words a side, the broker wait and the minutes per part, and a ready `Moves:` line: paste it into the body. A side whose broker wait p90 is over 20 s is marked not counted: start the pair again.
+4. Several PRs' pairs run side by side while the broker has room; never hold yours behind another session's.
+
 ## Never
 - A second sort key, a second scheduler or deadline, a second "in your places" test.
 - A keyword or threshold guess for an item the AI left unjudged.

@@ -1,0 +1,227 @@
+name: CI · Search pair (a PR's before/after, by hand)
+# By hand: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the 30 profiles by id), main and the PR head search at the same
+# minute on one runner (two checkouts, two first searches started together, the same strategy draft), the same blind judge counts their right jobs, and one comment on
+# the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
+# Why (13 Nov 2026, owner: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a
+# before/after"; asked via AskUserQuestion by sa: "Self-serve workflow + tighter check (Recommended)"): before/after searches went through one session's queue.
+# Its turn: the `turn` job waits (up to 55 min) until no night, press tape or profile round holds the broker and /health shows room (tools/persona-search/pair.py turn);
+# pairs of several PRs run side by side while there is room (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
+# Never a night, never red on the PR, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
+#   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
+run-name: 'Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier'
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'The PR number (a branch of this repo, not a fork)'
+        type: string
+        required: true
+      people:
+        description: 'Up to 3: night people 1-18 and profile ids, a JSON list such as [3] or [3, "b02"]'
+        type: string
+        required: true
+      tiers:
+        description: "The AI tiers: app (each step its own tier, as in the app) or small (every search step on the small tier, a comparison the owner asks for)"
+        type: choice
+        options: ['app', 'small']
+        default: 'app'
+
+# Why: per PR, so one PR's dispatch never replaces another PR's waiting run (GitHub keeps one pending run per group).
+concurrency:
+  group: search-pair-${{ inputs.pr }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CI_AI_PROVIDER: codex
+  E2E_AI_PROVIDER: codex
+  JOBADABRA_CHECK_CHAIN: codex,claude
+  JOBADABRA_SEARCH_TIER: ${{ inputs.tiers }}   # a label only (gate.py); the override below is what moves the steps
+  # app: no override, each search step on the tier it names, as in the app (owner, 13 Nov 2026, "All but the replays (Recommended)"); small: every step on the small
+  # model (an empty value is no override: desktop/lib/pipeline-env.js reads it as unset). The judge never reads it.
+  JOBADABRA_MODEL_OVERRIDE: ${{ inputs.tiers == 'small' && 'claude-haiku-5-5' || '' }}
+
+jobs:
+  setup:
+    name: The PR, its two commits and its people
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      people: ${{ steps.people.outputs.people }}
+      main: ${{ steps.refs.outputs.main }}
+      head: ${{ steps.refs.outputs.head }}
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - name: The PR's head and main, fixed now (a branch of this repo only)
+        id: refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "pr: a number"; exit 1; }
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid,isCrossRepository,state > pr.json
+          python3 -c "import json,sys; d=json.load(open('pr.json')); sys.exit('a fork PR is not run (its code would get the broker)' if d['isCrossRepository'] else 'the PR is not open' if d['state'] != 'OPEN' else 0)"
+          echo "head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")" >> "$GITHUB_OUTPUT"
+          echo "main=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" >> "$GITHUB_OUTPUT"
+          gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > changed.txt
+      - name: The people (night 1-18 and profile ids, at most 3)
+        id: people
+        env:
+          PEOPLE: ${{ inputs.people }}
+        run: python3 tools/persona-search/pair.py people "$PEOPLE" changed.txt >> "$GITHUB_OUTPUT"
+
+  turn:
+    name: Wait for room at the broker
+    needs: setup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 58
+    permissions:
+      contents: read
+      actions: read   # gh run list: a night, a tape, a profile round or another pair
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - name: No night, tape or profile round on the broker, and room for one more pair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/persona-search/pair.py turn
+
+  pair:
+    name: Pair ${{ matrix.person.id }}
+    needs: [setup, turn]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment:
+      name: search-check-by-hand
+      deployment: false
+    permissions:
+      contents: read
+      id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        person: ${{ fromJSON(needs.setup.outputs.people) }}
+    steps:
+      - uses: actions/checkout@v5   # the tools (relay, judge, pair.py) from the dispatched ref: the same for both sides
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false, ref: '${{ needs.setup.outputs.main }}', path: side-main}
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false, ref: '${{ needs.setup.outputs.head }}', path: side-pr}
+      - uses: actions/setup-node@v5
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
+      - name: Electron's zip from the cache
+        timeout-minutes: 5
+        uses: ./.github/actions/electron-cache
+      - name: Both sides' engine and app libraries (each side its own), the relay's
+        run: |
+          set -euo pipefail
+          echo "setup_start=$(date +%s)" >> times.env
+          pip install --quiet -r side-main/requirements.txt -r side-pr/requirements.txt -r requirements-render.txt
+          (cd desktop/e2e && (npm ci || npm install))   # the Codex relay (codex.mjs) comes from the tools' checkout
+          # each side's API engine imports its desktop/shared/app-core/ai.js, which stage.mjs generates (#2259)
+          pids=()
+          for side in side-main side-pr; do ( cd "$side/desktop" && npm ci && node scripts/stage.mjs --files-only && cd e2e && (npm ci || npm install) ) & pids+=($!); done
+          for pid in "${pids[@]}"; do wait "$pid"; done   # a bare `wait` would hide a failed install
+      - name: The browser (cached)
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: Chromium for the engine's renderer (cached; script-built job boards, as the app reads them)
+        uses: ./.github/actions/playwright-browser
+        with: {runtime: python, mode: both}
+      - name: The person's fictional CV and its one strategy draft
+        env:
+          KIND: ${{ matrix.person.kind }}
+          N: ${{ matrix.person.n }}
+          ID: ${{ matrix.person.id }}
+          OWN: ${{ matrix.person.own_draft }}
+        run: |
+          set -euo pipefail
+          echo "draft_start=$(date +%s)" >> times.env
+          mkdir -p cv
+          if [ "$KIND" = night ]; then python3 tools/persona-search/gate.py cv "$N" cv; else python3 tools/persona-search/profiles.py cv "$ID" cv; fi
+          if [ "$OWN" != true ]; then
+            node tools/persona-search/codex.mjs -- node side-main/tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/cv" --presses 0 --fresh --engine api --tag pair-draft 2>&1 | tee draft.log
+          fi
+      - name: Main and the PR search at the same minute (first search, the person's tier, through the Codex relay)
+        env:
+          RUNS: ${{ matrix.person.runs }}
+          OWN: ${{ matrix.person.own_draft }}
+        run: |
+          set -uo pipefail
+          echo "press_start=$(date +%s)" >> times.env
+          for k in $(seq 1 "$RUNS"); do
+            for side in main pr; do
+              out="out/${{ matrix.person.id }}--$side-$k"; mkdir -p "$out/draw"; cp cv/draw/cv.pdf cv/draw/cv.md cv/draw/draw.json "$out/draw/"
+              draft=(); [ "$OWN" != true ] && draft=(--draft "$GITHUB_WORKSPACE/cv/draw/draft.json")
+              node tools/persona-search/codex.mjs -- node "side-$side/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/$out" --presses 1 --first-only --fresh --engine api --tag "pair-$side" "${draft[@]}" > "$out/run.log" 2>&1 &
+            done
+            wait
+            for side in main pr; do
+              out="out/${{ matrix.person.id }}--$side-$k"
+              python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-pair-$side/data/jobs.sqlite" "$out/jobs.json" || echo '[]' > "$out/jobs.json"
+            done
+          done
+      - name: The blind judge, the same for both sides (right role, right place; 3 answers, the majority counts)
+        env:
+          KIND: ${{ matrix.person.kind }}
+          N: ${{ matrix.person.n }}
+          ID: ${{ matrix.person.id }}
+          OWN: ${{ matrix.person.own_draft }}
+        run: |
+          set -uo pipefail
+          echo "judge_start=$(date +%s)" >> times.env
+          for out in out/*--*; do
+            if [ "$KIND" = night ]; then node tools/persona-search/codex.mjs -- python3 tools/persona-search/gate_judge.py "$N" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1
+            else node tools/persona-search/codex.mjs -- python3 tools/persona-search/profiles.py judge "$ID" "$out/jobs.json" "$out/judged.json" > "$out/judge.log" 2>&1; fi
+            python3 tools/persona-search/pair.py side "$out" "$(basename "$out" | sed -E 's/.*--(main|pr)-[0-9]+$/\1/')"
+            printf '{"own_draft": %s}\n' "$OWN" > "$out/person.json"
+          done
+          echo "end=$(date +%s)" >> times.env
+          python3 tools/persona-search/pair.py minutes times.env "${{ matrix.person.id }}" out >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: search-pair-${{ matrix.person.id }}
+          retention-days: 30
+          path: out/
+
+  comment:
+    name: The table on the PR
+    needs: [setup, pair]
+    if: ${{ always() && needs.setup.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v7
+        with: {pattern: 'search-pair-*', path: dl, merge-multiple: true}
+      - name: One comment, updated in place
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          MAIN: ${{ needs.setup.outputs.main }}
+          HEAD: ${{ needs.setup.outputs.head }}
+        run: |
+          set -euo pipefail
+          python3 tools/persona-search/pair.py table dl "$PR" "$MAIN" "$HEAD" > table.md
+          echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> table.md
+          cat table.md >> "$GITHUB_STEP_SUMMARY"
+          old=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- search-pair -->")) | .id' | tail -1)
+          if [ -n "$old" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$old" -F body=@table.md >/dev/null
+          else gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file table.md; fi

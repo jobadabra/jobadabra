@@ -24,6 +24,7 @@
     {"repo": "jobadabra", "file": "press-tapes.yml", "name": "Press tapes, 18 personas", "engine": "broker"},
     {"repo": "jobadabra", "file": "press-tapes-auto.yml", "name": "Press tapes, the daily re-record", "engine": "broker"},
     {"repo": "jobadabra", "file": "search-profiles.yml", "name": "Search profiles, 30 by hand", "engine": "broker"},
+    {"repo": "jobadabra", "file": "search-pair.yml", "name": "Search pair, a PR before/after by hand", "engine": "broker"},
     {"repo": "jobadabra", "file": "replay-refill.yml", "name": "Replay refill", "engine": "api-key"},
     {"repo": "jobadabra", "file": "record-sites.yml", "name": "Record sites daily batch", "engine": "broker"},
     {"repo": "jobadabra", "file": "watch-live.yml", "name": "Daily watch list", "engine": "broker"},
