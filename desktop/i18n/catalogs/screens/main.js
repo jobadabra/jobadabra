@@ -140,4 +140,6 @@ export default {namespace: "screenStaticMain", messages: {
   "text147": ["Recent interviews", "Letzte Gespräche", "Entretiens récents", "Colloqui recenti", "Entrevistas recientes", "Interviuri recente", "Последние собеседования"],
   "text148": ["View all", "Alle anzeigen", "Tout voir", "Vedi tutto", "Ver todo", "Vezi tot", "Показать все"],
   "text149": ["Load more", "Mehr laden", "Charger plus", "Carica altro", "Cargar más", "Încarcă mai multe", "Загрузить ещё"],
+  "text150": ["New (last run)", "Neu (letzte Suche)", "Nouvelles (dernière recherche)", "Nuove (ultima ricerca)", "Nuevas (última búsqueda)", "Noi (ultima căutare)", "Новые (последний поиск)"],
+  "text151": ["Interviews", "Gespräche", "Entretiens", "Colloqui", "Entrevistas", "Interviuri", "Собеседования"],
 }};

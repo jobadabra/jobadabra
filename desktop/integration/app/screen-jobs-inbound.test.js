@@ -40,7 +40,12 @@ const probe = width => probeWindow({env: {JOBADABRA_SHOT_WIDTH: String(width)}, 
     }),
   });
   await kit.until(() => rows().length >= 1, 'the job rows');
-  document.querySelector('[data-stat=inbound]').click();
+  // The Inbound card is gone (df 2/2, owner 13 Nov 2026: four cards): the list is the Show menu's Inbound, ticked alone like a person would.
+  document.getElementById('filter-status').click();
+  await kit.until(() => document.querySelector('.ui-multi [data-id=inbound]'), 'the Show menu');
+  const ticked = [...document.querySelectorAll('.ui-multi [aria-checked="true"]')].map(node => node.dataset.id);
+  document.querySelector('.ui-multi [data-id=inbound]').click();
+  for (const other of ticked) document.querySelector(`.ui-multi [data-id="${other}"]`).click();
   await kit.until(() => rows().length === 2, 'the two Inbound rows');
   const inbound = read();
   document.querySelector('[data-mode=board]').click();

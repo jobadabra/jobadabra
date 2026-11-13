@@ -20,13 +20,12 @@ test('the counters count job matches, loaded or not, once', () => {
   // matches = loaded rows that are not applications or inbound (7: 1,2,3,4,5,7,9) + the 3 not loaded
   assert.equal(count.total, 10);
   assert.equal(count.scored, 6 + 2, 'loaded matches with a fit (1,2,3,5,7,9) + the 2 scored ones not loaded');
-  assert.equal(count.high, 3, 'fit 70+: rows 1, 2 and the one not loaded');
   assert.equal(count.week, 2, 'row 2 and the one not loaded');
 });
 
 test('every count is within the total and the card repeats the counters', () => {
   const count = jobCounts(data, NOW);
-  assert.ok(count.scored <= count.total && count.high <= count.scored && count.week <= count.total);
+  assert.ok(count.scored <= count.total && count.week <= count.total);
   const card = findCard({finishedHere: true, last: {ok: true}, lastSearchAt: 'x', listed: count.total});
   assert.equal(card.listed, count.total, 'a run without a counts line falls back to the list count, the same one');
 });

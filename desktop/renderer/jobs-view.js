@@ -1,7 +1,7 @@
 // The Jobs page's derived bits, kept free of the DOM so the tests can check them.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
-import {stageText} from './jobs-board-rules.js';
+import {columnOf, stageText} from './jobs-board-rules.js';
 import {isInbound} from './origin.js';
 import {foldToggleWord} from './fold-toggle.js';
 import {READY_LABEL} from './pages/ready-rows.js';
@@ -13,13 +13,11 @@ export function tags(job, max = 4) {
 }
 
 const WEEK = 7 * 24 * 3600 * 1000;
-// The four counters above the list.
+// The counts above the list: Total matches and the week's new ones (the line under the title).
 export function stats(jobs, total, now = Date.now()) {
   return {
     total: total ?? jobs.length,
-    high: jobs.filter(job => job.fit >= 70).length,
     week: jobs.filter(job => now - Date.parse(job.first_seen_at) <= WEEK).length,
-    companies: new Set(jobs.map(job => (job.company || '').trim().toLowerCase()).filter(Boolean)).size,
   };
 }
 
@@ -31,7 +29,6 @@ export function jobCounts(data, now = Date.now()) {
   const beyond = data?.total == null ? 0 : Math.max(0, data.total - loaded.length);   // matches the cut list did not load
   const count = stats(matched, matched.length + beyond, now);
   count.week += data?.week_beyond || 0;
-  count.high += data?.high_beyond || 0;
   // anyJob: any row at all, applications and inbound too. A yes or no, never a count: the list may be cut.
   return {...count, anyJob: loaded.length > 0, scored: matched.filter(job => job.fit != null).length + (data?.scored_beyond || 0)};
 }
@@ -64,12 +61,17 @@ const TALKING = new Set([...SCREENING, ...INTERVIEWS]);
 // renderer/origin.js): they count in Waiting / In process / Closed (real workload) but as Applied only once you applied
 // (an Applied on date), not because a recruiter's pitch reached Screening.
 const WAITING = new Set(['Applied', 'Confirmation received']);
+// Why (df 2/2, 13 Nov 2026, owner: "Sent only (Recommended)"): Applied is ONE rule, applications really sent, for the Applied card AND the Show menu's Applied (jobs-filters.js). The card used to count
+// the sent stage while the menu counted status "applied", so a job marked applied with no sent stage (a form still being filled, Applying) showed 3 in the menu and 0 on the card. Stages are read
+// through columnOf like the board and the views: a job marked Applied only on its match row (no stage) is Applied. Forms still being filled stay under the menu's Applying.
+export const isSent = job => SENT.has(columnOf(job)) && (!isInbound(job) || !!job.applied_on);
 const APPLICATION = {
-  applied: job => SENT.has(job.stage) && (!isInbound(job) || !!job.applied_on),
-  waiting: job => WAITING.has(job.stage),
-  interviews: job => TALKING.has(job.stage),
-  closed: job => ENDED.has(job.stage),  // rejected, withdrawn, or no answer
+  waiting: job => WAITING.has(columnOf(job)),
+  interviews: job => TALKING.has(columnOf(job)),
+  closed: job => ENDED.has(columnOf(job)),  // rejected, withdrawn, or no answer
 };
+/** The Applied card's second part: of the applications sent, how many wait for a reply and how many are closed. */
+export const sentBreakdown = jobs => { const sent = jobs.filter(isSent); return {waiting: sent.filter(APPLICATION.waiting).length, closed: sent.filter(APPLICATION.closed).length}; };
 // The "In process" box's hover: how many are screening and how many interviewing.
 export const inProcess = jobs => ({screening: jobs.filter(job => SCREENING.has(job.stage)).length,
   interviews: jobs.filter(job => INTERVIEWS.has(job.stage)).length});
@@ -90,13 +92,24 @@ export function inStatus(job, filter) {
   return job.status === (filter === 'open' ? 'unreviewed' : filter);
 }
 export const inboundCount = jobs => jobs.filter(isInbound).length;
-// A counter clicked above the list: the list it filters to (stat) and the menu's value. Inbound is the menu's own
-// Inbound list; the active counter again, or Total matches, shows every match.
+// The four counters above the list (df 2/2, owner 13 Nov 2026: "only 4 cards"): Total matches and Applied ARE menu lists ('all', 'applied'), so their number is the menu's own
+// countFor and a click shows exactly those rows; New (the last Find jobs run) and Interviews are counter lists (byStat). One rule per number.
+const MENU_CARD = {total: 'all', applied: 'applied'};
+// A counter clicked above the list: the list it filters to (stat) and the menu's value. The active counter again, or Total matches, shows every match.
 export function statClick(kind, active, filter) {
-  if (kind === 'inbound') return {stat: null, filter: !active && filter === 'inbound' ? 'all' : 'inbound'};
-  return {stat: kind === 'total' || kind === active ? null : kind, filter: 'all'};
+  if (MENU_CARD[kind]) return {stat: null, filter: MENU_CARD[kind]};
+  return {stat: kind === active ? null : kind, filter: 'all'};
 }
-export const statPressed = (kind, active, filter) => kind === active || (!active && kind === {all: 'total', inbound: 'inbound'}[filter]);
+/** True when a card is the pressed one: its counter list is active, or (no counter) it is the menu list shown (`filter`, the sole ticked filter; '' when several). Pure, from the state the page holds. */
+export const statPressed = (kind, active, filter) => kind === active || (!active && MENU_CARD[kind] === filter);
+/** When the latest Find jobs run began (ISO): the one running now, else the last finished one; '' when none is known. `runs` is what window.pilot.runs() returns. The New card, its list and the header's "n new matches" all read this one answer. */
+export function lastSearchStart(runs) {
+  const searched = run => (run?.kind || 'search') === 'search' && run?.startedAt;
+  return (searched(runs?.running) ? runs.running : (runs?.runs || []).find(searched))?.startedAt || '';
+}
+/** The matches the latest Find jobs run added: first seen at or after the run's start (ISO). No run known: none. One rule for the New card, its list and the header's "n new matches".
+ *  Only the loaded rows count: the engine sends the best 200, so a low-fit new job beyond the cut is missed. */
+export const freshSince = (jobs, since) => (since ? openMatches(jobs).filter(job => Date.parse(job.first_seen_at) >= Date.parse(since)) : []);
 export const byFilter = (jobs, filter) => (filter === 'inbound' || filter === 'everything' ? jobs : filter === 'all' ? openMatches(jobs) : matchesOnly(jobs))
   .filter(job => inStatus(job, filter));
 // The list as it opens (the menu's "New matches"): the jobs waiting for a first look. The Jobs menu item carries this
@@ -136,20 +149,10 @@ export function applicationStats(jobs) {
   return Object.fromEntries(Object.entries(APPLICATION).map(([kind, test]) => [kind, jobs.filter(test).length]));
 }
 
-// Clicking a counter shows the jobs it counts: high fit, new this week, or one job per company (its best fit).
-export function byStat(jobs, kind, now = Date.now()) {
-  if (APPLICATION[kind]) return jobs.filter(APPLICATION[kind]);
-  if (kind === 'high') return jobs.filter(job => job.fit >= 70);
-  if (kind === 'week') return jobs.filter(job => now - Date.parse(job.first_seen_at) <= WEEK);
-  if (kind === 'companies') {
-    const best = new Map();
-    for (const job of jobs) {
-      const key = (job.company || '').trim().toLowerCase();
-      if (key && (!best.has(key) || (job.fit ?? -1) > (best.get(key).fit ?? -1))) best.set(key, job);
-    }
-    const keep = new Set(best.values());
-    return jobs.filter(job => keep.has(job));
-  }
+// Clicking a counter shows the jobs it counts: New (the last run's matches) or Interviews. Total and Applied are the menu's own lists (statClick), not counters.
+export function byStat(jobs, kind, now = Date.now(), since = '') {
+  if (kind === 'fresh') return freshSince(jobs, since);
+  if (kind === 'interviews') return jobs.filter(APPLICATION.interviews);
   return jobs;
 }
 

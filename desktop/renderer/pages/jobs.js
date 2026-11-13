@@ -4,7 +4,7 @@ import {t} from '../../i18n/index.js';
 import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
-import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
+import {applicationStats, freshSince, inProcess, lastSearchStart, sentBreakdown, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
@@ -37,7 +37,7 @@ import {loadQuestions} from './jobs-questions.js';
 import {wireViews} from './jobs-views.js';
 import {setFilters, wireFilterMenu} from './jobs-filter-menu.js';
 import {wireExport} from './jobs-export.js';
-import {soleFilter} from '../jobs-filters.js';
+import {countFor, soleFilter} from '../jobs-filters.js';
 import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
@@ -77,6 +77,10 @@ const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.
 
 let freshJobs = false;
 let leftOpenAsked = false;  // the start-up question about sessions left open was asked (once per launch)
+/** Remembers when the latest Find jobs run began (the one running now counts): the New card and its list count the matches first seen since. An answer with no start keeps the last known one. */
+async function refreshLastRun() {
+  jobsState.lastRunStart = lastSearchStart(await window.pilot.runs().catch(() => null)) || jobsState.lastRunStart;
+}
 export async function loadJobs() {
   const landed = startListRead();   // before the kept copy paints: a Start pressed on it waits for the fresh list (jobs-state.js)
   loadQuestions();
@@ -84,6 +88,7 @@ export async function loadJobs() {
   showLoading();
   jobsState.jobsLoading = true;
   jobsState.claudeReady = (await window.pilot.claudeReady().catch(() => ({ok: false}))).ok;
+  await refreshLastRun();
   try {
     // The last good list at once (lib/view-cache.js), then the fresh one from Notion replaces it.
     if (!shared.allJobs.length) {
@@ -150,7 +155,7 @@ function reloadQuietly() {
   reloadLater = setTimeout(() => {
     reloadLater = null;
     lastReload = Date.now();
-    quietReload = writes.read().then(fresh => { if (fresh?.jobs) { showJobsData(fresh); renderJobs(); } })
+    quietReload = Promise.all([writes.read(), refreshLastRun()]).then(([fresh]) => { if (fresh?.jobs) { showJobsData(fresh); renderJobs(); } })   // the run's start too: a mid-run reload counts New since THIS run
       .catch(() => {}).finally(() => { quietReload = null; });
   }, wait);
 }
@@ -186,23 +191,23 @@ export function showJobsData(data) {
     if (flash !== 'same') window.pilot.uiLog?.('Total matches changed', {from: totalBefore, to: count.total, flash,
       page: document.querySelector('.view[data-view="jobs"]')?.offsetParent ? 'jobs' : 'another page',
       window: document.visibilityState, focused: document.hasFocus(), reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches}).catch?.(() => {});
-    setCount($('stat-high'), count.high);
-    setCount($('stat-inbound'), inboundCount(shared.allJobs));
+    setCount($('stat-fresh'), freshSince(shared.allJobs, jobsState.lastRunStart).length);
     // The menu item counts the list as it opens ("New matches"), the number the list bar shows too. "New this week" is
     // a delta, not how many jobs there are: it goes in the tooltip and the line above the cards instead of the badge.
     const toReviewCount = toReview(shared.allJobs) + (data.review_beyond || 0);   // with the rows not loaded (a cut list)
     setCount($('nav-jobs-badge'), toReviewCount);
     Object.assign($('nav-jobs-badge'), {hidden: !toReviewCount, textContent: badgeLabel(toReviewCount),
       title: t('pagesDynamicJobs.m248', {"toReviewCount": toReviewCount, "week": count.week, count: toReviewCount})});
-    setCount($('stat-companies'), count.companies);
     const applications = applicationStats(shared.allJobs);
-    for (const kind of Object.keys(applications)) setCount($(`stat-${kind}`), applications[kind]);
+    setCount($('stat-applied'), countFor(shared.allJobs, 'applied'));   // the menu's own Applied rule (jobs-filters.js): the card's number is the rows its click shows
+    setCount($('stat-interviews'), applications.interviews);
+    $('stat-applied-sub').textContent = ` · ${t('pagesJobsFinal.appliedSub', sentBreakdown(shared.allJobs))}`;
     const talking = inProcess(shared.allJobs);
     document.querySelector('[data-stat="interviews"]').title = t('pagesDynamicJobs.m249', {"screening": talking.screening, "interviews": talking.interviews});
-    document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.sentDefinition');
-    document.querySelector('[data-stat="waiting"]').title = t('pagesJobsFinal.waitingDefinition');
-    document.querySelector('[data-stat="closed"]').title = t('pagesJobsFinal.closedDefinition');
+    document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.appliedDefinition');
+    document.querySelector('[data-stat="fresh"]').title = t('pagesJobsFinal.freshDefinition');
     renderStuck();
+    showSearchStatus().catch(() => {});   // a failed runs() read leaves the header as it was, never an unhandled rejection from the list paint; the header's "n new matches" reads the same New count once the list is here (activity-basics.js)
   }
 }
 
