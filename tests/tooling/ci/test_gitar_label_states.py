@@ -1,4 +1,4 @@
-"""Guard: the gray "Gitar: reviewing" label means Gitar has a check on the head; no check = orange "Gitar: not started" (11 Nov 2026, owner: "the gh labels are not representing
+"""Guard: the gray "Gitar: reviewing" label means Gitar has a check on the head; no check = Gitar's last verdict "· not re-reviewed", or orange "Gitar: not started" when it never gave one (11 Nov 2026, owner: "the gh labels are not representing
 the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started), and one label per push: an ask reads "reviewing" at once (12 Nov 2026, owner:
 "One label per push"). Runs tools/gitar-label.mjs's pure functions under node."""
 import json
@@ -102,13 +102,22 @@ class GitarLabelStatesTest(unittest.TestCase):
         self.assertFalse(read([{'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 0}]))
         self.assertTrue(read([{'app': {'slug': 'github-actions'}, 'latest_check_runs_count': 90}, {'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 1}]))
 
-    def test_a_red_verdict_of_an_older_push_stays_visible_until_the_new_push_is_judged(self):
-        """13 Nov 2026, owner ("Keep red visible"), web #635: the fix push read "not started" while Gitar's red verdict was what he was reading; Gitar had locked the PR, so nobody could ask."""
-        head = "headTime: '2026-11-13T18:31:11Z', verdictTime: '2026-11-13T18:29:06Z', gitarOnHead: false"
-        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'changes', {head}}})"), ['Gitar: changes requested · not re-reviewed'])
-        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'changes', {head.replace('false', 'true')}}})"), ['Gitar: reviewing'], 'a review under way is what the label says')
-        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'approved', {head}}})"), ['Gitar: not started'], 'an old approval never stays green')
-        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: 'suggestions', {head}}})"), ['Gitar: not started'])
+    def test_the_last_verdict_stays_visible_after_a_push_until_the_new_push_is_judged(self):
+        """13 Nov 2026, owner ("Last verdict + not re-reviewed"), after web #635 (red) and #4026 (approved with suggestions read "not started"): one rule for every verdict, one loop."""
+        head = "headTime: '2026-11-13T18:31:11Z', verdictTime: '2026-11-13T18:29:06Z'"
+        for kind, name in [('changes', 'Gitar: changes requested'), ('suggestions', 'Gitar: approved with suggestions'), ('approved', 'Gitar: approved')]:
+            with self.subTest(kind=kind):
+                self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: '{kind}', gitarOnHead: false, {head}}})"), [f'{name} \u00b7 not re-reviewed'])
+                self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: '{kind}', gitarOnHead: true, {head}}})"), ['Gitar: reviewing'], 'a review under way is what the label says')
+                self.assertEqual(node(f"m.wantedLabels({{verdict: '{name}', staleKind: null, gitarOnHead: true, {head}}})"), [name], 'a reviewed head reads the plain verdict')
+        self.assertEqual(node(f"m.wantedLabels({{verdict: null, staleKind: null, gitarOnHead: false, {head}}})"), ['Gitar: not started'], 'no verdict on any push')
+
+    def test_each_not_re_reviewed_label_is_its_verdicts_name_with_a_lighter_shade_of_its_colour(self):
+        names = node("m.ALL.map(l => [l.name, l.color])")
+        by = dict(names)
+        for plain in ('Gitar: changes requested', 'Gitar: approved with suggestions', 'Gitar: approved'):
+            self.assertIn(plain + ' \u00b7 not re-reviewed', by)
+            self.assertNotEqual(by[plain + ' \u00b7 not re-reviewed'], by[plain], 'a lighter shade, not the same colour')
 
 
 # 13 Nov 2026, owner: "the PR got approved by gitar, but PR lable never changed" (jobadabra-benchmarks #38; jobadabra #4000 the same day). Gitar approved by only EDITING its comment, which starts no
@@ -182,7 +191,7 @@ class StaleVerdictEditTest(unittest.TestCase):
         return node(f"m.wantedFor('o/r', 7, {stale_edit_gh(verdict, ran_on_head)}).wanted")
 
     def test_an_approval_edited_for_a_thread_reply_does_not_pass_a_head_gitar_never_ran_on(self):
-        self.assertEqual(self.labels('✅ Approved', 0), ['Gitar: not started'])
+        self.assertEqual(self.labels('✅ Approved', 0), ['Gitar: approved \u00b7 not re-reviewed'])
 
     def test_a_red_verdict_edited_for_a_thread_reply_reads_not_re_reviewed(self):
         self.assertEqual(self.labels('⚠️ Changes requested', 0), ['Gitar: changes requested · not re-reviewed'])
@@ -237,7 +246,7 @@ class MainOnlyMergeKeepsTheVerdictTest(unittest.TestCase):
 
     def test_a_merge_of_main_keeps_the_verdict_only_when_gitar_ran_on_the_commit_before_it(self):
         self.assertEqual(self.wanted_after_merge(1), ['Gitar: approved'])
-        self.assertEqual(self.wanted_after_merge(0), ['Gitar: not started'], 'an approval nobody ran Gitar for is not kept')
+        self.assertEqual(self.wanted_after_merge(0), ['Gitar: approved \u00b7 not re-reviewed'], 'an approval nobody ran Gitar for is not kept')
 
     def test_a_merge_that_changes_the_own_diff_needs_a_new_review(self):
         changed = [{**OWN[0], 'patch': '@@ -1 +1 @@\n-a\n+c'}]
