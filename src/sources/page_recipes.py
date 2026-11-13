@@ -3,6 +3,8 @@
 When Claude lists the jobs on a page (ai/page_reader.py), the rules here look at its answer and the page and derive a recipe the code can replay:
   {'kind': 'links', 'prefix': '/de/jobs'}           the jobs are the links one level under this path (title = the link text), or
   {'kind': 'links', 'prefix': '/oferta', 'depth': 2} ... 2 or 3 levels under it (/oferta/<id>/<slug>); no depth field means 1, as before, or
+  {'kind': 'links', 'prefix': '/jobs', 'title': 'h4'} ... job cards: the whole card is the link, its title is the first <h4> inside it
+                                                    ('label': the link's own aria-label, else its title attribute); with or without depth, or
   {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'} the jobs are the texts of these elements (pages that list jobs as sections), or
   {'kind': 'state', 'path': '0.hits.list'}   the jobs are the records of this list in the JSON state the page carries (board_state.py).
 A recipe is kept only when replaying it on the same page gives back what Claude found. The 4-hourly crawl then replays it with no model call,
@@ -24,6 +26,11 @@ MAX_FACTOR = 3             # ... and not more than this many times as many items
 # /<id>/<slug> at the root), so no one-level links recipe fitted them and every install asked the AI about their links. Depth 1 has no field, so a
 # recipe learned before depth replays exactly as before, and an install older than depth refuses a recipe that has it (its valid wants 2 keys).
 MAX_DEPTH = 3
+# Why (13 Nov 2026, sa for the owner's approved fix #1 design, "Learn once in the Scout, replay in every search"): on the saved pages of 13 searches
+# derive learned a layout for 18 of the 30 boards whose job links the AI named; 12 of the 19 replays that failed were job cards whose link holds the
+# whole card (title, place, date, text: over 140 characters, so dropped) or holds no text (the title is its aria-label). A card's title is its link's
+# own name or the first heading inside it; no title field means the link text, as before, and an install older than titles refuses the field.
+TITLES = ('label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6')
 TABLE = 'CREATE TABLE IF NOT EXISTS page_recipes (url TEXT PRIMARY KEY, recipe_json TEXT NOT NULL, learned_at TEXT NOT NULL, source TEXT NOT NULL, broken_at TEXT)'
 
 
@@ -33,8 +40,9 @@ def valid(recipe):
         return False
     if recipe.get('kind') == 'links':
         depth = recipe.get('depth', 1)
-        return (set(recipe) in ({'kind', 'prefix'}, {'kind', 'prefix', 'depth'}) and isinstance(recipe['prefix'], str)
-                and bool(re.fullmatch(r'(/[\w.%~-]+){0,6}', recipe['prefix'])) and type(depth) is int and 1 <= depth <= MAX_DEPTH)
+        return (set(recipe) - {'depth', 'title'} == {'kind', 'prefix'} and isinstance(recipe['prefix'], str)
+                and bool(re.fullmatch(r'(/[\w.%~-]+){0,6}', recipe['prefix'])) and type(depth) is int and 1 <= depth <= MAX_DEPTH
+                and recipe.get('title', 'label') in TITLES)
     if recipe.get('kind') == 'tag':
         return (set(recipe) == {'kind', 'tag', 'class'} and recipe['tag'] in TAGS and isinstance(recipe['class'], str)
                 and bool(re.fullmatch(r'[\w -]{1,60}', recipe['class'])))
@@ -55,6 +63,23 @@ def _links(markup, base):
     return out
 
 
+def _card_links(markup, base, title):
+    """[(address, title)] of every link, its title read as `title` says (TITLES): the link's aria-label or title attribute, or its first heading."""
+    out = []
+    for attrs, inner in re.findall(r'<a\b([^>]*)>(.*?)</a>', markup, re.S | re.I):
+        href = re.search(r'\bhref=["\']([^"\'#][^"\']*)["\']', attrs, re.I)
+        if not href:
+            continue
+        if title == 'label':
+            named = re.search(r'\baria-label=["\']([^"\']*)["\']', attrs, re.I) or re.search(r'\btitle=["\']([^"\']*)["\']', attrs, re.I)
+            text = _text(named.group(1)) if named else ''
+        else:
+            heading = re.search(r'<{0}\b[^>]*>(.*?)</{0}>'.format(title), inner, re.S | re.I)
+            text = _text(heading.group(1)) if heading else ''
+        out.append((urllib.parse.urljoin(base, html.unescape(href.group(1))), text))
+    return out
+
+
 def replay(recipe, markup, base):
     """[(title, address or None)] the recipe reads from the page, once each."""
     if not valid(recipe):
@@ -66,7 +91,7 @@ def replay(recipe, markup, base):
     elif recipe['kind'] == 'links':
         host = urllib.parse.urlsplit(base).hostname
         depth = len([part for part in recipe['prefix'].split('/') if part]) + recipe.get('depth', 1)
-        for url, text in _links(markup, base):
+        for url, text in (_card_links(markup, base, recipe['title']) if 'title' in recipe else _links(markup, base)):
             parts = urllib.parse.urlsplit(url)
             segments = [part for part in parts.path.split('/') if part]
             if parts.hostname == host and parts.path.startswith(recipe['prefix'] + '/') and len(segments) == depth and text:
@@ -112,7 +137,8 @@ def derive(markup, base, jobs):
                 return recipe
     # Deeper links come after every recipe derived before depth (one level, then sections): a page that had a recipe keeps the same one, so an
     # install older than depth is never served a recipe it refuses in place of one it reads.
-    return _sections(markup, base, titles) or (_deeper(markup, base, titles, links, paths) if linked else None)
+    # Cards come last for the same reason: every recipe derived before titles stays the one derived.
+    return _sections(markup, base, titles) or (_deeper(markup, base, titles, links, paths) or _cards(markup, base, titles, links, paths) if linked else None)
 
 
 def _deeper(markup, base, titles, links, paths):
@@ -124,6 +150,23 @@ def _deeper(markup, base, titles, links, paths):
         parents = {'/'.join([''] + segments[:-depth]) if len(segments) > depth else '' for segments in parts}
         if len(parents) == 1:
             recipe = {'kind': 'links', 'prefix': parents.pop(), 'depth': depth}
+            if valid(recipe) and _fits(recipe, markup, base, titles, links):
+                return recipe
+    return None
+
+
+def _cards(markup, base, titles, links, paths):
+    """A links recipe (any depth) whose title is the link's own name or a heading inside it (TITLES) that reads these jobs, or None."""
+    parts = [[part for part in path.split('/') if part] for path in paths]
+    for depth in range(1, MAX_DEPTH + 1):
+        if any(len(segments) < depth for segments in parts):
+            return None
+        parents = {'/'.join([''] + segments[:-depth]) for segments in parts}
+        if len(parents) != 1:
+            continue
+        prefix = parents.pop()
+        for title in TITLES:
+            recipe = {'kind': 'links', 'prefix': prefix, **({'depth': depth} if depth > 1 else {}), 'title': title}
             if valid(recipe) and _fits(recipe, markup, base, titles, links):
                 return recipe
     return None
