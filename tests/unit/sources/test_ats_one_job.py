@@ -1,6 +1,7 @@
 """One add-by-link reads the one job, not the board's whole list (#4005 follow-up, 13 Nov 2026: a Workday link took ~45 s)."""
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -49,6 +50,30 @@ class OneJobTests(unittest.TestCase):
         self.site.gone = True
         self.assertIsNone(ats.posting(LINK))
         self.assertEqual(len(self.site.requests), 1)
+
+    def test_a_workday_job_that_answers_404_is_none_and_not_a_refusal(self):
+        def gone(request, timeout=15):
+            self.site.requests.append(request.full_url)
+            raise urllib.error.HTTPError(request.full_url, 404, 'Not Found', {}, None)
+
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        with mock.patch('src.paths.DATA', Path(folder.name)), mock.patch.object(urllib.request, 'urlopen', gone):
+            self.assertIsNone(ats.posting(LINK))
+            self.assertFalse(describe.refused_lately(LINK))
+        self.assertEqual(len(self.site.requests), 1)
+
+    def test_a_fixture_run_reads_its_recorded_route_and_never_the_network(self):
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__('shutil').rmtree(folder, ignore_errors=True))
+        (folder / 'routes.json').write_text(json.dumps({'/job/US-CA-Santa-Clara/': 'job.json'}))
+        (folder / 'job.json').write_bytes(RECORDED)
+        with mock.patch.dict(os.environ, {'JOBADABRA_FIXTURE_DIR': str(folder)}):
+            job = ats.posting(LINK)
+            self.assertEqual(job['title'], 'Network Site Reliability Engineer')
+            (folder / 'routes.json').write_text('{}')
+            self.assertIsNone(ats.posting(LINK), 'no route fails like an unreachable feed')
+        self.assertEqual(self.site.requests, [], 'nothing left the computer')
 
     def test_a_403_on_the_one_job_read_is_kept_like_a_board_refusal(self):
         folder = tempfile.TemporaryDirectory()

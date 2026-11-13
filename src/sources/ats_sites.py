@@ -83,10 +83,15 @@ def workday_job(url):
     if not match:
         return None
     tenant, cluster, site, path = match.groups()
-    request = urllib.request.Request(f'https://{tenant}.{cluster}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{path}', headers={
-        'User-Agent': USER_AGENT, 'Accept': 'application/json'})
-    with host_pace.open(request, TIMEOUT) as response:
-        info = (json.loads(response.read()) or {}).get('jobPostingInfo') or {}
+    api = f'https://{tenant}.{cluster}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{path}'
+    fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')   # Why (13 Nov 2026, Gitar on #4009): like workday(), a fixture run reads its recorded route and never the network
+    if fixtures:
+        data = json.loads(_fixture(fixtures, api))
+    else:
+        request = urllib.request.Request(api, headers={'User-Agent': USER_AGENT, 'Accept': 'application/json'})
+        with host_pace.open(request, TIMEOUT) as response:
+            data = json.loads(response.read())
+    info = (data or {}).get('jobPostingInfo') or {}
     if not info.get('title'):
         raise ValueError('no such Workday posting')
     where = info.get('location') or ''
