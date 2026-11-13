@@ -1,6 +1,5 @@
-// What Always on never does, shown on its card as disabled rows: your LinkedIn sign-in and Gmail & Calendar stay on this computer (spec docs/superpowers/specs/2026-11-13-linkedin-guest-search-design.md, [lg] 3/4).
-// Why (owner, 13 Nov 2026, relayed by the coordinator: "lets' keep Linkedin and Google sessions/credentials windows/mac only" · "show them as disabled on the Always-on... saying that for
-// security/protection reasons, we don't do this as for now"): the same rows under both ways (our servers, your own accounts), since neither ever holds a sign-in. Guard: test/unit/renderer/always-on-device-only.test.js.
+// The Always on card's rows for what stays on this computer: your LinkedIn sign-in, Gmail & Calendar. Guard: test/unit/renderer/always-on-device-only.test.js.
+// Why (owner, 13 Nov 2026: "lets' keep Linkedin and Google sessions/credentials windows/mac only", shown "as disabled on the Always-on... for security/protection reasons"): no Always on way holds a sign-in.
 import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {el, pill, tile} from './components.js';
