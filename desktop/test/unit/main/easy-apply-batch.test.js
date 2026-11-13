@@ -10,7 +10,7 @@ import {pausedUntil} from '../../../lib/linkedin-session.js';
 
 const NOW = Date.UTC(2026, 10, 13, 12, 0);
 const SECRET = 'FAKE-li_at-value';
-function setup({settings = {linkedinJobs: {on: true}, easyApply: {on: true, warnedAt: '2026-11-13T09:00:00Z'}}, session = {li_at: SECRET, JSESSIONID: 'ajax:1'}, failSet = false} = {}) {
+function setup({settings = {linkedinJobs: {on: true}, easyApply: {on: true, warnedAt: '2026-11-13T09:00:00Z'}}, session = {li_at: SECRET, JSESSIONID: 'ajax:1'}, failSet = false, refuse = false} = {}) {
   let mine = structuredClone(settings);
   const storage = {settings: () => mine, saveSettings: patch => { mine = {...mine, ...patch}; return mine; }};
   const calls = [], lines = [], handed = [];
@@ -19,13 +19,13 @@ function setup({settings = {linkedinJobs: {on: true}, easyApply: {on: true, warn
     calls.push(method);
     if (method === 'Storage.getCookies') return {cookies: jar};
     if (method !== 'Storage.setCookies') throw new Error(`unexpected ${method}`);
-    if (failSet) throw new Error('browser gone');
     for (const c of params.cookies) { jar = jar.filter(held => !(held.name === c.name && held.domain === (c.domain || new URL(c.url).hostname))); if (!c.expires || c.expires * 1000 > NOW) jar.push({...c, domain: c.domain || new URL(c.url).hostname}); }
+    if (failSet && params.cookies.some(c => c.value)) throw new Error('browser gone after writing');   // a put that wrote, then threw
     return {};
   };
   const log = (area, message, fields) => lines.push(JSON.stringify([area, message, fields]));
   const batch = easyApplyBatch({storage, send, readSession: () => session, now: () => NOW, log});
-  const handOver = async (item, reason) => { handed.push([item.id, reason]); return {state: 'needs_user_handoff', reason, handoffAt: NOW}; };
+  const handOver = async (item, reason) => { handed.push([item.id, reason]); return refuse ? {ok: false, error: 'held by another run'} : {state: 'needs_user_handoff', reason, handoffAt: NOW}; };
   return {batch, handOver, calls, lines, handed, storage, signedIn: () => jar.some(c => c.name === 'li_at' && c.value), held: () => jar};
 }
 const job = (id, state, extra = {}) => [{id, url: `https://www.linkedin.com/jobs/view/${id}/`}, {state: {state, ...extra}}];
@@ -90,4 +90,14 @@ test('a sign-in the browser will not take: the LinkedIn jobs wait (never open si
   assert.equal(found[0][1], null, 'skipped this poll');
   assert.equal(found[1][1].state.state, 'queued');
   assert.deepEqual(s.handed, []);
+  await s.batch.settle([other('a', 'filling')], s.handOver);
+  assert.equal(s.signedIn(), false, 'a put that wrote before it threw is still taken out by the next poll (Gitar on #4096)');
+});
+
+test('a hand-over the store refuses is no hand-over: skipped this poll, and it never keeps the sign-in in', async () => {
+  const s = setup({settings: {linkedinJobs: {on: true, pauseUntil: new Date(NOW + 3600e3).toISOString()}, easyApply: {on: true, warnedAt: 'x'}}, refuse: true});
+  const found = [job('j1', 'queued')];
+  await s.batch.settle(found, s.handOver);
+  assert.equal(found[0][1], null, 'skipped, so no launch and the next poll tries again');
+  assert.deepEqual(s.calls, [], 'no sign-in put in for it');
 });
