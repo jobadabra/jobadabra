@@ -25,12 +25,13 @@ HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')
 
 
 def valid(item):
-    """The report in the shape the pass uses, or None: {host, countries: [codes of the fixed list], installs}. The reported template and everything else is dropped on purpose (invariant 2)."""
+    """The report in the shape the pass uses, or None: {host, countries: [codes of the fixed list], installs (0 for a board only our CI searches read)}. The reported template and everything else is dropped on purpose (invariant 2)."""
     if not isinstance(item, dict) or not isinstance(item.get('host'), str) or not HOST.fullmatch(item['host']) or len(item['host']) > 100:
         return None
     countries = sorted({code for code in item.get('countries') or [] if isinstance(code, str) and code in pool_tags.COUNTRIES})
     installs = item.get('installs')
-    if not countries or not isinstance(installs, int) or isinstance(installs, bool) or installs < 1:
+    floor = 0 if item.get('ci') is True else 1   # Why (13 Nov 2026, bp, jobadabra-web #643): a board only our own CI searches read comes with installs 0 and ci true; it is a candidate too, last in the order
+    if not countries or not isinstance(installs, int) or isinstance(installs, bool) or installs < floor:
         return None
     return {'host': item['host'], 'countries': countries, 'installs': installs}
 

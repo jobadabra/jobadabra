@@ -16,6 +16,12 @@ SUBSCRIBE = 'https://www.rabota.md/?source=main&subscribePosition={role}&subscri
 
 
 class Valid(unittest.TestCase):
+    def test_a_board_only_our_ci_searches_read_is_a_candidate_with_zero_installs_and_a_plain_zero_is_not(self):
+        """13 Nov 2026, bp: web #643 serves Jobeka-like boards as installs 0 + ci true; without this the Scout would drop the very boards the CI feed was built for."""
+        self.assertEqual(candidates.valid({'host': 'jobeka.com', 'url': None, 'countries': ['es'], 'installs': 0, 'ci': True}), {'host': 'jobeka.com', 'countries': ['es'], 'installs': 0})
+        self.assertIsNone(candidates.valid({'host': 'jobeka.com', 'countries': ['es'], 'installs': 0}))
+        self.assertIsNone(candidates.valid({'host': 'jobeka.com', 'countries': ['es'], 'installs': 0, 'ci': 'yes'}))
+
     def test_only_host_countries_and_installs_are_kept_never_an_install_id_or_the_reported_template(self):
         got = candidates.valid({'host': 'rabota.md', 'url': SUBSCRIBE, 'countries': ['md', 'xx', 'md'], 'installs': 3, 'install': 'secret-id'})
         self.assertEqual(got, {'host': 'rabota.md', 'countries': ['md'], 'installs': 3})
