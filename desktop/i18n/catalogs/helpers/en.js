@@ -147,7 +147,7 @@ export const messages = {
   "chooseJob": "Choose another job",
   "emailBelongs": "Does this email belong to this job?",
   "emailUnlinked": "{subject} This email isn't linked to this job yet.",
-  "addNote": "Add note",
+  "addNote": "Add job activity",
   "viewMessage": "View message →",
   "viewSnapshot": "View snapshot →",
   "nothingHappened": "Nothing has happened yet",

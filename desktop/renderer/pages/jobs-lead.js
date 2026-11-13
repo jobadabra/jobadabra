@@ -9,6 +9,8 @@ import {shared} from './shared.js';
 import {showJob} from './activity.js';
 import {jobActions, jobHeadline} from '../job-link.js';
 import {$, message, osPick} from './core.js';
+import {reviewDue, runRejectionReview} from './rejection-review.js';
+import {jobPlace} from '../targets.js';
 import {loadJobs} from './jobs.js';
 import {setFilters} from './jobs-filter-menu.js';
 import {storeName} from '../store-words.js';
@@ -242,6 +244,14 @@ function setAuto(on, locked = false) {
   $('lead-auto-row').hidden = locked;
 }
 const leadTarget = () => confirmStep.targetOf($('lead-auto').checked, $('lead-target').value);
+// Employer feedback saved on a rejected job starts the AI review at once, through the Jobs menu's own runner (rejection-review.js), shown in AI reviews.
+// Why (13 Nov 2026, owner): "a rejection's feedback also starts the AI review". A toast says it started: the review is a slow AI call.
+async function reviewIfFeedback(logged, toast) {
+  const job = shared.allJobs.find(each => each.page_id && each.page_id === logged?.pageId);
+  if (!reviewDue(job)) return;
+  toast(t('pagesFinalLabels.reviewingRejection'), '', jobPlace(job), 'info');
+  await runRejectionReview(job, {toast, reload: loadJobs});
+}
 // The Log box, opened on one job (Focus → Add details): its "Which job?" already set to it.
 export function openLogFor(url, label = '') {
   $('lead-open').click();
@@ -253,8 +263,8 @@ export function openLogFor(url, label = '') {
   $('lead-target').value = url;
 }
 
-// The Log-a-message dialog's wiring, called once from init().
-export function wireLead() {
+// The Log-a-message dialog's wiring, called once from init(). `toast` is startup.js's toastMessage, handed in (startup.js imports jobs.js, which imports this file).
+export function wireLead(toast) {
   $('lead-open').addEventListener('click', () => {
     if (!leadRunning) message('lead-message', '');  // a log still running keeps its step and timer
     leadResult('', '');
@@ -367,6 +377,7 @@ export function wireLead() {
       show: job => { $('lead-dialog').close(); showJob(job); }}));
     $('lead-text').value = ''; clearLeadShot();
     setFilters(['all']);  // it may be saved (a lead) or applied: show both
-    loadJobs();
+    await loadJobs();
+    reviewIfFeedback(result.job, toast).catch(() => {});   // runRejectionReview never throws; this only keeps a stray error from going unhandled
   });
 }

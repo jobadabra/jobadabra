@@ -147,7 +147,7 @@ export const messages = {
   "chooseJob": "Выбрать другую вакансию",
   "emailBelongs": "Это письмо относится к этой вакансии?",
   "emailUnlinked": "{subject} Это письмо ещё не связано с этой вакансией.",
-  "addNote": "Добавить заметку",
+  "addNote": "Добавить действие по вакансии",
   "viewMessage": "Посмотреть сообщение →",
   "viewSnapshot": "Посмотреть копию →",
   "nothingHappened": "Пока ничего не произошло",

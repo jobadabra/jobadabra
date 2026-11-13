@@ -246,11 +246,13 @@
       "company": "Glacier Labs",
       "stage": "Rejected",
       "applied_on": "2026-09-25",
-      "location": "Zurich"
+      "location": "Zurich",
+      "employer_feedback": "We liked your SLO work, but we needed deeper Go experience for this role."
     },
     "sections": {
       "🔎 Why it was rejected": "> [!🛠] 🛠 Hard skills (medium confidence) · CV screen (no call). They asked for Go.\n\n**Evidence**\n\n- The posting lists Go first\n- Your CV names Python only\n\n**What to improve next time**\n\n- [ ] Add the Go service you ran\n- [ ] Lead with SLOs\n\nReviewed by claude-sonnet-5-5. A best guess from what Jobadabra kept, not what the company said.",
-      "🗂 Application record": "Frozen 2026-09-25 for Senior Infrastructure Engineer — Glacier Labs.\n\n### Machine-readable record\n\n```json\n{\n \"version\": 1,\n \"recorded_at\": \"2026-09-25T09:00:00\",\n \"url\": \"https://example.com/jobs/5\",\n \"job\": {\n  \"title\": \"Senior Infrastructure Engineer\",\n  \"company\": \"Glacier Labs\",\n  \"applied_on\": \"2026-09-25\",\n  \"ats\": \"greenhouse\",\n  \"description\": \"\"\n },\n \"answers_captured\": \"Form\",\n \"answers\": [\n  {\n   \"question\": \"Notice period\",\n   \"answer\": \"3 months\",\n   \"draft\": \"3 months\"\n  },\n  {\n   \"question\": \"Salary expectation\",\n   \"answer\": \"140,000 CHF\",\n   \"draft\": \"140,000\"\n  }\n ],\n \"cover_letter\": \"Dear team,\\n\\nI run reliability today.\",\n \"variant\": \"v2\",\n \"run\": {\n  \"agent\": \"claude\"\n },\n \"cv\": \"CV · Helvetic Cloud · Senior SRE.pdf · 3fa81c20d1\"\n}\n```"
+      "🗂 Application record": "Frozen 2026-09-25 for Senior Infrastructure Engineer — Glacier Labs.\n\n### Machine-readable record\n\n```json\n{\n \"version\": 1,\n \"recorded_at\": \"2026-09-25T09:00:00\",\n \"url\": \"https://example.com/jobs/5\",\n \"job\": {\n  \"title\": \"Senior Infrastructure Engineer\",\n  \"company\": \"Glacier Labs\",\n  \"applied_on\": \"2026-09-25\",\n  \"ats\": \"greenhouse\",\n  \"description\": \"\"\n },\n \"answers_captured\": \"Form\",\n \"answers\": [\n  {\n   \"question\": \"Notice period\",\n   \"answer\": \"3 months\",\n   \"draft\": \"3 months\"\n  },\n  {\n   \"question\": \"Salary expectation\",\n   \"answer\": \"140,000 CHF\",\n   \"draft\": \"140,000\"\n  }\n ],\n \"cover_letter\": \"Dear team,\\n\\nI run reliability today.\",\n \"variant\": \"v2\",\n \"run\": {\n  \"agent\": \"claude\"\n },\n \"cv\": \"CV · Helvetic Cloud · Senior SRE.pdf · 3fa81c20d1\"\n}\n```",
+      "📥 Logged messages": "▸ **📥 05 Oct 2026 · Employer feedback: wanted deeper Go experience**\n  > Thanks for your patience. We liked your SLO work, but we needed deeper Go experience for this role."
     },
     "events": [
       {
@@ -271,6 +273,14 @@
           "from": "Glacier Labs <talent@glacier.example>",
           "subject": "Your application to Glacier Labs"
         }
+      },
+      {
+        "id": "e5c",
+        "kind": "Feedback received",
+        "at": "2026-10-05T11:20:00",
+        "source": "Paste",
+        "source_id": "paste:feedback-5",
+        "note": "We liked your SLO work, but we needed deeper Go experience for this role."
       }
     ],
     "files": [],

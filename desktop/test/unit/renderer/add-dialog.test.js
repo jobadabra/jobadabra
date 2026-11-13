@@ -6,7 +6,7 @@ import {test} from 'node:test';
 
 const read = path => readScreenSource(new URL(path, import.meta.url), 'utf8');
 const html = read('../../../renderer/index.html'), nav = read('../../../renderer/pages/nav.js'), add = read('../../../renderer/pages/jobs-add.js');
-const FLOWS = {'import-open': 'Add job', 'applied-open': 'Add application', 'lead-open': 'Add message or update'};
+const FLOWS = {'import-open': 'Add job', 'applied-open': 'Add application', 'lead-open': 'Add job activity'};
 
 test('the toolbar shows one "+ Add" button; the three old openers stay, out of sight', () => {
   const toolbar = html.slice(html.indexOf('<div class="toolbar">'), html.indexOf('id="jobs-stuck"'));

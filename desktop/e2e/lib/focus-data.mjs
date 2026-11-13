@@ -34,7 +34,7 @@ export function scenario(now = new Date()) {
     row('ember', {title: 'Senior Platform Engineer', company: 'Ember Data', stage: 'Interview scheduled', applied_on: ago(8), next_interview: zurichAt(tomorrow, '10:00'),
       fit: 83, url: 'https://jobs.e2e.test/ember/platform', origin: 'Outbound'}),                                  // a screening tomorrow: Prepare
     row('fjord', {title: 'Cloud Engineer', company: 'Fjord Networks', stage: 'Rejected', applied_on: ago(14), feedback_status: 'Asked for feedback',
-      fit: 69, url: 'https://jobs.e2e.test/fjord/cloud', origin: 'Outbound'}),                                      // an interview held, feedback asked: Add feedback
+      fit: 69, url: 'https://jobs.e2e.test/fjord/cloud', origin: 'Outbound'}),                                      // an interview held, feedback asked: Add job activity
     row('gale', {title: 'Site Reliability Engineer', company: 'Gale Robotics', stage: 'Rejected', applied_on: ago(12), feedback_status: 'Skipped',
       rejection: 'Hard skills', rejection_lesson: 'Seniority mismatch. The role wanted a team lead and you had not led one.',
       fit: 65, url: 'https://jobs.e2e.test/gale/sre', origin: 'Outbound',
@@ -119,7 +119,7 @@ export const EXPECTED_SUGGESTIONS = [
   {who: 'A lot happened since your last analysis', badge: 'Analyze', buttons: ['Analyze now']},
   {who: 'Kestrel Agency', badge: 'Add details', buttons: ['Add details', 'Skip']},
   {who: 'Apply to', badge: 'Next step', buttons: ['Apply']},
-  {who: 'Fjord Networks', badge: 'Asked for feedback', buttons: ['Add feedback']},
+  {who: 'Fjord Networks', badge: 'Asked for feedback', buttons: ['Add job activity']},
 ];
 
 

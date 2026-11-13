@@ -63,6 +63,17 @@ class InboxOnTheMemoryStoreTests(unittest.TestCase):
         self.assertEqual((lead['stage'], lead['origin']), (opportunity.LEAD_STAGE, 'Inbound'))
         self.assertIn('Would you be open', self.s.applications.section(lead['id'], opportunity.HEADING))
 
+    def test_employer_feedback_pasted_as_job_activity_is_saved_like_gmail_feedback_and_kept_in_messages(self):
+        """Add job activity (owner, 13 Nov 2026): feedback pasted on a job is the same "Feedback received" kind as Gmail's, saved through
+        src/feedback.py save_received (what src/ai/learning.py reads) and kept in the job's logged messages (the drawer's Messages tab)."""
+        job = self.s.applications.create(JOB, 'Rejected')
+        said = 'We liked your profile, but we needed deeper Kubernetes operations experience for this role.'
+        line = self.log(reading('Feedback received', 0, summary='Wanted deeper Kubernetes experience', feedback=said), text=said)
+        self.assertTrue(line.startswith('💬 Updated'), line)   # the unconfirmed-guess "Check" note is not a refusal
+        self.assertEqual(self.s.applications.get(JOB['url'])['employer_feedback'], said)
+        self.assertEqual([e['kind'] for e in self.s.events.list(app_id=job['id'])], ['Feedback received'])
+        self.assertIn('Kubernetes', self.logged(job))
+
     def test_a_screenshot_is_kept_with_the_job_and_said_in_its_log_entry(self):
         job = self.s.applications.create(JOB, 'Applied')
         self.log(reading('Rejected', 0, summary='Not moving forward'), image=SHOT)

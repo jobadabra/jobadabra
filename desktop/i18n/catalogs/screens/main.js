@@ -36,7 +36,7 @@ export default {namespace: "screenStaticMain", messages: {
   "text43": ["Check apply readiness", "Bewerbungsbereitschaft prüfen", "Vérifier la préparation des candidatures", "Verifica la preparazione alla candidatura", "Comprobar la preparación para postular", "Verifică pregătirea pentru aplicare", "Проверить готовность к отклику"],
   "text44": ["Add job", "Stelle hinzufügen", "Ajouter une offre", "Aggiungi lavoro", "Añadir empleo", "Adaugă job", "Добавить вакансию"],
   "text45": ["Add application", "Bewerbung hinzufügen", "Ajouter une candidature", "Aggiungi candidatura", "Añadir solicitud", "Adaugă candidatură", "Добавить отклик"],
-  "text46": ["Add message or update", "Nachricht oder Update hinzufügen", "Ajouter un message ou une mise à jour", "Aggiungi messaggio o aggiornamento", "Añadir mensaje o actualización", "Adaugă mesaj sau actualizare", "Добавить сообщение или обновление"],
+  "text46": ["Add job activity", "Stellenaktivität hinzufügen", "Ajouter une activité emploi", "Aggiungi attività lavorativa", "Añadir actividad del empleo", "Adaugă activitatea jobului", "Добавить действие по вакансии"],
   "text47": ["Show them", "Anzeigen", "Les afficher", "Mostrali", "Mostrarlos", "Arată-le", "Показать их"],
   "text48": ["Show more", "Mehr anzeigen", "Afficher plus", "Mostra altro", "Mostrar más", "Arată mai multe", "Показать больше"],
   "text49": ["← Back to Focus", "← Zurück zu Fokus", "← Retour aux priorités", "← Torna alle priorità", "← Volver a prioridades", "← Înapoi la priorități", "← Назад к главному"],

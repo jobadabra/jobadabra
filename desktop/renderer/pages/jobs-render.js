@@ -4,7 +4,6 @@ import '../../i18n/screens-pages.js';
 import {t} from '../../i18n/index.js';
 import {createRowApply} from './jobs-apply-row.js';
 import '../../i18n/focus-cards.js';
-import {copyField} from '../../i18n/display-copy.js';
 import {ai} from '../ai-name.js';
 import {chip, el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
@@ -24,7 +23,6 @@ import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} 
 import {toastMessage} from './startup.js';
 import {rowApply} from '../apply-settings-model.js';
 import {jobPlace} from '../targets.js';
-import {openFeedback} from './feedback.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
 import {scoreBucket} from '../intel.js';
 import {askWhy} from './dismiss-reason.js';
@@ -34,7 +32,8 @@ import {renderExport} from './jobs-export.js';
 import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
-import {jobsChanged, loadJobs, showJobsData, startedApplying} from './jobs.js';
+import {runRejectionReview} from './rejection-review.js';
+import {jobsChanged, loadJobs, openLogFor, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';
@@ -269,8 +268,9 @@ export function renderJobs() {
       title: t('pagesJobsHelp.jobNotion')});   // about Notion
     menu.push({icon: 'external', label: isInbound(job) ? t('pagesJobs.openMessage') : t('pagesCommon.openPosting'), run: () => window.pilot.openExternal(job.url), title: isInbound(job) ? t('pagesJobsHelp.messageOrigin') : t('pagesJobs.jobPosting')});
     menu.push(...modes);
-    if (job.page_id) menu.push({icon: 'chat', label: t('pagesProfile.addFeedback'), run: () => openFeedback({...job, job: job.title}, 'receive')});
-    if (job.employer_feedback && job.page_id) menu.push({icon: 'chat', label: t('pagesJobs.readFeedback'), run: () => openFeedback({...job, job: job.title}, 'review')});
+    // Why (13 Nov 2026, owner): one way in for everything that happens on a job (a message, an update, employer feedback): the Add dialog's
+    // "Add job activity", opened on this job. No separate "Add employer feedback" / "Read feedback" items: the feedback reads in Messages.
+    menu.push({icon: 'chat', label: t('pagesJobs.addActivity'), title: t('pagesJobs.addActivityHint'), run: () => openLogFor(job.url, job.title)});
     // The saved review is a tag on the row; the menu says it in words too, as the tag alone did not read as clickable.
     if (job.rejection) menu.push({icon: 'file', label: t('pagesJobs.viewRejection'),
       title: job.rejection_lesson || t('pagesJobsHelp.rejectionHelp'), run: event => openPage('review', event)});
@@ -279,11 +279,7 @@ export function renderJobs() {
       // soft skills, or a different profile (nothing to improve). Written on the job's Notion page.
       menu.push({icon: 'search', label: job.rejection ? t('pagesJobs.reviewRejection') : t('pagesJobs.whyMe'),
         title: ai(t('pagesAuditPunct.a33')),
-        run: () => background(t('pagesFinalLabels.reviewingRejection'), async () => {
-          const result = await window.pilot.reviewRejection(job.url);
-          toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), copyField(result, 'text'), jobPlace(job), result.ok ? 'good' : 'bad');
-          if (result.ok) loadJobs();
-        })});
+        run: () => background(t('pagesFinalLabels.reviewingRejection'), () => runRejectionReview(job, {toast: toastMessage, reload: loadJobs}))});
     }
     if (job.code) {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).

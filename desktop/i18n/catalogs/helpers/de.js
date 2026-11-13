@@ -147,7 +147,7 @@ export const messages = {
   "chooseJob": "Andere Stelle wählen",
   "emailBelongs": "Gehört diese E-Mail zu dieser Stelle?",
   "emailUnlinked": "{subject} Diese E-Mail ist dieser Stelle noch nicht zugeordnet.",
-  "addNote": "Notiz hinzufügen",
+  "addNote": "Stellenaktivität hinzufügen",
   "viewMessage": "Nachricht ansehen →",
   "viewSnapshot": "Gespeicherten Stand ansehen →",
   "nothingHappened": "Noch nichts passiert",
