@@ -177,7 +177,7 @@ jobs:
           # Why (13 Nov 2026, run 43357552419): the relay reads the CV's PDF with desktop's pdfjs-dist (desktop/e2e/lib/broker-relay.mjs); without the tools' own desktop
           #   install every AI call of the draft was a 502 "Cannot find package 'pdfjs-dist'". Installed beside the two sides, so it adds no wall time.
           pids=()
-          ( cd desktop && npm ci ) & pids+=($!)
+          ( cd desktop && npm ci && node scripts/stage.mjs --files-only ) & pids+=($!)   # stage: also the draft's engine when neither side has the one shared web search (the draft step)
           for side in side-main side-pr; do ( cd "$side/desktop" && npm ci && node scripts/stage.mjs --files-only && cd e2e && (npm ci || npm install) ) & pids+=($!); done
           for pid in "${pids[@]}"; do wait "$pid"; done   # a bare `wait` would hide a failed install
       - name: The browser (cached)
@@ -203,6 +203,8 @@ jobs:
             # The run.mjs that has --propose is main's once this has landed; until then the PR's own, and the PR's own when it changes propose.py (13 Nov 2026, the web search made once: its proof needs the PR's).
             drafter=side-main; grep -q -- '--propose' side-main/tools/persona-search/run.mjs || drafter=side-pr
             cmp -s side-main/tools/persona-search/propose.py side-pr/tools/persona-search/propose.py || drafter=side-pr
+            # Why (13 Nov 2026, #4022's pair on a merged PR): a PR older than #4030 has no web-shared propose.py on either side, so its pair could not share the web search and was not counted; the draft then runs from this workflow's own tree (current main).
+            grep -q web-shared "$drafter/tools/persona-search/propose.py" || drafter=.
             node tools/persona-search/codex.mjs -- node "$drafter/tools/persona-search/run.mjs" draw "$GITHUB_WORKSPACE/cv" --presses 0 --fresh --engine api --tag pair-draft --propose 2>&1 | tee draft.log
           fi
       - name: Main and the PR search at the same minute (first search, the person's tier, through the Codex relay)
