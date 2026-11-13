@@ -186,12 +186,18 @@ class IndexCarriesRecipesTests(unittest.TestCase):
                 self.assertEqual([t for t, _ in page_recipes.replay(recipe, cards, base)], [f'Tontechniker {i} (w/m/d)' for i in range(3)])
 
     def test_a_tracking_attribute_is_not_a_card_title(self):
-        """Why (Gitar on #4047): `data-title` and `data-aria-label` on a link are tracking text, not the link's own name (`\\b` matched them)."""
+        """Why (13 Nov 2026, #4061): `data-title` and `data-aria-label` on a link are tracking text, not the link's own name (`\\b` matched them)."""
         cards = ''.join(f'<a href="/jobs/ton-{i}" data-title="Tracking {i}" data-aria-label="Click {i}" x-title="X {i}"></a>' for i in range(3))
         self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, cards, 'https://board.example/jobs/search'), [])
         named = '<a data-title="Tracking" href="/jobs/ton-9" title="Tontechniker 9"></a>'
         self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, named, 'https://board.example/jobs/search'),
                          [('Tontechniker 9', 'https://board.example/jobs/ton-9')], 'positive control: the real title attribute still names the link')
+
+    def test_a_quoted_greater_than_does_not_end_the_link_tag_early(self):
+        """Gitar on #4061: `<a ... data-x="a>b" title="...">` was cut at the `>` inside the quotes, so the title after it was never read."""
+        card = '<a href="/jobs/ton-1" data-x="a>b" title="Tontechniker 1"></a>'
+        got = page_recipes.replay({'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, card, 'https://board.example/jobs/search')
+        self.assertEqual(got, [('Tontechniker 1', 'https://board.example/jobs/ton-1')])
 
     def test_a_whole_card_is_never_a_title(self):
         """sa: "never a 300-character title": a heading as long as a card is dropped like any title over 140 characters, and no recipe fits."""
