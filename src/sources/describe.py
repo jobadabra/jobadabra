@@ -93,8 +93,9 @@ def walled(url):
 
 
 def readable(url):
-    """Whether this posting's text may be fetched here: any web page but a sign-in site's."""
-    return str(url or '').startswith(('http://', 'https://')) and not walled(url)
+    """Whether this posting's text may be fetched here: any web page but a sign-in site's; a LinkedIn job's own page while LinkedIn's public search is on."""
+    from . import linkedin_guest
+    return str(url or '').startswith(('http://', 'https://')) and (not walled(url) or linkedin_guest.job_page(url))
 
 
 def _get(url, opener=None, accept='text/html'):
@@ -146,6 +147,10 @@ def fetch(url, client=None):
     if match:
         _ROUTE.route = 'api'
         return ats.smartrecruiters_detail(match.group(1), match.group(2))
+    from . import linkedin_guest
+    if linkedin_guest.job_page(url):   # at LinkedIn's pace, in turn with its search pages, ≤ 10 a run (spec 2026-11-13-linkedin-guest-search-design.md)
+        _ROUTE.route = 'main'
+        return linkedin_guest.description(url)
     host = urlsplit(url or '').hostname or ''
     if host.endswith('jobs.ch'):
         page = (client or boards.Client()).get(url)
@@ -209,6 +214,11 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             pool_served.count('site_route')
         else:
             todo.append((job_id, url))
+    from . import linkedin_guest
+    # Why (spec 2026-11-13-linkedin-guest-search-design.md; owner, 13 Nov 2026: "Only kept jobs, ≤10"): LinkedIn's pages take turns 3-7 s apart, so they go last (the other
+    # sites' threads are not held behind them) and only as many as the run may still read; the others stay for the scoring queue after the search.
+    linkedin = [item for item in todo if linkedin_guest.job_page(item[1])]
+    todo = [item for item in todo if item not in linkedin] + linkedin[:linkedin_guest.job_pages_left()]
 
     def one(item):
         _ROUTE.route = None

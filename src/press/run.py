@@ -56,13 +56,14 @@ class Run:
         """This process's run, built from the module state it still keeps (thin adapters: nothing is copied, every field is the live object)."""
         from .. import read_methods, run_counts, run_details, time_budget
         from ..ai import batch_scope, decide, title_queue
-        from ..sources import aggregators, board_web, eures, found_boards, read_budget
+        from ..sources import aggregators, board_web, eures, found_boards, linkedin_guest, read_budget
         from . import resume, scorer, step_yield
         reads = {
             'EURES': Reader(early=eures._early, cut=eures.CUT, held=eures.HELD),
             'job boards': Reader(early=board_web._early, searched=board_web._searched),
             'found boards': Reader(early=found_boards._early),
             'free job APIs': Reader(taken=aggregators.TAKEN),
+            'LinkedIn': Reader(held=linkedin_guest.PACE),   # LinkedIn's pace, stop and job pages (src/sources/linkedin_guest.py)
         }
         return cls(clock=time_budget.CLOCK, claims=scorer, counts=run_counts, details=run_details, resume=resume, yields=step_yield,
                    titles=title_queue, scope=batch_scope, ai=decide, methods=read_methods, cut=read_budget, reads=reads, say=say,
