@@ -11,7 +11,7 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   const displayStep = text => window.__jobadabraPanelI18n.step(text);
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  if (window.__jobadabraReviewAlive?.() || ['PanelI18n', 'Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView', 'PanelTips', 'TopLayer'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
   window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
@@ -60,9 +60,15 @@
   let stopped = false, stuckSince = 0, stepAt = 0, lastStuck = '', startedAt = 0;   // stopped: the person's Stop reached this page (stop.js), until they start again here (`started`); stuckSince/stepAt: which came last
   let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, tipFor = null, coverLetterStatus = null;
 
-  const setOpen = value => { open = value; card.hidden = !open; if (open) render(); };
-  pill.onclick = () => { userMoved = true; setOpen(!open); };
-  $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
+  const setOpen = value => { open = value; card.hidden = !open; pill.setAttribute('aria-expanded', String(open)); if (open) render(); };   // the pill says whether the card is open (a screen reader, the replay's press)
+  // Why (13 Nov 2026, owner, LinkedIn Easy Apply 4a: "3. As a pill (Recommended)", asked via AskUserQuestion with screenshots): above a page's modal dialog (panel-top-layer.js
+  // moves the panel into it) the open card covers the dialog's own buttons (LinkedIn's Next), so there the panel shows as its pill until the person opens it.
+  const inModal = () => !!host.parentElement?.matches('dialog:modal');
+  let openedInModal = false;   // the person opened the card above this modal (the pill, or the app's "Show it in the form"): it stays open there
+  const autoOpen = () => { if (!open && (!inModal() || openedInModal)) setOpen(true); };   // every opening the panel does by itself goes through here
+  window.__jobadabraTopLayer?.onMove(layer => { if (layer !== host) return; if (!inModal()) openedInModal = false; else if (open && !openedInModal) setOpen(false); });   // panel-top-layer.js moved it
+  pill.onclick = () => { userMoved = true; setOpen(!open); openedInModal = open && inModal(); };
+  $('.min').onclick = () => { userMoved = true; setOpen(false); openedInModal = false; };   // minimise: back to the pill
   $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); if (applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {}); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
   const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = t("panel.stop", 'Stop'); } };
   for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = t("panel.stopping", 'Stopping…'); const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else { stopsBack(); note(t("panel.stopFailed", 'Stop did not finish. Press Stop again.')); } }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
@@ -131,7 +137,7 @@
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobadabra-page') || '';
     const markWorks = applyWorking && WORKING_MARKS.includes(markNow) && !handed && !moved;
-    if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
+    if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words); stepped = was; if (first && !userMoved) autoOpen(); } }
     // Why (#2221, owner 27 Oct 2026; now by the one state owner): the mark moved on: only its words end, never the look: a fill step still running under it (the worker's, or this panel's fill) gets its row back, and the dim and
     // the centring stay until the worker's verdict (owner: "flashes (very short moments) when the extension panel moves from center to bottom right"; "we keep it like that until we have a very clear verdict").
     else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); }   // the mark moved on: the step's words only; the look stays until the verdict
@@ -259,8 +265,8 @@
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelStep') return false;
     if (!host.isConnected) { reply({shown: false}); return false; }
-    // Why (2026-10-27, minimized Stop): a progress update must keep the person's chosen pill visible, with its Stop button.
-    if (message.text) { workerStep = message.text; applyWorking = true; showStep(message.text); if (!open && !userMoved) setOpen(true); }
+    // Why (2026-10-27, minimized Stop; 13 Nov 2026, owner, Easy Apply 4a: "3. As a pill"): a progress update must keep the person's chosen pill visible, with its Stop button, and above a page's modal it opens nothing by itself (autoOpen).
+    if (message.text) { workerStep = message.text; applyWorking = true; showStep(message.text); if (!userMoved) autoOpen(); }
     else workerStep = '';   // the fill's last step said nothing more; the end is the worker's verdict (applyState)
     reply({shown: true});
     return false;
@@ -273,7 +279,7 @@
     if (at < startedAt) return;
     if (stopped && !stepShowing()) { stopsBack(); return; }
     stopped = true; markStepWords = ''; endStep(false); stopsBack(); $(NOTE).hidden = true; stoppedCard(true);
-    if (!host.hidden && !open) setOpen(true);
+    if (!host.hidden) autoOpen();
     render();
   }
   // Why (1 Nov 2026, #2812): the answer tells stop.js a script of ours is on this page, so a page that refused the Stop mark here still fails the Stop.
@@ -287,7 +293,7 @@
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelNote') return false;
     if (!host.isConnected) { reply({shown: false}); return false; }
-    note(String(message.text || ''), !!message.anyway); if (!open) setOpen(true);
+    note(String(message.text || ''), !!message.anyway); autoOpen();
     reply({shown: true});
     return false;
   });
@@ -298,12 +304,12 @@
     if (answer?.state !== 'working') return;   // the host is not on the page yet (the first render attaches it): the look is drawn into it all the same
     applyWorking = true;
     const was = stepped; showStep(answer.text || 'Starting…'); if (!answer.text) stepped = was;
-    if (!open) setOpen(true);
+    autoOpen();
   }).catch(() => {});
   // The worker's state changes reach the panel here (a lift also reaches it through the overlay, panel-overlay.js): working draws, a verdict is drawn by endStep.
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type !== 'applyState') return;
-    if (message.state === 'working') { applyWorking = true; if (!stepShowing() && host.isConnected) { const was = stepped; showStep(workerStep || 'Starting…'); stepped = was; if (!open) setOpen(true); } }
+    if (message.state === 'working') { applyWorking = true; if (!stepShowing() && host.isConnected) { const was = stepped; showStep(workerStep || 'Starting…'); stepped = was; autoOpen(); } }
   });
 
   const learn = window.__jobadabraPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobadabraPanelForm, mine: {box: $('.mine'), list: $('.mine-list')}});
@@ -335,7 +341,7 @@
         if (command.reload) { Promise.resolve(send({type: 'panelReloading'})).catch(() => {}).then(() => location.reload()); return; }
         if (command.close) { send({type: 'panelCloseTab'}).catch(() => {}); return; } if (command.fill) { send({type: 'panelFillOne', ...command.fill}).catch(() => {}); continue; }   // cancelled in the app; "Use" there: the worker fills it (fill-flow.js)
         send({type: 'panelShowTab'}).catch(() => {});
-        if (!open) setOpen(true);
+        if (!open) { setOpen(true); openedInModal = inModal(); }   // the person's own "Show it in the form" in the app
         if (command.focus) {
           const field = find(command.focus, state.list);
           if (field) flash(field.el);
@@ -355,7 +361,7 @@
           if (connection?.retry) setTimeout(() => { if (jobAsked === wanted) jobAsked = ''; }, 30000);
           job = connection?.job || null;
           // Open by itself the first time on a job it knows (you can close it; it stays closed).
-          if ((job || session) && !userMoved && !open) setOpen(true);
+          if ((job || session) && !userMoved) autoOpen();
           render();
         });
       }
