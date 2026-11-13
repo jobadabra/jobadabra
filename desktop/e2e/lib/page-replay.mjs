@@ -160,21 +160,30 @@ export async function judgePhase(item, scope) {
   return {ok: !failures.length, failures, confirm, seen: {tabs, opened}, truth: readings.counts, moves: () => movesFromRequests(mine()), repairs: () => repairsFromRequests(mine())};   // the ladder moves the case's pages confirmed (lib/ladder-moves.mjs), read once the run is over: a report can land after the judgment
 }
 
-// A case may go on after its first judgment as the person would (case.json `then`: {do: [{click: '<selector>'} | {panel: '<button text>'}], expect: {...}}): a multi-step form's
-// step 2 is filled only once the person has reached it (Next pressed, then the panel's "Fill again"). The second phase is judged with its own expect, on the same tab.
+// One of the person's presses between two judged phases: a page control (Next) or the extension panel's own button ("Fill again", in its open shadow root).
+async function pressStep(tab, step) {
+  if (step.click) await tab.locator(step.click).click();
+  if (!step.panel) return;
+  await tab.waitForFunction(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
+  await tab.evaluate(want => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
+}
+const phaseLabel = (item, index) => (Array.isArray(item.then) ? `then ${index + 1}` : 'then');
+
+// A case may go on after its first judgment as the person would: case.json `then` is {do: [{click: '<selector>'} | {panel: '<button text>'}], expect: {...}}, or a list
+// of them, one per later step of a multi-step form (step 2 is filled only once the person has reached it: Next pressed, then the panel's "Fill again").
+// Why (13 Nov 2026, LinkedIn Easy Apply 3/5): LinkedIn's dialog has four steps (contact, resume, questions, review); one `then` could judge only the second.
 export async function judgeCase(item, scope) {
-  const first = await judgePhase(item, scope);
-  if (!item.then || !first.ok) return first;
-  const tab = scope.pages().at(-1) || scope.page;
-  for (const step of item.then.do || []) {
-    if (step.click) await tab.locator(step.click).click();
-    if (step.panel) {
-      await tab.waitForFunction(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
-      await tab.evaluate(want => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
-    }
+  let result = await judgePhase(item, scope);
+  const failures = [...result.failures], confirm = [...(result.confirm || [])];
+  for (const [index, phase] of [].concat(item.then || []).entries()) {
+    if (!result.ok) break;
+    const tab = scope.pages().at(-1) || scope.page;
+    for (const step of phase.do || []) await pressStep(tab, step);
+    result = await judgePhase({...item, start: undefined, expect: phase.expect}, scope);
+    failures.push(...result.failures.map(text => `${phaseLabel(item, index)}: ${text}`));
+    confirm.push(...(result.confirm || []));
   }
-  const second = await judgePhase({...item, start: undefined, expect: item.then.expect}, scope);
-  return {...second, failures: [...first.failures, ...second.failures.map(text => `then: ${text}`)], ok: second.ok, confirm: [...(first.confirm || []), ...(second.confirm || [])], seen: second.seen};
+  return {...result, failures, ok: result.ok, confirm};
 }
 
 // JP_REPLAY_WINDOW: 'quick' (a pull request's page cases: .github/workflows/page-cases.yml) ends the window early; anything else is 'full', the whole window (main, the daily run, a local run).
