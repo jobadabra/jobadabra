@@ -7,8 +7,7 @@
 // Keychain, Notion or Telegram; telemetry and pool sharing are off.
 //   python3 tools/persona-search/personas.py <out>            (the CVs: <out>/<name>/cv.pdf)
 //   node tools/persona-search/run.mjs <name> <out> [--presses 5] [--tag before] [--fresh] [--draft <draft.json>]
-//        [--tape <folder> --record [--ceiling <seconds>] | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
-// --ceiling: a recording's press lasts <whole seconds> instead of 3 minutes, every engine share scaled (time_budget.part; the employer finder keeps its 45 s, desktop/lib/search-steps.js): the press's yardstick ceiling (plan 2026-11-07-the-press 2/6).
+//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
 // --no-prepare: skip the app's preparation after the strategy save (lib/search-prepared.js), so the first search asks its places and kinds of role itself, as before 12 Nov 2026 (a before/after of that change).
 // --note: the wizard's "What should the AI know?" text (e.g. "First Officer jobs anywhere in Europe"), given to the strategy draft as a person types it.
 // --change-field: a JSON list of role titles; before press 2 they replace the roles through the Strategy page's own edit (lib/strategy-edit.js editLists,
@@ -23,7 +22,6 @@
 // plan): --record keeps every web and AI answer of the search; --replay serves them offline after their recorded time times --wait-scale (1 = as recorded, 0 = no wait, 0.1 = ten times faster), so a change
 // is measured on the same sources: nothing leaves the computer, and an AI question the tape lacks goes to the plan and is added (--no-live: it is counted and fails instead, as on CI).
 // tools/persona-search/ttfr.py <run-1.log> <data dir>: the seconds to the 1st and 10th relevant job and to the first 70+.
-// With --tape it also writes jobs-<press>.json (ttfr.py --jobs): one row per job in the places, read by tools/press-yardstick/three_numbers.py.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -56,12 +54,8 @@ if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these th
   if (process.argv.includes('--record') === process.argv.includes('--replay')) { console.error('--tape needs --record or --replay'); process.exit(2); }
   Object.assign(process.env, {JOBADABRA_SEARCH_TAPE: path.resolve(tape), JOBADABRA_SEARCH_TAPE_MODE: process.argv.includes('--record') ? 'record' : 'replay',
     JOBADABRA_TAPE_WAIT_SCALE: waitScale});
-  if (option('--ceiling', '')) {
-    if (!process.argv.includes('--record') || !/^\d+$/.test(option('--ceiling', ''))) { console.error('--ceiling needs --record and whole seconds'); process.exit(2); }
-    process.env.JOBADABRA_PRESS_SECONDS = option('--ceiling', '');
-  }
   if (process.argv.includes('--no-live')) process.env.JOBADABRA_TAPE_LIVE = '0';   // CI has no AI account: a question the tape lacks is counted and raises (src/search_tape.py)
-  // Why (rf, 8 Nov 2026, gi: "a replay then cannot drift from its recording's model"): the model is part of every AI question's key (src/search_tape.py), and press-tapes.yml records with
+  // Why (rf, 8 Nov 2026, gi: "a replay then cannot drift from its recording's model"): the model is part of every AI question's key (src/search_tape.py), and the recording used to be made with
   // JOBADABRA_MODEL_OVERRIDE=claude-haiku-5-5 (every main-tier step on Haiku); a replay without it asked Sonnet and missed 23 AI answers of 50 (p11, 8 Nov). The recording says how it was recorded.
   const recordedFile = path.join(tape, 'recorded.json');
   if (process.argv.includes('--record')) {
@@ -172,7 +166,6 @@ for (let press = done + 1; press <= presses; press++) {
     ...(beside ? {headless_boards: beside.last()} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);
-  if (tape) metrics('ttfr.py', '--jobs', path.join(out, `jobs-${press}.json`), '--since', new Date(started).toISOString());   // each job in the places, for the press's yardstick (tools/press-yardstick/three_numbers.py)
   const verdict = process.argv.includes('--judge') && !api ? judged() : null;   // its own AI call, off the tape: a replay neither records nor needs it
   if (verdict) fs.writeFileSync(path.join(out, `judge-${press}.json`), JSON.stringify(verdict, null, 2));
   const first = row.ttfr ? `; 1st/10th relevant at ${row.ttfr.first_in_places_s ?? '—'}/${row.ttfr.tenth_in_places_s ?? '—'} s, 1st 70+ at ${row.ttfr.first_fit70_s ?? '—'} s` : '';

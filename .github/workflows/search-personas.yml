@@ -93,7 +93,7 @@ env:
 jobs:
   # Why (10 Nov 2026, coordinator; escapes: 7 Nov 2026 four by-hand runs used the scheduled share, runs 42405227979 and 42418730931 measured nothing; 10 Nov 2026 run 42810522624 (eures_comparison, 18 x 2) hit
   # "budget:daily 800 of 800 calls (byhand)" at 12:25Z, 16 of 18 not measured, and every peer's by-hand AI call was refused for the rest of the day): a by-hand run starts only while the broker's by-hand lane has room
-  # for all of it (personas x presses x 2 arms for a comparison x ~300 calls), as press-tapes.yml does. No room: it stops here, before one call is spent. The nightly is on the scheduled lane and is not checked.
+  # for all of it (personas x presses x 2 arms for a comparison x ~300 calls), as the retired press-tapes.yml did. No room: it stops here, before one call is spent. The nightly is on the scheduled lane and is not checked.
   room:
     name: The by-hand lane has room
     if: ${{ !inputs.scheduled }}

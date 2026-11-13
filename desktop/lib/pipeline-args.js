@@ -51,10 +51,7 @@ export function draftsKits(args) {
   const valueOf = flag => (args.includes(flag) ? String(args[args.indexOf(flag) + 1] ?? '') : '');
   return ['prepare', 'kits'].includes(valueOf('--mode')) || Number(valueOf('--auto-kit-max')) > 0;
 }
-const CEILING = Number(process.env.JOBADABRA_PRESS_SECONDS) || 0;
-// Why (7 Nov 2026, ps 2/6, owner: "We aim quality, speed and coverage"): the press's yardstick records each persona once with every share of the press made
-// longer (src/time_budget.py part), the ceiling a press can find; only a search-tape recording may (JOBADABRA_SEARCH_TAPE_MODE=record, which the app never sets).
-export const SEARCH_BUDGET_S = process.env.JOBADABRA_SEARCH_TAPE_MODE === 'record' && CEILING > 180 ? CEILING : 180;
+export const SEARCH_BUDGET_S = 180;   // Why (13 Nov 2026, owner, asked via AskUserQuestion by mac-9a: "Yes, as listed (Recommended)", retiring the replay): a press is 3 minutes; the recording ceiling (JOBADABRA_PRESS_SECONDS) served only press-tapes.yml
 // Find new employers starts no new check after 3 minutes (owner, 7 Oct 2026: "runs for too long"); each check is saved as it ends (src/scout.py).
 export const SCOUT_BUDGET_S = 180;
 // The queue's own clock after a search: the jobs it checks, the postings it reads and its scores stop at 10 minutes; what is left continues after the next search or on "Score".

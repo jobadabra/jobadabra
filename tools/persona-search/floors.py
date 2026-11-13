@@ -230,8 +230,7 @@ def resets_on(ref='HEAD', valid=True):
 
 
 def floor_change_words(body):
-    """{words} of each `Floor-change: "<owner's words>"` line of a PR body: the one way a bar is lowered (the floors here, the replay's verdict in
-    tools/press-yardstick/verdict.py)."""
+    """{words} of each `Floor-change: "<owner's words>"` line of a PR body: the one way a bar is lowered (the floors here)."""
     return {m.strip() for m in re.findall(r'^\s*[-*]?\s*Floor-change:\s*["“](.+?)["”]\s*$', body or '', re.M)}
 
 
