@@ -3,14 +3,18 @@
   const t = (...args) => window.__jobadabraPanelI18n.t(...args);
   // Create drawing helpers bound to this panel's root and existing field actions.
   window.__jobadabraPanelView = ({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send}) => {
+    // The form judge says a later step follows this one (extension/form-ready.js marks it): a filled step is ready to continue, never to submit. No word from the judge: the count's wording.
+    // Why (13 Nov 2026, owner, LinkedIn Easy Apply 4a: "Two PRs (Recommended)", the panel names the step, not "Ready to submit", before the step whose button sends).
+    const middleStep = () => document.documentElement.getAttribute('data-jobadabra-form-step') === 'middle';
+
     // Return the ready wording for the page's current account or person-needed state.
     function readyLabel(needsYou, account) {
-      return needsYou ? t('panel.needsYou', 'Needs you: {detail}', {detail:needsYou === '1' ? t('panel.seePage', 'see what the page asks') : needsYou}) : account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.createReady", 'Ready to create the account') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.signInReady", 'Ready to sign in') : t("panel.continueReady", 'Ready to continue')) : t("panel.submitReady", 'Ready to submit');   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
+      return needsYou ? t('panel.needsYou', 'Needs you: {detail}', {detail:needsYou === '1' ? t('panel.seePage', 'see what the page asks') : needsYou}) : account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.createReady", 'Ready to create the account') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.signInReady", 'Ready to sign in') : t("panel.continueReady", 'Ready to continue')) : middleStep() ? t("panel.continueReady", 'Ready to continue') : t("panel.submitReady", 'Ready to submit');   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
     }
 
     // Return the review instruction for a ready form or account step.
     function reviewWords(account) {
-      return (account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.reviewCreate", 'Review, then create it') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.reviewSignIn", 'Review, then sign in') : t("panel.reviewContinue", 'Review, then continue')) : t("panel.reviewSubmit", 'Review, then submit'));
+      return (account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? t("panel.reviewCreate", 'Review, then create it') : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? t("panel.reviewSignIn", 'Review, then sign in') : t("panel.reviewContinue", 'Review, then continue')) : middleStep() ? t("panel.reviewContinue", 'Review, then continue') : t("panel.reviewSubmit", 'Review, then submit'));
     }
 
     // Return the pill's primary line, keeping moved and page-mark states ahead of counts.

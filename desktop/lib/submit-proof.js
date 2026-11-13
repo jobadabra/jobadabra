@@ -21,3 +21,23 @@ export function kitAllows({stage, kit, allowIneligible}) {
   if (!STARTABLE_STAGES.includes(stage)) return false;
   return kit?.eligible === true || (allowIneligible === true && kit?.eligible === false);
 }
+
+/**
+ * Pure: may an automatic press send on the job at `url`? Not on LinkedIn, whose Easy Apply fills up to ready and waits for the person until its own sending PR (plan 4b: the "LinkedIn
+ * may send" stamp, 15 a day, 2 min apart); an address that cannot be read is refused too. The person's own Submit press is not an automatic press and is never asked here.
+ * Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion; "No live Easy Apply send by an agent, ever" for tests): until 4b nothing sends on LinkedIn.
+ */
+export function sendAllowedOn(url) {
+  let host = '';
+  try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return false; }   // no readable address: no press
+  return !(host === 'linkedin.com' || host.endsWith('.linkedin.com'));   // words-ok: a safety gate (CLAUDE.md "safety is code"), not page knowledge
+}
+
+/**
+ * Pure: may an automatic press send here? Both the address the job was queued with and the page's own address when the judge looked (`page`, from the judge's sketch) must allow it, so a
+ * short link or a redirect that lands on LinkedIn is refused too (Gitar on #4054). A proof without a page address is judged on the queued address alone.
+ * @param {string} url the job's queued address
+ * @param {string} [page] the page's address the form judge saw
+ * @returns {boolean}
+ */
+export const sendAllowedAt = (url, page) => sendAllowedOn(url) && (!page || sendAllowedOn(page));
