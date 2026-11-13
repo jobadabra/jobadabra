@@ -7,6 +7,7 @@ tools/persona-search/gate-personas.json, and the profiles, search-profiles.json)
   pair.py minutes <times.env> <person> <out>     -> <out>/<person>.minutes.txt: minutes per part (setup, draft, searches, judge)
   pair.py table <results> <pr> <main sha> <pr sha> -> the PR comment's markdown on stdout
   pair.py pending < body                         -> the people of the body's "→ pending" Moves lines as a dispatch list ([1, "b02"]), nothing when none (tools/ship-search-hold.sh)
+  pair.py row <results> <people> <attempt> <newer 0|1> -> row.json: the "Search before/after" check run's conclusion, title and summary, and the people to run once more (pair_row.py)
   pair.py settle <results> <view.json> <attempt> <people> -> settle.json: the body with the numbers written, the title (hold lifted or kept), the people to run again, the verdict
 """
 import json
@@ -19,6 +20,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import pair_row  # noqa: E402 — beside this file, run as a script by search-pair.yml
 NIGHT = 18   # the night's people p1..p18 (gate-personas.json)
 MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatch is right")
 # The files that write a person's search words before any search (the strategy draft): a PR touching one drafts per side and runs 2 searches a side for each person,
@@ -187,7 +190,7 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
 
 # The hold (plan docs/superpowers/plans/2026-11-13-search-pair.md 4/4; owner via sa, 13 Nov 2026: "we shoulndt do  by hand"): a "→ pending" Moves line makes ship hold the PR
 # (draft, "DONT MERGE" in its title, label HOLD_LABEL) and start this pair; the pair writes the numbers and lifts ONLY the hold ship set (the label), when no person fell
-# beyond their usual difference (1 job when it is not measured yet). A side not valid runs once more, then the pair reports and the hold stays.
+# beyond their usual difference (7 jobs when it is not measured yet). A side not valid runs once more, then the pair reports and the hold stays.
 HOLD_LABEL = 'search-hold'
 PENDING_LINE = r'^(?P<lead>[ \t]*[-*]?[ \t]*)\**Moves:\**[ \t]*(?P<person>{person})\s+\S.*\d\S*\s*(?:→|->)\s*pending\s*\(.*$'   # the shape tools/pr-body-check.py PENDING reads
 
@@ -202,22 +205,24 @@ def pending(body):
     return out[:MAX_PEOPLE]
 
 
-def settle(body, title, labels, done, ran, attempt, seen=None):
-    """What the pair does to its PR: {body, title, lift, rerun, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
-    seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again."""
+def settle(body, title, labels, done, ran, attempt, seen=None, rerun=()):
+    """What the pair does to its PR: {body, title, lift, verdict}. done: measured(); ran: the people dispatched (ids); attempt: 1 or 2;
+    seen: the people with any side that ran (default: ran), so a person whose search never started (the turn gave up) is not "not valid" and is not run again;
+    rerun: the people the row really dispatched again (pair_row.decide's rerun, empty when the dispatch failed): the one source of "runs once more" (Gitar on #4077)."""
     body, verdict, fell = body or '', [], []
     seen = set(ran if seen is None else seen)
     for person, m in done.items():
         body = re.sub(PENDING_LINE.format(person=re.escape(person)), lambda hit, line=m['line']: hit.group('lead') + line, body, flags=re.M)   # the bullet stays
-        tolerance = m['d'] if m['d'] is not None else 1
+        tolerance = pair_row.band(m['d'])   # Why (13 Nov 2026, sa): 7 jobs while unmeasured, not 1: run 43498213279 gave 8 vs 15 for the same code (pair_row.py)
         if m['before'] - m['after'] > tolerance:
             fell.append(f"{person} fell {m['before']:g} → {m['after']:g} ("
-                        + (f"usual difference {tolerance:g})" if m['d'] is not None else 'usual difference not measured yet: 1 job allowed)'))
+                        + (f"usual difference {tolerance:g})" if m['d'] is not None else f'usual difference not measured yet: {pair_row.BAND_FLOOR} jobs allowed)'))
     invalid = [p for p in ran if p in seen and p not in done]
     never = [p for p in ran if p not in seen]
     ours = HOLD_LABEL in labels
-    # Why (13 Nov 2026, #3946: a by-hand pair queued a third run on main's workflow by itself): only ship's own hold runs again; a by-hand pair reports and stops.
-    rerun = invalid if ours and invalid and attempt < 2 and not fell else []   # a second run never sees the first run's loss, so a loss is never run again
+    # Why (13 Nov 2026, #3946 then #4044: a by-hand pair queued a third run on main's workflow by itself; since 1/3 every pair runs once more by itself through its row): settle only words the verdict.
+    # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
+    again = bool(ours and invalid and rerun and not fell)
     still = pending(body)
     # Why (Gitar on #3967): the label is ship's hold; a PR retitled by hand keeps it until the numbers are in, then loses it with no title change.
     lift = ours and not fell and not still and not invalid and not never
@@ -229,15 +234,15 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
         verdict.append(f'{head}: ' + '; '.join(fell) + '. Name the cause in the PR, or fix it and ship again.')
     elif never:
         verdict.append(f"{head}: {', '.join(never)} never searched (the turn found no room at the broker, or the run failed first): start the pair again later.")
-    elif rerun:
-        verdict.append(f"Hold kept: {', '.join(rerun)} not valid; the pair runs once more for them.")
+    elif again:
+        verdict.append(f"Hold kept: {', '.join(invalid)} not valid; the pair runs once more for them.")
     elif invalid:
         verdict.append(f"{head}: {', '.join(invalid)} not valid" + (' twice' if ours else '') + ': start the pair again later, or write the number by hand.')
     elif still and ours:
         verdict.append('Hold kept: the body still has a pending number this pair did not run.')
     elif not ours and done and 'DONT MERGE' in title:
         verdict.append('Numbers written. The hold was not set by ship (no "search-hold" label): lift it by hand.')
-    return {'body': body, 'title': title, 'lift': lift, 'rerun': [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in rerun], 'verdict': verdict}
+    return {'body': body, 'title': title, 'lift': lift, 'verdict': verdict}
 
 
 def main(argv):
@@ -263,11 +268,23 @@ def main(argv):
         if found:
             print(json.dumps(found))
         return 0
-    if command == 'settle' and len(argv) == 6:   # people: setup's matrix entries (each its id)
+    if command == 'row' and len(argv) == 10:   # row <dl> <people json> <newer 0|1> <rerun_failed 0|1> <old.json> <run id> <run url> <comment url>: the row after the pair ended (pair_row.next_row)
+        rows = sides(argv[2])
+        ran = sorted(set(json.loads(argv[3])), key=str)
+        done = measured(rows)
+        old = json.loads(Path(argv[6]).read_text(encoding='utf-8') or '{}')
+        event = {'kind': 'ended', 'run_id': argv[7], 'run_url': argv[8], 'comment_url': argv[9], 'done': done, 'ran': ran, 'seen': set(rows), 'spreads': {person: usual(person) for person in done},
+                 'rows': rows, 'newer': argv[4] == '1', 'rerun_failed': argv[5] == '1'}
+        out = pair_row.next_row(old, event)
+        out['rerun'] = [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in out['rerun']]   # the dispatch's own form: night people as numbers, profiles as ids
+        Path('row.json').write_text(json.dumps(out), encoding='utf-8')
+        print(out['api'].get('output', {}).get('title', out.get('why', '')))
+        return 0
+    if command == 'settle' and len(argv) in (6, 7):   # people: setup's matrix entries (each its id); an optional 7th: the row's real rerun (json list)
         view = json.loads(Path(argv[3]).read_text(encoding='utf-8'))
         ran = [entry['id'] for entry in json.loads(argv[5])]
         rows = sides(argv[2])
-        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(rows), sorted(set(ran)), int(argv[4]), seen=set(rows))
+        out = settle(view.get('body'), view.get('title') or '', [label['name'] for label in view.get('labels') or []], measured(rows), sorted(set(ran)), int(argv[4]), seen=set(rows), rerun=json.loads(argv[6]) if len(argv) == 7 else ())
         Path('settle.json').write_text(json.dumps(out), encoding='utf-8')
         print('\n'.join(out['verdict']))
         return 0

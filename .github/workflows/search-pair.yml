@@ -1,5 +1,5 @@
 name: CI · Search pair (a PR's before/after, by hand)
-# By hand: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the profiles by id), main and the PR head search at the same
+# By hand or from ship: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the profiles by id), main and the PR head search at the same
 # minute on one runner (two checkouts, two first searches started together, the same strategy draft), the same blind judge counts their right jobs, and one comment on
 # the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
 # Why (13 Nov 2026, owner: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a
@@ -7,7 +7,8 @@ name: CI · Search pair (a PR's before/after, by hand)
 # Its turn: the `turn` job claims 2 searches per person at the broker and waits its place in line (up to 55 min; tools/persona-search/claim.py, the broker's
 # lib/claims.mjs: first come, first served, each run only what it needs; owner via sa, 13 Nov 2026); each pair job renews it, `release` gives it back. Pairs of several PRs
 # run side by side while the room holds them (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
-# Never a night, never red on the PR, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
+# The PR's checks list gets one row, "Search before/after" (tools/persona-search/pair_row.py): running, green with the numbers, red on a loss beyond the person's band, still running (pending, with the next step) when a pair did not
+# count after its one automatic re-run, grey when a newer head superseded it. Never a night, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
 #   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
 # Broker lane: by-hand (jobadabra-web workers/ai-broker/lib/lanes.mjs lists search-pair.yml).
 run-name: 'Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier'
@@ -29,9 +30,13 @@ on:
         options: ['app', 'small']
         default: 'app'
       attempt:
-        description: "1, or 2 when the pair itself ran again for a side that was not valid (a held PR's pair runs once more, then reports)"
+        description: "1, or 2 when the pair itself ran again for a side that was not counted (every pair runs once more by itself, then the row is red)"
         type: string
         default: '1'
+      check_id:
+        description: "The row's check run id, set by the pair's own second run so one row exists per head; empty for a new pair"
+        type: string
+        default: ''
       # Why (13 Nov 2026, sa: #4049's place rounds "refused from ~57 s" need each job's stage to be read by mechanism on both sides, as #4043 did for search-profiles): off by default, one dispatch away.
       stage_log:
         description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), on both sides, as the night logs'
@@ -65,13 +70,16 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-      statuses: write   # the "Search pair" entry in the PR's checks list (never required, never red)
+      checks: write   # the "Search before/after" row in the PR's checks list (a check run: it can be red, grey or green)
     outputs:
+      go: ${{ steps.row.outputs.go }}   # 0 when this run does not own the head's row (another pair holds it, or it counted already): the rest of the run is skipped
+      check_id: ${{ steps.row.outputs.check_id }}
+      started: ${{ steps.row.outputs.started }}
       people: ${{ steps.people.outputs.people }}
       need: ${{ steps.people.outputs.need }}
       main: ${{ steps.refs.outputs.main }}
       head: ${{ steps.refs.outputs.head }}
-      status_sha: ${{ steps.refs.outputs.status_sha }}
+      row_sha: ${{ steps.refs.outputs.row_sha }}
       state: ${{ steps.refs.outputs.state }}
     steps:
       - uses: actions/checkout@v5
@@ -88,9 +96,9 @@ jobs:
           python3 -c "import json,sys; d=json.load(open('pr.json')); sys.exit('a fork PR is not run (its code would get the broker)' if d['isCrossRepository'] else 'the PR is closed unmerged' if d['state'] not in ('OPEN', 'MERGED') else 0)"
           head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")
           echo "head=$head" >> "$GITHUB_OUTPUT"
-          # Why (13 Nov 2026, Gitar on #4033): a squash-merged PR's head is off main, so its "Search pair" status goes on the merge commit instead
+          # Why (13 Nov 2026, Gitar on #4033): a squash-merged PR's head is off main, so its "Search before/after" row goes on the merge commit instead
           echo "state=$(python3 -c "import json; print(json.load(open('pr.json'))['state'])")" >> "$GITHUB_OUTPUT"
-          echo "status_sha=$(python3 -c "import json; d=json.load(open('pr.json')); print((d.get('mergeCommit') or {}).get('oid') or d['headRefOid'])")" >> "$GITHUB_OUTPUT"
+          echo "row_sha=$(python3 -c "import json; d=json.load(open('pr.json')); print((d.get('mergeCommit') or {}).get('oid') or d['headRefOid'])")" >> "$GITHUB_OUTPUT"
           # Why (13 Nov 2026, #3946's pair): the "before" side is the main commit the PR sits on, not main's newest; a PR behind main would otherwise be compared
           # with everything merged since, and its own change could not be told apart (main 7e5ee877 against a branch on f86251e3 also differed by #3952 and two more).
           echo "main=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$head" --jq .merge_base_commit.sha)" >> "$GITHUB_OUTPUT"
@@ -100,25 +108,48 @@ jobs:
         env:
           PEOPLE: ${{ inputs.people }}
         run: python3 tools/persona-search/pair.py people "$PEOPLE" changed.txt >> "$GITHUB_OUTPUT"
-      - name: "The PR's checks list: waiting for room"
+      - name: "The PR's checks list: the row, started"
+        id: row
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD: ${{ steps.refs.outputs.status_sha }}
+          HEAD: ${{ steps.refs.outputs.row_sha }}
           PEOPLE: ${{ steps.people.outputs.people }}
-        # Why (13 Nov 2026, owner on #4022: "Can't we link the PR as a PR CI check?" · "So that I see what's going on"): a commit status on the head the pair measures, linking this run.
-        # A status (not a check run): its text shows in the checks list; it is never failure, so the PR never turns red and "All checks passed" (tools/pr-verdict.py counts workflow runs) does not read it.
+          ROW_IN: ${{ inputs.check_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # Design (13 Nov 2026, sa: "going in circles = the design is wrong"): the row has ONE writer function, pair_row.next_row(old row, event), and the table of its states is at the top of tools/persona-search/pair_row.py.
+        #   This job, the turn, the comment and the closing job only read the row, say what happened (an event) and write what next_row returns; a run writes a row only while its run id is the row's owner.
+        # Why (13 Nov 2026, owner on #4022: "Can't we link the PR as a PR CI check?"; then "instead of having \"DONT MERGE\"... we'll just have red check"): the row "Search before/after" is a check run on the head the pair measures
+        #   (the merge commit for a merged PR): a check run, not the commit status it replaces, because a status can only be green or leave the PR open. 3/3 makes "All checks passed" read it.
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=pending -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="$(echo "$PEOPLE" | jq -r '[.[].id] | join(", ")'): waiting for room at the broker" >/dev/null
+          if [ -n "$ROW_IN" ]; then   # dispatched for an existing row (the second run, or 2/3's start): that row, by its id
+            gh api "repos/$GITHUB_REPOSITORY/check-runs/$ROW_IN" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
+          else                         # by hand: the head's latest row, if any
+            gh api -X GET "repos/$GITHUB_REPOSITORY/commits/$HEAD/check-runs" -f check_name='Search before/after' --jq '.check_runs[0] // {} | {id, external_id, summary: (.output.summary // "")}' > old.json
+          fi
+          started="$(date -u +%H:%M)"
+          claim=false; if [ -n "$ROW_IN" ]; then claim=true; fi
+          event="$(jq -nc --arg run "$GITHUB_RUN_ID" --arg url "$RUN_URL" --arg started "$started" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson people "$(echo "$PEOPLE" | jq -c '[.[].id]')" --argjson claim "$claim" \
+            '{kind: "started", run_id: $run, run_url: $url, started: $started, now: $now, people: $people, claim: $claim}')"
+          python3 tools/persona-search/pair_row.py next old.json "$event" > row.json
+          if [ "$(jq -r .noop row.json)" = true ]; then echo "this run does not own the row: $(jq -r .why row.json)"; echo "go=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$(jq -r .new row.json)" = true ]; then
+            id="$(jq --arg sha "$HEAD" --arg url "$RUN_URL" '.api + {name: "Search before/after", head_sha: $sha, details_url: $url}' row.json | gh api -X POST "repos/$GITHUB_REPOSITORY/check-runs" --input - --jq .id)"
+          else
+            id="$(jq -r .id old.json)"
+            jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$id" --input - > /dev/null
+          fi
+          { echo "go=1"; echo "check_id=$id"; echo "started=$started"; } >> "$GITHUB_OUTPUT"
 
   turn:
     name: Claim room at the broker
     needs: setup
+    if: ${{ needs.setup.outputs.go == '1' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 58
     permissions:
       contents: read
       id-token: write   # the broker names the claim from this run's token
-      statuses: write   # "Search pair": searching, once the room is ours
+      checks: write   # the row: searching, once the room is ours
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -126,13 +157,15 @@ jobs:
         env:
           NEED: ${{ needs.setup.outputs.need }}
         run: python3 tools/persona-search/claim.py wait "$NEED"
-      - name: "The PR's checks list: searching"
+      - name: "The PR's checks list: the row, searching"
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD: ${{ needs.setup.outputs.status_sha }}
-          PEOPLE: ${{ needs.setup.outputs.people }}
+          CHECK_ID: ${{ needs.setup.outputs.check_id }}
+          STARTED: ${{ needs.setup.outputs.started }}   # Gitar on #4059: the pair's own start, so "ends ~" counts from when it began, not from when the room came
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=pending -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="$(echo "$PEOPLE" | jq -r '[.[].id] | join(", ")'): searching main and the PR" >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
+          python3 tools/persona-search/pair_row.py next old.json "$(jq -nc --arg run "$GITHUB_RUN_ID" --arg started "$STARTED" '{kind: "searching", run_id: $run, started: $started}')" > row.json
+          if [ "$(jq -r .noop row.json)" != true ]; then jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null; fi
 
   pair:
     name: Pair ${{ matrix.person.id }}
@@ -271,8 +304,8 @@ jobs:
 
   release:
     name: Give the room back
-    needs: [turn, pair]
-    if: ${{ always() }}   # also after a failed or cancelled person; a claim nobody renews frees itself in 10 min anyway
+    needs: [setup, turn, pair]
+    if: ${{ always() && needs.setup.outputs.go == '1' }}   # also after a failed or cancelled person; a claim nobody renews frees itself in 10 min anyway
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
@@ -286,16 +319,15 @@ jobs:
   comment:
     name: The table on the PR
     needs: [setup, pair]
-    if: ${{ !cancelled() && needs.setup.result == 'success' }}   # a cancelled run left an empty table on #3946 (13 Nov 2026): the run that replaced it writes its own
+    if: ${{ !cancelled() && needs.setup.result == 'success' && needs.setup.outputs.go == '1' }}   # a cancelled run left an empty table on #3946 (13 Nov 2026): the run that replaced it writes its own
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    outputs:
-      status: ${{ steps.table.outputs.status }}   # the numbers, for the PR's checks list (the closing job)
     permissions:
       contents: read
       pull-requests: write
       issues: write    # the "search-hold" label of a PR ship held (tools/ship-search-hold.sh)
-      actions: write   # a held PR's pair runs once more for a side that was not valid
+      actions: write   # a pair that did not count runs once more by itself
+      checks: write    # the row's verdict
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -312,17 +344,33 @@ jobs:
           ATTEMPT: ${{ inputs.attempt }}
           TIERS: ${{ inputs.tiers }}
           STATE: ${{ needs.setup.outputs.state }}
+          CHECK_ID: ${{ needs.setup.outputs.check_id }}
         run: |
           set -euo pipefail
           python3 tools/persona-search/pair.py table dl "$PR" "$MAIN" "$HEAD" > table.md
           # The hold (plan 4/4, pair.py settle): the numbers go into the body's pending Moves lines; ship's own hold (label search-hold) comes off only when none fell.
           gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,labels,headRefOid > view.json
+          # The row's end (pair_row.next_row, the table at the top of pair_row.py): success with the numbers, failure (a loss beyond the band), neutral (a newer head), or still open ("a second run is asked", "run it again").
+          # Order (Gitar on #4044/#4077): the row moves to "rerunning" BEFORE the second run is dispatched (its start claims that row), a dispatch that fails moves it to "run it again", and all of it happens
+          #   before the hold, label and comment work, so a failure there can not turn a counted pair red.
+          newer=0; if [ "$STATE" != MERGED ] && [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then newer=1; fi
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; comment_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR"
+          ids="$(echo "$PEOPLE" | jq -c '[.[].id]')"
+          gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
+          python3 tools/persona-search/pair.py row dl "$ids" "$newer" 0 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" > /dev/null
+          rerun="$(jq -c .rerun row.json)"
+          if [ "$(jq -r .noop row.json)" != true ]; then jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null; fi
+          if [ "$rerun" != '[]' ] && ! gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2 -f check_id="$CHECK_ID"; then
+            python3 tools/persona-search/pair.py row dl "$ids" "$newer" 1 old.json "$GITHUB_RUN_ID" "$run_url" "$comment_url" > /dev/null   # the same old row, with the second run marked as not started
+            rerun='[]'
+            jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null
+          fi
           if [ "$STATE" = MERGED ]; then   # Why (13 Nov 2026, Gitar on #4033): a merged PR has no hold to lift and no pending Moves lines; the comment says what was compared
-            { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the checks-list status is on its merge commit."; } >> table.md
+            { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the \"Search before/after\" row is on its merge commit."; } >> table.md
           elif [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
             { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
           else
-            python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" > verdict.txt
+            python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" "$rerun" > verdict.txt
             jq -n --slurpfile s settle.json '{title: $s[0].title, body: $s[0].body}' > edit.json
             gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body > now.json   # Why (Gitar on #3967): an edit made while settle ran is never overwritten
             if ! jq -e --slurpfile v view.json '.title == $v[0].title and .body == $v[0].body' now.json >/dev/null; then
@@ -333,8 +381,6 @@ jobs:
                 gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" --input edit.json >/dev/null
               fi
               if [ "$(jq -r .lift settle.json)" = true ]; then gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label search-hold >/dev/null; fi
-              rerun="$(jq -c .rerun settle.json)"
-              if [ "$rerun" != '[]' ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2; fi
             fi
           fi
           echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> table.md
@@ -342,26 +388,29 @@ jobs:
           old=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- search-pair -->")) | .id' | tail -1)
           if [ -n "$old" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$old" -F body=@table.md >/dev/null
           else gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file table.md; fi
-          # the checks list's text: the Moves lines, or why nothing was counted (140 characters at most)
-          if [ "$(jq -r '.rerun | length' settle.json 2>/dev/null || echo 0)" != 0 ]; then text="not counted: $(jq -r '.rerun | join(", ")' settle.json) (a side was starved; the pair runs once more)"
-          else text="$(grep '^Moves:' table.md | sed -E -e 's/^Moves: //' -e 's/ \([0-9]+ runs? a side.*//' | paste -sd ';' - | sed 's/;/; /g' || true)"; fi
-          echo "status=${text:-no numbers written (the PR changed while the pair ran)}" | cut -c1-150 >> "$GITHUB_OUTPUT"
 
   status:
     name: "The PR's checks list: the end"
     needs: [setup, pair, comment]
-    if: ${{ always() && needs.setup.result == 'success' }}   # a cancelled or failed run must not leave the entry "searching" for good
+    if: ${{ always() && needs.setup.result == 'success' && needs.setup.outputs.go == '1' }}   # a cancelled or failed run must not leave the entry "searching" for good
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
-      statuses: write
+      checks: write
+      pull-requests: read   # the head the PR has now (a cancel is "superseded" only when a newer head exists)
     steps:
-      - name: "Success with the numbers in its text (never failure: the PR must not turn red)"
+      - name: "The row, if this run still owns it and it has no numbers (a cancelled or failed run must not leave it running for good)"
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD: ${{ needs.setup.outputs.status_sha }}
-          NUMBERS: ${{ needs.comment.outputs.status }}
+          CHECK_ID: ${{ needs.setup.outputs.check_id }}
           ENDED: ${{ needs.pair.result }}
+          PR: ${{ inputs.pr }}
+          HEAD: ${{ needs.setup.outputs.head }}
+          STATE: ${{ needs.setup.outputs.state }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          text="$NUMBERS"; [ -n "$text" ] || text="not counted: the pair ended ($ENDED), no numbers"
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD" -f state=success -f context='Search pair' -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" -f description="${text:0:140}" >/dev/null
+          # Gitar on #4077: "superseded" only when a newer head really exists (a cancel by a person is not one); a row that already ended, or that another run owns, is left as it is (pair_row.next_row).
+          newer=false; if [ "$STATE" != MERGED ] && [ "$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)" != "$HEAD" ]; then newer=true; fi
+          gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '{id, external_id, summary: (.output.summary // "")}' > old.json
+          python3 tools/persona-search/pair_row.py next old.json "$(jq -nc --arg ended "$ENDED" --arg run "$GITHUB_RUN_ID" --arg url "$RUN_URL" --argjson newer "$newer" '{kind: "died", run_id: $run, run_url: $url, ended: $ended, newer: $newer}')" > row.json
+          if [ "$(jq -r .noop row.json)" != true ]; then jq .api row.json | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - > /dev/null; fi
