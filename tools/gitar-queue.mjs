@@ -9,7 +9,7 @@
 //   a refusal right after our own ask -> the ask goes back to the front (a refused reply is not posted twice); an ask for a head already sent is never sent twice.
 // Why (13 Nov 2026, measured on #4018/#4020/#4021/#4022/#4026 and 17 replies): 22 asks in 70 min across 4 repos drew 11 refusals. Refusals follow the PR, not the account: web #636, lab #109, web #637 and bench #43 were
 //   accepted inside the 30-minute pauses of #4020/#4021/#4018, and bench #44 20 s after web #639 was refused. Thread replies count: #4026's first inline reply got "wait about 10 minutes". So the pause is per PR and
-//   the gap (GITAR_QUEUE_GAP_S, default 60) is only the spacing. The exact count Gitar applies is unknown; TODO(AI): tune the gap from the refusal rate once the queue has run for a week (13 Nov 2026).
+//   the gap (GITAR_QUEUE_GAP_S, default 60) is only the spacing. #4031 itself then drew "wait about 30 minutes" for a 3rd own comment (ask 20:01, replies 20:05 and 20:06) while Gitar had already closed the findings: so one PR also gets GITAR_QUEUE_PR_GAP_S (default 300) between our comments. The exact count Gitar applies is unknown; TODO(AI): tune the gap from the refusal rate once the queue has run for a week (13 Nov 2026).
 import {mkdirSync, rmSync, readFileSync, writeFileSync, renameSync, statSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -19,6 +19,7 @@ import {join} from 'node:path';
 const DIR = process.env.GITAR_QUEUE_DIR || join(homedir(), '.claude', 'gitar-queue');
 const GH = process.env.GITAR_QUEUE_GH || 'gh';
 const GAP = Number(process.env.GITAR_QUEUE_GAP_S || 60) * 1000;
+const PR_GAP = Number(process.env.GITAR_QUEUE_PR_GAP_S ?? 300) * 1000;   // between two of OUR comments on the same PR (13 Nov 2026, #4031: the 3rd comment in 5 min drew "wait about 30 minutes")
 const SETTLE = Number(process.env.GITAR_QUEUE_SETTLE_MS ?? 8000);   // Gitar's refusal arrives 3-5 s after the comment
 let slept = 0;   // a pinned GITAR_QUEUE_NOW is a simulated clock: the settle wait advances it instead of waiting (tests)
 const now = () => Number(process.env.GITAR_QUEUE_NOW) ? Number(process.env.GITAR_QUEUE_NOW) + slept : Date.now();
@@ -41,7 +42,7 @@ function locked(fn) {
   try { return fn(); } finally { rmSync(lock, {recursive: true, force: true}); }
 }
 const file = join(DIR, 'state.json');
-const load = () => { try { return {entries: [], sent: [], dropped: {}, last: 0, ...JSON.parse(readFileSync(file, 'utf8'))}; } catch { return {entries: [], sent: [], dropped: {}, last: 0}; } };
+const load = () => { try { return {entries: [], sent: [], dropped: {}, pr: {}, last: 0, ...JSON.parse(readFileSync(file, 'utf8'))}; } catch { return {entries: [], sent: [], dropped: {}, pr: {}, last: 0}; } };
 const save = st => { st.sent = st.sent.slice(-300); writeFileSync(file + '.tmp', JSON.stringify(st, null, 1)); renameSync(file + '.tmp', file); };
 
 const key = e => `${e.repo}#${e.pr}${e.kind === 'ask' ? '@' + e.head : '/' + e.commentId + ':' + createHash('sha1').update(e.body).digest('hex').slice(0, 8)}`;   // a reply is told apart by its comment and its words
@@ -63,7 +64,9 @@ const pausedUntil = (e, t = 0) => Math.max(0, ...refusals(e.repo, e.pr).filter(r
 
 function post(e) {
   if (e.kind === 'ask') return gh(['pr', 'comment', String(e.pr), '-R', e.repo, '--body', 'Gitar review']) !== null;
-  return gh(['api', '-X', 'POST', `repos/${e.repo}/pulls/${e.pr}/comments/${e.commentId}/replies`, '-f', `body=${e.body}`]) !== null;
+  const out = gh(['api', '-X', 'POST', `repos/${e.repo}/pulls/${e.pr}/comments/${e.commentId}/replies`, '-f', `body=${e.body}`]);
+  try { e.postedId = JSON.parse(out).id; } catch { /* the id only serves to take a refused reply back */ }
+  return out !== null;
 }
 
 /** Sends at most one due entry; drops entries of PRs that merged or closed. Returns nothing: the state says what happened. */
@@ -77,14 +80,14 @@ function drain(st) {
   });
   if (st.last + GAP > now()) return;   // spacing first: no comment reads while it holds
   for (const e of st.entries) {
-    if (pausedUntil(e) > now()) continue;
+    if ((st.pr[`${e.repo}#${e.pr}`] || 0) + PR_GAP > now() || pausedUntil(e) > now()) continue;
     const t0 = now();   // Why (13 Nov 2026, Gitar on #4031): a refusal lands 3-5 s after the post, so it is looked for from just before the post, not from "now minus 5 s" after the settle wait
     if (!post(e)) { st.fail = key(e); return; }   // gh failed: the entry stays, the next look retries, and `ask`/`status` say so
     st.entries = st.entries.filter(x => x !== e); st.last = now(); delete st.fail;
-    st.sent.push({key: key(e), at: now()});
+    st.sent.push({key: key(e), at: now()}); st.pr[`${e.repo}#${e.pr}`] = now();
     save(st); settle(SETTLE);
-    // A refused ask goes back to the front (the comment is posted, the ask is not done). A refused reply is already visible to people: it is not posted twice, only its PR waits (Gitar will not act on it).
-    if (e.kind === 'ask' && pausedUntil(e, t0 - 2000) > now()) { st.sent = st.sent.filter(s => s.key !== key(e)); st.entries.unshift(e); }
+    // A refused ask or reply goes back to the front, so Gitar is not left without it (Gitar on #4031: a refused reply was lost). A refused reply is deleted first, so people see it once, after the wait.
+    if (pausedUntil(e, t0 - 2000) > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
     return;
   }
 }
@@ -92,7 +95,7 @@ function drain(st) {
 /** When each queued entry will go, assuming no new refusal: [{e, at}]. */
 function schedule(st) {
   let slot = Math.max(st.last + GAP, now());
-  return st.entries.map(e => { const p = pausedUntil(e); if (p > slot) return {e, at: p}; const at = slot; slot += GAP; return {e, at}; });
+  return st.entries.map(e => { const p = Math.max(pausedUntil(e), (st.pr[`${e.repo}#${e.pr}`] || 0) + PR_GAP); if (p > slot) return {e, at: p}; const at = slot; slot += GAP; return {e, at}; });
 }
 const hhmm = ms => new Date(ms).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 
@@ -115,8 +118,10 @@ const out = locked(() => {
     const e = {kind: 'reply', repo, pr: Number(pr), commentId: a, body: readFileSync(b, 'utf8'), queuedAt: now()}, k = key(e);
     if (!st.sent.some(x => x.key === k) && !st.entries.some(x => key(x) === k)) st.entries.push(e);   // the same reply twice is one comment
     drain(st); save(st);
+    if (st.sent.some(x => x.key === k)) return 'SENT';
+    if (st.dropped[k]) return `DROPPED (${st.dropped[k]})`;
     const i = schedule(st).findIndex(x => key(x.e) === k);
-    return i < 0 ? 'SENT' : `QUEUED (position ${i + 1}, next ask ~${hhmm(schedule(st)[i].at)}${st.fail ? `; the last post failed: ${st.fail}` : ''})`;
+    return i < 0 ? 'DROPPED (not queued)' : `QUEUED (position ${i + 1}, next ask ~${hhmm(schedule(st)[i].at)}${st.fail ? `; the last post failed: ${st.fail}` : ''})`;
   }
   if (cmd === 'cancel') { st.entries = st.entries.filter(e => !(e.repo === repo && e.pr === Number(pr))); save(st); return 'CANCELLED'; }
   if (cmd === 'drain') { drain(st); save(st); return `${st.entries.length} queued`; }

@@ -43,7 +43,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
             (self.tmp / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': at, 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."}]))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after, 'SHIP_WATCH_GITAR_OPENED': opened_wait,
-               'GITAR_QUEUE_DIR': str(self.tmp / 'queue'), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': gap, 'GITAR_QUEUE_GH': str(self.tmp / 'bin' / 'gh'), 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000)}   # clock: relative the queue compares only readings of this same clock
+               'GITAR_QUEUE_DIR': str(self.tmp / 'queue'), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': gap, 'GITAR_QUEUE_PR_GAP_S': '0', 'GITAR_QUEUE_GH': str(self.tmp / 'bin' / 'gh'), 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000)}   # clock: relative the queue compares only readings of this same clock
         (self.tmp / 'peek.sh').write_text(f'#!/bin/sh\nprintf "%s\\n" "{peek}"\n')   # what tools/gitar-label.mjs peek would print for the head
         (self.tmp / 'peek.sh').chmod(0o755)
         env['SHIP_WATCH_GITAR_PEEK'] = str(self.tmp / 'peek.sh')
@@ -66,16 +66,17 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], calls)
 
     def test_only_a_plain_verdict_is_kept_never_a_not_re_reviewed_label(self):
-        """13 Nov 2026 (gl3, Gitar on #4032): "Gitar: approved \u00b7 not re-reviewed" means Gitar did NOT review this head, so it must be asked; the plain verdicts stay kept. Same test as gq's in #4031."""
-        cases = [('Gitar: approved \u00b7 not re-reviewed', True), ('Gitar: approved with suggestions \u00b7 not re-reviewed', True), ('Gitar: changes requested \u00b7 not re-reviewed', True),
-                 ('Gitar: approved', False), ('Gitar: approved with suggestions', False), ('Gitar: changes requested', False)]
-        before = 0
-        for n, (peek, asked) in enumerate(cases):
-            with self.subTest(peek=peek):
-                lines, calls = self.watch([f'h{n}00000', f'h{n}00000'], peek=peek)   # a head per case: the asked-head marker is per head; the calls file keeps growing
-                self.assertEqual(len(calls) - before, int(asked), (peek, calls))
-                before = len(calls)
-                self.assertEqual(bool([l for l in lines if 'GITAR KEPT' in l]), not asked, (peek, lines))
+        """13 Nov 2026 (gl3, #4032): "Gitar: approved · not re-reviewed" means Gitar did NOT review this head, so it must be asked; the plain verdicts stay kept."""
+        for peek in ('Gitar: approved · not re-reviewed', 'Gitar: approved with suggestions · not re-reviewed', 'Gitar: changes requested · not re-reviewed'):
+            lines, calls = self.watch(['aaa1111', 'aaa1111'], peek=peek)
+            self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], (peek, calls))
+            self.assertFalse([l for l in lines if 'GITAR KEPT' in l], (peek, lines))
+            (self.tmp / 'queue').exists() and shutil.rmtree(self.tmp / 'queue')
+            (self.tmp / 'calls').unlink()
+        for peek in ('Gitar: approved', 'Gitar: approved with suggestions', 'Gitar: changes requested'):
+            lines, calls = self.watch(['aaa1111', 'aaa1111'], peek=peek)
+            self.assertEqual(calls, [], (peek, calls))
+            self.assertTrue([l for l in lines if 'GITAR KEPT' in l], (peek, lines))
 
     def test_a_head_with_a_gitar_check_is_never_asked(self):
         _, calls = self.watch(['aaa1111', 'aaa1111'], runs='gitar')

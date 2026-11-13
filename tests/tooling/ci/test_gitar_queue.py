@@ -30,7 +30,16 @@ FAKE_GH = textwrap.dedent('''\
             json.dump(rows, open(f'{d}/comments_{a[2]}.json', 'w'))
         open(d + '/posted', 'a').write('ask ' + a[2] + '\\n')
     elif a[0] == 'api' and '-X' in a:
-        open(d + '/posted', 'a').write('reply ' + a[3].split('/')[6] + '\\n')
+        if a[2] == 'DELETE':
+            open(d + '/posted', 'a').write('delete ' + a[3].split('/')[-1] + '\\n')
+        else:
+            pr = a[3].split('/')[4]
+            if os.path.exists(f'{d}/refuse_{pr}'):   # Gitar refuses the reply too
+                rows = comments(pr); rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading
+                    'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."})
+                json.dump(rows, open(f'{d}/comments_{pr}.json', 'w'))
+            open(d + '/posted', 'a').write('reply ' + a[3].split('/')[6] + '\\n')
+            print(json.dumps({'id': 9000 + int(a[3].split('/')[6])}))
     elif a[0] == 'api':
         pr = a[1].split('/')[4]
         print(json.dumps(comments(pr) if '/issues/' in a[1] else []))
@@ -44,7 +53,7 @@ class GitarQueueTest(unittest.TestCase):
         gh = self.tmp / 'gh'
         gh.write_text(FAKE_GH)
         gh.chmod(0o755)
-        self.env = {**os.environ, 'FAKE_DIR': str(self.tmp), 'GITAR_QUEUE_DIR': str(self.tmp / 'q'), 'GITAR_QUEUE_GH': str(gh), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': '3600'}
+        self.env = {**os.environ, 'FAKE_DIR': str(self.tmp), 'GITAR_QUEUE_DIR': str(self.tmp / 'q'), 'GITAR_QUEUE_GH': str(gh), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': '3600', 'GITAR_QUEUE_PR_GAP_S': '300'}
 
     def run_queue(self, *args, now_plus=0, wait=True, **env):
         e = {**self.env, 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000), **env}   # clock: relative the queue compares only readings of this same clock
@@ -118,6 +127,35 @@ class GitarQueueTest(unittest.TestCase):
         self.assertTrue(out.startswith('QUEUED (position 1') and 'the last post failed' in out, out)
         (self.tmp / 'gh_out').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
+
+    def test_a_second_comment_on_the_same_pr_waits_five_minutes_and_another_pr_does_not(self):
+        """13 Nov 2026, #4031 live: ask 20:01, reply 20:05, reply 20:06:39 -> "wait about 30 minutes" 3 s later. Our own comments on one PR are spaced even when the global gap allows them."""
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed.')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0'), 'SENT')
+        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=100).startswith('QUEUED'), 'a 2nd comment on #1 inside 5 min')
+        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', GITAR_QUEUE_GAP_S='0', now_plus=100), 'ASKED', 'another PR is free')
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0', now_plus=400), 'ASKED')
+
+    def test_a_reply_to_a_closed_pr_is_dropped_not_sent(self):
+        """Gitar on #4031: `reply` printed SENT for an entry that drain had dropped."""
+        (self.tmp / 'state_1').write_text('MERGED')
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed.')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'DROPPED (merged)')
+        self.assertEqual(self.posted(), [])
+
+    def test_a_refused_reply_is_taken_back_and_posted_again_after_the_wait(self):
+        """Gitar on #4031 + the owner's rule (fix in code, never argue in the thread): a refused reply is not lost and not seen twice: deleted, then posted once after the pause."""
+        body = self.tmp / 'body.md'
+        body.write_text('Fixed.')
+        (self.tmp / 'refuse_1').write_text('')
+        out = self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_PR_GAP_S='0', GITAR_QUEUE_SETTLE_MS='8000')
+        self.assertTrue(out.startswith('QUEUED'), out)
+        self.assertEqual(self.posted(), ['reply 555', 'delete 9555'])
+        (self.tmp / 'refuse_1').unlink()
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_PR_GAP_S='0', now_plus=700), 'SENT')
+        self.assertEqual(self.posted(), ['reply 555', 'delete 9555', 'reply 555'])
 
 
 if __name__ == '__main__':
