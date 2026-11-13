@@ -105,7 +105,8 @@ class TheRowsStatesHaveOneWriter(unittest.TestCase):
             (row_of('unproven', ''), ev('started'), 'running'), (row_of('unproven', ''), ev('started', claim=True), 'noop'),
             (row_of('running', '3'), ev('started'), 'noop'), (row_of('running', '3'), ev('started', claim=True), 'noop'),   # another pair holds it
             (row_of('rerunning', ''), ev('started', claim=True), 'rerunning'), (row_of('rerunning', ''), ev('started'), 'rerunning'),   # asked, nobody started it
-            (row_of('rerunning', '3'), ev('started'), 'noop'),
+            (row_of('rerunning', '3'), ev('started'), 'noop'), (row_of('rerunning', '3'), ev('started', claim=True), 'noop'),   # owned: a second dispatched run does not take it
+            (row_of('running'), ev('died', ended='failure', newer=True), 'superseded'),   # any death on an old head is superseded (the table), not "run it again"
             (row_of('running'), ev('searching'), 'running'), (row_of('rerunning'), ev('searching'), 'rerunning'),
             (row_of('running'), ev('ended'), 'counted'), (row_of('running'), ev('died'), 'unproven'),
             (row_of('running'), ev('died', ended='cancelled', newer=True), 'superseded'), (row_of('running'), ev('died', ended='cancelled', newer=False), 'unproven'),

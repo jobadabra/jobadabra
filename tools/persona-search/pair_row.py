@@ -168,7 +168,9 @@ def next_row(old, event):
         return _place(state, people_was, 'carried', event['people'], 'completed', event['conclusion'], event['title'], event['summary'])
     if kind == 'started':
         by_hand_ok = state is None or state in ('waiting', 'unproven', *FINISHED) or (state == 'rerunning' and not owner)
-        if not (state in ('waiting', 'rerunning') if event['claim'] else by_hand_ok):
+        # Why (13 Nov 2026, mac-95 against the table): a claim takes a rerunning row only while nobody owns it, like a pair by hand; a second dispatched run must not steal it.
+        claim_ok = state == 'waiting' or (state == 'rerunning' and not owner)
+        if not (claim_ok if event['claim'] else by_hand_ok):
             return _noop(state, 'another pair holds this row, or it is not waiting for one')
         again = state == 'rerunning'
         title = running(event['started'], 'running once more' if again else 'waiting for room at the broker')
@@ -180,8 +182,9 @@ def next_row(old, event):
         return _out(state, people_was, 'in_progress', running(event['started'], 'searching main and the PR'), summary_was, owner=run)
     where = f"\n\nOne run a side. Run: {event['run_url']}"
     if kind == 'died':
-        if event['ended'] == 'cancelled' and event['newer']:
-            return _out('superseded', people_was, 'completed', 'superseded: this run was cancelled', 'A newer head took over.' + where, conclusion='neutral')
+        # Why (13 Nov 2026, mac-95 against the table "ended / died: a newer head exists -> superseded"): a run that died for any reason on an old head is superseded, never "run it again".
+        if event['newer']:
+            return _out('superseded', people_was, 'completed', f"superseded: this run ended ({event['ended']}) and a newer head took over", 'A newer head took over.' + where, conclusion='neutral')
         title = f"not counted: the pair ended ({event['ended']}) with no numbers; run it again (gh workflow run search-pair.yml)"
         return _out('unproven', people_was, 'in_progress', title, (summary_was + '\n\n' if summary_was else '') + title + where)
     earlier = [line for line in summary_was.splitlines() if ' right jobs ' in line] if state == 'rerunning' else []
