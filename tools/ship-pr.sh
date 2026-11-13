@@ -41,13 +41,13 @@ ship_pr_lookup() {
   ship_pr_fail "GitHub could not say whether $2 already has an open pull request (REST quota 0$when, or unreachable): nothing was pushed and no pull request was created; run tools/ship.sh again"
 }
 # ship_pair_lines <pr> <repo>: runs tools/ship-search-hold.sh and writes each line it prints as a step; its `PAIR NOT STARTED <why>|<command>` becomes
-# `ship: FAILED pair not started (<why>[, REST quota 0 until hh:mm]); start it by hand: <command>`, a line the watchers wake on. The run goes on: the PR stays held for its pair.
+# `ship: PAIR NOT STARTED (<why>[; REST quota 0 until hh:mm]); start it by hand: <command>`, a line the watchers wake on. The run goes on: the PR stays held for its pair, so the line is never `FAILED` (that marker ends a session's wait: tools/ship-wait.sh, Gitar on #4125).
 # Why (14 Nov 2026, rb; owner via mac-95: #4091 and #4100 sat ~25 min with no pair, REST quota 0 at ~22:50Z): a failed dispatch was one plain step line, so no session heard that its pair never started.
 ship_pair_lines() {
   local line why when
   while IFS= read -r line; do
     case "$line" in
-      "PAIR NOT STARTED "*) why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"; echo "ship: FAILED pair not started (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
+      "PAIR NOT STARTED "*) why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"; echo "ship: PAIR NOT STARTED (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
       "") ;;
       *) step "$line" ;;
     esac
