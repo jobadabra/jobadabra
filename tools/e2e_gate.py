@@ -15,7 +15,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Why (3 Nov 2026, owner: "Both (Recommended)"): every gh call of the release path goes through tools/gh_retry.py, one retry on GitHub's 502/503/504 only.
+# Why (3 Nov 2026, owner: "Both (Recommended)"): every gh call of the release path goes through tools/gh_retry.py, one retry on GitHub's 500/502/503/504 only.
 _spec = importlib.util.spec_from_file_location('gh_retry', Path(__file__).resolve().parent / 'gh_retry.py')
 gh_retry = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gh_retry)

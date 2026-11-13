@@ -10,7 +10,7 @@ tag=${1:?usage: tools/release-checks.sh [--wait-ci|--after-ci] <tag> <sha>}; ref
 . "$(dirname "${BASH_SOURCE[0]}")/repos.sh"
 repo=${GITHUB_REPOSITORY:-$JOBADABRA_PUBLIC_REPO}
 # Why (3 Nov 2026, owner: "Both (Recommended)"; beta 41639241372's Windows release died on GitHub's "504 Gateway Timeout"): every gh call goes through
-# tools/gh_retry.py, the one helper gitar-label.mjs uses too: a GitHub 502/503/504 gets one more try after ~10 s; anything else, or a second failure, still fails here.
+# tools/gh_retry.py, the one helper gitar-label.mjs uses too: a GitHub 500/502/503/504 gets one more try after ~10 s; anything else, or a second failure, still fails here.
 gh() { python3 "$(dirname "${BASH_SOURCE[0]}")/gh_retry.py" "$@"; }
 
 # Why (1 Nov 2026, owner: "why Windows is waiting on Mac?", "the blocking of the main's CI"): the wait below runs once, in desktop.yml's "Main's CI" job started with the beta (--wait-ci),

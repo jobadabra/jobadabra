@@ -34,7 +34,7 @@ export function settle(read, {tries = 6, pause = () => {}} = {}) {
   return prs;
 }
 
-// Why (3 Nov 2026, owner chose "One retry on GitHub errors"): gh goes through tools/gh_retry.py like gitar-label.mjs: one retry on GitHub's 502/503/504 only.
+// Why (3 Nov 2026, owner chose "One retry on GitHub errors"): gh goes through tools/gh_retry.py like gitar-label.mjs: one retry on GitHub's 500/502/503/504 only.
 const gh = (...args) => execFileSync('python3', [fileURLToPath(new URL('./gh_retry.py', import.meta.url)), ...args], {encoding: 'utf8'});
 
 /** Applies one edit: an add goes through gitar-label's addLabel (the label is created only when gh says the repo lacks it); a removal never creates it. */

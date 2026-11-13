@@ -269,12 +269,12 @@ if __name__ == '__main__':
 
 
 class PrSuitesDispatchInputs(unittest.TestCase):
-    """Every input main-steps.yml passes with `gh workflow run e2e.yml -f name=` is declared under e2e.yml's workflow_dispatch (a workflow_call-only input is refused with HTTP 422, #1754).
+    """Every input main-steps.yml passes with `workflow run e2e.yml -f name=` (through tools/gh_retry.py since 13 Nov 2026) is declared under e2e.yml's workflow_dispatch (a workflow_call-only input is refused with HTTP 422, #1754).
     Why (1 Nov 2026, owner: "No e2e on PRs"): no PR runs a journey; the dispatchers are the after-merge planner and, since 2 Nov 2026, the PR check of a PR's own changed steps (below)."""
 
     def test_dispatch_declares_what_main_steps_passes(self):
         root = pathlib.Path(__file__).resolve().parents[3] / '.github' / 'workflows'
-        lines = re.findall(r'gh workflow run e2e\.yml[^\n]*', (root / 'main-steps.yml').read_text())
+        lines = re.findall(r'workflow run e2e\.yml[^\n]*', (root / 'main-steps.yml').read_text())
         passed = {flag for line in lines for flag in re.findall(r'-f (\w+)=', line)}
         self.assertTrue(passed, 'main-steps.yml no longer dispatches e2e.yml?')
         text = (root / 'e2e.yml').read_text()
@@ -285,7 +285,7 @@ class PrSuitesDispatchInputs(unittest.TestCase):
     def test_dispatch_declares_what_pr_e2e_steps_passes(self):
         """The PR check (2 Nov 2026, owner: "the only exception when we run e2e on the PR level") dispatches e2e.yml with pr_suites and pr_steps: both must be workflow_dispatch inputs."""
         root = pathlib.Path(__file__).resolve().parents[3] / '.github' / 'workflows'
-        lines = re.findall(r'gh workflow run e2e\.yml[^\n]*', (root / 'pr-e2e-steps.yml').read_text())
+        lines = re.findall(r'workflow run e2e\.yml[^\n]*', (root / 'pr-e2e-steps.yml').read_text())
         passed = {flag for line in lines for flag in re.findall(r'-f (\w+)=', line)}
         self.assertEqual(passed, {'pr_suites', 'pr_steps'})
         text = (root / 'e2e.yml').read_text()
