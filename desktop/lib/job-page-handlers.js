@@ -12,7 +12,7 @@ import * as store from './store/index.js';
 import {KIT_SECTION, kitOf} from './store/extension-store.js';
 import {jobFiles} from './store/files.js';
 import {demoPath} from './demo.js';
-import {isFresh, unpack} from './apply-readiness.js';
+import {rowCheck} from './apply-readiness.js';
 
 // The page in three reads, so the drawer can draw as each lands (renderer/pages/job-panel.js): the CORE (app, match, today's places: what the
 // header and the Overview need), the REST (sections, events, interviews, in one engine call that reads the page's blocks once, src/stores/job_page.py)
@@ -25,7 +25,8 @@ export async function jobCore(storage, url, {call = engine.call, links = false, 
   // With a match: today's places, so the drawer can say a score used older ones (lib/places-now.js); failing to ask is not failing the page.
   const places = match ? {placesNow: await placesNow(storage).catch(() => '')} : {};
   // check: the job's stored apply check (lib/apply-readiness.js, the one owner of its format) while it is this posting's, so the header shows "Account needed" after a restart too.
-  const stored = unpack(app?.apply_readiness), check = isFresh(stored, {posted_at: match?.posted || app?.posted || ''}) ? stored.read : null;
+  // Why (#3997 review): the list's one rule (rowCheck) with the posting date the list row carries (src/desktop_store_jobs.py: the match's, else the record's), so the header never disagrees with its row.
+  const check = rowCheck({apply_readiness: app?.apply_readiness, posted_at: match?.posted || app?.posted || ''});
   return {app: app?.id ? app : null, match: match || null, links, check, ...places};
 }
 

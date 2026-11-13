@@ -95,4 +95,8 @@ test('the core carries the stored apply check while it is this posting\'s, else 
   assert.equal((await core('2026-11-10')).check.login, true);
   assert.equal((await core('2026-11-12')).check, null, 'a newer posting: the old check is not shown');
   assert.equal((await jobCore({}, 'https://x/4', {call: fakeStore({id: 'a4', apply_readiness: 'not ours'}).call})).check, null);
+  // #3997 review: a job with no match uses the record's own posting date, as its list row does (src/desktop_store_jobs.py), so the header and the row agree.
+  const alone = await jobCore({}, 'https://x/5', {call: fakeStore({id: 'a5', posted: '2026-11-10', apply_readiness: stored}).call});
+  assert.equal(alone.check.login, true);
+  assert.equal(alone.check.stored, true, 'the same read rowCheck gives the list');
 });
