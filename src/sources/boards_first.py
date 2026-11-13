@@ -44,7 +44,7 @@ class Beside:
         read_budget.short(False)   # in the caller's thread, before the employer read takes its deadline
         self.search, self.groups, self.matched, self.done, self.shortened, self.failed = search, queue.SimpleQueue(), [], threading.Event(), False, False
         self.notify = None   # set by the thread that owns the job cache while it waits elsewhere (the first-jobs step's hub): called after each group
-        self.arrived = threading.Event()   # set by every group put: the owner thread's wait for the full board read wakes on it (boards_ahead.Ahead.wait)
+        self.arrived = threading.Event()   # Why (13 Nov 2026, eo): wakes the job-cache thread's wait for the full board read when a group lands (boards_ahead.Ahead.wait)
         end = read_budget.run_end()
         reads = [(self._known, None)] + ([(lambda _wait: self._listed(listed), slots.FIRST)] if listed else [])   # the slice's boards kept its FIRST level
         self.count, self.left = threading.Lock(), len(reads)
