@@ -10,9 +10,25 @@ def _slug(text):
     return urllib.parse.quote(re.sub(r'[\s_]+', '-', text.strip().lower()), safe='-')
 
 
+def _ascii(url):
+    """The same link with its own letters outside ASCII percent-encoded (UTF-8), and such a host in its IDNA form; an ASCII link is unchanged.
+    Invariant: placeholders, `%xx` already in the link and every ASCII character stay as they are."""
+    scheme, sep, rest = url.partition('://')
+    host, slash, tail = rest.partition('/')
+    if sep and not host.isascii():
+        try:
+            host = host.encode('idna').decode('ascii')
+        except UnicodeError:
+            pass   # left as it is: the read fails as before and says so
+    return scheme + sep + host + slash + re.sub(r'[^\x00-\x7f]+', lambda found: urllib.parse.quote(found.group()), tail)
+
+
 def forms(url, term, place=''):
     """The links to ask for this board search, in order: the plus form first (a board that works today is read as before), then, only when
     {role} or {place} sits in the link's path, the same link with those as slugs. Never more than two, never a different host or path."""
+    # Why (13 Nov 2026): a board's own link may hold local letters (a Cyrillic path); only the word and the place were encoded, so the
+    # read died on UnicodeEncodeError before asking the board, on every round.
+    url = _ascii(url)
     plus = url.replace('{role}', urllib.parse.quote_plus(term)).replace('{place}', urllib.parse.quote_plus(place))
     head, sep, tail = url.partition('?')
     if '{role}' not in head and '{place}' not in head:

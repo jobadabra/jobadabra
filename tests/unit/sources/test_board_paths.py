@@ -27,6 +27,19 @@ def missing(url, code=404):
 
 
 class Forms(unittest.TestCase):
+    def test_a_link_with_its_own_letters_outside_ascii_is_asked_in_ascii(self):
+        """Why (13 Nov 2026, benchmark run 43344553172, a driver in Sofia): a board whose own address holds Cyrillic letters answered
+        "page not read (UnicodeEncodeError)" on all four rounds, 0 jobs: only the search word and the place were encoded, not the link."""
+        links = board_paths.forms('https://path.example/работа-{role}/{place}?вид=всички&q={role}', 'шофьор на камион', 'софия')
+        for link in links:
+            link.encode('ascii')   # raises when a letter outside ASCII is left
+        self.assertEqual(links[0], 'https://path.example/%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%B0-%D1%88%D0%BE%D1%84%D1%8C%D0%BE%D1%80+%D0%BD%D0%B0+'
+                                   '%D0%BA%D0%B0%D0%BC%D0%B8%D0%BE%D0%BD/%D1%81%D0%BE%D1%84%D0%B8%D1%8F?%D0%B2%D0%B8%D0%B4=%D0%B2%D1%81%D0%B8%D1%87%D0%BA%D0%B8'
+                                   '&q=%D1%88%D0%BE%D1%84%D1%8C%D0%BE%D1%80+%D0%BD%D0%B0+%D0%BA%D0%B0%D0%BC%D0%B8%D0%BE%D0%BD')
+
+    def test_an_ascii_link_is_asked_as_before(self):
+        self.assertEqual(board_paths.forms('https://path.example/search?q={role}&x=a%20b', 'sales rep'), ['https://path.example/search?q=sales+rep&x=a%20b'])
+
     def test_a_path_placeholder_has_a_slug_form_after_the_plus_form(self):
         self.assertEqual(board_paths.forms('https://path.example/jobs/{role}/{place}', 'Sales Representative', 'New York'),
                          ['https://path.example/jobs/Sales+Representative/New+York', 'https://path.example/jobs/sales-representative/new-york'])
