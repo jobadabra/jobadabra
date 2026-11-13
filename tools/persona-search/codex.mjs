@@ -98,9 +98,15 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
 /** The --proof line: which AI answered (engine / model / what it fell back from), never "Codex" when Claude did (Gitar on #2947). */
 export const proofLine = answer => `AI broker answered (${aiLine(answer) || answer.model || answer.tier}); no API key used`;
 
+/**
+ * The --proof request: one tiny call on the run's chain (checkChain), the same pin timedRelay puts on every search call.
+ * Why (13 Nov 2026, Gitar on #3971): the proof asked with no engine, so it showed the broker's default chain and could neither prove nor refute the AI a run pinned.
+ */
+export const proofRequest = (env = process.env) => ({model: 'claude-haiku-5-5', max_tokens: 8, messages: [{role: 'user', content: 'Answer ok.'}], ...checkChain(env)});
+
 async function main() {
   if (process.argv[2] === '--proof') {
-    const answer = await askBroker({model: 'claude-haiku-5-5', max_tokens: 8, messages: [{role: 'user', content: 'Answer ok.'}]});
+    const answer = await askBroker(proofRequest());
     if (!answer.ok) throw new Error(`AI broker: ${answer.status}: ${answer.detail}`);
     console.log(proofLine(answer));
     return 0;

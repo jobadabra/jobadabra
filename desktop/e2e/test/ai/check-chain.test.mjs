@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {checkChain, timedRelay} from '../../../../tools/persona-search/codex.mjs';
+import {checkChain, proofRequest, timedRelay} from '../../../../tools/persona-search/codex.mjs';
 import {toBrokerCall} from '../../lib/broker-client.mjs';
 
 const ASK = {model: 'claude-haiku-5-5', max_tokens: 16, messages: [{role: 'user', content: 'Is this job in Lyon?'}]};
@@ -34,6 +34,13 @@ test('a caller that names no chain keeps the broker chain, as before; one engine
   for (const wire of (await run({})).wires) assert.deepEqual([wire.engine, wire.subs, wire.only], [undefined, undefined, undefined]);
   assert.deepEqual(checkChain({JOBADABRA_CHECK_CHAIN: ' claude '}), {engine: 'claude', only: true});
   assert.deepEqual(checkChain({JOBADABRA_CHECK_CHAIN: 'claude, codex'}), {engine: 'claude', subs: true});
+});
+
+test('the --proof call rides the run\'s chain, so it proves the AI the search will use, not the broker\'s default (Gitar on #3971)', () => {
+  const wire = env => toBrokerCall(proofRequest(env));
+  assert.deepEqual([wire({JOBADABRA_CHECK_CHAIN: 'claude'}).engine, wire({JOBADABRA_CHECK_CHAIN: 'claude'}).only], ['claude', true], 'claude alone: only');
+  assert.deepEqual([wire({JOBADABRA_CHECK_CHAIN: 'codex,claude'}).engine, wire({JOBADABRA_CHECK_CHAIN: 'codex,claude'}).subs], ['codex', true]);
+  assert.equal(wire({}).engine, undefined, 'positive control: no chain, no pin, as before');
 });
 
 test('a chain the broker does not know stops the run before any call, never a guess (Free AI is never a replacement)', () => {
