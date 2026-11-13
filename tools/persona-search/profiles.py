@@ -28,9 +28,10 @@ NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts 
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')
 RAN_OUT = re.compile(r'Time is up \([^)]*\) for ([^:]+):|No time left in this refresh for these: \d+ (\w+)')
 ENGINE = re.compile(r'^AI: (\S+)(?: / (\S+))?', re.M)
-RELAY_WAIT = re.compile(r'^relay: \S+ total \d+ broker \S+ waited (\d+)', re.M)   # codex.mjs: one line per AI call; waited = ms the call spent outside the broker's answer
 # Why (13 Nov 2026, sa, after run 43354770712: b02 0 and c06 1 right jobs with waits p90 56-58 s, Cluj 18-21 on the Mac): a profile whose search waited this long on the broker ran
 # out of time for job boards; its count measures the broker's queue, not the search, so the row says "not measured (waits p90 N s)" and is never counted as 0 or below target.
+# The relay lines are parsed by gate.RELAY_WAIT (one parser). The statistic differs from the night's gate.STARVED_WAIT_S (45 s, the longest wait of a press) on purpose: a profile row
+# is judged on its usual wait (p90, nearest rank), sa's rule for these runs.
 WAIT_P90_LIMIT_S = 20
 
 
@@ -116,9 +117,11 @@ def target(relevant, eures):
 
 
 def waits_p90_s(log):
-    """The search's broker waits p90 in whole seconds, from the relay lines of run.log; None when the log has none."""
-    waits = sorted(int(m) for m in RELAY_WAIT.findall(log))
-    return round(waits[min(len(waits) - 1, int(0.9 * len(waits)))] / 1000) if waits else None
+    """The search's broker waits p90 in whole seconds (nearest rank: the ceil(0.9 n)-th smallest), from run.log's relay lines via gate.RELAY_WAIT; None when it has none."""
+    sys.path.insert(0, str(HERE))
+    import gate  # noqa: PLC0415
+    waits = sorted(int(m) for m in gate.RELAY_WAIT.findall(log))
+    return round(waits[math.ceil(0.9 * len(waits)) - 1] / 1000) if waits else None
 
 
 def _when(text):
@@ -178,32 +181,36 @@ def table(folder, out):
     (Path(out).parent / 'rows.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
 
 
-def tell(rows_path, url, out):
-    """The run's one Telegram text (sent by desktop/e2e/tell-owner.mjs --event search-profiles): the owner's goal first, how many got 0 right jobs, then how many meet N >= X, then the link.
-    Why (13 Nov 2026, sa for the owner: "<k> of 30 got 0 right jobs", then "<m> meet target (N >= X)", then the link): a row not run or not measured is counted apart, never as 0."""
+def tell(rows_path, url, out, profiles=None, outcome='success'):
+    """The run's one Telegram text (sent by desktop/e2e/tell-owner.mjs --event search-profiles): what happened to the run, how many got 0 right jobs, how many meet N >= X, the link.
+    Design (13 Nov 2026, the 3rd fix of this text: Gitar on #3945, the starved rows of #3968, mac-9a's cancelled run 43355710034):
+      the run is finished or cancelled (GitHub's result of the profile jobs, passed in as outcome; one owner);
+      each profile the run was asked for (profiles, the room job's list, never only the rows that came back) is exactly one of:
+        measured (N right jobs; meets / below / no X), not measured because the broker was too busy (waits p90 > 20 s), not run (held, cancelled, failed, no row).
+      Only measured rows are counted for "got 0" and "meet target"; every other profile is named in its group."""
     rows = json.loads(Path(rows_path).read_text(encoding='utf-8')) if Path(rows_path).exists() else []
+    seen = {r.get('id') for r in rows}
+    rows += [{'id': pid, 'not_run': 'no row'} for pid in (profiles or []) if pid not in seen]
     measured = [r for r in rows if 'relevant' in r]
     starved = [r for r in rows if r.get('starved')]
-    if not measured and starved:
-        lines = [f'🧪 Search profiles on CI · nothing measured: the broker was too busy for {len(starved)} of {len(rows)} (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved), url]
-        Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
-        return lines
-    if not measured:   # Why (13 Nov 2026, Gitar on #3945): "0 of 0 got 0 right jobs" reads as a clean run; nothing measured is said as such
-        lines = [f'🧪 Search profiles on CI · nothing measured ({len(rows)} profile{"" if len(rows) == 1 else "s"}: ' + (', '.join(r.get('id', '?') for r in rows) or 'no rows') + ')', url]
-        Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
-        return lines
-    zero = sum(r['relevant'] == 0 for r in measured)
-    meets = sum(r.get('target') == 'meets' for r in measured)
-    judged = sum(r.get('target') in ('meets', 'below') for r in measured)
-    lines = [f'🧪 Search profiles on CI · {len(measured)} of {len(rows)} measured',
-             f'{zero} of {len(measured)} got 0 right jobs',
-             f'{meets} of {judged} meet target (N ≥ X, X = EURES)' + (f' · {len(measured) - judged} without an X' if len(measured) > judged else '')]
-    starved = [r for r in rows if r.get('starved')]
-    if starved:
-        lines.append(f'{len(starved)} not measured, the broker was too busy (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved))
     other = [r for r in rows if 'relevant' not in r and not r.get('starved')]
-    if other:
-        lines.append(f'{len(other)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in other))
+    apart = ([f'{len(starved)} not measured, the broker was too busy (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved)] if starved else []) + \
+            ([f'{len(other)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in other)] if other else [])
+    n = f'{len(rows)} profile{"" if len(rows) == 1 else "s"}'
+    if outcome == 'cancelled':   # Why (13 Nov 2026, mac-9a for the owner): run 43355710034 was cancelled at 02:58Z and the text read "nothing measured (6 profiles)", 6 of 27, never "cancelled"
+        head = f'⚪ Search profiles on CI · cancelled on GitHub ' + (f'before measuring ({n})' if not measured else f'after {len(measured)} of {len(rows)} measured')
+    elif not measured:   # Why (13 Nov 2026, Gitar on #3945): "0 of 0 got 0 right jobs" reads as a clean run
+        head = f'🧪 Search profiles on CI · nothing measured ({n})'
+    else:
+        head = f'🧪 Search profiles on CI · {len(measured)} of {len(rows)} measured'
+    lines = [head]
+    if measured:
+        zero = sum(r['relevant'] == 0 for r in measured)
+        meets = sum(r.get('target') == 'meets' for r in measured)
+        judged = sum(r.get('target') in ('meets', 'below') for r in measured)
+        lines += [f'{zero} of {len(measured)} got 0 right jobs',
+                  f'{meets} of {judged} meet target (N ≥ X, X = EURES)' + (f' · {len(measured) - judged} without an X' if len(measured) > judged else '')]
+    lines += (apart or ['no rows']) if not measured and outcome != 'cancelled' else apart
     lines.append(url)
     Path(out).write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return lines
@@ -232,7 +239,7 @@ def main(argv):
     elif command == 'table':
         table(*args[:2])
     elif command == 'tell':
-        print('\n'.join(tell(*args[:3])))
+        print('\n'.join(tell(*args[:3], json.loads(args[3]) if len(args) > 3 and args[3] else None, args[4] if len(args) > 4 else 'success')))
     else:
         raise SystemExit(__doc__)
 

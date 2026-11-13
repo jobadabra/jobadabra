@@ -195,8 +195,10 @@ jobs:
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PROFILES: ${{ needs.room.outputs.profiles }}   # every profile asked for: one that never uploaded a row is named "not run", never left out (mac-9a, run 43355710034)
+          OUTCOME: ${{ needs.profile.result }}   # cancelled = said as cancelled, never "nothing measured"
         run: |
-          python3 tools/persona-search/profiles.py tell results/rows.json "$RUN_URL" "$RUNNER_TEMP/message.txt" || true   # never red (Gitar on #3945)
+          python3 tools/persona-search/profiles.py tell results/rows.json "$RUN_URL" "$RUNNER_TEMP/message.txt" "$PROFILES" "$OUTCOME" || true   # never red (Gitar on #3945)
           node desktop/e2e/tell-owner.mjs --event search-profiles --file "$RUNNER_TEMP/message.txt" || true
       - uses: actions/upload-artifact@v6
         with:
