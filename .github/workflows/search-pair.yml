@@ -4,7 +4,7 @@ name: CI · Search pair (a PR's before/after, by hand)
 # the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
 # Why (13 Nov 2026, owner: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a
 # before/after"; asked via AskUserQuestion by sa: "Self-serve workflow + tighter check (Recommended)"): before/after searches went through one session's queue.
-# Its turn: the `turn` job waits (up to 55 min) until no night, press tape or profile round holds the broker and /health shows room (tools/persona-search/pair.py turn);
+# Its turn: the `turn` job waits (up to 55 min) until no press tape holds the broker and /health shows room (tools/persona-search/pair.py turn; a night or profile round runs beside it);
 # pairs of several PRs run side by side while there is room (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
 # Never a night, never red on the PR, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
 #   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
