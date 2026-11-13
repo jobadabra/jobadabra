@@ -95,6 +95,8 @@ class DiscoveryLayoutTest(unittest.TestCase):
         published = {fact['host']: fact.get('layout') for fact in scout_boards.facts(self.db)}
         self.assertEqual(published, {'one.example': {'kind': 'links', 'prefix': '/job'}, 'mixed.example': None})
         self.assertIn('a layout for 1 of the 2 kept boards', self.lines[0])
+        self.assertIn('one.example 4/4 (layout learned: links /job)', self.lines[0], 'each kept board says its layout, or why it has none (sa, 13 Nov 2026)')
+        self.assertIn('mixed.example 4/4 (no layout: no one shape reads its job cards)', self.lines[0])
 
     def test_the_published_layout_reads_the_board_with_no_link_question(self):
         """The whole loop: what discovery publishes, served to an install (jobadabra-web api/employers.js boardFactsOf keeps it), costs no question."""
@@ -109,6 +111,7 @@ class DiscoveryLayoutTest(unittest.TestCase):
         self.run_pass({'one.example': 'one'})
         self.assertEqual(scout_boards.facts(self.db)[0].get('layout'), {'kind': 'links', 'prefix': '/job'})
         self.assertFalse([path for _, path in self.asked if path.startswith('/job/')], 'discovery itself replays the layout it kept')
+        self.assertIn('one.example 4/4 (layout held: links /job)', self.lines[0])
 
     def test_a_stale_layout_is_replaced_by_the_one_this_read_learns(self):
         self.keep('one.example', {'kind': 'links', 'prefix': '/vacancy'})
@@ -119,12 +122,18 @@ class DiscoveryLayoutTest(unittest.TestCase):
         self.keep('mixed.example', {'kind': 'links', 'prefix': '/vacancy'})
         self.run_pass({'mixed.example': 'mixed'})
         self.assertNotIn('layout', scout_boards.facts(self.db)[0])
+        self.assertIn('(no layout: its kept one read nothing, none learned)', self.lines[0])
 
     def test_a_read_that_never_tested_the_layout_keeps_it(self):
         """sa, 13 Nov 2026: a pass that learns no layout must not blank one an earlier pass learned (the same REPLACE that lost families)."""
         self.keep('listed.example', {'kind': 'links', 'prefix': '/job'})
         self.run_pass({'listed.example': 'jsonld'})
         self.assertEqual(scout_boards.facts(self.db)[0].get('layout'), {'kind': 'links', 'prefix': '/job'})
+        self.assertIn('(layout kept, not tested on this read: links /job)', self.lines[0])
+
+    def test_a_board_whose_jobs_are_json_ld_says_so(self):
+        self.run_pass({'listed.example': 'jsonld'})
+        self.assertIn('(no layout: its jobs are JSON-LD, read with no question)', self.lines[0])
 
     def test_a_stored_layout_the_engine_would_not_replay_is_never_published(self):
         scout_boards.ensure(self.db)

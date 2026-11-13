@@ -234,15 +234,30 @@ def measure(board, local, country, families, browser=False, layout=None):
             **({'browser': True} if browser else {}), **({'layout': layout} if layout else {})}
 
 
-def _layout(db, host, country):
-    """The layout a pass kept for this board in this country, in its checked shape, or None."""
+def _checked(text):
+    """A stored layout's text in its checked page_recipes shape, or None (what the pass replays and the publish sends)."""
     from .sources import page_recipes
-    row = db.execute('SELECT layout FROM scout_board_facts WHERE host = ? AND country = ?', (host, country)).fetchone()
     try:
-        recipe = json.loads(row[0]) if row and row[0] else None
+        recipe = json.loads(text) if text else None
     except ValueError:
         return None
     return recipe if page_recipes.valid(recipe) else None
+
+
+def _layout(db, host, country):
+    """The layout a pass kept for this board in this country, in its checked shape, or None."""
+    row = db.execute('SELECT layout FROM scout_board_facts WHERE host = ? AND country = ?', (host, country)).fetchone()
+    return _checked(row[0]) if row else None
+
+
+def _said(layout, kept, found, notes, browsed):
+    """A kept board's layout for the pass line. Why (13 Nov 2026, sa): a run must show which boards learned no layout, and why, one line each."""
+    if layout:
+        how = 'kept, not tested on this read' if found is None else 'held' if layout == kept else 'learned'
+        return f"layout {how}: {layout['kind']} {layout.get('prefix') or layout.get('path') or layout.get('tag')}"
+    if found is False:
+        return 'no layout: its kept one read nothing, none learned'
+    return 'no layout: ' + (notes.get('why') or ('read in the browser' if browsed else 'none learned on this read'))
 
 
 def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=None, google=None, country_of=None, kinds=None, browser=None, families=None, again=(), words=None, homes=None):  # noqa: C901 (Why (12 Nov 2026, gp): the browser read is one more step of the same loop)
@@ -314,7 +329,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                 found_layout = notes.get('layout')   # None: this read never tested a layout, the kept one stays; False: it was stale
                 fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
-                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why)
+                counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why
+                              + (f" ({_said(fact.get('layout'), kept_layout, found_layout, notes, browsed)})" if fact else ''))
                 if fact:
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
@@ -376,17 +392,9 @@ def _country_of(board, country):
 def facts(db, today=None):
     """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs, browser?, layout?}] (browser: true
     only; layout only in its checked shape: jobadabra-web api/employers.js boardFactsOf checks it again)."""
-    from .sources import page_recipes
     ensure(db)
-
-    def layout(text):
-        try:
-            recipe = json.loads(text) if text else None
-        except ValueError:
-            return None
-        return recipe if page_recipes.valid(recipe) else None
     cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
     return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs, **({'browser': True} if browser else {}),
-             **({'layout': layout(kept)} if layout(kept) else {})}
+             **({'layout': layout} if layout else {})}
             for host, country, url, families, jobs, browser, kept in db.execute(
-                'SELECT host, country, url, families, local_jobs, browser, layout FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]
+                'SELECT host, country, url, families, local_jobs, browser, layout FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL)) for layout in [_checked(kept)]]
