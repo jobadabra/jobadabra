@@ -3,22 +3,22 @@
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
 // Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
 // verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
-// Design (7 Nov 2026, gl; owner: "One state, one owner: the label = what Gitar's latest comment says"; 5 fixes in 8 days: 018e8727, bfab72ed, #3091, #3143, #3191, then this):
-//   States: <verdict> (changes requested | approved with suggestions | approved: Gitar judged the newest push) | reviewing (Gitar has a check run on the head, or was just asked) |
-//   <verdict> · not re-reviewed (Gitar's LAST verdict, given on an earlier push; the same suffix for every verdict) | not started (Gitar has given no verdict on any push of the PR),
-//   plus the gray "working" mark a session sets.
-//   The label is Gitar's last verdict (13 Nov 2026, owner, asked via AskUserQuestion: "Last verdict + not re-reviewed (Recommended)": "Same rule for every verdict, so one case less in the code, not one more";
-//   the 3rd label report that day: benchmarks #38, web #635 red kept, #4026 approved with suggestions read "not started"). The special case for a red verdict is gone.
-//   A head that only merged the base branch in, own diff byte-identical, keeps the verdict of the change before it (12 Nov 2026, owner: "Keep the verdict (Recommended)"; ownHeadTime()).
-//   A verdict is the head's own only when Gitar's check ran on that head (13 Nov 2026, gl2; wantedLabel()): an edit of its comment for a thread reply is not a review, so it reads "· not re-reviewed".
-//   One label per push (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"; 4th fix in 7 days after #3785, #3790, #3822): the PR holds ONE Gitar label, about the newest push.
-//   A verdict of an older push is never shown plain and never beside a second mark. "reviewing" starts the moment someone asks ("Gitar review" comment newer than the head and than the verdict, under
-//   ASK_FRESH_MS old, not refused by Gitar's "wait about N minutes" reply) or Gitar has a check run on the head; it ends at the verdict. Pure owner: wantedLabels().
-//   Owner: syncOnce() below, a pure function of Gitar's newest "Code Review" comment, the head's push time and the PR's labels. Nothing else decides a label.
+// Design (13 Nov 2026, gl4; owner, asked via AskUserQuestion: "Simplify to one signal (Recommended)": "the label reads only Gitar's check run on the head. Running = 'reviewing'; done = the verdict Gitar wrote
+//   after that run started; no run = last verdict + '· not re-reviewed' (or 'not started'). This deletes the merge-walk, the ask-detection and its 15-minute timer instead of adding a case."). The symptom of
+//   benchmarks #38 ("reviewing" beside ✅ Approved) came back on #4031 after 10 fix PRs in 10 days (#3191, #3513, #3785, #3790, #3822, #3873, #3890, #4020, #4025, #4032), each adding a second way to decide
+//   "did Gitar look at this head": the head's run (reviewing), a walk to the commit before a merge of main (the verdict), a "Gitar review" comment and its timer (reviewing). Two of them disagreed on #4031.
+//   One signal: Gitar's check run on the head commit: none | running | completed (startedAt). One owner: wantedLabels(), a pure function of that run, the verdict of Gitar's newest "Code Review" comment (its
+//   kind and last edit) and the gray mark. States:
+//     run running ......................................... Gitar: reviewing
+//     run completed, verdict edited at or after its start .. <verdict> (changes requested | approved with suggestions | approved)
+//     no run on the head, or a verdict older than the run .. <last verdict> · not re-reviewed (the same suffix for every verdict; owner, 13 Nov 2026: "Last verdict + not re-reviewed (Recommended)")
+//     no verdict on any push ............................... Gitar: not started
+//   plus the gray "Working on PR comments" mark a session sets (a push clears it; Gitar's approval of the head clears it) and the conflict label (tools/conflict-label.mjs).
+//   Trade-off, said plainly: a merge of main into the branch is a new head, so with Gitar's automatic reviews paused it reads "<last verdict> · not re-reviewed" until Gitar runs on it (12 Nov's "keep the
+//   verdict" for a merge of main is gone with the walk); sessions rebase instead of merging main in.
 //   Moments that run it (the table is in .github/workflows/pr-labels-shared.yml, the one workflow every repo of the org calls; owner, 13 Nov 2026: "One shared workflow"): a push, open or reopen of
 //   the PR, Gitar's review or new comment, Gitar's check starting or ending (`head <sha>`: Gitar closes a finding or approves by only EDITING its comment, which starts no event, and its check ends
 //   0-2 s after that edit), EVERY push to main (all open PRs), and jobadabra's ten-minute tick (app-core/src/scheduler.js), now only a safety net.
-//   Gone with it: the wait for Gitar's comment to catch up with its review (up to 2 minutes of re-reads, then a red run): a read that is a few seconds early is corrected by the next moment.
 //   Reads are one GraphQL call per PR; a label is written only when it differs (#2516: 151 runs an hour once spent the REST budget).
 // Usage (shared workflow .github/workflows/pr-labels-shared.yml): node tools/gitar-label.mjs <pr-number> | all | head <sha>
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY. No test file: a tool of our own, checked by running it (owner, 3 Nov 2026; #3078).
@@ -31,8 +31,8 @@ export const LABELS = {
   approved: {name: 'Gitar: approved', color: '0e8a16', description: 'Gitar fully approved the current head'},
 };
 // Gray, our side of the conversation (owner, 28 Oct 2026: "when we acknowledged and working on the feedback, a secondary label, a gray one"; "what's the latest status from Gitar and what's our current action").
-export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar was asked to review the newest push, or its check runs on it; no verdict yet'};
-// Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar has a check RUN on the head (an empty check suite exists on every push, so it proves nothing); no run = not reviewed: the last verdict with " · not re-reviewed", or "not started" when Gitar never gave one (13 Nov 2026, owner). Both marks sit beside the latest verdict (owner, 11 Nov: "the label is not reflecting gitar").
+export const WAITING = {name: 'Gitar: reviewing', color: '9ca3af', description: 'Gitar is reviewing the newest push: its check is running on it'};
+// Why (11 Nov 2026, owner: "the gh labels are not representing the Gitar review state"; #3779, #3781, #3780 read "reviewing" for 7+ min while Gitar had not started: it reviews a PR when it opens, not a push to an open PR): "reviewing" is true only while Gitar's check RUN on the head is running (an empty check suite exists on every push, so it proves nothing; 13 Nov 2026, gl4: a run that has ended is no longer "reviewing"); no run = not reviewed: the last verdict with " · not re-reviewed", or "not started" when Gitar never gave one (13 Nov 2026, owner).
 export const NOT_STARTED = {name: 'Gitar: not started', color: 'f97316', description: 'Gitar has given no verdict on this PR yet; one "Gitar review" comment starts it'};
 // Why (13 Nov 2026, owner: "Last verdict + not re-reviewed (Recommended)"; web #635 red hidden by "not started", #4026 "approved with suggestions" hidden the same way; Gitar had locked those PRs after the sessions' thread replies, so no re-review could be asked): the last verdict stays visible, with this suffix, until Gitar judges the new push. It replaces 28 Oct's "an old approval never stays green": the suffix says the verdict is old.
 export const NOT_RE_REVIEWED = ' · not re-reviewed';
@@ -52,16 +52,6 @@ export function verdictKind(body) {
   return 'changes';   // Why (28 Oct 2026): an unknown Code Review state is not an approval; red is the safe side
 }
 
-// Why (13 Nov 2026, coordinator gl2; real case #4020: the fix push had no Gitar run, the session's thread replies made Gitar EDIT its old dashboard comment, and the label and ship-watch's peek read it as the head's verdict, so nobody asked for a review):
-//   an edit of Gitar's comment proves nothing about the head; only Gitar's check run on the head does. The same rule as "reviewing" (a run exists). Cost, measured on 39 approved PRs of 13 Nov: 4 (10%) had no run on the final head (a
-//   one-line follow-up pushed while the review ran); they now read "<verdict> · not re-reviewed" (13 Nov 2026, owner: "Last verdict + not re-reviewed"; first "not started"), and ship-watch asks Gitar once for that head, as it does for any head with no run (it keeps a head only on a plain verdict name).
-/** The label name to hold: Gitar's verdict if its comment was written at or after the head commit AND Gitar's check ran on the head (`ranOnHead`), else null (a stale approval never stays green). */
-export function wantedLabel(body, commentUpdatedAt, headCommittedAt, ranOnHead) {
-  const kind = verdictKind(body);
-  if (!ranOnHead || !kind || !(Date.parse(commentUpdatedAt) >= Date.parse(headCommittedAt))) return null;
-  return LABELS[kind].name;
-}
-
 // Why (3 Nov 2026, owner chose "One retry on GitHub errors"): every gh call goes through tools/gh_retry.py, shared with the release checks: GitHub's own
 // 500/502/503/504 gets one more try after ~10 s; a second failure and any other error still throw, so a failure stays red (#2516).
 const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
@@ -75,57 +65,29 @@ function headTime(repo, sha, run = gh) {
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
-/** True when Gitar has a check RUN on the head (REST path). Why (11 Nov 2026, owner: "why the label is not right?"): GitHub queues an empty check SUITE for every installed app on each push, so a Gitar suite exists even when Gitar never starts; only a run proves it started. Read from the suites (one per app, so no 100-run cap) and match the app slug only, as the GraphQL read does (Gitar, #3790). */
-export function gitarOnHead(repo, sha, run = gh) {
-  return JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.latest_check_runs_count ?? 0) > 0);
+/** Gitar's newest check RUN on the head, `{running, startedAt}`, or null when it has none (REST path: the head's suites, Gitar's by app slug, then its runs). Why (11 Nov 2026, owner: "why the label is not
+ * right?"): GitHub queues an empty check SUITE for every installed app on each push, so a Gitar suite exists even when Gitar never starts; only a run proves it started. Matched by the app slug only, as the
+ * GraphQL read does (Gitar, #3790); read per suite, so a head with 90 other runs has no 100-run cap. */
+export function gitarRunOnHead(repo, sha, run = gh) {
+  const suites = JSON.parse(run('api', `repos/${repo}/commits/${sha}/check-suites?per_page=100`)).check_suites.filter(c => /gitar/i.test(c.app?.slug || '') && (c.latest_check_runs_count ?? 0) > 0);
+  return newestRun(suites.flatMap(c => JSON.parse(run('api', `repos/${repo}/check-suites/${c.id}/check-runs`)).check_runs.map(r => ({status: r.status.toUpperCase(), startedAt: r.started_at}))));
 }
 
-/** True when two GitHub compare file lists hold the same own change: the same files, each with the same status and the same added and removed lines, byte for byte
- * (blob sha when GitHub sends no patch). Line numbers and context lines are left out: #3886's merge of main moved found_boards.py's hunks by one line and nothing else. */
-export function sameOwnChange(before, after) {
-  const own = patch => patch.split('\n').filter(l => /^[+-]/.test(l) && !/^(\+\+\+|---) /.test(l)).join('\n');
-  const key = f => `${f.filename}\0${f.status}\0${f.patch == null ? f.sha : own(f.patch)}`;
-  const a = before.map(key).sort(), b = after.map(key).sort();
-  return a.length === b.length && a.every((k, i) => k === b[i]);
+/** The newest of Gitar's check runs on a head, `{running, startedAt}` (running = any run not completed; startedAt = the newest start), or null when there is none. */
+export function newestRun(runs) {
+  const some = runs.filter(Boolean);
+  if (!some.length) return null;
+  return {running: some.some(r => r.status !== 'COMPLETED'), startedAt: some.map(r => r.startedAt).filter(Boolean).sort().at(-1) || null};
 }
 
-// Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886 approved at 13:05, merged main at 13:10, read "not started", Gitar refused the
-//   re-ask for 30 min): a head that only merged the base branch in, the PR's own diff byte-identical, is not a new change to review. Up to 3 such merges are walked back.
-const COMPARE_CAP = 300;   // GitHub's compare lists at most 300 files: a list that long may be cut, so it never counts as the same change
-/** The PR's own head, `{sha, time}`, when the head (`{sha, parents}`) only merged `base` in (the commit before the merges and its push time), else null (the head itself counts). Own diff before: compare
- * theirs...mine (from their merge base to the branch's previous tip); after: theirs...head (from the merged base commit to the head). */
-export function ownHeadTime(repo, head, base, run = gh) {
-  let sha = head.sha, parents = head.parents;
-  for (let i = 0; i < 3 && parents?.length === 2; i++) {
-    const [mine, theirs] = parents;
-    if (!['behind', 'identical'].includes(JSON.parse(run('api', `repos/${repo}/compare/${base}...${theirs}`)).status)) break;   // theirs is not in the base branch
-    const files = to => JSON.parse(run('api', `repos/${repo}/compare/${theirs}...${to}`)).files || [];
-    const before = files(mine), after = files(sha);
-    if (before.length >= COMPARE_CAP || !sameOwnChange(before, after)) break;
-    sha = mine; parents = JSON.parse(run('api', `repos/${repo}/commits/${mine}`)).parents.map(p => p.sha);
-  }
-  return sha === head.sha ? null : {sha, time: headTime(repo, sha, run)};
-}
-
-// Why (12 Nov 2026, #3870 and #3859): a "Gitar review" ask is answered in ~1 min; past 15 min with no verdict and no Gitar run it was lost, so the label says "not started" and the watcher may ask again.
-export const ASK_FRESH_MS = 15 * 60 * 1000;
-const ASK = /^\s*gitar review\b/i;
-const REFUSED = /wait about \d+ minutes/i;   // Gitar's rate-limit reply: the ask before it starts nothing
-
-/** When someone last asked Gitar to review ("Gitar review" comment), or null when there is no ask or Gitar refused it with a later "wait about N minutes". `comments`: {login, body, createdAt}. */
-export function askedAt(comments) {
-  const at = c => Date.parse(c.createdAt);
-  const ask = comments.filter(c => !/^gitar-bot/.test(c.login) && ASK.test(c.body || '')).sort((a, b) => at(a) - at(b)).at(-1);
-  if (!ask) return null;
-  return comments.some(c => /^gitar-bot/.test(c.login) && REFUSED.test(c.body || '') && at(c) > at(ask)) ? null : ask.createdAt;
-}
-
-/** The labels a PR should hold: ONE Gitar label for the newest push, then "working" when it applies; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, staleKind = null, workingSince, headTime, verdictTime, gitarOnHead = true, asked = null, now = Date.now()}) {
+/** The labels a PR should hold: ONE Gitar label for the newest push, then "working" when it applies. `kind`: the verdict of Gitar's newest Code Review comment (or null), `verdictTime` its last edit; `run`: Gitar's
+ * check run on the head (`{running, startedAt}` or null). "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved the head: a push or a later approval ends it
+ * (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
+export function wantedLabels({kind = null, verdictTime = null, run = null, workingSince = null, headTime}) {
   const t = Date.parse;
-  const askPending = !!asked && t(asked) >= t(headTime) && !(t(verdictTime) >= t(asked)) && now - t(asked) < ASK_FRESH_MS;
-  const names = [askPending ? WAITING.name : verdict || (gitarOnHead ? WAITING.name : staleKind ? OLD_LABELS[staleKind].name : NOT_STARTED.name)];
-  if (workingSince && t(workingSince) >= t(headTime) && (verdict !== LABELS.approved.name || t(workingSince) > t(verdictTime))) names.push(WORKING.name);
+  const current = !!run && !run.running && !!kind && (run.startedAt == null || t(verdictTime) >= t(run.startedAt));   // the verdict Gitar wrote at or after the head's run started
+  const names = [run?.running ? WAITING.name : current ? LABELS[kind].name : kind ? OLD_LABELS[kind].name : NOT_STARTED.name];
+  if (workingSince && t(workingSince) >= t(headTime) && !(current && kind === 'approved' && t(verdictTime) >= t(workingSince))) names.push(WORKING.name);
   return names;
 }
 
@@ -181,14 +143,14 @@ export function syncHead(repo, sha, run = gh) {
 }
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
-  state headRefOid baseRefName
+  state headRefOid
   comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body createdAt updatedAt } }
   labels(first: 30) { nodes { name } }
   timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
-  commits(last: 1) { nodes { commit { committedDate parents(first: 2) { nodes { oid } } checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 1) { totalCount } } } } } }
+  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt app { slug } checkRuns(first: 20) { nodes { status startedAt } } } } } } }
 } } }`;
 
-/** The PR's state, Gitar's newest Code Review comment, head time, labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit
+/** The PR's state, Gitar's newest Code Review comment, Gitar's check run on the head, head time (for the gray mark), labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit
  * before the 100 newest comments (the caller then reads page by page). Why (29 Oct 2026, api-quota): six REST calls per label run, ~125 runs an hour, were over half
  * of Actions' 1,000-an-hour GITHUB_TOKEN quota; GraphQL is its own bucket and one call. Same head-time rule as headTime(): the later of commit date and first check suite. */
 export function fromGraphql(data) {
@@ -203,13 +165,12 @@ export function fromGraphql(data) {
   const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e?.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
   return {
     state: pr.state.toLowerCase(),
-    headSha: pr.headRefOid, base: pr.baseRefName, parents: (commit.parents?.nodes || []).filter(Boolean).map(p => p.oid),
+    headSha: pr.headRefOid,
     headTime: [commit.committedDate, suites.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
     review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
     labels,
     workingSince: workedAt,
-    gitarOnHead: suites.some(c => /gitar/i.test(c.app?.slug || '') && (c.checkRuns?.totalCount ?? 0) > 0),
-    asked: askedAt(pr.comments.nodes.filter(Boolean).map(c => ({login: c.author?.login || '', body: c.body, createdAt: c.createdAt}))),
+    run: newestRun(suites.filter(c => /gitar/i.test(c.app?.slug || '')).flatMap(c => c.checkRuns?.nodes || [])),
   };
 }
 
@@ -226,22 +187,17 @@ function readPrByRest(repo, pr, info) {
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headSha: info.head.sha, base: info.base.ref, parents: JSON.parse(gh('api', `repos/${repo}/commits/${info.head.sha}`)).parents.map(p => p.sha), headTime: headTime(repo, info.head.sha), gitarOnHead: gitarOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true,
-    asked: askedAt(comments.map(c => ({login: c.user.login, body: c.body, createdAt: c.created_at})))};
+  return {state: info.state, headSha: info.head.sha, headTime: headTime(repo, info.head.sha), run: gitarRunOnHead(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
 }
 
 const readLive = (repo, pr, run = gh) => readPr(repo, pr, run) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
 
-/** The read and the labels the PR should hold (exported: the cases play it with a fake gh); the head time is that of the PR's own change (ownHeadTime) when the head only merged the base branch in. */
+/** The read and the labels the PR should hold (exported: the cases play it with a fake gh): from Gitar's check run on the head, the verdict of its newest comment and the gray mark; nothing else. */
 export function wantedFor(repo, pr, run = gh) {
   const read = readLive(repo, pr, run);
   if (read.state !== 'open') return {read, wanted: null};
-  const own = read.parents?.length === 2 ? ownHeadTime(repo, {sha: read.headSha, parents: read.parents}, read.base, run) : null;
-  const at = own?.time || read.headTime;
-  const ran = own ? gitarOnHead(repo, own.sha, run) : read.gitarOnHead;   // a merge of main keeps the verdict of the commit before it: Gitar's run on THAT commit
-  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, at, ran) : null;
-  const staleKind = read.review && !verdict ? verdictKind(read.review.body) : null;   // Gitar's last verdict, on an earlier push, kept in view with "· not re-reviewed"
-  return {read, wanted: wantedLabels({verdict, staleKind, workingSince: read.workingSince, headTime: at, verdictTime: read.review?.updated_at, gitarOnHead: read.gitarOnHead, asked: read.asked})};
+  const kind = read.review ? verdictKind(read.review.body) : null;
+  return {read, wanted: wantedLabels({kind, verdictTime: read.review?.updated_at, run: read.run, workingSince: read.workingSince, headTime: read.headTime})};
 }
 
 /** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
