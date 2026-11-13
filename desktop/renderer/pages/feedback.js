@@ -8,6 +8,7 @@ import {loadJobs} from './jobs.js';
 import {storeName} from '../store-words.js';
 
 let current = null;
+/** Opens the feedback dialog on a Focus item: `request` shows the draft to copy, `review` shows the saved employer feedback to mark reviewed. Nothing is sent; Save writes through saveFeedbackAction. */
 export function openFeedback(item, mode = 'request') {
   current = {...item, mode};
   $('feedback-title').textContent = mode === 'request' ? t('pagesProfile.askFeedback') : t('pagesProfile.employerFeedback');
