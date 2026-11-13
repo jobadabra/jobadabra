@@ -19,8 +19,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PROFILES = json.loads((HERE / 'search-profiles.json').read_text(encoding='utf-8'))['profiles']
 IDS = [p['id'] for p in PROFILES]
-# Why (12 Nov 2026, sa): a profile run shares the broker with nothing that measures: the Search check's night and the press tapes (by hand or the daily re-record).
-HOLDERS = ('search-personas.yml', 'press-tapes.yml', 'press-tapes-auto.yml')
+# Why (12 Nov 2026, sa): a profile run shares the broker with nothing that measures: the Search check's night (the press tapes were retired 13 Nov 2026).
+HOLDERS = ('search-personas.yml',)
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
 BOARD = re.compile(r'Job boards found: (.+?) (\d+) job\(s\), (\d+) relevant')

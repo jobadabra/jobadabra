@@ -1,6 +1,6 @@
 """The blind judge's majority of three: each list asked ANSWERS times at once, the verdict per job is the answer at least 2 agree on, never a guess.
 Owner, 11 Nov 2026 (asked via AskUserQuestion by sa: "Ask 3 times, take the majority (Recommended)"): one answer per job changed its verdict on 11.5% of 1,406 jobs
-judged twice for the same person, and every "right jobs" number rests on it. Used by gate_judge.judge (the night, press-tapes' recordings, the market count).
+judged twice for the same person, and every "right jobs" number rests on it. Used by gate_judge.judge (the night, the market count).
 Guard: tests/tooling/ci/test_judge_majority.py."""
 import concurrent.futures
 
@@ -8,7 +8,7 @@ ANSWERS = 3
 AGREE = 2     # the fewest answers that make a verdict: two failed calls (one answer left) or a three-way place split leave the job unjudged
 ROLE = ('yes', 'no')
 PLACE = ('yes', 'remote', 'no', 'unknown')
-UNJUDGED = 'not-judged'   # what every reader already counts as unjudged, never right (verdicts.py, three_numbers.py)
+UNJUDGED = 'not-judged'   # what every reader already counts as unjudged, never right (verdicts.py)
 
 
 def answered_three(ask_once):

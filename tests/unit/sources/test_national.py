@@ -242,7 +242,7 @@ class InTheFreeApisTest(unittest.TestCase):
         import importlib.util
         spec = importlib.util.spec_from_file_location('reader_rows_alone', ROOT / 'src' / 'sources' / 'reader_rows.py')
         alone = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(alone)   # as tools/press-yardstick/verdict.py loads it (#3887): no sibling import at load
+        spec.loader.exec_module(alone)   # loaded alone, as the retired replay's verdict script did (#3887): no sibling import at load
         self.assertEqual([row.name for row in alone.ROWS], ['EURES', *reader_rows.NATIONAL])
 
     def test_each_row_reads_its_service_through_national_read(self):

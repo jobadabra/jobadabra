@@ -1,14 +1,13 @@
 """Time to first relevant job (owner, 18 Oct 2026: "time to first relevant job as fast as possible"), from the first Find jobs press of a persona
 install (tools/persona-search/run.mjs adds it to press 1's row): seconds until the 1st and 10th open job in the user's places appeared (the Jobs
 list shows it then), and until the 1st and 10th scored fit 70+. Run from the repo root with PYTHONPATH=. and the persona's
-JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR. Prints one JSON line. Optional: `--jobs <file> [--since <iso>]` first (writes jobs_in_places' rows there), then the press-1
+JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR. Prints one JSON line. Optional: the press-1
 log, for step times."""
 import json
 import re
 import sqlite3
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from scores_rows import has, scores_rows
 from src.paths import DATA, JOBS_DB
@@ -19,10 +18,9 @@ def ts(text):
     return datetime.fromisoformat(text.replace('Z', '+00:00')).timestamp()
 
 
-def jobs_in_places(since=None):
+def jobs_in_places():
     """One row per open job in the user's places: {title, company, location, seen_s, fit, scored_s}, seconds from the first press's start (fit and
-    scored_s None while unscored); since: an ISO time, the press's own start (a later press: a job scored before it has negative seconds); [] when the press was cut before any step opened the stores. The press's yardstick joins them with the judge's
-    verdicts (tools/press-yardstick/three_numbers.py, plan docs/superpowers/plans/2026-11-07-the-press.md 2c).
+    scored_s None while unscored); [] when the press was cut before any step opened the stores.
     Why (PR 3130, run 41807509648, 4 Nov 2026): the 3-minute stop came before the first step, the tables were missing and this died, so the row went red
     "wrote no numbers" and the persona's row was lost."""
     tracker, db = sqlite3.connect(DATA / 'tracker.sqlite'), sqlite3.connect(JOBS_DB)
@@ -31,7 +29,7 @@ def jobs_in_places(since=None):
     starts = [ts(r[0]) for r in tracker.execute('SELECT started_at FROM cron_runs') if r[0]]
     if not starts:
         return []
-    t0 = ts(since) if since else min(starts)   # Gitar on #3582: a later press counts from its own start, not press 1's
+    t0 = min(starts)
     rows = db.execute("SELECT j.id, j.title, j.location, j.first_seen_at, co.name FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
                       "WHERE j.state = 'open'").fetchall()
     scores = {}
@@ -56,10 +54,6 @@ def seen_and_fit(jobs=None):
 def main():
     args = sys.argv[1:]
     jobs = jobs_in_places()
-    if args[:1] == ['--jobs']:   # the per-job rows kept for the press's yardstick (run.mjs --tape), on that press's clock (--since)
-        since = args[3] if args[2:3] == ['--since'] else None
-        Path(args[1]).write_text(json.dumps(jobs_in_places(since) if since else jobs, ensure_ascii=False), encoding='utf-8')
-        args = args[4:] if since else args[2:]
     seen, fit = seen_and_fit(jobs)
     at = lambda xs, n: round(xs[n - 1]) if len(xs) >= n else None
     out = {'first_in_places_s': at(seen, 1), 'tenth_in_places_s': at(seen, 10), 'first_fit70_s': at(fit, 1), 'tenth_fit70_s': at(fit, 10),
