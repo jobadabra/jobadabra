@@ -63,6 +63,63 @@ class FoundBoardsTests(unittest.TestCase):
         jobs, _, _ = found_boards.read_board(BOARD, search, fetch=pages)
         self.assertEqual((len(asked), len(jobs)), (found_boards.FULL_SEARCHES, found_boards.FULL_SEARCHES))
 
+    def test_an_early_round_is_handed_while_the_boards_next_query_is_blocked(self):
+        """Jobware's first ten jobs at 30 s must not wait for its last query at 177 s."""
+        import threading
+        search = {**SEARCH, 'jobs_board_search_queries': ['first', 'second']}
+        waiting, release, handed = threading.Event(), threading.Event(), threading.Event()
+        published, returned, owners = [], {}, []
+        urls = ['https://empregos.example/oferta/first', 'https://empregos.example/oferta/second']
+
+        def pages(url):
+            second = 'q=second' in url
+            if second:
+                waiting.set()
+                assert release.wait(5), 'the test never released the second query'
+            job = {**JOB, 'url': urls[1 if second else 0]}
+            return f'<script type="application/ld+json">{json.dumps(job)}</script>'
+
+        def publish(jobs):
+            owners.append(threading.get_ident())
+            published.append([job['url'] for job in jobs])
+            handed.set()
+
+        def read():
+            returned['owner'] = threading.get_ident()
+            returned['jobs'] = found_boards.read(search, [BOARD], fetch=pages, early=True, workers=1, web=False,
+                                                is_relevant=lambda jobs: jobs, on_board=publish)
+        thread = threading.Thread(target=read, daemon=True)
+        with mock.patch.object(found_boards.read_budget, 'past_cut', return_value=False):
+            try:
+                thread.start()
+                self.assertTrue(waiting.wait(5), 'the second query never started')
+                self.assertTrue(handed.wait(5), 'the first round never reached the job pipeline')
+                self.assertEqual(published, [[urls[0]]], 'the first round must reach the job pipeline before the board finishes')
+                self.assertEqual(owners, [returned['owner']], 'title/place judging keeps its existing reader thread and private answer scope')
+            finally:
+                release.set()
+                thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(published, [[urls[0]], [urls[1]]], 'the final board result must not publish the streamed jobs twice')
+        self.assertEqual([job['url'] for job in returned['jobs']], urls, 'the complete return value still follows query order')
+
+    def test_repeated_early_rounds_and_the_final_result_publish_each_job_once(self):
+        search = {**SEARCH, 'jobs_board_search_queries': ['first', 'second']}
+        published = []
+        jobs = found_boards.read(search, [BOARD], fetch=lambda url: PAGE, early=True, workers=1, web=False,
+                                is_relevant=lambda jobs: jobs, on_board=lambda jobs: published.extend(jobs))
+        self.assertEqual([job['url'] for job in published], [JOB['url']])
+        self.assertEqual([job['url'] for job in jobs], [JOB['url']])
+
+    def test_ordinary_reads_keep_their_per_board_callback_contract(self):
+        boards = [BOARD, {**BOARD, 'name': 'Other', 'host': 'other.example',
+                           'search_url': 'https://other.example/search?q={role}&local={place}'}]
+        batches = []
+        jobs = found_boards.read(SEARCH, boards, fetch=lambda url: PAGE, early=False, workers=1, web=False,
+                                is_relevant=lambda jobs: jobs, on_board=lambda jobs: batches.append(jobs))
+        self.assertEqual(len(batches), 2, 'ordinary reads still hand each kept board, including a shared posting')
+        self.assertEqual(len(jobs), 2)
+
     def test_a_board_that_stops_adding_jobs_is_not_asked_every_query(self):
         search = {**SEARCH, 'jobs_board_search_queries': ['um', 'dois', 'tres', 'quatro', 'cinco']}
         asked = []

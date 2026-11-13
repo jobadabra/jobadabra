@@ -48,7 +48,7 @@ def board_jobs(say=print, search=None, on_board=None):
     search of 1-3 boards instead of 6 (a France nurse: 16 relevant jobs against 19). Design, one owner each: the measured boards start at
     once, with no AI answer; the proposal is asked beside them (propose_early); when it answers, its boards that are not being read take the
     places left (SLICE_BOARDS in all) in the same read (found_boards.read `later`), never a second read or a second board memory. Touches no job cache: it runs beside the employer sites' read.
-    on_board(jobs): each board's jobs as soon as that board is kept (found_boards.read), so one slow board holds back none of the others."""
+    on_board(jobs): each completed board round (found_boards.read), so later queries do not hold back the jobs already read."""
     if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return []
     from .ai import board_ideas

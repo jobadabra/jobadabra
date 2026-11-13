@@ -170,5 +170,9 @@
  "L43": {
   "gets": "confirmed job-ID links are judged before menu links; insufficient or rejected candidates still use the complete link path",
   "hash": "d8957f9729ecafd5"
+ },
+ "L44": {
+  "gets": "completed early board rounds reach the existing title/place pipeline while later queries keep reading, once per job, in the owning reader thread",
+  "hash": "cf2948e98fe3af22"
  }
 }

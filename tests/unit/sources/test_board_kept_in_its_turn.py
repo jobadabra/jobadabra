@@ -62,7 +62,7 @@ class KeptInItsTurn(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def read_board(self, waits_for):
-        def read_board(b, search, fetch, route=None, early=False, show=None):
+        def read_board(b, search, fetch, route=None, early=False, show=None, on_jobs=None):
             if b['host'] == 'b1.example':   # the first board in the list is the slow one
                 waits_for.wait(5)   # hang guard: 5 s; the assertion below says whether it was released in time
             return [job(b['host'][1])], 'ok', None

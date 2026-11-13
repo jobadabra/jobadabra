@@ -220,6 +220,13 @@ FIXES = (
          'tests/unit/sources/test_careers_paging.py::test_rejected_numbered_news_links_fall_back_to_the_jobs_without_ids',
          'tests/unit/sources/test_careers_paging.py::test_unanswered_id_candidates_are_not_accepted_by_shape'),
         owner='13 Nov 2026, cp pane: "go", after the proposal to judge job-card IDs before hundreds of menu links and preserve the full fallback'),
+
+    Fix('L44', '13 Nov 2026 (cp, pair 43369942578: Jobware had ten jobs at 30 s but read until 177 s before handing them over)',
+        'completed early board rounds reach the existing title/place pipeline while later queries keep reading, once per job, in the owning reader thread',
+        ('tests/unit/sources/test_found_boards.py::test_an_early_round_is_handed_while_the_boards_next_query_is_blocked',
+         'tests/unit/sources/test_found_boards.py::test_repeated_early_rounds_and_the_final_result_publish_each_job_once',
+         'tests/unit/sources/test_found_boards.py::test_ordinary_reads_keep_their_per_board_callback_contract'),
+        owner='13 Nov 2026, cp pane: "go", authorizing the investigations and fixes behind slow board reads and low Lisbon/Nuremberg coverage'),
 )
 
 

@@ -24,6 +24,7 @@ from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule)
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
 from .board_history import BROWSER_RETRY_DAYS, _dead, _retry_due, _retry_when_unjudged, read_since  # noqa: F401 -- moved out (500-line rule); tests and callers use found_boards._dead, .read_since
+from .board_handoff import Handoff
 from ..press import resume, stage
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
@@ -49,21 +50,22 @@ def _places(search):
     return places.words_of(search)[:MAX_PLACES] or ['']
 
 
-def read_board(board, search, fetch=careers.get_text, route=None, early=False, show=None):
+def read_board(board, search, fetch=careers.get_text, route=None, early=False, show=None, on_jobs=None):
     """(jobs, state, route) for one board: jobs in the aggregators' shape, each once; state 'ok', 'empty' or 'browser'; route = the declared feed or
     sitemap that gave the jobs (kept, tried first next time), None when the search page itself did. A page no free step reads tries its
     declared routes (src/sources/board_routes.py); a script-only one with none is read by the headless browser (show: careers.renderer(),
     owner 19 Oct 2026), else 'browser' (a visit); a readable one goes to the AI page reader once per board per run, within its caps, and the
-    recipe it leaves replays with no model next time."""
+    recipe it leaves replays with no model next time. on_jobs(jobs): each completed round, before the next query starts."""
     from .. import read_methods
     with read_methods.reading(board.get('host') or board.get('search_url'), 'ai_board') as read:
-        jobs, state, route = _read(board, search, fetch, route, early, show)
+        jobs, state, route = _read(board, search, fetch, route, early, show, on_jobs)
         read.jobs = read_methods.in_places(jobs)
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 
 
-def _read(board, search, fetch, route, early, show=None):
+def _read(board, search, fetch, route, early, show=None, on_jobs=None):
     jobs, state, asked_routes, asks, asked_term = [], 'empty', False, 0, None
+    on_jobs = on_jobs or (lambda _jobs: None)
     listing = show if board.get('rendered') and show is not None else None   # the list pages after their scripts ran; job pages are fetched as usual
     try:
         if route:
@@ -126,6 +128,7 @@ def _read(board, search, fetch, route, early, show=None):
             shaped = _shaped(board, found)
             board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
             jobs.extend(shaped)
+            on_jobs(shaped)
             state = 'ok' if jobs else state
         new = {job['url'] for job in jobs} - seen
         seen |= new
@@ -281,7 +284,7 @@ def _hand(turn, found, on_board):
         on_board(found)
 
 
-def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None, later=None):  # noqa: C901 (Why (12 Nov 2026, bj): 35 before this change and 35 after; on_board only passes through to _hand, no new branch; splitting read is its own change)
+def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None, on_board=None, later=None):  # noqa: C901 (Why (13 Nov 2026, cp): round delivery is delegated to Handoff, with no new branch in read; splitting read is its own change)
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
     full read, which asks the board in full and serves the pages the slice fetched from them instead of fetching them again. workers: boards
@@ -289,7 +292,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     19 Oct 2026: a second wave after the first made Finance's first-jobs step wait 35 s; 4 of music's first 6 boards refused). web: a full
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
     since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
-    Each board is kept (and its titles and places judged) as soon as its own read ends; on_board(jobs) then gets its jobs, once per board kept.
+    Each board is kept (and its titles and places judged) as soon as its own read ends. In an early read, on_board(jobs) gets each completed
+    round at once; its final result sends only jobs not handed already. Ordinary reads hand each kept board as before.
     later(): more boards, named while these are read (the AI's proposal beside the measured boards, first_jobs.board_jobs); the ones not
     being read join this same read in the places left, as soon as they are named: one read, one board memory, one save.
     The jobs returned are in the list's order, whatever the threads' timing. Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/unit/sources/test_three_minutes.py)."""
@@ -305,6 +309,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     data = board_ideas.load()
     base = json.loads(json.dumps(data))   # what this read loaded: its save writes only what it changed since (board_ideas.save_read)
     kept = data.setdefault('boards', {})
+    # Why (13 Nov 2026, cp; speed pair 43369942578): Jobware had ten jobs at 30 s but kept reading to 177 s. Its ready jobs must enter
+    # the existing title/place pipeline now; the final board memory and return order stay owned by keep().
+    handoff = Handoff(on_board, early)
     stamp = (now or datetime.now(timezone.utc)).isoformat(timespec='seconds')
     by_turn = []   # each board's jobs at its turn in the list (its replacements after it): the list's order at the end, whichever board ended first
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
@@ -345,7 +352,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             return page
         if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
             return tuple(late_pages.pop(board['host']))
-        result = read_board(board, search, through, entry.get('route'), early=early, show=show)
+        result = read_board(board, search, through, entry.get('route'), early=early, show=show, **handoff.options())
         if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
             site, page = board_check.kind(board, fetch)
             if site:
@@ -398,7 +405,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             late_reads.keep('board', board['host'], [answer[0], answer[1], route])
             print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
             run_counts.looked(answer[0])
-            _hand(turn, answer[0], on_board)
+            _hand(turn, answer[0], handoff)
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
             return wait((found, state))
@@ -425,7 +432,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
-        _hand(turn, found, on_board)
+        _hand(turn, found, handoff)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
     order = {id(read_item): n for n, read_item in enumerate(reads)}   # by item, not host: two items of one host keep their own turns (Gitar, #3892)
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
@@ -436,16 +443,18 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
     # Why (#3892, 12 Nov 2026): boards are kept as they end (in the list's order a slow first board held the others' titles and places
     # past the AI's time); the boards named meanwhile (feeders) join this same loop as they start, never a second read
-    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
+    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, **handoff.waiting()), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])
             if not early:   # not killed: its page result, when it ends, is the next search's (late_reads)
                 late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
             continue
+        handoff.flush()
         keep(read_item, result)
         _kept_spares(taken, lock, [read_item], keep)
         ticker.tick(done, f" · {read_item[0]['name']}")
+    handoff.flush()
     pool.shutdown(wait=not left, cancel_futures=True)
     if left:
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)

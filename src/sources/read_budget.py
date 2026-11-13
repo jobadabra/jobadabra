@@ -96,19 +96,28 @@ def result(future, at):
         return LEFT
 
 
-def as_done(futures, at, feeders=None):
+def as_done(futures, at, feeders=None, on_progress=None):
     """(future, its result) for each of `futures` as it ends, until the cut `at`; then (future, LEFT) for each still open, in the given order.
     Futures that end together come in the given order. A failed read raises out of the loop once every read that ended with it is given (Gitar,
     #3892: none of them lost with it); the reads still open are not taken (the caller's stage guard reports the source). Not waiting for the
     slowest is the point:
     Why (#3892, 12 Nov 2026): taken in the list's order, a slow first board held the boards read before it ended past the titles' time.
     feeders {future: join}: a future that names more reads; when it ends, join(its result) -> their futures, which are waited for with the
-    rest. A feeder is never given to the caller, ended or still open (found_boards.read `later`)."""
+    rest. A feeder is never given to the caller, ended or still open (found_boards.read `later`).
+    on_progress(): drain completed board rounds in this reader thread, including while whole-board futures are still open."""
     feeders = feeders or {}
     pending = [*futures, *feeders]
     while pending:
-        ended, _ = wait(pending, timeout=seconds_left(at), return_when=FIRST_COMPLETED)
+        remaining = seconds_left(at)
+        if on_progress is not None:
+            on_progress()
+            remaining = seconds_left(at)
+            # Why (13 Nov 2026, cp): a ready round must reach its reader while its whole-board future stays open; this only bounds the queue's wait.
+            remaining = 0.1 if remaining is None else min(0.1, remaining)
+        ended, _ = wait(pending, timeout=remaining, return_when=FIRST_COMPLETED)
         if not ended:
+            if on_progress is not None and (at is None or seconds_left(at)):
+                continue
             break
         batch = [future for future in pending if future in ended]
         for future in batch:
