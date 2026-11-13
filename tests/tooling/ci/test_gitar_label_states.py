@@ -224,6 +224,21 @@ class MainOnlyMergeKeepsTheVerdictTest(unittest.TestCase):
         verdict = node(f"m.wantedLabel({json.dumps(body)}, '2026-11-12T13:05:50Z', {json.dumps(own['time'])}, true)")   # Gitar ran on P1, the commit the approval belongs to
         self.assertEqual(node(f"m.wantedLabels({{verdict: {json.dumps(verdict)}, verdictTime: '2026-11-12T13:05:50Z', headTime: {json.dumps(own['time'])}, gitarOnHead: false}})"), ['Gitar: approved'])
 
+    def wanted_after_merge(self, runs_on_own_commit):
+        """#3886 end to end through wantedFor: approved 13:05:50 on P1 (pushed 13:01), main merged in at 13:10 (head M, no Gitar run); `runs_on_own_commit` Gitar runs on P1."""
+        ans = answers()
+        ans['graphql'] = {'data': {'repository': {'pullRequest': {'state': 'OPEN', 'headRefOid': 'M', 'baseRefName': 'main',
+            'comments': {'pageInfo': {'hasPreviousPage': False}, 'nodes': [{'author': {'login': 'gitar-bot'}, 'body': VERDICT % '✅ Approved', 'createdAt': '2026-11-12T13:05:50Z', 'updatedAt': '2026-11-12T13:05:50Z'}]},
+            'labels': {'nodes': []}, 'timelineItems': {'nodes': []},
+            'commits': {'nodes': [{'commit': {'committedDate': '2026-11-12T13:10:27Z', 'parents': {'nodes': [{'oid': 'P1'}, {'oid': 'P2'}]},
+                'checkSuites': {'nodes': [{'createdAt': '2026-11-12T13:10:30Z', 'app': {'slug': 'gitar-bot'}, 'checkRuns': {'totalCount': 0}}]}}}]}}}}}
+        ans['repos/o/r/commits/P1/check-suites?per_page=100'] = {'check_suites': [{'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': runs_on_own_commit}]}
+        return node(f"m.wantedFor('o/r', 7, {FAKE % json.dumps(ans)}).wanted")
+
+    def test_a_merge_of_main_keeps_the_verdict_only_when_gitar_ran_on_the_commit_before_it(self):
+        self.assertEqual(self.wanted_after_merge(1), ['Gitar: approved'])
+        self.assertEqual(self.wanted_after_merge(0), ['Gitar: not started'], 'an approval nobody ran Gitar for is not kept')
+
     def test_a_merge_that_changes_the_own_diff_needs_a_new_review(self):
         changed = [{**OWN[0], 'patch': '@@ -1 +1 @@\n-a\n+c'}]
         self.assertIsNone(self.own(answers(after_files=changed)))
