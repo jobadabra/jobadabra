@@ -190,7 +190,11 @@ def main(argv):
     if command == 'ids':
         print(ids(args[0] if args else ''))
     elif command == 'free':
-        ok, why = free(json.loads(args[0]), int(float(args[1])))   # a number input may arrive as '6' or '6.0'
+        n = float(args[1])   # a number input may arrive as '6' or '6.0'
+        if n != int(n):   # Why (13 Nov 2026, Gitar on #3964): 2.5 would pass here as 2 while max-parallel got 2.5; the check and the matrix see one whole number
+            print(f'at_once {args[1]} is not a whole number: not run')
+            sys.exit(1)
+        ok, why = free(json.loads(args[0]), int(n))
         print(why)
         sys.exit(0 if ok else 1)
     elif command == 'cv':
