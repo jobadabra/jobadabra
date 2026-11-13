@@ -48,13 +48,19 @@ export function setLabel(repo, pr, wanted, have, run = gh) {
   return changed;
 }
 
-/** Reads the PR and writes its label; a closed or merged PR is left alone. -> the label name, or '' when it was left. */
+/** Reads the PR and writes its label until a fresh read wants no change (at most 4 rounds); a closed or merged PR is left alone. -> the label name, or '' when it was left.
+ * Why (13 Nov 2026, Gitar's finding on #4119): the review job and the push's pr-labels run both write this label, in different concurrency groups; a writer that read before the other one's review landed could
+ * leave a stale state. Each writer therefore re-reads after its write and corrects until the PR agrees with the newest review. */
 export function sync(repo, pr, run = gh) {
-  const {pr: p, reviews} = readPr(repo, pr, run);
-  if (p.state !== 'OPEN') return '';
-  const wanted = wantedLabel(reviews, p.head);
-  const changed = setLabel(repo, pr, wanted, p.labels, run);
-  console.log(`claude-label: #${pr} → ${wanted}${changed ? '' : ' (unchanged)'}`);
+  let wanted = '';
+  for (let round = 1; round <= 4; round++) {
+    const {pr: p, reviews} = readPr(repo, pr, run);
+    if (p.state !== 'OPEN') return wanted;
+    wanted = wantedLabel(reviews, p.head);
+    const changed = setLabel(repo, pr, wanted, p.labels, run);
+    console.log(`claude-label: #${pr} → ${wanted}${changed ? '' : ' (unchanged)'}`);
+    if (!changed) break;
+  }
   return wanted;
 }
 

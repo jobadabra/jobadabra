@@ -102,10 +102,11 @@ jobs:
         if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' && steps.claude.outcome == 'failure'
         env:
           PR: ${{ steps.gate.outputs.pr }}
+          HEAD: ${{ steps.gate.outputs.head }}
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: node cr-tools/tools/claude-review.mjs failed
       - name: The PR's Claude label
-        if: ${{ !cancelled() && steps.gate.outputs.go == 'true' && steps.claude.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' }}   # after a skipped or failed review too: the label then says "· not re-reviewed" for the head
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ steps.gate.outputs.pr }}
