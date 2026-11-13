@@ -170,8 +170,9 @@ def funnel_note(funnel):
         parts.append(f"places worked out at {funnel['places_worked_out_s']} s")
     if funnel.get('web_search_started_s') is not None:
         parts.append(f"web search started at {funnel['web_search_started_s']} s")
-    if funnel.get('web_search_skipped'):
-        parts.append('web search never started (no places or roles known)')
+    if funnel.get('web_search_skipped'):   # the engine's reason since 13 Nov 2026 (run 43328194035 p10: a place written "lisb(on|oa)"); True in older funnels
+        why = funnel['web_search_skipped']
+        parts.append(f'web search never started: {why}' if isinstance(why, str) else 'web search never started (no places or roles known)')
     if funnel.get('employers_named_s') is not None:
         parts.append(f"employers named at {funnel['employers_named_s']} s")
     if funnel.get('time_up'):

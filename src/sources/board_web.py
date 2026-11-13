@@ -345,6 +345,21 @@ def _told_again(data, key, last, working, tries):
                                                                       (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
 
 
+def not_asked(search_config):
+    """Why a search has no board proposal (board_ideas.asked_for is None), for its "no web search" line: no role, no place it can read (the fragment named), or
+    no country known yet for its places. Why (13 Nov 2026, run 43328194035 p10): "names no places or roles" was said for a Lisbon search whose one place
+    was written "lisb(on|oa)", so neither the person nor the run's reader could tell why."""
+    from .. import places
+    from ..notion.search_settings import terms
+    if not terms((search_config or {}).get('role_keywords')):
+        return 'this search names no roles'
+    words = places.place_words(search_config or {})
+    if not words:
+        left = places.unread(search_config or {})
+        return f"this search names no place it can read ({', '.join(left)})" if left else 'this search names no places'
+    return f"the countries of your places are not known yet ({', '.join(words[:3])})"
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
@@ -355,7 +370,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     asked = board_ideas.asked_for(search_config)
     own, data = data is None, board_ideas.load() if data is None else data
     if not asked:
-        print('Job boards: no web search: this search names no places or roles', flush=True)
+        print(f'Job boards: no web search: {not_asked(search_config)}', flush=True)
         return []
     key, countries, roles, kinds, places = asked
     run = _run(key)
