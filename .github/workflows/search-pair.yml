@@ -66,6 +66,7 @@ jobs:
       main: ${{ steps.refs.outputs.main }}
       head: ${{ steps.refs.outputs.head }}
       status_sha: ${{ steps.refs.outputs.status_sha }}
+      state: ${{ steps.refs.outputs.state }}
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
@@ -82,6 +83,7 @@ jobs:
           head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")
           echo "head=$head" >> "$GITHUB_OUTPUT"
           # Why (13 Nov 2026, Gitar on #4033): a squash-merged PR's head is off main, so its "Search pair" status goes on the merge commit instead
+          echo "state=$(python3 -c "import json; print(json.load(open('pr.json'))['state'])")" >> "$GITHUB_OUTPUT"
           echo "status_sha=$(python3 -c "import json; d=json.load(open('pr.json')); print((d.get('mergeCommit') or {}).get('oid') or d['headRefOid'])")" >> "$GITHUB_OUTPUT"
           # Why (13 Nov 2026, #3946's pair): the "before" side is the main commit the PR sits on, not main's newest; a PR behind main would otherwise be compared
           # with everything merged since, and its own change could not be told apart (main 7e5ee877 against a branch on f86251e3 also differed by #3952 and two more).
@@ -297,12 +299,15 @@ jobs:
           PEOPLE: ${{ needs.setup.outputs.people }}
           ATTEMPT: ${{ inputs.attempt }}
           TIERS: ${{ inputs.tiers }}
+          STATE: ${{ needs.setup.outputs.state }}
         run: |
           set -euo pipefail
           python3 tools/persona-search/pair.py table dl "$PR" "$MAIN" "$HEAD" > table.md
           # The hold (plan 4/4, pair.py settle): the numbers go into the body's pending Moves lines; ship's own hold (label search-hold) comes off only when none fell.
           gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,labels,headRefOid > view.json
-          if [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
+          if [ "$STATE" = MERGED ]; then   # Why (13 Nov 2026, Gitar on #4033): a merged PR has no hold to lift and no pending Moves lines; the comment says what was compared
+            { echo; echo "This PR is merged: its head is compared with the commit it was forked from (the before side). Nothing is written into its description or labels; the checks-list status is on its merge commit."; } >> table.md
+          elif [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then
             { echo; echo "The PR has a newer head than this pair measured: its numbers are not written into the body."; } >> table.md
           else
             python3 tools/persona-search/pair.py settle dl view.json "$ATTEMPT" "$PEOPLE" > verdict.txt
