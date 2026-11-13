@@ -94,6 +94,11 @@ test('a LinkedIn job is never reserved for an automatic press: the person finish
   assert.equal(got.submit, false);
   assert.equal(got.reason, 'send_not_allowed_here');
   assert.equal((await store.read(li.url)).state, 'needs_user_handoff', 'the person finishes it');
+
+  // Gitar on #4054: queued under another address, the page the judge saw is LinkedIn's.
+  const s = rig(), {store: other, job: queued, session: otherSession} = await prepared(s, s.add('short'), 'auto', {...config, auto: {waitMin: 0}});
+  const landed = await other.reserve(queued.url, otherSession, 'owned-browser', {...ready, page: 'https://www.linkedin.com/jobs/view/4242'}, {...config, auto: {waitMin: 0}});
+  assert.equal(landed.reason, 'send_not_allowed_here', 'the page landed on LinkedIn');
 });
 
 test('mode 2 ends ready for review, while mode 3 waits and rechecks every guard before reserving', async () => {

@@ -360,7 +360,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const state = await store.read(item.url);
     if (!state || state.owner !== owner || state.session !== item.id || state.manualOverride) return null;
     const proof = uuid(), signature = createHash('sha256').update(JSON.stringify(body.sketch || {})).digest('hex');
-    judgments.set(proof, {session: item.id, answer, signature, at: now()});
+    judgments.set(proof, {session: item.id, answer, signature, page: String(body.sketch?.url || ''), at: now()});   // page: the address the judge saw, for the send gate (lib/submit-proof.js sendAllowedAt)
     for (const [key, value] of judgments) if (now() - value.at > 120000) judgments.delete(key);
     return {proof, signature};
   }
@@ -382,7 +382,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (!judgment || judgment.session !== item.id || now() - judgment.at > 120000) return {ok: false, recheck: true};
       judgments.delete(payload.proof);
       if (stop() || item.stuck === 'stopped') return {ok: true, manual: true, state: await markManual(item, 'stopped')};
-      const proof = {...judgment.answer, signature: judgment.signature, requiredComplete: payload.requiredComplete === true,
+      const proof = {...judgment.answer, signature: judgment.signature, page: judgment.page, requiredComplete: payload.requiredComplete === true,
         factsOnly: payload.factsOnly === true, safe: payload.safe === true && judgment.answer.confidence >= 0.9};
       if (proof.botCheck) return {ok: true, manual: true, reason: 'captcha_runtime', state: await markManual(item, 'captcha_runtime')};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (proof.step === 'middle') {

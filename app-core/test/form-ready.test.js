@@ -149,3 +149,22 @@ test('Claude\'s answers dropped as late are a dropped answer, not a crash readin
   const found = {answers: [], eligible: true};
   assert.equal(answersOrDropped(found), found);
 });
+
+// Gitar on #4054: step 2 judged middle, Next pressed, the final step's judge gives no answer: the earlier mark must not reword the sending step "Ready to continue".
+test('a page the judge does not answer clears an earlier step\'s mark', async () => {
+  const {formNext} = await import('../../extension/form-ready.js');
+  const marked = [], answers = [{answer: 'ready', step: 'middle', nextControl: ''}, null];
+  let page = 0;
+  const keep = {chrome: globalThis.chrome, fetch: globalThis.fetch};
+  globalThis.chrome = {
+    storage: {local: {get: async () => ({workerUrl: 'http://127.0.0.1:47111', token: 't'}), set: async () => {}}, session: {get: async () => ({}), set: async () => {}}},
+    scripting: {executeScript: async ({args, func}) => { if (args?.length) { if (func.name === 'markFormStep') marked.push(args[0]); return [{result: undefined}]; } return [{result: {url: 'https://apply.example/n', title: 'Apply', headings: [], controls: [{type: 'text', label: String(page), state: 'filled'}], buttons: ['Next'], texts: [], frames: []}}]; }},
+    runtime: {getManifest: () => ({version: '0'})}};
+  globalThis.fetch = async () => { const said = answers.shift(); return {ok: true, status: 200, json: async () => said || {}, text: async () => ''}; };
+  try {
+    await formNext({id: 74, url: 'https://apply.example/n'}, 0);
+    page = 1;   // the next step: another page state
+    await formNext({id: 74, url: 'https://apply.example/n'}, 0);
+  } finally { Object.assign(globalThis, keep); }
+  assert.deepEqual(marked, ['middle', null]);
+});

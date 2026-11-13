@@ -44,7 +44,7 @@ export function createAutoLine({client, reserve, stopped = async () => false, se
     const judged = judgments.get(body.proof);
     if (!judged || now() - judged.at > JUDGMENT_MS) return {ok: false, recheck: true};
     judgments.delete(body.proof);
-    const proof = {...judged.answer, signature: judged.signature, requiredComplete: body.requiredComplete === true, factsOnly: body.factsOnly === true, safe: body.safe === true && judged.answer.confidence >= 0.9};
+    const proof = {...judged.answer, signature: judged.signature, page: judged.page, requiredComplete: body.requiredComplete === true, factsOnly: body.factsOnly === true, safe: body.safe === true && judged.answer.confidence >= 0.9};
     own.proof = proof;
     if (proof.botCheck) return handOver('bot_check', 'captcha_runtime');   // words-ok: our own hand-off reason id, not page knowledge
     if (proof.step === 'middle') return proof.answer === 'ready' && proof.requiredComplete && proof.safe ? {ok: true, continue: true} : handOver('incomplete_or_uncertain');
@@ -100,7 +100,7 @@ export function createAutoLine({client, reserve, stopped = async () => false, se
       const answer = await judge(client, body.sketch || {});
       if (answer.error) return {ok: true, answer: '', error: answer.error};
       const proof = uuid(), signature = createHash('sha256').update(JSON.stringify(body.sketch || {})).digest('hex');
-      judgments.set(proof, {answer, signature, at: now()});
+      judgments.set(proof, {answer, signature, page: String(body.sketch?.url || ''), at: now()});   // page: the address the judge saw, for the send gate (lib/submit-proof.js sendAllowedAt)
       return {ok: true, answer: answer.answer, needs: answer.needs, needsKind: answer.needsKind || '', botCheck: answer.botCheck,
         ...(typeof answer.loginWall === 'boolean' ? {loginWall: answer.loginWall} : {}), ...(typeof answer.accountCreation === 'boolean' ? {accountCreation: answer.accountCreation} : {}),
         step: answer.step || 'unsure', nextControl: answer.nextControl || '', submitControl: answer.submitControl || '', confidence: answer.confidence || 0, blockedKind: answer.blockedKind || '', background: {proof, signature}};

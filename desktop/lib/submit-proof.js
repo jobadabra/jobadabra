@@ -32,3 +32,12 @@ export function sendAllowedOn(url) {
   try { host = new URL(String(url)).hostname.toLowerCase(); } catch { return false; }   // no readable address: no press
   return !(host === 'linkedin.com' || host.endsWith('.linkedin.com'));   // words-ok: a safety gate (CLAUDE.md "safety is code"), not page knowledge
 }
+
+/**
+ * Pure: may an automatic press send here? Both the address the job was queued with and the page's own address when the judge looked (`page`, from the judge's sketch) must allow it, so a
+ * short link or a redirect that lands on LinkedIn is refused too (Gitar on #4054). A proof without a page address is judged on the queued address alone.
+ * @param {string} url the job's queued address
+ * @param {string} [page] the page's address the form judge saw
+ * @returns {boolean}
+ */
+export const sendAllowedAt = (url, page) => sendAllowedOn(url) && (!page || sendAllowedOn(page));

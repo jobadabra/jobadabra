@@ -110,6 +110,12 @@ test('a LinkedIn job is never pressed, nor an address that cannot be read', () =
   assert.equal(submitVerdict(good({job: {...job, url: 'https://notlinkedin.com/jobs/1'}, item: {...item, url: 'https://notlinkedin.com/jobs/1'}})).submit, true, 'a host that only ends in the word is another site');
 });
 
+// Gitar on #4054: a short link or a redirect queued under another address that lands on LinkedIn is judged by the page the judge saw.
+test('a job queued elsewhere whose page is on LinkedIn is never pressed', () => {
+  refused(good({proof: {...proof, page: 'https://www.linkedin.com/jobs/view/1'}}), 'send_not_allowed_here');
+  assert.equal(submitVerdict(good({proof: {...proof, page: job.url}})).submit, true, 'the page on the queued site presses as before');
+});
+
 test('the item\'s own wait holds the press and is the only refusal that is not final', () => {
   const verdict = refused(good({item: {...item, waitMin: 5}}), 'waiting');
   assert.equal(verdict.final, false);
@@ -136,8 +142,8 @@ test('the press waits for the site to reserve its one attempt; a refused or fail
 test('the Mac\'s Full automation and the cloud gate share one proof and eligibility check', () => {
   const lib = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../lib');
   const store = fs.readFileSync(path.join(lib, 'background-apply-store.js'), 'utf8');
-  assert.match(store, /import \{kitAllows, proofOk, sendAllowedOn\} from '\.\/submit-proof\.js'/);
-  assert.match(store, /if \(!sendAllowedOn\(url\)\) return stop\('send_not_allowed_here'\)/, 'the Mac refuses LinkedIn with the same gate (plan 4b lifts it)');
+  assert.match(store, /import \{kitAllows, proofOk, sendAllowedAt\} from '\.\/submit-proof\.js'/);
+  assert.match(store, /if \(!sendAllowedAt\(url, proof\?\.page\)\) return stop\('send_not_allowed_here'\)/, 'the Mac refuses LinkedIn with the same gate (plan 4b lifts it)');
   assert.doesNotMatch(store, /const proofOk\s*=/, 'a second copy of the proof check drifts');
 });
 
