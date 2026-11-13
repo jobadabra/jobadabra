@@ -9,7 +9,7 @@ only when a replay gives those jobs back); the Scout publishes it with the board
 A replay that reads nothing on a page drops the layout for the rest of that read, says so in one line, and the page is read the usual way.
 
 ## Progress
-- [x] 1/3 web: the pool keeps and serves a board's layout (jobadabra-web #620)
+- [x] 1/3 web: the pool keeps and serves a board's layout (jobadabra-web #620) (proof: none: merged in the private jobadabra-web as a3c50e9, its test/unit/api/employers.test.js)
 - [ ] 2/3 installs replay a served layout before any link question
 - [ ] 3/3 board discovery learns the layout and the Scout publishes it
 - [ ] Proof, each on the coordinator's word: one by-hand board discovery run, the Central Scout right after, one search pair on b08 + b10

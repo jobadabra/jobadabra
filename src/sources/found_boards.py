@@ -122,7 +122,7 @@ def _read(board, search, fetch, route, early, show=None):
                 asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
             on_page = len(found or [])   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)
-                found = found + board_pages.more(url, page, found, fetch, lambda markup, link: layout.read(markup, link, fetch),
+                found = found + board_pages.more(url, page, found, fetch, lambda markup, link, fetch=fetch: layout.read(markup, link, fetch),
                                                  lambda some: board_yield.is_relevant(some))
             shaped = _shaped(board, found)
             board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
