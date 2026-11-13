@@ -95,7 +95,7 @@ class BoardPassTest(unittest.TestCase):
 
     def test_a_by_hand_reserve_gives_the_pass_time_for_its_candidates_and_the_default_keeps_240_s(self):
         """13 Nov 2026 (bp): 240 s for 4 candidates (~60 s each); a pass asked for 12 would stop starting boards after the 4th unless its time follows."""
-        for env, seconds in (({}, 240), ({'SCOUT_BOARD_RESERVE': '2'}, 240), ({'SCOUT_BOARD_RESERVE': '12'}, 720), ({'SCOUT_BOARD_RESERVE': 'lots'}, 240)):
+        for env, seconds in (({}, 240), ({'SCOUT_BOARD_RESERVE': '2'}, 240), ({'SCOUT_BOARD_RESERVE': '12'}, 720), ({'SCOUT_BOARD_RESERVE': '24'}, 720), ({'SCOUT_BOARD_RESERVE': '13'}, 720), ({'SCOUT_BOARD_RESERVE': 'lots'}, 240)):
             with mock.patch.dict('os.environ', env, clear=False):
                 if not env:
                     os.environ.pop('SCOUT_BOARD_RESERVE', None)
