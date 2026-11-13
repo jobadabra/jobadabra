@@ -26,11 +26,9 @@ const SAMPLER = () => {
   sample(); setInterval(sample, 5);
 };
 
-// The worker keeps every change of a tab's Apply state with the moment it was PUSHED to the tab: apply-state.js setApply calls chrome.tabs.sendMessage({type: 'applyState'}) in the same turn as the change, and a page
-// draws a verdict only on that message, so a sample drawn from the verdict is never older than this stamp.
-// Why (13 Nov 2026, fo; #4004 run 43469066456, flaky, issue #2800 back): the stamp was taken when chrome.storage.session.onChanged reached the worker, a second, async path that a loaded runner delivers ~250 ms after the push;
-// the form's finished look ("Fill again") drawn after the verdict then fell before the stamp and was judged as drawn mid-run. Played: the same test with that listener delayed 400 ms fails with the run's exact three messages.
-const LOG_STATES = () => {
+// Why (13 Nov 2026, fo; #4004 run 43469066456, flaky, #2800 back): a state is stamped when the worker pushes it to the tab, the moment a page can start drawing it. The old stamp came from chrome.storage.session.onChanged,
+// which a loaded runner delivers ~250 ms later, so a verdict's finished look fell before it and was judged mid-run. Played: that listener delayed 400 ms failed with the run's exact three messages.
+export const LOG_STATES = () => {
   globalThis.__applyLog = [];
   const send = chrome.tabs.sendMessage.bind(chrome.tabs), last = new Map();
   chrome.tabs.sendMessage = (tabId, message, ...rest) => {
@@ -68,8 +66,8 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
 });
 
 /** The worker's states for the run, read until its verdict is in the log; at the hang guard, what was read (the judge then says the verdict is missing). */
-// Why (1 Nov 2026, a8; #2813 run 41308778286, flaky): the page showed its end before the worker's log held the verdict (then delivered by storage.session.onChanged, now stamped at the push, 13 Nov 2026)
-// (delivered async; a loaded runner), and one read held ["working"] alone. The run's end is the worker's verdict, so the read waits for it.
+// Why (1 Nov 2026, a8; #2813 run 41308778286, flaky): the page showed its end before the worker's log held the verdict, and one read held ["working"] alone.
+// The run's end is the worker's verdict, so the read waits for it.
 export async function runStates(readLog, {capMs = 30000, pause} = {}) {
   const {value} = await pollUntil(readLog, log => (log || []).length > 1 && log.at(-1).state !== 'working', {capMs, log: () => {}, ...(pause ? {pause} : {})});
   return value || [];
@@ -202,4 +200,24 @@ test('the run is read once the worker has logged its verdict, not at the first r
   assert.equal(read, 2, 'read again until the verdict came');
   assert.deepEqual(await runStates(async () => [{at: 1, state: 'working'}], {capMs: 0}), [{at: 1, state: 'working'}], 'no verdict: the hang guard keeps what was read, and the judge says so');
   assert.deepEqual(await runStates(async () => undefined, {capMs: 0}), []);
+});
+
+test('the worker logs a state at the moment it pushes it to the tab, before any storage event arrives; a repeat push is not a state', async () => {
+  const pushed = [];
+  globalThis.chrome = {tabs: {sendMessage: async (tab, message) => { pushed.push([tab, message.state]); }}, storage: {session: {onChanged: {addListener: () => {}}}}};   // no storage event is ever delivered: the old stamp never came
+  try {
+    LOG_STATES();
+    await chrome.tabs.sendMessage(7, {type: 'applyState', state: 'working'});
+    await chrome.tabs.sendMessage(7, {type: 'applyState', state: 'working'});
+    await chrome.tabs.sendMessage(7, {type: 'somethingElse', state: 'done'});
+    await chrome.tabs.sendMessage(7, {type: 'applyState', state: 'done'});
+    assert.deepEqual(globalThis.__applyLog.map(entry => [entry.key, entry.state]), [['apply:7', 'working'], ['apply:7', 'done']]);
+    assert.equal(pushed.length, 4, 'every message still reaches the tab');
+  } finally { delete globalThis.chrome; delete globalThis.__applyLog; }
+});
+
+test('a verdict stamped late (the storage event, 250 ms after the push) judges the finished look as mid-run; stamped at the push the run is clean', () => {
+  const samples = [...clean(), ...span(3, '/form', 3010, 40, {dim: false, busy: false, centred: false, label: 'Fill again'})];
+  assert.deepEqual(judgeRun([{at: 1000, state: 'working'}, {at: 3000, state: 'done'}], samples), []);
+  assert.match(judgeRun([{at: 1000, state: 'working'}, {at: 3250, state: 'done'}], samples).join('\n'), /the finished look \("Fill again"/);
 });
