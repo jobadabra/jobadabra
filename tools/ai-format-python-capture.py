@@ -125,7 +125,8 @@ def capture_engine(prompts=False):
     paths = load('src/paths.py', ['whole_word', 'keyword_regex'])
     terms = load('src/notion/search_settings.py', ['ACCENTS', 'META', '_accents_to_plain', 'fragment_of', 'readable', 'terms'],
                  whole_word=paths.whole_word)
-    spelled = load('src/places.py', ['MAX_SPELLINGS', 'NAME_OK', '_spellings', 'fragment_place_words', 'plain_words', 'place_words'])   # Why (7 Nov 2026, #2920): prompt builders read places through the real places.plain_words/place_words, not terms()
+    IMPORTS['_alternatives'] = load('src/fragment_words.py', ['_alternatives'])._alternatives   # places.spellings splits a pattern's top-level "|" with it (#3953)
+    spelled = load('src/places.py', ['MAX_SPELLINGS', 'NAME_OK', '_Open', '_Reader', 'spellings', 'fragment_place_words', 'plain_words', 'place_words'])   # Why (7 Nov 2026, #2920): prompt builders read places through the real places.plain_words/place_words, not terms()
     IMPORTS.update(engine=engine, cost=cost, terms=terms.terms, SMALL_MODEL=models.SMALL_MODEL, readable=terms.readable, plain_words=spelled.plain_words, place_words=spelled.place_words, _key=load('src/regions.py', ['_key'])._key)
     answers_file = 'desktop/e2e/fixtures/golden/ai-answers.json'
     table = json.loads((ROOT / answers_file).read_text(encoding='utf-8'))
