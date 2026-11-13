@@ -1,5 +1,6 @@
 """The Always on LinkedIn trial on the engine's side (src/sources/linkedin_turn.py, linkedin_guest._get): in a cloud run no LinkedIn GET starts without the site's "go", a "no" or a silent
 site ends LinkedIn for the run, a cached page is used with no GET, and every GET's answer goes back to the site. Owner, 13 Nov 2026: "Both ways"; the site is the one gate."""
+import http.client
 import io
 import json
 import tempfile
@@ -10,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import hosted_run, time_budget
-from src.sources import host_pace, linkedin_guest, linkedin_turn, read_budget
+from src.sources import host_pace, linkedin_guest, linkedin_turn, page_bytes, read_budget
 from tests.unit.sources.test_linkedin_guest import CARDS, Site
 
 URL = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=sre&location=Geneva&start=0'
@@ -60,6 +61,7 @@ class TurnTest(unittest.TestCase):
 
     def run_with(self, answers, linkedin=lambda url: CARDS):
         site, linkedin_site = FakeSite(answers), Site(linkedin, self.clock)
+        self.last_site = site
         with mock.patch.object(linkedin_turn, '_open', site.open), mock.patch.object(linkedin_guest, '_opener', linkedin_site):
             try:
                 got = linkedin_guest._get(URL)
@@ -132,6 +134,15 @@ class TurnTest(unittest.TestCase):
         self.assertIsInstance(got, linkedin_guest.Later)
         self.assertEqual(linkedin.requests, [])
         self.assertEqual(site.calls[1][1], {'lease': 'lt_1', 'status': 0, 'word': 'unused'})
+
+    def test_a_broken_reply_is_told_as_neterror_and_still_raised(self):
+        # Why (Gitar on #4004): a read that dies mid-body (not an OSError) still answers the lease, so the site never waits out 90 s on it
+        for broken in (http.client.IncompleteRead(b'<li'), UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'bad'), ValueError('bad length')):
+            linkedin_guest.reset()
+            with mock.patch.object(page_bytes, 'reply', side_effect=broken), self.assertRaises(type(broken)):
+                self.run_with([{'answer': 'go', 'lease': 'lt_1'}])
+            site = self.last_site
+            self.assertEqual(site.calls[-1][1], {'lease': 'lt_1', 'status': 0, 'word': 'neterror'}, type(broken).__name__)
 
     def test_a_github_run_asks_with_its_repo_key(self):
         env = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_TRIAL_KEY': 'JPT1.handle.mac'}
