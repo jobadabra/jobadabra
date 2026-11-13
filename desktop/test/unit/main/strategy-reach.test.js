@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {DRAFT_SCHEMA, INSTRUCTIONS, applyEdits, cleanEdits, edited, rebuildGroups, settingsAfter} from '../../../lib/strategy.js';
 import {forWindow} from '../../../lib/settings-native-display.js';
+import {withDerived} from '../../../lib/target-roles.js';
 
 test('the draft schema carries remote_jobs next to the locations, as a list of words', () => {
   const search = DRAFT_SCHEMA.properties.search.properties;
@@ -78,4 +79,32 @@ test('the draft writes each place as one plain name, two spellings as two entrie
   assert.ok(!/locations and remote_excluded_regions are case-insensitive regex fragments/.test(INSTRUCTIONS), 'locations are no longer listed among the regex fragments');
   assert.match(INSTRUCTIONS, /Each entry of locations is one plain place name as job postings write it/);
   assert.match(INSTRUCTIONS, /never a pattern: no \|, brackets, parentheses or other regex signs; a place with two spellings is two entries \("lisboa", "lisbon"/);
+});
+
+// pp (13 Nov 2026; benchmark runs 43339384657 and 43340207071, rs): a first search asks a found job board only the first 2 of the person's own titles
+// (src/sources/found_boards.py MAX_SEARCHES, board_terms early: no local word is kept yet). Sofia r1 asked alo.bg "truck driver", "lorry driver" (HTTP 410, 0 jobs);
+// r2 asked "шофьор на камион" and read 30 jobs. The draft now puts the local title first and the CV-language one second; a local title names the role itself,
+// never a broader word that the title pre-filter (role_keywords) would match for other jobs.
+// sa (13 Nov 2026, run 43343062154): that first wording drafted Krakow's chef de partie as "szef sekcji kuchennej", a literal translation Polish ads do not use
+// (pracuj.pl 1 job); the word that pays is "kucharz". A local title is the one most local ads use, and a rank inside a trade becomes the trade's common title.
+test('the draft puts the local-language title first and the CV-language one second, the title most local ads use, never a broader word or a translated rank', () => {
+  assert.match(INSTRUCTIONS, /the first title is the job title as those local postings write it, the second is the same title in the language of the CV/);
+  assert.match(INSTRUCTIONS, /the first two are what a job board of their country is searched with first/);
+  assert.match(INSTRUCTIONS, /Each local title is the job title most local ads for that job use, specific enough to leave out other jobs \(a truck driver is "шофьор на камион" or "kierowca ciężarówki", not "шофьор" or "kierowca"/);
+  assert.match(INSTRUCTIONS, /never a word-for-word translation of a foreign rank: when the CV's title is a rank inside a trade \("chef de partie", "commis"\), the local title is that trade's common title \("kucharz" in Poland, not "szef sekcji kuchennej"\)/);
+});
+
+// Gitar on #3956: a case on the FIRST drafted title for a market whose ads are not in the CV's language. The model's choice is measured live (benchmark runs 43348554638:
+// p1 Sofia and p5 Krakow, haiku tier, first words "шофьор на камион" and "kucharz"); this case keeps what makes that choice count: the draft's first two titles, as those
+// runs drafted them, become the first two board search words (src/sources/found_boards.py MAX_SEARCHES asks a board only those in a first search), in the drafted order.
+test('the first drafted title of a non-English-CV market is the first word a job board is asked, the CV-language one the second', () => {
+  const drafted = {
+    sofia: ['шофьор на камион', 'truck driver', 'международен шофьор', 'international truck driver', 'шофьор категория ce'],
+    krakow: ['kucharz', 'chef de partie', 'cook', 'sous chef', 'kucharz hotelowy', 'commis chef'],
+  };
+  for (const [place, titles] of Object.entries(drafted)) {
+    const search = withDerived({target_roles: titles});
+    assert.deepEqual(search.jobs_board_search_queries.slice(0, 2), titles.slice(0, 2), place);
+    assert.equal(search.target_roles[0].title, titles[0], place);
+  }
 });
