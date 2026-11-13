@@ -81,6 +81,8 @@ def cv(pid, out):
     if missing:
         raise ValueError(f"profile {pid}: family {p['family']!r} is not in draws.json and the row has no {', '.join(missing)}")
     lines = draw.cv(family, {k: p[k] for k in ('city', 'country', 'language')}, 'Alex Example')
+    if p.get('area'):
+        lines[-1] += f" Open to work {p['area']}."   # the CV and the judge tell one story (for_judge)
     folder = Path(out) / 'draw'
     folder.mkdir(parents=True, exist_ok=True)
     (folder / 'cv.pdf').write_bytes(pdf(lines))
@@ -88,11 +90,21 @@ def cv(pid, out):
     (folder / 'draw.json').write_text(json.dumps({'seed': f'profiles-{pid}', 'family': p['family'], 'city': p['city'], 'country': p['country']}), encoding='utf-8')
 
 
+def for_judge(p):
+    """The row as the blind judge reads it: a row with an `area` is willing to work in it, said in the title the judge's profile line prints; a row without one is returned as it is.
+    Why (13 Nov 2026, owner via sa: d07 "Monthey + 100km (should include Geneva, Lausanne, Bern, Martigny, Sion ...)", d06 "look in the entire Switzerland", d05 "Geneva or Lausanne, Nyon..."):
+    the judge's place rule is "their city or a short commute", and gate_judge.judge() builds its profile line from the title, city, country and language only. An `area` field in judge() would
+    change what scoreboard.lock.json (S2) hashes, so the area goes through the title here, in this unlocked file; every row without `area` (the night people, b, c, d01-d04) is byte-identical."""
+    if not p.get('area'):
+        return p
+    return {**p, 'title': f"{p['title']} (willing to work {p['area']})"}
+
+
 def judge(pid, jobs_path, out):
     """The blind judge itself (gate_judge.judge: the locked prompt, 3 answers, the majority), given this profile instead of a night person."""
     sys.path.insert(0, str(HERE))
     import gate_judge  # noqa: PLC0415
-    gate_judge.PERSONAS = PROFILES   # judge(n) reads PERSONAS[n - 1]; the night's list is not changed on disk
+    gate_judge.PERSONAS = [for_judge(p) for p in PROFILES]   # judge(n) reads PERSONAS[n - 1]; the night's list is not changed on disk
     pool = json.loads(Path(jobs_path).read_text(encoding='utf-8'))
     verdict = gate_judge.judge(IDS.index(pid) + 1, pool)
     Path(out).write_text(json.dumps(verdict, ensure_ascii=False, indent=1), encoding='utf-8')
