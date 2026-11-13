@@ -41,9 +41,9 @@ function card(job) {
   body.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (nextStepOf(job)) body.append(el('div', 'muted small', t('pagesShortJobs.m172', {"nextStepOf": nextStepOf(job)})));
-  // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage).
-  // Why (13 Nov 2026, owner: "Still bad UI. Lack of spacing/margin/padding", then picked "B: short chip"): the check chip and "Account needed" sit in one chip row with their own spacing,
-  // not in the card's 2 px text column, and the narrow card shows the check's value only ("Needs you"); its reason stays in the tooltip, the list and the job's page.
+  // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you; 13 Nov 2026, owner: "Still bad UI. Lack of spacing/margin/padding", picked "B: short chip"): a waiting card shows
+  // its last read's mode, or "Not checked" (spec 2026-10-30-apply-triage), as the value only ("Needs you"), in one spaced chip row with "Account needed"; the reason stays in the
+  // tooltip, the list and the job's page (an applied or inbound card has no apply read).
   if (parts.triage) {
     const chips = el('div', 'board-card-chips');
     chips.append(triageChip(job, {detail: false}));
