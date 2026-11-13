@@ -5,7 +5,7 @@
 .chip-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .chip-tag { background: var(--surface-2); border-radius: var(--r-pill); padding: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
 .chip-tag.tone-bad { background: var(--bad-soft); color: var(--bad); }
-.chip-tag { display: inline-flex; align-items: center; gap: var(--sp-1); }   /* chip(): the value, then a muted detail ("C1"), then × when removable */
+.chip-tag { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }   /* chip(): the value, then a muted detail ("C1"), then × when removable. Why (13 Nov 2026, ea): in a narrow column (Jobs board, 152 px) the two parts shrank side by side and overflow-wrap: anywhere split "Needs you" mid-word; wrapping moves the detail under the value whole */
 .chip-tag .chip-detail { color: var(--muted); }
 .chip-tag .chip-detail::before { content: "· "; }
 .chip-tag.removable { padding-right: var(--sp-1); }
