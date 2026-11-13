@@ -11,7 +11,6 @@ import json
 import math
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,9 +18,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PROFILES = json.loads((HERE / 'search-profiles.json').read_text(encoding='utf-8'))['profiles']
 IDS = [p['id'] for p in PROFILES]
-# Why (13 Nov 2026, sa: "with 24 slots you need not wait for that idle: the night runs one press at a time"; owner: "make it very parallel"): no workflow holds a profile run any
-# more. On 8 slots the night had to be alone (12 Nov); on 24 slots a profile starved by the broker shows as waits p90 > 20 s and is reported not measured, never a low number.
-HOLDERS = ()
+# Why (13 Nov 2026, owner via sa: "First come, first serve" · "each workflow should take its necessary slots"): no workflow holds a profile run; the run claims its room at the
+# broker (tools/persona-search/claim.py) and a profile starved anyway shows as waits p90 > 20 s and is reported not measured, never a low number.
 MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number up to all 30 at once; the room is the broker's, read per run
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
@@ -54,30 +52,11 @@ def ids(given):
     return 'profiles=' + json.dumps(chosen)
 
 
-def busy(run_list=None):
-    """The holder workflows with a run queued or in progress, read with gh (actions: read); an unreadable list counts as busy."""
-    run_list = run_list or (lambda wf: subprocess.run(['gh', 'run', 'list', '--workflow', wf, '--limit', '20', '--json', 'status'],
-                                                      capture_output=True, text=True, check=True).stdout)
-    held = []
-    for wf in HOLDERS:
-        try:
-            runs = json.loads(run_list(wf))
-        except (subprocess.CalledProcessError, ValueError, OSError):
-            held.append(f'{wf} (its runs could not be read)')
-            continue
-        if any(r.get('status') in ('queued', 'in_progress', 'waiting', 'pending', 'requested') for r in runs):
-            held.append(wf)
-    return held
-
-
-def free(chosen, at_once, now=None, run_list=None):
-    """(ok, why): at_once is 1-30, no holder runs (HOLDERS is empty since 13 Nov 2026), and the run's estimate ends before the night's 00:00 UTC start."""
+def free(chosen, at_once, now=None):
+    """(ok, why): at_once is 1-30 and the run's estimate ends before the night's 00:00 UTC start. at_once here is what really runs at once (the workflow passes min(at_once, the broker's claim capacity))."""
     now = now or datetime.now(timezone.utc)
     if not 1 <= at_once <= MAX_AT_ONCE:
         return False, f'at_once {at_once} is outside 1-{MAX_AT_ONCE}: not run'
-    held = busy(run_list)
-    if held:
-        return False, 'the broker is held by ' + ', '.join(held) + ': not run, start it again when they end'
     minutes = math.ceil(len(chosen) / max(1, at_once)) * MINUTES_EACH
     night = now.replace(hour=NIGHT_UTC[0], minute=NIGHT_UTC[1], second=0, microsecond=0)
     night += timedelta(days=1) if night <= now else timedelta(0)
