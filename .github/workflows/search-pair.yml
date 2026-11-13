@@ -129,7 +129,7 @@ jobs:
         #   The relay (codex.mjs) holds the same run token for the whole job, so this renewer adds no reach. The runner ends it with the job.
         env:
           NEED: ${{ needs.setup.outputs.need }}
-        run: nohup python3 tools/persona-search/claim.py hold "$NEED" > claim-hold.log 2>&1 &
+        run: mkdir -p out && nohup python3 tools/persona-search/claim.py hold "$NEED" > "out/claim-hold-${{ matrix.person.id }}.log" 2>&1 &   # uploaded with out/; the judge step shows it
       - uses: actions/checkout@v5
         with: {persist-credentials: false, ref: '${{ needs.setup.outputs.main }}', path: side-main}
       - uses: actions/checkout@v5
@@ -215,6 +215,7 @@ jobs:
           done
           echo "end=$(date +%s)" >> times.env
           python3 tools/persona-search/pair.py minutes times.env "${{ matrix.person.id }}" out >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "out/claim-hold-${{ matrix.person.id }}.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "out/claim-hold-${{ matrix.person.id }}.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:

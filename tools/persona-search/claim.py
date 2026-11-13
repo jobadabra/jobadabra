@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 CLAIM = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/claim'
 AUDIENCE = 'jobadabra-ai-broker'   # the broker's audience (desktop/e2e/lib/broker-client.mjs AUDIENCE)
-ASK_S, RENEW_S, WAIT_MINUTES = 15, 180, 55   # the broker drops a waiting place after 60 s and a held claim after 10 min (claims.mjs WAITING_MS, HELD_MS)
+ASK_S, RENEW_S, WAIT_MINUTES, UNREACHED = 15, 180, 55, 8   # UNREACHED: answers in a row neither granted nor in line (~2 min) mean the broker is down; the broker drops a waiting place after 60 s and a held claim after 10 min (claims.mjs WAITING_MS, HELD_MS)
 AGENT = {'User-Agent': 'jobadabra-ci'}   # Why (13 Nov 2026, #3969): Cloudflare refuses urllib's own agent (403, error 1010)
 
 
@@ -61,10 +61,11 @@ def said(status, reply):
 
 
 def wait(need, now=datetime.now, sleep=time.sleep, asker=ask):
-    """Exit code: 0 once granted, 1 after WAIT_MINUTES, 2 on a 400 or 401 (a need outside the broker's room, or no run token it accepts). One line when the answer changes."""
-    end, last = time.monotonic() + WAIT_MINUTES * 60, ''
+    """Exit code: 0 once granted, 1 after WAIT_MINUTES, 2 on a 400 or 401 (a need outside the broker's room, or no run token it accepts), 3 when the broker is not reached UNREACHED times in a row. One line when the answer changes."""
+    end, last, missed = time.monotonic() + WAIT_MINUTES * 60, '', 0
     while time.monotonic() < end:
         status, reply = asker('POST', need)
+        missed = 0 if status in (200, 202) else missed + 1
         line = said(status, reply)
         if line != last:
             print(f'claim: {now(timezone.utc):%H:%M:%S} {line}', flush=True)
@@ -73,6 +74,9 @@ def wait(need, now=datetime.now, sleep=time.sleep, asker=ask):
             return 0
         if status in (400, 401):
             return 2
+        if missed >= UNREACHED:   # Why (Gitar on #3976): an outage read as "in line" held the runner 55 min and then said "no room"
+            print(f'claim: the broker did not answer {missed} times in a row ({line}); not started', flush=True)
+            return 3
         sleep(ASK_S)
     print(f'claim: no room in {WAIT_MINUTES} min (last: {last}); start it again later', flush=True)
     asker('DELETE')
@@ -80,12 +84,13 @@ def wait(need, now=datetime.now, sleep=time.sleep, asker=ask):
 
 
 def hold(need, sleep=time.sleep, asker=ask):
-    """Renew every RENEW_S until killed; a lost claim (202) says so, and the next ask takes its place in line again."""
+    """Ask now, then every RENEW_S until killed. A claim not granted (lost: 202, or the broker not reached) prints one line; the job uploads it and its summary shows it."""
     while True:
-        sleep(RENEW_S)
+        # Why (Gitar on #3976): the first renewal came 3 min into the job, so a job started late after the grant could already have lost the claim.
         status, reply = asker('POST', need)
         if status != 200:
-            print(f'claim: renewal {said(status, reply)}', flush=True)
+            print(f'claim: {datetime.now(timezone.utc):%H:%M:%S} renewal {said(status, reply)}', flush=True)
+        sleep(RENEW_S)
 
 
 def main(argv):
