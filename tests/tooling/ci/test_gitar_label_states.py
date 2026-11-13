@@ -50,11 +50,8 @@ def wanted(runs, verdict=None, extra=None, **kw):
 class OneSignalTest(unittest.TestCase):
     def test_4031_a_merge_head_with_a_completed_run_reads_the_verdict_written_after_it_started(self):
         """The recorded read of #4031, 13 Nov 2026: head b0b94450 is a merge of main (2 parents); Gitar's run on it started 20:40:09 and completed 20:41:21; the verdict "Approved with suggestions" was
-        written 20:41:19. The label stayed "reviewing" for 7+ minutes: main's merge-walk looked for a run on the commit BEFORE the merge, found none and dropped the verdict, while the head's run said "ran"."""
-        walk = {'repos/o/r/compare/main...P2': {'status': 'behind'}, 'repos/o/r/compare/P2...P1': {'files': []}, 'repos/o/r/compare/P2...M': {'files': []},
-                'repos/o/r/commits/P1': {'parents': [{'sha': 'P0'}], 'commit': {'committer': {'date': '2026-11-13T20:25:00Z'}}}, 'repos/o/r/commits/P1/check-suites': {'check_suites': []},
-                'repos/o/r/commits/P1/check-suites?per_page=100': {'check_suites': [{'app': {'slug': 'gitar-bot'}, 'latest_check_runs_count': 0}]}}   # what main's merge-walk reads: no Gitar run before the merge
-        self.assertEqual(wanted([run()], SUGGESTIONS, extra=walk, parents=('P1', 'P2')), ['Gitar: approved with suggestions'])
+        written 20:41:19. The label stayed "reviewing" for 7+ minutes: main's merge-walk looked for a run on the commit BEFORE the merge, found none and dropped the verdict, while the head's run said "ran". Here the fake gh answers only the one GraphQL read and throws on any other call, so this also proves the label no longer walks back through the merge."""
+        self.assertEqual(wanted([run()], SUGGESTIONS, parents=('P1', 'P2')), ['Gitar: approved with suggestions'])   # `answering` fails on any call but graphql: a REST merge-walk read would throw here
 
     def test_every_state_of_the_label_from_the_heads_run_alone(self):
         for kind in PLAIN:
