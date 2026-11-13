@@ -303,9 +303,15 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         finally:
             careers.READER = reader
         stamp = datetime.now(timezone.utc).date().isoformat()
+        fresh = (datetime.now(timezone.utc).date() - timedelta(days=FACT_DAYS)).isoformat()
         for fact in kept:
+            # Why (13 Nov 2026, sa): a pass reads a board with its own kinds' words, so its row is one search's view of the board. Germany's data pass
+            # kept a general board (76 local jobs); two hours later the pass for photography, video and design read it again and the row lost data:
+            # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row.
+            held = db.execute('SELECT families FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
+            families = list(dict.fromkeys(fact['families'] + [family for family in (held[0].split(',') if held else []) if family]))
             db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                       (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp, int(bool(fact.get('browser')))))
+                       (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser')))))
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()

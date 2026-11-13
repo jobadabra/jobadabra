@@ -219,6 +219,21 @@ class BoardPassTest(unittest.TestCase):
         self.assertEqual([f['host'] for f in scout_boards.facts(self.db)], ['a.md'])
         self.assertEqual(scout_boards.facts(self.db, today=date(2099, 1, 1)), [])
 
+    def test_a_later_pass_for_other_kinds_of_work_keeps_the_kinds_an_earlier_pass_measured(self):
+        """13 Nov 2026: Germany's data pass kept a general board at 05:39; the 07:45 pass for photography, video and design read it again and its
+        row lost data: a data analyst's first search no longer started on it."""
+        reads = {'a.md': ([job('Chisinau')] * 3, 'ok', None)}
+        for seen in (['data_ai'], ['graphic_design']):
+            with mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles, seen=seen: (seen, [])):
+                scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda item, *a: reads[item['host']], out=lambda line: None,
+                                 named='md', google=lambda *a: [])
+        self.assertEqual([sorted(f['families']) for f in scout_boards.facts(self.db)], [['data_ai', 'graphic_design']])
+        self.db.execute("UPDATE scout_board_facts SET read_at = '2000-01-01'")   # a measurement past FACT_DAYS is not carried: only this pass's kinds
+        with mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['nursing_care'], [])):
+            scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda item, *a: reads[item['host']], out=lambda line: None,
+                             named='md', google=lambda *a: [])
+        self.assertEqual([f['families'] for f in scout_boards.facts(self.db)], [['nursing_care']])
+
     def test_a_countrys_kinds_of_work_take_turns_run_after_run(self):
         """A by-hand pass of one country, 12 Nov 2026: every run asked for software and the same 2 thinnest kinds, so the boards of the other kinds were never asked for."""
         asked = []
