@@ -147,7 +147,7 @@ export const messages = {
   "chooseJob": "Alege alt job",
   "emailBelongs": "Acest e-mail aparține acestui job?",
   "emailUnlinked": "{subject} Acest e-mail nu este încă asociat cu acest job.",
-  "addNote": "Adaugă notă",
+  "addNote": "Adaugă activitatea jobului",
   "viewMessage": "Vezi mesajul →",
   "viewSnapshot": "Vezi copia →",
   "nothingHappened": "Încă nu s-a întâmplat nimic",

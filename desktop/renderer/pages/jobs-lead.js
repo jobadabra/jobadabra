@@ -9,6 +9,9 @@ import {shared} from './shared.js';
 import {showJob} from './activity.js';
 import {jobActions, jobHeadline} from '../job-link.js';
 import {$, message, osPick} from './core.js';
+import {copyField} from '../../i18n/display-copy.js';
+import {toastMessage} from './startup.js';
+import {jobPlace} from '../targets.js';
 import {loadJobs} from './jobs.js';
 import {setFilters} from './jobs-filter-menu.js';
 import {storeName} from '../store-words.js';
@@ -242,6 +245,15 @@ function setAuto(on, locked = false) {
   $('lead-auto-row').hidden = locked;
 }
 const leadTarget = () => confirmStep.targetOf($('lead-auto').checked, $('lead-target').value);
+// Employer feedback saved on a rejected job (src/feedback.py save_received clears its old review) starts the AI review at once: the same
+// call as the Jobs menu's "Why me?" (reviewRejection), shown in AI reviews. Why (13 Nov 2026, owner): "a rejection's feedback also starts the AI review".
+async function reviewIfFeedback(logged) {
+  const job = shared.allJobs.find(each => each.page_id && each.page_id === logged?.pageId);
+  if (!job || job.stage !== 'Rejected' || !job.employer_feedback || job.rejection) return;
+  const result = await window.pilot.reviewRejection(job.url);
+  toastMessage(result.ok ? t('pagesJobs.rejectionReviewed') : t('pagesInterviews.reviewFailed'), copyField(result, 'text'), jobPlace(job), result.ok ? 'good' : 'bad');
+  if (result.ok) loadJobs();
+}
 // The Log box, opened on one job (Focus → Add details): its "Which job?" already set to it.
 export function openLogFor(url, label = '') {
   $('lead-open').click();
@@ -367,6 +379,7 @@ export function wireLead() {
       show: job => { $('lead-dialog').close(); showJob(job); }}));
     $('lead-text').value = ''; clearLeadShot();
     setFilters(['all']);  // it may be saved (a lead) or applied: show both
-    loadJobs();
+    await loadJobs();
+    reviewIfFeedback(result.job);
   });
 }

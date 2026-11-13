@@ -147,7 +147,7 @@ export const messages = {
   "chooseJob": "Elegir otra oferta",
   "emailBelongs": "¿Este correo corresponde a esta oferta?",
   "emailUnlinked": "{subject} Este correo aún no está vinculado a esta oferta.",
-  "addNote": "Añadir nota",
+  "addNote": "Añadir actividad del empleo",
   "viewMessage": "Ver mensaje →",
   "viewSnapshot": "Ver copia →",
   "nothingHappened": "Aún no ha pasado nada",

@@ -158,7 +158,7 @@ async function loadFocusOnce() {
 }
 function focusPrimaryActions(actions, item) {
   if (item.kind === 'feedback') actions.append(focusButton(t('pagesProfile.askFeedback'), 'primary', () => openFeedback(item, 'request')));
-  if (item.kind === 'feedback_wait') actions.append(focusButton(t('pagesFocusReports.addFeedback'), 'primary', () => openFeedback(item, 'receive')));
+  if (item.kind === 'feedback_wait') actions.append(focusButton(t('pagesJobs.addActivity'), 'primary', () => openLogFor(item.job_url, `${item.company || item.via || '—'} · ${item.job}`)));
   if (item.kind === 'feedback_review') actions.append(focusButton(t('pagesFocusReports.readFeedback'), 'primary', () => openFeedback(item, 'review')));
   if (item.link && !item.kind.startsWith('feedback')) actions.append(focusButton(copyField(item, 'link_label') || t('pagesCommon.open'), 'primary', event => openLink(item.link, event)));
   if (item.kind === 'details') {
@@ -209,7 +209,7 @@ function focusPrepActions(actions, item, prep) {
 
 function focusMoreActions(item) {
   const more = [];
-  if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: t('pagesProfile.addFeedback'), run: () => openFeedback(item, 'receive')});
+  if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: t('pagesJobs.addActivity'), run: () => openLogFor(item.job_url, `${item.company || item.via || '—'} · ${item.job}`)});
   if (item.kind === 'feedback') more.push({label: t('pagesFocusReports.skipRequest'), run: async () => {
     dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it
     const result = await saveFeedbackAction(item, 'skip');
