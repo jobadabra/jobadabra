@@ -65,7 +65,8 @@ test('a working Apply is dimmed from its commit by the one overlay the panel tak
   assert.match(early, /includes\(FILL_MARK\)[\s\S]*applyState\(details\.tabId\)[\s\S]*setApply\(details\.tabId, WORKING\)/, 'an Apply starts at the first marked navigation of a tab with no state (or the app opening a finished tab again)');
   assert.match(early, /!isWorking\(details\.tabId\)/, 'only a tab the worker holds as working is dimmed, never any other page');
   assert.match(early, /isStopped\(\)/, 'never after the person\'s Stop');
-  assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'overlay-early\.js'\]/, 'one injection: the overlay and its early start together');
+  // Why (13 Nov 2026, Gitar on #4056): a dim drawn before the panel arrives sits on top of a modal the page already opened, like the panel (panel-top-layer.js).
+  assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'panel-top-layer\.js', 'overlay-early\.js'\]/, 'one injection: the overlay, its top layer and its early start together');
   assert.match(read('extension/background.js'), /startEarlyDim\(\);/, 'the worker starts it');
   const overlay = read('extension/panel-overlay.js');
   assert.match(overlay, /if \(window\.__jobadabraOverlay\?\.alive\?\.\(\)\) return;/, 'one copy per page: the panel\'s own injection keeps the early layer, so the panel lifts the layer it sees');
