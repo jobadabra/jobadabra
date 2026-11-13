@@ -120,7 +120,7 @@ class WhenTheReplayFindsManyEmpty(unittest.TestCase):
             self.assertEqual(decide([1, 2, 3], bad)[0], 1, bad)
 
     def test_a_second_trigger_while_one_is_pending_still_makes_one_record(self):
-        self.assertRegex(WORKFLOW, r'concurrency:\n  group: press-tapes-auto\n  cancel-in-progress: false')   # one running + one pending: a newer start replaces the pending one, never a second recording
+        self.assertRegex(WORKFLOW, r"concurrency:\n  group: \$\{\{[^\n]*\|\| 'press-tapes-auto' \}\}\n  cancel-in-progress: false")   # one running + one pending in the recording group: a newer start replaces the pending one, never a second recording (a look has its own group: test_press_tapes_auto_concurrency.py)
         self.assertNotIn('search-personas', re.search(r'concurrency:\n  group: [^\n]*', WORKFLOW).group(0))
         self.assertIn('newer automatic run', job('guard'))   # the older run stands down when a newer one is pending
 
