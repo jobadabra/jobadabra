@@ -5,11 +5,12 @@ import json
 import os
 import sqlite3
 import unittest
+import urllib.error
 from datetime import date, timedelta
 from unittest import mock
 
 from src import scout_board_candidates as candidates, scout_boards
-from src.sources import careers
+from src.sources import ats, careers
 
 TODAY = date(2026, 11, 13)
 SUBSCRIBE = 'https://www.rabota.md/?source=main&subscribePosition={role}&subscribeName={place}'
@@ -64,6 +65,26 @@ class Fetch(unittest.TestCase):
         with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
             self.assertEqual(candidates.fetch(out.append, urlopen=urlopen), [])
         self.assertIn('not read (OSError)', out[0])
+
+    def test_the_request_carries_the_scout_s_own_user_agent_never_urllib_s_default(self):
+        seen = []
+
+        def urlopen(request, **k):
+            seen.append(dict(request.header_items()))
+            raise OSError('stop')
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
+            candidates.fetch(lambda line: None, urlopen=urlopen)
+        self.assertEqual(seen[0]['User-agent'], ats.USER_AGENT, 'Cloudflare answers urllib\'s default agent with 403 1010 before the Worker is reached')
+
+    def test_a_refusal_names_its_status_and_the_site_s_word_and_never_the_key(self):
+        out = []
+
+        def urlopen(*a, **k):
+            raise urllib.error.HTTPError('https://x', 503, 'unavailable', {}, io.BytesIO(b'{"ok": false, "error": "could not read the reported boards"}'))
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
+            self.assertEqual(candidates.fetch(out.append, urlopen=urlopen), [])
+        self.assertIn('not read (HTTPError HTTP 503: could not read the reported boards)', out[0])
+        self.assertNotIn('k3y-secret', out[0])
 
 
 class ForCountry(unittest.TestCase):
@@ -126,7 +147,7 @@ class InThePass(unittest.TestCase):
     def test_a_host_the_browser_was_stopped_at_is_never_a_candidate_whoever_reported_it(self):
         scout_boards.run(self.db, ideas=lambda search: [], read_board=lambda *a: ([], 'ok', None), out=lambda line: None, named='md', google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {})   # makes the memory tables
         self.db.execute("INSERT INTO scout_browser_final (host, why, at) VALUES ('jooble.org', 'HTTP 403', '2026-11-13')")
-        reports = [candidates.valid({'host': host, 'countries': ['md'], 'installs': installs, 'ci': ci}) for host, installs, ci in (('jooble.org', 0, True), ('jooble.org', 5, False), ('open.example', 0, True))]
+        reports = [candidates.valid({'host': host, 'countries': ['md'], 'installs': installs, 'ci': ci}) for host, installs, ci in (('jooble.org', 0, True), ('jooble.org', 5, False), ('www.jooble.org', 0, True), ('open.example', 0, True))]
         self.assertEqual([item['host'] for item in candidates.choose(self.db, reports, 'md')], ['open.example'], 'CI report or install report: the stop wins')
 
     def test_a_refused_candidate_is_read_once_then_left_alone_for_the_refresh_days(self):

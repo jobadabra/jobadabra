@@ -75,7 +75,8 @@ def ensure(db):
 
 def browser_final(db, host):
     """True when the scout's headless browser was stopped at this board (a refusal, a bot check, a sign-in page): never asked again."""
-    return db.execute('SELECT 1 FROM scout_browser_final WHERE host = ?', (host,)).fetchone() is not None
+    from .scout_board_cells import stopped_hosts
+    return host.removeprefix('www.') in stopped_hosts(db)
 
 
 def seed_final(db, text, out=print):
