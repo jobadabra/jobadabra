@@ -58,6 +58,8 @@ jobs:
           sparse-checkout: |
             tools/conflict-label.mjs
             tools/gitar-label.mjs
+            tools/claude-label.mjs
+            tools/claude-review.mjs
             tools/gh_retry.py
           sparse-checkout-cone-mode: false
       - name: Label the open PRs that conflict
@@ -74,6 +76,15 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           SHA: ${{ github.event.check_run.head_sha }}   # the check's own payload lists its PRs on 3 of 40 checks (5 Nov 2026): the commit's open PRs are read instead
         run: node tools/gitar-label.mjs head "$SHA"
+      # Why (13 Nov 2026, cr 2a; owner: "replace Gitar with Claude Code review"): a push moves the head past the reviewed one, so "Claude: approved" becomes "· not re-reviewed" here; the review job writes the verdict itself
+      #   (a review posted with the Actions token starts no event). jobadabra only until the callers of the other repos land (cr PR 3). TODO(AI): drop the repository test then (13 Nov 2026).
+      - name: Set the Claude label of the PR
+        if: ${{ !cancelled() && github.event_name == 'pull_request_target' && github.repository == 'jobadabra/jobadabra' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: node tools/claude-label.mjs "$PR"
       - name: Set the label from Gitar's verdict
         if: ${{ !cancelled() && github.event_name != 'check_run' }}
         env:

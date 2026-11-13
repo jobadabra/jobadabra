@@ -43,6 +43,7 @@ jobs:
           path: cr-tools
           sparse-checkout: |
             tools/claude-review.mjs
+            tools/claude-label.mjs
             tools/claude-review-prompt.md
             tools/gh_retry.py
           sparse-checkout-cone-mode: false
@@ -72,6 +73,7 @@ jobs:
       - name: Review
         id: claude
         if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true'
+        continue-on-error: true   # the next step decides: a plan limit is a skipped review (green), anything else is red
         uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -96,3 +98,15 @@ jobs:
           HEAD: ${{ steps.gate.outputs.head }}
           FROM: ${{ steps.gate.outputs.from }}
         run: node cr-tools/tools/claude-review.mjs post
+      - name: Review failed (a plan limit is skipped, anything else stays red)
+        if: steps.gate.outputs.go == 'true' && steps.token.outputs.ok == 'true' && steps.claude.outcome == 'failure'
+        env:
+          PR: ${{ steps.gate.outputs.pr }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: node cr-tools/tools/claude-review.mjs failed
+      - name: The PR's Claude label
+        if: ${{ !cancelled() && steps.gate.outputs.go == 'true' && steps.claude.outcome == 'success' }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ steps.gate.outputs.pr }}
+        run: node cr-tools/tools/claude-label.mjs "$PR"

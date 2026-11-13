@@ -81,6 +81,21 @@ class ClaudeReviewTest(unittest.TestCase):
         self.assertRegex(text, r'(?m)^\s+allowed_bots: github-actions\s*$')
         self.assertNotIn("allowed_bots: '*'", text)
 
+    def test_a_plan_limit_is_a_skipped_review_not_a_red_job_and_any_other_failure_stays_red(self):
+        """13 Nov 2026 (owner's Telegram: 90% of CI's Claude week used): when the plan is out the review job ends green with one clear line; a real error still fails the job."""
+        with tempfile.TemporaryDirectory() as tmp:
+            def failed(text):
+                file = Path(tmp) / 'execution.json'
+                file.write_text(text, encoding='utf-8')
+                env = {**os.environ, 'PR': '7', 'EXECUTION_FILE': str(file), 'GITHUB_STEP_SUMMARY': str(Path(tmp) / 'summary.md')}
+                return subprocess.run(['node', TOOL, 'failed'], capture_output=True, text=True, env=env, timeout=30)
+            soft = failed('[{"type":"result","is_error":true,"result":"Claude AI usage limit reached|1700000000"}]')
+            self.assertEqual(soft.returncode, 0)
+            self.assertIn('plan limit is reached', soft.stdout)
+            self.assertNotEqual(failed('[{"type":"result","is_error":true,"result":"Unsupported event type: push"}]').returncode, 0)
+        self.assertEqual(node("m.planLimitHit('Claude AI usage limit reached')"), True)
+        self.assertEqual(node("m.planLimitHit('a normal failure')"), False)
+
     def test_a_push_is_reviewed_on_the_diff_since_the_last_reviewed_head_only_when_it_is_an_ancestor(self):
         self.assertEqual(node("m.diffBase('abc', 'ahead')"), 'abc')
         self.assertEqual(node("m.diffBase('abc', 'diverged')"), '')
