@@ -102,7 +102,8 @@ class AnAlternationOfSpellingsIsItsPlaces(unittest.TestCase):
         self.assertEqual(out, ['bulgaria|българия', places.pattern(['Plovdiv', 'Varna']), places.pattern(['Пловдив']), 'plain'])
 
     def test_a_real_regex_is_still_not_a_place_word(self):
-        self.assertEqual(places.words_of(search(top=['/regex-like/', 'z(?:ü|ue)rich', 'a|(b)', '(sofia|софия)', 'sofia|', '|sofia', 'sofia|софия|(?:x)'])), [])
+        """A group of spellings ("(sofia|софия)", "z(?:ü|ue)rich") is its names since run 43328194035 p10: tests/unit/engine/test_place_patterns.py."""
+        self.assertEqual(places.words_of(search(top=['/regex-like/', 'a|(b)', 'sofia|', '|sofia', 'sofia|софия|(?:x)'])), [])
 
 
 if __name__ == '__main__':

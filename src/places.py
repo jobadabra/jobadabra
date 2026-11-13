@@ -82,42 +82,116 @@ def clean_names(names):
     return out[:MAX_NAMES]
 
 
-MAX_SPELLINGS = 4   # a part's spellings once its letter choices are expanded: "krak[oó]w" is 2, never a product of many classes
+MAX_SPELLINGS = 4   # the plain spellings one place fragment may stand for: "krak[oó]w" is 2, "m(ü|ue)nchen|munich" 3; more is a pattern, not one place's spellings
 
 
-def _spellings(part):
-    """The plain spellings one part of an alternation stands for, or None: the page's own reading when it is a word ("z[uü]rich" -> zürich), else the raw text without whole-word
-    marks when it is plain letters ("zürich", "Zurich", "st. gallen"), else the part with each simple letter choice spelled out ("krak[oó]w" -> krakow, kraków)."""
+class _Open(Exception):
+    """The pattern matches an open set of texts (".*", "[a-z]", "\\w", a lookaround), has an optional part ("st\\.? ?gallen", ledger L22), more than MAX_SPELLINGS
+    texts, or does not parse: no spelling stands for it."""
+
+
+class _Reader:
+    """Every text a place pattern matches, in order, case kept: groups and their alternatives, letter choices ([oó]), escaped punctuation, word edges.
+    Raises _Open for anything else (a quantifier, "?" included). An unescaped "." is the dot of a name ("st. gallen"), as the draft means it."""
+
+    def __init__(self, text):
+        self.text, self.at = text, 0
+
+    def all(self):
+        found = self.either()
+        if self.at != len(self.text):
+            raise _Open   # a stray ")"
+        return found
+
+    def either(self):
+        options = self.row()
+        while self.text[self.at:self.at + 1] == '|':
+            self.at += 1
+            options = options + self.row()
+        return options
+
+    def row(self):
+        done = ['']
+        while self.at < len(self.text) and self.text[self.at] not in '|)':
+            options = self.one()
+            if self.text[self.at:self.at + 1] in ('*', '+', '{', '?'):
+                raise _Open   # a quantifier; "?" too: an optional part makes near-twin spellings ("stgallen"), each one more read of a site (L22 keeps it a pattern)
+            done = list(dict.fromkeys(before + option for before in done for option in options))
+            if len(done) > MAX_SPELLINGS:
+                raise _Open
+        return done
+
+    def one(self):
+        char = self.text[self.at]
+        step = {'(': self.group, '[': self.choice, '\\': self.escape}.get(char)
+        if step:
+            return step()
+        if char in '*+?{}])':
+            raise _Open
+        self.at += 1
+        return [''] if char in '^$' else [char]
+
+    def group(self):
+        if self.text.startswith('(?:', self.at):
+            self.at += 3
+        elif self.text.startswith('(?', self.at):
+            raise _Open   # a lookaround or a named group
+        else:
+            self.at += 1
+        inside = self.either()
+        if self.text[self.at:self.at + 1] != ')':
+            raise _Open
+        self.at += 1
+        return inside
+
+    def choice(self):
+        close = self.text.find(']', self.at + 1)
+        letters = self.text[self.at + 1:close]
+        if close < 0 or not letters or not all(c.isalpha() for c in letters):
+            raise _Open   # a range, a negation, an escape: an open set
+        self.at = close + 1
+        return list(dict.fromkeys(letters))
+
+    def escape(self):
+        after = self.text[self.at + 1:self.at + 2]
+        self.at += 2
+        if after in ('b', 's'):
+            return [{'b': '', 's': ' '}[after]]
+        if after and not after.isalnum():
+            return [after]
+        raise _Open   # \w, \d, …
+
+
+def spellings(fragment):
+    """The ONE reading of a place fragment as names: every plain spelling it stands for, in order, or None when it stands for an open set of texts (a real regex).
+    Each top-level alternative is the page's own word when readable() has one ("z[uü]rich" -> zürich, "\\bzug\\b" -> zug), else every text it matches
+    ("lisb(on|oa)" -> lisbon, lisboa; "krak[oó]w" -> krakow, kraków; "sofia|софия"); each must be a plain name (NAME_OK), at most MAX_SPELLINGS of them.
+    Design (13 Nov 2026, run 43328194035 p10 Lisbon; the third fix after #2977 and #3520, each of which added one shape): a place pattern is the finite set of
+    names it matches, read by one small parser instead of a rule per shape; a pattern with no such set is None, and refresh() names it in the run's lines.
+    Expanding a spelling pattern is parsing, never a judgment of what a place is (that stays the places AI's)."""
     from .notion.search_settings import readable
-    word = readable(part).strip('"')
+    text = str(fragment).strip()
+    word = readable(text).strip('"')
     if not word.startswith('/'):
         return [word]
-    raw = re.sub(r'^\\b|\\b$', '', part)
-    if NAME_OK.fullmatch(raw):
-        return [raw]
-    spelled = ['']
-    for piece in re.split(r'(\[[^\]\[\\^-]{2,3}\])', raw):   # a simple letter choice: [oó], [eèé]; no range, no negation
-        letters = piece[1:-1] if re.fullmatch(r'\[[^\]\[\\^-]{2,3}\]', piece) else ''
-        options = list(letters) if any(ord(c) > 127 for c in letters) else [piece]   # only an accent choice is a spelling; "[li]" in "ber[li]n" is left as a pattern (the result then fails NAME_OK)
-        spelled = [done + option for done in spelled for option in options][:MAX_SPELLINGS * 2]
-    spelled = list(dict.fromkeys(spelled))[:MAX_SPELLINGS]
-    return spelled if raw != spelled[0] and all(NAME_OK.fullmatch(name) for name in spelled) else None
+    text = re.sub(r'^"(.*)"$', r'\1', text)
+    from .fragment_words import _alternatives   # the top-level "|"s only: "lisb(on|oa)" is one part
+    try:
+        top = []
+        for part in _alternatives(text):
+            plain = readable(part).strip('"')
+            top.extend([plain] if part and not plain.startswith('/') else _Reader(part).all())
+    except _Open:
+        return None
+    names = list(dict.fromkeys(' '.join(name.split()) for name in top))
+    return names if len(names) <= MAX_SPELLINGS and all(NAME_OK.fullmatch(name) for name in names) else None
 
 
 def fragment_place_words(fragment):
-    """The plain place words one location fragment stands for: its own word, or each spelling of an alternation of plain words ("sofia|софия", "zürich|zurich") or of letter choices
-    ("krak[oó]w"), or a single plain name readable() marks as a pattern only for its accent ("Zürich", "Kraków"); [] for a real regex. Why (2 Nov 2026, owner: the Search check "still showing 0"; #2974 p1): the strategy draft wrote Sofia's two spellings as one fragment, readable()
-    shows any "|" as a regex and the places were skipped: never asked, no country, no board web search. A plain-word alternation is the places it names, in every language.
-    Why (7 Nov 2026, #2920, run 42386229424 p5 Krakow): the draft wrote the city as "krak[oó]w", readable() has no plain form for [oó] (search_settings.ACCENTS: u/o/a umlauts only), terms() dropped it,
-    EURES read the whole country (100 rows, place-right 22 -> 4). Every reader takes a search's place words from here (place_words), never from terms()."""
-    from .notion.search_settings import readable
-    word = readable(fragment).strip('"')
-    if not word.startswith('/'):
-        return [word]
-    parts = [_spellings(part) for part in fragment.split('|')]
-    if None in parts:   # a real regex in any part (_spellings gives only plain names): none
-        return []
-    return list(dict.fromkeys(name for spellings in parts for name in spellings))
+    """The plain place words one location fragment stands for (spellings), [] for a real regex: every reader takes a search's place words from here,
+    place_words or plain_words, never from terms() (#2920). Why (2 Nov 2026, #2974 p1 "sofia|софия"; 7 Nov 2026, #2920 p5 "krak[oó]w"; 13 Nov 2026, run 43328194035
+    p10 "lisb(on|oa)"): a fragment read as no place gave no country, no board web search and no places for the place AI; spellings() is the one reading."""
+    return spellings(fragment) or []
 
 
 def plain_words(fragments):
@@ -155,6 +229,17 @@ def words_of(search):
                     continue
                 found.append(word)
     return found
+
+
+def unread(search):
+    """The search's place fragments that stand for no name (spellings() is None) and are not a fixed region, each as the Strategy page shows it
+    (src/fragment_words.py: never a raw pattern in a run line, tests/guards/rules/test_run_lines_plain.py): places no source can search by name.
+    Pass the person's own words (load_search_config(matching=False)): the crawl's added region and place patterns are no entry of theirs (Gitar on #3953)."""
+    from .fragment_words import fragment_words
+    from .my_places import words
+    from .regions import region_of
+    return list(dict.fromkeys(fragment_words(fragment) or str(fragment) for fragment in words(search)
+                              if not region_of(fragment) and spellings(fragment) is None))
 
 
 def _country_named(word):
@@ -288,6 +373,9 @@ def refresh(search, client=None, file=None):
     """Work out the place words of this search that are not in the cache yet; returns how many it asked about. Nothing is asked when all are known."""
     file = file or path()
     cache = load(file)
+    left = unread(search)
+    if left:   # said, never silent (13 Nov 2026, run 43328194035 p10): a place read as no name gives no country, no board web search and no place for the place AI
+        print(f"Places: not read as a place: {', '.join(left[:3])} (written as a pattern, not a place name); write {'it' if len(left) == 1 else 'each'} as a town or country name in Strategy", flush=True)
     words = stale_words(search, cache)[:MAX_WORDS]
     if not words:
         return 0

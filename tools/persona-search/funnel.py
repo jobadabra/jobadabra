@@ -12,7 +12,7 @@ STEP = re.compile(r'^\[\d+s\] ')
 SECONDS = re.compile(r'^\[(\d+)s\] ')
 PLACES = re.compile(r'^Places: (?:worked out|\d+ place words? placed)')
 WEB_START = re.compile(r'^Job boards: searching the web for trade and local boards')
-WEB_SKIPPED = re.compile(r'^Job boards: no web search: this search names no places or roles')
+WEB_SKIPPED = re.compile(r'^Job boards: no web search: (?!searched)(.+)')   # any reason src/sources/board_web.py not_asked gives, kept; \"searched …\" is a rest or this run's earlier search, not a skip (Gitar on #3953)
 TIME_UP = re.compile(r'^⏱ Time is up \([^)]*\) for ([^:]+):')
 EMPLOYERS = re.compile(r'^Employers: ([\d,]+) of ([\d,]+) in your places hire for your kind of role')
 EMPLOYER_READ = re.compile(r'Reading employer job sites: ([\d,]+) of ([\d,]+)(?: · ([\d,]+) jobs listed)?')
@@ -69,8 +69,8 @@ def funnel(lines):
                 where['places_worked_out_s'] = where['places_worked_out_s'] if where['places_worked_out_s'] is not None else at
             elif WEB_START.match(part):
                 where['web_search_started_s'] = where['web_search_started_s'] if where['web_search_started_s'] is not None else at
-            elif WEB_SKIPPED.match(part):
-                web_skipped = True
+            elif m := WEB_SKIPPED.match(part):
+                web_skipped = m[1].strip() or True
             elif m := TIME_UP.match(part):
                 if m[1] not in time_up:
                     time_up.append(m[1])
