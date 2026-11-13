@@ -29,6 +29,18 @@ def titles(markup, answer='template_field'):
 
 
 class JsonLdTitleTheJobPageShows(unittest.TestCase):
+    def test_one_placeholder_on_forty_pages_is_one_question(self):
+        """Gitar on #4066: the key is the title wording, not title+heading: a board's pages share a placeholder and differ in heading, so asking per pair was 40 calls."""
+        keys = []
+
+        def one(topic, key, *rest):
+            keys.append(key)
+            return 'template_field'
+        with mock.patch('src.ai.decide.one', side_effect=one):
+            got = [careers.jsonld_jobs(page('HV_JSON_TITULO', heading=f'Puesto numero {n} de montaje'), URL)[0]['title'] for n in range(40)]
+        self.assertEqual(len(set(keys)), 1)
+        self.assertEqual(len(set(got)), 40)
+
     def test_the_ai_sees_the_pages_heading_beside_the_title(self):
         """Gitar on #4062: a list page's "Careers" heading must not be read as the job's title on the strength of the title alone: the question holds both lines."""
         with mock.patch('src.ai.decide.one', return_value='job_title') as asked:

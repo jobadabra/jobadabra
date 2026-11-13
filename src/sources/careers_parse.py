@@ -1,7 +1,8 @@
 """Reading a careers page as text: the address <-> feed slug, links, which links look like a job list, and the jobs a page publishes itself
 (schema.org JobPosting data), plus the numbered pages of a job list.
 
-Split out of careers.py (pure move; import it through careers, never first). No network and no module state here: careers.py imports
+Split out of careers.py (pure move; import it through careers, never first). No network and no module state here, with ONE exception: a one-posting page
+whose structured title the page does not show is asked about once per title wording (_shown_title, the title-field question, cached by decide); careers.py imports
 and re-exports every name. Guarded by tests/unit/sources/test_careers.py and test_careers_paging.py.
 """
 import hashlib
@@ -219,7 +220,7 @@ def page_title(markup, url, say=True, cut=True):
 
 TITLE_FIELD = 'title-field'   # decide topic: is a JobPosting's title a job title or an unfilled template field
 TITLE_FIELD_ANSWERS = ('job_title', 'template_field')
-TITLE_FIELD_TASK = ('A job page gives two lines: the "title" field of its structured data and the heading the page shows, in any language. Answer template_field only when the title is a placeholder '
+TITLE_FIELD_INSTRUCTIONS = ('A job page gives two lines: the "title" field of its structured data and the heading the page shows, in any language. Answer template_field only when the title is a placeholder '
                     'or variable name a page template did not fill in (an identifier, a token in capitals or with underscores or braces, not a role), whatever the heading says: a heading such as '
                     '"Careers" or "Open positions" over a real role name is a job_title. Answer job_title when the title names a role.')
 
@@ -243,7 +244,9 @@ def _shown_title(markup, url, title):
         return title
     from ..ai import decide
     question = f'title: {title}\nheading: {heading}'   # Why (13 Nov 2026, Gitar on #4062): on a list page the heading is the board's, so the AI sees both lines, never the title alone
-    if decide.one(TITLE_FIELD, hashlib.sha256(question.lower().encode()).hexdigest()[:20], question, TITLE_FIELD_ANSWERS, TITLE_FIELD_TASK) != 'template_field':
+    # Why (13 Nov 2026, Gitar on #4066): the answer is kept per TITLE wording, not per title+heading: a placeholder is the same on every page of a board, so one question
+    # covers its 40 pages (keyed on both it was 40 AI calls on a Trabajos read); the heading is context for the first page asked, not part of the key.
+    if decide.one(TITLE_FIELD, hashlib.sha256(title.lower().encode()).hexdigest()[:20], question, TITLE_FIELD_ANSWERS, TITLE_FIELD_INSTRUCTIONS) != 'template_field':
         return title
     print(f"Job page: its structured data names the job {title!r}, which is not a job title; its heading {heading!r} is the title: {url}", flush=True)
     return heading
