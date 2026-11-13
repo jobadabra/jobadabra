@@ -88,6 +88,10 @@ class PathRecipe(unittest.TestCase):
         self.assertEqual([(a.href, page_paths.title_of(a, None)) for a in page_paths.anchors(page, BASE)],
                          [('https://board.example/o/1', 'Eins'), ('https://board.example/o/2', 'Zwei')])
 
+    def test_a_link_open_at_the_end_of_a_cut_off_page_is_kept(self):
+        """Gitar on #4055: `<div><a href=...>One` at the end of the input lost its last link."""
+        self.assertEqual([(a.href, page_paths.title_of(a, None)) for a in page_paths.anchors('<div><a href="/o/1">One', BASE)], [('https://board.example/o/1', 'One')])
+
     def test_items_with_no_end_tag_do_not_pile_up_as_ancestors(self):
         """Gitar on #4055: `<li>` and `<p>` may end without an end tag; the next one closes it, so the nearest ancestors are the same with or without the end tags."""
         for page in ('<ul><li class="j"><a href="/o/1">Eins<li class="j"><a href="/o/2">Zwei</ul>',

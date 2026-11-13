@@ -86,6 +86,8 @@ def anchors(markup, base):
     tree = _Tree(base)   # html.parser reads any text without raising (3.5+), so a broken page gives the links it holds
     tree.feed(markup)
     tree.close()
+    if tree.open is not None:   # a link still open at the end of the page (a cut-off page): its text so far is its own
+        tree.anchors.append(tree.open)
     return tuple(tree.anchors)
 
 
