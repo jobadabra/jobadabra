@@ -1,8 +1,9 @@
 """A web page's bytes as text: the charset the reply names, else the one the page declares in its own <meta>, else UTF-8.
 Why (13 Nov 2026, #3989): a job board replied "Content-Type: text/html" with no charset and declared ISO-8859-1 only in its <meta>, 4.7 KB into the
 page; every reader decoded it as UTF-8, so each accented job title reached the person garbled ("T�cnico de Farm�cia").
-Invariants: never raises (an unknown charset name falls to the next); a page with no charset anywhere is UTF-8, as before; ISO-8859-1 is read as
-windows-1252, its superset, as browsers do. Tests: tests/unit/sources/test_page_bytes.py."""
+Invariants: never raises (an unknown name or one that is no text encoding, such as base64, falls to the next); a page with no charset anywhere is
+UTF-8, as before; ISO-8859-1 is read as windows-1252, its superset, as browsers do; a <meta> naming UTF-16/32 means UTF-8, as the HTML spec says
+(a page whose <meta> is readable as ASCII is not UTF-16). Tests: tests/unit/sources/test_page_bytes.py."""
 import codecs
 import re
 
@@ -15,11 +16,17 @@ def text(raw, charset=None):
     if isinstance(raw, str):
         return raw
     raw = bytes(raw or b'')
-    for name in (charset, declared(raw), 'utf-8'):
-        codec = _codec(name)
+    for name, meta in ((charset, False), (declared(raw), True), ('utf-8', False)):
+        codec = _codec(name, meta)
         if codec:
             return raw.decode(codec, 'replace')
     return raw.decode('utf-8', 'replace')
+
+
+def reply(response, limit):
+    """The text of an open HTTP reply (at most `limit` bytes), with the charset its headers name; a reply with no headers (a stand-in) has none."""
+    headers = getattr(response, 'headers', None)
+    return text(response.read(limit), headers.get_content_charset() if headers is not None else None)
 
 
 def declared(raw):
@@ -28,9 +35,13 @@ def declared(raw):
     return found.group(1).decode('ascii', 'ignore') if found else None
 
 
-def _codec(name):
+def _codec(name, meta=False):
     try:
-        codec = codecs.lookup(str(name)).name if name else None
+        info = codecs.lookup(str(name)) if name else None
     except LookupError:
         return None
-    return 'cp1252' if codec in ('latin-1', 'iso8859-1') else codec
+    if info is None or not info._is_text_encoding:   # base64, hex, rot13: known to codecs, but bytes.decode refuses them
+        return None
+    if meta and info.name.startswith(('utf-16', 'utf-32')):
+        return 'utf-8'
+    return 'cp1252' if info.name in ('latin-1', 'iso8859-1') else info.name

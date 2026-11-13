@@ -50,7 +50,7 @@ def get_text(url):
         return page_bytes.text(ats._fixture(fixtures, url))
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'text/html,application/xhtml+xml'})
     with host_pace.open(request, ats.TIMEOUT) as response:
-        return page_bytes.text(response.read(MAX_BYTES), response.headers.get_content_charset())
+        return page_bytes.reply(response, MAX_BYTES)
 
 
 # ---------- reading a page ----------

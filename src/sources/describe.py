@@ -101,7 +101,7 @@ def _get(url, opener=None, accept='text/html'):
     request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Jobadabra; personal job search)', 'Accept': accept})
     try:
         with host_pace.open(request, 15, opener) as response:
-            return page_bytes.text(response.read(3_000_000), response.headers.get_content_charset())
+            return page_bytes.reply(response, 3_000_000)
     except urllib.error.HTTPError as error:
         if error.code in REFUSED_CODES:
             raise Refused(f'HTTP {error.code}') from error

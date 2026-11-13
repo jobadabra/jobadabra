@@ -36,6 +36,18 @@ class PageBytesTest(unittest.TestCase):
     def test_an_unknown_charset_name_falls_back_and_never_raises(self):
         self.assertIn('Lisboa', page_bytes.text(page('<meta charset="x-no-such-charset">'), 'also-unknown'))
 
+    def test_a_meta_naming_utf_16_or_a_non_text_codec_reads_as_utf_8(self):
+        """Gitar on #3990: a <meta> that says UTF-16 is an authoring slip (the HTML spec reads UTF-8); base64 is known to codecs but no text."""
+        for meta in ('<meta charset="utf-16">', '<meta charset="UTF-32LE">', '<meta charset="base64">', '<meta charset="rot13">'):
+            with self.subTest(meta=meta):
+                raw = f'{HEAD}{meta}</head><body><h1>{TITLE}</h1></body></html>'.encode('utf-8')
+                self.assertIn(TITLE, page_bytes.text(raw))
+        self.assertIn('Lisboa', page_bytes.text(page('<meta charset="hex">'), 'base64'))
+
+    def test_a_reply_with_no_headers_reads_as_before(self):
+        """An opener a caller injects may give a bare body (describe._get's stand-ins in test_feed_details did, #3990's red)."""
+        self.assertIn(TITLE, page_bytes.reply(io.BytesIO(page('<meta charset="ISO-8859-1">')), 1_000_000))
+
     def test_get_text_reads_a_page_whose_reply_names_no_charset(self):
         """The shared reader every board and careers page goes through (careers.get_text)."""
         class Reply(io.BytesIO):
