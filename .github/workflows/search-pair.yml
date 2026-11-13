@@ -74,7 +74,7 @@ jobs:
           head=$(python3 -c "import json; print(json.load(open('pr.json'))['headRefOid'])")
           echo "head=$head" >> "$GITHUB_OUTPUT"
           # Why (13 Nov 2026, #3946's pair): the "before" side is the main commit the PR sits on, not main's newest; a PR behind main would otherwise be compared
-          # with everything merged since, and its own change could not be told apart (0bf3c8d6 against 7e5ee877 also differed by #3952 and two more).
+          # with everything merged since, and its own change could not be told apart (main 7e5ee877 against a branch on f86251e3 also differed by #3952 and two more).
           echo "main=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$head" --jq .merge_base_commit.sha)" >> "$GITHUB_OUTPUT"
           gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > changed.txt
       - name: The people (night 1-18 and profile ids, at most 3)
