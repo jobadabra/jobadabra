@@ -8,7 +8,7 @@ import re
 UNMEASURED_BAND = 7   # right jobs a person may lose before a pair is red, while their own spread is not measured
 # Why (13 Nov 2026, sa): run 43498213279 (c04 + c10, the same code both sides, the same boards) gave 8 vs 15 right jobs for c04; a 1-job band would red honest PRs and the red would mean
 # nothing. The band is the spread of the person's last 3 searches on main (the Trello middle-of-3 data) once that is stored; until then 7, or the night person's own kept spread.
-# TODO(AI): the band from the last 3 main searches of a profile, when the Trello re-measure stores them (13 Nov 2026, sa)
+# TODO(AI): the band from the last 3 main searches of a profile, when the Trello re-measure stores them (2026-11-13)
 EXPECT_MIN = 11   # a pair's usual length (setup, draft, searches, judge): run 43498213279 took 10 min
 OVERRIDE = 'A red row is not a dead end: the owner may merge by hand with the ruleset override.'
 
