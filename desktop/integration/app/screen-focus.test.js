@@ -52,12 +52,12 @@ before(() => {
       out.panel = document.querySelector('#job-panel').textContent;
       document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
       await kit.go('focus'); await kit.until(() => !document.querySelector('#job-drawer-layer')?.checkVisibility?.(), 'the job drawer to close');
-      // Rows open the right place: the mail, the feedback box, Jobs.
+      // Rows open the right place: the mail, Add job activity on that job (owner, 13 Nov 2026: the one way in for employer feedback), Jobs.
       kit.press(kit.row('Huxley Partners'), 'Open email');
-      kit.press(kit.row('Fjord Networks'), 'Add feedback');
-      await kit.until(() => document.querySelector('#feedback-dialog[open]'), 'the feedback box');
-      out.feedback = document.querySelector('#feedback-context').textContent;
-      document.querySelector('#feedback-dialog').close();
+      kit.press(kit.row('Fjord Networks'), 'Add job activity');
+      await kit.until(() => document.querySelector('#lead-dialog[open]'), 'the Add job activity box');
+      out.feedback = document.querySelector('#lead-target').selectedOptions[0]?.textContent || '';   // the job it is opened on
+      document.querySelector('#lead-dialog').close();
       kit.press(kit.row('Apply to'), 'Apply');
       await kit.until(() => document.querySelector('.view[data-view="jobs"]:not([hidden])'), 'Jobs');
       await kit.until(() => document.querySelector('#apply-dialog[open]'), 'the Apply box');
@@ -152,7 +152,7 @@ test('Suggestions lead with the latest rejection lesson, with a button to review
   assert.match(panel, /Gale Robotics/, 'the Review tab opens on the rejected job');
 });
 
-test('clicking an Up next or Suggestions row opens the right place: the mail, Jobs, the feedback box', live, () => {
+test('clicking an Up next or Suggestions row opens the right place: the mail, Jobs, Add job activity', live, () => {
   const {host} = first;
   const mail = host.filter(call => call.api === 'shell.openExternal' && /mail\.google\.com.*e2e-lead-1/.test(call.args[0]));
   assert.equal(mail.length, 1, `"Open email" should open the lead's own message once: ${host.map(call => call.args[0]).join(', ') || 'nothing'}`);
