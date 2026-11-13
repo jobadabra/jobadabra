@@ -41,7 +41,7 @@ function unionFiles(into, files = {}) {
 }
 
 // The steps a partial run ran replace theirs; the others keep theirs, moved to the run's commit by the git diff between the two commits, so every line number of an
-// entry stays on ONE commit (a PR's diff is taken from it). Launch (SETUP), import-time Python (WHOLE) and the files are unions. Left as it was, for the next
+// entry stays on ONE commit (a PR's diff is taken from it). Launch (SETUP), import-time Python (LOAD), cross-step Python (WHOLE) and the files are unions. Left as it was, for the next
 // full run to renew: no old steps (whole-suite picking stays), no diff (an unknown commit), or no old entry (a partial run must not make a suite look recorded).
 function overlay(old, now, diff) {
   if (!old?.steps) return old;
@@ -207,7 +207,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
         if (shared?.readers ? !shared.readers.includes(suite) : shared && shared.suite !== suite) continue;   // Why (31 Oct 2026, #2694): a reader keeps the line; else the one suite
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
-        if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)
+        if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} across steps`); continue; }   // Python (lib/coverage.mjs WHOLE: lines a process ran across steps; import-time lines are LOAD)
         const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && name !== LOAD && ran(files[file]?.lines, range)).map(([name]) => name);
         for (const step of steps) pick(suite, {step, at: `${file}:${range[0]}`}, `runs ${file}:${range[0]} in "${step}"`);
         if (steps.length) continue;
