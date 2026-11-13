@@ -76,6 +76,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # Why (13 Nov 2026, cr): the automatic review is started by pr-verdict.yml's dispatch, so its actor is github-actions (a Bot) and the action refuses it ("Workflow initiated by non-human actor: github-actions
+          #   (type: Bot). Add bot to allowed_bots", run 43525125910 on #4107). Only this one bot: the other paths (owner comment, dispatch by hand) start as a person, and a fork never gets here (the gate refuses it).
+          allowed_bots: github-actions
           prompt: ${{ steps.gate.outputs.prompt }}
           claude_args: |
             --model claude-sonnet-5-5
