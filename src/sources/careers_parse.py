@@ -219,13 +219,14 @@ def page_title(markup, url, say=True, cut=True):
 
 TITLE_FIELD = 'title-field'   # decide topic: is a JobPosting's title a job title or an unfilled template field
 TITLE_FIELD_ANSWERS = ('job_title', 'template_field')
-TITLE_FIELD_TASK = ('The "title" field of a job posting\'s structured data, in any language. Answer job_title when it is the name of a role, or template_field when it is a placeholder '
-                    'or variable name a page template did not fill in (an identifier, a token in capitals or with underscores or braces, not a role).')
+TITLE_FIELD_TASK = ('A job page gives two lines: the "title" field of its structured data and the heading the page shows, in any language. Answer template_field only when the title is a placeholder '
+                    'or variable name a page template did not fill in (an identifier, a token in capitals or with underscores or braces, not a role), whatever the heading says: a heading such as '
+                    '"Careers" or "Open positions" over a real role name is a job_title. Answer job_title when the title names a role.')
 
 
 def _shown_title(markup, url, title):
     """A job page's one JobPosting title, unless it is an unfilled template field: then the page's own heading.
-    Why (13 Nov 2026, sd, lab run 43502695338; Gitar on #4046 refused the first rule, "the page must show the title", for "Sr. Engineer" against a shown "Senior Engineer" and for
+    Why (13 Nov 2026, sd, jobadabra-lab board-discovery run 43502695338 (Spain); Gitar on #4046 refused the first rule, "the page must show the title", for "Sr. Engineer" against a shown "Senior Engineer" and for
     script-drawn titles): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"`, so its 39 local jobs shared one title and the kinds question saw one title:
     "no kinds of work from the AI: not kept". Structure only finds the doubt: the title is not in the page's visible text AND shares no word with its heading or <title>.
     Whether that is a template field is the AI's judgment (title-field, asked once per wording and kept); no AI or an unsure answer keeps the title, never a guess.
@@ -241,7 +242,8 @@ def _shown_title(markup, url, title):
     if words(title) & (words(heading) | words(page)):
         return title
     from ..ai import decide
-    if decide.one(TITLE_FIELD, hashlib.sha256(title.lower().encode()).hexdigest()[:20], title, TITLE_FIELD_ANSWERS, TITLE_FIELD_TASK) != 'template_field':
+    question = f'title: {title}\nheading: {heading}'   # Why (13 Nov 2026, Gitar on #4062): on a list page the heading is the board's, so the AI sees both lines, never the title alone
+    if decide.one(TITLE_FIELD, hashlib.sha256(question.lower().encode()).hexdigest()[:20], question, TITLE_FIELD_ANSWERS, TITLE_FIELD_TASK) != 'template_field':
         return title
     print(f"Job page: its structured data names the job {title!r}, which is not a job title; its heading {heading!r} is the title: {url}", flush=True)
     return heading

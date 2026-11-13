@@ -1,5 +1,5 @@
 """A job page's one JobPosting title that is an unfilled template field gives way to the page's heading (careers_parse._shown_title).
-Why (13 Nov 2026, sd; lab run 43502695338, Spain): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"` (an unrendered template field), all 39 of its
+Why (13 Nov 2026, sd; jobadabra-lab board-discovery run 43502695338, Spain): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"` (an unrendered template field), all 39 of its
 local jobs shared that one title, the kinds-of-work question saw one title and the board was "no kinds of work from the AI: not kept". Gitar on #4046: a title
 the page does not show is not always a template field, so the AI judges it (a fake answer here). Pages of that recorded shape with example names; no live site."""
 import io
@@ -29,6 +29,13 @@ def titles(markup, answer='template_field'):
 
 
 class JsonLdTitleTheJobPageShows(unittest.TestCase):
+    def test_the_ai_sees_the_pages_heading_beside_the_title(self):
+        """Gitar on #4062: a list page's "Careers" heading must not be read as the job's title on the strength of the title alone: the question holds both lines."""
+        with mock.patch('src.ai.decide.one', return_value='job_title') as asked:
+            careers.jsonld_jobs(page('Welder', heading='Careers at Example'), URL)
+        self.assertEqual(asked.call_count, 1)
+        self.assertEqual(asked.call_args.args[2], 'title: Welder\nheading: Careers at Example')
+
     def test_a_template_placeholder_title_gives_way_to_the_pages_heading(self):
         """Three job pages of one board, all with the same placeholder: three different titles, not one shared one."""
         got = [titles(page('HV_JSON_TITULO', heading=h))[0][0] for h in ('Electricista de mantenimiento', 'Mozo/a de montaje', 'Profesor/a de matemáticas')]
