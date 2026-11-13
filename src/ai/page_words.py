@@ -41,12 +41,20 @@ class Words(NamedTuple):
     weak_text: bool = False   # the link's own text names the careers page (the old rule for a job-system link)
 
 
+WORDS = 'page words'   # the own allowance (decide.own_allowance) under which the AI judges page words while the page reader is off
+
+
 def ai_on():
-    """The AI may judge page words in this process: the page reader is on (not the tests' None, not a fixture run) and an AI is ready."""
+    """The AI may judge page words in this thread: the page reader is on (not the tests' None, not a fixture run), or the thread is inside the
+    WORDS allowance, and an AI is ready.
+    Why (13 Nov 2026, sa; Portugal trial 43425606888): board discovery's first read keeps the page reader off, so it judged a board's links with
+    the word lists only ("30 links, 0 the AI called job pages, 30 not judged") while every install asks the AI about them, and learned no layout.
+    The pass opens WORDS for that read: its link, host and title questions are asked, each on that allowance; past it a link stays unjudged."""
     if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return False
     from ..sources import careers
-    if careers.READER != 'auto':
+    from . import decide
+    if careers.READER != 'auto' and decide.own_scope() != WORDS:
         return False
     from . import page_reader
     return page_reader.usable()
