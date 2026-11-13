@@ -123,8 +123,9 @@ while :; do
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
       if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$gitar_done" != "$head" ]; then
-        # Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886): a head that only merged main in keeps Gitar's verdict (tools/gitar-label.mjs
-        #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before. Read once per head.
+        # Why (12 + 13 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886, then "Last verdict + not re-reviewed (Recommended)"; #4032): `peek` prints a plain verdict only when it counts on this head
+        #   (Gitar's check ran on it, or the push only merged main in: gitar-label.mjs ownHeadTime), so nobody asks again. "<verdict> · not re-reviewed" and "not started" mean Gitar did not review this head and are asked.
+        #   An empty or failed peek asks as before. Read once per head.
         if [ "$gitar_peeked" != "$head" ]; then
           gitar_peeked="$head"
           kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
@@ -139,7 +140,7 @@ while :; do
             case "$out" in
               ASKED*) gitar_done="$head"; say "GITAR ASKED #$n ${head:0:7}";;
               DROPPED*) gitar_done="$head"; say "GITAR $out #$n ${head:0:7}";;
-              QUEUED*) [ "${out%%, next*}" = "$gitar_q" ] || say "GITAR queued #$n ${head:0:7} ${out#QUEUED }"; gitar_q="${out%%, next*}";;
+              QUEUED*|HELD*) [ "${out%%, next*}" = "$gitar_q" ] || say "GITAR queued #$n ${head:0:7} ${out#* }"; gitar_q="${out%%, next*}";;
             esac
           else [ "$gitar_failed" = "$head" ] || say "GITAR ASK FAILED #$n ${head:0:7}"; gitar_failed="$head"; fi
         fi
