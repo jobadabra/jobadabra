@@ -75,6 +75,12 @@ class ClaudeReviewTest(unittest.TestCase):
         now = 'Date.parse("2026-11-13T15:00:00Z")'
         self.assertEqual(node(f"m.reviewsToday([{{reviews: {{nodes: {json.dumps(nodes)}}}}}], {now})"), 1)
 
+    def test_the_action_accepts_the_bot_that_pr_verdict_dispatches_as(self):
+        """Run 43525125910 (13 Nov 2026): the green-head review is started by pr-verdict.yml, actor github-actions; without allowed_bots the action failed "Workflow initiated by non-human actor"."""
+        text = (ROOT / '.github' / 'workflows' / 'claude-review-shared.yml').read_text(encoding='utf-8')
+        self.assertRegex(text, r'(?m)^\s+allowed_bots: github-actions\s*$')
+        self.assertNotIn("allowed_bots: '*'", text)
+
     def test_a_push_is_reviewed_on_the_diff_since_the_last_reviewed_head_only_when_it_is_an_ancestor(self):
         self.assertEqual(node("m.diffBase('abc', 'ahead')"), 'abc')
         self.assertEqual(node("m.diffBase('abc', 'diverged')"), '')
