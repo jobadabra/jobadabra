@@ -63,7 +63,7 @@
   const setOpen = value => { open = value; card.hidden = !open; pill.setAttribute('aria-expanded', String(open)); if (open) render(); };   // the pill says whether the card is open (a screen reader, the replay's press)
   // Why (13 Nov 2026, owner, LinkedIn Easy Apply 4a: "3. As a pill (Recommended)", asked via AskUserQuestion with screenshots): above a page's modal dialog (panel-top-layer.js
   // moves the panel into it) the open card covers the dialog's own buttons (LinkedIn's Next), so there the panel shows as its pill until the person opens it.
-  const inModal = () => !!host.parentElement?.matches('dialog:modal');
+  const inModal = () => !!window.__jobadabraTopLayer?.isModal(host.parentElement);   // no top layer: the panel is never moved into a modal
   let openedInModal = false;   // the person opened the card above this modal (the pill, or the app's "Show it in the form"): it stays open there
   const autoOpen = () => { if (!open && (!inModal() || openedInModal)) setOpen(true); };   // every opening the panel does by itself goes through here
   window.__jobadabraTopLayer?.onMove(layer => { if (layer !== host) return; if (!inModal()) openedInModal = false; else if (open && !openedInModal) setOpen(false); });   // panel-top-layer.js moved it

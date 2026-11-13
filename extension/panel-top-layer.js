@@ -13,6 +13,8 @@
   const ours = node => node?.nodeType === 1 && typeof node.id === 'string' && node.id.startsWith('jobadabra') && fixed(node);
   // A DOM that cannot read :modal (Chrome before 105, a test's fake DOM) keeps the layers on <html>: their z-index still holds, only the move into a modal is missed (Gitar on #4074).
   const openModal = () => { try { return [...document.querySelectorAll('dialog:modal')].at(-1) || null; } catch { return null; } };
+  // The one :modal probe for a node (review.js's pill-above-a-modal rule reads it): false on a DOM that cannot read :modal, like openModal (Gitar on #4104).
+  const isModal = node => { try { return !!node?.matches('dialog:modal'); } catch { return false; } };
   const parentNow = () => openModal() || document.documentElement;
   const placed = new Map();   // layer -> the dialog this file moved it into: if the page removes that dialog with the layer still in it, the layer comes back to <html>
   // The browser's popover look (a centred, bordered, white box) is undone: each layer keeps its own place and look (its inline style wins over this sheet).
@@ -65,6 +67,6 @@
   // A page popover opened, or an element went fullscreen: it is in the top layer above ours now, so ours are shown again after it (toggle does not bubble: caught on its way down).
   document.addEventListener('toggle', event => { if (!raising && !ours(event.target) && event.newState === 'open') raise(all()); }, true);
   document.addEventListener('fullscreenchange', () => raise(all()));
-  window.__jobadabraTopLayer = {follow, parentNow, onMove: tell => moved.add(tell)};
+  window.__jobadabraTopLayer = {follow, parentNow, isModal, onMove: tell => moved.add(tell)};
   follow();
 })();
