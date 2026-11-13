@@ -50,7 +50,12 @@ test('the panel is on top and takes the click above an overlay, a page popover a
 
     at('a page popover opened after the panel');
     await page.evaluate(() => document.getElementById('pop').showPopover());
-    await page.waitForFunction(() => document.querySelector('#jobadabra-review-host:popover-open') && document.getElementById('pop').matches(':popover-open'));
+    // Why (14 Nov 2026, flaky on #4109 at 09613a68, green on #4096 at the same sha): the page's toggle event comes after showPopover returns, and the raise follows it, so both being
+    // open is not yet the panel on top; the state the assertion needs is the panel at its own centre.
+    await page.waitForFunction(() => {
+      const box = document.getElementById('jobadabra-review-host').getBoundingClientRect();
+      return document.getElementById('pop').matches(':popover-open') && !!document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest('#jobadabra-review-host');
+    });
     assert.deepEqual(await where(), {top: 'panel', clicked: 1, box: {right: 18, bottom: 18}}, 'above a page popover shown later');
     await page.evaluate(() => document.getElementById('pop').hidePopover());
 
