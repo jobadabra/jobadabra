@@ -2,16 +2,6 @@
  {
   "seed": 20261107,
   "pairs": [
-   "start → Focus: Focus: History",
-   "Focus: Focus: History → Profile: Build a CV with the AI",
-   "Profile: Build a CV with the AI → Settings: Available",
-   "Settings: Available → Settings: Developer options: Save",
-   "Settings: Developer options: Save → Actions: Recent runs"
-  ]
- },
- {
-  "seed": 20261107,
-  "pairs": [
    "start → Settings: Experience sources: Add another CV version",
    "Settings: Experience sources: Add another CV version → Jobs: Jobs filter: Inbound",
    "Jobs: Jobs filter: Inbound → Strategy: Job preferences",
@@ -49,6 +39,10 @@
  },
  {
   "seed": 20261112,
+  "pairs": []
+ },
+ {
+  "seed": 20261113,
   "pairs": []
  }
 ]
