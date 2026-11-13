@@ -53,3 +53,16 @@ def said(board, term, place, started, jobs_before, found=None, how='', error=Non
     pages = f" ({len(found or [])} with its next pages)" if len(found or []) > first else ''
     print(f"Job boards: {board.get('name') or board.get('host')} round {asked}: {first} job(s) on the page{pages}, {new} new"
           f"{', ' + how if how else ''}, {took}", flush=True)
+
+
+def page_seen(markup, url):
+    """'the search page: N links in W wordings, K the AI called job pages, U not judged' from the page's same-site links and the AI's verdicts
+    already kept for them (decide.kept: no AI call). Why (13 Nov 2026, sa): three Lisbon boards were read through their feed, and the log could
+    not say whether their search page had job links the AI did not call jobs, links it never judged, or none at all."""
+    from ..ai import decide, page_words
+    from . import careers_parse
+    _, _, same = careers_parse.same_site(markup, url)
+    wordings = list(dict.fromkeys(page_words._wording(text, parts.path) for _, text, parts in same))
+    kept = decide.kept(page_words.LINK, wordings)
+    jobs = sum(1 for wording in wordings if wording in kept and page_words.from_kind(kept[wording]).job_path)
+    return f'the search page: {len(same)} links in {len(wordings)} wordings, {jobs} the AI called job pages, {len(wordings) - len(kept)} not judged'

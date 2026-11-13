@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from src.ai import board_ideas, page_words  # noqa: E402
+from src.ai import board_ideas, decide, page_words  # noqa: E402
 from src.sources import careers, found_boards  # noqa: E402
 
 _READER = careers.READER
@@ -64,7 +64,9 @@ class BoardLayoutTests(unittest.TestCase):
         def link_words(pairs, floor=None):   # the AI's verdict on each link, recorded: what this change saves
             pairs = list(pairs)
             self.asked.extend(pairs)
-            return {(str(t), str(p)): page_words.Words(False, False, False, str(p).startswith(('/job/', '/vacancy/'))) for t, p in pairs}
+            job = {(str(t), str(p)): str(p).startswith(('/job/', '/vacancy/')) for t, p in pairs}
+            decide.remember(page_words.LINK, {page_words._wording(t, p): 'job_page' if yes else 'not_jobs' for (t, p), yes in job.items()}, page_words.LINK_ANSWERS)
+            return {pair: page_words.Words(False, False, False, yes) for pair, yes in job.items()}
         patch = mock.patch.object(page_words, 'link_words', side_effect=link_words)
         patch.start()
         self.addCleanup(patch.stop)
@@ -96,7 +98,8 @@ class BoardLayoutTests(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             jobs, state, _ = found_boards.read_board(board, search, fetch=fetch_page)
-        return jobs, state, [line for line in out.getvalue().splitlines() if 'layout' in line]
+        self.out = out.getvalue().splitlines()
+        return jobs, state, [line for line in self.out if 'layout' in line]
 
     def test_a_layout_that_holds_on_page_one_and_fails_on_the_next_page_is_dropped_there_only(self):
         """Gitar on #3982: page 1 read by the layout, the next page (other cards) by the usual read through the round's own fetch."""
@@ -139,6 +142,19 @@ class BoardLayoutTests(unittest.TestCase):
         jobs, state, said = self._said({**BOARD, 'layout': {'kind': 'tag', 'tag': 'h3', 'class': 'job-title'}}, lambda url: page)
         self.assertEqual((self.asked, said), ([], []))
         self.assertEqual(sorted(job['title'] for job in jobs), ['Python Developer 1', 'Python Developer 2', 'Python Developer 3'])
+
+    def test_a_board_read_through_its_feed_says_what_its_search_page_gave(self):
+        """sa, 13 Nov 2026: three Lisbon boards were read through their RSS feed (found_boards._read's declared route) with no round line and
+        "no layout: none learned on this read"; the line now says what the search page gave beside the feed, and the board's notes say why."""
+        feed = '<rss><channel>' + ''.join(f'<item><title>Python Developer {n}</title><link>https://jobs.example/job/{n}</link></item>' for n in (1, 2, 3)) + '</channel></rss>'
+        page = f'<html><head><link rel="alternate" type="application/rss+xml" href="/feed"></head><body>{MENU}{FOOTER}</body></html>'
+        notes = {}
+        jobs, state, said = self._said({**BOARD, 'learn': notes}, lambda url: feed if url.endswith('/feed') else page)
+        rounds = [line for line in self.out if line.startswith('Job boards: Jobs Example round')]
+        self.assertEqual((state, len(jobs)), ('ok', 3))
+        self.assertEqual(len(rounds), 1, self.out)
+        self.assertIn("round 'developer': 0 job(s) on the page, 0 new, read through its feed: 3 job(s); the search page: 3 links in 3 wordings, 0 the AI called job pages, 0 not judged", rounds[0])
+        self.assertEqual(notes, {'why': 'read through its feed'})
 
     def test_a_layout_rides_from_the_index_to_the_served_board_only_in_its_fixed_shape(self):
         sites = [{'host': 'laid.example', 'kind': 'board', 'url': 'https://laid.example/?q={role}', 'installs': 1,

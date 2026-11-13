@@ -105,7 +105,9 @@ def _read(board, search, fetch, route, early, show=None):
                 except board_routes.Stop as stop:
                     return jobs, board_yield.refused(stop.__cause__), None
                 if declared and (careers.READER is None or found_route['kind'] not in ('feed', 'json') or board_yield.is_relevant(declared)):   # a feed of news, not of jobs (26 Oct 2026: a pilot
-                    return declared, 'ok', found_route   # board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
+                    layout.why_none(f"read through its {found_route['kind']}")   # board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
+                    board_round_log.said(board, term, place, started, jobs, [], f"read through its {found_route['kind']}: {len(declared)} job(s); {board_round_log.page_seen(page, url)}", parts=parts)
+                    return declared, 'ok', found_route
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:
                         return jobs, board_yield.scripted(), None
