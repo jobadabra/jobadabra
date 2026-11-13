@@ -9,8 +9,10 @@
 // Invariant: the session value is only in lib/linkedin-jar.js's Storage.setCookies call: never in a log, a result, the store or a thrown error.
 import * as realSession from './linkedin-session.js';
 import {state as easyApplyState} from './easy-apply-switch.js';
-import {noteStop, stopNotedAt} from './easy-apply-limits.js';
+import {noteCounted, noteStop, stopNotedAt} from './easy-apply-limits.js';
 import {clearJar, jar} from './linkedin-jar.js';
+import {notRunning} from './background-browser.js';
+import {sweepLinkedinLeftovers} from './linkedin-browser.js';
 import {linkedinAddress} from './submit-proof.js';
 
 const STOPPING = new Set(['captcha_runtime', 'captcha_preflight', 'sign_in_required']);   // words-ok: our own hand-off reason ids (extension/background-session.mjs observe), not page knowledge
@@ -23,10 +25,11 @@ export const LINKEDIN_NOTICES = {
 };   // words-ok: our own hand-off reason ids and user-facing words, not page knowledge
 
 /**
- * One controller's LinkedIn side. `send(method, params)`: a CDP call to the hidden browser (lib/background-browser.js send). `log(area, message, fields)`.
+ * One controller's LinkedIn side. `send(method, params)`: a CDP call to the hidden browser (lib/background-browser.js send). `log(area, message, fields)`. `sweep()`: delete the
+ * LinkedIn rows from the closed kept browser's cookie files (lib/linkedin-browser.js sweepLinkedinLeftovers; -> {keptRunning?}).
  * -> {settle(found, handOver)}. A poll with no LinkedIn job makes no browser call and reads no setting.
  */
-export function easyApplyBatch({storage, send, readSession = realSession.readSession, now = Date.now, log = () => {}}) {
+export function easyApplyBatch({storage, send, readSession = realSession.readSession, now = Date.now, log = () => {}, sweep = () => sweepLinkedinLeftovers(storage)}) {
   let inside = false;
   const browser = {send};
   async function put(session) {
@@ -36,7 +39,14 @@ export function easyApplyBatch({storage, send, readSession = realSession.readSes
     if (first) log('easy-apply', 'LinkedIn sign-in put into the hidden browser for this batch', {});
   }
   async function out() {
-    await clearJar(browser, realSession.COOKIE_NAMES.map(name => [name, '']), now());   // the names are the floor; every LinkedIn cookie held is expired too
+    try {
+      await clearJar(browser, realSession.COOKIE_NAMES.map(name => [name, '']), now());   // the names are the floor; every LinkedIn cookie held is expired too
+    } catch (error) {
+      if (!notRunning(error)) throw error;
+      // Why (Gitar on #4109): the browser closed with the sign-in in it (a quit or a crash mid-batch): no live browser holds it, but its cookie file may, so the rows go now,
+      // not at the next app start; a browser that came back in the meantime is cleared through itself on the next poll.
+      if ((await sweep())?.keptRunning) throw error;
+    }
     if (inside) log('easy-apply', 'LinkedIn sign-in taken out of the hidden browser: no LinkedIn job open', {});
     inside = false;
   }
@@ -55,11 +65,15 @@ export function easyApplyBatch({storage, send, readSession = realSession.readSes
   async function settle(found, handOver) {
     const mine = found.filter(([item, each]) => each && linkedinAddress(item.url));
     if (!mine.length && !inside) return;   // no LinkedIn job and no sign-in in the browser: nothing to read or do
-    const counted = stopNotedAt(storage);
-    const stop = mine.find(([, each]) => STOPPING.has(each.state.reason) && (Number(each.state.handoffAt) || 0) > counted);
-    if (stop) {
-      const {until, off} = noteStop(storage, new Date(now()));
-      log('easy-apply', 'LinkedIn showed a check or a sign-in page: all LinkedIn work stops for 24 h', {session: stop[0].id, reason: stop[1].state.reason, until: new Date(until).toISOString(), off});
+    // Why (Gitar on #4109): counted by the store's own hand-off times, never the poll's clock. A hand-off while LinkedIn is already paused is the same stop (a job that was open
+    // when the first check came), so a burst of checks is one stop, and the next check after the pause ends is the second (D3: it turns Easy Apply off).
+    const counted = stopNotedAt(storage), pausedTo = realSession.pausedUntil(storage);
+    const fresh = mine.filter(([, each]) => STOPPING.has(each.state.reason) && (Number(each.state.handoffAt) || 0) > counted);
+    if (fresh.length) {
+      const newest = Math.max(...fresh.map(([, each]) => Number(each.state.handoffAt) || 0));
+      const first = fresh.find(([, each]) => !(pausedTo > (Number(each.state.handoffAt) || 0)));
+      const {until, off} = first ? noteStop(storage, new Date(now()), newest) : noteCounted(storage, newest);
+      if (first) log('easy-apply', 'LinkedIn showed a check or a sign-in page: all LinkedIn work stops for 24 h', {session: first[0].id, reason: first[1].state.reason, until: new Date(until).toISOString(), off});
     }
     const waiting = mine.filter(([, each]) => NOT_OPENED.has(each.state.state));
     const {reason, session} = waiting.length ? turn() : {};

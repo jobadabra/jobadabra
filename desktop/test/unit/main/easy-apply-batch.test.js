@@ -14,9 +14,10 @@ function setup({settings = {linkedinJobs: {on: true}, easyApply: {on: true, warn
   let mine = structuredClone(settings);
   const storage = {settings: () => mine, saveSettings: patch => { mine = {...mine, ...patch}; return mine; }};
   const calls = [], lines = [], handed = [];
-  let jar = [];   // what the browser holds: CDP cookies with an expiry in seconds
+  let jar = [], closed = false, sweeps = 0, keptRunning = false;   // jar: what the browser holds (CDP cookies, expiry in seconds); closed: the browser quit
   const send = async (method, params) => {
     calls.push(method);
+    if (closed) throw Object.assign(new Error('no port file'), {code: 'ENOENT'});
     if (method === 'Storage.getCookies') return {cookies: jar};
     if (method !== 'Storage.setCookies') throw new Error(`unexpected ${method}`);
     for (const c of params.cookies) { jar = jar.filter(held => !(held.name === c.name && held.domain === (c.domain || new URL(c.url).hostname))); if (!c.expires || c.expires * 1000 > NOW) jar.push({...c, domain: c.domain || new URL(c.url).hostname}); }
@@ -24,9 +25,10 @@ function setup({settings = {linkedinJobs: {on: true}, easyApply: {on: true, warn
     return {};
   };
   const log = (area, message, fields) => lines.push(JSON.stringify([area, message, fields]));
-  const batch = easyApplyBatch({storage, send, readSession: () => session, now: () => NOW, log});
+  const batch = easyApplyBatch({storage, send, readSession: () => session, now: () => NOW, log, sweep: async () => { sweeps += 1; return keptRunning ? {keptRunning: true} : {rows: 2}; }});
   const handOver = async (item, reason) => { handed.push([item.id, reason]); return refuse ? {ok: false, error: 'held by another run'} : {state: 'needs_user_handoff', reason, handoffAt: NOW}; };
-  return {batch, handOver, calls, lines, handed, storage, signedIn: () => jar.some(c => c.name === 'li_at' && c.value), held: () => jar};
+  return {batch, handOver, calls, lines, handed, storage, signedIn: () => jar.some(c => c.name === 'li_at' && c.value), held: () => jar,
+    close: () => { closed = true; }, reopen: () => { closed = false; }, sweeps: () => sweeps, runAgain: value => { keptRunning = value; }};
 }
 const job = (id, state, extra = {}) => [{id, url: `https://www.linkedin.com/jobs/view/${id}/`}, {state: {state, ...extra}}];
 const other = (id, state) => [{id, url: `https://jobs.example.com/${id}`}, {state: {state}}];
@@ -100,4 +102,33 @@ test('a hand-over the store refuses is no hand-over: skipped this poll, and it n
   await s.batch.settle(found, s.handOver);
   assert.equal(found[0][1], null, 'skipped, so no launch and the next poll tries again');
   assert.deepEqual(s.calls, [], 'no sign-in put in for it');
+});
+
+test('the browser closed with the sign-in in it: its cookie file is swept now, and nothing is tried again for ever (Gitar on #4109)', async () => {
+  const s = setup();
+  await s.batch.settle([job('j1', 'queued')], s.handOver);
+  s.close();
+  s.runAgain(true);
+  await s.batch.settle([other('a', 'filling')], s.handOver);
+  assert.equal(s.sweeps(), 1, 'swept at once');
+  s.runAgain(false);
+  await s.batch.settle([other('a', 'filling')], s.handOver);
+  assert.equal(s.sweeps(), 2, 'a browser that ran again during the sweep is tried again');
+  const after = s.calls.length;
+  await s.batch.settle([other('a', 'filling')], s.handOver);
+  assert.equal(s.calls.length, after, 'once swept, no call on later polls');
+  assert.equal(s.sweeps(), 2);
+});
+
+test('D3 counts by hand-off: a second check during the pause is the same stop; the next one after the pause is the second, which turns Easy Apply off (Gitar on #4109)', async () => {
+  const s = setup();
+  await s.batch.settle([job('a', 'needs_user_handoff', {reason: 'captcha_runtime', handoffAt: NOW - 5000})], s.handOver);
+  assert.equal(s.storage.settings().easyApply.stops, 1);
+  await s.batch.settle([job('a', 'needs_user_handoff', {reason: 'captcha_runtime', handoffAt: NOW - 5000}), job('b', 'needs_user_handoff', {reason: 'sign_in_required', handoffAt: NOW + 1000})], s.handOver);
+  assert.equal(s.storage.settings().easyApply.stops, 1, 'a job that met a check during the pause is the same stop');
+  assert.equal(s.storage.settings().easyApply.stopAt, NOW + 1000, 'but it is counted, so it is never counted later');
+  const later = NOW + STOP_MS + 60e3;
+  await s.batch.settle([job('c', 'needs_user_handoff', {reason: 'captcha_preflight', handoffAt: later})], s.handOver);
+  assert.equal(s.storage.settings().easyApply.stops, 2, 'a check after the pause ended is the second stop');
+  assert.equal(s.storage.settings().easyApply.on, false, 'which turns Easy Apply off (D3)');
 });

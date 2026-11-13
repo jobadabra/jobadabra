@@ -46,16 +46,23 @@ export function notePress(storage, now) {
 
 /**
  * LinkedIn warned (a warning, checkpoint, "unusual activity", sign-in page or 401/403/429/999) at `now`: all LinkedIn pauses 24 h through the shared pause, never retried;
- * the second stop since Easy Apply was last turned on turns it off (the pause stays). LinkedIn jobs' own switch is not touched. -> {until: epoch ms, off}.
+ * the second stop since Easy Apply was last turned on turns it off (the pause stays). LinkedIn jobs' own switch is not touched. `countedTo`: the newest hand-off this stop covers
+ * (the store's time; default `now`). -> {until: epoch ms, off}.
  */
-export function noteStop(storage, now) {
+export function noteStop(storage, now, countedTo = now.getTime()) {
   const until = now.getTime() + STOP_MS;
   notePause(storage, new Date(until).toISOString());
   const stops = (Number(mine(storage).stops) || 0) + 1;
   const off = stops >= STOPS_TO_OFF;
-  save(storage, {stops, stopAt: now.getTime(), ...(off ? {on: false} : {})});
+  save(storage, {stops, stopAt: countedTo, ...(off ? {on: false} : {})});
   return {until, off};
 }
 
-/** When the last D3 stop was noted (epoch ms, 0 = never): a hand-off at or before it was already counted, so one page never counts as two stops (lib/easy-apply-batch.js). */
+/** The newest hand-off counted so far (epoch ms, the store's hand-off time; 0 = never): one at or before it was already counted, so one page never counts as two stops (lib/easy-apply-batch.js). */
 export const stopNotedAt = storage => Number(mine(storage).stopAt) || 0;
+
+/** Hand-offs up to `countedTo` (epoch ms) were seen during a pause already on: the same stop, so only the mark moves (no new pause, no stop counted). -> {until: 0, off: false}. */
+export function noteCounted(storage, countedTo) {
+  save(storage, {stopAt: Math.max(stopNotedAt(storage), countedTo)});
+  return {until: 0, off: false};
+}
