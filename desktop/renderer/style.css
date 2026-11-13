@@ -453,7 +453,6 @@ button.with-icon .icon { width: 15px; height: 15px; }
 body[data-rescoring] #rescore-card { display: block; }
 body[data-rescoring] #find-card { display: none; }
 .fit-cell.is-stale:is(.high, .mid, .low) { --tone: var(--line-strong); --track: var(--line); }   /* beats the band's colours, which come later in this file */
-.fit-cell.is-stale .fit-label { display: block; color: var(--muted); }   /* a stale score keeps a short muted chip under its ring */
 body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, #jobs-unscored, #jobs-count, #jobs-more, #jobs-stuck, #jobs-filter) { display: none !important; }
 .job-list-head, .job-row { display: grid; grid-template-columns: 62px minmax(0, 2.2fr) minmax(0, 1.15fr) minmax(0, 1.25fr) 120px 208px; gap: 14px; align-items: start; }
 /* Why (7 Nov 2026): long translated column headings must stay within their own column. */ .job-list-head > span { min-width: 0; overflow-wrap: anywhere; } .job-list-head > span:last-child { text-align: end; }

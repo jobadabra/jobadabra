@@ -11,3 +11,11 @@
 .fit-cell:is(.is-queued, .is-scoring, .can-score) .fit-label { display: block; color: var(--muted); font-weight: 500; }
 .fit-cell.can-score button.fit-label { border: 0; padding: 0; background: none; cursor: pointer; color: var(--signal); font-weight: 600; }   /* the text-link colour (style.css button.link): AA on the row's surface */
 @media (prefers-reduced-motion: reduce) { .fit-cell.is-scoring .fit-ring { animation: none; } }
+/* Why (13 Nov 2026, owner: "Realistic ring, never hidden"): an old score keeps its number on a dashed grey ring with a refresh badge; the tooltip says re-score. */
+.fit-ring.is-old { position: relative; background: none; border: 2px dashed var(--line-strong); }
+.fit-ring.is-old span { background: none; color: var(--muted); }
+.fit-old-badge { position: absolute; right: -6px; bottom: -6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); }
+.fit-old-badge .icon { width: 11px; height: 11px; }
+.fit-ring.lg.is-old .fit-old-badge { width: 22px; height: 22px; }
+.fit-lead-score { font-size: var(--fs-lg); }
+.fit-lead-score.high { color: var(--good); } .fit-lead-score.mid { color: var(--warn); } .fit-lead-score.low { color: var(--bad); }

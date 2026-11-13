@@ -1,7 +1,7 @@
-"""A career change's lift to SEARCH_ROLE_FIT needs the AI's yes on the posting's title AND first lines, not the title alone (src/ai/score_search.py
-_role_check). His 04:21 digest (26 Oct 2026, Free AI, pilot search) showed 8 pilot jobs and 2 wrong ones the title-only check let through:
-"Spécialiste Support Pilotage et Comptabilité" (accounting: "pilotage" is managing) and "Flight Physics & Flight Controls Engineer". Jobs tied
-at a score rank by the AI's own fit to the search (own_fit). Fake model and fake role check: the role check stands in for the AI."""
+"""A career change stays listed under the digest's bar only when the posting is a role of the search: the AI's yes on the posting's title AND first
+lines, not the title alone (src/ai/score_search.py _role_check, `searched`). His 04:21 digest (26 Oct 2026, Free AI, pilot search) showed 8 pilot jobs and
+2 wrong ones the title-only check let through: "Spécialiste Support Pilotage et Comptabilité" (accounting: "pilotage" is managing) and "Flight Physics &
+Flight Controls Engineer". Fake model and fake role check: the role check stands in for the AI."""
 import unittest
 from unittest import mock
 
@@ -51,13 +51,13 @@ class RoleCheck(unittest.TestCase):
         return {job['title']: data for job in digest.eligible_jobs(self.db)[0] if (data := score.load(self.db).get(job['id']))}
 
     def test_only_the_pilot_job_is_lifted_and_the_two_wrong_ones_keep_their_fit(self):
-        """Fails on the old code: the title check alone lifted all three to SEARCH_ROLE_FIT, so the digest showed 3 jobs, 2 of them wrong."""
-        score.run(self.db, digest.eligible_jobs(self.db)[0], career.CV, 'm', 20, client=FakeModel(search_fit=0, cv_fit=20))
+        """The title check alone says yes to all three; the digest lists the pilot job only, whose ring stays the scorer's 20."""
+        score.run(self.db, digest.eligible_jobs(self.db)[0], career.CV, 'm', 20, client=FakeModel(search_fit=60, cv_fit=20))
         fits = self.fits()
-        self.assertEqual({title: data['score'] for title, data in fits.items()},
-                         {POSTINGS[0][0]: 20, POSTINGS[1][0]: 20, PILOT: score_search.SEARCH_ROLE_FIT})
+        self.assertEqual({title: data['score'] for title, data in fits.items()}, {POSTINGS[0][0]: 20, POSTINGS[1][0]: 20, PILOT: 20})
+        self.assertEqual({title: data['search']['searched'] for title, data in fits.items()},
+                         {POSTINGS[0][0]: False, POSTINGS[1][0]: False, PILOT: True})
         self.assertEqual(header(self.db, hide_unscored=True)[1], 1, 'the digest lists the pilot job only')
-        self.assertEqual(fits[PILOT]['search']['asked'], 0, "the AI's own fit is kept")
         text = next(text for _, _, text, _ in self.asked if PILOT in text)
         self.assertIn('Roles searched: pilot first officer', text)
         self.assertIn('valid EASA ATPL', text, "the posting's first lines go with its title")
@@ -67,57 +67,8 @@ class RoleCheck(unittest.TestCase):
         with mock.patch('src.ai.decide.one', return_value=None):
             data = score_search.apply({'score': 20, 'tier': 'C', 'search': {'fit': 0, 'career_change': True, 'cv_gap': GAP}},
                                       {'title': PILOT, 'description': POSTINGS[2][1]})
-        self.assertEqual(data['score'], 20, 'no AI, a failed or busy call: not a yes')
-
-    def test_his_title_only_lifts_are_scored_once_more_and_the_wrong_ones_fall(self):
-        """His 04:21 rows: stored at SEARCH_ROLE_FIT by the title-only check, without 'asked'. Each is scored once more with the role check."""
-        jobs = digest.eligible_jobs(self.db)[0]
-        lifted = {'score': 70, 'tier': 'B', 'reason': f'Fits your search · Your CV: {GAP}', 'components': {}, 'strengths': [], 'gaps': [GAP],
-                  'confidence': 'high', 'cv_fit': 20, 'search': {'fit': 70, 'career_change': True, 'cv_gap': GAP}}
-        for job in jobs:
-            score.save(self.db, job, 'm', lifted, career.CV)
-        with mock.patch('src.sources.feeds.wanted_title', return_value=True), mock.patch('src.sources.feeds.triage'):
-            self.assertEqual(len(score.pending_jobs(self.db, jobs, career.CV, 50)), 3)
-            score.run(self.db, jobs, career.CV, 'm', 50, client=FakeModel(search_fit=0, cv_fit=20))
-            self.assertEqual(score.pending_jobs(self.db, jobs, career.CV, 50), [], 'once only, whatever the check answered')
-        self.assertEqual(header(self.db, hide_unscored=True)[1], 1)
-
-    def test_a_title_only_lift_the_cut_leaves_unscored_falls_before_scoring(self):
-        """His 05:00 run (26 Oct 2026): 27 title-only lifts waited for a re-score, the 3-minute cut scored 21, and the 6 left kept 70; the
-        accounting and flight-controls jobs stayed 4th and 7th. Fails on the old code: only a full re-score asked the role check. Now every
-        title-only lift gets the role check first, in one batch, and a no puts the job back at its CV fit, scored in this run or not."""
-        jobs = digest.eligible_jobs(self.db)[0]
-        lifted = {'score': 70, 'tier': 'B', 'reason': f'Fits your search · Your CV: {GAP}', 'components': {}, 'strengths': [], 'gaps': [GAP],
-                  'confidence': 'high', 'cv_fit': 20, 'search': {'fit': 70, 'career_change': True, 'cv_gap': GAP}}
-        for job in jobs:
-            score.save(self.db, job, 'm', lifted, career.CV)
-        with mock.patch('src.sources.feeds.wanted_title', return_value=True), mock.patch('src.sources.feeds.triage'):
-            score.pending_jobs(self.db, jobs, career.CV, 0)   # the cut: no time left to score any of them
-        fits = self.fits()
-        self.assertEqual({title: data['score'] for title, data in fits.items()},
-                         {POSTINGS[0][0]: 20, POSTINGS[1][0]: 20, PILOT: score_search.SEARCH_ROLE_FIT})
-        self.assertNotIn('Fits your search', fits[POSTINGS[0][0]]['reason'])
-        self.assertEqual(header(self.db, hide_unscored=True)[1], 1, 'the digest lists the pilot job only')
-        self.assertEqual(len([1 for topic, *_ in self.asked if topic == score_search.ROLE_TOPIC]), 3, 'each posting asked once')
-        with mock.patch('src.sources.feeds.wanted_title', return_value=True), mock.patch('src.sources.feeds.triage'):
-            self.assertEqual(len(score.pending_jobs(self.db, jobs, career.CV, 50)), 3, 'all three still get their one full re-score')
-            score.pending_jobs(self.db, jobs, career.CV, 0)
-        wrong = [text for _, _, text, _ in self.asked if PILOT not in text]
-        self.assertEqual(len(wrong), 2, 'a fallen lift is not asked again (a yes is, until its re-score: decide answers it from its store)')
-
-    def test_jobs_tied_at_a_score_rank_by_the_ai_s_own_fit(self):
-        jobs = digest.eligible_jobs(self.db)[0]
-        base = {'tier': 'B', 'reason': 'Fits your search', 'components': {}, 'strengths': [], 'gaps': [], 'confidence': 'high'}
-        own = {POSTINGS[0][0]: 10, POSTINGS[1][0]: 40, PILOT: 70}   # all shown at 70; the AI's own fit before the lift differs
-        for job in jobs:
-            score.save(self.db, job, 'm', {**base, 'score': 70, 'search': {'fit': 70, 'asked': own[job['title']], 'career_change': True,
-                                                                           'cv_gap': ''}}, career.CV)
-        for seed_ in range(1, 9):
-            with self.subTest(seed=seed_):
-                card = digest.build_digest(self.db, seed=seed_, hide_unscored=True)[0][0]
-                at = [card.index(title.replace('&', '&amp;')) for title in (PILOT, POSTINGS[1][0], POSTINGS[0][0])]
-                self.assertEqual(at, sorted(at), 'highest own fit first, whatever the shuffle')
-        self.assertEqual(score_search.own_fit({'score': 55}), 55, 'without the part: the score')
+        self.assertEqual(data['score'], 20)
+        self.assertFalse(data['search']['searched'], 'no AI, a failed or busy call: not a yes')
 
 
 if __name__ == '__main__':

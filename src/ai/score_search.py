@@ -1,22 +1,17 @@
-"""The fit score's second view: fit to the person's search apart from fit to their CV (owner, 26 Oct 2026: "Show them, flag the gap", for a
-search in another field than the CV). The pilot search found 13 First Officer jobs; each was scored against a software CV, 0-25, "Unrelated
-role: Pilot vs software developer", and none reached the digest: the scorer never saw the search. Now the engine writes the search's roles
-into the request (block) and the scorer's fixed answer has a `search` part: the fit to those roles (whatever the CV shows), whether the search
-is a career change (another field than the profile's experience) and one line on what the profile lacks. On a career change the job is ranked
-and shown by its fit to the search (apply: the ring, the digest and the Jobs list read 'score'); the CV's own fit is kept as 'cv_fit'.
-A score made before this part existed, under the digest's bar, for a title the current search wants, is scored again once (again_ids).
-On a career change, a title the AI's title check says is a role of the search is shown at SEARCH_ROLE_FIT at least (owner's pick, 26 Oct
-2026: "Use the title check"): Free AI's open model rated his 13 First Officer jobs 0-30 for his pilot search while Claude rated them 55-95;
-the title check is one yes/no question open models answer well (src/sources/feeds.py judged_title; tests/unit/ai/test_score_title_floor.py).
-That check reads the title alone and keeps what could fit, so it lifted "Spécialiste Support Pilotage et Comptabilité" (accounting) and a
-flight-controls engineer into his digest (04:21 run, 26 Oct 2026; owner: "Yes, fix both"): a lift also needs the AI's yes to one fixed
-question on the title and the posting's first lines (_role_check), and jobs tied at a score rank by the AI's own fit (own_fit;
-tests/unit/ai/test_score_role_check.py).
+"""The fit score's second view: how the posting's role matches the person's search, apart from their CV (owner, 26 Oct 2026: "Show them, flag
+the gap", for a search in another field than the CV). The engine writes the search's roles into the request (block) and the scorer's fixed
+answer has a `search` part: the fit to those roles (whatever the CV shows), whether the search is a career change (another field than the
+profile's experience), one line on what the profile lacks, and whether a regulated credential is required.
+The ring is the scorer's own overall score, never replaced by that fit (owner, 13 Nov 2026: "We should be realistic. When a person tries to do a
+career change, for sure all the scoring will drop"; "The person needs to understand why the scoring is so low"; picked "Realistic ring, never
+hidden"). On a career change the one line every place shows says why: `Career change: <what the CV lacks>`, the gap first among the gaps. The
+26 Oct rule that lifted the ring to the fit (or to 70 on the title check) is gone: a lift showed 13 First Officer jobs at 70-85 for a software CV.
+Career change is the AI's per-job answer (search.career_change); no stored profile field (owner, 13 Nov 2026: "Can't we just keep per-job, for now?").
+A job stays listed and in the digest under the digest's bar only when it is a role of the search on a career change (`searched`: the AI's yes to
+the title check AND to one fixed question on the title and the posting's first lines, so "Spécialiste Support Pilotage et Comptabilité" and a
+flight-controls engineer stay out; tests/unit/ai/test_score_role_check.py).
 A licence, certification or rating the posting requires the applicant to hold already, which the profile does not show, caps the fit at 49 (7 Nov 2026, required not preferred; cases: tests/fixtures/score-cases.json).
-The AI judges all of it; no word lists. Tests: tests/unit/ai/test_score_career_change.py."""
-
-SEARCH_ROLE_FIT = 70   # the title check's yes on a career change: the searched role, with the CV's gap (tier B: shown, under a strong A)
-
+The AI judges all of it; no word lists. Tests: tests/unit/ai/test_score_realistic_ring.py."""
 PART = {
     'type': 'object', 'additionalProperties': False, 'required': ['fit', 'career_change', 'cv_gap', 'needs_credential'],
     'properties': {
@@ -86,11 +81,6 @@ def block(search=None):
     return f"\n\nThe person's search (the roles they look for): {', '.join(roles)}." if roles else ''
 
 
-def tier(value):
-    """The tier of a fit number, in the scorer's own bands."""
-    return 'A' if value >= 85 else 'B' if value >= 50 else 'C'
-
-
 def _role_item(job, roles):
     """The role check's (key, text) for a posting: its title and first lines with the search's roles; kept per key (decide)."""
     import hashlib
@@ -122,102 +112,24 @@ def _search_role(job):
 
 
 def apply(data, job=None):
-    """On a career change, the job is ranked by its fit to the search: 'score' becomes that fit and the CV's own is kept as 'cv_fit'.
-    That fit is at least SEARCH_ROLE_FIT when the AI's title check says the title is a role of the search (_search_role), unless the scorer's own answer says the role needs a credential the profile lacks (needs_credential)."""
+    """Keep the scorer's overall as the ring and, on a career change, say why it is low: reason = `Career change: <gap>`, the gap first among the
+    gaps. search.searched = a career change AND the job is a role of the search (_search_role), read by the digest (searched)."""
     part = data.get('search') or {}
     try:
         fit = max(0, min(100, int(part.get('fit'))))
-    except (TypeError, ValueError):   # an answer without the part (an engine without the answer form): kept as asked, never asked again
+    except (TypeError, ValueError):   # an answer without the part (an engine without the answer form): kept as asked
         data['search'] = {}
         return data
-    asked = fit   # the AI's own fit, kept: ties rank by it (own_fit) and its presence marks a score made with the role check (_low)
-    if part.get('career_change') is True and fit < SEARCH_ROLE_FIT and part.get('needs_credential') is not True and _search_role(job):
-        fit = SEARCH_ROLE_FIT
-    data['search'] = {**part, 'fit': fit, 'asked': asked, 'cv_gap': str(part.get('cv_gap') or '')[:120]}
-    if part.get('career_change') is True and fit > int(data.get('score') or 0):
-        data.update(cv_fit=data['score'], score=fit, tier=tier(fit))
-        missing = data['search']['cv_gap']
+    career = part.get('career_change') is True
+    gap = str(part.get('cv_gap') or '')[:120]
+    data['search'] = {**part, 'fit': fit, 'cv_gap': gap, 'searched': bool(career and _search_role(job))}
+    if career and gap:
         # The one line every place shows (the Jobs row, the drawer, Job Matches, the Telegram card): a store's own field, no new column.
-        data['reason'] = f'Fits your search · Your CV: {missing}' if missing else f"Fits your search · {data.get('reason') or ''}".rstrip(' ·')
-        if missing:   # first among the gaps: the drawer's match panel and Job Matches show them
-            data['gaps'] = [missing, *[gap for gap in data.get('gaps') or [] if gap != missing]][:3]
+        data['reason'] = f'Career change: {gap}'
+        data['gaps'] = [gap, *[other for other in data.get('gaps') or [] if other != gap]][:3]   # first among the gaps: the match panel shows them
     return data
 
 
-def own_fit(data):
-    """The digest's second key among jobs tied at a score: the AI's own fit to the search (before any lift), else the score."""
-    data = data or {}
-    asked = (data.get('search') or {}).get('asked')
-    return asked if isinstance(asked, int) else int(data.get('score') or 0)
-
-
-def _low(data, bar):
-    """A score to ask again: made before the search part existed and under the digest's bar, or a career change at SEARCH_ROLE_FIT or under
-    made before the role check (no 'asked': his 03:15 re-score at fit 0-30 on Free AI, and the title-only lifts of his 04:21 run, 26 Oct
-    2026). Once only: a score made now keeps 'asked', whatever the check answered."""
-    if 'search' not in data:
-        return int(data.get('score') or 0) < bar
-    part = data.get('search') or {}
-    return part.get('career_change') is True and 'asked' not in part and int(data.get('score') or 0) <= SEARCH_ROLE_FIT
-
-
-def _title_only_lift(data):
-    """A career change shown at SEARCH_ROLE_FIT by the title check alone, before the role check existed (no 'asked', its CV fit under it)."""
-    part, cv_fit = data.get('search') or {}, data.get('cv_fit')
-    return (part.get('career_change') is True and 'asked' not in part and int(data.get('score') or 0) == SEARCH_ROLE_FIT
-            and isinstance(cv_fit, int) and cv_fit < SEARCH_ROLE_FIT)
-
-
-def recheck_lifts(db, jobs, rows):
-    """Every title-only lift gets the role check now, in one batch, before any scoring: a no puts the job back at its CV fit at once. Its
-    full re-score (again_ids) still comes once, when the run's time allows (his 05:00 run, 26 Oct 2026: the cut scored 21 of 27 lifts and
-    the accounting and flight-controls jobs stayed 4th and 7th at 70). rows: {job id: its scores row}, updated in place. A failed or busy
-    AI changes nothing. Tests: tests/unit/ai/test_score_role_check.py."""
-    import json
-    from . import decide
-    lifted = {}
-    for job in jobs:
-        row = rows.get(job['id'])
-        try:
-            data = json.loads(row['data_json'] or '{}') if row else None
-        except ValueError:
-            data = None
-        if data and _title_only_lift(data) and job.get('title'):
-            lifted[job['id']] = (job, data)
-    roles = _roles() if lifted else []
-    if not roles:
-        return
-    items = {job_id: _role_item(job, roles) for job_id, (job, _) in lifted.items()}
-    answers = decide.decide(ROLE_TOPIC, dict(items.values()), ROLE_ANSWERS, ROLE_TASK) or {}
-    for job_id, (job, data) in lifted.items():
-        if answers.get(items[job_id][0]) != 'no':
-            continue
-        gap = (data.get('search') or {}).get('cv_gap') or ''
-        cv_fit = data.pop('cv_fit')
-        data.update(score=cv_fit, tier=tier(cv_fit), reason=f'Your CV: {gap}' if gap else str(data.get('reason') or '').replace('Fits your search · ', ''))
-        data['search'] = {**data['search'], 'fit': cv_fit}   # the AI's own fit to the search is not known; never shown above the CV's
-        db.execute('UPDATE scores SET data_json=? WHERE job_id=?', (json.dumps(data, ensure_ascii=False), job_id))
-        rows[job_id] = {**dict(rows[job_id]), 'data_json': json.dumps(data, ensure_ascii=False)}
-    db.commit()
-
-
-def again_ids(jobs, rows, bar):
-    """The jobs whose score was made before the search part existed, under the digest's bar, with a title the current search wants: scored
-    once more (owner's pick, 26 Oct 2026: "Low ones the search wants"); a career change under SEARCH_ROLE_FIT too (_low). rows: {job id: its
-    scores row}. The AI sorts their titles first, in one batch (feeds.triage); a failed sort keeps none on words (src/sources/feeds.py
-    wanted_title). Once only: the next answer keeps the AI's own fit as 'asked' (apply, _low)."""
-    import json
-    low = []
-    for job in jobs:
-        row = rows.get(job['id'])
-        try:
-            data = json.loads(row['data_json'] or '{}') if row else None
-        except ValueError:
-            data = None
-        if data is not None and _low(data, bar):
-            low.append(job)
-    if not low:
-        return set()
-    from ..sources import feeds
-    feeds.triage(low)
-    return {job['id'] for job in low if feeds.wanted_title(job.get('title'))}
+def searched(data):
+    """True for a stored score of a role of the search on a career change: the digest keeps it under its bar (apply)."""
+    return bool(((data or {}).get('search') or {}).get('searched'))

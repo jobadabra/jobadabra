@@ -1,7 +1,7 @@
 {
-  "_why": "Which template files a repo gets (owner, 2 Nov 2026: the same workflow on all repos). jobadabra is the source of the label scripts and has its own pr-gate; web has its own tests job named All checks passed and its own body check. Every other repo gets both. retired: workflows no repo may keep; `files` deletes them and the check reports one still there.",
+  "_why": "Which template files a repo gets (owner, 2 Nov 2026: the same workflow on all repos). jobadabra is the source of the label scripts and has its own pr-gate (its pr-labels.yml is the same caller as everyone's, 13 Nov 2026); web has its own tests job named All checks passed and its own body check. Every other repo gets both. retired: workflows no repo may keep; `files` deletes them and the check reports one still there.",
   "default": ["pr-checks.yml", "pr-labels.yml"],
-  "jobadabra": [],
+  "jobadabra": ["pr-labels.yml"],
   "jobadabra-web": ["pr-labels.yml"],
   "retired": ["gitar-label.yml", "conflict-label.yml"],
   "exclude": []

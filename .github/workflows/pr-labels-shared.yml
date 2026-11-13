@@ -1,0 +1,88 @@
+name: CI · PR labels (reusable)
+# The ONE workflow that sets a PR's two labels in every repo of the org (owner, 13 Nov 2026, asked via AskUserQuestion: "One shared workflow (Recommended)": "All 3 repos call the same workflow from
+# jobadabra, so copies can't drift. When Gitar's check ends, it relabels that repo's open PRs. The label follows the verdict within seconds."). A repo's pr-labels.yml is only the caller: the
+# `on:` block, the run name and the permissions (templates/org-repo/pr-labels.yml, identical in jobadabra, jobadabra-web, jobadabra-lab and jobadabra-benchmarks; the weekly org check reports a drift).
+# Called with `uses: jobadabra/jobadabra/.github/workflows/pr-labels-shared.yml@main` (pr-body-check.yml is the same pattern); github.event is the CALLER's event. The scripts are read from this repo's main, never from a PR.
+#
+# Design (13 Nov 2026, gl; owner: "the PR got approved by gitar, but PR lable never changed"; 8 fix PRs in 10 days on this label, so no further case, the shape is written down and the code made to match):
+#   Label states (one Gitar label about the newest push, plus the gray mark a session sets), their ONE owner (tools/gitar-label.mjs wantedLabels(), a pure function of Gitar's newest "Code Review" comment,
+#   the head's push time, whether Gitar has a check run on the head and the PR's labels) and the events that change them:
+#     a PR push, open or reopen ............. reviewing / not started (the verdict of the old push is dropped)   pull_request_target
+#     a "Gitar review" ask, a Gitar comment .. reviewing, or the verdict a new comment holds                       issue_comment
+#     a Gitar review ........................ the verdict it carries                                                  pull_request_review
+#     Gitar's check starting or ending ...... reviewing (a run exists) / the verdict, even one that only EDITED its comment   check_run  <- the event that was missing
+#   Between a push and Gitar's next verdict (automatic reviews are paused until 1 Dec 2026, and Gitar locks a PR for up to 20 min after a few comments, thread replies included, so an ask can be refused): "reviewing" once
+#   asked or Gitar has a run on the head; before that "not started", except that a RED verdict of the older push stays in view as "changes requested · not re-reviewed" (owner, 13 Nov 2026, web #635: "Keep red visible
+#   (Recommended)"). An old approval never stays green. The ask itself is tools/ship-watch.sh's (one "Gitar review" per head, 30 s after the push, never while Gitar's own "wait about N minutes" lock runs).
+#     a push to main ........................ "Merge conflict" on every open PR, and every Gitar label                push
+#     the Worker's ten-minute tick (jobadabra only) a safety net, no longer the way a verdict arrives               workflow_dispatch
+# Why (13 Nov 2026, jobadabra-benchmarks #38 and jobadabra #4000: approved by Gitar, the label stayed "reviewing"): Gitar closes a finding, or approves, by only EDITING its comment, and an edit starts no event.
+#   Its check run ENDS 0-2 s after that edit (12 of 12 heads in jobadabra's last 14 PRs, measured 13 Nov 2026: check completed_at minus the comment's updated_at, 0 to 2 s). So the check is the one event an
+#   edit-only verdict always comes with, and `completed` reads it already written. 7 Nov (#3513) dropped the trigger and relied on a push to main and the tick; the copies in the other repos had no tick and a
+#   drifted copy of the trigger (no PR number), so nothing ever corrected them.
+# Why check_run is back and is not what #3513 and 30 Oct 2026 removed: (1) it is only Gitar's check (`app.slug` contains "gitar", the rule the script reads a Gitar run by; the real slug is "gitar-bot", read from 14 heads' check runs on 13 Nov 2026); GitHub does not start a workflow for a check run an Actions job made, so the event is Gitar's
+#   own, two per review (created + completed; 14 reviews in jobadabra's last 100 minutes on 13 Nov), not the 151 an hour the comment EDITS made on 30 Oct (#2516, REST budget); (2) it labels the PRs whose head IS that commit (one REST call, tools/gitar-label.mjs
+#   `head <sha>`), not every open PR; (3) the run is a check_run run on main: it draws no row on a PR (5 Nov 2026, #3176); (4) a label is written only when it differs.
+# Why (4 Nov 2026, a8): a Gitar review still draws a second row, since pull_request_review runs on the PR's head. A new comment can't replace it: 47 of 145 reviews came with none.
+# Why (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"): a "Gitar review" comment starts a run too, so the label reads "reviewing" within seconds of the ask
+#   (startsWith ignores case); on #3870 and #3859 it stayed "not started" for the whole review because only Gitar's own comments started a run.
+# Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs, tests/tooling/ci/test_gitar_label_states.py; their gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  checks: read   # the head's first check suite gives its push time (tools/gitar-label.mjs)
+  pull-requests: write
+  issues: write   # creating a missing label (tools/gitar-label.mjs addLabel)
+
+# Why (30 Oct 2026): on main the newest push's run decides and reads every open PR anyway. Every other run is its own group, never
+# cancelled: a cancelled run is drawn as a failed check in the PR list (#2400, web #299). Runs needing a live sync re-read the verdict, head and labels after every write (converge in tools/gitar-label.mjs).
+concurrency:
+  group: pr-labels-${{ github.event_name == 'push' && 'main' || github.event_name == 'workflow_dispatch' && 'tick' || github.run_id }}   # a tick never cancels a push's run (own group name); both sync every open PR and write only what differs
+  cancel-in-progress: true
+
+jobs:
+  labels:
+    name: PR labels
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'pull_request_review' && github.event.review.user.login == 'gitar-bot[bot]') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, 'Gitar review')) ||
+      (github.event_name == 'check_run' && contains(github.event.check_run.app.slug, 'gitar'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15   # a hang guard: the two steps took 267 s at the very worst, queue included, in the last 30 runs of each
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: jobadabra/jobadabra   # the scripts live here (public), whichever repo called
+          ref: main
+          sparse-checkout: |
+            tools/conflict-label.mjs
+            tools/gitar-label.mjs
+            tools/gh_retry.py
+          sparse-checkout-cone-mode: false
+      - name: Label the open PRs that conflict
+        if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'pull_request_target') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}   # empty on a push to main: every open PR
+        run: node tools/conflict-label.mjs
+      - name: Set the label of the PR Gitar's check ran on
+        if: ${{ !cancelled() && github.event_name == 'check_run' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.event.check_run.head_sha }}   # the check's own payload lists its PRs on 3 of 40 checks (5 Nov 2026): the commit's open PRs are read instead
+        run: node tools/gitar-label.mjs head "$SHA"
+      - name: Set the label from Gitar's verdict
+        if: ${{ !cancelled() && github.event_name != 'check_run' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || 'all' }}   # a push to main and the tick have none: every open PR
+        run: node tools/gitar-label.mjs "$PR"
