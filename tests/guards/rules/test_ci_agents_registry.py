@@ -15,7 +15,7 @@ WORKFLOWS = ROOT / '.github' / 'workflows'
 ENGINE = re.compile(r'broker-client|edit-codex|judge-codex|\bcodex\b|FREE_AI|ANTHROPIC|anthropic|claude-code-action|ai-broker', re.I)
 TEXT = re.compile(r'^[A-Za-z0-9 ().,/+:_-]{1,60}$')
 KINDS_TODAY = {'loop', 'one-shot'}
-ENGINES = {'broker', 'api-key', 'free', 'workers-ai'}
+ENGINES = {'broker', 'api-key', 'free', 'workers-ai', 'plan'}   # plan: the owner's Claude plan token (claude-review-shared.yml, 13 Nov 2026)
 
 
 def own_files():

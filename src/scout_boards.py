@@ -27,7 +27,7 @@ from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kind
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
 MAX_BOARDS = 12         # boards read per country and run
-BUDGET_S = 240          # the pass gives up starting new boards after this long; the re-reads of known boards have their own time (Why (13 Nov 2026, bp, run 43498167418): a 264 s re-read of one airline board used the whole 240 s and the 10 proposed boards never started)
+BUDGET_S = 240          # (for the default RESERVE candidates; scaled by budget_s()) the pass gives up starting new boards after this long; the re-reads of known boards have their own time (Why (13 Nov 2026, bp, run 43498167418): a 264 s re-read of one airline board used the whole 240 s and the 10 proposed boards never started)
 # Why (12 Nov 2026, owner: "Reserve kinds + batch places"): France trial 43154452142 asked one call per place, its 24 calls for places and kinds all went to
 # places, and three boards with local jobs were never asked their kinds of work. Two allowances, each its one owner: places never spend the kinds' calls.
 PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.countries_each): a board's search page names at most ~100 distinct places
@@ -45,6 +45,11 @@ PAGE_CALLS = 12
 # what its page's links are (src/ai/page_words.py WORDS), as every install's read does, so the pass learns the layout installs replay with no question.
 # Every such question counts here; past it a link stays unjudged, never the word lists' guess. 24: two calls a board (one per page's wordings, 50 a call).
 LINK_CALLS = 2 * MAX_BOARDS
+# Why (13 Nov 2026, bp, sa's order; lab run 43520706763, Spain by hand): LINK_CALLS is one pool for the whole pass, so one board with big pages spent it: campuseducacion.com's
+# first read asked 832 link wordings (99 + 133 + 300 + 300, up to 17 calls of 50), took 134 s and found 0 jobs, and "page words 23 of 24" left the pass's other boards none. A
+# board's reads (its rules read and its AI page read) draw at most this many page-words calls together: ~200 wordings, two thirds of a 300-wording page (MAX_WORDINGS). Past it a
+# link stays unjudged, the board is listed "not measured" and, a candidate that was read, stamped for 20 days. Answers already given are kept (src/ai/decide.py), so a later read goes on with the rest.
+BOARD_WORD_CALLS = 4
 # Why (13 Nov 2026, sa; lab run 43432640838): the same read judges each job page with no job data "one posting or not" (src/sources/one_posting.py
 # pass_allowance), as installs do: with the reader off every linked page stood, so filter pages and redirect stubs counted as local jobs and mixed
 # paths blocked a layout. Past it a page stays unjudged and is not counted. 24: two calls a board (a round's pages, its next pages), one batch each.
@@ -52,6 +57,15 @@ POSTING_CALLS = 2 * MAX_BOARDS
 # The job's whole cap, the relay's and the engine's: every AI step of the pass on its own allowance, added up, so no step's calls are refused by another's:
 # ideas 1 + words 1 + pages 12 + Google's judge 15 + a board's country 12 + places 24 + kinds 12 + page words 24 + job pages 24 = 125.
 JOB_CALLS = IDEA_CALLS + WORD_CALLS + PAGE_CALLS + scout_google_boards.MAX_JUDGED + MAX_BOARDS + PLACE_CALLS + KIND_CALLS + LINK_CALLS + POSTING_CALLS
+
+
+def budget_s():
+    """The seconds a pass starts new boards in: BUDGET_S for the default number of reported candidates, more in proportion when a by-hand run asks for more (SCOUT_BOARD_RESERVE).
+    Why (13 Nov 2026, bp): the 240 s was sized for 4 candidates plus the AI's ideas (a candidate takes ~60 s); with 12 candidates and the same 240 s the pass stops starting boards
+    after the 4th, so the input would read no more. The default (and the schedule) keep 240; a reserve past MAX_BOARDS adds no time (the pass reads 12 boards at most)."""
+    return BUDGET_S * max(1, min(scout_board_candidates.reserve(), MAX_BOARDS) / scout_board_candidates.RESERVE)   # Why (13 Nov 2026, Gitar on #4107): _first() keeps 12 boards, so a reserve past MAX_BOARDS adds no board to wait for
+
+
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
 ASKED_KINDS = 'boards_kinds'   # the scout's memory: {country: [kinds asked, oldest first]}
 RECENT = 4              # countries done lately wait their turn
@@ -317,14 +331,15 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
             for board in proposed:
                 if known and board['host'] not in known:
                     began, known = clock(), set()   # the re-reads are done: the new boards' time starts here
-                if clock() - began > BUDGET_S:
+                if clock() - began > budget_s():
                     if known:   # the re-reads' own time is spent: this one waits for a next pass (not stamped as read), the new boards still come
                         skipped.append(board['host'])
                         continue
                     break
                 kept_layout, notes = _layout(db, board['host'], country), {}   # replayed by this read: a layout that still holds is kept, a stale one replaced
                 board = {**board, 'learn': notes, **({'layout': kept_layout} if kept_layout else {})}
-                with decide.own_allowance(page_words.WORDS, LINK_CALLS), one_posting.pass_allowance(POSTING_CALLS):   # the page reader stays off; the page's words and its job pages are the AI's
+                share = (board['host'], BOARD_WORD_CALLS, (page_words.LINK, page_words.TITLE))   # both reads of this board draw on its one share of page words
+                with decide.own_allowance(page_words.WORDS, LINK_CALLS), one_posting.pass_allowance(POSTING_CALLS), decide.share_allowance(*share):   # the page reader stays off; the page's words and its job pages are the AI's
                     jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
                 browsed = False
                 if not jobs and getattr(state, 'why', '') in board_yield.REFUSED_WORDS.values() and not browser_final(db, board['host']):
@@ -339,7 +354,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                 if not jobs and state == 'empty' and ai_boards and decide.probe_spent() < PAGE_CALLS:
                     careers.READER, ai_boards = reader, ai_boards - 1
                     try:   # one pool for the page reader and any judgment inside the read (src/ai/decide.py probe_allowance), so the job's cap holds
-                        with decide.probe_allowance(PAGE_CALLS):
+                        with decide.probe_allowance(PAGE_CALLS), decide.share_allowance(*share):
                             jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
                     finally:
                         careers.READER = None

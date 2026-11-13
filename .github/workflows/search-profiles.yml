@@ -35,7 +35,7 @@ on:
 
 # Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
 concurrency:
-  group: search-profiles
+  group: search-profiles-${{ github.run_id }}   # Why (13 Nov 2026, owner: "yes, let's run the side by side"; asked by sa): a run of its own, so three by-hand rounds go side by side; their room is the broker's claim line (capacity 6, first come first served), never this group
   cancel-in-progress: false
 
 permissions:
@@ -44,7 +44,10 @@ permissions:
 env:
   CI_AI_PROVIDER: codex   # the broker relay (codex.mjs); the engine behind it is JOBADABRA_CHECK_CHAIN below
   E2E_AI_PROVIDER: codex
-  JOBADABRA_CHECK_CHAIN: ${{ inputs.engine == 'codex' && 'codex,claude' || 'claude' }}   # the search steps' AI; the judge keeps its own chain (its step)
+  # Why (14 Nov 2026, owner via mac-95: "Let's just let AI broker fallback"; run ids 43524315186, 43524290510, 43524339782): the Claude-only pin (`claude` alone = engine claude, only: true) is a call the broker
+  #   refuses when Claude's week is at its stop and the paid key is at its day cap: 361 of 695 broker calls in 5 min, 4 of 5 profile rows with 0 right jobs. `claude,codex` is the broker's subs call: Claude first,
+  #   Codex when Claude's line is shut, never Free AI; the row's engine column says which answered. By hand, `engine: codex` keeps `codex,claude`.
+  JOBADABRA_CHECK_CHAIN: ${{ inputs.engine == 'codex' && 'codex,claude' || 'claude,codex' }}   # the search steps' AI; the judge keeps its own chain (its step)
   # Why (13 Nov 2026, owner: "Ok, let's swithc to Sonnet then"; asked via AskUserQuestion, "All but the replays (Recommended)"): no one-model override, so each
   # search step runs on the tier it names (small or main), as in the app; forced onto the small tier, the country's job boards came back as home pages with no search link.
   JOBADABRA_SEARCH_TIER: app
@@ -200,11 +203,10 @@ jobs:
         run: echo "the engine's renderer did not install" > out/no-renderer.txt
       - name: The broker answers on the chosen AI (stops the profile if not, so a wrong or dead AI is never a quiet number)
         if: steps.free.outputs.ok == 'yes'
-        env:
-          ENGINE: ${{ inputs.engine || 'claude' }}
         run: |
+          # Why (14 Nov 2026, owner via mac-95: "Let's just let AI broker fallback"): the chain is the two subscriptions (claude,codex or codex,claude, never Free AI), so either one answering is the chosen AI; only a dead or Free AI answer stops the profile. Matching the one named engine would stop every profile the moment Claude's week is shut and Codex answers.
           node tools/persona-search/codex.mjs --proof 2>&1 | tee out/proof.txt
-          grep -q "AI: $ENGINE / " out/proof.txt || { echo "the broker did not answer on $ENGINE" | tee out/not-run.txt; exit 1; }
+          grep -qE "AI: (claude|codex) / " out/proof.txt || { echo "the broker did not answer on Claude or Codex" | tee out/not-run.txt; exit 1; }
       - name: The profile's fictional CV, then its first Find jobs search (the app's tiers through the broker)
         if: steps.free.outputs.ok == 'yes'
         env:

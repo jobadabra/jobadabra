@@ -151,8 +151,21 @@ pr_list() {
   printf '%s\n' "$all"
 }
 
-# pr_of_head <repo> <branch>: the number of the open PR whose head is <branch> of <repo>'s owner; empty when there is none.
-pr_of_head() { pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1" | jq -r '.[0].number // empty'; }
+# pr_of_head <repo> <branch>: the number of the open PR whose head is <branch> of <repo>'s owner; empty (exit 0) when there is none; exit 1 with nothing printed when GitHub cannot say.
+# Why (13 Nov 2026, pq; bl on #4022 at 19:47Z, REST core 0 until 20:03Z): the read was piped into jq, so the function had jq's exit status and a quota 403 (no output) read as no open PR; ship.sh went on to create a
+#   second one (422) with no watcher. An unknown answer is never none: REST out (core 0) reads over GraphQL like pr_view; any other failure fails, and the caller must not create a PR.
+pr_of_head() {
+  local out
+  out="$(pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1")" || { _pr_rest_out && _pr_gql_of_head "$@"; return; }
+  jq -r '.[0].number // empty' <<<"$out"
+}
+# _pr_gql_of_head <repo> <branch>: pr_of_head's answer from GraphQL (only PRs whose head is in the repo's own owner, like REST's head=owner:branch). The branch name matches any fork's branch of that name, so a page
+#   with more behind it and no match of ours is unknown (exit 1), never none (Gitar on #4093).
+_pr_gql_of_head() {
+  local out
+  out="$(_pr_gql 'query($o:String!,$n:String!,$b:String!){repository(owner:$o,name:$n){pullRequests(headRefName:$b,states:OPEN,first:100){pageInfo{hasNextPage} nodes{number headRepositoryOwner{login}}}}}' -f o="${1%%/*}" -f n="${1#*/}" -f b="$2")" || return 1
+  jq -r --arg o "${1%%/*}" '.data.repository | if . == null then error("no repository") else (.pullRequests as $p | ($p.nodes | map(select(.headRepositoryOwner.login == $o)) | .[0].number) as $m | if $m == null and $p.pageInfo.hasNextPage then error("more pages") else ($m // empty) end) end' <<<"$out" || return 1
+}
 
 # pr_open <repo> <branch> <title> <body> [draft]: opens the PR into main; prints its URL.
 pr_open() { gh api -X POST "repos/$1/pulls" -f base=main -f head="$2" -f title="$3" -f body="$4" ${5:+-F draft=true} --jq .html_url; }

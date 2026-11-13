@@ -2,13 +2,15 @@
 Why (13 Nov 2026, owner via sa, asked via AskUserQuestion: "Any install + our CI searches (Recommended)": "board names only (no person, no job); one report is enough to queue a board for the Scout;
 the Trello people's CI searches report too, marked as ours; only the Scout's own result is served to apps"; "Let's fix it"): Jobeka and Trabajo.org gave a Madrid electrician 19 and 16 right
 jobs in CI searches and no source told the Scout. Site half: jobadabra-web #643 (`ci-search-<run>` install id -> table `ci_boards`, never `sitefacts`, so no install count and no served number counts CI).
-Invariants: (1) names only: a board's host and the fixed country id of the profile's country; no person, job, title, template, run id (the install id `ci-search-<run>` is the mark and the site stores
-not even that); (2) only the fictional people of search-profiles.json (the night's 18 locked people are not in it: skipped, never touched), never a fixture or a test (only on GitHub Actions, or `--dry-run`);
+Invariants: (1) names and one count: a board's host, the fixed country id of the profile's country and `local` (how many jobs the search kept from it in the person's place, an integer 0..999); no person, job,
+title, template, run id (the install id `ci-search-<run>` is the mark and the site stores not even that); (2) only the fictional people of search-profiles.json (the night's 18 locked people are not in it: skipped, never touched), never a fixture or a test (only on GitHub Actions, or `--dry-run`);
 (3) every board the search READ, listed jobs or not (the press record's sources of kind "job board", the host the press wrote), never a guess from a display name; the Scout measures each one itself
 and its own memory of refusals wins over this report (src/scout_board_candidates.py choose); (4) a failed or refused
 post is a warning, never a red run (the feed is a favour, not part of the measure); (5) one fixed address, honest user agent, no override.
   python3 tools/persona-search/report_boards.py <folder> [--person <id>] [--run <id>] [--dry-run]
 <folder> is one run's folder (`out/` of search-profiles.yml, `out/<id>--<side>-<k>` of search-pair.yml) or a folder of such folders (a saved artifact).
+Why `local` (13 Nov 2026, owner via sa: "ties are not equal, the search already knows which boards gave it jobs... send that number with the host (a count, fixed shape, validator both ends, capped), the site keeps
+the highest seen, and for_country orders by it first"): discovery run 43520706763 read 4 of 77 reported boards in alphabetical order while Jobeka and Trabajo.org (19 and 16 right jobs for a Madrid electrician) waited. Site half: jobadabra-web #647.
 Tests: tests/tooling/ci/test_report_boards.py."""
 import json
 import os
@@ -26,6 +28,7 @@ USER_AGENT = 'jobadabra-ci-search'
 FOLDER = re.compile(r'^(?:search-profile-)?([a-z]\d{2})(?:--.*)?$')   # search-profile-c04, c04--main-1, c04
 HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')
 MAX_BOARDS = 150   # the site's cap per share (jobadabra-web api/ci-boards.js MAX_CI_BOARDS)
+MAX_LOCAL = 999    # the site's cap on `local` (jobadabra-web api/ci-boards.js MAX_LOCAL); the site turns anything above it into 0, so the cap is applied here too
 
 
 def person_of(folder):
@@ -34,15 +37,21 @@ def person_of(folder):
     return found.group(1) if found else None
 
 
+def local_of(source):
+    """The jobs a press row kept from a board in the person's place: its `local` as an integer 0..MAX_LOCAL, else 0 (a missing, text, negative, fractional or boolean value is no count)."""
+    value = source.get('local')
+    return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= MAX_LOCAL else 0
+
+
 def boards_read(folder):
-    """The hosts of every board this run's first press read: {host, ...} from `draw/presses.jsonl` sources of kind 'job board' (the press wrote the real host).
+    """{host: local} of every board this run's first press read, from `draw/presses.jsonl` sources of kind 'job board' (the press wrote the real host); `local` is the most any row of the folder kept from it.
     Why (13 Nov 2026, sa, after bp's count on run 43514251379: 29 boards read, 16 listed jobs, 3 reported): the old filter `local >= 1` counted jobs SAVED in the person's place, so a board whose page listed
     38 jobs and none relevant (Trabajos.com) or 72 with 3 relevant (rabota.md) was never reported. The press row has no 'listed' count and no sign of a refusal (a refused board and a board with 38 listed jobs
     both read all zeros), so there is nothing to filter on; the Scout does its own measuring, one read of each board per 20 days, and a host it knows as refused is not asked."""
     path = Path(folder) / 'draw' / 'presses.jsonl'
     if not path.exists():
-        return set()
-    hosts = set()
+        return {}
+    hosts = {}
     for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
         try:
             record = json.loads(line)
@@ -51,7 +60,7 @@ def boards_read(folder):
         for source in record.get('sources') or []:
             host = str(source.get('source') or '').strip().lower()
             if source.get('kind') == 'job board' and HOST.fullmatch(host):
-                hosts.add(host)
+                hosts[host] = max(hosts.get(host, 0), local_of(source))
     return hosts
 
 
@@ -66,24 +75,28 @@ def country_of(person):
 
 
 def collect(path, person=None):
-    """{(host, country)} for a run folder or a folder of run folders; a folder with no known person or no readable country adds nothing."""
+    """{(host, country): local} for a run folder or a folder of run folders (the highest `local` over its folders for a host); a folder with no known person or no readable country adds nothing."""
     path = Path(path)
     folders = [path] if (path / 'draw').is_dir() else sorted(draw.parent for draw in path.rglob('draw') if draw.is_dir())
-    found = set()
+    found = {}
     for folder in folders:
         who = person or person_of(folder)
         country = country_of(who) if who else None
         if country:
-            found |= {(host, country) for host in boards_read(folder)}
+            for host, local in boards_read(folder).items():
+                found[(host, country)] = max(found.get((host, country), 0), local)
     return found
 
 
 def body(found, run):
-    """The share the site's CI door takes: {v, install: 'ci-search-<run>', ci_boards: [{host, countries}]}; at most MAX_BOARDS hosts, the most countries first."""
+    """The share the site's CI door takes: {v, install: 'ci-search-<run>', ci_boards: [{host, countries, local}]} from collect's {(host, country): local}; at most MAX_BOARDS hosts, by host;
+    a host's `local` is the highest over its countries."""
     by_host = {}
-    for host, country in sorted(found):
-        by_host.setdefault(host, []).append(country)
-    boards = [{'host': host, 'countries': countries} for host, countries in sorted(by_host.items())][:MAX_BOARDS]
+    for (host, country), local in sorted(found.items()):
+        entry = by_host.setdefault(host, {'host': host, 'countries': [], 'local': 0})
+        entry['countries'].append(country)
+        entry['local'] = max(entry['local'], local)
+    boards = list(by_host.values())[:MAX_BOARDS]
     return {'v': 2, 'install': f'ci-search-{re.sub(r"[^A-Za-z0-9-]", "", str(run))[:40] or "run"}', 'ci_boards': boards}
 
 
@@ -117,7 +130,7 @@ def main(argv, post=None):
         return 2
     found = collect(args[0], person)
     payload = body(found, run or os.environ.get('GITHUB_RUN_ID') or 'manual')
-    print(f"CI boards: {len(payload['ci_boards'])} board(s) to tell the Scout: " + (', '.join(f"{b['host']} ({'/'.join(b['countries'])})" for b in payload['ci_boards']) or 'none'))
+    print(f"CI boards: {len(payload['ci_boards'])} board(s) to tell the Scout: " + (', '.join(f"{b['host']} ({'/'.join(b['countries'])}, {b['local']} kept)" for b in payload['ci_boards']) or 'none'))
     if dry or not payload['ci_boards']:
         return 0
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('JOBADABRA_FIXTURE_DIR'):

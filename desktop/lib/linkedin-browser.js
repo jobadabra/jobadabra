@@ -47,13 +47,14 @@ async function inUse(profile, fetchImpl) {
 /**
  * At app start, before any hidden browser runs: delete the read's folder a killed app left, and remove every LinkedIn cookie row from the KEPT hidden-browser profile
  * (what earlier versions left there). Invariant: only files under the app's own folder (storage.path) are opened; only rows of LinkedIn hosts are deleted, every other
- * site's sign-in stays. `openDb(file)` -> {exec(sql) -> number of rows deleted, close()} (a test passes a spy). -> {readFolder: 'removed'|'none'|'kept', rows}.
+ * site's sign-in stays. `openDb(file)` -> {exec(sql) -> number of rows deleted, close()} (a test passes a spy). -> {readFolder: 'removed'|'none'|'kept', rows, keptRunning?}.
+ * Also Easy Apply's batches, when the kept browser closed with the sign-in in it (lib/easy-apply-batch.js).
  */
 export async function sweepLinkedinLeftovers(storage, {fetchImpl = globalThis.fetch, openDb = openSqlite} = {}) {
   const readFolder = storage.path(READ_FOLDER), kept = path.join(storage.path(KEPT_FOLDER), 'profile');
   const out = {readFolder: 'none', rows: 0};
   if (fs.existsSync(readFolder)) out.readFolder = (await inUse(path.join(readFolder, 'profile'), fetchImpl)) ? 'kept' : ((await removeFolder(readFolder)) ? 'removed' : 'kept');
-  if (await inUse(kept, fetchImpl)) return out;
+  if (await inUse(kept, fetchImpl)) return {...out, keptRunning: true};   // its browser runs again: its cookies are taken out through it, never from under it
   for (const parts of COOKIE_FILES) {
     const file = path.join(kept, ...parts);
     if (!fs.existsSync(file)) continue;

@@ -66,7 +66,8 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
 }
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // No hidden browser runs in this profile: it never started (no port file) or it died and left its port file (the port refuses).
-const notRunning = error => error?.code === 'ENOENT' || error?.cause?.code === 'ECONNREFUSED';
+/** Whether a failed call means no browser runs on this profile (no port file, or nothing listens on its port), as opposed to one that runs but is not ours or did not answer. */
+export const notRunning = error => error?.code === 'ENOENT' || error?.cause?.code === 'ECONNREFUSED';
 
 /**
  * Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js).

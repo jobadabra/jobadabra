@@ -15,7 +15,7 @@ const WALKED_AWAY = ['typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_
  * @returns {Promise<void>} resolves either way: no site access yet, or a closed tab, leaves the panel to dim on its first draw
  */
 export function dimEarly(tabId) {
-  return chrome.scripting.executeScript({target: {tabId}, files: ['panel-overlay-fx.js', 'panel-overlay.js', 'overlay-early.js'], injectImmediately: true})
+  return chrome.scripting.executeScript({target: {tabId}, files: ['panel-overlay-fx.js', 'panel-overlay.js', 'panel-top-layer.js', 'overlay-early.js'], injectImmediately: true})   // panel-top-layer.js: the dim stays above a modal the page already opened (Gitar on #4056)
     .catch(() => {});   // no access to the site yet (it waits for Allow) or the tab closed: the panel dims on its first draw as before
 }
 

@@ -11,6 +11,7 @@ import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {CLOSE_MS, at, clocked, onHang} from '../../e2e/lib/test-clock.mjs';
 
 const PAGE = `<body style="margin:0;height:900px">
+  <style>.floating-by-class{position:fixed;left:18px;bottom:18px}</style>
   <div id="cover" style="position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.2)" hidden>a page overlay at the highest z-index</div>
   <div id="pop" popover="manual" style="position:fixed;inset:0;margin:0;width:100vw;height:100vh">a page popover</div>
   <dialog id="modal" style="width:100vw;height:100vh;max-width:none;max-height:none;margin:0">a modal dialog<button id="close">Close</button><textarea id="answer"></textarea><div id="jobadabra-written-host">Review my answer</div></dialog>
@@ -21,6 +22,7 @@ const PAGE = `<body style="margin:0;height:900px">
     host.innerHTML = '<button id="pill" style="width:160px;height:48px">Jobadabra</button>';
     host.addEventListener('click', () => { window.clicks += 1; });
     document.documentElement.append(host);
+    document.documentElement.append(Object.assign(document.createElement('div'), {id: 'jobadabra-class-note', className: 'floating-by-class', textContent: 'a layer of ours fixed by a class'}));
   </script></body>`;
 
 const TEST_MS = 30000, TEST_CAP = {timeout: TEST_MS + CLOSE_MS + 5000};
@@ -48,13 +50,20 @@ test('the panel is on top and takes the click above an overlay, a page popover a
 
     at('a page popover opened after the panel');
     await page.evaluate(() => document.getElementById('pop').showPopover());
-    await page.waitForFunction(() => document.querySelector('#jobadabra-review-host:popover-open') && document.getElementById('pop').matches(':popover-open'));
+    // Why (14 Nov 2026, flaky on #4109 at 09613a68, green on #4096 at the same sha): the page's toggle event comes after showPopover returns, and the raise follows it, so both being
+    // open is not yet the panel on top; the state the assertion needs is the panel at its own centre.
+    await page.waitForFunction(() => {
+      const box = document.getElementById('jobadabra-review-host').getBoundingClientRect();
+      return document.getElementById('pop').matches(':popover-open') && !!document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest('#jobadabra-review-host');
+    });
     assert.deepEqual(await where(), {top: 'panel', clicked: 1, box: {right: 18, bottom: 18}}, 'above a page popover shown later');
     await page.evaluate(() => document.getElementById('pop').hidePopover());
 
     at('a modal dialog');
     await page.evaluate(() => document.getElementById('modal').showModal());
     await page.waitForFunction(() => document.getElementById('jobadabra-review-host').parentElement?.id === 'modal');
+    // A floating layer of ours that is fixed by a class, not inline, is lifted too (Gitar on #4074).
+    assert.equal(await page.evaluate(() => document.getElementById('jobadabra-class-note').parentElement?.id), 'modal', 'a layer fixed by a class moves into the modal too');
     assert.deepEqual(await where(), {top: 'panel', clicked: 1, box: {right: 18, bottom: 18}}, 'above a modal dialog and not inert');
     // An in-flow layer of ours (panel-written.js puts "Review my answer" right under the answer box, here a child of the dialog) keeps its place: it is no floating layer (Gitar on #4040).
     assert.deepEqual(await page.evaluate(() => { const row = document.getElementById('jobadabra-written-host'); return {parent: row.parentElement.id, after: row.previousElementSibling?.id, popover: row.hasAttribute('popover')}; }),

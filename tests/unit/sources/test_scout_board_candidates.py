@@ -19,13 +19,13 @@ SUBSCRIBE = 'https://www.rabota.md/?source=main&subscribePosition={role}&subscri
 class Valid(unittest.TestCase):
     def test_a_board_only_our_ci_searches_read_is_a_candidate_with_zero_installs_and_a_plain_zero_is_not(self):
         """13 Nov 2026, bp: web #643 serves Jobeka-like boards as installs 0 + ci true; without this the Scout would drop the very boards the CI feed was built for."""
-        self.assertEqual(candidates.valid({'host': 'jobeka.com', 'url': None, 'countries': ['es'], 'installs': 0, 'ci': True}), {'host': 'jobeka.com', 'countries': ['es'], 'installs': 0})
+        self.assertEqual(candidates.valid({'host': 'jobeka.com', 'url': None, 'countries': ['es'], 'installs': 0, 'ci': True}), {'host': 'jobeka.com', 'countries': ['es'], 'installs': 0, 'local': 0})
         self.assertIsNone(candidates.valid({'host': 'jobeka.com', 'countries': ['es'], 'installs': 0}))
         self.assertIsNone(candidates.valid({'host': 'jobeka.com', 'countries': ['es'], 'installs': 0, 'ci': 'yes'}))
 
     def test_only_host_countries_and_installs_are_kept_never_an_install_id_or_the_reported_template(self):
         got = candidates.valid({'host': 'rabota.md', 'url': SUBSCRIBE, 'countries': ['md', 'xx', 'md'], 'installs': 3, 'install': 'secret-id'})
-        self.assertEqual(got, {'host': 'rabota.md', 'countries': ['md'], 'installs': 3})
+        self.assertEqual(got, {'host': 'rabota.md', 'countries': ['md'], 'installs': 3, 'local': 0})
         self.assertNotIn('secret-id', json.dumps(got))
         self.assertNotIn('subscribe', json.dumps(got))
 
@@ -33,6 +33,15 @@ class Valid(unittest.TestCase):
         for bad in ({'host': 'Not A Host', 'countries': ['md'], 'installs': 1}, {'host': 'a.example', 'countries': ['xx'], 'installs': 1}, {'host': 'a.example', 'countries': ['md'], 'installs': 0},
                     {'host': 'a.example', 'countries': ['md'], 'installs': True}, {'host': 'a.example', 'countries': 'md', 'installs': 1}, 'a.example', None):
             self.assertIsNone(candidates.valid(bad), bad)
+
+
+    def test_local_is_a_count_0_to_999_anything_else_is_0_and_never_drops_the_board(self):
+        """13 Nov 2026, owner via sa: `local` is a fixed-shape count, validated at both ends (the site: jobadabra-web #647)."""
+        def local(value):
+            return candidates.valid({'host': 'jobeka.es', 'countries': ['es'], 'installs': 0, 'ci': True, 'local': value})['local']
+        self.assertEqual([local(value) for value in (19, 0, 999)], [19, 0, 999])
+        self.assertEqual([local(value) for value in (1000, -1, 4.5, '19', True, None, [3])], [0] * 7)
+        self.assertEqual(candidates.valid({'host': 'jobeka.es', 'countries': ['es'], 'installs': 2})['local'], 0, 'an old site answer has no local')
 
 
 class Fetch(unittest.TestCase):
@@ -53,7 +62,7 @@ class Fetch(unittest.TestCase):
             return self.answer([{'host': 'rabota.md', 'url': SUBSCRIBE, 'countries': ['md'], 'installs': 2, 'install': 'x'}, {'host': 'bad host', 'countries': ['md'], 'installs': 1}])
         with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret', 'SCOUT_MEMORY_URL': 'https://elsewhere.example/x'}):   # the lab job sets this variable for its memory restore: the key still goes only to the fixed address
             got = candidates.fetch(out.append, urlopen=urlopen)
-        self.assertEqual(got, [{'host': 'rabota.md', 'countries': ['md'], 'installs': 2}])
+        self.assertEqual(got, [{'host': 'rabota.md', 'countries': ['md'], 'installs': 2, 'local': 0}])
         self.assertEqual(asked, [('https://www.jobadabra.top/api/scout-memory?boards=1', 'Bearer k3y-secret')])
         self.assertNotIn('k3y-secret', ' '.join(out))
 
@@ -96,6 +105,44 @@ class ForCountry(unittest.TestCase):
         got = candidates.for_country(reports, 'md', measured=[('measured.example', 'md', (TODAY - timedelta(days=3)).isoformat())], today=TODAY)
         self.assertEqual([item['host'] for item in got], ['b7.example', 'b6.example', 'b5.example', 'b4.example'][:candidates.RESERVE], 'not another country, not a board measured lately')
         self.assertTrue(all(item['home'] and item['search_url'] == f"https://{item['host']}/" for item in got), 'the home page, marked: the pass finds its own search')
+
+    def test_boards_that_gave_jobs_come_first_then_installs_then_the_alphabet(self):
+        """13 Nov 2026, owner via sa, run 43520706763 (es:electrical_mechanical): 77 reported boards, 4 read, equal installs went alphabetically (apiem.org, ayto-coslada.es, campuseducacion.com,
+        flightdeckfriend.com) while Jobeka (19 right jobs) and Trabajo.org (16) waited. Fails on the old key (-installs, host)."""
+        def report(host, installs, local):
+            return {'host': host, 'countries': ['es'], 'installs': installs, 'local': local}
+        reports = [report('apiem.org', 0, 0), report('ayto-coslada.es', 0, 0), report('campuseducacion.com', 0, 0), report('flightdeckfriend.com', 0, 0),
+                   report('trabajo.org', 0, 16), report('jobeka.es', 0, 19), report('five-installs.example', 5, 0), report('also-16.example', 0, 16)]
+        got = [item['host'] for item in candidates.for_country(reports, 'es', today=TODAY)]
+        self.assertEqual(got, ['jobeka.es', 'also-16.example', 'trabajo.org', 'five-installs.example'][:candidates.RESERVE], 'jobs kept first, ties by installs then host')
+        self.assertEqual(got[:2], ['jobeka.es', 'also-16.example'])
+        zero = [report('b.example', 1, 0), report('a.example', 1, 0), report('c.example', 7, 0)]
+        self.assertEqual([item['host'] for item in candidates.for_country(zero, 'es', today=TODAY)], ['c.example', 'a.example', 'b.example'], 'no local anywhere: installs, then alphabetical, as before')
+
+    def test_reserve_comes_from_the_env_clamped_and_anything_else_is_the_default(self):
+        """13 Nov 2026 (bp): a by-hand dispatch asks for more candidates (lab `reserve` input); the schedule sends nothing and keeps RESERVE."""
+        for raw, want in (('', candidates.RESERVE), ('12', 12), (' 7 ', 7), ('0', 1), ('-5', 1), ('99', candidates.MAX_RESERVE), ('24', 24), ('lots', candidates.RESERVE), ('3.5', candidates.RESERVE), ('1e1', candidates.RESERVE)):
+            with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': raw}):
+                self.assertEqual(candidates.reserve(), want, repr(raw))
+        with mock.patch.dict(os.environ):
+            os.environ.pop('SCOUT_BOARD_RESERVE', None)
+            self.assertEqual(candidates.reserve(), candidates.RESERVE)
+
+    def test_a_by_hand_reserve_reads_that_many_candidates_a_pass(self):
+        reports = [self.report(f'b{n}.example', n) for n in range(1, 21)]
+        with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': '12'}):
+            self.assertEqual(len(candidates.for_country(reports, 'md', today=TODAY)), 12)
+        with mock.patch.dict(os.environ, {'SCOUT_BOARD_RESERVE': ''}):
+            self.assertEqual(len(candidates.for_country(reports, 'md', today=TODAY)), candidates.RESERVE)
+
+    def test_a_candidate_whose_page_was_empty_or_refused_is_stamped_so_it_is_not_read_again_for_20_days(self):
+        """13 Nov 2026 (bp, lab run 43520706763): ayto-coslada.es 0/0 and campuseducacion.com 0/0 ("not measured") must not take a slot again next pass: every candidate the pass read has a line."""
+        db = sqlite3.connect(':memory:')
+        picked = [{'host': 'empty.example'}, {'host': 'refused.example'}, {'host': 'unread.example'}]
+        candidates.stamp_read(db, 'es', picked, ['empty.example 0/0', 'refused.example 0/0 (no places; the AI: this country)'])
+        self.assertEqual({(host, code) for host, code, _ in candidates.tried(db)}, {('empty.example', 'es'), ('refused.example', 'es')}, 'the one the pass never reached waits for the next pass')
+        reports = [{'host': host, 'countries': ['es'], 'installs': 1} for host in ('empty.example', 'refused.example', 'unread.example')]
+        self.assertEqual([c['host'] for c in candidates.choose(db, reports, 'es')], ['unread.example'])
 
     def test_an_old_measure_makes_the_board_a_candidate_again(self):
         got = candidates.for_country([self.report('old.example', 1)], 'md', measured=[('old.example', 'md', (TODAY - timedelta(days=21)).isoformat())], today=TODAY)

@@ -6,7 +6,7 @@ heads (the head sha, default new1), labels (comma-separated names), titles (defa
 Every call is appended to calls; any other gh command fails like an unknown call.
 REST out (10 Nov 2026, the GraphQL fallback of tools/pr-rest-lib.sh): a refuse_rest file makes every REST read a 403 "API rate limit exceeded"; `gh api rate_limit` prints the number in rate_core (default 5000);
 `gh api graphql` answers the query it recognises from graphql_view.json (pullRequest), graphql_checks.json (checkSuites) or graphql_runs.json (the aliased resource lookups), each a full {"data": ...} body, and
-fails like GitHub on an unbalanced query or a missing file. It adds one "GRAPHQL <kind> <GH_GRAPHQL_WHY>" line to calls."""
+graphql_ofhead.json (pullRequests of a head branch: pr_of_head's fallback; 13 Nov 2026, pq); a `--jq .resources.core.reset` read prints rate_reset (default 0). It fails like GitHub on an unbalanced query or a missing file. It adds one "GRAPHQL <kind> <GH_GRAPHQL_WHY>" line to calls."""
 import hashlib
 import json
 import os
@@ -25,11 +25,14 @@ if argv[:1] == ['api'] and 'Accept: application/vnd.github.raw' in argv:
         sys.exit(0)
     sys.exit(1)
 if argv[:2] == ['api', 'rate_limit']:   # never counted, answers while REST is out
+    if any('core.reset' in x for x in argv):
+        print((d / 'rate_reset').read_text().strip() if (d / 'rate_reset').exists() else '0')
+        sys.exit(0)
     print((d / 'rate_core').read_text().strip() if (d / 'rate_core').exists() else '5000')
     sys.exit(0)
 if argv[:2] == ['api', 'graphql']:
     query = next((a[len('query='):] for a in argv if a.startswith('query=')), '')
-    kind = 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
+    kind = 'ofhead' if 'pullRequests(' in query else 'view' if 'pullRequest(' in query else 'checks' if 'checkSuites(' in query else 'runs' if 'resource(' in query else 'unknown'
     with open(d / 'calls', 'a') as f:
         f.write(f"GRAPHQL {kind} {os.environ.get('GH_GRAPHQL_WHY', '')}\n")
     answer_file = d / f'graphql_{kind}.json'
@@ -41,17 +44,6 @@ if argv[:2] == ['api', 'graphql']:
         for name in ('comments', 'reviews', 'commits'):
             body['data']['repository']['pullRequest'].pop(name, None)
     print(json.dumps(body))
-    sys.exit(0)
-if argv[:2] == ['pr', 'view'] and '--json' in argv and argv[argv.index('--json') + 1] == 'state,headRefOid':   # tools/gitar-queue.mjs: the PR's state and head as of the last look
-    heads = (d / 'heads').read_text().split() if (d / 'heads').exists() else []
-    looks = int((d / 'looks').read_text() or 0) if (d / 'looks').exists() else 0
-    print(json.dumps({'state': (d / 'queue_pr_state').read_text().strip() if (d / 'queue_pr_state').exists() else 'OPEN', 'headRefOid': (heads[min(max(looks, 1), len(heads)) - 1] if heads else 'new1')}))
-    sys.exit(0)
-if argv[:1] == ['api'] and '-i' not in argv and '-X' not in argv and re.search(r'/(issues|pulls)/\d+/comments\?per_page=100$', argv[-1]):   # tools/gitar-queue.mjs reads Gitar's refusals
-    rest = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', argv[-1])
-    print(rest.read_text() if rest.exists() else '[]')
-    sys.exit(0)
-if argv[:3] == ['api', '-X', 'POST']:   # a reply in an inline thread: logged above, changes nothing
     sys.exit(0)
 if argv[:2] in (['pr', 'comment'], ['pr', 'ready']):   # logged above; a posted comment or a draft flip changes nothing the watcher reads (the drafts file scripts it)
     sys.exit(0)
