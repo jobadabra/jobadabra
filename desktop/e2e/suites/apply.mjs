@@ -49,8 +49,11 @@ export const shards = 8;   // the forms and CV steps split across eight gate job
 // budget at 12.8 min on its first try (10.2 min on the second); two halves of 640 s of weighed steps plus setup sat at the budget, three thirds hold ~430 s each.
 // Why (13 Nov 2026, owner chose "Split apply into more lanes"; Nightly beta 43356056907 and Beta by hand 43359306798, apply-3of3 both ran out of the 11-minute budget): GitHub Mac runners
 // ran up to ~3x slow (setup steps x1.6-2.1 before our app starts; store reads 237 -> 867-988 ms; the same steps 99-202 s on fast runners, 584 s and 354 s+ on slow ones). Three thirds
-// took 151-189 s of steps at green speed, so a 3x runner needed 560 s of 660. Eight slices take 60-90 s of steps plus ~36 s of setup (about 2 min at green speed), so a 3x runner fits in ~380 s.
-// The budget is unchanged and nothing re-runs. Cost: 5 more Mac and 5 more Windows jobs per gate, each with its own install (~1.5 min).
+// took 151-189 s of steps at green speed, so a 3x runner needed ~570-700 s of 660. By this table's weights (the slowest seconds seen) the eight slices carry 125, 124.1, 109.2, 83.9, 83.8, 78, 77.6 and 77.6 s
+// plus ~36 s of setup each (green speed: 74-135 s a lane, run 43305348256). The binding slices are the three that hold one step alone (the triage bar 125 s, Background automation's queue 124.1 s,
+// Full automation's Submit 109.2 s): more lanes cannot shorten them, and they are why the count stops at 8 (the other five now sit at 78-84 s); worst case (125 + 36) x 3 = ~483 s of 660.
+// The budget is unchanged and nothing re-runs. Cost: 5 more Mac and 5 more Windows jobs per gate, each with its own install (~76 s on the Mac).
+// "See which jobs can apply automatically" (45 s) had no weight and took turns into a lane: its 45 s is the slowest of 44.2, 45.0 and 37.1 s in runs 43305348256, 43356056907 and 43359306798.
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 // Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
 // but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
