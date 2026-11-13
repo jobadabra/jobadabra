@@ -1,7 +1,7 @@
 """The "Search before/after" row of a search PR's checks list: one verdict per pair, from the same numbers the PR comment shows (tools/persona-search/pair.py).
 Why (13 Nov 2026, owner via sa: "Can we add the before/after as a CI check on the PR ?" · "instead of having \"DONT MERGE\"... we'll just have red check"): a pair's result lived only
 in a comment and the search-hold label. A check run, not a commit status, because only a check run can be grey (neutral) and red; a status can only be green or hold the PR open.
-The row never turns green for a pair that did not count. Step 1/3 shows the verdict; 3/3 makes "All checks passed" read it (tools/pr-verdict.py).
+The row never turns green or red for a pair that did not count: it stays pending with the next step. Step 1/3 shows the verdict; 3/3 makes "All checks passed" read it (tools/pr-verdict.py).
 Tests: tests/tooling/ci/test_pair_row.py."""
 import re
 
@@ -43,7 +43,7 @@ def why_not_counted(rows):
 
 def decide(done, ran, seen, spreads, attempt, rows, newer_head=False):
     """{conclusion, title, summary, rerun} of a pair. done: pair.measured() ({person: {before, after, d, line}}); ran: the people dispatched; seen: those with any side;
-    spreads: {person: spread or None}; rows: pair.sides() (for the reason). conclusion: success, failure, neutral (superseded, or not counted with a run still to come)."""
+    spreads: {person: spread or None}; rows: pair.sides() (for the reason). conclusion: success, failure (a loss beyond the band), neutral (superseded), pending (not counted: the row stays running)."""
     if newer_head:
         return {'conclusion': 'neutral', 'title': 'superseded: the PR has a newer head, its pair runs on that', 'summary': '', 'rerun': []}
     lines, fell = [], []
@@ -65,9 +65,11 @@ def decide(done, ran, seen, spreads, attempt, rows, newer_head=False):
     if missing:
         why = why_not_counted({p: rows[p] for p in missing if p in rows})
         title = f"not counted: {', '.join(str(p) for p in missing)} ({why})"
-        if attempt < 2:   # once more by itself, then red (owner via sa, 13 Nov 2026)
-            return {'conclusion': 'neutral', 'title': (title + '; running once more')[:140], 'summary': '\n'.join(lines), 'rerun': missing}
-        return {'conclusion': 'failure', 'title': title[:140], 'summary': '\n'.join(lines + [title, OVERRIDE]), 'rerun': []}
+        # Why (13 Nov 2026, sa after 1/3: "a stalled call is not a loss"; the day's false 40 → 22 was one 63 s call): a pair that did not count is never red; it runs once more by itself,
+        #   then the row stays PENDING (running, so the PR is not mergeable on an unproven pair) with the next step in its text. Red stays the loss beyond the band.
+        if attempt < 2:
+            return {'conclusion': 'pending', 'title': (title + '; running once more')[:140], 'summary': '\n'.join(lines), 'rerun': missing}
+        return {'conclusion': 'pending', 'title': (title + '; run it again')[:140], 'summary': '\n'.join(lines + [title, 'Next step: run the pair again by hand (gh workflow run search-pair.yml -f pr=<n> -f people=<them>); a stalled call is not a loss.']), 'rerun': []}
     return {'conclusion': 'success', 'title': ' · '.join(lines)[:140], 'summary': '\n'.join(lines), 'rerun': []}
 
 

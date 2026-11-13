@@ -7,8 +7,8 @@ name: CI · Search pair (a PR's before/after, by hand)
 # Its turn: the `turn` job claims 2 searches per person at the broker and waits its place in line (up to 55 min; tools/persona-search/claim.py, the broker's
 # lib/claims.mjs: first come, first served, each run only what it needs; owner via sa, 13 Nov 2026); each pair job renews it, `release` gives it back. Pairs of several PRs
 # run side by side while the room holds them (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
-# The PR's checks list gets one row, "Search before/after" (tools/persona-search/pair_row.py): running, green with the numbers, red on a loss beyond the person's band or when a pair did not
-# count twice, grey when a newer head superseded it. Never a night, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
+# The PR's checks list gets one row, "Search before/after" (tools/persona-search/pair_row.py): running, green with the numbers, red on a loss beyond the person's band, still running (pending, with the next step) when a pair did not
+# count after its one automatic re-run, grey when a newer head superseded it. Never a night, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
 #   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
 # Broker lane: by-hand (jobadabra-web workers/ai-broker/lib/lanes.mjs lists search-pair.yml).
 run-name: 'Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier'
@@ -347,12 +347,12 @@ jobs:
           newer=0; if [ "$STATE" != MERGED ] && [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then newer=1; fi
           python3 tools/persona-search/pair.py row dl "$(echo "$PEOPLE" | jq -c '[.[].id]')" "$ATTEMPT" "$newer" > /dev/null
           # Why (Gitar on #4044): the row ends here, before the hold, label and comment work: a failure there must not turn a counted pair red ("not counted: no numbers"), and it never leaves a second run dispatched.
-          # Why (13 Nov 2026, owner via sa: a pair that did not count "re-runs itself once, then failure"): every PR's pair runs once more for the people it did not count; its row stays running and the second run takes it over.
+          # Why (13 Nov 2026, owner via sa: a pair that did not count re-runs itself once; then, sa: never red, the row stays pending): every PR's pair runs once more for the people it did not count; its row stays running and the second run takes it over.
           rerun="$(jq -c .rerun row.json)"
           if [ "$rerun" != '[]' ] && [ "$newer" = 0 ]; then gh workflow run search-pair.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f pr="$PR" -f people="$rerun" -f tiers="$TIERS" -f attempt=2 -f check_id="$CHECK_ID"; fi
-          # the row's end: success with the numbers, failure (a loss, or not counted twice), neutral (superseded); while a second run is to come it only gets the new words and stays running
-          jq -n --slurpfile r row.json --arg rerun "$rerun" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg comment "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
-            '({output: {title: $r[0].title, summary: (if $r[0].summary == "" then "No numbers." else $r[0].summary end) + "\n\nThe table: the pair comment on " + $comment}}) + (if $rerun == "[]" then {status: "completed", conclusion: $r[0].conclusion, completed_at: $now} else {} end)' \
+          # the row's end: success with the numbers, failure (a loss beyond the band), neutral (superseded); "pending" (a second run to come, or not counted twice: run it again) only gets the new words and stays running
+          jq -n --slurpfile r row.json --arg rerun "$rerun" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg comment "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
+            '({output: {title: $r[0].title, summary: (if $r[0].summary == "" then "No numbers." else $r[0].summary end) + "\n\nThe table: the pair comment on " + $comment + "\nOne run a side. Run: " + $run}}) + (if $rerun == "[]" and $r[0].conclusion != "pending" then {status: "completed", conclusion: $r[0].conclusion, completed_at: $now} else {} end)' \
             | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
           echo "row_done=1" >> "$GITHUB_OUTPUT"
           if [ "$STATE" = MERGED ]; then   # Why (13 Nov 2026, Gitar on #4033): a merged PR has no hold to lift and no pending Moves lines; the comment says what was compared
@@ -394,9 +394,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHECK_ID: ${{ needs.setup.outputs.check_id }}
           ENDED: ${{ needs.pair.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # cancelled: a newer run took over (grey); anything else: no numbers, red (never green for a pair that did not count)
-          conclusion=failure; [ "$ENDED" = cancelled ] && conclusion=neutral
-          jq -n --arg c "$conclusion" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg title "not counted: the pair ended ($ENDED) with no numbers" \
-            '{status: "completed", conclusion: $c, completed_at: $now, output: {title: $title, summary: ($title + ". A red row is not a dead end: the owner may merge by hand with the ruleset override.")}}' \
-            | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
+          # cancelled: a newer run took over (grey); anything else: no numbers, so the row stays running with the next step in its text (sa, 13 Nov 2026: a stalled call is not a loss, never red, never green)
+          title="not counted: the pair ended ($ENDED) with no numbers; run it again (gh workflow run search-pair.yml)"
+          if [ "$ENDED" = cancelled ]; then
+            jq -n --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status: "completed", conclusion: "neutral", completed_at: $now, output: {title: "superseded: this run was cancelled", summary: "A newer pair took over."}}' \
+              | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
+          else
+            jq -n --arg title "$title" '{output: {title: $title, summary: ($title + ". One run a side. Run: " + env.RUN_URL)}}' \
+              | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
+          fi

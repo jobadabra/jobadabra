@@ -36,14 +36,16 @@ class TheRow(unittest.TestCase):
         out = pair_row.decide({'c15': moves(5, 20)}, ['c15'], {'c15'}, {'c15': None}, 1, rows(c15=1))
         self.assertIn('gain beyond the usual difference of 7', out['title'])
 
-    def test_a_pair_that_did_not_count_runs_once_more_then_is_red_never_green(self):
+    def test_a_pair_that_did_not_count_runs_once_more_then_stays_pending_never_red_or_green(self):
         flat = {'b10': {'main': [{'valid': False, 'shared': False}], 'pr': [{'valid': False, 'shared': False}]}}
         first = pair_row.decide({}, ['b10'], {'b10'}, {}, 1, flat)
-        self.assertEqual((first['conclusion'], first['rerun']), ('neutral', ['b10']))
+        self.assertEqual((first['conclusion'], first['rerun']), ('pending', ['b10']))
         self.assertIn('boards not shared', first['title'])
         second = pair_row.decide({}, ['b10'], {'b10'}, {}, 2, flat)
-        self.assertEqual((second['conclusion'], second['rerun']), ('failure', []))
+        self.assertEqual((second['conclusion'], second['rerun']), ('pending', []))   # sa, 13 Nov 2026: a stalled call is not a loss, never red
         self.assertTrue(second['title'].startswith('not counted: b10'))
+        self.assertIn('run it again', second['title'])
+        self.assertNotIn('failure', (first['conclusion'], second['conclusion']))
 
     def test_a_newer_head_makes_the_old_row_grey_and_runs_nothing(self):
         out = pair_row.decide({'c04': moves(15, 5)}, ['c04'], {'c04'}, {}, 1, rows(c04=1), newer_head=True)
