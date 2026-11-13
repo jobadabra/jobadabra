@@ -54,21 +54,29 @@ def agent_put_in(nodes, name):
     return False
 
 
+def helper_returns_agent(function):
+    """True when what `function` returns carries the agent: an agent in the returned expression, or a returned name the agent was put into."""
+    nodes = list(own_code(function))
+    return any(isinstance(node, ast.Return) and node.value is not None
+               and (names_agent(ast.walk(node.value)) or (isinstance(node.value, ast.Name) and agent_put_in(nodes, node.value.id))) for node in nodes)
+
+
 def requests_without_agent(path=None, text=None):
     """[(function, line)] of every function in `path` (or in `text`) that builds a urllib Request (`urllib.request.Request(` or a bare `Request(`) whose own arguments do not carry the agent:
-    a 'User-Agent' string or a *USER_AGENT* name inside the call, or headers that are a name this function puts the agent into, or a call to a function of this file that sets it.
+    a 'User-Agent' string or a *USER_AGENT* name inside the call, or headers that are a name this function puts the agent into, or a call to a function of this file that returns it.
     Why (#4094 and #4120, Gitar): a text search let a comment, a docstring or a nested function's agent pass; and a User-Agent anywhere in the function let one that only fed a log line or a JSON body pass."""
     tree = ast.parse(text if text is not None else path.read_text(encoding='utf-8', errors='replace'))
-    functions = {node.name: node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    every = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]   # every one is scanned; the name dict only resolves helpers (Gitar on #4122)
+    functions = {node.name: node for node in every}
     found = []
-    for function in functions.values():
+    for function in every:
         nodes = list(own_code(function))
         for call in (node for node in nodes if isinstance(node, ast.Call) and ast.unparse(node.func) in ('Request', 'request.Request', 'urllib.request.Request')):
             given = [keyword.value for keyword in call.keywords if keyword.arg == 'headers'] + call.args[2:3]   # only the headers: an agent in the body or a log line is no agent
             inside = [node for value in given for node in ast.walk(value)]
             fed_by = [node.func.id for node in inside if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in functions]   # headers=_headers(env)
             by_name = any(isinstance(value, ast.Name) and agent_put_in(nodes, value.id) for value in given)   # headers=headers: the agent goes into that very name (Gitar on #4121)
-            if not (names_agent(inside) or by_name or any(names_agent(own_code(functions[name])) for name in fed_by)):
+            if not (names_agent(inside) or by_name or any(helper_returns_agent(functions[name]) for name in fed_by)):
                 found.append((function.name, call.lineno))
     return found
 
@@ -108,6 +116,14 @@ class SiteCallsSendOurUserAgent(unittest.TestCase):
         self.assertEqual([name for name, _ in requests_without_agent(text=log)], ['k'], 'an agent in a log line is no agent in the headers')
         self.assertEqual(requests_without_agent(text=item), [])
         self.assertEqual(requests_without_agent(text=update), [])
+
+    def test_a_helper_counts_only_when_it_returns_the_agent_and_same_named_functions_are_all_scanned(self):
+        logs = 'import urllib.request, logging, ats\ndef _headers():\n    logging.info(ats.USER_AGENT)\n    return {"X": "1"}\ndef p(u):\n    return urllib.request.Request(u, headers=_headers())\n'
+        returns = 'import urllib.request\ndef _headers():\n    h = {}\n    h["User-Agent"] = "x"\n    return h\ndef q(u):\n    return urllib.request.Request(u, headers=_headers())\n'
+        twins = 'import urllib.request\nclass A:\n    def go(self, u):\n        return urllib.request.Request(u)\nclass B:\n    def go(self, u):\n        return urllib.request.Request(u, headers={"User-Agent": "x"})\n'
+        self.assertEqual([name for name, _ in requests_without_agent(text=logs)], ['p'], 'a helper that only logs the agent is no agent')
+        self.assertEqual(requests_without_agent(text=returns), [])
+        self.assertEqual([name for name, _ in requests_without_agent(text=twins)], ['go'], 'the first of two same-named methods is scanned too')
 
     def test_every_request_outside_the_other_services_sets_a_user_agent(self):
         missing = [f'{name}:{line} {function}' for name in python_files() if name not in OTHER_SERVICES for function, line in requests_without_agent(ROOT / name)]
