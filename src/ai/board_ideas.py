@@ -178,7 +178,8 @@ def slices(search):
     return out
 
 
-LEAD = 3   # boards each side gives in turn: the first-jobs slice reads 6 at once (press/budget.json first_jobs.SLICE_BOARDS)
+LEAD = 3    # boards each side gives in turn after the first six
+FIRST = 6   # the boards a first search reads at once (press/budget.json first_jobs.SLICE_BOARDS)
 
 
 def ideas(search, client=None, field=True):
@@ -200,14 +201,19 @@ def ideas(search, client=None, field=True):
 
 
 def _in_turn(country, of_field):
-    """The countries' boards and the field's, LEAD of each in turn, the countries' first; what one side has left follows the other's end.
-    Why (12 Nov 2026, owner, asked via AskUserQuestion: "Country first, then field (Recommended)"): every field board went first (26 Oct
-    2026, "Field first"), and a search reads the first 6 at once: for people hired locally they were foreign boards (a welder in Naples
-    read two oil-and-gas boards, a chef in Krakow US and UK hotel boards) while Poland's main board was only a stand-in; 20 of 30 fixed
-    profiles got no right job from a board (round of 12 Nov). A pilot still reads three boards of the field in the first six."""
-    out = []
+    """The countries' boards fill the first FIRST places, the field's take only the places they leave; after those, LEAD of each in turn,
+    the field's first.
+    Why (13 Nov 2026, owner, asked via AskUserQuestion: "Country fills, field waits (Recommended)", replacing 12 Nov's three and three,
+    "Country first, then field"): over 191 saved first searches a country board read to its end gave about 1.7 right jobs and a field
+    board 0.15 (810 field boards named, 17 gave a right job; they were 37% of the boards named and 4% of the right board jobs), and for
+    people hired locally the field's three were foreign boards (an HR generalist in Cluj read a US and a UK association's board, a
+    marketer in Zagreb three US and UK ones) while their country had boards left unread. A pilot reads the field's boards from the
+    seventh place on, in the same search."""
+    head = country[:FIRST]
+    fill = of_field[:FIRST - len(head)]
+    out, country, of_field = head + fill, country[len(head):], of_field[len(fill):]
     for start in range(0, max(len(country), len(of_field)), LEAD):
-        out += country[start:start + LEAD] + of_field[start:start + LEAD]
+        out += of_field[start:start + LEAD] + country[start:start + LEAD]
     return out
 
 
