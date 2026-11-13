@@ -7,7 +7,9 @@
 // Invariants: this file only moves our own layers between two parents and re-shows them on top; it never creates, hides or removes one, and never touches the page's own nodes.
 (() => {
   if (window.__jobadabraTopLayer) return;
-  const ours = node => node?.nodeType === 1 && typeof node.id === 'string' && node.id.startsWith('jobadabra') && !['style', 'link', 'script'].includes(node.localName);
+  // Our floating layers only: each sets position:fixed in its own style (review.js's host, panel-overlay.js's dim, the progress, Stop and reading notes). An in-flow one of ours, like
+  // panel-written.js's "Review my answer" row under an answer box, keeps its place on the page (Gitar on #4040).
+  const ours = node => node?.nodeType === 1 && typeof node.id === 'string' && node.id.startsWith('jobadabra') && node.style?.position === 'fixed';
   const parentNow = () => [...document.querySelectorAll('dialog:modal')].at(-1) || document.documentElement;
   const placed = new Map();   // layer -> the dialog this file moved it into: if the page removes that dialog with the layer still in it, the layer comes back to <html>
   // The browser's popover look (a centred, bordered, white box) is undone: each layer keeps its own place and look (its inline style wins over this sheet).
