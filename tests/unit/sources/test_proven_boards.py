@@ -196,6 +196,21 @@ class RankTests(Fixture):
         self.assertEqual([b['host'] for b in ranked][:4], ['b5.example', 'b2.example', 'b4.example', 'b1.example'], 'the count orders before jobs in places (b6 has 178 and no count)')
         self.assertNotIn('right', next(b for b in ranked if b['host'] == 'b6.example'), 'not measured: no number, never 0')
 
+    def test_two_cells_under_the_scouts_threshold_do_not_add_up_to_a_proof(self):
+        """13 Nov 2026 (Gitar on #4045): the Scout's 3 is per (country, family); a person with two families counted 2 each on a board is not "proven" 4. The sum only orders."""
+        two = lambda family, right: {**self.cell(family, 1, right), 'right': right}
+        facts = self.served({1: [two('electrical_mechanical', 2), two('construction_trades', 2)], 2: [two('electrical_mechanical', 3)]})
+        with mock.patch.object(visits_jobpages, 'pool_facts', return_value=facts), mock.patch.object(board_ideas, '_families', return_value={'electrical_mechanical', 'construction_trades'}), \
+                mock.patch('src.places.countries', return_value=['Netherlands']):
+            ranked = board_ideas.ranked(board_ideas.served(['Netherlands']), SEARCH)
+            self.assertEqual([b['host'] for b in board_ideas.proven(SEARCH, limit=6)], ['b2.example'])
+        self.assertEqual([(b['host'], b['right']) for b in ranked], [('b1.example', 4), ('b2.example', 3)], 'the sum orders')
+
+    def test_a_shared_board_the_scout_counted_goes_before_the_proposals_even_without_a_rank(self):
+        """13 Nov 2026 (Gitar on #4045): a Scout count is a record for the field, whatever `rank` says."""
+        merged = board_ideas._merge([board(7)], [{**board(1), 'rank': 0, 'right': 19}, {**board(2), 'rank': 0}])
+        self.assertEqual([b['host'] for b in merged], ['b1.example', 'b7.example', 'b2.example'])
+
     def test_a_counted_board_comes_first_and_an_uncounted_one_with_a_fit_job_keeps_its_place_after_it(self):
         """13 Nov 2026 (eo): most pairs have no Scout count yet. A board with no number is proven as before (a fit job of an install), never dropped for the want of one;
         boards the Scout counted read first, six in all (first_jobs.SLICE_BOARDS)."""

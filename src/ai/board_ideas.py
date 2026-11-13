@@ -355,7 +355,7 @@ PROVEN_RIGHT = 3   # jobs of the person's family, located in the country, the Ce
 def ranked(boards, search):
     """The boards best first: by `right` (the Central Scout's count of this user's role families' jobs on the board, located in these countries, summed), then by what
     they gave installs with these families (owner, 18 Oct 2026: "relevant jobs per role"): jobs in their places per install, then fit 70+ per install. 'rank' is kept on each
-    board (0: no data for this user), 'right' only when the Scout counted at least one of the families (absent: not measured, never 0).
+    board (0: no data for this user), 'right' (their sum, which orders) and 'right_best' (the largest single count, which proves) only when the Scout counted at least one of the families (absent: not measured, never 0).
     Boards without data keep their order after the ranked ones.
     Why (13 Nov 2026, bp, owner: "we know exactly: this board will give x jobs, this other board will give y jobs"): the order was jobs in places per install, and the Scout's cells
     credited a board's whole list to every family it had seen once (178 airline jobs for an electrician): the number the Scout counted per family comes first."""
@@ -369,7 +369,8 @@ def ranked(boards, search):
         board['rank_fit70'] = round(sum(cell['fit70'] for cell in cells) / installs, 1) if installs else 0
         counted = [cell['right'] for cell in cells if isinstance(cell.get('right'), int)]
         if counted:
-            board['right'] = sum(counted)
+            board['right'] = sum(counted)       # orders the boards
+            board['right_best'] = max(counted)  # proves a board: the Scout's PROVEN_RIGHT is per (country, family), never a sum (Gitar on #4045: two cells of 2 are not 4)
     return sorted(boards, key=lambda board: (-board.get('right', 0), -board['rank'], -board['rank_fit70']))
 
 
@@ -385,18 +386,18 @@ def proven(search, limit=2):
     searches, with 0 right jobs; the site now sends `measured` only with the count too). A fit job of one install still proves an uncounted board (12 Nov: jobs in places alone never did)."""
     from .. import places
     countries = places.countries(search, limit=None)
-    return [board for board in ranked(served(countries), search) if not board.get('browser') and (board['right'] >= PROVEN_RIGHT if 'right' in board else board.get('rank_fit70'))][:limit] if countries else []
+    return [board for board in ranked(served(countries), search) if not board.get('browser') and (board['right_best'] >= PROVEN_RIGHT if 'right' in board else board.get('rank_fit70'))][:limit] if countries else []
 
 
 def _merge(own, shared):
-    """The shared boards that gave people in this field jobs in their places (rank above 0), best first; then Claude's own proposals; then the
+    """The shared boards that gave people in this field jobs in their places (rank above 0) or that the Scout counted right jobs on (`right`), best first; then Claude's own proposals; then the
     shared boards with no record for this field. A board in both keeps its rank and the shared link (the page measured to give local jobs,
     maybe a section of the board), with Claude's own kinds and place words.
     Why (11 Nov 2026, #3835, owner: "A: read boards to 180 s", asked via AskUserQuestion): every shared board went first, so a pilots' board
     with no record for the field was the first board read for a carpenter, an electrician, a hospitality worker and a data person, ahead of
     their field's boards and the public employment service, and a search reads only the top of this list."""
     theirs = {board['host']: board for board in shared}
-    merged = {board['host']: board for board in shared if board.get('rank')}
+    merged = {board['host']: board for board in shared if board.get('rank') or board.get('right')}   # a Scout count is a record for the field (13 Nov 2026, Gitar on #4045)
     for board in own:
         known = theirs.get(board['host'], {})
         merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}
