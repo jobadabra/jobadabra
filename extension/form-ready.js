@@ -29,6 +29,8 @@ const looking = new Set(), judged = new Map(), unanswered = new Map();
  * @param {'middle'|'final'|null} step the judge's step for the page state just judged
  * @returns {void}
  */
+/** -> the judge's step to mark on the page: middle or final, else null (unsure or none said). */
+export const stepMark = answer => (['middle', 'final'].includes(answer?.step) ? answer.step : null);
 export function markFormStep(step) { if (step) document.documentElement.setAttribute('data-jobadabra-form-step', step); else document.documentElement.removeAttribute('data-jobadabra-form-step'); }
 // The structure says the form is ready: every counted required field is filled, on an application page (not an account page).
 export const claimsReady = payload => !!payload && !payload.account && Number(payload.total) > 0 && Number(payload.left) === 0;
@@ -113,7 +115,7 @@ async function askForm(tab, frameId, again = false) {
     shadowCheck(tab, config, sketch, answer, host);   // the fill ladder's fill_verify, logged only (below)
     if (handedToPerson(answer)) endSilence(tab.id);   // handed to the person: Submit or their choice is next (ladder/silence.js)
     await run(tab, frameId, flagAccount, [answer.answer === 'blocked' ? blockedWords(answer.blockedKind) : answer.answer === 'needs_person' ? answer.needs || '' : null]);
-    await run(tab, frameId, markFormStep, [answer.step === 'middle' ? 'middle' : answer.step === 'final' ? 'final' : null]);   // the panel words a filled middle step "Ready to continue" (panel-review-view.js)
+    await run(tab, frameId, markFormStep, [stepMark(answer)]);   // the panel words a filled middle step "Ready to continue" (panel-review-view.js)
     if (answer.answer === 'blocked') decide('fill', `the page is blocked after the fill: ${answer.blockedKind || 'overlay'}`, {host});   // the fill log and the smoke verdict read this line
     if (await backgroundFormReady(tab, frameId, answer)) return;
     // The site's own error about what was entered, on a phone number: it is typed again in another writing the AI names from the error text (format-retry.js, at most twice), then the page is judged anew.
