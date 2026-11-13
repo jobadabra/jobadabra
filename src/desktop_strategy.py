@@ -51,7 +51,13 @@ def _changed_ids(db, profile, stage_map):
 
 
 def _outdated_ids(db, stage_map, profile=None):
-    return set(score.previous_method(db)), _previous_locations_ids(db, stage_map), _changed_ids(db, profile, stage_map)
+    """The three reasons, each cut to the ACTIVE jobs (locations.active_ids): an expired or hidden job keeps its old score but no list shows it and no run
+    scores it, so counting it made "Re-score 10" score 2 (13 Nov 2026, owner). The older-method reason was the one not cut."""
+    try:
+        method = set(score.previous_method(db)) & locations.active_ids(db, stage_map)
+    except Exception:  # noqa: BLE001
+        method = set()
+    return method, _previous_locations_ids(db, stage_map), _changed_ids(db, profile, stage_map)
 
 
 def outdated(db, stage_map, profile=None):

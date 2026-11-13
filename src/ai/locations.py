@@ -110,10 +110,11 @@ def refresh(db, search, active_ids):
 
 
 def active_ids(db, stages=None):
-    """The jobs a refresh may touch: the ones the search shows, minus any with an application (stages: job url -> stage, whatever the stage)."""
-    from .. import digest
+    """The jobs a refresh or a re-score may touch: the ones the search shows, minus any with an application (stages: job url -> stage, whatever the stage),
+    and only those a run can score (src/ai/score_old.py rescorable: a posting text, a place known)."""
+    from . import score_old
     hidden = frozenset(url for url, stage in (stages or {}).items() if stage)
-    return {job['id'] for job in digest.eligible_jobs(db, hidden_urls=hidden)[0]}
+    return {job['id'] for job in score_old.rescorable(db, hidden)}
 
 
 def id_for_url(db, url):
