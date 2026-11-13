@@ -95,7 +95,7 @@ def _gh(*args):
     return json.loads(subprocess.run(['gh', *args], capture_output=True, text=True, check=True, timeout=60).stdout or 'null')
 
 
-def held(me=None):
+def held():
     """The holder workflows queued or running now (a press tape: a recording keeps the broker's pace). Unreadable = held."""
     out = []
     for workflow in HOLDERS:
@@ -111,7 +111,7 @@ def turn(now=datetime.now, sleep=time.sleep, read=None, holders=held):
     """Wait for room (exit 0) or give up after TURN_MINUTES (exit 1): one /health reading every EVERY_S, one line when the answer changes."""
     end, said = time.monotonic() + TURN_MINUTES * 60, ''
     while time.monotonic() < end:
-        busy = holders(os.environ.get('GITHUB_RUN_ID'))
+        busy = holders()
         ok, why = (False, f'the broker is held by {", ".join(busy)}') if busy else room(health(read))
         if ok or why != said:
             print(f'pair: {"admitted" if ok else "waiting"} {now(timezone.utc):%H:%M:%S}: {why}', flush=True)
