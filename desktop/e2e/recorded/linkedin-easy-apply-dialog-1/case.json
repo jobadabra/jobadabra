@@ -64,9 +64,6 @@
    "do": [
     {
      "click": "role=button[name=\"Next\"]"
-    },
-    {
-     "panel": "Fill again"
     }
    ],
    "expect": {

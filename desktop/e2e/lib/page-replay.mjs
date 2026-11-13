@@ -160,26 +160,35 @@ export async function judgePhase(item, scope) {
   return {ok: !failures.length, failures, confirm, seen: {tabs, opened}, truth: readings.counts, moves: () => movesFromRequests(mine()), repairs: () => repairsFromRequests(mine())};   // the ladder moves the case's pages confirmed (lib/ladder-moves.mjs), read once the run is over: a report can land after the judgment
 }
 
-// One of the person's presses between two judged phases: a page control (Next) or the extension panel's own button ("Fill again", in its open shadow root).
+// One of the person's presses between two judged phases: a page control (Next) or the extension panel's own button ("Fill again", in its open shadow root), each a real click
+// by role and name, as the person's would be: a panel a page's modal dialog covers cannot be pressed.
+// Why (13 Nov 2026, LinkedIn Easy Apply 4a): the panel's press was a script click, which reached the panel even behind LinkedIn's modal (showModal) where a person cannot.
 async function pressStep(tab, step) {
   if (step.click) await tab.locator(step.click).click();
   if (!step.panel) return;
-  await tab.waitForFunction(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
-  await tab.evaluate(want => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
+  const panel = tab.locator('#jobadabra-review-host'), button = panel.getByRole('button', {name: step.panel, exact: true});
+  const pill = panel.getByTitle('Jobadabra', {exact: true});
+  if ((await pill.getAttribute('aria-expanded')) === 'false') await pill.click();   // the panel shows as its pill (above a page's modal): the person opens it first; an open card is never toggled shut
+  await button.click().catch(async error => {   // the red says what the panel showed instead: its buttons, whether each is seen, the pill's state and the panel's parent
+    const seen = await panel.getByRole('button').evaluateAll(list => list.map(one => `${one.textContent.trim().slice(0, 30)}${one.checkVisibility() ? '' : ' (hidden)'}${one.disabled ? ' (disabled)' : ''}`).filter(Boolean));
+    throw new Error(`panel button "${step.panel}" not pressed; pill expanded=${await pill.getAttribute('aria-expanded')}, panel in <${await panel.evaluate(host => host.parentElement?.localName)}>, buttons: ${seen.join(' | ')}\n${error.message}`);
+  });
 }
 const phaseLabel = (item, index) => (Array.isArray(item.then) ? `then ${index + 1}` : 'then');
 
 // A case may go on after its first judgment as the person would: case.json `then` is {do: [{click: '<selector>'} | {panel: '<button text>'}], expect: {...}}, or a list
 // of them, one per later step of a multi-step form (step 2 is filled only once the person has reached it: Next pressed, then the panel's "Fill again").
 // Why (13 Nov 2026, LinkedIn Easy Apply 3/5): LinkedIn's dialog has four steps (contact, resume, questions, review); one `then` could judge only the second.
+// scope.judge / scope.press stand in for the page's judge and the person's press only in test/replay/then-phases.test.mjs.
 export async function judgeCase(item, scope) {
-  let result = await judgePhase(item, scope);
+  const {judge = judgePhase, press = pressStep} = scope;
+  let result = await judge(item, scope);
   const failures = [...result.failures], confirm = [...(result.confirm || [])];
   for (const [index, phase] of [].concat(item.then || []).entries()) {
     if (!result.ok) break;
     const tab = scope.pages().at(-1) || scope.page;
-    for (const step of phase.do || []) await pressStep(tab, step);
-    result = await judgePhase({...item, start: undefined, expect: phase.expect}, scope);
+    for (const step of phase.do || []) await press(tab, step);
+    result = await judge({...item, start: undefined, expect: phase.expect}, scope);
     failures.push(...result.failures.map(text => `${phaseLabel(item, index)}: ${text}`));
     confirm.push(...(result.confirm || []));
   }
