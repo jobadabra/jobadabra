@@ -102,6 +102,14 @@ test('a job already pressed is never pressed again', () => {
   refused(good({attempted: true}), 'attempt_already_reserved');
 });
 
+// Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion): nothing sends on LinkedIn until its own sending PR (plan 4b).
+test('a LinkedIn job is never pressed, nor an address that cannot be read', () => {
+  for (const url of ['https://www.linkedin.com/jobs/view/1', 'https://linkedin.com/jobs/view/1', 'https://ch.linkedin.com/jobs/view/1', 'not an address']) {
+    refused(good({job: {...job, url}, item: {...item, url}}), 'send_not_allowed_here');
+  }
+  assert.equal(submitVerdict(good({job: {...job, url: 'https://notlinkedin.com/jobs/1'}, item: {...item, url: 'https://notlinkedin.com/jobs/1'}})).submit, true, 'a host that only ends in the word is another site');
+});
+
 test('the item\'s own wait holds the press and is the only refusal that is not final', () => {
   const verdict = refused(good({item: {...item, waitMin: 5}}), 'waiting');
   assert.equal(verdict.final, false);
@@ -128,7 +136,8 @@ test('the press waits for the site to reserve its one attempt; a refused or fail
 test('the Mac\'s Full automation and the cloud gate share one proof and eligibility check', () => {
   const lib = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../lib');
   const store = fs.readFileSync(path.join(lib, 'background-apply-store.js'), 'utf8');
-  assert.match(store, /import \{kitAllows, proofOk\} from '\.\/submit-proof\.js'/);
+  assert.match(store, /import \{kitAllows, proofOk, sendAllowedOn\} from '\.\/submit-proof\.js'/);
+  assert.match(store, /if \(!sendAllowedOn\(url\)\) return stop\('send_not_allowed_here'\)/, 'the Mac refuses LinkedIn with the same gate (plan 4b lifts it)');
   assert.doesNotMatch(store, /const proofOk\s*=/, 'a second copy of the proof check drifts');
 });
 

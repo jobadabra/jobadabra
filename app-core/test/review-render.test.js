@@ -318,3 +318,18 @@ const TRANSITIONS = [
   {"dom":"12e71872081236f968e7171ddda72f4fc47f3c165ec3cd3fea3e1800be4f2e27","connected":true,"result":{"left":3,"total":3,"busy":false,"over":false,"account":false,"list":["a","b","c"]},"state":{"counts":{"total":3,"left":3},"shown":["a","b","c"],"lastStuck":"","stuckSince":0,"markStepWords":"","tipFor":null,"filledOnce":false},"events":[["written",["a","b","c"]],["claude",{"on":false,"stuck":false,"always":false,"auto":false,"consent":false,"takeover":true,"report":false}]]},
   {"dom":"12e71872081236f968e7171ddda72f4fc47f3c165ec3cd3fea3e1800be4f2e27","connected":true,"result":{"left":3,"total":3,"busy":false,"over":false,"account":false,"list":["a","b","c"]},"state":{"counts":{"total":3,"left":3},"shown":["a","b","c"],"lastStuck":"","stuckSince":0,"markStepWords":"","tipFor":null,"filledOnce":false},"events":[["written",["a","b","c"]],["claude",{"on":false,"stuck":false,"always":false,"auto":false,"consent":false,"takeover":true,"report":false}]]},
 ];
+
+// Why (13 Nov 2026, owner, LinkedIn Easy Apply 4a: "Two PRs (Recommended)", the panel says it is on a step, not "Ready to submit", before the step whose button sends): the panel's count of
+// filled boxes cannot tell one step of a multi-step form from the last; the form judge's step (extension/form-ready.js marks data-jobadabra-form-step) words it.
+test('a filled middle step reads Ready to continue, the last step Ready to submit', {skip: !JSDOM}, async () => {
+  const p = await panel({state: {open: false}});
+  try {
+    for (const field of p.fields) field.filled = true;
+    const words = () => { p.api.render(); return [p.root.querySelector('.pill b').textContent, p.root.querySelector('.pill small').textContent]; };
+    assert.deepEqual(words(), ['Ready to submit', 'Review, then submit'], 'no word from the judge: the count says it as before');
+    p.document.documentElement.setAttribute('data-jobadabra-form-step', 'middle');
+    assert.deepEqual(words(), ['Ready to continue', 'Review, then continue'], 'a step a later step follows never says submit');
+    p.document.documentElement.setAttribute('data-jobadabra-form-step', 'final');
+    assert.deepEqual(words(), ['Ready to submit', 'Review, then submit'], 'the step that sends');
+  } finally { p.close(); }
+});

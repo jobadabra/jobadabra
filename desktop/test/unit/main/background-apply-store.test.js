@@ -83,6 +83,19 @@ test('the automatic press needs the judge to have said no bot check: a bot check
   }
 });
 
+// Why (13 Nov 2026, owner, LinkedIn Easy Apply: "4a fill, 4b send (Recommended)", asked via AskUserQuestion): Full automation fills a LinkedIn job to ready and the person sends it, until plan 4b.
+test('a LinkedIn job is never reserved for an automatic press: the person finishes it', async () => {
+  const r = rig(), job = r.add('li');
+  r.apps.delete(job.url);
+  const li = {...job, url: 'https://www.linkedin.com/jobs/view/4242'};
+  r.apps.set(li.url, li);
+  const {store, session} = await prepared(r, li, 'auto', {...config, auto: {waitMin: 0}});
+  const got = await store.reserve(li.url, session, 'owned-browser', ready, {...config, auto: {waitMin: 0}});
+  assert.equal(got.submit, false);
+  assert.equal(got.reason, 'send_not_allowed_here');
+  assert.equal((await store.read(li.url)).state, 'needs_user_handoff', 'the person finishes it');
+});
+
 test('mode 2 ends ready for review, while mode 3 waits and rechecks every guard before reserving', async () => {
   const r = rig(), {store, job, session} = await prepared(r, r.add(), 'fill');
   assert.equal((await store.read(job.url)).state, 'ready_for_review');

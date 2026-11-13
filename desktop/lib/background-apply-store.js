@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
 import {backgroundWaitNow} from './background-apply-clock.js';
 import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
-import {kitAllows, proofOk} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
+import {kitAllows, proofOk, sendAllowedOn} from './submit-proof.js';   // the page's proof and kit eligibility, one definition with the cloud browser's Submit gate (ready-fill/submit-gate.js)
 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
@@ -105,6 +105,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = ba
       const stop = async reason => { const next = await manual(app, state, reason); return {submit: false, reason, state: next.state}; };
       // Why (7 Nov 2026, owner, #3363): the item's own mode and confirmation decide, not what Settings says now; an item queued without a confirmation (an older build) is handed over, never pressed.
       if (state.mode !== 'auto' || !state.chosenAt || !state.autoConfirmedAt) return stop('mode_changed_or_not_opted_in');
+      if (!sendAllowedOn(url)) return stop('send_not_allowed_here');   // LinkedIn: filled to ready, the person sends (lib/submit-proof.js sendAllowedOn)
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay

@@ -2,7 +2,7 @@
 // It presses only for task `auto`, only with the queued item's OWN stamped confirmation (never a saved setting), only on the page's own proof and the kit's eligibility (lib/submit-proof.js, shared with the Mac),
 // and only after the site reserved the job's one attempt (no retry, the ~500 a day ceiling). `readiness` and `fill` never reach it: they keep no-submit.mjs as their net.
 // Invariants: every refusal but `waiting` is final (the job goes back to the person, never tried again); a reservation that fails or throws never presses. Guard: desktop/test/guards/safety/cloud-submit-gate.test.js.
-import {kitAllows, proofOk} from '../../desktop/lib/submit-proof.js';   // in the image: /desktop/lib, reached by the same path from /night
+import {kitAllows, proofOk, sendAllowedOn} from '../../desktop/lib/submit-proof.js';   // in the image: /desktop/lib, reached by the same path from /night
 // Why (10 Nov 2026, cs 1/4): a .js file, unlike its .mjs neighbours: the site's image copies every desktop/ready-fill/*.mjs and its test follows their imports, so an .mjs gate would turn the site red before cs 2/4 adds
 // lib/submit-proof.js to the image. cs 2/4 copies this file by name.
 
@@ -44,6 +44,7 @@ export function submitVerdict({task, job, item, sentAt, stopped = false, proof, 
   if (stopped) return no('stopped_or_handed_off');
   if (BLOCKED_STATUS.includes(Number(status))) return no('blocked_status');
   if (attempted) return no('attempt_already_reserved');
+  if (!sendAllowedOn(job.url)) return no('send_not_allowed_here');   // LinkedIn never sends from the cloud (its session stays on the computer) nor before plan 4b
   if (!proofOk(proof) || proof.signature !== readySignature || typeof readyAt !== 'number' || !Number.isFinite(readyAt)) return no('page_changed_or_incomplete');
   if (proof.botCheck !== false) return no('bot_check_unknown');   // only the judge's explicit "no robot check" lets the press go, as on the Mac
   if (!kitAllows({stage, kit, allowIneligible: item.allowIneligible})) return no('not_eligible');
