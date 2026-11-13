@@ -27,6 +27,15 @@ ship_flow_step_red() {
 command -v session_short >/dev/null 2>&1 || session_short() { local name; name="$(session_name)"; echo "${name##*-}"; }
 ship_pr_fail() { fail_reason="$1"; echo "ship: FAILED $1" >&2; exit 1; }
 # The lease names what origin has NOW (empty: nothing): the branch is deleted on merge, so the local tracking ref of an earlier landing is stale and a bare --force-with-lease refuses (12 Oct 2026). Only this session writes the branch.
+# ship_pr_lookup <repo> <branch>: sets `n` to the branch's open PR, empty when there is none. Stops the run (nothing pushed, no PR created) when GitHub cannot say.
+# Why (13 Nov 2026, pq; bl on #4022 and gq on #4031, REST core 0): an unreadable lookup used to read as no PR: the run pushed, tried to create a second one (422) and never started its watcher.
+ship_pr_lookup() {
+  local reset when=""
+  if n="$(pr_of_head "$1" "$2" 2>/dev/null)"; then return 0; fi
+  reset="$(gh api rate_limit --jq .resources.core.reset 2>/dev/null)"
+  [ -z "$reset" ] || when=" until $(date -d "@$reset" +%H:%M 2>/dev/null || date -r "$reset" +%H:%M 2>/dev/null)"
+  ship_pr_fail "GitHub could not say whether $2 already has an open pull request (REST quota 0$when, or unreachable): nothing was pushed and no pull request was created; run tools/ship.sh again"
+}
 ship_pr_push() { local now; now="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)"; git push -q "--force-with-lease=refs/heads/$branch:$now" origin "HEAD:refs/heads/$branch" 2>&1 || ship_pr_fail "could not push the branch $branch to origin"; }
 # No stacking (owner, 17 Oct 2026: a PR on another PR's branch gets stuck when the base merges or is retargeted): refuse to push a branch that carries a commit of another open PR.
 ship_pr_no_stacking() {
@@ -46,7 +55,7 @@ ship_pr_land() {
   files="$(git diff --name-only origin/main HEAD)"
   ship_pr_no_stacking
   repo="$(ship_repo)"
-  n="$(pr_of_head "$repo" "$branch" 2>/dev/null)" || n=""
+  ship_pr_lookup "$repo" "$branch"   # sets n
   # A PR's title names the whole PR (owner, 24 Oct 2026: #1743 was titled by its 6th commit, a spec tick): 2+ commits that are not "Move ..." splits need --title= when the PR is opened.
   if [ -z "$n" ] && [ -z "${SHIP_PR_TITLE:-}" ] && [ "$(git log --format=%s origin/main..HEAD | grep -vc '^Move ')" -ge 2 ]; then
     ship_pr_fail "this PR has several commits: pass --title=\"<what the whole PR does for the user>\" (a PR's title names the whole change, not its newest commit)"

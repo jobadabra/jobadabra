@@ -151,8 +151,20 @@ pr_list() {
   printf '%s\n' "$all"
 }
 
-# pr_of_head <repo> <branch>: the number of the open PR whose head is <branch> of <repo>'s owner; empty when there is none.
-pr_of_head() { pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1" | jq -r '.[0].number // empty'; }
+# pr_of_head <repo> <branch>: the number of the open PR whose head is <branch> of <repo>'s owner; empty (exit 0) when there is none; exit 1 with nothing printed when GitHub cannot say.
+# Why (13 Nov 2026, pq; bl on #4022 at 19:47Z, REST core 0 until 20:03Z): the read was piped into jq, so the function had jq's exit status and a quota 403 (no output) read as no open PR; ship.sh went on to create a
+#   second one (422) with no watcher. An unknown answer is never none: REST out (core 0) reads over GraphQL like pr_view; any other failure fails, and the caller must not create a PR.
+pr_of_head() {
+  local out
+  out="$(pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1")" || { _pr_rest_out && _pr_gql_of_head "$@"; return; }
+  jq -r '.[0].number // empty' <<<"$out"
+}
+# _pr_gql_of_head <repo> <branch>: pr_of_head's answer from GraphQL (only PRs whose head is in the repo's own owner, like REST's head=owner:branch).
+_pr_gql_of_head() {
+  local out
+  out="$(_pr_gql 'query($o:String!,$n:String!,$b:String!){repository(owner:$o,name:$n){pullRequests(headRefName:$b,states:OPEN,first:10){nodes{number headRepositoryOwner{login}}}}}' -f o="${1%%/*}" -f n="${1#*/}" -f b="$2")" || return 1
+  jq -r --arg o "${1%%/*}" '.data.repository | if . == null then error("no repository") else (.pullRequests.nodes | map(select(.headRepositoryOwner.login == $o)) | .[0].number // empty) end' <<<"$out"
+}
 
 # pr_open <repo> <branch> <title> <body> [draft]: opens the PR into main; prints its URL.
 pr_open() { gh api -X POST "repos/$1/pulls" -f base=main -f head="$2" -f title="$3" -f body="$4" ${5:+-F draft=true} --jq .html_url; }
@@ -189,4 +201,8 @@ pr_set_text() {
 pr_label() { gh api -X POST "repos/$1/labels" -f name="$3" -f color="$4" -f description="$5" >/dev/null 2>&1; gh api -X POST "repos/$1/issues/$2/labels" -f "labels[]=$3" >/dev/null; }
 
 # pr_issues <repo> <label>: the open issues (never PRs) with that label, as [{number, title, body}].
-pr_issues() { pr_get "repos/$1/issues?state=open&labels=$2&per_page=100" | jq -c '[.[] | select(.pull_request | not) | {number, title, body: (.body // "")}]'; }
+pr_issues() {   # a failed read fails (a pipeline into jq would say "no issues": 13 Nov 2026, pq)
+  local out
+  out="$(pr_get "repos/$1/issues?state=open&labels=$2&per_page=100")" || return 1
+  jq -c '[.[] | select(.pull_request | not) | {number, title, body: (.body // "")}]' <<<"$out"
+}
