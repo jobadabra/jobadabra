@@ -44,3 +44,19 @@ test('a single `then` object still reports a plain "then:"', async () => {
   const result = await judgeCase({expect: {name: 'first'}, then: phase('second')}, scope);
   assert.deepEqual(result.failures, ['then: chosen: #ea-resume-1']);
 });
+
+// Why (13 Nov 2026, Gitar on #4056, Rule E: the Easy Apply case dropped its step-2 "Fill again" press): step 2 is filled by the fill itself after Next, the way a person sees it
+// (a filled form shows no Fill button, so the press had nothing to do); the case still judges that step, and this pins it so the press cannot vanish with its assertion.
+test('the Easy Apply stand-in judges step 2 filled with no panel press: Next, then the resume chosen by the fill itself', async () => {
+  const {loadCases} = await import('../../lib/page-replay.mjs');
+  const item = loadCases().find(one => one.name === 'linkedin-easy-apply-dialog-1');
+  assert.ok(item, 'the recorded Easy Apply stand-in is loaded');
+  const [step2] = item.then;
+  assert.deepEqual(step2.do, [{click: 'role=button[name="Next"]'}], 'step 2 is reached by the page\'s own Next, and nothing presses the panel');
+  assert.deepEqual(step2.expect.chosen, ['#ea-resume-1'], 'step 2 is judged: the fill chose the resume by itself');
+  assert.deepEqual(step2.expect.notTold, ['pressed the submit'], 'and nothing sent');
+  const {scope, judged, pressed} = fakeScope({});
+  assert.equal((await judgeCase(item, scope)).ok, true);
+  assert.deepEqual(judged[1], step2.expect, 'the judge sees step 2\'s own expectation');
+  assert.equal(pressed.filter(step => step.panel).length, 1, 'the one panel press left is step 3\'s, the free-text questions');
+});
