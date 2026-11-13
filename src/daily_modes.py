@@ -155,8 +155,7 @@ def rescore_mode(args, stores=None):
         with store.connect(args.db) as db:
             to_app = lambda: sync_partial(args, stores, db, hidden, dismissed)
             profile, candidates = read_profile(), to_score(db, hidden)
-            old = score_old.old_ids(db, candidates, profile)   # the same jobs the Jobs list marks "Old score" (newly read facts alone do not)
-            queue = [job for job in score.queue(db, candidates, profile, scope='old') if job['id'] in old]   # best places first
+            queue = score_old.rescore_queue(db, candidates, profile)   # the same jobs the Jobs list marks "Old score" (newly read facts alone do not), best places first
             taken = min(args.score_max, time_budget.batch('score', len(queue)))
             print(score.run(db, candidates, profile, score.DEFAULT_MODEL, args.score_max, stats=run['score'], on_scored=to_app, scope='old',
                             only_ids={job['id'] for job in queue[:taken]}))

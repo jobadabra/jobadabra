@@ -25,3 +25,18 @@ def old_ids(db, candidates, profile):
         if row['scorer_version'] != score.SCORER_VERSION or row['input_hash'] not in current:
             old.add(job['id'])
     return old
+
+
+def rescorable(db, hidden=frozenset()):
+    """The jobs a re-score can take: the scoring candidates (daily_helpers.to_score: listed, not hidden by an application, place known) that have a posting
+    text to read. The ONE set every "needs re-scoring" number is cut to, so the dialog's count, the jobs the button queues, the jobs the run scores and the rows
+    marked "Old score" can never differ (13 Nov 2026, owner: "I get "Re-score 10" while the number was 2": 10 expired jobs kept a previous-method score that no
+    list shows and no run can take). -> list of jobs."""
+    from ..daily_helpers import to_score
+    return [job for job in to_score(db, hidden) if job.get('description')]
+
+
+def rescore_queue(db, candidates, profile):
+    """The jobs the Re-score run scores, best places first: the old scores among the candidates (old_ids) in the order the score queue gives. -> list of jobs."""
+    old = old_ids(db, candidates, profile)
+    return [job for job in score.queue(db, candidates, profile, scope='old') if job['id'] in old]
