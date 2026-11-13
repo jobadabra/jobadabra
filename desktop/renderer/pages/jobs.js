@@ -207,7 +207,7 @@ export function showJobsData(data) {
     document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.appliedDefinition');
     document.querySelector('[data-stat="fresh"]').title = t('pagesJobsFinal.freshDefinition');
     renderStuck();
-    showSearchStatus();   // the header's "n new matches" reads the same New count once the list is here (activity-basics.js)
+    showSearchStatus().catch(() => {});   // a failed runs() read leaves the header as it was, never an unhandled rejection from the list paint; the header's "n new matches" reads the same New count once the list is here (activity-basics.js)
   }
 }
 
