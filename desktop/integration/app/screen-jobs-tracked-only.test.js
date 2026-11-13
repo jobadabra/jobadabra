@@ -22,7 +22,7 @@ test('a list with no match says so in words that fit the default list, and the t
     await kit.until(() => document.querySelectorAll('article.job-row').length === 3, 'the three applications');
     return {empty, small, card: !document.getElementById('find-card').hidden};
   }});
-  assert.equal(result.empty, 'No new matches yet.');
+  assert.equal(result.empty, 'No open jobs right now.');   // Why (13 Nov 2026, owner: "I should always start as the default with total matches"): the app opens on All matches, whose empty list says there is no open job, not "No new matches yet"
   assert.deepEqual(result.small, {title: 'Find more jobs', lead: 'Reads your employers and job boards again, and adds what is new.', shown: true}, 'the small card, in its own words (owner, 5 Nov 2026)');
   assert.equal(result.card, false, 'under Applied no Find jobs card');
 });

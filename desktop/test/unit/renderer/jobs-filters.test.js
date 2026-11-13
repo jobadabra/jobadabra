@@ -38,14 +38,14 @@ test('each chip view holds the jobs it held', () => {
     assert.deepEqual(jobs.filter(job => shows(job, `view:${view.id}`)).map(job => job.url), jobs.filter(job => view.test(job, NOW)).map(job => job.url), view.id);
 });
 
-test('ticking several shows the union; unticking the last goes back to New matches', () => {
+test('ticking several shows the union; unticking the last goes back to All matches, the start list', () => {
   const ids = ['saved', 'view:active'];
   assert.ok(shows(match('saved'), ...ids) && shows(app('Screening'), ...ids) && !shows(match('unreviewed'), ...ids));
   assert.deepEqual(toggled(['open'], 'saved'), ['open', 'saved']);
   assert.deepEqual(toggled(['open', 'saved'], 'open'), ['saved']);
-  assert.deepEqual(toggled(['saved'], 'saved'), ['open']);
+  assert.deepEqual(toggled(['saved'], 'saved'), ['all']);
   assert.deepEqual(normalize(['nope', 'saved', 'saved']), ['saved']);
-  assert.deepEqual(normalize([]), ['open']);
+  assert.deepEqual(normalize([]), ['all']);
 });
 
 test('the counts, the button text and the sole filter a counter reads', () => {

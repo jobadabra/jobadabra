@@ -6,7 +6,10 @@ import {isInbound} from './origin.js';
 import {VIEWS} from './jobs-board-rules.js';
 import {openMatches} from './jobs-view.js';
 
-export const DEFAULT_FILTERS = ['open'];   // New matches: the jobs waiting for a first look
+// Why (13 Nov 2026, owner: "when I open the app, it filters for latest/new matches... which shows me 0 jobs. I should always start as the default with \"total matches\""): the one start
+// value, read by pages/jobs-state.js (the first list), Clear and "nothing ticked". All matches holds exactly what the Total matches counter counts (jobCounts: every match but the applied ones),
+// so the list never opens empty after a person looked at every job; New matches is one tick away.
+export const DEFAULT_FILTERS = ['all'];
 // Saved and Dismissed live on both the old menu (a status) and the chips (a stage): one option each. A job counts when either says so
 // (columnOf folds the status into the stage), so neither old list loses a job.
 const STATUS_OPTIONS = [
@@ -30,7 +33,7 @@ export const FILTER_OPTIONS = FILTER_GROUPS.flatMap(group => group.options);
 const BY_ID = new Map(FILTER_OPTIONS.map(option => [option.id, option]));
 export const isFilter = id => BY_ID.has(id);
 
-// What is ticked, kept valid: known ids only, never empty (nothing ticked is the default).
+// What is ticked, kept valid: known ids only, never empty (nothing ticked is the default, All matches).
 export const normalize = ids => {
   const known = [...new Set(ids || [])].filter(isFilter);
   return known.length ? known : [...DEFAULT_FILTERS];
@@ -42,7 +45,7 @@ export const inFiltersLoose = (job, ids, now = Date.now()) => ids.some(id => id 
 // The one menu value an old caller or a counter means, when exactly one filter is ticked; '' when several are.
 export const soleFilter = ids => (ids.length === 1 ? ids[0] : '');
 export const countFor = (jobs, id, now = Date.now()) => jobs.filter(job => BY_ID.get(id).test(job, now)).length;
-// Ticking toggles one filter; unticking the last one goes back to the default.
+// Ticking toggles one filter; unticking the last one goes back to the default (All matches).
 export const toggled = (ids, id) => normalize(ids.includes(id) ? ids.filter(one => one !== id) : [...ids, id]);
 // The words on the button: one name, or the first with "+ n".
 export const summary = ids => {
