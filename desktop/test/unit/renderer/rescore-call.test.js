@@ -99,10 +99,11 @@ test('every Find jobs press goes through the one gate: startSearch asks Score fi
   assert.equal((jobs.match(/window\.pilot\.refresh\(why\)/g) || []).length, 1);
 });
 
-test('the old score stays on the row, muted, with a short word; the palette lists the action', () => {
+test('the old score stays on the row, a dashed ring with a refresh badge and no word under it; the palette lists the action', () => {
   const rows = read('renderer/pages/jobs-render.js');
-  assert.match(rows, /job\.stale && job\.fit != null \? ' is-stale' : ''/);
-  assert.match(rows, /if \(old && parts\.fit\) fit\.append\(el\('span', 'fit-label', staleLabel\)\)/);
+  assert.match(rows, /\$\{old \? ' is-stale' : ''\}/, 'the class and the ring read the same rule');
+  assert.match(rows, /const old = isOldScore\(job\);[\s\S]*fitRing\(job\.fit, '', old\)/, 'one rule (fit-ring.js isOldScore, tests/unit/renderer/ring-lead.test.js) for the class and the ring');
+  assert.doesNotMatch(rows, /staleLabel/, 'no word under an old ring (owner, 13 Nov 2026: the ring says it)');
   assert.match(read('renderer/style.css'), /body\[data-rescoring\] #find-card \{ display: none; \}/, 'one attribute, one rule: no draw order');
   assert.match(read('renderer/pages/nav.js'), /if \(!\(count > 0\) \|\| rescoring\(\)\) return;\n  add\('Jobs', pressLabel\(count\)/, 'the palette lists Re-score N only while old scores wait');
   assert.match(read('renderer/pages/nav.js'), /dispatchEvent\(new Event\('rescore-ask'\)\)/, 'by an event: nav.js imports neither jobs.js nor startup.js (no-circular)');

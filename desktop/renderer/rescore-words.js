@@ -24,7 +24,6 @@ export const callButton = pressLabel;
 /** The re-score card's title, from the count: "Re-scoring 12 jobs". */
 export const rescoringTitle = count => t('helperFlow.rescoring', {jobs: jobs(count)});
 export const rescoringLead = t('helperFlow.rescoringLead');
-export const staleLabel = t('helperFlow.oldScore');
 export const staleTip = t('helperFlow.oldScoreTip');
 export const scoreFirstTitle = t('helperFlow.scoreFirst');
 /** The Score first dialog's text, from the count: Strategy's own sentence, why it matters for new jobs, then the cost line ("Cost: not calculated"). */

@@ -12,7 +12,7 @@ import {accountChip} from '../account-chip.js';
 import {columnOf} from '../jobs-board-rules.js';
 import {isInbound} from '../origin.js';
 import {looksLikeLink, matches} from '../filter.js';
-import {fitRing} from '../fit-ring.js';
+import {fitRing, isOldScore} from '../fit-ring.js';
 import {followFilter, searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
 import {band, byStat, isStuck, fitTooltip, newOfTotal, openMatches, PLACE_UNCLEAR, prepareState, preparing, sorted, statPressed, statusPill, tags, unscoredWhy} from '../jobs-view.js';
@@ -44,7 +44,7 @@ import {boardIds, findsMore, hasViewOption, inFilters, inFiltersLoose, soleFilte
 import {paintScoreCall} from './jobs-score-call.js';
 import {drawQueueRing, paintQueueBar} from './score-queue-draw.js';
 import {heldOrder, queueRuns} from './score-queue.js';
-import {staleLabel, staleTip} from '../rescore-words.js';
+import {staleTip} from '../rescore-words.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
 const stuck = job => isStuck(job, entry => sessionList.some(item => pageKey(item.url) === pageKey(entry.url)));
@@ -123,16 +123,15 @@ export function renderJobs() {
     Object.assign(row.dataset, {code: job.code || '', url: job.url || ''});   // a notification's click scrolls to it (pages/open-target.js)
     // Fit: a ring filled to the score. A row whose score has a
     // breakdown behind it says so with a caret, and the ring opens it.
-    const fit = el('div', `fit-cell ${band(job.fit)}${job.stale && job.fit != null ? ' is-stale' : ''}`);   // the old score stays, muted (owner, 2 Nov 2026), until the re-score replaces it
-    const ring = fitRing(job.fit);
+    const old = isOldScore(job);
+    const fit = el('div', `fit-cell ${band(job.fit)}${old ? ' is-stale' : ''}`);   // Why (2 Nov 2026, owner; 13 Nov 2026 look): the old score stays, muted and marked by its ring, until the re-score replaces it; no word under it
+    const ring = fitRing(job.fit, '', old);
     const canOpen = job.fit != null && !!job.fit_detail;
     const caret = icon('chevron', `icon fit-caret${canOpen ? '' : ' is-hidden'}`);  // on every row: the rings line up
     const ringRow = el('div', 'fit-ring-row');
     ringRow.append(ring, caret);
     const scoring = job.fit == null && searchingNow() && !job.place_unclear;   // found by the search that is running: its score comes next
-    const old = !!job.stale && job.fit != null;
     fit.append(ringRow);
-    if (old && parts.fit) fit.append(el('span', 'fit-label', staleLabel));   // only a stale score has words under its ring (style.css .is-stale .fit-label); the tooltip says the rest
     if (!parts.fit) {   // an applied, rejected or inbound job with no score: the same ring, saying N/A, never "Not scored" (job-row-model.js)
       ring.replaceChildren(el('span', '', NA));
     }

@@ -156,8 +156,11 @@ test('every job row shows a pointer: a click anywhere on it opens the drawer, th
 });
 
 test('one score ring for the list and the drawer', () => {
-  assert.match(read('pages/jobs-render.js'), /fitRing\(job\.fit\)/);
-  assert.match(read('job-drawer/header.js'), /fitRing\(job\.fit, 'lg'\)/);
+  assert.match(read('pages/jobs-render.js'), /fitRing\(job\.fit, '', old\)/);
+  const header = read('job-drawer/header.js');
+  assert.match(header, /const old = isOldScore\(job\);/, 'both rings use the one old-score rule');
+  assert.match(header, /fitRing\(job\.fit, 'lg', old\)/);
+  assert.match(header, /if \(old\) cell\.title = staleTip;/, 'the drawer says re-score too, as the list row does');
 });
 
 test('the overlay slot: opening one surface closes the other and says which it displaced; Back reopens it', () => {
