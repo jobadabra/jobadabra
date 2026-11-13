@@ -76,7 +76,7 @@ def _board_url(board, search):
     terms = found_boards._terms(search, 1)
     if not terms:
         return None
-    return board_paths.forms(board['search_url'], terms[0], place)[0]   # a person's browser opens one link: the plus form, as before
+    return board_paths.forms(board['search_url'], terms[0], place, board.get('charset'))[0]   # a person's browser opens one link: the plus form, in the board's charset
 
 
 def _browser_boards(search):

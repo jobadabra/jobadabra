@@ -13,7 +13,7 @@ def _rendered(board, entry, proposed, page, search, fetch, show, judge):
     if show is None:
         return None
     terms, places = _terms(search, 1), _places(search)
-    for url in dict.fromkeys([*board_paths.forms(proposed, terms[0] if terms else '', places[0]), page[0]]):   # the plus form, the slug form, the page read
+    for url in dict.fromkeys([*board_paths.forms(proposed, terms[0] if terms else '', places[0], entry.get('charset')), page[0]]):   # the plus form, the slug form, the page read
         if read_budget.past_cut():   # the search's read cut: the next search reads it
             return None
         try:

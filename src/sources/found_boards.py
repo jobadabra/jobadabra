@@ -80,22 +80,21 @@ def _read(board, search, fetch, route, early, show=None):
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):
-            links, started, how = board_paths.forms(board['search_url'], term, place), time.monotonic(), ''
-            url = links[0]
+            url, started, how = board_paths.forms(board['search_url'], term, place, board.get('charset'))[0], time.monotonic(), ''
             parts = board_round_log.Parts()
             try:
                 with parts.part('page'):
-                    url, page = board_paths.get(listing or fetch, links)   # Why (#3886): a path-style board answers the plus form 404 and was skipped; its slug link has the jobs
+                    url, page = board_paths.read(listing or fetch, board, term, place)   # Why (#3886; 13 Nov 2026, sa): a path-style board 404s its plus link (the slug link has its jobs), and a Latin-1 board matches UTF-8 words to unrelated jobs: read asks both ways
             except urllib.error.HTTPError as error:
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error=f'HTTP {error.code}', parts=parts)
+                board_round_log.said(board, term, place, started, jobs, error=f'HTTP {error.code}', parts=parts, link=url)
                 continue
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts)
+                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts, link=url)
                 continue
             found = layout.read(page, url, fetch, parts.part)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
@@ -107,7 +106,7 @@ def _read(board, search, fetch, route, early, show=None):
                 # a feed of news, not of jobs (26 Oct 2026: a pilot board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
                 if declared and (careers.READER is None or found_route['kind'] not in ('feed', 'json') or board_yield.is_relevant(declared)):
                     layout.why_none(f"read through its {found_route['kind']}")
-                    board_round_log.said(board, term, place, started, jobs, [], f"read through its {found_route['kind']}: {len(declared)} job(s); {board_round_log.page_seen(page, url)}", parts=parts)
+                    board_round_log.said(board, term, place, started, jobs, [], f"read through its {found_route['kind']}: {len(declared)} job(s); {board_round_log.page_seen(page, url)}", parts=parts, link=url)
                     return declared, 'ok', found_route
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:
@@ -129,7 +128,7 @@ def _read(board, search, fetch, route, early, show=None):
                 found = found + board_pages.more(url, page, found, fetch, lambda markup, link, fetch=fetch: layout.read(markup, link, fetch),
                                                  lambda some: board_yield.is_relevant(some))
             shaped = _shaped(board, found)
-            board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
+            board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts, link=url)
             jobs.extend(shaped)
             board_rounds.ended(told, shaped)   # the search takes a round's jobs as the round ends, not when the board's last round does (board_rounds.py)
             state = 'ok' if jobs else state
@@ -327,6 +326,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             board = {**board, 'search_url': entry['form_url']}
         if entry.get('rendered'):   # its lists are built by scripts: read in the headless browser from now on (_rendered)
             board = {**board, 'rendered': True}
+        board = {**board, **({'charset': entry['charset']} if entry.get('charset') else {})}   # its search words in its own charset (board_paths.read)
         handed = _early.pop(board['host'], None)
         return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 and not early else {}, {}, proposed)
     reads = [item(board) for board in todo]
@@ -353,6 +353,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
             return tuple(late_pages.pop(board['host']))
         result = read_board(board, search, rounds.listen(through, read_item) if rounds else through, entry.get('route'), early=early, show=show)
+        if board.get('charset'):   # learned on this read (board_paths.read): its next searches ask in it at once
+            entry['charset'] = board['charset']
         if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
             site, page = board_check.kind(board, fetch)
             if site:
