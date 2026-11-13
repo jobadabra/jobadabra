@@ -51,9 +51,11 @@ const key = e => `${e.repo}#${e.pr}${e.kind === 'ask' ? '@' + e.head : '/' + e.c
 const prInfo = (repo, pr) => {
   try {
     const j = JSON.parse(gh(['pr', 'view', String(pr), '-R', repo, '--json', 'state,headRefOid,isDraft,title,statusCheckRollup']));
-    const gate = (j.statusCheckRollup || []).find(c => (c.name || c.context) === 'All checks passed');
+    const rollup = j.statusCheckRollup || [], gate = rollup.find(c => (c.name || c.context) === 'All checks passed');
     const v = gate && (gate.conclusion || gate.state);
-    return {state: j.state, head: j.headRefOid, draft: !!j.isDraft, title: j.title || '', gate: v === 'SUCCESS' ? 'green' : /^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$/.test(v || '') ? 'red' : 'pending'};
+    // Why (13 Nov 2026, Gitar on #4058): an empty rollup means CI has not started (wait); a rollup without the gate is a repo that has none, which must not hold an ask forever; SKIPPED/NEUTRAL pass a required check.
+    const verdict = !rollup.length ? 'pending' : !gate ? 'green' : /^(SUCCESS|SKIPPED|NEUTRAL)$/.test(v || '') ? 'green' : /^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$/.test(v || '') ? 'red' : 'pending';
+    return {state: j.state, head: j.headRefOid, draft: !!j.isDraft, title: j.title || '', gate: verdict};
   } catch { return null; }
 };
 /** Why a queued entry must not spend a slot now ('' = it may go). Why (13 Nov 2026, coordinator): the queue's 11-minute slots go only to PRs that can become ready: not a draft, not "DONT MERGE", and an ask only while "All checks passed" is green; it re-enters on its own when that changes. */
