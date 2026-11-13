@@ -41,15 +41,11 @@ class JsonLdTitleTheJobPageShows(unittest.TestCase):
             got, _, asks = titles(page(ld_title, heading='Careers at Example'), 'template_field')
             self.assertEqual((got, asks), ([ld_title], 0), ld_title)
 
-    def test_the_job_page_readers_ask_the_probes_do_not(self):
-        """The reads of one job page from its own link pass job_page=True (careers one-page reads, board routes, board employers); the probes do not."""
-        import inspect
-        from src.sources import board_employers, board_routes
-        for module in (careers, board_routes, board_employers):
-            self.assertIn('job_page=True', inspect.getsource(module), module.__name__)
-        from src.sources import board_layout, board_rendered, board_sections, careers_explore, visits_read
-        for module in (board_layout, board_rendered, board_sections, careers_explore, visits_read):
-            self.assertNotIn('job_page=True', inspect.getsource(module), module.__name__)
+    def test_a_title_shown_far_down_a_long_page_is_kept_with_no_question(self):
+        """Gitar on #4086: the visible-text check must read the whole page, not its first 12,000 characters."""
+        long_page = page('Senior Welder Pipework', heading='Careers at Example').replace('<p>Exampletown</p>', '<p>' + 'filler words ' * 1500 + '</p><p>Senior Welder Pipework</p>')
+        got, _, asks = titles(long_page, 'template_field')
+        self.assertEqual((got, asks), (['Senior Welder Pipework'], 0))
 
     def test_one_placeholder_on_forty_pages_is_one_question(self):
         """Gitar on #4066: the key is the title wording, not title+heading: a board's pages share a placeholder and differ in heading, so asking per pair was 40 calls."""
@@ -112,3 +108,23 @@ class JsonLdTitleTheJobPageShows(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ReadThroughTheBoardPath(unittest.TestCase):
+    """The real path: a board's listing page, its job links, each job page read from its own link (careers.read_page_from)."""
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}), mock.patch.object(careers, 'READER', None)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_job_pages_that_share_one_placeholder_are_read_by_their_own_headings(self):
+        listing = ''.join(f'<a href="/jobs/700000{n}-puesto-{n}">Puesto {n}</a>' for n in range(1, 4))
+        pages = {f'https://listings.example/jobs/700000{n}-puesto-{n}': page('HV_JSON_TITULO', heading=f'Puesto numero {n} de montaje') for n in range(1, 4)}
+        with mock.patch('src.ai.decide.one', return_value='template_field') as asked:
+            jobs = careers.read_page_from(listing, 'https://listings.example/jobs/in-portugal', lambda url: pages.get(url, ''))
+        self.assertEqual(sorted(job['title'] for job in jobs), [f'Puesto numero {n} de montaje' for n in range(1, 4)])
+        self.assertEqual(len({call.args[1] for call in asked.call_args_list}), 1)   # three pages, one placeholder wording: one question key

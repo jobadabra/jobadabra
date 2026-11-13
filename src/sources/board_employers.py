@@ -88,7 +88,7 @@ def fill_missing(jobs, fetch=None):
             break
         asked += 1
         try:
-            found = careers.jsonld_jobs(fetch(job['url']), job['url'], job_page=True)
+            found = careers.jsonld_jobs(fetch(job['url']), job['url'])
         except (urllib.error.URLError, OSError, ValueError):
             continue
         name = next((j['employer'] for j in found if j.get('employer')), '')

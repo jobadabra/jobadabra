@@ -232,7 +232,8 @@ def _shown_title(markup, url, title):
     "no kinds of work from the AI: not kept". Structure only finds the doubt: the title is not in the page's visible text AND shares no word with its heading or <title>.
     Whether that is a template field is the AI's judgment (title-field, asked once per wording and kept); no AI or an unsure answer keeps the title, never a guess.
     Invariant: never an empty title (no heading on the page: the structured title stays, as a script-rendered page needs)."""
-    seen = plain_name(ats.plain(re.sub(r'<(script|style|noscript)\b.*?</\1>', ' ', markup, flags=re.S | re.I)))
+    # Why (13 Nov 2026, Gitar on #4086): ats.plain and plain_name both cut at 12,000 characters, so a title shown further down a long page looked absent: fold the whole text here
+    seen = re.sub(r'\s+', ' ', ats.posting_text.html_to_text(re.sub(r'<(script|style|noscript)\b.*?</\1>', ' ', markup, flags=re.S | re.I), len(markup))).strip().lower()
     if plain_name(title) in seen:
         return title
     heading = page_title(markup, url, say=False, cut=False)   # the whole heading: "Mozo/a de montaje - Mallorca" is the title, not "Mozo/a de montaje"
