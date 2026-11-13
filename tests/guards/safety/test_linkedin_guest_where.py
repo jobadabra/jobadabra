@@ -13,6 +13,10 @@ ALLOWED = {
     'src/features.py',                    # the feature's row (its needs)
     'src/sources/linkedin_guest.py',      # the reader's own docstring
     'src/sources/reader_rows.py',         # the row's gate docstring
+    # The Always on trial (owner, 13 Nov 2026, asked via AskUserQuestion: "Both ways"): both cloud ways set it only beside the site's turn address; the reader refuses a cloud run
+    # without one (src/sources/linkedin_guest.py on(), tests/unit/sources/test_linkedin_turn.py), and the site gives turns to the owner's install only.
+    'src/hosted_run.py',                  # our servers
+    '.github/workflows/daily.yml',        # the person's own GitHub repo (it calls this workflow)
 }
 DOCS = ('docs/', 'tests/', 'desktop/test/', 'desktop/integration/', 'desktop/e2e/')
 

@@ -73,6 +73,10 @@ env:
   JOBADABRA_LICENSE_KEY: ${{ secrets.JOBADABRA_LICENSE_KEY }}
   JOBADABRA_FIRST_RUN: ${{ vars.JOBADABRA_FIRST_RUN }}
   JOBADABRA_AI_BASE_URL: ${{ vars.JOBADABRA_AI_BASE_URL }}
+  # The Always on LinkedIn trial (owner, 13 Nov 2026, asked via AskUserQuestion: "Both ways"): a run with the repo key asks the site before each GET of LinkedIn's public job
+  # search (src/sources/linkedin_turn.py); the site gives turns to the owner's install only, so every other repo hears "no" once and reads nothing from LinkedIn.
+  JOBADABRA_LINKEDIN_GUEST: ${{ secrets.JOBADABRA_TRIAL_KEY != '' && '1' || '' }}
+  JOBADABRA_LINKEDIN_TURN: ${{ secrets.JOBADABRA_TRIAL_KEY != '' && 'https://www.jobadabra.top' || '' }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
   JOBADABRA_NOTION_GAP_MS: '700'
   MODE: ${{ inputs.mode || 'scheduled' }}
