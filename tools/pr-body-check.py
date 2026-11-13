@@ -70,7 +70,7 @@ def moves_gap(body, changed):
     return f'this PR changes search files ({", ".join(hit[:3])}{", ..." if len(hit) > 3 else ""}) but the body has no "Moves:" line: {MOVES_FIX}'
 
 
-PENDING = re.compile(r'^\s*[-*]?\s*\**Moves:\**.*?(?:→|->)\s*pending\b', re.M)
+PENDING = re.compile(r'^\s*[-*]?\s*\**Moves:\**\s*' + PERSON + r'\s+\S.*\d\S*\s*(?:→|->)\s*pending\s*\(', re.M)   # the after-number of a MOVES line, never a word in its note
 
 
 def pending_gap(body, title, draft):
@@ -79,7 +79,7 @@ def pending_gap(body, title, draft):
     before its pair ended. draft: the PR's draft flag ('true'/'false' from pr-gate.yml); None (a local run) skips it, as ship.sh sets the hold itself."""
     if draft is None or not PENDING.search(body or ''):
         return None
-    if draft == 'true' and 'DONT MERGE' in (title or ''):
+    if draft == 'true' and ('DONT MERGE' in (title or '') or not title):   # an empty title is a bot's PR: pr-gate.yml hides it, so the draft alone holds it
         return None
     return ('the "Moves:" line says "pending": the PR must stay a draft titled "[xx] DONT MERGE …" until its pair writes the number '
             '(gh pr ready <n> --undo; gh pr edit <n> --title "[xx] DONT MERGE <title>"), then put the number in and lift both')

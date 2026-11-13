@@ -74,6 +74,10 @@ class MovesLine(unittest.TestCase):
             self.assertIn('DONT MERGE', check.pending_gap(body, title, draft) or '', (title, draft))
         self.assertIsNone(check.pending_gap(body, '[rs] Read boards', None))   # a local run (no PR_DRAFT): ship sets the hold itself
         self.assertIsNone(check.pending_gap(body.replace('pending', '4'), '[rs] Read boards', 'false'))
+        self.assertIsNone(check.pending_gap(body, '', 'true'))   # a bot's PR: the gate passes no title, the draft holds it
+        self.assertIsNotNone(check.pending_gap(body, '', 'false'))
+        for done in ('Moves: nothing (the run → pending later)\n', 'Moves: p1 right jobs 0 → 4 (1 run a side, same minute, usual difference 2; next → pending)\n'):
+            self.assertIsNone(check.pending_gap('## x\n' + done, '[rs] Read boards', 'false'), done)   # a word in the note is not the number
 
     def test_the_command_line_reads_the_diff_against_base(self):
         """--base wires the check to git: a branch that edits src/press/run.py exits 1 without the line and 0 with it; no --base (the other repos' calls) never asks."""
