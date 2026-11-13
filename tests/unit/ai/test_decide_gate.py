@@ -78,6 +78,86 @@ class SharedCalls(unittest.TestCase):
         self.assertEqual(sorted(model.calls[1]), sorted(f'{p} link {n}' for p in 'bcd' for n in range(2)))
         self.assertEqual(out, {p: {f'{p} link {n}': 'job_list' for n in range(2)} for p in 'abcd'}, 'every page got its own answers')
 
+    def test_a_small_pages_answers_return_before_another_pages_later_batch(self):
+        """A board with its answers ready must not wait for an unrelated page's remaining model batches."""
+        model, out = Model(), {}
+        releases = [threading.Event() for _ in range(5)]
+        started, returned = threading.Semaphore(0), threading.Event()
+        original_create = model.create
+
+        def create(**kwargs):
+            number = len(model.calls)
+            self.assertTrue(releases[number].wait(5), 'the test never released this model call')
+            return original_create(**kwargs)
+
+        def controlled(**kwargs):
+            started.release()
+            return create(**kwargs)
+
+        def page(name, count):
+            out[name] = decide.decide('link-kind', {f'{name}{n}': f'{name}{n}' for n in range(count)}, ANSWERS,
+                                      'what a link is', client=model, floor=False)
+            if name == 'small':
+                returned.set()
+
+        model.go.set()
+        model.messages.create = controlled
+        threads = [threading.Thread(target=page, args=args, daemon=True) for args in [('first', 2), ('small', 2), ('large', 6)]]
+        with mock.patch.object(decide, 'BATCH', 4):
+            try:
+                threads[0].start()
+                self.assertTrue(started.acquire(timeout=5))
+                threads[1].start()
+                self.wait_queued(1)
+                threads[2].start()
+                self.wait_queued(2)
+                releases[0].set()
+                self.assertTrue(started.acquire(timeout=5))
+                releases[1].set()
+                self.assertTrue(started.acquire(timeout=5), 'the large page is still asking its later batch')
+                self.assertTrue(returned.wait(0.5), 'the small board already has its answers but waits for the large page')
+            finally:
+                for release in releases:
+                    release.set()
+                for thread in threads:
+                    if thread.ident is not None:
+                        thread.join(5)
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(out['small'], {'small0': 'job_list', 'small1': 'job_list'})
+        self.assertEqual(len(out['large']), 6)
+        self.assertTrue(all(len(call) <= 4 for call in model.calls), 'sharing never creates an extra model batch')
+        self.assertEqual(decide.GATES.open, {})
+
+    def test_a_failed_later_batch_keeps_earlier_answers_and_starts_no_further_call(self):
+        model = Model()
+        model.go.set()
+        create = model.create
+        attempts = []
+
+        def fail_second(**kwargs):
+            attempts.append(kwargs)
+            if len(attempts) == 2:
+                raise RuntimeError('the second model call failed')
+            return create(**kwargs)
+
+        model.messages.create = fail_second
+        with mock.patch.object(decide, 'BATCH', 4), mock.patch.object(decide, 'detail'):
+            found = decide.decide('link-kind', {str(n): f'word {n}' for n in range(10)}, ANSWERS,
+                                  'what a link is', client=model, floor=False)
+        self.assertEqual(found, {'0': 'job_list', '1': 'job_list', '2': 'job_list', '3': 'job_list'})
+        self.assertEqual(len(attempts), 2, 'a failure must not start the third batch')
+        self.assertEqual(decide.GATES.open, {})
+
+    def test_the_call_cap_still_leaves_later_batches_unknown(self):
+        model = Model()
+        model.go.set()
+        with mock.patch.object(decide, 'BATCH', 4), mock.patch.object(decide, 'MAX_CALLS_PER_RUN', 1):
+            found = decide.decide('link-kind', {str(n): f'word {n}' for n in range(10)}, ANSWERS,
+                                  'what a link is', client=model, floor=False)
+        self.assertEqual(found, {'0': 'job_list', '1': 'job_list', '2': 'job_list', '3': 'job_list'})
+        self.assertEqual(len(model.calls), 1, 'releasing a lane never creates another allowance')
+        self.assertEqual(decide.GATES.open, {})
+
     def test_a_page_alone_asks_at_once_as_before(self):
         model = Model()
         model.go.set()

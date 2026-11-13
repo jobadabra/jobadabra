@@ -6,7 +6,7 @@ the AI program's start-up (116 s a search, summed) and a wait for one of the 4 s
 Design: one gate per question (topic, answers, task, the pool that pays, client), open only while a call of it runs. Its states, owned here only:
 - a lane is free (fewer than LANES calls of this question are running): the caller asks at once, alone, as before;
 - no lane is free: the caller waits in the gate's queue; when a lane's call ends, the first waiting caller takes the lane and asks for
-  every caller waiting then, in one call. Nobody waits for a timer, and a caller alone is never delayed.
+  the waiting callers that fit in one model batch. Nobody waits for a timer, and a caller alone is never delayed.
 A caller that waited WAIT_S without a lane leaves unanswered (its items stay unknown this run, as past the call cap).
 Invariants: the gates live in a Gates object's own attributes (decide.GATES, part of the Run's `ai`, src/press/run.py), never at module level;
 a question with no call running holds nothing: its gate is dropped, so nothing passes from one search to the next.
@@ -27,9 +27,10 @@ class Gates:
     def __init__(self):
         self.lock, self.open = threading.Lock(), {}
 
-    def shared(self, key, pairs, ask, lanes=None, wait=WAIT_S):
+    def shared(self, key, pairs, ask, lanes=None, wait=WAIT_S, max_items=None):
         """The answers for `pairs` [(item key, text)], in their order: an answer, None (asked, not answered) or UNASKED.
-        ask(pairs) -> such a list for the pairs it is given; it makes the model call(s) and never raises. Each text is asked once per call."""
+        ask(pairs) -> such a list for the pairs it is given; it makes the model call(s) and never raises. Each text is asked once per call.
+        max_items bounds the distinct wordings shared in a batch; a single caller is always admitted."""
         me, lanes = _Caller(list(pairs)), lanes or LANES
         with self.lock:
             gate = self.open.setdefault(key, {'flying': 0, 'queue': []})
@@ -47,9 +48,9 @@ class Gates:
                 me.woken.wait()   # a lane's caller took it meanwhile: its call is running
             if me.batch is None:
                 return me.answers   # another caller asked for this one
-        return self._lead(key, gate, me, ask)
+        return self._lead(key, gate, me, ask, max_items)
 
-    def _lead(self, key, gate, me, ask):
+    def _lead(self, key, gate, me, ask, max_items):
         """Asks once for every caller of the batch, hands each its answers, then gives the lane to the callers that queued meanwhile."""
         batch = me.batch
         try:
@@ -64,7 +65,7 @@ class Gates:
                 if caller is not me:
                     caller.woken.set()
             with self.lock:
-                waiting, gate['queue'][:] = gate['queue'][:], []
+                waiting = self._next_batch(gate['queue'], max_items)
                 if waiting:
                     waiting[0].batch = waiting   # the first one waiting leads the next call, for all of them
                     waiting[0].woken.set()
@@ -73,3 +74,16 @@ class Gates:
                     if not gate['flying']:
                         self.open.pop(key, None)   # no call of this question runs: nothing is kept
         return me.answers
+
+    @staticmethod
+    def _next_batch(queue, max_items):
+        """Take the queue's first callers that fit one model batch, deduplicated by wording; leave the rest in arrival order."""
+        batch, wordings = [], set()
+        for caller in queue:
+            combined = wordings.union(text for _, text in caller.pairs)
+            if batch and max_items is not None and len(combined) > max_items:
+                break
+            batch.append(caller)
+            wordings = combined
+        del queue[:len(batch)]
+        return batch

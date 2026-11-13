@@ -207,6 +207,12 @@ FIXES = (
          'tests/unit/sources/test_api_lane.py::test_a_lane_read_that_ends_after_the_cut_is_kept_by_the_late_hand_over_once',
          'tests/unit/ai/test_titles_with_places.py::test_a_free_job_api_read_asks_where_its_remote_jobs_are_and_keeps_the_answers'),
         owner='Fix #3754, WP8 rule 6 (owner, 11 Nov 2026: "each of the runs should provide new jobs")'),
+
+    Fix('L42', '13 Nov 2026 (cp: Brussels boards spent 54-56 s inside job links)',
+        "a board with its link answers ready never waits for another page's later AI batches; sharing keeps its lanes and call cap",
+        ('tests/unit/ai/test_decide_gate.py::test_a_small_pages_answers_return_before_another_pages_later_batch',
+         'tests/unit/ai/test_decide_gate.py::test_the_call_cap_still_leaves_later_batches_unknown'),
+        owner='this is most important'),
 )
 
 

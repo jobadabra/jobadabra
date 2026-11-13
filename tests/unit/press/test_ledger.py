@@ -8,7 +8,7 @@ import unittest
 
 from tests.unit.press import ledger
 # Every proof's module, imported here so the PR test picker (tools/affected-tests.py) sees what the ledger reaches: a change to any file a proof reaches runs it.
-from tests.unit.ai import (test_boards_asked_together, test_daily_search_beside, test_daily_search_phases, test_first_press_boards_early, test_score_floor,  # noqa: F401
+from tests.unit.ai import (test_boards_asked_together, test_decide_gate, test_daily_search_beside, test_daily_search_phases, test_first_press_boards_early, test_score_floor,  # noqa: F401
                            test_search_budget, test_step_pace_failures, test_title_one_pass, test_title_queue, test_title_triage_local,
                            test_titles_with_places)
 from tests.unit.engine import test_score_first_from_start, test_scout_carry  # noqa: F401

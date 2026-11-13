@@ -331,6 +331,19 @@ def _ask(topic, pairs, answers, instructions, client, allowance):
     return got
 
 
+def _shared_ask(same, pairs, ask):
+    """Share one model batch at a time, releasing the question's lane between batches; a failure leaves later items unasked."""
+    # Why (13 Nov 2026, cp; Brussels boards spent 54-56 s in 'job links'): the gate combined every waiting page, then held every answer until
+    # _ask finished all their batches. A small board waited for unrelated pages; one BATCH per turn preserves sharing without that wait.
+    got = []
+    for start in range(0, len(pairs), BATCH):
+        chunk = GATES.shared(same, pairs[start:start + BATCH], ask, max_items=BATCH)
+        got.extend(chunk)
+        if any(answer is decide_gate.UNASKED for answer in chunk):
+            return got + [decide_gate.UNASKED] * (len(pairs) - len(got))
+    return got
+
+
 def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True, ask=True, allowance=None):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none. An 'ai_first' topic (meanings_pack.ai_first) asks the AI before the
@@ -369,7 +382,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             client = engine.client(action='decide')
         # Callers asking this same question at the same moment share one call (src/ai/decide_gate.py): a caller alone asks at once, as before.
         same = (topic, tuple(answers), instructions, _pool(topic, allowance), id(client) if given else None)   # the same pool pays (this thread's allowance): a caller never spends another's
-        got = GATES.shared(same, [(key, items[key]) for key in todo], lambda pairs: _ask(topic, pairs, answers, instructions, client, allowance))
+        got = _shared_ask(same, [(key, items[key]) for key in todo], lambda pairs: _ask(topic, pairs, answers, instructions, client, allowance))
         stamp, unasked = datetime.now(timezone.utc).isoformat(timespec='seconds'), 0
         for key, answer in zip(todo, got):
             if answer is decide_gate.UNASKED:
