@@ -38,7 +38,7 @@ def reader(read, local, enough, out=print):
             if _refusal(error):
                 return [], board_yield.refused(error), None
             markup = ''
-        for template in board_forms.home_templates(board, fetch, (address, markup)):
+        for template in board_forms.home_templates(board, fetch, (address, markup), search_only=True):
             jobs, state, route = read({**board, 'search_url': template}, search, fetch, *rest)
             if state == 'browser':
                 return jobs, state, route

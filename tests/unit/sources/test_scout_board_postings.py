@@ -54,6 +54,8 @@ class PassJudgesJobPages(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
 
+    summary = layouts.DiscoveryLayoutTest.summary   # the 'Board pass:' line, wherever the 'Board kinds:' lines fall
+
     def pass_over(self):
         read = lambda item, search, fetch: found_boards.read_board(item, search, pages)
         self.lines = []
@@ -63,15 +65,15 @@ class PassJudgesJobPages(unittest.TestCase):
     def test_filter_pages_are_judged_not_jobs_and_the_cards_layout_is_learned(self):
         kept = self.pass_over()
         self.assertEqual([fact.get('layout') for fact in kept], [{'kind': 'links', 'prefix': '/offer-x'}])
-        self.assertIn('filters.example 4/4 (layout learned: links /offer-x)', self.lines[0], 'listed counts the job cards only')
+        self.assertIn('filters.example 4/4 (layout learned: links /offer-x)', self.summary(), 'listed counts the job cards only')
         self.assertEqual(set(self.scopes), {one_posting.POSTINGS}, 'asked on its own allowance, never the page words or the run cap')
-        self.assertRegex(self.lines[0], r'job pages [1-9]\d* of \d+', 'the pass line says what the question spent')
+        self.assertRegex(self.summary(), r'job pages [1-9]\d* of \d+', 'the pass line says what the question spent')
 
     def test_a_spent_allowance_leaves_the_pages_unjudged_and_never_counts_them(self):
         with mock.patch.object(scout_boards, 'POSTING_CALLS', 0):
             kept = self.pass_over()
         self.assertEqual([fact.get('layout') for fact in kept], [{'kind': 'links', 'prefix': '/offer-x'}], 'only the cards with job data stand')
-        self.assertIn('filters.example 4/4', self.lines[0])
+        self.assertIn('filters.example 4/4', self.summary())
 
     def test_outside_the_pass_a_read_with_no_page_reader_keeps_every_page_as_before(self):
         jobs = [{'url': 'https://filters.example/job-type/full-time', 'title': 'Full Time'}]
