@@ -11,6 +11,7 @@ import threading
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from ..press import budget
 from ..role_kinds import KINDS as ROLE_KINDS
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
@@ -179,7 +180,7 @@ def slices(search):
 
 
 LEAD = 3    # boards each side gives in turn after the first six
-FIRST = 6   # the boards a first search reads at once (press/budget.json first_jobs.SLICE_BOARDS)
+FIRST = budget.value('first_jobs.SLICE_BOARDS')   # the boards a first search reads at once; one owner: press/budget.json (src/first_jobs.py reads the same row)
 
 
 def ideas(search, client=None, field=True):
