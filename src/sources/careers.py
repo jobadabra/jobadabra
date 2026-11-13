@@ -26,25 +26,39 @@ from .careers_parse import (MAX_JOB_PAGES, CAREER_WORDS, JOB_PATH, JOB_ID, COUNT
                             MAX_LIST_PAGES, PAGE_PAUSE_S, page_links)
 # ---------- fetching ----------
 
-def _public(host):
-    """False for an address that leads to this computer or a private network: a catalog entry must never make a run reach those."""
+class NameNotResolved(ValueError):
+    """The host has no address (DNS knows no such name). A ValueError like any non-public address (callers that catch it keep working); the round line names it."""
+
+
+def _address(host):
+    """'ok', 'private' (leads to this computer or a private network) or 'unresolved' (no address): a catalog entry must never make a run reach a private one."""
     if os.getenv('JOBADABRA_FIXTURE_DIR'):
-        return True
+        return 'ok'
     try:
         for family, _, _, _, address in socket.getaddrinfo(host, None):
             ip = ipaddress.ip_address(address[0])
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-                return False
+                return 'private'
+    except socket.gaierror:
+        return 'unresolved'
     except (OSError, ValueError):
-        return False
-    return True
+        return 'private'
+    return 'ok'
+
+
+def _public(host):
+    """False for an address that leads to this computer or a private network, or that does not resolve."""
+    return _address(host) == 'ok'
 
 
 def get_text(url):
     """The page's HTML, or raises. Only http(s) to public hosts."""
     parts = urllib.parse.urlsplit(url)
-    if parts.scheme not in ('http', 'https') or not parts.hostname or not _public(parts.hostname):
+    if parts.scheme not in ('http', 'https') or not parts.hostname:
         raise ValueError('not a public web address')
+    address = _address(parts.hostname)
+    if address != 'ok':
+        raise (NameNotResolved if address == 'unresolved' else ValueError)('not a public web address')   # Why (13 Nov 2026, d03 run 43478619242, #4034): "md.jooble.org" printed as a bare ValueError
     fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
         return page_bytes.text(ats._fixture(fixtures, url))
