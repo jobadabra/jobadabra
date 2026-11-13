@@ -51,7 +51,7 @@ if argv[:2] == ['pr', 'view'] and '--json' in argv and argv[argv.index('--json')
     heads = (d / 'heads').read_text().split() if (d / 'heads').exists() else []
     looks = int((d / 'looks').read_text() or 0) if (d / 'looks').exists() else 0
     print(json.dumps({'state': (d / 'queue_pr_state').read_text().strip() if (d / 'queue_pr_state').exists() else 'OPEN', 'headRefOid': (heads[min(max(looks, 1), len(heads)) - 1] if heads else 'new1'),
-                      'isDraft': False, 'title': '[t] A change', 'statusCheckRollup': [{'name': 'All checks passed', 'conclusion': 'SUCCESS'}]}))
+                      'isDraft': False, 'title': '[t] A change'}))
     sys.exit(0)
 if argv[:1] == ['api'] and '-i' not in argv and '-X' not in argv and re.search(r'/(issues|pulls)/\d+/comments\?per_page=100$', argv[-1]):   # tools/gitar-queue.mjs reads Gitar's refusals
     rest = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', argv[-1])

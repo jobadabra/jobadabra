@@ -22,10 +22,8 @@ FAKE_GH = textwrap.dedent('''\
         try: return json.load(open(f'{d}/comments_{pr}.json'))
         except OSError: return []
     def flag(name, pr, default=''): return open(f'{d}/{name}_{pr}').read().strip() if os.path.exists(f'{d}/{name}_{pr}') else default
-    if a[:2] == ['pr', 'view']:   # state_N: MERGED..; draft_N: exists = draft; title_N; checks_N: red | pending (default green)
-        rollup_other = [{'name': 'Unit', 'conclusion': 'SUCCESS'}]
-        gate = {'red': {'name': 'All checks passed', 'conclusion': 'FAILURE'}, 'pending': {'name': 'All checks passed', 'status': 'IN_PROGRESS', 'conclusion': ''}}.get(flag('checks', a[2]), {'name': 'All checks passed', 'conclusion': 'SUCCESS'})
-        print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change'), 'statusCheckRollup': ([] if flag('checks', a[2]) == 'none' else rollup_other if flag('checks', a[2]) == 'nogate' else [gate])}))
+    if a[:2] == ['pr', 'view']:   # state_N: MERGED..; draft_N: exists = draft; title_N
+        print(json.dumps({'state': flag('state', a[2], 'OPEN'), 'headRefOid': 'h' + a[2], 'isDraft': os.path.exists(f'{d}/draft_{a[2]}'), 'title': flag('title', a[2], '[t] A change')}))
     elif a[:2] == ['api', 'graphql'] and os.path.exists(f'{d}/graphql_down'):   # quota 0 / 5xx: gh prints nothing
         pass
     elif a[:2] == ['api', 'graphql']:   # every open PR's comments, from the comments_N.json files (a PR the queue never saw has one too)
@@ -35,8 +33,7 @@ FAKE_GH = textwrap.dedent('''\
                 rows = json.load(open(f'{d}/{name}'))
                 nodes.append({'number': int(name[9:-5]), 'comments': {'nodes': [{'author': {'login': r['user']['login']}, 'createdAt': r['created_at'], 'body': r['body']} for r in rows]}, 'reviewThreads': {'nodes': []}})
         print(json.dumps({'data': {'search': {'nodes': nodes}}}))
-    elif a[:2] == ['pr', 'comment']:   # Gitar answers
-        if os.path.exists(f'{d}/down_after_post_{a[2]}'): open(f'{d}/graphql_down', 'w').write('')   # the post used the quota: the next read fails a PR that is under its limit with a refusal, 3 s later in real life, at once here
+    elif a[:2] == ['pr', 'comment']:   # Gitar answers a PR that is under its limit with a refusal, 3 s later in real life, at once here
         if os.path.exists(f'{d}/side_refuse_{a[2]}'):   # another session's ask on the PR named in the file is refused while this post settles
             other = open(f'{d}/side_refuse_{a[2]}').read().strip(); rows = comments(other)
             rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading
@@ -141,10 +138,11 @@ class GitarQueueTest(unittest.TestCase):
         self.assertTrue(self.run_queue('reply', 'o/r', '2', '777', str(body), GITAR_QUEUE_GAP_S='0').startswith('QUEUED (position 2'), 'not SENT while its PR waits (the refused ask is first)')
         self.assertEqual(self.posted(), ['reply 555', 'ask 2'])
 
-    def test_a_github_that_answers_nothing_never_crashes_the_ask_and_the_failure_is_said(self):
+    def test_a_github_that_answers_nothing_never_crashes_the_ask_and_posts_nothing(self):
         (self.tmp / 'gh_out').write_text('')
         out = self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
-        self.assertTrue(out.startswith('QUEUED (position 1') and 'the last look failed' in out, out)
+        self.assertTrue(out.startswith('QUEUED (position 1'), out)
+        self.assertEqual(self.posted(), [], 'an unreadable GitHub is not "no refusal": nothing is posted')
         (self.tmp / 'gh_out').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
 
@@ -199,17 +197,6 @@ class GitarQueueTest(unittest.TestCase):
         (self.tmp / 'draft_1').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=3700), 'ASKED', 'it re-enters when it is ready')
 
-    def test_an_ask_waits_while_all_checks_passed_is_red_or_pending_and_a_reply_does_not(self):
-        for state, word in (('red', 'checks red'), ('pending', 'checks pending')):
-            (self.tmp / 'checks_1').write_text(state)
-            self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith(f'HELD ({word}'), state)
-        body = self.tmp / 'body.md'
-        body.write_text('Fixed.')
-        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'SENT', 'a reply is not held by the checks')
-        (self.tmp / 'checks_1').unlink()
-        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=3700), 'ASKED', 'green: it goes')
-        self.assertEqual(self.posted(), ['reply 555', 'ask 1'])
-
     def test_a_refusal_on_another_pr_during_the_settle_pauses_but_does_not_take_this_post_back(self):
         """13 Nov 2026, Gitar on #4053: the post-send check read every PR's refusals, so another PR's refusal re-queued an accepted ask and it was posted twice."""
         (self.tmp / 'side_refuse_1').write_text('99')
@@ -232,29 +219,6 @@ class GitarQueueTest(unittest.TestCase):
         self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
         calls = (self.tmp / 'calls').read_text() if (self.tmp / 'calls').exists() else ''
         self.assertNotIn('api graphql', calls)
-
-    def test_a_repo_without_an_all_checks_passed_gate_does_not_hold_an_ask_but_an_empty_rollup_waits(self):
-        """13 Nov 2026, Gitar on #4058: a rollup without the gate held an ask forever; an empty one (CI not started) still waits."""
-        (self.tmp / 'checks_1').write_text('none')
-        self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith('HELD (checks pending'))
-        (self.tmp / 'checks_1').write_text('nogate')
-        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
-
-    def test_a_read_that_fails_right_after_the_post_is_said_not_taken_as_no_refusal(self):
-        """13 Nov 2026, Gitar on #4071: the post-send read ignored `unreadable`, so a possible refusal was silently taken as none."""
-        (self.tmp / 'down_after_post_1').write_text('')
-        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
-        self.assertIn('GitHub could not be read after the post', self.run_queue('status'))
-
-    def test_the_could_not_be_read_note_clears_on_a_readable_look_even_inside_a_pause(self):
-        """13 Nov 2026, Gitar on #4071: the note was cleared only after the pause check, so a paused queue showed a stale failure."""
-        (self.tmp / 'graphql_down').write_text('')
-        self.assertIn('the last look failed', self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'))
-        (self.tmp / 'graphql_down').unlink()
-        (self.tmp / 'comments_99.json').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own clock seconds later
-            'body': "You've sent several Gitar comments in a short window. Please wait about 40 minutes and comment again."}]))
-        out = self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
-        self.assertTrue(out.startswith('QUEUED') and 'could not be read' not in out, out)
 
 
 if __name__ == '__main__':

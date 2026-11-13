@@ -5,7 +5,7 @@
 //   node tools/gitar-queue.mjs drain | cancel <owner/repo> <pr> | status
 // Design (13 Nov 2026, gq; owner, asked via AskUserQuestion: "One shared ask queue (Recommended)"): states are queued -> sent (or dropped); the one owner is this file's state.json under
 //   ~/.claude/gitar-queue (GITAR_QUEUE_DIR), behind a mkdir lock; every ship-watch look calls `ask` again, which drains one due post, so no daemon is needed.
-//   Verdicts that change a state: PR merged/closed or (for an ask) head moved -> dropped; Gitar's "wait about N minutes" on ANY open PR of a repo the queue knows (issue comment or inline thread, anyone's, queued or not) -> every PR waits until it ends; a draft, a "DONT MERGE" PR, or an ask whose "All checks passed" is not green is HELD (takes no slot) and re-enters when that changes;
+//   Verdicts that change a state: PR merged/closed or (for an ask) head moved -> dropped; Gitar's "wait about N minutes" on ANY open PR of a repo the queue knows (issue comment or inline thread, anyone's, queued or not) -> every PR waits until it ends; a draft or a "DONT MERGE" PR is HELD (takes no slot) and re-enters when that changes;
 //   a refusal right after our own post -> the ask goes back to the front, a refused reply is deleted and goes back too (seen once, after the wait); an ask for a head already sent is never sent twice.
 // Why (13 Nov 2026, coordinator, measured; owner's rule: one queue for the account): the limit is account-wide. #4037's first "Gitar review" (20:17:45), with zero comments of ours on it, was refused "wait about 20 minutes"
 //   after #4035 took 4 replies at 20:12, #4033 an ask at 20:13:18 and #4032 at 20:13:48, 20:14:17 and 20:14:20; #4033's 20:19:19 ask was refused 74 s after its 20:18:05 one. #4031's replies at 20:05:05 and 20:06:39 drew
@@ -47,19 +47,16 @@ const load = () => { try { return {entries: [], sent: [], dropped: {}, last: 0, 
 const save = st => { st.sent = st.sent.slice(-300); writeFileSync(file + '.tmp', JSON.stringify(st, null, 1)); renameSync(file + '.tmp', file); };
 
 const key = e => `${e.repo}#${e.pr}${e.kind === 'ask' ? '@' + e.head : '/' + e.commentId + ':' + createHash('sha1').update(e.body).digest('hex').slice(0, 8)}`;   // a reply is told apart by its comment and its words
-/** The PR's state, head, draft flag, title and the verdict of its required "All checks passed" (green | red | pending); null when gh cannot say. */
+/** The PR's state, head, draft flag and title; null when gh cannot say. */
 const prInfo = (repo, pr) => {
   try {
-    const j = JSON.parse(gh(['pr', 'view', String(pr), '-R', repo, '--json', 'state,headRefOid,isDraft,title,statusCheckRollup']));
-    const rollup = j.statusCheckRollup || [], gate = rollup.find(c => (c.name || c.context) === 'All checks passed');
-    const v = gate && (gate.conclusion || gate.state);
-    // Why (13 Nov 2026, Gitar on #4058): an empty rollup means CI has not started (wait); a rollup without the gate is a repo that has none, which must not hold an ask forever; SKIPPED/NEUTRAL pass a required check.
-    const verdict = !rollup.length ? 'pending' : !gate ? 'green' : /^(SUCCESS|SKIPPED|NEUTRAL)$/.test(v || '') ? 'green' : /^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$/.test(v || '') ? 'red' : 'pending';
-    return {state: j.state, head: j.headRefOid, draft: !!j.isDraft, title: j.title || '', gate: verdict};
+    const j = JSON.parse(gh(['pr', 'view', String(pr), '-R', repo, '--json', 'state,headRefOid,isDraft,title']));
+    return {state: j.state, head: j.headRefOid, draft: !!j.isDraft, title: j.title || ''};
   } catch { return null; }
 };
-/** Why a queued entry must not spend a slot now ('' = it may go). Why (13 Nov 2026, coordinator): the queue's 11-minute slots go only to PRs that can become ready: not a draft, not "DONT MERGE", and an ask only while "All checks passed" is green; it re-enters on its own when that changes. */
-const holdReason = (e, i) => !i ? '' : i.draft ? 'draft' : /DONT MERGE/.test(i.title) ? 'DONT MERGE' : e.kind === 'ask' && i.gate !== 'green' ? `checks ${i.gate}` : '';
+/** Why a queued entry must not spend a slot now ('' = it may go). Why (13 Nov 2026, coordinator): the queue's 11-minute slots go only to PRs that can become ready: not a draft, not "DONT MERGE"; it re-enters on its own when that changes.
+ *  Why (13 Nov 2026, owner "Cut back", after 5 Gitar rounds): no verdict is guessed from the checks; only plain GitHub fields hold an entry. */
+const holdReason = (e, i) => !i ? '' : i.draft ? 'draft' : /DONT MERGE/.test(i.title) ? 'DONT MERGE' : '';
 /** Gitar's "wait about N minutes" replies on every open PR of the repo (issue comments and inline threads, newest of each): [{pr, at, until}] in ms. One GraphQL read per repo.
  *  Why (13 Nov 2026, coordinator; #4042 drew "wait about 40 minutes" at 21:08:37 while it was not queued): the limit is the account's, so a refusal on a PR the queue never saw still pauses it. */
 // Why (13 Nov 2026, Gitar on #4053): a refusal is one of the newest comments, but ship events and labels push it out of a window of 5; 100 PRs x (30 + 30x10) nodes stays far under GitHub's node limit.
@@ -112,9 +109,7 @@ function drain(st) {
   const repos = new Set([...st.entries.map(e => e.repo), ...st.sent.filter(x => x.at > now() - 7200000).map(x => x.key.split('#')[0])]);
   const reads = [...repos].map(r => refusals(r));
   st.until = Math.max(st.until || 0, ...reads.map(latest));
-  if (st.fail === 'GitHub could not be read') delete st.fail;   // Why (13 Nov 2026, Gitar on #4071): a readable result clears the note even when a pause then holds the look
-  if (st.until > now()) return;
-  if (reads.some(r => r.unreadable)) { st.fail = 'GitHub could not be read'; return; }   // the next look retries; ask/status say so
+  if (st.until > now() || reads.some(r => r.unreadable)) return;   // an unreadable list is not "no refusal": nothing is posted on this look, the next one retries (Gitar on #4058)
   for (const e of st.entries) {
     if (held.has(key(e))) continue;
     const t0 = now();   // Why (13 Nov 2026, Gitar on #4031): a refusal lands 3-5 s after the post, so it is looked for from just before the post, not from "now minus 5 s" after the settle wait
@@ -124,9 +119,7 @@ function drain(st) {
     save(st); settle(SETTLE);
     // A refused ask or reply goes back to the front, so Gitar is not left without it (Gitar on #4031: a refused reply was lost). A refused reply is deleted first, so people see it once, after the wait.
     // Why (13 Nov 2026, Gitar on #4053): the pause is account-wide, but only a refusal on THIS PR means this post was refused; another PR's refusal must not re-post it.
-    // Why (13 Nov 2026, Gitar on #4071): a read that fails right after the post cannot say whether it was refused; say so (the 11-minute gap holds the next post, and a refusal still pauses at the next readable look).
-    const after = refusals(e.repo); if (after.unreadable) st.fail = 'GitHub could not be read after the post';
-    const fresh = after.filter(r => r.at >= t0 - 2000), refusedUntil = latest(fresh.filter(r => r.pr === e.pr));
+    const fresh = refusals(e.repo).filter(r => r.at >= t0 - 2000), refusedUntil = latest(fresh.filter(r => r.pr === e.pr));
     st.until = Math.max(st.until || 0, latest(fresh));
     if (refusedUntil > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
     return;
@@ -144,7 +137,7 @@ function placed(st, k) {
   const sch = schedule(st), x = sch.find(y => key(y.e) === k);
   if (!x) return 'DROPPED (not queued)';
   if (x.hold) return `HELD (${x.hold}: it goes when that changes)`;
-  return `QUEUED (position ${sch.filter(y => !y.hold).indexOf(x) + 1}, next ask ~${hhmm(x.at)}${st.fail ? `; the last look failed: ${st.fail}` : ''})`;
+  return `QUEUED (position ${sch.filter(y => !y.hold).indexOf(x) + 1}, next ask ~${hhmm(x.at)}${st.fail ? `; the last post failed: ${st.fail}` : ''})`;
 }
 const hhmm = ms => new Date(ms).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 
@@ -172,7 +165,7 @@ const out = locked(() => {
   }
   if (cmd === 'cancel') { st.entries = st.entries.filter(e => !(e.repo === repo && e.pr === Number(pr))); save(st); return 'CANCELLED'; }
   if (cmd === 'drain') { drain(st); save(st); return `${st.entries.length} queued`; }
-  if (cmd === 'status') return (schedule(st).map(({e, at, hold}) => `${e.kind} ${key(e)} ${hold ? `held (${hold})` : `~${hhmm(at)}`}`).join('\n') || 'empty') + (st.fail ? `\nthe last look failed: ${st.fail}` : '');
+  if (cmd === 'status') return (schedule(st).map(({e, at, hold}) => `${e.kind} ${key(e)} ${hold ? `held (${hold})` : `~${hhmm(at)}`}`).join('\n') || 'empty') + (st.fail ? `\nthe last post failed: ${st.fail}` : '');
   throw new Error('usage: gitar-queue.mjs ask <owner/repo> <pr> <head> | reply <owner/repo> <pr> <comment-id> <body-file> | cancel <owner/repo> <pr> | drain | status');
 });
 console.log(out);
