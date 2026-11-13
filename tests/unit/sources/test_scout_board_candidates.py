@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from unittest import mock
 
 from src import scout_board_candidates as candidates, scout_boards
-from src.sources import careers
+from src.sources import ats, careers
 
 TODAY = date(2026, 11, 13)
 SUBSCRIBE = 'https://www.rabota.md/?source=main&subscribePosition={role}&subscribeName={place}'
@@ -65,6 +65,16 @@ class Fetch(unittest.TestCase):
         with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
             self.assertEqual(candidates.fetch(out.append, urlopen=urlopen), [])
         self.assertIn('not read (OSError)', out[0])
+
+    def test_the_request_carries_the_scout_s_own_user_agent_never_urllib_s_default(self):
+        seen = []
+
+        def urlopen(request, **k):
+            seen.append(dict(request.header_items()))
+            raise OSError('stop')
+        with mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k3y-secret'}):
+            candidates.fetch(lambda line: None, urlopen=urlopen)
+        self.assertEqual(seen[0]['User-agent'], ats.USER_AGENT, 'Cloudflare answers urllib\'s default agent with 403 1010 before the Worker is reached')
 
     def test_a_refusal_names_its_status_and_the_site_s_word_and_never_the_key(self):
         out = []

@@ -16,6 +16,7 @@ import urllib.request
 from datetime import date, timedelta
 
 from . import pool_tags, scout_board_cells, scout_cells
+from .sources import ats
 
 URL = 'https://www.jobadabra.top/api/scout-memory'
 RESERVE = 4                 # reported boards a pass reads beside the AI's ideas and the re-reads (Why (13 Nov 2026, bp): the pass reads ~5 boards in its 240 s; the ideas keep the rest)
@@ -51,7 +52,7 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
         out('Board pass: reported boards: not read (no INDEX_PUBLISH_KEY)')
         return []
     try:
-        request = urllib.request.Request(f'{URL}?boards=1', headers={'Authorization': f'Bearer {key}'})   # the one fixed address: the Scout's key goes nowhere else (Gitar on #4042)
+        request = urllib.request.Request(f'{URL}?boards=1', headers={'User-Agent': ats.USER_AGENT, 'Authorization': f'Bearer {key}'})   # the one fixed address: the Scout's key goes nowhere else (Gitar on #4042); the agent is the Scout's own: Cloudflare refuses urllib's default with 403 1010 before the Worker (run 43516854672)
         with urlopen(request, timeout=30) as answer:
             boards = json.loads(answer.read(8 * 1024 * 1024)).get('boards') or []
     except Exception as error:  # noqa: BLE001 -- a site that does not answer must not stop the pass (the same boards come next run)
@@ -92,7 +93,8 @@ def choose(db, reported, country):
     """The candidates of this pass: `reported` (fetch's answer) for `country`, not measured lately by the Scout's facts and not tried lately (for_country)."""
     measured = [(host, code, read_at) for host, code, _, _, read_at, _ in scout_board_cells._facts(db)] + tried(db)
     # Why (13 Nov 2026, sa, with bp's all-boards report): our CI searches now report every board they read, refused ones too; a host the Scout's browser was stopped at (scout_browser_final:
-    # a 401/403, a bot check, a sign-in page) is final, so the memory wins over the report and the host is not asked again, by this pass or any later one.
+    # a 401/403, a bot check, a sign-in page) is final, so the memory wins over the report and the host is not asked again, by this pass or any later one. One owner of the question
+    # (scout_board_cells.stopped_hosts, Gitar on #4075) and `www.` is ignored on both sides: a press may write www.jooble.org for a stop stored as jooble.org.
     stopped = scout_board_cells.stopped_hosts(db)
     return for_country([report for report in reported if report['host'].removeprefix('www.') not in stopped], country, measured) if reported else []
 
