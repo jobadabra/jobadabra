@@ -197,12 +197,14 @@ def tell(rows_path, url, out, profiles=None, outcome='success'):
     apart = ([f'{len(starved)} not measured, the broker was too busy (waits p90 > {WAIT_P90_LIMIT_S} s): ' + ', '.join(r.get('id', '?') for r in starved)] if starved else []) + \
             ([f'{len(other)} not run or not measured: ' + ', '.join(r.get('id', '?') for r in other)] if other else [])
     n = f'{len(rows)} profile{"" if len(rows) == 1 else "s"}'
+    ai = ', '.join(sorted({r['engine'].split(' / ')[0].split(' ')[0].capitalize() for r in rows if r.get('engine') and r['engine'] != 'not said'}))
+    where = f'Search profiles on CI{" · " + ai if ai else ""}'   # Why (13 Nov 2026, sa): a Codex round and a Claude round are two series; the text names its AI
     if outcome == 'cancelled':   # Why (13 Nov 2026, mac-9a for the owner): run 43355710034 was cancelled at 02:58Z and the text read "nothing measured (6 profiles)", 6 of 27, never "cancelled"
-        head = f'⚪ Search profiles on CI · cancelled on GitHub ' + (f'before measuring ({n})' if not measured else f'after {len(measured)} of {len(rows)} measured')
+        head = f'⚪ {where} · cancelled on GitHub ' + (f'before measuring ({n})' if not measured else f'after {len(measured)} of {len(rows)} measured')
     elif not measured:   # Why (13 Nov 2026, Gitar on #3945): "0 of 0 got 0 right jobs" reads as a clean run
-        head = f'🧪 Search profiles on CI · nothing measured ({n})'
+        head = f'🧪 {where} · nothing measured ({n})'
     else:
-        head = f'🧪 Search profiles on CI · {len(measured)} of {len(rows)} measured'
+        head = f'🧪 {where} · {len(measured)} of {len(rows)} measured'
     lines = [head]
     if measured:
         zero = sum(r['relevant'] == 0 for r in measured)

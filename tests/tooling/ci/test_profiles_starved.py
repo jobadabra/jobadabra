@@ -44,6 +44,7 @@ class StarvedProfileTest(unittest.TestCase):
             self.assertIn('| c06 | Prague | Car Mechanic | not measured (waits p90 58 s) |', table)
             lines = profiles.tell(Path(tmp) / 'rows.json', 'https://example.invalid/run', Path(tmp) / 'message.txt')
             self.assertIn('1 of 1 got 0 right jobs', lines, 'only the measured b06 counts as 0')
+            self.assertEqual(lines[0], '🧪 Search profiles on CI · Codex · 1 of 3 measured', 'the text names the AI of its series (sa, 13 Nov 2026)')
             self.assertIn('2 not measured, the broker was too busy (waits p90 > 20 s): b02, c06', lines)
 
     def test_nothing_measured_names_every_group(self):
