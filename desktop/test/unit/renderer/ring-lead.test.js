@@ -18,7 +18,7 @@ globalThis.Node = FakeNode;
 globalThis.document = {createElement: tag => new FakeNode(tag), createElementNS: (_, tag) => new FakeNode(tag),
   body: new FakeNode('body'), addEventListener() {}, querySelector: () => null, documentElement: new FakeNode('html')};
 globalThis.window ??= {addEventListener() {}};
-const {fitRing} = await import('../../../renderer/fit-ring.js');
+const {fitRing, isOldScore} = await import('../../../renderer/fit-ring.js');
 const {fitDetail} = await import('../../../renderer/pages/jobs-fit.js');
 
 const PILOT = {fit: 25, reason: 'Career change: No aviation licence or flight hours on your CV',
@@ -32,6 +32,13 @@ test('an old score is a dashed ring with a refresh badge and keeps its number; a
   assert.equal(current.classList.contains('is-old'), false);
   assert.equal(current.find(node => node.className === 'fit-old-badge'), undefined);
   assert.equal(fitRing(null, '', true).find(node => node.className === 'fit-old-badge'), undefined, 'no score, nothing to mark old');
+});
+
+test('one rule says a score is old: marked stale and still scored', () => {
+  assert.equal(isOldScore({stale: true, fit: 84}), true);
+  assert.equal(isOldScore({stale: true, fit: null}), false, 'no number, nothing to mark');
+  assert.equal(isOldScore({stale: false, fit: 84}), false);
+  assert.equal(isOldScore({fit: 84}), false);
 });
 
 test('the Match analysis leads with the ring\'s own number, then the why; What to check stays under it', () => {

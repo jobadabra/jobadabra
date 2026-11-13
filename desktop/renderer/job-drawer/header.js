@@ -6,7 +6,8 @@ import {t} from '../../i18n/index.js';
 import {stageText} from '../jobs-board-rules.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {fitRing} from '../fit-ring.js';
+import {fitRing, isOldScore} from '../fit-ring.js';
+import {staleTip} from '../rescore-words.js';
 import {band} from '../jobs-view.js';
 import {appliedLine, nextInterview, notSeen} from '../job-page-view.js';
 import {accountChip} from '../account-chip.js';
@@ -28,8 +29,10 @@ export function drawerHeader(job, page, {at, back, expanded, on, read = null}) {
     head.append(link);
   }
   const top = el('div', 'jd-top');
-  const cell = el('div', `fit-cell ${band(job.fit)}`);
-  cell.append(fitRing(job.fit, 'lg', !!job.stale && job.fit != null));
+  const old = isOldScore(job);
+  const cell = el('div', `fit-cell ${band(job.fit)}${old ? ' is-stale' : ''}`);
+  if (old) cell.title = staleTip;   // the list row's own tooltip: the badge says old, this says re-score
+  cell.append(fitRing(job.fit, 'lg', old));
   const words = el('div', 'jd-title');
   words.append(el('h2', '', job.title), el('p', 'muted', [job.company, job.location || page?.app?.location].filter(Boolean).join(' · ')));
   const chips = el('div', 'jd-chips');

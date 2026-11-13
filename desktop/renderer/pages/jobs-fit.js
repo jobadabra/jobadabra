@@ -47,7 +47,7 @@ export function fitDetail(job, close = null, full = null) {
   }
   const lead = el('div', 'fit-lead');
   lead.append(head);
-  // The panel leads with the ring's own number and its one-line why (owner, 13 Nov 2026: "The person needs to understand why the scoring is so low").
+  // Why (13 Nov 2026, owner: "The person needs to understand why the scoring is so low"): the panel leads with the ring's own number, then the one-line why.
   if (job.reason || job.fit != null) {
     const summary = el('p', 'fit-summary');
     if (job.fit != null) summary.append(el('b', `fit-lead-score ${band(job.fit)}`, String(job.fit)));
