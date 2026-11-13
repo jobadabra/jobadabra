@@ -231,28 +231,21 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             if isinstance(error, Refused) and fetcher is fetch:
                 read_routes.record(item[1], 'refused', now)
             return item, '', error
-    filled = failed = gone = empty = later = 0
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(slots.carry(one), todo))
+    seen = Counter()
     for (job_id, url), text, error in results:
-        if isinstance(error, host_pace.Busy):
-            waiting_at[host(url)] += 1   # tried again in a later run, at the pace the site asked for
-        elif isinstance(error, linkedin_guest.Later):
-            later += 1   # LinkedIn's turn is over for this run (its cut, its 10 pages or a stop): read by a later run
-        elif isinstance(error, Refused):
-            refused_at[host(url)] += 1
+        kind = _outcome(error, text)
+        seen[kind] += 1
+        if kind in ('waiting', 'refused', 'empty'):   # waiting: tried again at the pace the site asked; empty: a page drawn by scripts, a browser shows it
+            {'waiting': waiting_at, 'refused': refused_at, 'empty': scripted_at}[kind][host(url)] += 1
+        if kind == 'refused':
             refused_before[host(url)] = {'at': now.isoformat(), 'why': str(error)}
-        elif getattr(error, 'code', None) in (404, 410):   # the posting was taken down: the job expired, not unscored
+        elif kind == 'gone':   # the posting was taken down: the job expired, not unscored
             db.execute("UPDATE jobs SET state='expired' WHERE id=?", (job_id,))
-            gone += 1
-        elif error is not None:
-            failed += 1   # tried again next run
-        elif text:
+        elif kind == 'filled':
             db.execute('UPDATE jobs SET description=? WHERE id=?', (text, job_id))
-            filled += 1
-        else:
-            empty += 1
-            scripted_at[host(url)] += 1   # a page that draws its text with scripts: a browser shows it
+    filled, gone, failed, empty, later = (seen[kind] for kind in ('filled', 'gone', 'failed', 'empty', 'later'))
     db.commit()
     if fetcher is fetch:
         _keep_refused(refused_before)
@@ -265,6 +258,23 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             + (f', {sum(walled_at.values())} on sign-in sites ({hosts(walled_at)})' if walled_at else '')
             + (f', {sum(closed_at.values())} not asked: other installs found {hosts(closed_at)} closed to a plain read' if closed_at else '')
             + (' → readable in your browser (Actions, Find jobs using your browser)' if refused_at or walled_at or closed_at or empty else ''))
+
+
+def _outcome(error, text):
+    """How one posting's read ended: waiting (the site asked us to slow down), later (LinkedIn's turn in this run is over: its cut, its 10 pages or a stop),
+    refused, gone (404/410), failed (tried again next run), filled, or empty. Why (lg 1/4, 13 Nov 2026): one named step, so backfill's complexity shrinks as a reader is added."""
+    from . import linkedin_guest
+    if isinstance(error, host_pace.Busy):
+        return 'waiting'
+    if isinstance(error, linkedin_guest.Later):
+        return 'later'
+    if isinstance(error, Refused):
+        return 'refused'
+    if getattr(error, 'code', None) in (404, 410):
+        return 'gone'
+    if error is not None:
+        return 'failed'
+    return 'filled' if text else 'empty'
 
 
 def _board_of(url):

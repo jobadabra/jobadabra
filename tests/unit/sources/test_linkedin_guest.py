@@ -190,17 +190,19 @@ class GuestTest(unittest.TestCase):
             linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998711/')
         self.assertEqual(len(site.requests), linkedin_guest.JOB_PAGES)
 
-    def test_a_job_page_cut_short_or_failed_spends_none_of_the_ten(self):
-        """Gitar on #3995: the page is counted once it was read; a cut or a network failure gives its place back."""
+    def test_a_sent_job_page_counts_even_when_it_failed_and_a_cut_gives_its_place_back(self):
+        """Gitar on #3995 (twice): a request that went out counts against the 10, whatever came back; only a Later, where nothing was sent, gives the place back."""
         def offline(url):
             raise urllib.error.URLError('offline')
-        self.site(offline)
+        site = self.site(offline)
         with self.assertRaises(OSError):
             linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998755/')
-        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES)
+        self.assertEqual(len(site.requests), 1)
+        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES - 1)
         with mock.patch.object(read_budget, 'cut_at', return_value=self.clock[0] - 1), self.assertRaises(linkedin_guest.Later):
-            linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998755/')
-        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES)
+            linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998756/')
+        self.assertEqual(len(site.requests), 1, 'past the cut: nothing sent')
+        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES - 1)
 
     def test_a_job_page_redirected_away_from_the_job_gives_no_text(self):
         self.site(lambda url: ('redirect', 'https://www.linkedin.com/jobs/search?x=1', CARDS))

@@ -63,16 +63,16 @@ class Pace:
 
     def reserve(self):
         """Hold one of the run's job pages before its request; False when none is left. Why (Gitar on #3995): counting before the request let a cut or a failure
-        spend a page that was never read, and 4 describe threads could pass the check together; a reservation keeps the cap exact and is given back."""
+        spend a page that was never asked for, and 4 describe threads could pass the check together; a reservation keeps the cap exact and is given back."""
         if self.job_pages + self.reserved >= JOB_PAGES:
             return False
         self.reserved += 1
         return True
 
-    def release(self, read):
-        """The reserved page's request ended: counted when a page was read, given back otherwise."""
+    def release(self, sent):
+        """The reserved page's turn ended: counted when its request went out (read or failed), given back when none was sent."""
         self.reserved -= 1
-        self.job_pages += 1 if read else 0
+        self.job_pages += 1 if sent else 0
 
 
 PACE = Pace()
@@ -235,13 +235,15 @@ def description(url):
             raise Later(url, SAID[PACE.stopped])
         if not PACE.reserve():
             raise Later(url, 'the job pages of this run are read')
-    read = False
+    sent = True   # Why (Gitar on #3995): a request that went out counts, even when it failed; only a Later (none sent) gives the page back
     try:
         final, text = _get(JOB_URL.format(id=found.group(1)))
-        read = True
+    except Later:
+        sent = False
+        raise
     finally:
         with PACE.lock:
-            PACE.release(read)
+            PACE.release(sent)
     if not urllib.parse.urlsplit(final).path.startswith('/jobs/view/'):
         return ''
     body = re.search(r'<div\b[^>]*class="[^"]*\bshow-more-less-html__markup\b[^"]*"[^>]*>(.*?)</div>', text, re.S)
