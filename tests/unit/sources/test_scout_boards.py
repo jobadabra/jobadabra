@@ -421,9 +421,19 @@ class BoardPassTest(unittest.TestCase):
         with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: (['software_dev'] if t.startswith('Programmer') else []) for t in titles}, [])):
             scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None), out=out.append, named='md')
         lines = {line.split(':')[1].strip(): line for line in out if line.startswith('Board kinds: ')}
-        self.assertIn('4 local jobs, 4 titles asked, 4 job(s) put in a family, 0 title(s) unanswered', lines['a.md'])
+        self.assertIn('4 local jobs, 4 distinct titles asked, 4 job(s) put in a family, 0 title(s) unanswered', lines['a.md'])
         self.assertNotIn('asked, no family', lines['a.md'])
         self.assertIn("0 job(s) put in a family, 0 title(s) unanswered; right jobs per family: none; asked, no family: 'Odd title 0' | 'Odd title 1' | 'Odd title 2' | 'Odd title 3'", lines['b.md'])
+
+    def test_the_log_says_when_every_job_of_a_board_has_the_same_title(self):
+        """13 Nov 2026, sd: trabajos.com pages all carried one placeholder title, so 40 jobs reached the AI as 1 title and the board was dropped; the line must show it at once."""
+        out = []
+        reads = {'a.md': [job('Chisinau', title='HV_JSON_TITULO')] * 4}
+        with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: [] for t in titles}, [])):
+            scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None), out=out.append, named='md')
+        line = next(line for line in out if line.startswith('Board kinds: a.md'))
+        self.assertIn("4 local jobs, 1 distinct titles asked", line)
+        self.assertIn("every job has the same title 'HV_JSON_TITULO'", line)
 
 
 

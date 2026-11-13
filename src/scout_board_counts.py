@@ -60,7 +60,9 @@ def kinds_line(host, counted, families, unasked, by_family):
     Why (13 Nov 2026, sa: "the run log must print right jobs per board and family"; Spain run 43502695338 dropped trabajos.com 40/40 local on an empty kinds answer and the log did not say what was asked)."""
     titles = list(dict.fromkeys(str(job.get('title') or '') for job in counted if job.get('title')))
     right = ', '.join(f'{family} {jobs}' for family, jobs in sorted((by_family or {}).items())) or 'none'
-    line = f"Board kinds: {host}: {len(counted)} local jobs, {len(titles[:MAX_TITLES])} titles asked, {sum((families and by_family or {}).values())} job(s) put in a family, {len(unasked)} title(s) unanswered; right jobs per family: {right}"
+    line = f"Board kinds: {host}: {len(counted)} local jobs, {len(titles[:MAX_TITLES])} distinct titles asked, {sum((families and by_family or {}).values())} job(s) put in a family, {len(unasked)} title(s) unanswered; right jobs per family: {right}"
+    if len(counted) > 1 and len(titles) == 1:
+        line += f'; every job has the same title {titles[0][:60]!r}'   # Why (13 Nov 2026, sd): trabajos.com pages all carried one placeholder title, so the AI saw 1 title for 40 jobs
     if not families and not unasked and titles:
         line += '; asked, no family: ' + ' | '.join(repr(title[:60]) for title in titles[:5])
     return line
