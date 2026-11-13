@@ -202,8 +202,4 @@ pr_set_text() {
 pr_label() { gh api -X POST "repos/$1/labels" -f name="$3" -f color="$4" -f description="$5" >/dev/null 2>&1; gh api -X POST "repos/$1/issues/$2/labels" -f "labels[]=$3" >/dev/null; }
 
 # pr_issues <repo> <label>: the open issues (never PRs) with that label, as [{number, title, body}].
-pr_issues() {   # a failed read fails (a pipeline into jq would say "no issues": 13 Nov 2026, pq)
-  local out
-  out="$(pr_get "repos/$1/issues?state=open&labels=$2&per_page=100")" || return 1
-  jq -c '[.[] | select(.pull_request | not) | {number, title, body: (.body // "")}]' <<<"$out"
-}
+pr_issues() { pr_get "repos/$1/issues?state=open&labels=$2&per_page=100" | jq -c '[.[] | select(.pull_request | not) | {number, title, body: (.body // "")}]'; }

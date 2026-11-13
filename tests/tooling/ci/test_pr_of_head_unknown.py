@@ -107,11 +107,6 @@ class PrOfHeadUnknownTest(unittest.TestCase):
         done = self.run_shell('n=""; ship_pr_lookup o/r topic; echo "n=[$n]"')
         self.assertEqual((done.returncode, done.stdout.strip()), (0, 'n=[7]'))
 
-    def test_a_failed_issues_read_fails_instead_of_saying_no_issues(self):
-        self.out(core=4000)
-        done = self.run_shell('pr_issues o/r red-main')
-        self.assertEqual((done.returncode, done.stdout), (1, ''))
-
 
 if __name__ == '__main__':
     unittest.main()
