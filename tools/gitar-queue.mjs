@@ -112,8 +112,8 @@ function drain(st) {
   const repos = new Set([...st.entries.map(e => e.repo), ...st.sent.filter(x => x.at > now() - 7200000).map(x => x.key.split('#')[0])]);
   const reads = [...repos].map(r => refusals(r));
   st.until = Math.max(st.until || 0, ...reads.map(latest));
+  if (st.fail === 'GitHub could not be read') delete st.fail;   // Why (13 Nov 2026, Gitar on #4071): a readable result clears the note even when a pause then holds the look
   if (st.until > now()) return;
-  if (st.fail === 'GitHub could not be read') delete st.fail;
   if (reads.some(r => r.unreadable)) { st.fail = 'GitHub could not be read'; return; }   // the next look retries; ask/status say so
   for (const e of st.entries) {
     if (held.has(key(e))) continue;
@@ -124,7 +124,9 @@ function drain(st) {
     save(st); settle(SETTLE);
     // A refused ask or reply goes back to the front, so Gitar is not left without it (Gitar on #4031: a refused reply was lost). A refused reply is deleted first, so people see it once, after the wait.
     // Why (13 Nov 2026, Gitar on #4053): the pause is account-wide, but only a refusal on THIS PR means this post was refused; another PR's refusal must not re-post it.
-    const fresh = refusals(e.repo).filter(r => r.at >= t0 - 2000), refusedUntil = latest(fresh.filter(r => r.pr === e.pr));
+    // Why (13 Nov 2026, Gitar on #4071): a read that fails right after the post cannot say whether it was refused; say so (the 11-minute gap holds the next post, and a refusal still pauses at the next readable look).
+    const after = refusals(e.repo); if (after.unreadable) st.fail = 'GitHub could not be read after the post';
+    const fresh = after.filter(r => r.at >= t0 - 2000), refusedUntil = latest(fresh.filter(r => r.pr === e.pr));
     st.until = Math.max(st.until || 0, latest(fresh));
     if (refusedUntil > now() && (e.kind === 'ask' || (e.postedId && gh(['api', '-X', 'DELETE', `repos/${e.repo}/pulls/comments/${e.postedId}`]) !== null))) { st.sent = st.sent.filter(s => s.key !== key(e)); delete e.postedId; st.entries.unshift(e); }
     return;

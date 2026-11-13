@@ -35,7 +35,8 @@ FAKE_GH = textwrap.dedent('''\
                 rows = json.load(open(f'{d}/{name}'))
                 nodes.append({'number': int(name[9:-5]), 'comments': {'nodes': [{'author': {'login': r['user']['login']}, 'createdAt': r['created_at'], 'body': r['body']} for r in rows]}, 'reviewThreads': {'nodes': []}})
         print(json.dumps({'data': {'search': {'nodes': nodes}}}))
-    elif a[:2] == ['pr', 'comment']:   # Gitar answers a PR that is under its limit with a refusal, 3 s later in real life, at once here
+    elif a[:2] == ['pr', 'comment']:   # Gitar answers
+        if os.path.exists(f'{d}/down_after_post_{a[2]}'): open(f'{d}/graphql_down', 'w').write('')   # the post used the quota: the next read fails a PR that is under its limit with a refusal, 3 s later in real life, at once here
         if os.path.exists(f'{d}/side_refuse_{a[2]}'):   # another session's ask on the PR named in the file is refused while this post settles
             other = open(f'{d}/side_refuse_{a[2]}').read().strip(); rows = comments(other)
             rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading
@@ -238,6 +239,22 @@ class GitarQueueTest(unittest.TestCase):
         self.assertTrue(self.run_queue('ask', 'o/r', '1', 'h1').startswith('HELD (checks pending'))
         (self.tmp / 'checks_1').write_text('nogate')
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
+
+    def test_a_read_that_fails_right_after_the_post_is_said_not_taken_as_no_refusal(self):
+        """13 Nov 2026, Gitar on #4071: the post-send read ignored `unreadable`, so a possible refusal was silently taken as none."""
+        (self.tmp / 'down_after_post_1').write_text('')
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
+        self.assertIn('GitHub could not be read after the post', self.run_queue('status'))
+
+    def test_the_could_not_be_read_note_clears_on_a_readable_look_even_inside_a_pause(self):
+        """13 Nov 2026, Gitar on #4071: the note was cleared only after the pause check, so a paused queue showed a stale failure."""
+        (self.tmp / 'graphql_down').write_text('')
+        self.assertIn('the last look failed', self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'))
+        (self.tmp / 'graphql_down').unlink()
+        (self.tmp / 'comments_99.json').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own clock seconds later
+            'body': "You've sent several Gitar comments in a short window. Please wait about 40 minutes and comment again."}]))
+        out = self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0')
+        self.assertTrue(out.startswith('QUEUED') and 'could not be read' not in out, out)
 
 
 if __name__ == '__main__':
