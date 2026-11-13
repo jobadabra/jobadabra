@@ -114,10 +114,28 @@ jobs:
           calls=$(python3 -c "import json,os; print(len(json.loads(os.environ['PERSONAS'])) * int(os.environ['PRESSES']) * int(os.environ['ARMS']) * 300)")
           curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py byhand 4 "$calls"
 
-  persona:
-    name: Persona ${{ matrix.persona }}
+  turn:
+    name: Claim room at the broker
     needs: room
     if: ${{ !cancelled() && (needs.room.result == 'success' || needs.room.result == 'skipped') }}   # the nightly skips the room check; a by-hand run with no room stops before any persona
+    runs-on: ubuntu-24.04
+    timeout-minutes: 58
+    permissions:
+      contents: read
+      id-token: write   # the broker names the claim from this run's token
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - name: Wait our place in line for the searches we run at once
+        # Why (13 Nov 2026, owner via sa: "each workflow should take its necessary slots" · "First come, first serve"): the night takes 1 (one persona at a time), a by-hand run its at_once; the line is the broker's (jobadabra-web lib/claims.mjs)
+        env:
+          NEED: ${{ !inputs.scheduled && inputs.at_once || '1' }}
+        run: python3 tools/persona-search/claim.py wait "$NEED"
+
+  persona:
+    name: Persona ${{ matrix.persona }}
+    needs: [room, turn]
+    if: ${{ !cancelled() && needs.turn.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.eures_comparison && 25 || (inputs.presses || '2') == '5' && 35 || (inputs.presses || '2') == '2' && 18 || 12 }}   # each press after the first takes up to ~5 more minutes
     # Why (8 Nov 2026, owner: "Fix Free AI + PR lane now (Recommended)": "by-hand Search checks may use the 30% PR reserve (about 1 run a day)"): the run token's environment is the only signed
@@ -147,6 +165,12 @@ jobs:
       - uses: actions/checkout@v5
         if: steps.token.outputs.ok == 'yes'
         with: {persist-credentials: false}
+      - name: Keep the run's claim at the broker while this one searches
+        if: steps.token.outputs.ok == 'yes'
+        # Why (13 Nov 2026, claims 3/4): the broker drops a claim after 10 min without an ask; this renewer asks at once and every 3 min, and the runner ends it with the job.
+        env:
+          NEED: ${{ !inputs.scheduled && inputs.at_once || '1' }}
+        run: nohup python3 tools/persona-search/claim.py hold "$NEED" > "$RUNNER_TEMP/claim-hold.log" 2>&1 &
       - uses: ./.github/actions/gh-ledger
         if: steps.token.outputs.ok == 'yes'   # the checkout that holds the action only runs for a trusted run
         with:
@@ -258,6 +282,9 @@ jobs:
             out/draw/run-*.log
             out/draw/draft.json
             out/titles-judged.json
+      - name: The claim was held all the way
+        if: always() && hashFiles('tools/persona-search/claim.py') != ''
+        run: if [ -s "$RUNNER_TEMP/claim-hold.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "$RUNNER_TEMP/claim-hold.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
       - if: always() && hashFiles('.github/actions/gh-ledger/action.yml') != '' && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger
         with:
@@ -290,8 +317,8 @@ jobs:
 
   again:
     name: Persona ${{ matrix.persona }} (second try)
-    needs: [room, again-list]
-    if: ${{ !cancelled() && needs.again-list.outputs.personas != '' && needs.again-list.outputs.personas != '[]' }}
+    needs: [room, turn, again-list]
+    if: ${{ !cancelled() && needs.turn.result == 'success' && needs.again-list.outputs.personas != '' && needs.again-list.outputs.personas != '[]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ (inputs.presses || '2') == '5' && 35 || (inputs.presses || '2') == '2' && 18 || 12 }}
     environment:
@@ -311,8 +338,8 @@ jobs:
   # One read and one blind judge per persona, outside the app, by tools/persona-search/reference.py (the same read the weekly reference used); the record goes to the site's reference store. Small tier, no second press.
   reference:
     name: EURES reference
-    needs: [room, persona, again]   # after the second tries: one press or read at a time on the broker
-    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
+    needs: [room, turn, persona, again]   # after the second tries: one press or read at a time on the broker
+    if: ${{ !cancelled() && needs.room.result != 'failure' && needs.turn.result == 'success' && !inputs.eures_comparison && inputs.personas == '' && (inputs.presses || '2') == '2' && (inputs.chain || 'codex,claude') == 'codex,claude' && (inputs.judge_tier || 'small') == 'small' && (inputs.search_tier || 'small') == 'small' }}   # a night only: a by-hand subset or comparison would replace the week's full record; no room, no read
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -329,6 +356,12 @@ jobs:
       - uses: actions/checkout@v5
         if: steps.token.outputs.ok == 'yes'
         with: {persist-credentials: false}
+      - name: Keep the run's claim at the broker while this one searches
+        if: steps.token.outputs.ok == 'yes'
+        # Why (13 Nov 2026, claims 3/4): the broker drops a claim after 10 min without an ask; this renewer asks at once and every 3 min, and the runner ends it with the job.
+        env:
+          NEED: 1
+        run: nohup python3 tools/persona-search/claim.py hold "$NEED" > "$RUNNER_TEMP/claim-hold.log" 2>&1 &
       - uses: actions/setup-node@v5
         if: steps.token.outputs.ok == 'yes'
         with: {node-version: '22'}
@@ -366,10 +399,24 @@ jobs:
             out/reference.json
             out/reference.log
 
+  release:
+    name: Give the room back
+    needs: [turn, persona, again, reference]
+    if: ${{ always() && needs.turn.result == 'success' }}   # a claim nobody renews frees itself in 10 min anyway
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - run: python3 tools/persona-search/claim.py release
+
   compare:
     name: Search check
-    needs: [room, persona, again, reference]   # Why (10 Nov 2026, sa's plan WP3 and WP5 3/6): in = out reads the night's reference keys, and a second try's row replaces its first; a run without a reference job (a subset) or second tries still compares
-    if: ${{ !cancelled() && needs.room.result != 'failure' && !inputs.eures_comparison }}   # Why (#2243, 10 Nov 2026; room, oe 1/3, 10 Nov 2026): cancelled runs and a by-hand run refused for room have no persona results; paired comparisons have a separate report. None belongs in nightly history, and none may publish an empty night (a false drop alert).
+    needs: [room, turn, persona, again, reference]   # Why (10 Nov 2026, sa's plan WP3 and WP5 3/6; turn: claims 3/4, 13 Nov 2026): in = out reads the night's reference keys and a second try's row replaces its first, so it waits for them; a run without a reference job (a subset) or second tries still compares; a run that never got its claim has nothing to compare
+    if: ${{ !cancelled() && needs.room.result != 'failure' && needs.turn.result == 'success' && !inputs.eures_comparison }}   # Why (#2243, 10 Nov 2026; room, oe 1/3, 10 Nov 2026; claims 3/4, 13 Nov 2026): cancelled runs, a by-hand run refused for room and a run that never got its claim have no persona results; paired comparisons have a separate report. None belongs in nightly history, and none may publish an empty night (a false drop alert).
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

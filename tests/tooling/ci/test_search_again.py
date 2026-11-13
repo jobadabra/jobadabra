@@ -72,9 +72,9 @@ class TheNightRunsThem(unittest.TestCase):
         self.assertIn("if: always() && github.job == 'again' && hashFiles('out/result.json') != ''", persona)
         self.assertIn('run: python3 tools/persona-search/again.py second out', persona)
         compare = self.job('compare')
-        self.assertRegex(compare, r'needs: \[room, persona, again, reference\]')
+        self.assertRegex(compare, r'needs: \[room, turn, persona, again, reference\]')
         self.assertLess(compare.index('again.py mark results again/first-try.json'), compare.index('gate.py compare'))
-        self.assertRegex(self.job('reference'), r'needs: \[room, persona, again\]')
+        self.assertRegex(self.job('reference'), r'needs: \[room, turn, persona, again\]')
 
 
 if __name__ == '__main__':

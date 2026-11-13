@@ -17,7 +17,7 @@ on:
       # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number 1-30, one dispatch away. A profile whose broker waits pass 20 s is reported not measured (sa),
       # so too many at once shows as waits, never as a low number.
       at_once:
-        description: 'Profiles searching at once, 1 to 30 (the broker holds about 6 searches; read its /health first)'
+        description: 'Profiles searching at once, 1 to 30 (more than the broker grants one claim, today 6, runs at that number; the run waits its place in line)'
         type: number
         default: 4   # Why (13 Nov 2026, owner via sa: "Claude, like the benchmark (Recommended)"; sa: the broker holds ~6 searches): 4 leaves room for a night or a benchmark beside it
       # Why (13 Nov 2026, owner via sa's AskUserQuestion: "Claude, like the benchmark (Recommended)"): on Codex every broker call took 10-11 s at least (16 output tokens = 11 s,
@@ -51,12 +51,19 @@ jobs:
     timeout-minutes: 3
     permissions:
       contents: read
-      actions: read   # gh run list: whether the night or a tape is queued or running
     outputs:
       profiles: ${{ steps.list.outputs.profiles }}
+      capacity: ${{ steps.capacity.outputs.capacity }}
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
+      - name: The broker's claim capacity (the most searches one run holds at once)
+        id: capacity
+        run: |
+          set -o pipefail
+          capacity=$(curl -fsS --max-time 20 -A jobadabra-ci https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 -c "import json,sys; print(int(json.load(sys.stdin)['claims']['capacity']))") \
+            || { echo "::error::the AI broker's /health gave no claims.capacity (unreachable, or a broker without claims): not run"; exit 1; }
+          echo "capacity=$capacity" >> "$GITHUB_OUTPUT"
       - name: The profiles of this run
         id: list
         env:
@@ -64,10 +71,11 @@ jobs:
         run: python3 tools/persona-search/profiles.py ids "$PROFILES" >> "$GITHUB_OUTPUT"
       - name: A sane number at once, and this run ends before the night starts (00:00 UTC)
         env:
-          GH_TOKEN: ${{ github.token }}
           PROFILES: ${{ steps.list.outputs.profiles }}
           AT_ONCE: ${{ inputs.at_once || 4 }}
-        run: python3 tools/persona-search/profiles.py free "$PROFILES" "$AT_ONCE"
+          CAPACITY: ${{ steps.capacity.outputs.capacity }}
+        run: |   # the estimate counts what really runs at once
+          python3 tools/persona-search/profiles.py free "$PROFILES" "$(( AT_ONCE < CAPACITY ? AT_ONCE : CAPACITY ))"
       - name: The broker's by-hand lane has room for every profile (~300 calls each, as search-personas.yml counts a press)
         env:
           PROFILES: ${{ steps.list.outputs.profiles }}
@@ -76,9 +84,36 @@ jobs:
           calls=$(python3 -c "import json,os; print(len(json.loads(os.environ['PROFILES'])) * 300)")
           curl -fsS --max-time 20 https://jobadabra-ai-broker.jobpilotto.workers.dev/health | python3 tools/persona-search/recording_room.py byhand 4 "$calls"
 
+  turn:
+    name: Claim room at the broker
+    needs: room
+    if: ${{ needs.room.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 58
+    outputs:
+      need: ${{ steps.need.outputs.need }}
+    permissions:
+      contents: read
+      id-token: write   # the broker names the claim from this run's token
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - name: The searches this run has at once (its at_once, never more than its profiles or the broker's claim capacity)
+        id: need
+        env:
+          AT_ONCE: ${{ inputs.at_once || 4 }}
+          PROFILES: ${{ needs.room.outputs.profiles }}
+          CAPACITY: ${{ needs.room.outputs.capacity }}
+        run: echo "need=$(python3 -c "import json,os; print(min(int(os.environ['AT_ONCE']), len(json.loads(os.environ['PROFILES'])), int(os.environ['CAPACITY'])))")" >> "$GITHUB_OUTPUT"
+      - name: Wait our place in line for the searches we run at once
+        # Why (13 Nov 2026, owner via sa: "each workflow should take its necessary slots"): the searches at once, at most one per profile (claim.py min below)
+        env:
+          NEED: ${{ steps.need.outputs.need }}
+        run: python3 tools/persona-search/claim.py wait "$NEED"
+
   profile:
     name: Profile ${{ matrix.profile }}
-    needs: room
+    needs: [room, turn]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # The run token's environment puts these calls on the broker's by-hand lane (jobadabra-web workers/ai-broker/lib/lanes.mjs, web #599). No deployment record.
@@ -87,11 +122,10 @@ jobs:
       deployment: false
     permissions:
       contents: read
-      actions: read   # the re-check before the press
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
     strategy:
       fail-fast: false
-      max-parallel: ${{ fromJSON(format('{0}', inputs.at_once || 4)) }}
+      max-parallel: ${{ fromJSON(needs.turn.outputs.need) }}   # Why (13 Nov 2026, claims 3/4): exactly the searches the claim holds; at_once (owner, 13 Nov: "make it very parallel" · "customizable") above the broker's capacity runs at it
       matrix:
         profile: ${{ fromJSON(needs.room.outputs.profiles) }}
     steps:
@@ -105,6 +139,12 @@ jobs:
             echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "no trusted GitHub OIDC token for the AI broker" > out/not-run.txt
+      - name: Keep the run's claim at the broker while this one searches
+        if: steps.token.outputs.ok == 'yes'
+        # Why (13 Nov 2026, claims 3/4): the broker drops a claim after 10 min without an ask; this renewer asks at once and every 3 min, and the runner ends it with the job.
+        env:
+          NEED: ${{ needs.turn.outputs.need }}
+        run: nohup python3 tools/persona-search/claim.py hold "$NEED" > "$RUNNER_TEMP/claim-hold.log" 2>&1 &
       - uses: actions/setup-node@v5
         if: steps.token.outputs.ok == 'yes'
         with: {node-version: '22'}
@@ -114,7 +154,6 @@ jobs:
         id: free
         if: steps.token.outputs.ok == 'yes'
         env:
-          GH_TOKEN: ${{ github.token }}
           PROFILE: ${{ matrix.profile }}
         run: |
           if python3 tools/persona-search/profiles.py free "[\"$PROFILE\"]" 1 > out/free.txt; then echo "ok=yes" >> "$GITHUB_OUTPUT"; else cp out/free.txt out/not-run.txt; fi
@@ -184,11 +223,28 @@ jobs:
           name: search-profile-${{ matrix.profile }}
           retention-days: 30
           path: out/
+      - name: The claim was held all the way
+        if: always() && hashFiles('tools/persona-search/claim.py') != ''
+        run: if [ -s "$RUNNER_TEMP/claim-hold.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "$RUNNER_TEMP/claim-hold.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
+
+  release:
+    name: Give the room back
+    needs: [turn, profile]
+    if: ${{ always() && needs.turn.result == 'success' }}   # a claim nobody renews frees itself in 10 min anyway
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - run: python3 tools/persona-search/claim.py release
 
   table:
     name: The table
-    needs: [room, profile]
-    if: ${{ always() && needs.room.result == 'success' }}
+    needs: [room, turn, profile]
+    if: ${{ always() && needs.room.result == 'success' && needs.turn.result == 'success' }}   # Why (Gitar on #3980): a round that never got its claim ran nothing; its red run says so, never an owner message of "nothing measured"
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
