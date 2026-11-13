@@ -8,9 +8,8 @@
 # so a restart or a second ship repeats none. Every read is REST with the last ETag (tools/pr-rest-lib.sh), free while nothing changed. Guard: tests/test_pr_comments.py.
 # `ship: READY #n <sha>` (30 Oct 2026): the owner's "ready" on this head: every check green, Gitar ✅ Approved (its label), no "Working on PR comments" label, no unanswered
 # owner or other comment, no conflict and GitHub's merge state clean (6 Nov 2026); once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
-# Since 13 Nov 2026 (owner via sa: "anything not a draft is safe to merge"; plan docs/superpowers/plans/2026-11-13-search-pair.md 3/4): ship.sh opens a PR as a draft and THIS
-# watcher marks it ready at the moment it would say READY, so a non-draft PR is one the owner may merge; a draft titled "DONT MERGE" is never flipped (`ship: HELD #n`), and a PR it
-# flipped goes back to draft (`ship: DRAFT AGAIN #n (<why>)`) on a red check, a conflict, an unanswered comment, Gitar no longer Approved or a new head. A pending check never flips it.
+# A draft that meets READY is marked ready here (13 Nov 2026, #3965): a --draft PR, or a search PR whose pair lifted ship's hold (tools/ship-search-hold.sh); a draft titled
+# "DONT MERGE" is never flipped (`ship: HELD #n`). Ship opens a draft only for those (owner via sa, 13 Nov 2026: "as draft should start only if it needs a pair run").
 # Started detached by tools/ship.sh when the PR opens (18 Oct 2026: #1321 sat red for hours because the watcher began only after REVIEW); a second ship of the same branch replaces the old watcher through the pid file (18 Oct 2026: the owner merges by hand and
 # sessions only learned of it when told). Guard: tests/test_ship_watch.py, tests/test_pr_conflict_fix.py.
 set -u
@@ -95,7 +94,7 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; flipped=""; held=""; flipfail=""
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; held=""; flipfail=""
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
@@ -159,24 +158,11 @@ while :; do
       elif grep -q 'DONT MERGE' <<<"$(jq -r '.title // empty' <<<"$view")"; then   # a hold a person or ship set: never flipped here
         [ "$held" = "$head" ] || say "HELD #$n ${head:0:7} (every check green and Gitar Approved, but its title says DONT MERGE: it stays a draft)"; held="$head"
       elif gh pr ready "$n" -R "$repo" >/dev/null 2>&1; then
-        flipped="$head"; [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
+        [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
       else
         [ "$flipfail" = "$head" ] || say "READY FLIP FAILED #$n ${head:0:7} (it stays a draft: gh pr ready $n)"; flipfail="$head"
       fi
-    else
-      # Why (13 Nov 2026, 3/4): only a real loss clears READY; a pending check does not (a draft flip re-runs the gate, pr-gate.yml, and must not flip it back in a loop).
-      lost=""
-      [ -z "$now" ] || lost="$now is red"
-      [ -n "$lost" ] || [ -z "$conflict" ] || lost="a conflict"
-      [ -n "$lost" ] || [ "${waiting:-0}" = 0 ] || lost="an unanswered comment"
-      [ -n "$lost" ] || jq -e "$approved" <<<"$view" >/dev/null 2>&1 || lost="Gitar is not Approved"
-      [ -z "$lost" ] || ready=""
-    fi
-    [ -z "$flipped" ] || [ "$flipped" = "$head" ] || lost="a new head ${head:0:7}"
-    if [ -n "$flipped" ] && [ -n "${lost:-}" ] && [ "$draft" != true ]; then
-      if gh pr ready "$n" -R "$repo" --undo >/dev/null 2>&1; then say "DRAFT AGAIN #$n ($lost)"; flipped=""; ready=""; fi
-    fi
-    lost=""
+    elif [ -n "$checks" ] && [ "$mstate" != unknown ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi
   notify_session   # retry a failed delivery even if the PR state has not changed
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }

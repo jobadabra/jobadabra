@@ -13,7 +13,7 @@
 #   tools/ship.sh --body=<file>  the PR's 5-second summary (a verdict line, short bullets, a before/after table): tools/pr-body.sh puts it on top
 #   tools/ship.sh --title=<text>  the PR's title; one commit: its subject; 2+ commits: required when the PR is opened and names the whole PR (not the newest commit); on a PR already open it retitles only when given
 #   tools/ship.sh --background   start detached and return at once (the checks can take minutes): follow the log it names
-#   tools/ship.sh --draft    open the PR as a draft (nobody can merge it); tools/ship-watch.sh marks it ready at READY: every check green and Gitar Approved (owner, 14 Oct 2026; 13 Nov 2026). Every PR now opens this way in review mode
+#   tools/ship.sh --draft    open the PR as a draft (nobody can merge it); tools/ship-watch.sh marks it ready at READY: every check green and Gitar Approved (owner, 14 Oct 2026; 13 Nov 2026)
 # Every run writes its whole output to a log (the first line names it; SHIP_LOG=<file> chooses it), shows each step with the seconds since
 # the start, and ends with one marker line (then MERGED / CLOSED / RED / GREEN / READY, below): `ship: DONE <sha>` (merged), `ship: REVIEW #n <url>` (owner reviews by hand: open, checks green) or `ship: FAILED (exit N) ...`. A caller that cut the run short
 # (a timeout, a piped `| tail`) reads that last line of the log to know how it ended; running it again is safe.
