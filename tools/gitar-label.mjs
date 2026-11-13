@@ -13,6 +13,9 @@
 //     run completed, verdict edited at or after its start .. <verdict> (changes requested | approved with suggestions | approved)
 //     no run on the head, or a verdict older than the run .. <last verdict> · not re-reviewed (the same suffix for every verdict; owner, 13 Nov 2026: "Last verdict + not re-reviewed (Recommended)")
 //     no verdict on any push ............................... Gitar: not started
+//   A verdict edited AFTER the run completed (Gitar closing a finding when a session replies in a thread, on the same head) stays the head's verdict, shown plain: it is Gitar's judgement of a head it ran on,
+//   so the label does not bound the edit by the run's end (Gitar on #4048 offered completedAt + a slack; that would call a genuine "finding closed, now approved" edit "not re-reviewed" and adds a case). The case the
+//   owner saw (#4020) is the other one: an edit with NO run on the head.
 //   plus the gray "Working on PR comments" mark a session sets (a push clears it; Gitar's approval of the head clears it) and the conflict label (tools/conflict-label.mjs).
 //   Trade-off, said plainly: a merge of main into the branch is a new head, so with Gitar's automatic reviews paused it reads "<last verdict> · not re-reviewed" until Gitar runs on it (12 Nov's "keep the
 //   verdict" for a merge of main is gone with the walk); sessions rebase instead of merging main in.
