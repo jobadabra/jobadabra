@@ -4,11 +4,12 @@ name: CI · Search pair (a PR's before/after, by hand)
 # the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
 # Why (13 Nov 2026, owner: "But why sessions don't know to do this by themselves. No skill is telling them to do this. No PR CI guardrail is requested them a
 # before/after"; asked via AskUserQuestion by sa: "Self-serve workflow + tighter check (Recommended)"): before/after searches went through one session's queue.
-# Its turn: the `turn` job waits (up to 55 min) until no press tape holds the broker and /health shows room (tools/persona-search/pair.py turn; a night or profile round runs beside it);
-# pairs of several PRs run side by side while there is room (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
+# Its turn: the `turn` job claims 2 searches per person at the broker and waits its place in line (up to 55 min; tools/persona-search/claim.py, the broker's
+# lib/claims.mjs: first come, first served, each run only what it needs; owner via sa, 13 Nov 2026); each pair job renews it, `release` gives it back. Pairs of several PRs
+# run side by side while the room holds them (owner, 12 Nov: "it should be in parallel"). A side whose broker wait p90 is over 20 s is not counted.
 # Never a night, never red on the PR, no floors, no scoreboard change; fictional people only; plan AI through the broker (OIDC), nothing paid; the PR's own branch only.
 #   gh workflow run search-pair.yml -f pr=<n> -f people='[3, "b02"]'
-# Broker lane: by-hand once jobadabra-web workers/ai-broker/lib/lanes.mjs lists search-pair.yml beside search-profiles.yml; scheduled until then (the same queue).
+# Broker lane: by-hand (jobadabra-web workers/ai-broker/lib/lanes.mjs lists search-pair.yml).
 run-name: 'Search pair · #${{ inputs.pr }} · ${{ inputs.people }} · ${{ inputs.tiers }} tier'
 
 on:
@@ -60,6 +61,7 @@ jobs:
       pull-requests: read
     outputs:
       people: ${{ steps.people.outputs.people }}
+      need: ${{ steps.people.outputs.need }}
       main: ${{ steps.refs.outputs.main }}
       head: ${{ steps.refs.outputs.head }}
     steps:
@@ -88,20 +90,20 @@ jobs:
         run: python3 tools/persona-search/pair.py people "$PEOPLE" changed.txt >> "$GITHUB_OUTPUT"
 
   turn:
-    name: Wait for room at the broker
+    name: Claim room at the broker
     needs: setup
     runs-on: ubuntu-24.04
     timeout-minutes: 58
     permissions:
       contents: read
-      actions: read   # gh run list: a night, a tape, a profile round or another pair
+      id-token: write   # the broker names the claim from this run's token
     steps:
       - uses: actions/checkout@v5
         with: {persist-credentials: false}
-      - name: No night, tape or profile round on the broker, and room for one more pair
+      - name: Wait our place in line for the searches we run at once
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/persona-search/pair.py turn
+          NEED: ${{ needs.setup.outputs.need }}
+        run: python3 tools/persona-search/claim.py wait "$NEED"
 
   pair:
     name: Pair ${{ matrix.person.id }}
@@ -122,6 +124,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5   # the tools (relay, judge, pair.py) from the dispatched ref: the same for both sides
         with: {persist-credentials: false}
+      - name: Keep the run's claim while this person searches
+        # Why (13 Nov 2026): the broker drops a claim after 10 min without an ask; a person's job takes ~7 min after the grant, its judge longer on a slow day.
+        #   The relay (codex.mjs) holds the same run token for the whole job, so this renewer adds no reach. The runner ends it with the job.
+        env:
+          NEED: ${{ needs.setup.outputs.need }}
+        run: mkdir -p out && nohup python3 tools/persona-search/claim.py hold "$NEED" > "out/claim-hold-${{ matrix.person.id }}.log" 2>&1 &   # uploaded with out/; the judge step shows it
       - uses: actions/checkout@v5
         with: {persist-credentials: false, ref: '${{ needs.setup.outputs.main }}', path: side-main}
       - uses: actions/checkout@v5
@@ -207,12 +215,27 @@ jobs:
           done
           echo "end=$(date +%s)" >> times.env
           python3 tools/persona-search/pair.py minutes times.env "${{ matrix.person.id }}" out >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "out/claim-hold-${{ matrix.person.id }}.log" ]; then { echo "Claim not held all the way (searches may have run without room):"; echo '```'; cat "out/claim-hold-${{ matrix.person.id }}.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: search-pair-${{ matrix.person.id }}
           retention-days: 30
           path: out/
+
+  release:
+    name: Give the room back
+    needs: [turn, pair]
+    if: ${{ always() }}   # also after a failed or cancelled person; a claim nobody renews frees itself in 10 min anyway
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - run: python3 tools/persona-search/claim.py release
 
   comment:
     name: The table on the PR
