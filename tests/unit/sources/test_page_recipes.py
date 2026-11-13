@@ -193,6 +193,12 @@ class IndexCarriesRecipesTests(unittest.TestCase):
         self.assertEqual(page_recipes.replay({'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, named, 'https://board.example/jobs/search'),
                          [('Tontechniker 9', 'https://board.example/jobs/ton-9')], 'positive control: the real title attribute still names the link')
 
+    def test_an_empty_aria_label_does_not_hide_the_title_attribute(self):
+        """Gitar on #4070: `aria-label=""` next to a real `title` took the empty one first, so the link had no title and was dropped."""
+        card = '<a href="/jobs/ton-1" aria-label="" title="Tontechniker 1"></a>'
+        got = page_recipes.replay({'kind': 'links', 'prefix': '/jobs', 'title': 'label'}, card, 'https://board.example/jobs/search')
+        self.assertEqual(got, [('Tontechniker 1', 'https://board.example/jobs/ton-1')])
+
     def test_a_quoted_greater_than_does_not_end_the_link_tag_early(self):
         """Gitar on #4061: `<a ... data-x="a>b" title="...">` was cut at the `>` inside the quotes, so the title after it was never read."""
         card = '<a href="/jobs/ton-1" data-x="a>b" title="Tontechniker 1"></a>'

@@ -71,8 +71,9 @@ def _card_links(markup, base, title):
             continue
         if title == 'label':
             # Why (13 Nov 2026, #4061): match the attribute name whole; `\b` also matched data-title / data-aria-label, which tracking code puts on cards.
-            named = re.search(r'(?<![\w-])aria-label=["\']([^"\']*)["\']', attrs, re.I) or re.search(r'(?<![\w-])title=["\']([^"\']*)["\']', attrs, re.I)
-            text = _text(named.group(1)) if named else ''
+            # Why (13 Nov 2026, Gitar on #4070): an empty aria-label next to a real title attribute must not hide the title; the first non-empty of the two is the title.
+            named = (re.search(r'(?<![\w-])' + name + r'=["\']([^"\']*)["\']', attrs, re.I) for name in ('aria-label', 'title'))
+            text = next((t for t in (_text(m.group(1)) for m in named if m) if t), '')
         else:
             heading = re.search(r'<{0}\b[^>]*>(.*?)</{0}>'.format(title), inner, re.S | re.I)
             text = _text(heading.group(1)) if heading else ''
