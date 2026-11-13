@@ -113,7 +113,7 @@ The pause after a 429 (`linkedin-guest-on.js`, today 1 day) becomes this clear t
 4/4 `[lg] 4/4 Always on tries LinkedIn's public search for the owner` — site PR first (jobadabra-web: the owner-only gate in the run payload, the answers kept), then `src/hosted_run.py` sets the flag only when the payload says so; the Caps above (lease, daily caps, shared cache, 24 h stop) at the site; the answers chart the owner reads after a week.
 
 ## Follow-ups (not in these PRs)
-- Remove the LinkedIn cloud probe code (`desktop/lib/linkedin-cloud-probe.js`, its IPC, web #547's route): it sends a session to the site, which the owner's 13 Nov rule ends; lg's, one small PR here + one web PR after 1/4 merges, files disjoint from 2/4 (coordinator, 13 Nov 2026).
+- Done: the LinkedIn cloud probe code is removed (web #624, #3999); it never ran (0 batches in production).
 
 ## Progress
 - [x] Positive control: one search page + one job page, logged out, honest user agent: 200, 10 cards, description present (13 Nov 2026) (proof: none: two by-hand requests from this Mac)

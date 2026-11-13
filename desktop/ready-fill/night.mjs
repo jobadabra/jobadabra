@@ -54,9 +54,9 @@ async function post(fetchImpl, site, token, route, body) {
 
 // The cloud runner's tasks (spec docs/superpowers/specs/2026-11-08-cloud-browser-runner-design.md): `fill` is Ready to send's night (the default, so a run that names none is unchanged), `readiness` reads each form only,
 // `auto` is Full automation from the cloud: each job pressed at most once, only through submit-gate.js (auto-night.mjs). Any other name is refused before the batch is read.
-// Why (10 Nov 2026, cs 3/4; owner: "Build it now (Recommended)"): `auto` became a task with its gate and guard (cs 1/4) and the site's stamps and reservation (cs 2/4) in place; linkedin joined the list (ap 1/6, 11 Nov 2026): one measured page for the owner install, no more.
-// `linkedin` (linkedin-probe.mjs, loaded only for it) reads ONE LinkedIn search page once, the owner's measurement of a cloud LinkedIn read (spec 2026-11-11-always-on-parity-design.md 1/6).
-export const TASKS = ['fill', 'readiness', 'auto', 'linkedin'];
+// Why (10 Nov 2026, cs 3/4; owner: "Build it now (Recommended)"): `auto` became a task with its gate and guard (cs 1/4) and the site's stamps and reservation (cs 2/4) in place.
+// Why (owner, 13 Nov 2026: "lets' keep Linkedin and Google sessions/credentials windows/mac only"): the `linkedin` probe task (ap 1/6) is gone; the site refuses it too (web).
+export const TASKS = ['fill', 'readiness', 'auto'];
 
 // chromium: Playwright's (main.mjs passes `playwright`'s; the fixture proof passes the desktop's), so this file loads without a browser package. task: one of TASKS.
 // -> {held: Map(jobId -> page), context, close()} once every job has been tried (a fill's pages stay open); a read holds no page and also returns {results}.
@@ -74,15 +74,10 @@ export async function runNight({chromium, site, token, task = 'fill', fetchImpl 
       const {results} = await readAll({batch, chromium, extensionDir: EXTENSION_DIR, tell, told, log, extraArgs, launchOptions, readerOptions, client: siteClient({site, token, fetchImpl})});
       return {held, results, close: async () => {}};
     }
-    if (task === 'linkedin') {
-      const {probeNight} = await import('./linkedin-probe.mjs');
-      const {results} = await probeNight({batch, chromium, told, log, extraArgs, launchOptions, tell: {result: body => post(fetchImpl, site, token, 'result', body), costMicro: ms => costMicro(ms)}});
-      return {held, results, close: async () => {}};
-    }
     if (task === 'auto') return {held, ...await autoNight({batch, chromium, site, token, fetchImpl, log, told, extraArgs, launchOptions}), close: async () => {}};
     return await fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record, settleMs});
   } catch (error) {   // the night could not start or stopped: each job not yet told is told, so the card says so at once instead of "waiting" until the night's end
-    const failed = task === 'readiness' || task === 'linkedin' ? {task, state: 'failed', read: null, why: NIGHT_FAILED, ms: 0, costMicro: 0} : task === 'auto' ? {task, state: 'failed', why: NIGHT_FAILED, ms: 0, costMicro: 0}   // auto: a job with a press already told itself (auto-night.mjs)
+    const failed = task === 'readiness' ? {task, state: 'failed', read: null, why: NIGHT_FAILED, ms: 0, costMicro: 0} : task === 'auto' ? {task, state: 'failed', why: NIGHT_FAILED, ms: 0, costMicro: 0}   // auto: a job with a press already told itself (auto-night.mjs)
       : {state: 'failed', filled: 0, left: 0, humanCheck: false, wall: NIGHT_FAILED, ms: 0, costMicro: 0};
     for (const job of batch.jobs.filter(job => !held.has(job.id) && !told.has(job.id))) await post(fetchImpl, site, token, 'result', {job: job.id, ...failed}).catch(() => {});
     throw error;
