@@ -424,6 +424,7 @@ button.with-icon .icon { width: 15px; height: 15px; }
 .stat-icon .icon { width: 17px; height: 17px; }
 .stat b { display: block; font-size: var(--fs-xl); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stat span { color: var(--muted); font-size: var(--fs-sm); }
+.stat small { color: var(--muted); font-size: inherit; font-variant-numeric: tabular-nums; }   /* the Applied card's "· 1 waiting · 1 closed" shares the label's row: all four cards one height */
 
 /* Search, show, sort */
 .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }

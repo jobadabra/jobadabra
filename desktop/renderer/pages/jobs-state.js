@@ -10,6 +10,7 @@ export const jobsState = {
   lastJobsData: null,   // the list as last loaded: a deleted job is recounted from it at once
   jobsRead: false,   // the first read of the list ended (read or failed): the Find jobs card's "empty" waits for it
   filters: [...DEFAULT_FILTERS],   // the ticked filters (the app starts on All matches: jobs-filters.js DEFAULT_FILTERS) of the one Show menu (jobs-filters.js): a job shows when any of them holds it
+  lastRunStart: '',   // when the latest Find jobs run began (ISO): the New card counts the matches first seen since (jobs-view.js freshSince)
   mode: 'list',   // 'list' or 'board' (pages/jobs-views.js, remembered on this computer)
 };
 // Why (2 Nov 2026, a8; apply e2e runs 41412195017, 41447682988): the list opens on the kept copy and the fresh read replaces it 0.3-1.8 s later; a Start pressed

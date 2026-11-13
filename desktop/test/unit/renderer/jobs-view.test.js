@@ -1,7 +1,7 @@
 import {readScreenSource} from '../../static-screen-source.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {newOfTotal, jobCounts, interviewJob, notionPageUrl, ago, applicationStats, avatar, inProcess, band, byStat, isStuck, matchLabel, placeAndMode, sorted, stats, statusPill, tags, unscoredWhy, workMode} from '../../../renderer/jobs-view.js';
+import {isSent, sentBreakdown, newOfTotal, jobCounts, interviewJob, notionPageUrl, ago, applicationStats, avatar, inProcess, band, byStat, isStuck, matchLabel, placeAndMode, sorted, stats, statusPill, tags, unscoredWhy, workMode} from '../../../renderer/jobs-view.js';
 
 test('place and mode on one line say the mode once', () => {
   assert.equal(placeAndMode('Remote (Europe)', 'Remote'), 'Remote (Europe)');
@@ -56,9 +56,10 @@ test('application counters follow the Notion stage, with the funnel\'s stage set
     {status: 'applied', stage: 'Applying'},  // a form still being filled: not sent, not counted
     {status: 'applied', stage: 'Screening'},
   ];
-  // Sent = waiting + in process + closed: the boxes add up.
-  assert.deepEqual(applicationStats(jobs), {applied: 5, waiting: 1, interviews: 2, closed: 2});
-  assert.equal(5, 1 + 2 + 2);
+  // Sent = waiting + in process + closed: the boxes add up (the Applied card is isSent, its line is sentBreakdown).
+  assert.deepEqual(applicationStats(jobs), {waiting: 1, interviews: 2, closed: 2});
+  assert.equal(jobs.filter(isSent).length, 5);
+  assert.deepEqual(sentBreakdown(jobs), {waiting: 1, closed: 2});
   assert.deepEqual(inProcess(jobs), {screening: 1, interviews: 1});
   assert.deepEqual(byStat(jobs, 'waiting'), [jobs[0]]);
   assert.deepEqual(byStat(jobs, 'closed'), [jobs[2], jobs[3]]);
@@ -107,7 +108,8 @@ test('feedback is visible beside Rejected while the funnel still counts one clos
   const received = {...asked, feedback_status: 'Received feedback'};
   assert.deepEqual(statusPill(asked), {label: 'Rejected · Asked for feedback', tone: 'warn'});
   assert.deepEqual(statusPill(received), {label: 'Rejected · Received feedback', tone: 'info'});
-  assert.deepEqual(applicationStats([received]), {applied: 1, waiting: 0, interviews: 0, closed: 1});
+  assert.deepEqual(applicationStats([received]), {waiting: 0, interviews: 0, closed: 1});
+  assert.deepEqual(sentBreakdown([received]), {waiting: 0, closed: 1});
 });
 
 test('the Interviews Job cell: a listed job opens in Jobs, a Notion-only link opens in Notion, none offers Link a job', () => {
@@ -129,8 +131,8 @@ test('an inbound opportunity counts as workload, as Applied only once you applie
     {url: 'i4', stage: 'Rejected', source: 'Phone', company: 'Epsilon'},
     {url: 'm1', stage: '', company: 'Zeta', fit: 80},
   ];
-  assert.deepEqual(applicationStats(jobs), {applied: 2, waiting: 0, interviews: 3, closed: 1});
-  assert.deepEqual(byStat(jobs, 'applied').map(job => job.url), ['o1', 'i2']);
+  assert.deepEqual(applicationStats(jobs), {waiting: 0, interviews: 3, closed: 1});
+  assert.deepEqual(jobs.filter(isSent).map(job => job.url), ['o1', 'i2'], 'Applied: the ones you applied to (the inbound i2 once it has an applied date)');
   // The list below: job matches only (the leads and recruiter pitches are not there).
   assert.deepEqual(matchesOnly(jobs).map(job => job.url), ['o1', 'm1']);
   // In conversation: the open inbound ones and the jobs you applied to that are being talked about; those with a
@@ -176,21 +178,20 @@ test('the Show menu: matches by status, every match under All matches, inbound u
   assert.equal(toReview(jobs), 1);
 });
 
-test('the Inbound counter opens the Inbound list; again shows every match; the other counters unchanged', async () => {
+test('the four cards: Total and Applied are menu lists, New and Interviews counter lists; the active one again goes back to every match', async () => {
   const {statClick, statPressed} = await import('../../../renderer/jobs-view.js');
-  assert.deepEqual(statClick('inbound', null, 'open'), {stat: null, filter: 'inbound'});
-  assert.deepEqual(statClick('inbound', 'high', 'all'), {stat: null, filter: 'inbound'});
-  assert.deepEqual(statClick('inbound', null, 'inbound'), {stat: null, filter: 'all'});
-  assert.deepEqual(statClick('high', null, 'inbound'), {stat: 'high', filter: 'all'});
-  assert.deepEqual(statClick('high', 'high', 'all'), {stat: null, filter: 'all'});
-  assert.deepEqual(statClick('total', 'high', 'all'), {stat: null, filter: 'all'});
-  assert.equal(statPressed('inbound', null, 'inbound'), true);
-  assert.equal(statPressed('inbound', 'high', 'inbound'), false);
+  assert.deepEqual(statClick('total', 'fresh', 'all'), {stat: null, filter: 'all'});
+  assert.deepEqual(statClick('applied', null, 'open'), {stat: null, filter: 'applied'});
+  assert.deepEqual(statClick('fresh', null, 'applied'), {stat: 'fresh', filter: 'all'});
+  assert.deepEqual(statClick('fresh', 'fresh', 'all'), {stat: null, filter: 'all'});
+  assert.deepEqual(statClick('interviews', 'fresh', 'all'), {stat: 'interviews', filter: 'all'});
   assert.equal(statPressed('total', null, 'all'), true);
-  assert.equal(statPressed('high', 'high', 'all'), true);
+  assert.equal(statPressed('applied', null, 'applied'), true);
+  assert.equal(statPressed('applied', null, 'all'), false);
+  assert.equal(statPressed('fresh', 'fresh', 'all'), true);
+  assert.equal(statPressed('total', 'fresh', 'all'), false, 'a counter list is pressed, not Total');
   // Everything is wider than any card: none is pressed while it is the list (the Total matches card counts 132, not 138).
   assert.equal(statPressed('total', null, 'everything'), false);
-  assert.equal(statPressed('inbound', null, 'everything'), false);
 });
 
 test('Jobs page: "New matches" (not "To review"), Inbound and Everything as options of the one Show menu', async () => {
@@ -200,8 +201,7 @@ test('Jobs page: "New matches" (not "To review"), Inbound and Everything as opti
   for (const wanted of ['New matches', 'Saved', 'Applied', 'Dismissed', 'Inbound', 'All matches', 'Everything']) assert.ok(labels.includes(wanted), wanted);
   assert.ok(!html.includes('To review'));
   const cards = [...html.matchAll(/data-stat="(\w+)"/g)].map(m => m[1]);
-  assert.deepEqual(cards, ['applied', 'waiting', 'interviews', 'closed', 'total', 'high', 'inbound', 'companies']);
-  assert.match(html, /<b id="stat-inbound">–<\/b><span>Inbound<\/span>/);
+  assert.deepEqual(cards, ['total', 'fresh', 'applied', 'interviews'], 'four cards (df 2/2, owner 13 Nov 2026): Total, New (last run), Applied, Interviews');
 });
 
 test('a job being prepared stays Preparing through re-renders, until its kit shows', async () => {
@@ -293,6 +293,7 @@ test('the list bar says "N new of M matches" only on the plain New matches list,
 test('an inbound lead the person applied to counts in Applied while Total matches stays 0', () => {
   const lead = {url: 'https://jobs.e2e.test/plover/lead', stage: 'Applied', applied_on: '2026-11-07', source: 'Email', origin: 'Inbound', company: 'Plover Partners'};
   assert.equal(jobCounts({jobs: [lead]}).total, 0, 'no job match');
-  assert.deepEqual(applicationStats([lead]), {applied: 1, waiting: 1, interviews: 0, closed: 0}, 'one application sent, waiting for a reply');
-  assert.equal(applicationStats([{...lead, applied_on: undefined}]).applied, 0, 'control: the same lead before the person applied is not Applied');
+  assert.deepEqual(applicationStats([lead]), {waiting: 1, interviews: 0, closed: 0}, 'one application sent, waiting for a reply');
+  assert.equal(isSent(lead), true);
+  assert.equal(isSent({...lead, applied_on: undefined}), false, 'control: the same lead before the person applied is not Applied');
 });

@@ -21,7 +21,8 @@ const {shared} = await import('../../../renderer/pages/shared.js');
 const {jobsState} = await import('../../../renderer/pages/jobs-state.js');
 const {renderJobs} = await import('../../../renderer/pages/jobs-render.js');
 const {DEFAULT_FILTERS} = await import('../../../renderer/jobs-filters.js');
-const {jobCounts} = await import('../../../renderer/jobs-view.js');
+const {applicationStats, freshSince, jobCounts, statClick} = await import('../../../renderer/jobs-view.js');
+const {countFor, soleFilter} = await import('../../../renderer/jobs-filters.js');
 const $ = id => doc.getElementById(id);
 
 const job = (status, i) => ({url: `https://jobs.example.test/${i}`, title: `Role ${i}`, company: `Company ${i}`, location: 'Berlin', work_mode: 'remote', stage: 'Kit ready', status, fit: 80, first_seen_at: '2026-01-01', skills: []});
@@ -56,4 +57,43 @@ test('a dismissed match is explained the same way; with nothing else the bar sta
 });
 test('All matches keeps its own count: 13 jobs for 13 rows', () => {
   assert.equal(draw([...twelve, job('saved', 90)], {filters: ['all']}), '13 jobs');
+});
+
+// df 2/2 (owner 13 Nov 2026: four cards): each card's number is the number of rows its click shows. The press does what pages/jobs.js does with a card: statClick -> the counter and the menu's filter.
+const RUN = '2026-11-13T08:00:00Z';
+const seen = (j, at) => ({...j, first_seen_at: at});
+const cardJobs = [
+  seen(job('unreviewed', 1), '2026-11-13T08:05:00Z'), seen(job('unreviewed', 2), '2026-11-13T08:06:00Z'), seen(job('unreviewed', 3), '2026-11-01T08:00:00Z'),
+  seen(job('saved', 4), '2026-11-01T08:00:00Z'), seen(job('dismissed', 5), '2026-11-01T08:00:00Z'),
+  {...job('applied', 6), stage: 'Applied'}, {...job('applied', 7), stage: 'Interviewing'}, {...job('applied', 8), stage: 'Rejected'},
+  {...job('applied', 9), stage: 'Applying'},   // a form still being filled: not sent, so not on the Applied card nor in the menu's Applied
+  {...job('applied', 10), stage: ''},   // marked Applied only on its match row: sent
+];
+function press(kind) {
+  const next = statClick(kind, typeof jobsState.statFilter === 'string' ? jobsState.statFilter : null, soleFilter(jobsState.filters));
+  jobsState.statFilter = next.stat; jobsState.filters = [next.filter];
+  shared.allJobs = cardJobs; jobsState.lastJobsData = {jobs: cardJobs, total: cardJobs.length}; jobsState.lastRunStart = RUN;
+  $('sort-by').value = 'best'; $('filter-text').value = '';
+  renderJobs();
+  return $('jobs-body').querySelectorAll('.job-row').length;
+}
+const cardCount = {
+  total: () => jobCounts({jobs: cardJobs, total: cardJobs.length}).total,
+  fresh: () => freshSince(cardJobs, RUN).length,
+  applied: () => countFor(cardJobs, 'applied'),
+  interviews: () => applicationStats(cardJobs).interviews,
+};
+for (const [kind, expected] of Object.entries({total: 5, fresh: 2, applied: 4, interviews: 1})) {
+  test(`the ${kind} card counts ${expected}, and its click shows exactly ${expected} rows`, () => {
+    jobsState.statFilter = null;
+    assert.equal(cardCount[kind](), expected, 'the number on the card');
+    assert.equal(press(kind), expected, 'the rows after the click');
+  });
+}
+test('Applied is one rule: the card, the menu option and the line beside it agree (Applying stays out)', async () => {
+  const {sentBreakdown} = await import('../../../renderer/jobs-view.js');
+  const sent = cardJobs.filter(each => each.status === 'applied' && each.stage !== 'Applying');
+  assert.equal(countFor(cardJobs, 'applied'), sent.length);
+  assert.deepEqual(sentBreakdown(cardJobs), {waiting: 2, closed: 1}, 'waiting + in process (1) + closed = sent');
+  assert.equal(countFor(cardJobs, 'view:applying'), 1, 'the form being filled is under Applying');
 });

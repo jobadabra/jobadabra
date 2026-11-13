@@ -4,7 +4,7 @@ import '../i18n/screens-helpers.js';
 import {t} from '../i18n/index.js';
 import {isInbound} from './origin.js';
 import {VIEWS} from './jobs-board-rules.js';
-import {openMatches} from './jobs-view.js';
+import {isSent, openMatches} from './jobs-view.js';
 
 // Why (13 Nov 2026, owner: "when I open the app, it filters for latest/new matches... which shows me 0 jobs. I should always start as the default with \"total matches\""): the one start
 // value, read by pages/jobs-state.js (the first list), Clear and "nothing ticked". All matches holds exactly what the Total matches counter counts (jobCounts: every match but the applied ones),
@@ -14,7 +14,7 @@ export const DEFAULT_FILTERS = ['all'];
 // (columnOf folds the status into the stage), so neither old list loses a job.
 const STATUS_OPTIONS = [
   {id: 'open', label: t('helperFlow.newMatches'), title: t('helperFlow.undecidedJobs'), test: job => !isInbound(job) && job.status === 'unreviewed'},
-  {id: 'applied', label: t('helpers.stageApplied'), title: t('helperFlow.appliedMatches'), test: job => !isInbound(job) && job.status === 'applied'},
+  {id: 'applied', label: t('helpers.stageApplied'), title: t('helperFlow.appliedMatches'), test: isSent},   // Why (df 2/2, owner 13 Nov 2026: "Sent only"): the same rule as the Applied card (jobs-view.js isSent)
   {id: 'saved', label: t('helpers.savedPlain'), title: t('helperFlow.savedJobs'), test: (job, now) => (!isInbound(job) && job.status === 'saved') || VIEW_TEST.saved(job, now)},
   {id: 'dismissed', label: t('helpers.stageDismissed'), title: t('helperFlow.setAsideJobs'), test: (job, now) => (!isInbound(job) && job.status === 'dismissed') || VIEW_TEST.dismissed(job, now)},
 ];
@@ -60,9 +60,9 @@ export const hasViewOption = ids => ids.some(id => id.startsWith('view:'));
 // Where "Find more jobs" belongs: the lists that hold job matches you have not decided on. Under Applied, Inbound, Saved, Dismissed or a stage,
 // a search would add rows to none of them. Why (2 Nov 2026, owner: a "Find more jobs" card over the Inbound list): one rule, read by pages/jobs-find.js.
 export const FINDS_MORE = new Set(['open', 'all', 'everything']);
-// The counters above the list whose lists a search adds to (Total matches, High fit); any other counter (Applied, Waiting, In process, Closed, Stuck) or a fixed
+// The counters above the list whose lists a search adds to (New from the last run); any other counter (Interviews, Stuck) or a fixed
 // set of jobs lists applications. Why (#3026, Gitar): a counter sets the filters to "all", which alone would keep the card over the Applied list.
-const MATCH_COUNTERS = new Set(['total', 'high']);
+const MATCH_COUNTERS = new Set(['fresh']);
 /**
  * True when the list a search can add to is showing: no counter but a match counter is pressed, and a ticked filter (ids from FILTER_OPTIONS) lists job matches.
  * `counter`: the pressed counter (jobsState.statFilter: an id, {urls}, or null). An unknown id counts as no. Pure, never throws.

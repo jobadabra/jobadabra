@@ -62,7 +62,7 @@ const claudeStarted = new Set();
 
 document.addEventListener('sessions-loaded', () => renderStuck());
 
-const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
+const COUNTS_ALL = new Set(['waiting', 'interviews', 'closed']);
 /**
  * Settings → Apply saved a mode: remember it for the rows and redraw them, so every Apply button names the mode a press will use.
  * Why (#3437, Gitar review): setting the state alone left the rows on the old label until an unrelated redraw.
@@ -100,7 +100,7 @@ export function renderJobs() {
   // a pasted link finds any job.
   const counted = jobsState.statFilter === 'stuck' ? shared.allJobs.filter(stuck)
     : jobsState.statFilter?.urls ? shared.allJobs.filter(job => holdsAny(job, jobsState.statFilter.urls, fullKey))
-    : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter) : null;
+    : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter, Date.now(), jobsState.lastRunStart) : null;
   const by = $('sort-by').value;
   const rows = heldOrder(sorted((counted || shared.allJobs)
     .filter(job => (anyStatus && !counted) || (counted ? inFiltersLoose(job, filters, now) : inFilters(job, filters, now)))
@@ -379,8 +379,8 @@ export function renderJobs() {
     body.append(row);
   }
   // What the list is filtered to, said once: a chip (✕ shows every job) and "4 of 195 jobs".
-  const statLabel = jobsState.statFilter?.label || {applied: t('pagesExtraCommon.applied'), waiting: t('pagesControlStatus.waitingReply'), interviews: t('pagesControlStatus.inProcess'), closed: t('pagesControlStatus.closed'),
-    stuck: t('pagesControlStatus.stillApplying'), high: t('pagesControlStatus.highFit'), companies: t('pagesControlStatus.oneCompany')}[jobsState.statFilter];
+  const statLabel = jobsState.statFilter?.label || {fresh: t('pagesJobsFinal.statFresh'), waiting: t('pagesControlStatus.waitingReply'), interviews: t('pagesControlStatus.inProcess'), closed: t('pagesControlStatus.closed'),
+    stuck: t('pagesControlStatus.stillApplying')}[jobsState.statFilter];
   renderStuck();
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
   const notLoaded = Math.max(0, (jobsState.lastJobsData?.total ?? 0) - shared.allJobs.length);

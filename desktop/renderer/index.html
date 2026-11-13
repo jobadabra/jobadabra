@@ -324,14 +324,10 @@
         <button class="primary" data-refresh-jobs data-wand data-i18n="screenCommon.findJobs">Find jobs</button></div>
       <div class="ss-tips" id="tips-jobs" aria-label="Tips" data-i18n-aria-label="screenStaticAttributes.text17"></div>
       <div class="stat-cards">
-        <button class="stat signal" data-stat="applied" aria-pressed="false"><span class="stat-icon"><i data-icon="send"></i></span><div><b id="stat-applied">–</b><span data-i18n="screenCommon.applied">Applied</span></div></button>
-        <button class="stat blue" data-stat="waiting" aria-pressed="false"><span class="stat-icon"><i data-icon="clock"></i></span><div><b id="stat-waiting">–</b><span data-i18n="screenStaticMain.text31">Waiting for reply</span></div></button>
-        <button class="stat green" data-stat="interviews" aria-pressed="false"><span class="stat-icon"><i data-icon="mic"></i></span><div><b id="stat-interviews">–</b><span data-i18n="screenStaticMain.text32">In process</span></div></button>
-        <button class="stat red" data-stat="closed" aria-pressed="false"><span class="stat-icon"><i data-icon="close"></i></span><div><b id="stat-closed">–</b><span data-i18n="screenStaticMain.text33">Closed</span></div></button>
         <button class="stat blue" data-stat="total" aria-pressed="false"><span class="stat-icon"><i data-icon="file"></i></span><div><b id="stat-total">–</b><span data-i18n="screenStaticMain.text34">Total matches</span></div></button>
-        <button class="stat green" data-stat="high" aria-pressed="false"><span class="stat-icon"><i data-icon="target"></i></span><div><b id="stat-high">–</b><span data-i18n="screenStaticMain.text35">High fit (70+)</span></div></button>
-        <button class="stat sky" data-stat="inbound" aria-pressed="false" title="Opportunities that found you (a recruiter, a LinkedIn message, a call), every stage" data-i18n-title="screenStaticAttributes.text18"><span class="stat-icon"><i data-icon="chat"></i></span><div><b id="stat-inbound">–</b><span data-i18n="screenStaticMain.text36">Inbound</span></div></button>
-        <button class="stat violet" data-stat="companies" aria-pressed="false"><span class="stat-icon"><i data-icon="building"></i></span><div><b id="stat-companies">–</b><span data-i18n="screenStaticMain.text37">Unique companies</span></div></button>
+        <button class="stat sky" data-stat="fresh" aria-pressed="false"><span class="stat-icon"><i data-icon="sparkle"></i></span><div><b id="stat-fresh">–</b><span id="stat-fresh-label">New (last run)</span></div></button>
+        <button class="stat signal" data-stat="applied" aria-pressed="false"><span class="stat-icon"><i data-icon="send"></i></span><div><b id="stat-applied">–</b><span><span data-i18n="screenCommon.applied">Applied</span><small id="stat-applied-sub"></small></span></div></button>
+        <button class="stat green" data-stat="interviews" aria-pressed="false"><span class="stat-icon"><i data-icon="mic"></i></span><div><b id="stat-interviews">–</b><span id="stat-interviews-label">Interviews</span></div></button>
       </div>
       <!-- Suggestions for your search: Focus's search- and applying-related ones and today's insight, folded to one line (pages/focus-suggestions.js; owner, 28 Oct 2026, 6 Nov 2026). -->
       <details class="card jobs-fold" id="jobs-suggestions" hidden>

@@ -19,6 +19,8 @@ import {parseInterviewReview} from '../interview-review.js';
 import {parseKitsReady} from '../kits-ready.js';
 import {openSetting} from './settings.js';
 import {$} from './core.js';
+import {shared} from './shared.js';
+import {freshSince} from '../jobs-view.js';
 import {lastAnswered, pendingMailQuestions} from './focus.js';
 import {keepPress, setPress, pressWhile, claudeReadButton, renderVisitsCard, viewJobsButton} from './activity-visits.js';
 import {lastActivity, renderActivity} from './activity-render.js';
@@ -45,7 +47,9 @@ export async function showSearchStatus() {
   if (searching) { title.textContent = t('pagesActivity.findingJobs'); detail.textContent = searchPhase(running.step) || t('pagesCommon.starting'); return; }
   if (!lastSearchAt) { title.textContent = t('pagesActivity.noCheck'); detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
-  const found = last?.new != null ? t('pagesDynamicActivity.m3', {"new": last.new, count: last.new}) : '';
+  // Why (df 2/2, 13 Nov 2026, owner: "Header shows the card's number"): once the jobs are loaded the header says what the Jobs page's New card says (jobs-view.js freshSince), one rule; before that, or with no list, the run's own count.
+  const fresh = last?.startedAt && shared.allJobs.length ? freshSince(shared.allJobs, last.startedAt).length : last?.new;
+  const found = fresh != null ? t('pagesDynamicActivity.m3', {"new": fresh, count: fresh}) : '';
   const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
   if (last && !last.ok) { title.textContent = t('pagesActivity.checkProblems'); detail.textContent = clockTime(lastSearchAt); return; }
   title.textContent = t('pagesShortActivity.m5', {"when": clockTime(lastSearchAt), "found": found, "cost": cost});
