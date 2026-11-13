@@ -84,8 +84,8 @@ def choose(db, reported, country):
     measured = [(host, code, read_at) for host, code, _, _, read_at, _ in scout_board_cells._facts(db)] + tried(db)
     # Why (13 Nov 2026, sa, with bp's all-boards report): our CI searches now report every board they read, refused ones too; a host the Scout's browser was stopped at (scout_browser_final:
     # a 401/403, a bot check, a sign-in page) is final, so the memory wins over the report and the host is not asked again, by this pass or any later one.
-    stopped = {row[0] for row in db.execute('SELECT host FROM scout_browser_final')} if db.execute("SELECT 1 FROM sqlite_master WHERE name = 'scout_browser_final'").fetchone() else set()
-    return for_country([report for report in reported if report['host'] not in stopped], country, measured) if reported else []
+    stopped = scout_board_cells.stopped_hosts(db)
+    return for_country([report for report in reported if report['host'].removeprefix('www.') not in stopped], country, measured) if reported else []
 
 
 def stamp_read(db, country, picked, counts):

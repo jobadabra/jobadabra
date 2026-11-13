@@ -201,6 +201,14 @@ def seed(db, path, out=print):
     return len(rows)
 
 
+def stopped_hosts(db):
+    """The hosts the Scout's browser was stopped at (a 401/403, a bot check, a sign-in page), without a leading `www.`: {} until a stop exists. One owner of this question
+    for the board pass (scout_boards.browser_final) and the candidate filter (scout_board_candidates.choose); compare a host with `host.removeprefix('www.')`."""
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE name = 'scout_browser_final'").fetchone():
+        return set()
+    return {host.removeprefix('www.') for (host,) in db.execute('SELECT host FROM scout_browser_final')}
+
+
 def keep_stops(db, path, out=print):
     """Every board the Scout's browser was stopped at in the database at `path` (src/scout_boards.py scout_browser_final) stays stopped in `db`, on every
     run: board discovery keeps its own database, and a refusal is final whichever job met it (CLAUDE.md, the refused-sites exception: "stops that board
