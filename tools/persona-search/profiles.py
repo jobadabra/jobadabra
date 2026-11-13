@@ -74,7 +74,9 @@ def cv(pid, out):
     # Why (13 Nov 2026, sa for the owner: 7 more Trello profiles, "actually let's leave it only for the Trello board"): music, financial analyst and IT project manager are not families in
     # draws.json, and adding one would move the seeded draws and the night people; a row may carry its own duty/education/tools, which win over a family of the same id.
     family = next((dict(f) for f in draw.DATA['families'] if f['id'] == p['family']), {})
-    family.update({k: p[k] for k in ('duty', 'education', 'tools') if k in p}, title=p['title'])
+    own = {k: p[k] for k in ('duty', 'education', 'tools') if k in p}
+    if own or not family:   # Why (Gitar on #4010): a row without its own text keeps the family's title and text, so the CVs of b01-c20 stay byte-identical
+        family.update(own, title=p['title'])
     missing = [k for k in ('duty', 'education', 'tools') if k not in family]
     if missing:
         raise ValueError(f"profile {pid}: family {p['family']!r} is not in draws.json and the row has no {', '.join(missing)}")

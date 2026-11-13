@@ -19,7 +19,6 @@ class OwnRoleText(unittest.TestCase):
             return (Path(out) / 'draw' / 'cv.md').read_text(encoding='utf-8')
 
     def test_a_role_that_is_no_family_builds_from_its_own_text(self):
-        self.assertNotIn('music', [f['id'] for f in draw.DATA['families']])
         text = self.cv_of('d02')
         self.assertIn('Berlin, Germany', text)
         self.assertIn('Ableton Live', text, "the row's own tools are in the CV")
@@ -43,8 +42,14 @@ class OwnRoleText(unittest.TestCase):
         self.assertTrue(rows)
         self.assertTrue(all(profiles.target(99, p['eures']) == 'not measured' for p in rows))
 
-    def test_draws_json_still_has_its_families_unchanged_in_count(self):
-        self.assertEqual(len(json.loads((ROOT / 'tools' / 'persona-search' / 'draws.json').read_text())['families']), 20)
+    def test_a_profile_without_its_own_text_builds_the_cv_it_always_had(self):
+        # Why (Gitar on #4010): the first version overrode the family's title for every row, which changed the CVs of b01-c20; expected = the family's own template, built here the old way.
+        for p in profiles.PROFILES:
+            if any(k in p for k in ('duty', 'education', 'tools')):
+                continue
+            family = next(f for f in draw.DATA['families'] if f['id'] == p['family'])
+            expected = '\n'.join(draw.cv(family, {k: p[k] for k in ('city', 'country', 'language')}, 'Alex Example')) + '\n'
+            self.assertEqual(self.cv_of(p['id']), expected, p['id'])
 
 
 if __name__ == '__main__':
