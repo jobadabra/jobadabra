@@ -31,7 +31,7 @@ class _Caller:
         self.pairs, self.got = pairs, {}
         unique = list({text: (item, text) for item, text in pairs}.values())
         self.need = {text for _, text in unique}
-        self.untaken = [pair for pair in unique if pair[1] not in asking]   # a text in a call now is answered by that call
+        self.untaken = [pair for pair in unique if pair[1] not in asking]   # never asked twice: the running call answers it
 
     def answers(self):
         return [self.got.get(text, UNASKED) for _, text in self.pairs]
@@ -54,13 +54,13 @@ class Gates:
             try:
                 while me.need:
                     if gate['lanes'] < lanes and any(caller.untaken for caller in gate['callers']):
-                        self._call(gate, ask, size)   # a free lane: this caller asks the next batch (its own or the smallest caller's)
+                        self._call(gate, ask, size)
                         continue
                     left = until - time.monotonic()
                     if left <= 0 and me.untaken:   # no call took these in time: unknown this run
                         self._settle(gate, {text: UNASKED for _, text in me.untaken}, me)
                         continue
-                    self.lock.wait(left if me.untaken else None)   # woken when a call ends: its answers, or a free lane
+                    self.lock.wait(left if me.untaken else None)
             finally:
                 if me in gate['callers']:   # an ask that raised: this caller leaves anyway, so nobody asks for it
                     gate['callers'].remove(me)
@@ -71,7 +71,7 @@ class Gates:
     def _call(self, gate, ask, size):
         """Takes a lane and asks one batch (the lock is let go during the call); the answers reach every caller that has those texts."""
         batch, texts = [], set()
-        for caller in sorted((c for c in gate['callers'] if c.untaken), key=lambda c: len(c.untaken)):   # stable: the earliest among equals
+        for caller in sorted((c for c in gate['callers'] if c.untaken), key=lambda c: len(c.untaken)):   # fewest first, so a small board never waits for a big one's batches
             for item, text in caller.untaken:
                 if len(batch) < size and text not in texts:
                     texts.add(text)
