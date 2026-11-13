@@ -124,6 +124,27 @@ class AWebSearchOpenAtTheCut(unittest.TestCase):
             board_web.search(SEARCH, [], client=later, data=board_ideas.load())
         self.assertEqual(later.asked, [], 'run 2 asked the web search again')
 
+    def test_the_pair_draft_asks_the_web_search_once_and_a_side_takes_that_answer(self):
+        """Gitar, #4030: tools/persona-search/propose.py asks once; web_raw.json holds the answer, no web idea or used-stamp is left, and a side's search asks nothing."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('propose', Path(__file__).resolve().parents[3] / 'tools' / 'persona-search' / 'propose.py')
+        propose = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(propose)
+        self.gate.set()
+        with redirect_stdout(io.StringIO()):
+            self.assertTrue(propose.share_web_search(SEARCH))
+        self.assertEqual(len(self.client.asked), 1)
+        self.assertIn(RAW_NAME, self.raw(), 'the draft kept no saved answer for the sides')
+        data = board_ideas.load()
+        self.assertNotIn('k-civil', data.get('web_used') or {}, 'the answer is marked used: a side would not take it')
+        self.assertEqual([board for board in (data.get('ideas') or {}).get('k-civil', []) if board.get('origin') == 'web'], [])
+        board_web._searched.clear()   # a side is a new process
+        side = Gated(self.gate)
+        with redirect_stdout(io.StringIO()) as log:
+            board_web.search(SEARCH, [], client=side, data=board_ideas.load())
+        self.assertEqual(side.asked, [], 'a side asked the web search again')
+        self.assertIn('no new search', log.getvalue())
+
     def test_a_search_a_stage_took_is_not_handed_on_twice(self):
         time_budget.start(BUDGET)
         board_web.early(SEARCH)
