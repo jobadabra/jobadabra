@@ -153,11 +153,11 @@ class GitarQueueTest(unittest.TestCase):
         body = self.tmp / 'body.md'
         body.write_text('Fixed.')
         (self.tmp / 'refuse_1').write_text('')
-        out = self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_PR_GAP_S='0', GITAR_QUEUE_SETTLE_MS='8000')
+        out = self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_SETTLE_MS='8000')
         self.assertTrue(out.startswith('QUEUED'), out)
         self.assertEqual(self.posted(), ['reply 555', 'delete 9555'])
         (self.tmp / 'refuse_1').unlink()
-        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', GITAR_QUEUE_PR_GAP_S='0', now_plus=700), 'SENT')
+        self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body), GITAR_QUEUE_GAP_S='0', now_plus=700), 'SENT')
         self.assertEqual(self.posted(), ['reply 555', 'delete 9555', 'reply 555'])
 
 

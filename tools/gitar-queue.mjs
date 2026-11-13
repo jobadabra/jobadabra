@@ -121,7 +121,7 @@ const out = locked(() => {
   if (cmd === 'ask') return ask(repo, pr, a);
   if (cmd === 'reply') {
     const e = {kind: 'reply', repo, pr: Number(pr), commentId: a, body: readFileSync(b, 'utf8'), queuedAt: now()}, k = key(e);
-    if (!st.sent.some(x => x.key === k) && !st.entries.some(x => key(x) === k)) st.entries.push(e);   // the same reply twice is one comment
+    if (!st.sent.some(x => x.key === k) && !st.entries.some(x => key(x) === k)) { st.entries.push(e); delete st.dropped[k]; }   // the same reply twice is one comment; a stale drop record must not outlive a re-queue (Gitar on #4031)
     drain(st); save(st);
     if (st.sent.some(x => x.key === k)) return 'SENT';
     if (st.dropped[k]) return `DROPPED (${st.dropped[k]})`;
