@@ -43,10 +43,17 @@ export const varies = true;
 // Why (29 Oct 2026, ap): the 7-minute aggregate ended three apply runs on the Notion stand-in leg; each step has its own hang cap.
 export const aggregateBudget = false;
 export const minutes = 20;   // the job's limit; no aggregate budget since 29 Oct 2026, each step has a hang cap
-export const shards = 3;   // the forms and CV steps split across three gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in all. 26 Oct 2026: one job
+export const shards = 8;   // the forms and CV steps split across eight gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in all. 26 Oct 2026: one job
 // took 6-6.5 min of its 7 and ran over on a slow attempt (beta 40155147300 too, 25 Oct): the same steps vary 2-4x between runners (real forms 46-122 s)
 // Why (31 Oct 2026, owner chose "Split apply first"): the first try is the verdict now (#2682), and re-check 41173193229's apply-1of2 ran out of its 11-minute
 // budget at 12.8 min on its first try (10.2 min on the second); two halves of 640 s of weighed steps plus setup sat at the budget, three thirds hold ~430 s each.
+// Why (13 Nov 2026, owner chose "Split apply into more lanes"; Nightly beta 43356056907 and Beta by hand 43359306798, apply-3of3 both ran out of the 11-minute budget): GitHub Mac runners
+// ran up to ~3x slow (setup steps x1.6-2.1 before our app starts; store reads 237 -> 867-988 ms; the same steps 99-202 s on fast runners, 584 s and 354 s+ on slow ones). Three thirds
+// took 151-189 s of steps at green speed, so a 3x runner needed ~570-700 s of 660. By this table's weights (the slowest seconds seen) the eight slices carry 125, 124.1, 109.2, 83.9, 83.8, 78, 77.6 and 77.6 s
+// plus ~36 s of setup each (green speed: 74-135 s a lane, run 43305348256). The binding slices are the three that hold one step alone (the triage bar 125 s, Background automation's queue 124.1 s,
+// Full automation's Submit 109.2 s): more lanes cannot shorten them, and they are why the count stops at 8 (the other five now sit at 78-84 s); worst case (125 + 36) x 3 = ~483 s of 660.
+// The budget is unchanged and nothing re-runs. Cost: 5 more Mac and 5 more Windows jobs per gate, each with its own install (~76 s on the Mac).
+// "See which jobs can apply automatically" (45 s) had no weight and took turns into a lane: its 45 s is the slowest of 44.2, 45.0 and 37.1 s in runs 43305348256, 43356056907 and 43359306798.
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 // Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
 // but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
@@ -59,7 +66,7 @@ export const stepSeconds = {'a multi-step form': 16.2,
   'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
   'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
   'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
-  'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
+  '"See which jobs can apply automatically"': 45, 'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
   'Full automation presses each of several queued jobs': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
 export const hangCaps = hangCapsFor('apply');
 // Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
