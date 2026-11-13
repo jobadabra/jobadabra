@@ -7,10 +7,13 @@
 // Invariants: this file only moves our own layers between two parents and re-shows them on top; it never creates, hides or removes one, and never touches the page's own nodes.
 (() => {
   if (window.__jobadabraTopLayer) return;
-  // Our floating layers only: each sets position:fixed in its own style (review.js's host, panel-overlay.js's dim, the progress, Stop and reading notes). An in-flow one of ours, like
-  // panel-written.js's "Review my answer" row under an answer box, keeps its place on the page (Gitar on #4040).
-  const ours = node => node?.nodeType === 1 && typeof node.id === 'string' && node.id.startsWith('jobadabra') && node.style?.position === 'fixed';
-  const parentNow = () => [...document.querySelectorAll('dialog:modal')].at(-1) || document.documentElement;
+  // Our floating layers only: fixed on the screen (review.js's host, panel-overlay.js's dim, the progress, Stop and reading notes set it inline; a class may set it too, so the computed
+  // value counts: Gitar on #4074). An in-flow one of ours, like panel-written.js's "Review my answer" row under an answer box, keeps its place on the page (Gitar on #4040).
+  const fixed = node => node.style?.position === 'fixed' || (node.isConnected && getComputedStyle(node).position === 'fixed');
+  const ours = node => node?.nodeType === 1 && typeof node.id === 'string' && node.id.startsWith('jobadabra') && fixed(node);
+  // A DOM that cannot read :modal (Chrome before 105, a test's fake DOM) keeps the layers on <html>: their z-index still holds, only the move into a modal is missed (Gitar on #4074).
+  const openModal = () => { try { return [...document.querySelectorAll('dialog:modal')].at(-1) || null; } catch { return null; } };
+  const parentNow = () => openModal() || document.documentElement;
   const placed = new Map();   // layer -> the dialog this file moved it into: if the page removes that dialog with the layer still in it, the layer comes back to <html>
   // The browser's popover look (a centred, bordered, white box) is undone: each layer keeps its own place and look (its inline style wins over this sheet).
   const SHEET = '[id^="jobadabra"][popover]{margin:0;border:0;padding:0;inset:auto;width:auto;height:auto;overflow:visible;background:transparent;color:inherit}';
