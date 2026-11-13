@@ -20,23 +20,29 @@ sys.path.insert(0, str(ROOT))
 
 from src.ai.providers import claude_code, cli_base, warm  # noqa: E402
 
+# Why (13 Nov 2026, bl; #3982's python shard): every file the fake leaves is written whole (a temp name, then os.replace). The pool starts the next
+# spare as a call takes one (warm.Warm.take), and seen() reads every args-*.json: that spare's file, opened and not yet written, was read empty
+# (JSONDecodeError) on a loaded runner.
 # The fake: reads one stream-json line (the question) and acts by FAKE_WARM_MODE. `answer` keeps running after its result until RELEASE exists,
 # so a test can see the call return before the process ends.
 FAKE = textwrap.dedent('''
     import json, os, sys, time
     mode, folder = os.environ['FAKE_WARM_MODE'], os.environ['FAKE_WARM_DIR']
-    with open(os.path.join(folder, f'args-{os.getpid()}.json'), 'w') as f:
-        json.dump(sys.argv[1:], f)
+    def leave(name, text):   # whole or absent: the test reads every file while the pool's next spare is still writing its own
+        path = os.path.join(folder, name)
+        with open(path + '.part', 'w') as f:
+            f.write(text)
+        os.replace(path + '.part', path)
+    leave(f'args-{os.getpid()}.json', json.dumps(sys.argv[1:]))
     if mode == 'die':
         sys.exit(3)
     if mode == 'eof':   # the orphan case: wait for end of input, then say so
         sys.stdin.read()
-        open(os.path.join(folder, 'ended'), 'w').write('eof')
+        leave('ended', 'eof')
         sys.exit(0)
     print(json.dumps({'type': 'system', 'subtype': 'init'}), flush=True)
     line = sys.stdin.readline()
-    with open(os.path.join(folder, f'question-{os.getpid()}.json'), 'w') as f:
-        f.write(line)
+    leave(f'question-{os.getpid()}.json', line)
     if mode == 'mute':
         sys.exit(0)
     if mode == 'silent':   # takes the question, never answers: only a timeout ends the call
