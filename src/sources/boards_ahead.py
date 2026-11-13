@@ -41,6 +41,7 @@ class Ahead:
             lane.arrived.clear()   # before deliver: a group put meanwhile sets it again
             hand()
             if self.future.done():
+                hand()   # a group put between that drain and the read's end is kept here too, before the caller goes on (Gitar on #4100)
                 return
 
     def take(self, db, now=None):

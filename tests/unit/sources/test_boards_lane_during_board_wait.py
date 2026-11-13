@@ -80,5 +80,33 @@ class HandOverDuringTheBoardWait(unittest.TestCase):
         self.assertEqual([handed for handed, _ in results], [True] * 8)
 
 
+class RealLane(unittest.TestCase):
+    """The same hand-over with a real boards_first.Beside: its own `_put` sets `arrived` and its own `deliver` keeps the group (Gitar on #4100: the fake Lane above supplies both)."""
+    def test_a_group_the_real_lane_lands_is_kept_while_the_board_read_is_awaited(self):
+        from src.sources import boards_first, feeds
+        jobs = [{'url': 'https://b.test/job/1', 'title': 'Electrician', 'company': 'Co'}]
+        kept, handed = [], threading.Event()
+        # the lane's first pages are 'read' at once: Beside.wait (the full read starts after them) returns
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(boards_first.Beside, '_read', lambda self, *a: self.done.set()), \
+                mock.patch.object(feeds, 'triage', lambda found: None), mock.patch.object(aggregators, 'kept', side_effect=lambda _db, _name, found, *_a, **_k: found), \
+                mock.patch.object(boards_ahead, 'start', side_effect=lambda *a, **k: boards_ahead.Ahead({}, LOCAL.read)):
+            lane = boards_first.Beside({})
+            self.assertFalse(lane.arrived.is_set())
+
+            def read(_search):
+                lane._put(jobs)   # the lane's own put: the group lands while the boards are still being read
+                kept.append(handed.wait(HANG_GUARD))
+                return []
+            LOCAL.read = read
+            db = store.connect(f'{tmp}/jobs.sqlite')
+            try:
+                listener = lambda found: (kept.append(len(found)), handed.set())   # the job-cache thread's `boards` listener: it ends the read once it was called
+                with mock.patch.object(lane, 'deliver', wraps=lambda feed_db, on_jobs: lane.__class__.deliver(lane, feed_db, listener)):
+                    boards_ahead.scan_beside([], db, {}, jobs_so_far.SoFar(db, say=lambda _: None), due=True, scan=lambda *a, **k: {'jobs': []}, first=lane)
+            finally:
+                db.close()
+        self.assertEqual(kept, [1, True], 'the real lane kept its group (1 job) before the board read ended')
+
+
 if __name__ == '__main__':
     unittest.main()
