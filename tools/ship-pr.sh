@@ -89,6 +89,9 @@ ship_pr_land() {
     fi
     if [ -n "${SHIP_PR_DRAFT:-}" ] || ship_review; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # a new push is not yet checked or approved (13 Nov 2026)
   fi
+  if ship_review && [ -z "${external:-}" ]; then   # a pending "Moves:" number: ship holds the PR and starts its pair (tools/ship-search-hold.sh, 13 Nov 2026)
+    while IFS= read -r line; do [ -z "$line" ] || step "$line"; done < <(bash "$tools/ship-search-hold.sh" "$n" "$repo")
+  fi
   [ -z "${external:-}" ] || bash "$tools/lab-ci-dispatch.sh" "$n"   # a lab PR has no Actions of its own: the public repo runs its tests (tools/lab_ci.py)
   ship_watch_start "$n"   # from here on the log also hears RED / GREEN / READY / MERGED / CLOSED, whatever way this run ends (18 Oct 2026: #1321 sat red unnoticed)
   local review=""; if ship_review; then review=1; step "review mode: the owner reviews and merges #$n by hand; waiting for every check it started"
