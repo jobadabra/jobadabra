@@ -67,7 +67,7 @@ def plan(db_path, lanes):
     with closing(store.connect(db_path)) as db:
         cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), lambda line: print(line, file=sys.stderr))
         named = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
-        print(' '.join(countries(db, lanes, priority=scout_board_priority.priority(named))))
+        print(' '.join(countries(db, lanes, priority=scout_board_priority.priority(named, db=db))))
     return 0
 
 

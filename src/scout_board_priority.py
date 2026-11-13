@@ -3,8 +3,8 @@ Why (13 Nov 2026, owner via sa, asked via AskUserQuestion: "Searched pairs first
 https://claude.ai/artifact/YPkXa1B2BDQg4WjDbrQLfx): the fill took the weakest cell first, so a full pass (930 cells, 310 passes, ~33 h on one lane) reached the pairs people search
 last. One ordered list, one owner for each part:
   1. the cells the lab names (SCOUT_BOARD_PRIORITY), in the order it names them;
-  2. the profile pairs: the b and c people of tools/persona-search/search-profiles.json (all of them: cards move, the list must not), their family derived from the role title with
-     pool_tags (never typed by hand), their country from its name. Profiles added 13 Nov 2026 (d01-d07) are held out: they are the check that the fill also works for people nobody
+  2. the profile pairs: the b and c people of tools/persona-search/search-profiles.json (all of them: cards move, the list must not), every family of their role title derived with
+     pool_tags in one batch (never typed by hand) and kept in the Scout's memory once answered (`profile_pairs`), their country from its name. Profiles added 13 Nov 2026 (d01-d07) are held out: they are the check that the fill also works for people nobody
      tuned it for (owner via sa, "Searched pairs first (Recommended)"); so are the random draws;
   3. the pairs installs really searched: the index's board cells that installs gave (no `right`, no `measured`: those are the Scout's own), the most installs first. Never a second demand
      signal (src/scout_need.py is whether one install's search has enough employers, not what people search);
@@ -18,19 +18,18 @@ from pathlib import Path
 from . import pool_tags, scout_cells
 
 PROFILES = Path(__file__).resolve().parent.parent / 'tools' / 'persona-search' / 'search-profiles.json'
+KEY = 'profile_pairs'   # scout_meta: the pairs derived once, with the profiles they came from
 COUNTED = re.compile(r'[bc]\d{2}')   # the 12 Nov 2026 round (b01-b10, c01-c20); d01-d07 (13 Nov 2026) and anything later are held out
 
 
-def profile_pairs(path=PROFILES, families=None):
-    """[(country code, family)] of the b and c profiles, in the file's order, each once; a profile whose country or family is not known is left out.
-    The family is the first pool family of the role title (families: titles -> ids, default src/pool_tags.py families: the meanings pack, then the AI)."""
-    families = families or pool_tags.families
+def _counted(path):
+    """[(country code, role title)] of the b and c profiles, in the file's order; a profile whose country is not known is left out."""
     from .scout_boards import named_country
     try:
         profiles = json.loads(Path(path).read_text()).get('profiles') or []
     except (OSError, ValueError):
         return []
-    pairs = []
+    out = []
     for person in profiles:
         if not isinstance(person, dict) or not COUNTED.fullmatch(str(person.get('id') or '')):
             continue
@@ -38,15 +37,31 @@ def profile_pairs(path=PROFILES, families=None):
             country = named_country(person.get('country'))
         except ValueError:
             continue
-        family = (families([str(person.get('title') or '')]) or [None])[0]
-        if country and family in pool_tags.FAMILIES:
-            pairs.append((country, family))
-    return list(dict.fromkeys(pairs))
+        if country:
+            out.append((country, str(person.get('title') or '')))
+    return out
+
+
+def profile_pairs(path=PROFILES, each=None, db=None):
+    """[(country code, family)] of the b and c profiles, in the file's order, each once. A title's every family counts, asked in one batch (each = titles -> ({title: ids}, unanswered),
+    default src/pool_tags.py families_each: the meanings pack, then the AI). With a `db` the answer is kept in the Scout's memory (scout_meta `profile_pairs`, with the profiles it
+    was derived from) once every title was answered, so the AI is asked once, and a busy AI never reorders the fill between runs or between the lane plan and the lane's own pass
+    (Gitar on #4035); a title left unanswered gives the kept answer if the profiles are the same, else the pairs of the titles that were answered."""
+    counted = _counted(path)
+    kept = scout_cells._meta(db, KEY, None) if db is not None else None
+    if isinstance(kept, dict) and kept.get('from') == [list(item) for item in counted]:
+        return [tuple(pair) for pair in kept.get('pairs') or []]
+    families, unanswered = (each or pool_tags.families_each)(sorted({title for _, title in counted}))
+    pairs = list(dict.fromkeys((country, family) for country, title in counted for family in families.get(title, []) if family in pool_tags.FAMILIES))
+    if db is not None and not unanswered:
+        scout_cells._set(db, KEY, {'from': [list(item) for item in counted], 'pairs': pairs})
+    return pairs
 
 
 def searched_pairs(facts):
     """Counter {(country, family): installs} from the pool's board facts (src/sources/visits_jobpages.py pool_facts): the cells installs gave. A cell the Scout counted
-    (`right`) or marked (`measured`) is the Scout's own and is no demand."""
+    (`right`) or marked (`measured`) is the Scout's own and is no demand. (`right` reaches `pool_facts` with plan PR 3/4 `_cells`: until then only `measured` shows; Gitar on #4035
+    asked for the clause's removal, kept because a counted board with 1-2 right jobs is not `measured` and would count as demand the day PR 3/4 lands.)"""
     out = Counter()
     for board in ((facts or {}).get('board') or {}).values():
         for cell in board.get('relevant') or []:
@@ -70,11 +85,10 @@ def order(named=(), profiles=(), demand=None):
     return list(dict.fromkeys([*named, *profiles, *pairs, *wide]))
 
 
-def priority(named=(), path=PROFILES, families=None, facts=None):
-    """The cells to fill first, in order (see the module docstring); `named` is the lab's SCOUT_BOARD_PRIORITY cells. Reads the index this machine downloaded when `facts` is None;
-    without one, the profiles and the lab's list alone."""
+def priority(named=(), path=PROFILES, each=None, facts=None, db=None):
+    """The cells to fill first, in order (see the module docstring); `named` is the lab's SCOUT_BOARD_PRIORITY cells; `db` keeps the profiles' pairs once derived (profile_pairs).
+    Reads the index this machine downloaded when `facts` is None; without one, the profiles and the lab's list alone."""
     if facts is None:
         from .sources import visits_jobpages
         facts = visits_jobpages.pool_facts()
-    profiles = profile_pairs(path, families)
-    return order(named, profiles, searched_pairs(facts))
+    return order(named, profile_pairs(path, each, db), searched_pairs(facts))

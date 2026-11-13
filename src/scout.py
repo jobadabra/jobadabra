@@ -242,7 +242,7 @@ def discover(db, run=None, out=print, today=None):
     from . import scout_board_cells as cells, scout_board_lanes, scout_board_priority, scout_boards
     cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), out)
     named_first = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
-    priority = scout_board_priority.priority(named_first)   # the lab's cells, the profiles', the pairs installs search, then the most searched fields everywhere
+    priority = scout_board_priority.priority(named_first, db=db)   # the lab's cells, the profiles', the pairs installs search, then the most searched fields everywhere
     try:
         only = scout_board_lanes.only(os.environ.get(scout_board_lanes.ONLY_ENV))   # one lane of several at once: its own country or nothing
     except ValueError as wrong:

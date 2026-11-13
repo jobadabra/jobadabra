@@ -10,11 +10,15 @@ from pathlib import Path
 
 from src import scout_board_cells as cells, scout_board_priority as priority, scout_cells
 
-TITLES = {'Electrician': 'electrical_mechanical', 'Truck Driver (Class CE)': 'driving_delivery', 'Data Analyst': 'data_ai', 'Marketing Manager': 'marketing_social'}
+TITLES = {'Electrician': ['electrical_mechanical'], 'Truck Driver (Class CE)': ['driving_delivery'], 'Data Analyst': ['data_ai'], 'Marketing Manager': ['b2b_sales', 'marketing_social']}
 
 
-def families(texts):   # the pool's AI, stood in: role titles -> their families
-    return [TITLES[text] for text in texts if text in TITLES]
+CALLS = []
+
+
+def families(texts, unanswered=()):   # the pool's AI, stood in, one batch: role titles -> ({title: its families}, the titles nothing answered)
+    CALLS.append(list(texts))
+    return {text: TITLES[text] for text in texts if text in TITLES and text not in unanswered}, [text for text in texts if text in unanswered]
 
 
 def person(name, title, country):
@@ -43,6 +47,30 @@ class Profiles(unittest.TestCase):
         self.assertEqual(priority.profile_pairs(self.path, families), [('de', 'data_ai')])
         self.assertEqual(priority.profile_pairs(self.folder / 'none.json', families), [])
 
+    def test_every_family_of_a_title_counts_and_all_titles_are_asked_in_one_batch(self):
+        del CALLS[:]
+        self.write(person('b05', 'Marketing Manager', 'Germany'), person('c04', 'Electrician', 'Spain'))
+        self.assertEqual(priority.profile_pairs(self.path, families), [('de', 'b2b_sales'), ('de', 'marketing_social'), ('es', 'electrical_mechanical')], 'not the alphabetically first alone (Gitar on #4035)')
+        self.assertEqual(len(CALLS), 1, 'one batch, not one call per profile')
+
+    def test_the_pairs_are_kept_once_answered_so_a_busy_ai_never_reorders_the_fill(self):
+        del CALLS[:]
+        db = sqlite3.connect(':memory:')
+        self.write(person('c04', 'Electrician', 'Spain'), person('b01', 'Truck Driver (Class CE)', 'Bulgaria'))
+        first = priority.profile_pairs(self.path, families, db)
+        self.assertEqual(first, [('es', 'electrical_mechanical'), ('bg', 'driving_delivery')])
+        self.assertEqual(priority.profile_pairs(self.path, lambda texts: ({}, list(texts)), db), first, 'a busy AI: the kept answer, no new question')
+        self.assertEqual(len(CALLS), 1)
+        self.write(person('c04', 'Electrician', 'Spain'))
+        self.assertEqual(priority.profile_pairs(self.path, families, db), [('es', 'electrical_mechanical')], 'other profiles: derived again')
+
+    def test_a_title_the_ai_left_unanswered_is_not_kept_as_no_family(self):
+        db = sqlite3.connect(':memory:')
+        self.write(person('c04', 'Electrician', 'Spain'), person('b04', 'Data Analyst', 'Germany'))
+        got = priority.profile_pairs(self.path, lambda texts: families(texts, unanswered=('Data Analyst',)), db)
+        self.assertEqual(got, [('es', 'electrical_mechanical')])
+        self.assertEqual(priority.profile_pairs(self.path, families, db), [('es', 'electrical_mechanical'), ('de', 'data_ai')], 'asked again next run: nothing was kept')
+
 
 class Order(unittest.TestCase):
     def cell(self, family, country, installs, **more):
@@ -70,7 +98,7 @@ class Order(unittest.TestCase):
         self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
         path = folder / 'p.json'
         path.write_text(json.dumps({'profiles': [person('c04', 'Electrician', 'Spain')]}))
-        got = priority.priority(named=[('sk', 'nursing_care')], path=path, families=families, facts={'board': {'a.example': {'relevant': [self.cell('data_ai', 'de', 3)]}}})
+        got = priority.priority(named=[('sk', 'nursing_care')], path=path, each=families, facts={'board': {'a.example': {'relevant': [self.cell('data_ai', 'de', 3)]}}})
         self.assertEqual(got[:3], [('sk', 'nursing_care'), ('es', 'electrical_mechanical'), ('de', 'data_ai')])
 
 
