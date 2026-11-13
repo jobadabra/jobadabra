@@ -32,6 +32,11 @@ on:
         description: "1, or 2 when the pair itself ran again for a side that was not valid (a held PR's pair runs once more, then reports)"
         type: string
         default: '1'
+      # Why (13 Nov 2026, sa: #4049's place rounds "refused from ~57 s" need each job's stage to be read by mechanism on both sides, as #4043 did for search-profiles): off by default, one dispatch away.
+      stage_log:
+        description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), on both sides, as the night logs'
+        type: boolean
+        default: false
 
 # Why (Gitar on #3957): per PR and its people, since GitHub keeps one pending run per group: another PR, or other people of the same PR, never replace a waiting pair;
 # the same people again (a side not counted, "start the pair again") replace only their own pending run.
@@ -50,6 +55,7 @@ env:
   # app: no override, each search step on the tier it names, as in the app (owner, 13 Nov 2026, "All but the replays (Recommended)"); small: every step on the small
   # model (an empty value is no override: desktop/lib/pipeline-env.js reads it as unset). The judge never reads it.
   JOBADABRA_MODEL_OVERRIDE: ${{ inputs.tiers == 'small' && 'claude-haiku-5-5' || '' }}
+  JOBADABRA_STAGE_LOG: ${{ inputs.stage_log && '1' || '' }}   # job_stage.py reads only '1'; '' (an unset input) is off
 
 jobs:
   setup:
