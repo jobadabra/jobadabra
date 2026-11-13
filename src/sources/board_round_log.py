@@ -56,13 +56,13 @@ def said(board, term, place, started, jobs_before, found=None, how='', error=Non
 
 
 def page_seen(markup, url):
-    """'the search page: N links in W wordings, K the AI called job pages, U not judged' from the page's same-site links and the AI's verdicts
-    already kept for them (decide.kept: no AI call). Why (13 Nov 2026, sa): three Lisbon boards were read through their feed, and the log could
+    """'the search page: N links, K the AI called job pages, U not judged' from the page's same-site links and the AI's verdicts already kept
+    for them (page_words.kept_link_words: no AI call). Why (13 Nov 2026, sa): three Lisbon boards were read through their feed, and the log could
     not say whether their search page had job links the AI did not call jobs, links it never judged, or none at all."""
-    from ..ai import decide, page_words
+    from ..ai import page_words
     from . import careers_parse
     _, _, same = careers_parse.same_site(markup, url)
-    wordings = list(dict.fromkeys(page_words._wording(text, parts.path) for _, text, parts in same))   # link_words' own key: the verdicts it kept
-    kept = decide.kept(page_words.LINK, wordings[:page_words.MAX_WORDINGS])   # link_words judges no more than these; the rest count as not judged
-    jobs = sum(1 for wording in wordings if wording in kept and page_words.from_kind(kept[wording]).job_path)
-    return f'the search page: {len(same)} links in {len(wordings)} wordings, {jobs} the AI called job pages, {len(wordings) - len(kept)} not judged'
+    verdicts = page_words.kept_link_words((text, parts.path) for _, text, parts in same)
+    judged = [words for words in verdicts.values() if words is not None]
+    return (f'the search page: {len(verdicts)} links, {sum(1 for words in judged if words.job_path)} the AI called job pages, '
+            f'{len(verdicts) - len(judged)} not judged')

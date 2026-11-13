@@ -153,7 +153,7 @@ class BoardLayoutTests(unittest.TestCase):
         rounds = [line for line in self.out if line.startswith('Job boards: Jobs Example round')]
         self.assertEqual((state, len(jobs)), ('ok', 3))
         self.assertEqual(len(rounds), 1, self.out)
-        self.assertIn("round 'developer': 0 job(s) on the page, 0 new, read through its feed: 3 job(s); the search page: 3 links in 3 wordings, 0 the AI called job pages, 0 not judged", rounds[0])
+        self.assertIn("round 'developer': 0 job(s) on the page, 0 new, read through its feed: 3 job(s); the search page: 3 links, 0 the AI called job pages, 0 not judged", rounds[0])
         self.assertEqual(notes, {'why': 'read through its feed'})
 
     def test_a_layout_rides_from_the_index_to_the_served_board_only_in_its_fixed_shape(self):
