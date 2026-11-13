@@ -279,13 +279,18 @@ def numbered_links(found, host, own):
     return list(dict.fromkeys(best)) if len(set(best)) >= NUMBERED else []
 
 
-def _job_paths(markup, base):
-    """(host, own path, the same-site links that look like job pages, those of them that end in an id)."""
+def same_site(markup, base):
+    """(host, own path, [(url, text, split url)] of the page's links to other pages of the same site): the links a listing's read judges."""
     host = (urllib.parse.urlsplit(base).hostname or '').removeprefix('www.')
     own = urllib.parse.urlsplit(base).path.rstrip('/')
-    out = []
     same = [(url, text, urllib.parse.urlsplit(url)) for url, text in links(markup, base)]
-    same = [(url, text, parts) for url, text, parts in same if (parts.hostname or '').removeprefix('www.') == host and parts.path.rstrip('/') != own]
+    return host, own, [(url, text, parts) for url, text, parts in same if (parts.hostname or '').removeprefix('www.') == host and parts.path.rstrip('/') != own]
+
+
+def _job_paths(markup, base):
+    """(host, own path, the same-site links that look like job pages, those of them that end in an id)."""
+    host, own, same = same_site(markup, base)
+    out = []
     words = page_words.link_words((text, parts.path) for url, text, parts in same)
     for url, text, parts in same:
         if (words[(str(text or ''), str(parts.path or ''))] or page_words.Words(False, False, False, False)).job_path:

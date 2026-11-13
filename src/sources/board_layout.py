@@ -26,7 +26,7 @@ class Layout:
         """The page's jobs: its JSON-LD first, then the layout's job cards, else the usual read (careers.read_page_from)."""
         declared = careers.jsonld_jobs(markup, url)
         if declared:
-            self._why('its jobs are JSON-LD, read with no question')
+            self.why_none('its jobs are JSON-LD, read with no question')
             return declared
         if not self.recipe:
             return self.learn(markup, url, careers.read_page_from(markup, url, fetch, part))
@@ -51,10 +51,10 @@ class Layout:
             recipe = page_recipes.derive(markup, url, found)
             self._note(recipe)
             if not recipe:
-                self._why('no one shape reads its job cards')
+                self.why_none('no one shape reads its job cards')
         return found
 
-    def _why(self, text):
+    def why_none(self, text):
         """Why discovery's read learned no layout, for its pass line (notes['why']; the first reason stays)."""
         if self.notes is not None:
             self.notes.setdefault('why', text)

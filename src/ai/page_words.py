@@ -114,6 +114,15 @@ def link_words(pairs, floor=None):
     return {(t, p): (from_kind(found[_wording(t, p)]) if _wording(t, p) in found else floor_words(t, p, floor) if no_ai else None) for t, p in pairs}
 
 
+def kept_link_words(pairs):
+    """{(text, path): Words or None}: the verdicts link_words already kept for these links (no AI call); None = not judged (past MAX_WORDINGS,
+    the cap, a failure, or the AI was off and the word lists answered). Why (#3987, Gitar): a log reads the verdicts through link_words' own key."""
+    from . import decide
+    pairs = list(dict.fromkeys((str(t or ''), str(p or '')) for t, p in pairs))
+    found = decide.kept(LINK, {_wording(t, p) for t, p in pairs[:MAX_WORDINGS]})
+    return {(t, p): (from_kind(found[_wording(t, p)]) if _wording(t, p) in found else None) for t, p in pairs}
+
+
 def host_named(hosts):
     """{host: True/False/None}: is this host named for jobs or careers (jobs.acme.com, stellen.lu.ch)? None = not judged yet."""
     hosts = list(dict.fromkeys(str(h or '').lower() for h in hosts if h))
