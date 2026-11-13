@@ -102,6 +102,15 @@ class InEqualsOut(unittest.TestCase):
                 self.assertEqual(len(per_job), N, 'one line per job, its link only')
                 self.assertNotIn('Electrician', ''.join(line for line in said.splitlines() if line.startswith('Stage: ')), 'no title in the per-job lines')
 
+    def test_a_never_asked_line_carries_the_place_text_and_no_other_stage_does(self):
+        """Why (13 Nov 2026, sa): 317 never-asked board jobs could not be told apart by place; the place text is public posting data."""
+        from src.sources import job_stage
+        job = {'title': 'Welder', 'url': 'https://x.example/1', 'location': '  Stuttgart,\n DE '}
+        with mock.patch.dict('os.environ', {'JOBADABRA_STAGE_LOG': '1'}), mock.patch('builtins.print') as out:
+            job_stage.say_one('Arbeitnow', 'never_asked', job)
+            job_stage.say_one('Arbeitnow', 'kept', job)
+        self.assertEqual([call.args[0] for call in out.call_args_list], ['Stage: Arbeitnow never_asked https://x.example/1 | Stuttgart, DE\n', 'Stage: Arbeitnow kept https://x.example/1\n'])
+
     def test_a_dropped_job_is_never_counted_kept_and_a_job_with_no_place_is_placed_out(self):
         """Review, 10 Nov 2026: a verdict that lands after kept looked must not turn a dropped job into "kept" (it reads as after_kept downstream)."""
         from src.sources import job_stage

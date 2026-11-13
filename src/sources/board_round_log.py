@@ -32,6 +32,23 @@ class Parts:
         return f" ({' · '.join(long)})" if long else ''
 
 
+class Ladder:
+    """One board's walk up the read ladder (found_boards._another_way): after each way, one line with the way, the jobs it listed and its seconds,
+    so a board that cost 40 s over four ways that gave nothing is told from one that cost 40 s in one.
+    Why (13 Nov 2026, sa, fix #1 step 3 "log line first, measure, then move"): the log named only the way that worked, never the ways before it."""
+
+    def __init__(self, board, clock=time.monotonic):
+        self.name, self.clock = board.get('name') or board.get('host'), clock
+        self.began = self.last = clock()
+
+    def did(self, way, listed=None):
+        """Say `way` ended with `listed` (the jobs it read; None: it did not run, nothing is said)."""
+        now = self.clock()
+        if way and listed is not None:
+            print(f"Job boards found: {self.name} way '{way}': {len(listed)} job(s) listed, {now - self.last:.0f} s (ladder {now - self.began:.0f} s)", flush=True)
+        self.last = now
+
+
 @contextlib.contextmanager
 def untimed(_name):
     """The part() of a page read outside a board round (an employer site's): nothing is timed."""

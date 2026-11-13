@@ -207,9 +207,10 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     no page is fetched past it (_until_cut); the board goes up the ladder again next time (26 Oct 2026, proof runs: a ladder started at 77 s
     ran to 133 s, past the 90 s cut; then one way alone, started before the cut, fetched pages to 138 s)."""
     entry['form_for'], entry['ladder'] = proposed, LADDER
-    refused, fetch, show = [], _until_cut(fetch), show and _until_cut(show)
+    refused, fetch, show, steps = [], _until_cut(fetch), show and _until_cut(show), board_round_log.Ladder(board)
 
-    def cut():   # past the search's read cut: no next way; not marked as gone up, so the next search tries it
+    def cut(way=None, listed=None):   # past the search's read cut: no next way; not marked as gone up, so the next search tries it
+        steps.did(way, listed)   # the way that just ended, said before the cut is read
         if read_budget.past_cut():
             entry.pop('form_for', None)
             entry.pop('ladder', None)
@@ -230,7 +231,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
             entry['search_url'] = bare
             print(f"Job boards found: {board['name']} read without the link's extra filters", flush=True)
             return again, state, relevant
-    if cut():
+    if cut('bare link', again if bare else None):
         return stands(before)
     if before[0]:   # the rules read something that was no relevant job (a menu, a news search): the AI reads the page itself
         read = _read_by_ai(board, search, fetch)
@@ -238,7 +239,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         if relevant:
             print(f"Job boards found: {board['name']} read by the AI page reader", flush=True)
             return read, 'ok', relevant
-    if cut():
+    if cut('AI page reader', read if before[0] else None):
         return stands(before)
     page = board_forms.home(board, fetch)
     if show and page[1] and careers._shell(page[1]):   # a home page built by scripts: its search form exists only in the headless browser
@@ -251,7 +252,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         return stands(before)
     if made:
         return made
-    if cut():
+    if cut('search form', []):
         return stands(before)
     listed, section, scripted = _section(board, page, search, fetch, judge, show)   # the board's own section for this kind of work (board_sections.py)
     if listed:
@@ -259,7 +260,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         entry['rendered'] = scripted or entry.get('rendered', False)
         print(f"Job boards found: {board['name']} read from its own section", flush=True)
         return listed, 'ok', judge(listed)
-    if cut():
+    if cut('own section', listed):
         return stands(before)
     try:
         listed, route = board_routes.discover(page[1], page[0], fetch, board, _terms(search, FULL_SEARCHES))
@@ -272,7 +273,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         entry['route'], entry['route_kind'] = route, route['kind']   # read_board follows it first from then on
         print(f"Job boards found: {board['name']} read from its own job list ({route['kind']})", flush=True)
         return listed, 'ok', relevant
-    if cut():
+    if cut('own job list', listed):
         return stands(before)
     return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
 
