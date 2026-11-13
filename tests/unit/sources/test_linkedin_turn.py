@@ -114,6 +114,25 @@ class TurnTest(unittest.TestCase):
         self.assertIsInstance(got, linkedin_guest.Later)
         self.assertEqual(linkedin.requests, [])
 
+    def test_a_full_window_or_a_passed_cut_never_takes_a_lease(self):
+        # Why (Gitar on #4004): the site's turn comes after this computer's own checks, so no lease is left open for a GET that never happens
+        linkedin_guest.FILE.write_text(json.dumps({'sent': [self.clock[0] - 10 - i for i in range(linkedin_guest.WINDOW_MAX)]}))
+        got, site, linkedin = self.run_with([{'answer': 'go', 'lease': 'lt_1'}])
+        self.assertIsInstance(got, linkedin_guest.Later)
+        self.assertEqual((site.calls, linkedin.requests), ([], []))
+        linkedin_guest.FILE.write_text(json.dumps({'sent': [self.clock[0] - 5]}))
+        with mock.patch.object(read_budget, 'cut_at', return_value=self.clock[0] + 3):   # the gap (20-40 s) would pass the cut
+            got, site, linkedin = self.run_with([{'answer': 'go', 'lease': 'lt_1'}])
+        self.assertIsInstance(got, linkedin_guest.Later)
+        self.assertEqual((site.calls, linkedin.requests), ([], []))
+
+    def test_a_window_filled_after_go_tells_the_lease_unused(self):
+        with mock.patch.object(linkedin_guest, '_spend', return_value=False):
+            got, site, linkedin = self.run_with([{'answer': 'go', 'lease': 'lt_1'}])
+        self.assertIsInstance(got, linkedin_guest.Later)
+        self.assertEqual(linkedin.requests, [])
+        self.assertEqual(site.calls[1][1], {'lease': 'lt_1', 'status': 0, 'word': 'unused'})
+
     def test_a_github_run_asks_with_its_repo_key(self):
         env = {linkedin_turn.TURN: 'https://site.example', 'JOBADABRA_TRIAL_KEY': 'JPT1.handle.mac'}
         site = FakeSite([{'answer': 'no', 'why': 'x'}])

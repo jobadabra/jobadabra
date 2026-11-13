@@ -123,6 +123,6 @@ The pause after a 429 (`linkedin-guest-on.js`, today 1 day) becomes this clear t
 - [ ] 429 clear time measured (1 h / 3 h / 6 h) and the pause set from it
 - [x] PR 3/4 Automations note: both Always on cards list LinkedIn with your sign-in and Gmail & Calendar as "This computer only" (proof: desktop/test/unit/renderer/always-on-device-only.test.js)
 - [x] Caps numbers and the 6 h cache: owner's yes (13 Nov 2026) (proof: none: AskUserQuestion answers relayed by the coordinator, quoted in Caps)
-- [x] PR 4/4 Always on trial with the Caps, owner's install only (site PR first): web #627 the turn route; the app half asks it before each GET, both ways (proof: tests/unit/sources/test_linkedin_turn.py)
+- [x] PR 4/4 Always on trial with the Caps, owner's install only (site PR first): web #627 the turn route; the app half asks it before each GET, both ways (proof: tests/unit/sources/test_linkedin_turn.py); its FakeSite plays the contract of jobadabra-web api/linkedin-turn.js at f26b27f (live: no key answers 401); the GitHub way also needs the repo variable JOBADABRA_LINKEDIN_TRIAL=1, set by hand on the owner's repo only
 - [ ] First cloud run by hand right after both merge (owner: "By hand, right after merge (Recommended)"); the Settings line "Always on reads LinkedIn's public job search (trial)" waits for its answer: a cloud address LinkedIn refuses would make it untrue
 - [ ] Trial read after about a week: no 429/999/wall, then the owner's yes, then the Always on guest read for everyone

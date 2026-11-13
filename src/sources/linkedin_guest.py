@@ -166,17 +166,6 @@ def _get(url):
     with PACE.lock:   # held through the request: one at a time, so the gap holds for every thread of the process
         if PACE.stopped:
             raise Later(url, SAID[PACE.stopped])
-        lease = None
-        if linkedin_turn.active():   # a cloud run: the site's turn first (its caps, its cache), then this computer's pace as on a Mac
-            cut = _cut()
-            kind, given = linkedin_turn.ask(url, None if cut is None else cut - time_budget.now())
-            if kind == 'cached':
-                return url, given
-            if kind == 'no':
-                if PACE.stop('cloud'):
-                    print(f"{SAID['cloud']}: {given}", flush=True)
-                raise Later(url, given)
-            lease = given
         at = time_budget.wall().timestamp()
         sent = _sent(at)
         if len(sent) >= WINDOW_MAX:
@@ -188,7 +177,19 @@ def _get(url):
             raise Later(url, 'the read time is up')
         if wait:
             _sleep(wait)
+        lease = None
+        # Why (Gitar on #4004): in a cloud run the site's turn comes after this computer's own window, gap and cut, so a lease is never taken and then left unused
+        if linkedin_turn.active():
+            kind, given = linkedin_turn.ask(url, None if cut is None else cut - time_budget.now())
+            if kind == 'cached':
+                return url, given
+            if kind == 'no':
+                if PACE.stop('cloud'):
+                    print(f"{SAID['cloud']}: {given}", flush=True)
+                raise Later(url, given)
+            lease = given
         if not _spend(time_budget.wall().timestamp()):   # counted once sent, whatever comes back
+            _told(lease, 0, 'unused')
             raise Later(url, WINDOW_FULL)
         PACE.began(time_budget.now())
         timeout = TIMEOUT if cut is None else max(1.0, min(TIMEOUT, cut - PACE.last))
