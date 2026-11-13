@@ -1,9 +1,11 @@
 """Reading a careers page as text: the address <-> feed slug, links, which links look like a job list, and the jobs a page publishes itself
 (schema.org JobPosting data), plus the numbered pages of a job list.
 
-Split out of careers.py (pure move; import it through careers, never first). No network and no module state here: careers.py imports
+Split out of careers.py (pure move; import it through careers, never first). No network and no module state here, with ONE exception: a one-posting page
+whose structured title the page does not show is asked about once per title wording (_shown_title, the title-field question, cached by decide); careers.py imports
 and re-exports every name. Guarded by tests/unit/sources/test_careers.py and test_careers_paging.py.
 """
+import hashlib
 import html
 import json
 import re
@@ -197,7 +199,71 @@ def _page_town(markup, posting, memo):
     return memo['towns'].get(ident, '')
 
 
-def jsonld_jobs(markup, url):
+def page_title(markup, url, say=True, cut=True):
+    """The page's title: its first <h1> that is not the site's own name as the page declares it (site_names), else the first
+    part of <title> that is not. say=False: no log line; cut=False: the whole <h1>, not its first part before a " - " or "|". '' when the only heading is the site's name: that page is said in the log and not read as a job."""
+    names = site_names(markup)
+    headings = [ats.plain(text) for text in re.findall(r'<h1[^>]*>(.*?)</h1>', markup, re.S | re.I)]
+    kept = [text for text in headings if plain_name(text) not in names]
+    if headings and not kept:
+        if say:
+            print(f"Job page: its only heading is the site's own name, not a job title; not read as a job: {url}", flush=True)
+        return ''
+    if say and len(kept) < len(headings) and len(kept) > 1:   # Why (#3901, 12 Nov 2026, sa; moved here 13 Nov 2026, sd): the first is taken, said so a wrong pick can be found (say=False: a caller that only checks a title keeps the log quiet)
+        print(f"Job page: {len(kept)} headings besides the site's name, the first taken as the title: {url}", flush=True)
+    if kept:
+        return re.split(r'\s+[|\u2013\u2014-]\s+', kept[0])[0].strip() if cut else kept[0].strip()
+    page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
+    parts = [part.strip() for part in re.split(r'\s+[|\u2013\u2014-]\s+', page)]
+    return next((part for part in parts if plain_name(part) not in names), '')
+
+
+TITLE_FIELD = 'title-field'   # decide topic: is a JobPosting's title a job title or an unfilled template field
+TITLE_FIELD_ANSWERS = ('job_title', 'template_field')
+TITLE_FIELD_INSTRUCTIONS = ('A job page gives two lines: the "title" field of its structured data and the heading the page shows, in any language. Answer template_field only when the title is a placeholder '
+                    'or variable name a page template did not fill in (an identifier, a token in capitals or with underscores or braces, not a role), whatever the heading says: a heading such as '
+                    '"Careers" or "Open positions" over a real role name is a job_title. Answer job_title when the title names a role.')
+
+
+def _shown_title(markup, url, title):
+    """A job page's one JobPosting title, unless it is an unfilled template field: then the page's own heading.
+    Why (13 Nov 2026, sd, jobadabra-lab board-discovery run 43502695338 (Spain); Gitar on #4046 refused the first rule, "the page must show the title", for "Sr. Engineer" against a shown "Senior Engineer" and for
+    script-drawn titles): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"`, so its 39 local jobs shared one title and the kinds question saw one title:
+    "no kinds of work from the AI: not kept". Structure only finds the doubt: the title is not in the page's visible text AND shares no word with its heading or <title>.
+    Whether that is a template field is the AI's judgment (title-field, asked once per wording and kept); no AI or an unsure answer keeps the title, never a guess.
+    Invariant: never an empty title (no heading on the page: the structured title stays, as a script-rendered page needs)."""
+    # Why (13 Nov 2026, Gitar on #4086): ats.plain and plain_name both cut at 12,000 characters, so a title shown further down a long page looked absent: fold the whole text here
+    seen = re.sub(r'\s+', ' ', ats.posting_text.html_to_text(re.sub(r'<(script|style|noscript)\b.*?</\1>', ' ', markup, flags=re.S | re.I), len(markup))).strip().lower()
+    if plain_name(title) in seen:
+        return title
+    heading = page_title(markup, url, say=False, cut=False)   # the whole heading: "Mozo/a de montaje - Mallorca" is the title, not "Mozo/a de montaje"
+    if not heading or plain_name(heading) == plain_name(title):
+        return title
+    page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
+    words = lambda text: set(re.findall(r'\w{3,}', plain_name(text)))
+    if not words(title) or words(title) & (words(heading) | words(page)):   # no 3+ letter word (a 2-character title, IT, QA): nothing to doubt, no question (Gitar on #4081)
+        return title
+    from ..ai import decide
+    question = f'title: {title}\nheading: {heading}'   # Why (13 Nov 2026, Gitar on #4062): on a list page the heading is the board's, so the AI sees both lines, never the title alone
+    # Why (13 Nov 2026, Gitar on #4066): the answer is kept per TITLE wording, not per title+heading: a placeholder is the same on every page of a board, so one question
+    # covers its 40 pages (keyed on both it was 40 AI calls on a Trabajos read); the heading is context for the first page asked, not part of the key.
+    if decide.one(TITLE_FIELD, hashlib.sha256(title.lower().encode()).hexdigest()[:20], question, TITLE_FIELD_ANSWERS, TITLE_FIELD_INSTRUCTIONS) != 'template_field':
+        return title
+    print(f"Job page: its structured data names the job {title!r}, which is not a job title; its heading {heading!r} is the title: {url}", flush=True)
+    return heading
+
+
+def jsonld_jobs(markup, url, job_page=False):
+    """The JobPosting entries a page publishes, in the common job shape (ats._job). job_page=True: the caller is reading ONE job page from its own link, so a page of exactly
+    one posting shows its title (_shown_title). Any other call (a structure probe on a careers or listing page, whose heading is the board's) stays a pure parse: no AI, no rewrite.
+    Why (13 Nov 2026, Gitar on #4081): one posting on a page does not make it a job page, and a probe that only tests truthiness must not cost an AI call or swap a title."""
+    jobs = _jsonld_jobs(markup, url)
+    if job_page and len(jobs) == 1:
+        jobs[0]['title'] = ats.posting_text.label(_shown_title(markup, url, jobs[0]['title']))
+    return jobs
+
+
+def _jsonld_jobs(markup, url):
     """The JobPosting entries a page publishes, in the common job shape (ats._job)."""
     jobs, memo = [], {}
     for block in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', markup, re.S | re.I):
