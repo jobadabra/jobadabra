@@ -162,6 +162,36 @@ class CheckEndedRelabelsTest(unittest.TestCase):
         self.assertIn('node tools/gitar-label.mjs head "$SHA"', shared)
 
 
+# 13 Nov 2026, coordinator (gl2): a verdict must not pass a head Gitar never reviewed. Real instance: #4020's fix push at 19:00 had no Gitar check run; the session's thread replies made Gitar EDIT its
+# old dashboard comment (still "Changes requested", 0 closed), so updated_at was newer than the head, the label (and ship-watch's peek) read it as the head's verdict and nobody asked for a review.
+def stale_edit_gh(verdict, ran_on_head):
+    """A gh for one open PR: head committed 19:00:00, pushed 19:00:05; Gitar's comment written 18:40, EDITED 19:02 for a thread reply; Gitar's suite on the head has `ran_on_head` check runs."""
+    return """(() => {
+  const run = (...a) => { if (a[1] === 'graphql') return JSON.stringify({data: {repository: {pullRequest: {state: 'OPEN', headRefOid: 'H2', baseRefName: 'main',
+    comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: %s, createdAt: '2026-11-13T18:40:00Z', updatedAt: '2026-11-13T19:02:00Z'}]},
+    labels: {nodes: []}, timelineItems: {nodes: []},
+    commits: {nodes: [{commit: {committedDate: '2026-11-13T19:00:00Z', parents: {nodes: [{oid: 'P'}]}, checkSuites: {nodes: [{createdAt: '2026-11-13T19:00:05Z', app: {slug: 'gitar-bot'}, checkRuns: {totalCount: %d}}]}}}]}}}}});
+    throw new Error('unexpected ' + a.join(' ')); };
+  return run;
+})()""" % (json.dumps(VERDICT % verdict), ran_on_head)
+
+
+@unittest.skipUnless(shutil.which('node'), 'needs node')
+class StaleVerdictEditTest(unittest.TestCase):
+    def labels(self, verdict, ran_on_head):
+        return node(f"m.wantedFor('o/r', 7, {stale_edit_gh(verdict, ran_on_head)}).wanted")
+
+    def test_an_approval_edited_for_a_thread_reply_does_not_pass_a_head_gitar_never_ran_on(self):
+        self.assertEqual(self.labels('✅ Approved', 0), ['Gitar: not started'])
+
+    def test_a_red_verdict_edited_for_a_thread_reply_reads_not_re_reviewed(self):
+        self.assertEqual(self.labels('⚠️ Changes requested', 0), ['Gitar: changes requested · not re-reviewed'])
+
+    def test_the_same_edit_counts_when_gitars_check_ran_on_the_head(self):
+        """Positive control: with a Gitar run on the head, an edit after the push is the verdict of that run (#38)."""
+        self.assertEqual(self.labels('✅ Approved', 1), ['Gitar: approved'])
+
+
 if __name__ == '__main__':
     unittest.main()
 
@@ -189,10 +219,10 @@ class MainOnlyMergeKeepsTheVerdictTest(unittest.TestCase):
 
     def test_the_3886_merge_of_main_keeps_the_approval(self):
         own = self.own(answers())
-        self.assertEqual(own, '2026-11-12T13:01:30Z')
+        self.assertEqual(own, {'sha': 'P1', 'time': '2026-11-12T13:01:30Z'})
         body = '<summary><b>Code Review</b> <kbd>✅ Approved</kbd>'
-        verdict = node(f"m.wantedLabel({json.dumps(body)}, '2026-11-12T13:05:50Z', {json.dumps(own)})")
-        self.assertEqual(node(f"m.wantedLabels({{verdict: {json.dumps(verdict)}, verdictTime: '2026-11-12T13:05:50Z', headTime: {json.dumps(own)}, gitarOnHead: false}})"), ['Gitar: approved'])
+        verdict = node(f"m.wantedLabel({json.dumps(body)}, '2026-11-12T13:05:50Z', {json.dumps(own['time'])}, true)")   # Gitar ran on P1, the commit the approval belongs to
+        self.assertEqual(node(f"m.wantedLabels({{verdict: {json.dumps(verdict)}, verdictTime: '2026-11-12T13:05:50Z', headTime: {json.dumps(own['time'])}, gitarOnHead: false}})"), ['Gitar: approved'])
 
     def test_a_merge_that_changes_the_own_diff_needs_a_new_review(self):
         changed = [{**OWN[0], 'patch': '@@ -1 +1 @@\n-a\n+c'}]
