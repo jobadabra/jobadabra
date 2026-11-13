@@ -132,13 +132,14 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
   }
 }
 // What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,
-// the countries the AI worked out for them from places.json (written by the press itself, so it is read again after it).
-function searchSummary() {
-  const read = (folder, file) => { try { return JSON.parse(fs.readFileSync(path.join(storage.path(folder), file), 'utf8')); } catch { return {}; } };
-  const search = read('config', 'search.json'), known = read('data', 'places.json'), places = [];
+// the countries the engine reads for them (metrics.py --countries: src/places.py countries over places.json, written by the press itself, so it is read again after it).
+// Why (13 Nov 2026, #3953): matching places.json by the raw fragment showed countries [] for "sofia|софия" and "krak[oó]w", which the engine reads as Bulgaria and Poland.
+function searchSummary(withCountries = true) {
+  let search = {};
+  try { search = JSON.parse(fs.readFileSync(path.join(storage.path('config'), 'search.json'), 'utf8')); } catch { /* no strategy yet: no roles, no places */ }
+  const places = [];
   for (const key of ['top_tier', 'country_wide', 'abroad']) for (const word of search.locations?.[key] || []) if (!places.includes(word)) places.push(word);
-  const countries = [...new Set(places.flatMap(word => Object.values(known).filter(entry => String(entry?.word || '').toLowerCase() === String(word).toLowerCase()).flatMap(entry => entry.countries || [])))];
-  return {roles: (search.role_keywords || []).length, places, countries};
+  return {roles: (search.role_keywords || []).length, places, ...(withCountries ? {countries: metrics('metrics.py', '--countries').countries || []} : {})};
 }
 const failed = [];
 /** 'on' or 'off': whether this run's presses read EURES (src/features.py 'eures': --with-eures or JOBADABRA_EURES=1 turn it on, --without-eures off), written on each press row for gate.py. */
@@ -147,7 +148,8 @@ const done = fs.existsSync(path.join(out, 'presses.jsonl')) ? fs.readFileSync(pa
 const fieldFile = option('--change-field', '');
 for (let press = done + 1; press <= presses; press++) {
   const changed = press === 2 && fieldFile ? await changeField(JSON.parse(fs.readFileSync(fieldFile, 'utf8'))) : null;
-  console.log(`Search: ${searchSummary().roles} roles; places ${searchSummary().places.join(', ') || 'none'}`);
+  const before = searchSummary(false);
+  console.log(`Search: ${before.roles} roles; places ${before.places.join(', ') || 'none'}`);
   const started = Date.now(), log = fs.createWriteStream(path.join(out, `run-${press}.log`));
   const firstOnly = process.argv.includes('--first-only');
   let calls = 0;

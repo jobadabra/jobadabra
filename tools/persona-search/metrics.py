@@ -1,9 +1,11 @@
 """One persona's job cache as numbers for the persona search check (tools/persona-search/run.mjs): open jobs, those in the places (the engine's own
 place check), scored, fit 70+, the top 10 with their fit, and the last run's yield per source (src/source_yield.py). Prints one JSON line.
 Run with the persona's JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR set (run.mjs does), from the repository root.
+--countries: only {"countries": [...]}, the countries of the search's places as the engine reads them (src/places.py countries), for run.mjs's search summary.
 """
 import json
 import sqlite3
+import sys
 
 from collections import Counter
 
@@ -15,7 +17,18 @@ from src.sources import feeds
 LIST_LOCATION = 60   # a longer location names many places: not counted as local
 
 
+def countries():
+    """The countries of the person's places, read the way the engine reads them (places.countries over their own words and the places cache).
+    Why (13 Nov 2026, #3953): run.mjs matched places.json by the raw fragment, so "sofia|софия" or "krak[oó]w" showed countries [] when the engine knew them."""
+    from src import places
+    from src.paths import load_search_config
+    return places.countries(load_search_config(matching=False), limit=None)
+
+
 def main():
+    if '--countries' in sys.argv:
+        print(json.dumps({'countries': countries()}, ensure_ascii=False))
+        return
     db = sqlite3.connect(JOBS_DB)
     # Why (PR 3130, run 41807509648, 4 Nov 2026): a press cut by the 3-minute stop before any step opened the store has no tables; that is zero jobs, not a crash,
     # so run.mjs still writes the press row (zeros) instead of losing the whole persona to "the press wrote no numbers".
