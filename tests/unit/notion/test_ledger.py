@@ -242,7 +242,7 @@ class AddApplicationTests(unittest.TestCase):
             'a list with neither place nor text': ledger.ats._job('JR2029104', 'Network Site Reliability Engineer', '', link),
         }
         for name, entry in listed.items():
-            with self.subTest(list=name), mock.patch.object(ledger.ats, '_board', lambda *_a, e=entry: [e]):
+            with self.subTest(list=name), mock.patch.object(ledger.ats, 'posting', lambda url, e=entry: e):   # posting() asks the Workday job first (ONE_JOB): patching _board alone let it call NVIDIA live
                 meta = ledger.page_meta(link, opener=lambda req, timeout: io.BytesIO(recorded))
             self.assertGreater(len(meta.get('description', '')), 1000)
             self.assertEqual(meta['date_posted'], '2026-11-04')
@@ -252,7 +252,7 @@ class AddApplicationTests(unittest.TestCase):
         link = 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Network-Site-Reliability-Engineer_JR2029104'
         entry = ledger.ats._job('JR2029104', 'Board title', 'Board place', link, '2026-11-01', 'The board text. ' * 10)
         page = '<script type="application/ld+json">{"@type":"JobPosting","title":"Page title","description":"Page text"}</script>'
-        with mock.patch.object(ledger.ats, '_board', lambda *_a: [entry]):
+        with mock.patch.object(ledger.ats, 'posting', lambda url: entry):   # Why (13 Nov 2026): #4009 made posting() read the one Workday job first, so a _board patch alone called NVIDIA live from this unit test
             meta = ledger.page_meta(link, opener=lambda req, timeout: io.BytesIO(page.encode()))
         self.assertEqual((meta['title'], meta['location'], meta['date_posted']), ('Board title', 'Board place', '2026-11-01'))
         self.assertTrue(meta['description'].startswith('The board text.'))
