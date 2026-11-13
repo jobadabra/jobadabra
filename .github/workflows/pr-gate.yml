@@ -109,6 +109,14 @@ jobs:
         if: ${{ !cancelled() && steps.which.outputs.cases != '' }}
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e}
+      # Why (13 Nov 2026, owner, asked via AskUserQuestion: "Add the check (Recommended)"; 2 escapes in 30 days): #3684 (10 Nov) and #3939 (12 Nov) changed press-yardstick.yml, merged green here,
+      # and turned web's search-night-prs test red on every web PR. A file a web test reads (tools/web-tests-reached.mjs derives it from the tests' own text) now runs just those tests of
+      # jobadabra-web main in the joined tree, here, before the merge. Nothing read = about a second. A test already red on the base is a warning, not this PR's red.
+      - name: Web tests that read this PR's files
+        if: ${{ !cancelled() }}
+        run: |
+          git fetch -q origin main
+          bash tools/web-tests-reached.sh origin/main "${{ github.event.pull_request.head.sha }}"
       - name: New test pages fail on the old build
         if: ${{ !cancelled() }}
         env:
