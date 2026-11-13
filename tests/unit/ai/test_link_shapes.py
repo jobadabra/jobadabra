@@ -37,14 +37,14 @@ def judge(paths, ai):
 
 RECORDED = json.loads((pathlib.Path(__file__).parents[2] / 'fixtures' / 'board_link_answers.json').read_text())['pages']
 JOBISH = ('job_list', 'job_page', 'careers_page')
-LINKS, ASKED, LIFTED = 4737, 3338, 14   # the 80 recorded pages: links, wordings asked, non-job links a job-agreed shape lifts
+LINKS, ASKED, LIFTED = 4736, 3338, 14   # the 80 recorded pages: links, wordings asked, non-job links a job-agreed shape lifts
 
 
 def replayed(rows):
     """(link_words' answers, wordings asked) for one recorded page: the stand-in AI gives each link the AI's own per-link answer."""
-    answer, asked = {}, []
-    for path, kind in rows:
-        answer.setdefault(page_words._wording('', path), kind)
+    answer = {page_words._wording('', path): kind for path, kind in rows}
+    assert len(answer) == len(rows), 'the fixture keeps one row per link wording (Gitar on #4039): a second row could disagree with the first'
+    asked = []
 
     def replay(topic, items, answers, task, floor=True):
         asked.extend(items.values())
@@ -100,7 +100,7 @@ class LinkShapes(unittest.TestCase):
         for page in ('infoempleo', 'trabajos', 'infojobs'):
             _, words = replayed(RECORDED[page])
             asked, links = asked + len(words), links + len(RECORDED[page])
-        self.assertEqual(links, 128 + 288 + 53, 'positive control: the three Madrid pages with the AI\'s own answer for each link')
+        self.assertEqual(links, 128 + 287 + 53, 'positive control: the three Madrid pages with the AI\'s own answer for each link')
         self.assertLessEqual(asked, 130, f'{asked} wordings asked for {links} links')
 
     def test_without_ai_the_old_words_answer_every_link_as_before(self):

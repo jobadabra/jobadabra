@@ -24,8 +24,9 @@ MAX_WORDINGS = 300   # distinct link wordings judged in one call site
 # them city links of one shape (239 paths), and three boards' 502 wordings took 11 calls (c04, run 43473395249: "job links 82 s"); by shape, 120 (3 calls).
 # Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Only job verdicts spread (Recommended)": "A shape whose 3 samples all say "job"
 # gives that to the rest. A shape whose samples say "not a job" is asked link by link."; issue #4038): a site's menu sections under one parent
-# are one shape, and 3 non-job samples gave "not jobs" to the section that lists jobs (19 job links on 3 of 37 boards, 76 pages); spreading
-# only a job verdict lost none, at 4,224 wordings against 3,671 (5,219 asked link by link). Gitar's finding on #4022 was right.
+# are one shape, and 3 non-job samples gave "not jobs" to the section that lists jobs. On the 80 recorded pages (tests/fixtures/board_link_answers.json,
+# 4,736 links) the first rule lost 18 job links at 2,950 wordings; spreading only a job verdict loses none at 3,338 (test_link_shapes ASKED).
+# Gitar's finding on #4022 was right.
 SAMPLE = 3
 SPREAD = ('job_list', 'job_page', 'careers_page')   # the only verdicts a shape's samples give its other links
 

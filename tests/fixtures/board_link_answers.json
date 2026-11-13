@@ -1,5 +1,5 @@
 {
-"why": "The AI's own per-link answers (link-kind, Codex plan) for the public link paths of saved board results pages, in page order; no link text, the first answer per path. The 4 named pages: PR #4022's measure; the 76 'host n' pages (37 boards, 9 countries): the wider measure of issue #4038, 13 Nov 2026.",
+"why": "The AI's own per-link answers (link-kind, Codex plan) for the public link paths of saved board results pages, in page order; no link text, one row per link wording (the first answer). The 4 named pages: PR #4022's measure; the 76 'host n' pages (37 boards, 9 countries): the wider measure of issue #4038, 13 Nov 2026.",
 "pages": {
 "infoempleo": [
 ["/", "other"],
@@ -368,7 +368,6 @@
 ["/ofertas-empleo/restaurador", "job_list"],
 ["/ofertas-empleo/rotulista", "job_list"],
 ["/ofertas-empleo/salvamento_socorrismo", "job_list"],
-["/ofertas-empleo/recursos_Humanos_personal", "job_list"],
 ["/ofertas-empleo/soldador", "job_list"],
 ["/ofertas-empleo/tasador-inmobiliario", "job_list"],
 ["/ofertas-empleo/imagen_y_sonido_iluminacion_sonido", "job_list"],
