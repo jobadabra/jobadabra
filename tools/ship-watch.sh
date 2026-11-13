@@ -134,7 +134,7 @@ while :; do
         #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before.
         kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
         case "$kept" in
-          "Gitar: approved"*|"Gitar: changes requested") say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";;
+          "Gitar: approved"|"Gitar: approved with suggestions"|"Gitar: changes requested") say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";;
           *) if gh pr comment "$n" -R "$repo" --body "Gitar review" >/dev/null 2>&1; then say "GITAR ASKED #$n ${head:0:7}"; else say "GITAR ASK FAILED #$n ${head:0:7}"; fi;;
         esac
       fi
