@@ -33,8 +33,10 @@ BROKER = 'https://jobadabra-ai-broker.jobpilotto.workers.dev/health'
 READINGS, EVERY_S, FREE_SLOTS, SLOTS_FALLBACK = 8, 15, 6, 16
 SETTLE_S = 240   # another pair admitted this recently has not shown its load in /health yet: wait
 TURN_MINUTES = 55
-NIGHT_STOP = (23, 35)   # the Worker starts the night at 00:00 UTC (profiles.NIGHT_UTC): no pair starts after this
-HOLDERS = ('search-personas.yml', 'press-tapes.yml', 'press-tapes-auto.yml', 'search-profiles.yml')
+# Why (13 Nov 2026, sa's measure on 24 slots: 10 app-tier searches at once ran valid, wait p90 7.7-10.1 s; a night is one press at a time): a night or a profile round no
+# longer holds a pair (#3946's pair sat 58 min behind a night); /health's room and the per-side p90 (VALID_P90_MS) judge the load. A press tape still holds it: a recording
+# keeps the broker's pace, so a slow broker would be replayed in every later yardstick.
+HOLDERS = ('press-tapes.yml', 'press-tapes-auto.yml')
 VALID_P90_MS = 20000   # sa's rule (13 Nov 2026): a side whose broker wait p90 is over ~20 s is not valid, shown but not counted
 
 
@@ -123,13 +125,10 @@ def held(me=None):
 
 
 def turn(now=datetime.now, sleep=time.sleep, read=None, holders=held):
-    """Wait for room (exit 0) or give up after TURN_MINUTES or at the night's stop (exit 1); one line per window."""
+    """Wait for room (exit 0) or give up after TURN_MINUTES (exit 1); one line per window."""
     end = time.monotonic() + TURN_MINUTES * 60
     while time.monotonic() < end:
         clock = now(timezone.utc)
-        if (clock.hour, clock.minute) >= NIGHT_STOP:
-            print(f'pair: not started: {clock:%H:%M} UTC is too close to the night (00:00 UTC); start it after the night')
-            return 1
         busy = holders(os.environ.get('GITHUB_RUN_ID'))
         if busy:
             print(f'pair: waiting {clock:%H:%M:%S}: the broker is held by {", ".join(busy)}', flush=True)
