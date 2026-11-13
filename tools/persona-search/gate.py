@@ -213,7 +213,7 @@ def result(n, out):
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row['eures'] = press.get('eures') or (press.get('funnel') or {}).get('eures')   # 'on'/'off' as run.mjs ran it (--with-eures); else the press's own 'off' line, else None (an older build)
-        row['as_app'] = 'yes' if 'headless_boards' in press else 'no'   # Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Yes, night reads like the app (Recommended)"): a press as the app's (renderer, run.mjs --beside) starts a new series
+        row['as_app'] = 'yes' if (press.get('headless_boards') or {}).get('state') else 'no'   # the boards step ran (run.mjs writes null when it did not); Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Yes, night reads like the app (Recommended)"): a press as the app's (renderer, run.mjs --beside) starts a new series
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []), counters=funnel_mod.step_counters(press), read=funnel_mod.step_read(press), step_yield=(press.get('funnel') or {}).get('step_yield'))
         if press.get('scored_in_places') is not None:   # a missing count stays unknown (read_of falls back to the judge's), never 0
             row['scored'] = int(press['scored_in_places'])
