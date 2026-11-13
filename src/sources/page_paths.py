@@ -17,6 +17,8 @@ MAX_CHAIN = 5   # the link and its 4 nearest ancestors
 SAME_SHAPE = 0.8
 VOID = frozenset('area base br col embed hr img input link meta param source track wbr'.split())
 HEADINGS = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6')
+# Why (Gitar on #4055): HTML lets these end without an end tag; the next one of the same tag, inside the same container, closes the open one, so a link never gets the previous item's tags as ancestors.
+IMPLIED_END = {'li': ('ul', 'ol'), 'dt': ('dl',), 'dd': ('dl',), 'tr': ('table',), 'td': ('tr', 'table'), 'p': ('div', 'section', 'article', 'main', 'li', 'td')}
 CLASS = re.compile(r'[\w-]{1,40}')
 
 
@@ -33,11 +35,25 @@ class _Tree(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.base, self.stack, self.anchors, self.open, self.heading = base, [], [], None, None   # open: the Anchor being read; heading: the tag of the heading being read inside it
 
+    def _pop(self, until):
+        """Pop the stack through the element at index `until`, finishing the open link when it goes with it."""
+        while len(self.stack) > until:
+            if self.stack.pop()[0] == 'a' and self.open is not None:   # an `a` that never ended: its text so far is its own
+                self.anchors.append(self.open)
+                self.open = self.heading = None
+
     def handle_starttag(self, tag, attrs):
         attrs = {name: value or '' for name, value in attrs}
         classes = tuple(c for c in (attrs.get('class') or '').split() if CLASS.fullmatch(c))
         if tag in VOID:
             return
+        if tag in IMPLIED_END:
+            for index in range(len(self.stack) - 1, -1, -1):
+                if self.stack[index][0] in IMPLIED_END[tag]:
+                    break
+                if self.stack[index][0] == tag:
+                    self._pop(index)
+                    break
         self.stack.append((tag, classes))
         if tag == 'a' and attrs.get('href') and not attrs['href'].startswith('#') and self.open is None:
             label = attrs.get('aria-label') or attrs.get('title') or ''
@@ -46,15 +62,12 @@ class _Tree(HTMLParser):
             self.heading, self.open.headings[tag] = tag, []
 
     def handle_endtag(self, tag):
-        if tag in VOID or not any(name == tag for name, _ in self.stack):
+        names = [name for name, _ in self.stack]
+        if tag in VOID or tag not in names:
             return
-        while self.stack and self.stack.pop()[0] != tag:
-            pass   # an end tag closes what it names and what was left open inside it
+        self._pop(len(names) - 1 - names[::-1].index(tag))   # the nearest open element of that name, and what was left open inside it
         if self.heading == tag:
             self.heading = None
-        if tag == 'a' and self.open is not None:
-            self.anchors.append(self.open)
-            self.open = self.heading = None
 
     def handle_data(self, data):
         if self.open is not None:
@@ -70,12 +83,9 @@ def _squash(parts):
 @functools.lru_cache(maxsize=4)   # one parse for the ~40 titles and chains a learn tries on one page
 def anchors(markup, base):
     """Every link of the page (Anchor), in page order."""
-    tree = _Tree(base)
-    try:
-        tree.feed(markup)
-        tree.close()
-    except Exception:  # noqa: BLE001 — a page the parser cannot read has no path recipe
-        return ()
+    tree = _Tree(base)   # html.parser reads any text without raising (3.5+), so a broken page gives the links it holds
+    tree.feed(markup)
+    tree.close()
     return tuple(tree.anchors)
 
 
