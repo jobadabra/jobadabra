@@ -2,16 +2,48 @@
 Why (rs, 13 Nov 2026, sa's go): two benchmark runs on the same code read the same board with very different results (alo.bg 25 jobs vs 0 for
 Sofia's truck driver, pracuj.pl 1 vs 28 for Krakow's cook) and the log could not say why: it printed only the board's end. Log only: no
 behaviour, no AI call; the board's name, its search words and its place words are already in the log.
+Each line also says where the round's seconds went (sa, 13 Nov 2026): the benchmark's logs showed a board's first page costing 18 to 93 s and
+could not say whether the page, its job pages or an AI question took them. A round makes its Parts and hands part() to the page reader; a pool's
+fan-out counts as the wall time its caller waited.
 Tests: tests/unit/sources/test_board_round_log.py."""
+import contextlib
 import time
 
 
-def said(board, term, place, started, jobs_before, found=None, how='', error=None, on_page=None):
+class Parts:
+    """One round's parts, {name: seconds} in the order they ran: made by the round (found_boards._read) and handed to what it calls, so no
+    state lives outside the round."""
+
+    def __init__(self):
+        self.seconds = {}
+
+    @contextlib.contextmanager
+    def part(self, name):
+        """Time one part of the round under `name` ('page', 'job links', 'N job pages', 'postings', 'AI reader'); the same name adds up."""
+        started = time.monotonic()
+        try:
+            yield
+        finally:
+            self.seconds[name] = self.seconds.get(name, 0.0) + time.monotonic() - started
+
+    def said(self):
+        """' (page 2 s · 19 job pages 31 s)' for the parts of 1 s and more; '' with none."""
+        long = [f'{name} {seconds:.0f} s' for name, seconds in self.seconds.items() if seconds >= 1]
+        return f" ({' · '.join(long)})" if long else ''
+
+
+@contextlib.contextmanager
+def untimed(_name):
+    """The part() of a page read outside a board round (an employer site's): nothing is timed."""
+    yield
+
+
+def said(board, term, place, started, jobs_before, found=None, how='', error=None, on_page=None, parts=None):
     """Print one round of `board`'s read: its words and place, the first page's jobs (`on_page`; the full read also reads the next pages, counted
     apart), how many of all are new to this read, how the page was read, and its seconds since `started` (time.monotonic(), the next pages
-    included); `error` (an HTTP code or a short reason) when the page was not read."""
+    included) with the parts that took them; `error` (an HTTP code or a short reason) when the page was not read."""
     asked = f"'{term}'" + (f" in {place}" if place else '')
-    took = f'{time.monotonic() - started:.0f} s'
+    took = f'{time.monotonic() - started:.0f} s' + (parts.said() if parts else '')
     if error is not None:
         print(f"Job boards: {board.get('name') or board.get('host')} round {asked}: page not read ({error}), {took}", flush=True)
         return

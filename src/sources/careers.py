@@ -310,7 +310,7 @@ def discover(website, fetch_page=get_text):
     return _explore(website, shown, show)
 
 
-def read_page_from(markup, url, fetch_page):
+def read_page_from(markup, url, fetch_page, part=None):
     """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
     when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not)."""
     def one(link):
@@ -320,11 +320,15 @@ def read_page_from(markup, url, fetch_page):
             return [], []
         declared = jsonld_jobs(page, link)
         return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        read = list(pool.map(slots.carry(one), job_links(markup, url)))
-    from . import one_posting
+    from . import board_round_log, one_posting
+    part = part or board_round_log.untimed   # a board's round names where its seconds went (log only); any other page read times nothing
+    with part('job links'):
+        linked = job_links(markup, url)
+    with part(f'{len(linked)} job pages'), ThreadPoolExecutor(max_workers=6) as pool:
+        read = list(pool.map(slots.carry(one), linked))
     headed = list({job['url']: job for _, jobs in read for job in jobs}.values())
-    postings = {job['url'] for job in one_posting.kept(headed, reader() is not None)}
+    with part('postings'):
+        postings = {job['url'] for job in one_posting.kept(headed, reader() is not None)}
     found = [job for declared, jobs in read for job in declared + [job for job in jobs if job['url'] in postings]]
     return list({job['url']: job for job in found}.values())
 
