@@ -1,11 +1,7 @@
-"""A general job board whose link has no search word (the pool serves the Scout's measured list page, board_ideas.valid(listing=True)) is searched through
-its own search form first, never read as its general list when it has a search. Tests: tests/unit/sources/test_board_search_first.py.
-Why (13 Nov 2026, owner via sa: "what can we do to bring these below target to meet the target?"; run 43473395249): kariera.si (welder), itjobs.pt (UX),
-colegios.es (teacher) and airlinejobs.com (electrician) were read ONE round through a link with no word, 40 / 23 / 20 / 40 jobs of the board's general list and
-0-1 right ones; the form ladder (found_boards._another_way) skips the first-jobs slice and the full read reached it only on 0 relevant jobs and with time left.
-Design: a search that answered stands (even with 0 jobs: the general list is then not read in the slice, it would hand a welder 40 production jobs); only a board
-with no search form, or whose form refused or failed, is read as its list. The form's link is kept per install (entry form_url, read first next time), never as
-the board's shared link. A field board's category page (source_kind 'sector') is the field's list and is not touched."""
+"""A general job board whose link has no search word is searched through its own home-page search form first, never read as its general list when it has a search.
+Why (13 Nov 2026, owner via sa, run 43473395249): kariera.si, itjobs.pt, colegios.es, airlinejobs.com were read one round as their list, 0-1 right jobs of 20-40.
+A search that answered stands, even with 0 jobs; only no form, or a refused or failed one, reads the list. The link is kept per install (form_url), never as the shared
+search_url; a sector board's category page is untouched. Tests: tests/unit/sources/test_board_search_first.py."""
 import time
 
 from . import board_forms, read_budget
@@ -24,7 +20,7 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
         return None
     started = time.monotonic()
     page = board_forms.home(board, fetch)
-    if not page[1]:   # a home page that does not answer: not marked, the next search looks again
+    if not page[1]: 
         return None
     templates = board_forms.home_templates(board, fetch, page)
     if not templates:
@@ -41,8 +37,9 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
         if caught or state == 'browser':   # a form that failed or refused: the next one, else the list
             continue
         relevant = judge(jobs) if jobs else []
+        entry['forms_tried'] = proposed   # the ladder (found_boards._another_way) skips these forms
         if relevant:
-            entry['form_url'], entry['form_for'] = template, proposed   # read first next time (found_boards.read item)
+            entry['form_url'], entry['form_for'] = template, proposed   # read first next time
         print(f"Job boards: {board['name']} searched through its own search form: {len(jobs)} job(s), {len(relevant)} relevant"
               f"{'' if jobs else '; its general list is not read for it'} (home page and form links {looked:.0f} s, form rounds {time.monotonic() - asked:.0f} s)", flush=True)
         return jobs, state, None

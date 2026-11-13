@@ -237,7 +237,7 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
             page = (page[0], show(page[0]))
         except Exception:  # noqa: BLE001 — refused or no browser: the plain home page stands
             pass
-    made = board_form_read.through_forms(board, entry, search, fetch, judge, show, read_board, board_forms.home_templates(board, fetch, page), 0, refused, cut)
+    made = board_form_read.through_forms(board, entry, search, fetch, judge, show, read_board, [] if entry.get('forms_tried') == proposed else board_forms.home_templates(board, fetch, page), 0, refused, cut)
     if made is board_form_read.CUT:
         return stands(before)
     if made:

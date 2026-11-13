@@ -46,6 +46,8 @@ class SearchFirst(unittest.TestCase):
                       mock.patch.object(found_boards, '_retry_due', return_value=True)):
             patch.start()
             self.addCleanup(patch.stop)
+        found_boards._early.clear()   # a slice's pages handed to a full read are module state: one test's early read must not reach the next
+        self.addCleanup(found_boards._early.clear)
         self.asked, self.home, self.search_page, self.list_title = [], FORM, lambda url: posting('Welder', 1), 'Production worker'
 
     def fetch(self, url):
@@ -100,6 +102,11 @@ class SearchFirst(unittest.TestCase):
         self.assertEqual(titles, [])
         self.assertNotIn(LIST, self.asked)
         self.assertIn('searched through its own search form: 0 job(s), 0 relevant; its general list is not read for it', log)
+
+    def test_a_form_that_answered_with_no_relevant_job_is_not_asked_again_by_the_ladder(self):
+        self.search_page = lambda url: posting('Cleaner', 3)
+        self.read()   # the full read: its other ways (found_boards._another_way) run on 0 relevant, without the form step
+        self.assertEqual([url for url in self.asked if '/iskanje?' in url], ['https://listing.example/iskanje?q=welder'])
 
     def test_a_form_that_refuses_or_fails_leaves_the_list_to_be_read(self):
         def refuse(url):
