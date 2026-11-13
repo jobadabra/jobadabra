@@ -24,7 +24,6 @@ import {sessionState, refreshSessions, sessionFor, sessionList, sessionsLoaded} 
 import {toastMessage} from './startup.js';
 import {rowApply} from '../apply-settings-model.js';
 import {jobPlace} from '../targets.js';
-import {openLogFor} from './jobs-lead.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
 import {scoreBucket} from '../intel.js';
 import {askWhy} from './dismiss-reason.js';
@@ -34,7 +33,7 @@ import {renderExport} from './jobs-export.js';
 import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
-import {jobsChanged, loadJobs, showJobsData, startedApplying} from './jobs.js';
+import {jobsChanged, loadJobs, openLogFor, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {NA, rowModel} from '../job-row-model.js';

@@ -10,7 +10,6 @@ import {showJob} from './activity.js';
 import {jobActions, jobHeadline} from '../job-link.js';
 import {$, message, osPick} from './core.js';
 import {copyField} from '../../i18n/display-copy.js';
-import {toastMessage} from './startup.js';
 import {jobPlace} from '../targets.js';
 import {loadJobs} from './jobs.js';
 import {setFilters} from './jobs-filter-menu.js';
@@ -247,7 +246,7 @@ function setAuto(on, locked = false) {
 const leadTarget = () => confirmStep.targetOf($('lead-auto').checked, $('lead-target').value);
 // Employer feedback saved on a rejected job (src/feedback.py save_received clears its old review) starts the AI review at once: the same
 // call as the Jobs menu's "Why me?" (reviewRejection), shown in AI reviews. Why (13 Nov 2026, owner): "a rejection's feedback also starts the AI review".
-async function reviewIfFeedback(logged) {
+async function reviewIfFeedback(logged, toastMessage) {
   const job = shared.allJobs.find(each => each.page_id && each.page_id === logged?.pageId);
   if (!job || job.stage !== 'Rejected' || !job.employer_feedback || job.rejection) return;
   const result = await window.pilot.reviewRejection(job.url);
@@ -265,8 +264,8 @@ export function openLogFor(url, label = '') {
   $('lead-target').value = url;
 }
 
-// The Log-a-message dialog's wiring, called once from init().
-export function wireLead() {
+// The Log-a-message dialog's wiring, called once from init(). `toast` is startup.js's toastMessage, handed in (startup.js imports jobs.js, which imports this file).
+export function wireLead(toast) {
   $('lead-open').addEventListener('click', () => {
     if (!leadRunning) message('lead-message', '');  // a log still running keeps its step and timer
     leadResult('', '');
@@ -380,6 +379,6 @@ export function wireLead() {
     $('lead-text').value = ''; clearLeadShot();
     setFilters(['all']);  // it may be saved (a lead) or applied: show both
     await loadJobs();
-    reviewIfFeedback(result.job);
+    reviewIfFeedback(result.job, toast);
   });
 }

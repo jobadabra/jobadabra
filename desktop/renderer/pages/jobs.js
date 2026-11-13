@@ -361,7 +361,7 @@ export async function init() {
     setFilters(['applied']);  // show it where it now is
     await linkToJob('applied-dialog', 'applied-message', result);
   });
-  wireLead();
+  wireLead(toastMessage);
   wireAdd();
   $('filter-text').addEventListener('input', renderJobs);
 
