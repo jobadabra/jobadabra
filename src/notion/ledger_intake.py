@@ -113,11 +113,13 @@ def page_meta(url, opener=urllib.request.urlopen):
                 if isinstance(address, dict):
                     address = ', '.join(v for v in (address.get('addressLocality') or address.get('addressRegion'), address.get('addressCountry'))
                                         if isinstance(v, str) and v)
-                meta.setdefault('title', item.get('title'))
-                meta.setdefault('company', (item.get('hiringOrganization') or {}).get('name'))
-                meta.setdefault('location', address)
-                meta.setdefault('date_posted', item.get('datePosted'))
-                meta.setdefault('description', re.sub(r'<[^>]+>', ' ', html.unescape(item.get('description') or '')))
+                # Why (13 Nov 2026, #4005): a board's job list gives title and place but no text (Workday: description ''), and setdefault kept
+                # that empty string over the page's own posting: "no posting text". The page fills what the board left empty; the board wins where it has a value.
+                for key, value in (('title', item.get('title')), ('company', (item.get('hiringOrganization') or {}).get('name')),
+                                   ('location', address), ('date_posted', item.get('datePosted')),
+                                   ('description', re.sub(r'<[^>]+>', ' ', html.unescape(item.get('description') or '')))):
+                    if not meta.get(key):
+                        meta[key] = value
                 found_posting = True
                 break
         if found_posting:
