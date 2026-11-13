@@ -77,7 +77,7 @@ class Order(unittest.TestCase):
         return {'family': family, 'country': country, 'installs': installs, 'in_places': 5, 'fit70': 0, **more}
 
     def test_installs_pairs_count_and_the_scouts_own_cells_do_not(self):
-        facts = {'board': {'a.example': {'relevant': [self.cell('data_ai', 'de', 3), self.cell('data_ai', 'de', 1, right=7), self.cell('teaching', 'es', 1, measured=True), self.cell('teaching', 'xx', 2)]},
+        facts = {'board': {'a.example': {'relevant': [self.cell('data_ai', 'de', 3), self.cell('teaching', 'es', 1, measured=True), self.cell('teaching', 'xx', 2)]},
                            'b.example': {'relevant': [self.cell('data_ai', 'de', 2), self.cell('nonsense', 'de', 9)]}}}
         self.assertEqual(priority.searched_pairs(facts), Counter({('de', 'data_ai'): 5}))
         self.assertEqual(priority.searched_pairs(None), Counter())

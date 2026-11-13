@@ -6,7 +6,7 @@ last. One ordered list, one owner for each part:
   2. the profile pairs: the b and c people of tools/persona-search/search-profiles.json (all of them: cards move, the list must not), every family of their role title derived with
      pool_tags in one batch (never typed by hand) and kept in the Scout's memory once answered (`profile_pairs`), their country from its name. Profiles added 13 Nov 2026 (d01-d07) are held out: they are the check that the fill also works for people nobody
      tuned it for (owner via sa, "Searched pairs first (Recommended)"); so are the random draws;
-  3. the pairs installs really searched: the index's board cells that installs gave (no `right`, no `measured`: those are the Scout's own), the most installs first. Never a second demand
+  3. the pairs installs really searched: the index's board cells that installs gave (no `measured`: that is the Scout's own), the most installs first. Never a second demand
      signal (src/scout_need.py is whether one install's search has enough employers, not what people search);
   4. every country for the fields installs and the profiles search most, the most searched field first.
 The list only orders cells with the same number of proven boards (src/scout_board_cells.py pick): a cell with fewer proven boards always goes first. Tests: tests/unit/sources/test_scout_board_priority.py."""
@@ -59,13 +59,13 @@ def profile_pairs(path=PROFILES, each=None, db=None):
 
 
 def searched_pairs(facts):
-    """Counter {(country, family): installs} from the pool's board facts (src/sources/visits_jobpages.py pool_facts): the cells installs gave. A cell the Scout counted
-    (`right`) or marked (`measured`) is the Scout's own and is no demand. (`right` reaches `pool_facts` with plan PR 3/4 `_cells`: until then only `measured` shows; Gitar on #4035
-    asked for the clause's removal, kept because a counted board with 1-2 right jobs is not `measured` and would count as demand the day PR 3/4 lands.)"""
+    """Counter {(country, family): installs} from the pool's board facts (src/sources/visits_jobpages.py pool_facts): the cells installs gave. A cell the Scout
+    marked (`measured`) is the Scout's own and is no demand.
+    (Plan PR 3/4 `_cells` will carry the Scout's `right` count: it adds the `right` test here then; until then only `measured` shows. Gitar on #4035: no clause for a key that never arrives.)"""
     out = Counter()
     for board in ((facts or {}).get('board') or {}).values():
         for cell in board.get('relevant') or []:
-            if 'right' in cell or cell.get('measured') or cell.get('country') not in scout_cells.EUROPE or cell.get('family') not in pool_tags.FAMILIES:
+            if cell.get('measured') or cell.get('country') not in scout_cells.EUROPE or cell.get('family') not in pool_tags.FAMILIES:
                 continue
             out[(cell['country'], cell['family'])] += cell['installs']
     return out
