@@ -54,6 +54,14 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
             lines = self.watch(['clean', 'clean'], labels=f'Gitar: approved,{pending}')
             self.assertFalse(any('READY' in line for line in lines), (pending, lines))
 
+    def test_a_pr_with_a_claude_label_is_ready_on_claude_approved_only(self):
+        """13 Nov 2026 (cr 2a, owner: "replace Gitar with Claude Code review"): a PR carrying a "Claude: …" label is READY only on "Claude: approved"; Gitar's approval beside another Claude state never counts, and "· not re-reviewed" is an older head."""
+        ready = lambda labels: any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels))
+        self.assertTrue(ready('Claude: approved'))
+        self.assertTrue(ready('Claude: approved,Gitar: reviewing'), 'Gitar\'s own state no longer matters on a Claude PR')
+        for labels in ('Claude: not reviewed,Gitar: approved', 'Claude: changes requested,Gitar: approved', 'Claude: approved · not re-reviewed,Gitar: approved', 'Claude: approved,Working on PR comments', 'Claude: changes requested'):
+            self.assertFalse(ready(labels), labels)
+
     def test_a_computing_merge_state_holds_ready_and_does_not_re_arm_it(self):
         lines = self.watch(['clean', 'unknown', 'clean'])
         self.assertEqual([line for line in lines if 'READY' in line], ['ship: READY #7 new1'], lines)

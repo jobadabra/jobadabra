@@ -25,13 +25,14 @@ const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 
 /** True for a title that holds the PR (the "DONT MERGE" rule, CLAUDE.md "Shipping and PRs"). */
 export const isHold = title => /DONT MERGE/i.test(title || '');
 
-/** Our reviews among `reviews` ({author:{login}, submittedAt, body}), oldest first: {sha, at, findings} (findings: the compact list the review carried, [] when unreadable). */
+/** Our reviews among `reviews` ({author:{login}, submittedAt, body}), oldest first: {sha, at, findings, verdict} (findings: the compact list the review carried, [] when unreadable; verdict: APPROVE | REQUEST_CHANGES, read from the headline). */
 export function ourReviews(reviews) {
   return (reviews || []).filter(Boolean).filter(r => r.author?.login === BOT && MARK.test(r.body || '')).map(r => {
     const [, sha, packed] = MARK.exec(r.body);
     let findings = [];
     try { findings = packed ? JSON.parse(decodeURIComponent(packed)) : []; } catch { /* a review whose list cannot be read hands none over */ }
-    return {sha, at: r.submittedAt, findings};
+    // Fail closed: a headline that is not exactly "✅ Approve" (a truncated or edited body) reads as changes requested, never as an approval.
+    return {sha, at: r.submittedAt, findings, verdict: /^\*\*Claude review: ✅ Approve\*\*/.test(r.body) ? 'APPROVE' : 'REQUEST_CHANGES'};
   }).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
@@ -66,6 +67,9 @@ export function diffBase(lastSha, compareStatus) {
 export function verdictOf(findings) {
   return (findings || []).some(f => ['high', 'medium'].includes(f.severity)) ? 'REQUEST_CHANGES' : 'APPROVE';
 }
+
+/** True when the action's failure text says the Claude plan is out (usage limit, rate limit, quota or credit): that is a skipped review, not a red check. */
+export const planLimitHit = text => /usage limit|rate limit|limit reached|quota|out of credit|credit balance|too many requests|\b429\b|overloaded/i.test(String(text || ''));
 
 const ICON = {high: '🔴', medium: '🟠', low: '⚪'};
 
@@ -110,16 +114,17 @@ const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository
   commits(last: 1) { nodes { commit { status { context(name: "${CHECK}") { state } } } } }
   reviews(last: 30) { nodes { author { login } submittedAt body } }
   comments(last: 30) { nodes { body } }
+  labels(first: 50) { nodes { name } }
 } } }`;
 const CAP_QUERY = `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { pullRequests(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { reviews(last: 10) { nodes { author { login } submittedAt body } } } } } }`;
 const graphql = (query, vars, run = gh) => JSON.parse(run('api', 'graphql', '-f', `query=${query}`, ...Object.entries(vars).flatMap(([k, v]) => ['-F', `${k}=${v}`]))).data.repository;
 
-/** Reads the PR for decide(): -> {pr, reviews, comments}. */
+/** Reads the PR for decide() and the label: -> {pr: {…, labels}, reviews, comments}. */
 export function readPr(repo, number, run = gh) {
   const [owner, name] = repo.split('/');
   const p = graphql(PR_QUERY, {owner, name, pr: number}, run).pullRequest;
   return {pr: {number: p.number, state: p.state, isDraft: p.isDraft, title: p.title, head: p.headRefOid, base: p.baseRefName, headRepo: p.headRepository?.nameWithOwner || '',
-    status: p.commits.nodes[0]?.commit?.status?.context?.state || ''}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
+    status: p.commits.nodes[0]?.commit?.status?.context?.state || '', labels: p.labels.nodes.map(l => l.name)}, reviews: ourReviews(p.reviews.nodes), comments: p.comments.nodes.filter(Boolean).map(c => c.body)};
 }
 
 /** The reviews of ours submitted today across the 100 most recently updated PRs. */
@@ -187,11 +192,20 @@ function post(env = process.env, run = gh) {
   try { const line = usageLine(JSON.parse(fs.readFileSync(env.EXECUTION_FILE, 'utf8'))); if (line) summary(line); } catch { /* no execution file: no usage line */ }
 }
 
+/** After a failed Review step: a plan limit is a green job with one clear line (the review is skipped, the PR is not blocked); any other failure stays red. */
+function failed(env = process.env) {
+  let text = '';
+  try { text = fs.readFileSync(env.EXECUTION_FILE, 'utf8'); } catch { /* no execution file: only the step's own text can say */ }
+  if (planLimitHit(text + ' ' + (env.REVIEW_ERROR || ''))) return summary(`Claude review of #${env.PR} skipped: the Claude plan limit is reached (it resets by itself); no review of this head, nothing is blocked.`);
+  throw new Error(`claude-review: the Review step failed (not a plan limit): see its log`);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     if (process.argv[2] === 'gate') gate();
     else if (process.argv[2] === 'post') post();
-    else throw new Error('usage: claude-review.mjs gate | post');
+    else if (process.argv[2] === 'failed') failed();
+    else throw new Error('usage: claude-review.mjs gate | post | failed');
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

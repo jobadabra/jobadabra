@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+// Keeps the ONE "Claude: …" label of a PR in step with the Claude review of its head; READY (tools/ship-watch.sh) and the owner's PR list read it. Usage: GITHUB_REPOSITORY=o/r node tools/claude-label.mjs <pr>
+// Why (owner, 13 Nov 2026: "We should replace Gitar" / "With Claude Code review"; coordinator mac-95: READY needs the Claude ✅ marker only): the label is a pure function of ONE signal, the newest of our marker reviews
+//   (tools/claude-review.mjs ourReviews(): the sha it reviewed and its verdict, read from the body's headline, never from GitHub's review state: "Allow Actions to approve" is off, so an Approve is posted as a COMMENT) and the PR's head.
+//   Design (the lesson of the Gitar label, 10 fixes in 10 days): NO "reviewing" state, because only the review job knows it and a cancelled job would leave it stuck. States: reviewed head -> approved | changes requested;
+//   a head moved on since the last review -> the same verdict "· not re-reviewed"; never reviewed -> "not reviewed". Written by the review job right after it posts, and by pr-labels on a push (a review posted with the Actions
+//   token starts no event of its own).
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {readPr} from './claude-review.mjs';
+
+const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
+const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
+export const OLD = ' · not re-reviewed';
+
+export const LABELS = {
+  approved: {name: 'Claude: approved', color: '0e8a16', description: 'Claude reviewed the current head and found no high or medium problem'},
+  changes: {name: 'Claude: changes requested', color: 'd73a4a', description: 'Claude found a high or medium problem on the current head'},
+  none: {name: 'Claude: not reviewed', color: 'f97316', description: 'Claude has not reviewed this PR yet; it does when the checks are green, or on "@claude review"'},
+  approvedOld: {name: 'Claude: approved' + OLD, color: '86d98d', description: 'Claude approved an earlier head; the newest push is not reviewed yet'},
+  changesOld: {name: 'Claude: changes requested' + OLD, color: 'f0a1a8', description: 'Claude asked for changes on an earlier head; the newest push is not reviewed yet'},
+};
+export const ALL = Object.values(LABELS);
+
+/** The one label name the PR should hold: `reviews` = ourReviews() oldest first ({sha, verdict}), `head` = the PR's head sha. */
+export function wantedLabel(reviews, head) {
+  const last = [...(reviews || [])].pop();
+  if (!last) return LABELS.none.name;
+  const approved = last.verdict === 'APPROVE';
+  if (last.sha === head) return (approved ? LABELS.approved : LABELS.changes).name;
+  return (approved ? LABELS.approvedOld : LABELS.changesOld).name;
+}
+
+/** Adds `wanted` (creating the label once when the repo lacks it) and removes every other "Claude: …" label; -> how many it changed. `run` is the gh call. */
+export function setLabel(repo, pr, wanted, have, run = gh) {
+  let changed = 0;
+  for (const l of ALL) {
+    if (l.name === wanted && !have.includes(l.name)) {
+      const add = () => run('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo);
+      try { add(); } catch (error) {
+        if (!String(error.message).includes(`'${l.name}' not found`)) throw error;
+        run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
+        add();
+      }
+      changed++;
+    } else if (l.name !== wanted && have.includes(l.name)) { run('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo); changed++; }
+  }
+  return changed;
+}
+
+/** Reads the PR and writes its label; a closed or merged PR is left alone. -> the label name, or '' when it was left. */
+export function sync(repo, pr, run = gh) {
+  const {pr: p, reviews} = readPr(repo, pr, run);
+  if (p.state !== 'OPEN') return '';
+  const wanted = wantedLabel(reviews, p.head);
+  const changed = setLabel(repo, pr, wanted, p.labels, run);
+  console.log(`claude-label: #${pr} → ${wanted}${changed ? '' : ' (unchanged)'}`);
+  return wanted;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    const pr = process.argv[2];
+    if (!/^\d+$/.test(pr || '')) throw new Error('usage: GITHUB_REPOSITORY=o/r node tools/claude-label.mjs <pr number>');
+    sync(process.env.GITHUB_REPOSITORY, pr);
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
