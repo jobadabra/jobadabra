@@ -22,7 +22,13 @@ MAX_WORDINGS = 300   # distinct link wordings judged in one call site
 # asked about 3 of them. If all 3 get the same answer, it holds for the rest of that shape on that page; if they differ, every link of the shape
 # is asked as today. Single links (contact, companies) are always asked one by one."): one Madrid results page asked 315 link wordings, most of
 # them city links of one shape (239 paths), and three boards' 502 wordings took 11 calls (c04, run 43473395249: "job links 82 s"); by shape, 120 (3 calls).
+# Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Only job verdicts spread (Recommended)": "A shape whose 3 samples all say "job"
+# gives that to the rest. A shape whose samples say "not a job" is asked link by link."; issue #4038): a site's menu sections under one parent
+# are one shape, and 3 non-job samples gave "not jobs" to the section that lists jobs. On the 80 recorded pages (tests/fixtures/board_link_answers.json,
+# 4,736 links) the first rule lost 18 job links at 2,950 wordings; spreading only a job verdict loses none at 3,338 (test_link_shapes ASKED).
+# Gitar's finding on #4022 was right.
 SAMPLE = 3
+SPREAD = ('job_list', 'job_page', 'careers_page')   # the only verdicts a shape's samples give its other links
 
 # Where every 'page-words' answer lives now; tests/unit/ai/test_page_words.py fails when an answer is missing here (a new one must be placed).
 PLACED = {'careers_link': LINK, 'strong_jobs': LINK, 'job_path': LINK, 'not_jobs': LINK, 'job_host': LINK, 'board_careers_link': LINK,
@@ -118,7 +124,9 @@ def _family(path):
 
 def _sampled(pairs):
     """{wording: answer} for one page's links, asking the AI about SAMPLE links of each family of SAMPLE+ links (first, middle and last in page
-    order) and every other link; a family whose samples all got one answer takes it for its other links, else they are asked one by one.
+    order) and every other link; a family whose samples all got one job answer (SPREAD) takes it for its other links, else they are asked one by one.
+    Design (issue #4038, the 3rd change to this rule this week): a shape is job-agreed (its 3 samples got one SPREAD answer: the rest take it)
+    or not (they differ, one is unanswered, or they agree on not_jobs/other: every link is asked); the samples' answer is never kept.
     -> (answers, wordings asked, links answered by their family, families that disagreed)."""
     families = {}
     for text, path in pairs:
@@ -128,7 +136,7 @@ def _sampled(pairs):
     picks = {key: [words[0], words[len(words) // 2], words[-1]] for key, words in wide.items()}
     first = {w: w for key, words in families.items() for w in (picks[key] if key in picks else words)}
     found = _kinds(LINK, first, LINK_ANSWERS, LINK_TASK)
-    split = [key for key in wide if len({found.get(w) for w in picks[key]}) != 1 or found.get(picks[key][0]) is None]
+    split = [key for key in wide if len({found.get(w) for w in picks[key]}) != 1 or found.get(picks[key][0]) not in SPREAD]
     rest = {w: w for key in split for w in wide[key] if w not in first} if found else {}   # nothing answered (cap, failure): never asked twice
     if rest:
         found.update(_kinds(LINK, rest, LINK_ANSWERS, LINK_TASK))
