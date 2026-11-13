@@ -27,6 +27,11 @@ on:
         type: choice
         options: [claude, codex]
         default: claude
+      # Why (13 Nov 2026, sa: the c04/d02 board jobs "read but never judged" need each job's stage to tell which pass lost it): off by default, one dispatch away.
+      stage_log:
+        description: 'One run-log line per job read with the stage that kept or lost it (src/sources/job_stage.py), as the night logs'
+        type: boolean
+        default: false
 
 # Why (12 Nov 2026, sa): its own group, never search-personas: GitHub keeps one pending run per group, so joining the night's group could replace a queued night.
 concurrency:
@@ -47,6 +52,7 @@ env:
   # (src/ai/call_log.py, src/ai/slots.py), as search-personas.yml logs its calls; a person's app never sets these.
   JOBADABRA_AI_CALL_LOG: '1'
   JOBADABRA_SLOT_LOG: '1'
+  JOBADABRA_STAGE_LOG: ${{ inputs.stage_log && '1' || '' }}   # job_stage.py reads only '1'; '' (unset input) is off
 
 jobs:
   room:
