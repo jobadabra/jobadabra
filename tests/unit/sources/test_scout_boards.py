@@ -5,7 +5,7 @@ import unittest
 from datetime import date
 from unittest import mock
 
-from src import scout_boards, scout_cells
+from src import scout_board_cells, scout_boards, scout_cells
 from src.ai import decide
 from src.sources import careers, found_boards
 
@@ -53,6 +53,36 @@ class BoardPassTest(unittest.TestCase):
         with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: labels(t) for t in titles}, [])):
             return scout_boards.run(self.db, ideas=lambda search: [{**board(host), 'search_url': url.format(host=host)} for host in reads], read_board=read_board,
                                     out=lambda line: None, named='md', google=lambda *a: [], families=list(asked), words=lambda db, country, families: asked)
+
+    def test_slow_rereads_of_known_boards_do_not_use_up_the_time_of_the_new_boards(self):
+        """13 Nov 2026 (bp, run 43498167418, Spain): the stale re-read of airlinejobs.com took 264 s, past BUDGET_S (240), so the loop stopped and the 10 other proposed boards
+        never started. Re-reads have their own time (Gitar on #4037: with two slow ones the second used to stop the pass too): a re-read the time has run out for waits, not stamped,
+        and the budget for new boards starts after them."""
+        now, read = [0.0], []
+
+        def read_board(item, search, fetch):
+            read.append(item['host'])
+            now[0] += 300 if item['host'].startswith('known') else 10   # the re-reads are slow, every new board is quick
+            return [], 'ok', None
+        known = [{**board(host), 'search_url': f'https://{host}/search?q={{role}}'} for host in ('known1.example', 'known2.example')]
+        scout_boards.run(self.db, ideas=lambda search: [board('new1.example'), board('new2.example')], read_board=read_board, out=lambda line: None, named='md',
+                         google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['programator']},
+                         again=known, clock=lambda: now[0])
+        self.assertEqual(read, ['known1.example', 'new1.example', 'new2.example'], 'the second re-read had no time left; both new boards were read')
+        self.assertEqual(scout_cells._meta(self.db, scout_board_cells.SKIPPED, {}), {'md': ['known2.example']})
+
+    def test_one_slow_reread_still_lets_every_new_board_be_read(self):
+        now, read = [0.0], []
+
+        def read_board(item, search, fetch):
+            read.append(item['host'])
+            now[0] += 300 if item['host'] == 'known.example' else 10
+            return [], 'ok', None
+        known = {**board('known.example'), 'search_url': 'https://known.example/search?q={role}'}
+        scout_boards.run(self.db, ideas=lambda search: [board('new1.example'), board('new2.example')], read_board=read_board, out=lambda line: None, named='md',
+                         google=lambda *a: [], families=['software_dev'], words=lambda db, country, families: {'software_dev': ['programator']},
+                         again=[known], clock=lambda: now[0])
+        self.assertEqual(read, ['known.example', 'new1.example', 'new2.example'])
 
     def test_a_fact_counts_the_jobs_of_each_family_over_every_job_read_not_just_the_families_seen(self):
         """13 Nov 2026 (bp, owner: "Why ? Let's fix it."): an airline board with 178 Spanish jobs, one an aircraft electrician, was 'measured' for electricians. The count is

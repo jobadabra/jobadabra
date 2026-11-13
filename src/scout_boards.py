@@ -27,7 +27,7 @@ from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kind
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
 MAX_BOARDS = 12         # boards read per country and run
-BUDGET_S = 240          # the pass gives up starting new boards after this long
+BUDGET_S = 240          # the pass gives up starting new boards after this long; the re-reads of known boards have their own time (Why (13 Nov 2026, bp, run 43498167418): a 264 s re-read of one airline board used the whole 240 s and the 10 proposed boards never started)
 # Why (12 Nov 2026, owner: "Reserve kinds + batch places"): France trial 43154452142 asked one call per place, its 24 calls for places and kinds all went to
 # places, and three boards with local jobs were never asked their kinds of work. Two allowances, each its one owner: places never spend the kinds' calls.
 PLACE_CALLS = 2 * MAX_BOARDS   # place questions, 50 places a call (pool_tags.countries_each): a board's search page names at most ~100 distinct places
@@ -306,8 +306,14 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         from .ai import page_reader
         ai_boards = (PAGE_CALLS // found_boards.AI_ASKS) if reader is not None and (reader != 'auto' or page_reader.usable()) else 0   # no reader: no second fetch
         try:
+            known, skipped = {item['host'] for item in again}, []
             for board in proposed:
+                if known and board['host'] not in known:
+                    began, known = clock(), set()   # the re-reads are done: the new boards' time starts here
                 if clock() - began > BUDGET_S:
+                    if known:   # the re-reads' own time is spent: this one waits for a next pass (not stamped as read), the new boards still come
+                        skipped.append(board['host'])
+                        continue
                     break
                 kept_layout, notes = _layout(db, board['host'], country), {}   # replayed by this read: a layout that still holds is kept, a stale one replaced
                 board = {**board, 'learn': notes, **({'layout': kept_layout} if kept_layout else {})}
@@ -373,6 +379,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         if by_cells:
             from . import scout_board_cells
             scout_board_cells.note_ran(db, country, ran)   # the cell's record() after this pass: a family no board was asked is no miss
+            scout_board_cells.note_skipped(db, country, skipped)   # record() stamps as read again only the re-reads that ran
         if not by_cells:
             _asked(db, country, kinds)   # after the reads: a pass that failed before them keeps the kinds' turn (cells keep their own: src/scout_board_cells.py)
         db.commit()

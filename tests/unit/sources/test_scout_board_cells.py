@@ -120,6 +120,17 @@ class Pick(unittest.TestCase):
         cells.record(self.db, country, families, [], TODAY, again=again)
         self.assertIsNone(cells.pick(self.db, TODAY), 'read again and still under the floor: it waits REREAD_DAYS, never every run')
 
+    def test_a_reread_the_pass_had_no_time_for_is_not_stamped_and_stays_due(self):
+        cover(self.db, scout_cells.EUROPE)
+        old = TODAY - timedelta(days=cells.REFRESH_DAYS + 1)
+        fact(self.db, 'a-read.example', 'ee', ['kitchen'], old)
+        fact(self.db, 'b-late.example', 'ee', ['kitchen'], old)
+        country, families, again = cells.pick(self.db, TODAY)
+        self.assertEqual([board['host'] for board in again], ['a-read.example', 'b-late.example'])
+        cells.note_skipped(self.db, country, ['b-late.example'])   # the pass ran out of re-read time before this one
+        cells.record(self.db, country, families, [], TODAY, again=again)
+        self.assertEqual([board['host'] for board in cells.pick(self.db, TODAY)[2]], ['b-late.example'], 'only the re-read that ran waits; the skipped one is due next pass')
+
     def test_cells_named_by_hand(self):
         self.assertEqual(cells.parse('sk:nursing_care, Slovenia:construction, xx:kitchen, sk:not_a_family'), [('sk', 'nursing_care'), ('si', 'construction')])
         self.assertEqual(cells.pick(self.db, TODAY, named=cells.parse('sk:nursing_care,si:kitchen,sk:teaching'))[:2], ('sk', ['nursing_care', 'teaching']))
