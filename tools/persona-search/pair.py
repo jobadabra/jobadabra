@@ -23,7 +23,7 @@ NIGHT = 18   # the night's people p1..p18 (gate-personas.json)
 MAX_PEOPLE = 3   # a dispatch's people (sa, 13 Nov 2026: "<=3 people per dispatch is right")
 # The files that write a person's search words before any search (the strategy draft): a PR touching one drafts per side and runs 2 searches a side for each person,
 # since one draft a side cannot tell the change from the draft's own luck (13 Nov 2026: Sofia's board words were English in one draft and Bulgarian in the next, same code).
-DRAFT_PRODUCERS = re.compile(r'^desktop/lib/strategy(-draft[^/]*)?\.js$')
+DRAFT_PRODUCERS = re.compile(r'^(desktop/lib/strategy(-draft[^/]*)?\.js|src/ai/board_ideas\.py|src/sources/(boards|board_terms)\.py)$')   # the proposal's files too: a PR that changes what boards are proposed is measured with a proposal per side
 VALID_P90_MS = 20000   # sa's rule (13 Nov 2026): a side whose broker wait p90 is over ~20 s is not valid, shown but not counted
 
 
@@ -86,7 +86,8 @@ def side(out, name):
     first = re.search(r'1st/10th relevant at (\S+?)/', relay)
     row = {'side': name, 'right': right, 'found': len(json.loads(read('jobs.json') or '[]')), 'first_s': first.group(1) if first else None,
            'words': board_words(press), 'calls': calls, 'failed': failed, 'wait_p50_ms': p50, 'wait_p90_ms': p90,
-           'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and right is not None}
+           'shared': not (out / 'boards-not-shared').exists(),   # the workflow marks a side whose draft install had no board proposal (run.mjs --propose failed): it asked for itself
+           'valid': bool(calls) and p90 is not None and p90 <= VALID_P90_MS and right is not None and not (out / 'boards-not-shared').exists()}
     (out / 'side.json').write_text(json.dumps(row) + '\n', encoding='utf-8')
     print(json.dumps(row))
 
@@ -174,6 +175,8 @@ def table(results, pr, main_sha, pr_sha, spread=usual):
     lines.append('Each side drafted its own search plan and searched twice: this PR changes the plan\'s producer.' if True in drafts
                  else 'Same draft both sides: one search plan per person, made once, searched by main and the PR at the same minute.')
     lines.append(f'A side whose broker wait p90 is over {VALID_P90_MS // 1000} s is not valid: shown, not counted (start the pair again).')
+    if any(r.get('shared') is False for rows in people_rows.values() for r in rows['main'] + rows['pr']):
+        lines.append("The draft's board proposal failed, so each side asked for its own boards: not counted (start the pair again).")
     timed = [p.read_text(encoding='utf-8').strip() for p in sorted(results.glob('*.minutes.txt'))]
     if timed:
         lines += ['', 'Minutes per part: ' + '; '.join(timed)]
