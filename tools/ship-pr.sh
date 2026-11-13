@@ -61,8 +61,9 @@ ship_pr_land() {
     [ -n "${SHIP_PR_BODY:-}" ] || step "no --body=<file>: the PR shows the subject, the facts and the commit folded; a 5-second summary goes in a file (CLAUDE.md \"PR descriptions\")"
     body="$(bash "$tools/pr-body.sh" origin/main ${SHIP_PR_BODY:+"--body=$SHIP_PR_BODY"})"   # the summary first, the facts, the commit folded (tools/pr-body.sh)
     rows="$(git log --format='%(trailers:key=Pool-row,valueonly)' origin/main..HEAD | grep -v '^$' | grep -iv '^none' | sort -u || true)"   # the pool rows this PR fixes (the Pool-row lines)
-    # Why (13 Nov 2026, owner via sa: "anything not a draft is safe to merge"): in review mode every PR opens as a draft; tools/ship-watch.sh marks it ready at READY.
-    out="$(pr_open "$repo" "$branch" "$title" "$body" $(ship_review && echo draft || echo ${SHIP_PR_DRAFT:+draft}) 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
+    # Why (13 Nov 2026, owner via sa, over #3969 shown as a draft: "as draft should start only if it needs a pair run"): a draft means "waiting for a pair", nothing else;
+    #   this takes back #3965's "every PR opens as a draft".
+    out="$(pr_open "$repo" "$branch" "$title" "$body" ${SHIP_PR_DRAFT:+draft} 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
     n="${out##*/}"
     if [ -n "$rows" ]; then pr_label "$repo" "$n" pool-fix 1D76DB "fixes a row of the applying pool (from its Pool-row lines)" || true; fi   # a missing label never fails a landing
     step "opened the pull request: $(echo "$out" | tail -n 1)"
@@ -87,7 +88,7 @@ ship_pr_land() {
         [ -z "$new_title" ] || step "retitled #$n"
       else step "could not edit the title and description of #$n (the old ones stay)"; fi
     fi
-    if [ -n "${SHIP_PR_DRAFT:-}" ] || ship_review; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # a new push is not yet checked or approved (13 Nov 2026)
+    if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # --draft: a new push is not yet checked or approved
   fi
   if ship_review && [ -z "${external:-}" ]; then   # a pending "Moves:" number: ship holds the PR and starts its pair (tools/ship-search-hold.sh, 13 Nov 2026)
     while IFS= read -r line; do [ -z "$line" ] || step "$line"; done < <(bash "$tools/ship-search-hold.sh" "$n" "$repo")

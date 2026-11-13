@@ -1,7 +1,6 @@
 """Guard: release — "anything not a draft is safe to merge" (owner via sa, 13 Nov 2026): READY has ONE definition (tools/ship-watch.sh), and a draft becomes ready only there.
 Without it a green PR not yet approved by Gitar was marked ready and merged (12 Nov 2026), or a "DONT MERGE" hold was lifted by a tool.
-A draft that meets READY is marked ready (`gh pr ready`) and says READY; a draft titled DONT MERGE says HELD and is never flipped; a PR the watcher flipped goes back to draft on a red
-check or a new head, never on a pending check (a draft flip re-runs the gate). SHIP_WATCH_DRAFT_OK=1 (the AI fixer's PR) keeps its draft and says READY, as before.
+A draft that meets READY is marked ready (`gh pr ready`) and says READY; a draft titled DONT MERGE says HELD and is never flipped. SHIP_WATCH_DRAFT_OK=1 (the AI fixer's PR) keeps its draft and says READY, as before.
 Runs the real watcher against the fake gh of tests/fake_gh_rest.py (answers from files, no network)."""
 import os
 import shutil
@@ -60,18 +59,6 @@ class ShipWatchDraftTest(unittest.TestCase):
             for draft_ok in (False, True):
                 self.assertFalse(any('READY' in line for line in self.watch(labels, draft_ok=draft_ok)), (labels, draft_ok))
                 self.assertEqual(self.flips, [], labels)
-
-    def test_a_flipped_pr_goes_back_to_draft_on_a_red_check_or_a_new_head_never_on_a_pending_one(self):
-        """Look 1: a draft meets READY and is flipped; look 2 (now ready): one change; look 3: closed."""
-        lines = self.watch('Gitar: approved', draft_ok=False, drafts='true\nfalse\nfalse', checks='\nlint\n', states='OPEN\nOPEN\nCLOSED')
-        self.assertIn('ship: DRAFT AGAIN #7 (lint is red)', lines)
-        self.assertEqual(self.flips, ['pr ready 7 -R o/r', 'pr ready 7 -R o/r --undo'])
-        lines = self.watch('Gitar: approved', draft_ok=False, drafts='true\nfalse\nfalse', heads='new1\nnew2\nnew2', states='OPEN\nOPEN\nCLOSED')
-        self.assertIn('ship: DRAFT AGAIN #7 (a new head new2)', lines)
-        lines = self.watch('Gitar: approved\nGitar: approved', draft_ok=False, drafts='true\nfalse\nfalse', checks='\npending\n', states='OPEN\nOPEN\nCLOSED')
-        self.assertFalse(any('DRAFT AGAIN' in line for line in lines), lines)
-        self.assertEqual(self.flips, ['pr ready 7 -R o/r'])
-
 
 if __name__ == '__main__':
     unittest.main()
