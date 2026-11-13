@@ -80,20 +80,22 @@ def _read(board, search, fetch, route, early, show=None):
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):
             links, started, how = board_paths.forms(board['search_url'], term, place), time.monotonic(), ''
             url = links[0]
+            parts = board_round_log.Parts()
             try:
-                url, page = board_paths.get(listing or fetch, links)   # Why (#3886): a path-style board answers the plus form 404 and was skipped; its slug link has the jobs
+                with parts.part('page'):
+                    url, page = board_paths.get(listing or fetch, links)   # Why (#3886): a path-style board answers the plus form 404 and was skipped; its slug link has the jobs
             except urllib.error.HTTPError as error:
                 careers.note_refusal(url, error)
                 if error.code in host_pace.REFUSED:
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error=f'HTTP {error.code}')
+                board_round_log.said(board, term, place, started, jobs, error=f'HTTP {error.code}', parts=parts)
                 continue
             except (urllib.error.URLError, OSError, ValueError) as error:
                 if type(error).__name__ == 'Refused':
                     return jobs, board_yield.refused(error), None
-                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__)
+                board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts)
                 continue
-            found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
+            found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch, parts.part)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
                 asked_routes = True
                 try:
@@ -111,17 +113,18 @@ def _read(board, search, fetch, route, early, show=None):
                         careers.note_refusal(url, error)
                         return jobs, board_yield.refused(error), None
                     fetch, how = show, 'read after its scripts ran'   # this board's other searches and next pages are built by scripts too
-                    found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch)
+                    found = careers.jsonld_jobs(page, url) or careers.read_page_from(page, url, fetch, parts.part)
             if not found and asks < AI_ASKS and term != asked_term:   # an open, readable page no free step reads: the AI reads it (its caps), and the
                 asks, asked_term = asks + 1, term                      # recipe it leaves reads it free from then on (owner, 18 Oct 2026; page_recipes.py).
-                found, how = careers._asked(url, page, [], fetch), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
+                with parts.part('AI reader'):
+                    found, how = careers._asked(url, page, [], fetch), 'the AI read the page'   # An empty answer (no jobs for these words) asks again on the next words' page
                 asks = AI_ASKS if found else asks                      # (19 Oct 2026: Arbeitsagentur, 0 for "audio producer", 5 for "sound engineer")
             on_page = len(found or [])   # the round line counts the first page apart from its next pages (Gitar, #3952)
             if found and not early:   # the next pages of these results, while they still give relevant jobs (board_pages.py)
                 found = found + board_pages.more(url, page, found, fetch, lambda markup, link: careers.jsonld_jobs(markup, link) or careers.read_page_from(markup, link, fetch),
                                                  lambda some: board_yield.is_relevant(some))
             shaped = _shaped(board, found)
-            board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page)
+            board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
             jobs.extend(shaped)
             state = 'ok' if jobs else state
         new = {job['url'] for job in jobs} - seen
