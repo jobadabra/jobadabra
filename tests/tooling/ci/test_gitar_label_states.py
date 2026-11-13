@@ -75,6 +75,9 @@ class OneSignalTest(unittest.TestCase):
         self.assertEqual(wanted([], CHANGES, **late), [PLAIN['changes'] + OLD])
         self.assertEqual(wanted([], APPROVED, **late), [PLAIN['approved'] + OLD])
         self.assertEqual(wanted([run(started='2026-11-13T19:00:10Z')], APPROVED, **late), ['Gitar: approved'], 'positive control: with a run on the head the same edit is its verdict')
+        # Gitar on #4048: an edit long AFTER the run completed (a finding closed by a thread reply on the same head) is still Gitar's verdict on a head it ran on: shown plain, a documented choice, not a gap.
+        self.assertEqual(wanted([run(started='2026-11-13T20:40:09Z')], APPROVED, updated='2026-11-13T22:00:00Z'), ['Gitar: approved'])
+        self.assertEqual(wanted([run(started='2026-11-13T20:40:09Z')], CHANGES, updated='2026-11-13T22:00:00Z'), ['Gitar: changes requested'])
 
     def test_a_null_node_in_any_list_does_not_crash_the_read(self):
         # 11 Nov 2026, #3817 run 43026926353: GitHub answered a null check suite and the label run crashed ("reading 'createdAt'"); the owner saw the PR red.
