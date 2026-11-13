@@ -29,12 +29,29 @@ ship_pr_fail() { fail_reason="$1"; echo "ship: FAILED $1" >&2; exit 1; }
 # The lease names what origin has NOW (empty: nothing): the branch is deleted on merge, so the local tracking ref of an earlier landing is stale and a bare --force-with-lease refuses (12 Oct 2026). Only this session writes the branch.
 # ship_pr_lookup <repo> <branch>: sets `n` to the branch's open PR, empty when there is none. Stops the run (nothing pushed, no PR created) when GitHub cannot say.
 # Why (13 Nov 2026, pq; bl on #4022 and gq on #4031, REST core 0): an unreadable lookup used to read as no PR: the run pushed, tried to create a second one (422) and never started its watcher.
+# ship_rest_reset_text: " until hh:mm" when GitHub says when the REST quota comes back, else nothing (the one wording of every "REST quota 0" line of ship).
+ship_rest_reset_text() {
+  local reset; reset="$(gh api rate_limit --jq .resources.core.reset 2>/dev/null)"
+  [ -z "$reset" ] || echo " until $(date -d "@$reset" +%H:%M 2>/dev/null || date -r "$reset" +%H:%M 2>/dev/null)"
+}
 ship_pr_lookup() {
-  local reset when=""
+  local when=""
   if n="$(pr_of_head "$1" "$2" 2>/dev/null)"; then return 0; fi
-  reset="$(gh api rate_limit --jq .resources.core.reset 2>/dev/null)"
-  [ -z "$reset" ] || when=" until $(date -d "@$reset" +%H:%M 2>/dev/null || date -r "$reset" +%H:%M 2>/dev/null)"
+  when="$(ship_rest_reset_text)"
   ship_pr_fail "GitHub could not say whether $2 already has an open pull request (REST quota 0$when, or unreachable): nothing was pushed and no pull request was created; run tools/ship.sh again"
+}
+# ship_pair_lines <pr> <repo>: runs tools/ship-search-hold.sh and writes each line it prints as a step; its `PAIR NOT STARTED <why>|<command>` becomes
+# `ship: FAILED pair not started (<why>[, REST quota 0 until hh:mm]); start it by hand: <command>`, a line the watchers wake on. The run goes on: the PR stays held for its pair.
+# Why (14 Nov 2026, rb; owner via mac-95: #4091 and #4100 sat ~25 min with no pair, REST quota 0 at ~22:50Z): a failed dispatch was one plain step line, so no session heard that its pair never started.
+ship_pair_lines() {
+  local line why when
+  while IFS= read -r line; do
+    case "$line" in
+      "PAIR NOT STARTED "*) why="${line#PAIR NOT STARTED }"; when=""; ! _pr_rest_out || when="$(ship_rest_reset_text)"; echo "ship: FAILED pair not started (${why%%|*}${when:+; REST quota 0$when}); start it by hand: ${why#*|}" ;;
+      "") ;;
+      *) step "$line" ;;
+    esac
+  done < <(bash "$tools/ship-search-hold.sh" "$1" "$2")
 }
 ship_pr_push() { local now; now="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)"; git push -q "--force-with-lease=refs/heads/$branch:$now" origin "HEAD:refs/heads/$branch" 2>&1 || ship_pr_fail "could not push the branch $branch to origin"; }
 # No stacking (owner, 17 Oct 2026: a PR on another PR's branch gets stuck when the base merges or is retargeted): refuse to push a branch that carries a commit of another open PR.
@@ -100,7 +117,7 @@ ship_pr_land() {
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until it is READY on its new head" || true; fi   # --draft: a new push is not yet checked or approved
   fi
   if ship_review && [ -z "${external:-}" ]; then   # a pending "Moves:" number: ship holds the PR and starts its pair (tools/ship-search-hold.sh, 13 Nov 2026)
-    while IFS= read -r line; do [ -z "$line" ] || step "$line"; done < <(bash "$tools/ship-search-hold.sh" "$n" "$repo")
+    ship_pair_lines "$n" "$repo"
   fi
   [ -z "${external:-}" ] || bash "$tools/lab-ci-dispatch.sh" "$n"   # a lab PR has no Actions of its own: the public repo runs its tests (tools/lab_ci.py)
   ship_watch_start "$n"   # from here on the log also hears RED / GREEN / READY / MERGED / CLOSED, whatever way this run ends (18 Oct 2026: #1321 sat red unnoticed)
