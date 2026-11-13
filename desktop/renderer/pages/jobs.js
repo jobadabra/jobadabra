@@ -44,7 +44,7 @@ import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
 import {wireApplyDialog} from './jobs-apply.js';
 import {readThroughStep} from '../apply-readiness-read.js';
-import {wireTriage} from './jobs-triage.js';
+import {keepStored, wireTriage} from './jobs-triage.js';
 import {plainError} from '../run-warnings.js';
 import {isOutdated} from '../errors.js';
 import {showOutdatedJobs} from './jobs-outdated.js';
@@ -158,6 +158,7 @@ function reloadQuietly() {
 const withoutProfileVerdict = ({profile_empty, ...rest}) => rest;
 export function showJobsData(data) {
   jobsState.lastJobsData = data;
+  keepStored(data.jobs);   // each row's stored apply check, so a restart keeps "Needs you" and "Account needed" (lib/jobs-handlers.js)
   renderFindCard();   // its count decides "empty" (no jobs yet)
   // "Your search changed" until a refresh has finished: the settings as they are now (a refresh that just ended set lastSearchAt).
   wireSearchChanged();

@@ -12,18 +12,21 @@ import * as store from './store/index.js';
 import {KIT_SECTION, kitOf} from './store/extension-store.js';
 import {jobFiles} from './store/files.js';
 import {demoPath} from './demo.js';
+import {isFresh, unpack} from './apply-readiness.js';
 
 // The page in three reads, so the drawer can draw as each lands (renderer/pages/job-panel.js): the CORE (app, match, today's places: what the
 // header and the Overview need), the REST (sections, events, interviews, in one engine call that reads the page's blocks once, src/stores/job_page.py)
 // and the FILES (screenshots, a tailored CV: their bytes are downloaded, so they come last and only when asked). jobPage() is all three at once.
-// core -> {app, match, links, placesNow?}; app null when the job has no application yet (a match nobody acted on). match: the search's
+// core -> {app, match, links, check, placesNow?}; app null when the job has no application yet (a match nobody acted on). match: the search's
 // 🎯 Job Matches record (its facts: the Match tab), null for a job added by hand.
 export async function jobCore(storage, url, {call = engine.call, links = false, placesNow = askPlacesNow} = {}) {
   const [app, match] = await Promise.all([call(storage, 'applications', 'get', {url: String(url || '')}),
     call(storage, 'matches', 'get', {url: String(url || '')}).catch(() => null)]);   // no match is no Match tab, never a failed page
   // With a match: today's places, so the drawer can say a score used older ones (lib/places-now.js); failing to ask is not failing the page.
   const places = match ? {placesNow: await placesNow(storage).catch(() => '')} : {};
-  return {app: app?.id ? app : null, match: match || null, links, ...places};
+  // check: the job's stored apply check (lib/apply-readiness.js, the one owner of its format) while it is this posting's, so the header shows "Account needed" after a restart too.
+  const stored = unpack(app?.apply_readiness), check = isFresh(stored, {posted_at: match?.posted || app?.posted || ''}) ? stored.read : null;
+  return {app: app?.id ? app : null, match: match || null, links, check, ...places};
 }
 
 // rest -> {sections, kit, events, interviews}. Interviews and events none are not a failed page.

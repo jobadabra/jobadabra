@@ -57,6 +57,18 @@ class StoreJobsTests(unittest.TestCase):
         self.assertEqual(from_store['https://jobs.test/a'], from_notion['https://jobs.test/a'], 'a match alone')
         self.assertEqual(from_store['https://jobs.test/lead'], from_notion['https://jobs.test/b'], 'an application alone')
 
+    def test_each_row_carries_its_stored_apply_check_on_both_stores(self):
+        """Owner, 13 Nov 2026 ("Fix it in this PR"): a row keeps "Needs you" and "Account needed" after a restart, so the list carries the stored check (desktop/lib/apply-readiness.js reads it)."""
+        stores = self.stores()
+        stores.applications.update(stores.applications.get('https://jobs.test/lead')['id'], {'apply_readiness': '{"v": 1}'})
+        rows = {row['url']: row for row in store_jobs(stores)}
+        self.assertEqual((rows['https://jobs.test/lead']['apply_readiness'], rows['https://jobs.test/b/']['apply_readiness']), ('{"v": 1}', ''))
+        tracker, page = object.__new__(client.Tracker), notion_page('https://jobs.test/b', 'app')
+        page['properties']['Apply readiness'] = {'rich_text': [{'plain_text': '{"v": 1}'}]}
+        with mock.patch.object(client, 'MATCHES_DATABASE_ID', 'matches-db'), \
+                mock.patch.object(client.Tracker, '_query', lambda self, *args: [] if args and args[1] == 'matches-db' else [page], create=True):
+            self.assertEqual(tracker.notion_jobs()[0]['apply_readiness'], '{"v": 1}')
+
     def test_desktop_jobs_reads_the_chosen_store_and_never_without_one(self):
         stores = self.stores()
         def listed(env):

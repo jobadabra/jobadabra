@@ -29,3 +29,15 @@ export function modeOfRead(read) {
   if (read.allFactsSaved !== true) return {mode: 'fill', reason: 'answers you have not saved'};
   return {mode: 'auto', reason: 'every answer is a saved fact'};
 }
+
+/**
+ * What account a job's application asks for, from the same read (owner, 13 Nov 2026: "mark the jobs that requires an account"), drawn as "Account needed" (renderer/account-chip.js).
+ * Only an explicit `true` counts: an unknown flag (null, not checked yet) shows nothing, since not judged = not read on a guess (the mode table above reads unknown as unsafe; a chip must not). Pure.
+ * @returns {{kind: 'site', why: 'sign-in'|'create'} | null}
+ */
+export function accountNeed(read) {
+  if (!read || read.unreadable === true) return null;
+  if (read.login === true) return {kind: 'site', why: 'sign-in'}; // words-ok: the read's own flag, not a page word list
+  if (read.accountCreation === true) return {kind: 'site', why: 'create'};
+  return null;
+}
