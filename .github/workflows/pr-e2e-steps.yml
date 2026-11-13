@@ -94,7 +94,7 @@ jobs:
           if ! python3 tools/gh_retry.py workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="$STEPS" 2>"$RUNNER_TEMP/dispatch.err"; then
             cat "$RUNNER_TEMP/dispatch.err"
             if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again."
-            else echo "::error::GitHub refused to start the steps (tried twice); no step ran. Push again or re-run this job."; fi
+            else echo "::error::GitHub refused to start the steps (a 500/502/503/504 is tried twice, any other refusal once); no step ran. See the gh error above. Push again or re-run this job."; fi
             exit 1
           fi
           echo "Started e2e.yml on \`$HEAD_REF\`: $SUITES (the steps this PR reaches; the job summary says why each runs)."
