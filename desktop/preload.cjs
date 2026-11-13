@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('pilot', {
   linkedinImportState: call('linkedinImportState'), linkedinImportRun: call('linkedinImportRun'), linkedinImportApply: call('linkedinImportApply'), linkedinImportCancel: call('linkedinImportCancel'), linkedinImportDisconnect: call('linkedinImportDisconnect'),
   onLinkedinImportStep: callback => ipcRenderer.on('linkedinImportStep', (_, step) => callback(step)),
   linkedinJobsState: call('linkedinJobsState'), linkedinJobsAsked: call('linkedinJobsAsked'), linkedinJobsAnswer: call('linkedinJobsAnswer'), linkedinJobsConnect: call('linkedinJobsConnect'), linkedinJobsSignIn: call('linkedinJobsSignIn'), linkedinJobsOff: call('linkedinJobsOff'),
+  easyApplyState: call('easyApplyState'), easyApplyOn: call('easyApplyOn'), easyApplyOff: call('easyApplyOff'),
   hostedState: call('hostedState'), hostedMoment: call('hostedMoment'), hostedMomentShown: call('hostedMomentShown'), hostedOn: call('hostedOn'), hostedOff: call('hostedOff'), hostedDelete: call('hostedDelete'), hostedPush: call('hostedPush'), hostedExport: call('hostedExport'), hostedTestStart: call('hostedTestStart'), hostedTestRead: call('hostedTestRead'),
   onHostedArrived: callback => ipcRenderer.on('hostedArrived', (_, arrived) => callback(arrived)),
   onHostedMoment: callback => ipcRenderer.on('hostedMoment', () => callback()),

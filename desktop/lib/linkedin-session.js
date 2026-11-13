@@ -59,10 +59,13 @@ export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }
 }
 
-/** Switch off: the Keychain item goes, the ask counters stay. Repeatable. */
+/** Switch off: the Keychain item goes, the ask counters stay, and LinkedIn Easy Apply's switch goes off too. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
   save(storage, {on: false, last: undefined, pauseUntil: undefined, signin: undefined, noticedAt: undefined});   // a new yes starts clean: no old result, no old pause
+  // Why (Gitar on #4008, 13 Nov 2026): LinkedIn Easy Apply (lib/easy-apply-switch.js) uses this sign-in; its saved yes goes with it, so LinkedIn jobs back on never revives it (warnedAt stays: warned once).
+  const easy = storage.settings().easyApply;
+  if (easy?.on) storage.saveSettings({easyApply: {...easy, on: false}});
   return {ok: true};
 }
 

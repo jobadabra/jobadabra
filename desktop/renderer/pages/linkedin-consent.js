@@ -71,9 +71,25 @@ async function turnOff() {
  * Resolves when the dialog closed and what it chose did its first step.
  */
 export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
-  const dialog = $('linkedin-dialog');
-  if (dialog.open) return Promise.resolve(false);
   const words = CONSENT[mode] || CONSENT['turn-on'];
+  const shown = showConsent(words, {chrome: !!(words.chrome && view.extension)});   // the shortcut only while the Chrome extension is connected
+  if (!shown) return Promise.resolve(false);
+  return shown.then(async answer => {
+    const yes = answer === 'default', chrome = answer === 'chrome';
+    if (chrome) await turnOnWithChrome(mode === 'renew');
+    else if (yes) await (mode === 'manage' ? turnOff() : signInHere(mode === 'renew'));
+    else if (counts) await window.pilot.linkedinJobsAnswer('not-now').catch(() => {});
+    return yes || chrome;
+  });
+}
+
+/**
+ * The one LinkedIn dialog, filled with `words` ({title, lead, line, yes, no, chrome?}) and shown; LinkedIn Easy Apply (pages/easy-apply-consent.js) opens it too.
+ * -> a promise of how it closed ('default' = yes, 'chrome', '' or 'cancel'), or null when it is already open (one dialog at a time).
+ */
+export function showConsent(words, {chrome = false} = {}) {
+  const dialog = $('linkedin-dialog');
+  if (dialog.open) return null;
   $('linkedin-title').textContent = words.title;
   $('linkedin-lead').textContent = words.lead;
   $('linkedin-line').textContent = words.line;
@@ -81,19 +97,15 @@ export function openLinkedinConsent({mode = 'turn-on', counts = false} = {}) {
   $('linkedin-yes').textContent = words.yes;
   $('linkedin-no').textContent = words.no;
   $('linkedin-chrome').textContent = words.chrome || '';
-  $('linkedin-chrome').hidden = !(words.chrome && view.extension);   // the shortcut only while the Chrome extension is connected
+  $('linkedin-chrome').hidden = !chrome;
   dialog.returnValue = '';
   return new Promise(resolve => {
-    dialog.addEventListener('close', async () => {
-      const yes = dialog.returnValue === 'default', chrome = dialog.returnValue === 'chrome';
-      if (chrome) await turnOnWithChrome(mode === 'renew');
-      else if (yes) await (mode === 'manage' ? turnOff() : signInHere(mode === 'renew'));
-      else if (counts) await window.pilot.linkedinJobsAnswer('not-now').catch(() => {});
-      resolve(yes || chrome);
-    }, {once: true});
+    dialog.addEventListener('close', () => resolve(dialog.returnValue), {once: true});
     dialog.showModal();
   });
 }
+/** A toast through the function startup bound (bindToast), for the Easy Apply flow that shares this dialog. */
+export const say = (...args) => toast(...args);
 
 /** Every Find jobs press calls this (pages/jobs.js startSearch): on the 1st and 2nd press while off, one dialog. Never blocks the search. */
 export async function askLinkedinOnPress(why) {
