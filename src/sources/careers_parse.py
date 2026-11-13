@@ -279,18 +279,30 @@ def numbered_links(found, host, own):
     return list(dict.fromkeys(best)) if len(set(best)) >= NUMBERED else []
 
 
+def _judged_paths(candidates):
+    """The candidates the existing AI link judgment names as job pages, deduplicated in page order."""
+    out = []
+    words = page_words.link_words((text, parts.path) for url, text, parts in candidates)
+    for url, text, parts in candidates:
+        if (words[(str(text or ''), str(parts.path or ''))] or page_words.Words(False, False, False, False)).job_path:
+            out.append(url.split('#')[0])
+    return list(dict.fromkeys(out))
+
+
 def _job_paths(markup, base):
     """(host, own path, the same-site links that look like job pages, those of them that end in an id)."""
     host = (urllib.parse.urlsplit(base).hostname or '').removeprefix('www.')
     own = urllib.parse.urlsplit(base).path.rstrip('/')
-    out = []
     same = [(url, text, urllib.parse.urlsplit(url)) for url, text in links(markup, base)]
     same = [(url, text, parts) for url, text, parts in same if (parts.hostname or '').removeprefix('www.') == host and parts.path.rstrip('/') != own]
-    words = page_words.link_words((text, parts.path) for url, text, parts in same)
-    for url, text, parts in same:
-        if (words[(str(text or ''), str(parts.path or ''))] or page_words.Words(False, False, False, False)).job_path:
-            out.append(url.split('#')[0])
-    out = list(dict.fromkeys(out))
+    # Why (13 Nov 2026, cp, owner: "go"): job_links already prefers three confirmed job IDs over the menu, but judged every menu link first
+    # (Jobware link step 34-61 s). Judge those candidates first; an insufficient or unknown answer still takes the full existing path.
+    identified = [(url, text, parts) for url, text, parts in same if JOB_ID.search(parts.path.rstrip('/'))]
+    if len({url.split('#')[0] for url, _, _ in identified}) >= 3:
+        confirmed = _judged_paths(identified)
+        if len(confirmed) >= 3:
+            return host, own, confirmed, confirmed
+    out = _judged_paths(same)
     return host, own, out, [url for url in out if JOB_ID.search(urllib.parse.urlsplit(url).path.rstrip('/'))]
 
 

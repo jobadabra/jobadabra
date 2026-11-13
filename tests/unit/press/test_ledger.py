@@ -15,7 +15,7 @@ from tests.unit.engine import test_score_first_from_start, test_scout_carry  # n
 from tests.unit.press import test_home_region_first, test_ledger_scenarios, test_one_scorer, test_resume, test_resume_run  # noqa: F401
 from tests.unit.stores import test_store_beside  # noqa: F401
 from tests.unit.sources import (test_aggregators, test_api_lane, test_boards_beside, test_boards_early, test_boards_first, test_eures, test_eures_place_fragments, test_eures_titles_in_time,  # noqa: F401
-                                test_board_lane_clock, test_first_jobs, test_first_jobs_hub, test_first_jobs_slow_boards, test_first_press_order, test_index_place_rank,
+                                test_board_lane_clock, test_careers_paging, test_first_jobs, test_first_jobs_hub, test_first_jobs_slow_boards, test_first_press_order, test_index_place_rank,
                                 test_job_rank, test_read_budget, test_read_cut, test_three_minutes, test_titles_ai_first, test_unread_systems, test_waiting_jobs)
 
 

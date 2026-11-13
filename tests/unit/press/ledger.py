@@ -213,6 +213,13 @@ FIXES = (
         ('tests/unit/ai/test_decide_gate.py::test_a_small_pages_answers_return_before_another_pages_later_batch',
          'tests/unit/ai/test_decide_gate.py::test_the_call_cap_still_leaves_later_batches_unknown'),
         owner='13 Nov 2026, cp pane: "this is most important", prioritizing the 54-73 s board-link delay over the Codex exit wait'),
+
+    Fix('L43', '13 Nov 2026 (cp: 120 menu links and five job cards needed three model calls before the job IDs won)',
+        'confirmed job-ID links are judged before menu links; insufficient or rejected candidates still use the complete link path',
+        ('tests/unit/sources/test_careers_paging.py::test_confirmed_job_ids_skip_menu_classification_and_keep_all_jobs',
+         'tests/unit/sources/test_careers_paging.py::test_rejected_numbered_news_links_fall_back_to_the_jobs_without_ids',
+         'tests/unit/sources/test_careers_paging.py::test_unanswered_id_candidates_are_not_accepted_by_shape'),
+        owner='13 Nov 2026, cp pane: "go", after the proposal to judge job-card IDs before hundreds of menu links and preserve the full fallback'),
 )
 
 

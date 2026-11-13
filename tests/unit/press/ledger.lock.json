@@ -166,5 +166,9 @@
  "L42": {
   "gets": "a board with its link answers ready never waits for another page's later AI batches; sharing keeps its lanes and call cap",
   "hash": "2c54031261c0006e"
+ },
+ "L43": {
+  "gets": "confirmed job-ID links are judged before menu links; insufficient or rejected candidates still use the complete link path",
+  "hash": "d8957f9729ecafd5"
  }
 }

@@ -1,6 +1,10 @@
 """A careers page's numbered pages, and its job links over its menu links (src/sources/careers.py; 6 Oct 2026: Migros, 1,335 jobs over 67 pages,
 read as 36 menu links: "Trainee", "Nachwuchsprogramme")."""
 import unittest
+import json
+import sqlite3
+import tempfile
+from types import SimpleNamespace
 from pathlib import Path
 import sys
 from unittest import mock
@@ -60,6 +64,62 @@ class PagingTests(unittest.TestCase):
         self.assertEqual(len(found), len(words))
         self.assertTrue(careers_parse.has_job_ids(f'<html>{cards}</html>', BASE))
         self.assertFalse(careers_parse.has_job_ids(f'<html>{menu}</html>', BASE))
+
+
+class CandidateLinksTests(unittest.TestCase):
+    """Id-shaped candidates still need the same AI verdict; menu links need no verdict once those jobs win."""
+
+    def setUp(self):
+        from src.ai import decide, page_words
+        self.decide, self.page_words = decide, page_words
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.requests = []
+        self.answers = lambda text: 'job_page' if 'role' in text else 'not_jobs'
+        self.db = Path(self.tmp.name) / 'decisions.sqlite'
+        self.client = SimpleNamespace(messages=SimpleNamespace(create=self.create))
+        for patch in (mock.patch.object(page_words, 'ai_on', return_value=True),
+                      mock.patch.object(decide, '_db', lambda: sqlite3.connect(self.db)),
+                      mock.patch.object(decide.engine, 'ready', return_value=True),
+                      mock.patch.object(decide.engine, 'client', return_value=self.client),
+                      mock.patch.object(decide.engine, 'structured', return_value={}),
+                      mock.patch.object(decide.cost, 'side'), mock.patch('src.ai.meanings_pack.first', return_value=None),
+                      mock.patch('src.ai.meanings_pack.queue')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+
+    def create(self, **request):
+        items = [part.split('\n', 1)[1].strip() for part in request['messages'][0]['content'].split('### Item ')[1:]]
+        self.requests.append(items)
+        body = json.dumps({str(n): self.answers(text) for n, text in enumerate(items)})
+        return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=body)], usage=None)
+
+    def test_confirmed_job_ids_skip_menu_classification_and_keep_all_jobs(self):
+        menu = ''.join(f'<a href="/section/{n}">Menu {n}</a>' for n in range(120))
+        cards = ''.join(f'<a href="/vacancy/{100000 + n}">Role {n}</a>' for n in range(5))
+        found = careers.job_links(menu + cards, BASE)
+        self.assertEqual(found, [f'https://jobs.example.ch/vacancy/{100000 + n}' for n in range(5)])
+        self.assertEqual([len(items) for items in self.requests], [5], 'one small AI request, with no menu links, instead of three 50-item batches')
+
+    def test_rejected_numbered_news_links_fall_back_to_the_jobs_without_ids(self):
+        news = ''.join(f'<a href="/article/{100000 + n}">News {n}</a>' for n in range(3))
+        cards = '<a href="/open/role-a">Role A</a><a href="/open/role-b">Role B</a>'
+        found = careers.job_links(news + cards, BASE)
+        self.assertEqual(found, ['https://jobs.example.ch/open/role-a', 'https://jobs.example.ch/open/role-b'])
+
+    def test_unanswered_id_candidates_are_not_accepted_by_shape(self):
+        cards = ''.join(f'<a href="/vacancy/{100000 + n}">Role {n}</a>' for n in range(3))
+        with mock.patch.object(self.decide, 'MAX_CALLS_PER_RUN', 0):
+            self.assertEqual(careers.job_links(cards, BASE), [])
+        self.assertEqual(self.requests, [])
+
+    def test_three_anchors_to_one_job_do_not_hide_the_other_jobs(self):
+        repeated = '<a href="/vacancy/100000">Role A</a>' * 3
+        cards = '<a href="/open/role-b">Role B</a><a href="/open/role-c">Role C</a>'
+        self.assertEqual(careers.job_links(repeated + cards, BASE), [
+            'https://jobs.example.ch/vacancy/100000', 'https://jobs.example.ch/open/role-b', 'https://jobs.example.ch/open/role-c'])
 
 
 if __name__ == '__main__':
