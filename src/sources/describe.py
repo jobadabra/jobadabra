@@ -231,12 +231,14 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             if isinstance(error, Refused) and fetcher is fetch:
                 read_routes.record(item[1], 'refused', now)
             return item, '', error
-    filled = failed = gone = empty = 0
+    filled = failed = gone = empty = later = 0
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(slots.carry(one), todo))
     for (job_id, url), text, error in results:
         if isinstance(error, host_pace.Busy):
             waiting_at[host(url)] += 1   # tried again in a later run, at the pace the site asked for
+        elif isinstance(error, linkedin_guest.Later):
+            later += 1   # LinkedIn's turn is over for this run (its cut, its 10 pages or a stop): read by a later run
         elif isinstance(error, Refused):
             refused_at[host(url)] += 1
             refused_before[host(url)] = {'at': now.isoformat(), 'why': str(error)}
@@ -258,6 +260,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     return (f'Descriptions: read {filled} of {len(rows)} missing job texts' + (f', {gone} posting(s) taken down (closed)' if gone else '')
             + (f', {empty} drawn only in a browser ({hosts(scripted_at)})' if empty else '') + (f', {failed} failed (tried again next time)' if failed else '')
             + (f', {sum(waiting_at.values())} waiting: {hosts(waiting_at)} asked us to slow down (tried again later)' if waiting_at else '')
+            + (f', {later} LinkedIn page(s) wait for a later run' if later else '')
             + (f', {sum(refused_at.values())} refused by {hosts(refused_at)}' if refused_at else '')
             + (f', {sum(walled_at.values())} on sign-in sites ({hosts(walled_at)})' if walled_at else '')
             + (f', {sum(closed_at.values())} not asked: other installs found {hosts(closed_at)} closed to a plain read' if closed_at else '')

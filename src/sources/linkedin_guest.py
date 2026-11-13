@@ -50,7 +50,7 @@ class Pace:
 
     def reset(self):
         """No request yet, no stop, no job page read."""
-        self.last, self.stopped, self.job_pages = None, None, 0
+        self.last, self.stopped, self.job_pages, self.reserved = None, None, 0, 0
 
     def stop(self, why):
         """Stop every later read of the process; True the first time (it is said once)."""
@@ -61,9 +61,18 @@ class Pace:
         """A request starts now (`at`, the run's clock)."""
         self.last = at
 
-    def job_page(self):
-        """One more job page is read."""
-        self.job_pages += 1
+    def reserve(self):
+        """Hold one of the run's job pages before its request; False when none is left. Why (Gitar on #3995): counting before the request let a cut or a failure
+        spend a page that was never read, and 4 describe threads could pass the check together; a reservation keeps the cap exact and is given back."""
+        if self.job_pages + self.reserved >= JOB_PAGES:
+            return False
+        self.reserved += 1
+        return True
+
+    def release(self, read):
+        """The reserved page's request ended: counted when a page was read, given back otherwise."""
+        self.reserved -= 1
+        self.job_pages += 1 if read else 0
 
 
 PACE = Pace()
@@ -71,12 +80,13 @@ _opener = urllib.request.build_opener()   # no HTTPCookieProcessor: nothing is k
 _sleep = time.sleep
 
 
-class Later(host_pace.Busy):
-    """LinkedIn is not read any more in this run (a stop, the read cut or the job-page cap): what is left waits for a later run, never a retry now."""
+class Later(OSError):
+    """LinkedIn is not read any more in this run (a stop, the read cut or the job-page cap): what is left waits for a later run, never a retry now.
+    Why (Gitar on #3995): not a host_pace.Busy, whose `until` says when to ask again; this names no time, the next run decides."""
 
     def __init__(self, url, why):
-        OSError.__init__(self, why)
-        self.url, self.until, self.why = url, time.time(), why
+        super().__init__(why)
+        self.url, self.why = url, why
 
 
 def reset():
@@ -99,7 +109,7 @@ def job_page(url):
 def job_pages_left():
     """How many job pages this process may still read (0 after a stop)."""
     with PACE.lock:
-        return 0 if PACE.stopped else max(0, JOB_PAGES - PACE.job_pages)
+        return 0 if PACE.stopped else max(0, JOB_PAGES - PACE.job_pages - PACE.reserved)
 
 
 def _stop(why, status=0):
@@ -221,11 +231,17 @@ def description(url):
     if not found:
         return ''
     with PACE.lock:
-        if not PACE.stopped and PACE.job_pages >= JOB_PAGES:
+        if PACE.stopped:
+            raise Later(url, SAID[PACE.stopped])
+        if not PACE.reserve():
             raise Later(url, 'the job pages of this run are read')
-        if not PACE.stopped:
-            PACE.job_page()
-    final, text = _get(JOB_URL.format(id=found.group(1)))
+    read = False
+    try:
+        final, text = _get(JOB_URL.format(id=found.group(1)))
+        read = True
+    finally:
+        with PACE.lock:
+            PACE.release(read)
     if not urllib.parse.urlsplit(final).path.startswith('/jobs/view/'):
         return ''
     body = re.search(r'<div\b[^>]*class="[^"]*\bshow-more-less-html__markup\b[^"]*"[^>]*>(.*?)</div>', text, re.S)

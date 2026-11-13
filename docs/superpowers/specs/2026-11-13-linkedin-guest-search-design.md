@@ -35,7 +35,7 @@ LinkedIn is one of the finish line's sources (spec 2026-11-10-find-jobs-finish-l
 ## Safety
 - Honest user agent: `ats.USER_AGENT` ("Jobadabra/0.1 …"), never a Chrome string from a plain reader (CLAUDE.md: never disguise). Proven to work on 13 Nov 2026. If LinkedIn ever refuses it, the lane stops; a disguise is a new owner decision.
 - No cookie (a fresh `urllib` opener with no cookie jar), never the signed-in session, no proxy, no login, no check solved, no retry after a stop, never more than 9 search pages + 10 job pages a press.
-- `host_pace.open` is not used: it retries a 429 up to 3 times; this lane's owner rule is no retry. The lane uses `host_pace.turn` and `answer` so the shared per-domain gap still holds.
+- `host_pace.open` is not used: it retries a 429 up to 3 times; this lane's owner rule is no retry. The lane keeps its own, stricter gap (3-7 s, one request at a time, `PACE`); `host_pace.answer` judges a 429 / 503 + Retry-After and records it, so any other reader of linkedin.com sees the wider gap (Gitar on #3995: the spec said `turn` too, which the code does not use).
 - CLAUDE.md Safety's LinkedIn paragraph gets one sentence for the guest read (owner's words above) in PR 1/4 (sa: the same PR as the reader).
 - Tests and CI never reach linkedin.com: recorded fixtures only (cards page, empty end, blocked page, sign-in redirect, job page); a stand-in opener asserts no request leaves.
 
