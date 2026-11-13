@@ -13,36 +13,43 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 def share_web_search(search):
     """Asks the web search for trade and local boards once and leaves its answer saved, not yet judged, so a side's run takes that answer instead of asking again
-    (board_web.search takes web_answers.take unless web_used names it). Returns how many boards the one search named."""
+    (board_web.search takes web_answers.take unless web_used names it). Returns True when both sides will see the same web search: none was asked for this search,
+    or its answer is saved; False when it returned without asking or without an answer (no AI that searches the web, a failed call), so each side would ask for itself."""
+    from datetime import datetime, timezone
+
     from src.ai import board_ideas
-    from src.sources import board_web
+    from src.sources import board_web, web_answers
     asked = board_ideas.asked_for(search)
     if not asked:
-        return 0
-    key = asked[0]
+        return True
+    key, places = asked[0], asked[4]
     with board_ideas.STORE:
         data = board_ideas.load()
     known = [{'name': entry.get('name') or host, 'host': host} for host, entry in (data.get('boards') or {}).items()]
-    found = board_web.search(search, known)
+    board_web.search(search, known)
+    saved = web_answers.take(web_answers.name(key, places), datetime.now(timezone.utc), None) is not None   # Gitar, #4030: a 0 from "not asked" and from "no boards named" looked alike
     with board_ideas.STORE:   # judged here only to name them; each side judges the saved answer itself, so its web ideas and stamp are taken back
         data = board_ideas.load()
         (data.get('web_used') or {}).pop(key, None)
         if key in (data.get('ideas') or {}):
             data['ideas'][key] = [board for board in data['ideas'][key] if board.get('origin') != 'web']
         board_ideas.save(data)
-    return len(found)
+    return saved
 
 
 def main():
     """Fills the install's board proposal cache (found_boards.json ideas/homes) and board_queries.json; prints what it kept."""
     from src.ai import board_ideas
-    from src.paths import load_search_config
+    from src.paths import DATA, load_search_config
     from src.sources import boards
     search = load_search_config()
     proposed = board_ideas.ideas(search)
     queries = boards.board_queries(search)
-    named = share_web_search(search)
-    print(f'Proposed once for both sides: {len(proposed)} board(s), {len(queries)} board search(es), {named} board(s) from one web search')
+    shared = share_web_search(search)
+    print(f'Proposed once for both sides: {len(proposed)} board(s), {len(queries)} board search(es); web search for boards: '
+          f"{'asked once' if shared else 'NOT shared, each side asks for itself'}")
+    if shared:   # the pair reads this marker (search-pair.yml): none, and the table says the boards are not shared
+        (DATA / 'web-shared.ok').write_text('')
 
 
 if __name__ == '__main__':
