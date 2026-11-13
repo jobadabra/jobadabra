@@ -30,23 +30,37 @@ test('the counters: total, high fit, new this week, unique companies', () => {
     {fit: 40, company: 'Globex', first_seen_at: ''},
     {fit: null, company: '', first_seen_at: '2026-09-22'},
   ];
-  assert.deepEqual(stats(jobs, 214, now), {total: 214, high: 2, week: 2, companies: 2});
+  assert.deepEqual(stats(jobs, 214, now), {total: 214, week: 2});
   assert.equal(stats(jobs, undefined, now).total, 4);
 });
 
-test('clicking a counter shows the jobs it counts', () => {
-  const now = Date.parse('2026-09-28T12:00:00Z');
+test('clicking a counter shows the jobs it counts: New since the last run, Interviews', () => {
   const jobs = [
-    {fit: 60, company: 'Acme', first_seen_at: '2026-09-27'},
-    {fit: 80, company: 'acme ', first_seen_at: '2026-09-01'},
-    {fit: null, company: 'Globex', first_seen_at: '2026-09-22'},
-    {fit: 90, company: '', first_seen_at: ''},
+    {url: 'a', status: 'unreviewed', first_seen_at: '2026-09-28T09:05:00Z'},
+    {url: 'b', status: 'saved', first_seen_at: '2026-09-27T09:05:00Z'},
+    {url: 'c', status: 'applied', stage: 'Interviewing', first_seen_at: '2026-09-28T09:10:00Z'},
+    {url: 'd', status: 'unreviewed', first_seen_at: '2026-09-28T08:59:59Z'},
   ];
-  assert.deepEqual(byStat(jobs, 'high', now), [jobs[1], jobs[3]]);
-  assert.deepEqual(byStat(jobs, 'week', now), [jobs[0], jobs[2]]);
-  assert.deepEqual(byStat(jobs, 'companies', now), [jobs[1], jobs[2]]);  // Acme's best fit, list order kept
-  assert.equal(byStat(jobs, null, now), jobs);
-  assert.equal(byStat(jobs, 'companies').length, stats(jobs).companies);
+  assert.deepEqual(byStat(jobs, 'fresh', Date.now(), '2026-09-28T09:00:00Z').map(job => job.url), ['a'], 'matches first seen since the run began; an application is not a match');
+  assert.deepEqual(byStat(jobs, 'fresh').map(job => job.url), [], 'no run known: none');
+  assert.deepEqual(byStat(jobs, 'interviews').map(job => job.url), ['c']);
+  assert.equal(byStat(jobs, null), jobs);
+});
+test('lastSearchStart: the run in progress, else the last finished search; one answer for the card and the header', async () => {
+  const {lastSearchStart} = await import('../../../renderer/jobs-view.js');
+  const done = [{kind: 'search', startedAt: '2026-09-27T09:00:00Z'}, {kind: 'search', startedAt: '2026-09-20T09:00:00Z'}];
+  assert.equal(lastSearchStart({running: {kind: 'search', startedAt: '2026-09-28T09:00:00Z'}, runs: done}), '2026-09-28T09:00:00Z', 'mid-run the New card counts since THIS run');
+  assert.equal(lastSearchStart({running: {kind: 'mail', startedAt: '2026-09-28T09:00:00Z'}, runs: done}), '2026-09-27T09:00:00Z', 'another task running is not a search');
+  assert.equal(lastSearchStart({runs: [{kind: 'mail', startedAt: 'x'}, ...done]}), '2026-09-27T09:00:00Z');
+  assert.equal(lastSearchStart({runs: [{startedAt: '2026-09-26T09:00:00Z'}]}), '2026-09-26T09:00:00Z', 'a run with no kind is a search');
+  assert.equal(lastSearchStart(null), '');
+});
+test('isSent pins the cases the shared Applied rule changed for the menu', () => {
+  assert.equal(isSent({status: 'applied', stage: 'Kit ready'}), false, 'a Kit ready job reads Saved: not sent');
+  assert.equal(isSent({status: 'applied', stage: 'Applying'}), false, 'a form still being filled');
+  assert.equal(isSent({status: 'applied', stage: ''}), true, 'marked Applied only on its match row');
+  assert.equal(isSent({status: 'applied', stage: 'Applied', origin: 'Inbound', source: 'Email', applied_on: '2026-11-07'}), true, 'an inbound lead you applied to is an application you sent');
+  assert.equal(isSent({status: 'applied', stage: 'Screening', origin: 'Inbound', source: 'LinkedIn'}), false, 'a recruiter pitch is not Applied');
 });
 
 test('application counters follow the Notion stage, with the funnel\'s stage sets', () => {
@@ -61,8 +75,7 @@ test('application counters follow the Notion stage, with the funnel\'s stage set
   assert.equal(jobs.filter(isSent).length, 5);
   assert.deepEqual(sentBreakdown(jobs), {waiting: 1, closed: 2});
   assert.deepEqual(inProcess(jobs), {screening: 1, interviews: 1});
-  assert.deepEqual(byStat(jobs, 'waiting'), [jobs[0]]);
-  assert.deepEqual(byStat(jobs, 'closed'), [jobs[2], jobs[3]]);
+  assert.deepEqual(jobs.filter(isSent).filter(job => job.stage === 'Applied'), [jobs[0]], 'the waiting one');
 });
 
 test('Applying is stuck only when no session explains it', () => {
@@ -168,7 +181,7 @@ test('the Show menu: matches by status, every match under All matches, inbound u
   assert.deepEqual(byFilter(withApplied, 'applied').map(job => job.url), ['m-applied']);
   const {openMatches, stats: countStats} = await import('../../../renderer/jobs-view.js');
   assert.deepEqual(openMatches(withApplied).map(job => job.url), ['m-new', 'm-saved', 'm-gone']);
-  assert.equal(countStats(openMatches(withApplied)).high, 0);
+  assert.equal(countStats(openMatches(withApplied)).total, 3);
   // Everything = All matches + Inbound, every status: the one list that holds both kinds (no card counts it).
   assert.deepEqual(urls('everything'), jobs.map(job => job.url));
   assert.deepEqual(order(byFilter(jobs, 'inbound'), 'activity').map(job => job.url), ['i-talk', 'i-over', 'i-new', 'i-lead']);

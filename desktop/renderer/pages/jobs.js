@@ -4,7 +4,7 @@ import {t} from '../../i18n/index.js';
 import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
-import {applicationStats, freshSince, inProcess, sentBreakdown, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
+import {applicationStats, freshSince, inProcess, lastSearchStart, sentBreakdown, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
@@ -77,9 +77,9 @@ const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.
 
 let freshJobs = false;
 let leftOpenAsked = false;  // the start-up question about sessions left open was asked (once per launch)
-/** Remembers when the latest Find jobs run began: the New card and its list count the matches first seen since. */
-function noteLastRun(runs) {
-  jobsState.lastRunStart = (runs?.runs || []).find(run => (run.kind || 'search') === 'search' && run.startedAt)?.startedAt || '';
+/** Remembers when the latest Find jobs run began (the one running now counts): the New card and its list count the matches first seen since. An answer with no start keeps the last known one. */
+async function refreshLastRun() {
+  jobsState.lastRunStart = lastSearchStart(await window.pilot.runs().catch(() => null)) || jobsState.lastRunStart;
 }
 export async function loadJobs() {
   const landed = startListRead();   // before the kept copy paints: a Start pressed on it waits for the fresh list (jobs-state.js)
@@ -88,7 +88,7 @@ export async function loadJobs() {
   showLoading();
   jobsState.jobsLoading = true;
   jobsState.claudeReady = (await window.pilot.claudeReady().catch(() => ({ok: false}))).ok;
-  noteLastRun(await window.pilot.runs().catch(() => null));
+  await refreshLastRun();
   try {
     // The last good list at once (lib/view-cache.js), then the fresh one from Notion replaces it.
     if (!shared.allJobs.length) {
@@ -155,7 +155,7 @@ function reloadQuietly() {
   reloadLater = setTimeout(() => {
     reloadLater = null;
     lastReload = Date.now();
-    quietReload = writes.read().then(fresh => { if (fresh?.jobs) { showJobsData(fresh); renderJobs(); } })
+    quietReload = Promise.all([writes.read(), refreshLastRun()]).then(([fresh]) => { if (fresh?.jobs) { showJobsData(fresh); renderJobs(); } })   // the run's start too: a mid-run reload counts New since THIS run
       .catch(() => {}).finally(() => { quietReload = null; });
   }, wait);
 }
@@ -206,8 +206,6 @@ export function showJobsData(data) {
     document.querySelector('[data-stat="interviews"]').title = t('pagesDynamicJobs.m249', {"screening": talking.screening, "interviews": talking.interviews});
     document.querySelector('[data-stat="applied"]').title = t('pagesJobsFinal.appliedDefinition');
     document.querySelector('[data-stat="fresh"]').title = t('pagesJobsFinal.freshDefinition');
-    $('stat-fresh-label').textContent = t('pagesJobsFinal.statFresh');
-    $('stat-interviews-label').textContent = t('pagesJobsFinal.statInterviews');
     renderStuck();
     showSearchStatus();   // the header's "n new matches" reads the same New count once the list is here (activity-basics.js)
   }

@@ -20,7 +20,7 @@ import {parseKitsReady} from '../kits-ready.js';
 import {openSetting} from './settings.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
-import {freshSince} from '../jobs-view.js';
+import {freshSince, lastSearchStart} from '../jobs-view.js';
 import {lastAnswered, pendingMailQuestions} from './focus.js';
 import {keepPress, setPress, pressWhile, claudeReadButton, renderVisitsCard, viewJobsButton} from './activity-visits.js';
 import {lastActivity, renderActivity} from './activity-render.js';
@@ -38,7 +38,8 @@ export const clockTime = iso => displayDate(new Date(iso), {weekday: 'short', ho
 export const duration = (a, b) => { const s = Math.round((Date.parse(b) - Date.parse(a)) / 1000); return s >= 60 ? t('pagesShortActivity.m4', {"value1": Math.floor(s / 60), "value2": s % 60}) : `${s} s`; };
 // The line under "Jobs": what's happening now, or when the last search ran.
 export async function showSearchStatus() {
-  const {running, lastSearchAt, runs} = await window.pilot.runs();
+  const runsNow = await window.pilot.runs();
+  const {running, lastSearchAt, runs} = runsNow;
   const box = $('search-status');
   const [title, detail] = [box.querySelector('b'), box.querySelector('small')];
   const searching = running && (running.kind || 'search') === 'search';
@@ -48,7 +49,7 @@ export async function showSearchStatus() {
   if (!lastSearchAt) { title.textContent = t('pagesActivity.noCheck'); detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
   // Why (df 2/2, 13 Nov 2026, owner: "Header shows the card's number"): once the jobs are loaded the header says what the Jobs page's New card says (jobs-view.js freshSince), one rule; before that, or with no list, the run's own count.
-  const fresh = last?.startedAt && shared.allJobs.length ? freshSince(shared.allJobs, last.startedAt).length : last?.new;
+  const since = lastSearchStart(runsNow), fresh = since && shared.allJobs.length ? freshSince(shared.allJobs, since).length : last?.new;   // lastSearchStart: the one answer the New card reads too
   const found = fresh != null ? t('pagesDynamicActivity.m3', {"new": fresh, count: fresh}) : '';
   const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
   if (last && !last.ok) { title.textContent = t('pagesActivity.checkProblems'); detail.textContent = clockTime(lastSearchAt); return; }

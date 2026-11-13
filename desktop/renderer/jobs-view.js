@@ -13,13 +13,11 @@ export function tags(job, max = 4) {
 }
 
 const WEEK = 7 * 24 * 3600 * 1000;
-// The four counters above the list.
+// The counts above the list: Total matches and the week's new ones (the line under the title).
 export function stats(jobs, total, now = Date.now()) {
   return {
     total: total ?? jobs.length,
-    high: jobs.filter(job => job.fit >= 70).length,
     week: jobs.filter(job => now - Date.parse(job.first_seen_at) <= WEEK).length,
-    companies: new Set(jobs.map(job => (job.company || '').trim().toLowerCase()).filter(Boolean)).size,
   };
 }
 
@@ -31,7 +29,6 @@ export function jobCounts(data, now = Date.now()) {
   const beyond = data?.total == null ? 0 : Math.max(0, data.total - loaded.length);   // matches the cut list did not load
   const count = stats(matched, matched.length + beyond, now);
   count.week += data?.week_beyond || 0;
-  count.high += data?.high_beyond || 0;
   // anyJob: any row at all, applications and inbound too. A yes or no, never a count: the list may be cut.
   return {...count, anyJob: loaded.length > 0, scored: matched.filter(job => job.fit != null).length + (data?.scored_beyond || 0)};
 }
@@ -105,6 +102,11 @@ export function statClick(kind, active, filter) {
 }
 /** True when a card is the pressed one: its counter list is active, or (no counter) it is the menu list shown (`filter`, the sole ticked filter; '' when several). Pure, from the state the page holds. */
 export const statPressed = (kind, active, filter) => kind === active || (!active && MENU_CARD[kind] === filter);
+/** When the latest Find jobs run began (ISO): the one running now, else the last finished one; '' when none is known. `runs` is what window.pilot.runs() returns. The New card, its list and the header's "n new matches" all read this one answer. */
+export function lastSearchStart(runs) {
+  const searched = run => (run?.kind || 'search') === 'search' && run?.startedAt;
+  return (searched(runs?.running) ? runs.running : (runs?.runs || []).find(searched))?.startedAt || '';
+}
 /** The matches the latest Find jobs run added: first seen at or after the run's start (ISO). No run known: none. One rule for the New card, its list and the header's "n new matches".
  *  Only the loaded rows count: the engine sends the best 200, so a low-fit new job beyond the cut is missed. */
 export const freshSince = (jobs, since) => (since ? openMatches(jobs).filter(job => Date.parse(job.first_seen_at) >= Date.parse(since)) : []);
@@ -147,21 +149,10 @@ export function applicationStats(jobs) {
   return Object.fromEntries(Object.entries(APPLICATION).map(([kind, test]) => [kind, jobs.filter(test).length]));
 }
 
-// Clicking a counter shows the jobs it counts: high fit, new this week, or one job per company (its best fit).
+// Clicking a counter shows the jobs it counts: New (the last run's matches) or Interviews. Total and Applied are the menu's own lists (statClick), not counters.
 export function byStat(jobs, kind, now = Date.now(), since = '') {
-  if (APPLICATION[kind]) return jobs.filter(APPLICATION[kind]);
   if (kind === 'fresh') return freshSince(jobs, since);
-  if (kind === 'high') return jobs.filter(job => job.fit >= 70);
-  if (kind === 'week') return jobs.filter(job => now - Date.parse(job.first_seen_at) <= WEEK);
-  if (kind === 'companies') {
-    const best = new Map();
-    for (const job of jobs) {
-      const key = (job.company || '').trim().toLowerCase();
-      if (key && (!best.has(key) || (job.fit ?? -1) > (best.get(key).fit ?? -1))) best.set(key, job);
-    }
-    const keep = new Set(best.values());
-    return jobs.filter(job => keep.has(job));
-  }
+  if (kind === 'interviews') return jobs.filter(APPLICATION.interviews);
   return jobs;
 }
 

@@ -62,7 +62,7 @@ const claudeStarted = new Set();
 
 document.addEventListener('sessions-loaded', () => renderStuck());
 
-const COUNTS_ALL = new Set(['waiting', 'interviews', 'closed']);
+const COUNTS_ALL = new Set(['interviews']);   // a counter whose jobs are applications too (Applied is the menu's list, jobs-view.js statClick)
 /**
  * Settings → Apply saved a mode: remember it for the rows and redraw them, so every Apply button names the mode a press will use.
  * Why (#3437, Gitar review): setting the state alone left the rows on the old label until an unrelated redraw.
@@ -379,7 +379,7 @@ export function renderJobs() {
     body.append(row);
   }
   // What the list is filtered to, said once: a chip (✕ shows every job) and "4 of 195 jobs".
-  const statLabel = jobsState.statFilter?.label || {fresh: t('pagesJobsFinal.statFresh'), waiting: t('pagesControlStatus.waitingReply'), interviews: t('pagesControlStatus.inProcess'), closed: t('pagesControlStatus.closed'),
+  const statLabel = jobsState.statFilter?.label || {fresh: t('pagesJobsFinal.statFresh'), interviews: t('pagesJobsFinal.statInterviews'),
     stuck: t('pagesControlStatus.stillApplying')}[jobsState.statFilter];
   renderStuck();
   // The engine sends the best rows only (src/desktop.py jobs): say how many are left out and offer them, never a silent cut (7 Oct 2026: 200 of 1,335).
