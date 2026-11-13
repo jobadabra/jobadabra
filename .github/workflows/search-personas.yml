@@ -172,6 +172,20 @@ jobs:
         if: steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
+      # Why (13 Nov 2026, owner, asked via AskUserQuestion by sa: "Yes, night reads like the app (Recommended)"): the app reads a page built by scripts in its own Chromium
+      # (desktop/lib/page-render.js); without a renderer the night's engine offered such a board as a visit (p3 Brussels, night 43313523472). Same renderer as daily.yml.
+      # A failure never stops the night (as daily.yml): the presses then run without --beside and the night reads 'as_app: no', the old series.
+      - name: The engine's page renderer, as the app has (honest, no stealth; src/sources/render.py)
+        id: render
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && vars.JOBADABRA_RENDER != '0'
+        continue-on-error: true
+        run: pip install --quiet -r requirements-render.txt
+      - name: Chromium for the renderer (cached)
+        id: render_browser
+        if: steps.token.outputs.ok == 'yes' && !inputs.eures_comparison && vars.JOBADABRA_RENDER != '0'
+        continue-on-error: true
+        uses: ./.github/actions/playwright-browser
+        with: {runtime: python, mode: both}
       - name: Paired EURES comparison (same strategy, fresh installs, one blind judge)
         if: steps.token.outputs.ok == 'yes' && inputs.eures_comparison
         run: |
@@ -190,7 +204,8 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '2' }}" --fresh --engine api --tag gate ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
+          # --beside (owner, 13 Nov 2026, the same answer): each press as the app runs a person's own press, with the job boards that refuse plain reading read beside it in Jobadabra's own headless Chrome (tools/persona-search/beside.mjs)
+          node tools/persona-search/codex.mjs -- node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses "${{ inputs.presses || '2' }}" --fresh --engine api --tag gate ${{ steps.render.outcome == 'success' && steps.render_browser.outcome == 'success' && '--beside' || '' }} ${{ inputs.eures && '--with-eures' || '' }} 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json --urls
           titles="$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/title_triage.json"

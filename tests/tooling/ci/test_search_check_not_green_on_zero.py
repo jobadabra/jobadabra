@@ -79,5 +79,22 @@ class ZeroRightJobsIsNeverGreen(unittest.TestCase):
         self.assertIn('web search never started (no places or roles known)', table)
 
 
+class ANightJoinsTheAsAppSeriesOnlyWhenEveryPressReadLikeTheApp(unittest.TestCase):
+    """Guard: data — the Admin chart starts a new, not comparable series at the first `as_app: yes` night (jobadabra-web reads the verdict key);
+    a mixed or older night marked yes would put two kinds of nights on one line (gitar on #3949)."""
+
+    def verdict(self, marks):
+        return gate.compare({n: row(n, local=3, found=5, **({} if mark is None else {'as_app': mark})) for n, mark in enumerate(marks, 1)}, [])['as_app']
+
+    def test_every_press_like_the_app_is_yes(self):
+        self.assertEqual(self.verdict(['yes'] * len(gate.PERSONAS)), 'yes')
+
+    def test_one_press_that_did_not_read_like_the_app_makes_the_night_no(self):
+        self.assertEqual(self.verdict(['yes'] * (len(gate.PERSONAS) - 1) + ['no']), 'no')
+
+    def test_rows_of_an_older_build_with_no_key_are_no(self):
+        self.assertEqual(self.verdict([None] * len(gate.PERSONAS)), 'no')
+
+
 if __name__ == '__main__':
     unittest.main()
