@@ -203,7 +203,7 @@ def listed(items, url, markup, fetch_page):
         found = None
         if link:
             with stage.guard('employer sites: listed job'):   # a job page that fails: the listing's own title and place
-                found = jsonld_jobs(fetch_page(link), link)[:1] or [job_from_page(fetch_page(link), link)]
+                found = jsonld_jobs(fetch_page(link), link, job_page=True)[:1] or [job_from_page(fetch_page(link), link)]
         job = (found or [None])[0] or {}
         return ats._job(link or f'{url}#{title}', title, job.get('location') or listing.get('location', ''), link or url,
                         job.get('date_posted', ''), job.get('description', ''), bool(job.get('remote')))
@@ -319,7 +319,7 @@ def read_page_from(markup, url, fetch_page, part=None, linked=None):
             page = fetch_page(link)
         if caught:
             return [], []
-        declared = jsonld_jobs(page, link)
+        declared = jsonld_jobs(page, link, job_page=True)
         return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
     from . import board_round_log, one_posting
     part = part or board_round_log.untimed   # a board's round names where its seconds went (log only); any other page read times nothing

@@ -25,10 +25,32 @@ def titles(markup, answer='template_field'):
     """(titles, log, asks): the page's titles when the AI answers `answer` to "is this title a template field" (None: no AI), and how often it was asked."""
     out = io.StringIO()
     with mock.patch('src.ai.decide.one', return_value=answer) as asked, redirect_stdout(out):
-        return [job['title'] for job in careers.jsonld_jobs(markup, URL)], out.getvalue(), asked.call_count
+        return [job['title'] for job in careers.jsonld_jobs(markup, URL, job_page=True)], out.getvalue(), asked.call_count
 
 
 class JsonLdTitleTheJobPageShows(unittest.TestCase):
+    def test_a_probe_of_a_listing_page_never_asks_and_never_rewrites(self):
+        """Gitar on #4081: the default call is a pure parse, also on a page of one posting under the board's own heading: no AI, the title as published."""
+        with mock.patch('src.ai.decide.one', return_value='template_field') as asked:
+            got = careers.jsonld_jobs(page('HV_JSON_TITULO', heading='Careers at Example'), URL)
+        self.assertEqual((asked.call_count, [job['title'] for job in got]), (0, ['HV_JSON_TITULO']))
+
+    def test_a_title_with_no_three_letter_word_is_kept_with_no_question(self):
+        """Gitar on #4081: QA / a two-character title shares no 3+ letter word with anything, which is no doubt, not a reason to ask."""
+        for ld_title in ('QA', 'IT', '工人'):
+            got, _, asks = titles(page(ld_title, heading='Careers at Example'), 'template_field')
+            self.assertEqual((got, asks), ([ld_title], 0), ld_title)
+
+    def test_the_job_page_readers_ask_the_probes_do_not(self):
+        """The reads of one job page from its own link pass job_page=True (careers one-page reads, board routes, board employers); the probes do not."""
+        import inspect
+        from src.sources import board_employers, board_routes
+        for module in (careers, board_routes, board_employers):
+            self.assertIn('job_page=True', inspect.getsource(module), module.__name__)
+        from src.sources import board_layout, board_rendered, board_sections, careers_explore, visits_read
+        for module in (board_layout, board_rendered, board_sections, careers_explore, visits_read):
+            self.assertNotIn('job_page=True', inspect.getsource(module), module.__name__)
+
     def test_one_placeholder_on_forty_pages_is_one_question(self):
         """Gitar on #4066: the key is the title wording, not title+heading: a board's pages share a placeholder and differ in heading, so asking per pair was 40 calls."""
         keys = []
@@ -37,14 +59,14 @@ class JsonLdTitleTheJobPageShows(unittest.TestCase):
             keys.append(key)
             return 'template_field'
         with mock.patch('src.ai.decide.one', side_effect=one):
-            got = [careers.jsonld_jobs(page('HV_JSON_TITULO', heading=f'Puesto numero {n} de montaje'), URL)[0]['title'] for n in range(40)]
+            got = [careers.jsonld_jobs(page('HV_JSON_TITULO', heading=f'Puesto numero {n} de montaje'), URL, job_page=True)[0]['title'] for n in range(40)]
         self.assertEqual(len(set(keys)), 1)
         self.assertEqual(len(set(got)), 40)
 
     def test_the_ai_sees_the_pages_heading_beside_the_title(self):
         """Gitar on #4062: a list page's "Careers" heading must not be read as the job's title on the strength of the title alone: the question holds both lines."""
         with mock.patch('src.ai.decide.one', return_value='job_title') as asked:
-            careers.jsonld_jobs(page('Welder', heading='Careers at Example'), URL)
+            careers.jsonld_jobs(page('Welder', heading='Careers at Example'), URL, job_page=True)
         self.assertEqual(asked.call_count, 1)
         self.assertEqual(asked.call_args.args[2], 'title: Welder\nheading: Careers at Example')
 
