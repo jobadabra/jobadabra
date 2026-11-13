@@ -82,6 +82,19 @@ class PathRecipe(unittest.TestCase):
                                     [{'title': f'Fahrer {n}', 'url': f'https://board.example/jobs/{n}'} for n in range(5)])
         self.assertEqual(links, {'kind': 'links', 'prefix': '/jobs'}, 'paths come last')
 
+    def test_a_link_never_closed_does_not_swallow_the_links_after_it(self):
+        """Gitar on #4055: an `a` left open by `</li>` kept every later link from being read."""
+        page = '<ul><li class="j"><a href="/o/1">Eins</li><li class="j"><a href="/o/2">Zwei</a></li></ul>'
+        self.assertEqual([(a.href, page_paths.title_of(a, None)) for a in page_paths.anchors(page, BASE)],
+                         [('https://board.example/o/1', 'Eins'), ('https://board.example/o/2', 'Zwei')])
+
+    def test_items_with_no_end_tag_do_not_pile_up_as_ancestors(self):
+        """Gitar on #4055: `<li>` and `<p>` may end without an end tag; the next one closes it, so the nearest ancestors are the same with or without the end tags."""
+        for page in ('<ul><li class="j"><a href="/o/1">Eins<li class="j"><a href="/o/2">Zwei</ul>',
+                     '<ul><li class="j"><a href="/o/1">Eins</a></li><li class="j"><a href="/o/2">Zwei</a></li></ul>'):
+            with self.subTest(page=page):
+                self.assertEqual([[tag for tag, _ in a.chain] for a in page_paths.anchors(page, BASE)], [['a', 'li', 'ul']] * 2)
+
     def test_a_page_the_parser_cannot_read_has_no_path_recipe(self):
         self.assertEqual(page_paths.anchors('<a href="/o/1"', BASE), ())
         self.assertIsNone(page_recipes._path('<html', BASE, ['x'], ['https://board.example/o/1']))
