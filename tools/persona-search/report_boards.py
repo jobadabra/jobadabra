@@ -4,7 +4,8 @@ the Trello people's CI searches report too, marked as ours; only the Scout's own
 jobs in CI searches and no source told the Scout. Site half: jobadabra-web #643 (`ci-search-<run>` install id -> table `ci_boards`, never `sitefacts`, so no install count and no served number counts CI).
 Invariants: (1) names only: a board's host and the fixed country id of the profile's country; no person, job, title, template, run id (the install id `ci-search-<run>` is the mark and the site stores
 not even that); (2) only the fictional people of search-profiles.json (the night's 18 locked people are not in it: skipped, never touched), never a fixture or a test (only on GitHub Actions, or `--dry-run`);
-(3) the board must have GIVEN jobs (the press record's source of kind "job board" with local jobs >= 1, the host the press wrote), never a guess from a display name; (4) a failed or refused
+(3) every board the search READ, listed jobs or not (the press record's sources of kind "job board", the host the press wrote), never a guess from a display name; the Scout measures each one itself
+and its own memory of refusals wins over this report (src/scout_board_candidates.py choose); (4) a failed or refused
 post is a warning, never a red run (the feed is a favour, not part of the measure); (5) one fixed address, honest user agent, no override.
   python3 tools/persona-search/report_boards.py <folder> [--person <id>] [--run <id>] [--dry-run]
 <folder> is one run's folder (`out/` of search-profiles.yml, `out/<id>--<side>-<k>` of search-pair.yml) or a folder of such folders (a saved artifact).
@@ -34,7 +35,10 @@ def person_of(folder):
 
 
 def boards_read(folder):
-    """The hosts of the boards this run's first press read that gave at least one local job: {host, ...} from `draw/presses.jsonl` sources of kind 'job board' (the press wrote the real host)."""
+    """The hosts of every board this run's first press read: {host, ...} from `draw/presses.jsonl` sources of kind 'job board' (the press wrote the real host).
+    Why (13 Nov 2026, sa, after bp's count on run 43514251379: 29 boards read, 16 listed jobs, 3 reported): the old filter `local >= 1` counted jobs SAVED in the person's place, so a board whose page listed
+    38 jobs and none relevant (Trabajos.com) or 72 with 3 relevant (rabota.md) was never reported. The press row has no 'listed' count and no sign of a refusal (a refused board and a board with 38 listed jobs
+    both read all zeros), so there is nothing to filter on; the Scout does its own measuring, one read of each board per 20 days, and a host it knows as refused is not asked."""
     path = Path(folder) / 'draw' / 'presses.jsonl'
     if not path.exists():
         return set()
@@ -46,7 +50,7 @@ def boards_read(folder):
             continue
         for source in record.get('sources') or []:
             host = str(source.get('source') or '').strip().lower()
-            if source.get('kind') == 'job board' and HOST.fullmatch(host) and (source.get('local') or 0) >= 1:
+            if source.get('kind') == 'job board' and HOST.fullmatch(host):
                 hosts.add(host)
     return hosts
 

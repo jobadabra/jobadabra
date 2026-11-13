@@ -183,10 +183,11 @@ def seed(db, path, out=print):
         with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
             columns = {row[1] for row in source.execute('PRAGMA table_info(scout_board_facts)')}   # #3910: measured in the browser; 13 Nov 2026: its layout
             rows = source.execute('SELECT host, country, url, families, local_jobs, read_at, ' + ('browser' if 'browser' in columns else '0')
-                                  + ', ' + ('layout' if 'layout' in columns else 'NULL') + ', ' + ('family_jobs' if 'family_jobs' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
+                                  + ', ' + ('layout' if 'layout' in columns else 'NULL') + ', ' + ('family_jobs' if 'family_jobs' in columns else 'NULL')
+                                  + ', ' + ('listed_families' if 'listed_families' in columns else 'NULL') + ' FROM scout_board_facts').fetchall()
     except sqlite3.Error:
         return 0
-    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', rows)
+    db.executemany('INSERT OR IGNORE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', rows)
     for key in SEEDED:   # Google's sites found and not yet judged, its pairs searched and the month's count go with the facts
         try:
             with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source:
@@ -198,6 +199,14 @@ def seed(db, path, out=print):
     db.commit()
     out(f'Board discovery: started from the Scout\'s {len(rows)} board facts')
     return len(rows)
+
+
+def stopped_hosts(db):
+    """The hosts the Scout's browser was stopped at (a 401/403, a bot check, a sign-in page), without a leading `www.`: {} until a stop exists. One owner of this question
+    for the board pass (scout_boards.browser_final) and the candidate filter (scout_board_candidates.choose); compare a host with `host.removeprefix('www.')`."""
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE name = 'scout_browser_final'").fetchone():
+        return set()
+    return {host.removeprefix('www.') for (host,) in db.execute('SELECT host FROM scout_browser_final')}
 
 
 def keep_stops(db, path, out=print):

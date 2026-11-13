@@ -169,7 +169,7 @@
       <div class="tip" hidden><b class="tip-chip"></b><span class="tip-text"></span></div>
       <div class="foot"><span class="state" data-jp-i18n="panel.checking">Checking the connection…</span><button class="report-btn" type="button" title="Send this form to be fixed: you read exactly what would be sent first" data-jp-title="panel.reportTitle" aria-label="Report this form" data-jp-aria-label="panel.reportAria"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 14V2.5M3.5 3h8l-1.6 2.7L11.5 8.5h-8"/></svg><span data-jp-i18n="panel.report">Report</span></button></div>
     </div>
-    <button class="pill" title="Jobadabra"><span class="ring"><span></span></span><div><b></b><small></small></div></button>
+    <button class="pill" title="Jobadabra" aria-expanded="false"><span class="ring"><span></span></span><div><b></b><small></small></div></button>
     <button class="pill-stop" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again" data-jp-title="panel.stopTitle" data-jp-i18n="panel.stop">Stop</button>
   </div>`;
 })();

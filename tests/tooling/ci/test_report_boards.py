@@ -67,11 +67,11 @@ class ReportBoards(unittest.TestCase):
         for private in ('b01', 'secret-title', 'example.test/job', 'Electrician'):
             self.assertNotIn(private, text)
 
-    def test_only_job_boards_that_gave_jobs(self):
+    def test_every_job_board_the_search_read_even_with_no_job_kept(self):
         folder = run_folder(self.tmp.name, 'b01', [
             board('good.example.com'), board('none.example.com', local=0), board('feed.example.com', kind='employer feed'),
             board('Display Name'), board('')])
-        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg')})
+        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg'), ('none.example.com', 'bg')})
 
     def test_the_night_people_add_nothing(self):
         root = self.tmp.name
@@ -94,7 +94,7 @@ class ReportBoards(unittest.TestCase):
         self.assertEqual(post.requests, [])
 
     def test_no_board_means_no_post(self):
-        folder = run_folder(self.tmp.name, 'b01', [board('x.example.com', local=0)])
+        folder = run_folder(self.tmp.name, 'b01', [board('x.example.com', kind='employer feed')])
         post = Post()
         main([str(folder), '--person', 'b01'], post, CI)
         self.assertEqual(post.requests, [])

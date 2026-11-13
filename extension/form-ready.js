@@ -22,6 +22,16 @@ export const timing = {recheckMs: 8000};
 // before this asked again (beta 17 Oct 2026, a sign-in form ending at the person: 595 account-judge calls in 5 minutes, one a second, to the end of the run). Guard: app-core/test/form-ready.test.js.
 export const MAX_NO_ANSWER = 3;
 const looking = new Set(), judged = new Map(), unanswered = new Map();
+/** -> the judge's step to mark on the page: middle or final, else null (unsure or none said). */
+export const stepMark = answer => (['middle', 'final'].includes(answer?.step) ? answer.step : null);
+/**
+ * In the page: the form judge's step on <html data-jobadabra-form-step> (middle | final), read by the panel, whose count of filled boxes cannot tell one step of a multi-step form from the
+ * last. null removes it (the judge was unsure). Runs injected, so it holds no outside name.
+ * Why (13 Nov 2026, owner, LinkedIn Easy Apply 4a: "Two PRs (Recommended)"): the panel said "Ready to submit" on step 2 of LinkedIn's Easy Apply, whose step 2 sends nothing.
+ * @param {'middle'|'final'|null} step the judge's step for the page state just judged
+ * @returns {void}
+ */
+export function markFormStep(step) { if (step) document.documentElement.setAttribute('data-jobadabra-form-step', step); else document.documentElement.removeAttribute('data-jobadabra-form-step'); }
 // The structure says the form is ready: every counted required field is filled, on an application page (not an account page).
 export const claimsReady = payload => !!payload && !payload.account && Number(payload.total) > 0 && Number(payload.left) === 0;
 
@@ -79,6 +89,12 @@ export async function pageSignature(tab, frameId = 0) {
   return sigOf(sketch);
 }
 
+// No answer for this page state: counted (MAX_NO_ANSWER), and an earlier step's mark is cleared, so a later step the judge did not answer never reads "Ready to continue" (Gitar on #4054).
+async function noAnswer(tab, frameId, sig, silent) {
+  unanswered.set(tab.id, {sig, n: silent?.sig === sig ? silent.n + 1 : 1});
+  await run(tab, frameId, markFormStep, [null]);
+}
+
 const nextStepPressed = (pressed, tab, before, frameId) => { if (pressed) readNextStep(tab, before, frameId).catch(() => {}); };
 
 async function askForm(tab, frameId, again = false) {
@@ -97,7 +113,7 @@ async function askForm(tab, frameId, again = false) {
     const silent = unanswered.get(tab.id);
     if (silent?.sig === sig && silent.n >= MAX_NO_ANSWER) return;   // asked enough times without an answer: the same page is not asked again
     const answer = await apiFor(tab.id, config, '/extension/account-judge', {method: 'POST', body: JSON.stringify({phase: 'form', sketch, background: await backgroundContext(tab.id)})}).catch(() => null);
-    if (!answer?.answer) { unanswered.set(tab.id, {sig, n: silent?.sig === sig ? silent.n + 1 : 1}); return; }   // no AI or no answer: the panel keeps its own count
+    if (!answer?.answer) { await noAnswer(tab, frameId, sig, silent); return; }   // no AI or no answer: the panel keeps its own count
     unanswered.delete(tab.id);
     judged.set(tab.id, sig);
     let host = ''; try { host = new URL(tab.url).hostname; } catch { /* no address */ }
@@ -105,6 +121,7 @@ async function askForm(tab, frameId, again = false) {
     shadowCheck(tab, config, sketch, answer, host);   // the fill ladder's fill_verify, logged only (below)
     if (handedToPerson(answer)) endSilence(tab.id);   // handed to the person: Submit or their choice is next (ladder/silence.js)
     await run(tab, frameId, flagAccount, [answer.answer === 'blocked' ? blockedWords(answer.blockedKind) : answer.answer === 'needs_person' ? answer.needs || '' : null]);
+    await run(tab, frameId, markFormStep, [stepMark(answer)]);   // the panel words a filled middle step "Ready to continue" (panel-review-view.js)
     if (answer.answer === 'blocked') decide('fill', `the page is blocked after the fill: ${answer.blockedKind || 'overlay'}`, {host});   // the fill log and the smoke verdict read this line
     if (await backgroundFormReady(tab, frameId, answer)) return;
     // The site's own error about what was entered, on a phone number: it is typed again in another writing the AI names from the error text (format-retry.js, at most twice), then the page is judged anew.
