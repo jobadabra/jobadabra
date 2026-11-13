@@ -26,7 +26,7 @@ def _read_by_ai(board, search, fetch):
         return []
     place = (_places(search) or [''])[0] if '{place}' in board['search_url'] else ''
     with stage.guard('found boards: AI page read') as caught:
-        url, page = board_paths.get(fetch, board_paths.forms(board['search_url'], _terms(search, 1)[0], place))
+        url, page = board_paths.read(fetch, board, _terms(search, 1)[0], place)   # in the board's own charset (board_paths.read)
     if caught:   # the page does not answer now: the other ways stand
         return []
     return _shaped(board, careers._asked(url, page, [], fetch)) if page and not careers._shell(page) else []

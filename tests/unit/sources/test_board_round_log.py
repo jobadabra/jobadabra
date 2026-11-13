@@ -53,8 +53,8 @@ class EachRoundSaysWhatItFound(unittest.TestCase):
         self.assertEqual(state, 'ok')
         self.assertEqual(len(jobs), 3, 'positive control: the read itself is unchanged')
         self.assertEqual(len(lines), 2, lines)
-        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': 2 job\(s\) on the page, 2 new, \d+ s$")
-        self.assertRegex(lines[1], r"^Job boards: Board 1 round 'charpentier': 2 job\(s\) on the page, 1 new, \d+ s$")
+        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': 2 job\(s\) on the page, 2 new, \d+ s · https://b1\.example/\S*menuisier\S*$")
+        self.assertRegex(lines[1], r"^Job boards: Board 1 round 'charpentier': 2 job\(s\) on the page, 1 new, \d+ s · https://b1\.example/\S*charpentier\S*$")
 
     def test_a_round_whose_page_was_not_read_says_why(self):
         def fetch(url):
@@ -63,8 +63,8 @@ class EachRoundSaysWhatItFound(unittest.TestCase):
             return page('https://b1.example/3')
         jobs, _, lines = self.lines(fetch)
         self.assertEqual([job['url'] for job in jobs], ['https://b1.example/3'])
-        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': page not read \(HTTP 404\), \d+ s$")
-        self.assertRegex(lines[1], r"^Job boards: Board 1 round 'charpentier': 1 job\(s\) on the page, 1 new, \d+ s$")
+        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': page not read \(HTTP 404\), \d+ s · https://b1\.example/\S*menuisier\S*$")
+        self.assertRegex(lines[1], r"^Job boards: Board 1 round 'charpentier': 1 job\(s\) on the page, 1 new, \d+ s · https://b1\.example/\S*charpentier\S*$")
 
 
     def test_the_full_reads_next_pages_are_counted_apart_from_the_page(self):
@@ -74,7 +74,7 @@ class EachRoundSaysWhatItFound(unittest.TestCase):
         with mock.patch.object(found_boards.board_pages, 'more', side_effect=lambda *a, **k: more) as next_pages:
             _, _, lines = self.lines_full(lambda url: page('https://b1.example/1', 'https://b1.example/2'))
         self.assertTrue(next_pages.called, 'positive control: the full read asked for the next pages')
-        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': 2 job\(s\) on the page \(5 with its next pages\), 5 new, \d+ s$")
+        self.assertRegex(lines[0], r"^Job boards: Board 1 round 'menuisier': 2 job\(s\) on the page \(5 with its next pages\), 5 new, \d+ s · https://b1\.example/\S*menuisier\S*$")
 
     def lines_full(self, fetch):
         with mock.patch('builtins.print') as said:
