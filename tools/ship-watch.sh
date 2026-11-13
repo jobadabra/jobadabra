@@ -123,13 +123,13 @@ while :; do
     else
       [ "$gitar_head" = "$head" ] || { gitar_head="$head"; gitar_t0=$SECONDS; }
       if [ -n "$checks" ] && [ $((SECONDS - gitar_t0)) -ge "$gitar_wait" ] && [ "$gitar_done" != "$head" ]; then
-        # Why (12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)"; #3886): a head that only merged main in keeps Gitar's verdict (tools/gitar-label.mjs
-        #   ownHeadTime), so nobody asks again. The label script's own read decides; an empty or failed peek asks as before. Read once per head.
+        # Why (13 Nov 2026, gl4, #4073; replaces the 12 Nov #3886 "keep the verdict when only main merged in", owner asked via AskUserQuestion: "Simplify to one signal (Recommended)"): a plain verdict from the
+        #   label script's peek means Gitar's own run on THIS head produced it, so nobody asks again; a merge of main is a new head with no Gitar run and reads "· not re-reviewed", so it is asked. An empty or failed peek asks as before. Read once per head.
         if [ "$gitar_peeked" != "$head" ]; then
           gitar_peeked="$head"
           kept="$(GITHUB_REPOSITORY="$repo" ${SHIP_WATCH_GITAR_PEEK:-node "$here/gitar-label.mjs" peek} "$n" 2>/dev/null | head -n 1)"
           # exact names, not a glob: "Gitar: approved · not re-reviewed" (gl3) must still ask
-          case "$kept" in "Gitar: approved"|"Gitar: approved with suggestions"|"Gitar: changes requested") gitar_done="$head"; say "GITAR KEPT #$n ${head:0:7} ($kept: the push only merged main)";; esac
+          case "$kept" in "Gitar: approved"|"Gitar: approved with suggestions"|"Gitar: changes requested") gitar_done="$head"; say "GITAR KEPT #$n ${head:0:7} ($kept: Gitar already ran on this head)";; esac
         fi
         # Why (13 Nov 2026, gq; owner, asked via AskUserQuestion: "One shared ask queue (Recommended)"): this watcher never posts "Gitar review" itself: every session's asks go through ONE queue on this Mac
         #   (tools/gitar-queue.mjs: one post at a time, spaced, a PR Gitar refused waits, the same head never twice). The call is idempotent, so each look asks again until the queue says ASKED or DROPPED.

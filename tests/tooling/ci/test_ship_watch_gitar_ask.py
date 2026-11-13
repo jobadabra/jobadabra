@@ -61,7 +61,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
         """12 Nov 2026, owner, asked via AskUserQuestion: "Keep the verdict (Recommended)": #3886 merged main after Gitar's approval; the label keeps it, so the watcher must not ask."""
         lines, calls = self.watch(['aaa1111', 'aaa1111'], peek='Gitar: approved')
         self.assertEqual(calls, [], calls)
-        self.assertEqual([l for l in lines if 'GITAR KEPT' in l], ['ship: GITAR KEPT #7 aaa1111 (Gitar: approved: the push only merged main)'], lines)
+        self.assertEqual([l for l in lines if 'GITAR KEPT' in l], ['ship: GITAR KEPT #7 aaa1111 (Gitar: approved: Gitar already ran on this head)'], lines)
         _, calls = self.watch(['bbb2222'], peek='Gitar: not started')
         self.assertEqual(calls, ['pr comment 7 -R o/r --body Gitar review'], calls)
 
