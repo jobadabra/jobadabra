@@ -33,6 +33,11 @@ FAKE_GH = textwrap.dedent('''\
                 nodes.append({'number': int(name[9:-5]), 'comments': {'nodes': [{'author': {'login': r['user']['login']}, 'createdAt': r['created_at'], 'body': r['body']} for r in rows]}, 'reviewThreads': {'nodes': []}})
         print(json.dumps({'data': {'search': {'nodes': nodes}}}))
     elif a[:2] == ['pr', 'comment']:   # Gitar answers a PR that is under its limit with a refusal, 3 s later in real life, at once here
+        if os.path.exists(f'{d}/side_refuse_{a[2]}'):   # another session's ask on the PR named in the file is refused while this post settles
+            other = open(f'{d}/side_refuse_{a[2]}').read().strip(); rows = comments(other)
+            rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading
+                'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."})
+            json.dump(rows, open(f'{d}/comments_{other}.json', 'w'))
         if os.path.exists(f'{d}/refuse_{a[2]}'):
             rows = comments(a[2]); rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading seconds later
                 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."})
@@ -200,6 +205,13 @@ class GitarQueueTest(unittest.TestCase):
         (self.tmp / 'checks_1').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', now_plus=3700), 'ASKED', 'green: it goes')
         self.assertEqual(self.posted(), ['reply 555', 'ask 1'])
+
+    def test_a_refusal_on_another_pr_during_the_settle_pauses_but_does_not_take_this_post_back(self):
+        """13 Nov 2026, Gitar on #4053: the post-send check read every PR's refusals, so another PR's refusal re-queued an accepted ask and it was posted twice."""
+        (self.tmp / 'side_refuse_1').write_text('99')
+        self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1'), 'ASKED')
+        self.assertIn('ask 1', self.posted())
+        self.assertEqual(self.posted(), ['ask 1'])
 
 
 if __name__ == '__main__':
