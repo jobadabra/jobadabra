@@ -153,8 +153,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHECK_ID: ${{ needs.setup.outputs.check_id }}
           PEOPLE: ${{ needs.setup.outputs.people }}
+          STARTED: ${{ needs.setup.outputs.started }}   # Gitar on #4059: the pair's own start, so "ends ~" counts from when it began, not from when the room came
         run: |
-          title="$(python3 -c "import sys; sys.path.insert(0, 'tools/persona-search'); import pair_row; print(pair_row.running(sys.argv[1], 'searching main and the PR'))" "$(date -u +%H:%M)")"
+          title="$(python3 -c "import sys; sys.path.insert(0, 'tools/persona-search'); import pair_row; print(pair_row.running(sys.argv[1], 'searching main and the PR'))" "$STARTED")"
           jq -n --arg title "$title" --arg people "$(echo "$PEOPLE" | jq -r '[.[].id] | join(", ")')" '{output: {title: $title, summary: ("Searching " + $people + ": main and the PR at the same minute, one run a side.")}}' \
             | gh api -X PATCH "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --input - >/dev/null
 
@@ -345,7 +346,9 @@ jobs:
           gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,labels,headRefOid > view.json
           # The row's verdict (pair_row.py): the same numbers; a newer head makes it "superseded", a merged PR keeps its own head
           newer=0; if [ "$STATE" != MERGED ] && [ "$(jq -r .headRefOid view.json)" != "$HEAD" ]; then newer=1; fi
-          python3 tools/persona-search/pair.py row dl "$(echo "$PEOPLE" | jq -c '[.[].id]')" "$ATTEMPT" "$newer" > /dev/null
+          # Why (Gitar on #4059): the pair's second run counts only the people the first did not; the lines the first run's row already shows (its counted people) stay in front of the new ones
+          : > earlier.txt; if [ "$ATTEMPT" != 1 ]; then gh api "repos/$GITHUB_REPOSITORY/check-runs/$CHECK_ID" --jq '.output.summary // ""' > earlier.txt || : > earlier.txt; fi
+          python3 tools/persona-search/pair.py row dl "$(echo "$PEOPLE" | jq -c '[.[].id]')" "$ATTEMPT" "$newer" earlier.txt > /dev/null
           # Why (Gitar on #4044): the row ends here, before the hold, label and comment work: a failure there must not turn a counted pair red ("not counted: no numbers"), and it never leaves a second run dispatched.
           # Why (13 Nov 2026, owner via sa: a pair that did not count re-runs itself once; then, sa: never red, the row stays pending): every PR's pair runs once more for the people it did not count; its row stays running and the second run takes it over.
           rerun="$(jq -c .rerun row.json)"

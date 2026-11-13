@@ -267,11 +267,12 @@ def main(argv):
         if found:
             print(json.dumps(found))
         return 0
-    if command == 'row' and len(argv) == 6:   # people: the dispatched ids as json
+    if command == 'row' and len(argv) in (6, 7):   # people: the dispatched ids as json; an optional 7th: a file of the first run's counted lines (attempt 2 keeps them)
         rows = sides(argv[2])
         ran = sorted(set(json.loads(argv[3])), key=str)
         done = measured(rows)
-        out = pair_row.decide(done, ran, set(rows), {person: usual(person) for person in done}, int(argv[4]), rows, newer_head=argv[5] == '1')
+        earlier = [line for line in Path(argv[6]).read_text(encoding='utf-8').splitlines() if ' right jobs ' in line] if len(argv) == 7 and Path(argv[6]).exists() else []
+        out = pair_row.decide(done, ran, set(rows), {person: usual(person) for person in done}, int(argv[4]), rows, newer_head=argv[5] == '1', earlier=earlier)
         out['rerun'] = [int(p[1:]) if re.fullmatch(r'p\d{1,2}', p) else p for p in out['rerun']]   # the dispatch's own form: night people as numbers, profiles as ids
         Path('row.json').write_text(json.dumps({key: pair_row.safe(value) if isinstance(value, str) else value for key, value in out.items()}), encoding='utf-8')
         print(out['title'])

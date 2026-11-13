@@ -41,12 +41,12 @@ def why_not_counted(rows):
     return '; '.join(reasons) or 'a side failed before its search'
 
 
-def decide(done, ran, seen, spreads, attempt, rows, newer_head=False):
+def decide(done, ran, seen, spreads, attempt, rows, newer_head=False, earlier=()):
     """{conclusion, title, summary, rerun} of a pair. done: pair.measured() ({person: {before, after, d, line}}); ran: the people dispatched; seen: those with any side;
-    spreads: {person: spread or None}; rows: pair.sides() (for the reason). conclusion: success, failure (a loss beyond the band), neutral (superseded), pending (not counted: the row stays running)."""
+    spreads: {person: spread or None}; rows: pair.sides() (for the reason); earlier: the first run's counted lines (its row's text), kept in front when the re-run takes the row over (Gitar on #4059). conclusion: success, failure (a loss beyond the band), neutral (superseded), pending (not counted: the row stays running)."""
     if newer_head:
         return {'conclusion': 'neutral', 'title': 'superseded: the PR has a newer head, its pair runs on that', 'summary': '', 'rerun': []}
-    lines, fell = [], []
+    lines, fell = list(earlier), []
     for person, m in sorted(done.items()):
         allowed = band(spreads.get(person))
         runs = len(rows.get(person, {}).get('pr', [])) or 1
