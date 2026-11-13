@@ -67,6 +67,8 @@ class ShipWatchReadyCleanTest(unittest.TestCase):
         ready = lambda labels, reviews: any('READY' in line for line in self.watch(['clean', 'clean'], labels=labels, reviews=reviews, heads=SHA))
         self.assertTrue(ready('Claude: approved', [ok]))
         self.assertTrue(ready('Claude: approved,Gitar: reviewing', [ok]), 'Gitar\'s own state no longer matters on a Claude PR')
+        filler = [{'node_id': f'f{n}', 'user': {'login': 'github-actions[bot]'}, 'state': 'COMMENTED', 'submitted_at': '2026-11-13T%02d:00:00Z' % (n % 24), 'body': 'x'} for n in range(100)]
+        self.assertTrue(ready('Claude: approved', filler + [ok]), 'the newest review is on page 2 of the reviews (Gitar\'s finding on #4124)')
         self.assertFalse(ready('Claude: approved', [ok, no]), 'the newest review asks for changes')
         self.assertFalse(ready('Claude: approved', [dict(ok, body=ok['body'].replace(SHA, 'b' * 40))]), 'the label is stale: the newest review is of another head')
         self.assertFalse(ready('Claude: approved', []), 'no review of ours at all')

@@ -113,7 +113,8 @@ f = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)
 if f.exists():
     answer(json.loads(f.read_text()))
 if '/reviews?' in path and (d / 'reviews.json').exists():   # the PR's reviews, REST shape (reviews.json)
-    answer(json.loads((d / 'reviews.json').read_text()))
+    page = int((re.search(r'[?&]page=(\d+)', path) or [0, 1])[1])   # 100 a page, like GitHub
+    answer(json.loads((d / 'reviews.json').read_text())[(page - 1) * 100:page * 100])
 if re.search(r'/(comments|reviews|commits)\?|/pulls\?', path):
     answer([])
 print('HTTP/2.0 404 Not Found\n\n{"message":"Not Found"}')
