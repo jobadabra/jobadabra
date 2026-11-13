@@ -219,7 +219,7 @@ def settle(body, title, labels, done, ran, attempt, seen=None):
     invalid = [p for p in ran if p in seen and p not in done]
     never = [p for p in ran if p not in seen]
     ours = HOLD_LABEL in labels
-    # Why (13 Nov 2026, #3946: a by-hand pair queued a third run on main's workflow by itself): only ship's own hold runs again; a by-hand pair reports and stops.
+    # Why (13 Nov 2026, #3946 then #4044: a by-hand pair queued a third run on main's workflow by itself; since 1/3 every pair runs once more by itself through its row): settle only words the verdict.
     # Why (Gitar on #4044): the run again is decided once, by pair_row.decide (every PR, once; owner via sa, 13 Nov 2026); this only words the verdict, and 3/3 deletes the hold path.
     again = bool(ours and invalid and attempt < 2 and not fell)
     still = pending(body)

@@ -1,4 +1,4 @@
-name: CI · Search pair (a PR's before/after, the row "Search before/after")
+name: CI · Search pair (a PR's before/after, by hand)
 # By hand or from ship: any session proves its own Find jobs PR. For each person named (the 18 night people as 1-18, the profiles by id), main and the PR head search at the same
 # minute on one runner (two checkouts, two first searches started together, the same strategy draft), the same blind judge counts their right jobs, and one comment on
 # the PR gives the before/after table and a ready "Moves:" line. A PR that changes the strategy draft's producer drafts per side and searches twice a side.
