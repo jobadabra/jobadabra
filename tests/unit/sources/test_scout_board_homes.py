@@ -25,7 +25,7 @@ class HomeBoardsTest(unittest.TestCase):
         scout_cells.keep(self.db, [{'countries': [c]} for c in scout_cells.EUROPE if c != 'md' for _ in range(5)])   # Moldova: the thinnest
         self.fetched, self.read, self.templates = [], [], [FORM]
         patches = [mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
-                   mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], [])),
+                   mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['software_dev'] for t in titles}, [])),
                    mock.patch.object(careers, 'get_text', self.fetch),
                    mock.patch.object(board_forms, 'home_templates', lambda board, fetch, page=None: list(self.templates))]
         for patch in patches:

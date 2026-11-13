@@ -49,6 +49,13 @@ def _places(search):
     return places.words_of(search)[:MAX_PLACES] or ['']
 
 
+def _told(board, term=None):
+    """Board discovery's notes (board['learn']) say which search words this read asked (term: one more, lowercase); no term: the jobs came as a list, not from any word."""
+    notes = board.get('learn')
+    if isinstance(notes, dict):
+        notes.pop('terms', None) if term is None else notes.setdefault('terms', []).append(term.lower())
+
+
 def read_board(board, search, fetch=careers.get_text, route=None, early=False, show=None):
     """(jobs, state, route) for one board: jobs in the aggregators' shape, each once; state 'ok', 'empty' or 'browser'; route = the declared feed or
     sitemap that gave the jobs (kept, tried first next time), None when the search page itself did. A page no free step reads tries its
@@ -96,6 +103,7 @@ def _read(board, search, fetch, route, early, show=None):
                     return jobs, board_yield.refused(error), None
                 board_round_log.said(board, term, place, started, jobs, error=type(error).__name__, parts=parts, link=url)
                 continue
+            _told(board, term)   # Why (13 Nov 2026, bp): the Scout counts a family only on a board asked its own word (src/scout_board_counts.py)
             found = layout.read(page, url, fetch, parts.part)
             if not found and not asked_routes:   # nothing readable on the page (scripts fill the cards, or it is only a frame): what the board declares itself
                 asked_routes = True
@@ -107,6 +115,7 @@ def _read(board, search, fetch, route, early, show=None):
                 if declared and (careers.READER is None or found_route['kind'] not in ('feed', 'json') or board_yield.is_relevant(declared)):
                     layout.why_none(f"read through its {found_route['kind']}")
                     board_round_log.said(board, term, place, started, jobs, [], f"read through its {found_route['kind']}: {len(declared)} job(s); {board_round_log.page_seen(page, url)}", parts=parts, link=url)
+                    _told(board)   # its jobs are the feed's whole list, not what a search word gave (src/scout_board_counts.py: a list)
                     return declared, 'ok', found_route
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:

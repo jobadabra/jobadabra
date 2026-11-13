@@ -69,6 +69,24 @@ class FoundBoardsTests(unittest.TestCase):
         jobs, _, _ = found_boards.read_board(BOARD, search, fetch=lambda url: asked.append(url) or PAGE)   # the same job for every query
         self.assertEqual((len(asked), len(jobs)), (found_boards.MAX_SEARCHES + found_boards.IDLE_STOP - 1, 1))
 
+    def test_the_words_a_board_was_searched_with_are_told_to_the_scout_in_its_notes(self):
+        """13 Nov 2026 (bp): the Scout counts a role family on a board only when the board was asked that family's own word; an idle board stops before its later words."""
+        search = {**SEARCH, 'jobs_board_search_queries': ['Um', 'dois', 'tres', 'quatro', 'cinco']}
+        notes = {}
+        found_boards.read_board({**BOARD, 'learn': notes}, search, fetch=lambda url: PAGE)   # the same job for every query: the read stops early
+        self.assertEqual(notes['terms'], ['um', 'dois', 'tres'])
+
+    def test_a_list_read_through_a_declared_feed_forgets_the_words_it_asked(self):
+        """Gitar on #4027: the feed's whole list is not what a word gave, so the Scout reads it as a list (every asked family measured); no notes is no error."""
+        board = {**BOARD, 'learn': {}}
+        found_boards._told(board, 'Um')
+        found_boards._told(board, 'dois')
+        self.assertEqual(board['learn']['terms'], ['um', 'dois'])
+        found_boards._told(board)
+        self.assertNotIn('terms', board['learn'])
+        found_boards._told(BOARD, 'um')   # an install's read has no notes: nothing is written
+        self.assertNotIn('learn', BOARD)
+
     def test_a_refusing_board_becomes_a_visit_and_is_never_fetched_again(self):
         def refuse(url):
             raise urllib.error.HTTPError(url, 403, 'Forbidden', None, None)

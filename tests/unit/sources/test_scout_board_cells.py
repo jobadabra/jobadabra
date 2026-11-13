@@ -2,6 +2,7 @@
 rests a cell that found nothing, and reads a fact again before the site drops it.
 12 Nov 2026, owner, asked via AskUserQuestion: "Separate lab workflow (Recommended)", "Every 2 h (Recommended)": the pass picked the country with the
 fewest employers, so countries with many employers and no measured board never had a turn. Fake reads only: no network, no AI."""
+import json
 import os
 import shutil
 import sqlite3
@@ -16,10 +17,12 @@ TODAY = date(2026, 11, 12)
 FAMILIES = list(pool_tags.FAMILIES)
 
 
-def fact(db, host, country, families, read_at=TODAY, jobs=5):
+def fact(db, host, country, families, read_at=TODAY, jobs=5, right=scout_boards.MIN_RIGHT):
+    """A kept fact: each family has `right` jobs (None: a fact kept before 13 Nov 2026, with no count per family)."""
     scout_boards.ensure(db)
-    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
-               (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat()))
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?)',
+               (host, country, f'https://{host}/jobs?q={{role}}', ','.join(families), jobs, read_at.isoformat(),
+                None if right is None else json.dumps({family: right for family in families})))
 
 
 def cover(db, countries, read_at=TODAY):
@@ -62,8 +65,46 @@ class Pick(unittest.TestCase):
         self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})[f'si|{FAMILIES[0]}']['until'],
                          (TODAY + timedelta(days=cells.REST_DAYS[1])).isoformat(), 'the second empty try rests longer')
         self.assertEqual(memory[f'si|{FAMILIES[0]}']['tries'], 1)
-        cells.record(self.db, 'si', [FAMILIES[0]], [{'families': [FAMILIES[0]]}], TODAY)
+        cells.record(self.db, 'si', [FAMILIES[0]], [{'families': [FAMILIES[0]], 'family_jobs': {FAMILIES[0]: scout_boards.MIN_RIGHT}}], TODAY)
         self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})[f'si|{FAMILIES[0]}'], {'tries': 0, 'until': '', 'asked': TODAY.isoformat()})
+
+    def test_a_board_that_saw_the_family_once_does_not_clear_its_cell(self):
+        """13 Nov 2026 (bp): an airline board with one aircraft electrician was a 'kept board' for electricians and ended the cell's turn."""
+        family = 'electrical_mechanical'
+        cells.record(self.db, 'es', [family], [{'families': [family], 'family_jobs': {family: scout_boards.MIN_RIGHT - 1}}], TODAY)
+        self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})[f'es|{family}']['tries'], 1, 'two right jobs of it is not a found board: the cell rests and is asked again')
+
+    def test_a_family_no_board_was_asked_is_work_owed_not_a_miss(self):
+        """13 Nov 2026 (bp; Gitar on #4027): a read stops after two idle queries, so the pass's third family may never be searched on any board, kept or not.
+        That cell is asked again after one day and never rests 2, 4, 8, 30 days as if the family had been searched and found nothing."""
+        cells.record(self.db, 'es', ['electrical_mechanical'], [], TODAY)
+        cells.record(self.db, 'es', ['electrical_mechanical'], [], TODAY)
+        self.assertEqual(scout_cells._meta(self.db, cells.CELLS, {})['es|electrical_mechanical']['tries'], 2, 'two real misses (no note of the words that ran: a pass by hand)')
+        cells.note_ran(self.db, 'es', {'teaching'})   # an ALL-EMPTY pass: no board kept, and only teaching's word ran on any board
+        cells.record(self.db, 'es', ['electrical_mechanical', 'teaching'], [], TODAY)
+        memory = scout_cells._meta(self.db, cells.CELLS, {})
+        self.assertEqual(memory['es|electrical_mechanical'], {'tries': 2, 'until': (TODAY + timedelta(days=1)).isoformat(), 'asked': TODAY.isoformat()},
+                         'its word never ran: no new miss, back in the queue tomorrow')
+        self.assertEqual(memory['es|teaching']['tries'], 1, 'its word ran and no board of it was kept: a real miss')
+
+    def test_boards_that_saw_a_family_once_do_not_fill_its_cell_and_boards_with_right_jobs_do(self):
+        """13 Nov 2026 (bp): airlinejobs.com (178 Spanish jobs, one an aircraft electrician) and tecnoempleo.com filled (es, electrical_mechanical) at TARGET,
+        so the Scout never looked for the boards that give a Madrid electrician 19 and 16 right jobs."""
+        family = 'electrical_mechanical'
+        fact(self.db, 'airline.example', 'es', [family], jobs=178, right=1)
+        fact(self.db, 'tech.example', 'es', [family], jobs=39, right=2)
+        self.assertEqual(cells.strength(self.db, TODAY)[('es', family)], 0)
+        fact(self.db, 'jobeka.example', 'es', [family], jobs=40, right=19)
+        fact(self.db, 'trabajo.example', 'es', [family], jobs=30, right=16)
+        self.assertEqual(cells.strength(self.db, TODAY)[('es', family)], 2)
+
+    def test_a_fact_kept_before_the_count_proves_nothing_and_is_read_again_at_once(self):
+        family = 'electrical_mechanical'
+        fact(self.db, 'old.example', 'es', [family], TODAY - timedelta(days=1), right=None)
+        self.assertEqual(cells.strength(self.db, TODAY)[('es', family)], 0)
+        self.assertEqual([board['host'] for board in cells.stale(self.db, TODAY).get('es', [])], ['old.example'])
+        fact(self.db, 'new.example', 'es', [family], TODAY - timedelta(days=1))
+        self.assertEqual([board['host'] for board in cells.stale(self.db, TODAY).get('es', [])], ['old.example'], 'a counted fact waits for its refresh')
 
     def test_nothing_to_read_when_every_open_cell_rests(self):
         cover(self.db, scout_cells.EUROPE)

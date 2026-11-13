@@ -109,6 +109,7 @@ def families(texts):
     return meanings.labels('pool-family', texts, FAMILIES, FAMILY_TASK)
 
 
-def families_read(texts):
-    """(families, unanswered): families' ids, and the role words nothing answered this run (the AI capped or failed): "not asked" is not "none"."""
-    return meanings.labels_read('pool-family', texts, FAMILIES, FAMILY_TASK)
+def families_each(texts):
+    """({text: its family ids}, unanswered): the family of each text, in one batch; the role words nothing answered this run (the AI capped or failed) are
+    unanswered: "not asked" is not "none". (src/scout_boards.py counts the jobs of each family with it.)"""
+    return meanings.labels_each('pool-family', texts, FAMILIES, FAMILY_TASK)

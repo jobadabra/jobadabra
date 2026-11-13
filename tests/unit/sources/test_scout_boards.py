@@ -23,7 +23,7 @@ class BoardPassTest(unittest.TestCase):
         self.db = sqlite3.connect(':memory:')
         scout_cells.keep(self.db, [{'countries': [c]} for c in scout_cells.EUROPE if c != 'md' for _ in range(5)])   # Moldova has none: the thinnest
         patches = [mock.patch.object(scout_boards.pool_tags, 'countries_each', lambda texts: ({t: {'md'} if 'Chi' in t else set() for t in texts}, [])),
-                   mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['software_dev'] if titles else [], []))]
+                   mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['software_dev'] for t in titles}, []))]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
@@ -44,6 +44,65 @@ class BoardPassTest(unittest.TestCase):
         self.assertEqual([(f['host'], f['country'], f['local_jobs'], f['families']) for f in got], [('a.md', 'md', 3, ['software_dev'])])
         self.assertIn('2 boards proposed, 1 with 3+ local jobs', out[0])
         self.assertTrue(out[0].startswith('Board pass: Moldova (software, '), 'the line names the kinds of work the boards were asked for')
+
+    def by_cells(self, reads, labels, asked, searched, url='https://{host}/search?q={{role}}'):
+        """One board-discovery pass for `asked` ({family: its words}); the fake reader says which words it searched (as found_boards does) and returns reads[host]."""
+        def read_board(item, search, fetch):
+            item['learn'].setdefault('terms', []).extend(searched)
+            return reads[item['host']]
+        with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: labels(t) for t in titles}, [])):
+            return scout_boards.run(self.db, ideas=lambda search: [{**board(host), 'search_url': url.format(host=host)} for host in reads], read_board=read_board,
+                                    out=lambda line: None, named='md', google=lambda *a: [], families=list(asked), words=lambda db, country, families: asked)
+
+    def test_a_fact_counts_the_jobs_of_each_family_over_every_job_read_not_just_the_families_seen(self):
+        """13 Nov 2026 (bp, owner: "Why ? Let's fix it."): an airline board with 178 Spanish jobs, one an aircraft electrician, was 'measured' for electricians. The count is
+        per family, over every job the pass read (60 titles here: past the old first 40), only for families the board was asked for by their own word."""
+        electrician = lambda n: f'Electricista {n}'
+        jobs = [job('Chisinau', electrician(n)) for n in range(60)] + [job('Chisinau', 'Camarero')] * 2 + [job('Chisinau', 'Piloto')]
+        labels = lambda title: ['electrical_mechanical'] if title.startswith('Electricista') else ['service_hotel'] if title == 'Camarero' else []
+        asked = {'electrical_mechanical': ['electricista'], 'service_hotel': ['camarero'], 'construction': ['albañil']}
+        got = self.by_cells({'a.md': (jobs, 'ok', None)}, labels, asked, searched=['electricista', 'camarero'])
+        self.assertEqual(got[0]['family_jobs'], {'electrical_mechanical': 60, 'service_hotel': 2}, 'construction was never searched by its word: not measured, absent, never 0')
+        self.assertEqual(scout_boards.proven_families(got[0]), ['electrical_mechanical'], 'two waiters prove no board for hotel work')
+        self.assertEqual(scout_boards.facts(self.db)[0]['family_jobs'], got[0]['family_jobs'], 'the publish sends the numbers')
+
+    def test_the_airline_board_with_one_electrician_is_not_proven_for_electricians(self):
+        jobs = [job('Chisinau', 'Cabin crew')] * 20 + [job('Chisinau', 'Aircraft electrician')]
+        labels = lambda title: ['electrical_mechanical'] if 'electrician' in title else ['service_hotel']
+        got = self.by_cells({'airline.md': (jobs, 'ok', None)}, labels, {'electrical_mechanical': ['electrician']}, searched=['electrician'])
+        self.assertEqual(got[0]['family_jobs'], {'electrical_mechanical': 1})
+        self.assertEqual(scout_boards.proven_families(got[0]), [])
+
+    def test_a_board_that_lists_its_jobs_with_no_search_is_measured_for_every_family_asked(self):
+        labels = lambda title: ['kitchen']
+        got = self.by_cells({'a.md': ([job('Chisinau', f'Cook {n}') for n in range(4)], 'ok', None)}, labels, {'kitchen': ['cook'], 'nursing_care': ['nurse']}, searched=[],
+                            url='https://{host}/jobs')
+        self.assertEqual(got[0]['family_jobs'], {'kitchen': 4, 'nursing_care': 0}, 'its list is the board: no nurse in it is a measured zero')
+
+    def test_the_families_whose_word_ran_on_any_board_are_noted_even_when_no_board_is_kept(self):
+        """Gitar on #4027: an all-empty pass must still say which families were asked, so the cell queue does not rest the others as misses."""
+        asked = {'electrical_mechanical': ['electricista'], 'service_hotel': ['camarero'], 'construction': ['albañil']}
+        got = self.by_cells({'a.md': ([job('Berlin')] * 5, 'ok', None)}, lambda title: [], asked, searched=['electricista', 'camarero'])   # nothing local: no fact
+        self.assertEqual(got, [])
+        self.assertEqual(scout_cells._meta(self.db, 'board_ran', {}), {'md': ['electrical_mechanical', 'service_hotel']}, 'construction\'s word never ran')
+
+    def test_a_pass_by_kinds_of_work_counts_no_family(self):
+        got, _, _ = self.run_pass({'a.md': ([job('Chisinau')] * 3, 'ok', None)})
+        self.assertNotIn('family_jobs', got[0])
+
+    def test_a_later_pass_replaces_the_count_of_its_family_and_keeps_the_others(self):
+        reads = {'a.md': ([job('Chisinau', f'T{n}') for n in range(5)], 'ok', None)}
+        self.by_cells(reads, lambda title: ['data_ai'], {'data_ai': ['data']}, searched=['data'])
+        self.by_cells(reads, lambda title: ['graphic_design'], {'graphic_design': ['design']}, searched=['design'])
+        self.assertEqual(scout_boards.facts(self.db)[0]['family_jobs'], {'data_ai': 5, 'graphic_design': 5})
+        self.by_cells(reads, lambda title: ['data_ai'] if title in ('T0', 'T1') else [], {'data_ai': ['data']}, searched=['data'])
+        self.assertEqual(scout_boards.facts(self.db)[0]['family_jobs'], {'data_ai': 2, 'graphic_design': 5}, 'the newer count of a family replaces its older one')
+
+    def test_a_fact_kept_before_the_count_is_published_without_one(self):
+        scout_boards.ensure(self.db)
+        self.db.execute("INSERT INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES ('old.md', 'md', 'https://old.md/?q={role}', 'software_dev', 5, ?)",
+                        ('2026-11-13',))
+        self.assertNotIn('family_jobs', scout_boards.facts(self.db, today=date(2026, 11, 13))[0])
 
     def test_the_kinds_turn_moves_on_after_a_pass_that_read_boards(self):
         # Gitar on #3913: the per-board loop rebound `families`, so a pass by kinds that read a board never moved the country's turn on
@@ -224,12 +283,12 @@ class BoardPassTest(unittest.TestCase):
         row lost data: a data analyst's first search no longer started on it."""
         reads = {'a.md': ([job('Chisinau')] * 3, 'ok', None)}
         for seen in (['data_ai'], ['graphic_design']):
-            with mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles, seen=seen: (seen, [])):
+            with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles, seen=seen: ({t: seen for t in titles}, [])):
                 scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda item, *a: reads[item['host']], out=lambda line: None,
                                  named='md', google=lambda *a: [])
         self.assertEqual([sorted(f['families']) for f in scout_boards.facts(self.db)], [['data_ai', 'graphic_design']])
         self.db.execute("UPDATE scout_board_facts SET read_at = '2000-01-01'")   # a measurement past FACT_DAYS is not carried: only this pass's kinds
-        with mock.patch.object(scout_boards.pool_tags, 'families_read', lambda titles: (['nursing_care'], [])):
+        with mock.patch.object(scout_boards.pool_tags, 'families_each', lambda titles: ({t: ['nursing_care'] for t in titles}, [])):
             scout_boards.run(self.db, ideas=lambda search: [board('a.md')], read_board=lambda item, *a: reads[item['host']], out=lambda line: None,
                              named='md', google=lambda *a: [])
         self.assertEqual([f['families'] for f in scout_boards.facts(self.db)], [['nursing_care']])
