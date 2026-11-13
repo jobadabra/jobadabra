@@ -74,6 +74,7 @@ CI rounds (Night search, `search-pair.yml`) stay without LinkedIn: a GitHub addr
 4. "Shared 1-day pause (Recommended)", option text: "Both LinkedIn reads pause a day. Consequence: a logged-out throttle would then switch off a person's signed-in LinkedIn for a day."
 
 ## Caps (Always on; owner, 13 Nov 2026: "And let's leave only the linkedin public/guest search being Always on..." · "But with some limits/restrications/caps to avoid the IP blocking")
+Approved (owner, 13 Nov 2026, asked via AskUserQuestion): the caps "Approve as written"; the shared cache "Yes, 6 h cache" (6 h for search pages, 24 h for job pages, Always on runs only).
 Every Always on user shares the cloud runner's few addresses, so LinkedIn sees one heavy reader, not many people. Each cap has one owner, is a named constant with a Why line, and rises only with a measured reason. The guest read is the ONLY LinkedIn read in Always on; the signed-in read and Gmail/Calendar stay disabled rows ("credentials stay on device").
 
 | Cap | Always on (shared addresses) | Mac/Windows (the person's own address) | Owner |
@@ -87,7 +88,7 @@ Every Always on user shares the cloud runner's few addresses, so LinkedIn sees o
 
 How a cloud read goes: the runner's engine (never a Cloudflare Worker: its requests carry a CF-Worker header naming our domain) asks the site for a turn with the run token. The site answers `cached` (the cards, no request), `wait <s>` (another user holds the lease), `go` (a lease for one GET) or `no` (a cap reached or the 24 h stop; the reason is said once in the run's log). After the GET the runner reports what LinkedIn answered (status, cards, ms) and the parsed cards; the site keeps them for `CACHE_HOURS` and writes one row per answer (the trial's evidence; an Admin chart of answers per day). The engine module is the Mac's; only `_get`'s turn comes from the site (`JOBADABRA_LINKEDIN_GUEST=cloud`, `JOBADABRA_LINKEDIN_GUEST_SITE`).
 Numbers at the start: 200 requests a day ≈ 18 people at 2 × 3 search pages + 5 job pages, more as the cache serves shared searches. The benchmark round of 13 Nov 2026 (run 43357080026) read LinkedIn's guest search from GitHub's servers without a block (180 of at most 200 jobs); nothing is known yet about a day of steady reads from one address, which is what the trial measures.
-Open for the owner with the trial: the shared cache keeps LinkedIn's public job cards on our site for 6 h (the cards anyone sees logged out), served only to Always on runs, never to the index, the pack or the benchmark.
+The shared cache (approved) keeps LinkedIn's public job cards on our site for 6 h (the cards anyone sees logged out), served only to Always on runs, never to the index, the pack or the benchmark.
 Tests (site PR first, then this repo): a fake LinkedIn that answers 429 after N requests: the global stop holds for every user, no request after it for 24 h; two users asking the same search within 6 h: the second gets the cache and LinkedIn sees one request; two runners at once never overlap and keep the gap; each daily cap ends at its number.
 Rollout: the owner's install only (trial), then everyone, only after about a week of trial with no 429/999/wall and the owner's yes on the answers chart.
 
@@ -99,7 +100,7 @@ Rollout: the owner's install only (trial), then everyone, only after about a wee
 4/4 `[lg] 4/4 Always on tries LinkedIn's public search for the owner` — site PR first (jobadabra-web: the owner-only gate in the run payload, the answers kept), then `src/hosted_run.py` sets the flag only when the payload says so; the Caps above (lease, daily caps, shared cache, 24 h stop) at the site; the answers chart the owner reads after a week.
 
 ## Follow-ups (not in these PRs)
-- Remove the LinkedIn cloud probe code (`desktop/lib/linkedin-cloud-probe.js`, its IPC, web #547's route): it sends a session to the site, which the owner's 13 Nov rule ends; a separate small cleanup PR, proposed to the coordinator.
+- Remove the LinkedIn cloud probe code (`desktop/lib/linkedin-cloud-probe.js`, its IPC, web #547's route): it sends a session to the site, which the owner's 13 Nov rule ends; lg's, one small PR here + one web PR after 1/4 merges, files disjoint from 2/4 (coordinator, 13 Nov 2026).
 
 ## Progress
 - [x] Positive control: one search page + one job page, logged out, honest user agent: 200, 10 cards, description present (13 Nov 2026) (proof: none: two by-hand requests from this Mac)
@@ -107,6 +108,6 @@ Rollout: the owner's install only (trial), then everyone, only after about a wee
 - [ ] PR 1/4 engine lane (proof: tests/unit/sources/test_linkedin_guest.py)
 - [ ] PR 2/4 app turns it on + shared stop + measure
 - [ ] PR 3/4 Automations note
-- [ ] Caps numbers: owner's yes (proposed above)
+- [x] Caps numbers and the 6 h cache: owner's yes (13 Nov 2026) (proof: none: AskUserQuestion answers relayed by the coordinator, quoted in Caps)
 - [ ] PR 4/4 Always on trial with the Caps, owner's install only (site PR first)
 - [ ] Trial read after about a week: no 429/999/wall, then the owner's yes, then the Always on guest read for everyone
