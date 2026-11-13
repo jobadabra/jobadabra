@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The one queue every session on this Mac posts its "Gitar review" asks and replies to Gitar's threads through: one post at a time, oldest first, 5 minutes apart, and a refusal pauses all of them.
+// The one queue every session on this Mac posts its "Gitar review" asks and replies to Gitar's threads through: one post at a time, oldest first, 11 minutes apart, and a refusal pauses all of them.
 //   node tools/gitar-queue.mjs ask <owner/repo> <pr> <head-sha>      -> ASKED | QUEUED (position k, next ask ~hh:mm) | DROPPED (<why>)   (idempotent: call again each look)
 //   node tools/gitar-queue.mjs reply <owner/repo> <pr> <comment-id> <body-file>    a reply in one of Gitar's inline threads (it counts as an ask)
 //   node tools/gitar-queue.mjs drain | cancel <owner/repo> <pr> | status
@@ -10,7 +10,7 @@
 // Why (13 Nov 2026, coordinator, measured; owner's rule: one queue for the account): the limit is account-wide. #4037's first "Gitar review" (20:17:45), with zero comments of ours on it, was refused "wait about 20 minutes"
 //   after #4035 took 4 replies at 20:12, #4033 an ask at 20:13:18 and #4032 at 20:13:48, 20:14:17 and 20:14:20; #4033's 20:19:19 ask was refused 74 s after its 20:18:05 one. #4031's replies at 20:05:05 and 20:06:39 drew
 //   "wait about 30 minutes" 3 s later. A short burst passes at the start of a quiet window (#4030 and #4031 asked at 20:01:19/20:01:21, both accepted), and earlier that evening four asks on other repos were accepted
-//   inside others' pauses (19:12-19:16), so the evidence is not clean: the queue is safe under both readings. The gap (GITAR_QUEUE_GAP_S, default 300) is the coordinator's 5 minutes "unless you measure better";
+//   inside others' pauses (19:12-19:16), so the evidence is not clean: the queue is safe under both readings. Later that hour ea's single ask at 20:50:03 was refused "wait about 10 minutes" after only 2 asks at 20:40:00 and 20:40:03: 3 asks in 10 minutes get refused, so the gap (GITAR_QUEUE_GAP_S, default 660) is one ask per 11 minutes;
 //   TODO(AI): tune the gap from the refusal rate once the queue has run for a week (13 Nov 2026).
 import {mkdirSync, rmSync, readFileSync, writeFileSync, renameSync, statSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
@@ -20,7 +20,7 @@ import {join} from 'node:path';
 
 const DIR = process.env.GITAR_QUEUE_DIR || join(homedir(), '.claude', 'gitar-queue');
 const GH = process.env.GITAR_QUEUE_GH || 'gh';
-const GAP = Number(process.env.GITAR_QUEUE_GAP_S ?? 300) * 1000;   // between any two posts of this Mac (13 Nov 2026, coordinator: "space asks across all PRs by a minimum gap; use 5 min unless you measure better")
+const GAP = Number(process.env.GITAR_QUEUE_GAP_S ?? 660) * 1000;   // between any two posts of this Mac: 11 min (13 Nov 2026, coordinator, measured: 3 asks in 10 min get refused; ea's ask at 20:50:03 after 2 at 20:40:00/20:40:03 drew "wait about 10 minutes")
 const SETTLE = Number(process.env.GITAR_QUEUE_SETTLE_MS ?? 8000);   // Gitar's refusal arrives 3-5 s after the comment
 let slept = 0;   // a pinned GITAR_QUEUE_NOW is a simulated clock: the settle wait advances it instead of waiting (tests)
 const now = () => Number(process.env.GITAR_QUEUE_NOW) ? Number(process.env.GITAR_QUEUE_NOW) + slept : Date.now();

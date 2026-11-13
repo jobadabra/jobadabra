@@ -130,15 +130,15 @@ class GitarQueueTest(unittest.TestCase):
         (self.tmp / 'gh_out').unlink()
         self.assertEqual(self.run_queue('ask', 'o/r', '1', 'h1', GITAR_QUEUE_GAP_S='0'), 'ASKED', 'the next look retries')
 
-    def test_posts_on_different_prs_are_five_minutes_apart_by_default(self):
-        """13 Nov 2026, coordinator: space asks across all PRs by a minimum gap, 5 minutes unless measured better; a reply counts as an ask."""
+    def test_posts_on_different_prs_are_eleven_minutes_apart_by_default(self):
+        """13 Nov 2026, coordinator: space asks across all PRs by a minimum gap; measured: 3 asks in 10 minutes get refused, so 11 minutes; a reply counts as an ask."""
         env = {k: v for k, v in self.env.items() if k != 'GITAR_QUEUE_GAP_S'}
         self.env = env
         body = self.tmp / 'body.md'
         body.write_text('Fixed.')
         self.assertEqual(self.run_queue('reply', 'o/r', '1', '555', str(body)), 'SENT')
         self.assertTrue(self.run_queue('ask', 'o/r', '2', 'h2', now_plus=100).startswith('QUEUED'), 'a reply took the turn 100 s ago')
-        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', now_plus=310), 'ASKED')
+        self.assertEqual(self.run_queue('ask', 'o/r', '2', 'h2', now_plus=670), 'ASKED')
 
     def test_a_reply_to_a_closed_pr_is_dropped_not_sent(self):
         """Gitar on #4031: `reply` printed SENT for an entry that drain had dropped."""
