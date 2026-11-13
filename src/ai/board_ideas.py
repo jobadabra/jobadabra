@@ -374,17 +374,18 @@ def ranked(boards, search):
 
 
 def proven(search, limit=2):
-    """The boards the Central Scout counted PROVEN_RIGHT+ jobs of this user's role families on, located in this user's countries, most jobs first, without any AI call: read in the
-    first-jobs slice (src/first_jobs.py) at once; the board proposal is asked beside them and fills the places they leave (first_jobs.board_jobs). Not a board it could read only in
-    a browser (`browser`): the slice reads plainly. Nothing else proves a board: jobs in places, `rank_fit70` and a family seen once only order.
-    Design (13 Nov 2026, bp; third fix here in 7 days: 11 Nov #3835, 12 Nov twice): a board's state for one (country, family) has one owner, the Scout: proven = its AI counted
-    PROVEN_RIGHT+ right jobs (served as `right`, with its day); known = fewer; unknown = no number. Only the verdict of its next measure changes it. The per-search AI proposal fills
-    the places proven boards leave. Replaces: rank_fit70 > 0 (12 Nov: one install's whole list credited to each of its families, installs 1 and fit70 0: an electrician in Madrid
-    and a car mechanic in Seville were "proven" an IT board) and `measured` (12 Nov, owner: "We should now from the start what boards/employers we should read first"; "I agree": the
-    Scout's AI saw the family once on the board: an aircraft electrician on an airline board proved it for an electrician in Madrid, in 5 of 5 searches, with 0 right jobs)."""
+    """The boards read first in the first-jobs slice (src/first_jobs.py; `limit` = first_jobs.SLICE_BOARDS, six) without any AI call, most right jobs first; the board proposal is
+    asked beside them and fills the places they leave (first_jobs.board_jobs). Never a board it could read only in a browser (`browser`).
+    A board the Central Scout COUNTED for this user's families in these countries (`right`) is proven by that number alone: PROVEN_RIGHT+. One the Scout has no number for is proven
+    as before, by installs like this one that got a fit job from it (`rank_fit70` > 0): a thin or empty table changes nothing.
+    Design (13 Nov 2026, bp + eo; third fix here in 7 days: 11 Nov #3835, 12 Nov twice): a board's state for one (country, family) has one owner while the Scout has a number.
+    proven = the Scout's AI counted PROVEN_RIGHT+ right jobs (served as `right`, with its `day`); known = counted fewer: not proven, whatever installs' lists say; unknown = no number:
+    installs' fit jobs decide, as before. Only the verdict of the Scout's next measure changes a counted board. Replaces `measured` (12 Nov, owner: "We should now from the start what
+    boards/employers we should read first"; "I agree": the Scout's AI saw the family once: an aircraft electrician on an airline board proved it for an electrician in Madrid, in 5 of 5
+    searches, with 0 right jobs; the site now sends `measured` only with the count too). A fit job of one install still proves an uncounted board (12 Nov: jobs in places alone never did)."""
     from .. import places
     countries = places.countries(search, limit=None)
-    return [board for board in ranked(served(countries), search) if board.get('right', 0) >= PROVEN_RIGHT and not board.get('browser')][:limit] if countries else []
+    return [board for board in ranked(served(countries), search) if not board.get('browser') and (board['right'] >= PROVEN_RIGHT if 'right' in board else board.get('rank_fit70'))][:limit] if countries else []
 
 
 def _merge(own, shared):
