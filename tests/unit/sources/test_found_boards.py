@@ -76,6 +76,17 @@ class FoundBoardsTests(unittest.TestCase):
         found_boards.read_board({**BOARD, 'learn': notes}, search, fetch=lambda url: PAGE)   # the same job for every query: the read stops early
         self.assertEqual(notes['terms'], ['um', 'dois', 'tres'])
 
+    def test_a_list_read_through_a_declared_feed_forgets_the_words_it_asked(self):
+        """Gitar on #4027: the feed's whole list is not what a word gave, so the Scout reads it as a list (every asked family measured); no notes is no error."""
+        board = {**BOARD, 'learn': {}}
+        found_boards._told(board, 'Um')
+        found_boards._told(board, 'dois')
+        self.assertEqual(board['learn']['terms'], ['um', 'dois'])
+        found_boards._told(board)
+        self.assertNotIn('terms', board['learn'])
+        found_boards._told(BOARD, 'um')   # an install's read has no notes: nothing is written
+        self.assertNotIn('learn', BOARD)
+
     def test_a_refusing_board_becomes_a_visit_and_is_never_fetched_again(self):
         def refuse(url):
             raise urllib.error.HTTPError(url, 403, 'Forbidden', None, None)
