@@ -24,7 +24,8 @@ FAKE_GH = textwrap.dedent('''\
         print(json.dumps({'state': open(f'{d}/state_{a[2]}').read().strip() if os.path.exists(f'{d}/state_{a[2]}') else 'OPEN', 'headRefOid': 'h' + a[2]}))
     elif a[:2] == ['pr', 'comment']:   # Gitar answers a PR that is under its limit with a refusal, 3 s later in real life, at once here
         if os.path.exists(f'{d}/refuse_{a[2]}'):
-            rows = comments(a[2]); rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."})
+            rows = comments(a[2]); rows.append({'user': {'login': 'gitar-bot[bot]'}, 'created_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),  # clock: relative the refusal is read against the queue's own reading seconds later
+                'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."})
             json.dump(rows, open(f'{d}/comments_{a[2]}.json', 'w'))
         open(d + '/posted', 'a').write('ask ' + a[2] + '\\n')
     elif a[0] == 'api' and '-X' in a:
@@ -45,7 +46,7 @@ class GitarQueueTest(unittest.TestCase):
         self.env = {**os.environ, 'FAKE_DIR': str(self.tmp), 'GITAR_QUEUE_DIR': str(self.tmp / 'q'), 'GITAR_QUEUE_GH': str(gh), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': '3600'}
 
     def run_queue(self, *args, now_plus=0, wait=True, **env):
-        e = {**self.env, 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000), **env}
+        e = {**self.env, 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000), **env}   # clock: relative the queue compares only readings of this same clock
         p = subprocess.Popen(['node', str(ROOT / 'tools' / 'gitar-queue.mjs'), *args], env=e, stdout=subprocess.PIPE, text=True)
         return p.communicate()[0].strip() if wait else p
 

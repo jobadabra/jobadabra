@@ -43,7 +43,7 @@ class ShipWatchGitarAskTest(unittest.TestCase):
             (self.tmp / 'rest' / 'repos_o_r_pulls_7_comments_per_page_100').write_text(json.dumps([{'user': {'login': 'gitar-bot[bot]'}, 'created_at': at, 'body': "You've sent several Gitar comments in a short window. Please wait about 10 minutes and comment again."}]))
         env = {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp),
                'PR_REST_CACHE': str(self.tmp / 'cache'), 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '60', 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), 'SHIP_WATCH_GITAR_AFTER': after, 'SHIP_WATCH_GITAR_OPENED': opened_wait,
-               'GITAR_QUEUE_DIR': str(self.tmp / 'queue'), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': gap, 'GITAR_QUEUE_GH': str(self.tmp / 'bin' / 'gh'), 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000)}
+               'GITAR_QUEUE_DIR': str(self.tmp / 'queue'), 'GITAR_QUEUE_SETTLE_MS': '0', 'GITAR_QUEUE_GAP_S': gap, 'GITAR_QUEUE_GH': str(self.tmp / 'bin' / 'gh'), 'GITAR_QUEUE_NOW': str(int(time.time() * 1000) + now_plus * 1000)}   # clock: relative the queue compares only readings of this same clock
         (self.tmp / 'peek.sh').write_text(f'#!/bin/sh\nprintf "%s\\n" "{peek}"\n')   # what tools/gitar-label.mjs peek would print for the head
         (self.tmp / 'peek.sh').chmod(0o755)
         env['SHIP_WATCH_GITAR_PEEK'] = str(self.tmp / 'peek.sh')
