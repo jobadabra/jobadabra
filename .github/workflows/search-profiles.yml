@@ -55,7 +55,7 @@ jobs:
         env:
           PROFILES: ${{ inputs.profiles }}
         run: python3 tools/persona-search/profiles.py ids "$PROFILES" >> "$GITHUB_OUTPUT"
-      - name: No night or press tape holds the broker, and this run ends before the night (00:00 UTC)
+      - name: A sane number at once, and this run ends before the night starts (00:00 UTC)
         env:
           GH_TOKEN: ${{ github.token }}
           PROFILES: ${{ steps.list.outputs.profiles }}
@@ -103,7 +103,7 @@ jobs:
         with: {node-version: '22'}
       - uses: actions/setup-python@v6
         with: {python-version: '3.12'}
-      - name: Still no night or press tape on the broker (a night may have started while this profile waited)
+      - name: Still a sane number at once and before 00:00 UTC (a profile may wait in the matrix)
         id: free
         if: steps.token.outputs.ok == 'yes'
         env:

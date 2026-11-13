@@ -19,8 +19,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PROFILES = json.loads((HERE / 'search-profiles.json').read_text(encoding='utf-8'))['profiles']
 IDS = [p['id'] for p in PROFILES]
-# Why (12 Nov 2026, sa): a profile run shares the broker with nothing that measures: the Search check's night (the press tapes were retired 13 Nov 2026).
-HOLDERS = ('search-personas.yml',)
+# Why (13 Nov 2026, sa: "with 24 slots you need not wait for that idle: the night runs one press at a time"; owner: "make it very parallel"): no workflow holds a profile run any
+# more. On 8 slots the night had to be alone (12 Nov); on 24 slots a profile starved by the broker shows as waits p90 > 20 s and is reported not measured, never a low number.
+HOLDERS = ()
 MAX_AT_ONCE = 30   # Why (13 Nov 2026, owner: "make it very parallel" · "customizable"): any number up to all 30 at once; the room is the broker's, read per run
 MINUTES_EACH = 12   # one profile job: setup ~3 min, the first press ~4.5 min (search-personas.yml header), the judge 1-2 min, with room
 NIGHT_UTC = (0, 0)   # app-core/src/scheduler.js SEARCH_SLOT: the Worker starts the night at 00:00 UTC
@@ -62,7 +63,7 @@ def busy(run_list=None):
 
 
 def free(chosen, at_once, now=None, run_list=None):
-    """(ok, why): no holder runs, and the run's estimate ends before the night's 00:00 UTC start. Invariant: never ok while a holder is queued or running."""
+    """(ok, why): at_once is 1-30, no holder runs (HOLDERS is empty since 13 Nov 2026), and the run's estimate ends before the night's 00:00 UTC start."""
     now = now or datetime.now(timezone.utc)
     if not 1 <= at_once <= MAX_AT_ONCE:
         return False, f'at_once {at_once} is outside 1-{MAX_AT_ONCE}: not run'
@@ -74,7 +75,7 @@ def free(chosen, at_once, now=None, run_list=None):
     night += timedelta(days=1) if night <= now else timedelta(0)
     if now + timedelta(minutes=minutes) >= night:
         return False, f'about {minutes} min from {now:%H:%M} UTC would reach the night at 00:00 UTC: not run, start it after the night or with fewer profiles'
-    return True, f'no night or tape on the broker; about {minutes} min, done before 00:00 UTC'
+    return True, f'about {minutes} min, done before 00:00 UTC'
 
 
 def cv(pid, out):
