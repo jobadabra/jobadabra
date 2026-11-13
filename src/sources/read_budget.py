@@ -19,6 +19,7 @@ from ..press import budget, rank, resume
 READ_SECONDS = budget.value('read_budget.READ_SECONDS')    # of the search's 3 minutes (time_budget.part): no new site after this; the AI steps get the time after the cut
 READ_FLOOR = budget.value('read_budget.READ_FLOOR')      # sites read whatever the read's clock says, before the cut: the best ones of every search
 READ_GRACE = budget.value('read_budget.READ_GRACE')      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+BETWEEN_S = budget.value('read_budget.BETWEEN_S')        # how often a read's loop looks at what its open reads ended meanwhile (as_done `between`)
 LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
 FILE = 'employers_left.json'
@@ -96,19 +97,27 @@ def result(future, at):
         return LEFT
 
 
-def as_done(futures, at, feeders=None):
+def as_done(futures, at, feeders=None, between=None):
     """(future, its result) for each of `futures` as it ends, until the cut `at`; then (future, LEFT) for each still open, in the given order.
     Futures that end together come in the given order. A failed read raises out of the loop once every read that ended with it is given (Gitar,
     #3892: none of them lost with it); the reads still open are not taken (the caller's stage guard reports the source). Not waiting for the
     slowest is the point:
     Why (#3892, 12 Nov 2026): taken in the list's order, a slow first board held the boards read before it ended past the titles' time.
     feeders {future: join}: a future that names more reads; when it ends, join(its result) -> their futures, which are waited for with the
-    rest. A feeder is never given to the caller, ended or still open (found_boards.read `later`)."""
+    rest. A feeder is never given to the caller, ended or still open (found_boards.read `later`).
+    between(): called in this thread about every BETWEEN_S while reads are open, and before each ended read is given (a board's rounds are handed
+    as they end: src/sources/board_rounds.py); None waits for the next ended read as before."""
     feeders = feeders or {}
     pending = [*futures, *feeders]
     while pending:
-        ended, _ = wait(pending, timeout=seconds_left(at), return_when=FIRST_COMPLETED)
+        left = seconds_left(at)
+        turn = left if between is None else BETWEEN_S if left is None else min(BETWEEN_S, left)
+        ended, _ = wait(pending, timeout=turn, return_when=FIRST_COMPLETED)
+        if between is not None:
+            between()
         if not ended:
+            if between is not None and (left is None or left > turn):
+                continue
             break
         batch = [future for future in pending if future in ended]
         for future in batch:

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_layout, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -64,6 +64,7 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
 
 def _read(board, search, fetch, route, early, show=None):
     jobs, state, asked_routes, asks, asked_term = [], 'empty', False, 0, None
+    told = fetch   # the fetch this read was given: its rounds are told on it (board_rounds.py), also after a rendered page replaces `fetch` below
     listing = show if board.get('rendered') and show is not None else None   # the list pages after their scripts ran; job pages are fetched as usual
     layout = board_layout.Layout(board)   # Why (13 Nov 2026, owner): a measured board's served layout names its job cards; no AI question per link
     try:
@@ -127,6 +128,7 @@ def _read(board, search, fetch, route, early, show=None):
             shaped = _shaped(board, found)
             board_round_log.said(board, term, place, started, jobs, shaped, how, on_page=on_page, parts=parts)
             jobs.extend(shaped)
+            board_rounds.ended(told, shaped)   # the search takes a round's jobs as the round ends, not when the board's last round does (board_rounds.py)
             state = 'ok' if jobs else state
         new = {job['url'] for job in jobs} - seen
         seen |= new
@@ -333,6 +335,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                             if board['host'] not in hosts))
     taken, lock = {}, threading.Lock()   # taken: {a board's host: [(spare item, result)]} the boards read in place of it while it refused
     waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
+    rounds = board_rounds.Rounds(lambda read_item, found: _hand(by_turn[order.get(id(read_item), -1)], found, on_board)) if on_board is not None else None
 
     def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
         board, entry, pages, fetched, _ = read_item
@@ -346,7 +349,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             return page
         if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
             return tuple(late_pages.pop(board['host']))
-        result = read_board(board, search, through, entry.get('route'), early=early, show=show)
+        result = read_board(board, search, rounds.listen(through, read_item) if rounds else through, entry.get('route'), early=early, show=show)
         if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
             site, page = board_check.kind(board, fetch)
             if site:
@@ -399,7 +402,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             late_reads.keep('board', board['host'], [answer[0], answer[1], route])
             print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
             run_counts.looked(answer[0])
-            _hand(turn, answer[0], on_board)
+            _hand(turn, rounds.rest(read_item, answer[0]) if rounds else answer[0], on_board)
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
             return wait((found, state))
@@ -426,7 +429,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else f' (refuses automated reading, {board_yield.refused_why(entry)}: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)
-        _hand(turn, found, on_board)
+        _hand(turn, rounds.rest(read_item, found) if rounds else found, on_board)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
     order = {id(read_item): n for n, read_item in enumerate(reads)}   # by item, not host: two items of one host keep their own turns (Gitar, #3892)
     by_turn.extend([] for _ in range(len(reads) + 1))   # the last: a board not in the list (none expected)
@@ -435,9 +438,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     futures = {pool.submit(slots.carry(one_or_spare), read_item): read_item for read_item in reads}
     start = lambda board: board_later.start(item(board), reads, hosts, order, by_turn, futures, lambda read_item: pool.submit(slots.carry(one_or_spare), read_item))
     feeders = board_later.named(later, lambda named: board_later.join(named, lambda these: board_yield.pick(these, kept, retry, dropped, remember=False), hosts, workers - len(reads), start))
-    # Why (#3892, 12 Nov 2026): boards are kept as they end (in the list's order a slow first board held the others' titles and places
-    # past the AI's time); the boards named meanwhile (feeders) join this same loop as they start, never a second read
-    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
+    # Why (#3892, 12 Nov 2026; rounds 13 Nov 2026, sa): boards are kept as they end (in the list's order a slow first board held the others' titles
+    # and places past the AI's time), and a board's rounds are handed as each ends (`between`, board_rounds.py: a board with six rounds never ended
+    # inside a search); the boards named meanwhile (feeders) join this same loop as they start, never a second read
+    for done, (future, result) in enumerate(read_budget.as_done(list(futures), cut, feeders, between=rounds.take if rounds else None), 1):   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         read_item = futures[future]
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])
@@ -447,6 +451,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         keep(read_item, result)
         _kept_spares(taken, lock, [read_item], keep)
         ticker.tick(done, f" · {read_item[0]['name']}")
+    if rounds:   # the rounds a board still open ended before the search's time: this search's, the rest of that board is the next one's
+        rounds.take()
     pool.shutdown(wait=not left, cancel_futures=True)
     if left:
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
