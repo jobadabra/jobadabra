@@ -213,7 +213,7 @@ def capture_engine(prompts=False):
 
     notes = load('src/ai/schema_notes.py', ['text'])
     bands = load('src/ai/score_bands.py', ['UNMET', 'TEXT'])
-    score_search = load('src/ai/score_search.py', ['PART', 'RULE', 'SEARCH_ROLE_FIT', 'extend', 'block', 'apply', 'tier'],
+    score_search = load('src/ai/score_search.py', ['PART', 'RULE', 'extend', 'block', 'apply', 'searched'],
                         _roles=lambda search=None: ['Site Reliability Engineer'])
     scorer = load('src/ai/score.py', ['_component', '_open_component', 'SCHEMA', 'SYSTEM', 'EFFORT', '_whole', '_ask'], engine=engine,
                   copy=copy, score_bands=bands, score_search=score_search, schema_notes=notes, locations=NS(block_now=lambda: ''),

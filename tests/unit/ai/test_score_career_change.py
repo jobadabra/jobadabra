@@ -1,6 +1,7 @@
-"""A search in another field than the CV shows the jobs that fit the search, ranked by that fit, with a line on what the CV lacks (owner,
-26 Oct 2026: "Show them, flag the gap"; src/ai/score_search.py). His pilot search found 13 First Officer jobs; scored against a software
-CV, all 0-25, none in the digest. Universal: any career change. Fake model (it can judge the search only when the request carries it)."""
+"""A search in another field than the CV: the scorer is told the search and its answer carries the search part (owner, 26 Oct 2026: "Show them,
+flag the gap"; src/ai/score_search.py); the ring stays the scorer's own score (13 Nov 2026; tests/unit/ai/test_score_realistic_ring.py). His pilot
+search found 13 First Officer jobs, scored against a software CV. Universal: any career change. Fake model (it can judge the search only when the
+request carries it)."""
 import json
 import tempfile
 import unittest
@@ -10,7 +11,6 @@ from unittest import mock
 
 from src import digest, store as job_store
 from src.ai import score, score_search
-from tests.unit.ai.test_digest_counts import header
 
 SEARCH = {'target_roles': ['pilot first officer'], 'role_keywords': ['pilot first officer']}
 CV = 'Software developer: Python, Kubernetes, 8 years building web services in Chisinau.'
@@ -61,44 +61,21 @@ class CareerChange(unittest.TestCase):
         score.run(self.db, candidates, CV, 'm', 20, client=model)
         return score.load(self.db)
 
-    def test_the_13_pilot_jobs_show_in_the_digest_with_the_gap_line(self):
-        """Fails on the old code: every job keeps its CV fit of 15, under the digest's bar of 50, so the digest lists 0."""
+    def test_the_scorer_is_told_the_search_and_its_part_is_kept(self):
         model = FakeModel()
         fits = self.scored(model)
         self.assertIn('pilot first officer', model.requests[0]['system'][0]['text'], 'the scorer is told the search')
-        self.assertEqual(header(self.db, hide_unscored=True)[1], 13)
         one = next(iter(fits.values()))
-        self.assertEqual((one['score'], one['cv_fit'], one['search']['cv_gap']), (88, 15, GAP))
-        self.assertEqual(one['tier'], 'A')
-        self.assertEqual(one['gaps'][0], GAP, "first among the gaps (the drawer's match panel)")
-        self.assertEqual(one['reason'], f'Fits your search · Your CV: {GAP}', 'the one line the Jobs row, the drawer and Job Matches show')
-        card = digest.build_digest(self.db, seed=1, hide_unscored=True)[0][0]
-        self.assertIn(f'88/100 · Fits your search · Your CV: {GAP}', card)
+        self.assertEqual((one['search']['fit'], one['search']['career_change'], one['search']['cv_gap']), (88, True, GAP))
 
     def test_the_same_field_keeps_its_fit_to_the_cv(self):
         fits = self.scored(FakeModel(career_change=False, search_fit=90, cv_fit=60))
         self.assertEqual({data['score'] for data in fits.values()}, {60}, 'not a career change: the CV fit (place, pay, skills) stands')
-        self.assertTrue(all('cv_fit' not in data for data in fits.values()))
-
-    def test_low_scores_made_before_are_scored_again_once_only_for_titles_the_search_wants(self):
-        jobs = digest.eligible_jobs(self.db)[0]
-        old = {'score': 15, 'tier': 'C', 'reason': 'Unrelated role', 'components': {}, 'strengths': [], 'gaps': [], 'confidence': 'high'}
-        for job in jobs:
-            score.save(self.db, job, 'm', {**old, 'score': 70} if job['title'].endswith(' 2') else old, CV)
-        wanted = lambda title: not str(title).endswith(' 1')   # the search's title check: job 1 is not wanted
-        with mock.patch('src.sources.feeds.wanted_title', side_effect=wanted), mock.patch('src.sources.feeds.triage') as sorted_by_ai:
-            again = {job['title'] for job in score.pending_jobs(self.db, jobs, CV, 50)}
-            self.assertEqual(len(again), 11, 'all low ones the search wants: not job 1 (not wanted), not job 2 (scored 70)')
-            self.assertNotIn('First Officer A320 1', again)
-            self.assertEqual(len(sorted_by_ai.call_args_list[0][0][0]), 12, "the AI sorts the low ones' titles first, in one batch")
-            score.run(self.db, jobs, CV, 'm', 50, client=FakeModel())
-            self.assertEqual(score.pending_jobs(self.db, jobs, CV, 50), [], 'once only')
 
     def test_an_answer_without_the_search_part_is_never_asked_again(self):
         data = score_search.apply({'score': 15, 'tier': 'C'})
         self.assertEqual(data['search'], {})
-        row = {'data_json': json.dumps(data)}
-        self.assertEqual(score_search.again_ids([{'id': 1, 'title': 'First Officer'}], {1: row}, 50), set())
+        self.assertEqual(data['score'], 15)
 
 
 if __name__ == '__main__':
