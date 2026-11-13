@@ -75,6 +75,24 @@ class HandedPerRound(unittest.TestCase):
             self.assertLess(time.monotonic() - started, 4, 'the read did not wait for the open board past the cut')
         self.assertEqual(handed, [['1', '2']], 'the round that ended is this search\'s; the rest of the board is the next one\'s')
 
+    def test_a_board_read_in_place_of_a_refusing_one_keeps_its_rounds_at_that_boards_turn(self):
+        """Gitar on #3985: a spare board's rounds went to the end of the list while the rest of its jobs sat at the refusing board's turn."""
+        second, spare = dict(BOARD, name='Board 2', host='b2.example', search_url='https://b2.example/?q={role}'), \
+            dict(BOARD, name='Board 9', host='b9.example', search_url='https://b9.example/?q={role}')
+
+        def read_board(b, search, fetch, route=None, early=False, show=None):
+            if b['host'] == 'b1.example':
+                return [], 'browser', None   # refuses automated reading: the spare is read in its place
+            if b['host'] == 'b9.example':
+                board_rounds.ended(fetch, [{'title': 'Sales', 'url': 'https://b9.example/1'}])
+                return [{'title': 'Sales', 'url': 'https://b9.example/1'}, {'title': 'Sales', 'url': 'https://b9.example/2'}], 'ok', None
+            return [{'title': 'Sales', 'url': 'https://b2.example/1'}], 'ok', None
+        with mock.patch.object(found_boards, 'read_board', read_board), mock.patch.object(read_budget, 'BETWEEN_S', 0.01), \
+                mock.patch.object(found_boards.board_yield, 'pick', side_effect=lambda boards, *a, **k: list(boards)):
+            jobs = found_boards.read(SEARCH, [BOARD, second], early=True, workers=1, is_relevant=list, dead=set(), spare=[spare], on_board=lambda found: None)
+        self.assertEqual([j['url'] for j in jobs], ['https://b9.example/1', 'https://b9.example/2', 'https://b2.example/1'],
+                         'the spare\'s jobs, round and rest, sit at the refusing board\'s turn, before the next board')
+
     def test_without_a_listener_a_board_is_kept_whole_as_before(self):
         with mock.patch.object(found_boards, 'read_board', lambda *a, **k: ([job(1)], 'ok', None)):
             jobs = found_boards.read(SEARCH, [BOARD], early=True, workers=1, is_relevant=list, dead=set())

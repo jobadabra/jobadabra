@@ -368,6 +368,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
                 if not spares:
                     break
                 _, spare_item = spares.pop(0)
+                order[id(spare_item)] = order.get(id(read_item), -1)   # its rounds are kept at the turn of the board it is read in place of (Gitar, #3985)
             print(f"Job boards: {name} {REPLACED[result[1]]}; reading {spare_item[0]['name']} in its place", flush=True)
             result = one(spare_item)
             with lock:
