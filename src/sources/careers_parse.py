@@ -4,6 +4,7 @@
 Split out of careers.py (pure move; import it through careers, never first). No network and no module state here: careers.py imports
 and re-exports every name. Guarded by tests/unit/sources/test_careers.py and test_careers_paging.py.
 """
+import hashlib
 import html
 import json
 import re
@@ -216,19 +217,34 @@ def page_title(markup, url, say=True, cut=True):
     return next((part for part in parts if plain_name(part) not in names), '')
 
 
+TITLE_FIELD = 'title-field'   # decide topic: is a JobPosting's title a job title or an unfilled template field
+TITLE_FIELD_ANSWERS = ('job_title', 'template_field')
+TITLE_FIELD_TASK = ('The "title" field of a job posting\'s structured data, in any language. Answer job_title when it is the name of a role, or template_field when it is a placeholder '
+                    'or variable name a page template did not fill in (an identifier, a token in capitals or with underscores or braces, not a role).')
+
+
 def _shown_title(markup, url, title):
-    """A job page's one JobPosting title, unless the page itself never shows it: then the page's own heading.
-    Why (13 Nov 2026, sd, lab run 43502695338): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"` (an unrendered template field), so its 39 local jobs
-    shared one title and the kinds question saw one title: "no kinds of work from the AI: not kept". Structure, not a word list: a title found nowhere in the page's
-    visible text is not this job's. Invariant: never an empty title (no heading on the page: the JSON-LD title stays, as a script-rendered page needs)."""
+    """A job page's one JobPosting title, unless it is an unfilled template field: then the page's own heading.
+    Why (13 Nov 2026, sd, lab run 43502695338; Gitar on #4046 refused the first rule, "the page must show the title", for "Sr. Engineer" against a shown "Senior Engineer" and for
+    script-drawn titles): a board's job pages carried JSON-LD `"title": "HV_JSON_TITULO"`, so its 39 local jobs shared one title and the kinds question saw one title:
+    "no kinds of work from the AI: not kept". Structure only finds the doubt: the title is not in the page's visible text AND shares no word with its heading or <title>.
+    Whether that is a template field is the AI's judgment (title-field, asked once per wording and kept); no AI or an unsure answer keeps the title, never a guess.
+    Invariant: never an empty title (no heading on the page: the structured title stays, as a script-rendered page needs)."""
     seen = plain_name(ats.plain(re.sub(r'<(script|style|noscript)\b.*?</\1>', ' ', markup, flags=re.S | re.I)))
     if plain_name(title) in seen:
         return title
     heading = page_title(markup, url, say=False, cut=False)   # the whole heading: "Mozo/a de montaje - Mallorca" is the title, not "Mozo/a de montaje"
-    if heading and plain_name(heading) != plain_name(title):
-        print(f"Job page: its structured data names the job {title!r}, which the page never shows; its heading {heading!r} is the title: {url}", flush=True)
-        return heading
-    return title
+    if not heading or plain_name(heading) == plain_name(title):
+        return title
+    page = ats.plain((re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
+    words = lambda text: set(re.findall(r'\w{3,}', plain_name(text)))
+    if words(title) & (words(heading) | words(page)):
+        return title
+    from ..ai import decide
+    if decide.one(TITLE_FIELD, hashlib.sha256(title.lower().encode()).hexdigest()[:20], title, TITLE_FIELD_ANSWERS, TITLE_FIELD_TASK) != 'template_field':
+        return title
+    print(f"Job page: its structured data names the job {title!r}, which is not a job title; its heading {heading!r} is the title: {url}", flush=True)
+    return heading
 
 
 def jsonld_jobs(markup, url):
