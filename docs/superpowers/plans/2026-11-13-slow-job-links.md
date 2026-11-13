@@ -12,8 +12,8 @@ Verdict: one PR (#4022), two parts; folded together so one proof pair measures b
 2. **Part 2** A board page's links are judged by shape: for a shape of 3+ links (path with digits folded and the last segment as *, depth 2 or more), the AI is asked about 3 of them, spread over the shape. If all 3 agree, the answer holds for the rest of that shape on that page; if they differ, every link of the shape is asked as today. Single links are always asked one by one. One page, one read; nothing stored. Measured on the saved Madrid pages: 502 → 120 wordings, 11 → 3 calls.
 
 ## Progress
-- [x] part 1: one batch per lane call
-- [x] part 2: links judged by shape
+- [x] part 1: one batch per lane call (proof: tests/unit/ai/test_decide_gate.py)
+- [x] part 2: links judged by shape (proof: tests/unit/ai/test_link_shapes.py)
 - [ ] the fair c04 pair (after the pair shares the board proposal on both sides)
 
 ## Not in this plan
