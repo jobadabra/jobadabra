@@ -63,7 +63,7 @@ def budget_s():
     """The seconds a pass starts new boards in: BUDGET_S for the default number of reported candidates, more in proportion when a by-hand run asks for more (SCOUT_BOARD_RESERVE).
     Why (13 Nov 2026, bp): the 240 s was sized for 4 candidates plus the AI's ideas (a candidate takes ~60 s); with 12 candidates and the same 240 s the pass stops starting boards
     after the 4th, so the input would read no more. The default (and the schedule) keep 240; a reserve past MAX_BOARDS adds no time (the pass reads 12 boards at most)."""
-    return BUDGET_S * max(1, min(scout_board_candidates.reserve(), MAX_BOARDS) / scout_board_candidates.RESERVE)   # past MAX_BOARDS no board is read: Gitar on #4097
+    return BUDGET_S * max(1, min(scout_board_candidates.reserve(), MAX_BOARDS) / scout_board_candidates.RESERVE)   # Why (13 Nov 2026, Gitar on #4107): _first() keeps 12 boards, so a reserve past MAX_BOARDS adds no board to wait for
 
 
 KINDS_PER_COUNTRY = 3   # the kinds of work one run asks boards for: the country's kinds take turns (kinds_for)
