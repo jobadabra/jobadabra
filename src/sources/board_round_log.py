@@ -62,7 +62,7 @@ def page_seen(markup, url):
     from ..ai import decide, page_words
     from . import careers_parse
     _, _, same = careers_parse.same_site(markup, url)
-    wordings = list(dict.fromkeys(page_words._wording(text, parts.path) for _, text, parts in same))
-    kept = decide.kept(page_words.LINK, wordings)
+    wordings = list(dict.fromkeys(page_words._wording(text, parts.path) for _, text, parts in same))   # link_words' own key: the verdicts it kept
+    kept = decide.kept(page_words.LINK, wordings[:page_words.MAX_WORDINGS])   # link_words judges no more than these; the rest count as not judged
     jobs = sum(1 for wording in wordings if wording in kept and page_words.from_kind(kept[wording]).job_path)
     return f'the search page: {len(same)} links in {len(wordings)} wordings, {jobs} the AI called job pages, {len(wordings) - len(kept)} not judged'
