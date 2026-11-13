@@ -13,7 +13,7 @@ import sys
 from contextlib import closing
 from pathlib import Path
 
-from . import scout_board_cells as cells, scout_boards, scout_cells
+from . import scout_board_cells as cells, scout_board_priority, scout_boards, scout_cells
 
 ONLY_ENV = 'SCOUT_BOARD_ONLY'   # a lane's country, by code or name (the lab's workflow sets it from `--board-lanes`)
 MAX_LANES = 8                   # lanes a round may start: each is a board pass with its own AI cap (src/scout_boards.py JOB_CALLS)
@@ -66,7 +66,8 @@ def plan(db_path, lanes):
     from . import store
     with closing(store.connect(db_path)) as db:
         cells.seed(db, os.environ.get('SCOUT_BOARD_SEED_DB'), lambda line: print(line, file=sys.stderr))
-        print(' '.join(countries(db, lanes, priority=cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY')))))
+        named = cells.parse(os.environ.get('SCOUT_BOARD_PRIORITY'))
+        print(' '.join(countries(db, lanes, priority=scout_board_priority.priority(named, db=db))))
     return 0
 
 

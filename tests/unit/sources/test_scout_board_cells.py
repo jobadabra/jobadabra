@@ -168,6 +168,9 @@ class Words(unittest.TestCase):
 
 class Discover(unittest.TestCase):
     def setUp(self):
+        patch = mock.patch('src.scout_board_priority.priority', lambda named=(), **kwargs: list(named))   # the lab's cells alone: no profile titles asked of the AI (13 Nov 2026)
+        patch.start()
+        self.addCleanup(patch.stop)
         self.db = sqlite3.connect(':memory:')
         cover(self.db, [c for c in scout_cells.EUROPE if c != 'sk'])
 
