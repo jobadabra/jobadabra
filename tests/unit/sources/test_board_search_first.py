@@ -112,8 +112,9 @@ class SearchFirst(unittest.TestCase):
         def refuse(url):
             raise urllib.error.HTTPError(url, 403, 'Forbidden', None, None)
         self.search_page = refuse
-        self.read(early=True)
+        _, log = self.read(early=True)
         self.assertIn(LIST, self.asked)
+        self.assertIn('own search form not answered in time or refused', log)   # c10 run 43493366636: a cut form read printed nothing
 
     def test_a_field_boards_category_page_and_a_board_with_the_word_in_its_link_are_left_alone(self):
         self.list_title = 'Welder'

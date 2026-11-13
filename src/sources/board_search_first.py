@@ -20,7 +20,7 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
         return None
     started = time.monotonic()
     page = board_forms.home(board, fetch)
-    if not page[1]: 
+    if not page[1]:
         return None
     templates = board_forms.home_templates(board, fetch, page)
     if not templates:
@@ -30,7 +30,7 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
     looked = time.monotonic() - started
     for template in templates:
         if read_budget.past_cut():
-            return None
+            break
         asked = time.monotonic()
         with stage.guard('found boards: own search') as caught:
             jobs, state, _ = read_board({**board, 'search_url': template}, search, fetch, None, early=early, show=show)
@@ -43,4 +43,5 @@ def read(board, entry, proposed, search, fetch, judge, show, early, read_board):
         print(f"Job boards: {board['name']} searched through its own search form: {len(jobs)} job(s), {len(relevant)} relevant"
               f"{'' if jobs else '; its general list is not read for it'} (home page and form links {looked:.0f} s, form rounds {time.monotonic() - asked:.0f} s)", flush=True)
         return jobs, state, None
+    print(f"Job boards: {board['name']} own search form not answered in time or refused, its list is read ({time.monotonic() - started:.0f} s in the form)", flush=True)
     return None
