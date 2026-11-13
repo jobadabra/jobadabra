@@ -26,11 +26,9 @@ MAX_FACTOR = 3             # ... and not more than this many times as many items
 # /<id>/<slug> at the root), so no one-level links recipe fitted them and every install asked the AI about their links. Depth 1 has no field, so a
 # recipe learned before depth replays exactly as before, and an install older than depth refuses a recipe that has it (its valid wants 2 keys).
 MAX_DEPTH = 3
-# Why (13 Nov 2026, sa for the owner's approved fix #1 design, "Learn once in the Scout, replay in every search"): on the saved pages of 13 searches
-# derive learned a layout for 18 of the 30 boards (by board name) whose job links the AI named, 23 of them with titles (offline, no AI; 21 of 28
-# by host, none lost); the boards gained were job cards whose link holds the whole card (title, place, date, text: over 140 characters, so dropped)
-# or holds no text (the title is its aria-label). A card's title is its link's
-# own name or the first heading inside it; no title field means the link text, as before, and an install older than titles refuses the field.
+# Why (13 Nov 2026, #4061; owner-approved fix #1 design, "Yes, approve (Recommended)"): job cards whose link holds the whole card (title, place, date: over 140 characters,
+# so dropped) or no text (the title is its aria-label) got no layout. A card's title is its link's own name or the first heading inside it; no title field means the link
+# text, as before, and an install older than titles refuses the field. The measurement is in #4061's body.
 TITLES = ('label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6')
 TABLE = 'CREATE TABLE IF NOT EXISTS page_recipes (url TEXT PRIMARY KEY, recipe_json TEXT NOT NULL, learned_at TEXT NOT NULL, source TEXT NOT NULL, broken_at TEXT)'
 
@@ -67,12 +65,12 @@ def _links(markup, base):
 def _card_links(markup, base, title):
     """[(address, title)] of every link, its title read as `title` says (TITLES): the link's aria-label or title attribute, or its first heading."""
     out = []
-    for attrs, inner in re.findall(r'<a\b([^>]*)>(.*?)</a>', markup, re.S | re.I):
+    for attrs, inner in re.findall(r'<a\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>(.*?)</a>', markup, re.S | re.I):   # a `>` inside a quoted attribute is not the tag's end
         href = re.search(r'(?<![\w-])href=["\']([^"\'#][^"\']*)["\']', attrs, re.I)
         if not href:
             continue
         if title == 'label':
-            # Why (Gitar on #4047): the name is the attribute itself; `\b` also matched data-title / data-aria-label, which tracking code puts on cards.
+            # Why (13 Nov 2026, #4061): match the attribute name whole; `\b` also matched data-title / data-aria-label, which tracking code puts on cards.
             named = re.search(r'(?<![\w-])aria-label=["\']([^"\']*)["\']', attrs, re.I) or re.search(r'(?<![\w-])title=["\']([^"\']*)["\']', attrs, re.I)
             text = _text(named.group(1)) if named else ''
         else:
