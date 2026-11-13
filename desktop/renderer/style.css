@@ -538,6 +538,7 @@ body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, 
 /* One fixed row height (owner, 24 Oct 2026: "all the jobs rows cards have the same height"): tags, place, reason, title and company are one line each, cut with … (the full text on hover). */
 .job-row .tags { flex-wrap: nowrap; overflow: hidden; min-height: 22px; }
 .job-row .tags .ui-tag { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-row .tags .ui-tag.is-account { flex: 0 0 auto; }   /* "Account needed" never shrinks: the skill tags after it give way (renderer/account-chip.js) */
 .job-row .tags .ui-tag:last-child:not(:first-child) { flex-shrink: 0; }   /* the "+N" never shrinks */
 .job-row .title-line a, .job-row .company .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-row .reason { -webkit-line-clamp: 1; min-height: 1.4em; }

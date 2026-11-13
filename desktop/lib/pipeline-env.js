@@ -20,6 +20,7 @@ import {isolatedFile} from './keychain.js';
 import {notifyEnv} from './notify-channel.js';
 import {mailOffEnv} from './mail-choices.js';
 import {euresOn} from './eures-on.js';
+import {guestEnv} from './linkedin-guest-on.js';
 import {CONFIG_FILES, cleanConfigFiles, copyWithoutNotes} from './config-text.js';
 
 export const REPO = ROOT;
@@ -106,6 +107,7 @@ export function pipelineEnv(storage, parent = process.env) {
     // Pages that only exist after their scripts run, rendered in the app's own Chromium (lib/page-render.js, src/sources/render.py).
     ...(pageRender.address() ? {JOBADABRA_RENDER_URL: pageRender.address(), JOBADABRA_RENDER_TOKEN: pageRender.TOKEN} : {}),
     ...euresEnv(parent),   // EURES only in an installed beta or stable build, never from source or on CI (lib/eures-on.js)
+    ...guestEnv(storage, parent, {packaged: installedBuild}),   // LinkedIn's public search: an installed build, the signed-in switch off, not paused (lib/linkedin-guest-on.js)
     ...(crashReports?.enabled() ? {JOBADABRA_SENTRY_DSN: crashReports.dsn, JOBADABRA_APP_VERSION: crashReports.version, JOBADABRA_INSTALL_ID: crashReports.installId} : {}),
   };
   // The Profile and standard answers are read from Notion; before it is connected (Trying) from this Mac's files

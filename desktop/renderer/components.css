@@ -22,6 +22,10 @@
 button.ui-tag.is-action { cursor: pointer; background: var(--signal-soft); color: var(--signal-ink); border-color: var(--signal-line); }
 button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 .ui-tag.is-busy { background: var(--surface); color: var(--muted); border-style: dashed; animation: ui-pulse 1.2s ease-in-out infinite; }
+/* A tag led by an icon (the job's "Account needed", renderer/account-chip.js): icon + word, never colour alone. */
+.ui-tag .ui-tag-icon { width: 11px; height: 11px; vertical-align: -1px; margin-right: var(--sp-1); stroke-width: 2.2; }
+/* Why (13 Nov 2026, owner: "Make it stand out"): the account tag is warning-toned (amber outline), so it never reads as a skill tag. */
+.ui-tag.is-account { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-bright); }
 @keyframes ui-pulse { 50% { opacity: .45; } }
 
 /* Tile: an icon on a soft square */

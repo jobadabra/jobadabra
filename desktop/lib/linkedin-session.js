@@ -100,6 +100,8 @@ export const noticedAt = storage => Number(storage.settings().linkedinJobs?.noti
 /** Remember when a "needs you" notice was raised (`at` epoch ms), or forget it (`at` 0, after "renewed": the next failure is told at once). Writes only that key; the other linkedinJobs keys stay. */
 export const noteNoticed = (storage, at) => save(storage, {noticedAt: at || undefined});
 /** Epoch ms until which LinkedIn is left alone (a 429 asked us to slow down), or 0. */
+/** The shared pause alone (an ISO time), for the logged-out guest read (lib/linkedin-guest-on.js): it writes no `last` and no sign-in state, which belong to the signed-in read (Gitar on #3998). */
+export const notePause = (storage, until) => save(storage, {pauseUntil: String(until)});
 export const pausedUntil = storage => Date.parse(storage.settings().linkedinJobs?.pauseUntil || '') || 0;
 
 /** The ask on Find jobs: the 1st and 2nd press while off; never after On, two "Not now" or two asks. */

@@ -39,6 +39,15 @@ export function unpack(text) {
 export const isFresh = (entry, job) => !!entry && entry.posted === String(job?.posted_at || '');
 
 /**
+ * A Jobs list row's stored check as a read ({...read, stored: true}), or null when it has none, it is not ours, or it was made for another posting. Takes the row ({apply_readiness, posted_at}). Pure.
+ * Why (13 Nov 2026, owner: "Fix it in this PR"): the window kept its checks only in memory, so a restart put every checked row back to "Not checked" and hid "Account needed".
+ */
+export function rowCheck(job) {
+  const entry = unpack(job?.apply_readiness);
+  return isFresh(entry, job) ? {...entry.read, stored: true} : null;
+}
+
+/**
  * Builds the step. `prepareKit(code, name, {notices})` drafts a kit ({ok, error?}; `notices`: which of its notices show); `readForm(job)` reads the form in the hidden browser (the L1 read, null when nothing was read);
  * `match(asked)` is the one question match of a check; `call` is the store call (lib/store/engine.js).
  */

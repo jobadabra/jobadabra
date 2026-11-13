@@ -16,6 +16,16 @@ import {sharedRead} from './shared-read.js';
 import {demoPath} from './demo.js';
 import {hideJobsUntilSearched} from './demo-search.js';
 import {searchTrigger} from './search-steps.js';
+import {rowCheck} from './apply-readiness.js';
+
+/** Each row's stored apply check as `check` (lib/apply-readiness.js rowCheck), read here so the window never parses the record's format (renderer/pages/jobs-triage.js keepStored); the raw text is not sent. Returns `result`. */
+function withChecks(result) {
+  for (const job of result?.jobs || []) {
+    job.check = rowCheck(job);
+    delete job.apply_readiness;
+  }
+  return result;
+}
 
 export function registerJobsHandlers(ctx) {
   const {DEMO, JOBS_PAGE, activity, aiGate = async () => null, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track} = ctx;
@@ -64,7 +74,7 @@ export function registerJobsHandlers(ctx) {
   });
   ipcMain.handle('jobs', sharedRead('jobs', async (_, options = {}) => {
     if (options?.limit) jobsLimit = Math.max(JOBS_PAGE, Math.round(options.limit));
-    if (DEMO) return hideJobsUntilSearched(JSON.parse(fs.readFileSync(demoPath(here, 'jobs.json'), 'utf8')), storage.settings());
+    if (DEMO) return withChecks(hideJobsUntilSearched(JSON.parse(fs.readFileSync(demoPath(here, 'jobs.json'), 'utf8')), storage.settings()));
     // Searches run in the cloud: show the latest cloud run's jobs (checked at most every 5 minutes).
     const cloud = storage.settings().cloud;
     if (cloud?.repo && Date.now() - Date.parse(cloud.checkedAt || 0) > 5 * 60 * 1000) {
@@ -73,6 +83,7 @@ export function registerJobsHandlers(ctx) {
     }
     const result = await pipeline.jobs(storage, jobsLimit);
     for (const job of result.jobs || []) job.tailored = !!job.code && cvlib.exists(storage, job.code);
+    withChecks(result);
     // A session whose job is already Applied is over (the form was submitted): the extension's report can arrive
     // while the app is closing, so this cannot wait for the window to notice. Cheap and idempotent.
     const ended = server.reconcileAppliedSessions(result.jobs || []);

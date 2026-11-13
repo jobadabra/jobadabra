@@ -9,6 +9,7 @@ import {icon} from '../icons.js';
 import {fitRing} from '../fit-ring.js';
 import {band} from '../jobs-view.js';
 import {appliedLine, nextInterview, notSeen} from '../job-page-view.js';
+import {accountChip} from '../account-chip.js';
 
 function control(name, title, run, disabled = false) {
   const node = Object.assign(el('button', 'ghost icon-btn jd-control'), {type: 'button', title, disabled});
@@ -18,8 +19,8 @@ function control(name, title, run, disabled = false) {
   return node;
 }
 
-// at: {index, total} of the list the drawer was opened from; back: {label, run} or null; on: {prev, next, expand, close}.
-export function drawerHeader(job, page, {at, back, expanded, on}) {
+// at: {index, total} of the list the drawer was opened from; back: {label, run} or null; on: {prev, next, expand, close}; read: this window's apply check of the job (pages/jobs-triage.js), or null.
+export function drawerHeader(job, page, {at, back, expanded, on, read = null}) {
   const head = el('header', 'jd-head');
   if (back) {
     const link = Object.assign(el('button', 'link jd-back', `← ${back.label}`), {type: 'button'});
@@ -36,6 +37,8 @@ export function drawerHeader(job, page, {at, back, expanded, on}) {
   if (stage) chips.append(pill(stageText(stage), 'info'));
   if (job.work_mode) chips.append(pill(job.work_mode, 'neutral'));
   if (notSeen(page)) chips.append(pill(t('helpers.notSeen'), 'warn', {title: t('helpers.notSeenHint')}));
+  const account = accountChip(read || page?.check);   // this window's latest check, else the stored one (lib/job-page-handlers.js jobCore)
+  if (account) chips.append(account);
   const applied = appliedLine(job, page?.app);
   if (applied) chips.append(el('span', 'muted small', applied));
   if (chips.childNodes.length) words.append(chips);

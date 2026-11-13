@@ -18,6 +18,7 @@ import {forgetPractice} from '../job-drawer/application-practice.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
 import {plainError} from '../run-warnings.js';
+import {readOf} from './jobs-triage.js';
 
 const state = {url: '', job: null, page: null, stage: 'none', restError: '', tab: 'overview', tabs: new Map(), expanded: false, asked: 0, back: null};
 export const panelUrl = () => state.url;
@@ -56,7 +57,7 @@ function draw() {
   const {job, page} = state, panel = $('job-panel');
   const urls = shownUrls(), index = urls.indexOf(state.url);
   const head = drawerHeader(job, page, {
-    at: index < 0 ? null : {index, total: urls.length}, expanded: state.expanded,
+    at: index < 0 ? null : {index, total: urls.length}, expanded: state.expanded, read: readOf(state.url),
     back: state.back && {label: state.back.label, run: goBack},
     on: {prev: () => go(-1), next: () => go(1), interviews: () => pick('interviews'), prepare: prepare, expand: () => { state.expanded = !state.expanded; draw(); }, close: closeJobPanel},
   });
