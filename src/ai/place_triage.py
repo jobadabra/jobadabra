@@ -128,7 +128,7 @@ def decide(locations, search, client=None):
     from .. import time_budget as budget
     key, decided = _key(search), dict(known(search))
     ask = list(dict.fromkeys(n for n in (norm(loc) for loc in locations) if n and n not in decided))
-    ask = ask[:budget.in_calls('place_rounds', len(ask), BATCH, engine.at_once())]
+    ask = ask[:budget.in_calls('place_rounds', len(ask), BATCH, engine.at_once(), stop='place_rounds')]
     if not ask:
         return decided
     words = places_words(search, _preferences())
@@ -245,7 +245,7 @@ def vague(locations, search, client=None):
     ask = [n for n in ask if n not in floor]
     if floor and not ask:
         _save(key, decided)
-    ask = ask[:budget.in_calls('place_vague', len(ask), VAGUE_BATCH, engine.at_once())]
+    ask = ask[:budget.in_calls('place_vague', len(ask), VAGUE_BATCH, engine.at_once(), stop='place_vague')]
     if not ask:
         return decided
     client = client or engine.client(action='place_vague')
@@ -330,7 +330,7 @@ def read(jobs, search, client=None):
     key, found = _key(search), dict(read_known(search))
     todo = [job for job in jobs if job.get('url') and job.get('description') and read_verdict(job, found) is None]
     todo = list({job['url']: job for job in todo}.values())
-    todo = todo[:budget.in_calls('place_reading', len(todo), READ_BATCH, engine.at_once(), noun='job(s) to read for their place')]
+    todo = todo[:budget.in_calls('place_reading', len(todo), READ_BATCH, engine.at_once(), noun='job(s) to read for their place', stop='place_reading')]
     if not todo:
         return found
     client = client or engine.client(action='place_reading')
