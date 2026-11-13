@@ -4,8 +4,10 @@ Only the Scout's own count is served to apps, never which install reported it.";
 pass proposed InfoJobs, Colejobs and two others; Jobeka and Trabajo.org, the boards that give Madrid electricians their right jobs, reach the Scout through no source.
 Design: a board's state for one (country, family) has one owner, the Scout: reported (this list: a candidate only) -> counted (read with the family's own word, `right` + `day`) -> proven
 (`right` >= 3). Verdicts: reported->counted = one Scout read; a board measured within REFRESH_DAYS is not a candidate again. Reports only ORDER and widen the candidates, they prove nothing.
+Order (13 Nov 2026, owner via sa: "ties are not equal, the search already knows which boards gave it jobs"; site jobadabra-web #647): `local` (jobs our CI searches kept from the board) first, then installs, then host; run 43520706763
+(es:electrical_mechanical) read 4 of 77 reported boards alphabetically while Jobeka and Trabajo.org (19 and 16 right jobs for a Madrid electrician) waited.
 Invariants: (1) the list comes from the Scout's own key and route only (GET <scout-memory>?boards=1, INDEX_PUBLISH_KEY); never an install id (the site sends none, `fetch` keeps only host,
-countries, installs); (2) a reported search template is a HINT, never read: a reported template can be a job-alert subscribe form (rabota.md: `?subscribePosition={role}&subscribeName={place}`),
+countries, installs, local); (2) a reported search template is a HINT, never read: a reported template can be a job-alert subscribe form (rabota.md: `?subscribePosition={role}&subscribeName={place}`),
 so a candidate is the board's HOME page marked 'home' and the pass finds its own search form (src/scout_board_homes.py), counting only through what it measured itself: no typing, no submit,
 no reported link opened. Limit (13 Nov 2026): the form finder (src/sources/board_forms.py) never makes a search link of a form with an e-mail, phone or file box, but a subscribe form whose e-mail box is typed
 text (rabota.md's) looks like a search form to structure alone and telling it apart needs a word list or the AI; its link is then a plain GET page load on the board's own host, kept only when it brings right jobs. (3) at most RESERVE candidates a pass, so the AI's ideas keep their slots. Tests: tests/unit/sources/test_scout_board_candidates.py."""
@@ -22,6 +24,7 @@ URL = 'https://www.jobadabra.top/api/scout-memory'
 RESERVE = 4                 # reported boards a pass reads beside the AI's ideas and the re-reads (Why (13 Nov 2026, bp): the pass reads ~5 boards in its 240 s; the ideas keep the rest)
 MAX_RESERVE = 24            # the most candidates one by-hand pass may ask for (Why (13 Nov 2026, bp): owner's range 1..24; the pass reads at most scout_boards.MAX_BOARDS (12) boards in all, so more is cut there)
 TRIED = 'board_candidates'  # scout_meta: {"<host>|<country>": "YYYY-MM-DD"} a candidate the pass read (kept or not): not a candidate again for REFRESH_DAYS
+MAX_LOCAL = 999             # the site's cap on `local` (jobadabra-web api/ci-boards.js MAX_LOCAL)
 MAX_BOARDS = 1500           # the site's cap (jobadabra-web api/scout-memory.js MAX_REPORTED)
 HOST = re.compile(r'[a-z0-9-]+(\.[a-z0-9-]+)+')
 
@@ -36,7 +39,8 @@ def reserve():
 
 
 def valid(item):
-    """The report in the shape the pass uses, or None: {host, countries: [codes of the fixed list], installs (0 for a board only our CI searches read)}. The reported template and everything else is dropped on purpose (invariant 2)."""
+    """The report in the shape the pass uses, or None: {host, countries: [codes of the fixed list], installs (0 for a board only our CI searches read), local (jobs a CI search kept from it, int 0..MAX_LOCAL, else 0)}.
+    The reported template and everything else is dropped on purpose (invariant 2)."""
     if not isinstance(item, dict) or not isinstance(item.get('host'), str) or not HOST.fullmatch(item['host']) or len(item['host']) > 100:
         return None
     countries = sorted({code for code in item.get('countries') or [] if isinstance(code, str) and code in pool_tags.COUNTRIES})
@@ -44,7 +48,9 @@ def valid(item):
     floor = 0 if item.get('ci') is True else 1   # Why (13 Nov 2026, bp, jobadabra-web #643): a board only our own CI searches read comes with installs 0 and ci true; it is a candidate too, last in the order
     if not countries or not isinstance(installs, int) or isinstance(installs, bool) or installs < floor:
         return None
-    return {'host': item['host'], 'countries': countries, 'installs': installs}
+    local = item.get('local')
+    return {'host': item['host'], 'countries': countries, 'installs': installs,
+            'local': local if isinstance(local, int) and not isinstance(local, bool) and 0 <= local <= MAX_LOCAL else 0}
 
 
 def _said(error):
@@ -75,11 +81,11 @@ def fetch(out=print, urlopen=urllib.request.urlopen):
 
 
 def for_country(reports, country, measured=(), today=None, refresh_days=20):
-    """The boards of `reports` serving `country` that are not measured already: [{name, host, search_url (the home page), home: True, countries, kinds, source_kind}], most installs
-    first, at most reserve(). `measured`: [(host, country, read_at)] of the Scout's facts; one read within `refresh_days` is not read again."""
+    """The boards of `reports` serving `country` that are not measured already: [{name, host, search_url (the home page), home: True, countries, kinds, source_kind}], the boards that
+    gave jobs first, then most installs, then by host; at most reserve(). `measured`: [(host, country, read_at)] of the Scout's facts; one read within `refresh_days` is not read again."""
     today = today or date.today()
     recent = {(host, code) for host, code, read_at in measured if str(read_at) >= (today - timedelta(days=refresh_days)).isoformat()}
-    wanted = sorted((report for report in reports if country in report['countries'] and (report['host'], country) not in recent), key=lambda report: (-report['installs'], report['host']))
+    wanted = sorted((report for report in reports if country in report['countries'] and (report['host'], country) not in recent), key=lambda report: (-report.get('local', 0), -report['installs'], report['host']))
     return [{'name': report['host'], 'host': report['host'], 'search_url': f"https://{report['host']}/", 'home': True, 'countries': [pool_tags.COUNTRIES.get(country, country)],
              'kinds': ['any'], 'source_kind': 'sector'} for report in wanted[:reserve()]]
 
