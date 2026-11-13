@@ -41,9 +41,16 @@ function card(job) {
   body.append(el('span', 'focus-headline', job.title || t('pagesJobs.role')), el('div', `focus-meta muted small${parts.who.blank ? ' is-na' : ''}`, parts.who.name));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (nextStepOf(job)) body.append(el('div', 'muted small', t('pagesShortJobs.m172', {"nextStepOf": nextStepOf(job)})));
-  if (parts.triage) body.append(triageChip(job));   // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
-  const account = parts.triage && accountChip(readOf(job.url));
-  if (account) body.append(account);
+  // Why (2026-10-30, owner; 2 Nov 2026 only a job still waiting for you: an applied or inbound card has no apply read): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage).
+  // Why (13 Nov 2026, owner: "Still bad UI. Lack of spacing/margin/padding", then picked "B: short chip"): the check chip and "Account needed" sit in one chip row with their own spacing,
+  // not in the card's 2 px text column, and the narrow card shows the check's value only ("Needs you"); its reason stays in the tooltip, the list and the job's page.
+  if (parts.triage) {
+    const chips = el('div', 'board-card-chips');
+    chips.append(triageChip(job, {detail: false}));
+    const account = accountChip(readOf(job.url));
+    if (account) chips.append(account);
+    body.append(chips);
+  }
   const moves = STAGES.filter(stage => stage !== columnOf(job) && takesDrop(stage))
     .map(stage => ({label: stageName(stageLabel(stage)), run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: t('pagesJobs.moveTo'), disabled: true}, ...moves], t('pagesJobs.moveStage')));

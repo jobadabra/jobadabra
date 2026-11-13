@@ -571,6 +571,8 @@ body[data-jobs-outdated] :is(#jobs-split, #jobs-head, #jobs-board, #jobs-empty, 
 .board-column-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
 .board-cards .board-card { cursor: grab; align-items: flex-start; }
 .board-card .focus-headline { overflow-wrap: anywhere; }
+.board-card .board-card-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-1); margin-top: var(--sp-2); }
+.board-card .board-card-chips .chip-tag { border-radius: var(--r-sm); }   /* the same corners as "Account needed": the two read as one pair */
 .board-card.is-dragging { opacity: .5; }
 .board-empty { flex: 0 0 100%; }
 .board-card.is-selected { border-left-color: var(--signal-edge); border-color: var(--line-strong); }
