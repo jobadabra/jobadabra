@@ -1,4 +1,4 @@
-"""How many jobs of each role family a job board gave in one country: the Central Scout's yield table (a fact's `family_jobs`), what a board is proven by.
+"""How many jobs of each role family a job board gave in one country: the Central Scout's yield table (a fact's `family_jobs`, and `listed_families`: the families whose count was read from the board's own list), what a board is proven by.
 Why (13 Nov 2026, bp, owner: "Why ? Let's fix it."; "we don't have only the information 3+ right jobs. But we know exactly: this board will give x jobs, this other board will give y jobs"):
 a fact kept only the SET of role families seen once on a board plus the count of ALL its local jobs, and the site credited that count to every family of the set: an airline
 board with 178 Spanish jobs, one of them an aircraft electrician, was "measured" for electricians (and construction, driving, data) and was the first board read for an
@@ -52,6 +52,15 @@ def _counts(text):
     except ValueError:
         return {}
     return {family: jobs for family, jobs in value.items() if family in pool_tags.FAMILIES and isinstance(jobs, int)} if isinstance(value, dict) else {}
+
+
+def listed_of(text):
+    """[family] from a stored listed_families (JSON): the families whose count was read from the board's own list; [] for none or a damaged one, never an error."""
+    try:
+        value = json.loads(text) if text else []
+    except ValueError:
+        return []
+    return sorted({family for family in value if family in pool_tags.FAMILIES}) if isinstance(value, list) else []
 
 
 def kinds_line(host, counted, families, unasked, by_family):

@@ -46,10 +46,10 @@ def merge(db, path, country):
     scout_boards.ensure(db)
     with closing(sqlite3.connect(path)) as lane:
         scout_boards.ensure(lane)
-        facts = lane.execute('SELECT host, country, url, families, local_jobs, read_at, browser, layout, family_jobs FROM scout_board_facts WHERE country = ?', (country,)).fetchall()
+        facts = lane.execute('SELECT host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families FROM scout_board_facts WHERE country = ?', (country,)).fetchall()
         stops = lane.execute('SELECT host, why, at FROM scout_browser_final').fetchall()
         theirs = {key: scout_cells._meta(lane, key, {}) for key, _ in BY_COUNTRY}
-    db.executemany('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', facts)
+    db.executemany('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', facts)
     db.executemany('INSERT OR IGNORE INTO scout_browser_final (host, why, at) VALUES (?, ?, ?)', stops)
     for key, part in BY_COUNTRY:
         own = {name: value for name, value in (theirs[key] if isinstance(theirs[key], dict) else {}).items() if name.split('|')[part:part + 1] == [country]}
