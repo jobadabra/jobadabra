@@ -71,7 +71,7 @@ class ReportBoards(unittest.TestCase):
         folder = run_folder(self.tmp.name, 'b01', [
             board('good.example.com'), board('none.example.com', local=0), board('feed.example.com', kind='employer feed'),
             board('Display Name'), board('')])
-        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg'): 3, ('none.example.com', 'bg'): 0})
+        self.assertEqual(report_boards.collect(folder, 'b01'), {('good.example.com', 'bg'): {'local': 3, 'url': None}, ('none.example.com', 'bg'): {'local': 0, 'url': None}})
 
     def test_the_night_people_add_nothing(self):
         root = self.tmp.name
@@ -84,7 +84,7 @@ class ReportBoards(unittest.TestCase):
         root = self.tmp.name
         run_folder(root, 'b01--main-1', [board('a.example.com')])
         run_folder(root, 'b02--pr-1', [board('b.example.com')])
-        self.assertEqual(report_boards.collect(root), {('a.example.com', 'bg'): 3, ('b.example.com', 'ro'): 3})
+        self.assertEqual(report_boards.collect(root), {('a.example.com', 'bg'): {'local': 3, 'url': None}, ('b.example.com', 'ro'): {'local': 3, 'url': None}})
 
     def test_the_body_carries_the_jobs_kept_per_host_the_highest_over_rows_and_folders_as_a_capped_count(self):
         """13 Nov 2026, owner via sa: the press row's `local` (jobs kept in the person's place) goes with the host so the Scout reads Jobeka (19) before an alphabetical neighbour."""
@@ -94,7 +94,7 @@ class ReportBoards(unittest.TestCase):
                                          {'source': 'none.example.com', 'kind': 'job board'}])
         run_folder(root, 'b01--pr-1', [board('jobeka.es', local=7), board('trabajo.org', local=16)])
         found = report_boards.collect(root)
-        self.assertEqual(found[('jobeka.es', 'bg')], 19, 'the highest over a folder\'s rows and over folders')
+        self.assertEqual(found[('jobeka.es', 'bg')]['local'], 19, 'the highest over a folder\'s rows and over folders')
         post = Post()
         main([root, '--run', '9'], post, CI)
         items = {item['host']: item for item in json.loads(post.requests[0].data)['ci_boards']}
@@ -102,6 +102,43 @@ class ReportBoards(unittest.TestCase):
                          'neg.example.com': 0, 'half.example.com': 0, 'bool.example.com': 0, 'none.example.com': 0})
         self.assertTrue(all(sorted(item) == ['countries', 'host', 'local'] for item in items.values()), 'fixed shape: host, countries, local')
         self.assertTrue(all(isinstance(item['local'], int) and 0 <= item['local'] <= 999 for item in items.values()))
+
+    def test_a_board_the_search_read_at_an_address_carries_that_template_never_a_word_of_the_profile(self):
+        """14 Nov 2026, owner via sa ("CI report carries it"): the template comes from the run's found-boards.json (the AI's answer with {role} and {place}), not from run.log, whose filled links hold the person's words."""
+        template = 'https://es.jobeka.example/empleos-{role}-provincia-de-{place}'
+        folder = run_folder(self.tmp.name, 'search-profile-b01', [board('jobeka.example', local=19), board('plain.example'), board('filled.example'), board('other.example')])
+        (folder / 'draw' / 'run-1.log').write_text("Job boards: Jobeka round 'zxqvrole' in zxqvplace: 20 job(s) on the page · https://es.jobeka.example/empleos-zxqvrole-provincia-de-zxqvplace\n", encoding='utf-8')
+        (folder / 'found-boards.json').write_text(json.dumps({'boards': {
+            'es.jobeka.example': {'search_url': template, 'state': 'ok', 'countries': ['Bulgaria']},
+            'filled.example': {'search_url': 'https://filled.example/empleos-zxq%C3%A1vrole?q={role}', 'state': 'ok'},      # an encoded word: dropped
+            'other.example': {'search_url': 'https://elsewhere.example/s?q={role}', 'state': 'ok'},                       # not this board's host: dropped
+            'plain.example': {'state': 'ok'}}}), encoding='utf-8')
+        self.assertEqual(report_boards.addresses(folder), {'jobeka.example': template})
+        post = Post()
+        main([str(folder), '--person', 'b01', '--run', '5'], post, CI)
+        sent = {item['host']: item for item in json.loads(post.requests[0].data)['ci_boards']}
+        self.assertEqual(sent['jobeka.example'], {'host': 'jobeka.example', 'countries': ['bg'], 'local': 19, 'url': template})
+        for host in ('plain.example', 'filled.example', 'other.example'):
+            self.assertNotIn('url', sent[host], f'{host}: no valid address, still a host-only candidate')
+        text = post.requests[0].data.decode()
+        for private in ('zxqv', 'b01', 'secret-title', 'Electrician'):
+            self.assertNotIn(private, text)
+
+    def test_the_address_is_left_out_without_the_file_or_with_a_file_that_is_not_readable(self):
+        for content in (None, 'not json', '[]', '{"boards": []}', '{"boards": {"es.jobeka.example": 5}}'):
+            folder = run_folder(self.tmp.name, f'b01--main-{abs(hash(content))}', [board('jobeka.example')])
+            if content is not None:
+                (folder / 'found-boards.json').write_text(content, encoding='utf-8')
+            self.assertEqual(report_boards.collect(folder, 'b01'), {('jobeka.example', 'bg'): {'local': 3, 'url': None}}, repr(content))
+
+    def test_two_addresses_for_one_board_go_as_two_items_and_the_one_the_search_read_fine_is_taken(self):
+        folder = run_folder(self.tmp.name, 'b01', [board('jobeka.example')])
+        (folder / 'found-boards.json').write_text(json.dumps({'boards': {
+            'a.jobeka.example': {'search_url': 'https://a.jobeka.example/s?q={role}', 'state': 'empty'},
+            'z.jobeka.example': {'search_url': 'https://z.jobeka.example/s?q={role}', 'state': 'ok'}}}), encoding='utf-8')
+        self.assertEqual(report_boards.addresses(folder), {'jobeka.example': 'https://z.jobeka.example/s?q={role}'})
+        body = report_boards.body({('jobeka.example', 'bg'): {'local': 4, 'url': 'https://z.jobeka.example/s?q={role}'}, ('jobeka.example', 'ro'): {'local': 9, 'url': None}}, '1')
+        self.assertEqual(body['ci_boards'], [{'host': 'jobeka.example', 'countries': ['bg'], 'local': 4, 'url': 'https://z.jobeka.example/s?q={role}'}, {'host': 'jobeka.example', 'countries': ['ro'], 'local': 9}])
 
     def test_nothing_is_sent_off_github_actions_or_with_a_fixture(self):
         folder = run_folder(self.tmp.name, 'b01', [board('jobeka.com')])

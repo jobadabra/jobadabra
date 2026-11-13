@@ -271,6 +271,7 @@ jobs:
             for side in main pr; do
               out="out/${{ matrix.person.id }}--$side-$k"
               python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-pair-$side/data/jobs.sqlite" "$out/jobs.json" || echo '[]' > "$out/jobs.json"
+              cp "$(node -p 'require("os").tmpdir()')/jp-persona-draw-pair-$side/data/found_boards.json" "$out/found-boards.json" 2>/dev/null || true   # Why (14 Nov 2026, owner via sa, asked via AskUserQuestion: "CI report carries it (Recommended)"): the side's board memory (templates with {role} and {place}, as search-personas.yml copies it): report_boards.py reads the address a board was read at from it. Never red.
             done
           done
       - name: The blind judge, the same for both sides (right role, right place; 3 answers, the majority counts)
