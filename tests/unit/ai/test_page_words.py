@@ -69,6 +69,51 @@ class AIFirst(unittest.TestCase):
             self.assertTrue(careers_explore._says_no_jobs(page, 'https://acme.example/jobs'))
 
 
+class JobCardsByFolder(unittest.TestCase):
+    """A board page's job cards (numbered links of one folder) are judged by three of them; menus are asked one by one (13 Nov 2026)."""
+    CARDS = [(f'Data Analyst {n} (m/w/d)', f'/stellenangebote/data-analyst-{n}00{n}') for n in range(1, 41)]
+    MENU = [('Karriere', '/karriere'), ('Über uns', '/about'), ('Jobs finden', '/jobs')]
+
+    def setUp(self):
+        self.on = mock.patch.object(page_words, 'ai_on', return_value=True)
+        self.on.start()
+        self.addCleanup(self.on.stop)
+        self.asked = []
+
+    def ai(self, table, default='other'):
+        answer = answering(table, default)
+        def fake(topic, items, *args, **kwargs):
+            self.asked.append(len(items))
+            return answer(topic, items, *args, **kwargs)
+        return fake
+
+    def test_forty_cards_and_a_menu_ask_six_wordings_once_and_every_card_is_a_job_page(self):
+        with mock.patch.object(decide, 'decide', self.ai({'data analyst': 'job_page', 'karriere': 'careers_page', 'jobs finden': 'job_list'})):
+            found = page_words.link_words(self.CARDS + self.MENU)
+        self.assertEqual(self.asked, [6])   # 3 menu links + 3 sampled cards, one call
+        self.assertTrue(all(found[card].job_path for card in self.CARDS))
+        self.assertTrue(found[('Jobs finden', '/jobs')].strong)
+        self.assertFalse(found[('Über uns', '/about')].job_path)
+
+    def test_samples_that_disagree_get_every_link_of_the_folder_asked(self):
+        with mock.patch.object(decide, 'decide', self.ai({'data analyst 1 ': 'not_jobs', 'data analyst': 'job_page'})):
+            found = page_words.link_words(self.CARDS)
+        self.assertEqual(self.asked, [3, 37])
+        self.assertTrue(found[self.CARDS[0]].not_jobs)
+        self.assertTrue(found[self.CARDS[5]].job_path)
+
+    def test_an_unjudged_sample_never_answers_for_its_folder(self):
+        with mock.patch.object(decide, 'decide', return_value=None):
+            found = page_words.link_words(self.CARDS)
+        self.assertEqual(set(found.values()), {None})
+
+    def test_a_few_numbered_links_and_links_without_a_number_are_asked_one_by_one(self):
+        few = self.CARDS[:5] + [(f'Team {n}', f'/team/{name}') for n, name in enumerate(['anna', 'ben', 'cleo', 'dana', 'eli', 'fay', 'gus'])]
+        with mock.patch.object(decide, 'decide', self.ai({})):
+            page_words.link_words(few)
+        self.assertEqual(self.asked, [12])
+
+
 class NoAIAtAll(unittest.TestCase):
     def test_the_old_words_answer_as_the_offline_floor(self):
         with mock.patch.object(page_words, 'ai_on', return_value=False), mock.patch.object(decide, 'decide', return_value=None):

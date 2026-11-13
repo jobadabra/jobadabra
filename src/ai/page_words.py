@@ -18,6 +18,7 @@ LINK_ANSWERS = ('job_list', 'careers_page', 'job_page', 'not_jobs', 'other')
 TITLE_ANSWERS = ('job_title', 'heading')
 ONLY = {'board_careers_link': 'weak', 'job_list': 'weak', 'not_a_list': 'not_jobs'}   # which Words field an old list stands for when a caller used it alone
 MAX_WORDINGS = 300   # distinct link wordings judged in one call site
+FAMILY_MIN = 6       # numbered links of one folder are judged by a sample from this many (link_words)
 
 # Where every 'page-words' answer lives now; tests/unit/ai/test_page_words.py fails when an answer is missing here (a new one must be placed).
 PLACED = {'careers_link': LINK, 'strong_jobs': LINK, 'job_path': LINK, 'not_jobs': LINK, 'job_host': LINK, 'board_careers_link': LINK,
@@ -96,13 +97,39 @@ def _kinds(topic, items, answers, task):
     return found
 
 
+def _family(path):
+    """The folder a numbered link sits in ('/stellenangebote/0'), or '' for a link whose last part carries no number: a board's job cards share one,
+    its menu entries ('/about', '/jobs') never do."""
+    head, _, last = _shape(path).rstrip('/').rpartition('/')
+    return f'{head}/0' if '0' in last else ''
+
+
 def link_words(pairs, floor=None):
     """{(text, path): Words or None}: None = not judged yet (the AI is on but past its cap or failed), the link is skipped this run. With no AI
-    at all, the old words; a wording kept earlier or learned by the site still answers."""
+    at all, the old words; a wording kept earlier or learned by the site still answers.
+    Why (13 Nov 2026, sa; runs 43415325459 and 43374019036): a job board's page gave one wording per job card (the title is in it), 100-300 a page, so
+    a first search made 18-28 link-kind calls and each board's "job links" part took 60-90 s of its 3 minutes (XING 64 s, jobsinlisbon 88 s). Numbered
+    links of one folder are now judged by three of them (the first, the middle, the last): when the AI gives those one answer it holds for the folder; when it does not (or one
+    is unjudged) every link of the folder is asked, as before. Links without a number (menus, a careers link) are always asked one by one."""
     pairs = list(dict.fromkeys((str(t or ''), str(p or '')) for t, p in pairs))
-    items = {_wording(t, p): _wording(t, p) for t, p in pairs[:MAX_WORDINGS]}   # a site map of slugs is thousands: the rest is left for a later run
-    found = _kinds(LINK, items, LINK_ANSWERS, LINK_TASK) if items else {}
     no_ai = not ai_on()
+    folders = {}
+    for pair in pairs:
+        folders.setdefault(_family(pair[1]), []).append(pair)
+    sampled = {} if no_ai else {name: [members[0], members[len(members) // 2], members[-1]]
+                                for name, members in folders.items() if name and len(members) >= FAMILY_MIN}
+    first = [pair for pair in pairs if _family(pair[1]) not in sampled] + [pair for samples in sampled.values() for pair in samples]
+    items = {_wording(t, p): _wording(t, p) for t, p in first[:MAX_WORDINGS]}   # a site map of slugs is thousands: the rest is left for a later run
+    found = dict(_kinds(LINK, items, LINK_ANSWERS, LINK_TASK) or {}) if items else {}
+    again = []
+    for name, samples in sampled.items():
+        kinds = {found.get(_wording(t, p)) for t, p in samples}
+        if len(kinds) == 1 and None not in kinds:
+            found.update({_wording(t, p): next(iter(kinds)) for t, p in folders[name]})
+        else:
+            again += [pair for pair in folders[name] if _wording(*pair) not in found]
+    if again:
+        found.update(_kinds(LINK, {_wording(t, p): _wording(t, p) for t, p in again[:MAX_WORDINGS]}, LINK_ANSWERS, LINK_TASK) or {})
     return {(t, p): (from_kind(found[_wording(t, p)]) if _wording(t, p) in found else floor_words(t, p, floor) if no_ai else None) for t, p in pairs}
 
 
