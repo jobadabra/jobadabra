@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from .. import run_counts, time_budget
 from ..ai import slots
 from ..progress import Ticker
-from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
+from . import board_check, board_later, board_layout, board_rounds, board_form_read, board_terms, board_employers, board_paths, board_forms, board_round_log, board_sections, board_web, board_pages, board_routes, board_search_first, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 from .board_urls import _bare  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._bare
 from .board_ai_read import _own_country, _read_by_ai, _shaped  # noqa: F401 -- moved out (500-line rule); tests use found_boards._shaped
@@ -352,7 +352,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             return page
         if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
             return tuple(late_pages.pop(board['host']))
-        result = read_board(board, search, rounds.listen(through, read_item) if rounds else through, entry.get('route'), early=early, show=show)
+        via = rounds.listen(through, read_item) if rounds else through
+        result = board_search_first.read(board, entry, read_item[4], search, via, is_relevant or board_yield.is_relevant, show, early, read_board) \
+            or read_board(board, search, via, entry.get('route'), early=early, show=show)   # a general board's link with no word: its own search first
         if board.get('charset'):   # learned on this read (board_paths.read): its next searches ask in it at once
             entry['charset'] = board['charset']
         if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
