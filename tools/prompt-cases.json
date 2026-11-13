@@ -161,6 +161,18 @@
           "COMPLETION_SYSTEM"
         ]
       }
+    },
+    "title-field": {
+      "live": false,
+      "about": "A one-posting job page's JSON-LD title: a role, or an unfilled template field such as HV_JSON_TITULO (jobadabra-lab board-discovery run 43502695338); offline stub-client checks of what is asked, what is kept and how often.",
+      "cases": [
+        "tests/unit/sources/test_jsonld_title_placeholder.py"
+      ],
+      "prompts": {
+        "src/sources/careers_parse.py": [
+          "TITLE_FIELD_INSTRUCTIONS"
+        ]
+      }
     }
   }
 }
