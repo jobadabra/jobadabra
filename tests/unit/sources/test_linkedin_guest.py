@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import urllib.error
 import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -80,6 +81,8 @@ class GuestTest(unittest.TestCase):
             self.sleeps.append(seconds)
             self.clock[0] += seconds
         for patch in (mock.patch.object(time_budget, 'now', side_effect=lambda: self.clock[0]),
+                      mock.patch.object(time_budget, 'wall', side_effect=lambda: datetime.fromtimestamp(self.clock[0], timezone.utc)),
+                      mock.patch.object(linkedin_guest, 'FILE', Path(self.dir.name) / 'linkedin_guest.json'),   # this computer's window, never the owner's
                       mock.patch.object(linkedin_guest, '_sleep', side_effect=sleep),
                       mock.patch.object(read_budget, 'cut_at', return_value=None),
                       mock.patch.object(host_pace, 'FILE', Path(self.dir.name) / 'host_pace.json'),   # the shared pace file, never the owner's
@@ -107,7 +110,7 @@ class GuestTest(unittest.TestCase):
         self.assertEqual(first['id'], 'linkedin:4484998755')
         self.assertTrue(all(job['title'] and job['company'] and job['location'] for job in jobs))
 
-    def test_a_search_reads_three_pages_at_most_three_to_seven_seconds_apart_with_no_cookie_and_our_own_user_agent(self):
+    def test_a_search_reads_three_pages_at_most_twenty_to_forty_seconds_apart_with_no_cookie_and_our_own_user_agent(self):
         pages = iter([CARDS, renumbered(CARDS, 1), renumbered(CARDS, 2), renumbered(CARDS, 3)])
         site = self.site(lambda url: next(pages))
         jobs = linkedin_guest.read(SEARCH)
@@ -117,7 +120,7 @@ class GuestTest(unittest.TestCase):
         self.assertEqual([s['start'] for s in starts], [['0'], ['10'], ['20']])
         self.assertEqual((starts[0]['keywords'], starts[0]['location']), (['Site Reliability Engineer'], ['Geneva']))
         self.assertEqual(len(self.sleeps), 2, 'a gap before every request after the first')
-        self.assertTrue(all(2.0 <= s <= 7.0 for s in self.sleeps), self.sleeps)   # 3-7 s from the last request's start; the stand-in request took 1 s
+        self.assertTrue(all(19.0 <= s <= 40.0 for s in self.sleeps), self.sleeps)   # 20-40 s from the last request's start, never a burst; the stand-in request took 1 s
         for request in site.requests:
             headers = {k.lower(): v for k, v in request.header_items()}
             self.assertNotIn('cookie', headers)
@@ -139,6 +142,7 @@ class GuestTest(unittest.TestCase):
         for case, words in cases.items():
             with self.subTest(case=case):
                 linkedin_guest.reset()
+                linkedin_guest.FILE.unlink(missing_ok=True)   # each case on a computer that sent nothing in the last 10 minutes
                 print.reset_mock()
                 answer = {'blocked': '<!DOCTYPE html><html><body><p>Something went wrong</p></body></html>',   # synthetic: no cards and not the empty end
                           'authwall': ('redirect', 'https://www.linkedin.com/authwall?trk=x', '<html>Sign in</html>'),
@@ -173,36 +177,55 @@ class GuestTest(unittest.TestCase):
         cut = self.clock[0] + 40
         pages = iter([CARDS, renumbered(CARDS, 1), renumbered(CARDS, 2), renumbered(CARDS, 3)] * 3)
         site = self.site(lambda url: next(pages), seconds=15.0)
-        with mock.patch.object(read_budget, 'cut_at', return_value=cut):
+        with mock.patch.object(read_budget, 'cut_at', return_value=cut), mock.patch.object(linkedin_guest.random, 'uniform', return_value=linkedin_guest.GAP_S[0]):
             jobs = linkedin_guest.read({**SEARCH, 'role_keywords': ['SRE', 'DevOps', 'Cloud']})
         self.assertLessEqual(self.clock[0], cut + 1e-9, 'no request started (or ran) past the cut')
-        self.assertEqual(len(site.requests), 3, 'two pages, then one cut short by its timeout at the cut; nothing after')
+        self.assertEqual(len(site.requests), 2, 'two pages (0-15 s, 20-35 s); the third would start at the cut: not sent')
         self.assertEqual(len(jobs), 20, 'what was read is kept')
 
-    def test_job_pages_take_turns_with_the_search_pages_and_stop_at_ten(self):
+    def test_search_pages_go_round_robin_page_one_of_each_search_first_at_most_four(self):
+        """Owner, 13 Nov 2026: "≤6 in any 10 min (Recommended)": search pages first, page 1 of each search, then page 2; job pages get what is left."""
+        site = self.site(lambda url: renumbered(CARDS, len(site.requests)))
+        jobs = linkedin_guest.read({**SEARCH, 'role_keywords': ['SRE', 'DevOps', 'Cloud']})
+        asked = [urllib.parse.parse_qs(urllib.parse.urlsplit(r.full_url).query) for r in site.requests]
+        self.assertEqual([(q['keywords'][0], q['start'][0]) for q in asked], [('SRE', '0'), ('DevOps', '0'), ('Cloud', '0'), ('SRE', '10')])
+        self.assertEqual(len(jobs), 40)
+        self.assertEqual(linkedin_guest.left(), linkedin_guest.WINDOW_MAX - linkedin_guest.SEARCH_PAGES, "what is left is the job pages' share")
+
+    def test_at_most_six_requests_in_any_ten_minutes_on_this_computer_whatever_the_press(self):
+        """Measured 13 Nov 2026: 429 after ~11 guest requests in ~10 min from one address. The window counts every request sent, search or job page, every
+        process: a second press (a new process) right after the first sends nothing until the oldest request is 10 minutes old."""
         page = fixture('job-page.html')
         site = self.site(lambda url: page)
-        texts = [linkedin_guest.description(f'https://www.linkedin.com/jobs/view/{4484998700 + n}/') for n in range(1, linkedin_guest.JOB_PAGES + 1)]
+        urls = [f'https://www.linkedin.com/jobs/view/{4484998700 + n}/' for n in range(1, 9)]
+        texts = [linkedin_guest.description(url) for url in urls[:linkedin_guest.WINDOW_MAX]]
         self.assertTrue(all('Swissquote' in text for text in texts))
-        self.assertEqual(len(self.sleeps), linkedin_guest.JOB_PAGES - 1)
-        self.assertEqual(linkedin_guest.job_pages_left(), 0)
+        self.assertEqual(linkedin_guest.left(), 0)
         with self.assertRaises(linkedin_guest.Later):
-            linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998711/')
-        self.assertEqual(len(site.requests), linkedin_guest.JOB_PAGES)
+            linkedin_guest.description(urls[6])
+        linkedin_guest.reset()   # the next press: a new process, the same computer
+        self.assertEqual(linkedin_guest.read(SEARCH), [])
+        self.assertIn(linkedin_guest.WINDOW_FULL, self.said(), 'said, not a stop: no pause')
+        self.assertNotIn(linkedin_guest.SLOW_DOWN, self.said())
+        self.assertEqual(len(site.requests), linkedin_guest.WINDOW_MAX, 'nothing sent past the window')
+        self.clock[0] = 1000.0 + linkedin_guest.WINDOW_S + 1   # the first request is now older than the window
+        self.assertEqual(linkedin_guest.left(), 1, 'one place frees as each request ages out')
+        self.assertIn('Swissquote', linkedin_guest.description(urls[7]))
+        self.assertEqual(len(site.requests), linkedin_guest.WINDOW_MAX + 1)
 
-    def test_a_sent_job_page_counts_even_when_it_failed_and_a_cut_gives_its_place_back(self):
-        """Gitar on #3995 (twice): a request that went out counts against the 10, whatever came back; only a Later, where nothing was sent, gives the place back."""
+    def test_a_sent_job_page_counts_even_when_it_failed_and_a_cut_sends_nothing(self):
+        """Gitar on #3995 (twice): a request that went out counts, whatever came back; a Later, where nothing was sent, does not."""
         def offline(url):
             raise urllib.error.URLError('offline')
         site = self.site(offline)
         with self.assertRaises(OSError):
             linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998755/')
         self.assertEqual(len(site.requests), 1)
-        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES - 1)
+        self.assertEqual(linkedin_guest.left(), linkedin_guest.WINDOW_MAX - 1)
         with mock.patch.object(read_budget, 'cut_at', return_value=self.clock[0] - 1), self.assertRaises(linkedin_guest.Later):
             linkedin_guest.description('https://www.linkedin.com/jobs/view/4484998756/')
         self.assertEqual(len(site.requests), 1, 'past the cut: nothing sent')
-        self.assertEqual(linkedin_guest.job_pages_left(), linkedin_guest.JOB_PAGES - 1)
+        self.assertEqual(linkedin_guest.left(), linkedin_guest.WINDOW_MAX - 1)
 
     def test_a_job_page_redirected_away_from_the_job_gives_no_text(self):
         self.site(lambda url: ('redirect', 'https://www.linkedin.com/jobs/search?x=1', CARDS))

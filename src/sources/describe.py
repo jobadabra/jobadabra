@@ -148,7 +148,7 @@ def fetch(url, client=None):
         _ROUTE.route = 'api'
         return ats.smartrecruiters_detail(match.group(1), match.group(2))
     from . import linkedin_guest
-    if linkedin_guest.job_page(url):   # at LinkedIn's pace, in turn with its search pages, ≤ 10 a run (spec 2026-11-13-linkedin-guest-search-design.md)
+    if linkedin_guest.job_page(url):   # at LinkedIn's pace, in turn with its search pages, within its 10-minute window (spec 2026-11-13-linkedin-guest-search-design.md)
         _ROUTE.route = 'main'
         return linkedin_guest.description(url)
     host = urlsplit(url or '').hostname or ''
@@ -215,10 +215,10 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
         else:
             todo.append((job_id, url))
     from . import linkedin_guest
-    # Why (spec 2026-11-13-linkedin-guest-search-design.md; owner, 13 Nov 2026: "Only kept jobs, ≤10"): LinkedIn's pages take turns 3-7 s apart, so they go last (the other
-    # sites' threads are not held behind them) and only as many as the run may still read; the others stay for the scoring queue after the search.
+    # Why (spec 2026-11-13-linkedin-guest-search-design.md; owner, 13 Nov 2026: "Only kept jobs, ≤10", then "≤6 in any 10 min"): LinkedIn's pages take turns 20-40 s
+    # apart, so they go last (the other sites' threads are not held behind them) and only as many as its 10-minute window still allows; the others wait for a later run.
     linkedin = [item for item in todo if linkedin_guest.job_page(item[1])]
-    todo = [item for item in todo if item not in linkedin] + linkedin[:linkedin_guest.job_pages_left()]
+    todo = [item for item in todo if item not in linkedin] + linkedin[:linkedin_guest.left()]
 
     def one(item):
         _ROUTE.route = None
@@ -261,7 +261,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
 
 
 def _outcome(error, text):
-    """How one posting's read ended: waiting (the site asked us to slow down), later (LinkedIn's turn in this run is over: its cut, its 10 pages or a stop),
+    """How one posting's read ended: waiting (the site asked us to slow down), later (LinkedIn's turn is over for now: the read cut, its 10-minute window or a stop),
     refused, gone (404/410), failed (tried again next run), filled, or empty. Why (lg 1/4, 13 Nov 2026): one named step, so backfill's complexity shrinks as a reader is added."""
     from . import linkedin_guest
     if isinstance(error, host_pace.Busy):
