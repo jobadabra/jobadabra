@@ -70,5 +70,7 @@ jobs:
           STEPS: ${{ steps.plan.outputs.steps }}
           MERGED: ${{ github.sha }}
         run: |
-          gh workflow run e2e.yml --ref main -f pr_suites="$SUITES" -f pr_steps="$STEPS" -f after_merge="${MERGED:0:7}"
+          # Why (13 Nov 2026, #4008): same dispatch as pr-e2e-steps.yml; a GitHub HTTP 500 gets one more try (tools/gh_retry.py), a second refusal stays red and says so.
+          python3 tools/gh_retry.py workflow run e2e.yml --ref main -f pr_suites="$SUITES" -f pr_steps="$STEPS" -f after_merge="${MERGED:0:7}" \
+            || { echo "::error::GitHub refused to start the steps (a 500/502/503/504 is tried twice, any other refusal once); no step ran for ${MERGED:0:7}. See the gh error above."; exit 1; }
           echo "Started e2e.yml on main for ${MERGED:0:7}: $SUITES. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml"

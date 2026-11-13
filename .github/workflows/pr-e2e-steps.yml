@@ -89,9 +89,12 @@ jobs:
           if [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)" != OPEN ]; then echo "PR #$PR is merged or closed: no e2e run."; echo "skipped=1" >> "$GITHUB_OUTPUT"; exit 0; fi
           # The input made for this (e2e.yml): SQLite store, no screenshot review, no harness-test step. It runs the PR branch's own e2e.yml.
           # A branch whose workflow file predates the input gets HTTP 422 "Unexpected inputs".
-          if ! gh workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="$STEPS" 2>"$RUNNER_TEMP/dispatch.err"; then
+          # Why (13 Nov 2026, #4008): GitHub answered HTTP 500 "Failed to run workflow dispatch" once and this job went red with no step run; tools/gh_retry.py tries once more
+          # after ~10 s on 500/502/503/504. A second refusal stays red, said as such (a 422 "Unexpected inputs" is never retried).
+          if ! python3 tools/gh_retry.py workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="$STEPS" 2>"$RUNNER_TEMP/dispatch.err"; then
             cat "$RUNNER_TEMP/dispatch.err"
-            if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again."; fi
+            if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again."
+            else echo "::error::GitHub refused to start the steps (a 500/502/503/504 is tried twice, any other refusal once); no step ran. See the gh error above. Push again or re-run this job."; fi
             exit 1
           fi
           echo "Started e2e.yml on \`$HEAD_REF\`: $SUITES (the steps this PR reaches; the job summary says why each runs)."

@@ -26,7 +26,7 @@ name: CI · PR labels (reusable)
 # Why (4 Nov 2026, a8): a Gitar review still draws a second row, since pull_request_review runs on the PR's head. A new comment can't replace it: 47 of 145 reviews came with none.
 # Why (12 Nov 2026, owner, asked via AskUserQuestion: "One label per push (Recommended)"): a "Gitar review" comment starts a run too, so the label reads "reviewing" within seconds of the ask
 #   (startsWith ignores case); on #3870 and #3859 it stayed "not started" for the whole review because only Gitar's own comments started a run.
-# Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs, tests/tooling/ci/test_gitar_label_states.py; their gh calls go through tools/gh_retry.py (one retry on GitHub's 502/503/504).
+# Scripts and cases: tools/conflict-label.mjs, tools/gitar-label.mjs, tests/tooling/ci/test_gitar_label_states.py; their gh calls go through tools/gh_retry.py (one retry on GitHub's 500/502/503/504).
 on:
   workflow_call:
 

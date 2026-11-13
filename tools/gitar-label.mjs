@@ -57,7 +57,7 @@ export function wantedLabel(body, commentUpdatedAt, headCommittedAt, ranOnHead) 
 }
 
 // Why (3 Nov 2026, owner chose "One retry on GitHub errors"): every gh call goes through tools/gh_retry.py, shared with the release checks: GitHub's own
-// 502/503/504 gets one more try after ~10 s; a second failure and any other error still throw, so a failure stays red (#2516).
+// 500/502/503/504 gets one more try after ~10 s; a second failure and any other error still throw, so a failure stays red (#2516).
 const GH_RETRY = fileURLToPath(new URL('./gh_retry.py', import.meta.url));
 const gh = (...args) => execFileSync('python3', [GH_RETRY, ...args], {encoding: 'utf8'});
 const pages = path => JSON.parse(gh('api', path, '--paginate', '--slurp')).flat();
