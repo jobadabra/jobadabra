@@ -16,17 +16,33 @@ def site_files():
     return [ROOT / name for name in listed if name.endswith('.py') and any(word in (ROOT / name).read_text(encoding='utf-8', errors='replace') for word in SITE_WORDS)]
 
 
+def own_code(function):
+    """Every AST node of `function`'s own code: its docstring and nested functions are left out, and comments never reach the AST."""
+    body = function.body[1:] if function.body and isinstance(function.body[0], ast.Expr) and isinstance(function.body[0].value, ast.Constant) and isinstance(function.body[0].value.value, str) else function.body
+    stack = list(body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        yield node
+        stack.extend(ast.iter_child_nodes(node))
+
+
 def requests_without_agent(path=None, text=None):
-    """[(function, line)] of every function in `path` (or in `text`) that builds a urllib Request, as `urllib.request.Request(` or a bare `Request(` after `from urllib.request import Request`, and never names User-Agent / USER_AGENT."""
+    """[(function, line)] of every function in `path` (or in `text`) whose own code builds a urllib Request, as `urllib.request.Request(` or a bare `Request(` after `from urllib.request import Request`, and never sets User-Agent in code (a 'User-Agent' string or a *USER_AGENT* name).
+    Why (#4094, Gitar): a text search let a comment, a docstring or a nested function's agent pass a Request built without one."""
     text = text if text is not None else path.read_text(encoding='utf-8', errors='replace')
     found = []
-    for node in ast.walk(ast.parse(text)):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+    for function in ast.walk(ast.parse(text)):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        body = ast.get_source_segment(text, node) or ''
-        makes = any(isinstance(call, ast.Call) and ast.unparse(call.func) in ('Request', 'request.Request', 'urllib.request.Request') for call in ast.walk(node))
-        if makes and 'User-Agent' not in body and 'USER_AGENT' not in body:
-            found.append((node.name, node.lineno))
+        nodes = list(own_code(function))
+        makes = any(isinstance(node, ast.Call) and ast.unparse(node.func) in ('Request', 'request.Request', 'urllib.request.Request') for node in nodes)
+        names = [node.id if isinstance(node, ast.Name) else node.attr for node in nodes if isinstance(node, (ast.Name, ast.Attribute))]
+        strings = [node.value for node in nodes if isinstance(node, ast.Constant) and isinstance(node.value, str)]
+        sets_agent = any('USER_AGENT' in name for name in names) or any(value.lower() == 'user-agent' for value in strings)
+        if makes and not sets_agent:
+            found.append((function.name, function.lineno))
     return found
 
 
@@ -42,6 +58,13 @@ class SiteCallsSendOurUserAgent(unittest.TestCase):
         self.assertEqual([name for name, _ in requests_without_agent(text=bare)], ['a'])
         self.assertEqual([name for name, _ in requests_without_agent(text=dotted)], ['b'])
         self.assertEqual(requests_without_agent(text=fine), [])
+
+    def test_a_comment_a_docstring_or_a_nested_function_does_not_count_as_an_agent(self):
+        comment = 'import urllib.request\ndef d(u):\n    # Why: Cloudflare 403 1010 needs User-Agent\n    return urllib.request.Request(u)\n'
+        docstring = 'import urllib.request\ndef e(u):\n    """Sends USER_AGENT."""\n    return urllib.request.Request(u)\n'
+        nested = 'import urllib.request\ndef f(u):\n    def g():\n        return {"User-Agent": "x"}\n    return urllib.request.Request(u)\n'
+        for name, text in (('d', comment), ('e', docstring), ('f', nested)):
+            self.assertEqual([found for found, _ in requests_without_agent(text=text)], [name], name)
 
     def test_every_request_to_a_file_that_names_our_site_sets_a_user_agent(self):
         missing = [f'{path.relative_to(ROOT)}:{line} {name}' for path in site_files() for name, line in requests_without_agent(path)]
