@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
 from . import pool_tags, role_kinds, scout_board_candidates, scout_cells, scout_google_boards
-from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
+from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_line, kinds_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
@@ -354,6 +354,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
                     lists = '{role}' not in board['search_url'] or not notes.get('terms')
                     by_family = measured_counts(by_family, asked, set(notes.get('terms') or ()), lists)
                     ran |= searched(asked, set(notes.get('terms') or ()), lists)   # on any board, kept or not: a family nobody searched is no miss (scout_board_cells.record)
+                if counted and len(counted) >= MIN_LOCAL:
+                    out(kinds_line(board['host'], counted, families, unasked, by_family))
                 fact = measure(board, counted, country, families, browser=browsed, layout=kept_layout if found_layout is None else found_layout or None, counts=by_family if asked is not None else None)
                 why = '' if fact or len(counted) < MIN_LOCAL else ' (kinds of work not asked: not kept)' if unasked else ' (no kinds of work from the AI: not kept)'
                 counts.append(f"{board['host']} {len(jobs)}/{len(counted)}" + (' (no places; the AI: this country)' if whole else '') + (' (read in the browser)' if browsed and jobs else '') + (' (read by the AI page reader)' if read_by_ai else '') + why
