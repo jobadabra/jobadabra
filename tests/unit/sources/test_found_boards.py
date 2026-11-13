@@ -120,6 +120,39 @@ class FoundBoardsTests(unittest.TestCase):
         self.assertEqual(len(batches), 2, 'ordinary reads still hand each kept board, including a shared posting')
         self.assertEqual(len(jobs), 2)
 
+    def test_an_empty_site_classified_as_one_employer_hands_no_rounds(self):
+        published = []
+        page = '<html><h1>No vacancies</h1><p>' + 'We have no open positions today; please check again later. ' * 40 + '</p></html>'
+        with mock.patch.dict(found_boards._early, {}, clear=True), \
+                mock.patch.object(found_boards.board_check, 'kind', return_value=('one employer', '<title>Acme</title>')) as classify, \
+                mock.patch.object(found_boards.board_employers, 'note_site'):
+            jobs = found_boards.read(SEARCH, [BOARD], fetch=lambda url: page, early=True,
+                                    web=False, on_board=published.extend)
+        classify.assert_called_once()
+        self.assertEqual(jobs, [])
+        self.assertEqual(published, [], 'a rejected empty site has no nonempty round to hand early')
+
+    def test_a_board_refusing_after_a_real_round_keeps_its_jobs_and_its_spares(self):
+        """Review #3978: nonempty rounds cannot later enter the empty-only NOT_A_BOARD check; a refusal retains them, plus its spare."""
+        search = {**SEARCH, 'jobs_board_search_queries': ['first', 'second']}
+        spare = {**BOARD, 'name': 'Spare', 'host': 'spare.example', 'search_url': 'https://spare.example/?q={role}'}
+        published = []
+
+        def pages(url):
+            if 'empregos.example' in url and 'q=second' in url:
+                raise urllib.error.HTTPError(url, 403, 'Forbidden', {}, None)
+            job = {**JOB, 'url': 'https://spare.example/oferta/1'} if 'spare.example' in url else JOB
+            return f'<script type="application/ld+json">{json.dumps(job)}</script>'
+
+        with mock.patch.dict(found_boards._early, {}, clear=True), mock.patch.dict(careers.REFUSALS, {}, clear=True), \
+                mock.patch.object(found_boards.board_check, 'kind', side_effect=AssertionError('a nonempty read is never reclassified')) as classify:
+            jobs = found_boards.read(search, [BOARD], fetch=pages, early=True, workers=1, spare=[spare], web=False,
+                                    is_relevant=lambda jobs: jobs, on_board=published.extend)
+        classify.assert_not_called()
+        wanted = [JOB['url'], 'https://spare.example/oferta/1']
+        self.assertEqual([job['url'] for job in jobs], wanted, 'the original partial result and its replacement are both kept')
+        self.assertCountEqual([job['url'] for job in published], wanted)
+
     def test_a_board_that_stops_adding_jobs_is_not_asked_every_query(self):
         search = {**SEARCH, 'jobs_board_search_queries': ['um', 'dois', 'tres', 'quatro', 'cinco']}
         asked = []
