@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
 from . import pool_tags, role_kinds, scout_board_candidates, scout_cells, scout_google_boards
-from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_line, kinds_of, listed_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
+from .scout_board_counts import KIND_BATCH, MAX_TITLES, MIN_RIGHT, _counts, kinds_line, kinds_of, keep_fact, listed_of, measured_counts, proven_families, searched  # noqa: F401 -- moved out (500-line rule); tests and board discovery use scout_boards.kinds_of
 
 MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
@@ -374,20 +374,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, named=
         stamp = datetime.now(timezone.utc).date().isoformat()
         fresh = (datetime.now(timezone.utc).date() - timedelta(days=FACT_DAYS)).isoformat()
         for fact in kept:
-            # Why (13 Nov 2026, sa; counts 13 Nov, bp): a pass reads a board with its own kinds' words, so its row is one search's view of the board. Germany's data pass
-            # kept a general board (76 local jobs); two hours later the pass for photography, video and design read it again and the row lost data:
-            # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row, and so
-            # do their job counts (family_jobs): a family's newer count replaces its older one, the families this pass did not measure keep theirs; the `listed_families` mark (a count read from the board's own list) goes with its family's count.
-            held = db.execute('SELECT families, family_jobs, listed_families FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
-            families = list(dict.fromkeys(fact['families'] + [family for family in (held[0].split(',') if held else []) if family]))
-            rights = {**_counts(held[1] if held else None), **fact.get('family_jobs', {})}   # this pass's count of a family replaces the earlier one; the others stay
-            # Why (13 Nov 2026, owner via sa): a count read from the board's own list is marked `listed`, so a searched count is ranked before it (jobadabra #4045); the mark goes with the
-            # family's count: a family this pass measured takes this pass's mark, the others keep theirs.
-            listed = sorted((set(listed_of(held[2] if held else None)) - set(fact.get('family_jobs', {}))) | set(fact.get('listed_families', ())))
-            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                       (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
-                        json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1],
-                        json.dumps(listed) if listed else None))
+            keep_fact(db, fact, country, fresh, stamp)
         if by_cells:
             from . import scout_board_cells
             scout_board_candidates.stamp_read(db, country, candidates, counts)   # the candidates this pass read

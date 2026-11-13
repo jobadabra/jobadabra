@@ -63,6 +63,25 @@ def listed_of(text):
     return sorted({family for family in value if family in pool_tags.FAMILIES}) if isinstance(value, list) else []
 
 
+def keep_fact(db, fact, country, fresh, stamp):
+    """Write one board's fact to scout_board_facts, merged with what an earlier pass kept within FACT_DAYS (`fresh`: the oldest read_at that still counts; `stamp`: today).
+    Invariants: families and counts of an earlier pass stay; this pass's count of a family replaces the older one; a family's `listed_families` mark goes with its count."""
+    # Why (13 Nov 2026, sa; counts 13 Nov, bp): a pass reads a board with its own kinds' words, so its row is one search's view of the board. Germany's data pass
+    # kept a general board (76 local jobs); two hours later the pass for photography, video and design read it again and the row lost data:
+    # a data analyst's first search started on a design board instead. The kinds an earlier pass measured within FACT_DAYS stay on the row, and so
+    # do their job counts (family_jobs): a family's newer count replaces its older one, the families this pass did not measure keep theirs; the `listed_families` mark (a count read from the board's own list) goes with its family's count.
+    held = db.execute('SELECT families, family_jobs, listed_families FROM scout_board_facts WHERE host = ? AND country = ? AND read_at >= ?', (fact['host'], country, fresh)).fetchone()
+    families = list(dict.fromkeys(fact['families'] + [family for family in (held[0].split(',') if held else []) if family]))
+    rights = {**_counts(held[1] if held else None), **fact.get('family_jobs', {})}   # this pass's count of a family replaces the earlier one; the others stay
+    # Why (13 Nov 2026, owner via sa): a count read from the board's own list is marked `listed`, so a searched count is ranked before it (jobadabra #4045); the mark goes with the
+    # family's count: a family this pass measured takes this pass's mark, the others keep theirs.
+    listed = sorted((set(listed_of(held[2] if held else None)) - set(fact.get('family_jobs', {}))) | set(fact.get('listed_families', ())))
+    db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at, browser, layout, family_jobs, listed_families) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+               (fact['host'], country, fact['url'], ','.join(families), fact['local_jobs'], stamp, int(bool(fact.get('browser'))),
+                json.dumps(fact['layout']) if fact.get('layout') else None, json.dumps(rights, sort_keys=True) if fact.get('family_jobs') is not None else held and held[1],
+                json.dumps(listed) if listed else None))
+
+
 def kinds_line(host, counted, families, unasked, by_family):
     """One log line per board that had local jobs to sort: how many jobs were asked and put in a family, the right jobs per family (the number board discovery is about), and, when
     the AI answered but put no job in any family, the first titles it was asked (public titles), so a board dropped for "no kinds of work" shows why.
