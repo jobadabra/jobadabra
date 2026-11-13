@@ -41,9 +41,22 @@ def names_agent(nodes):
         or any(isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.lower() == 'user-agent' for node in nodes)
 
 
+def agent_put_in(nodes, name):
+    """True when the agent is put into the very name passed as headers: `name = {...}`, `name['User-Agent'] = ...` or `name.update(...)`/`setdefault(...)` holding it."""
+    for node in nodes:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, (ast.AnnAssign, ast.AugAssign)) else []
+        for target in targets:
+            base = target.value if isinstance(target, ast.Subscript) else target
+            if isinstance(base, ast.Name) and base.id == name and names_agent(ast.walk(node)):
+                return True
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ('update', 'setdefault') and isinstance(node.func.value, ast.Name) and node.func.value.id == name and names_agent(ast.walk(node)):
+            return True
+    return False
+
+
 def requests_without_agent(path=None, text=None):
     """[(function, line)] of every function in `path` (or in `text`) that builds a urllib Request (`urllib.request.Request(` or a bare `Request(`) whose own arguments do not carry the agent:
-    a 'User-Agent' string or a *USER_AGENT* name inside the call, or headers that are a name set in this function's own code, or a call to a function of this file that sets it.
+    a 'User-Agent' string or a *USER_AGENT* name inside the call, or headers that are a name this function puts the agent into, or a call to a function of this file that sets it.
     Why (#4094 and #4120, Gitar): a text search let a comment, a docstring or a nested function's agent pass; and a User-Agent anywhere in the function let one that only fed a log line or a JSON body pass."""
     tree = ast.parse(text if text is not None else path.read_text(encoding='utf-8', errors='replace'))
     functions = {node.name: node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
@@ -54,7 +67,7 @@ def requests_without_agent(path=None, text=None):
             given = [keyword.value for keyword in call.keywords if keyword.arg == 'headers'] + call.args[2:3]   # only the headers: an agent in the body or a log line is no agent
             inside = [node for value in given for node in ast.walk(value)]
             fed_by = [node.func.id for node in inside if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in functions]   # headers=_headers(env)
-            by_name = any(isinstance(value, ast.Name) for value in given) and names_agent(nodes)   # headers=headers, built in this function
+            by_name = any(isinstance(value, ast.Name) and agent_put_in(nodes, value.id) for value in given)   # headers=headers: the agent goes into that very name (Gitar on #4121)
             if not (names_agent(inside) or by_name or any(names_agent(own_code(functions[name])) for name in fed_by)):
                 found.append((function.name, call.lineno))
     return found
@@ -87,6 +100,14 @@ class SiteCallsSendOurUserAgent(unittest.TestCase):
         self.assertEqual([name for name, _ in requests_without_agent(text=body)], ['h'], 'an agent in the JSON body is no agent in the headers')
         self.assertEqual(requests_without_agent(text=helper), [])
         self.assertEqual(requests_without_agent(text=by_name), [])
+
+    def test_a_headers_name_counts_only_when_the_agent_goes_into_it(self):
+        log = 'import urllib.request, logging, ats\ndef k(u):\n    headers = {"X": "1"}\n    logging.info(ats.USER_AGENT)\n    return urllib.request.Request(u, headers=headers)\n'
+        item = 'import urllib.request\ndef m(u):\n    headers = {}\n    headers["User-Agent"] = "x"\n    return urllib.request.Request(u, headers=headers)\n'
+        update = 'import urllib.request\ndef n(u):\n    headers = {}\n    headers.update({"User-Agent": "x"})\n    return urllib.request.Request(u, headers=headers)\n'
+        self.assertEqual([name for name, _ in requests_without_agent(text=log)], ['k'], 'an agent in a log line is no agent in the headers')
+        self.assertEqual(requests_without_agent(text=item), [])
+        self.assertEqual(requests_without_agent(text=update), [])
 
     def test_every_request_outside_the_other_services_sets_a_user_agent(self):
         missing = [f'{name}:{line} {function}' for name in python_files() if name not in OTHER_SERVICES for function, line in requests_without_agent(ROOT / name)]
