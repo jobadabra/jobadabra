@@ -11,10 +11,11 @@ import {drawerActions} from './drawer-actions.js';
 
 const TONE = {good: 'good', warn: 'warn', bad: 'bad'};   // the chip's tone on a state card; anything else reads as info
 let saved = null;   // Settings → Credentials rows; 'loading' while asked; 'unread' when the read failed (never shown as "none saved"); read once per drawer open (forgetCredentials)
+let reading = 0;   // which read is current: a drawer reopened mid-read starts a new one, and the older answer is dropped (Gitar on #4018)
 let running = '';   // the job url whose check runs from the drawer
 
 /** Forgets the Credentials rows, so the next Account view reads them again (the drawer calls it on open). */
-export const forgetCredentials = () => { saved = null; };
+export const forgetCredentials = () => { saved = null; reading += 1; };
 
 const checkButton = (ctx, redraw, label) => {
   const node = button(label, async () => {
@@ -40,9 +41,10 @@ const NEED = {'sign-in': ['shield', 'pagesReadinessTab.needSignIn'], create: ['u
 export function accountView(ctx, redraw) {
   if (saved === null) {
     saved = 'loading';
+    const mine = ++reading;
     const failed = why => { window.pilot?.uiLog?.('drawer: the saved sign-ins could not be read', String(why).slice(0, 200)); return 'unread'; };
     Promise.resolve().then(() => window.pilot.credentials()).then(answer => (answer?.ok ? answer.rows || [] : failed(answer?.error || 'no answer')), error => failed(error?.message || error))
-      .then(rows => { saved = rows; redraw(); });
+      .then(rows => { if (mine !== reading) return; saved = rows; redraw(); });
   }
   if (saved === 'loading') return skeleton();
   const {need, saved: row} = accountOf(ctx.job, readOf(ctx.job.url), Array.isArray(saved) ? saved : []);
