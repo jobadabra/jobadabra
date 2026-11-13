@@ -19,6 +19,8 @@ import sqlite3
 import urllib.parse
 from datetime import datetime, timezone
 
+from . import page_paths
+
 TAGS = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'a', 'strong', 'b', 'span', 'div', 'p', 'td', 'dt')
 MATCH_SHARE = 0.8          # a replay must give back at least this share of what the model found
 MAX_FACTOR = 3             # ... and not more than this many times as many items (a pattern that grabs every link is no recipe)
@@ -44,6 +46,8 @@ def valid(recipe):
         return (set(recipe) - {'depth', 'title'} == {'kind', 'prefix'} and isinstance(recipe['prefix'], str)
                 and bool(re.fullmatch(r'(/[\w.%~-]+){0,6}', recipe['prefix'])) and type(depth) is int and 1 <= depth <= MAX_DEPTH
                 and recipe.get('title', 'label') in TITLES)
+    if recipe.get('kind') == 'path':
+        return set(recipe) - {'title'} == {'kind', 'chain', 'max'} and recipe.get('title', 'label') in TITLES and page_paths.valid(recipe)
     if recipe.get('kind') == 'tag':
         return (set(recipe) == {'kind', 'tag', 'class'} and recipe['tag'] in TAGS and isinstance(recipe['class'], str)
                 and bool(re.fullmatch(r'[\w -]{1,60}', recipe['class'])))
@@ -98,6 +102,8 @@ def replay(recipe, markup, base):
             segments = [part for part in parts.path.split('/') if part]
             if parts.hostname == host and parts.path.startswith(recipe['prefix'] + '/') and len(segments) == depth and text:
                 found.append((text, url.split('#')[0]))
+    elif recipe['kind'] == 'path':
+        found = page_paths.replay(recipe, markup, base, recipe.get('title'))
     else:
         pattern = r'<{0}\b[^>]*class=["\'][^"\']*\b{1}\b[^"\']*["\'][^>]*>(.*?)</{0}>'.format(recipe['tag'], re.escape(recipe['class']))
         found = [(_text(inner), None) for inner in re.findall(pattern, markup, re.S | re.I)]
@@ -143,7 +149,7 @@ def derive(markup, base, jobs):
     recipe = _sections(markup, base, titles)
     if recipe or not linked:
         return recipe
-    return _deeper(markup, base, titles, links, paths) or _cards(markup, base, titles, links, paths)
+    return _deeper(markup, base, titles, links, paths) or _cards(markup, base, titles, links, paths) or _path(markup, base, titles, links)
 
 
 def _parent(paths, depth):
@@ -171,6 +177,17 @@ def _cards(markup, base, titles, links, paths):
         prefix = _parent(paths, depth)
         for title in TITLES if prefix is not None else ():
             recipe = {'kind': 'links', 'prefix': prefix, **({'depth': depth} if depth > 1 else {}), 'title': title}
+            if valid(recipe) and _fits(recipe, markup, base, titles, links):
+                return recipe
+    return None
+
+
+def _path(markup, base, titles, links):
+    """A path recipe (the link and its nearest ancestors, page_paths) that reads these jobs, shortest chain first, or None.
+    Learned after every other kind (no recipe learned before it changes); the title is the link's text unless a label or a heading reads more of the jobs."""
+    for body in page_paths.candidates(markup, base, [link for link in links if link], 0):
+        for title in (None, *TITLES):
+            recipe = {'kind': 'path', **body, **({'title': title} if title else {})}
             if valid(recipe) and _fits(recipe, markup, base, titles, links):
                 return recipe
     return None
