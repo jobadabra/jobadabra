@@ -87,6 +87,13 @@ class SearchHoldTest(unittest.TestCase):
         self.assertTrue(out['lift'])
         self.assertEqual(out['title'], '[2d] Read boards')
 
+    def test_a_pair_on_a_pr_ship_did_not_hold_never_runs_again(self):
+        """13 Nov 2026, #3946: a by-hand pair with sides not valid queued a third run by itself; only ship's hold runs again, and its verdict says it is not a hold."""
+        out = pair.settle(BODY, TITLE, [], done(p1=(0, 9, 2)), ['p1', 'p4'], 1)
+        self.assertEqual((out['lift'], out['rerun']), (False, []))
+        self.assertTrue(out['verdict'][0].startswith('Not held by ship'), out['verdict'])
+        self.assertIn('fell 5 → 3 (usual difference not measured yet: 1 job allowed)', pair.settle(BODY, TITLE, ['search-hold'], done(p1=(5, 3, None)), ['p1'], 1)['verdict'][0])
+
     def test_a_hold_ship_did_not_set_is_never_lifted(self):
         out = pair.settle(BODY, TITLE, ['Gitar: approved'], done(p1=(0, 9, 2), p4=(20, 35, None)), ['p1', 'p4'], 1)
         self.assertFalse(out['lift'])
