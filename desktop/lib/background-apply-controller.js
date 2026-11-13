@@ -16,6 +16,7 @@ import {createCloudSide} from './background-apply-cloud.js';
 import {cloudAutoOf} from './cloud-auto.js';
 import {waitingMessageFor} from './waiting-message.js';
 import * as journal from './session-journal.js';
+import {easyApplyBatch, LINKEDIN_NOTICES} from './easy-apply-batch.js';
 
 
 const instances = new WeakMap();
@@ -24,7 +25,7 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.',
   app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.',
   app_updated: 'Jobadabra updated and restarted while it held this application, so nothing was sent. Open it again to continue.',
-  no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  no_form: 'Jobadabra could not find this application\'s form, so nothing was filled or sent. Open the job and apply on the site yourself.', ...LINKEDIN_NOTICES};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 const STATE_WORDS = {ready_for_review: 'Form filled — review the same background form and Submit', waiting_to_submit: 'Filled — waiting before automatic submission; Stop is available',
   submitting: 'Submission attempted — waiting for the site receipt', cloud: 'Handed to our cloud browser: it sends this application by itself, even with your computer off'};   // words-ok: our own state words
@@ -87,10 +88,11 @@ export function createBackgroundApplyController(storage, {store = null, browser 
  log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   // Why (#3519, owner 7 Nov 2026: "it's very slow and doesn't give you live updates"; 8 Nov 2026, "almost no live updates"): each read's step goes to the Jobs window and to its own app.log line as it starts, and where its time went is one line at its end, so the next real run names the step it stopped at.
   reader = createTriageReader({onStep: step => { tellWindow('triageStep', step); log('apply', 'triage: read step', {url: String(step.url).split(/[?#]/)[0], step: step.step}); }, onDone: summary => log('apply', 'triage: read finished', summary)}),
-  port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage)} = {}) {
+  port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage), readSession = undefined} = {}) {   // readSession: a test's LinkedIn sign-in reader, never the Keychain
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
+  const linkedin = easyApplyBatch({storage, send: (method, params) => browserOf().send(method, params), readSession, log, now});
   // Asks the owned worker to poll now (lib/background-browser.js wake), never waited for: that poll is served on the serial turn that may have asked for it.
   // A wake that fails is logged and leaves the work to the 30 s tab report (extension/report-alarm.js), never fails what asked for it.
   const wakeBrowser = what => new Promise(resolve => resolve(browserOf().wake?.())).then(ok => { if (ok === false) log('apply', `${what}: the hidden browser did not take the wake`, {}); },
@@ -283,6 +285,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
     const found = [];
     for (const item of open) found.push([item, await alone(item, () => stateForPoll(item))]);
+    await linkedin.settle(found, markManual);   // Why (13 Nov 2026, owner: "Today's browser (Recommended)"): before any launch, so a LinkedIn job never opens signed out or while paused
     // Why (5 Nov 2026, owner: "We want to be able to run 10 sessions in parallel, headless, and being very performant"; plan decision 3, "all of a batch, up to 10";
     // replaces #2646's one job at a time): every queued job fills at once, each in its own hidden window (extension/background-session.mjs). A job already claimed
     // (preflight) or past a multi-step form's middle step (filling) counts against the limit, whatever the list order; states are read first.

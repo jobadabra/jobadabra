@@ -53,6 +53,9 @@ export function noteStop(storage, now) {
   notePause(storage, new Date(until).toISOString());
   const stops = (Number(mine(storage).stops) || 0) + 1;
   const off = stops >= STOPS_TO_OFF;
-  save(storage, {stops, ...(off ? {on: false} : {})});
+  save(storage, {stops, stopAt: now.getTime(), ...(off ? {on: false} : {})});
   return {until, off};
 }
+
+/** When the last D3 stop was noted (epoch ms, 0 = never): a hand-off at or before it was already counted, so one page never counts as two stops (lib/easy-apply-batch.js). */
+export const stopNotedAt = storage => Number(mine(storage).stopAt) || 0;
