@@ -236,9 +236,9 @@ def unread(search):
     (src/fragment_words.py: never a raw pattern in a run line, tests/guards/rules/test_run_lines_plain.py): places no source can search by name.
     Pass the person's own words (load_search_config(matching=False)): the crawl's added region and place patterns are no entry of theirs (Gitar on #3953)."""
     from .fragment_words import fragment_words
+    from .my_places import words
     from .regions import region_of
-    groups = (search.get('locations') or {})
-    return list(dict.fromkeys(fragment_words(fragment) or str(fragment) for key in ('top_tier', 'country_wide', 'abroad') for fragment in groups.get(key) or []
+    return list(dict.fromkeys(fragment_words(fragment) or str(fragment) for fragment in words(search)
                               if not region_of(fragment) and spellings(fragment) is None))
 
 
